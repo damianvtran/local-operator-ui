@@ -38,6 +38,7 @@ import type {
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import type { SlashCommandMeta } from "../components/slash-commands";
+import { forkBudgetRefusal } from "../utils/message-budget";
 import {
 	PickerCheck,
 	PickerField,
@@ -582,6 +583,18 @@ export const ForkPicker: FC<PickerContext> = ({
 	const [message, setMessage] = useState(action.args ?? "");
 	const op = useOperation();
 	const submit = useCallback(async () => {
+		// Weighed before the request for the same reason a message is: `message` is
+		// declared at 200,000 characters, and without this the schema parse inside
+		// `requestDesktop` refused a long paste as "Invalid desktop operation.",
+		// which this picker then showed as "The fork was not created: Invalid
+		// desktop operation." - naming neither the cause nor anything to do about
+		// it (round 2, N2). The text stays in the field either way, so shortening
+		// it is the one action the sentence asks for.
+		const refusal = forkBudgetRefusal(message.trim());
+		if (refusal) {
+			op.setResult({ tone: "error", text: refusal });
+			return;
+		}
 		const value = await op.perform(
 			() =>
 				desktopResult<{

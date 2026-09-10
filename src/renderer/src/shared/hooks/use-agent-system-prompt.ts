@@ -2,6 +2,7 @@
  * Hook for fetching and updating agent system prompt
  */
 
+import { systemPromptBudgetRefusal } from "@features/chat/utils/message-budget";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -75,6 +76,16 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 
 	return useMutation({
 		mutationFn: async (systemPrompt: string) => {
+			// Weighed before the request, where the size is still known. Without this
+			// an oversize prompt reached main's untargeted backstop, whose one
+			// sentence spoke of messages and images - neither of which exists in the
+			// system-prompt editor (round 2, N4). The backstop is now scoped per op
+			// too, but only a pre-flight can name the actual number.
+			const refusal = systemPromptBudgetRefusal(systemPrompt);
+			if (refusal) {
+				showErrorToast(refusal);
+				throw new Error(refusal);
+			}
 			try {
 				const response = await client.agents.updateAgentSystemPrompt(
 					agentId,

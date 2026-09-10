@@ -1,6 +1,9 @@
 /** Canonical sessions are the only conversation identities. Profile names stage
  * drafts; the legacy agent mapping is retained only to resolve old deep links. */
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -165,6 +168,43 @@ export async function admitChatDraft(
 	} catch (error) {
 		store.updateDraft(key, {
 			pending: false,
+			// 413 and 422 on this path both mean the message was refused BEFORE
+			// anything was admitted, which is exactly the case the flag's own
+			// contract above says it must NOT cover.
+			//
+			// Ours are raised before `fetch` is ever called
+			// (`src/main/desktop-transport.ts`): 422 is the `safeParse` of our own
+			// schema, which precedes the request, and 413 is the byte-budget guard
+			// immediately after it. 413 can ONLY be ours - uvicorn enforces no body
+			// limit and the frame validator maps its own refusal to 409.
+			//
+			// 422 is different and the earlier claim here that the backend "can
+			// produce neither" was FALSE: `desktop_sessions.py` raises 422 directly
+			// (unknown command, invalid loop) and pydantic answers 422 for any
+			// malformed body before the route runs - an empty message and a
+			// 900,001-byte body both return one (round 2, Q-8). Un-latching is still
+			// correct for those, because a validation refusal is decided before the
+			// prompt is admitted to the session, so no work started either way. The
+			// reason to un-latch is "nothing was admitted", not "the status could
+			// only have come from us", and an inaccurate claim about a limit is how
+			// the original bug survived review.
+			//
+			// 422 is listed because the schema caps `text` in CHARACTERS while the
+			// pre-flight weighs BYTES: a long ASCII paste can satisfy the byte budget
+			// and still fail the schema, so a 422 reaches here for a message whose
+			// only fault is length (round 1, R1). The pre-flight now refuses that
+			// case up front, but the latch must not depend on one guard being
+			// exhaustive - anything we refuse locally has admitted nothing.
+			//
+			// Latching here was a trap with no exit: the banner said "send it again",
+			// the unchanged-payload guard then refused any edit, and images are part
+			// of that identity check - so the one action that would make the message
+			// fit, removing a screenshot, was the one action forbidden. The only way
+			// out was discarding the message.
+			...(error instanceof DesktopControlError &&
+			(error.status === 413 || error.status === 422)
+				? { admissionAttempted: false }
+				: {}),
 			errorCode:
 				error instanceof Error &&
 				"code" in error &&

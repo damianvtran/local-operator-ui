@@ -1,6 +1,10 @@
 import type { Plugin } from "vite";
 import { requestDesktopMedia } from "../../src/main/desktop-media";
 import { requestDesktop } from "../../src/main/desktop-transport";
+import {
+	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+	MAX_DESKTOP_ENVELOPE_BYTES,
+} from "../../src/shared/desktop-contract";
 
 /** Browser-only development uses the same typed vocabulary as Electron IPC.
  * The token is read by this Node process, never by Vite's client env machinery.
@@ -243,9 +247,22 @@ export function desktopProxyPlugin(): Plugin {
 					let size = 0;
 					for await (const chunk of req) {
 						size += chunk.length;
-						if (size > 262144) {
+						// A streamed body has no op until it parses, so this bounds the
+						// READ at the widest budget any op may claim and lets
+						// `requestDesktop` below apply the per-op refusal. Both transports
+						// therefore enforce ONE table; the previous bare 262144 here and in
+						// main were two copies that drifted from the schema between them.
+						//
+						// The ENVELOPE budget, not the body budget: what streams past here
+						// is `{op, sessionId, requestId, ...body}`, which is ~50 bytes
+						// wider than the body the per-op budget covers. Bounding at the
+						// body number refused a maximal legal message in dev that both
+						// `requestDesktop` and the backend accept (review round 1, F5).
+						if (size > MAX_DESKTOP_ENVELOPE_BYTES) {
 							res.statusCode = 413;
-							res.end(JSON.stringify({ detail: "This request is too large." }));
+							res.end(
+								JSON.stringify({ detail: DESKTOP_REQUEST_TOO_LARGE_DETAIL }),
+							);
 							return;
 						}
 						chunks.push(Buffer.from(chunk));

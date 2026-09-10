@@ -104,9 +104,22 @@ Team/agent attachment results carry an already-admitted consumed request under
   full native command arguments and MCP/catalog APIs. Canonical attachment/job
   trajectory retrieval remains a separate backend/transport slice. An endpoint
   mapper alone supplies no rendered interaction or OS delivery.
-- The existing JSON main/dev proxy budget remains262,144bytes, less than the
-  backend's900,000byte control-frame budget. Larger image submission needs a
-  coordinated transport-budget/attachment slice, not a schema-only size promise.
+- The JSON message budget is880,000bytes, set against the backend's900,000byte
+  control-frame limit (`local_operator/server/routes/desktop_sessions.py:101`)
+  with a20,000byte margin so a client-accepted message cannot land on the
+  boundary and become a server409. The budget is per-op and lives in one place,
+  `desktopRequestByteBudget` in `src/shared/desktop-contract.ts`; main and the
+  dev proxy both defer to it rather than keeping copies. Control ops keep the
+  older262,144byte budget. The dev proxy bounds its streamed READ at
+  `MAX_DESKTOP_ENVELOPE_BYTES`, which is the message budget plus a bounded
+  envelope allowance, because what streams past it carries `op`/`sessionId`/
+  `requestId` on top of the body the per-op budget covers.
+- Images are bounded in the renderer before they reach the wire
+  (`features/chat/utils/bound-image.ts`), mirroring the TUI's own ladder in
+  `local_operator/imaging.py`: 1024px longest edge, JPEG re-encode above1 MiB,
+  and a whole-message overflow ladder when several legal images do not
+  collectively fit. Bounding never returns a payload larger than what it was
+  given.
 
 A200 message response is admission, NOT model success or completion. Replay of a
 completed HTTP receipt returns replayed=true across backend restarts. Changed

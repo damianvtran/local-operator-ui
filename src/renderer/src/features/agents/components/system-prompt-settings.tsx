@@ -116,14 +116,26 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 					isSaving={savingField === "system_prompt"}
 					onSave={async (value) => {
 						setSavingField("system_prompt");
+						// A failure must PROPAGATE to `EditableField`, which reads a
+						// resolved `onSave` as success: it exits edit mode and shows the
+						// text as saved. Swallowing here (as this did) made a refused
+						// prompt - the pre-flight's, or any 4xx - look saved while it was
+						// never persisted, so the next refetch silently replaced the
+						// user's edit with the old prompt. That is Q-7's own defect, a
+						// refusal that retires the draft, one surface over (round 3, R2).
+						// The toast stays the mutation's job; the rejection is what keeps
+						// the editor open on the user's text.
+						//
+						// `finally` rather than a rethrowing `catch` because a catch that
+						// only rethrows is a no-op that `noUselessCatch` rejects: this
+						// clears the saving flag on both paths and leaves the rejection
+						// untouched.
 						try {
 							await updateSystemPromptMutation.mutateAsync(value);
 							// Explicitly refetch the agent data to update the UI
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch {
-							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
 						}

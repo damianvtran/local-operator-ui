@@ -171,8 +171,13 @@ export const EditableField: FC<EditableFieldProps> = ({
 			setIsEditing(false);
 		} catch (error) {
 			console.error("Failed to save editable field:", error);
-			// Stay in edit mode on failure so the user can retry or cancel.
-			setEditValue(originalValue);
+			// Stay in edit mode on failure so the user can retry or cancel, and KEEP
+			// what they typed. This used to `setEditValue(originalValue)`, which
+			// contradicted the line above it: the rejected text was discarded, so
+			// there was nothing left to retry - and because `handleSave` returns
+			// early when `editValue === originalValue`, the Save button was inert
+			// afterwards. A refusal must never cost the user their edit; Cancel is
+			// how they discard it deliberately.
 		} finally {
 			setInternalIsSaving(false);
 		}

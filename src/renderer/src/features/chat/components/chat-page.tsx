@@ -8,6 +8,7 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { cn } from "@shared/lib/utils";
 import {
 	admitChatDraft,
 	draftIdentityFor,
@@ -15,7 +16,13 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import { PickerOutlet } from "../pickers/picker-registry";
+import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
+import {
+	messageBodyBytes,
+	messageBudgetRefusal,
+} from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import type { MessageInputHandle } from "./message-input";
@@ -36,17 +43,26 @@ const IMAGE_MIME_BY_EXT: Record<
 /**
  * Canonical admission carries images inline as `{data_b64, mime_type}`. The
  * composer holds attachments as paths or data URLs; only image types the
- * runtime accepts are encoded, anything else is left out rather than
- * refused (the JSON transport budget is 256 KiB, see the backend contract).
+ * runtime accepts are encoded, anything else is left out rather than refused.
+ *
+ * The JSON transport budget for a message is 880,000 bytes - headroom under
+ * the backend's real 900,000-byte control-frame limit, enforced by
+ * `Prompt.nonempty` at
+ * `local_operator/server/routes/desktop_sessions.py:101`. The earlier note
+ * here claimed 256 KiB "see the backend contract", which the backend contract
+ * contradicted: that number was an arbitrary transport literal 3.4x stricter
+ * than what the server accepts, and one Retina screenshot exceeded it.
+ *
+ * Images are bounded CLIENT-SIDE before encoding, to the same 1024px long edge
+ * the TUI applies (`bound-image.ts` cites the constants). Raising the budget
+ * alone would not have been enough: unbounded screenshots are ~8.5 MB each, so
+ * none of them fit at any budget this transport can offer.
  */
 const IMAGE_DATA_URL = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/;
 const FILE_SCHEME = /^file:\/\//;
 
-async function encodeImageAttachments(attachments: string[]) {
-	const images: {
-		data_b64: string;
-		mime_type: (typeof IMAGE_MIME_BY_EXT)[string];
-	}[] = [];
+async function encodeImageAttachments(attachments: string[], text: string) {
+	const images: WireImage[] = [];
 	for (const attachment of attachments) {
 		const dataUrl = IMAGE_DATA_URL.exec(attachment);
 		if (dataUrl) {
@@ -65,7 +81,15 @@ async function encodeImageAttachments(attachments: string[]) {
 		);
 		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
 	}
-	return images.slice(0, 8);
+	// Bound per image first, then check the TOTAL and step the whole set down
+	// until the message fits. Several individually legal screenshots that do not
+	// collectively fit is the common case, and it is not visible to a per-image
+	// rule.
+	return boundImagesForBudget(
+		images.slice(0, 8),
+		DESKTOP_MESSAGE_BUDGET_BYTES,
+		(candidate) => messageBodyBytes(text, candidate),
+	);
 }
 
 /** Each displayed identity owns its stream and composer. A candidate open is
@@ -170,7 +194,14 @@ function SessionPanel({
 		setSendError(null);
 		setSendErrorCode(undefined);
 		try {
-			if (await dispatch(content)) return true;
+			// Three outcomes, not two. `consumed` retires the draft the way a sent
+			// message does; `retained` means the line WAS a command and was refused
+			// before it ran, so the composer must keep the text - returning false
+			// here is what `use-message-input.ts:172` reads to leave it in place
+			// (round 2, Q-7). Only `not-a-command` falls through to the model path.
+			const dispatched = await dispatch(content);
+			if (dispatched === "consumed") return true;
+			if (dispatched === "retained") return false;
 			if (!draftKey && !sessionId) return false;
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
@@ -197,7 +228,16 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const images = await encodeImageAttachments(attachments);
+			const images = await encodeImageAttachments(attachments, content);
+			// Refuse BEFORE admission, where the sizes are still known and the
+			// composer is still editable. A refusal from the transport arrives after
+			// the draft has latched, so its "send it again" advice is then refused by
+			// the unchanged-payload guard and the user cannot drop an image to fit.
+			const refusal = messageBudgetRefusal(content, images);
+			if (refusal) {
+				setSendError(refusal);
+				return false;
+			}
 			const id = await admitChatDraft(
 				key,
 				{
@@ -281,13 +321,19 @@ function SessionPanel({
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className={cn("flex h-full min-h-0 flex-col")}>
 			{draftKey && (
-				<label className="flex items-center gap-2 border-b border-hairline px-4 py-2 text-meta text-ink-muted">
+				<label
+					className={cn(
+						"flex items-center gap-2 border-b border-hairline px-4 py-2 text-meta text-ink-muted",
+					)}
+				>
 					Working directory
 					<input
 						aria-label="New chat working directory"
-						className="min-w-0 flex-1 rounded-md border border-control bg-surface px-2 py-1 text-ink"
+						className={cn(
+							"min-w-0 flex-1 rounded-md border border-control bg-surface px-2 py-1 text-ink",
+						)}
 						value={cwd}
 						disabled={Boolean(draft?.sessionId) || admitting}
 						onChange={(event) => setCwd(event.target.value)}
@@ -295,7 +341,7 @@ function SessionPanel({
 				</label>
 			)}
 			{(sendError || draft?.error) && (
-				<div role="alert" className="px-4 py-2 text-body-sm text-danger">
+				<div role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
 					<p>
 						{sendError || draft?.error}{" "}
 						{draft?.submittedText
@@ -303,13 +349,17 @@ function SessionPanel({
 							: "Your draft is retained."}
 					</p>
 					{draft?.submittedText && (
-						<div className="mt-2 space-y-2">
-							<p className="whitespace-pre-wrap rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink">
+						<div className={cn("mt-2 space-y-2")}>
+							<p
+								className={cn(
+									"whitespace-pre-wrap rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink",
+								)}
+							>
 								{draft.submittedText}
 							</p>
 							<button
 								type="button"
-								className="underline"
+								className={cn("underline")}
 								onClick={() => {
 									if (draftIdentity)
 										useCanonicalSessionsStore
@@ -326,17 +376,17 @@ function SessionPanel({
 				</div>
 			)}
 			{(sendErrorCode ?? draft?.errorCode) === "unresolved_attachment" && (
-				<div className="flex gap-2 px-4 pb-2 text-body-sm">
+				<div className={cn("flex gap-2 px-4 pb-2 text-body-sm")}>
 					<button
 						type="button"
-						className="underline"
+						className={cn("underline")}
 						onClick={() => void dispatch("/agent")}
 					>
 						Choose agent
 					</button>
 					<button
 						type="button"
-						className="underline"
+						className={cn("underline")}
 						onClick={() => void dispatch("/team")}
 					>
 						Choose team
@@ -347,14 +397,18 @@ function SessionPanel({
 				"profile_registry_unavailable" && (
 				<button
 					type="button"
-					className="self-start px-4 pb-2 text-body-sm underline"
+					className={cn("self-start px-4 pb-2 text-body-sm underline")}
 					onClick={() => navigate("/agents")}
 				>
 					Manage agents
 				</button>
 			)}
 			{options && (
-				<div className="flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm">
+				<div
+					className={cn(
+						"flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm",
+					)}
+				>
 					{[
 						"model",
 						"agent",
@@ -368,7 +422,7 @@ function SessionPanel({
 						<button
 							key={command}
 							type="button"
-							className="rounded-md px-2 py-1 hover:bg-elevated"
+							className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
 							onClick={() => {
 								setOptions(false);
 								void dispatch(`/${command}`);
@@ -383,7 +437,7 @@ function SessionPanel({
 					))}
 				</div>
 			)}
-			<div className="min-h-0 flex-1">
+			<div className={cn("min-h-0 flex-1")}>
 				<ChatContent
 					activeTab={tab}
 					onTabChange={setTab}
@@ -501,9 +555,12 @@ export function ChatPage() {
 				/>
 			}
 			content={
-				<div className="flex h-full min-h-0 flex-col">
+				<div className={cn("flex h-full min-h-0 flex-col")}>
 					{pending && (
-						<p aria-live="polite" className="px-4 py-2 text-body-sm text-info">
+						<p
+							aria-live="polite"
+							className={cn("px-4 py-2 text-body-sm text-info")}
+						>
 							Opening chat…{" "}
 							<button
 								type="button"
@@ -516,12 +573,15 @@ export function ChatPage() {
 						</p>
 					)}
 					{(routeError || error) && (
-						<p role="alert" className="px-4 py-2 text-body-sm text-danger">
+						<p
+							role="alert"
+							className={cn("px-4 py-2 text-body-sm text-danger")}
+						>
 							{routeError || error}
 						</p>
 					)}
 					{!enabled ? (
-						<div className="p-6 text-body text-ink-muted">
+						<div className={cn("p-6 text-body text-ink-muted")}>
 							{capabilities.isLoading
 								? "Connecting to the backend…"
 								: capabilities.error
@@ -529,14 +589,14 @@ export function ChatPage() {
 									: "Update the backend to use canonical chats. Your existing histories are unchanged."}
 							<button
 								type="button"
-								className="ml-2 underline"
+								className={cn("ml-2 underline")}
 								onClick={() => void capabilities.refetch()}
 							>
 								Retry
 							</button>
 						</div>
 					) : identity ? (
-						<div className="min-h-0 flex-1">
+						<div className={cn("min-h-0 flex-1")}>
 							<SessionPanel
 								key={identity}
 								identity={identity}
@@ -546,15 +606,17 @@ export function ChatPage() {
 							/>
 						</div>
 					) : (
-						<div className="p-6">
-							<h1 className="text-title">Start a chat</h1>
-							<p className="mt-2 text-body text-ink-muted">
+						<div className={cn("p-6")}>
+							<h1 className={cn("text-title")}>Start a chat</h1>
+							<p className={cn("mt-2 text-body text-ink-muted")}>
 								Choose an agent or team, or start a new chat. Nothing starts
 								until you send.
 							</p>
 							<button
 								type="button"
-								className="mt-4 rounded-md border border-control px-3 py-2"
+								className={cn(
+									"mt-4 rounded-md border border-control px-3 py-2",
+								)}
 								onClick={() => stage(undefined, true)}
 							>
 								New chat
