@@ -101,6 +101,8 @@ declare global {
 			) => Promise<void>;
 			/** Checks if a file exists at the specified path */
 			fileExists: (filePath: string) => Promise<boolean>;
+			/** Checks that a path exists and is a directory, not a regular file */
+			directoryExists: (dirPath: string) => Promise<boolean>;
 		};
 	}
 }

@@ -1,0 +1,633 @@
+{
+ "nonce": "harness-1789054870935",
+ "mode": "before",
+ "boundPort": 5173,
+ "viewports": [
+  {
+   "w": 1024,
+   "h": 673
+  },
+  {
+   "w": 1024,
+   "h": 500
+  },
+  {
+   "w": 1380,
+   "h": 872
+  }
+ ],
+ "all": {
+  "empty-1024x673": {
+   "measure": {
+    "nonce": "harness-1789054870935",
+    "window": {
+     "w": 1024,
+     "h": 673
+    },
+    "band": {
+     "top": 251.5,
+     "bottom": 673,
+     "h": 421.5,
+     "left": 328,
+     "right": 1024
+    },
+    "composer": {
+     "top": 325.5,
+     "bottom": 437.5,
+     "h": 112,
+     "left": 352,
+     "right": 1000
+    },
+    "greeting": {
+     "top": 275.5,
+     "bottom": 301.5,
+     "h": 26,
+     "left": 534.7,
+     "right": 817.3
+    },
+    "transcript": {
+     "top": 104,
+     "bottom": 251.5,
+     "h": 147.5,
+     "left": 328,
+     "right": 1024
+    },
+    "group": {
+     "top": 275.5,
+     "bottom": 641,
+     "centre": 458.3
+    },
+    "chipCount": 7,
+    "empty": true,
+    "bandFlexGrow": "0",
+    "bandFlexShrink": "0",
+    "bandJustify": "center",
+    "transcriptFlexGrow": "1",
+    "transcriptH": 147.5,
+    "greetingText": "What can I help you with today?",
+    "centring": {
+     "freeAbove": 16,
+     "freeBelow": 16,
+     "delta": 0,
+     "bandCentre": 462.3,
+     "groupCentreOffset": -3.9
+    },
+    "inColumn": {
+     "freeAboveBand": 251.5,
+     "freeBelowBand": 0,
+     "bandShareOfColumn": 62.6,
+     "column": {
+      "top": 0,
+      "bottom": 673,
+      "h": 673,
+      "left": 328,
+      "right": 1024
+     }
+    },
+    "label": "empty-1024x673"
+   },
+   "popup": {
+    "open": true,
+    "rows": 38,
+    "hitTestable": 9,
+    "misses": [
+     "/helpList all commands",
+     "/forkBranch this chat; -",
+     "/model/modelsSwitch mode",
+     "/effortShow or set reaso"
+    ],
+    "popupRect": {
+     "top": -13.5,
+     "bottom": 322.5,
+     "h": 336
+    },
+    "typedValue": "/",
+    "clippedByAncestor": "flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-surface",
+    "viewport": {
+     "h": 673
+    },
+    "offscreenTop": 13.5,
+    "rowsAboveViewport": 2,
+    "scrollable": true,
+    "scrollHeight": 1368,
+    "clientHeight": 334,
+    "clearedTo": ""
+   },
+   "popupScrolled": {
+    "open": true,
+    "rows": 38,
+    "hitTestableAfterScroll": 9,
+    "scrollTop": 0,
+    "scrollHeight": 1368,
+    "clientHeight": 334
+   }
+  },
+  "populated-1024x673": {
+   "measure": {
+    "nonce": "harness-1789054870935",
+    "window": {
+     "w": 1024,
+     "h": 673
+    },
+    "band": {
+     "top": 537.3,
+     "bottom": 673,
+     "h": 135.7,
+     "left": 328,
+     "right": 1024
+    },
+    "composer": {
+     "top": 545.3,
+     "bottom": 657,
+     "h": 111.7,
+     "left": 352,
+     "right": 1000
+    },
+    "greeting": null,
+    "transcript": {
+     "top": 104,
+     "bottom": 537.3,
+     "h": 433.3,
+     "left": 328,
+     "right": 1024
+    },
+    "group": {
+     "top": 545.3,
+     "bottom": 657,
+     "centre": 601.1
+    },
+    "chipCount": 0,
+    "empty": false,
+    "bandFlexGrow": "0",
+    "bandFlexShrink": "0",
+    "bandJustify": "center",
+    "transcriptFlexGrow": "1",
+    "transcriptH": 433.3,
+    "greetingText": null,
+    "centring": {
+     "freeAbove": 0,
+     "freeBelow": 0,
+     "delta": 0,
+     "bandCentre": 605.1,
+     "groupCentreOffset": -4
+    },
+    "inColumn": {
+     "freeAboveBand": 537.3,
+     "freeBelowBand": 0,
+     "bandShareOfColumn": 20.2,
+     "column": {
+      "top": 0,
+      "bottom": 673,
+      "h": 673,
+      "left": 328,
+      "right": 1024
+     }
+    },
+    "label": "populated-1024x673"
+   },
+   "popup": {
+    "open": true,
+    "rows": 38,
+    "hitTestable": 9,
+    "misses": [
+     "/renameRename this conve",
+     "/forkBranch this chat; -",
+     "/model/modelsSwitch mode",
+     "/effortShow or set reaso"
+    ],
+    "popupRect": {
+     "top": 206,
+     "bottom": 542,
+     "h": 336
+    },
+    "typedValue": "/",
+    "clippedByAncestor": null,
+    "viewport": {
+     "h": 673
+    },
+    "offscreenTop": 0,
+    "rowsAboveViewport": 0,
+    "scrollable": true,
+    "scrollHeight": 1368,
+    "clientHeight": 334,
+    "clearedTo": ""
+   },
+   "popupScrolled": {
+    "open": true,
+    "rows": 38,
+    "hitTestableAfterScroll": 9,
+    "scrollTop": 0,
+    "scrollHeight": 1368,
+    "clientHeight": 334
+   }
+  },
+  "empty-1024x500": {
+   "measure": {
+    "nonce": "harness-1789054870935",
+    "window": {
+     "w": 1024,
+     "h": 500
+    },
+    "band": {
+     "top": 136,
+     "bottom": 557.5,
+     "h": 421.5,
+     "left": 328,
+     "right": 1024
+    },
+    "composer": {
+     "top": 210,
+     "bottom": 322,
+     "h": 112,
+     "left": 352,
+     "right": 1000
+    },
+    "greeting": {
+     "top": 160,
+     "bottom": 186,
+     "h": 26,
+     "left": 534.7,
+     "right": 817.3
+    },
+    "transcript": {
+     "top": 104,
+     "bottom": 136,
+     "h": 32,
+     "left": 328,
+     "right": 1024
+    },
+    "group": {
+     "top": 160,
+     "bottom": 525.5,
+     "centre": 342.8
+    },
+    "chipCount": 7,
+    "empty": true,
+    "bandFlexGrow": "0",
+    "bandFlexShrink": "0",
+    "bandJustify": "center",
+    "transcriptFlexGrow": "1",
+    "transcriptH": 32,
+    "greetingText": "What can I help you with today?",
+    "centring": {
+     "freeAbove": 16,
+     "freeBelow": 16,
+     "delta": 0,
+     "bandCentre": 346.8,
+     "groupCentreOffset": -3.9
+    },
+    "inColumn": {
+     "freeAboveBand": 136,
+     "freeBelowBand": -57.5,
+     "bandShareOfColumn": 84.3,
+     "column": {
+      "top": 0,
+      "bottom": 500,
+      "h": 500,
+      "left": 328,
+      "right": 1024
+     }
+    },
+    "label": "empty-1024x500"
+   },
+   "popup": {
+    "open": true,
+    "rows": 38,
+    "hitTestable": 5,
+    "misses": [
+     "/helpList all commands",
+     "/exit/quitQuit the app",
+     "/clearClear the transcri",
+     "/copyCopy an agent messa"
+    ],
+    "popupRect": {
+     "top": -129,
+     "bottom": 207,
+     "h": 336
+    },
+    "typedValue": "/",
+    "clippedByAncestor": "flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-surface",
+    "viewport": {
+     "h": 500
+    },
+    "offscreenTop": 129,
+    "rowsAboveViewport": 4,
+    "scrollable": true,
+    "scrollHeight": 1368,
+    "clientHeight": 334,
+    "clearedTo": ""
+   },
+   "popupScrolled": {
+    "open": true,
+    "rows": 38,
+    "hitTestableAfterScroll": 5,
+    "scrollTop": 0,
+    "scrollHeight": 1368,
+    "clientHeight": 334
+   }
+  },
+  "populated-1024x500": {
+   "measure": {
+    "nonce": "harness-1789054870935",
+    "window": {
+     "w": 1024,
+     "h": 500
+    },
+    "band": {
+     "top": 364.3,
+     "bottom": 500,
+     "h": 135.7,
+     "left": 328,
+     "right": 1024
+    },
+    "composer": {
+     "top": 372.3,
+     "bottom": 484,
+     "h": 111.7,
+     "left": 352,
+     "right": 1000
+    },
+    "greeting": null,
+    "transcript": {
+     "top": 104,
+     "bottom": 364.3,
+     "h": 260.3,
+     "left": 328,
+     "right": 1024
+    },
+    "group": {
+     "top": 372.3,
+     "bottom": 484,
+     "centre": 428.1
+    },
+    "chipCount": 0,
+    "empty": false,
+    "bandFlexGrow": "0",
+    "bandFlexShrink": "0",
+    "bandJustify": "center",
+    "transcriptFlexGrow": "1",
+    "transcriptH": 260.3,
+    "greetingText": null,
+    "centring": {
+     "freeAbove": 0,
+     "freeBelow": 0,
+     "delta": 0,
+     "bandCentre": 432.1,
+     "groupCentreOffset": -4
+    },
+    "inColumn": {
+     "freeAboveBand": 364.3,
+     "freeBelowBand": 0,
+     "bandShareOfColumn": 27.1,
+     "column": {
+      "top": 0,
+      "bottom": 500,
+      "h": 500,
+      "left": 328,
+      "right": 1024
+     }
+    },
+    "label": "populated-1024x500"
+   },
+   "popup": {
+    "open": true,
+    "rows": 38,
+    "hitTestable": 9,
+    "misses": [
+     "/renameRename this conve",
+     "/forkBranch this chat; -",
+     "/model/modelsSwitch mode",
+     "/effortShow or set reaso"
+    ],
+    "popupRect": {
+     "top": 33,
+     "bottom": 369,
+     "h": 336
+    },
+    "typedValue": "/",
+    "clippedByAncestor": null,
+    "viewport": {
+     "h": 500
+    },
+    "offscreenTop": 0,
+    "rowsAboveViewport": 0,
+    "scrollable": true,
+    "scrollHeight": 1368,
+    "clientHeight": 334,
+    "clearedTo": ""
+   },
+   "popupScrolled": {
+    "open": true,
+    "rows": 38,
+    "hitTestableAfterScroll": 9,
+    "scrollTop": 0,
+    "scrollHeight": 1368,
+    "clientHeight": 334
+   }
+  },
+  "empty-1380x872": {
+   "measure": {
+    "nonce": "harness-1789054870935",
+    "window": {
+     "w": 1380,
+     "h": 872
+    },
+    "band": {
+     "top": 525.5,
+     "bottom": 872,
+     "h": 346.5,
+     "left": 328,
+     "right": 1380
+    },
+    "composer": {
+     "top": 599.5,
+     "bottom": 711.5,
+     "h": 112,
+     "left": 404,
+     "right": 1304
+    },
+    "greeting": {
+     "top": 549.5,
+     "bottom": 575.5,
+     "h": 26,
+     "left": 712.7,
+     "right": 995.3
+    },
+    "transcript": {
+     "top": 104,
+     "bottom": 525.5,
+     "h": 421.5,
+     "left": 328,
+     "right": 1380
+    },
+    "group": {
+     "top": 549.5,
+     "bottom": 840,
+     "centre": 694.8
+    },
+    "chipCount": 7,
+    "empty": true,
+    "bandFlexGrow": "0",
+    "bandFlexShrink": "0",
+    "bandJustify": "center",
+    "transcriptFlexGrow": "1",
+    "transcriptH": 421.5,
+    "greetingText": "What can I help you with today?",
+    "centring": {
+     "freeAbove": 16,
+     "freeBelow": 16,
+     "delta": 0,
+     "bandCentre": 698.8,
+     "groupCentreOffset": -4
+    },
+    "inColumn": {
+     "freeAboveBand": 525.5,
+     "freeBelowBand": 0,
+     "bandShareOfColumn": 39.7,
+     "column": {
+      "top": 0,
+      "bottom": 872,
+      "h": 872,
+      "left": 328,
+      "right": 1380
+     }
+    },
+    "label": "empty-1380x872"
+   },
+   "popup": {
+    "open": true,
+    "rows": 38,
+    "hitTestable": 9,
+    "misses": [
+     "/renameRename this conve",
+     "/forkBranch this chat; -",
+     "/model/modelsSwitch mode",
+     "/effortShow or set reaso"
+    ],
+    "popupRect": {
+     "top": 260.5,
+     "bottom": 596.5,
+     "h": 336
+    },
+    "typedValue": "/",
+    "clippedByAncestor": null,
+    "viewport": {
+     "h": 872
+    },
+    "offscreenTop": 0,
+    "rowsAboveViewport": 0,
+    "scrollable": true,
+    "scrollHeight": 1368,
+    "clientHeight": 334,
+    "clearedTo": ""
+   },
+   "popupScrolled": {
+    "open": true,
+    "rows": 38,
+    "hitTestableAfterScroll": 9,
+    "scrollTop": 0,
+    "scrollHeight": 1368,
+    "clientHeight": 334
+   }
+  },
+  "populated-1380x872": {
+   "measure": {
+    "nonce": "harness-1789054870935",
+    "window": {
+     "w": 1380,
+     "h": 872
+    },
+    "band": {
+     "top": 736.3,
+     "bottom": 872,
+     "h": 135.7,
+     "left": 328,
+     "right": 1380
+    },
+    "composer": {
+     "top": 744.3,
+     "bottom": 856,
+     "h": 111.7,
+     "left": 404,
+     "right": 1304
+    },
+    "greeting": null,
+    "transcript": {
+     "top": 104,
+     "bottom": 736.3,
+     "h": 632.3,
+     "left": 328,
+     "right": 1380
+    },
+    "group": {
+     "top": 744.3,
+     "bottom": 856,
+     "centre": 800.1
+    },
+    "chipCount": 0,
+    "empty": false,
+    "bandFlexGrow": "0",
+    "bandFlexShrink": "0",
+    "bandJustify": "center",
+    "transcriptFlexGrow": "1",
+    "transcriptH": 632.3,
+    "greetingText": null,
+    "centring": {
+     "freeAbove": 0,
+     "freeBelow": 0,
+     "delta": 0,
+     "bandCentre": 804.1,
+     "groupCentreOffset": -4
+    },
+    "inColumn": {
+     "freeAboveBand": 736.3,
+     "freeBelowBand": 0,
+     "bandShareOfColumn": 15.6,
+     "column": {
+      "top": 0,
+      "bottom": 872,
+      "h": 872,
+      "left": 328,
+      "right": 1380
+     }
+    },
+    "label": "populated-1380x872"
+   },
+   "popup": {
+    "open": true,
+    "rows": 38,
+    "hitTestable": 9,
+    "misses": [
+     "/renameRename this conve",
+     "/forkBranch this chat; -",
+     "/model/modelsSwitch mode",
+     "/effortShow or set reaso"
+    ],
+    "popupRect": {
+     "top": 405,
+     "bottom": 741,
+     "h": 336
+    },
+    "typedValue": "/",
+    "clippedByAncestor": null,
+    "viewport": {
+     "h": 872
+    },
+    "offscreenTop": 0,
+    "rowsAboveViewport": 0,
+    "scrollable": true,
+    "scrollHeight": 1368,
+    "clientHeight": 334,
+    "clearedTo": ""
+   },
+   "popupScrolled": {
+    "open": true,
+    "rows": 38,
+    "hitTestableAfterScroll": 9,
+    "scrollTop": 0,
+    "scrollHeight": 1368,
+    "clientHeight": 334
+   }
+  }
+ }
+}

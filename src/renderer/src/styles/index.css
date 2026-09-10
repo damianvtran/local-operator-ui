@@ -192,6 +192,59 @@
 		cursor: not-allowed;
 	}
 
+	/*
+	 * The document never scrolls. This is an Electron shell, not a page.
+	 *
+	 * The app root carries `h-screen overflow-hidden` and, since the scroll
+	 * fix, `position: relative` so that clip actually binds on its own
+	 * descendants. That is necessary but NOT sufficient, and the difference is
+	 * what a user reported after the root fix shipped: the whole app - rail,
+	 * sidebar, chat column, composer - scrolled up as one block leaving a band
+	 * of empty page below it.
+	 *
+	 * The root is only ONE of `#app`'s children. React portals mount as its
+	 * SIBLINGS - the toast region, the react-query devtools container - and
+	 * anything portaled to `document.body` is a sibling of `#app` itself. None
+	 * of those are descendants of the root, so the root's `overflow: hidden`
+	 * has no authority over them whatsoever, and `html`, `body` and `#app`
+	 * carried no height or overflow rule at all. Measured in the running app:
+	 * a 900px element appended as a sibling of the root took the document
+	 * from delta 0 to 900 and the document really scrolled 900px; an
+	 * absolutely positioned element portaled to `body` took it to 727. The
+	 * original `sr-only` case stays contained either way, so this is a second
+	 * escape path rather than a revision of the first.
+	 *
+	 * Pinning the height at all three levels is what leaves no level able to
+	 * grow: `overflow: hidden` alone on a box that is free to become taller
+	 * than the viewport clips nothing, because the box grew to fit. Fixed
+	 * elements are unaffected - they are sized by the viewport, not by these
+	 * boxes, which is why an overlay can still cover the window.
+	 */
+	html,
+	body,
+	#app {
+		height: 100%;
+		overflow: hidden;
+	}
+
+	/*
+	 * `position: relative` on `body` for the same reason the app root carries
+	 * it, one level further out: an `overflow` clip only binds a descendant
+	 * whose CONTAINING BLOCK is that element. A `position: absolute` element
+	 * portaled to `document.body` resolves against the initial containing
+	 * block while `body` is static, so the rule above could not reach it -
+	 * measured at 727px of real document scroll with the height pins already
+	 * in place, and 0 once `body` is a containing block.
+	 *
+	 * This does not affect overlays: Radix portals position their surfaces
+	 * `fixed`, which is sized by the viewport rather than by any ancestor
+	 * box, so menus, dialogs, tooltips and toasts still cover the window.
+	 */
+	body,
+	#app {
+		position: relative;
+	}
+
 	body {
 		background-color: var(--color-canvas);
 		color: var(--color-ink);

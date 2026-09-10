@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
@@ -504,6 +504,38 @@ app
 				? join(app.getPath("home"), filePath.slice(2))
 				: filePath;
 			return existsSync(normalizedPath);
+		});
+
+		/*
+		 * Distinct from `file-exists` because the working-directory chip needs
+		 * "is this a directory the agent can start in", and `existsSync` answers
+		 * yes for `/etc/hosts` - a regular file, which `sessions.create` then
+		 * rejects much later with an error rendered far from the control that
+		 * caused it. `statSync` is the only call that separates the two, and it
+		 * has to run here: the renderer has no fs access by design.
+		 *
+		 * `throwIfNoEntry: false` rather than a try/catch around the happy path,
+		 * so a missing path is an ordinary `undefined` and only a genuine fault
+		 * (permission, a broken mount) reaches the catch. Both answer `false`:
+		 * the caller's question is "can the agent work here", and a directory it
+		 * cannot stat is not one.
+		 */
+		ipcMain.handle("directory-exists", async (_, dirPath: string) => {
+			const home = app.getPath("home");
+			const normalizedPath =
+				dirPath === "~"
+					? home
+					: dirPath.startsWith("~/")
+						? join(home, dirPath.slice(2))
+						: dirPath;
+			try {
+				return (
+					statSync(normalizedPath, { throwIfNoEntry: false })?.isDirectory() ??
+					false
+				);
+			} catch {
+				return false;
+			}
 		});
 
 		ipcMain.handle("show-open-dialog", async (_, options) => {

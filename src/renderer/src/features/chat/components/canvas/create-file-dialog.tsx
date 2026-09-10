@@ -10,7 +10,6 @@ import {
 	SearchableSelect,
 } from "@shared/components/hosting/searchable-select";
 import { Input, Label } from "@shared/components/ui";
-import { useAgents } from "@shared/hooks/use-agents";
 import { cn } from "@shared/lib/utils";
 import { Code, File, Folder } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -75,7 +74,15 @@ export type CreateFileDialogProps = {
 		overwrite?: boolean,
 	) => void;
 	isSaving: boolean;
-	agentId: string;
+	/**
+	 * Where the file will be created: the session's own working directory,
+	 * supplied by the caller from the canonical stream.
+	 *
+	 * Passed in rather than resolved here because this component has no id it
+	 * could resolve it FROM - see the comment in the body. Defaults to `"~"`
+	 * only when the caller genuinely has no session.
+	 */
+	currentWorkingDirectory?: string;
 };
 
 export const CreateFileDialog: FC<CreateFileDialogProps> = ({
@@ -83,7 +90,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	onClose,
 	onSave,
 	isSaving,
-	agentId,
+	currentWorkingDirectory = "~",
 }) => {
 	const [fileName, setFileName] = useState("");
 	const [fileType, setFileType] = useState("md");
@@ -97,12 +104,28 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 		}
 	}, [open]);
 
-	const { data: agentListResult } = useAgents();
-	const agent = useMemo(
-		() => agentListResult?.agents.find((a) => a.id === agentId),
-		[agentListResult, agentId],
-	);
-	const currentWorkingDirectory = agent?.current_working_directory ?? "~";
+	/*
+	 * The working directory is READ ONLY here, and it is passed in rather than
+	 * looked up.
+	 *
+	 * This mount site does NOT hold an agent UUID, despite an earlier comment
+	 * here asserting that it does. `agentId` arrives as `chat-page.tsx`'s
+	 * `identity` - `draftKey ?? id`, a draft key or a 12-hex canonical session
+	 * id - threaded through `chat-content.tsx` and `canvas/index.tsx`. So
+	 * looking the agent up in the legacy agents list could never match, which
+	 * is why the Location always rendered the `"~"` fallback while the composer
+	 * beside it showed the session's real directory: two chips on one screen
+	 * disagreeing about the same folder.
+	 *
+	 * Worse, the picker's commit PATCHed `/v1/agents/<session-id>`, which 404s
+	 * on every use - observed in the backend log - while the UI reported
+	 * nothing and the chip snapped back. That is exactly the dead write this
+	 * change set removed from the composer, and offering a control whose every
+	 * use fails is the thing the work exists to stop. There is no backend route
+	 * that moves a live session's directory, so the honest control here is a
+	 * read-only one that states where the file will go and why that cannot be
+	 * changed from this dialog.
+	 */
 
 	/*
 	 * A typed extension that matches nothing in the list is still a valid
@@ -211,11 +234,11 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 							Location
 						</p>
 						<DirectoryIndicator
-							agentId={agentId}
 							currentWorkingDirectory={currentWorkingDirectory}
+							readOnlyReason="Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
 						/>
 						<p className={cn("mt-2 text-ink-muted text-meta")}>
-							The file will be created in the selected working directory.
+							The file will be created in this working directory.
 						</p>
 					</div>
 				</div>

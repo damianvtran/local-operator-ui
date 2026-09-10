@@ -114,7 +114,47 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
-			<div className="flex h-screen overflow-hidden">
+			{/*
+			 * `relative` is load-bearing, not decoration.
+			 *
+			 * This root already declared `h-screen overflow-hidden`, which reads as
+			 * a promise that nothing can scroll the document. It was not one: an
+			 * `overflow` clip only applies to a descendant whose CONTAINING BLOCK is
+			 * that element, and every ancestor here was `position: static`, so the
+			 * absolutely positioned `sr-only` labels the app scatters through its
+			 * lists resolved against the initial containing block and escaped the
+			 * clip entirely. Their offsets are real layout positions, so a long
+			 * sidebar pushed them past the viewport and stretched <html> behind an
+			 * app that looks bounded.
+			 *
+			 * Measured in the running app: `documentElement.scrollHeight -
+			 * clientHeight` was 308px with 20 escaping labels; making this element a
+			 * containing block takes it to 0, and reverting restores 308. Fixing it
+			 * here rather than at each label keeps one rule instead of one per
+			 * `sr-only` call site.
+			 *
+			 * The app's EIGHT `position: fixed` elements are unaffected, and the
+			 * reason is the rule rather than the count: `position: relative`
+			 * establishes a containing block for `absolute` descendants only.
+			 * `fixed` resolves against the viewport unless an ancestor carries
+			 * `transform`, `filter`, `perspective`, `backdrop-filter`, `contain`
+			 * or `will-change` of one of those - none of which is added here - so
+			 * the banners, the floating alert, the update notification, and the
+			 * dialog and sheet overlays keep covering the window exactly as
+			 * before. An earlier draft of this comment claimed there was one such
+			 * element; there are eight, and the guarantee does not depend on how
+			 * many.
+			 *
+			 * The `sr-only` utility itself is NOT at fault and must not be "fixed":
+			 * its computed style matches the canonical definition exactly (absolute,
+			 * 1x1, `overflow: hidden`, `clip-path: inset(50%)`, `margin: -1px`). It
+			 * has no `top`/`left`, which is the point - the label stays at its static
+			 * position so it reads in document order. That is only bounded if some
+			 * ancestor is a containing block, which is the job this line does. The
+			 * labels stay 1x1 and rendered afterwards, so screen readers still
+			 * announce them; nothing is hidden, it is merely contained.
+			 */}
+			<div className="relative flex h-screen overflow-hidden">
 				{isCommandPaletteOpen && <CommandPalette />}
 
 				<ModelsInitializer />

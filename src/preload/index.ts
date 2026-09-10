@@ -209,6 +209,14 @@ const api = {
 	fileExists: (filePath: string): Promise<boolean> =>
 		ipcRenderer.invoke("file-exists", filePath),
 
+	/**
+	 * Checks that a path exists AND is a directory. `fileExists` cannot answer
+	 * this: it says yes for a regular file, so a working directory of
+	 * `/etc/hosts` passed validation and failed at session creation instead.
+	 */
+	directoryExists: (dirPath: string): Promise<boolean> =>
+		ipcRenderer.invoke("directory-exists", dirPath),
+
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {
