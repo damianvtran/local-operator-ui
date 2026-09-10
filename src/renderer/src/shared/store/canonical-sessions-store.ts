@@ -2,7 +2,9 @@
  * drafts; the legacy agent mapping is retained only to resolve old deep links. */
 import {
 	DesktopControlError,
+	UserFacingError,
 	desktopResult,
+	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { create } from "zustand";
@@ -63,6 +65,91 @@ export type ChatImage = {
 };
 
 /**
+ * The unconfirmed-send guard's category, so the composer can recognise its own
+ * refusal and offer the two controls that actually resolve it (restore the held
+ * payload, or discard the claim) instead of the generic "edit and send again"
+ * tail, which is the one thing this guard refuses.
+ *
+ * A code rather than a string comparison on the message: the copy is expected
+ * to be reworded, and matching on prose would silently stop matching.
+ */
+export const UNCONFIRMED_SEND_CODE = "unconfirmed_send";
+
+/**
+ * Shown when a send failed with nothing user-facing to say - a runtime
+ * exception rather than a backend rejection. Stated once and shared, because
+ * the page-level fallback and this one are the same sentence about the same
+ * event and drifted apart when they were two literals.
+ */
+export const SEND_UNCONFIRMED_MESSAGE =
+	"The send could not be confirmed. Retry this draft.";
+
+/**
+ * The one place a composer value becomes a send PAYLOAD.
+ *
+ * The unchanged-payload guard compares byte-for-byte, because a retry of a
+ * request that may already be executing has to be an idempotent replay. The
+ * composer meanwhile has to decide what to SAY about that guard - whether the
+ * held message is on screen, whether Restore is worth offering, whether the
+ * abandon control would destroy typed text. Those were two comparisons over two
+ * different strings (`===` in the guard, `.trim() ===` in the composer), and a
+ * whitespace-only edit fell into the gap between them: the guard refused the
+ * send while the composer believed the box already held the payload, so it
+ * suppressed BOTH escapes and left only the control that empties the box.
+ * Trailing space, leading space and a trailing newline all reproduced it -
+ * including the trailing-newline case the trim was originally written for.
+ *
+ * So the trim moves to the payload boundary instead of living in the copy
+ * logic. Every send normalizes here, every stored `submittedText` is therefore
+ * already normalized, and the composer compares normalized against normalized.
+ * The guard and the copy cannot disagree about what "the same message" means,
+ * because there is now only one string. Whitespace at the ends is not content
+ * the owner needs preserved; the interior is untouched.
+ */
+export function normalizeSendText(text: string): string {
+	return text.trim();
+}
+
+/**
+ * The composer's whole value - reply markup included - as the ONE payload
+ * string.
+ *
+ * `normalizeSendText` closed the gap between the guard and the copy for the
+ * bare box, but the reply prefix was assembled downstream of every comparison
+ * the composer makes: the box held `text` while the store stored and guarded
+ * `<reply-to>…</reply-to>\n<text>`. Two strings for one payload again, and this
+ * time the second one deadlocked the escape built to answer the first. Restore
+ * writes the held payload back, the next send re-prefixes it into
+ * `<reply-to>…</reply-to>\n<reply-to>…</reply-to>\n<text>`, the guard refuses
+ * the mismatch, and the composer - now seeing its own held text in the box -
+ * withdraws Restore and says "Send it again", which is false and stays false.
+ *
+ * So assembly lives at the boundary, above the guard rather than beside the
+ * send call. The composer builds its comparison basis from the same function
+ * with the same replies, so `heldInBox` asks the question the store answers.
+ * Replies survive a failed send (`clearReplies` runs only once a send is
+ * accepted), so the basis is stable across every retry of one claim.
+ *
+ * NOT idempotent over its own output, and deliberately so: the markup is
+ * generated from the reply LIST, so feeding a payload back in with the same
+ * list prefixes it twice. That is the invariant Restore has to honour - it
+ * hands back a finished payload, so it clears the chips whose content that
+ * payload already carries, leaving assembly here a no-op on the next send.
+ * Normalizing after the join rather than before keeps one definition of
+ * "empty" for a box whose only content is a reply.
+ */
+export function buildSendPayload(
+	text: string,
+	replies: readonly { text: string }[],
+): string {
+	if (replies.length === 0) return normalizeSendText(text);
+	const replyContent = replies
+		.map((reply) => `<reply-to>${reply.text}</reply-to>`)
+		.join("\n");
+	return normalizeSendText(`${replyContent}\n${text}`);
+}
+
+/**
  * Which draft a chat view owns. A staged draft is keyed by its own key, but once
  * a session exists `draftKey` is null and the send draft lives under
  * `send:<id>` — reading only `draftKey` there left a failed send's retained text
@@ -93,10 +180,15 @@ export async function admitChatDraft(
 	const store = useCanonicalSessionsStore.getState();
 	const previous = store.drafts[key];
 	if (previous?.pending) return null;
+	// Normalized once, here, and used for the guard, the stored claim and the
+	// wire alike - see `normalizeSendText`. Comparing or sending `input.text`
+	// anywhere below would reopen the gap between what the guard enforces and
+	// what the composer says about it.
+	const text = normalizeSendText(input.text);
 	if (
 		previous?.admissionAttempted &&
 		previous.submittedText !== undefined &&
-		(previous.submittedText !== input.text ||
+		(previous.submittedText !== text ||
 			JSON.stringify(previous.submittedAttachments) !==
 				JSON.stringify(input.attachments) ||
 			// Images are payload identity too. Comparing only text/attachments let a
@@ -105,8 +197,21 @@ export async function admitChatDraft(
 			JSON.stringify(previous.submittedImages ?? []) !==
 				JSON.stringify(input.images))
 	) {
-		throw new Error(
-			"The previous send has not been confirmed. Retry it unchanged, or discard it to send something different.",
+		/*
+		 * One action, and both remedies are controls rather than instructions.
+		 *
+		 * This used to read "Retry it unchanged, or discard it to send something
+		 * different", which asked the user to reproduce a payload they could no
+		 * longer see - the held text is not in the composer, that is precisely why
+		 * this guard fired. Following it by hand is a loop: edit, send, refused,
+		 * edit. So the sentence now states the situation only, and
+		 * `UNCONFIRMED_SEND_CODE` lets the composer attach "Restore it" (puts the
+		 * exact payload back, making an unchanged retry one keypress away) and
+		 * discard. Copy never names an action the user has to perform blind.
+		 */
+		throw new UserFacingError(
+			"The previous send has not been confirmed, and it does not match what is in the composer now.",
+			UNCONFIRMED_SEND_CODE,
 		);
 	}
 	const draft: ChatDraft = previous ?? {
@@ -131,7 +236,7 @@ export async function admitChatDraft(
 	store.updateDraft(key, {
 		...draft,
 		pending: true,
-		submittedText: input.text,
+		submittedText: text,
 		submittedAttachments: input.attachments,
 		submittedImages: images,
 		submittedMode: mode,
@@ -147,7 +252,7 @@ export async function admitChatDraft(
 					draft.createRequestId,
 				)) ?? undefined;
 			if (!id)
-				throw new Error(
+				throw new UserFacingError(
 					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
 				);
 			store.updateDraft(key, { sessionId: id });
@@ -159,13 +264,24 @@ export async function admitChatDraft(
 			op: "sessions.message",
 			sessionId: id,
 			requestId: draft.admissionRequestId,
-			text: input.text,
+			text,
 			images: images.length ? images : undefined,
 			mode,
 		});
 		store.finishDraft(key, id);
+		// A send that landed retires every message about the send that did not.
+		// `createSession` records its failure page-level and only `fetchSessions`/
+		// `openSession` ever cleared it, so a successful retry left a stale "Chat
+		// could not start." standing over a working conversation.
+		useCanonicalSessionsStore.setState({ error: null });
 		return id;
 	} catch (error) {
+		// One owner for one failure. `createSession` sets the page-level `error`
+		// AND rethrows, so the same sentence rendered twice - once at the top of
+		// the chat column and once at the composer. The composer's copy is the
+		// actionable one (it sits on the text that failed and carries the
+		// remedies), so the send takes the message over and clears the other.
+		useCanonicalSessionsStore.setState({ error: null });
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
@@ -211,10 +327,7 @@ export async function admitChatDraft(
 				typeof error.code === "string"
 					? error.code
 					: undefined,
-			error:
-				error instanceof Error
-					? error.message
-					: "The send could not be confirmed.",
+			error: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
 		});
 		throw error;
 	}
@@ -249,6 +362,18 @@ type CanonicalSessionsState = {
 	 * next send must match it, and never touch the session or its transcript.
 	 */
 	discardDraft: (key: string) => void;
+	/**
+	 * Drop the unchanged-payload claim while KEEPING the draft row.
+	 *
+	 * `discardDraft` deletes the whole row, which is right when the user
+	 * abandons the message. It is wrong for the case that produced this: the
+	 * user typed something else and wants that to send. Deleting the row there
+	 * would also drop `sessionId` and the request ids, so the retry would create
+	 * a second session for a conversation that already has one. This releases
+	 * exactly the claim - `admissionAttempted` and the submitted payload - and
+	 * leaves identity intact.
+	 */
+	releaseClaim: (key: string) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
@@ -415,12 +540,38 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				return key;
 			},
 			updateDraft: (key, patch) =>
-				set((state) => ({
-					drafts: {
-						...state.drafts,
-						[key]: { ...state.drafts[key], ...patch },
-					},
-				})),
+				set((state) => {
+					// A PARTIAL patch onto a row that is gone must not resurrect it.
+					// This was a blind spread onto `state.drafts[key]`, so when a draft
+					// was abandoned while its admission was still in flight, the settling
+					// request's catch rebuilt the row from the patch alone - without
+					// `key`, `createRequestId` or `admissionRequestId`. The next send
+					// then went to the wire with `requestId: undefined`, which the closed
+					// IPC schema rejects, and that refusal re-armed this store's own
+					// unchanged-payload guard: every later send failed against a healthy
+					// backend with no causal link to the click that caused it. Discard is
+					// deliberate and outranks the outcome of the request it abandoned.
+					//
+					// The condition is identity, not existence, because this setter is
+					// also the legitimate CREATE path: `admitChatDraft` opens a send for
+					// an already-existing session by patching a `send:<id>` key that has
+					// no row yet, and that patch carries the whole identity. So a patch
+					// that can stand on its own as a draft may create one; a fragment
+					// like `{pending, error}` may only ever update something already
+					// there.
+					const present = state.drafts[key];
+					const complete =
+						patch.key !== undefined &&
+						patch.createRequestId !== undefined &&
+						patch.admissionRequestId !== undefined;
+					if (!present && !complete) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: { ...state.drafts[key], ...patch },
+						},
+					};
+				}),
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					const drafts = { ...state.drafts };
@@ -451,6 +602,32 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return {
 						drafts,
 						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
+					};
+				}),
+			releaseClaim: (key) =>
+				set((state) => {
+					const draft = state.drafts[key];
+					if (!draft) return {};
+					const {
+						admissionAttempted: _attempted,
+						submittedText: _text,
+						submittedAttachments: _attachments,
+						submittedImages: _images,
+						submittedMode: _mode,
+						error: _error,
+						errorCode: _errorCode,
+						...kept
+					} = draft;
+					return {
+						drafts: {
+							...state.drafts,
+							// A fresh admission id with the claim: the abandoned one may
+							// still be executing on the owner, and reusing it would make the
+							// next (different) message an idempotent REPLAY of the old
+							// payload - the server keys its receipt on the request id and
+							// would answer with the first attempt's result.
+							[key]: { ...kept, admissionRequestId: crypto.randomUUID() },
+						},
 					};
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>

@@ -160,6 +160,51 @@ export class DesktopControlError extends Error {
 	}
 }
 
+/**
+ * A failure whose `message` is a sentence we wrote for the user.
+ *
+ * Client-side refusals (the unconfirmed-send guard) never reach the transport,
+ * so they cannot be a `DesktopControlError` - but their copy is authored just
+ * the same, and `userFacingMessage` has to be able to tell them apart from a
+ * runtime exception that merely happens to be an `Error`. The marker is the
+ * class, not a duck-typed `code`: Node's own errors carry string `code`s
+ * (`ENOENT`, `ERR_INVALID_ARG_TYPE`), so trusting that field would let a crash
+ * message through as copy, which is the defect this exists to prevent.
+ */
+export class UserFacingError extends Error {
+	/** Vetted rejection category, read the same way as `DesktopControlError.code`. */
+	readonly code?: string;
+
+	constructor(message: string, code?: string) {
+		super(message);
+		this.name = "UserFacingError";
+		this.code = code;
+	}
+}
+
+/**
+ * The sentence to show a user for a caught failure, or `fallback`.
+ *
+ * A thrown value is only copy when we know who wrote it. `DesktopControlError`
+ * carries either the backend's own `detail` or a sentence this transport wrote
+ * for a case it recognises, and `UserFacingError` is copy by construction -
+ * everything else is a runtime exception whose `message` is a stack-trace
+ * fragment. Rendering that states the failure in the language of the crash
+ * rather than the user's: with the backend stopped the composer read
+ * "TypeError: fetch failed", which tells the user nothing and nothing to do
+ * (branding section 8: an error that only quotes an exception is unfinished).
+ *
+ * Lives beside `DesktopControlError` because this is the one place that knows
+ * which messages are authored; a second copy of that judgement elsewhere is
+ * how a raw exception finds its way back to the screen.
+ */
+export function userFacingMessage(error: unknown, fallback: string): string {
+	return error instanceof DesktopControlError ||
+		error instanceof UserFacingError
+		? error.message
+		: fallback;
+}
+
 export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	const response = await desktopRequest(request);
 	const envelope = response.body as {

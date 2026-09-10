@@ -28,7 +28,11 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
-import { MessageInput, type MessageInputHandle } from "./message-input";
+import {
+	type ComposerSendError,
+	MessageInput,
+	type MessageInputHandle,
+} from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 
@@ -97,6 +101,8 @@ type ChatContentProps = {
 	cwd?: string;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
 	onChangeCwd?: (cwd: string) => void;
+	/** A failed send, rendered against the composer; see `ComposerSendError`. */
+	sendError?: ComposerSendError;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -160,6 +166,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		messageInputRef,
 		cwd,
 		onChangeCwd,
+		sendError,
 		canonical,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
@@ -386,6 +393,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								agentData={agentData}
 								cwd={cwd}
 								onChangeCwd={onChangeCwd}
+								sendError={sendError}
 								isSmallView={isSmallView}
 							/>
 						)}

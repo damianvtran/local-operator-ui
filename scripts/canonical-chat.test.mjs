@@ -34,23 +34,19 @@ const bundle = await build({
 					() => ({ path: "transport", namespace: "fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-					// `DesktopControlError` carries the status, and the store now reads
-					// it: a 413 is our own pre-fetch size guard, so nothing was admitted
-					// and the draft must not latch. A fixture that dropped the class
-					// would make that branch untestable, so it mirrors the real shape.
-					contents: `
-			export const desktopResult = request => globalThis.__canonicalRequest(request);
-			export class DesktopControlError extends Error {
-				constructor(status, message, cause, code) {
-					super(message);
-					this.name = "DesktopControlError";
-					this.status = status;
-					this.cause = cause;
-					this.code = code;
-				}
-			}
-		`,
+					// Only `desktopResult` is faked - it is the network. The error
+					// classes and `userFacingMessage` are re-exported from the real
+					// module because the store's copy rules depend on their actual
+					// behaviour: a stub that always returned `error.message` would let
+					// a raw exception through here and still pass. The real
+					// `DesktopControlError` also carries the `status` the 413/422
+					// un-latch reads, so the size-refusal cases stay covered too.
+					contents: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+						`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+					)}
+export const desktopResult = request => globalThis.__canonicalRequest(request);`,
 					loader: "js",
+					resolveDir: process.cwd(),
 				}));
 			},
 		},
@@ -64,8 +60,10 @@ const {
 	replaceSessionRows,
 	admitChatDraft,
 	draftIdentityFor,
+	buildSendPayload,
 	desktopRequestSchema,
 	DesktopControlError,
+	UNCONFIRMED_SEND_CODE,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -238,6 +236,56 @@ test("a send that never reached admission carries the user's NEW images", async 
 	assert.equal(sent.text, "different");
 });
 
+test("a refused create retains the text but holds no claim to release", async () => {
+	reset();
+	// U13: the composer suppresses its abandon control when a send failed with
+	// no claim held (`onReleaseHeld` undefined) - nothing is being enforced, so
+	// an abandon there could only empty a composer under a label naming a
+	// message the user cannot see. That branch is live only while `heldText`
+	// derives undefined, and chat-page derives it as
+	// `admissionAttempted && !pending ? submittedText : undefined`. This pins
+	// those inputs as the store leaves them after a refused create:
+	// `admissionAttempted` is set only AFTER create succeeds, so moving it
+	// earlier - symmetric with the pre-admission pinning of mode/images, and a
+	// plausible-looking refactor - would arm a claim over a send nothing is
+	// enforcing, resurrect the abandon control U13 removed, and go red here.
+	// The derivation is restated rather than imported because the component's
+	// memo is not reachable from this store-level harness; if the component's
+	// input ever changes, this line is what to revisit.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") throw new Error("create refused");
+		return {};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, input), /create refused/);
+	const draft = store.getState().drafts[key];
+	assert.equal(
+		draft.submittedText,
+		input.text,
+		"the failed text is retained for the alert to sit on",
+	);
+	assert.ok(
+		typeof draft.error === "string" && draft.error.length > 0,
+		"a remount still has copy for the alert from the store's own record",
+	);
+	assert.notEqual(draft.pending, true, "settled: the escapes may appear");
+	assert.notEqual(
+		draft.admissionAttempted,
+		true,
+		"create never succeeded, so no admission outcome is unknown",
+	);
+	const heldText =
+		draft.admissionAttempted && !draft.pending
+			? draft.submittedText
+			: undefined;
+	assert.equal(
+		heldText,
+		undefined,
+		"no claim: the composer's release control stays suppressed (U13)",
+	);
+});
+
 test("only an issued admission pins the payload, and a discard always frees it", async () => {
 	reset();
 	let failAdmission = true;
@@ -385,6 +433,361 @@ test("discarding a draft that is not the active one leaves the pointer alone", a
 
 	assert.equal(store.getState().drafts[first], undefined);
 	assert.equal(store.getState().activeDraftKey, second);
+});
+
+test("an issued admission refuses an edited resend and names itself so the composer can offer the right escape", async () => {
+	reset();
+	// The invariant the composer's copy depends on. It shipped once saying "edit
+	// it if you need to, then send again" against a store that throws on exactly
+	// that, because no test pinned the guard's behaviour on the existing-session
+	// path: `createSession` fails FIRST on the new-chat path, leaving
+	// `admissionAttempted` false, so editing legitimately works there and the
+	// copy looked true. Asserted here on the path where the flag really latches.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		throw new Error("network down");
+	};
+	const key = draftIdentityFor(null, "222222222222");
+	await assert.rejects(admitChatDraft(key, input, "222222222222"));
+	assert.equal(store.getState().drafts[key].admissionAttempted, true);
+	assert.equal(store.getState().drafts[key].submittedText, input.text);
+	// An edited resend is refused, and carries the category the composer keys on
+	// to render Restore/abandon instead of "send it again".
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "something else" }, "222222222222"),
+		(error) => error.code === UNCONFIRMED_SEND_CODE,
+	);
+	// Releasing the claim keeps the row - and so the session id - but lets a
+	// DIFFERENT message through. Discarding the row instead would allocate a
+	// second session for a conversation that already has one.
+	const before = store.getState().drafts[key];
+	store.getState().releaseClaim(key);
+	const after = store.getState().drafts[key];
+	assert.equal(after.sessionId, before.sessionId);
+	assert.equal(after.admissionAttempted, undefined);
+	assert.equal(after.submittedText, undefined);
+	assert.equal(after.error, undefined);
+	// A fresh admission id: the abandoned request may still be executing, and
+	// reusing its id would make the next send an idempotent replay of the old
+	// payload rather than a new message.
+	assert.notEqual(after.admissionRequestId, before.admissionRequestId);
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return {};
+	};
+	await admitChatDraft(
+		key,
+		{ ...input, text: "something else" },
+		"222222222222",
+	);
+	assert.equal(
+		calls.at(-1).text,
+		"something else",
+		"a released claim admits the new payload, not the held one",
+	);
+});
+
+test("a landed send retires the page-level error the failed one recorded", async () => {
+	reset();
+	// F2/F3: `createSession` sets store `error` AND rethrows, so the same
+	// sentence rendered at the top of the page and at the composer; nothing but
+	// fetchSessions/openSession ever cleared it, so it also outlived a
+	// successful retry. The composer owns the message now, both ways.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") throw new Error("create refused");
+		return {};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, input));
+	assert.equal(
+		store.getState().error,
+		null,
+		"the composer alert is the only voice for a failed send",
+	);
+	// `store.error` must be non-null before the landed send, or asserting null
+	// after it cannot tell "the success path clears it" from "nothing ever set
+	// it" - the assertion passed with the clear deleted.
+	//
+	// PRODUCED, not seeded. `store.setState({error: ...})` would put the fixture
+	// in a state only the harness can reach, and a hand-set precondition can
+	// quietly repair (or misrepresent) the very behaviour under test. This drives
+	// the real writer: `createSession` sets the page-level `error` and rethrows,
+	// which is exactly how a user gets a stale "could not start" sentence - the
+	// picker calls it directly (destination-pickers.tsx), with no admission
+	// involved, so this is a state production genuinely reaches. It runs while
+	// the transport still refuses creates, i.e. before the healthy one below.
+	await assert.rejects(store.getState().createSession("/tmp"));
+	assert.notEqual(
+		store.getState().error,
+		null,
+		"precondition: a real page-level error exists to be retired",
+	);
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		return {};
+	};
+	await admitChatDraft(key, input);
+	assert.equal(
+		store.getState().error,
+		null,
+		"a successful retry leaves no stale page-level alert",
+	);
+});
+
+test("a draft abandoned mid-flight is not resurrected by the settling request", async () => {
+	reset();
+	// R1: `admissionAttempted` is set BEFORE the awaited request, so a draft can
+	// be discarded while its admission is still in flight. `updateDraft` used to
+	// spread blindly onto the deleted row, rebuilding it WITHOUT `key`,
+	// `createRequestId` or `admissionRequestId`; the next send then went to the
+	// wire with `requestId: undefined`, the IPC schema 422'd it, and that refusal
+	// re-armed the unchanged-payload guard - so every later send failed against a
+	// healthy backend. Discard is deliberate and outranks the abandoned request.
+	let releaseInflight;
+	const inflight = new Promise((resolve) => {
+		releaseInflight = resolve;
+	});
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		await inflight;
+		throw new Error("network down");
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const pending = admitChatDraft(key, input);
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.equal(store.getState().drafts[key].pending, true);
+	store.getState().discardDraft(key);
+	releaseInflight();
+	await assert.rejects(pending);
+	assert.equal(
+		store.getState().drafts[key],
+		undefined,
+		"a settling request must not recreate a row the user discarded",
+	);
+
+	// And the session is not wedged: the next send allocates a fresh draft whose
+	// admission carries a real request id, which is what the schema requires.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "333333333333",
+				binding: { agent: "reviewer", team: null },
+			};
+		return {};
+	};
+	const next = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await admitChatDraft(next, { ...input, text: "a different message" });
+	const wire = calls.at(-1);
+	assert.equal(wire.op, "sessions.message");
+	assert.equal(wire.text, "a different message");
+	assert.equal(
+		desktopRequestSchema.safeParse(wire).success,
+		true,
+		"the send after an abandoned one must satisfy the closed IPC schema",
+	);
+});
+
+test("the payload the guard compares is the normalized one, so a whitespace-only edit is the same message", async () => {
+	reset();
+	// U7: the guard compares byte-for-byte while the composer decided what to SAY
+	// on `.trim()`. A whitespace-only edit fell between the two - refused by the
+	// guard, but reported as already-in-the-box, which suppressed Restore and the
+	// release escape and left only the control that empties the composer.
+	// Normalizing at the payload boundary removes the gap: there is one string.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		throw new Error("network down");
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "Summarise the report. " }),
+	);
+	assert.equal(
+		store.getState().drafts[key].submittedText,
+		"Summarise the report.",
+		"the held claim stores the normalized payload, not the raw box value",
+	);
+	// Every whitespace-only variant of the held message must be admitted as the
+	// SAME payload rather than refused as a different one. The trailing-newline
+	// case is the one the removed `trim()` existed for.
+	//
+	// The sends deliberately keep failing at the wire so the CLAIM SURVIVES each
+	// iteration: a variant that succeeded would retire the draft via
+	// `finishDraft`, and every later iteration would then be testing an unarmed
+	// guard - passing whatever the comparison did. Each variant is asserted to
+	// reach the wire (so the guard admitted it) and to reach it normalized.
+	for (const variant of [
+		"Summarise the report.",
+		"Summarise the report. ",
+		" Summarise the report.",
+		"Summarise the report.\n",
+	]) {
+		const before = calls.length;
+		await assert.rejects(
+			admitChatDraft(key, { ...input, text: variant }, "222222222222"),
+			(error) =>
+				error.code !== UNCONFIRMED_SEND_CODE ||
+				new Error(
+					`whitespace-only edit ${JSON.stringify(variant)} was refused as a different message`,
+				),
+			`a whitespace-only edit (${JSON.stringify(variant)}) must not trip the guard`,
+		);
+		const wire = calls.slice(before).filter((c) => c.op === "sessions.message");
+		assert.equal(
+			wire.length,
+			1,
+			`a whitespace-only edit (${JSON.stringify(variant)}) must reach the wire`,
+		);
+		assert.equal(
+			wire[0].text,
+			"Summarise the report.",
+			`a whitespace-only edit (${JSON.stringify(variant)}) is the same payload`,
+		);
+		assert.equal(
+			store.getState().drafts[key].admissionAttempted,
+			true,
+			"the claim must survive so the next variant is a real guard test",
+		);
+	}
+	// A real edit is still refused, and still names itself so the composer can
+	// offer the right escape - normalization must not weaken the guard. The claim
+	// is re-armed through a genuinely failing send rather than a hand-written
+	// patch, so this exercises the path the user takes.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		throw new Error("network down");
+	};
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: "Summarise the report." },
+			"222222222222",
+		),
+	);
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: "Summarise the other report." },
+			"222222222222",
+		),
+		(error) => error.code === UNCONFIRMED_SEND_CODE,
+	);
+});
+
+test("a refused reply-prefixed send still offers Restore, and Restore is not a loop", async () => {
+	reset();
+	// R6: the reply prefix was assembled at the send call, DOWNSTREAM of every
+	// comparison the composer makes. So the store held and guarded
+	// `<reply-to>…</reply-to>\ntext` while the composer compared the bare box -
+	// two strings for one payload, the exact condition U7 was filed to remove,
+	// on the one path the U7 fix did not cover.
+	//
+	// The damage was not the refusal but the ESCAPE: Restore writes the held
+	// payload into the box, the next send re-prefixes it, the guard refuses the
+	// mismatch, and the composer - seeing its own held text in the box -
+	// withdraws Restore and says "Send it again", which is false forever. The
+	// only remaining control destroys the message.
+	//
+	// Driven through the real store with the composer's own predicate basis, so
+	// reverting either half (assembly at the boundary, or the composer building
+	// its basis the same way) turns this red.
+	const replies = [{ id: "r1", text: "the failing line" }];
+	const box = "Please look at this";
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		throw new Error("network down");
+	};
+	const key = draftIdentityFor(null, "222222222222");
+	// The composer's send: one function assembles what goes to the store.
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: buildSendPayload(box, replies) },
+			"222222222222",
+		),
+	);
+	const held = store.getState().drafts[key].submittedText;
+	assert.equal(
+		held,
+		`<reply-to>the failing line</reply-to>\n${box}`,
+		"the held claim is the assembled payload",
+	);
+	// The composer's copy basis, built from the SAME function with the SAME
+	// replies still attached - they survive a failed send. Pre-fix this compared
+	// the bare box, so `heldInBox` was false here and the alert was coherent;
+	// the defect only surfaced one step later, which is why the assertion that
+	// matters is the one after Restore.
+	assert.equal(
+		buildSendPayload(box, replies) === held,
+		true,
+		"with the reply still attached the box IS the held payload, so the copy must not claim otherwise",
+	);
+	// Restore hands back the finished payload and consumes the chips that
+	// produced it. Re-assembling with the chips still attached would double the
+	// prefix - the deadlock - so the invariant is asserted directly.
+	const afterRestore = buildSendPayload(held, []);
+	assert.equal(
+		afterRestore,
+		held,
+		"a restored payload re-assembled with its chips consumed is byte-identical, so the guard admits it",
+	);
+	assert.notEqual(
+		buildSendPayload(held, replies),
+		held,
+		"re-prefixing a restored payload is what deadlocked Restore; the chips must be cleared, not the assembly made idempotent",
+	);
+	// And the store agrees: the restored payload is admitted as the same
+	// message rather than refused as a different one.
+	const before = calls.length;
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: afterRestore }, "222222222222"),
+		(error) =>
+			error.code !== UNCONFIRMED_SEND_CODE ||
+			new Error(
+				"a restored reply-prefixed payload was refused as a different message - Restore is a dead end",
+			),
+		"Restore must hand back something the guard accepts",
+	);
+	assert.equal(
+		calls.slice(before).filter((c) => c.op === "sessions.message").length,
+		1,
+		"the restored payload must reach the wire",
+	);
+	// The refusal path still works: a genuinely different message under the same
+	// claim is refused and names itself, so the composer offers Restore rather
+	// than pretending the send will land.
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: buildSendPayload("Something else entirely", replies) },
+			"222222222222",
+		),
+		(error) => error.code === UNCONFIRMED_SEND_CODE,
+		"an edited reply-prefixed resend is still refused",
+	);
+	assert.equal(
+		store.getState().drafts[key].submittedText,
+		held,
+		"the claim survives the refusal, so Restore still has a payload to offer",
+	);
 });
 
 test("typed repair failures retain the canonical draft and error category", async () => {
