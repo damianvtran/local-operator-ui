@@ -436,7 +436,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set((state) => {
 					const drafts = { ...state.drafts };
 					delete drafts[key];
-					return { drafts };
+					/*
+					 * Clear the pointer as well as the draft, the way
+					 * `finishDraft` does. Deleting only the entry leaves
+					 * `activeDraftKey` naming a draft that no longer exists, and
+					 * every consumer reads that pointer as "a draft is being
+					 * composed": the sidebar's New chat row highlights itself with
+					 * `aria-current="page"` for a discarded agent draft the user
+					 * never opened, and the session rows keep suppressing their own
+					 * highlight. Unlike `finishDraft` there is no session to become
+					 * active - a discarded draft never became one - so the selection
+					 * is left where it was.
+					 */
+					return {
+						drafts,
+						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
+					};
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>
 				get().setActiveSession(sessionId),

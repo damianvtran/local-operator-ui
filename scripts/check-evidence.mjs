@@ -223,9 +223,102 @@ const main = () => {
 	const manifestPath = join(EVIDENCE, "manifest.json");
 	if (existsSync(manifestPath)) {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-		if (manifest.frames !== files.length) {
+		/*
+		 * `frames` is the SWEEP's own count, and it stays that way.
+		 *
+		 * Not every frame in this tree comes from `capture-evidence.mjs`. A
+		 * surface whose claim is a pointer hover or a click that changes state
+		 * cannot be photographed from Storybook, so those sets are captured
+		 * from the running app and committed alongside the sweep. Folding them
+		 * into `frames` would make the sweep's count - and with it its `head`,
+		 * `srcTree` and `capturedAt`, which a reader uses to decide whether the
+		 * set is current - describe frames it never took.
+		 *
+		 * So each such set declares itself in `supplementary` with its own
+		 * provenance, and each declaration is checked AGAINST THE TREE rather
+		 * than only against the total. A bare sum is not enough: two wrong
+		 * terms cancel, so `{frames:436, supplementary:[{path:"nowhere",
+		 * frames:40}]}` sums to the same 476 as the honest manifest and would
+		 * pass. Each set must therefore name a directory that exists, hold
+		 * exactly the frames it claims, and carry its provenance; and the
+		 * sweep's own count is checked against the frames left OUTSIDE every
+		 * declared set, so neither term can absorb the other's error.
+		 */
+		const extra = manifest.supplementary ?? [];
+
+		/*
+		 * `source`/`why`/`capturedAt` are what make a set auditable by a
+		 * reader who was not here - without them a declaration is just a
+		 * number that buys silence from the gate.
+		 */
+		const PROVENANCE = ["source", "why", "capturedAt"];
+		const declared = new Set();
+		let accounted = 0;
+
+		for (const [i, set] of extra.entries()) {
+			const where = set.path
+				? `supplementary[${i}] (${set.path})`
+				: `supplementary[${i}]`;
+			if (typeof set.path !== "string" || set.path.length === 0) {
+				failures.push(`manifest.json: ${where} declares no path`);
+				continue;
+			}
+			const dir = join(EVIDENCE, set.path);
+			if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+				failures.push(
+					`manifest.json: ${where} names a directory that is not in the tree`,
+				);
+				continue;
+			}
+			/*
+			 * `accounted` sums per ENTRY while `swept` is computed from the set of
+			 * directories, so two entries covering the same frames each pass their
+			 * own tree check and the sweep term never notices the double count -
+			 * the manifest can then claim more frames than exist. Overlap, not
+			 * just equality: a declaration nested inside another declared
+			 * directory counts its frames a second time in exactly the same way.
+			 */
+			const overlap = [...declared].find(
+				(seen) =>
+					seen === dir ||
+					dir.startsWith(`${seen}/`) ||
+					seen.startsWith(`${dir}/`),
+			);
+			if (overlap) {
+				failures.push(
+					`manifest.json: ${where} covers frames already declared by ${relative(EVIDENCE, overlap) || "."}`,
+				);
+				continue;
+			}
+			const missing = PROVENANCE.filter((field) => !set[field]);
+			if (missing.length > 0) {
+				failures.push(
+					`manifest.json: ${where} does not say where it came from (missing ${missing.join(", ")})`,
+				);
+			}
+			const onDisk = frames(dir).length;
+			if (onDisk !== set.frames) {
+				failures.push(
+					`manifest.json: ${where} claims ${set.frames} frames; ${onDisk} are on disk`,
+				);
+			}
+			declared.add(dir);
+			accounted += onDisk;
+		}
+
+		/*
+		 * The sweep's count answers for everything no supplementary set
+		 * claimed, so an undeclared directory appearing on disk still fails -
+		 * the property this check exists for.
+		 */
+		const swept = files.filter(
+			(file) => ![...declared].some((dir) => file.startsWith(`${dir}/`)),
+		).length;
+		if (manifest.frames !== swept) {
+			const parts = [`${manifest.frames} from the sweep`];
+			for (const set of extra) parts.push(`${set.frames} from ${set.path}`);
 			failures.push(
-				`manifest.json claims ${manifest.frames} frames; ${files.length} are on disk`,
+				`manifest.json accounts for ${manifest.frames + accounted} frames (${parts.join(", ")}); ${files.length} are on disk, ${swept} of them outside any declared set`,
 			);
 		}
 	}

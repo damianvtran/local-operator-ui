@@ -20,6 +20,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import {
+	existsSync,
 	mkdirSync,
 	readFileSync,
 	readdirSync,
@@ -195,6 +196,66 @@ const STORIES = [
 	/* 1380x800 is what the story declares and what the app window ships. */
 	["installer-installercontent--default", 1380, 800],
 ];
+
+/**
+ * Clear the sweep's own output WITHOUT taking the supplementary sets with it,
+ * and hand back their declarations for the manifest this run will write.
+ *
+ * Why this is not a plain `rmSync(OUT)`: not every frame in the tree comes
+ * from this script. A surface whose claim is a pointer hover or a click that
+ * changes state cannot be photographed from Storybook, and some of them - the
+ * chat sidebar among them - have no story at all, so a blanket wipe destroys
+ * frames this script cannot re-derive. It used to destroy their manifest entry
+ * in the same pass, which was the dangerous part: the frames and the count
+ * that accounted for them vanished together, the arithmetic still balanced,
+ * and `check-evidence` stayed green over evidence that no longer existed.
+ *
+ * Returning the declarations rather than re-reading them at the write site
+ * keeps one definition of what "preserved" means, so the directories kept on
+ * disk and the entries written into the manifest cannot drift apart.
+ *
+ * Two rules below are load-bearing, and both were found by attacking this
+ * function rather than reading it:
+ *
+ * `manifest.json` is never swept. It is the only thing on disk that declares
+ * which directories are irreplaceable, and the sweep does not rewrite it until
+ * the whole capture finishes ~14 minutes later. Deleting it here opened a
+ * window in which the preserved frames existed but nothing accounted for them,
+ * so any interruption inside that window - Ctrl-C, the SIGINT/SIGTERM handler
+ * at the foot of this file, an ENOSPC - left them undeclared, and the NEXT
+ * sweep read no manifest, computed an empty preserve set, and destroyed them.
+ * The gate then passed over the loss because the count vanished with the
+ * frames. Keeping the old manifest until the new one replaces it closes that
+ * window: a crashed run leaves a stale-but-honest declaration, which is a
+ * state the gate can see, rather than no declaration at all.
+ *
+ * Preservation matches on the FIRST path segment because `readdirSync` yields
+ * top-level names only, while the gate accepts a `path` of any depth. A
+ * declaration of `chat-trace/hover` compared whole against `chat-trace` never
+ * matched, so the sweep deleted the frames and then carried their declaration
+ * into the new manifest - a gate failure whose obvious fix (drop the
+ * declaration) completes the loss. Keeping the whole top-level parent is the
+ * safe direction of the trade: a swept sibling under a preserved parent
+ * survives a sweep that no longer captures it, and the gate reports it as an
+ * unaccounted frame instead of silently losing an irreplaceable one.
+ */
+export const clearSweptFrames = (out) => {
+	const manifestPath = join(out, "manifest.json");
+	const supplementary = existsSync(manifestPath)
+		? (JSON.parse(readFileSync(manifestPath, "utf8")).supplementary ?? [])
+		: [];
+	const preserved = new Set(
+		supplementary.map((set) => set.path?.split("/")[0]).filter(Boolean),
+	);
+	if (existsSync(out)) {
+		for (const entry of readdirSync(out)) {
+			if (entry === "manifest.json" || preserved.has(entry)) continue;
+			rmSync(join(out, entry), { recursive: true, force: true });
+		}
+	}
+	mkdirSync(out, { recursive: true });
+	return supplementary;
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -408,9 +469,22 @@ const main = async () => {
 				`Check ${ORIGIN}/index.json for the real ids.`,
 		);
 	}
-	// A narrowed run refreshes named frames in place; only a full sweep may
-	// delete the set it is about to rebuild.
-	if (!PARTIAL) rmSync(OUT, { recursive: true, force: true });
+	// A narrowed run refreshes named frames in place and must not wipe the
+	// rest of the tree. A full sweep still must not take the supplementary
+	// sets with it — those are live-app captures this script cannot re-derive
+	// (`clearSweptFrames` is the preservation rule, not a plain `rmSync`).
+	const supplementary = PARTIAL
+		? (() => {
+				try {
+					return (
+						JSON.parse(readFileSync(join(OUT, "manifest.json"), "utf8"))
+							.supplementary ?? []
+					);
+				} catch {
+					return [];
+				}
+			})()
+		: clearSweptFrames(OUT);
 
 	/* zustand persist key for the UI preferences store. */
 	const PREFS_KEY = "ui-preferences-storage";
@@ -846,25 +920,40 @@ const main = async () => {
 				frames: captured,
 				surfaces: STORIES.length,
 				themes: THEMES.length,
+				/*
+				 * Carried over from the manifest this run replaced: the frames
+				 * these entries account for were preserved above, so dropping
+				 * their declaration would leave them undeclared on disk and
+				 * fail the gate for whoever ran the sweep.
+				 */
+				...(supplementary.length > 0 ? { supplementary } : {}),
 			};
 	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
 };
 
-/* Also covers Ctrl-C and a kill, which a try/finally alone does not. */
-for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
-	process.on(signal, () => {
-		teardown();
-		process.exit(130);
-	});
-}
+/*
+ * Only sweep when run as a command. `clearSweptFrames` is exported so its
+ * preservation rule can be exercised directly, and importing this file to
+ * reach it must not launch Chrome and delete the evidence tree - the same
+ * guard `check-evidence.mjs` uses for `assertFramePaints`.
+ */
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+	/* Also covers Ctrl-C and a kill, which a try/finally alone does not. */
+	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+		process.on(signal, () => {
+			teardown();
+			process.exit(130);
+		});
+	}
 
-try {
-	await main();
-} catch (err) {
-	console.error(err);
-	process.exitCode = 1;
-} finally {
-	teardown();
+	try {
+		await main();
+	} catch (err) {
+		console.error(err);
+		process.exitCode = 1;
+	} finally {
+		teardown();
+	}
 }

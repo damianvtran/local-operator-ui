@@ -350,6 +350,43 @@ test("an existing session's retained draft stays reachable after a failed send",
 	assert.equal(store.getState().drafts[identity], undefined);
 });
 
+test("discarding a draft clears the pointer to it, not just the entry", async () => {
+	reset();
+	// Regression: `discardDraft` used to delete `drafts[key]` and leave
+	// `activeDraftKey` naming it. Consumers read that pointer as "a draft is
+	// being composed", so the sidebar's New chat row - whose predicate is
+	// `activeDraftKey && !draft?.target` - went `aria-current="page"` after an
+	// AGENT-targeted draft was discarded, because the absent draft made
+	// `!draft?.target` vacuously true. The user never pressed that row.
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	assert.equal(store.getState().activeDraftKey, key);
+	assert.equal(store.getState().drafts[key].target.name, "reviewer");
+
+	store.getState().discardDraft(key);
+
+	assert.equal(store.getState().drafts[key], undefined);
+	assert.equal(store.getState().activeDraftKey, null);
+	// The row's own predicate, evaluated the way the sidebar evaluates it.
+	const state = store.getState();
+	const draft = state.activeDraftKey ? state.drafts[state.activeDraftKey] : undefined;
+	assert.equal(Boolean(state.activeDraftKey) && !draft?.target, false);
+});
+
+test("discarding a draft that is not the active one leaves the pointer alone", async () => {
+	reset();
+	// The clear is conditional for the same reason `finishDraft`'s is: a stale
+	// or background draft being cleaned up must not cancel the draft the user
+	// is actually composing.
+	const first = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const second = store.getState().stageDraft({ kind: "team", name: "lopdev" });
+	assert.equal(store.getState().activeDraftKey, second);
+
+	store.getState().discardDraft(first);
+
+	assert.equal(store.getState().drafts[first], undefined);
+	assert.equal(store.getState().activeDraftKey, second);
+});
+
 test("typed repair failures retain the canonical draft and error category", async () => {
 	reset();
 	globalThis.__canonicalRequest = async (request) => {
