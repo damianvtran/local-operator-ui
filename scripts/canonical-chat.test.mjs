@@ -663,3 +663,86 @@ test("the create-file dialog does not write a session id to the agents API", asy
 		"the create-file dialog offers an editable directory control again, whose every use fails",
 	);
 });
+
+test("no ancestor of the slash popup establishes a vertical clipping context", async () => {
+	// R1, the round-2 blocker, which this round's own remediation introduced:
+	// the composer band was given `max-h-[70%] ... overflow-y-auto` to stop
+	// `shrink-0` growing unbounded, and that erased the slash-command popup.
+	//
+	// The popup is `absolute bottom-full` INSIDE the band and is NOT portaled,
+	// so it renders above the band's content box on purpose. Any ancestor with
+	// a vertical overflow clips it, and the failure is total and silent: the
+	// overflow sits on the far side of the scroller's origin, so
+	// `scrollHeight === clientHeight` and there is nothing to scroll to. The
+	// `role="listbox"` and `aria-activedescendant` wiring keeps working over a
+	// list with zero painted pixels.
+	//
+	// Measured with the real compiled stylesheet at 1380x872 with an ordinary
+	// transcript: 8/8 hit-testable rows before, 0/8 after, 8/8 with the bound
+	// moved onto the popup's siblings.
+	//
+	// Asserted on the source rather than by rendering because the defect IS a
+	// class string on an ancestor: no gate in the round could see it -- not
+	// types, not the 122-test suite, not the contrast contract, not
+	// check-evidence -- and a render test would need a real layout engine plus
+	// an open popup to catch it. What is pinned here is the RULE (bounds go on
+	// the popup's siblings, never its ancestors), which is the thing a future
+	// edit would otherwise break exactly the same way.
+	const { readFile } = await import("node:fs/promises");
+
+	const composer = await readFile(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const slash = await readFile(
+		"src/renderer/src/features/chat/components/slash-commands.tsx",
+		"utf8",
+	);
+
+	// The premise: the popup positions itself outside its parent's content box.
+	// If this ever stops being true the rest of this test is measuring nothing,
+	// so it is asserted rather than assumed.
+	assert.ok(
+		/"absolute bottom-full[^"]*"/.test(slash),
+		"the slash popup no longer renders `absolute bottom-full`, so this test's premise about escaping the parent box is stale",
+	);
+
+	const rendered = composer.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+
+	// The band: the element that owns the chat column's width and wraps the
+	// composer. Identified by the class string rather than by position so the
+	// assertion survives reformatting.
+	const band = rendered.match(
+		/"(flex[^"]*\bshrink-0\b[^"]*\bbg-surface\b[^"]*)"/,
+	);
+	assert.ok(band, "the composer band's class string is no longer findable");
+	for (const clip of ["overflow-y-auto", "overflow-y-scroll", "overflow-auto", "overflow-hidden", "overflow-scroll"]) {
+		assert.ok(
+			!band[1].includes(clip),
+			`the composer band declares \`${clip}\`, which clips the unportaled slash popup that renders above it out of existence (R1). Bound the growing content instead -- see the previews wrapper.`,
+		);
+	}
+	assert.ok(
+		!/\bmax-h-/.test(band[1]),
+		"the composer band declares a max-height again; it is unnecessary once the previews are bounded, and it is what invited the scroller that erased the popup (R1)",
+	);
+
+	// The other half: the bound has to exist SOMEWHERE, or `shrink-0` is
+	// unbounded again and enough attachments push the send controls off screen
+	// (measured: 40 tiles + 10 replies => a 1126px band in an 872px viewport).
+	// It belongs on the previews, which are siblings of the popup.
+	assert.ok(
+		/max-h-\[240px\][^"]*overflow-y-auto|overflow-y-auto[^"]*max-h-\[240px\]/.test(
+			rendered,
+		),
+		"the composer's previews no longer carry their own bound, so the band can grow past the window and take the send controls with it",
+	);
+	// And that bound must sit BELOW the popup in the tree, i.e. after it, not
+	// wrapped around it.
+	const popupAt = rendered.indexOf("<SlashSuggestionsPopup");
+	const boundAt = rendered.indexOf("max-h-[240px]");
+	assert.ok(
+		popupAt !== -1 && boundAt > popupAt,
+		"the previews' bound now wraps the slash popup rather than sitting beside it, which clips it the same way the band did (R1)",
+	);
+});

@@ -595,22 +595,70 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					)}
 					data-tour-tag="chat-input-textarea"
 				>
+					{/*
+					 * The popup is a CHILD of this box and renders `absolute
+					 * bottom-full`, i.e. deliberately outside the box's content area,
+					 * above it. It is NOT portaled, unlike the Radix menus and
+					 * tooltips: those get their portal AND their positioning from
+					 * Popper, whereas this list is anchored to one element that never
+					 * moves relative to its own containing block, so `bottom-full` on a
+					 * `relative` parent is the whole positioning story and a portal
+					 * would mean hand-rolling anchor tracking on scroll and resize --
+					 * more machinery, and a mechanism this codebase has nowhere else
+					 * (`createPortal` appears in no renderer file).
+					 *
+					 * The cost of staying unportaled is that ANY ancestor which
+					 * establishes a vertical clipping context erases it, with no
+					 * symptom other than an invisible list, because the overflow is on
+					 * the far side of the scroller's origin so there is nothing to
+					 * scroll to. That is exactly what an `overflow-y-auto` on the
+					 * composer band did (round 2, R1). Keep every bound between here
+					 * and the band on the popup's SIBLINGS, never on its ancestors.
+					 */}
 					<SlashSuggestionsPopup
 						state={slash}
 						onPick={handleSlashPick}
 						anchorRef={textareaRef}
 					/>
-					{replies.length > 0 && (
-						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
-					)}
-					{attachments.length > 0 && (
-						<AttachmentsPreview
-							attachments={attachments.map((a) => a.path)}
-							onRemoveAttachment={(index) =>
-								handleRemoveAttachment(attachments[index].id)
-							}
-							disabled={isInputDisabled || isRecording || isTranscribing}
-						/>
+					{(replies.length > 0 || attachments.length > 0) && (
+						/*
+						 * The previews carry their own bound, on a SIBLING of the popup
+						 * rather than on an ancestor of it.
+						 *
+						 * These two are the composer's only unbounded content: attachment
+						 * tiles are 100px each and wrap, and replies stack, so a dozen
+						 * attachments grew the band past the window and took the send
+						 * controls off the bottom with nothing left to scroll them back
+						 * (measured: 40 tiles + 10 replies made the band 1126px in an
+						 * 872px viewport, send button off screen). Bounding them HERE
+						 * bounds the band as a consequence -- 377px at every load -- so
+						 * the band needs no max-height of its own and therefore no
+						 * scroller, which is what keeps the slash popup above it
+						 * reachable.
+						 *
+						 * This is the pattern the textarea below already uses
+						 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
+						 * of the composer caps itself and scrolls internally, so no
+						 * wrapper has to clip on behalf of its children. ~240px shows two
+						 * full rows of tiles before scrolling.
+						 */
+						<div className="max-h-[240px] shrink-0 overflow-y-auto">
+							{replies.length > 0 && (
+								<ReplyPreview
+									replies={replies}
+									onRemoveReply={handleRemoveReply}
+								/>
+							)}
+							{attachments.length > 0 && (
+								<AttachmentsPreview
+									attachments={attachments.map((a) => a.path)}
+									onRemoveAttachment={(index) =>
+										handleRemoveAttachment(attachments[index].id)
+									}
+									disabled={isInputDisabled || isRecording || isTranscribing}
+								/>
+							)}
+						</div>
 					)}
 
 					{isRecording ? (
@@ -876,15 +924,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// `h-full`, because the band would then claim the column's free
 					// space instead of leaving it to the transcript.
 					//
-					// `max-h-[70%]` plus its own scroller because `shrink-0` inside a
-					// now-`overflow-hidden` column is otherwise unbounded: attachment
-					// tiles wrap at 100px each, replies stack, and the suggestion row
-					// adds more, so a band that grows past the column would take the
-					// send controls off the bottom with nothing left to scroll them
-					// back. A proportion rather than a pixel count so it holds at
-					// every window height; the transcript keeps whatever is left.
+					// NO `max-height` and NO `overflow` on this element, deliberately.
+					//
+					// `shrink-0` inside a now-`overflow-hidden` column really is
+					// unbounded, and round 1 bounded it here with `max-h-[70%]` plus
+					// `overflow-y-auto`. The bound was right and the scroller was a
+					// blocker (round 2, R1): the slash popup is `absolute bottom-full`
+					// inside this band and is not portaled, so a vertical clipping
+					// context here erased it -- 8/8 hit-testable rows to 0/8 with an
+					// ordinary transcript, and unrecoverable by scrolling because
+					// `bottom-full` puts the overflow above the scroller's origin
+					// (`scrollHeight === clientHeight`, so `maxScroll` is 0).
+					//
+					// What decides that is the BAND'S height, not the window's: on an
+					// empty chat the greeting and chips make the band tall enough to
+					// contain the popup, which is why the defect hid from a check that
+					// only looked at the empty screen.
+					//
+					// The bound now lives on the previews inside the composer box, which
+					// are the only unbounded content and are SIBLINGS of the popup, so
+					// the band ends up bounded (377px at every load measured) without
+					// any ancestor of the popup clipping. Do not re-add a bound here:
+					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
-					"flex max-h-[70%] w-full shrink-0 flex-col items-center justify-center overflow-y-auto bg-surface",
+					"flex w-full shrink-0 flex-col items-center justify-center bg-surface",
 					// `px-6` (24px), not `px-4`: the transcript above insets its content
 					// by its own 16px padding PLUS the 8px scrollbar gutter it reserves,
 					// so an equal 16px here left the two columns 8px apart at the right

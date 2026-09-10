@@ -152,17 +152,18 @@ Verified by driving the real chip in the real app, not by reading the code:
 ## Not fixed here
 
 With the canvas panel open the row overflows horizontally and the chat column
-collapses to its 220px floor. **This is pre-existing, not a regression**, and
-this branch slightly improves it - measured on the same conversation at the same
-window size:
+collapses to its 220px floor. **This is pre-existing, not a regression, and this
+branch does not improve it — it is about 12px worse** - measured on the same
+conversation at the same window size:
 
 | | row overflow | header | doc scroll |
 | --- | --- | --- | --- |
 | `origin/main` | 128px | 63.7px | 308 |
 | this branch (round 1, remeasured) | **140px** | 56px | 0 |
 
-**The 120px figure was withdrawn in round 1**, and the improvement claim with
-it. See below.
+**The 120px figure and the improvement claim were both withdrawn in round 1**,
+after re-capture put this branch at 140px against `origin/main`'s 128px. See
+below.
 
 The cause is a 450px-minimum canvas plus a 220px-minimum chat column plus a
 900px-preferred transcript demanding more width than the row has; fixing it
@@ -327,3 +328,56 @@ Measured again on the same chip either side of one send:
 The read-only chip no longer moves under the pointer, and the two states are
 no longer the same colour. Per `branding.md`, the distinction is carried by
 colour rather than opacity.
+
+---
+
+# Round 2 remediation
+
+## R1 / Q-1: the composer band's scroller clipped the slash-command popup
+
+Round 1 bounded the composer band with `max-h-[70%]` plus `overflow-y-auto`.
+The bound was right; the scroller was a blocker. The slash popup renders
+`absolute bottom-full` **inside** that band and is not portaled, so the band
+became a clipping context on the exact axis the popup needs, and the popup was
+painted on the wrong side of the scroller's edge.
+
+What decides severity is the **band's height, not the viewport**: on an empty
+chat the greeting and suggestion chips sit inside the band, making it tall
+enough to contain the popup, while an ordinary conversation leaves the band at
+composer height and the popup escapes above its top edge. That is why the
+defect survived round 1 — nothing had opened the popup on a populated chat.
+
+The overflow was not recoverable by scrolling. `bottom-full` puts it above the
+scroller's origin, so `scrollHeight === clientHeight`, `maxScroll` is 0, and a
+written `scrollTop` of 9999 reads back 0.
+
+**The fix moves the bound onto the popup's SIBLINGS.** The previews (attachment
+tiles and stacked replies) are the composer's only unbounded content, so they
+now carry `max-h-[240px] overflow-y-auto` themselves — the same pattern the
+textarea beside them already uses (`max-h-28` plus its own scroller). The band
+ends up bounded as a consequence and needs no clipping context of its own.
+
+Measured in the real running app (`docs/evidence/chat-shell/slash-popup/`),
+hit-testable rows of 38, `/` typed with `char`-only dispatch:
+
+| state | viewport | before | after |
+| --- | --- | --- | --- |
+| transcript | 1380x872 | **0/38** | **9/38** |
+| transcript | 1024x673 | **0/38** | **9/38** |
+| transcript | 1024x500 | **0/38** | **9/38** |
+| greeting | 1380x872 | 2/38 | 9/38 |
+| greeting | 1024x673 | **0/38** | 8/38 |
+| greeting | 1024x500 | **0/38** | 8/38 |
+
+Before, the ancestor walk named exactly one clipping ancestor — the band
+itself. After, no ancestor clips the popup in any of the six cases, and the
+send controls stay on screen in all of them.
+
+The empty-chat branch is fixed too. Note it did **not** regress identically:
+at 1024x673 the greeting made the band tall enough to contain the popup, so
+that case failed only at other heights.
+
+`scripts/canonical-chat.test.mjs` pins the rule that no ancestor of the popup
+may establish a vertical clipping context, and that the bound exists on a
+sibling below it. Six mutants, six killed, each asserted as landed, confirmed
+to parse, and restored clean.
