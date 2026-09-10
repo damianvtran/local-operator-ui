@@ -123,10 +123,16 @@ export function commandBudgetRefusal(
  * which only a pre-flight can give because only here are the numbers still
  * known.
  *
- * Bytes only, with no character branch: unlike the message ops the byte budget
- * (1,100,000) is BELOW the declared character cap (1,000,000 chars, which can
- * serialize to six times that), so bytes are what bind first on every input and
- * a character check could never fire.
+ * Both ceilings, and BOTH fire on real input - the earlier claim here that a
+ * character check "could never fire" inverted the common case and is why it is
+ * spelled out now. For ordinary prose CHARACTERS bind first: 1,000,000 ASCII
+ * characters serialize to ~1,000,020 bytes, comfortably under the 1,100,000
+ * byte budget, so a 1,000,001-character paste is refused by the character cap
+ * with the byte check never reached. Bytes bind on the other shape: text heavy
+ * in escaped characters (NULs and control codes serialize to six bytes each),
+ * where 200,000 characters is legal by count and ~1.2 MB on the wire. Neither
+ * branch is dead, and an inaccurate comment about a limit is precisely how the
+ * original bug survived review (`canonical-sessions-store.ts:406`).
  */
 export function systemPromptBudgetRefusal(
 	systemPrompt: string,

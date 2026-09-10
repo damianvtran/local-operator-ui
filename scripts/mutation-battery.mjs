@@ -282,6 +282,20 @@ const MUTATIONS = [
 		stage: RENDERER_DIRS,
 	},
 	{
+		id: "B7",
+		// The system-prompt char cap (round 3, R1). This branch shipped in round 2
+		// under a docstring asserting it "could never fire", and a reviewer's
+		// `if (false)` mutant passed 23/23 - the branch had no coverage at all,
+		// while in fact being the one that binds on ordinary ASCII prose. Kept as
+		// a permanent mutant so the claim cannot rot back into a comment.
+		note: "system-prompt pre-flight drops the character cap (N4 re-opens)",
+		file: "src/renderer/src/features/chat/utils/message-budget.ts",
+		from: "	if (systemPrompt.length > DESKTOP_SYSTEM_PROMPT_MAX_CHARS) {",
+		to: "	if (false) {",
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
+	{
 		id: "M22",
 		// The allowlist must be a real discriminator, not a formality: widening it
 		// to any signal readmits SIGSEGV and (via the launcher forwarding it) SIGINT.

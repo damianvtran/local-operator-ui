@@ -372,11 +372,18 @@ test("a multi-frame GIF keeps every frame, at the tightest rung", async () => {
 	// test above cannot see that: its fixture is a single 1x1 frame, so a
 	// refactor that dropped GIF from `RE_ENCODABLE` would flatten every
 	// animation to one frame and still pass. This asserts the property itself.
-	// 320px, not a token 4px square: a re-encode of a tiny GIF is BIGGER than the
-	// original, so the never-grow guard hands the original back and the animation
-	// survives for a reason that has nothing to do with the exemption. Measured -
-	// with a 4px fixture, dropping GIF from `RE_ENCODABLE` still passed. At this
-	// size the mutant collapses all 8 frames into a 112-byte PNG still.
+	// What makes this test able to FAIL is the explicit `(64, 0.5)` tightest-rung
+	// arguments below, NOT the fixture's pixel size. Measured across all four
+	// cells under a mutant that drops GIF from `RE_ENCODABLE`: at DEFAULT
+	// parameters it survives at both 4px and 320px (the re-encode is bigger than
+	// the original, so the never-grow guard hands the original back and the
+	// animation survives for a reason unrelated to the exemption); at `(64, 0.5)`
+	// it dies at both, collapsing 8 frames into a single still - 112 bytes at
+	// 320px, 90 bytes at 4px. The larger fixture is kept because it is a more
+	// honest stand-in for a real animation, but do not read it as load-bearing:
+	// shrinking it while keeping the arguments would NOT break this test, and a
+	// reader who removed the arguments instead would silently lose the kill
+	// (round 3, Q-3).
 	const gif = animatedGif(8, 320);
 	const before = await sharp(gif, { animated: true }).metadata();
 	assert.equal(before.pages, 8, "the fixture itself must be an animation");
@@ -646,6 +653,42 @@ test("the overflow ladder returns the smallest set it saw, never the last rung",
 		measure(fitted) <= measure(images),
 		`the ladder returned a larger set: ${measure(images)} -> ${measure(fitted)}`,
 	);
+	// The other half of the property, which moving the budget to 0.5 above left
+	// uncovered: a set that ALREADY FITS must be handed back no larger. Every
+	// other set-level test now enters the ladder, so the early-fit return at
+	// `bound-image.ts:354` had no test at all and a regression that re-encoded
+	// (and inflated) a fitting set would have passed (round 3, R3).
+	//
+	// The fixture is NOT the photos above, and that is the whole point: they
+	// shrink on re-encode whatever the guard does, so the same assertion over
+	// them passes with `bestBytes >= originalBytes` mutated to `false` -
+	// measured, vacuous. Already-compressed JPEGs over the edge limit are the
+	// shape whose PNG/JPEG re-encode is BIGGER than the source (the same reason
+	// the per-image B3 test uses them), so here the guard is the only thing
+	// standing between the caller and a larger set. Verified red: with the guard
+	// disabled this fixture goes 984,031 -> 1,020,047 bytes.
+	const compressed = [];
+	for (const [width, height, quality] of [
+		[1400, 1000, 55],
+		[1200, 1024, 40],
+		[1300, 980, 50],
+	]) {
+		const source = await sharp(await screenshotPng(width, height))
+			.jpeg({ quality })
+			.toBuffer();
+		compressed.push({
+			data_b64: source.toString("base64"),
+			mime_type: "image/jpeg",
+		});
+	}
+	// ABOVE the originals, so the first fit check answers and the ladder loop is
+	// never entered - this is the early-fit return under test, not the ladder.
+	const roomy = Math.ceil(measure(compressed) * 1.05);
+	const untouched = await boundImagesForBudget(compressed, roomy, measure);
+	assert.ok(
+		measure(untouched) <= measure(compressed),
+		`a set that already fits was made larger: ${measure(compressed)} -> ${measure(untouched)}`,
+	);
 });
 
 test("several bounded screenshots that still overflow step the whole set down until the message fits", async () => {
@@ -894,6 +937,30 @@ test("an oversize agent system prompt is refused in the editor's own words", asy
 	assert.match(refusal, /^This system prompt is [\d.]+ MB, more than the 1\.1 MB/);
 	assert.ok(!refusal.includes("message"));
 	assert.ok(!refusal.includes("Remove an image"));
+	// The CHARACTER branch, which had no coverage at all until round 3: the
+	// docstring claimed it could never fire, and a reviewer's `if (false)` mutant
+	// on it passed 23/23. It is in fact the branch that fires on ORDINARY PROSE -
+	// 1,000,001 ASCII characters is only ~1,000,021 bytes, under the 1,100,000
+	// byte budget, so bytes never bind and only this check stands between the
+	// paste and the bare "Invalid desktop operation." from `safeParse` (N4).
+	assert.equal(
+		systemPromptBudgetRefusal("x".repeat(1_000_000)),
+		null,
+		"a prompt exactly at the character cap must still save",
+	);
+	const overChars = systemPromptBudgetRefusal("x".repeat(1_000_001));
+	assert.ok(
+		overChars,
+		"one character past the cap must be refused locally, not by safeParse",
+	);
+	assert.match(
+		overChars,
+		/^This system prompt is 1,000,001 characters, more than the 1,000,000 one agent can carry\./,
+		"the character refusal must name the count, not the byte size",
+	);
+	// Names characters, not bytes - proving the CHARACTER branch answered. Were
+	// the byte branch reached instead the sentence would read "1 MB".
+	assert.ok(!overChars.includes("MB"));
 });
 
 test("the backstop 413 speaks the language of the surface it fired on", async () => {
