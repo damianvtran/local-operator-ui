@@ -69,6 +69,53 @@ export function formatByteSize(bytes: number): string {
 }
 
 /**
+ * Render an overflow and the budget it broke so the two numbers cannot be
+ * READ AS EQUAL.
+ *
+ * `formatByteSize` rounds to one decimal, which is the right precision for a
+ * single size but makes a refusal refute itself when both operands round the
+ * same way: the system-prompt budget is 1,100,000 bytes, so every overflow in
+ * [1,100,001 ... 1,150,000] - a 50,000-byte window, 4.55% over, and the window
+ * most real overflows land in - printed "is 1.1 MB, more than the 1.1 MB".
+ * That sentence tells the user their prompt both fits and is refused, and
+ * leaves them no way to know how much to cut (design round 1, D1). Ordinary
+ * CJK prose reaches it at ~370,000 characters, which is an unremarkable thing
+ * to paste.
+ *
+ * Shared by every refusal rather than patched into the one caller that bites
+ * hardest, because the defect is in the RENDERING of a pair and all four
+ * surfaces render one: the message, command and fork budget of 880,000 bytes
+ * has the same collision in a 499-byte window. One helper keeps the surfaces
+ * from drifting into two ways of stating the same comparison.
+ *
+ * Escalating precision is preferred over switching units because "1,110 KB"
+ * would reintroduce the KB-above-1-MB ladder that round 1 removed (F7). Exact
+ * bytes are the terminal fallback so the window closes completely rather than
+ * shrinking: no precision separates two values that differ by one byte, and a
+ * count of bytes is still an amount the user can act on.
+ */
+function formatByteSizePair(total: number, budget: number): [string, string] {
+	const base = formatByteSize(total);
+	if (base !== formatByteSize(budget)) return [base, formatByteSize(budget)];
+	// Same unit on both sides throughout, so the sentence never asks the reader
+	// to compare a KB against an MB.
+	const inMb = base.endsWith("MB");
+	const divisor = inMb ? 1_000_000 : 1000;
+	const unit = inMb ? "MB" : "KB";
+	for (const decimals of [2, 3]) {
+		const totalText = (total / divisor).toFixed(decimals);
+		const budgetText = (budget / divisor).toFixed(decimals);
+		if (totalText !== budgetText) {
+			return [`${totalText} ${unit}`, `${budgetText} ${unit}`];
+		}
+	}
+	return [
+		`${total.toLocaleString()} bytes`,
+		`${budget.toLocaleString()} bytes`,
+	];
+}
+
+/**
  * The refusal sentence for an over-budget slash command, or null when it fits.
  *
  * `sessions.command` shares the message budget (it is in `MESSAGE_OPS`) and
@@ -107,7 +154,8 @@ export function commandBudgetRefusal(
 	});
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
-	return `This command is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one command can carry. Shorten it, or put the text in a message instead.`;
+	const [size, limit] = formatByteSizePair(total, budget);
+	return `This command is ${size}, more than the ${limit} one command can carry. Shorten it, or put the text in a message instead.`;
 }
 
 /**
@@ -145,7 +193,8 @@ export function systemPromptBudgetRefusal(
 		JSON.stringify({ system_prompt: systemPrompt }),
 	).length;
 	if (total <= budget) return null;
-	return `This system prompt is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one agent can carry. Shorten it.`;
+	const [size, limit] = formatByteSizePair(total, budget);
+	return `This system prompt is ${size}, more than the ${limit} one agent can carry. Shorten it.`;
 }
 
 /**
@@ -179,7 +228,8 @@ export function forkBudgetRefusal(
 	});
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
-	return `This first message is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one message can carry. Shorten it, or send it in the new conversation instead.`;
+	const [size, limit] = formatByteSizePair(total, budget);
+	return `This first message is ${size}, more than the ${limit} one message can carry. Shorten it, or send it in the new conversation instead.`;
 }
 
 /**
@@ -208,7 +258,6 @@ export function messageBudgetRefusal(
 	}
 	const total = messageBodyBytes(text, images);
 	if (total <= budget) return null;
-	const limit = formatByteSize(budget);
 	const textBytes = messageBodyBytes(text, []);
 	const imageBytes = total - textBytes;
 	// Attribute the overflow to whichever term actually DOMINATES it, not to
@@ -217,8 +266,13 @@ export function messageBudgetRefusal(
 	// image" to save "0 KB" - advice that cannot work (review round 1, F6).
 	// Images stay the preferred remedy on a tie, since removing one is the
 	// cheaper action than splitting prose.
+	// The pair is formed against the term the sentence actually PRINTS, not
+	// against `total`: this branch names the images' or the text's own size, so
+	// that is the number the budget must be readably distinct from.
 	if (images.length && imageBytes >= textBytes) {
-		return `These images total ${formatByteSize(imageBytes)}, more than the ${limit} one message can carry. Remove an image, or send them in a second message.`;
+		const [size, limit] = formatByteSizePair(imageBytes, budget);
+		return `These images total ${size}, more than the ${limit} one message can carry. Remove an image, or send them in a second message.`;
 	}
-	return `This message is ${formatByteSize(textBytes)} of text, more than the ${limit} one message can carry. Split it across two messages.`;
+	const [size, limit] = formatByteSizePair(textBytes, budget);
+	return `This message is ${size} of text, more than the ${limit} one message can carry. Split it across two messages.`;
 }

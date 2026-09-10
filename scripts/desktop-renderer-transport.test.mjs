@@ -256,8 +256,7 @@ async function loadImageBounding() {
 					.toBuffer();
 				return new Blob([bytes], { type });
 			}
-			if (this.__fill)
-				pipeline = pipeline.flatten({ background: this.__fill });
+			if (this.__fill) pipeline = pipeline.flatten({ background: this.__fill });
 			const bytes = await pipeline.png().toBuffer();
 			return new Blob([bytes], { type });
 		}
@@ -323,8 +322,25 @@ function animatedGif(frames, size = 4) {
 	// NETSCAPE2.0 application extension: loop forever. Present because it is
 	// what makes decoders report this as an ANIMATION rather than a still.
 	push(
-		0x21, 0xff, 0x0b, 0x4e, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32,
-		0x2e, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00,
+		0x21,
+		0xff,
+		0x0b,
+		0x4e,
+		0x45,
+		0x54,
+		0x53,
+		0x43,
+		0x41,
+		0x50,
+		0x45,
+		0x32,
+		0x2e,
+		0x30,
+		0x03,
+		0x01,
+		0x00,
+		0x00,
+		0x00,
 	);
 	for (let frame = 0; frame < frames; frame += 1) {
 		push(0x21, 0xf9, 0x04, 0x00, 0x0a, 0x00, 0x00, 0x00); // 100 ms delay
@@ -427,10 +443,7 @@ async function windowShotPng(width, height, margin) {
 		for (let x = 0; x < width; x += 1) {
 			const index = (y * width + x) * 4;
 			const inside =
-				x >= margin &&
-				x < width - margin &&
-				y >= margin &&
-				y < height - margin;
+				x >= margin && x < width - margin && y >= margin && y < height - margin;
 			if (!inside) continue;
 			// Detailed content so PNG cannot win the candidate race and the JPEG
 			// rung is genuinely exercised.
@@ -592,7 +605,10 @@ test("the ladder returns the smallest set BY THE MEASURE IT WAS GIVEN, not the l
 	// condition is injected through the one seam that admits it, which is what
 	// makes the invariant testable rather than merely asserted in a comment.
 	const images = [
-		{ data_b64: (await screenshotPng(1600, 1200)).toString("base64"), mime_type: "image/png" },
+		{
+			data_b64: (await screenshotPng(1600, 1200)).toString("base64"),
+			mime_type: "image/png",
+		},
 	];
 	const seen = [];
 	// Non-monotonic in raw size: the SMALLEST candidates are priced highest, so
@@ -765,7 +781,10 @@ test("an over-long paste is refused in characters, the unit the schema caps", as
 	// un-latch was keyed on 413 alone (round 1, Q-2 / R1).
 	assert.equal(messageBudgetRefusal("x".repeat(200_000), []), null);
 	const refusal = messageBudgetRefusal("x".repeat(200_001), []);
-	assert.ok(refusal, "one character past the schema cap must be refused locally");
+	assert.ok(
+		refusal,
+		"one character past the schema cap must be refused locally",
+	);
 	// Characters, because that is the ceiling that binds - naming bytes here
 	// would tell the user to shed 0 KB from a message that is only 200 KB.
 	assert.match(
@@ -808,6 +827,111 @@ test("formatByteSize never prints a KB value that should have rounded to 1 MB", 
 			!formatByteSize(bytes).startsWith("1000 "),
 			`${bytes} rendered as ${formatByteSize(bytes)}`,
 		);
+});
+
+test("a refusal never states the overflow and the budget as the same number", async () => {
+	const {
+		systemPromptBudgetRefusal,
+		messageBudgetRefusal,
+		commandBudgetRefusal,
+		forkBudgetRefusal,
+	} = await loadImageBounding();
+	// A sentence whose two numbers render identically says the prompt both fits
+	// and is refused, and leaves no way to know how much to cut. Because
+	// `formatByteSize` rounds to one decimal, EVERY system-prompt overflow in
+	// [1,100,001 ... 1,150,000] printed "is 1.1 MB, more than the 1.1 MB" - a
+	// 50,000-byte window (4.55% over) that ordinary CJK prose reaches at ~370,000
+	// characters (design round 1, D1).
+	//
+	// The payload is CJK rather than ASCII on purpose: at 3 UTF-8 bytes per
+	// character, BYTES bind well before the 1,000,000-character cap. Padded with
+	// ASCII to land on an exact byte count. An all-ASCII payload of this size
+	// would be answered by the CHARACTER branch instead, and would pass this test
+	// while proving nothing about the branch it guards.
+	const cjk = "这是一个用于测试的中文系统提示词内容片段";
+	const promptOfBytes = (target) => {
+		const body = target - 20; // the {"system_prompt":"..."} envelope
+		const chars = Math.floor((body - 250_000) / 3);
+		return (
+			cjk.repeat(Math.ceil(chars / cjk.length)).slice(0, chars) +
+			"x".repeat(body - 3 * chars)
+		);
+	};
+	// Canary the payload builder before trusting a single row below: it must land
+	// on the exact byte count AND stay under the character cap, or this test
+	// measures the wrong branch.
+	const bytesOf = (s) =>
+		new TextEncoder().encode(JSON.stringify({ system_prompt: s })).length;
+	const atBudget = promptOfBytes(1_100_000);
+	assert.equal(bytesOf(atBudget), 1_100_000);
+	assert.ok(atBudget.length < 1_000_000, "payload must not reach the char cap");
+	assert.equal(
+		systemPromptBudgetRefusal(atBudget),
+		null,
+		"exactly at budget must still save, or the sweep below starts inside the refusal",
+	);
+
+	const pairOf = (sentence) => {
+		const match = sentence.match(
+			/is ([\d.,]+ (?:[KM]B|bytes))(?: of text)?, more than the ([\d.,]+ (?:[KM]B|bytes))/,
+		);
+		assert.ok(match, `refusal did not state a size pair: ${sentence}`);
+		return match;
+	};
+	// The whole former collision window, byte by byte rather than at samples.
+	for (let over = 1; over <= 60_000; over += 7) {
+		const sentence = systemPromptBudgetRefusal(promptOfBytes(1_100_000 + over));
+		assert.ok(sentence, `${over} bytes over budget must be refused`);
+		assert.ok(
+			!sentence.includes("characters"),
+			`the BYTE branch must answer at +${over}, not the character cap`,
+		);
+		const [, size, limit] = pairOf(sentence);
+		assert.notEqual(
+			size,
+			limit,
+			`self-refuting at +${over} bytes: ${sentence}`,
+		);
+	}
+	// The 370,000-character CJK case the designer reproduced, verbatim.
+	assert.match(
+		systemPromptBudgetRefusal(cjk.repeat(18_500)),
+		/^This system prompt is 1\.11 MB, more than the 1\.10 MB one agent can carry\. Shorten it\.$/,
+	);
+	// Precision escalates one rung at a time, and exact bytes are the LAST
+	// resort. Pinned because "never equal" alone is also satisfied by jumping
+	// straight to raw bytes: dropping the 3-decimal rung left this test green
+	// while making a 1 KB overflow read as "1,101,000 bytes" instead of
+	// "1.101 MB", which is the less readable of two correct answers.
+	assert.match(
+		systemPromptBudgetRefusal(promptOfBytes(1_101_000)),
+		/^This system prompt is 1\.101 MB, more than the 1\.100 MB one agent can carry\./,
+	);
+	// One byte over, where no decimal precision can separate the two values and
+	// the sentence must fall back to exact bytes rather than shrink the window.
+	assert.match(
+		systemPromptBudgetRefusal(promptOfBytes(1_100_001)),
+		/^This system prompt is 1,100,001 bytes, more than the 1,100,000 bytes one agent can carry\./,
+	);
+	// The siblings share the mechanism on an 880,000-byte budget, where the
+	// window is only 499 bytes - narrow, but the sentence is wrong there too.
+	// A NUL escapes to six bytes, so this is legal by character count.
+	const nuls = "\u0000".repeat(146_667);
+	for (const [surface, sentence] of [
+		["message", messageBudgetRefusal(nuls, [])],
+		["command", commandBudgetRefusal("login", nuls)],
+		["fork", forkBudgetRefusal(nuls)],
+	]) {
+		assert.ok(sentence, `${surface} must refuse an over-budget payload`);
+		const [, size, limit] = pairOf(sentence);
+		assert.notEqual(size, limit, `${surface} self-refuting: ${sentence}`);
+	}
+	// Away from the boundary the sentence keeps its one-decimal shape: the extra
+	// precision is a collision remedy, not a new default.
+	assert.match(
+		systemPromptBudgetRefusal(promptOfBytes(1_400_000)),
+		/^This system prompt is 1\.4 MB, more than the 1\.1 MB /,
+	);
 });
 
 test("an oversize slash command is refused before admission, like a message", async () => {
@@ -875,8 +999,9 @@ test("a refused slash command reports RETAINED, so the composer keeps the draft"
 		"src/renderer/src/features/chat/components/slash-dispatch.ts",
 		"utf8",
 	);
-	const outcomes = [...source.matchAll(/return "(consumed|retained|not-a-command)";/g)]
-		.map((match) => match[1]);
+	const outcomes = [
+		...source.matchAll(/return "(consumed|retained|not-a-command)";/g),
+	].map((match) => match[1]);
 	assert.ok(
 		outcomes.includes("retained"),
 		"a refused command must have an outcome distinct from a consumed one",
@@ -934,7 +1059,10 @@ test("an oversize agent system prompt is refused in the editor's own words", asy
 	);
 	const refusal = systemPromptBudgetRefusal("\u0000".repeat(200_000));
 	assert.ok(refusal, "a prompt past the byte budget must be refused locally");
-	assert.match(refusal, /^This system prompt is [\d.]+ MB, more than the 1\.1 MB/);
+	assert.match(
+		refusal,
+		/^This system prompt is [\d.]+ MB, more than the 1\.1 MB/,
+	);
 	assert.ok(!refusal.includes("message"));
 	assert.ok(!refusal.includes("Remove an image"));
 	// The CHARACTER branch, which had no coverage at all until round 3: the
