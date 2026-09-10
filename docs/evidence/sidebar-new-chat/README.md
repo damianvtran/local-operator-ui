@@ -144,7 +144,11 @@ but if it is ever lost, it has to be re-taken by hand:
    `release-pod` 2 is what these frames show.
 3. Serve the renderer through the harness in `out/evidence-harness/` (gitignored)
    with `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` pointing at that backend, so the
-   proxy talks to it rather than to whatever `.env` names.
+   proxy talks to it rather than to whatever `.env` names. Let **Vite** load
+   that config (`createServer({ configFile })`) rather than importing it from
+   Node: it pulls in `desktopProxyPlugin`, whose own import of
+   `../../src/main/desktop-media` carries no file extension, which Vite
+   resolves and Node's ESM loader refuses with `ERR_MODULE_NOT_FOUND`.
 4. Drive it over CDP on a port you own, with a private `--user-data-dir`, and
    `Emulation.setFocusEmulationEnabled` on — an unfocused window throttles
    timers, which makes the reveal transition read as broken.

@@ -256,7 +256,9 @@ const main = () => {
 		let accounted = 0;
 
 		for (const [i, set] of extra.entries()) {
-			const where = set.path ? `supplementary[${i}] (${set.path})` : `supplementary[${i}]`;
+			const where = set.path
+				? `supplementary[${i}] (${set.path})`
+				: `supplementary[${i}]`;
 			if (typeof set.path !== "string" || set.path.length === 0) {
 				failures.push(`manifest.json: ${where} declares no path`);
 				continue;
@@ -265,6 +267,26 @@ const main = () => {
 			if (!existsSync(dir) || !statSync(dir).isDirectory()) {
 				failures.push(
 					`manifest.json: ${where} names a directory that is not in the tree`,
+				);
+				continue;
+			}
+			/*
+			 * `accounted` sums per ENTRY while `swept` is computed from the set of
+			 * directories, so two entries covering the same frames each pass their
+			 * own tree check and the sweep term never notices the double count -
+			 * the manifest can then claim more frames than exist. Overlap, not
+			 * just equality: a declaration nested inside another declared
+			 * directory counts its frames a second time in exactly the same way.
+			 */
+			const overlap = [...declared].find(
+				(seen) =>
+					seen === dir ||
+					dir.startsWith(`${seen}/`) ||
+					seen.startsWith(`${dir}/`),
+			);
+			if (overlap) {
+				failures.push(
+					`manifest.json: ${where} covers frames already declared by ${relative(EVIDENCE, overlap) || "."}`,
 				);
 				continue;
 			}

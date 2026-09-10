@@ -213,6 +213,31 @@ const STORIES = [
  * Returning the declarations rather than re-reading them at the write site
  * keeps one definition of what "preserved" means, so the directories kept on
  * disk and the entries written into the manifest cannot drift apart.
+ *
+ * Two rules below are load-bearing, and both were found by attacking this
+ * function rather than reading it:
+ *
+ * `manifest.json` is never swept. It is the only thing on disk that declares
+ * which directories are irreplaceable, and the sweep does not rewrite it until
+ * the whole capture finishes ~14 minutes later. Deleting it here opened a
+ * window in which the preserved frames existed but nothing accounted for them,
+ * so any interruption inside that window - Ctrl-C, the SIGINT/SIGTERM handler
+ * at the foot of this file, an ENOSPC - left them undeclared, and the NEXT
+ * sweep read no manifest, computed an empty preserve set, and destroyed them.
+ * The gate then passed over the loss because the count vanished with the
+ * frames. Keeping the old manifest until the new one replaces it closes that
+ * window: a crashed run leaves a stale-but-honest declaration, which is a
+ * state the gate can see, rather than no declaration at all.
+ *
+ * Preservation matches on the FIRST path segment because `readdirSync` yields
+ * top-level names only, while the gate accepts a `path` of any depth. A
+ * declaration of `chat-trace/hover` compared whole against `chat-trace` never
+ * matched, so the sweep deleted the frames and then carried their declaration
+ * into the new manifest - a gate failure whose obvious fix (drop the
+ * declaration) completes the loss. Keeping the whole top-level parent is the
+ * safe direction of the trade: a swept sibling under a preserved parent
+ * survives a sweep that no longer captures it, and the gate reports it as an
+ * unaccounted frame instead of silently losing an irreplaceable one.
  */
 export const clearSweptFrames = (out) => {
 	const manifestPath = join(out, "manifest.json");
@@ -220,11 +245,11 @@ export const clearSweptFrames = (out) => {
 		? (JSON.parse(readFileSync(manifestPath, "utf8")).supplementary ?? [])
 		: [];
 	const preserved = new Set(
-		supplementary.map((set) => set.path).filter(Boolean),
+		supplementary.map((set) => set.path?.split("/")[0]).filter(Boolean),
 	);
 	if (existsSync(out)) {
 		for (const entry of readdirSync(out)) {
-			if (preserved.has(entry)) continue;
+			if (entry === "manifest.json" || preserved.has(entry)) continue;
 			rmSync(join(out, entry), { recursive: true, force: true });
 		}
 	}
