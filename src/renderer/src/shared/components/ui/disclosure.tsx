@@ -59,6 +59,23 @@ export type DisclosureProps = {
 	/** Extra classes on the trigger button. Layout and hover ground only. */
 	triggerClassName?: string;
 	/**
+	 * Extra classes on the ROW BOX, applied in both the interactive and the
+	 * `disabled` branch.
+	 *
+	 * This exists for one reason: a caller that needs a different row HEIGHT
+	 * needs it on both branches, and `triggerClassName` structurally cannot
+	 * reach the `disabled` one. A dense list (the transcript's tool ledger) mixes
+	 * rows that have output to disclose with rows that have none, and if only the
+	 * first kind tightened, the column would alternate between two heights — the
+	 * exact defect the shared `ROW` constant below exists to prevent.
+	 *
+	 * Scoped override, NOT a new default: `ROW`'s `min-h-6` is the app-wide
+	 * disclosure idiom and other surfaces depend on it. Pass this only when the
+	 * row type genuinely has its own density, and pass the same value from every
+	 * call site that paints that row type.
+	 */
+	rowClassName?: string;
+	/**
 	 * Renders the summary as a static row when there is nothing to reveal —
 	 * same height, same chevron gutter, no button and no hover. A list that
 	 * mixes expandable and complete rows uses this rather than hand-building
@@ -80,6 +97,10 @@ const CONTENT_INDENT = "ml-5";
 // nothing to reveal has to be the same height and start on the same rail as
 // one that does; keeping both branches on this constant is what stops that
 // from being two numbers maintained by hand in two files.
+//
+// `min-h-6` + `py-0.5` is the COMFORTABLE default, for disclosures that sit
+// alone or in short lists. A caller painting a dense run overrides it through
+// `rowClassName` rather than editing this line — see that prop's docs.
 const ROW = "flex min-h-6 w-full items-center gap-1.5 py-0.5 text-left";
 
 export const Disclosure = ({
@@ -89,6 +110,7 @@ export const Disclosure = ({
 	chevron = "leading",
 	className,
 	triggerClassName,
+	rowClassName,
 	disabled = false,
 }: DisclosureProps) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -101,7 +123,7 @@ export const Disclosure = ({
 	if (disabled) {
 		return (
 			<div className={className}>
-				<div className={cn(ROW, "text-ink-dim")}>
+				<div className={cn(ROW, "text-ink-dim", rowClassName)}>
 					{chevron === "leading" && (
 						<span className="size-3.5 shrink-0" aria-hidden={true} />
 					)}
@@ -128,6 +150,7 @@ export const Disclosure = ({
 					ROW,
 					"cursor-pointer select-none",
 					"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
+					rowClassName,
 					triggerClassName,
 				)}
 			>

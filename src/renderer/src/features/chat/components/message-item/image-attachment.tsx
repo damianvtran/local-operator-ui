@@ -13,7 +13,21 @@ import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 type BaseImageAttachmentProps = {
 	file: string;
 	src: string;
-	onClick: (file: string) => void;
+	/**
+	 * What a click does. OMIT it for a picture with nothing to open: the frame
+	 * then renders without the button, the pointer cursor and the "Click to
+	 * open" title, rather than advertising an action that does not answer.
+	 */
+	onClick?: (file: string) => void;
+	/**
+	 * What to call this picture in `alt` and in the title.
+	 *
+	 * Defaults to the filename, which is right for a file on disk. A canonical
+	 * image has no filename — `getFileName` on a blob URL yields the blob's
+	 * UUID, so a screen reader announced a GUID — and passes a position
+	 * ("Screenshot") instead.
+	 */
+	label?: string;
 };
 
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
@@ -41,7 +55,7 @@ const getFileName = (path: string): string => {
  * image glyph.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, onClick, conversationId }) => {
+	({ file, src, onClick, conversationId, label }) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
@@ -51,7 +65,10 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			const title = getFileName(file);
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
-				onClick(file);
+				// Optional: a picture with no handler has nothing to fall back TO.
+				// It also has no file-actions menu, so this path is unreachable for
+				// one — but the call has to be guarded for the type to hold.
+				onClick?.(file);
 			};
 
 			const { setFiles, setOpenTabs, setSelectedTab } =
@@ -158,46 +175,82 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		}, [file, onClick, setCanvasOpen, setViewMode, conversationId]);
 
 		const handleClick = () => {
-			onClick(file);
+			onClick?.(file);
 		};
 
 		const handleError = () => {
 			setHasError(true);
 		};
 
-		const isLocalFile = !file.startsWith("data:") && !file.startsWith("http");
+		// `blob:` belongs in this guard beside `data:`. Both are in-memory handles
+		// with no path behind them, and a blob URL starts with neither of the other
+		// two prefixes — so without it every durable transcript image grew a file
+		// menu whose entries called `showItemInFolder`/`openFile` on a string that
+		// is not a path, and whose "copy file path" put a dead handle on the
+		// clipboard under a "copied" toast.
+		const isLocalFile =
+			!file.startsWith("data:") &&
+			!file.startsWith("blob:") &&
+			!file.startsWith("http");
 		const normalizedPath = file.startsWith("file://")
 			? file.substring(7)
 			: file;
 
+		// The picture's own name: a caller-supplied position for something with no
+		// path, the filename otherwise.
+		const name = label ?? getFileName(file);
+
 		if (hasError) {
-			return <BrokenAttachment name={getFileName(file)} />;
+			return <BrokenAttachment name={name} />;
 		}
+
+		const picture = (
+			<AttachmentFrame>
+				<img
+					className={cn(
+						// A shared height ceiling is the ledger rule. It does leave a
+						// phone-aspect capture (828x1792) as a ~111px slice, but a
+						// `min-w` floor is NOT the fix and was measured doing harm: it
+						// widens the img BOX while `object-contain` keeps letterboxing
+						// the picture inside it, so the portrait case paints 110.9px
+						// either way and only gains empty ground — while a 24x18 image
+						// gets its width forced to 120px and upscales 5x into a blur.
+						// `AttachmentFrame`'s own `min-h-16`/`min-w-16` already floors
+						// the TILE, which is the level where a small picture should be
+						// centred rather than stretched. Solving the portrait case
+						// properly means bounding by area, or relaxing `max-h` below
+						// roughly a 0.6 aspect — not a width floor on the image.
+						"max-h-[240px] max-w-full object-contain",
+						// The picture is invisible, not absent, until it decodes:
+						// the frame has already reserved the box, so nothing moves
+						// when it appears.
+						isLoaded ? "opacity-100" : "opacity-0",
+					)}
+					src={src}
+					alt={name}
+					onLoad={() => setIsLoaded(true)}
+					onError={handleError}
+				/>
+			</AttachmentFrame>
+		);
 
 		return (
 			<div className="group relative inline-block">
-				<button
-					type="button"
-					className="block max-w-full cursor-pointer"
-					onClick={handleClick}
-					title={`Click to open ${getFileName(file)}`}
-				>
-					<AttachmentFrame>
-						<img
-							className={cn(
-								"max-h-[240px] max-w-full object-contain",
-								// The picture is invisible, not absent, until it decodes:
-								// the frame has already reserved the box, so nothing moves
-								// when it appears.
-								isLoaded ? "opacity-100" : "opacity-0",
-							)}
-							src={src}
-							alt={getFileName(file)}
-							onLoad={() => setIsLoaded(true)}
-							onError={handleError}
-						/>
-					</AttachmentFrame>
-				</button>
+				{onClick ? (
+					<button
+						type="button"
+						className="block max-w-full cursor-pointer"
+						onClick={handleClick}
+						title={`Click to open ${name}`}
+					>
+						{picture}
+					</button>
+				) : (
+					// No handler, so no button: a `cursor-pointer` and a "Click to
+					// open" title on something inert is an affordance that lies, and
+					// a focus stop that answers nothing costs a keyboard user a tab.
+					<div className="block max-w-full">{picture}</div>
+				)}
 				{isLocalFile && (
 					<div
 						className="file-actions-menu invisible absolute top-1 right-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"

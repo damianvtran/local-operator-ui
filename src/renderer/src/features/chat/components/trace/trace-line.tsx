@@ -75,7 +75,27 @@ export type TraceLineProps = {
 	 * which for the actionable cold-start reasons was the instruction (QA Q6).
 	 */
 	wrap?: boolean;
+	/**
+	 * Take the dense LEDGER height instead of the comfortable default.
+	 *
+	 * A notice or a custom row sits inside the same column as the tool rows in
+	 * the canonical transcript, and a run that changed height wherever a notice
+	 * appeared would read as ragged — which is half of what the operator reported
+	 * as "extra space randomly inserted". A row's pitch should follow the COLUMN
+	 * it is in, not the component that happens to paint it, so the transcript
+	 * opts its rows in and the legacy chat surfaces keep the comfortable default.
+	 */
+	dense?: boolean;
 };
+
+/**
+ * The ledger height, shared with `ToolRow`'s `ROW_HEIGHT`.
+ *
+ * Not imported from there because the dependency would point the wrong way (a
+ * generic trace primitive would take a dependency on one specific row type);
+ * `scripts/tool-row.test.mjs` asserts the two stay equal instead.
+ */
+const DENSE_ROW = "min-h-5 py-0";
 
 const TraceRow = ({
 	icon,
@@ -152,6 +172,7 @@ export const TraceLine = ({
 	object,
 	glyph,
 	wrap,
+	dense = false,
 }: TraceLineProps) => {
 	const label = getTraceLabel(action, filePath, files, narration);
 	const verb = verbOverride ?? (running ? label.runningVerb : label.verb);
@@ -176,7 +197,14 @@ export const TraceLine = ({
 	// step does not slide sideways or change height when it finishes and gains
 	// its disclosure.
 	if (!details) {
-		return <Disclosure disabled summary={row} className={className} />;
+		return (
+			<Disclosure
+				disabled
+				summary={row}
+				className={className}
+				rowClassName={dense ? DENSE_ROW : undefined}
+			/>
+		);
 	}
 
 	return (
@@ -185,6 +213,7 @@ export const TraceLine = ({
 			chevron="leading"
 			defaultOpen={defaultOpen}
 			className={className}
+			rowClassName={dense ? DENSE_ROW : undefined}
 			// The whole row is the target, so it gets a row-shaped hover ground
 			// the way a list row does in Warp, Zed and VS Code: the negative
 			// margin lets the ground bleed 8px past the text on both sides while
