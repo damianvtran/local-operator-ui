@@ -925,6 +925,17 @@ test("a refusal never states the overflow and the budget as the same number", as
 		assert.ok(sentence, `${surface} must refuse an over-budget payload`);
 		const [, size, limit] = pairOf(sentence);
 		assert.notEqual(size, limit, `${surface} self-refuting: ${sentence}`);
+		// Pin the RUNG here too, for the reason the MB side pins it above: a
+		// wrong KB divisor can never separate these two operands, so it falls
+		// through to exact bytes - "880,093 bytes ... 880,000 bytes" - which is
+		// still distinct and still satisfies `notEqual` while being the less
+		// readable of two correct answers. Inequality alone cannot see that.
+		// The budget operand is the one term all three surfaces share.
+		assert.equal(
+			limit,
+			"880.00 KB",
+			`${surface} must separate at the 2-decimal KB rung rather than fall back to exact bytes: ${sentence}`,
+		);
 	}
 	// Away from the boundary the sentence keeps its one-decimal shape: the extra
 	// precision is a collision remedy, not a new default.
