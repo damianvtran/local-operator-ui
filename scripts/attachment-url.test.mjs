@@ -354,6 +354,39 @@ test("a requester that stays gets its bytes even when others leave (R2)", async 
 	assert.equal(blobs.live.size, 0, "and dies with it");
 });
 
+test("a departed row does not starve one still waiting on the same digest (R1/r2)", async () => {
+	reset();
+	const digest = digestFor(5);
+	// `inflight` is keyed by DIGEST, not by fetch attempt, so a mount whose own
+	// fetch already finished and deleted its record must not decrement the NEXT
+	// record for that digest — one it never joined. The trigger is ordinary: a
+	// non-2xx or transport failure resolves `null` without throwing
+	// (`desktop-media.ts` returns `{kind:"error"}`), leaving the row mounted on
+	// `BrokenAttachment` while a later row retries the same digest.
+	const stale = mountImage(durable(digest));
+	requests.pop().resolve({ kind: "error", message: "transient relay failure" });
+	await tick();
+	assert.equal(stale.value, null, "the first row is left showing BrokenAttachment");
+
+	// A second row asks for the same digest and gets a FRESH inflight record.
+	const waiting = mountImage(durable(digest));
+	assert.equal(requests.length, 1, "the retry is a new request, not a join");
+
+	// The first row scrolls out of the 60-row window. Its cleanup must not
+	// touch the record it never incremented.
+	stale.unmount();
+	settleLast();
+	await tick();
+
+	assert.ok(
+		waiting.value?.startsWith("blob:"),
+		"the row still on screen is handed the bytes that arrived for it",
+	);
+	assert.equal(blobs.live.size, 1, "and they are not revoked out from under it");
+	waiting.unmount();
+	assert.equal(blobs.live.size, 0, "the last holder leaving still revokes");
+});
+
 test("an inline image never touches the cache or the network", () => {
 	reset();
 	const row = mountImage({

@@ -13,10 +13,19 @@ Two capture surfaces, and the difference matters when reading them:
   the right moment, an `mcp__*` row needs a server connected, a narrow row needs
   a resize. Captured over CDP with `scripts/check-evidence.mjs`'s own
   `assertFramePaints` guard.
-- **`real-conversation-tool-rows`** is the **real Electron app** — the app's own
-  compiled main and preload, its real `window.api` IPC bridge, its real
-  `BrowserWindow` — showing one of the operator's actual conversations served by
-  a real `local-operator serve` backend.
+- **`real-conversation-tool-rows`** renders the **shipped `applyHistoryPage`
+  reducer and the shipped `CanonicalTranscript`** over real `/history` pages
+  from one of the operator's actual conversations, served by a real
+  `local-operator serve` backend. Electron is not required to render this
+  surface: the desktop API answers a plain bearer request, so a vite harness
+  mounting the production components against the real route exercises the same
+  code path the app does. Two things to reproduce it (both cost a round when
+  missed): page the history OLDEST-FIRST in small pages (20 entries), because
+  the blank-summary condition only arises when an assistant entry and its tool
+  result land on different pages; and if the harness root sits outside
+  `src/renderer/src`, name an explicit Tailwind `@source` at it, or every role
+  utility (`text-mono-sm`, `min-h-5`) compiles as ABSENT and the rows measure
+  24px instead of 20px — reading as the pitch fix failing when it has not.
 
 ## What each frame shows
 
@@ -27,40 +36,50 @@ Two capture surfaces, and the difference matters when reading them:
 | [`narrow`](narrow/) | The same rows at 420px. The shed ladder is visible: the `edit` row's `+42 -11` counters are **gone**, the summaries truncate with an ellipsis, and the outcome glyph and duration survive — they are the last thing to go, not the first. |
 | [`working`](working/) | The working line under a running tool row. The row states the ARGUMENTS and that call's own execution time; the line states the KIND of work and the phase age. They do not restate each other. |
 | [`working-labels`](working-labels/) | Every label the line can carry — `thinking`, `responding`, `composing a call`, the model's own sanitised intent, and `running 3 tools` for a batch. No trailing ellipsis anywhere: the clock is what says it is ongoing. |
-| [`real-conversation-tool-rows`](real-conversation-tool-rows/) | The real app, real backend, real conversation: 41 real tool rows including a live turn caught mid-flight (a running `bash` row with no outcome glyph, and the working line reading "Verifying nexus MR 69"). **STALE — see the warning below.** |
-
-> ⚠️ **`real-conversation-tool-rows` predates the D1 fix and still shows the
-> defect.** The frame was captured at `2e83b46f9`, where a durable tool row
-> whose arguments arrived on another page settled with a blank object column;
-> the run of nine identical unlabelled `bash` rows in it is that bug. The fix
-> is in `transcript-reducer.ts` (session-wide `argsByCall`) and a renderer-only
-> fix cannot retroactively repair a captured PNG, so the picture disagrees with
-> the build until the live harness can be stood up again.
->
-> What replaces it as evidence, until then, is a measurement rather than a
-> picture — and on this particular claim the measurement is the stronger of the
-> two, because it covers six conversations instead of one screenful. The
-> shipped reducer was replayed page-by-page over six real transcripts and the
-> blank-summary count compared against the reviewed head:
->
-> | Session | Tool rows | Blank at `2e83b46f9` | Blank now |
-> | --- | --- | --- | --- |
-> | `c53d69f9033b` | 418 | 14 | 0 |
-> | `aa7355037e1f` | 402 | 10 | 0 |
-> | `8b5a3a71e677` | 293 | 8 | 0 |
-> | `37f60b478edd` | 293 | 5 | 0 |
-> | `1443d08ba7c9` | 238 | 7 | 0 |
-> | `83fdf0935d46` | 222 | 7 | 0 |
-> | **Total** | **1,866** | **51** | **0** |
->
-> Both halves contribute: `argsByCall` recovers the arguments for rows whose
-> assistant entry fell on another page, and the two rows left with nothing to
-> say fall back to the output's first line rather than rendering empty.
+| [`real-conversation-tool-rows`](real-conversation-tool-rows/) | The shipped reducer and transcript over a real backend and a real conversation, paged oldest-first in 20-entry pages: **38 real tool rows, 0 blank object columns**, every row on a 20px pitch, 38 `sr-only` outcome labels. Every row carries its own arguments — the defect this replaced showed a run of unlabelled `bash`/`wait`/`task` rows. |
 | [`spacing-uniformity`](spacing-uniformity/) | The three runs the operator screenshotted when he called the spacing "much too wide" and "not very uniform", reproduced as a regression surface: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch. |
 | [`turn-boundary`](turn-boundary/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. |
 
+> **How the headline frame was proven to be a real reading.** A frame showing
+> no blanks is worthless if the instrument could not have shown blanks, so the
+> same harness was run with the reducer deliberately starved, and the numbers
+> come from a probe that locates the summary column STRUCTURALLY (the `flex-1`
+> middle column, `sr-only` excluded) rather than by position — a positional
+> probe scores a genuinely blank row as populated when the `sr-only` outcome
+> slides into that slot.
+>
+> | control | what is starved | result |
+> | --- | --- | --- |
+> | *(none)* | nothing | **38 rows, 0 blank** — real arguments on every row |
+> | `stripargs` | `tool_calls` only | **38 rows, 0 blank** — the output fallback carries it alone |
+> | `stripboth` | `tool_calls` **and** output | **53 of 53 blank** — the defect reproduced exactly |
+>
+> The middle row is the evidence that both halves of the fix contribute
+> independently, which the aggregate zero cannot show; the last row reproduces
+> the operator's original complaint from the CURRENT head, so the probe
+> demonstrably detects the bug it reports absent.
+
+The reducer measurement that stood in for this frame while it could not be
+captured still holds, and it remains the broader evidence — one screenful
+against six conversations. The shipped reducer replayed page-by-page over six
+real transcripts, blank-summary count against the pre-fix head:
+
+| Session | Tool rows | Blank at `2e83b46f9` | Blank now |
+| --- | --- | --- | --- |
+| `c53d69f9033b` | 418 | 14 | 0 |
+| `aa7355037e1f` | 402 | 10 | 0 |
+| `8b5a3a71e677` | 293 | 8 | 0 |
+| `37f60b478edd` | 293 | 5 | 0 |
+| `1443d08ba7c9` | 238 | 7 | 0 |
+| `83fdf0935d46` | 222 | 7 | 0 |
+| **Total** | **1,866** | **51** | **0** |
+
+Both halves contribute: `argsByCall` recovers the arguments for rows whose
+assistant entry fell on another page, and the rows left with nothing to say
+fall back to the output's first line rather than rendering empty.
+
 Both brand themes for each. The 12-theme sweep was **not** regenerated — see
-`manifest.json`'s `partialCapture` — but the five story ids are registered in
+`manifest.json`'s `partialCapture` — but the seven story ids are registered in
 `STORIES` in `scripts/capture-evidence.mjs`, so the next full recapture covers
 them.
 

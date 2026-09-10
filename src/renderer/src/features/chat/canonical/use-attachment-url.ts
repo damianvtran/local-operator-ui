@@ -194,7 +194,18 @@ export function useAttachmentUrl(
 		// entry was revoked between the render-phase peek and this effect, and
 		// there it drops a URL that is already dead rather than painting it.
 		setResolved(null);
+		// Tracks whether this mount is still party to the fetch it started.
+		// `inflight` is keyed by DIGEST, not by attempt, so once our own attempt
+		// settles and deletes its record, a later row retrying the same digest
+		// owns a DIFFERENT record. Abandoning unconditionally would decrement
+		// that stranger's count — one we never incremented — and the resolver
+		// would then discard bytes out from under a row still on screen. The
+		// path is ordinary, not exotic: `desktopMedia` answers any non-2xx or
+		// transport failure with `{kind:"error"}`, which resolves `null` without
+		// throwing and leaves the row mounted on `BrokenAttachment`.
+		let joined = true;
 		void fetchAttachment(sessionId, digest).then((url) => {
+			joined = false;
 			if (!live || !url) return;
 			// Retain AFTER the fetch, so the count reflects holders rather than
 			// requests: a row unmounted mid-flight never retained and must not
@@ -206,8 +217,9 @@ export function useAttachmentUrl(
 			// Two different books to close, and both are needed. `release` pays
 			// back a retain this mount made (a no-op if the fetch never landed),
 			// while `abandonFetch` drops this mount's claim on a result still in
-			// flight so the resolver can discard bytes nobody is waiting for.
-			abandonFetch(digest);
+			// flight so the resolver can discard bytes nobody is waiting for —
+			// but only while that claim is still outstanding.
+			if (joined) abandonFetch(digest);
 			release(digest);
 		};
 	}, [image.attachment, inline, sessionId]);

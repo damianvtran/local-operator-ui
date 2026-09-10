@@ -208,13 +208,19 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			<AttachmentFrame>
 				<img
 					className={cn(
+						// A shared height ceiling is the ledger rule. It does leave a
+						// phone-aspect capture (828x1792) as a ~111px slice, but a
+						// `min-w` floor is NOT the fix and was measured doing harm: it
+						// widens the img BOX while `object-contain` keeps letterboxing
+						// the picture inside it, so the portrait case paints 110.9px
+						// either way and only gains empty ground — while a 24x18 image
+						// gets its width forced to 120px and upscales 5x into a blur.
+						// `AttachmentFrame`'s own `min-h-16`/`min-w-16` already floors
+						// the TILE, which is the level where a small picture should be
+						// centred rather than stretched. Solving the portrait case
+						// properly means bounding by area, or relaxing `max-h` below
+						// roughly a 0.6 aspect — not a width floor on the image.
 						"max-h-[240px] max-w-full object-contain",
-						// A shared height ceiling is the ledger rule, but at a phone
-						// aspect (828x1792) it alone yields a 111px-wide slice in which
-						// nothing is readable. A width floor lets a portrait capture
-						// grow back toward the same box landscape images get, and
-						// `object-contain` still forbids any stretching.
-						"min-w-[7.5rem]",
 						// The picture is invisible, not absent, until it decodes:
 						// the frame has already reserved the box, so nothing moves
 						// when it appears.

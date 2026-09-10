@@ -70,10 +70,20 @@ export type ToolRowOutcome = "running" | "success" | "error" | "interrupted";
 /**
  * The ledger row's own height, overriding the shared disclosure default.
  *
- * `Disclosure`'s `ROW` is `min-h-6 py-0.5` — 28px — which is right for a
- * disclosure sitting alone but wrong for a run of forty. The text occupies
- * 17.4px, so the default spends 10.6px per row on chrome, and over a
- * transcript that is the difference between 32 and 44 rows on a 900px screen.
+ * `Disclosure`'s `ROW` is `min-h-6 py-0.5`, which is right for a disclosure
+ * sitting alone but wrong for a run of forty. The text occupies 17.4px, so the
+ * default spends 6.6px per row on chrome, and over a transcript that is the
+ * difference between 32 and 44 rows on a 900px screen.
+ *
+ * The 28px pitch this replaced had TWO contributors, and the distinction
+ * matters because they live in different files. The box is `border-box`, so
+ * `min-h-6` (24px) dominates `py-0.5` rather than adding to it and the old row
+ * measured 24px, not 28px; the other 4px was the old `trace` gap (`mt-1`) that
+ * `transcript-rows.ts` puts BETWEEN adjacent ledger rows. The fix removed both
+ * — row 24→20 here, trace gap 4→0 there — and that second half is why
+ * uniformity is structural: with the gap at zero the row height IS the pitch,
+ * so there is no gap arithmetic left to drift. A reader chasing the spacing
+ * model needs `transcript-rows.ts` as well as this constant.
  * The TUI reference the operator sent measures ~20.4px per line, and the
  * designer rendered the same four rows at both pitches: at 28px they float as
  * separate items, at 20px they cohere into a block the eye runs down. Density
