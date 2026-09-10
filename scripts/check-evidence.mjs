@@ -235,18 +235,68 @@ const main = () => {
 		 * set is current - describe frames it never took.
 		 *
 		 * So each such set declares itself in `supplementary` with its own
-		 * provenance, and the total is checked against the sum. A directory
-		 * that appears on disk without saying where it came from still fails,
-		 * which is the property this check exists for.
+		 * provenance, and each declaration is checked AGAINST THE TREE rather
+		 * than only against the total. A bare sum is not enough: two wrong
+		 * terms cancel, so `{frames:436, supplementary:[{path:"nowhere",
+		 * frames:40}]}` sums to the same 476 as the honest manifest and would
+		 * pass. Each set must therefore name a directory that exists, hold
+		 * exactly the frames it claims, and carry its provenance; and the
+		 * sweep's own count is checked against the frames left OUTSIDE every
+		 * declared set, so neither term can absorb the other's error.
 		 */
 		const extra = manifest.supplementary ?? [];
-		const expected =
-			manifest.frames + extra.reduce((sum, set) => sum + set.frames, 0);
-		if (expected !== files.length) {
+
+		/*
+		 * `source`/`why`/`capturedAt` are what make a set auditable by a
+		 * reader who was not here - without them a declaration is just a
+		 * number that buys silence from the gate.
+		 */
+		const PROVENANCE = ["source", "why", "capturedAt"];
+		const declared = new Set();
+		let accounted = 0;
+
+		for (const [i, set] of extra.entries()) {
+			const where = set.path ? `supplementary[${i}] (${set.path})` : `supplementary[${i}]`;
+			if (typeof set.path !== "string" || set.path.length === 0) {
+				failures.push(`manifest.json: ${where} declares no path`);
+				continue;
+			}
+			const dir = join(EVIDENCE, set.path);
+			if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+				failures.push(
+					`manifest.json: ${where} names a directory that is not in the tree`,
+				);
+				continue;
+			}
+			const missing = PROVENANCE.filter((field) => !set[field]);
+			if (missing.length > 0) {
+				failures.push(
+					`manifest.json: ${where} does not say where it came from (missing ${missing.join(", ")})`,
+				);
+			}
+			const onDisk = frames(dir).length;
+			if (onDisk !== set.frames) {
+				failures.push(
+					`manifest.json: ${where} claims ${set.frames} frames; ${onDisk} are on disk`,
+				);
+			}
+			declared.add(dir);
+			accounted += onDisk;
+		}
+
+		/*
+		 * The sweep's count answers for everything no supplementary set
+		 * claimed, so an undeclared directory appearing on disk still fails -
+		 * the property this check exists for.
+		 */
+		const swept = files.filter(
+			(file) => ![...declared].some((dir) => file.startsWith(`${dir}/`)),
+		).length;
+		if (manifest.frames !== swept) {
 			const parts = [`${manifest.frames} from the sweep`];
 			for (const set of extra) parts.push(`${set.frames} from ${set.path}`);
 			failures.push(
-				`manifest.json accounts for ${expected} frames (${parts.join(", ")}); ${files.length} are on disk`,
+				`manifest.json accounts for ${manifest.frames + accounted} frames (${parts.join(", ")}); ${files.length} are on disk, ${swept} of them outside any declared set`,
 			);
 		}
 	}

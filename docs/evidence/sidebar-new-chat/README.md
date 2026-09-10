@@ -53,6 +53,7 @@ unrelated to its subject.
 | --- | --- | --- |
 | Panel at rest | [`before-sidebar-rest`](before-sidebar-rest/localOperatorDark.webp) — 16px `Plus` in the header; nothing named in the All chats region | [`after-sidebar-rest`](after-sidebar-rest/localOperatorDark.webp) — header carries only the title; a full-width **New chat** row sits below All chats, above Active chats |
 | Entity row hovered | [`before-entity-row-hover`](before-entity-row-hover/localOperatorDark.webp) — hover is a bare colour step; nothing says the row starts a chat | [`after-entity-row-hover`](after-entity-row-hover/localOperatorDark.webp) — the chat glyph appears in its reserved slot |
+| Entity row hovered, two-digit count | *(no before — the glyph did not exist)* | [`after-entity-row-hover-multidigit`](after-entity-row-hover-multidigit/localOperatorDark.webp) — hover on `reviewer` (count 12); the glyph holds the same column as on the one-digit rows |
 | Entity row focused | [`before-entity-row-focus`](before-entity-row-focus/localOperatorDark.webp) | [`after-entity-row-focus`](after-entity-row-focus/localOperatorDark.webp) — `group-focus-within` reveals the same glyph, accent outline ring intact |
 | All chats, flat list | [`before-all-chats-flat`](before-all-chats-flat/localOperatorDark.webp) | [`after-all-chats-flat`](after-all-chats-flat/localOperatorDark.webp) — the New chat row holds the same place when the split is replaced by the flat list |
 | After staging a new chat | [`before-new-chat-staged`](before-new-chat-staged/localOperatorDark.webp) — via the header `Plus`, the only control that existed | [`after-new-chat-staged`](after-new-chat-staged/localOperatorDark.webp) — via the New chat row, which then marks itself current |
@@ -120,4 +121,99 @@ Keyboard traversal still passes through the new row rather than stopping at it:
 
 ```
 TRAVERSAL {"total":16,"newChatIndex":11,"before":"All chats7","after":"Active chats2"}
+```
+
+## Re-capturing this set
+
+**These frames cannot be re-derived by `pnpm capture-evidence`.** The sidebar has
+no Storybook story, so the sweep's `STORIES` list contains nothing that renders
+it. `capture-evidence.mjs` preserves any directory declared in
+`manifest.json`'s `supplementary` block across its wipe and carries the block
+through into the manifest it writes, so a routine sweep leaves this set alone —
+but if it is ever lost, it has to be re-taken by hand:
+
+1. Start an **isolated** backend on a port you own, with an isolated config dir
+   so nothing lands in the operator's real store:
+   `LOCAL_OPERATOR_CONFIG_DIR=<scratch>/config LOCAL_OPERATOR_HOME=<scratch>/home
+   LOCAL_OPERATOR_DESKTOP_TOKEN=<random> LOCAL_OPERATOR_DESKTOP_ORIGINS=http://localhost:<vite-port>
+   local-operator serve --host 127.0.0.1 --port <backend-port>`.
+2. Seed it: 6 agents, 2 teams, and sessions bound so that **one row has a
+   two-digit count, one a single digit, and one none at all** — that spread is
+   what makes the glyph's fixed column falsifiable (see "The glyph holds one
+   column" below). 24 sessions across `reviewer` 12 / `coder` 7 / `designer` 3 /
+   `release-pod` 2 is what these frames show.
+3. Serve the renderer through the harness in `out/evidence-harness/` (gitignored)
+   with `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` pointing at that backend, so the
+   proxy talks to it rather than to whatever `.env` names.
+4. Drive it over CDP on a port you own, with a private `--user-data-dir`, and
+   `Emulation.setFocusEmulationEnabled` on — an unfocused window throttles
+   timers, which makes the reveal transition read as broken.
+
+Three pieces of persisted state must be cleared or seeded on every load, or the
+frames lie:
+
+- `canonical-sessions-storage` — `activeDraftKey` and `drafts` are persisted, so
+  a staging click in an earlier run rehydrates into the next load and the
+  "at rest" frame comes back already marked `aria-current="page"`. **This is
+  exactly how the previous light rest frame was captured showing `accent-wash`
+  and ended up byte-identical to the staged frame.** A rest frame is only at
+  rest if the store it reads is also at rest.
+- `onboarding-storage` — seed `isModalComplete`/`isTourComplete`, or the
+  first-run "Connect a provider" wizard covers the sidebar and swallows the
+  pointer events, which silently produces hover frames identical to rest.
+- `ui-preferences-storage` — carries the theme.
+
+Assert before committing: no two frames in the set share a SHA-256. Four of the
+defects above were caught by that check alone.
+
+## The glyph holds one column
+
+The revealed glyph used to sit wherever `flex-1` left it after the count, so its
+x moved with the count's digit count — 216.0 on a row with no count, 209.0 on a
+one-digit row, 202.0 on a two-digit row, a 14px spread that made the affordance
+hop horizontally as the pointer ran down the list. The count now occupies a
+reserved `min-w-4 text-right` box, so the glyph is pinned:
+
+```
+reviewer  count "12"  glyphX 420
+coder     count "7"   glyphX 420
+manager   count ""    glyphX 420
+```
+
+`after-entity-row-hover-multidigit` is the frame that can falsify this: every
+other hovered frame in the set is of `coder`, a one-digit row, and a set made
+only of those structurally cannot show the column moving.
+
+## Hierarchy between the two icon controls
+
+On a hovered row the revealed glyph and the always-visible `...` sit 2px apart
+at the same size, so the one that performs the row's action must be the stronger
+mark. Measured against the hovered row's own ground:
+
+| | glyph (`ink`) | `...` (`ink-dim` → `ink-muted` on hover) |
+| --- | --- | --- |
+| localOperatorDark | **13.48** | 4.61 |
+| localOperatorLight | **16.48** | 5.58 |
+
+Previously the glyph was `ink-muted` at 7.63/8.36 against a full-`ink` `...` at
+15.65/16.42 — the secondary control was twice the contrast of the primary one.
+
+## The reveal in and out
+
+`duration-base` (180ms) is the resting value and therefore the fade-OUT, with
+`duration-fast` (120ms) applied on hover as the fade-IN: quick to appear,
+gentler to leave, which is what stops it reading as a pop. Measured live on a
+focused page:
+
+```
+rest duration        0.18s
+hover duration       0.12s
+opacity  +40ms in    0.732437
+opacity  settled in  1
+opacity  +60ms out   0.26833
+opacity  settled out 0
+
+reduced-motion media true
+reduced rest duration 1e-05s   (capped by styles/index.css, not disabled)
+reduced +30ms         1        (reaches the revealed state; never stranded on 0)
 ```
