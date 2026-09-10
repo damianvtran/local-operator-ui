@@ -98,6 +98,16 @@ const STORIES = [
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
+
+	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
+	   to reach live — an interrupted call needs a turn stopped at the right
+	   moment, an MCP name needs a server connected — and captured NARROW as
+	   well as wide, because the shed order under pressure is half the design. */
+	["chat-tool-rows--states", 1280, 900],
+	["chat-tool-rows--names-and-fallbacks", 1280, 900],
+	["chat-tool-rows--narrow", 1280, 900],
+	["chat-tool-rows--working", 1280, 900],
+	["chat-tool-rows--working-labels", 1280, 900],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */

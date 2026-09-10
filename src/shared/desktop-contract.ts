@@ -641,9 +641,10 @@ export type DesktopStreamSubscription = {
 };
 
 /**
- * Legacy media relay vocabulary (speech, transcription, agent import). The
- * schema and endpoint map live in main (`desktop-media.ts`); this is the
- * renderer-facing type so preload and callers agree on the shape.
+ * Media relay vocabulary (speech, transcription, agent import, and canonical
+ * session attachments). The schema and endpoint map live in main
+ * (`desktop-media.ts`); this is the renderer-facing type so preload and callers
+ * agree on the shape.
  */
 export type DesktopMediaRequest =
 	| { op: "speech.create"; request: Record<string, unknown> }
@@ -655,7 +656,12 @@ export type DesktopMediaRequest =
 			fields: Record<string, string>;
 	  }
 	| { op: "agent.import"; fileName: string }
-	| { op: "agent.export"; agentId: string };
+	| { op: "agent.export"; agentId: string }
+	// A durable transcript row references an image by content digest with the
+	// payload stripped, and the JSON transport's envelope has nowhere to put
+	// bytes — which is what puts a screenshot fetch on this relay rather than
+	// beside the other session operations.
+	| { op: "sessions.attachment"; sessionId: string; digest: string };
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }

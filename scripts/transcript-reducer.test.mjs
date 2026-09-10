@@ -472,3 +472,232 @@ test("only error and interrupted outcomes are synthesized", () => {
 		);
 	}
 });
+
+/* ---------------------------------------------------------------------- *
+ * Images on the wire.
+ *
+ * Two shapes, because two producers dump differently: a LIVE event is dumped
+ * whole and carries `type` plus the full base64, while a DURABLE row is dumped
+ * with `exclude_defaults=True` — where `type` IS the pydantic default, so it is
+ * absent — and has its payload externalised to the attachment store above 1 KiB
+ * of base64. The fixtures below are the REAL shapes, taken from
+ * ~/.local-operator/sessions/*\/transcript.jsonl rather than invented.
+ * ---------------------------------------------------------------------- */
+
+const DIGEST = "7310e3e79e5eafd8fb21f1dcfed39c17";
+/** A durable image block exactly as it appears on disk: no `type`, no `data`. */
+const durableImage = { attachment: DIGEST, mime_type: "image/png" };
+/** A live image block, dumped without exclude_defaults. */
+const liveImage = { type: "image", data: "aGVsbG8=", mime_type: "image/png" };
+
+test("a durable image row is recognised without a `type` discriminant", () => {
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u-img",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "user",
+					content: [{ text: "look at this" }, durableImage],
+				},
+			},
+			{
+				id: "t-img",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-shot",
+					tool_name: "browser",
+					content: [durableImage],
+					provider_payload: { duration_s: 1.5, details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const user = state.records.find((r) => r.kind === "user");
+	const tool = state.records.find((r) => r.kind === "tool");
+	// The old predicate tested `type === "image"` and returned 0 for both of
+	// these, which is why "N images attached" never appeared after a reload.
+	assert.equal(user.images.length, 1);
+	assert.equal(user.images[0].attachment, DIGEST);
+	assert.equal(user.images[0].data, null);
+	assert.equal(user.images[0].mimeType, "image/png");
+	// A tool row carries them in `content` the same way, which is the reload
+	// half of a browser screenshot.
+	assert.equal(tool.images.length, 1);
+	assert.equal(tool.images[0].attachment, DIGEST);
+	// And the image block must not leak into the row's text.
+	assert.equal(user.text, "look at this");
+});
+
+test("a live tool result carries its screenshot bytes onto the row", () => {
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-shot",
+			tool_name: "browser",
+			args: { action: "screenshot" },
+		},
+		1,
+	);
+	let tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.images.length, 0);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-shot",
+			tool_name: "browser",
+			result: {
+				content: [{ type: "text", text: "captured" }, liveImage],
+				details: {},
+			},
+			is_error: false,
+			duration_s: 2.9,
+		},
+		2,
+	);
+	tool = state.records.find((r) => r.kind === "tool");
+	// This is the operator's actual complaint, and it needs no backend at all:
+	// the bytes were already on the wire and the reducer dropped them.
+	assert.equal(tool.images.length, 1);
+	assert.equal(tool.images[0].data, "aGVsbG8=");
+	assert.equal(tool.images[0].attachment, null);
+	assert.equal(tool.output, "captured");
+});
+
+test("a durable row replacing a live one keeps the bytes it already had", () => {
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-shot",
+			tool_name: "browser",
+			result: { content: [liveImage], details: {} },
+			duration_s: 2.9,
+		},
+		1,
+	);
+	const live = state.records.find((r) => r.kind === "tool");
+	assert.equal(live.images[0].data, "aGVsbG8=");
+	// The same call, now durable: a digest and no payload.
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "t-durable",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-shot",
+					tool_name: "browser",
+					content: [durableImage],
+					provider_payload: { duration_s: 2.9, details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const merged = state.records.filter((r) => r.kind === "tool");
+	assert.equal(merged.length, 1, "the durable row replaces, never duplicates");
+	// The live bytes win over the durable digest: they are already decoded in
+	// this renderer, so preferring them spares the row the reader is looking at
+	// a round trip at the exact moment the turn settles.
+	assert.equal(merged[0].images.length, 1);
+	assert.equal(merged[0].images[0].data, "aGVsbG8=");
+});
+
+test("an unchanged row keeps its record identity, images and all", () => {
+	const page = {
+		entries: [
+			{
+				id: "u-img",
+				ts: 1,
+				type: "message",
+				payload: { role: "user", content: [{ text: "hi" }, durableImage] },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const first = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	const second = applyHistoryPage(first, page);
+	// The identity gate is load-bearing on a surface that repaints per token:
+	// `shallowEqual` compares by reference, so a freshly built images array
+	// would report every replayed row as changed and re-render every image in
+	// the transcript on every delta.
+	assert.equal(second, first, "state identity");
+	assert.equal(second.records[0], first.records[0], "record identity");
+	assert.equal(
+		second.records[0].images,
+		first.records[0].images,
+		"images array identity",
+	);
+});
+
+test("diff counters ride the row, and only as positive integers", () => {
+	const entry = (details) => ({
+		id: `t-${JSON.stringify(details)}`,
+		ts: 1,
+		type: "message",
+		payload: {
+			role: "tool",
+			tool_call_id: `c-${JSON.stringify(details)}`,
+			tool_name: "edit",
+			content: [{ text: "done", type: "text" }],
+			provider_payload: { duration_s: 0.1, details },
+		},
+	});
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry({ added: 42, removed: 11 }),
+			// Anything that is not a positive integer is unknown, and unknown
+			// renders nothing — `+0` claims that nothing was added, which is a
+			// different statement.
+			entry({ added: 0, removed: -3 }),
+			entry({ added: true, removed: "7" }),
+			entry({}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const counts = state.records
+		.filter((r) => r.kind === "tool")
+		.map((r) => [r.added, r.removed]);
+	assert.deepEqual(counts, [
+		[42, 11],
+		[0, 0],
+		[0, 0],
+		[0, 0],
+	]);
+});
+
+test("a call still running when the turn aborts is interrupted, not failed", () => {
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-long",
+			tool_name: "bash",
+			args: { command: "sleep 600" },
+		},
+		1,
+	);
+	state = applyEvent(state, { type: "agent_end", aborted: true }, 2);
+	const tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.phase, "done");
+	// A call the USER stopped did not fail. Reporting an interrupt as an error
+	// blames the agent for the user's own decision, which is why the TUI draws
+	// it with a third glyph rather than the cross.
+	assert.equal(tool.stopped, true);
+	assert.equal(tool.isError, false);
+});

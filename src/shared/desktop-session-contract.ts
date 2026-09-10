@@ -123,6 +123,32 @@ export type CanonicalFrontendSync = {
 	snapshot: CanonicalFrontendState;
 	live_cursor: string | null;
 };
+/**
+ * One block of a canonical message's `content`, on either wire shape.
+ *
+ * The two shapes differ because the two producers dump differently. A LIVE
+ * event is `model_dump()`ed whole, so it carries `type` and the full base64. A
+ * DURABLE row is dumped with `exclude_defaults=True`, and `type` IS the pydantic
+ * default on both content models, so the discriminant is ABSENT from every row
+ * on disk; on top of that the transcript externalises any image over 1 KiB of
+ * base64 into `<config>/attachments/<digest>.bin` and replaces `data` with
+ * `attachment`.
+ *
+ * So a durable image is `{attachment, mime_type}` or (under the floor)
+ * `{data}`, a durable text block is `{text}`, and nothing on the durable path
+ * can be identified by `type`. Modelled here rather than cast at the reducer so
+ * the next reader of this wire does not have to rediscover it.
+ */
+export type CanonicalContentBlock = {
+	/** Absent on durable rows: the encoder drops pydantic defaults. */
+	type?: "text" | "image";
+	text?: string;
+	/** Inline base64. Live events always; durable rows only under 1 KiB. */
+	data?: string;
+	/** Attachment-store digest. Durable rows over 1 KiB. */
+	attachment?: string;
+	mime_type?: string;
+};
 export type DesktopHistoryPage = {
 	entries: Array<{
 		id: string;

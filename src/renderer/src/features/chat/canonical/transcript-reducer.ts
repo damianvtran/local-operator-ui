@@ -32,6 +32,28 @@ import type {
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 
+/**
+ * One image on a transcript row.
+ *
+ * Two sources, one shape. A LIVE event carries the bytes inline, because the
+ * owner dumps events without `exclude_defaults` — so `type` and `data` are both
+ * present. A DURABLE row carries only a content-addressed digest, because the
+ * transcript externalises every image over 1 KiB of base64 into
+ * `<config>/attachments/<digest>.bin` and strips `data` from the row. The view
+ * must handle both without knowing which it came from, so exactly one of `data`
+ * and `attachment` is populated and the resolver decides how to turn it into a
+ * URL.
+ */
+export type TranscriptImage = {
+	/** Stable key: `${recordId}:${index}`, indexed among IMAGE blocks only. */
+	id: string;
+	/** Base64 payload when the event carried it inline. Live path. */
+	data: string | null;
+	/** Attachment-store digest when the row referenced it. Durable path. */
+	attachment: string | null;
+	mimeType: string;
+};
+
 /** The § 7 tier a record renders at, decided once here rather than per view. */
 export type TranscriptRecord =
 	| {
@@ -39,7 +61,7 @@ export type TranscriptRecord =
 			id: string;
 			ts: number;
 			text: string;
-			images: number;
+			images: TranscriptImage[];
 	  }
 	| {
 			kind: "assistant";
@@ -69,6 +91,26 @@ export type TranscriptRecord =
 			output: string | null;
 			isError: boolean;
 			durationS: number | null;
+			/**
+			 * Screenshots the call returned. This is what makes a browser-tool
+			 * capture visible: the bytes are already on the wire in
+			 * `tool_execution_end`, and until now the reducer dropped them.
+			 */
+			images: TranscriptImage[];
+			/** Lines added, from the call's own `details`. Zero means unknown. */
+			added: number;
+			/** Lines removed, from the call's own `details`. Zero means unknown. */
+			removed: number;
+			/**
+			 * The call was still running when the turn was aborted, so it never
+			 * reported an outcome of its own.
+			 *
+			 * Distinct from `isError` on purpose, and the TUI draws it with a third
+			 * glyph for the same reason: a call the USER stopped did not fail, and
+			 * reporting a deliberate interrupt as a failure blames the agent for the
+			 * user's own decision.
+			 */
+			stopped: boolean;
 	  }
 	| {
 			kind: "notice";
@@ -115,23 +157,136 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	hasMore: false,
 };
 
-type ContentBlock = { type?: string; text?: string; data?: string };
+type ContentBlock = {
+	/** Absent on durable rows: the encoder drops pydantic defaults. */
+	type?: string;
+	text?: string;
+	/** Inline base64. Live events always; durable rows only under 1 KiB. */
+	data?: string;
+	/** Attachment-store digest. Durable rows over 1 KiB. */
+	attachment?: string;
+	mime_type?: string;
+};
+
+/**
+ * Whether a content block is an image, on EITHER wire shape.
+ *
+ * `type` cannot be the discriminant. The transcript encoder dumps with
+ * `exclude_defaults=True` and `type` IS the pydantic default on both content
+ * models, so it is absent from every durable row — the encoder's own comment
+ * (`session/transcript.py:215-218`) says to identify an image by `data`, never
+ * by `type`. A durable image block is therefore one of exactly
+ * `{attachment, mime_type}` (the normal case, over the 1 KiB externalisation
+ * floor) or `{data}` (under it), while a durable TEXT block is `{text}`.
+ *
+ * The old predicate tested `type === "image"` alone, which is true only of a
+ * LIVE event — the owner dumps events without `exclude_defaults`. So
+ * "N images attached" appeared while a turn was in flight and never once after
+ * a reload. Verified against real transcripts on this machine: 6398 tool-role
+ * and 192 user-role blocks whose keys are exactly `(attachment, mime_type)`,
+ * with no `type` on any of them.
+ */
+function isImageBlock(block: ContentBlock | undefined): boolean {
+	if (!block) return false;
+	if (block.type === "image") return true;
+	if (typeof block.attachment === "string" && block.attachment) return true;
+	// A `data` key with no `type` is the sub-floor durable image. A text block
+	// never carries `data`, so this cannot swallow one.
+	return typeof block.data === "string" && block.data.length > 0;
+}
 
 /** Text of a canonical message: concatenated text blocks. */
 export function messageText(message: Record<string, unknown> | undefined) {
 	const content = message?.content;
 	if (!Array.isArray(content)) return "";
-	return (content as ContentBlock[])
-		.filter((block) => block && (block.type ?? "text") === "text")
-		.map((block) => block.text ?? "")
-		.join("");
+	return (
+		(content as ContentBlock[])
+			// Excluded explicitly rather than by the `type` default. A typeless
+			// durable image used to pass this filter and contribute `""`, which was
+			// harmless only by accident; now that `isImageBlock` exists, relying on
+			// that accident is a defect waiting for the first image block that also
+			// carries a text key.
+			.filter((block) => block && !isImageBlock(block))
+			.filter((block) => (block.type ?? "text") === "text")
+			.map((block) => block.text ?? "")
+			.join("")
+	);
 }
 
-function imageCount(message: Record<string, unknown> | undefined) {
+/**
+ * The image blocks of one message, as view-ready records.
+ *
+ * Identity is the point of the second argument. This surface repaints per
+ * token and `shallowEqual` compares by reference, so a freshly built array
+ * would fail the equality gate on every frame and re-render every image row of
+ * the transcript per delta. `previous` is the array the record already holds:
+ * when the extracted contents are identical, THAT array is returned, so the
+ * record's `images` field keeps its reference and the gate holds.
+ */
+function extractImages(
+	message: Record<string, unknown> | undefined,
+	recordId: string,
+	previous?: TranscriptImage[],
+): TranscriptImage[] {
 	const content = message?.content;
-	if (!Array.isArray(content)) return 0;
-	return (content as ContentBlock[]).filter((block) => block?.type === "image")
-		.length;
+	if (!Array.isArray(content))
+		return previous?.length ? previous : EMPTY_IMAGES;
+	const images: TranscriptImage[] = [];
+	for (const block of content as ContentBlock[]) {
+		if (!isImageBlock(block)) continue;
+		images.push({
+			// Position among IMAGE blocks only, so a text block appearing between
+			// two images cannot renumber them and remount both.
+			id: `${recordId}:${images.length}`,
+			data: typeof block.data === "string" && block.data ? block.data : null,
+			attachment:
+				typeof block.attachment === "string" && block.attachment
+					? block.attachment
+					: null,
+			mimeType:
+				typeof block.mime_type === "string" && block.mime_type
+					? block.mime_type
+					: "image/png",
+		});
+	}
+	if (images.length === 0) return EMPTY_IMAGES;
+	if (previous && sameImages(previous, images)) return previous;
+	return images;
+}
+
+/** One shared empty array, so "no images" is always the same reference. */
+const EMPTY_IMAGES: TranscriptImage[] = [];
+
+/**
+ * The `+N` / `-M` counters a write reported, from its own `details`.
+ *
+ * Mirrors the TUI's `_diff_counts` (tool_card.py:567-583): a value counts only
+ * when it is a positive integer, and anything else — missing, malformed,
+ * negative, a boolean — is zero. Zero is not rendered, because `+0` claims that
+ * nothing was added while a missing count claims nothing at all, and these are
+ * the second kind.
+ */
+function diffCounts(details: unknown): { added: number; removed: number } {
+	const source = (details ?? {}) as Record<string, unknown>;
+	const count = (value: unknown) =>
+		typeof value === "number" && Number.isInteger(value) && value > 0
+			? value
+			: 0;
+	return { added: count(source.added), removed: count(source.removed) };
+}
+
+function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) {
+		if (
+			a[i].id !== b[i].id ||
+			a[i].data !== b[i].data ||
+			a[i].attachment !== b[i].attachment ||
+			a[i].mimeType !== b[i].mimeType
+		)
+			return false;
+	}
+	return true;
 }
 
 function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
@@ -141,10 +296,34 @@ function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
 }
 
 function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
-	const keysA = Object.keys(a) as (keyof TranscriptRecord)[];
-	if (keysA.length !== Object.keys(b).length) return false;
+	// `Record<string, unknown>` rather than the union's own key type: the union
+	// narrows `keyof` to the fields COMMON to every variant, so indexing it
+	// cannot see `images` at all and the comparison below would be typed as
+	// unreachable. The runtime shape is what is being compared here.
+	const left = a as unknown as Record<string, unknown>;
+	const right = b as unknown as Record<string, unknown>;
+	const keysA = Object.keys(left);
+	if (keysA.length !== Object.keys(right).length) return false;
 	for (const key of keysA) {
-		if (a[key] !== b[key]) return false;
+		if (left[key] === right[key]) continue;
+		// `images` is the one field that is an ARRAY, so reference equality is
+		// too strict for it: two extractions of the same unchanged content are
+		// equal in every way a view cares about. `extractImages` already returns
+		// the previous array when it can, and this covers the paths where it
+		// cannot see one — without it, a live event that rebuilt a record for an
+		// unrelated reason would report the row as changed and re-render every
+		// image on it, on a surface that repaints per token.
+		if (key === "images") {
+			const before = left[key] as TranscriptImage[] | undefined;
+			const after = right[key] as TranscriptImage[] | undefined;
+			if (
+				Array.isArray(before) &&
+				Array.isArray(after) &&
+				sameImages(before, after)
+			)
+				continue;
+		}
+		return false;
 	}
 	return true;
 }
@@ -191,6 +370,13 @@ const SILENT_CUSTOM_TYPES = new Set([
 
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
+	/**
+	 * The record already painted for this id, if any. Passed only so an
+	 * unchanged `images` array keeps its REFERENCE across a re-read of the same
+	 * history page — `shallowEqual` compares by `!==`, so a freshly built array
+	 * would report every replayed row as changed and re-render it.
+	 */
+	previous?: TranscriptRecord,
 ): TranscriptRecord | null {
 	const payload = entry.payload ?? {};
 	const ts = Math.round((entry.ts ?? 0) * 1000);
@@ -250,7 +436,11 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text,
-			images: imageCount(payload),
+			images: extractImages(
+				payload,
+				entry.id,
+				previous?.kind === "user" ? previous.images : undefined,
+			),
 		};
 	}
 	if (role === "assistant") {
@@ -308,6 +498,20 @@ function durableRecord(
 				typeof providerPayload.duration_s === "number"
 					? providerPayload.duration_s
 					: null,
+			// Durable tool rows carry image blocks in `content` exactly as user rows
+			// do — confirmed against real transcripts: 6398 tool-role blocks with
+			// keys `(attachment, mime_type)`. This is the reload half of a browser
+			// screenshot; the live half arrives on `tool_execution_end`.
+			images: extractImages(
+				payload,
+				`tool:${toolCallId}`,
+				previous?.kind === "tool" ? previous.images : undefined,
+			),
+			...diffCounts(providerPayload.details),
+			// A durable row is the authoritative record of how the call ended, and
+			// it ended normally: an interrupt is a live-only fact the transcript
+			// does not encode separately from `is_error`.
+			stopped: false,
 		};
 	}
 	return null;
@@ -325,7 +529,16 @@ export function applyHistoryPage(
 ): TranscriptState {
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
-		const record = durableRecord(entry);
+		// A tool row keys by call id, not entry id, so the prior record is looked
+		// up under both. Handing it to `durableRecord` is what lets an unchanged
+		// `images` array keep its reference through a replayed page.
+		const previous =
+			state.records[state.index.get(entry.id) ?? -1] ??
+			state.records[
+				state.index.get(`tool:${String(entry.payload?.tool_call_id ?? "")}`) ??
+					-1
+			];
+		const record = durableRecord(entry, previous);
 		if (record) incoming.push(record);
 	}
 	// Tool call args live on the assistant row's tool_calls; carry the intent
@@ -369,6 +582,11 @@ export function applyHistoryPage(
 				...record,
 				args: record.args ?? current.args,
 				intent: record.intent ?? current.intent,
+				// A durable row has DIGESTS, a live row has BYTES, and the bytes are
+				// already decoded in this renderer. Preferring the live array spares
+				// the row the user is looking at a needless round trip to the
+				// attachment endpoint at the exact moment the turn settles.
+				images: current.images.length ? current.images : record.images,
 			};
 			if (!shallowEqual(current, merged)) {
 				changed = true;
@@ -454,24 +672,36 @@ export function applyEvent(
 					});
 				}
 				if (record.kind === "tool" && record.phase !== "done") {
-					next = upsert(next, { ...record, phase: "done" });
+					// A call still running when the turn ends never reported an
+					// outcome. On an ABORT that is an interrupt, which is its own
+					// state; on a clean end it is a call whose end event was lost, and
+					// claiming success for it would be worse than claiming nothing.
+					next = upsert(next, {
+						...record,
+						phase: "done",
+						stopped: Boolean(event.aborted),
+					});
 				}
 			}
 			return next;
 		}
 		case "message_start": {
 			if (!message || typeof message.id !== "string") return state;
+			const current = state.records[state.index.get(message.id) ?? -1];
 			if (message.role === "user") {
 				return upsert(state, {
 					kind: "user",
 					id: message.id,
 					ts: now,
 					text: messageText(message),
-					images: imageCount(message),
+					images: extractImages(
+						message,
+						message.id,
+						current?.kind === "user" ? current.images : undefined,
+					),
 				});
 			}
 			if (message.role !== "assistant") return state;
-			const current = state.records[state.index.get(message.id) ?? -1];
 			// A durable row already painted for this id outranks a replayed start.
 			if (current) return state;
 			return upsert(state, {
@@ -580,6 +810,10 @@ export function applyEvent(
 				output: null,
 				isError: false,
 				durationS: null,
+				images: EMPTY_IMAGES,
+				added: 0,
+				removed: 0,
+				stopped: false,
 			});
 		}
 		case "tool_execution_start": {
@@ -605,6 +839,13 @@ export function applyEvent(
 				output: null,
 				isError: false,
 				durationS: null,
+				// A running row has no outcome to report yet. It keeps whatever the
+				// composing row held so a rebuild here cannot drop an array the gate
+				// is comparing.
+				images: current?.kind === "tool" ? current.images : EMPTY_IMAGES,
+				added: 0,
+				removed: 0,
+				stopped: false,
 			});
 		}
 		case "tool_execution_end": {
@@ -629,6 +870,10 @@ export function applyEvent(
 							output: null,
 							isError: false,
 							durationS: null,
+							images: EMPTY_IMAGES,
+							added: 0,
+							removed: 0,
+							stopped: false,
 						};
 			return upsert(state, {
 				...base,
@@ -637,6 +882,14 @@ export function applyEvent(
 				isError: Boolean(event.is_error ?? result.is_error),
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
+				// THE live screenshot path. A live event is dumped without
+				// `exclude_defaults`, so `result.content` carries `{type: "image",
+				// data, mime_type}` with the full base64 — a browser-tool capture is
+				// renderable here with no backend round trip at all.
+				images: extractImages(result, id, base.images),
+				...diffCounts(result.details),
+				// It reported an end, so whatever happened it was not interrupted.
+				stopped: false,
 			});
 		}
 		case "notice": {
