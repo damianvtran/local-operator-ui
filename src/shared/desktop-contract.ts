@@ -21,6 +21,30 @@ const sessionImage = z
 		mime_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
 	})
 	.strict();
+
+/**
+ * Longest `text`/`args` a message-carrying op accepts, in JS CHARACTERS.
+ *
+ * Named and exported rather than repeated as a literal because it is a SECOND,
+ * independent ceiling beside the byte budget, and the renderer's pre-flight has
+ * to weigh both. A 400,000-character paste is only ~400 KB - comfortably inside
+ * the 880,000-byte budget - so the pre-flight admitted it and the schema parse
+ * in `requestDesktop` then rejected it with "Invalid desktop operation.", which
+ * tells a user who pasted a long document nothing they can act on (review round
+ * 1, Q-2). Characters, not bytes: `z.string().max()` counts UTF-16 code units,
+ * so the two ceilings bind on different inputs and neither implies the other.
+ */
+export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
+
+/**
+ * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
+ *
+ * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
+ * below rather than repeated as a literal, because the editor now pre-flights
+ * against it: a cap the check and the schema state separately is a cap they can
+ * state differently, which is the drift this file exists to prevent.
+ */
+export const DESKTOP_SYSTEM_PROMPT_MAX_CHARS = 1_000_000;
 const profileName = z
 	.string()
 	.min(1)
@@ -181,7 +205,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.message"),
 			sessionId,
 			requestId,
-			text: z.string().max(200000),
+			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(8).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
 		})
@@ -195,7 +219,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 				.string()
 				.regex(/^\/?[A-Za-z]+$/)
 				.max(64),
-			args: z.string().max(200000).optional(),
+			args: z.string().max(DESKTOP_MESSAGE_MAX_CHARS).optional(),
 			images: z.array(sessionImage).max(8).optional(),
 		})
 		.strict(),
@@ -358,7 +382,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("legacy.agent.systemPrompt.update"),
 			agentId: id,
-			systemPrompt: z.string().max(1_000_000),
+			systemPrompt: z.string().max(DESKTOP_SYSTEM_PROMPT_MAX_CHARS),
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
@@ -628,6 +652,211 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
 export type DesktopResponse = { status: number; body: unknown };
+
+/**
+ * How many bytes of serialized JSON body one desktop operation may carry.
+ *
+ * These live here, beside the schemas they bound, because the two were allowed
+ * to disagree: the transport that fronts this vocabulary carried a bare
+ * `262144` literal in two separate files while `sessions.message` promised
+ * eight 1,000,000-char images, a declared contract 31x larger than the pipe.
+ * One ordinary Retina screenshot busts 256 KiB, so the app refused payloads it
+ * had just told the user it accepted. A budget that is not stated next to its
+ * schema is a budget that drifts from it.
+ *
+ * Message-carrying ops get the larger budget because they carry user prose and
+ * inline images. Every remaining op moves fixed-shape control fields whose
+ * widest declared string is 64,000 characters (`instructions.update`,
+ * `legacy.schedule.edit` and `legacy.agent.schedule.create` — all three, since
+ * a list that names only some of the ops at the limit invites the next reader
+ * to assume the unnamed one is narrower), so the tight budget there is a real
+ * boundary on a malformed or hostile renderer payload rather than a limit any
+ * legitimate request approaches.
+ *
+ * That claim used to read "the widest is a 32768-char credential" and was
+ * FALSE, which is how this file reproduced next door the exact asymmetry it
+ * exists to remove (round 1, R3): `legacy.agent.systemPrompt.update` declares
+ * 1,000,000 characters and `sessions.fork` declares 200,000, both behind a
+ * 262,144-byte pipe, and both reachable from real UI - the agent system-prompt
+ * editor and the fork picker's message box. An inaccurate comment about a
+ * limit is how the original bug survived review, so this one is now a
+ * statement the table below actually satisfies.
+ */
+const DESKTOP_MESSAGE_BYTE_BUDGET = 880_000;
+const DESKTOP_CONTROL_BYTE_BUDGET = 262_144;
+
+/**
+ * The budget for `legacy.agent.systemPrompt.update`, sized to its own schema.
+ *
+ * Its `systemPrompt` field declares 1,000,000 characters, so no smaller number
+ * can be honest about what the schema promises. Unlike the message ops this
+ * does not pass through the session control socket - it is a plain REST PUT to
+ * `/v1/agents/{id}/system-prompt` - so the 900,000-byte `Prompt` wall and the
+ * 1 MiB frame reader do not apply to it, and the budget is bounded by the
+ * declared field rather than by a backend ceiling.
+ *
+ * 1,100,000 covers the full declared length of ordinary prose plus the
+ * envelope. Text that escapes heavily (a C0 control serializes as a 6-byte
+ * `\uXXXX`) can still exceed it while remaining legal by character count, and
+ * is refused with the sized copy - the same accepted tradeoff the message
+ * budget makes, not a gap.
+ */
+const DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET = 1_100_000;
+
+/**
+ * Ops whose body carries user text and inline images, and so needs the room.
+ *
+ * 880,000 is the backend's real ceiling minus headroom, not a round number.
+ * `Prompt.nonempty` in `local_operator/server/routes/desktop_sessions.py:101`
+ * raises once `len(self.model_dump_json().encode()) > 900_000`, and behind
+ * that sits the owner control socket's 1 MiB line reader
+ * (`local_operator/session/runtime/server.py:100`, `_MAX_LINE_BYTES = 1 << 20`)
+ * — 900,000 is itself that wall less ~14% envelope. So the wall is physical;
+ * the question is only how close the client sits to it.
+ *
+ * Client and server measure very nearly the same bytes — `desktopEndpoint`
+ * emits every field explicitly including defaults, in declaration order, and
+ * pydantic v2 serializes raw UTF-8 like `JSON.stringify` — but "very nearly"
+ * is the problem. Landing on the boundary turns a client-accepted message into
+ * a server 409, which is a worse outcome than a local refusal that names the
+ * numbers and leaves the composer editable. The 20,000-byte margin (~2.2%) is
+ * the same discipline `local_operator/imaging.py:167-182` applies when it
+ * repairs to a 1960px edge against a 2000px ceiling.
+ */
+const MESSAGE_OPS: ReadonlySet<string> = new Set([
+	"sessions.message",
+	"sessions.command",
+	// `sessions.fork` declares the SAME 200,000-character text field as
+	// `sessions.message` and carries it to the same session, so it belongs in the
+	// same tier; leaving it on the control budget refused a fork message the
+	// schema promised to accept (round 1, R3).
+	"sessions.fork",
+]);
+
+/** The budget one op's serialized body must fit within. */
+export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
+	if (op === "legacy.agent.systemPrompt.update")
+		return DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
+	return MESSAGE_OPS.has(op)
+		? DESKTOP_MESSAGE_BYTE_BUDGET
+		: DESKTOP_CONTROL_BYTE_BUDGET;
+}
+
+/**
+ * The largest budget any op may claim.
+ *
+ * The dev proxy reads its request body as a stream and cannot know the op
+ * until the JSON is parsed, so it bounds the READ by this and leaves the
+ * per-op refusal to `requestDesktop`, which both transports already call. That
+ * keeps one authority for the per-op number instead of a second copy that can
+ * drift, which is exactly how `262144` ended up in two files disagreeing with
+ * the schema between them.
+ */
+export const MAX_DESKTOP_REQUEST_BYTES = Math.max(
+	DESKTOP_MESSAGE_BYTE_BUDGET,
+	DESKTOP_CONTROL_BYTE_BUDGET,
+	DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET,
+);
+
+/**
+ * Bytes the dev proxy's REQUEST ENVELOPE adds on top of the op body.
+ *
+ * The proxy weighs `{op, sessionId, requestId, text, images, mode}` off the
+ * wire; `desktopRequestByteBudget` weighs only the body `{request_id, text,
+ * images, mode}` that reaches the backend. Bounding the streamed read at
+ * `MAX_DESKTOP_REQUEST_BYTES` therefore truncated a MAXIMAL legal message into
+ * a 413 in dev - a message `requestDesktop` and the backend would both accept,
+ * refused ~50 bytes from the ceiling (review round 1, F5).
+ *
+ * The envelope is bounded, which is what makes a constant allowance safe
+ * rather than a guess: `op` is a string literal from a closed set (longest
+ * `"sessions.command"`), `sessionId` is a 12-char id and `requestId` a 36-char
+ * UUID, plus their keys, quotes, colons and commas. 256 is comfortably above
+ * that worst case and still far too small to admit a body the per-op check
+ * would refuse - the proxy bounds the READ, and `requestDesktop` still applies
+ * the exact per-op budget afterwards.
+ */
+export const MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES = 256;
+
+/**
+ * What the untargeted 413 backstops say when they fire.
+ *
+ * One constant for the two transports because this string reaches the user
+ * verbatim in the send-error banner, and a copy in each file is how two
+ * refusals for one condition start wording it differently. It names both
+ * remedies rather than the overflowing one: by the time a body reaches a
+ * backstop the op is all that is left, so which term overflowed is precisely
+ * what these call sites cannot see. The renderer's pre-flight is where the
+ * sized, specific copy comes from; this is the sentence for the paths that
+ * pre-flight does not cover (review round 1, Q-3).
+ */
+export const DESKTOP_REQUEST_TOO_LARGE_DETAIL =
+	"This message is too large to send in one request. Remove an image, or split the text across two messages.";
+
+/**
+ * The same backstop sentence, scoped to the SURFACE the op belongs to.
+ *
+ * One sentence for every op was wrong wherever the op is not a chat message.
+ * `legacy.agent.systemPrompt.update` is reachable from the agent system-prompt
+ * editor, and a user who saved a long prompt there read "This message is too
+ * large to send in one request. Remove an image, or split the text across two
+ * messages." - three claims that are all false in that surface: it is not a
+ * message, there are no images, and a system prompt is one field that cannot be
+ * split across two of anything (round 2, N4).
+ *
+ * This is the backstop, so it still cannot name a SIZE - by the time a body
+ * reaches `requestDesktop` the op is all that is left. What it can do is name a
+ * remedy that exists on the surface the user is looking at. Sized copy comes
+ * from the renderer's pre-flight, which runs before admission where the numbers
+ * are still known.
+ *
+ * `DESKTOP_REQUEST_TOO_LARGE_DETAIL` remains the message-tier sentence and the
+ * streaming dev proxy's answer, because that proxy bounds its READ before the
+ * JSON is parsed and so genuinely cannot know which op it is refusing.
+ */
+export function desktopRequestTooLargeDetail(op: DesktopRequest["op"]): string {
+	if (op === "legacy.agent.systemPrompt.update")
+		return "This system prompt is too large to save in one request. Shorten it.";
+	if (op === "sessions.fork")
+		return "This first message is too large to send with the fork. Shorten it, or send it in the new conversation instead.";
+	if (op === "sessions.command")
+		return "This command is too large to send in one request. Shorten it, or put the text in a message instead.";
+	if (MESSAGE_OPS.has(op)) return DESKTOP_REQUEST_TOO_LARGE_DETAIL;
+	// Control ops move fixed-shape fields; reaching this means a field far past
+	// anything a legitimate UI submits, so the sentence names the field rather
+	// than a remedy that assumes prose.
+	return "This request is too large to send. Shorten the text in this form.";
+}
+
+/**
+ * The largest ENVELOPE the dev proxy may read before refusing outright.
+ *
+ * Distinct from `MAX_DESKTOP_REQUEST_BYTES`, which bounds the op BODY. Only
+ * the streaming proxy needs this: every other caller measures a body.
+ */
+export const MAX_DESKTOP_ENVELOPE_BYTES =
+	MAX_DESKTOP_REQUEST_BYTES + MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES;
+
+/**
+ * The budget a chat message body must fit, exported for the renderer's
+ * pre-flight check.
+ *
+ * The renderer refuses an oversize message BEFORE it calls `admitChatDraft`,
+ * because only there does it still know the numbers (how much is text, how
+ * much is images) and only there is the composer still editable. Main's guard
+ * stays as the untargeted backstop it always was.
+ */
+export const DESKTOP_MESSAGE_BUDGET_BYTES = DESKTOP_MESSAGE_BYTE_BUDGET;
+
+/**
+ * The system-prompt budget, exported for the same reason: the agent
+ * system-prompt editor now runs its own pre-flight, and a second copy of the
+ * number is how the pipe and the schema drifted apart in the first place. The
+ * character cap it is weighed beside is `DESKTOP_SYSTEM_PROMPT_MAX_CHARS`,
+ * declared at the top of this file with the schema that reads it.
+ */
+export const DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES =
+	DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
 export type DesktopStreamEvent = {
 	streamId: string;
 	kind: "data" | "error" | "end";

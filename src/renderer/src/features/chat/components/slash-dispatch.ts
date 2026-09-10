@@ -34,6 +34,7 @@ import type { PickerContext } from "../pickers/destination-pickers";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
+import { commandBudgetRefusal } from "../utils/message-budget";
 import type { SlashCommandMeta } from "./slash-commands";
 
 type SlashDispatchOptions = {
@@ -45,6 +46,24 @@ type SlashDispatchOptions = {
 	/** Bind the current agent to another canonical session (resume/fork/new). */
 	rebind: (sessionId: string) => void;
 };
+
+/**
+ * What the composer must do with the text it handed to `dispatch`.
+ *
+ * A boolean could not say this. `true` meant "consumed", which retires the
+ * draft, and `false` meant "not a command", which sends the text to the model -
+ * so a command that was refused BEFORE it ran had no honest answer: reporting
+ * `true` discarded the user's text, and reporting `false` would have posted
+ * `/theme <200,000 characters>` as a chat message. A 200,001-character argument
+ * took the first of those and 200,001 characters of the user's paste were gone
+ * (round 2, Q-7).
+ *
+ * `retained` is the missing third case: the line WAS a command, it was not run,
+ * and the composer must keep the text so the user can shorten it and try again -
+ * the same contract `use-message-input.ts:167` states for messages, where
+ * admission and not the keypress is what retires a draft.
+ */
+export type SlashDispatchOutcome = "not-a-command" | "consumed" | "retained";
 
 const SLASH_SUBMISSION = /^\/([A-Za-z]+)(?:\s([\s\S]*))?$/;
 
@@ -133,10 +152,10 @@ export function useSlashDispatch({
 	);
 
 	const dispatch = useCallback(
-		async (text: string): Promise<boolean> => {
+		async (text: string): Promise<SlashDispatchOutcome> => {
 			const match = SLASH_SUBMISSION.exec(text.trim());
-			if (!match) return false;
-			if (!commandsEnabled) return false;
+			if (!match) return "not-a-command";
+			if (!commandsEnabled) return "not-a-command";
 			const [, word, rawArgs] = match;
 			const args = rawArgs?.trim() ?? "";
 			const commands = commandsQuery.data ?? [];
@@ -152,7 +171,7 @@ export function useSlashDispatch({
 						: `Unknown command /${word}. Type / for the full list.`,
 					true,
 				);
-				return true;
+				return "consumed";
 			}
 
 			const entry = DESTINATIONS[spec.destination];
@@ -163,7 +182,7 @@ export function useSlashDispatch({
 				if (entry.action === "clear") {
 					// View-only by contract: history on disk is untouched.
 					canonical.clearView();
-					return true;
+					return "consumed";
 				}
 				// exit: close the window through main (detach-only; the backend
 				// keeps every session's owner running). In the browser harness
@@ -175,11 +194,11 @@ export function useSlashDispatch({
 						"Close this window to quit. Conversations keep running in the background.",
 					);
 				}
-				return true;
+				return "consumed";
 			}
 			if (entry?.kind === "navigate") {
 				navigate(entry.route(args, sessionId ?? ""));
-				return true;
+				return "consumed";
 			}
 
 			if (!sessionId) {
@@ -187,7 +206,7 @@ export function useSlashDispatch({
 					`/${spec.name} needs an open conversation. Start one first.`,
 					true,
 				);
-				return true;
+				return "consumed";
 			}
 
 			// Owner commands whose bare form is a READ (goal shows the goal,
@@ -214,19 +233,32 @@ export function useSlashDispatch({
 					dispatch: (line) => void dispatch(line),
 					rebind,
 				});
-				return true;
+				return "consumed";
 			}
 
 			// `/login <x>` and `/logout <x>` are validated by the backend against
 			// the provider registry; `/credential <x>` is refused so a secret can
 			// never land in command text. Everything else posts as typed.
+			const commandArgs = spec.name === "credential" ? "" : args;
+			// Weighed before admission for the same reason a message is: `args`
+			// accepts 200,000 characters, and main's backstop 413 can only say "too
+			// large" once the text is already gone from the composer.
+			const refusal = commandBudgetRefusal(spec.name, commandArgs);
+			if (refusal) {
+				note(refusal, true);
+				// Retained, not consumed: the command never ran, so the text the user
+				// has to shorten must still be in the composer to shorten. Reporting
+				// "consumed" here threw away the paste that caused the refusal and
+				// left them advice they could not act on (round 2, Q-7).
+				return "retained";
+			}
 			try {
 				const receipt = await desktopResult<DesktopCommandReceipt>({
 					op: "sessions.command",
 					sessionId,
 					requestId: uuidv4(),
 					command: spec.name,
-					args: spec.name === "credential" ? "" : args,
+					args: commandArgs,
 				});
 				const result = receipt.result;
 				if (isNativeAction(result)) {
@@ -234,7 +266,7 @@ export function useSlashDispatch({
 					const target = DESTINATIONS[action.destination];
 					if (target?.kind === "navigate") {
 						navigate(target.route(action.args, sessionId));
-						return true;
+						return "consumed";
 					}
 					if (!target) {
 						// Names the command and the next action, never the routing id
@@ -247,7 +279,7 @@ export function useSlashDispatch({
 							`/${spec.name} is not available in the desktop app yet. Run it in the terminal with local-operator.`,
 							true,
 						);
-						return true;
+						return "consumed";
 					}
 					setPicker({
 						action,
@@ -260,7 +292,7 @@ export function useSlashDispatch({
 						dispatch: (line) => void dispatch(line),
 						rebind,
 					});
-					return true;
+					return "consumed";
 				}
 				if (result.text) {
 					note(
@@ -282,7 +314,7 @@ export function useSlashDispatch({
 				}
 				// A team/agent attachment admits its consumed prompt once on the
 				// backend; the renderer must not resubmit result.data.request.
-				return true;
+				return "consumed";
 			} catch (error) {
 				note(
 					`/${spec.name} could not run: ${
@@ -290,7 +322,12 @@ export function useSlashDispatch({
 					}`,
 					true,
 				);
-				return true;
+				// The command did not run, whatever refused it, so the composer keeps
+				// the line. This is the same rule messages follow - admission retires a
+				// draft, a keypress does not - and it is what makes "could not run"
+				// recoverable: a transport refusal, a dropped backend or a schema parse
+				// all leave the text there to retry or edit (round 2, Q-7).
+				return "retained";
 			}
 		},
 		[
