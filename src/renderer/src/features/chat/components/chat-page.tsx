@@ -320,6 +320,75 @@ function SessionPanel({
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
+	/*
+	 * The failed send, assembled for the composer.
+	 *
+	 * Local state first, store second: `sendError` is this attempt's outcome and
+	 * `draft.error` is the last one the store recorded, which survives a remount
+	 * and so is what a user returning to the chat sees.
+	 *
+	 * `onDiscard` is offered only when the store is actually holding a claim
+	 * (`submittedText`). Without one there is nothing for `discardDraft` to
+	 * clear, and an always-present Discard would imply the app is retaining
+	 * something it is not.
+	 */
+	const activeError = sendError || draft?.error;
+	const activeErrorCode = sendErrorCode ?? draft?.errorCode;
+	const clearError = () => {
+		setSendError(null);
+		setSendErrorCode(undefined);
+	};
+	const composerSendError = activeError
+		? {
+				message: activeError,
+				// The "what to do" half of the error contract travels with the
+				// message. An unresolved attachment needs a profile chosen; an
+				// unreachable registry needs the agents page. Any other code has no
+				// specific remedy, so it offers none rather than a generic button.
+				actions:
+					activeErrorCode === "unresolved_attachment"
+						? [
+								{
+									label: "Choose agent",
+									onClick: () => void dispatch("/agent"),
+								},
+								{ label: "Choose team", onClick: () => void dispatch("/team") },
+							]
+						: activeErrorCode === "profile_registry_unavailable"
+							? [{ label: "Manage agents", onClick: () => navigate("/agents") }]
+							: undefined,
+				onDiscard: draft?.submittedText
+					? () => {
+							if (draftIdentity)
+								useCanonicalSessionsStore
+									.getState()
+									.discardDraft(draftIdentity);
+							clearError();
+						}
+					: undefined,
+				/*
+				 * Editing dismisses the alert, and must clear the STORE's copy too -
+				 * `draft.error` outlives local state, so clearing only `sendError`
+				 * would leave the message hanging over text the user has since
+				 * fixed, which is the exact defect being replaced.
+				 *
+				 * It clears the error and nothing else. `submittedText` and
+				 * `admissionAttempted` are a claim about a request that may already
+				 * be executing on the owner, and a keystroke is not evidence about
+				 * that - so the unchanged-send guard survives, and a genuinely
+				 * different message still gets refused with its own message until
+				 * the user discards. Discard is the only control that drops a claim.
+				 */
+				onDismiss: () => {
+					clearError();
+					if (draftIdentity && draft?.error)
+						useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
+							error: undefined,
+							errorCode: undefined,
+						});
+				},
+			}
+		: undefined;
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{/*
@@ -328,69 +397,15 @@ function SessionPanel({
 			 * of the chat gave a rarely-changed setting the most prominent slot on
 			 * the screen, and it only ever appeared on drafts, so the chat shell
 			 * changed shape between a new chat and a live one. */}
-			{(sendError || draft?.error) && (
-				<div role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
-					<p>
-						{sendError || draft?.error}{" "}
-						{draft?.submittedText
-							? "Your message is kept below \u2014 send it again, or discard it to write something else."
-							: "Your draft is retained."}
-					</p>
-					{draft?.submittedText && (
-						<div className={cn("mt-2 space-y-2")}>
-							<p
-								className={cn(
-									"whitespace-pre-wrap rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink",
-								)}
-							>
-								{draft.submittedText}
-							</p>
-							<button
-								type="button"
-								className={cn("underline")}
-								onClick={() => {
-									if (draftIdentity)
-										useCanonicalSessionsStore
-											.getState()
-											.discardDraft(draftIdentity);
-									setSendError(null);
-									setSendErrorCode(undefined);
-								}}
-							>
-								Discard unsent message
-							</button>
-						</div>
-					)}
-				</div>
-			)}
-			{(sendErrorCode ?? draft?.errorCode) === "unresolved_attachment" && (
-				<div className={cn("flex gap-2 px-4 pb-2 text-body-sm")}>
-					<button
-						type="button"
-						className={cn("underline")}
-						onClick={() => void dispatch("/agent")}
-					>
-						Choose agent
-					</button>
-					<button
-						type="button"
-						className={cn("underline")}
-						onClick={() => void dispatch("/team")}
-					>
-						Choose team
-					</button>
-				</div>
-			)}
-			{(sendErrorCode ?? draft?.errorCode) ===
-				"profile_registry_unavailable" && (
-				<button
-					type="button"
-					className={cn("self-start px-4 pb-2 text-body-sm underline")}
-					onClick={() => navigate("/agents")}
-				>
-					Manage agents
-				</button>
-			)}
+			{/*
+			 * A failed send is surfaced ON the composer, not here. This block used
+			 * to render the error, a read-only echo of the user's message and a
+			 * discard link at the very top of the chat column - measured at 709px
+			 * above the composer that already held that exact text, editable
+			 * (docs/evidence/send-error). Two copies
+			 * of one message, and the failure furthest on screen from the control
+			 * that resolves it. `composerSendError` below carries all of it,
+			 * remedies included, to the one place the user is already looking. */}
 			{options && (
 				<div
 					className={cn(
@@ -465,6 +480,7 @@ function SessionPanel({
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
+					sendError={composerSendError}
 					currentJobId={null}
 					onCancelJob={stop}
 					messageInputRef={input}

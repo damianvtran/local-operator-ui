@@ -49,6 +49,21 @@ import {
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
+ * A send that did not land, described for the composer that owns its text.
+ *
+ * Exported because the type is the contract between the page that KNOWS why a
+ * send failed and the composer that shows it; `chat-content` only forwards it.
+ */
+export type ComposerSendError = {
+	message: string;
+	actions?: { label: string; onClick: () => void }[];
+	/** Present only while a retained send claim exists to drop; see its use below. */
+	onDiscard?: () => void;
+	/** Fired on the first keystroke after the failure, so a corrected draft never carries a stale alert. */
+	onDismiss?: () => void;
+};
+
+/**
  * Props for the MessageInput component
  */
 type MessageInputProps = {
@@ -72,6 +87,24 @@ type MessageInputProps = {
 	 * rather than replacing it, and only while the owner is actually working.
 	 */
 	canonicalStop?: { active: boolean; onStop: () => void };
+	/**
+	 * The last send that failed, rendered against this composer rather than at
+	 * the top of the page.
+	 *
+	 * A failed send leaves the user's text in this textarea (see
+	 * `useMessageInput.handleSubmit`, which retires a draft on admission and not
+	 * on the keypress), so the failure and the message it names are the same
+	 * object and belong in the same place. The previous banner rendered at the
+	 * very top of the chat column, measured 709px away from the composer holding
+	 * the text it was talking about, and re-printed that text into a read-only
+	 * box - a second copy of an input the user could already edit.
+	 *
+	 * `actions` is the "what to do" half of the error contract (branding § 8):
+	 * an errorCode that has a specific remedy supplies it here, so the remedy
+	 * travels with the message instead of being stranded wherever the message
+	 * used to render.
+	 */
+	sendError?: ComposerSendError;
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
 	/**
@@ -112,6 +145,15 @@ export type MessageInputHandle = {
  * textarea suppresses its own outline so there is never a second ring inside
  * the box. No decorative shadow.
  */
+/*
+ * The composer's track. Stated once because the send-error alert has to line
+ * up with the box it belongs to: two independent copies of these breakpoints
+ * drift, and an alert half a box-width off reads as unrelated chrome rather
+ * than as this composer's own failure.
+ */
+const COMPOSER_WIDTH =
+	"mx-auto w-full max-w-full sm:max-w-[90%] md:max-w-[900px]";
+
 const COMPOSER_BOX = cn(
 	"mx-auto flex w-full flex-col border border-control bg-surface",
 	"box-border transition-colors duration-fast ease-out-quart",
@@ -151,6 +193,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			hasNewActivity = false,
 			scrollToBottom = () => {},
 			canonicalStop,
+			sendError,
 			initialSuggestions,
 			agentData,
 			cwd,
@@ -589,6 +632,77 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
+				{sendError && (
+					/*
+					 * Above the box rather than inside it: the composer box is one
+					 * control with one focus ring (`COMPOSER_BOX`), and folding an alert
+					 * into it would put non-interactive prose and two extra buttons
+					 * inside the thing that ring frames. Sharing `COMPOSER_WIDTH` keeps
+					 * the two edge-aligned, which is what makes them read as one unit.
+					 *
+					 * `role="alert"` and not `aria-live="polite"`: a send that did not
+					 * land is the assertive case. The user has just pressed Enter and
+					 * their next action depends on knowing it failed.
+					 */
+					<div
+						role="alert"
+						className={cn(
+							COMPOSER_WIDTH,
+							"flex flex-col gap-1 text-body-sm text-danger",
+							isSmallView ? "px-2 pb-1" : "px-1 pb-2",
+						)}
+					>
+						<p>
+							{sendError.message}{" "}
+							{/* Branding section 8 orders error copy: what happened, what it
+							 * means, what to do. The store supplies the first two; this
+							 * sentence is the third, and it is only true because the
+							 * text really is still in the textarea below. */}
+							Your message is still in the composer — edit it if you need to,
+							then send again.
+						</p>
+						{(sendError.actions?.length || sendError.onDiscard) && (
+							<div className={cn("flex flex-wrap items-center gap-3")}>
+								{sendError.actions?.map((action) => (
+									<Button
+										key={action.label}
+										type="button"
+										variant="link"
+										size="sm"
+										className={cn("text-body-sm")}
+										onClick={action.onClick}
+									>
+										{action.label}
+									</Button>
+								))}
+								{sendError.onDiscard && (
+									/*
+									 * Kept even though the composer is now editable, because
+									 * this does something no amount of select-all-delete can:
+									 * it drops the STORE's claim that the next send must match
+									 * the unconfirmed payload byte-for-byte
+									 * (`admitChatDraft`'s `admissionAttempted` guard). Emptying
+									 * the textarea alone leaves that claim standing, so the
+									 * next different message would be refused by a guard the
+									 * user has no way to see.
+									 */
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										className={cn("text-body-sm text-ink-muted")}
+										onClick={() => {
+											setNewMessage("");
+											sendError.onDiscard?.();
+										}}
+									>
+										Discard unsent message
+									</Button>
+								)}
+							</div>
+						)}
+					</div>
+				)}
 				<div
 					className={cn(
 						COMPOSER_BOX,
@@ -691,6 +805,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							onChange={(e) => {
 								setNewMessage(e.target.value);
 								setCaret(e.target.selectionStart);
+								// Editing the text answers the alert. Leaving it up over a
+								// draft the user has since changed is the defect this whole
+								// change replaces, and moving the banner to the composer
+								// would only have moved that defect closer to the eye.
+								sendError?.onDismiss?.();
 							}}
 							onSelect={(e) =>
 								setCaret((e.target as HTMLTextAreaElement).selectionStart)
