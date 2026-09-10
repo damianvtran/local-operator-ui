@@ -60,6 +60,7 @@ const {
 	replaceSessionRows,
 	admitChatDraft,
 	draftIdentityFor,
+	buildSendPayload,
 	desktopRequestSchema,
 	DesktopControlError,
 	UNCONFIRMED_SEND_CODE,
@@ -638,6 +639,104 @@ test("the payload the guard compares is the normalized one, so a whitespace-only
 			"222222222222",
 		),
 		(error) => error.code === UNCONFIRMED_SEND_CODE,
+	);
+});
+
+test("a refused reply-prefixed send still offers Restore, and Restore is not a loop", async () => {
+	reset();
+	// R6: the reply prefix was assembled at the send call, DOWNSTREAM of every
+	// comparison the composer makes. So the store held and guarded
+	// `<reply-to>…</reply-to>\ntext` while the composer compared the bare box -
+	// two strings for one payload, the exact condition U7 was filed to remove,
+	// on the one path the U7 fix did not cover.
+	//
+	// The damage was not the refusal but the ESCAPE: Restore writes the held
+	// payload into the box, the next send re-prefixes it, the guard refuses the
+	// mismatch, and the composer - seeing its own held text in the box -
+	// withdraws Restore and says "Send it again", which is false forever. The
+	// only remaining control destroys the message.
+	//
+	// Driven through the real store with the composer's own predicate basis, so
+	// reverting either half (assembly at the boundary, or the composer building
+	// its basis the same way) turns this red.
+	const replies = [{ id: "r1", text: "the failing line" }];
+	const box = "Please look at this";
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		throw new Error("network down");
+	};
+	const key = draftIdentityFor(null, "222222222222");
+	// The composer's send: one function assembles what goes to the store.
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: buildSendPayload(box, replies) },
+			"222222222222",
+		),
+	);
+	const held = store.getState().drafts[key].submittedText;
+	assert.equal(
+		held,
+		`<reply-to>the failing line</reply-to>\n${box}`,
+		"the held claim is the assembled payload",
+	);
+	// The composer's copy basis, built from the SAME function with the SAME
+	// replies still attached - they survive a failed send. Pre-fix this compared
+	// the bare box, so `heldInBox` was false here and the alert was coherent;
+	// the defect only surfaced one step later, which is why the assertion that
+	// matters is the one after Restore.
+	assert.equal(
+		buildSendPayload(box, replies) === held,
+		true,
+		"with the reply still attached the box IS the held payload, so the copy must not claim otherwise",
+	);
+	// Restore hands back the finished payload and consumes the chips that
+	// produced it. Re-assembling with the chips still attached would double the
+	// prefix - the deadlock - so the invariant is asserted directly.
+	const afterRestore = buildSendPayload(held, []);
+	assert.equal(
+		afterRestore,
+		held,
+		"a restored payload re-assembled with its chips consumed is byte-identical, so the guard admits it",
+	);
+	assert.notEqual(
+		buildSendPayload(held, replies),
+		held,
+		"re-prefixing a restored payload is what deadlocked Restore; the chips must be cleared, not the assembly made idempotent",
+	);
+	// And the store agrees: the restored payload is admitted as the same
+	// message rather than refused as a different one.
+	const before = calls.length;
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: afterRestore }, "222222222222"),
+		(error) =>
+			error.code !== UNCONFIRMED_SEND_CODE ||
+			new Error(
+				"a restored reply-prefixed payload was refused as a different message - Restore is a dead end",
+			),
+		"Restore must hand back something the guard accepts",
+	);
+	assert.equal(
+		calls.slice(before).filter((c) => c.op === "sessions.message").length,
+		1,
+		"the restored payload must reach the wire",
+	);
+	// The refusal path still works: a genuinely different message under the same
+	// claim is refused and names itself, so the composer offers Restore rather
+	// than pretending the send will land.
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: buildSendPayload("Something else entirely", replies) },
+			"222222222222",
+		),
+		(error) => error.code === UNCONFIRMED_SEND_CODE,
+		"an edited reply-prefixed resend is still refused",
+	);
+	assert.equal(
+		store.getState().drafts[key].submittedText,
+		held,
+		"the claim survives the refusal, so Restore still has a payload to offer",
 	);
 });
 

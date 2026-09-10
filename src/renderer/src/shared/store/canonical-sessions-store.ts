@@ -111,6 +111,45 @@ export function normalizeSendText(text: string): string {
 }
 
 /**
+ * The composer's whole value - reply markup included - as the ONE payload
+ * string.
+ *
+ * `normalizeSendText` closed the gap between the guard and the copy for the
+ * bare box, but the reply prefix was assembled downstream of every comparison
+ * the composer makes: the box held `text` while the store stored and guarded
+ * `<reply-to>…</reply-to>\n<text>`. Two strings for one payload again, and this
+ * time the second one deadlocked the escape built to answer the first. Restore
+ * writes the held payload back, the next send re-prefixes it into
+ * `<reply-to>…</reply-to>\n<reply-to>…</reply-to>\n<text>`, the guard refuses
+ * the mismatch, and the composer - now seeing its own held text in the box -
+ * withdraws Restore and says "Send it again", which is false and stays false.
+ *
+ * So assembly lives at the boundary, above the guard rather than beside the
+ * send call. The composer builds its comparison basis from the same function
+ * with the same replies, so `heldInBox` asks the question the store answers.
+ * Replies survive a failed send (`clearReplies` runs only once a send is
+ * accepted), so the basis is stable across every retry of one claim.
+ *
+ * NOT idempotent over its own output, and deliberately so: the markup is
+ * generated from the reply LIST, so feeding a payload back in with the same
+ * list prefixes it twice. That is the invariant Restore has to honour - it
+ * hands back a finished payload, so it clears the chips whose content that
+ * payload already carries, leaving assembly here a no-op on the next send.
+ * Normalizing after the join rather than before keeps one definition of
+ * "empty" for a box whose only content is a reply.
+ */
+export function buildSendPayload(
+	text: string,
+	replies: readonly { text: string }[],
+): string {
+	if (replies.length === 0) return normalizeSendText(text);
+	const replyContent = replies
+		.map((reply) => `<reply-to>${reply.text}</reply-to>`)
+		.join("\n");
+	return normalizeSendText(`${replyContent}\n${text}`);
+}
+
+/**
  * Which draft a chat view owns. A staged draft is keyed by its own key, but once
  * a session exists `draftKey` is null and the send draft lives under
  * `send:<id>` — reading only `draftKey` there left a failed send's retained text

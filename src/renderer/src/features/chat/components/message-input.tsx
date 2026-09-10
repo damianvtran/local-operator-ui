@@ -9,7 +9,7 @@ import {
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { cn } from "@shared/lib/utils";
-import { normalizeSendText } from "@shared/store/canonical-sessions-store";
+import { buildSendPayload } from "@shared/store/canonical-sessions-store";
 import {
 	type Attachment,
 	type Reply,
@@ -353,15 +353,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const onSubmit = useMemo(
 			() => async (message: string) => {
-				let messageWithReplies = message;
-				if (replies.length > 0) {
-					const replyContent = replies
-						.map((r) => `<reply-to>${r.text}</reply-to>`)
-						.join("\n");
-					messageWithReplies = `${replyContent}\n${message}`;
-				}
+				// Assembled by the same function the composer compares against, so the
+				// string sent, stored, guarded and reasoned about by the copy is one
+				// string on the reply path too. Building the prefix inline here put it
+				// downstream of every comparison and deadlocked Restore - see
+				// `buildSendPayload`.
 				const accepted = await onSendMessage(
-					messageWithReplies,
+					buildSendPayload(message, replies),
 					attachments.map((a) => a.path),
 				);
 				if (accepted === false) return false;
@@ -713,14 +711,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const composerAlert = useMemo(() => {
 			const held = sendError?.heldText;
-			// The SAME string the guard compares. `normalizeSendText` is what turns a
-			// composer value into a payload, so normalizing the live box here asks
-			// exactly the question the store will answer on the next send: would this
-			// be accepted as an unchanged retry? Comparing anything else - the raw
-			// value, or a `.trim()` applied only on this side - puts a class of edit
-			// in a gap where the guard refuses a send the copy claims will work, and
-			// suppresses both escapes while it does so.
-			const boxPayload = normalizeSendText(newMessage);
+			// The SAME string the guard compares. `buildSendPayload` is what turns a
+			// composer value into a payload, so building the live box through it -
+			// attached replies and all - asks exactly the question the store will
+			// answer on the next send: would this be accepted as an unchanged retry?
+			// Comparing anything else - the raw value, a `.trim()` applied only on
+			// this side, or the bare box while a reply prefix is added downstream -
+			// puts a class of edit in a gap where the guard refuses a send the copy
+			// claims will work, and suppresses both escapes while it does so.
+			const boxPayload = buildSendPayload(newMessage, replies);
 			const heldInBox = held !== undefined && held === boxPayload;
 			// Whether the box holds anything the user would lose. `boxPayload` and
 			// not `newMessage.trim()` for the same reason: one definition of "empty".
@@ -757,7 +756,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						? ("discard" as const)
 						: sendError?.onReleaseHeld
 							? ("release" as const)
-							: ("discard" as const),
+							: /*
+								 * No claim and different text in the box: offer nothing.
+								 *
+								 * This is the create-failure branch - `submittedText` is set
+								 * but no admission was ever issued, so `heldText` and with it
+								 * `onReleaseHeld` are undefined. Nothing is being ENFORCED
+								 * here: no guard refuses the next send, so an abandon control
+								 * has no claim to release and its only remaining effect is to
+								 * empty a composer under a label naming a message the user
+								 * cannot see. Suppressing it costs them nothing; the alert
+								 * still dismisses on the next keystroke.
+								 */
+								undefined,
 				// Whether discarding would empty a composer the user can see text in.
 				// The label has to name the cost: "Discard unsent message" over an
 				// empty box drops an invisible claim and costs nothing, but the same
@@ -765,7 +776,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// true those are the SAME words for two different outcomes.
 				discardClearsBox: !boxEmpty,
 			};
-		}, [sendError, newMessage]);
+		}, [sendError, newMessage, replies]);
 
 		/*
 		 * No `iconSize` here. Every glyph below sits inside a `Button`, and the
@@ -924,7 +935,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											type="button"
 											variant="link"
 											size="sm"
-											// `text-meta` (11px), matching the abandon control rather
+											// `text-meta` (12px, `--text-meta: 0.75rem`), matching the abandon control rather
 											// than the 13px prose: `variant="link"` paints `text-accent`,
 											// which out-contrasts `danger` in 9 of 12 palettes, so at
 											// body size the REMEDY read louder than the failure it
@@ -932,6 +943,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											// still marks it as the primary action of the two.
 											className={cn("cursor-pointer text-meta underline")}
 											onClick={() => {
+												// The held payload already CARRIES the reply markup, so
+												// the chips that produced it have been consumed. Leaving
+												// them attached would re-prefix the restored text on the
+												// next send, and the guard refuses that mismatch - the
+												// deadlock Restore exists to escape. The referenced text
+												// is not lost: it is in the box, in the payload, visible.
+												if (conversationId) clearReplies(conversationId);
 												setNewMessage(composerAlert.restore ?? "");
 												sendError?.onRestoreHeld?.();
 												textareaRef.current?.focus();
@@ -956,7 +974,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * against danger's 6.98:1), putting a destructive secondary
 										 * at the top of the hierarchy. Now radient reads 7.41 and
 										 * the worst remaining margin over danger is 0.43 rather
-										 * than 4.88, with the 13px -> 11px size drop carrying the
+										 * than 4.88, with the 13px -> 12px size drop carrying the
 										 * rest of the demotion.
 										 *
 										 * NOT fixed by mixing danger toward the ground, which was
@@ -990,6 +1008,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														"No longer holding the unsent message.",
 													);
 												}
+												// This control unmounts itself, and focus would fall to
+												// `<body>` - where Enter sends nothing and typing lands
+												// zero characters. It is the LAST step of the recovery
+												// flow: the user has just been told they are free to
+												// send, with the text on screen. Focus goes back to the
+												// composer for the same reason Restore does it.
+												textareaRef.current?.focus();
 											}}
 										>
 											{composerAlert.abandon === "discard"
