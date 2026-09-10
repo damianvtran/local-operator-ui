@@ -104,3 +104,91 @@ Then, with a message typed in the composer, stop the backend and press Enter:
 ```
 node scripts/send-error-evidence.mjs <cdp-port> docs/evidence/send-error <name>
 ```
+
+## Round-1 remediation
+
+Three review streams (agent review F1-F7, UX U1-U10, design D1-D6) converged on
+one defect behind both blockers: the retained-claim model was **enforced but
+invisible**. Clearing the textarea left `admissionAttempted: true` with nothing
+on screen, so the next different message was refused by a healthy backend with
+no causal link to the action that caused it (U1); and the copy that was supposed
+to explain the refusal instructed the user to "edit it… then send again", which
+is the one thing `admitChatDraft` throws on, producing a loop (U2/F1/D4).
+
+The claim is now **stated whenever it is held and not visible in the box**, and
+the two remedies are controls rather than instructions:
+
+- **Restore unsent message** puts the exact held payload back, so an unchanged
+  retry is one keypress. The guard demands a byte-identical resend of a message
+  the user can no longer see; asking them to retype it was asking the impossible.
+- **Discard unsent message** / **Stop holding it** — one control, two behaviours.
+  With the box empty or holding the payload it discards the draft. With
+  *different* text typed it releases only the store's claim, because discarding
+  there would silently destroy what the user just typed (U3).
+
+The generic "send it again" tail is now conditional on the next send actually
+being acceptable, so it never appears on the guard it contradicts.
+
+### Measurements (own tree, provenance asserted, focus emulation on)
+
+Every frame below was taken with `location.origin` asserted against this
+session's own dev server, the new copy present, and both `origin/main`'s deleted
+copy and round-1's replaced copy absent. Round 1 lost four frames to an Electron
+window that silently reattached to another PR's vite server, so origin is
+asserted before any number counts.
+
+**U1 — driven end to end, existing-session path.** The new-chat path fails at
+`createSession`, *before* `admissionAttempted` latches, which is why round-1
+evidence never reproduced the trap. Failing only the admission POST reproduces
+it:
+
+```
+STEP 1 admission fails   alert: "The previous send has not been confirmed, and it does not
+                                 match what is in the composer now." + held notice
+                         buttons: [Restore unsent message, Stop holding it]
+STEP 2 select-all-delete mentionsHeld: true    <- was: zero indication
+STEP 3 type DIFFERENT    mentionsHeld: true, abandon control = "Stop holding it"
+STEP 4 click escape      typed draft SURVIVED: true
+STEP 5 send              wire: POST /v1/desktop/sessions/<id>/messages
+                               body.text = "Actually, what is the weather in Toronto?"
+```
+
+The last line is the proof: round 1 this send was refused client-side and never
+reached the wire. The 500 that follows is a backend-side `ImportError` in this
+local build (`RuntimeLocality`), unrelated to this PR.
+
+**D2 — long draft, narrow column, with positive control.** Round 1 measured the
+composer pushed 93px below the viewport with the send button unreachable at a
+~520px column. The alert is now capped (`max-h-32`, internal scroll):
+
+| viewport | alert h | offscreenBy | send visible | control (alert off) | delta |
+| --- | --- | --- | --- | --- | --- |
+| 620x620 | 128 | -4 | true | -4 | 0px |
+| 520x600 | 128 | -4 | true | -4 | 0px |
+| 800x600 | 110 | -4 | true | -4 | 0px |
+
+Zero delta against the positive control at every width: the alert is no longer
+capable of moving the composer's bottom edge.
+
+**D1 — 12-theme contrast, re-measured.** Danger prose vs the abandon control,
+each against the footer ground:
+
+| theme | danger | abandon | | theme | danger | abandon |
+| --- | --- | --- | --- | --- | --- | --- |
+| localOperatorDark | 7.08 | 5.46 | | neon | 5.35 | 5.76 |
+| localOperatorLight | 5.22 | 4.95 | | obsidian | 8.23 | 6.20 |
+| dracula | 5.32 | 6.31 | | radient | 6.98 | 7.41 |
+| dune | 5.64 | 6.38 | | sage | 5.27 | 5.21 |
+| iceberg | 5.18 | 5.19 | | synth | 7.03 | 6.29 |
+| monokai | 5.11 | 6.29 | | tokyoNight | 6.46 | 6.47 |
+
+Worst case radient improves from **11.86 to 7.41** and the worst margin over
+danger from **4.88 to 0.43**; five themes now put danger on top. Partially
+fixed, deliberately: mixing danger toward the ground guarantees the ordering but
+rendered the control at 1.05-1.47:1 in dark palettes, which is an illegible
+destructive control — a worse defect. See D1 in the remediation comment.
+
+**D3/D5/U8/U9/U10.** Remedy buttons carry `underline` at rest and
+`cursor: pointer` (measured `textDecorationLine: underline`, `cursor: pointer`);
+the alert's horizontal padding now matches `COMPOSER_BOX` (`px-4`/`px-2`), so the
+error prose and the message text share a left edge; the action row is `min-h-6`.

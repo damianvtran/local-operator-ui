@@ -34,23 +34,19 @@ const bundle = await build({
 					() => ({ path: "transport", namespace: "fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-					// `DesktopControlError` carries the status, and the store now reads
-					// it: a 413 is our own pre-fetch size guard, so nothing was admitted
-					// and the draft must not latch. A fixture that dropped the class
-					// would make that branch untestable, so it mirrors the real shape.
-					contents: `
-			export const desktopResult = request => globalThis.__canonicalRequest(request);
-			export class DesktopControlError extends Error {
-				constructor(status, message, cause, code) {
-					super(message);
-					this.name = "DesktopControlError";
-					this.status = status;
-					this.cause = cause;
-					this.code = code;
-				}
-			}
-		`,
+					// Only `desktopResult` is faked - it is the network. The error
+					// classes and `userFacingMessage` are re-exported from the real
+					// module because the store's copy rules depend on their actual
+					// behaviour: a stub that always returned `error.message` would let
+					// a raw exception through here and still pass. The real
+					// `DesktopControlError` also carries the `status` the 413/422
+					// un-latch reads, so the size-refusal cases stay covered too.
+					contents: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+						`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+					)}
+export const desktopResult = request => globalThis.__canonicalRequest(request);`,
 					loader: "js",
+					resolveDir: process.cwd(),
 				}));
 			},
 		},
@@ -66,6 +62,7 @@ const {
 	draftIdentityFor,
 	desktopRequestSchema,
 	DesktopControlError,
+	UNCONFIRMED_SEND_CODE,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -385,6 +382,89 @@ test("discarding a draft that is not the active one leaves the pointer alone", a
 
 	assert.equal(store.getState().drafts[first], undefined);
 	assert.equal(store.getState().activeDraftKey, second);
+});
+
+test("an issued admission refuses an edited resend and names itself so the composer can offer the right escape", async () => {
+	reset();
+	// The invariant the composer's copy depends on. It shipped once saying "edit
+	// it if you need to, then send again" against a store that throws on exactly
+	// that, because no test pinned the guard's behaviour on the existing-session
+	// path: `createSession` fails FIRST on the new-chat path, leaving
+	// `admissionAttempted` false, so editing legitimately works there and the
+	// copy looked true. Asserted here on the path where the flag really latches.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		throw new Error("network down");
+	};
+	const key = draftIdentityFor(null, "222222222222");
+	await assert.rejects(admitChatDraft(key, input, "222222222222"));
+	assert.equal(store.getState().drafts[key].admissionAttempted, true);
+	assert.equal(store.getState().drafts[key].submittedText, input.text);
+	// An edited resend is refused, and carries the category the composer keys on
+	// to render Restore/abandon instead of "send it again".
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "something else" }, "222222222222"),
+		(error) => error.code === UNCONFIRMED_SEND_CODE,
+	);
+	// Releasing the claim keeps the row - and so the session id - but lets a
+	// DIFFERENT message through. Discarding the row instead would allocate a
+	// second session for a conversation that already has one.
+	const before = store.getState().drafts[key];
+	store.getState().releaseClaim(key);
+	const after = store.getState().drafts[key];
+	assert.equal(after.sessionId, before.sessionId);
+	assert.equal(after.admissionAttempted, undefined);
+	assert.equal(after.submittedText, undefined);
+	assert.equal(after.error, undefined);
+	// A fresh admission id: the abandoned request may still be executing, and
+	// reusing its id would make the next send an idempotent replay of the old
+	// payload rather than a new message.
+	assert.notEqual(after.admissionRequestId, before.admissionRequestId);
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return {};
+	};
+	await admitChatDraft(key, { ...input, text: "something else" }, "222222222222");
+	assert.equal(
+		calls.at(-1).text,
+		"something else",
+		"a released claim admits the new payload, not the held one",
+	);
+});
+
+test("a landed send retires the page-level error the failed one recorded", async () => {
+	reset();
+	// F2/F3: `createSession` sets store `error` AND rethrows, so the same
+	// sentence rendered at the top of the page and at the composer; nothing but
+	// fetchSessions/openSession ever cleared it, so it also outlived a
+	// successful retry. The composer owns the message now, both ways.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") throw new Error("create refused");
+		return {};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, input));
+	assert.equal(
+		store.getState().error,
+		null,
+		"the composer alert is the only voice for a failed send",
+	);
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		return {};
+	};
+	await admitChatDraft(key, input);
+	assert.equal(
+		store.getState().error,
+		null,
+		"a successful retry leaves no stale page-level alert",
+	);
 });
 
 test("typed repair failures retain the canonical draft and error category", async () => {

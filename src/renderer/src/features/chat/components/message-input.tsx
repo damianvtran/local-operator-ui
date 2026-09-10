@@ -55,10 +55,27 @@ import { WaveformAnimation } from "./waveform-animation";
  * send failed and the composer that shows it; `chat-content` only forwards it.
  */
 export type ComposerSendError = {
-	message: string;
+	/**
+	 * The failure, when there is one. Absent while only a retained claim needs
+	 * showing - the claim outlives the alert (a keystroke dismisses the message
+	 * but is not evidence the request did not land), and the user still has to
+	 * be able to see that something is being held.
+	 */
+	message?: string;
 	actions?: { label: string; onClick: () => void }[];
-	/** Present only while a retained send claim exists to drop; see its use below. */
+	/**
+	 * The exact payload the store will hold the next send to, when it is holding
+	 * one. Supplied rather than described so the composer can put it back: the
+	 * guard wants a byte-identical retry of a message that is no longer on
+	 * screen, which is not something a user can reproduce by hand.
+	 */
+	heldText?: string;
+	/** Retire the alert after the held text has been restored into the box. */
+	onRestoreHeld?: () => void;
+	/** Drop the claim AND the draft. The message is finished with. */
 	onDiscard?: () => void;
+	/** Drop the claim only, keeping the draft row and whatever is typed now. */
+	onReleaseHeld?: () => void;
 	/** Fired on the first keystroke after the failure, so a corrected draft never carries a stale alert. */
 	onDismiss?: () => void;
 };
@@ -126,6 +143,17 @@ type MessageInputProps = {
 	 */
 	isHydrating?: boolean;
 };
+
+/**
+ * How long a send-failure alert stays put before the next keystroke retires it.
+ *
+ * Dismiss-on-edit is right - an alert over text the user has since fixed is the
+ * defect this whole change replaces - but at zero delay it fired on the first
+ * character, taking two sentences and up to three remedy buttons off screen
+ * before they could be read. Long enough to read the first line, short enough
+ * that a user who is deliberately rewriting never notices it.
+ */
+const ALERT_READ_DWELL_MS = 1500;
 
 const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
@@ -247,6 +275,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
+		/*
+		 * When the current alert text appeared, for the read dwell above.
+		 *
+		 * A ref and not state: it is read inside an event handler and must never
+		 * itself cause a render, least of all a render of the composer on every
+		 * keystroke. Keyed on the message so a SECOND failure restarts the dwell -
+		 * new text the user has not read yet, even though the region never
+		 * unmounted.
+		 */
+		const alertShownAt = useRef(0);
+		useEffect(() => {
+			const message = sendError?.message;
+			alertShownAt.current = message ? Date.now() : 0;
+		}, [sendError?.message]);
 
 		const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
 		const canEnableRecordingFeature = hasRadientApiKey && !isUnavailable;
@@ -621,6 +663,58 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		};
 
 		/*
+		 * What the alert should actually say and offer, given what is in the box.
+		 *
+		 * The page knows WHY the send failed and what payload the store is
+		 * holding; only the composer knows the live textarea value, and every
+		 * decision here turns on comparing the two. Deriving it in one place
+		 * keeps the render branches from disagreeing about which of the two
+		 * abandon behaviours is on offer - the case where they could is exactly
+		 * the one that silently destroyed a user's typed message.
+		 */
+		const composerAlert = useMemo(() => {
+			const held = sendError?.heldText;
+			// Trimmed: the guard compares payloads byte-for-byte, but for deciding
+			// what to SAY, a trailing newline from an Enter keypress is not the user
+			// having a different message.
+			const heldInBox = held !== undefined && held.trim() === newMessage.trim();
+			return {
+				message: sendError?.message,
+				/*
+				 * "Send it again" is only true when the next send would be ACCEPTED.
+				 *
+				 * With a claim held and something else in the box, the store refuses
+				 * on payload mismatch - so the sentence would be instructing the user
+				 * into the very guard that is blocking them. It is also false with an
+				 * empty box, where there is nothing left to send.
+				 */
+				retryHint:
+					Boolean(sendError?.message) &&
+					newMessage.trim() !== "" &&
+					(held === undefined || heldInBox),
+				// Only worth saying when the held message is not on screen; when it
+				// is, the user can see it and Enter retries it.
+				showHeld: held !== undefined && !heldInBox,
+				actions: sendError?.actions ?? [],
+				// Offered only when the box does not already hold the payload -
+				// restoring what is already there does nothing.
+				restore: held !== undefined && !heldInBox ? held : undefined,
+				abandon: !sendError?.onDiscard
+					? undefined
+					: // Empty box or the held text itself: nothing of the user's is at
+						// risk, so drop the whole draft. Anything else is a message they
+						// have typed and not sent, and discarding it under a label naming
+						// a DIFFERENT message is a destructive surprise - release just the
+						// claim instead, when there is one to release.
+						heldInBox || newMessage.trim() === ""
+						? ("discard" as const)
+						: sendError?.onReleaseHeld
+							? ("release" as const)
+							: ("discard" as const),
+			};
+		}, [sendError, newMessage]);
+
+		/*
 		 * No `iconSize` here. Every glyph below sits inside a `Button`, and the
 		 * button variants carry `[&_svg]:size-4` / `size-3.5`, which override an
 		 * SVG's own width and height - so a `size` prop on these icons states an
@@ -632,7 +726,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
-				{sendError && (
+				{sendError && (composerAlert.message || composerAlert.showHeld) && (
 					/*
 					 * Above the box rather than inside it: the composer box is one
 					 * control with one focus ring (`COMPOSER_BOX`), and folding an alert
@@ -643,60 +737,161 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * `role="alert"` and not `aria-live="polite"`: a send that did not
 					 * land is the assertive case. The user has just pressed Enter and
 					 * their next action depends on knowing it failed.
+					 *
+					 * Horizontal padding matches `COMPOSER_BOX`'s (`p-4` / `p-2`), not a
+					 * smaller inset of its own: the two are read as one unit, and at
+					 * `px-1` the error's first character sat 13px left of the message
+					 * text it points at, giving a ragged edge between two lines that
+					 * are meant to share a column.
+					 *
+					 * `max-h` with `overflow-y-auto` is a layout guard, not styling. The
+					 * footer reserves whatever this renders, so an unbounded alert over
+					 * a long retained draft pushed the composer - and the send button -
+					 * below the viewport in a narrow column, leaving no way to send at
+					 * all. Capped, the overflow scrolls inside the alert instead.
 					 */
 					<div
 						role="alert"
 						className={cn(
 							COMPOSER_WIDTH,
-							"flex flex-col gap-1 text-body-sm text-danger",
-							isSmallView ? "px-2 pb-1" : "px-1 pb-2",
+							"flex max-h-32 flex-col gap-1 overflow-y-auto text-body-sm text-danger",
+							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 						)}
 					>
-						<p>
-							{sendError.message}{" "}
-							{/* Branding section 8 orders error copy: what happened, what it
-							 * means, what to do. The store supplies the first two; this
-							 * sentence is the third, and it is only true because the
-							 * text really is still in the textarea below. */}
-							Your message is still in the composer — edit it if you need to,
-							then send again.
-						</p>
-						{(sendError.actions?.length || sendError.onDiscard) && (
-							<div className={cn("flex flex-wrap items-center gap-3")}>
-								{sendError.actions?.map((action) => (
+						{composerAlert.message && (
+							<p>
+								{composerAlert.message}
+								{/*
+								 * The "what to do" half of the error contract (branding
+								 * section 8), and it is only ever rendered where it is TRUE.
+								 * It used to be appended unconditionally, including onto the
+								 * unchanged-send guard - whose whole point is that an edited
+								 * resend is refused - so the alert told the user to edit and
+								 * send, then refused exactly that, forever. It now appears
+								 * only when the box holds something the store will accept;
+								 * the guard case gets controls instead.
+								 */}
+								{composerAlert.retryHint &&
+									" Your message is still in the composer. Send it again."}
+							</p>
+						)}
+						{composerAlert.showHeld && (
+							/*
+							 * The held claim, stated because it is being ENFORCED.
+							 *
+							 * `admissionAttempted` makes the store refuse any send whose
+							 * payload differs, and clearing the textarea does not drop it -
+							 * deliberately, since a keystroke says nothing about a request
+							 * that may be executing on the owner. Left unsaid, that produced
+							 * the worst failure in the flow: the user select-all-deleted,
+							 * saw nothing retained, typed something else, and was refused by
+							 * a healthy backend with no link back to what they did.
+							 *
+							 * Rendered only when the box does NOT already hold the payload.
+							 * When it does, the message is on screen and Enter retries it -
+							 * saying so would be noise on the common path.
+							 */
+							<p className={cn("text-ink-muted")}>
+								An unsent message is still being held, so a different message
+								cannot be sent yet.
+							</p>
+						)}
+						{(composerAlert.actions.length > 0 ||
+							composerAlert.restore ||
+							composerAlert.abandon) && (
+							/*
+							 * `min-h-6` on the row, not on the buttons: the targets are 20px
+							 * of text and sit directly above a 44px send button, which read
+							 * as less important than they are. The row grows the hit area to
+							 * the 24px comfortable minimum without changing the type size.
+							 */
+							<div className={cn("flex min-h-6 flex-wrap items-center gap-3")}>
+								{composerAlert.actions.map((action) => (
 									<Button
 										key={action.label}
 										type="button"
 										variant="link"
 										size="sm"
-										className={cn("text-body-sm")}
+										// `underline` at rest: `link` underlines only on hover and
+										// active, so these rendered as plain green words with no
+										// border, box or underline - an affordance carried by
+										// colour alone, which is not one.
+										className={cn("cursor-pointer text-body-sm underline")}
 										onClick={action.onClick}
 									>
 										{action.label}
 									</Button>
 								))}
-								{sendError.onDiscard && (
+								{composerAlert.restore && (
 									/*
-									 * Kept even though the composer is now editable, because
-									 * this does something no amount of select-all-delete can:
-									 * it drops the STORE's claim that the next send must match
-									 * the unconfirmed payload byte-for-byte
-									 * (`admitChatDraft`'s `admissionAttempted` guard). Emptying
-									 * the textarea alone leaves that claim standing, so the
-									 * next different message would be refused by a guard the
-									 * user has no way to see.
+									 * Puts the held payload back in the box, which is the only
+									 * way to satisfy a guard that demands a byte-identical
+									 * retry of a message the user can no longer see. This
+									 * replaces the old instruction to "edit it, then send
+									 * again" - advice the guard itself refuses, and following
+									 * it looped.
 									 */
 									<Button
 										type="button"
 										variant="link"
 										size="sm"
-										className={cn("text-body-sm text-ink-muted")}
+										className={cn("cursor-pointer text-body-sm underline")}
 										onClick={() => {
-											setNewMessage("");
-											sendError.onDiscard?.();
+											setNewMessage(composerAlert.restore ?? "");
+											sendError.onRestoreHeld?.();
+											textareaRef.current?.focus();
 										}}
 									>
-										Discard unsent message
+										Restore unsent message
+									</Button>
+								)}
+								{composerAlert.abandon && (
+									/*
+									 * One control, two behaviours, because the two cases lose
+									 * different things. With the held payload in the box there
+									 * is nothing else to protect, so this discards the draft.
+									 * With something else typed, discarding would destroy that
+									 * too - unprompted, under a label naming the OLD message -
+									 * so it releases only the store's claim and leaves the new
+									 * text alone. The label says which.
+									 *
+									 * `text-meta text-ink-dim`, down from `text-body-sm
+									 * text-ink-muted`: as the latter this outweighed the
+									 * failure it belongs to in 11 of 12 themes (radient 11.86:1
+									 * against danger's 6.98:1), putting a destructive secondary
+									 * at the top of the hierarchy. Now radient reads 7.41 and
+									 * the worst remaining margin over danger is 0.43 rather
+									 * than 4.88, with the 13px -> 11px size drop carrying the
+									 * rest of the demotion.
+									 *
+									 * NOT fixed by mixing danger toward the ground, which was
+									 * tried: it guarantees the ordering by construction but
+									 * rendered the control at 1.05-1.47:1 in the dark palettes,
+									 * i.e. an illegible destructive control - a worse defect
+									 * than the one being fixed. Nor by brightening
+									 * `text-danger`, which already clears AA everywhere and is
+									 * contract-verified. The residual inversion is a palette
+									 * question (the ink ramps are ordered by design intent, not
+									 * by contrast against THIS ground) and is raised for design
+									 * round 2 rather than papered over here.
+									 */
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										className={cn(
+											"cursor-pointer text-ink-dim text-meta underline",
+										)}
+										onClick={() => {
+											if (composerAlert.abandon === "discard") {
+												setNewMessage("");
+												sendError.onDiscard?.();
+											} else sendError.onReleaseHeld?.();
+										}}
+									>
+										{composerAlert.abandon === "discard"
+											? "Discard unsent message"
+											: "Stop holding it"}
 									</Button>
 								)}
 							</div>
@@ -809,7 +1004,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								// draft the user has since changed is the defect this whole
 								// change replaces, and moving the banner to the composer
 								// would only have moved that defect closer to the eye.
-								sendError?.onDismiss?.();
+								//
+								// After a dwell, though: the message is two sentences plus up
+								// to three controls, and a user who reaches straight for the
+								// keyboard lost all of it before finishing the first word -
+								// including the remedy buttons. The alert still goes on the
+								// edit, just not before it can be read.
+								if (Date.now() - alertShownAt.current >= ALERT_READ_DWELL_MS)
+									sendError?.onDismiss?.();
 							}}
 							onSelect={(e) =>
 								setCaret((e.target as HTMLTextAreaElement).selectionStart)

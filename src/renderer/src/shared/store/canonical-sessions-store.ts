@@ -2,7 +2,9 @@
  * drafts; the legacy agent mapping is retained only to resolve old deep links. */
 import {
 	DesktopControlError,
+	UserFacingError,
 	desktopResult,
+	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { create } from "zustand";
@@ -63,6 +65,26 @@ export type ChatImage = {
 };
 
 /**
+ * The unconfirmed-send guard's category, so the composer can recognise its own
+ * refusal and offer the two controls that actually resolve it (restore the held
+ * payload, or discard the claim) instead of the generic "edit and send again"
+ * tail, which is the one thing this guard refuses.
+ *
+ * A code rather than a string comparison on the message: the copy is expected
+ * to be reworded, and matching on prose would silently stop matching.
+ */
+export const UNCONFIRMED_SEND_CODE = "unconfirmed_send";
+
+/**
+ * Shown when a send failed with nothing user-facing to say - a runtime
+ * exception rather than a backend rejection. Stated once and shared, because
+ * the page-level fallback and this one are the same sentence about the same
+ * event and drifted apart when they were two literals.
+ */
+export const SEND_UNCONFIRMED_MESSAGE =
+	"The send could not be confirmed. Retry this draft.";
+
+/**
  * Which draft a chat view owns. A staged draft is keyed by its own key, but once
  * a session exists `draftKey` is null and the send draft lives under
  * `send:<id>` — reading only `draftKey` there left a failed send's retained text
@@ -105,8 +127,21 @@ export async function admitChatDraft(
 			JSON.stringify(previous.submittedImages ?? []) !==
 				JSON.stringify(input.images))
 	) {
-		throw new Error(
-			"The previous send has not been confirmed. Retry it unchanged, or discard it to send something different.",
+		/*
+		 * One action, and both remedies are controls rather than instructions.
+		 *
+		 * This used to read "Retry it unchanged, or discard it to send something
+		 * different", which asked the user to reproduce a payload they could no
+		 * longer see - the held text is not in the composer, that is precisely why
+		 * this guard fired. Following it by hand is a loop: edit, send, refused,
+		 * edit. So the sentence now states the situation only, and
+		 * `UNCONFIRMED_SEND_CODE` lets the composer attach "Restore it" (puts the
+		 * exact payload back, making an unchanged retry one keypress away) and
+		 * discard. Copy never names an action the user has to perform blind.
+		 */
+		throw new UserFacingError(
+			"The previous send has not been confirmed, and it does not match what is in the composer now.",
+			UNCONFIRMED_SEND_CODE,
 		);
 	}
 	const draft: ChatDraft = previous ?? {
@@ -147,7 +182,7 @@ export async function admitChatDraft(
 					draft.createRequestId,
 				)) ?? undefined;
 			if (!id)
-				throw new Error(
+				throw new UserFacingError(
 					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
 				);
 			store.updateDraft(key, { sessionId: id });
@@ -164,8 +199,19 @@ export async function admitChatDraft(
 			mode,
 		});
 		store.finishDraft(key, id);
+		// A send that landed retires every message about the send that did not.
+		// `createSession` records its failure page-level and only `fetchSessions`/
+		// `openSession` ever cleared it, so a successful retry left a stale "Chat
+		// could not start." standing over a working conversation.
+		useCanonicalSessionsStore.setState({ error: null });
 		return id;
 	} catch (error) {
+		// One owner for one failure. `createSession` sets the page-level `error`
+		// AND rethrows, so the same sentence rendered twice - once at the top of
+		// the chat column and once at the composer. The composer's copy is the
+		// actionable one (it sits on the text that failed and carries the
+		// remedies), so the send takes the message over and clears the other.
+		useCanonicalSessionsStore.setState({ error: null });
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
@@ -211,10 +257,7 @@ export async function admitChatDraft(
 				typeof error.code === "string"
 					? error.code
 					: undefined,
-			error:
-				error instanceof Error
-					? error.message
-					: "The send could not be confirmed.",
+			error: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
 		});
 		throw error;
 	}
@@ -249,6 +292,18 @@ type CanonicalSessionsState = {
 	 * next send must match it, and never touch the session or its transcript.
 	 */
 	discardDraft: (key: string) => void;
+	/**
+	 * Drop the unchanged-payload claim while KEEPING the draft row.
+	 *
+	 * `discardDraft` deletes the whole row, which is right when the user
+	 * abandons the message. It is wrong for the case that produced this: the
+	 * user typed something else and wants that to send. Deleting the row there
+	 * would also drop `sessionId` and the request ids, so the retry would create
+	 * a second session for a conversation that already has one. This releases
+	 * exactly the claim - `admissionAttempted` and the submitted payload - and
+	 * leaves identity intact.
+	 */
+	releaseClaim: (key: string) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
@@ -451,6 +506,32 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return {
 						drafts,
 						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
+					};
+				}),
+			releaseClaim: (key) =>
+				set((state) => {
+					const draft = state.drafts[key];
+					if (!draft) return {};
+					const {
+						admissionAttempted: _attempted,
+						submittedText: _text,
+						submittedAttachments: _attachments,
+						submittedImages: _images,
+						submittedMode: _mode,
+						error: _error,
+						errorCode: _errorCode,
+						...kept
+					} = draft;
+					return {
+						drafts: {
+							...state.drafts,
+							// A fresh admission id with the claim: the abandoned one may
+							// still be executing on the owner, and reusing it would make the
+							// next (different) message an idempotent REPLAY of the old
+							// payload - the server keys its receipt on the request id and
+							// would answer with the first attempt's result.
+							[key]: { ...kept, admissionRequestId: crypto.randomUUID() },
+						},
 					};
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>
