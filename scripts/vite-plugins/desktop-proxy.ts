@@ -1,3 +1,4 @@
+import { MAX_DESKTOP_REQUEST_BYTES } from "../../src/shared/desktop-contract";
 import type { Plugin } from "vite";
 import { requestDesktopMedia } from "../../src/main/desktop-media";
 import { requestDesktop } from "../../src/main/desktop-transport";
@@ -243,9 +244,18 @@ export function desktopProxyPlugin(): Plugin {
 					let size = 0;
 					for await (const chunk of req) {
 						size += chunk.length;
-						if (size > 262144) {
+						// A streamed body has no op until it parses, so this bounds the
+						// READ at the widest budget any op may claim and lets
+						// `requestDesktop` below apply the per-op refusal. Both transports
+						// therefore enforce ONE table; the previous bare 262144 here and in
+						// main were two copies that drifted from the schema between them.
+						if (size > MAX_DESKTOP_REQUEST_BYTES) {
 							res.statusCode = 413;
-							res.end(JSON.stringify({ detail: "This request is too large." }));
+							res.end(
+								JSON.stringify({
+									detail: "This message is too large to send in one request.",
+								}),
+							);
 							return;
 						}
 						chunks.push(Buffer.from(chunk));

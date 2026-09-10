@@ -18,7 +18,7 @@ globalThis.__canonicalRequest = async (request) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -34,8 +34,22 @@ const bundle = await build({
 					() => ({ path: "transport", namespace: "fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-					contents:
-						"export const desktopResult = request => globalThis.__canonicalRequest(request);",
+					// `DesktopControlError` carries the status, and the store now reads
+					// it: a 413 is our own pre-fetch size guard, so nothing was admitted
+					// and the draft must not latch. A fixture that dropped the class
+					// would make that branch untestable, so it mirrors the real shape.
+					contents: `
+			export const desktopResult = request => globalThis.__canonicalRequest(request);
+			export class DesktopControlError extends Error {
+				constructor(status, message, cause, code) {
+					super(message);
+					this.name = "DesktopControlError";
+					this.status = status;
+					this.cause = cause;
+					this.code = code;
+				}
+			}
+		`,
 					loader: "js",
 				}));
 			},
@@ -51,6 +65,7 @@ const {
 	admitChatDraft,
 	draftIdentityFor,
 	desktopRequestSchema,
+	DesktopControlError,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -445,5 +460,75 @@ test("new closed IPC operations validate roster and forbid hidden payload writes
 			},
 		}).success,
 		false,
+	);
+});
+
+test("a pre-admission size refusal does not latch, so the user can drop an image and send", async () => {
+	reset();
+	// The trap this closes: `admissionAttempted` was set BEFORE the request
+	// resolved, but a 413 comes from our own guard in desktop-transport.ts,
+	// which returns before it ever calls fetch. Nothing was admitted and we know
+	// it - yet the flag was set, so the unchanged-payload guard then refused any
+	// edit. The banner said "send it again", images are part of the payload
+	// identity, and removing a screenshot to make it fit was therefore the one
+	// action forbidden. Discarding the message was the only exit.
+	const heavy = [
+		{ data_b64: "A".repeat(64), mime_type: "image/png" },
+		{ data_b64: "B".repeat(64), mime_type: "image/png" },
+	];
+	const light = [{ data_b64: "A".repeat(64), mime_type: "image/png" }];
+	let refuse = true;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (refuse)
+			throw new DesktopControlError(
+				413,
+				"This message is too large to send in one request.",
+			);
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, images: heavy }),
+		/too large/,
+	);
+	assert.equal(
+		store.getState().drafts[key].admissionAttempted,
+		false,
+		"a refusal that never reached the backend must not pin the payload",
+	);
+
+	// The remedy the banner actually offers: remove an image and send.
+	refuse = false;
+	assert.ok(await admitChatDraft(key, { ...input, images: light }));
+	const sent = calls.filter((call) => call.op === "sessions.message").at(-1);
+	assert.deepEqual(sent.images, light, "the EDITED attachments are what ship");
+	// The session allocated on the refused attempt is reused: only the admission
+	// was refused, so re-creating would orphan a real session.
+	assert.equal(
+		calls.filter((call) => call.op === "sessions.create").length,
+		1,
+	);
+});
+
+test("a genuinely issued admission still latches, because its outcome is unknown", async () => {
+	reset();
+	// The complement, and the reason the fix reads the STATUS rather than
+	// loosening the flag: a 503 or a lost response may already be executing on
+	// the owner, so that payload must stay pinned for a byte-identical replay.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		throw new DesktopControlError(503, "The backend is not answering.");
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, input), /not answering/);
+	assert.equal(store.getState().drafts[key].admissionAttempted, true);
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "edited" }),
+		/not been confirmed/,
 	);
 });

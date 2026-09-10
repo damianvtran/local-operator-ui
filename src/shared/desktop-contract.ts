@@ -628,6 +628,86 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
 export type DesktopResponse = { status: number; body: unknown };
+
+/**
+ * How many bytes of serialized JSON body one desktop operation may carry.
+ *
+ * These live here, beside the schemas they bound, because the two were allowed
+ * to disagree: the transport that fronts this vocabulary carried a bare
+ * `262144` literal in two separate files while `sessions.message` promised
+ * eight 1,000,000-char images, a declared contract 31x larger than the pipe.
+ * One ordinary Retina screenshot busts 256 KiB, so the app refused payloads it
+ * had just told the user it accepted. A budget that is not stated next to its
+ * schema is a budget that drifts from it.
+ *
+ * Message-carrying ops get the larger budget because they are the only ones
+ * that carry images. Everything else moves fixed-shape control fields — the
+ * widest is a 32768-char credential — so a tight budget there is a real
+ * boundary on a malformed or hostile renderer payload rather than a limit any
+ * legitimate request approaches. Raising the control ops to the message budget
+ * would buy nothing and widen what an untrusted renderer can push through
+ * main.
+ */
+const DESKTOP_MESSAGE_BYTE_BUDGET = 880_000;
+const DESKTOP_CONTROL_BYTE_BUDGET = 262_144;
+
+/**
+ * Ops whose body carries user text and inline images, and so needs the room.
+ *
+ * 880,000 is the backend's real ceiling minus headroom, not a round number.
+ * `Prompt.nonempty` in `local_operator/server/routes/desktop_sessions.py:101`
+ * raises once `len(self.model_dump_json().encode()) > 900_000`, and behind
+ * that sits the owner control socket's 1 MiB line reader
+ * (`local_operator/session/runtime/server.py:100`, `_MAX_LINE_BYTES = 1 << 20`)
+ * — 900,000 is itself that wall less ~14% envelope. So the wall is physical;
+ * the question is only how close the client sits to it.
+ *
+ * Client and server measure very nearly the same bytes — `desktopEndpoint`
+ * emits every field explicitly including defaults, in declaration order, and
+ * pydantic v2 serializes raw UTF-8 like `JSON.stringify` — but "very nearly"
+ * is the problem. Landing on the boundary turns a client-accepted message into
+ * a server 409, which is a worse outcome than a local refusal that names the
+ * numbers and leaves the composer editable. The 20,000-byte margin (~2.2%) is
+ * the same discipline `local_operator/imaging.py:167-182` applies when it
+ * repairs to a 1960px edge against a 2000px ceiling.
+ */
+const MESSAGE_OPS: ReadonlySet<string> = new Set([
+	"sessions.message",
+	"sessions.command",
+]);
+
+/** The budget one op's serialized body must fit within. */
+export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
+	return MESSAGE_OPS.has(op)
+		? DESKTOP_MESSAGE_BYTE_BUDGET
+		: DESKTOP_CONTROL_BYTE_BUDGET;
+}
+
+/**
+ * The largest budget any op may claim.
+ *
+ * The dev proxy reads its request body as a stream and cannot know the op
+ * until the JSON is parsed, so it bounds the READ by this and leaves the
+ * per-op refusal to `requestDesktop`, which both transports already call. That
+ * keeps one authority for the per-op number instead of a second copy that can
+ * drift, which is exactly how `262144` ended up in two files disagreeing with
+ * the schema between them.
+ */
+export const MAX_DESKTOP_REQUEST_BYTES = Math.max(
+	DESKTOP_MESSAGE_BYTE_BUDGET,
+	DESKTOP_CONTROL_BYTE_BUDGET,
+);
+
+/**
+ * The budget a chat message body must fit, exported for the renderer's
+ * pre-flight check.
+ *
+ * The renderer refuses an oversize message BEFORE it calls `admitChatDraft`,
+ * because only there does it still know the numbers (how much is text, how
+ * much is images) and only there is the composer still editable. Main's guard
+ * stays as the untargeted backstop it always was.
+ */
+export const DESKTOP_MESSAGE_BUDGET_BYTES = DESKTOP_MESSAGE_BYTE_BUDGET;
 export type DesktopStreamEvent = {
 	streamId: string;
 	kind: "data" | "error" | "end";

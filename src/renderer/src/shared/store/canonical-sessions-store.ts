@@ -1,6 +1,9 @@
 /** Canonical sessions are the only conversation identities. Profile names stage
  * drafts; the legacy agent mapping is retained only to resolve old deep links. */
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -165,6 +168,21 @@ export async function admitChatDraft(
 	} catch (error) {
 		store.updateDraft(key, {
 			pending: false,
+			// A 413 on this path is OUR OWN transport guard, which weighs the body and
+			// returns before it ever calls `fetch` (`src/main/desktop-transport.ts`).
+			// The backend cannot produce one: uvicorn enforces no body limit and the
+			// frame validator maps its refusal to 409. So nothing was admitted and we
+			// know it with certainty - which is exactly the case the flag's own
+			// contract above says it must NOT cover.
+			//
+			// Latching here was a trap with no exit: the banner said "send it again",
+			// the unchanged-payload guard then refused any edit, and images are part
+			// of that identity check - so the one action that would make the message
+			// fit, removing a screenshot, was the one action forbidden. The only way
+			// out was discarding the message.
+			...(error instanceof DesktopControlError && error.status === 413
+				? { admissionAttempted: false }
+				: {}),
 			errorCode:
 				error instanceof Error &&
 				"code" in error &&

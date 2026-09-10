@@ -8,7 +8,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -39,6 +39,8 @@ const {
 	trustedDesktopFrame,
 	registerDesktopIPC,
 	guardForegroundReceipts,
+	desktopRequestByteBudget,
+	MAX_DESKTOP_REQUEST_BYTES,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -937,4 +939,97 @@ test("the receipt gate rides the sender, so a non-IPC main caller cannot bypass 
 	const twice = guardForegroundReceipts(() => owner, guarded);
 	await twice(receipt);
 	assert.equal(calls.length, 3);
+});
+
+// The guard that produced this test refused every op at a bare 262144, which is
+// 29% of what the backend accepts and less than one pasted Retina screenshot,
+// while the schema in the same package promised eight 1,000,000-char images. A
+// per-op table is what keeps the pipe and the promise from disagreeing again.
+test("byte budgets are per operation, and message ops get the backend's real headroom", () => {
+	// Pinned to `Prompt.nonempty` in desktop_sessions.py:101 (900,000) less
+	// envelope headroom. Only the ops that carry images get it.
+	assert.equal(desktopRequestByteBudget("sessions.message"), 880000);
+	assert.equal(desktopRequestByteBudget("sessions.command"), 880000);
+	// Control ops move fixed-shape fields and must stay tight: a wider budget
+	// there buys nothing and widens what an untrusted renderer can push.
+	assert.equal(desktopRequestByteBudget("config.update"), 262144);
+	assert.equal(desktopRequestByteBudget("auth.key"), 262144);
+	assert.equal(desktopRequestByteBudget("capabilities"), 262144);
+	// The dev proxy bounds a streamed read by this before the op is knowable,
+	// then defers to the per-op refusal. It must cover the widest budget or it
+	// truncates a legal message before anything can classify it.
+	assert.equal(MAX_DESKTOP_REQUEST_BYTES, 880000);
+});
+
+test("a message just under the budget is sent and just over is refused before any HTTP", async () => {
+	const sessionId = "123456abcdef";
+	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+	const budget = desktopRequestByteBudget("sessions.message");
+	const text = "Five screenshots and a long question.";
+	// Reach the budget with an IMAGE, because that is the only way to reach it:
+	// `text` is schema-capped at 200,000 chars, so the payloads this budget
+	// exists for are always attachment-carrying. Measure the envelope rather
+	// than hardcoding it, so a field added to the body cannot silently move the
+	// boundary this test claims to pin.
+	const envelope = Buffer.byteLength(
+		JSON.stringify({
+			request_id: requestId,
+			text,
+			images: [{ data_b64: "", mime_type: "image/png" }],
+			mode: "prompt",
+		}),
+	);
+	const message = (bytes) => ({
+		op: "sessions.message",
+		sessionId,
+		requestId,
+		text,
+		images: [{ data_b64: "A".repeat(bytes - envelope), mime_type: "image/png" }],
+	});
+
+	const count = seen.length;
+	const fits = await requestDesktop(message(budget), url, token);
+	assert.equal(fits.status, 200);
+	assert.equal(Buffer.byteLength(seen.at(-1).body), budget);
+	// The old global literal is the number this payload used to die on, and it
+	// is 3.4x under what the backend accepts. Stated here so a regression that
+	// reinstates it fails with the reason attached.
+	assert.ok(budget > 262144);
+
+	// One byte over is the whole difference: no fetch, and the detail names the
+	// message rather than "this desktop request", which is not what the user
+	// believes they sent.
+	const over = await requestDesktop(message(budget + 1), url, token);
+	assert.equal(over.status, 413);
+	assert.equal(
+		over.body.detail,
+		"This message is too large to send in one request.",
+	);
+	assert.equal(seen.length, count + 1, "the refused body must never reach HTTP");
+});
+
+test("control ops stay far below their own budget, so the tight cap is a backstop not a limit", async () => {
+	// The widest control field in the vocabulary is a 32768-char credential, so
+	// no legitimate control body approaches 262,144. That is the design: the
+	// tight budget bounds a malformed or hostile renderer payload, and refusing
+	// a real control at it would be a bug. A body past the SCHEMA is rejected
+	// earlier and never reaches HTTP either way.
+	const count = seen.length;
+	const legitimate = await requestDesktop(
+		{ op: "credentials.update", key: "SOME_KEY", value: "v".repeat(32768) },
+		url,
+		token,
+	);
+	assert.equal(legitimate.status, 200);
+	assert.ok(
+		Buffer.byteLength(seen.at(-1).body) <
+			desktopRequestByteBudget("credentials.update"),
+	);
+	const oversize = await requestDesktop(
+		{ op: "credentials.update", key: "SOME_KEY", value: "v".repeat(32769) },
+		url,
+		token,
+	);
+	assert.equal(oversize.status, 422);
+	assert.equal(seen.length, count + 1, "the refused body must never reach HTTP");
 });

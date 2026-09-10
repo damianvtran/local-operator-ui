@@ -1,6 +1,7 @@
 import {
 	type DesktopResponse,
 	desktopEndpoint,
+	desktopRequestByteBudget,
 	desktopRequestSchema,
 } from "../shared/desktop-contract";
 
@@ -27,10 +28,22 @@ export async function requestDesktop(
 	try {
 		const body =
 			target.body === undefined ? undefined : JSON.stringify(target.body);
-		if (body && Buffer.byteLength(body) > 262144) {
+		// Per-op, never one global literal: this guard once refused at 256 KiB for
+		// every op, which is 29% of what the backend accepts and less than a single
+		// pasted screenshot. The number now comes from the contract that declares
+		// the schemas, so the pipe cannot silently disagree with the promise.
+		//
+		// This is the BACKSTOP, not the user-facing check. The renderer refuses an
+		// oversize message before admission with copy that names the actual sizes;
+		// by the time a body reaches here the op is untargeted, so the detail says
+		// only what is true of any of them.
+		if (
+			body &&
+			Buffer.byteLength(body) > desktopRequestByteBudget(request.op)
+		) {
 			return {
 				status: 413,
-				body: { detail: "This desktop request is too large." },
+				body: { detail: "This message is too large to send in one request." },
 			};
 		}
 		const response = await fetch(new URL(target.path, backendUrl), {
