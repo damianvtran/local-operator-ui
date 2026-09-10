@@ -117,7 +117,14 @@ const UserRow = memo(function UserRow({
 			<div className="group relative flex w-full justify-end">
 				<div
 					className={cn(
-						"relative rounded-frame border border-hairline bg-surface text-ink break-words",
+						// `border-control`, not `hairline`. The bubble is `bg-surface` on
+						// a `bg-surface` column, so this border is its ONLY edge - and
+						// because the agent side has no bubble at all, that edge is also
+						// the whole visual distinction between the two speakers.
+						// Removing it would lose information, which is the contract's own
+						// test for a structural boundary, so it takes the role with the
+						// 3:1 floor rather than the decorative one with no floor.
+						"relative rounded-frame border border-control bg-surface text-ink break-words",
 						isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 					)}
 				>
@@ -658,7 +665,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			ref={containerRef}
 			data-lo-canonical-transcript={true}
 			className={cn(
-				"relative flex h-full w-full grow flex-col-reverse overflow-auto p-4 will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+				// `min-h-0`, not `h-full`: this is the flex child that must absorb
+				// the column's leftover height. `h-full` resolves its flex base to
+				// the FULL container height, so the base sum overshot the container
+				// by the header plus the composer and the deficit was taken out of
+				// the header - which is why the header rendered a different height
+				// depending on how tall the composer happened to be.
+				//
+				// `scrollbar-gutter: stable both-edges` because this is the scroll
+				// container and the composer below it is not. An 8px scrollbar takes
+				// its width off the right of THIS content box only, so `mx-auto`
+				// centred the transcript 4px left of the composer - a permanent
+				// misalignment between the two elements the eye most wants aligned.
+				// Reserving the gutter on both edges restores a symmetric content
+				// box: measured in the running app, the centre delta goes 4px -> 0.
+				// `stable` alone would reserve only the right edge and keep it.
+				"relative flex min-h-0 w-full grow flex-col-reverse overflow-auto p-4 [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 			)}
 		>
 			{perf && (

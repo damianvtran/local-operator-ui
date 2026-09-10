@@ -69,6 +69,16 @@ type MessageInputProps = {
 	canonicalStop?: { active: boolean; onStop: () => void };
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
+	/**
+	 * Working directory for this conversation, and the way to change it.
+	 *
+	 * `onChangeCwd` is present only while the session is still a draft: a cwd is
+	 * fixed at `sessions.create` and the backend exposes no way to move a live
+	 * one, so the chip renders read-only once the session exists rather than
+	 * offering a control that cannot succeed.
+	 */
+	cwd?: string;
+	onChangeCwd?: (cwd: string) => void;
 	isSmallView?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
@@ -138,11 +148,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			canonicalStop,
 			initialSuggestions,
 			agentData,
+			cwd,
+			onChangeCwd,
 			isSmallView = false,
 			isHydrating = false,
 		},
 		ref,
 	) => {
+		/*
+		 * The canonical session's cwd is the answer where there is one; the legacy
+		 * agent record is the fallback so the old backend path keeps its chip.
+		 */
+		const cwdToShow = cwd ?? agentData?.current_working_directory;
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -664,10 +681,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									</Button>
 								</span>
 							</Tooltip>
-							{conversationId && !canonicalStop && (
+							{/*
+							 * Gated on having a directory to show, not on the session
+							 * being idle. The old `!canonicalStop` gate could never be
+							 * true in the canonical chat - the stop control is passed
+							 * unconditionally - so the chip was unreachable from v0.16.0
+							 * even though it was still mounted here. */}
+							{cwdToShow && (
 								<DirectoryIndicator
-									agentId={conversationId}
-									currentWorkingDirectory={agentData?.current_working_directory}
+									currentWorkingDirectory={cwdToShow}
+									onChangeDirectory={onChangeCwd}
+									readOnlyReason={
+										onChangeCwd
+											? undefined
+											: "Working directory is set when the session starts and cannot be changed afterwards."
+									}
 								/>
 							)}
 						</div>
@@ -814,7 +842,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		return (
 			<div
 				className={cn(
-					"flex w-full shrink-0 grow flex-col items-center justify-center bg-canvas",
+					// `bg-surface`, not `bg-canvas`. `canvas` is the PAGE ground and
+					// `surface` is the panel ground, so painting canvas inside the
+					// surface-coloured chat column ran the elevation step backwards and
+					// read as a hole punched through the panel to the page behind it.
+					// On an empty chat this band holds the greeting, the composer and
+					// the suggestion chips, so it covered most of the column - which is
+					// the "large empty space with the wrong background colour". The
+					// composer box keeps its own `border-control` edge (floored at 3:1
+					// on all four grounds), so it stays legible without the band.
+					//
+					// `shrink-0` alone: `grow` on the same element contradicted it and
+					// became actively harmful once the transcript stopped declaring
+					// `h-full`, because the band would then claim the column's free
+					// space instead of leaving it to the transcript.
+					"flex w-full shrink-0 flex-col items-center justify-center bg-surface",
 					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
 				)}
 			>

@@ -1,3 +1,4 @@
+import type { AgentUpdate } from "@shared/api/local-operator/types";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -11,6 +12,7 @@ import {
 } from "@shared/components/hosting/searchable-select";
 import { Input, Label } from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
+import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { cn } from "@shared/lib/utils";
 import { Code, File, Folder } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -103,6 +105,14 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 		[agentListResult, agentId],
 	);
 	const currentWorkingDirectory = agent?.current_working_directory ?? "~";
+
+	/*
+	 * The agents PATCH lives here rather than inside the chip because THIS is
+	 * the mount site that holds a real agent UUID. The composer's copy of the
+	 * chip is bound to a canonical session and writes through the session store
+	 * instead; the chip itself stays a controlled input and picks neither.
+	 */
+	const updateAgent = useUpdateAgent();
 
 	/*
 	 * A typed extension that matches nothing in the list is still a valid
@@ -211,8 +221,19 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 							Location
 						</p>
 						<DirectoryIndicator
-							agentId={agentId}
 							currentWorkingDirectory={currentWorkingDirectory}
+							onChangeDirectory={(path) =>
+								updateAgent.mutate({
+									agentId,
+									// `current_working_directory` is a real field on the agents
+									// PATCH body but is missing from the generated `AgentUpdate`
+									// type; the cast carries over from the call site this moved
+									// out of rather than being introduced here.
+									update: {
+										current_working_directory: path,
+									} as AgentUpdate,
+								})
+							}
 						/>
 						<p className={cn("mt-2 text-ink-muted text-meta")}>
 							The file will be created in the selected working directory.

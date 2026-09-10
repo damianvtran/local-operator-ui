@@ -321,25 +321,13 @@ function SessionPanel({
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
 	return (
-		<div className={cn("flex h-full min-h-0 flex-col")}>
-			{draftKey && (
-				<label
-					className={cn(
-						"flex items-center gap-2 border-b border-hairline px-4 py-2 text-meta text-ink-muted",
-					)}
-				>
-					Working directory
-					<input
-						aria-label="New chat working directory"
-						className={cn(
-							"min-w-0 flex-1 rounded-md border border-control bg-surface px-2 py-1 text-ink",
-						)}
-						value={cwd}
-						disabled={Boolean(draft?.sessionId) || admitting}
-						onChange={(event) => setCwd(event.target.value)}
-					/>
-				</label>
-			)}
+		<div className="flex h-full min-h-0 flex-col">
+			{/*
+			 * The working directory is edited on the composer's chip, not on a bar
+			 * above the conversation. A full-width labelled input spanning the top
+			 * of the chat gave a rarely-changed setting the most prominent slot on
+			 * the screen, and it only ever appeared on drafts, so the chat shell
+			 * changed shape between a new chat and a live one. */}
 			{(sendError || draft?.error) && (
 				<div role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
 					<p>
@@ -455,6 +443,18 @@ function SessionPanel({
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
 					agentId={identity}
+					/*
+					 * Draft: the store's staged cwd, which `admitChatDraft` passes to
+					 * `sessions.create`. Live: the directory the session actually runs
+					 * in, reported by the canonical stream. `onChangeCwd` is supplied
+					 * only in the first case, which is what makes the chip read-only
+					 * once the session exists - there is no backend route that moves a
+					 * live session, so an editable chip there would always fail.
+					 */
+					cwd={draftKey ? cwd : canonical.frontend?.cwd}
+					onChangeCwd={
+						draftKey && !draft?.sessionId && !admitting ? setCwd : undefined
+					}
 					messages={[]}
 					isLoading={false}
 					isLoadingMessages={false}

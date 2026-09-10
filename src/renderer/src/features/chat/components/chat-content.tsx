@@ -6,6 +6,7 @@ import type {
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -93,6 +94,10 @@ type ChatContentProps = {
 	agentData?: AgentDetails | null;
 	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
+	/** Working directory for this conversation, shown on the composer's chip. */
+	cwd?: string;
+	/** Present only while the session is a draft; see `MessageInputProps`. */
+	onChangeCwd?: (cwd: string) => void;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -154,6 +159,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		agentData,
 		refetch,
 		messageInputRef,
+		cwd,
+		onChangeCwd,
 		canonical,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
@@ -254,11 +261,36 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			);
 
 		return (
-			<div className="relative flex h-full w-full flex-row">
-				<div className="relative h-full min-w-[220px] flex-1">
+			/*
+			 * The chat column's height chain, stated once so it cannot drift back.
+			 *
+			 * A flex column only bounds its children if it can shrink below their
+			 * content: `min-h-0` defeats the `min-height: auto` that flex items get
+			 * by default, and `overflow-hidden` is what makes overflow CONTAINED
+			 * rather than merely clipped several ancestors further up. Without both,
+			 * the three children below over-declare their bases (84 + H + C against a
+			 * container of H), the deficit is shared out by base size, and the header
+			 * silently renders shorter than it declares - by a margin that MOVES with
+			 * composer content. Measured in the running app before this fix: a header
+			 * declaring 84px rendered 46.5px at 1380x872 and 61.4px at 1000x800.
+			 *
+			 * `w-0` on the column rather than `min-w-0`: the column must not be
+			 * sized by its content (that is what lets a pinned-width canvas panel or
+			 * a long unbroken token push it wider than its track), but it also keeps
+			 * a deliberate 220px floor. `min-w-0` would fight `min-w-[220px]` for the
+			 * same property and `cn` drops one of them silently, so the base size is
+			 * zeroed instead and `flex-1` grows it back from there - the floor
+			 * survives and the content no longer votes on the width.
+			 */
+			<div
+				className={cn("relative flex h-full w-full flex-row overflow-hidden")}
+			>
+				<div className={cn("relative h-full w-0 min-w-[220px] flex-1")}>
 					<div
 						ref={chatContainerRef}
-						className="flex h-full grow flex-col rounded-none bg-surface"
+						className={cn(
+							"flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-surface",
+						)}
 					>
 						{/* Chat header */}
 						<ChatHeader
@@ -357,6 +389,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								hasNewActivity={hasNewActivity}
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
+								cwd={cwd}
+								onChangeCwd={onChangeCwd}
 								isSmallView={isSmallView}
 							/>
 						)}

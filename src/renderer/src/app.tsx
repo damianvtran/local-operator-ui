@@ -19,6 +19,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
@@ -114,7 +115,36 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
-			<div className="flex h-screen overflow-hidden">
+			{/*
+			 * `relative` is load-bearing, not decoration.
+			 *
+			 * This root already declared `h-screen overflow-hidden`, which reads as
+			 * a promise that nothing can scroll the document. It was not one: an
+			 * `overflow` clip only applies to a descendant whose CONTAINING BLOCK is
+			 * that element, and every ancestor here was `position: static`, so the
+			 * absolutely positioned `sr-only` labels the app scatters through its
+			 * lists resolved against the initial containing block and escaped the
+			 * clip entirely. Their offsets are real layout positions, so a long
+			 * sidebar pushed them past the viewport and stretched <html> behind an
+			 * app that looks bounded.
+			 *
+			 * Measured in the running app: `documentElement.scrollHeight -
+			 * clientHeight` was 308px with 20 escaping labels; making this element a
+			 * containing block takes it to 0, and reverting restores 308. Fixing it
+			 * here rather than at each label keeps one rule instead of one per
+			 * `sr-only` call site, and the app's single `position: fixed` element is
+			 * unaffected (verified: it does not move).
+			 *
+			 * The `sr-only` utility itself is NOT at fault and must not be "fixed":
+			 * its computed style matches the canonical definition exactly (absolute,
+			 * 1x1, `overflow: hidden`, `clip-path: inset(50%)`, `margin: -1px`). It
+			 * has no `top`/`left`, which is the point - the label stays at its static
+			 * position so it reads in document order. That is only bounded if some
+			 * ancestor is a containing block, which is the job this line does. The
+			 * labels stay 1x1 and rendered afterwards, so screen readers still
+			 * announce them; nothing is hidden, it is merely contained.
+			 */}
+			<div className={cn("relative flex h-screen overflow-hidden")}>
 				{isCommandPaletteOpen && <CommandPalette />}
 
 				<ModelsInitializer />

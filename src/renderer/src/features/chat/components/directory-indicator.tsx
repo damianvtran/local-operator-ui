@@ -1,4 +1,3 @@
-import type { AgentUpdate } from "@shared/api/local-operator/types";
 import {
 	Button,
 	DropdownMenu,
@@ -10,7 +9,6 @@ import {
 	Input,
 	Tooltip,
 } from "@shared/components/ui";
-import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { cn } from "@shared/lib/utils";
 import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
 import type { LucideIcon } from "lucide-react";
@@ -49,12 +47,29 @@ import {
 
 /**
  * Props for the DirectoryIndicator component
+ *
+ * The chip is a CONTROLLED input: it renders the directory it is given and
+ * reports a chosen one back. It deliberately owns no write path of its own.
+ *
+ * It used to take an `agentId` and PATCH the legacy agents REST API itself,
+ * which quietly could not work from the composer: the id threaded in there is
+ * a 12-hex canonical session id or a draft key, never an agent UUID, so the
+ * write went to the wrong resource with the wrong key. Handing the write back
+ * to the caller lets each mount site use the path that actually exists for it
+ * - `setCwd` on a draft session here, `useUpdateAgent` in the create-file
+ * dialog, which really does hold an agent UUID.
  */
 type DirectoryIndicatorProps = {
-	/** The ID of the current agent */
-	agentId: string;
-	/** The current working directory of the agent */
+	/** Directory to display. Undefined renders the "not set" affordance. */
 	currentWorkingDirectory?: string;
+	/**
+	 * Commit a newly chosen directory. Omit to render read-only: the chip then
+	 * shows the directory and explains, via `readOnlyReason`, why it cannot be
+	 * changed here rather than offering a control that would silently fail.
+	 */
+	onChangeDirectory?: (path: string) => void;
+	/** Tooltip shown when `onChangeDirectory` is absent. */
+	readOnlyReason?: string;
 };
 
 type DirectoryInfo = {
@@ -158,15 +173,16 @@ const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
  * Displays the current working directory of the agent and allows changing it
  */
 export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
-	agentId,
 	currentWorkingDirectory,
+	onChangeDirectory,
+	readOnlyReason,
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [homeDirectory, setHomeDirectory] = useState<string | null>(null); // State for home directory
 	const inputRef = useRef<HTMLInputElement>(null);
-	const updateAgent = useUpdateAgent();
+	const editable = Boolean(onChangeDirectory);
 
 	// Fetch home directory on mount
 	useEffect(() => {
@@ -207,14 +223,9 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			// Add to recent directories
 			addRecentDirectory(path);
 
-			updateAgent.mutate({
-				agentId,
-				update: {
-					current_working_directory: path,
-				} as AgentUpdate,
-			});
+			onChangeDirectory?.(path);
 		},
-		[agentId, updateAgent, handleCloseMenu, addRecentDirectory],
+		[onChangeDirectory, handleCloseMenu, addRecentDirectory],
 	);
 
 	const handleStartEdit = useCallback((event?: React.MouseEvent) => {
@@ -241,18 +252,12 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			// Add to recent directories when manually entering a path
 			addRecentDirectory(directory);
 
-			updateAgent.mutate({
-				agentId,
-				update: {
-					current_working_directory: directory,
-				} as AgentUpdate,
-			});
+			onChangeDirectory?.(directory);
 		}
 	}, [
-		agentId,
 		directory,
 		currentWorkingDirectory,
-		updateAgent,
+		onChangeDirectory,
 		addRecentDirectory,
 	]);
 
@@ -315,9 +320,37 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 		[homeDirectory],
 	);
 
+	/*
+	 * Read-only: show the directory and say why it cannot be changed here.
+	 *
+	 * A live session's cwd is fixed at creation. `sessions.create` is the only
+	 * cwd write path the backend exposes - the TUI's `/move` has no HTTP route -
+	 * so offering a picker on a live session would be a control whose every use
+	 * fails. Stating the reason in a tooltip is the honest version of that, and
+	 * the button stays focusable so a keyboard user can read it too.
+	 */
+	if (!editable) {
+		return (
+			<div className={cn("ml-2 flex items-center")} data-lo-cwd-chip="readonly">
+				<Tooltip content={readOnlyReason ?? "Working directory"} side="right">
+					<Button
+						variant="ghost"
+						className={cn("max-w-65 cursor-default justify-start", PATH_TYPE)}
+						aria-label={readOnlyReason ?? "Working directory"}
+					>
+						<FolderOpen aria-hidden="true" />
+						<span className={cn("min-w-0 truncate")}>
+							{formatDirectory(currentWorkingDirectory || "")}
+						</span>
+					</Button>
+				</Tooltip>
+			</div>
+		);
+	}
+
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
-			<div className={cn("ml-2 flex items-center")}>
+			<div className={cn("ml-2 flex items-center")} data-lo-cwd-chip="unset">
 				<Tooltip content="Click to set working directory" side="right">
 					<Button variant="ghost" onClick={handleStartEdit}>
 						<Folder aria-hidden="true" />
@@ -329,7 +362,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	}
 
 	return (
-		<div className={cn("ml-2 flex items-center")}>
+		<div className={cn("ml-2 flex items-center")} data-lo-cwd-chip="editable">
 			{isEditing ? (
 				<Input
 					ref={inputRef}

@@ -201,6 +201,23 @@ const CONTROLS = [
 		border: "accent",
 		ink: "accent",
 	},
+	{
+		/*
+		 * The user's message bubble in the transcript.
+		 *
+		 * Listed because it is `surface` on a `surface` column: its fill is the
+		 * same colour as the ground behind it, so its border is doing ALL of the
+		 * work of separating one speaker from the other - the agent side renders
+		 * no bubble at all. That makes the edge structural rather than
+		 * decorative, and this row is what holds it to the 3:1 edge floor
+		 * instead of letting it drift back to `hairline`, which has no floor.
+		 */
+		name: "user message bubble",
+		on: ["surface"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
 ];
 
 /** Roles that must clear the structural 3:1 floor on all four grounds. */
