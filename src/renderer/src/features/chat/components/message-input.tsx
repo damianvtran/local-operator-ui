@@ -191,15 +191,6 @@ export type MessageInputHandle = {
  * textarea suppresses its own outline so there is never a second ring inside
  * the box. No decorative shadow.
  */
-/*
- * The composer's track. Stated once because the send-error alert has to line
- * up with the box it belongs to: two independent copies of these breakpoints
- * drift, and an alert half a box-width off reads as unrelated chrome rather
- * than as this composer's own failure.
- */
-const COMPOSER_WIDTH =
-	"mx-auto w-full max-w-full sm:max-w-[90%] md:max-w-[900px]";
-
 const COMPOSER_BOX = cn(
 	"mx-auto flex w-full flex-col border border-control bg-surface",
 	"box-border transition-colors duration-fast ease-out-quart",
@@ -805,8 +796,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * Above the box rather than inside it: the composer box is one
 					 * control with one focus ring (`COMPOSER_BOX`), and folding an alert
 					 * into it would put non-interactive prose and two extra buttons
-					 * inside the thing that ring frames. Sharing `COMPOSER_WIDTH` keeps
-					 * the two edge-aligned, which is what makes them read as one unit.
+					 * inside the thing that ring frames. Sharing `CHAT_MEASURE` — the same
+					 * container-keyed track `COMPOSER_BOX` resolves — keeps the two
+					 * edge-aligned at every width. Viewport-keyed classes that merely
+					 * look equivalent drift from the container-keyed box in the
+					 * 640–768px window band, and an alert half a box-width off reads as
+					 * unrelated chrome rather than as this composer's own failure.
+					 * That is what makes the two read as one unit.
 					 *
 					 * `role="alert"` and not `aria-live="polite"`: a send that did not
 					 * land is the assertive case. The user has just pressed Enter and
@@ -827,7 +823,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					<div
 						role="alert"
 						className={cn(
-							COMPOSER_WIDTH,
+							CHAT_MEASURE,
 							"flex max-h-32 flex-col gap-1 overflow-y-auto text-body-sm text-danger",
 							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 						)}
