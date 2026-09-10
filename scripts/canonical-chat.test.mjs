@@ -236,6 +236,56 @@ test("a send that never reached admission carries the user's NEW images", async 
 	assert.equal(sent.text, "different");
 });
 
+test("a refused create retains the text but holds no claim to release", async () => {
+	reset();
+	// U13: the composer suppresses its abandon control when a send failed with
+	// no claim held (`onReleaseHeld` undefined) - nothing is being enforced, so
+	// an abandon there could only empty a composer under a label naming a
+	// message the user cannot see. That branch is live only while `heldText`
+	// derives undefined, and chat-page derives it as
+	// `admissionAttempted && !pending ? submittedText : undefined`. This pins
+	// those inputs as the store leaves them after a refused create:
+	// `admissionAttempted` is set only AFTER create succeeds, so moving it
+	// earlier - symmetric with the pre-admission pinning of mode/images, and a
+	// plausible-looking refactor - would arm a claim over a send nothing is
+	// enforcing, resurrect the abandon control U13 removed, and go red here.
+	// The derivation is restated rather than imported because the component's
+	// memo is not reachable from this store-level harness; if the component's
+	// input ever changes, this line is what to revisit.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") throw new Error("create refused");
+		return {};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, input), /create refused/);
+	const draft = store.getState().drafts[key];
+	assert.equal(
+		draft.submittedText,
+		input.text,
+		"the failed text is retained for the alert to sit on",
+	);
+	assert.ok(
+		typeof draft.error === "string" && draft.error.length > 0,
+		"a remount still has copy for the alert from the store's own record",
+	);
+	assert.notEqual(draft.pending, true, "settled: the escapes may appear");
+	assert.notEqual(
+		draft.admissionAttempted,
+		true,
+		"create never succeeded, so no admission outcome is unknown",
+	);
+	const heldText =
+		draft.admissionAttempted && !draft.pending
+			? draft.submittedText
+			: undefined;
+	assert.equal(
+		heldText,
+		undefined,
+		"no claim: the composer's release control stays suppressed (U13)",
+	);
+});
+
 test("only an issued admission pins the payload, and a discard always frees it", async () => {
 	reset();
 	let failAdmission = true;

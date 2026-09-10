@@ -733,10 +733,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * on payload mismatch - so the sentence would be instructing the user
 				 * into the very guard that is blocking them. It is also false with an
 				 * empty box, where there is nothing left to send.
+				 *
+				 * `newMessage.trim()`, deliberately NOT `!boxEmpty`: this sentence
+				 * promises Enter will send, and the submit path guards on the raw
+				 * textarea (`use-message-input.ts`), which refuses a chip-only
+				 * composer. `boxPayload` counts reply chips, so gating here on it
+				 * rendered "Send it again" over a chip-only box while Enter was dead.
+				 * The two predicates answer different questions and each must use the
+				 * basis of its own consumer: `boxEmpty` - would a discard lose
+				 * something visible; this - would the send Enter triggers run at all.
 				 */
 				retryHint:
 					Boolean(sendError?.message) &&
-					!boxEmpty &&
+					Boolean(newMessage.trim()) &&
 					(held === undefined || heldInBox),
 				// Only worth saying when the held message is not on screen; when it
 				// is, the user can see it and Enter retries it.
