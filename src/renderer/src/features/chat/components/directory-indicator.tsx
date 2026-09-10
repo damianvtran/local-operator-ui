@@ -161,6 +161,15 @@ const CHIP_BOX =
 /**
  * The same box for the two states that really are buttons.
  *
+ * `cursor-pointer`, unlike the read-only chip's `cursor-default`: this is a
+ * live menu trigger, and the pointer is the one affordance it carries at
+ * rest besides the tooltip — its hover fill is the shared `accent-wash`, too
+ * faint to carry the affordance alone (design round 3, D15). The app's
+ * convention is not "buttons never take a pointer": interactive rows
+ * (attachments, canvas variable rows) take `cursor-pointer` and inert rows
+ * (the read-only chip, slash-popup rows) take `cursor-default`, and a
+ * control that opens a menu is in the first group.
+ *
  * `w-fit` matters: without it the button stretched to its `max-w-65` and the
  * `justify-start` content sat against a wide empty remainder, which is what
  * put ~34px between the glyph and the path inside ONE control while the gap
@@ -169,7 +178,7 @@ const CHIP_BOX =
  * box is what makes the 6px gap the eye actually sees.
  */
 const CHIP_BOX_INTERACTIVE =
-	"w-fit max-w-65 min-w-24 shrink justify-start gap-1.5";
+	"w-fit max-w-65 min-w-24 shrink cursor-pointer justify-start gap-1.5";
 
 /**
  * The word the deleted full-width bar used to carry.

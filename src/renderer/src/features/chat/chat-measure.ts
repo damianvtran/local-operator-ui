@@ -26,10 +26,12 @@
  *
  * ## What is NOT here
  *
- * The 62ch prose cap stays in `markdown.css` on the text elements themselves,
- * deliberately: a `<pre>` or a `<table>` in the same message still needs the
- * full column, which is only possible while the cap is on the prose rather
- * than on this container. See the reading-measure comment there.
+ * The 62ch prose cap stays in `markdown.css`, on the `.lo-markdown` root
+ * rather than on this container: the measure belongs to the rendered answer
+ * (prose, headings, code and tables sharing ONE left edge — see the
+ * reading-measure comment there), not to the column both the transcript and
+ * the composer live in. This container's 900px is the room tables, code and
+ * diagrams have to render INTO once the answer's own measure is taken.
  */
 
 /**

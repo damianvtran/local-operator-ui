@@ -34,9 +34,14 @@ capture refuses to save a "populated" frame that shows the greeting, or an
 "empty" frame that contains agent prose. Round 2's D9 was exactly that failure
 - four frames were one empty-state capture while the prose called two of them a
 conversation - and the cause was persisted client state (drafts, last-opened
-session) rehydrating across runs. The captures now clear that state, wait for
-the session to report its row count instead of sleeping a fixed interval, and
-record an md5 per frame.
+session) rehydrating across runs. The captures now clear that state and wait
+for the session to report its row count instead of sleeping a fixed interval.
+
+The capture harness is NOT committed; the frames are its outputs. The state
+assertion is real (round 2's designer rebuilt it independently and it fired
+twice, refusing to measure a greeting mislabelled as populated) but is not
+third-party reproducible from this repo, so no per-frame md5 manifest is
+claimed here.
 
 **What these frames do not prove:** the packaged/notarised build (this is the
 dev main process, not an installed app), native dialogs, auto-update, or any
@@ -48,20 +53,29 @@ rest are 1x.
 | Frame | Observed behaviour |
 | --- | --- |
 | [before-empty-1380-frame2.png](before-empty-1380-frame2.png) | The reported state. A full-width "Working directory" input bar spans the top of the chat, the header is squat and unbalanced, and the composer band is visibly darker than the panel it sits in. |
-| [after-empty-1380-frame2.png](after-empty-1380-frame2.png) | Bar gone, ground uniform, header reads as a header, and the working-directory chip sits in the composer toolbar beside the attach button showing `~`. |
-| [before-empty-1000-frame2.png](before-empty-1000-frame2.png) / [after-empty-1000-frame2.png](after-empty-1000-frame2.png) | Same pair at 1000x800. The before header renders 61.4px here against 46.5px at 1380 - the same declared bar, two different heights. |
-| [before-empty-760-frame2.png](before-empty-760-frame2.png) / [after-empty-760-frame2.png](after-empty-760-frame2.png) | Same pair at 760x800, the narrowest width sampled. |
+| [after-empty-1380-frame2.png](after-empty-1380-frame2.png) | Bar gone, ground uniform, header reads as a header, and the working-directory chip sits in the composer toolbar beside the attach button showing `~`, with the greeting and suggestion chips above it. **Recaptured in round 3** (D14): the round-2 version of this frame was a post-send state mislabelled as empty; this is the true empty-draft state. |
+| [before-empty-1000-frame2.png](before-empty-1000-frame2.png) / [after-empty-1000-frame2.png](after-empty-1000-frame2.png) | Same pair at 1000x800. The before header renders 61.4px here against 46.5px at 1380 - the same declared bar, two different heights. At this width the chat column is under 550px, so the small view suppresses the greeting in BOTH frames; the empty-draft composer with the `~` chip is the like-for-like comparison. **Recaptured in round 3** (D14). |
+| [before-empty-760-frame2.png](before-empty-760-frame2.png) / [after-empty-760-frame2.png](after-empty-760-frame2.png) | Same pair at 760x800, the narrowest width sampled - small view, no greeting in either frame. **Recaptured in round 3** (D14). |
 | [before-populated-1380-frame2.png](before-populated-1380-frame2.png) / [after-populated-1380-frame2.png](after-populated-1380-frame2.png) | A real conversation: two agent paragraphs, a tool row, and the user's "Continue" bubble. The bubble gains a visible edge; the read-only chip appears in the composer. **Recaptured in round 2** - see "D9" below. |
 | [before-populated-1000-frame2.png](before-populated-1000-frame2.png) / [after-populated-1000-frame2.png](after-populated-1000-frame2.png) | Same pair at 1000x800. |
 | [after-canvas-open-1380.png](after-canvas-open-1380.png) | Canvas panel open. **Recaptured in round 2**: the working-directory chip now truncates at the panel edge instead of hanging 97px past it (D11). |
 | [d4-before-1380.png](d4-before-1380.png) | The prose block left-anchored, as shipped: 40px of space on its left against 245px on its right. Compare with `after-populated-1380-frame1.png`, which is the same state with the fix applied. |
 
-`*-frame1.png` and `*-frame2.png` are consecutive captures about 1.2s apart, and
-in this set each pair is **byte-identical** - captured under
+`*-frame1.png` and `*-frame2.png` are consecutive captures about 1.2s apart,
+and in this set each pair is **byte-identical** - captured under
 `Emulation.setFocusEmulationEnabled`, where the sidebar's spinning "working"
 glyphs are not animating. That is the reflow claim in its strongest form: the
 first frame and the settled frame are the same bytes, so there is no motion for
 a user to see.
+
+One disclosed exception, from the round-3 recapture (D14): the 1380 empty pair
+differs by **17 pixels and nothing else** - the textarea's caret in its two
+blink phases (`magick compare -metric AE`: 17, a 1x17 region at the caret's
+position; no layout delta). A brand-new draft autofocuses the composer, which
+is also why that frame shows the composer's focus ring while the before frame,
+captured without focus, does not; neither the caret nor the ring moves an edge
+the before/after comparison rests on. The 1000 and 760 empty pairs are
+byte-identical as before.
 
 A `frame1`/`frame2` pair being identical is the POINT of that pair. What round
 2's D9 caught was different and is what must never recur: the `populated` and
@@ -402,9 +416,14 @@ and all of the leftover was being placed on one side. Removing the gutter with
 the avatar still absolutely positioned also puts the avatar on top of the first
 line; that collision was confirmed with a probe proven able to go red first.
 
-What is applied instead is `margin-inline: auto` on the capped block, beside the
-cap in `markdown.css`. The leftover is split evenly, so the block sits in the
-middle of the space it owns:
+What is applied is `margin-inline: auto` beside the cap in `markdown.css`.
+The leftover is split evenly, so the block sits in the middle of the space it
+owns. Round 3 (R1 / D13) found the first version of this applied the cap and
+the centring to the individual block elements, which gave each font-size step
+its own `ch`-derived width and its own left edge - and excluded `<pre>` and
+`<table>`, so a code block jutted 122.6px left of the prose around it at 1380.
+The cap and centring are now on the `.lo-markdown` ROOT, so every block in the
+answer shares one measure and one left edge. See the round-3 section below.
 
 | viewport | space L / R before | off centre before | after | off centre after |
 | --- | --- | --- | --- | --- |
@@ -512,3 +531,113 @@ that case failed only at other heights.
 may establish a vertical clipping context, and that the bound exists on a
 sibling below it. Six mutants, six killed, each asserted as landed, confirmed
 to parse, and restored clean.
+
+---
+
+# Round 3 remediation
+
+## R1 / D13: the centring fix decentred the answer's own blocks
+
+Round 2's `margin-inline: auto` was applied to a selector list of block
+elements (`p, ul, ol, blockquote, h1-h6`) plus the stream tail, with `<pre>`
+and `<table>` excluded. Two defects came out of that, both from the same root:
+
+- `62ch` resolves against each element's OWN font, so the cap was a different
+  pixel width per type step (546.7px at body, 624.8px at heading, 781px at
+  title). Centring each block independently gave each a different left edge:
+  h2 hung 39.1px left of its own body text, h1 117.1px, dragging its
+  full-width `border-bottom` off-axis (code review round 3, R1).
+- Excluding `<pre>`/`<table>` left them on the column edge while the prose
+  centred, so one mixed message started its code block 122.6px left of the
+  paragraph around it at 1380 (156.6px at 1600), and the column showed four
+  different left edges (design round 3, D13). In a coding-agent UI mixed prose
+  and code is the common case.
+
+The cap and the centring now sit on the `.lo-markdown` ROOT, not on the
+blocks. On the root, `ch` resolves once against the root's body-size font, so
+every block in the answer inherits one box and therefore one left edge. Code
+wraps inside the measure rather than being excluded from it - `pre-wrap` is
+already how a long line renders wherever the column is narrower than the cap,
+so this extends an existing behaviour to wide windows.
+
+Measured in the real app, real seeded prose (`transcript.jsonl`, no model
+call), one answer containing an h2, paragraphs, an h1 with its rule, both list
+kinds, a blockquote, a fenced `<pre>`, and a `<table>`:
+
+| viewport | distinct left edges across h2/p/h1/ul/ol/blockquote/pre/table | cross-type spread |
+| --- | --- | --- |
+| 1380 | **686.6** (one value) | **0.0 px** |
+| 1600 | **796.6** (one value) | **0.0 px** |
+
+Confirmed at the pixel level (the reviewer's leftmost-ink method) on the
+heading band at 1380: prose rows leftmost-ink at 687-688, the ordered-list
+marker column at 531-537 (its own rail, inside the shared box), indented list
+content at 716 - each tier consistent across every row, no per-element stagger.
+The centring from round 2 is preserved: computed margins 122.6px per side at
+1380, 156.6px at 1600 - the disclosed -20px-from-column-centre residual is
+unchanged.
+
+## R2: the popup guard asserts the rule, not one string literal
+
+The round-2 guard regex-matched ONE class literal on the band. Round 3's
+reviewer canaried it: the literal R1 defect failed it correctly, but a clip on
+the popup's DIRECT parent passed, and a clip re-added through the band's
+adjacent ternary passed. The guard pinned today's string, not the rule in its
+own title - the "gate that cannot fail" species for a defect that already
+shipped once and fails silently.
+
+The rewritten guard walks the JSX tree of `message-input.tsx` and asserts the
+composed class set of EVERY element between the popup and the band - string
+literals, every ternary branch inside a `cn()` call, and the UPPERCASE class
+constants those elements reference (resolved locally and through named
+imports). The rule asserted: no ancestor of the popup may carry an overflow
+class other than `visible`, a max-height, or an inline overflow, on the axis
+`bottom-full` escapes along; the band itself is identified by the composed
+`shrink-0` + `bg-surface` set (the discriminator QA used, which deliberately
+does not match the transcript scroller). If the scanner can no longer balance
+the file's tree, the guard FAILS rather than passing green.
+
+Four mutants, four killed, each applied with its diff shown, parse-checked
+with esbuild, and restored byte-identical between runs:
+
+| mutant | where the clip lands | result |
+| --- | --- | --- |
+| M1 | the band's class literal (the literal R1 defect) | **FAILS** on the named assertion |
+| M2 | the composer box's ternary (the popup's direct parent) | **FAILS** on the named assertion |
+| M3 | the band's adjacent ternary (same element, new argument) | **FAILS** on the named assertion |
+| M4 | the `COMPOSER_BOX` constant definition (identifier-referenced class) | **FAILS** on the named assertion |
+
+## D14: the after-empty frames are the empty state again
+
+The round-2 D9 recapture replaced the three `after-empty-*` frames with a
+post-send state (a "hi" bubble and a `/tmp/...` chip) while the README still
+described the greeting with `~`. The frames are recaptured in the true
+empty-draft state at 1380/1000/760, and the descriptions updated: at 1000 and
+760 the chat column is under 550px, so the small view suppresses the greeting
+in BOTH the before and the after frame - the empty-draft composer with the `~`
+chip is the like-for-like comparison there, and the README now says so.
+
+## D15: the editable chip takes the pointer cursor
+
+The editable cwd chip is a live menu trigger but rendered `cursor: default`,
+so its only affordance besides the tooltip was a hover fill too faint to carry
+the interaction. It now takes `cursor-pointer`; the read-only chip keeps
+`cursor-default`. Verified live: the editable chip computes `cursor: pointer`.
+
+## Recorded, not fixed here
+
+- **check-evidence does not cover this PR's frames.** It globs `.webp` only
+  (`scripts/check-evidence.mjs`), and all 48 chat-shell frames are `.png`, so
+  the "456 frames" gate passes without reading a single frame from this PR.
+  Pre-existing; the 456-frame number should not be cited as evidence for these
+  captures.
+- **The D9 capture harness is not committed.** Its state assertion is real
+  (the round-2 designer rebuilt it and it fired twice) but it is not
+  third-party reproducible from this repo, and the README no longer claims a
+  per-frame md5 manifest. The harness stays ad-hoc rather than shipped
+  half-specified.
+- **Q-1 (pre-existing, out of scope).** An invisible `opacity:0, aria-hidden`
+  "Scroll to bottom" button at z-40 keeps `pointer-events-auto` and swallows
+  one slash-popup row on a real click. `scroll-to-bottom-button.tsx` is
+  byte-identical to pre-PR main and `slash-commands.tsx` is untouched by this
+  PR; QA recommends tracking it rather than blocking on it.
