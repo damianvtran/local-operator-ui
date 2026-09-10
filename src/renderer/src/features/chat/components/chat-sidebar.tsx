@@ -24,6 +24,7 @@ import {
 	List,
 	LoaderCircle,
 	MessageSquare,
+	MessageSquarePlus,
 	MoreHorizontal,
 	Pause,
 	Plus,
@@ -254,7 +255,7 @@ export function ChatSidebar({
 			<div key={key} data-entity>
 				<div
 					className={cn(
-						"flex h-8 items-center gap-1 rounded-md",
+						"group flex h-8 items-center gap-1 rounded-md",
 						draft?.target?.kind === kind &&
 							draft.target.name === name &&
 							"bg-accent-wash",
@@ -274,23 +275,69 @@ export function ChatSidebar({
 							<ChevronRight className="size-3.5" />
 						)}
 					</button>
+					{/* Clicking the name has always staged a draft, but nothing on the
+					    row said so, so the primary action of the whole sidebar was
+					    invisible and went unused. The glyph is the label for that
+					    existing action, NOT a second control: putting it inside the same
+					    button keeps one click target for one outcome, adds no tab stop,
+					    and leaves the arrow-key traversal in `keyDown` untouched. Its
+					    slot is reserved at rest rather than inserted on hover, because a
+					    row that reflows under the pointer is worse than no affordance —
+					    only `opacity` changes, which is also what keeps this inside
+					    § Motion's rule that nothing lifts, scales or translates on hover.
+					    `group-focus-within` is what makes it reachable without a mouse. */}
 					<button
 						type="button"
 						data-chat-row
 						data-entity-name
 						className={cn(rowStyle, "flex-1 text-left")}
 						onClick={() => onStageDraft({ kind, name })}
+						// The visible label is the bare name, which says who but not what
+						// pressing it does. The accessible name states the action and still
+						// contains the visible label, so voice control keeps working.
+						//
+						// `title` carries the same string deliberately: it is the only
+						// affordance a SIGHTED pointer user gets for a name the row
+						// truncates, and it is what names the action for someone who is
+						// not using AT. It duplicates the accessible name for screen
+						// reader users, which is redundant but not announced twice —
+						// `aria-label` wins and `title` is ignored as a naming source.
+						aria-label={`New chat with ${name}`}
 						title={`New chat with ${name}`}
 					>
 						<Icon className="size-4 shrink-0" />
 						<span className="min-w-0 flex-1 truncate">{name}</span>
-						<span className="text-meta tabular-nums text-ink-dim">
+						<MessageSquarePlus
+							className={cn(
+								// `ink`, not `ink-muted`: this glyph names what the row
+								// DOES, and it sits 2px from the always-visible `...`. At
+								// equal weight the secondary control was the louder mark of
+								// the two, so the eye landed on "manage" first.
+								"size-4 shrink-0 text-ink opacity-0",
+								// The duration governs the transition INTO the current
+								// state, so the resting value is the fade-OUT and the
+								// hovered value is the fade-in: quick to appear, gentler to
+								// leave, which is what stops it reading as a pop.
+								"transition-opacity duration-base ease-out-quart",
+								"group-hover:opacity-100 group-hover:duration-fast",
+								"group-focus-within:opacity-100 group-focus-within:duration-fast",
+							)}
+							aria-hidden="true"
+						/>
+						{/* A reserved column, not just `tabular-nums`. Digit width alone
+						    still lets an absent or two-digit count shift everything left
+						    of it, which moved the glyph across 14px between rows and made
+						    the reveal jitter as the pointer ran down the list. */}
+						<span className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim">
 							{rows.length || ""}
 						</span>
 					</button>
 					<button
 						type="button"
-						className="flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-elevated"
+						// Stepped down from `ink` so the row's own action outranks it.
+						// This is the secondary control on the row and it is visible at
+						// rest, which was enough to make it dominate the reveal.
+						className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:bg-elevated hover:text-ink-muted"
 						aria-label={`Manage ${name}`}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
@@ -394,17 +441,13 @@ export function ChatSidebar({
 			className="flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
-			<div className="flex h-8 items-center justify-between px-1">
+			{/* The header once carried a 16px `Plus` for the same action the "New
+			    chat" row below now names in words. Two controls firing one action at
+			    two sizes in one panel reads as an accident, and the small one was the
+			    reported defect — it was the only entry point and users did not find
+			    it. The named row replaces it rather than joining it. */}
+			<div className="flex h-8 items-center px-1">
 				<h2 className="text-body-sm font-medium">Chats</h2>
-				<button
-					type="button"
-					className="rounded-md p-1 hover:bg-elevated"
-					aria-label="New chat"
-					disabled={!ready}
-					onClick={() => onStageDraft(undefined, true)}
-				>
-					<Plus className="size-4" />
-				</button>
 			</div>
 			<input
 				ref={searchRef}
@@ -514,6 +557,67 @@ export function ChatSidebar({
 									{matching.length}
 								</span>
 							)}
+						</button>
+						{/* Sits inside the All chats section so it holds the same place
+						    — under the toggle, above whatever the toggle reveals — in
+						    both the flat list and the Active/Previous split. Deliberately
+						    a plain `rowStyle` row and not a `heading()`: a chevron would
+						    promise something to expand. Disabled tracks `ready` because
+						    staging a draft needs the session catalogue that gate covers.
+
+						    It is the only ACTION in a run of three label-ish rows
+						    (All chats / New chat / Active chats) that shared its type
+						    step and left inset, so at rest it read as the third heading
+						    rather than as a control. A `border-control` edge is the
+						    system's existing "outline control" idiom (contrast-contract
+						    §CONTROLS), so it reads as a control at rest without spending
+						    a fourth accent and without a resting `bg-elevated`, which
+						    would have swallowed `rowStyle`'s `hover:bg-elevated` and left
+						    the row with no hover feedback at all. The margin breaks the
+						    three rows out of one visual block. `MessageSquarePlus` rather than
+						    `Plus` because `Plus` means "open a creation form" twice over
+						    in this panel (Create agent, Create team), while this stages a
+						    chat; it also matches the glyph the entity rows reveal for the
+						    same outcome, so one action now has one icon. */}
+						<button
+							type="button"
+							// DEFENSIVE, not currently reachable — and the earlier comment
+							// here named the stale state as the case that makes it live,
+							// which measurement disproved. `stale` requires
+							// `capabilities.error`, and react-query retains the last good
+							// `data` across a failed refetch (`retry: false`, no reset), so
+							// `ready` is still true there and this row renders enabled.
+							// With `showList = ready || stale` there is no state that
+							// renders the row while `ready` is false.
+							//
+							// Kept because the pairing is what makes decoupling them safe:
+							// staging a draft needs the session catalogue, so if `showList`
+							// ever admits a not-ready state the row must disable rather
+							// than stage against an absent catalogue. Only a focusable row
+							// is a stop in the arrow ring — `keyDown` moves by calling
+							// `.focus()` on the next `[data-chat-row]` and a disabled
+							// button silently refuses it — so the attribute has to drop out
+							// in exactly the states the button is disabled, or a keyboard
+							// user strands here.
+							data-chat-row={ready || undefined}
+							className={cn(
+								rowStyle,
+								"mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent",
+								// Marked current on the same terms as an entity row: an
+								// untargeted draft is the one THIS row stages. A draft
+								// carrying a target belongs to its entity row, which is
+								// already highlighting itself, and two rows claiming the
+								// same draft would misreport where the user is.
+								Boolean(activeDraftKey) && !draft?.target && "bg-accent-wash",
+							)}
+							aria-current={
+								activeDraftKey && !draft?.target ? "page" : undefined
+							}
+							disabled={!ready}
+							onClick={() => onStageDraft(undefined, true)}
+						>
+							<MessageSquarePlus className="size-4" />
+							<span className="flex-1 text-left">New chat</span>
 						</button>
 					</section>
 					{all ? (
