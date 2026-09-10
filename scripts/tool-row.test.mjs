@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
+import { resolve } from "node:path";
 import { build } from "esbuild";
 
 /*
@@ -305,4 +307,176 @@ test("the app window's CSP admits the blob images the attachment path produces",
 	// they are the same requirement for two element types.
 	const mediaSrc = policy.match(/media-src ([^;]*)/)?.[1] ?? "";
 	assert.ok(mediaSrc.includes("blob:"), `media-src must allow blob: (got "${mediaSrc}")`);
+});
+
+/* ------------------------------------------------- transcript row spacing */
+
+/*
+ * `buildRows` decides the vertical rhythm, and it is the half of the spacing
+ * model that a screenshot cannot pin: the frames prove the pitch is uniform
+ * TODAY, and these assert the two rules that keep it uniform.
+ *
+ * It is bundled separately from the block above because it pulls the React
+ * component module; only the pure exports are exercised.
+ */
+const rowsBundle = await build({
+	stdin: {
+		contents:
+			'export { buildRows, GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	jsx: "automatic",
+	loader: { ".css": "empty" },
+	external: ["react", "react-dom", "react/jsx-runtime"],
+	// The renderer's own aliases, from `electron.vite.config.js`. Only the two
+	// this module's import graph reaches are needed.
+	alias: {
+		"@shared": resolve("src/renderer/src/shared"),
+		"@renderer": resolve("src/renderer/src"),
+	},
+	write: false,
+});
+const { buildRows, GAP } = await import(
+	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
+);
+
+const toolRecord = (id) => ({
+	kind: "tool",
+	id,
+	ts: 1,
+	toolCallId: id,
+	toolName: "bash",
+	intent: null,
+	args: { command: "ls" },
+	phase: "done",
+	argumentBytes: 0,
+	output: "ok",
+	isError: false,
+	durationS: 0.1,
+	images: [],
+	added: 0,
+	removed: 0,
+	stopped: false,
+});
+
+/** The tool-call-only assistant record the reducer keeps for id coalescing. */
+const emptyAssistant = (id) => ({
+	kind: "assistant",
+	id,
+	ts: 1,
+	text: "",
+	streaming: false,
+	stopReason: "toolUse",
+	error: false,
+});
+
+test("an empty tool-call-only assistant record never becomes a row", () => {
+	// It has no prose to paint, but the reducer must keep it so a live echo
+	// coalesces onto its id. A row for it would carry a top margin around a box
+	// of zero height — a gap with no visible cause.
+	const rows = buildRows(
+		[toolRecord("t1"), emptyAssistant("a1"), toolRecord("t2")],
+		[],
+	);
+	assert.deepEqual(
+		rows.map((row) => row.record.id),
+		["t1", "t2"],
+		"the invisible record is not painted",
+	);
+});
+
+test("an invisible record does not break trace adjacency", () => {
+	// The regression that produced the operator's ragged column: the gap tier is
+	// decided from the PREVIOUS row, so an invisible record standing between two
+	// tool rows made the second one look like the start of a new run and it fell
+	// back to the wider `item` tier.
+	const withGhost = buildRows(
+		[toolRecord("t1"), emptyAssistant("a1"), toolRecord("t2")],
+		[],
+	);
+	const without = buildRows([toolRecord("t1"), toolRecord("t2")], []);
+	assert.deepEqual(
+		withGhost.map((row) => row.gap),
+		without.map((row) => row.gap),
+		"the ghost changes nothing about the spacing",
+	);
+	assert.equal(withGhost[1].gap, "trace");
+	// And a run of like rows is ONE tier throughout, which is what "uniform"
+	// means here: every adjacent pair is the same distance apart.
+	const run = buildRows(
+		["t1", "t2", "t3", "t4", "t5"].map(toolRecord),
+		[],
+	);
+	assert.deepEqual(
+		run.map((row) => row.gap),
+		["first", "trace", "trace", "trace", "trace"],
+	);
+	// `trace` carries no margin at all, so the row's own height IS the pitch.
+	assert.deepEqual(GAP.trace, ["", ""]);
+});
+
+test("an invisible record does not consume the avatar or a turn boundary", () => {
+	// The avatar marks the first row of an agent turn. If a ghost counted as
+	// that first row, the avatar would vanish from the turn entirely.
+	const rows = buildRows(
+		[
+			{ kind: "user", id: "u1", ts: 1, text: "go", images: [] },
+			emptyAssistant("a1"),
+			toolRecord("t1"),
+		],
+		[],
+	);
+	assert.deepEqual(
+		rows.map((row) => row.record.id),
+		["u1", "t1"],
+	);
+	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
+	// The hierarchy the tightening must preserve: a turn boundary is strictly
+	// airier than an adjacent pair inside a run.
+	assert.notDeepEqual(GAP.turn, GAP.trace);
+});
+
+test("an unchanged row keeps its object identity across a rebuild", () => {
+	// `TranscriptRow` is memoised on the row object, on a surface that repaints
+	// per token. A rebuild that minted fresh rows for unchanged records would
+	// re-render the whole transcript on every delta.
+	const records = [toolRecord("t1"), emptyAssistant("a1"), toolRecord("t2")];
+	const first = buildRows(records, []);
+	const second = buildRows(records, first);
+	assert.equal(second[0], first[0]);
+	assert.equal(second[1], first[1]);
+});
+
+test("the ledger row height is one number, not two that can drift", () => {
+	// `ToolRow` and a dense `TraceLine` sit in the SAME column of the canonical
+	// transcript, so a run that mixed them would read as ragged if their heights
+	// diverged. They cannot import from each other without pointing the
+	// dependency the wrong way (a generic trace primitive depending on one
+	// specific row type), so the constants are asserted equal here instead.
+	const source = (path) => readFileSync(path, "utf8");
+	const heightOf = (path, name) =>
+		source(path).match(
+			new RegExp(`const ${name} = "([^"]+)"`),
+		)?.[1];
+	const toolRow = heightOf(
+		"src/renderer/src/features/chat/components/trace/tool-row.tsx",
+		"ROW_HEIGHT",
+	);
+	const traceLine = heightOf(
+		"src/renderer/src/features/chat/components/trace/trace-line.tsx",
+		"DENSE_ROW",
+	);
+	assert.ok(toolRow, "ToolRow declares a ROW_HEIGHT");
+	assert.equal(traceLine, toolRow, "the dense trace row matches the tool row");
+	// And it is genuinely an override of the shared idiom rather than a change
+	// to it: the app-wide disclosure default must still be the comfortable one.
+	assert.match(
+		source("src/renderer/src/shared/components/ui/disclosure.tsx"),
+		/const ROW = "flex min-h-6 w-full items-center gap-1\.5 py-0\.5 text-left"/,
+		"the shared disclosure keeps its comfortable default",
+	);
 });

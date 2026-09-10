@@ -60,6 +60,7 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 		generation: 1,
 		oldestId: null,
 		hasMore: false,
+		argsByCall: new Map(),
 	};
 }
 
@@ -313,6 +314,218 @@ export const Working: Story = {
 					phase: "running",
 					durationS: null,
 					intent: "Running the desktop gates",
+					output: null,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The three runs the operator screenshotted when he reported the spacing as
+ * "much too wide" and "not very uniform".
+ *
+ * This is a REGRESSION surface, not a showcase: each block reproduces one of
+ * his three frames, and the point of the story is that the pitch between
+ * adjacent like rows is CONSTANT within each block. The middle block is the
+ * one that caught the bug — the `assistant` record between the two `hub` rows
+ * carries tool calls and no prose, so it renders nothing, and before the fix it
+ * still minted a wrapper with a margin AND broke the trace-adjacency chain, so
+ * the row after it fell back to the wider `item` gap. An invisible record must
+ * not be able to push visible rows apart.
+ */
+export const OperatorSpacingCases: Story = {
+	render: () => (
+		<div className="flex flex-col gap-8 p-6">
+			{/* (a) Four consecutive settled rows: one pitch, repeated. */}
+			<Frame
+				height={130}
+				records={[
+					tool({
+						id: "a1",
+						toolName: "read",
+						args: { path: "~/local-operator-ui/docs/branding.md" },
+						durationS: 0.04,
+					}),
+					tool({
+						id: "a2",
+						toolName: "bash",
+						args: { command: "pnpm check-types" },
+						durationS: 12.4,
+					}),
+					tool({
+						id: "a3",
+						toolName: "bash",
+						args: { command: "git status --short" },
+						durationS: 0.08,
+					}),
+					tool({
+						id: "a4",
+						toolName: "bash",
+						args: { command: "pnpm lint" },
+						durationS: 3.1,
+					}),
+				]}
+			/>
+			{/* (b) Prose, then two `hub` rows separated by a tool-call-only
+			    assistant record, then a `send` row. All four rows must sit on one
+			    pitch: the invisible record between them is not a spacer. */}
+			<Frame
+				height={150}
+				records={[
+					{
+						kind: "assistant",
+						id: "b0",
+						ts: TS,
+						text: "Checking on both reviewers before I fold the rounds together.",
+						streaming: false,
+						complete: true,
+						stopReason: null,
+						error: false,
+					},
+					tool({
+						id: "b1",
+						toolName: "hub",
+						args: { op: "peek", job_id: "reviewer" },
+						durationS: 0.3,
+					}),
+					// Tool calls, no prose: renders nothing, must occupy nothing.
+					{
+						kind: "assistant",
+						id: "b2",
+						ts: TS,
+						text: "",
+						streaming: false,
+						stopReason: "toolUse",
+						error: false,
+					},
+					tool({
+						id: "b3",
+						toolName: "hub",
+						args: { op: "peek", job_id: "designer" },
+						durationS: 0.2,
+					}),
+					tool({
+						id: "b4",
+						toolName: "send",
+						args: { target: "qa", message: "rounds are in" },
+						durationS: 0.1,
+					}),
+				]}
+			/>
+			{/* (c) The long ragged run: two more invisible records seeded mid-run,
+			    which is what made some adjacent pairs tight and others wide. */}
+			<Frame
+				height={210}
+				records={[
+					tool({
+						id: "c1",
+						toolName: "bash",
+						args: { command: "git log --oneline -8" },
+						durationS: 0.06,
+					}),
+					{
+						kind: "assistant",
+						id: "c2",
+						ts: TS,
+						text: "",
+						streaming: false,
+						stopReason: "toolUse",
+						error: false,
+					},
+					tool({
+						id: "c3",
+						toolName: "bash",
+						args: { command: "pnpm test:desktop" },
+						durationS: 8.2,
+					}),
+					tool({
+						id: "c4",
+						toolName: "bash",
+						args: { command: "pnpm build" },
+						durationS: 34,
+					}),
+					{
+						kind: "assistant",
+						id: "c5",
+						ts: TS,
+						text: "",
+						streaming: false,
+						stopReason: "toolUse",
+						error: false,
+					},
+					tool({
+						id: "c6",
+						toolName: "grep",
+						args: { pattern: "min-h-6", path: "src" },
+						durationS: 0.4,
+					}),
+					tool({
+						id: "c7",
+						toolName: "edit",
+						args: {
+							path: "src/renderer/src/shared/components/ui/disclosure.tsx",
+						},
+						durationS: 0.1,
+						added: 8,
+						removed: 3,
+					}),
+				]}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The hierarchy that must SURVIVE the tightening: a turn boundary still gets
+ * real air, and the working line sits on the run below it.
+ *
+ * Tightening adjacent tool rows is only correct if the reader can still see
+ * where one turn ended and the next began — otherwise the ledger becomes one
+ * undifferentiated column. This frame is where that trade is judged.
+ */
+export const TurnBoundaryAndWorkingLine: Story = {
+	render: () => (
+		<Frame
+			waiting
+			height={260}
+			records={[
+				tool({
+					id: "t1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+				}),
+				tool({
+					id: "t2",
+					toolName: "bash",
+					args: { command: "pnpm lint" },
+					durationS: 3.1,
+				}),
+				{
+					kind: "user",
+					id: "t3",
+					ts: TS,
+					text: "Tighten the rows, they read as separate cards.",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "t4",
+					ts: TS,
+					text: "Measuring the pitch before I change anything.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "t5",
+					toolName: "bash",
+					args: { command: "node scripts/measure-pitch.mjs" },
+					phase: "running",
+					durationS: null,
+					intent: "Measuring the row pitch",
 					output: null,
 				}),
 			]}

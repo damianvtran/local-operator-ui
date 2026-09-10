@@ -108,6 +108,12 @@ const STORIES = [
 	["chat-tool-rows--narrow", 1280, 900],
 	["chat-tool-rows--working", 1280, 900],
 	["chat-tool-rows--working-labels", 1280, 900],
+	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
+	   three runs the operator screenshotted when he reported the rows as "much
+	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
+	   where the hierarchy that must SURVIVE the tightening is judged. */
+	["chat-tool-rows--operator-spacing-cases", 1024, 620],
+	["chat-tool-rows--turn-boundary-and-working-line", 1024, 620],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */

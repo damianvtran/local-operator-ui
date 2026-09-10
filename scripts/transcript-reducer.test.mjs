@@ -701,3 +701,138 @@ test("a call still running when the turn aborts is interrupted, not failed", () 
 	assert.equal(tool.stopped, true);
 	assert.equal(tool.isError, false);
 });
+
+test("a tool row keeps its arguments when they arrive on a different page", () => {
+	// D1: the object column is the row's identity, and a durable tool entry
+	// carries the RESULT without the arguments — those live on the paired
+	// assistant row's `tool_calls`. When a page boundary (or a reconnect that
+	// evicted the live start) separates the two, the row used to settle with
+	// `args: null` and render as an unlabelled duplicate of every other row for
+	// the same tool. The lookup window is the session, not the page.
+	const toolEntry = (id, callId, name) => ({
+		id,
+		ts: 20,
+		type: "message",
+		payload: {
+			kind: "message",
+			role: "tool",
+			tool_call_id: callId,
+			tool_name: name,
+			content: [{ type: "text", text: "ok" }],
+		},
+	});
+	// The results arrive FIRST and alone: no assistant row on this page.
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			toolEntry("t1", "c1", "bash"),
+			toolEntry("t2", "c2", "bash"),
+		],
+		has_more: true,
+		cursor_missing: false,
+	});
+	let rows = state.records.filter((r) => r.kind === "tool");
+	assert.equal(rows.length, 2);
+	assert.equal(rows[0].args, null, "nothing has taught the args yet");
+
+	// The page carrying the assistant row lands afterwards.
+	const withCalls = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "a1",
+				ts: 19,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "assistant",
+					content: [],
+					tool_calls: [
+						{ id: "c1", arguments: { command: "pnpm lint" } },
+						{ id: "c2", arguments: { command: "pnpm build", i: "Building" } },
+					],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	rows = withCalls.records.filter((r) => r.kind === "tool");
+	assert.equal(
+		rows.find((r) => r.toolCallId === "c1").args.command,
+		"pnpm lint",
+		"an earlier row is backfilled by a later page",
+	);
+	assert.equal(rows.find((r) => r.toolCallId === "c2").intent, "Building");
+
+	// The identity gate must survive the backfill. Replaying a page that teaches
+	// nothing new must reuse every record object, or `TranscriptRow`'s memo
+	// breaks and the transcript re-renders on every poll. (The page's own
+	// `has_more` legitimately rides along, so the RECORDS are what is compared.)
+	const replayed = applyHistoryPage(withCalls, {
+		entries: [toolEntry("t1", "c1", "bash"), toolEntry("t2", "c2", "bash")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(replayed, withCalls, "a replayed page is a no-op");
+});
+
+test("a live start teaches args that the durable row does not carry", () => {
+	// The reconnect case: the live `tool_execution_start` is the only carrier of
+	// arguments, and the durable entry that replaces it has none.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c9",
+			tool_name: "bash",
+			args: { command: "git status" },
+		},
+		1,
+	);
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "t9",
+				ts: 30,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					tool_call_id: "c9",
+					tool_name: "bash",
+					content: [{ type: "text", text: "clean" }],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.phase, "done");
+	assert.equal(tool.args.command, "git status");
+
+	// And it survives a view-only clear followed by a repaint, which is the
+	// path whose own events no longer carry the arguments.
+	const repainted = applyHistoryPage(clearTranscript(state), {
+		entries: [
+			{
+				id: "t9",
+				ts: 30,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					tool_call_id: "c9",
+					tool_name: "bash",
+					content: [{ type: "text", text: "clean" }],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(
+		repainted.records.find((r) => r.kind === "tool").args.command,
+		"git status",
+		"a clear does not unlearn the arguments",
+	);
+});

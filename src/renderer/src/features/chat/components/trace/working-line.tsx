@@ -28,6 +28,16 @@
  * and the age of the phase. Two different facts, deliberately not the same
  * words.
  *
+ * It is the QUIETEST thing on screen, not the loudest. The TUI reference the
+ * operator sent is explicit that the working line sits below the rows in the
+ * hierarchy, and it shipped inverted: the label was `ink-muted` (8.48:1)
+ * against the tool summaries' `ink-dim` (5.46:1), and proportional against
+ * their monospace, so it broke the machine-voice column the rows establish and
+ * took first attention on every frame. It now matches the summaries in both ink
+ * and typeface. Liveness is carried by the two things that MOVE — the spinner
+ * and the clock — which is the correct channel for it: motion draws the eye
+ * without a static word having to shout.
+ *
  * Reduced motion: the base layer in `styles/index.css` caps every animation at
  * 0.01ms, so the spinner freezes on whatever frame it is holding and only the
  * clock moves. That is the TUI's own static behaviour (`_STATIC_FRAME_MS`), and
@@ -132,7 +142,9 @@ export const WorkingLine = ({
 			>
 				{SPINNER_FRAMES[frame]}
 			</span>
-			<span className={cn("min-w-0 truncate text-body-sm text-ink-muted")}>
+			<span
+				className={cn("min-w-0 truncate font-mono text-ink-dim text-mono-sm")}
+			>
 				{activity}
 			</span>
 			<span

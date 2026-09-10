@@ -66,6 +66,25 @@ import {
 
 export type ToolRowOutcome = "running" | "success" | "error" | "interrupted";
 
+/**
+ * The ledger row's own height, overriding the shared disclosure default.
+ *
+ * `Disclosure`'s `ROW` is `min-h-6 py-0.5` — 28px — which is right for a
+ * disclosure sitting alone but wrong for a run of forty. The text occupies
+ * 17.4px, so the default spends 10.6px per row on chrome, and over a
+ * transcript that is the difference between 32 and 44 rows on a 900px screen.
+ * The TUI reference the operator sent measures ~20.4px per line, and the
+ * designer rendered the same four rows at both pitches: at 28px they float as
+ * separate items, at 20px they cohere into a block the eye runs down. Density
+ * is the substance of "more tightly packed", not a finish detail.
+ *
+ * 20px with no padding: `min-h-5` clears the 17.4px text box by 2.6px, so the
+ * line still has air around it and nothing clips at any of the twelve themes'
+ * type scales. Scoped to this row type through `rowClassName` — `min-h-6`
+ * remains the app-wide idiom and other disclosure consumers keep it.
+ */
+const ROW_HEIGHT = "min-h-5 py-0";
+
 export type ToolRowProps = {
 	/** Wire name. Drives the glyph and the category ink; displayed via `displayName`. */
 	toolName: string;
@@ -300,6 +319,7 @@ export const ToolRow = ({
 			chevron="leading"
 			defaultOpen={defaultOpen}
 			className={cn("@container/toolrow", className)}
+			rowClassName={ROW_HEIGHT}
 			// The whole row is the target, so it takes a row-shaped ground that
 			// bleeds 8px past the text on both sides while the text stays on the
 			// rail — the same idiom `TraceLine` uses, and the one a list row has in
@@ -312,6 +332,9 @@ export const ToolRow = ({
 		<Disclosure
 			disabled
 			summary={row}
+			// Both branches take the same height, or a run alternates between two
+			// pitches depending on which calls happened to produce output.
+			rowClassName={ROW_HEIGHT}
 			className={cn(
 				"@container/toolrow",
 				(running || failed) && cn("-mx-2 rounded-sm px-2", ground),

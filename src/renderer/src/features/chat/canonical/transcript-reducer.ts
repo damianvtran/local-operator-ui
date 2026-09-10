@@ -147,6 +147,32 @@ export type TranscriptState = {
 	/** Oldest durable id painted; the cursor for `sessions.history` paging. */
 	oldestId: string | null;
 	hasMore: boolean;
+	/**
+	 * Call id -> the arguments that call was made with, accumulated across every
+	 * page and live event seen so far.
+	 *
+	 * WHY THIS OUTLIVES A PAGE. A durable tool row carries the RESULT and not the
+	 * arguments: the arguments live on the paired assistant row's `tool_calls`.
+	 * Those two entries are usually adjacent, so a map built per page finds them
+	 * — but not always, and when it misses, the row settles with `args: null`,
+	 * `summaryFromArgs` falls back to the tool name, and the row loses the object
+	 * column that is its whole identity (the TUI reference: the command runs
+	 * nearly the full width because it is the fact the row exists to carry).
+	 *
+	 * Two ways they separate, both real. A page BOUNDARY can fall between the
+	 * assistant row and its results. And on reconnect the backend evicts
+	 * `tool_execution_start` for any call whose `_end` survived the live-event cap
+	 * (`frontend_state.py`, `LIVE_EVENT_END_ROWS_MAX`), so the seed keeps the end
+	 * — which has no args — and drops the start, which is the only live carrier of
+	 * them. That is what produced the run of nine identical unlabelled `bash`
+	 * rows in this PR's own evidence.
+	 *
+	 * The data is not the limitation: `arguments` is present on 100% of
+	 * `tool_calls` across 26,973 real tool rows. Only the lookup window was too
+	 * narrow, so it is widened to the session rather than the page, and a later
+	 * page can backfill a row an earlier one painted blank.
+	 */
+	argsByCall: Map<string, Record<string, unknown>>;
 };
 
 export const EMPTY_TRANSCRIPT: TranscriptState = {
@@ -155,6 +181,7 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	generation: 0,
 	oldestId: null,
 	hasMore: false,
+	argsByCall: new Map(),
 };
 
 type ContentBlock = {
@@ -541,14 +568,26 @@ export function applyHistoryPage(
 		const record = durableRecord(entry, previous);
 		if (record) incoming.push(record);
 	}
-	// Tool call args live on the assistant row's tool_calls; carry the intent
-	// and args onto the tool record when both are in the same page.
-	const argsByCall = new Map<string, Record<string, unknown>>();
+	// Tool call args live on the assistant row's `tool_calls`; carry the intent
+	// and args onto the tool record. The map spans the SESSION, not this page —
+	// see `TranscriptState.argsByCall` for the two ways a call and its arguments
+	// end up on different pages.
+	let argsByCall = state.argsByCall;
+	let argsChanged = false;
 	for (const entry of page.entries) {
 		const calls = entry.payload?.tool_calls;
 		if (!Array.isArray(calls)) continue;
 		for (const call of calls as Record<string, unknown>[]) {
-			if (call && typeof call.id === "string") argsByCall.set(call.id, call);
+			if (!call || typeof call.id !== "string") continue;
+			if (argsByCall.has(call.id)) continue;
+			// Copy-on-write: the common replayed page teaches nothing new, and
+			// rebuilding the map anyway would hand the identity gate a fresh object
+			// on every poll.
+			if (!argsChanged) {
+				argsByCall = new Map(argsByCall);
+				argsChanged = true;
+			}
+			argsByCall.set(call.id, call);
 		}
 	}
 	for (let i = 0; i < incoming.length; i++) {
@@ -563,10 +602,33 @@ export function applyHistoryPage(
 			intent: typeof args?.i === "string" ? args.i : null,
 		};
 	}
+	// A page that taught us new arguments can complete rows painted EARLIER —
+	// the reconnect case, where the row settled before its arguments arrived.
+	// Only rows still missing args are touched, so an unchanged row keeps its
+	// object identity and the row memo holds.
+	const backfilled: TranscriptRecord[] = argsChanged
+		? state.records.map((record) => {
+				if (record.kind !== "tool" || record.args) return record;
+				const call = argsByCall.get(record.toolCallId);
+				const args = (call?.arguments ?? null) as Record<
+					string,
+					unknown
+				> | null;
+				if (!args) return record;
+				return {
+					...record,
+					args,
+					intent: record.intent ?? (typeof args.i === "string" ? args.i : null),
+				};
+			})
+		: state.records;
 
-	const base = options.replace ? EMPTY_TRANSCRIPT : state;
+	const base = options.replace
+		? EMPTY_TRANSCRIPT
+		: { ...state, records: backfilled };
 	const byId = new Map(base.records.map((record) => [record.id, record]));
-	let changed = options.replace || false;
+	let changed =
+		options.replace || (!options.replace && backfilled !== state.records);
 	for (const record of incoming) {
 		const current = byId.get(record.id);
 		if (!current) {
@@ -633,6 +695,10 @@ export function applyHistoryPage(
 		index: withIndex(records),
 		oldestId,
 		hasMore: page.has_more,
+		// Retained even on `replace`: a reseed repaints the rows but does not
+		// unlearn which arguments a call was made with, and the reseed is exactly
+		// the path whose own events no longer carry them.
+		argsByCall,
 	};
 }
 
@@ -824,7 +890,19 @@ export function applyEvent(
 			if (current && current.kind === "tool" && current.phase === "done")
 				return state;
 			const args = (event.args ?? null) as Record<string, unknown> | null;
-			return upsert(state, {
+			// Remember them for the DURABLE row that will replace this one. The
+			// history entry carries the result without the arguments, so without
+			// this the row loses its object column the moment it settles onto a
+			// page whose assistant row is not in the same page.
+			const learned =
+				args && !state.argsByCall.has(callId)
+					? new Map(state.argsByCall).set(callId, { arguments: args })
+					: state.argsByCall;
+			const seeded =
+				learned === state.argsByCall
+					? state
+					: { ...state, argsByCall: learned };
+			return upsert(seeded, {
 				kind: "tool",
 				id,
 				ts: current?.ts ?? now,
@@ -982,7 +1060,14 @@ export function applyLiveSeed(
 /** View-only clear: the painted rows go, the backend history is untouched. */
 export function clearTranscript(state: TranscriptState): TranscriptState {
 	if (state.records.length === 0) return state;
-	return { ...EMPTY_TRANSCRIPT, generation: state.generation };
+	// `argsByCall` survives for the same reason it survives a `replace`: the
+	// history this clears is still on the backend, and repainting it must not
+	// lose the arguments the durable rows do not carry themselves.
+	return {
+		...EMPTY_TRANSCRIPT,
+		generation: state.generation,
+		argsByCall: state.argsByCall,
+	};
 }
 
 /** Remove live-only records (no durable id) — used when a gap invalidates paint. */

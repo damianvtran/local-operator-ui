@@ -77,9 +77,11 @@ import {
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
+import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
 
 /** Opts prose into the ~72-character measure defined in `markdown.css`. */
 const MEASURE = "lo-measured";
+
 const WINDOW = 60;
 const WINDOW_STEP = 60;
 
@@ -152,9 +154,11 @@ const AssistantRow = memo(function AssistantRow({
 	isSmallView: boolean;
 	showAvatar: boolean;
 }) {
-	// A tool-only assistant message has nothing to say; its tool rows carry
-	// the turn. Rendering an empty paragraph would leave a phantom gap.
-	if (!record.text && !record.streaming) return null;
+	// A tool-only assistant message has nothing to say; its tool rows carry the
+	// turn. `buildRows` already drops it before a wrapper is minted — see
+	// `paintsSomething` for why the record still exists at all — and this guard
+	// stays as the component's own contract for any other caller.
+	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
 	return (
 		<MessageContainer
@@ -347,6 +351,9 @@ const NoticeRow = memo(function NoticeRow({
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
+				// Same column as the tool rows, so the same pitch: a notice must not
+				// be the row that makes a run look ragged.
+				dense={!long}
 				verbOverride={label ?? (long ? "Notice" : record.text)}
 				narration={label && !long ? record.text : undefined}
 				failed={level === "error"}
@@ -367,64 +374,6 @@ const NoticeRow = memo(function NoticeRow({
 });
 
 // ---------------------------------------------------------------- list
-
-type Row = {
-	record: TranscriptRecord;
-	showAvatar: boolean;
-	/** Vertical tier before this row, from `utils/message-grouping`'s ramp. */
-	gap: "turn" | "item" | "trace" | "first";
-};
-
-/**
- * Row wrappers are reused across builds when the record AND its layout facts
- * (avatar, gap) are unchanged. The reducer already hands back the same record
- * object for untouched rows; without this pass every commit would still mint
- * a fresh wrapper per row and defeat the memo on `TranscriptRow`, which is
- * exactly what the render counter showed (rows x commits, not 1 per delta).
- */
-function buildRows(records: TranscriptRecord[], previousRows: Row[]): Row[] {
-	const reusable = new Map(previousRows.map((row) => [row.record.id, row]));
-	const rows: Row[] = [];
-	let previous: TranscriptRecord | null = null;
-	for (const record of records) {
-		const traceLike =
-			record.kind === "tool" ||
-			record.kind === "notice" ||
-			record.kind === "compaction" ||
-			record.kind === "custom";
-		const previousTrace =
-			previous &&
-			(previous.kind === "tool" ||
-				previous.kind === "notice" ||
-				previous.kind === "compaction" ||
-				previous.kind === "custom");
-		const agentSide = record.kind !== "user";
-		const previousAgent = previous !== null && previous.kind !== "user";
-		const showAvatar = agentSide && !previousAgent;
-		let gap: Row["gap"] = "item";
-		if (!previous) gap = "first";
-		else if (record.kind === "user" || previous.kind === "user") gap = "turn";
-		else if (traceLike && previousTrace) gap = "trace";
-		const prior = reusable.get(record.id);
-		rows.push(
-			prior &&
-				prior.record === record &&
-				prior.showAvatar === showAvatar &&
-				prior.gap === gap
-				? prior
-				: { record, showAvatar, gap },
-		);
-		previous = record;
-	}
-	return rows;
-}
-
-const GAP: Record<Row["gap"], [string, string]> = {
-	first: ["", ""],
-	turn: ["mt-6", "mt-4"],
-	item: ["mt-3", "mt-2"],
-	trace: ["mt-1", "mt-0.5"],
-};
 
 /** Development row-render counter; read by the perf readout below. */
 const rowRenderCount = { current: 0 };
@@ -732,7 +681,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				))}
 
 				{working && (
-					<div className={cn("mt-3", !isSmallView && AGENT_GUTTER)}>
+					// On the `item` tier, not a tier of its own: the working line is
+					// the foot of the run above it and shares that run's rhythm. It
+					// takes slightly more than `trace` because it is the one row that
+					// is not a completed action, and slightly less than a turn
+					// boundary because the turn has not ended.
+					<div
+						className={cn(
+							GAP.item[isSmallView ? 1 : 0],
+							!isSmallView && AGENT_GUTTER,
+						)}
+					>
 						<WorkingLine activity={working.activity} phase={working.phase} />
 					</div>
 				)}
