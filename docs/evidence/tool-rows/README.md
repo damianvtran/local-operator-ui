@@ -28,6 +28,8 @@ Two capture surfaces, and the difference matters when reading them:
 | [`working`](working/) | The working line under a running tool row. The row states the ARGUMENTS and that call's own execution time; the line states the KIND of work and the phase age. They do not restate each other. |
 | [`working-labels`](working-labels/) | Every label the line can carry — `thinking`, `responding`, `composing a call`, the model's own sanitised intent, and `running 3 tools` for a batch. No trailing ellipsis anywhere: the clock is what says it is ongoing. |
 | [`real-conversation-tool-rows`](real-conversation-tool-rows/) | The real app, real backend, real conversation: 41 real tool rows including a live turn caught mid-flight (a running `bash` row with no outcome glyph, and the working line reading "Verifying nexus MR 69"). |
+| [`spacing-uniformity`](spacing-uniformity/) | The three runs the operator screenshotted when he called the spacing "much too wide" and "not very uniform", reproduced as a regression surface: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch. |
+| [`turn-boundary`](turn-boundary/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. |
 
 Both brand themes for each. The 12-theme sweep was **not** regenerated — see
 `manifest.json`'s `partialCapture` — but the five story ids are registered in
@@ -52,6 +54,40 @@ alignment is the whole reason a run of twenty rows can be scanned by position
 instead of read one at a time, and it is the property a screenshot alone cannot
 demonstrate.
 
+## The row pitch, before and after
+
+The operator's second complaint was density and uniformity, and that is a
+number rather than an impression: the distance between the top edges of
+consecutive rows, read out of the live DOM with `getBoundingClientRect()`. A
+uniform run shows a CONSTANT delta. The reference in
+`../tui-parity/OPERATOR-TUI-REFERENCE.md` measures ~20.4px per line.
+
+| Case | Before | After |
+| --- | --- | --- |
+| (a) four consecutive settled rows | `28, 28, 28` | `20, 20, 20` |
+| (b) prose, two `hub` rows, a `send` row | `34.4, 36, 12, 28` | `30.4, 20, 20` |
+| (c) long run mixing rows and prose-free turns | `36, 12, 28, 36, 12, 28` | `20, 20, 20, 20` |
+| turn boundary + working line | `28, 48, 72.4, 34.4` | `20, 44, 72.4, 30.4` |
+
+Two things to read out of the table. The AFTER column is constant inside every
+run, which is what "uniform" means here — and it is structural rather than
+lucky, because the `trace` tier carries no margin at all, so the row's own
+height IS the pitch. And the turn boundary is still the widest gap in the last
+row of the table: the hierarchy did not get flattened to buy the density.
+
+The BEFORE column is also the diagnosis. In (b) and (c) the alternating
+`36, 12` pairs are a record that RENDERS NOTHING sitting between two visible
+rows — an assistant turn that carried only tool calls. It contributed its own
+12px margin and pushed the row after it off the tight tier, which is the "extra
+space randomly inserted" with no visible cause. `transcript-rows.ts` now
+computes adjacency over what the reader can see; `scripts/tool-row.test.mjs`
+pins it, and both of those tests were confirmed to FAIL against the pre-fix
+code rather than merely passing against the fixed one.
+
+Measured under CDP focus emulation. An unfocused window throttles `setInterval`,
+which makes the working line's clock and spinner read as frozen — a real
+measurement artifact on this surface, not a hypothetical one.
+
 ## What these frames do NOT prove
 
 - **Packaged Electron.** The real-app frames run the compiled main and preload
@@ -65,3 +101,7 @@ demonstrate.
 - **Ten of the twelve themes.** Only the two brand palettes were captured.
   `pnpm check-themes` covers all twelve numerically (1884 assertions); these
   frames do not.
+- **That the pitch is right on the operator's own machine.** These are
+  Storybook frames at a fixed viewport and device scale. They demonstrate that
+  the pitch is uniform and how tight it is; they cannot speak to his display,
+  his zoom level, or a route nobody captured.

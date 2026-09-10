@@ -105,9 +105,16 @@ const STORIES = [
 	   well as wide, because the shed order under pressure is half the design. */
 	["chat-tool-rows--states", 1280, 900],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
-	["chat-tool-rows--narrow", 1280, 900],
+	/* `narrow` is a 420px column and `working-labels` is six short lines, so
+	   both are captured in a viewport SIZED TO THEM rather than in the 1280x900
+	   default. At the default they are mostly empty ground — and once the rows
+	   tightened to the TUI's ~20px pitch they crossed `check-evidence`'s
+	   uniformity ceiling, which is that guard working as designed: a frame that
+	   is 99% one colour is not a picture of the app, however correct the few
+	   pixels in the middle are. */
+	["chat-tool-rows--narrow", 560, 260],
 	["chat-tool-rows--working", 1280, 900],
-	["chat-tool-rows--working-labels", 1280, 900],
+	["chat-tool-rows--working-labels", 760, 300],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is

@@ -117,7 +117,7 @@ type Story = StoryObj;
 export const States: Story = {
 	render: () => (
 		<Frame
-			height={270}
+			height={210}
 			records={[
 				tool({
 					id: "tool:1",
@@ -180,7 +180,7 @@ export const States: Story = {
 export const NamesAndFallbacks: Story = {
 	render: () => (
 		<Frame
-			height={300}
+			height={230}
 			records={[
 				// The column grows to the longest visible name, so these all share
 				// one edge and every summary starts on one rail.
@@ -253,7 +253,7 @@ export const Narrow: Story = {
 	render: () => (
 		<Frame
 			width="420px"
-			height={190}
+			height={150}
 			records={[
 				tool({
 					id: "tool:1",
@@ -298,7 +298,7 @@ export const Working: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={190}
+			height={150}
 			records={[
 				tool({
 					id: "tool:1",

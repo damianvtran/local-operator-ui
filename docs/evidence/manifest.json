@@ -1,25 +1,29 @@
 {
-	"head": "f53303cc403362599b552b1f388fe724572f6dbb",
-	"srcTree": "ddb66435cc69e3631a8ec5879803ac892142ff41",
-	"scriptsTree": "6bb9e8b2ba6043c927062168d208318d2133cacb",
-	"dirtyWorkingTree": false,
-	"capturedAt": "2026-08-06T18:36:03.218Z",
-	"frames": 470,
-	"surfaces": 45,
-	"themes": 12,
-	"partialCapture": {
-		"note": "The 456-frame sweep was not regenerated in this change. The frames added here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook.",
-		"addedFrames": 14,
-		"addedAt": "2026-09-10T02:37:03.000Z",
-		"addedAtHead": "9f12fc8779fbddbdee450519da2b30811967fdaa",
-		"addedSurfaces": [
-			"tool-rows/names-and-fallbacks",
-			"tool-rows/narrow",
-			"tool-rows/real-conversation-tool-rows",
-			"tool-rows/states",
-			"tool-rows/working",
-			"tool-rows/working-labels",
-			"transcript-images/real-conversation-images"
-		]
-	}
+  "head": "f53303cc403362599b552b1f388fe724572f6dbb",
+  "srcTree": "ddb66435cc69e3631a8ec5879803ac892142ff41",
+  "scriptsTree": "6bb9e8b2ba6043c927062168d208318d2133cacb",
+  "dirtyWorkingTree": false,
+  "capturedAt": "2026-08-06T18:36:03.218Z",
+  "frames": 474,
+  "surfaces": 45,
+  "themes": 12,
+  "partialCapture": {
+    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content \u2014 at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened.",
+    "addedFrames": 18,
+    "addedAt": "2026-09-10T02:37:03.000Z",
+    "addedAtHead": "9f12fc8779fbddbdee450519da2b30811967fdaa",
+    "addedSurfaces": [
+      "tool-rows/names-and-fallbacks",
+      "tool-rows/narrow",
+      "tool-rows/real-conversation-tool-rows",
+      "tool-rows/spacing-uniformity",
+      "tool-rows/states",
+      "tool-rows/turn-boundary",
+      "tool-rows/working",
+      "tool-rows/working-labels",
+      "transcript-images/real-conversation-images"
+    ],
+    "refreshedAt": "2026-09-10T05:32:47.457272Z",
+    "refreshedAtHead": "dfeda7e5501a1610da4acbb169eb8836dc37ef97"
+  }
 }
