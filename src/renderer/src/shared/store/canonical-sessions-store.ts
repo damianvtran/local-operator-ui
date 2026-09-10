@@ -85,6 +85,32 @@ export const SEND_UNCONFIRMED_MESSAGE =
 	"The send could not be confirmed. Retry this draft.";
 
 /**
+ * The one place a composer value becomes a send PAYLOAD.
+ *
+ * The unchanged-payload guard compares byte-for-byte, because a retry of a
+ * request that may already be executing has to be an idempotent replay. The
+ * composer meanwhile has to decide what to SAY about that guard - whether the
+ * held message is on screen, whether Restore is worth offering, whether the
+ * abandon control would destroy typed text. Those were two comparisons over two
+ * different strings (`===` in the guard, `.trim() ===` in the composer), and a
+ * whitespace-only edit fell into the gap between them: the guard refused the
+ * send while the composer believed the box already held the payload, so it
+ * suppressed BOTH escapes and left only the control that empties the box.
+ * Trailing space, leading space and a trailing newline all reproduced it -
+ * including the trailing-newline case the trim was originally written for.
+ *
+ * So the trim moves to the payload boundary instead of living in the copy
+ * logic. Every send normalizes here, every stored `submittedText` is therefore
+ * already normalized, and the composer compares normalized against normalized.
+ * The guard and the copy cannot disagree about what "the same message" means,
+ * because there is now only one string. Whitespace at the ends is not content
+ * the owner needs preserved; the interior is untouched.
+ */
+export function normalizeSendText(text: string): string {
+	return text.trim();
+}
+
+/**
  * Which draft a chat view owns. A staged draft is keyed by its own key, but once
  * a session exists `draftKey` is null and the send draft lives under
  * `send:<id>` — reading only `draftKey` there left a failed send's retained text
@@ -115,10 +141,15 @@ export async function admitChatDraft(
 	const store = useCanonicalSessionsStore.getState();
 	const previous = store.drafts[key];
 	if (previous?.pending) return null;
+	// Normalized once, here, and used for the guard, the stored claim and the
+	// wire alike - see `normalizeSendText`. Comparing or sending `input.text`
+	// anywhere below would reopen the gap between what the guard enforces and
+	// what the composer says about it.
+	const text = normalizeSendText(input.text);
 	if (
 		previous?.admissionAttempted &&
 		previous.submittedText !== undefined &&
-		(previous.submittedText !== input.text ||
+		(previous.submittedText !== text ||
 			JSON.stringify(previous.submittedAttachments) !==
 				JSON.stringify(input.attachments) ||
 			// Images are payload identity too. Comparing only text/attachments let a
@@ -166,7 +197,7 @@ export async function admitChatDraft(
 	store.updateDraft(key, {
 		...draft,
 		pending: true,
-		submittedText: input.text,
+		submittedText: text,
 		submittedAttachments: input.attachments,
 		submittedImages: images,
 		submittedMode: mode,
@@ -194,7 +225,7 @@ export async function admitChatDraft(
 			op: "sessions.message",
 			sessionId: id,
 			requestId: draft.admissionRequestId,
-			text: input.text,
+			text,
 			images: images.length ? images : undefined,
 			mode,
 		});
@@ -470,12 +501,38 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				return key;
 			},
 			updateDraft: (key, patch) =>
-				set((state) => ({
-					drafts: {
-						...state.drafts,
-						[key]: { ...state.drafts[key], ...patch },
-					},
-				})),
+				set((state) => {
+					// A PARTIAL patch onto a row that is gone must not resurrect it.
+					// This was a blind spread onto `state.drafts[key]`, so when a draft
+					// was abandoned while its admission was still in flight, the settling
+					// request's catch rebuilt the row from the patch alone - without
+					// `key`, `createRequestId` or `admissionRequestId`. The next send
+					// then went to the wire with `requestId: undefined`, which the closed
+					// IPC schema rejects, and that refusal re-armed this store's own
+					// unchanged-payload guard: every later send failed against a healthy
+					// backend with no causal link to the click that caused it. Discard is
+					// deliberate and outranks the outcome of the request it abandoned.
+					//
+					// The condition is identity, not existence, because this setter is
+					// also the legitimate CREATE path: `admitChatDraft` opens a send for
+					// an already-existing session by patching a `send:<id>` key that has
+					// no row yet, and that patch carries the whole identity. So a patch
+					// that can stand on its own as a draft may create one; a fragment
+					// like `{pending, error}` may only ever update something already
+					// there.
+					const present = state.drafts[key];
+					const complete =
+						patch.key !== undefined &&
+						patch.createRequestId !== undefined &&
+						patch.admissionRequestId !== undefined;
+					if (!present && !complete) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: { ...state.drafts[key], ...patch },
+						},
+					};
+				}),
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					const drafts = { ...state.drafts };

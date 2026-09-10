@@ -354,8 +354,19 @@ function SessionPanel({
 	 * Only this code: the other remedy (`profile_registry_unavailable`) is about
 	 * a registry being reachable, which a binding does not evidence.
 	 */
+	//
+	// Keyed on the LIVE binding only, never on `loadedTarget`: that falls back to
+	// `draft?.target?.name`, which a draft staged from the agents page or `/agent`
+	// already carries before any send is attempted. Reading it here made an
+	// `unresolved_attachment` failure clear itself on the first render after the
+	// failure - taking the explanation and both "Choose agent"/"Choose team"
+	// remedies with it, on the very path where they are the only way out. A
+	// pre-send intention is not evidence that the attachment resolved; only an
+	// agent or team actually bound to the session is.
+	const boundTarget =
+		canonical.frontend?.active_team || canonical.frontend?.active_agent;
 	const attachmentResolved =
-		activeErrorCode === "unresolved_attachment" && Boolean(loadedTarget);
+		activeErrorCode === "unresolved_attachment" && Boolean(boundTarget);
 	useEffect(() => {
 		if (!attachmentResolved) return;
 		setSendError(null);
@@ -382,7 +393,18 @@ function SessionPanel({
 	 * already holds the exact payload the message is on screen, an unchanged
 	 * retry is one keypress, and a notice would be noise.
 	 */
-	const heldText = draft?.admissionAttempted ? draft.submittedText : undefined;
+	//
+	// `!draft.pending` is load-bearing, not defensive. `admissionAttempted` is set
+	// BEFORE the awaited request, so it is true for the whole in-flight window (up
+	// to the 30s request timeout). Without this the notice and its abandon control
+	// were live over a send whose outcome was still unknown, and abandoning there
+	// deleted the row that the settling request then patched - reintroducing the
+	// invisible-claim dead end one layer down. A request that may be executing is
+	// not something to offer an escape from; the escapes appear once it settles.
+	const heldText =
+		draft?.admissionAttempted && !draft.pending
+			? draft.submittedText
+			: undefined;
 	const releaseHeld = () => {
 		if (draftIdentity)
 			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
@@ -442,15 +464,18 @@ function SessionPanel({
 					 * that is NOT the held payload, i.e. the user has already moved on and
 					 * discarding would silently destroy what they just typed.
 					 */
-					onDiscard: draft?.submittedText
-						? () => {
-								if (draftIdentity)
-									useCanonicalSessionsStore
-										.getState()
-										.discardDraft(draftIdentity);
-								clearError();
-							}
-						: undefined,
+					// Same settled-send condition as `heldText`: discarding a draft whose
+					// admission is still in flight is what manufactured the ghost row.
+					onDiscard:
+						draft?.submittedText && !draft.pending
+							? () => {
+									if (draftIdentity)
+										useCanonicalSessionsStore
+											.getState()
+											.discardDraft(draftIdentity);
+									clearError();
+								}
+							: undefined,
 					onReleaseHeld: heldText !== undefined ? releaseHeld : undefined,
 					/*
 					 * Editing dismisses the alert, and must clear the STORE's copy too -

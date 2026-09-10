@@ -182,13 +182,111 @@ each against the footer ground:
 | iceberg | 5.18 | 5.19 | | synth | 7.03 | 6.29 |
 | monokai | 5.11 | 6.29 | | tokyoNight | 6.46 | 6.47 |
 
-Worst case radient improves from **11.86 to 7.41** and the worst margin over
-danger from **4.88 to 0.43**; five themes now put danger on top. Partially
-fixed, deliberately: mixing danger toward the ground guarantees the ordering but
-rendered the control at 1.05-1.47:1 in dark palettes, which is an illegible
-destructive control — a worse defect. See D1 in the remediation comment.
+Worst case radient improves from **11.86 to 7.41**. The round-1 note said the
+worst margin over danger fell from **4.88 to 0.43**; that tracked `radient`
+across both rounds, but the worst THEME migrated, so the true maximum over the
+twelve is **1.18 (monokai)** — radient is only 4th-worst, at 0.43. Corrected
+here because both reviewers accepted the residual on the strength of how small
+it is, and 1.18 is the number that acceptance rests on. Five themes put danger
+on top.
+
+Deliberately not "fixed" by contrast: mixing danger toward the ground guarantees
+the ordering but collapses the control to 1.05-1.47:1 — an illegible destructive
+control, a worse defect. That band is worst in the **light** palettes (`iceberg`
+and `localOperatorLight` reach 1.04 at 5% and stay under 1.50 through 40%); the
+round-1 note attributed it to the dark ones, which was wrong in attribution
+though not in conclusion. The ranking is instead carried by size and weight,
+which no palette can invert — see D6 below.
 
 **D3/D5/U8/U9/U10.** Remedy buttons carry `underline` at rest and
 `cursor: pointer` (measured `textDecorationLine: underline`, `cursor: pointer`);
 the alert's horizontal padding now matches `COMPOSER_BOX` (`px-4`/`px-2`), so the
 error prose and the message text share a left edge; the action row is `min-h-6`.
+
+---
+
+## Round 2 remediation
+
+Four defects the round-1 remediation introduced or left, verified against a real
+renderer (`electron-vite dev` on a pinned strict port) and a real HTTP backend
+speaking the desktop contract, with a controllable verdict so the app's own
+transport, `DesktopControlError` and draft store all run. Frame ownership was
+asserted before any reading counted: origin, an injected `probe-marker`, a CSP
+carrying this run's backend port, and `document.hasFocus()` under focus
+emulation. Every absence measurement below has a known-positive canary, because
+a dead instrument reports "the defect is gone" exactly as it reports a pass.
+
+**R1 — a `pending` draft was abandonable, which stripped `admissionRequestId`.**
+`admissionAttempted` is set before the awaited request, so the claim notice and
+its abandon control were live for the whole in-flight window. Fixed on both
+sides: `updateDraft` refuses a patch that would resurrect a deleted row, and the
+claim UI waits for the send to settle.
+
+```
+in-flight (2.5s into an unanswered admission)
+  alert present: false      controls: []       <- nothing to abandon mid-flight
+after it settles
+  "The backend could not complete this request." + [Discard this message]
+after the escape, healthy backend
+  WIRE: 1 message  request_id well-formed      <- session not wedged
+canary: same probe on the pre-fix tree (e10f732cd, byte-identical archive)
+  GHOST ROW RESURRECTED (missing key, createRequestId, admissionRequestId)
+  send#0..3 REFUSED "Invalid desktop operation." wire.requestId=undefined
+```
+
+**U7 — the guard and the copy compared different strings.** `normalizeSendText`
+is now the single payload boundary; the composer compares the normalized box
+against the normalized claim, so no edit can land in a gap between them.
+
+```
+held = "...flag anything unusual. "  (trailing space)
+user removes the trailing space, backend healthy, Enter
+  WIRE: 1 message "…flag anything unusual."   <- reached the wire
+canary (known-positive): a genuinely different message with a claim held
+  WIRE: 0 messages, alert offers [Restore unsent message, Stop holding it]
+```
+
+**R2 — the U4 fix keyed on a pre-send intention.** `loadedTarget` falls back to
+`draft.target.name`, which a staged draft carries before any send, so an
+`unresolved_attachment` failure cleared itself on the first render. It now keys
+on the live binding only.
+
+```
+staged draft (target set pre-send), 409 unresolved_attachment
+  t+400ms / t+1200ms / t+3000ms:
+    [Choose agent, Choose team, Discard this message]   <- remedies survive
+canary: the same probe observes the alert clearing on a real dismiss path
+```
+
+**R3 — a vacuous assertion.** `store.error` was never made non-null, so the
+landed-send clear could not be distinguished from nothing having set it. The
+test now establishes it first, and does so by DRIVING `createSession` to fail
+rather than by `setState`-ing the field: a hand-seeded precondition can put the
+fixture in a state production never reaches, and can mask or repair the very
+behaviour under test. The picker calls `createSession` directly with no
+admission involved, so this is a state a user genuinely reaches. Mutation, clean `md5` restore between mutants, each
+asserted to land and to parse:
+
+| mutant | before | after |
+| --- | --- | --- |
+| B — delete the success-path `setState({error:null})` | **survived 14/14** | **RED**, names the test |
+| A, C, D, E (round-1 mutants) | RED | RED |
+| F — revert the `updateDraft` guard | — | RED |
+| G — guard compares raw `input.text` | — | RED |
+| H — `normalizeSendText` becomes identity | — | RED |
+
+G initially survived and exposed vacuity in this round's own new test: the first
+loop iteration succeeded, retiring the draft, so later iterations tested an
+unarmed guard. The loop now keeps the claim armed and asserts each variant
+reaches the wire normalized.
+
+**D6 — hierarchy carried by icon and weight rather than hue.** Measured live in
+the running app, failure state:
+
+```
+error prose : CircleAlert present (svg 1), font-weight 500, 13px
+controls    : Restore unsent message 12px, abandon 12px
+```
+
+`danger` is the highest-contrast ink in 0 of 12 palettes, so a hue-ranking rule
+is unwinnable by construction; size and weight are axes no palette contests.
