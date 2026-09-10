@@ -170,6 +170,32 @@ export function displayName(toolName: string): string {
 }
 
 /**
+ * Whether a summary carries nothing the name column does not already say.
+ *
+ * `summaryFromArgs` falls back to the tool's own WIRE name when no argument is
+ * summarisable. In the TUI that fallback is nearly invisible — the name column
+ * is 8 cells, so `list_variables` truncates to `list_var` and the summary is
+ * the only place the full name appears. This app's column GROWS to the longest
+ * visible name, which turns the same fallback into `list_variables
+ * list_variables`: the exact stutter the fallback exists to avoid.
+ *
+ * Both spellings count. The row displays `displayName(toolName)` while the
+ * fallback is the wire name, and for an MCP tool those differ — the column
+ * shows `list_issues` while the summary would read `mcp__linear_list_issues`.
+ * Comparing against the displayed name alone let the stutter through on the
+ * tool class most likely to produce a dozen argument-less rows in a row, and
+ * printed the very prefix `displayName` had just stripped.
+ *
+ * Exported because two surfaces need the SAME answer: the row decides whether
+ * to drop the summary, and the transcript decides whether to offer a stand-in
+ * fact in its place. If those two disagreed, a row would either show a
+ * fallback it did not need or go blank with one available.
+ */
+export function isBareToolName(summary: string, toolName: string): boolean {
+	return summary === toolName || summary === displayName(toolName);
+}
+
+/**
  * Integer-seconds duration, bounded at six characters over its whole domain.
  *
  * `format_duration` (tool_card.py:338-387). Used for a RUNNING row and for any

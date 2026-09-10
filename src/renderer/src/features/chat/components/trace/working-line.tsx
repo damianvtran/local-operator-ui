@@ -38,15 +38,19 @@
  * and the clock — which is the correct channel for it: motion draws the eye
  * without a static word having to shout.
  *
- * Reduced motion: the base layer in `styles/index.css` caps every animation at
- * 0.01ms, so the spinner freezes on whatever frame it is holding and only the
- * clock moves. That is the TUI's own static behaviour (`_STATIC_FRAME_MS`), and
- * it is why the clock is the thing that carries liveness rather than the
- * spinner: when the animation is gone, a number that changes every second is
- * all that is left saying the app is alive. Verified against a real
- * `prefers-reduced-motion` emulation, not assumed.
+ * Reduced motion: the spinner holds frame 0 and only the clock moves, which is
+ * the TUI's own static behaviour (`_STATIC_FRAME_MS`). It is why the clock
+ * carries liveness rather than the spinner — when the animation is gone, a
+ * number that changes every second is all that is left saying the app is alive.
+ *
+ * That freeze is implemented HERE, in JS, and it has to be: the global cap in
+ * `styles/index.css` bounds `animation-duration` and `transition-duration`, and
+ * this spinner is neither. It is a `setInterval` swapping a text node, which no
+ * media query can reach. The file previously claimed the CSS cap covered it,
+ * and a reduced-motion user got the full 12.5fps cycle.
  */
 
+import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { formatDuration } from "./tool-row-model";
@@ -92,6 +96,10 @@ export const WorkingLine = ({
 }: WorkingLineProps) => {
 	const [frame, setFrame] = useState(0);
 	const [elapsed, setElapsed] = useState(0);
+	// Read in JS because the thing being suppressed is a JS timer. The Tailwind
+	// variant carrying the same query is `motion-reduce:`, and the two have to
+	// move together — but no variant can stop an interval.
+	const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 	// Wall-clock start of the phase, held in a ref so a re-render for a label
 	// change (which happens on every tool settling in a batch) cannot reset it.
 	const started = useRef(Date.now());
@@ -105,19 +113,27 @@ export const WorkingLine = ({
 	}
 
 	useEffect(() => {
-		const spin = window.setInterval(
-			() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length),
-			SPIN_MS,
-		);
+		// The clock runs in both modes: it is the liveness channel that survives
+		// the spinner being frozen, and it changes a number rather than animating.
 		const clock = window.setInterval(
 			() => setElapsed(Math.floor((Date.now() - started.current) / 1000)),
 			CLOCK_MS,
+		);
+		if (reduceMotion) {
+			// Hold frame 0 rather than wherever the cycle happened to be when the
+			// preference changed, so the static state is the same glyph every time.
+			setFrame(0);
+			return () => window.clearInterval(clock);
+		}
+		const spin = window.setInterval(
+			() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length),
+			SPIN_MS,
 		);
 		return () => {
 			window.clearInterval(spin);
 			window.clearInterval(clock);
 		};
-	}, []);
+	}, [reduceMotion]);
 
 	return (
 		<div
@@ -137,7 +153,12 @@ export const WorkingLine = ({
 			<span
 				aria-hidden={true}
 				className={cn(
-					"w-[1ch] shrink-0 select-none font-mono text-ink-dim text-mono-sm",
+					// `ink-muted` rather than `ink-dim`: at 12px the animated portion of
+					// a braille cell measures 4x10px, which read as a speck beside the
+					// label rather than as motion. Motion is the channel that should
+					// draw the eye here — the label is deliberately quiet — so the one
+					// moving element is the one that gets the weight.
+					"w-[1ch] shrink-0 select-none font-mono text-ink-muted text-mono-sm",
 				)}
 			>
 				{SPINNER_FRAMES[frame]}

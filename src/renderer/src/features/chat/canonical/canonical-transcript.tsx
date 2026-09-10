@@ -66,6 +66,7 @@ import { AgentQuestion, TraceLine } from "../components/trace";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	displayName,
+	isBareToolName,
 	summaryFromArgs,
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
@@ -237,6 +238,16 @@ const ToolRow = memo(function ToolRow({
 	const summary = composing
 		? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
 		: summaryFromArgs(record.toolName, record.args);
+	// When the arguments taught us nothing, the summary is the tool's own name,
+	// which the row then drops as a stutter and the object column goes empty.
+	// A row that says nothing about its call is the scannability this port
+	// exists to create, lost — so the OUTPUT's first line stands in. It is a
+	// weaker fact than the arguments (it says what came back rather than what
+	// was asked) and it is deliberately second choice, but it beats a void.
+	const derived =
+		!composing && isBareToolName(summary, record.toolName)
+			? firstLine(record.output)
+			: null;
 	const details =
 		record.output || record.args ? (
 			<>
@@ -286,6 +297,7 @@ const ToolRow = memo(function ToolRow({
 			<ToolLedgerRow
 				toolName={record.toolName}
 				summary={summary}
+				summaryFallback={derived}
 				outcome={
 					running
 						? "running"
@@ -296,6 +308,7 @@ const ToolRow = memo(function ToolRow({
 								: "success"
 				}
 				durationS={record.durationS}
+				startedAt={record.startedAt}
 				added={record.added}
 				removed={record.removed}
 				nameColumn={nameColumn}
@@ -305,6 +318,24 @@ const ToolRow = memo(function ToolRow({
 		</MessageContainer>
 	);
 });
+
+/**
+ * The first non-empty line of a tool's output, bounded so it stays a summary.
+ *
+ * One line because the object column is one line: a multi-line result would be
+ * truncated by CSS anyway, and taking the first line explicitly means the row
+ * shows a whole thought rather than a fragment cut mid-word by the layout. The
+ * cap matches what fits at the widest sensible column, so a 4 KB `bash` result
+ * cannot push a long string through the truncation machinery on every render.
+ */
+function firstLine(output: string | null): string | null {
+	if (!output) return null;
+	for (const line of output.split("\n")) {
+		const trimmed = line.trim();
+		if (trimmed) return trimmed.slice(0, 160);
+	}
+	return null;
+}
 
 function formatBytes(count: number) {
 	return count >= 1024 ? `${(count / 1024).toFixed(1)} KiB` : `${count} B`;

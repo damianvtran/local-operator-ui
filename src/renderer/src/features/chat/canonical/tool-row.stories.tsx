@@ -46,6 +46,7 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	output: "ok",
 	isError: false,
 	durationS: 0.4,
+	startedAt: null,
 	images: [],
 	added: 0,
 	removed: 0,
@@ -162,13 +163,18 @@ export const States: Story = {
 					stopped: true,
 					output: null,
 				}),
-				// Running: live clock, NO outcome glyph, raised ground.
+				// Running: live clock, NO outcome glyph, raised ground. The start is
+				// pinned in the past so the still SHOWS a clock that has moved —
+				// captured at `startedAt: now` every running row reads `0s`, which
+				// is indistinguishable from the frozen clock this replaced and is
+				// exactly why the defect survived a review round.
 				tool({
 					id: "tool:6",
 					toolName: "web_fetch",
 					args: { url: "https://example.com/very/long/path/to/a/document" },
 					phase: "running",
 					durationS: null,
+					startedAt: Date.now() - 12_000,
 					output: null,
 				}),
 			]}
@@ -313,6 +319,12 @@ export const Working: Story = {
 					args: { command: "pnpm test:desktop" },
 					phase: "running",
 					durationS: null,
+					// A running row's clock counts from here, because `durationS`
+					// does not arrive until the call ends. Pinned 47s in the past so
+					// the frame DEMONSTRATES the clock rather than catching it at
+					// `0s` — a still taken immediately cannot distinguish a working
+					// clock from the frozen one this replaced.
+					startedAt: Date.now() - 47_000,
 					intent: "Running the desktop gates",
 					output: null,
 				}),

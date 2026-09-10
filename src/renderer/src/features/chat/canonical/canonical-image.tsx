@@ -50,15 +50,24 @@ export const CanonicalImage = ({
 		<div className={cn("inline-block max-w-full")}>
 			<ImageAttachment
 				// `file` is what the component names the attachment and what its
-				// file-actions menu would act on. A `data:`/blob URL fails its
-				// `isLocalFile` guard, so the menu correctly never appears: there is
-				// no file on disk for it to reveal.
+				// file-actions menu would act on. Neither shape a canonical image can
+				// take is a path: `data:` and `blob:` both fail `isLocalFile`, so the
+				// menu never appears and there is nothing on disk to reveal. The
+				// `blob:` half of that guard exists because THIS caller needed it —
+				// every durable image is a blob, and the guard originally covered
+				// only `data:`, so the menu did appear and offered to show a blob
+				// handle in Finder.
 				file={src}
 				src={src}
-				// Canonical images have no on-disk path, so there is nothing for a
-				// click to open. The affordance is left inert rather than wired to a
-				// no-op that would look broken.
-				onClick={() => undefined}
+				// No `onClick`: a canonical image has no on-disk path, so there is
+				// nothing for a click to open. Omitting the handler renders the
+				// picture without a button rather than dressing an inert frame as
+				// something that answers.
+				//
+				// `label` is also what the picture is CALLED. Left to derive itself
+				// from the URL it would be the blob's UUID, which is what a screen
+				// reader announced.
+				label={label}
 				conversationId={sessionId ?? ""}
 			/>
 		</div>

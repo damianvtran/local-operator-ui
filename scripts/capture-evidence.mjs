@@ -33,7 +33,40 @@ import { assertFramePaints } from "./check-evidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
-const ORIGIN = process.argv[2] ?? "http://localhost:6017";
+const ARGS = process.argv.slice(2);
+const flag = (name) => {
+	const hit = ARGS.find((a) => a.startsWith(`--${name}=`));
+	return hit ? hit.slice(name.length + 3) : null;
+};
+const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
+
+/*
+ * Optional narrowing, for a REMEDIATION recapture rather than a sweep.
+ *
+ * `--only=<substring>` limits the story list and `--themes=a,b` the palettes;
+ * either one switches the run to append-mode, so the existing set is left in
+ * place instead of being deleted and re-taken. A full sweep is still the
+ * default and still wipes `docs/evidence`, because a partial set that silently
+ * kept stale frames is the failure this whole file exists to prevent.
+ *
+ * The narrowing exists because a review round asks for two frames, not 474: a
+ * refresh of the whole set costs half an hour and rewrites 400 frames nobody
+ * reviewed, which buries the two that changed. `manifest.json`'s
+ * `partialCapture` records that this happened so the next reader can tell a
+ * narrowed set from a swept one.
+ */
+const ONLY = flag("only");
+const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
+const PARTIAL = Boolean(ONLY || THEME_FILTER);
+
+/*
+ * A backend on the configured port normally fails the run, because a captured
+ * frame must be a function of the tree. `--allow-backend` states that the
+ * operator knows one is running and is not capturing any surface that talks to
+ * it — the tool-row stories render from fixture records and never call out.
+ * It is opt-in per run, and it never applies to a full sweep.
+ */
+const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
 
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
@@ -293,7 +326,7 @@ const assertBackendDown = async () => {
 
 const main = async () => {
 	sweepStaleProfiles();
-	await assertBackendDown();
+	if (!ALLOW_BACKEND) await assertBackendDown();
 
 	dataDir = join(tmpdir(), `lo-evidence-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
@@ -354,9 +387,19 @@ const main = async () => {
 	 * a fixture filename rather than the story's own title) and this is what
 	 * that cost. Checking the manifest first names the bad id directly.
 	 */
+	const stories = ONLY ? STORIES.filter(([id]) => id.includes(ONLY)) : STORIES;
+	if (stories.length === 0) throw new Error(`--only=${ONLY} matched no story`);
+	const themes = THEME_FILTER
+		? THEMES.filter((t) => THEME_FILTER.includes(t))
+		: THEMES;
+	if (themes.length === 0) throw new Error("--themes matched no palette");
+
 	const index = await fetch(`${ORIGIN}/index.json`).then((r) => r.json());
 	const known = new Set(Object.keys(index.entries ?? {}));
-	const unknown = [...new Set(STORIES.map(([id]) => id))].filter(
+	// Checked against the ids this run will actually visit. A narrowed refresh
+	// must not be blocked by a bad id in a story it is not capturing — that is a
+	// real defect in the list, but it belongs to the sweep that would take it.
+	const unknown = [...new Set(stories.map(([id]) => id))].filter(
 		(id) => !known.has(id),
 	);
 	if (unknown.length > 0) {
@@ -365,14 +408,16 @@ const main = async () => {
 				`Check ${ORIGIN}/index.json for the real ids.`,
 		);
 	}
-	rmSync(OUT, { recursive: true, force: true });
+	// A narrowed run refreshes named frames in place; only a full sweep may
+	// delete the set it is about to rebuild.
+	if (!PARTIAL) rmSync(OUT, { recursive: true, force: true });
 
 	/* zustand persist key for the UI preferences store. */
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
-	for (const [story, width, height] of STORIES) {
-		for (const theme of THEMES) {
+	for (const [story, width, height] of stories) {
+		for (const theme of themes) {
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
 				width,
 				height,
@@ -759,10 +804,40 @@ const main = async () => {
 		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })
 			.toString()
 			.trim();
-	writeFileSync(
-		join(OUT, "manifest.json"),
-		`${JSON.stringify(
-			{
+	/*
+	 * A narrowed run must not overwrite the record of the set it did not take.
+	 *
+	 * `frames`/`surfaces`/`themes` describe the WHOLE committed set, and a
+	 * two-story refresh knows nothing about the other 470 frames — writing its
+	 * own counts there would claim the set had shrunk to two. So a partial run
+	 * preserves the existing totals and records what it refreshed under
+	 * `partialCapture`, which is the field a reader consults to tell a narrowed
+	 * set from a swept one.
+	 */
+	const manifestPath = join(OUT, "manifest.json");
+	let previous = {};
+	try {
+		previous = JSON.parse(readFileSync(manifestPath, "utf8"));
+	} catch {
+		// No prior manifest: a full sweep writes the first one.
+	}
+	const manifest = PARTIAL
+		? {
+				...previous,
+				head,
+				srcTree: treeHash("src"),
+				scriptsTree: treeHash("scripts"),
+				dirtyWorkingTree: dirty,
+				partialCapture: {
+					...(previous.partialCapture ?? {}),
+					refreshedAt: new Date().toISOString(),
+					refreshedAtHead: head,
+					refreshedFrames: captured,
+					refreshedStories: [...new Set(stories.map(([id]) => id))],
+					refreshedThemes: themes,
+				},
+			}
+		: {
 				head,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),
@@ -771,11 +846,8 @@ const main = async () => {
 				frames: captured,
 				surfaces: STORIES.length,
 				themes: THEMES.length,
-			},
-			null,
-			2,
-		)}\n`,
-	);
+			};
+	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
 };

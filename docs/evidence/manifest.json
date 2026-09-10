@@ -1,14 +1,14 @@
 {
-  "head": "f53303cc403362599b552b1f388fe724572f6dbb",
-  "srcTree": "ddb66435cc69e3631a8ec5879803ac892142ff41",
-  "scriptsTree": "6bb9e8b2ba6043c927062168d208318d2133cacb",
-  "dirtyWorkingTree": false,
+  "head": "21d28d3c65e13f9071152dc19f04d856bbb41d55",
+  "srcTree": "217ef43b8ec893bb440f2960965d30d7a8141ebe",
+  "scriptsTree": "76014fc30796cb13fbb04463b1044cd14d058c20",
+  "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 474,
   "surfaces": 45,
   "themes": 12,
   "partialCapture": {
-    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content \u2014 at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened.",
+    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content \u2014 at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. `real-conversation-tool-rows` was NOT refreshed and is STALE against the D1 fix \u2014 it still shows the blank object columns that fix removes; see the warning in tool-rows/README.md, which carries the six-transcript measurement that stands in for it (51 blank rows -> 0).",
     "addedFrames": 18,
     "addedAt": "2026-09-10T02:37:03.000Z",
     "addedAtHead": "9f12fc8779fbddbdee450519da2b30811967fdaa",
@@ -23,7 +23,21 @@
       "tool-rows/working-labels",
       "transcript-images/real-conversation-images"
     ],
-    "refreshedAt": "2026-09-10T05:32:47.457272Z",
-    "refreshedAtHead": "dfeda7e5501a1610da4acbb169eb8836dc37ef97"
+    "refreshedAt": "2026-09-10T06:37:56.203Z",
+    "refreshedAtHead": "21d28d3c65e13f9071152dc19f04d856bbb41d55",
+    "refreshedFrames": 14,
+    "refreshedStories": [
+      "chat-tool-rows--states",
+      "chat-tool-rows--names-and-fallbacks",
+      "chat-tool-rows--narrow",
+      "chat-tool-rows--working",
+      "chat-tool-rows--working-labels",
+      "chat-tool-rows--operator-spacing-cases",
+      "chat-tool-rows--turn-boundary-and-working-line"
+    ],
+    "refreshedThemes": [
+      "localOperatorDark",
+      "localOperatorLight"
+    ]
   }
 }

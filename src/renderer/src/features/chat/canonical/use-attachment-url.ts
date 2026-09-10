@@ -44,8 +44,31 @@ import type { TranscriptImage } from "./transcript-reducer";
  */
 const cache = new Map<string, { url: string; refs: number }>();
 
-/** Digests whose fetch is in flight, so N mounts make one request. */
-const inflight = new Map<string, Promise<string | null>>();
+/**
+ * Digests whose fetch is in flight, so N mounts make one request.
+ *
+ * The value carries `holders` alongside the promise because the RESULT needs an
+ * owner. A row that unmounts mid-flight cannot release what it never retained,
+ * so the count of live requesters is what tells the resolver whether anyone is
+ * still waiting when the bytes land — see `fetchAttachment`.
+ */
+const inflight = new Map<
+	string,
+	{ promise: Promise<string | null>; holders: number }
+>();
+
+/**
+ * The cached URL without taking a reference — a READ, safe in a render.
+ *
+ * Separate from `retain` because a `useState` initializer must be pure and
+ * React deliberately double-invokes it under `StrictMode`. Peeking lets a warm
+ * mount paint the picture on its first frame (the common case when scrolling
+ * back over a screenshot) while the refcount stays owned entirely by the
+ * effect, which is the only place that can also pay it back.
+ */
+function peek(digest: string): string | null {
+	return cache.get(digest)?.url ?? null;
+}
 
 function retain(digest: string): string | null {
 	const entry = cache.get(digest);
@@ -66,13 +89,31 @@ function release(digest: string) {
 	cache.delete(digest);
 }
 
-async function fetchAttachment(
+/**
+ * Fetch one digest's bytes, collapsing N concurrent mounts onto one request.
+ *
+ * `abandonFetch` is the other half and must be called by every caller that
+ * stops caring, because a blob created for nobody is unreachable garbage: the
+ * cache entry would sit at `refs: 0` with no holder left to drive it to zero,
+ * and `release` is a documented no-op on a digest that was absent when the
+ * unmount ran. Fast scrolling through a screenshot-heavy transcript is exactly
+ * the motion that produces that race, so the resolver counts its waiters and
+ * discards a result nobody is left to hold.
+ */
+function fetchAttachment(
 	sessionId: string,
 	digest: string,
 ): Promise<string | null> {
 	const existing = inflight.get(digest);
-	if (existing) return existing;
-	const pending = (async () => {
+	if (existing) {
+		existing.holders += 1;
+		return existing.promise;
+	}
+	const record: { promise: Promise<string | null>; holders: number } = {
+		holders: 1,
+		promise: null as unknown as Promise<string | null>,
+	};
+	record.promise = (async () => {
 		try {
 			const result = await desktopMedia(
 				{ op: "sessions.attachment", sessionId, digest },
@@ -82,6 +123,12 @@ async function fetchAttachment(
 			const url = URL.createObjectURL(
 				new Blob([result.data as BlobPart], { type: result.mimeType }),
 			);
+			if (record.holders <= 0) {
+				// Everyone who asked for this is gone. Publishing it would strand an
+				// entry no unmount can ever release, so it is revoked here instead.
+				URL.revokeObjectURL(url);
+				return null;
+			}
 			cache.set(digest, { url, refs: 0 });
 			return url;
 		} catch {
@@ -92,8 +139,14 @@ async function fetchAttachment(
 			inflight.delete(digest);
 		}
 	})();
-	inflight.set(digest, pending);
-	return pending;
+	inflight.set(digest, record);
+	return record.promise;
+}
+
+/** One requester stopped waiting. The last one to leave discards the result. */
+function abandonFetch(digest: string) {
+	const existing = inflight.get(digest);
+	if (existing) existing.holders -= 1;
 }
 
 /**
@@ -114,8 +167,14 @@ export function useAttachmentUrl(
 	const inline = image.data
 		? `data:${image.mimeType};base64,${image.data}`
 		: null;
+	// A PEEK, never a retain. `retain` mutates a refcount, and a `useState`
+	// initializer that mutates is impure: under the `StrictMode` this app mounts
+	// (`main.tsx`) it is deliberately double-invoked, so retaining here added a
+	// ref per warm mount that no unmount could pay back and the blob outlived
+	// the window. Peeking keeps the first paint (the reason this seed exists at
+	// all) while the effect below owns every reference.
 	const [resolved, setResolved] = useState<string | null>(() =>
-		image.attachment ? retain(image.attachment) : null,
+		image.attachment ? peek(image.attachment) : null,
 	);
 
 	useEffect(() => {
@@ -130,6 +189,11 @@ export function useAttachmentUrl(
 				release(digest);
 			};
 		}
+		// Nothing cached. On a cold mount this matches the seed and React bails
+		// out of the re-render; it only does work in the narrow race where the
+		// entry was revoked between the render-phase peek and this effect, and
+		// there it drops a URL that is already dead rather than painting it.
+		setResolved(null);
 		void fetchAttachment(sessionId, digest).then((url) => {
 			if (!live || !url) return;
 			// Retain AFTER the fetch, so the count reflects holders rather than
@@ -139,9 +203,11 @@ export function useAttachmentUrl(
 		});
 		return () => {
 			live = false;
-			// Only release what this mount actually retained. `retain` returns
-			// null for a digest that never landed, and `release` is a no-op on a
-			// digest absent from the cache, so a cancelled fetch is safe.
+			// Two different books to close, and both are needed. `release` pays
+			// back a retain this mount made (a no-op if the fetch never landed),
+			// while `abandonFetch` drops this mount's claim on a result still in
+			// flight so the resolver can discard bytes nobody is waiting for.
+			abandonFetch(digest);
 			release(digest);
 		};
 	}, [image.attachment, inline, sessionId]);

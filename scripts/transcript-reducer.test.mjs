@@ -836,3 +836,164 @@ test("a live start teaches args that the durable row does not carry", () => {
 		"a clear does not unlearn the arguments",
 	);
 });
+
+test("a reconnect seed never wipes a durable row's resolvable digest", () => {
+	/*
+	 * R7. The backend strips image bytes out of `live_events` before it replays
+	 * them: `_bound_live_result_in_place` gives each retained result a share of
+	 * `max(200, 60_000 // len(results))`, and a block with no `text` key that
+	 * exceeds its share is not emptied but REPLACED by a text placeholder
+	 * (`frontend_state.py`). A ~1.4 MB base64 screenshot always blows that
+	 * budget, so a mid-turn reconnect ALWAYS takes this path — the seed for a
+	 * call carries no image blocks at all, by design, because the durable path
+	 * is supposed to supply them.
+	 *
+	 * `use-canonical-session.ts` applies the durable history page FIRST and then
+	 * the live seed on top, so the seeded `tool_execution_end` lands on a row
+	 * that has already resolved its digest. Letting an empty extraction win
+	 * there discards a resolvable digest in favour of the one frame that was
+	 * stripped precisely because it could not carry the bytes, and the user
+	 * watches the screenshot vanish from a row that had it a moment earlier.
+	 */
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-durable",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-shot",
+					tool_name: "browser",
+					content: [durableImage],
+					provider_payload: { duration_s: 2.9, details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const durable = state.records.find((r) => r.kind === "tool");
+	assert.equal(durable.images.length, 1, "the durable page resolved a digest");
+	assert.equal(durable.images[0].attachment, DIGEST);
+
+	// The seed, in the exact shape the backend produces for an over-budget
+	// image block: the placeholder text, and no image block anywhere.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-shot",
+			tool_name: "browser",
+			result: {
+				content: [
+					{ type: "text", text: "captured" },
+					{
+						type: "text",
+						text: "[dropped from the reconnect snapshot — see the transcript]",
+					},
+				],
+				details: {},
+			},
+			duration_s: 2.9,
+		},
+		2,
+	);
+	const seeded = state.records.find((r) => r.kind === "tool");
+	assert.equal(
+		seeded.images.length,
+		1,
+		"the digest survives the seed — it was 0 before the fix",
+	);
+	assert.equal(seeded.images[0].attachment, DIGEST);
+	// By REFERENCE, so the identity gate still reports the row unchanged and the
+	// memoised row does not re-render every image on a reconnect.
+	assert.equal(seeded.images, durable.images, "and the array is not rebuilt");
+});
+
+test("a genuinely image-free call is not given images it never had", () => {
+	// The other side of R7's guard: "this event carried no image blocks" and
+	// "this call produced no images" must stay different claims, or a `bash` row
+	// would inherit whatever the record happened to hold.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-bash",
+			tool_name: "bash",
+			args: { command: "ls" },
+		},
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-bash",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok" }], details: {} },
+			duration_s: 0.4,
+		},
+		2,
+	);
+	const row = state.records.find((r) => r.kind === "tool");
+	assert.equal(row.images.length, 0, "no images, and none invented");
+});
+
+test("a running row carries the clock its duration cannot", () => {
+	/*
+	 * R4/Q-06. `durationS` is null for the whole life of a running call — it
+	 * only arrives on `tool_execution_end` — so the row rendered `0s` from start
+	 * to finish and a four-minute `bash` looked identical to an instant one.
+	 * The row needs a start timestamp of its own to count from.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-run",
+			tool_name: "bash",
+			args: { command: "sleep 60" },
+		},
+		1_000,
+	);
+	const running = state.records.find((r) => r.kind === "tool");
+	assert.equal(running.phase, "running");
+	assert.equal(running.durationS, null, "the backend has not reported one yet");
+	assert.equal(running.startedAt, 1_000, "so the row counts from here instead");
+
+	// A replayed `_start` (the reconnect cursor sends them again) must not
+	// restart a clock that is already running, or the row's number jumps
+	// backwards in front of the reader.
+	const replayed = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-run",
+			tool_name: "bash",
+			args: { command: "sleep 60" },
+		},
+		9_999,
+	);
+	assert.equal(
+		replayed.records.find((r) => r.kind === "tool").startedAt,
+		1_000,
+		"the replay keeps the original start, not 9999",
+	);
+
+	// Settling stops the clock and hands over the measured duration.
+	const settled = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-run",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "done" }], details: {} },
+			duration_s: 60.2,
+		},
+		61_200,
+	);
+	const done = settled.records.find((r) => r.kind === "tool");
+	assert.equal(done.startedAt, null, "the row stops counting");
+	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
+});

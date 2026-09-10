@@ -27,7 +27,35 @@ Two capture surfaces, and the difference matters when reading them:
 | [`narrow`](narrow/) | The same rows at 420px. The shed ladder is visible: the `edit` row's `+42 -11` counters are **gone**, the summaries truncate with an ellipsis, and the outcome glyph and duration survive — they are the last thing to go, not the first. |
 | [`working`](working/) | The working line under a running tool row. The row states the ARGUMENTS and that call's own execution time; the line states the KIND of work and the phase age. They do not restate each other. |
 | [`working-labels`](working-labels/) | Every label the line can carry — `thinking`, `responding`, `composing a call`, the model's own sanitised intent, and `running 3 tools` for a batch. No trailing ellipsis anywhere: the clock is what says it is ongoing. |
-| [`real-conversation-tool-rows`](real-conversation-tool-rows/) | The real app, real backend, real conversation: 41 real tool rows including a live turn caught mid-flight (a running `bash` row with no outcome glyph, and the working line reading "Verifying nexus MR 69"). |
+| [`real-conversation-tool-rows`](real-conversation-tool-rows/) | The real app, real backend, real conversation: 41 real tool rows including a live turn caught mid-flight (a running `bash` row with no outcome glyph, and the working line reading "Verifying nexus MR 69"). **STALE — see the warning below.** |
+
+> ⚠️ **`real-conversation-tool-rows` predates the D1 fix and still shows the
+> defect.** The frame was captured at `2e83b46f9`, where a durable tool row
+> whose arguments arrived on another page settled with a blank object column;
+> the run of nine identical unlabelled `bash` rows in it is that bug. The fix
+> is in `transcript-reducer.ts` (session-wide `argsByCall`) and a renderer-only
+> fix cannot retroactively repair a captured PNG, so the picture disagrees with
+> the build until the live harness can be stood up again.
+>
+> What replaces it as evidence, until then, is a measurement rather than a
+> picture — and on this particular claim the measurement is the stronger of the
+> two, because it covers six conversations instead of one screenful. The
+> shipped reducer was replayed page-by-page over six real transcripts and the
+> blank-summary count compared against the reviewed head:
+>
+> | Session | Tool rows | Blank at `2e83b46f9` | Blank now |
+> | --- | --- | --- | --- |
+> | `c53d69f9033b` | 418 | 14 | 0 |
+> | `aa7355037e1f` | 402 | 10 | 0 |
+> | `8b5a3a71e677` | 293 | 8 | 0 |
+> | `37f60b478edd` | 293 | 5 | 0 |
+> | `1443d08ba7c9` | 238 | 7 | 0 |
+> | `83fdf0935d46` | 222 | 7 | 0 |
+> | **Total** | **1,866** | **51** | **0** |
+>
+> Both halves contribute: `argsByCall` recovers the arguments for rows whose
+> assistant entry fell on another page, and the two rows left with nothing to
+> say fall back to the output's first line rather than rendering empty.
 | [`spacing-uniformity`](spacing-uniformity/) | The three runs the operator screenshotted when he called the spacing "much too wide" and "not very uniform", reproduced as a regression surface: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch. |
 | [`turn-boundary`](turn-boundary/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. |
 
@@ -87,6 +115,56 @@ code rather than merely passing against the fixed one.
 Measured under CDP focus emulation. An unfocused window throttles `setInterval`,
 which makes the working line's clock and spinner read as frozen — a real
 measurement artifact on this surface, not a hypothetical one.
+
+## The name/summary gutter
+
+The name column grows to the longest visible name, so at its widest the two
+columns came within 8px of each other. Text-to-text separation, read out of the
+live DOM at 1280px with a `Range` over each name (the box edge overstates it,
+because the gutter is padding inside the box):
+
+| Story | Column | Worst-case gap | Truncated? |
+| --- | --- | --- | --- |
+| `states` (`web_fetch`, 9ch) | 68.8px | **12px** | no |
+| `names-and-fallbacks` (`some_custom_tool`, 16ch) | 119.2px | **12px** | no |
+
+12px against the 8px the design round measured. The gutter is added to the
+column (`calc(${nameColumn}ch + 0.25rem)`) rather than carved out of it: as
+padding inside the measured width it stole 4px from the text box and truncated
+`web_fetch` to `web_fet…` — the column sized for a name no longer fitting it.
+That regression was caught by looking at the frame, not by a test.
+
+## The two clocks, and what freezes
+
+Both are `setInterval`, so both were measured with
+`Emulation.setFocusEmulationEnabled` — an offscreen window throttles timers and
+a working clock reads as frozen, which is how a real defect and a measurement
+artifact came to look identical in round 1.
+
+Sampled at ~1.1s intervals, eight times, `document.hidden === false`:
+
+```
+motion on   row durations   2.9s|0.0s|0.1s|0.2s|5.0s|14s -> ...|22s   (8 distinct)
+motion on   spinner         ⣷⣟⢿⣽⣷⡿⣻⣾                                 (7 distinct)
+motion on   working clock   2s 3s 4s 5s 6s 8s 9s 10s                  (8 distinct)
+
+reduce      spinner         ⣾⣾⣾⣾⣾⣾⣾⣾                                 (1 distinct)
+reduce      working clock   2s 3s 4s 5s 6s 8s 9s 10s                  (8 distinct)
+```
+
+Three things to read. The running row's duration now MOVES (14s→22s) while the
+five settled rows beside it stay fixed — it counts from the record's own
+`startedAt`, because `durationS` is `null` until the call ends and the row
+previously rendered `0s` for its entire life. Under `prefers-reduced-motion` the
+spinner collapses to one frame (`⣾`, frame 0) while both clocks keep ticking:
+the freeze is implemented in JS, because the global CSS cap bounds
+`animation-duration` and this spinner is a text node swapped on a timer, which
+no media query can reach.
+
+The `states` and `working` stories pin their running rows' `startedAt` in the
+past for exactly this reason: captured at `startedAt: now` every running row
+reads `0s`, which is indistinguishable from the frozen clock it replaced — and
+that indistinguishability is why the defect survived a review round.
 
 ## What these frames do NOT prove
 

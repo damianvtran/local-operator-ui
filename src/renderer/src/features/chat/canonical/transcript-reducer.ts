@@ -92,6 +92,23 @@ export type TranscriptRecord =
 			isError: boolean;
 			durationS: number | null;
 			/**
+			 * Wall-clock ms when the call began EXECUTING, for the running row's
+			 * live clock. `null` on any settled row, which reports the duration the
+			 * backend measured instead.
+			 *
+			 * The row needs this because `durationS` is `null` for the whole life of
+			 * a running call — it only arrives on `tool_execution_end` — so a row
+			 * without it renders `0s` from start to finish and a two-minute call
+			 * looks identical to a two-second one. The spec makes the ticking number
+			 * load-bearing (`CLOCK_INTERVAL_S = 1.0`): an empty status column says
+			 * "still running", and the clock is what says for how long.
+			 *
+			 * It is the EXECUTION start, not the compose start, so it measures the
+			 * same span the settled `durationS` reports and the number does not jump
+			 * when the row settles.
+			 */
+			startedAt: number | null;
+			/**
 			 * Screenshots the call returned. This is what makes a browser-tool
 			 * capture visible: the bytes are already on the wire in
 			 * `tool_execution_end`, and until now the reducer dropped them.
@@ -283,6 +300,25 @@ function extractImages(
 
 /** One shared empty array, so "no images" is always the same reference. */
 const EMPTY_IMAGES: TranscriptImage[] = [];
+
+/**
+ * Never let an empty extraction replace images a record already holds.
+ *
+ * "This event carried no image blocks" and "this call produced no images" are
+ * different claims, and only the second should be able to clear a row. The
+ * reconnect seed makes the difference load-bearing: the backend strips image
+ * bytes out of `live_events`, so a replayed `tool_execution_end` legitimately
+ * arrives with nothing where a resolvable digest already sits.
+ *
+ * Returns the previous array by REFERENCE when it wins, so the identity gate in
+ * `shallowEqual` still reports the record as unchanged.
+ */
+function preferExisting(
+	next: TranscriptImage[],
+	previous: TranscriptImage[],
+): TranscriptImage[] {
+	return next.length === 0 && previous.length > 0 ? previous : next;
+}
 
 /**
  * The `+N` / `-M` counters a write reported, from its own `details`.
@@ -525,6 +561,9 @@ function durableRecord(
 				typeof providerPayload.duration_s === "number"
 					? providerPayload.duration_s
 					: null,
+			// A durable row is settled by definition: it reports the duration the
+			// backend measured, never a clock of its own.
+			startedAt: null,
 			// Durable tool rows carry image blocks in `content` exactly as user rows
 			// do — confirmed against real transcripts: 6398 tool-role blocks with
 			// keys `(attachment, mime_type)`. This is the reload half of a browser
@@ -745,6 +784,9 @@ export function applyEvent(
 					next = upsert(next, {
 						...record,
 						phase: "done",
+						// Settled, however it got here: the clock stops even though no
+						// `_end` ever arrived to report a duration.
+						startedAt: null,
 						stopped: Boolean(event.aborted),
 					});
 				}
@@ -876,6 +918,9 @@ export function applyEvent(
 				output: null,
 				isError: false,
 				durationS: null,
+				// Composing is the model still dictating arguments, which is not part
+				// of the call's execution time. The clock starts at `_start`.
+				startedAt: null,
 				images: EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
@@ -917,6 +962,14 @@ export function applyEvent(
 				output: null,
 				isError: false,
 				durationS: null,
+				// Where the running row's clock counts from. Reuses the existing value
+				// when there is one so a replayed `_start` (the reconnect cursor sends
+				// them again) cannot restart a clock that is already running — and so
+				// the record stays identical under the gate.
+				startedAt:
+					current?.kind === "tool" && current.startedAt !== null
+						? current.startedAt
+						: now,
 				// A running row has no outcome to report yet. It keeps whatever the
 				// composing row held so a rebuild here cannot drop an array the gate
 				// is comparing.
@@ -948,6 +1001,7 @@ export function applyEvent(
 							output: null,
 							isError: false,
 							durationS: null,
+							startedAt: null,
 							images: EMPTY_IMAGES,
 							added: 0,
 							removed: 0,
@@ -960,11 +1014,30 @@ export function applyEvent(
 				isError: Boolean(event.is_error ?? result.is_error),
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
+				// The call ended, so the row stops counting and reports the measured
+				// duration instead. Clearing this is what makes the ticking stop.
+				startedAt: null,
 				// THE live screenshot path. A live event is dumped without
 				// `exclude_defaults`, so `result.content` carries `{type: "image",
 				// data, mime_type}` with the full base64 — a browser-tool capture is
 				// renderable here with no backend round trip at all.
-				images: extractImages(result, id, base.images),
+				//
+				// An EMPTY extraction never replaces images the record already has,
+				// which is the reconnect case rather than a hypothetical. A ~1.4 MB
+				// base64 screenshot always blows the per-result budget in
+				// `_bound_live_result_in_place` (`frontend_state.py`), and an image
+				// block over its share is not emptied but REPLACED by a text
+				// placeholder — so the seed for a call whose durable row already
+				// resolved its digest carries no image blocks at all. Letting that
+				// win would discard a resolvable digest in favour of the one frame
+				// that was stripped precisely because it could not carry the bytes,
+				// and the screenshot would vanish from a row that had it a moment
+				// earlier. `applyHistoryPage`'s coalesce guards the same way at
+				// `images: current.images.length ? current.images : record.images`.
+				images: preferExisting(
+					extractImages(result, id, base.images),
+					base.images,
+				),
 				...diffCounts(result.details),
 				// It reported an end, so whatever happened it was not interrupted.
 				stopped: false,

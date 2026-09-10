@@ -48,7 +48,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
 	ErrorGlyph,
 	InterruptedGlyph,
@@ -61,6 +61,7 @@ import {
 	displayName,
 	formatDuration,
 	formatSettledDuration,
+	isBareToolName,
 	toolCategory,
 } from "./tool-row-model";
 
@@ -90,14 +91,35 @@ export type ToolRowProps = {
 	toolName: string;
 	/** Pre-derived argument summary (`summaryFromArgs`). */
 	summary: string;
+	/**
+	 * What to show when `summary` turns out to be nothing but the tool's name.
+	 *
+	 * That case is dropped as a stutter (see the summary column below), which
+	 * leaves the object column — the row's whole identity — empty. The caller
+	 * knows facts this component does not, so it supplies the stand-in rather
+	 * than this reaching for one: today the output's first line.
+	 */
+	summaryFallback?: string | null;
 	outcome: ToolRowOutcome;
 	/**
-	 * Seconds. A RUNNING row shows this as a live integer clock; a settled row
-	 * shows the tenth-of-a-second format under ten seconds. `null` on a settled
-	 * row is a replay whose duration the transcript did not keep — the slot stays
-	 * reserved and empty rather than claiming zero.
+	 * Seconds. A settled row shows the tenth-of-a-second format under ten
+	 * seconds. `null` on a settled row is a replay whose duration the transcript
+	 * did not keep — the slot stays reserved and empty rather than claiming zero.
+	 *
+	 * A RUNNING row does not have this yet (the backend only reports a duration
+	 * on `tool_execution_end`); it counts from `startedAt` instead.
 	 */
 	durationS: number | null;
+	/**
+	 * Wall-clock ms the call began executing, for a running row's own clock.
+	 *
+	 * A running row cannot get its elapsed time from `durationS`, which stays
+	 * `null` until the call ends — so without this the row rendered `0s` for its
+	 * whole life and a four-minute `bash` was indistinguishable from an instant
+	 * one. The spec makes this number load-bearing: the empty status column says
+	 * "still running" and the ticking clock says for how long.
+	 */
+	startedAt?: number | null;
 	/** Lines added, when the call reported a diff. Zero renders nothing. */
 	added?: number;
 	/** Lines removed, when the call reported a diff. Zero renders nothing. */
@@ -170,6 +192,54 @@ const DiffCounters = ({
 };
 
 /**
+ * What the outcome glyph says in words, for assistive tech.
+ *
+ * `interrupted` is "interrupted" rather than "failed" for the same reason its
+ * glyph is hueless: the user stopped it, and reporting that as a failure blames
+ * the agent for the user's own decision.
+ */
+const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
+	running: "",
+	success: "succeeded",
+	error: "failed",
+	interrupted: "interrupted",
+};
+
+/** The row's clock ticks at 1Hz because it shows whole seconds (`CLOCK_INTERVAL_S`). */
+const ROW_CLOCK_MS = 1000;
+
+/**
+ * Seconds elapsed since `startedAt`, re-rendered once a second; `null` when the
+ * row is not running.
+ *
+ * The interval exists only while a row is actually running, so a settled
+ * transcript of forty rows holds zero timers — which is why this is scoped to
+ * `StatusCluster` rather than hoisted to the transcript: the common case is
+ * that nothing is running, and one shared ticker would repaint every memoised
+ * row each second to move one number.
+ *
+ * Seeded synchronously rather than at the first tick so a row that mounts into
+ * an already-running call (a reconnect, or scrolling it back into view) shows
+ * the true elapsed time immediately instead of restarting at `0s`.
+ */
+function useRunningElapsed(startedAt: number | null): number | null {
+	const [elapsed, setElapsed] = useState<number | null>(() =>
+		startedAt === null ? null : Math.max(0, (Date.now() - startedAt) / 1000),
+	);
+	useEffect(() => {
+		if (startedAt === null) {
+			setElapsed(null);
+			return;
+		}
+		const read = () => setElapsed(Math.max(0, (Date.now() - startedAt) / 1000));
+		read();
+		const timer = window.setInterval(read, ROW_CLOCK_MS);
+		return () => window.clearInterval(timer);
+	}, [startedAt]);
+	return elapsed;
+}
+
+/**
  * The outcome + duration cluster, the right edge of every row.
  *
  * The duration slot is `w-[5ch]` and right-aligned in EVERY state including the
@@ -182,11 +252,14 @@ const DiffCounters = ({
 const StatusCluster = ({
 	outcome,
 	durationS,
+	startedAt,
 }: {
 	outcome: ToolRowOutcome;
 	durationS: number | null;
+	startedAt?: number | null;
 }) => {
 	const running = outcome === "running";
+	const elapsed = useRunningElapsed(running ? (startedAt ?? null) : null);
 	const Glyph =
 		outcome === "success"
 			? SuccessGlyph
@@ -205,12 +278,26 @@ const StatusCluster = ({
 					// something that went wrong.
 					"text-ink-dim";
 	const text = running
-		? formatDuration(durationS ?? 0)
+		? formatDuration(elapsed ?? durationS ?? 0)
 		: formatSettledDuration(durationS);
 	return (
 		<span className={cn("flex shrink-0 items-center gap-1.5")}>
 			<span className={cn("flex size-3.5 shrink-0 [&_svg]:size-3.5", glyphInk)}>
 				{Glyph ? <Glyph aria-hidden={true} /> : null}
+				{/*
+				 * The outcome in words, for a reader who cannot see the glyph.
+				 *
+				 * The mark itself is `aria-hidden` — it is decorative to assistive
+				 * tech — so without this a row announced its name, summary and
+				 * duration but never whether the call succeeded, which is the one
+				 * fact the row exists to carry. `sr-only` is the established idiom
+				 * here. A running row says nothing: the working line already
+				 * announces the phase in its own live region, and repeating it per
+				 * row would read the whole ledger out on every tick.
+				 */}
+				{OUTCOME_LABEL[outcome] ? (
+					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
+				) : null}
 			</span>
 			<span
 				className={cn(
@@ -226,8 +313,10 @@ const StatusCluster = ({
 export const ToolRow = ({
 	toolName,
 	summary,
+	summaryFallback = null,
 	outcome,
 	durationS,
+	startedAt = null,
 	added = 0,
 	removed = 0,
 	nameColumn = TOOL_NAME_COL_MIN,
@@ -257,6 +346,16 @@ export const ToolRow = ({
 			<span
 				className={cn(
 					"shrink-0 truncate font-mono text-mono-sm",
+					// A 4px minimum gutter before the summary rail, so a name that
+					// fills its column does not come within the row's own gap of the
+					// summary. The column grows to the longest visible name, so at the
+					// ceiling the two would otherwise sit 8px apart.
+					//
+					// It is ADDED to the measured width below rather than taken out of
+					// it: as padding inside `${nameColumn}ch` it stole 4px from the
+					// text box and truncated the very name the column was sized for
+					// (`web_fetch` rendered as `web_fet…`).
+					"pr-1",
 					running
 						? "text-ink"
 						: failed
@@ -266,7 +365,11 @@ export const ToolRow = ({
 				// The shared column is a per-list measurement, so it cannot be a
 				// static class: Tailwind compiles the utilities it can see in the
 				// source, and `w-[${n}ch]` is not one of them.
-				style={{ width: `${nameColumn}ch` }}
+				//
+				// `calc` so the gutter above is added to the column rather than
+				// carved out of it: `nameColumn` is the width the NAME needs, and
+				// the 4px is separation from the summary beside it.
+				style={{ width: `calc(${nameColumn}ch + 0.25rem)` }}
 				title={name}
 			>
 				{name}
@@ -291,11 +394,20 @@ export const ToolRow = ({
 				 * Dropping it preserves the rule's INTENT (the summary carries what
 				 * the name does not) rather than its literal output, which is the
 				 * only sense in which a port to a different measure can be faithful.
+				 *
+				 * The test lives in `isBareToolName` because the transcript needs the
+				 * same answer to decide whether to supply `summaryFallback` — two
+				 * copies of this rule could disagree and leave a row blank with a
+				 * usable fact in hand.
 				 */}
-				{summary === name ? "" : summary}
+				{isBareToolName(summary, toolName) ? (summaryFallback ?? "") : summary}
 			</span>
 			<DiffCounters added={added} removed={removed} />
-			<StatusCluster outcome={outcome} durationS={durationS} />
+			<StatusCluster
+				outcome={outcome}
+				durationS={durationS}
+				startedAt={startedAt}
+			/>
 		</span>
 	);
 

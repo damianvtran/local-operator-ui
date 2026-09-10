@@ -40,6 +40,7 @@ const {
 	diffCount,
 	displayName,
 	formatDuration,
+	isBareToolName,
 	formatSettledDuration,
 	requestDesktopMedia,
 	summaryFromArgs,
@@ -478,5 +479,43 @@ test("the ledger row height is one number, not two that can drift", () => {
 		source("src/renderer/src/shared/components/ui/disclosure.tsx"),
 		/const ROW = "flex min-h-6 w-full items-center gap-1\.5 py-0\.5 text-left"/,
 		"the shared disclosure keeps its comfortable default",
+	);
+});
+
+test("the name/summary stutter guard covers MCP rows too (R6)", () => {
+	// The guard's whole job: a summary that repeats the name beside it is
+	// dropped. For a builtin the wire name and the displayed name are the same
+	// string, so comparing against either worked.
+	assert.equal(
+		isBareToolName(summaryFromArgs("eval", {}), "eval"),
+		true,
+		"an argument-less builtin falls back to its own name",
+	);
+
+	// For an MCP tool they are NOT the same string, and that is the case the
+	// original guard missed. `summaryFromArgs` falls back to the wire name while
+	// the column shows `displayName`'s stripped form, so a display-name-only
+	// comparison let the row render `list_issues  mcp__linear_list_issues` —
+	// printing the exact prefix `displayName` exists to remove.
+	const wire = "mcp__linear_list_issues";
+	const summary = summaryFromArgs(wire, {});
+	assert.equal(summary, wire, "the fallback really is the wire name");
+	assert.notEqual(displayName(wire), wire, "and the column shows something else");
+	assert.equal(
+		isBareToolName(summary, wire),
+		true,
+		"an argument-less MCP row is caught — it was not before",
+	);
+
+	// And it must not swallow a real summary that merely resembles a name.
+	assert.equal(
+		isBareToolName(summaryFromArgs("read", { path: "notes.md" }), "read"),
+		false,
+		"a row with a genuine object keeps it",
+	);
+	assert.equal(
+		isBareToolName("list_issues", "mcp__linear_create_issue"),
+		false,
+		"a summary matching ANOTHER tool's name is still a summary",
 	);
 });
