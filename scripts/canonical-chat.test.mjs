@@ -1135,15 +1135,19 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 			.some((s) => new RegExp(`(?:^|\\s)${cls}(?:\\s|$)`).test(` ${s.value} `));
 
 	// The band: the element that owns the chat column and wraps the composer,
-	// identified by shrink-0 + bg-surface -- the discriminator QA used, which
-	// deliberately does not match the transcript scroller that also carries
-	// the chatcol container query.
-	const bandCandidates = [...union.values()].filter(
-		(el) => hasClass(el, "shrink-0") && hasClass(el, "bg-surface"),
+	// identified by `data-lo-composer-band`. It used to be `shrink-0 +
+	// bg-surface`, but the band's vertical behaviour is now conditional on
+	// whether a transcript exists (empty: `grow` to claim the column and centre
+	// the greeting; non-empty: `shrink-0` at the bottom), so `shrink-0` is no
+	// longer a stable discriminator. The attribute does not move with the
+	// layout, and it still cannot match the transcript scroller, which carries
+	// the chatcol container query but not this attribute.
+	const bandCandidates = [...union.values()].filter((el) =>
+		/data-lo-composer-band/.test(el.tagText),
 	);
 	assert.ok(
 		bandCandidates.length === 1,
-		`expected exactly one composer band (shrink-0 + bg-surface) among the popup's ancestors, found ${bandCandidates.length} -- re-aim the guard if the composer structure changed`,
+		`expected exactly one composer band (data-lo-composer-band) among the popup's ancestors, found ${bandCandidates.length} -- re-aim the guard if the composer structure changed`,
 	);
 	const band = bandCandidates[0];
 

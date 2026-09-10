@@ -545,6 +545,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 
+	/*
+	 * An empty transcript must not claim the column's free space.
+	 *
+	 * This scroller carries `grow` so it absorbs the leftover height between
+	 * the header and the composer. With rows in it that is the whole point.
+	 * With NO rows it is an empty box that still votes for all the free space,
+	 * and the composer band below -- which renders the greeting, the composer
+	 * and the suggestion chips on exactly that condition -- is left pinned to
+	 * the bottom under a large dark void.
+	 *
+	 * So the two are decided by one fact: when there is nothing to scroll, this
+	 * element collapses out of the vertical layout and the band grows into the
+	 * column and centres its group instead. `records` rather than `rows`
+	 * because a record that renders to no row is still nothing to scroll.
+	 *
+	 * The legacy twin (`MessagesView`) already does this with its `collapsed`
+	 * branch; the two paths change together so neither keeps the defect.
+	 */
+	const collapsed = transcript.records.length === 0;
+
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container || hidden <= 0) return;
@@ -682,7 +702,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				// box: measured in the running app, the centre delta goes 4px -> 0.
 				// `stable` alone would reserve only the right edge and keep it.
 				CHAT_COLUMN_CONTAINER,
-				"relative flex min-h-0 w-full grow flex-col-reverse overflow-auto p-4 [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+				"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+				collapsed
+					? "h-0 grow-0 overflow-hidden p-0"
+					: "min-h-0 grow overflow-auto p-4",
 			)}
 		>
 			{perf && (

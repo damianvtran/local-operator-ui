@@ -939,6 +939,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// `h-full`, because the band would then claim the column's free
 					// space instead of leaving it to the transcript.
 					//
+					// That reasoning holds ONLY while a transcript exists to leave the
+					// space to. With no messages there is nothing above this band but
+					// an empty scroller, and `shrink-0` then pinned the greeting,
+					// composer and chips to the bottom of the column under a large dark
+					// void -- the operator's report. So the vertical behaviour is
+					// conditional on the same fact that decides which content renders:
+					// empty means `grow` (claim the column, `justify-center` centres the
+					// group), non-empty means `shrink-0` (natural height at the bottom).
+					// The transcript yields its own `grow` on the same condition, so the
+					// two never split the free space between them.
+					//
+					// `data-lo-composer-band` is the band's stable identity. The
+					// slash-popup guard in scripts/canonical-chat.test.mjs used to find
+					// this element by `shrink-0 + bg-surface`, which the conditional
+					// below makes state-dependent; an attribute that does not move with
+					// the layout is what keeps that guard aimed at the band.
+					//
 					// NO `max-height` and NO `overflow` on this element, deliberately.
 					//
 					// `shrink-0` inside a now-`overflow-hidden` column really is
@@ -962,7 +979,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// any ancestor of the popup clipping. Do not re-add a bound here:
 					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
-					"flex w-full shrink-0 flex-col items-center justify-center bg-surface",
+					"flex w-full flex-col items-center justify-center bg-surface",
+					messages.length === 0 ? "grow" : "shrink-0",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
@@ -971,6 +989,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					CHAT_COLUMN_INSET,
 					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
+				data-lo-composer-band={true}
 			>
 				{messages.length === 0 && isHydrating && !isSmallView ? (
 					// Hydrating: we do not yet know whether this conversation is
