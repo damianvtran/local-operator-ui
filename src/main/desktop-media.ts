@@ -58,6 +58,22 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("agent.export"), agentId: id })
 		.strict(),
+	// A durable transcript row references an image by content digest with the
+	// payload stripped, so rendering a screenshot after a reload means fetching
+	// bytes. That cannot go through the JSON transport (its envelope has nowhere
+	// to put them), which is what puts it on this relay.
+	//
+	// Both identifiers are shape-constrained here as well as by the backend
+	// route: this file's whole premise is that renderer code cannot pick a URL,
+	// and a digest that reaches `endpoint()` unvalidated is renderer-controlled
+	// path text.
+	z
+		.object({
+			op: z.literal("sessions.attachment"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -82,6 +98,11 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: "/v1/agents/import", method: "POST" };
 		case "agent.export":
 			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
+		case "sessions.attachment":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}`,
+				method: "GET",
+			};
 	}
 }
 
@@ -110,7 +131,7 @@ export async function requestDesktopMedia(
 
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
-	if (request.op === "agent.export") {
+	if (request.op === "agent.export" || request.op === "sessions.attachment") {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
@@ -141,7 +162,7 @@ export async function requestDesktopMedia(
 		const response = await fetch(new URL(target.path, backendUrl), {
 			method: target.method,
 			headers: {
-				Accept: "application/json, audio/*, application/octet-stream",
+				Accept: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
 				Authorization: `Bearer ${token}`,
 			},

@@ -6,8 +6,9 @@
  *
  *   1. the pending gate (a question for the user) — `AgentQuestion`, last;
  *   2. assistant prose at reading weight, no paper;
- *   3. one quiet trace line per tool action (`TraceLine`), running state on
- *      the line itself, never a spinner beside it;
+ *   3. one dense ledger row per tool action (`ToolRow`), running state on the
+ *      row itself, never a spinner beside it — the one animated indicator is
+ *      the aggregate `WorkingLine` at the foot;
  *   4. tool output behind the line's own disclosure;
  *   5. reasoning hidden (the canonical stream carries none as prose; a
  *      `thinking` record would go through `AgentReasoning`).
@@ -62,15 +63,26 @@ import {
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { OutputBlock } from "../components/message-item/output-block";
 import { AgentQuestion, TraceLine } from "../components/trace";
+import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
+import {
+	displayName,
+	isBareToolName,
+	summaryFromArgs,
+	toolNameColumn,
+} from "../components/trace/tool-row-model";
 import { TraceGlyph } from "../components/trace/trace-rail";
+import { WorkingLine } from "../components/trace/working-line";
+import { CanonicalImage } from "./canonical-image";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
+import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
 
 /** Opts prose into the ~72-character measure defined in `markdown.css`. */
 const MEASURE = "lo-measured";
+
 const WINDOW = 60;
 const WINDOW_STEP = 60;
 
@@ -94,9 +106,11 @@ export type CanonicalTranscriptProps = {
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
+	sessionId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
+	sessionId: string | null;
 }) {
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
@@ -109,12 +123,21 @@ const UserRow = memo(function UserRow({
 				>
 					<div className={cn("relative", MEASURE)}>
 						<MarkdownRenderer content={record.text} />
-						{record.images > 0 && (
-							<p className="mt-1 text-ink-dim text-meta">
-								{record.images === 1
-									? "1 image attached"
-									: `${record.images} images attached`}
-							</p>
+						{record.images.length > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-2")}>
+								{record.images.map((image, index) => (
+									<CanonicalImage
+										key={image.id}
+										image={image}
+										sessionId={sessionId}
+										label={
+											record.images.length === 1
+												? "Attached image"
+												: `Attached image ${index + 1}`
+										}
+									/>
+								))}
+							</div>
 						)}
 					</div>
 				</div>
@@ -132,9 +155,11 @@ const AssistantRow = memo(function AssistantRow({
 	isSmallView: boolean;
 	showAvatar: boolean;
 }) {
-	// A tool-only assistant message has nothing to say; its tool rows carry
-	// the turn. Rendering an empty paragraph would leave a phantom gap.
-	if (!record.text && !record.streaming) return null;
+	// A tool-only assistant message has nothing to say; its tool rows carry the
+	// turn. `buildRows` already drops it before a wrapper is minted — see
+	// `paintsSomething` for why the record still exists at all — and this guard
+	// stays as the component's own contract for any other caller.
+	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
 	return (
 		<MessageContainer
@@ -176,78 +201,62 @@ const AssistantRow = memo(function AssistantRow({
 	);
 });
 
-/** Names the action in the user's terms; the tool name is the object. */
-const TOOL_VERBS: Record<string, { done: string; running: string }> = {
-	bash: { done: "Ran", running: "Running" },
-	read: { done: "Read", running: "Reading" },
-	write: { done: "Wrote", running: "Writing" },
-	edit: { done: "Edited", running: "Editing" },
-	glob: { done: "Found files", running: "Finding files" },
-	grep: { done: "Searched", running: "Searching" },
-	web_search: { done: "Searched the web", running: "Searching the web" },
-	web_fetch: { done: "Fetched", running: "Fetching" },
-	eval: { done: "Ran code", running: "Running code" },
-	task: { done: "Delegated work", running: "Delegating work" },
-	browser: { done: "Used the browser", running: "Using the browser" },
-	todo: { done: "Updated the plan", running: "Updating the plan" },
-	ask: { done: "Asked", running: "Asking" },
-};
-
 /**
- * The machine-voice object for a tool row: the path, URL, pattern or command
- * it touched. A tool with no such argument has no object; the verb already
- * names it ("Used echo"), so repeating the name would read as a stutter.
+ * One tool call as a ledger row.
  *
- * The fallback used to return `record.toolName` for any tool in TOOL_VERBS,
- * which produced exactly the stutter this docstring exists to prevent -- a
- * `todo` call with no path-like argument rendered "Updated the plan `todo`",
- * and `eval` rendered "Ran code `eval`". Verified against the real fallback
- * before and after.
+ * The row itself is `ToolRow`; this decides what goes in each of its columns
+ * from a `TranscriptRecord`, and mounts the call's own screenshots underneath.
  *
- * A NAMED tool is precisely the case that needs no object: its verb is written
- * for it in TOOL_VERBS and already says what happened. An unnamed tool falls
- * back to the generic "Used <name>" verb, where the name is the only thing
- * identifying it -- and that path never reached here anyway.
+ * The summary is derived the TUI's way (`summaryFromArgs`) rather than from
+ * the first path-like argument, because "the first two identity scalars in
+ * argument order" is what makes a `write` row say the filename instead of the
+ * first sixty characters of the file. While the model is still DICTATING those
+ * arguments there is nothing to summarise yet, so a composing row shows the
+ * byte count — the only honest progress signal at that point, and the same one
+ * the backend's `ToolCallComposeEvent` docstring names.
+ *
+ * `intent` is deliberately NOT rendered here. It is the model's account of WHY,
+ * and it belongs to the working line at the foot of the transcript; a row that
+ * shows both the arguments and the intent states two facts where the TUI states
+ * one per surface, and the two immediately start restating each other.
  */
-function toolObject(record: Extract<TranscriptRecord, { kind: "tool" }>) {
-	const args = record.args ?? {};
-	for (const key of ["path", "file_path", "url", "pattern", "command"]) {
-		const value = args[key];
-		if (typeof value === "string" && value) {
-			return value.length > 96 ? `${value.slice(0, 93)}...` : value;
-		}
-	}
-	return undefined;
-}
-
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
 	showAvatar,
+	nameColumn,
+	sessionId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
+	nameColumn: number;
+	sessionId: string | null;
 }) {
-	const verbs = TOOL_VERBS[record.toolName] ?? {
-		done: `Used ${record.toolName || "a tool"}`,
-		running: `Using ${record.toolName || "a tool"}`,
-	};
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
-	// While the model is still dictating arguments there is no object yet;
-	// the byte count is the only honest progress signal (see the backend's
-	// ToolCallComposeEvent docstring).
-	const narration = composing
-		? (record.intent ??
-			`writing the request${record.argumentBytes ? `, ${formatBytes(record.argumentBytes)}` : ""}`)
-		: (record.intent ?? undefined);
-	const object = composing ? undefined : toolObject(record);
+	const summary = composing
+		? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
+		: summaryFromArgs(record.toolName, record.args);
+	// When the arguments taught us nothing, the summary is the tool's own name,
+	// which the row then drops as a stutter and the object column goes empty.
+	// A row that says nothing about its call is the scannability this port
+	// exists to create, lost — so the OUTPUT's first line stands in. It is a
+	// weaker fact than the arguments (it says what came back rather than what
+	// was asked) and it is deliberately second choice, but it beats a void.
+	const derived =
+		!composing && isBareToolName(summary, record.toolName)
+			? firstLine(record.output)
+			: null;
 	const details =
 		record.output || record.args ? (
 			<>
 				{record.args && (
-					<pre className="mb-3 max-h-[240px] overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
+					<pre
+						className={cn(
+							"mb-3 max-h-[240px] overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm",
+						)}
+					>
 						{JSON.stringify(record.args, null, 2)}
 					</pre>
 				)}
@@ -257,14 +266,27 @@ const ToolRow = memo(function ToolRow({
 					) : (
 						<OutputBlock output={record.output} isUser={false} />
 					))}
-				{record.durationS !== null && (
-					<p className="text-ink-dim text-meta">
-						{record.durationS < 1
-							? "under a second"
-							: `${record.durationS.toFixed(1)}s`}
-					</p>
-				)}
 			</>
+		) : undefined;
+	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
+	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
+	// being fixed, not a smaller version of it.
+	const media =
+		record.images.length > 0 ? (
+			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
+				{record.images.map((image, index) => (
+					<CanonicalImage
+						key={image.id}
+						image={image}
+						sessionId={sessionId}
+						label={
+							record.images.length === 1
+								? "Screenshot"
+								: `Screenshot ${index + 1}`
+						}
+					/>
+				))}
+			</div>
 		) : undefined;
 	return (
 		<MessageContainer
@@ -272,17 +294,48 @@ const ToolRow = memo(function ToolRow({
 			isSmallView={isSmallView}
 			showAvatar={showAvatar}
 		>
-			<TraceLine
-				verbOverride={running ? verbs.running : verbs.done}
-				object={object}
-				narration={narration}
-				running={running}
-				failed={record.isError}
+			<ToolLedgerRow
+				toolName={record.toolName}
+				summary={summary}
+				summaryFallback={derived}
+				outcome={
+					running
+						? "running"
+						: record.isError
+							? "error"
+							: record.stopped
+								? "interrupted"
+								: "success"
+				}
+				durationS={record.durationS}
+				startedAt={record.startedAt}
+				added={record.added}
+				removed={record.removed}
+				nameColumn={nameColumn}
 				details={details}
+				media={media}
 			/>
 		</MessageContainer>
 	);
 });
+
+/**
+ * The first non-empty line of a tool's output, bounded so it stays a summary.
+ *
+ * One line because the object column is one line: a multi-line result would be
+ * truncated by CSS anyway, and taking the first line explicitly means the row
+ * shows a whole thought rather than a fragment cut mid-word by the layout. The
+ * cap matches what fits at the widest sensible column, so a 4 KB `bash` result
+ * cannot push a long string through the truncation machinery on every render.
+ */
+function firstLine(output: string | null): string | null {
+	if (!output) return null;
+	for (const line of output.split("\n")) {
+		const trimmed = line.trim();
+		if (trimmed) return trimmed.slice(0, 160);
+	}
+	return null;
+}
 
 function formatBytes(count: number) {
 	return count >= 1024 ? `${(count / 1024).toFixed(1)} KiB` : `${count} B`;
@@ -329,6 +382,9 @@ const NoticeRow = memo(function NoticeRow({
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
+				// Same column as the tool rows, so the same pitch: a notice must not
+				// be the row that makes a run look ragged.
+				dense={!long}
 				verbOverride={label ?? (long ? "Notice" : record.text)}
 				narration={label && !long ? record.text : undefined}
 				failed={level === "error"}
@@ -350,80 +406,32 @@ const NoticeRow = memo(function NoticeRow({
 
 // ---------------------------------------------------------------- list
 
-type Row = {
-	record: TranscriptRecord;
-	showAvatar: boolean;
-	/** Vertical tier before this row, from `utils/message-grouping`'s ramp. */
-	gap: "turn" | "item" | "trace" | "first";
-};
-
-/**
- * Row wrappers are reused across builds when the record AND its layout facts
- * (avatar, gap) are unchanged. The reducer already hands back the same record
- * object for untouched rows; without this pass every commit would still mint
- * a fresh wrapper per row and defeat the memo on `TranscriptRow`, which is
- * exactly what the render counter showed (rows x commits, not 1 per delta).
- */
-function buildRows(records: TranscriptRecord[], previousRows: Row[]): Row[] {
-	const reusable = new Map(previousRows.map((row) => [row.record.id, row]));
-	const rows: Row[] = [];
-	let previous: TranscriptRecord | null = null;
-	for (const record of records) {
-		const traceLike =
-			record.kind === "tool" ||
-			record.kind === "notice" ||
-			record.kind === "compaction" ||
-			record.kind === "custom";
-		const previousTrace =
-			previous &&
-			(previous.kind === "tool" ||
-				previous.kind === "notice" ||
-				previous.kind === "compaction" ||
-				previous.kind === "custom");
-		const agentSide = record.kind !== "user";
-		const previousAgent = previous !== null && previous.kind !== "user";
-		const showAvatar = agentSide && !previousAgent;
-		let gap: Row["gap"] = "item";
-		if (!previous) gap = "first";
-		else if (record.kind === "user" || previous.kind === "user") gap = "turn";
-		else if (traceLike && previousTrace) gap = "trace";
-		const prior = reusable.get(record.id);
-		rows.push(
-			prior &&
-				prior.record === record &&
-				prior.showAvatar === showAvatar &&
-				prior.gap === gap
-				? prior
-				: { record, showAvatar, gap },
-		);
-		previous = record;
-	}
-	return rows;
-}
-
-const GAP: Record<Row["gap"], [string, string]> = {
-	first: ["", ""],
-	turn: ["mt-6", "mt-4"],
-	item: ["mt-3", "mt-2"],
-	trace: ["mt-1", "mt-0.5"],
-};
-
 /** Development row-render counter; read by the perf readout below. */
 const rowRenderCount = { current: 0 };
 
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
+	nameColumn,
+	sessionId,
 }: {
 	row: Row;
 	isSmallView: boolean;
+	nameColumn: number;
+	sessionId: string | null;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
 	let body: JSX.Element | null;
 	switch (record.kind) {
 		case "user":
-			body = <UserRow record={record} isSmallView={isSmallView} />;
+			body = (
+				<UserRow
+					record={record}
+					isSmallView={isSmallView}
+					sessionId={sessionId}
+				/>
+			);
 			break;
 		case "assistant":
 			body = (
@@ -440,6 +448,8 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					showAvatar={row.showAvatar}
+					nameColumn={nameColumn}
+					sessionId={sessionId}
 				/>
 			);
 			break;
@@ -573,13 +583,75 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return () => window.clearInterval(timer);
 	}, [visible.length]);
 
+	// The shared name column: sized to the longest tool name ON SCREEN, between
+	// the TUI's 8ch floor and 24ch ceiling. Derived from the visible window
+	// rather than the whole transcript, so scrolling to a run of `bash` rows
+	// does not keep paying for an `mcp__…` name a thousand rows back.
+	const nameColumn = useMemo(
+		() =>
+			toolNameColumn(
+				visible
+					.map((row) =>
+						row.record.kind === "tool" ? displayName(row.record.toolName) : "",
+					)
+					.filter(Boolean),
+			),
+		[visible],
+	);
+
 	const lastRecord = transcript.records[transcript.records.length - 1];
-	const lastIsLiveAssistant =
-		lastRecord?.kind === "assistant" && lastRecord.streaming;
-	const lastIsRunningTool =
-		lastRecord?.kind === "tool" && lastRecord.phase !== "done";
-	const showWaiting =
-		waiting && !lastIsLiveAssistant && !lastIsRunningTool && !gate;
+
+	// What the working line says, and which phase it is timing.
+	//
+	// Every branch is a fact the backend actually sent. `intent` rides
+	// `tool_execution_start` and is already on the tool record; a streaming
+	// assistant record IS what "responding" means; and `thinking` is the default
+	// for a model call in flight with nothing on the ledger to show for it. The
+	// vocabulary is the harness's own (`harness/intent.py`), so a reader who
+	// learned it in the terminal does not learn it again here.
+	//
+	// The PHASE is coarser than the label on purpose: a batch of three calls is
+	// one phase however many times its phrase is re-derived as calls settle, so
+	// the clock keeps counting instead of resetting to `0s` under the reader.
+	const working = useMemo(() => {
+		if (!waiting || gate) return null;
+		const runningTools = transcript.records.filter(
+			(record) => record.kind === "tool" && record.phase === "running",
+		) as Extract<TranscriptRecord, { kind: "tool" }>[];
+		if (runningTools.length > 0) {
+			// One call states its own purpose; a batch states a COUNT. Presenting
+			// one call's intent as the whole batch's activity is a claim the rows
+			// above it immediately contradict, and the count is the one fact this
+			// line has that appears nowhere else on screen.
+			const activity =
+				runningTools.length === 1
+					? (runningTools[0].intent ??
+						`running ${displayName(runningTools[0].toolName)}`)
+					: `running ${runningTools.length} tools`;
+			return { activity, phase: "running" };
+		}
+		const composing = transcript.records.filter(
+			(record) => record.kind === "tool" && record.phase === "composing",
+		).length;
+		if (composing > 0) {
+			// The tool's NAME is deliberately absent: it arrives in fragments, and
+			// `composing wr` reads as a typo rather than as a state.
+			return {
+				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
+				phase: "composing",
+			};
+		}
+		const tail = transcript.records[transcript.records.length - 1];
+		if (tail?.kind === "assistant" && tail.streaming) {
+			// Only once prose is ACTUALLY streaming. `message_start` fires from a
+			// placeholder at the top of every provider call, before the first
+			// token, so flipping on it would claim the model is writing for the
+			// whole of every turn — which is why the record's own `text` is the
+			// trigger here, not its existence.
+			if (tail.text) return { activity: "responding", phase: "responding" };
+		}
+		return { activity: "thinking", phase: "thinking" };
+	}, [waiting, gate, transcript.records]);
 
 	return (
 		<div
@@ -634,15 +706,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						key={row.record.id}
 						row={row}
 						isSmallView={isSmallView}
+						nameColumn={nameColumn}
+						sessionId={sessionId}
 					/>
 				))}
 
-				{showWaiting && (
-					<div className={cn("mt-3", !isSmallView && AGENT_GUTTER)}>
-						<span className="flex items-center gap-2 text-ink-dim text-meta">
-							<TraceGlyph />
-							Thinking
-						</span>
+				{working && (
+					// On the `item` tier, not a tier of its own: the working line is
+					// the foot of the run above it and shares that run's rhythm. It
+					// takes slightly more than `trace` because it is the one row that
+					// is not a completed action, and slightly less than a turn
+					// boundary because the turn has not ended.
+					<div
+						className={cn(
+							GAP.item[isSmallView ? 1 : 0],
+							!isSmallView && AGENT_GUTTER,
+						)}
+					>
+						<WorkingLine activity={working.activity} phase={working.phase} />
 					</div>
 				)}
 
