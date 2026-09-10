@@ -19,7 +19,6 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
-import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
@@ -132,8 +131,19 @@ const App: FC = () => {
 			 * clientHeight` was 308px with 20 escaping labels; making this element a
 			 * containing block takes it to 0, and reverting restores 308. Fixing it
 			 * here rather than at each label keeps one rule instead of one per
-			 * `sr-only` call site, and the app's single `position: fixed` element is
-			 * unaffected (verified: it does not move).
+			 * `sr-only` call site.
+			 *
+			 * The app's EIGHT `position: fixed` elements are unaffected, and the
+			 * reason is the rule rather than the count: `position: relative`
+			 * establishes a containing block for `absolute` descendants only.
+			 * `fixed` resolves against the viewport unless an ancestor carries
+			 * `transform`, `filter`, `perspective`, `backdrop-filter`, `contain`
+			 * or `will-change` of one of those - none of which is added here - so
+			 * the banners, the floating alert, the update notification, and the
+			 * dialog and sheet overlays keep covering the window exactly as
+			 * before. An earlier draft of this comment claimed there was one such
+			 * element; there are eight, and the guarantee does not depend on how
+			 * many.
 			 *
 			 * The `sr-only` utility itself is NOT at fault and must not be "fixed":
 			 * its computed style matches the canonical definition exactly (absolute,
@@ -144,7 +154,7 @@ const App: FC = () => {
 			 * labels stay 1x1 and rendered afterwards, so screen readers still
 			 * announce them; nothing is hidden, it is merely contained.
 			 */}
-			<div className={cn("relative flex h-screen overflow-hidden")}>
+			<div className="relative flex h-screen overflow-hidden">
 				{isCommandPaletteOpen && <CommandPalette />}
 
 				<ModelsInitializer />

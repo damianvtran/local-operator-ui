@@ -1,0 +1,416 @@
+{
+ "empty-1380 (draft chip)": {
+  "frame": "after-empty-1380-frame1.png",
+  "geometry": {
+   "win": {
+    "w": 1380,
+    "h": 872
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 1380,
+    "width": 880,
+    "centre": 940,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 585,
+    "right": 755.9,
+    "width": 170.9,
+    "centre": 670.4,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 524,
+    "right": 1356,
+    "width": 832,
+    "centre": 940,
+    "height": 111.7
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "empty-1380 frame2 (reflow)": {
+  "frame": "after-empty-1380-frame2.png",
+  "geometry": {
+   "win": {
+    "w": 1380,
+    "h": 872
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 1380,
+    "width": 880,
+    "centre": 940,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 585,
+    "right": 755.9,
+    "width": 170.9,
+    "centre": 670.4,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 524,
+    "right": 1356,
+    "width": 832,
+    "centre": 940,
+    "height": 111.7
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "populated-1380 (readonly chip)": {
+  "frame": "after-populated-1380-frame1.png",
+  "geometry": {
+   "win": {
+    "w": 1380,
+    "h": 872
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 1380,
+    "width": 880,
+    "centre": 940,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 585,
+    "right": 755.9,
+    "width": 170.9,
+    "centre": 670.4,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 524,
+    "right": 1356,
+    "width": 832,
+    "centre": 940,
+    "height": 111.7
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "populated-1380 frame2": {
+  "frame": "after-populated-1380-frame2.png",
+  "geometry": {
+   "win": {
+    "w": 1380,
+    "h": 872
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 1380,
+    "width": 880,
+    "centre": 940,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 585,
+    "right": 755.9,
+    "width": 170.9,
+    "centre": 670.4,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 524,
+    "right": 1356,
+    "width": 832,
+    "centre": 940,
+    "height": 111.7
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "canvas-open-1380 (D1 recapture)": {
+  "frame": "after-canvas-open-1380.png",
+  "geometry": {
+   "win": {
+    "w": 1380,
+    "h": 872
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 720,
+    "width": 220,
+    "centre": 610,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 553,
+    "right": 606.2,
+    "width": 53.2,
+    "centre": 579.6,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 504,
+    "right": 716,
+    "width": 212,
+    "centre": 610,
+    "height": 85.5
+   },
+   "prose": null,
+   "rowOverflow": 140
+  }
+ },
+ "empty-1000": {
+  "frame": "after-empty-1000-frame1.png",
+  "geometry": {
+   "win": {
+    "w": 1000,
+    "h": 800
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 1000,
+    "width": 500,
+    "centre": 750,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 553,
+    "right": 606.2,
+    "width": 53.2,
+    "centre": 579.6,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 504,
+    "right": 996,
+    "width": 492,
+    "centre": 750,
+    "height": 85.5
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "empty-1000 frame2": {
+  "frame": "after-empty-1000-frame2.png",
+  "geometry": {
+   "win": {
+    "w": 1000,
+    "h": 800
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 1000,
+    "width": 500,
+    "centre": 750,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 553,
+    "right": 606.2,
+    "width": 53.2,
+    "centre": 579.6,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 504,
+    "right": 996,
+    "width": 492,
+    "centre": 750,
+    "height": 85.5
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "empty-760": {
+  "frame": "after-empty-760-frame1.png",
+  "geometry": {
+   "win": {
+    "w": 760,
+    "h": 800
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 760,
+    "width": 260,
+    "centre": 630,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 553,
+    "right": 606.2,
+    "width": 53.2,
+    "centre": 579.6,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 504,
+    "right": 756,
+    "width": 252,
+    "centre": 630,
+    "height": 85.5
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ },
+ "empty-760 frame2": {
+  "frame": "after-empty-760-frame2.png",
+  "geometry": {
+   "win": {
+    "w": 760,
+    "h": 800
+   },
+   "docDelta": 0,
+   "header": {
+    "left": 500,
+    "right": 760,
+    "width": 260,
+    "centre": 630,
+    "height": 56
+   },
+   "headerBorderColour": "rgb(131, 124, 109)",
+   "tabRowPresent": true,
+   "tabRowHeight": 32,
+   "chip": {
+    "mode": "readonly",
+    "path": "/Users/damian",
+    "text": "~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+    "left": 553,
+    "right": 606.2,
+    "width": 53.2,
+    "centre": 579.6,
+    "height": 32
+   },
+   "transcriptInner": {
+    "left": 523,
+    "right": 524,
+    "width": 1,
+    "centre": 523.5,
+    "height": 1
+   },
+   "composerBox": {
+    "left": 504,
+    "right": 756,
+    "width": 252,
+    "centre": 630,
+    "height": 85.5
+   },
+   "prose": null,
+   "rowOverflow": 0
+  }
+ }
+}

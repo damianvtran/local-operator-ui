@@ -6,7 +6,6 @@ import type {
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
-import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -282,15 +281,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 * zeroed instead and `flex-1` grows it back from there - the floor
 			 * survives and the content no longer votes on the width.
 			 */
-			<div
-				className={cn("relative flex h-full w-full flex-row overflow-hidden")}
-			>
-				<div className={cn("relative h-full w-0 min-w-[220px] flex-1")}>
+			<div className="relative flex h-full w-full flex-row overflow-hidden">
+				<div className="relative h-full w-0 min-w-[220px] flex-1">
 					<div
 						ref={chatContainerRef}
-						className={cn(
-							"flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-surface",
-						)}
+						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-surface"
 					>
 						{/* Chat header */}
 						<ChatHeader
@@ -420,6 +415,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialDocuments={files}
 								conversationId={conversationId}
 								agentId={agentId}
+								currentWorkingDirectory={cwd}
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}

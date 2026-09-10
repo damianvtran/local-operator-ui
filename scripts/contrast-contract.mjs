@@ -209,14 +209,52 @@ const CONTROLS = [
 		 * same colour as the ground behind it, so its border is doing ALL of the
 		 * work of separating one speaker from the other - the agent side renders
 		 * no bubble at all. That makes the edge structural rather than
-		 * decorative, and this row is what holds it to the 3:1 edge floor
-		 * instead of letting it drift back to `hairline`, which has no floor.
+		 * decorative.
+		 *
+		 * NOTE what this row does and does not buy. It asserts the PALETTE
+		 * pairing - that `borderControl` clears 3:1 on `surface` in all twelve
+		 * themes - which `STRUCTURAL` already implies at the same floor. It
+		 * cannot see which class the component actually renders, because this
+		 * script only reads palettes. The call site is asserted separately by
+		 * `STRUCTURAL_CALL_SITES` below, which is what would fail if someone
+		 * changed the bubble back to `hairline`.
 		 */
 		name: "user message bubble",
 		on: ["surface"],
 		fill: "surface",
 		border: "borderControl",
 		ink: "ink",
+	},
+];
+
+/**
+ * Boundaries whose ROLE IN THE SOURCE is part of the contract, not just the
+ * colour behind it.
+ *
+ * The contrast rows above prove a colour pairing across twelve palettes. They
+ * are blind to the one edit most likely to undo the work: swapping the class
+ * at the call site from `border-control` (3:1 floor) to `border-hairline` (no
+ * floor). That edit keeps every palette assertion green while returning the
+ * element to the 1.32:1 it was fixed from, so the guarantee people read into
+ * a green run has to be made real here rather than implied.
+ *
+ * Each entry names a file, the element it is about, and a pattern that must
+ * appear in it. Deliberately a substring check on the shipped source: this
+ * script has no parser and does not need one to answer "does this component
+ * still declare a structural edge".
+ */
+const STRUCTURAL_CALL_SITES = [
+	{
+		what: "user message bubble edge",
+		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		must: "border border-control bg-surface",
+		why: "the bubble is surface-on-surface, so its border is the whole distinction between speakers",
+	},
+	{
+		what: "chat header bottom rule",
+		file: "src/renderer/src/features/chat/components/chat-header.tsx",
+		must: "border-control border-b",
+		why: "in a packaged build this rule is the only thing separating the header from the transcript",
 	},
 ];
 
@@ -646,6 +684,30 @@ const themeCount = palettes.length;
 if (failures > 0) {
 	console.error(
 		`\nContrast contract FAILED: ${failures} violation(s) over ${assertions} assertions across ${themeCount} themes.`,
+	);
+	process.exit(1);
+}
+
+/*
+ * The call-site half of the contract. Runs after the palette assertions so a
+ * palette regression is still reported first, but before the success line, so
+ * "the contract holds" covers both halves rather than only the one this
+ * script can see in a colour table.
+ */
+let callSiteFailures = 0;
+for (const site of STRUCTURAL_CALL_SITES) {
+	const source = readFileSync(join(ROOT, site.file), "utf8");
+	assertions += 1;
+	if (!source.includes(site.must)) {
+		callSiteFailures += 1;
+		console.error(
+			`FAIL  ${site.what}: ${site.file} no longer contains \`${site.must}\`\n      ${site.why}`,
+		);
+	}
+}
+if (callSiteFailures > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${callSiteFailures} structural boundary/boundaries no longer declare a floored role at their call site.`,
 	);
 	process.exit(1);
 }

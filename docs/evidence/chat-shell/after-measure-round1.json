@@ -1,0 +1,77 @@
+{
+ "w1380": {
+  "win": {
+   "w": 1380,
+   "h": 872
+  },
+  "scrollerClass": "@container/chatcol relative flex min-h-0 w-full grow flex-col-reverse overflow-a",
+  "gutter": "stable both-edges",
+  "innerClass": "flex flex-col w-full @min-[750px]/chatcol:max-w-[900px] @min-[750px]/chatcol:mx-auto",
+  "edges": [
+   {
+    "label": "transcript measure column",
+    "left": 524,
+    "right": 1356,
+    "width": 832,
+    "centre": 940
+   },
+   {
+    "label": "composer box",
+    "left": 524,
+    "right": 1356,
+    "width": 832,
+    "centre": 940
+   }
+  ]
+ },
+ "w1000": {
+  "win": {
+   "w": 1000,
+   "h": 800
+  },
+  "scrollerClass": "@container/chatcol relative flex min-h-0 w-full grow flex-col-reverse overflow-a",
+  "gutter": "stable both-edges",
+  "innerClass": "flex flex-col w-full @min-[750px]/chatcol:max-w-[900px] @min-[750px]/chatcol:mx-auto",
+  "edges": [
+   {
+    "label": "transcript measure column",
+    "left": 524,
+    "right": 976,
+    "width": 452,
+    "centre": 750
+   },
+   {
+    "label": "composer box",
+    "left": 504,
+    "right": 996,
+    "width": 492,
+    "centre": 750
+   }
+  ]
+ },
+ "w760": {
+  "win": {
+   "w": 760,
+   "h": 800
+  },
+  "scrollerClass": "@container/chatcol relative flex min-h-0 w-full grow flex-col-reverse overflow-a",
+  "gutter": "stable both-edges",
+  "innerClass": "flex flex-col w-full @min-[750px]/chatcol:max-w-[900px] @min-[750px]/chatcol:mx-auto",
+  "edges": [
+   {
+    "label": "transcript measure column",
+    "left": 524,
+    "right": 736,
+    "width": 212,
+    "centre": 630
+   },
+   {
+    "label": "composer box",
+    "left": 504,
+    "right": 756,
+    "width": 252,
+    "centre": 630
+   }
+  ]
+ }
+}

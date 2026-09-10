@@ -42,9 +42,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * description, about 41px of text), where the command palette carries
 			 * one. It is the smallest step on the 4px ramp that holds both without
 			 * crowding them.
+			 *
+			 * `border-control`, not `hairline`, for the bottom rule. This line is
+			 * what says the title block is chrome and the transcript below it is
+			 * content - branding.md's own test for a structural boundary is
+			 * whether removing it loses information, and here it does. As
+			 * `hairline` it measured 1.32:1 against the sidebar's own header rule
+			 * 8px away at 4.18:1: two rules at the top of one window drawn 3.2x
+			 * apart, with the chat one the faint one. It matters more in a
+			 * packaged build than these frames suggest, because the Chat/Raw tab
+			 * row beneath it is `isDevelopmentMode()`-gated - in production this
+			 * rule sits directly against the transcript's first row and is the
+			 * only thing separating them.
 			 */
 			className={cn(
-				"flex h-14 shrink-0 items-center gap-3 border-hairline border-b px-4",
+				"flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
 			)}
 			data-tour-tag="chat-header"
 		>
@@ -59,7 +71,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					<Bot className={cn("size-4")} aria-hidden={true} />
 				</AvatarFallback>
 			</Avatar>
-			<div className={cn("flex min-w-0 flex-col")}>
+			{/* `flex-1` as well as `min-w-0`: the block was min-w-0 inside a row
+			 * whose only other content is an `ml-auto` action, so it yielded before
+			 * the empty space did - the description clipped mid-sentence at 760px
+			 * while 220px of bar sat unused to its right. Growing first means the
+			 * text truncates only once there is genuinely no room left. */}
+			<div className={cn("flex min-w-0 flex-1 flex-col")}>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
 				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}

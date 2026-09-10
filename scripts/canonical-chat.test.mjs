@@ -567,3 +567,99 @@ test("a genuinely issued admission still latches, because its outcome is unknown
 		/not been confirmed/,
 	);
 });
+
+test("the working-directory chip cannot unmount itself by committing an empty path", async () => {
+	// U1 / M1, the round-1 blocker: the chip was the ONLY writer of `state.cwd`
+	// once the full-width bar was deleted, and the composer mounted it behind
+	// `{cwdToShow && ...}`. `""` is a legal value of the staged cwd and is
+	// falsy, so clearing the field and committing removed the one control that
+	// could set it again -- and `cwd` is in `partialize`, so the empty value
+	// survived a restart. Recovery required editing localStorage by hand.
+	//
+	// Asserted on the source, not by rendering, because the defect IS the gate
+	// expression: `renderToStaticMarkup` cannot dispatch the blur that commits,
+	// and a rendered test that seeds `cwd: ""` would only prove today's
+	// rendering rather than pinning the rule. Both halves are checked, because
+	// either one alone still loses the chip.
+	const { readFile } = await import("node:fs/promises");
+
+	const composer = await readFile(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	// Comments quote the removed expression to explain why it went, so this
+	// looks at the JSX rather than at the whole file.
+	const rendered = composer.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.ok(
+		rendered.includes("{cwdToShow !== undefined && ("),
+		"the composer gates the cwd chip on something other than whether a directory is KNOWN",
+	);
+	assert.ok(
+		!/\{cwdToShow && \(/.test(rendered),
+		"the composer render-gates the chip on the truthiness of its own value again, so committing an empty path unmounts the only control that can set it",
+	);
+
+	// The other half: the commit path must refuse an empty/whitespace value, so
+	// the store never reaches the state the gate above is protecting against.
+	// `sessions.create` also rejects it -- `cwd` carries `minLength: 1`.
+	const chip = await readFile(
+		"src/renderer/src/features/chat/components/directory-indicator.tsx",
+		"utf8",
+	);
+	const chipRendered = chip.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.ok(
+		/const trimmed = path\.trim\(\);\s*if \(!trimmed\) return false;/.test(
+			chipRendered,
+		),
+		"the chip's commit path no longer refuses an empty or whitespace-only directory",
+	);
+	// Blur must not be the destructive exit: it reverts, Enter commits.
+	assert.ok(
+		/onBlur=\{handleCancelEdit\}/.test(chipRendered),
+		"blur commits the field again, so clicking into the composer saves a half-typed path (U3)",
+	);
+	// The read-only chip must not offer the hover promise of a live control.
+	assert.ok(
+		!/variant="ghost"[\s\S]{0,400}aria-disabled="true"/.test(chipRendered),
+		"the read-only chip is a ghost Button again, so it paints hover and press states it cannot honour (U2/D2)",
+	);
+});
+
+test("the create-file dialog does not write a session id to the agents API", async () => {
+	// Q-1 / M2: the dialog PATCHed `/v1/agents/<session-id>` and 404'd silently
+	// on every use -- the same dead write this change set removed from the
+	// composer, re-created at the other call site. Its `agentId` was
+	// `chat-page.tsx`'s `identity` (`draftKey ?? id`), never an agent UUID, so
+	// the lookup could not match and the Location always read `~` while the
+	// composer beside it showed the real directory.
+	const { readFile } = await import("node:fs/promises");
+	const source = await readFile(
+		"src/renderer/src/features/chat/components/canvas/create-file-dialog.tsx",
+		"utf8",
+	);
+	const rendered = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+
+	assert.ok(
+		!rendered.includes("updateAgent.mutate("),
+		"the create-file dialog PATCHes the agents API again, with an id that is a session id",
+	);
+	assert.ok(
+		!rendered.includes("useUpdateAgent"),
+		"the create-file dialog still imports the agent mutation it cannot correctly call",
+	);
+	// The read side: the directory must be supplied by the caller from the
+	// canonical stream rather than looked up by a key that cannot match.
+	assert.ok(
+		rendered.includes("currentWorkingDirectory"),
+		"the create-file dialog no longer takes the working directory from its caller",
+	);
+	assert.ok(
+		!rendered.includes("agentListResult?.agents.find"),
+		"the create-file dialog resolves the agent by an id that is not an agent id again",
+	);
+	// And it must present the value honestly rather than offering a control.
+	assert.ok(
+		rendered.includes("readOnlyReason"),
+		"the create-file dialog offers an editable directory control again, whose every use fails",
+	);
+});

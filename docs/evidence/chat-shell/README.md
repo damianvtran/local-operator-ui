@@ -34,7 +34,7 @@ rest are 1x.
 | [before-empty-760-frame2.png](before-empty-760-frame2.png) / [after-empty-760-frame2.png](after-empty-760-frame2.png) | Same pair at 760x800, the narrowest width sampled. |
 | [before-populated-1380-frame2.png](before-populated-1380-frame2.png) / [after-populated-1380-frame2.png](after-populated-1380-frame2.png) | A real conversation. The user bubble ("Continue") gains a visible edge; the read-only chip appears in the composer. |
 | [before-populated-1000-frame2.png](before-populated-1000-frame2.png) / [after-populated-1000-frame2.png](after-populated-1000-frame2.png) | Same pair at 1000x800. |
-| [after-canvas-open-1380.png](after-canvas-open-1380.png) | Canvas panel open, confirming the column still bounds itself with a second panel in the row. See "Not fixed here" below. |
+| [after-canvas-open-1380.png](after-canvas-open-1380.png) | Canvas panel open. **Recaptured in round 1** - see "D1: the canvas-open frame was wrong" below. |
 
 `*-frame1.png` and `*-frame2.png` are consecutive captures about 1.2s apart. In
 every pair the chat column is byte-identical between the two; the only pixels
@@ -50,11 +50,11 @@ as the frames beside them.
 | Window | `documentElement.scrollHeight - clientHeight` | Header height | Composer band ground |
 | --- | --- | --- | --- |
 | 1380x872 before | **308** | 46.5px | (transparent, inherits) |
-| 1380x872 after | **0** | **56px** | (transparent, inherits) |
+| 1380x872 after | **0** | **56px box, 55px content** | (transparent, inherits) |
 | 1000x800 before | **340** | 61.4px | `rgb(22, 19, 14)` = `canvas` |
-| 1000x800 after | **0** | **56px** | `rgb(30, 26, 20)` = `surface` |
+| 1000x800 after | **0** | **56px box, 55px content** | `rgb(30, 26, 20)` = `surface` |
 | 760x800 before | **340** | 61.4px | `rgb(22, 19, 14)` = `canvas` |
-| 760x800 after | **0** | **56px** | `rgb(30, 26, 20)` = `surface` |
+| 760x800 after | **0** | **56px box, 55px content** | `rgb(30, 26, 20)` = `surface` |
 
 The chat column is `rgb(30, 26, 20)` in every row, so the before rows show the
 band painting the *page* ground inside a *panel*-ground column - the ground step
@@ -159,7 +159,10 @@ window size:
 | | row overflow | header | doc scroll |
 | --- | --- | --- | --- |
 | `origin/main` | 128px | 63.7px | 308 |
-| this branch | 120px | 56px | 0 |
+| this branch (round 1, remeasured) | **140px** | 56px | 0 |
+
+**The 120px figure was withdrawn in round 1**, and the improvement claim with
+it. See below.
 
 The cause is a 450px-minimum canvas plus a 220px-minimum chat column plus a
 900px-preferred transcript demanding more width than the row has; fixing it
@@ -179,3 +182,148 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=$... npx electron-vite dev --remoteDebuggingPort=93
 
 Then drive `http://127.0.0.1:9333/json/list` over CDP as
 `scripts/capture-evidence.mjs` does.
+
+
+---
+
+# Round 1 remediation
+
+## D1: the canvas-open frame was wrong, and so was the number resting on it
+
+The design round found that the committed `after-canvas-open-1380.png` was a
+frame of **`origin/main`**, not of this branch, on four independent
+discriminators: a 40px header avatar (branch renders 32), a 63.5px header
+(branch renders 56), a `hairline` user-bubble edge (branch renders
+`border-control`), and no cwd chip in the composer toolbar. The reviewer was
+right. The frame has been **recaptured from the branch** rather than quietly
+deleted, and it is the file at that same path now.
+
+The claim that rested on it is withdrawn. Re-measured on the branch, on the
+same conversation and window size, the canvas-open row overflow is **140px,
+not 120px** - so this branch does not improve the pre-existing overflow, it is
+about 12px worse than `origin/main`'s 128px. The cause is unchanged and still
+out of scope (a 450px-minimum canvas plus a 220px-minimum chat column plus a
+900px-preferred measure demand more width than the row has), but the honest
+statement is "pre-existing, not fixed here, and marginally worse", not "this
+branch improves it".
+
+## The production framing, which no frame in the set showed
+
+`chat-content.tsx` renders the Chat/Raw tab strip behind `isDevelopmentMode()`,
+so every frame captured from `electron-vite dev` - including all of the
+originals - shows a 32px tab row that a packaged user never sees. In a
+packaged build the header's bottom rule sits **directly against the
+transcript**, which is where the rule's contrast matters most and which was
+uncaptured.
+
+Both adjacencies are now in the set:
+
+| Frame | What it shows |
+| --- | --- |
+| [after-empty-1380-devmode-tabrow.png](after-empty-1380-devmode-tabrow.png) | The dev framing every earlier frame was taken in: 32px tab row between header and transcript. |
+| [after-empty-1380-production-framing.png](after-empty-1380-production-framing.png) | The packaged adjacency, with the dev-only tablist removed: the header rule sits directly on content. |
+
+Measured in both: header 56px, bottom rule `rgb(131, 124, 109)` =
+`border-control` = **4.18:1** on `surface`, against the `hairline` **1.32:1**
+it was (D3). The sidebar's own header rule in the same frame is the same role
+at the same ratio, so the two rules at the top of the window are now drawn at
+one weight rather than 3.2x apart.
+
+## Document scroll: the operator's report
+
+The operator reported that the whole app still scrolls out of view, on Chat
+and on Settings. It reproduces, and the reason it reproduces for him and not
+in these measurements is that **his build predates the fix**: `origin/main` is
+v0.16.0 and its `app.tsx` root is `<div className="flex h-screen
+overflow-hidden">` with no `relative`. The containing-block fix is in this
+branch and has not shipped.
+
+Driven authenticated (own backend, own isolated config dir, 40 real sessions
+in the sidebar, onboarding dismissed, focus-emulated) at his proportions:
+
+| Route | his build (root `static`, no document rules) | this branch |
+| --- | --- | --- |
+| `#/chat` @1024x673 | `scrollHeight - clientHeight` **1099**, scrolled to **1099** | **0**, scrolled to **0** |
+| `#/settings` @1024x673 | **3742**, scrolled to **3742** | **0**, scrolled to **0** |
+
+`scroll/his-build-settings-scrolled-off.png` is the operator's screenshot: the
+entire app scrolled off the top leaving a black page.
+`scroll/this-branch-settings-scroll-refused.png` is the identical gesture on
+this branch.
+
+Two things worth recording for whoever measures this next:
+
+- **Settings and Chat fail for different reasons.** At 1024x673 Settings has
+  **1584 elements below the fold but only 1 `sr-only`** - its driver is the
+  tall settings form, not the offscreen labels - while Chat has 32-33 `sr-only`
+  below the fold. One containing-block fix covers both, which is why a
+  chat-only measurement could not have caught Settings.
+- **The probe was made to go RED before it was trusted.** A first pass
+  reported 0-of-20 scrollable across five routes and four viewports, which was
+  an artifact of an unpopulated app rather than a result. The revert control
+  above (1099/3742 with the rules stripped, 0 with them restored) is what makes
+  the green readings evidence.
+
+### The document-level rules are defence in depth, not the fix
+
+`styles/index.css` now pins `height: 100%; overflow: hidden` on `html`, `body`
+and `#app`, with `position: relative` on `body` and `#app`. Isolated against
+each other on every real route, **each of the two fixes is independently
+sufficient**: root `relative` alone gives 0, the document rules alone give 0,
+both give 0. So the CSS is not what rescues the operator - the root `relative`
+he does not have already does that.
+
+It is kept because the root is only one of `#app`'s four children: React
+portals mount as its siblings (the toast region, the react-query devtools
+container) and anything portaled to `document.body` is a sibling of `#app`
+itself, so the root's `overflow: hidden` has no authority over any of them.
+Injected probes measured that path at **900px** (tall sibling of the root) and
+**727px** (absolutely positioned child of `body`) of real document scroll with
+the root fix in place. No real surface currently mounts such an element, so
+that escape is **latent, not active** - the rules make the guarantee structural
+rather than dependent on no future portal ever being tall. A
+`position: fixed`-below-the-fold control passes throughout, which is what
+proves overlays still cover the window.
+
+## The measure (D4)
+
+The design round's spec is implemented in `features/chat/chat-measure.ts`:
+one shared token consumed by the transcript and the composer, expressed as
+**container queries** rather than `sm:`/`md:` viewport breakpoints.
+
+Re-measured at 1380x872, comparing like with like (the transcript's measure
+column against the composer's own box):
+
+```
+before round 1:  transcript [524..1356]   composer [532..1348]   right-edge delta 8px
+after round 1:   transcript [524..1356]   composer [524..1356]   right-edge delta 0
+```
+
+The 8px was the transcript's reserved scrollbar gutter, which the composer did
+not account for; matching the total inset gives the two one outer edge instead
+of two that nearly agree. Centres were already 0 and remain 0.
+
+The viewport-breakpoint point was real: with the canvas open at a 1380px
+window the chat column collapses to its 220px floor while `md:` is still
+active, so `md:max-w-[900px]` was being applied to a 220px column. The
+container query asks the width of the column instead of the window.
+
+At 1000px and 760px the composer is 20px wider than the transcript column;
+that is the pre-existing `isSmallView` path (the chat column is under 550px, so
+the band uses its dense `px-1` padding), not the measure.
+
+## Chip states (U2 / D2)
+
+The read-only and editable chips were byte-identical at rest and on hover.
+Measured again on the same chip either side of one send:
+
+| state | colour | background | `aria-disabled` |
+| --- | --- | --- | --- |
+| editable, at rest | `rgb(181, 175, 162)` | transparent | absent |
+| editable, hover | `rgb(241, 238, 230)` | `rgb(22, 40, 29)` | absent |
+| read-only, at rest | `rgb(145, 139, 125)` | transparent | `true` |
+| read-only, hover | `rgb(145, 139, 125)` | transparent | `true` |
+
+The read-only chip no longer moves under the pointer, and the two states are
+no longer the same colour. Per `branding.md`, the distinction is carried by
+colour rather than opacity.

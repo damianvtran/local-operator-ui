@@ -54,6 +54,7 @@ import type {
 	CanonicalFrontendState,
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
+import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { ErrorBlock } from "../components/message-item/error-block";
 import {
@@ -680,6 +681,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				// Reserving the gutter on both edges restores a symmetric content
 				// box: measured in the running app, the centre delta goes 4px -> 0.
 				// `stable` alone would reserve only the right edge and keep it.
+				CHAT_COLUMN_CONTAINER,
 				"relative flex min-h-0 w-full grow flex-col-reverse overflow-auto p-4 [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 			)}
 		>
@@ -688,7 +690,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					{perf}
 				</span>
 			)}
-			<div className="mx-auto flex w-full max-w-[900px] flex-col sm:max-w-[90%] md:max-w-[900px]">
+			<div className={cn("flex flex-col", CHAT_MEASURE)}>
 				{/* Older rows: durable pages, then the local window. */}
 				{(transcript.hasMore || hidden > 0) && (
 					<div className="mb-4 flex justify-center">

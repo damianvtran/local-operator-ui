@@ -28,6 +28,7 @@ import {
 } from "react";
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
@@ -588,7 +589,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					className={cn(
 						COMPOSER_BOX,
 						isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
-						"w-full max-w-full sm:max-w-[90%] md:max-w-[900px]",
+						CHAT_MEASURE,
 						// The slash popup anchors above this box without shifting it.
 						"relative",
 					)}
@@ -682,19 +683,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								</span>
 							</Tooltip>
 							{/*
-							 * Gated on having a directory to show, not on the session
-							 * being idle. The old `!canonicalStop` gate could never be
-							 * true in the canonical chat - the stop control is passed
-							 * unconditionally - so the chip was unreachable from v0.16.0
-							 * even though it was still mounted here. */}
-							{cwdToShow && (
+							 * Gated on whether a directory is KNOWN, not on whether it is
+							 * truthy, and not on the session being idle.
+							 *
+							 * Two unsatisfiable-condition bugs in the same three lines,
+							 * one after the other. The original `!canonicalStop` gate
+							 * could never be true in the canonical chat - the stop
+							 * control is passed unconditionally - so the chip was
+							 * unreachable from v0.16.0 even though it was still mounted
+							 * here. Replacing it with `{cwdToShow && ...}` then made the
+							 * chip able to DELETE ITSELF: `""` is a legal value of the
+							 * staged cwd, it is falsy, and this chip is the only writer
+							 * of `state.cwd` now the full-width bar is gone. So clearing
+							 * the field unmounted the one control that could set it
+							 * again, and `cwd` is persisted, so the app came back from a
+							 * restart still with no chip - unrecoverable without
+							 * devtools.
+							 *
+							 * `!== undefined` is the honest question: undefined means "no
+							 * directory is known for this conversation", which is the one
+							 * case with nothing to render. An empty string means "known,
+							 * and empty" - a state the chip has an affordance for, and
+							 * the reason its `unset` branch is reachable again.
+							 */}
+							{cwdToShow !== undefined && (
 								<DirectoryIndicator
 									currentWorkingDirectory={cwdToShow}
 									onChangeDirectory={onChangeCwd}
 									readOnlyReason={
 										onChangeCwd
 											? undefined
-											: "Working directory is set when the session starts and cannot be changed afterwards."
+											: "Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
 									}
 								/>
 							)}
@@ -813,7 +832,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				</div>
 
 				{messages.length === 0 && !isHydrating && !isSmallView && (
-					<div className="mx-auto mt-6 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
+					<div className={cn("mt-6", CHAT_MEASURE)}>
 						{/* Neutral chips. Twelve accent-washed pills was the accent
 						 * budget spent four times over on the one screen that has no
 						 * content to compete with them; as quiet outlines they read as
@@ -856,8 +875,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// became actively harmful once the transcript stopped declaring
 					// `h-full`, because the band would then claim the column's free
 					// space instead of leaving it to the transcript.
-					"flex w-full shrink-0 flex-col items-center justify-center bg-surface",
-					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
+					//
+					// `max-h-[70%]` plus its own scroller because `shrink-0` inside a
+					// now-`overflow-hidden` column is otherwise unbounded: attachment
+					// tiles wrap at 100px each, replies stack, and the suggestion row
+					// adds more, so a band that grows past the column would take the
+					// send controls off the bottom with nothing left to scroll them
+					// back. A proportion rather than a pixel count so it holds at
+					// every window height; the transcript keeps whatever is left.
+					CHAT_COLUMN_CONTAINER,
+					"flex max-h-[70%] w-full shrink-0 flex-col items-center justify-center overflow-y-auto bg-surface",
+					// `px-6` (24px), not `px-4`: the transcript above insets its content
+					// by its own 16px padding PLUS the 8px scrollbar gutter it reserves,
+					// so an equal 16px here left the two columns 8px apart at the right
+					// edge (1356 vs 1364) while their centres matched exactly. Matching
+					// the total inset is what gives the shared measure one outer edge
+					// instead of two that nearly agree.
+					isSmallView ? "px-1 pb-1 pt-0.5" : "px-6 pb-4 pt-2",
 				)}
 			>
 				{messages.length === 0 && isHydrating && !isSmallView ? (
@@ -868,7 +902,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// backend that blankness is the whole first impression. A
 					// skeleton in the greeting's own place says "loading" without
 					// claiming which of the two answers is coming.
-					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
 						{/* `<output>` rather than a div with role="status": it carries
 						 * the same implicit live-region semantics as a native element,
 						 * which is what the a11y lint asks for. */}
@@ -882,7 +916,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{inputContent}
 					</div>
 				) : messages.length === 0 && !isSmallView ? (
-					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
 						</h2>
