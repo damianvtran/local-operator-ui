@@ -12,7 +12,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
@@ -82,6 +82,7 @@ const {
 	readInstallIdentity,
 	resolveCommandPath,
 	watchdogIsOurs,
+	watchdogSignals,
 	watchdogSwapTarget,
 	writePendingInstallMarker,
 } = install;
@@ -123,6 +124,70 @@ const {
 	rewriteUpdateMetadata,
 	updateUpdateYmlEntry,
 } = await import("./notarize-artifacts.mjs");
+
+/**
+ * The disk image step's real code, bundled with the notarizer stubbed.
+ *
+ * The property this covers is the path the step hands the notarizer, and only a
+ * stub can read it: the real `@electron/notarize` uploads to Apple, which no
+ * developer machine and no CI runner can reach, so a wrong path there is a
+ * failure that exists only in a release build. 0.17.2 shipped a relative one -
+ * `@electron/notarize`'s `lib/notarytool.js` does `path.resolve(dir, opts.appPath)`
+ * for a `.dmg`/`.pkg` with `dir` its own submission temp dir, so the image was
+ * looked for inside that temp dir and the step reported "The file couldn't be
+ * opened because it doesn't exist".
+ *
+ * Bundled rather than imported so the fixture can be substituted, the same
+ * mechanic the Electron fixture below uses. Everything else in the bundle is the
+ * shipped module: the discovery, the absolute-path resolution, the submit →
+ * staple → re-hash → rewrite ordering, and the failure handling.
+ */
+const notarizeStepBundle = await build({
+	stdin: {
+		contents: 'export * from "./scripts/notarize-artifacts.mjs";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	// `build-env.mjs` reaches dotenv, a CJS dependency esbuild cannot `require`
+	// from ESM output without the shim the Electron fixture also carries.
+	banner: {
+		js: 'import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+	},
+	plugins: [
+		{
+			name: "notarize-fixture",
+			setup(builder) {
+				builder.onResolve({ filter: /^@electron\/notarize$/ }, () => ({
+					path: "@electron/notarize",
+					namespace: "notarize-fixture",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "notarize-fixture" },
+					() => ({
+						loader: "js",
+						contents: `
+							export const notarize = async (opts) => {
+								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool });
+								const behavior = globalThis.__loNotarizeBehavior;
+								if (behavior) await behavior(opts);
+							};
+						`,
+					}),
+				);
+			},
+		},
+	],
+});
+const notarizeStepDir = mkdtempSync(join(tmpdir(), "lo-notarize-step-"));
+const notarizeStepFile = join(notarizeStepDir, "notarize-artifacts.mjs");
+writeFileSync(notarizeStepFile, notarizeStepBundle.outputFiles[0].text);
+// Imported from a real path rather than a `data:` URL: the banner shim needs an
+// `import.meta.url` that `createRequire` can resolve.
+const { notarizeArtifacts } = await import(notarizeStepFile);
+rmSync(notarizeStepDir, { recursive: true, force: true });
 const {
 	artifactChecks,
 	discoverApp,
@@ -455,14 +520,19 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 
 	// No name probe survives in the executable part of the script (the comments
 	// mention pgrep to explain why it is gone), and both real signals are in it:
-	// the app's own pid, and the job label.
+	// the app's own pid, and the job label - asked of the probe the plan resolved
+	// for the platform it is planned for, which on macOS is `launchctl`. Naming
+	// the command in the script is what made the darwin branch unassertable off a
+	// Mac and what let the swap-landed case pass here and fail on ubuntu-latest.
 	const code = plan.script
 		.split("\n")
 		.filter((line) => !line.trimStart().startsWith("#"))
 		.join("\n");
 	assert.doesNotMatch(code, /pgrep/);
 	assert.match(code, /kill -0 "\$APP_PID"/);
-	assert.match(code, /launchctl list "\$SHIPIT_JOB"/);
+	assert.match(code, /"\$SHIPIT_PROBE" list "\$SHIPIT_JOB"/);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_SHIPIT_PROBE, "launchctl");
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_PLIST_READER, "/usr/bin/plutil");
 
 	// The relaunch attempt is not conditional on reaching the end of a wait: the
 	// deadline path falls through to it (review Q1), and the decision it waits on
@@ -472,8 +542,9 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(plan.script, /open -a "\$BUNDLE"/);
 	assert.match(plan.script, new RegExp(WATCHDOG_TOKEN));
 	// The on-disk half of the decision: the version in the target bundle's own
-	// Info.plist, read with plutil rather than through a preference domain.
-	assert.match(plan.script, /plutil -extract CFBundleShortVersionString raw/);
+	// Info.plist, read by the platform's plist reader (`plutil` on macOS) rather
+	// than through a preference domain.
+	assert.match(plan.script, /"\$PLIST_READER" -extract CFBundleShortVersionString raw/);
 	assert.match(plan.script, /LO_UPDATE_WATCHDOG_TARGET_VERSION/);
 	/*
 	 * And that read is bounded, because it runs inside the poll loop: an
@@ -587,6 +658,24 @@ function runWatchdog({ plan, binDir }) {
 }
 
 /**
+ * Whether the watchdog's own process group has been vacated.
+ *
+ * `runWatchdog` spawns the script detached, so it leads its own group and
+ * anything it starts - the relaunch, a backgrounded read - is a member. 
+ * `kill(-pgid, 0)` raises ESRCH on an empty group, which is the check the branch
+ * with no signals needs: its only route to a relaunch is the bound, and a bound
+ * that leaves a process behind is the one thing that branch could add.
+ */
+function processGroupIsEmpty(pid) {
+	try {
+		process.kill(-pid, 0);
+		return false;
+	} catch (error) {
+		return error.code === "ESRCH";
+	}
+}
+
+/**
  * A fixture "app" bundle plus the two commands the watchdog shells out to.
  *
  * The bundle carries a real `Info.plist` because the swap's own state is read
@@ -627,12 +716,49 @@ function makeWatchdogFixture(dir, version = "0.17.0") {
 		`#!/bin/sh\nif [ "$1" = "list" ]; then\n\tif [ -f "${stateFile}" ]; then exit 0; fi\n\texit 113\nfi\nexit 0\n`,
 		"utf8",
 	);
-	spawnSync("/bin/chmod", ["+x", openShim, launchctlShim, executable]);
+	/*
+	 * The plist reader, in the shape the script invokes it: `-extract
+	 * CFBundleShortVersionString raw -o - <plist>`.
+	 *
+	 * Substituted rather than used for real, for the same reason `launchctl` is:
+	 * the shipped one is `/usr/bin/plutil`, an absolute path that does not exist
+	 * off macOS, and a probe a test cannot install is not one the script's
+	 * behaviour can be asserted against. Taking it from the host is how the
+	 * swap-landed case came to assert a macOS-only early exit on ubuntu-latest.
+	 * The tags are stripped so the same shim reads the fixture's plist whether the
+	 * key and its string share a line or not, and an invocation the script does
+	 * not make is refused rather than answered.
+	 */
+	const plistReaderShim = join(binDir, "plutil");
+	writeFileSync(
+		plistReaderShim,
+		`#!/bin/sh
+case "$*" in
+	*"-extract CFBundleShortVersionString raw"*) ;;
+	*) echo "unexpected plutil invocation: $*" >&2; exit 1 ;;
+esac
+plist=""
+for arg in "$@"; do plist="$arg"; done
+[ -n "$plist" ] && [ -r "$plist" ] || exit 1
+tr -d '\\n\\t' < "$plist" | sed -n 's|.*<key>CFBundleShortVersionString</key><string>\\([^<]*\\)</string>.*|\\1|p'
+`,
+		"utf8",
+	);
+	spawnSync("/bin/chmod", [
+		"+x",
+		openShim,
+		launchctlShim,
+		plistReaderShim,
+		executable,
+	]);
 
 	return {
 		bundle,
 		binDir,
 		stateFile,
+		// Both probes, so the darwin plan can be driven on any host: the script
+		// calls the command the plan names, and the plan is the platform's.
+		probes: { jobProbe: launchctlShim, plistReader: plistReaderShim },
 		launchLog: log,
 		setVersion,
 		launches: () =>
@@ -684,6 +810,11 @@ test("the watchdog relaunches a real process tree and never exits without trying
 			executableName: "Fixture",
 			appPid: pid,
 			shipItJob: "com.local-operator.ShipIt",
+			// The darwin plan, with both probes pointed at the fixtures above: the
+			// branch under test is the platform's, and a test host has neither
+			// `launchctl`'s domain to ask nor a `plutil` to read with.
+			platform: "darwin",
+			signals: fixture.probes,
 			...fast,
 			...overrides,
 		});
@@ -771,6 +902,13 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 			appPid: pid,
 			shipItJob: "com.local-operator.ShipIt",
 			targetVersion: "0.18.0",
+			// The darwin plan, with both probes pointed at the fixtures: the swap
+			// this case waits on is read through the plist-reader shim, so the case
+			// asserts the branch wherever it runs instead of only where `plutil`
+			// happens to exist (which is how it passed on a Mac and failed on
+			// ubuntu-latest).
+			platform: "darwin",
+			signals: fixture.probes,
 			// A bound long enough that reaching it is distinguishable from leaving
 			// on the swap: a pass here cannot be a pass by timeout.
 			timeoutSeconds: 120,
@@ -884,6 +1022,91 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		assert.equal(await waitForLaunches(fixture, before + 1), true);
 		assert.ok(elapsed < 10000, `expected no appear window, took ${elapsed}ms`);
 	}
+});
+
+/**
+ * The branch for a platform with neither probe: the bound decides, and alone.
+ *
+ * Why this case is not decoration: the app's watchdog is macOS-only (its caller
+ * refuses to plan one anywhere else), but the script's two probes were not stated
+ * anywhere - they were whatever the host that generated the script happened to
+ * have. `plutil` exists only on macOS, so the swap-landed case above asserted an
+ * early exit that could not fire on the CI runner, and `main` went red on every
+ * push from the commit that added it (runs 34695505505, 34695566539, 34696129340,
+ * 34699012497: `expected the swap to end the wait, took 126265ms`). The fix is
+ * that the platform is in the plan (see `watchdogSignals`), and this is the other
+ * half of it: a plan for a platform without launchd or plutil must still behave,
+ * and must not read "cannot ask" as an answer.
+ *
+ * The fixture is in the shape that ends the wait in seconds on the darwin branch -
+ * the job's state file is loaded and the bundle already reports the target
+ * version - so a false early exit here is visible as one. Neither tool is
+ * provided to this run, and the assertions also pin that the script names
+ * neither, so a later edit cannot quietly reintroduce a dependency on a tool the
+ * platform lacks.
+ */
+test("without launchd or plutil the bound decides, and nothing is left behind", async () => {
+	const dir = tempDir("lo-watchdog-nosignals-");
+	const fixture = makeWatchdogFixture(dir, "0.18.0");
+	const planFor = (pid, overrides = {}) =>
+		buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: pid,
+			shipItJob: "com.local-operator.ShipIt",
+			targetVersion: "0.18.0",
+			timeoutSeconds: 4,
+			intervalSeconds: 1,
+			settleSeconds: 1,
+			appearSeconds: 1,
+			platform: "linux",
+			...overrides,
+		});
+
+	// The resolution itself: a platform with neither tool gets neither probe.
+	assert.deepEqual(watchdogSignals("linux"), {
+		jobProbe: null,
+		plistReader: null,
+	});
+	const shape = planFor(1);
+	assert.equal(shape.env.LO_UPDATE_WATCHDOG_SHIPIT_PROBE, "");
+	assert.equal(shape.env.LO_UPDATE_WATCHDOG_PLIST_READER, "");
+	const code = shape.script
+		.split("\n")
+		.filter((line) => !line.trimStart().startsWith("#"))
+		.join("\n");
+	assert.doesNotMatch(code, /launchctl|plutil/);
+
+	// Both signals that end the wait early on macOS are in their "decided" shape
+	// here - the job is loaded, the bundle reports the target version - and still
+	// cannot end it: the bound is the only decider left, so the app comes back at
+	// ~4s plus the settle, never before.
+	writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+	const app = startProcess("/bin/sleep", ["30"]);
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+	const started = Date.now();
+	app.kill();
+	const result = await watchdog.exit;
+	const elapsed = Date.now() - started;
+	assert.equal(result.code, 0);
+	assert.ok(
+		elapsed >= 3000,
+		`expected the bound to decide, exited after ${elapsed}ms`,
+	);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	assert.equal(fixture.launches().length, before + 1);
+	assert.match(fixture.launches()[before], /open -a /);
+	// And nothing of the watchdog's own is left running: the script is spawned
+	// detached, so it leads its own process group, and an empty group is the whole
+	// of what "no orphan" means here.
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	assert.equal(
+		processGroupIsEmpty(watchdog.child.pid),
+		true,
+		"the watchdog left a process in its own group",
+	);
+	rmSync(fixture.stateFile, { force: true });
 });
 
 /**
@@ -1877,6 +2100,248 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 });
 
 /**
+ * The notarizer is handed an absolute path, whatever form `--dist` took.
+ *
+ * Why absolute is the assertion rather than "the file exists": the failure this
+ * covers only shows up inside `@electron/notarize`, which resolves the path
+ * against its own temp dir before uploading, so a relative path that is perfectly
+ * valid from the working directory is invalid by the time it is used. 0.17.2's
+ * publish run failed in the submission step with "The file couldn't be opened
+ * because it doesn't exist" for a path under `T/electron-notarize-*`, which is
+ * that temp dir - the image was never there. `--dist dist` is the default and
+ * what CI runs, so the relative case is the one that shipped the bug; the
+ * absolute case and a relative entry in `artifactPaths` are here because the two
+ * spellings of the same directory must not disagree.
+ *
+ * The image is real (a few bytes) and the metadata is real, because the step
+ * hashes and rewrites them after the staple; only the notarizer is a stub.
+ */
+test("the notarization step hands the notarizer an absolute path", async () => {
+	const root = tempDir("lo-notarize-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	const imageName = "local-operator-ui-0.18.0-universal.dmg";
+	const imagePath = join(dist, imageName);
+	writeFileSync(imagePath, "disk image");
+	const ymlPath = join(dist, "latest-mac.yml");
+	writeFileSync(
+		ymlPath,
+		[
+			"version: 0.18.0",
+			"files:",
+			`  - url: ${imageName}`,
+			"    sha512: PRE_STAPLE",
+			"    size: 10",
+			"",
+		].join("\n"),
+		"utf8",
+	);
+
+	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	const savedEnv = {
+		NOTARIZE: process.env.NOTARIZE,
+		APPLE_ID: process.env.APPLE_ID,
+		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
+		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+	};
+	try {
+		// The step is darwin-only and `test:desktop` runs on Linux CI, but the bug
+		// is a path resolution mistake with nothing macOS about it, so the platform
+		// check is satisfied rather than skipped. Restored in the `finally`.
+		Object.defineProperty(process, "platform", {
+			value: "darwin",
+			configurable: true,
+		});
+		process.env.NOTARIZE = "true";
+		process.env.APPLE_ID = "test@example.invalid";
+		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
+		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		globalThis.__loNotarizeCalls = [];
+		delete globalThis.__loNotarizeBehavior;
+
+		// The default CI invocation: `--dist` relative to the working directory.
+		const relativeDist = relative(process.cwd(), dist);
+		assert.equal(isAbsolute(relativeDist), false, relativeDist);
+		await notarizeArtifacts({ dist: relativeDist, log: () => {} });
+		assert.equal(globalThis.__loNotarizeCalls.length, 1);
+		assert.equal(globalThis.__loNotarizeCalls[0].tool, "notarytool");
+		assert.equal(
+			isAbsolute(globalThis.__loNotarizeCalls[0].appPath),
+			true,
+			`a relative --dist reached the notarizer as ${globalThis.__loNotarizeCalls[0].appPath}`,
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appPath, resolve(dist, imageName));
+		// The staple, hash and rewrite all finished on that same file: a wrong path
+		// here would have thrown before the rewrite, leaving the pre-staple hash.
+		assert.match(readFileSync(ymlPath, "utf8"), /sha512: [A-Za-z0-9+/=]{16}/);
+		assert.equal(readFileSync(ymlPath, "utf8").includes("PRE_STAPLE"), false);
+
+		// An absolute `--dist`, and a relative entry in `artifactPaths`, resolve to
+		// the same absolute image.
+		for (const invocation of [
+			{ dist },
+			{ dist, artifactPaths: [relative(process.cwd(), imagePath)] },
+		]) {
+			globalThis.__loNotarizeCalls.length = 0;
+			await notarizeArtifacts({ ...invocation, log: () => {} });
+			assert.equal(globalThis.__loNotarizeCalls.length, 1);
+			assert.equal(globalThis.__loNotarizeCalls[0].appPath, resolve(imagePath));
+		}
+	} finally {
+		if (platform) Object.defineProperty(process, "platform", platform);
+		for (const [key, value] of Object.entries(savedEnv)) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+		delete globalThis.__loNotarizeCalls;
+		delete globalThis.__loNotarizeBehavior;
+	}
+});
+
+/**
+ * A rejected notarization fails the step, and the CLI exits non-zero.
+ *
+ * The release that hit this bug reported "Disk image notarization failed" and
+ * failed the job, so the loud half is not the regression - it is the property the
+ * fix must not trade away, and the reason it is asserted through the real
+ * entrypoint (a child process running the shipped script with the notarizer
+ * stubbed by a module resolution hook) rather than only through the exported
+ * function: a catch added around the submission later would leave the first
+ * assertion green and turn this step into a silent no-op that ships an
+ * unnotarized image.
+ *
+ * The stub also records the path it was handed, so this doubles as a check that
+ * the relative `--dist` the CI invocation uses reaches the notarizer absolute on
+ * the real command line.
+ */
+test("a rejected notarization fails the step and exits non-zero", async () => {
+	const root = tempDir("lo-notarize-fail-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	const imageName = "local-operator-ui-0.18.0-universal.dmg";
+	writeFileSync(join(dist, imageName), "disk image");
+	const ymlPath = join(dist, "latest-mac.yml");
+	const preStapleYml = [
+		"version: 0.18.0",
+		"files:",
+		`  - url: ${imageName}`,
+		"    sha512: PRE_STAPLE",
+		"    size: 10",
+		"",
+	].join("\n");
+	writeFileSync(ymlPath, preStapleYml, "utf8");
+
+	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	const savedEnv = {
+		NOTARIZE: process.env.NOTARIZE,
+		APPLE_ID: process.env.APPLE_ID,
+		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
+		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+	};
+	try {
+		Object.defineProperty(process, "platform", {
+			value: "darwin",
+			configurable: true,
+		});
+		process.env.NOTARIZE = "true";
+		process.env.APPLE_ID = "test@example.invalid";
+		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
+		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		globalThis.__loNotarizeCalls = [];
+		globalThis.__loNotarizeBehavior = async () => {
+			throw new Error("stubbed notarization rejected");
+		};
+		await assert.rejects(
+			notarizeArtifacts({ dist, log: () => {} }),
+			/stubbed notarization rejected/,
+		);
+		// Nothing after the submission ran: the image was not re-hashed, so its
+		// metadata still describes the bytes on disk rather than a staple that never
+		// happened.
+		assert.equal(readFileSync(ymlPath, "utf8"), preStapleYml);
+	} finally {
+		if (platform) Object.defineProperty(process, "platform", platform);
+		for (const [key, value] of Object.entries(savedEnv)) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+		delete globalThis.__loNotarizeCalls;
+		delete globalThis.__loNotarizeBehavior;
+	}
+
+	// A module resolution hook substitutes the notarizer for the child, because the
+	// shipped script imports it directly; no build step or source rewrite is
+	// involved, so the entrypoint under test is the file the release runs.
+	const hookDir = join(root, "hook");
+	mkdirSync(hookDir, { recursive: true });
+	const probeFile = join(root, "notarized-path.txt");
+	writeFileSync(
+		join(hookDir, "register.mjs"),
+		[
+			'import { register } from "node:module";',
+			// The step is darwin-only and this suite runs on Linux CI, so the platform
+			// it checks is satisfied rather than skipped. The bug is a path resolution
+			// mistake with nothing macOS about it: the submission never gets far enough
+			// for Apple to be involved, and the stub answers instead of the service.
+			'Object.defineProperty(process, "platform", { value: "darwin", configurable: true });',
+			'register("./resolve.mjs", import.meta.url);',
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "resolve.mjs"),
+		[
+			"export async function resolve(specifier, context, next) {",
+			'\tif (specifier === "@electron/notarize") {',
+			'\t\treturn { url: new URL("./stub.mjs", import.meta.url).href, shortCircuit: true };',
+			"\t}",
+			"\treturn next(specifier, context);",
+			"}",
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "stub.mjs"),
+		[
+			'import { writeFileSync } from "node:fs";',
+			"export async function notarize(opts) {",
+			"\twriteFileSync(process.env.LO_NOTARIZE_PROBE_FILE, opts.appPath);",
+			'\tthrow new Error("stubbed notarization rejected");',
+			"}",
+			"",
+		].join("\n"),
+	);
+
+	const result = spawnSync(
+		process.execPath,
+		[
+			"--import",
+			join(hookDir, "register.mjs"),
+			"scripts/notarize-artifacts.mjs",
+			"--dist",
+			relative(process.cwd(), dist),
+		],
+		{
+			cwd: process.cwd(),
+			encoding: "utf8",
+			env: {
+				...process.env,
+				NOTARIZE: "true",
+				APPLE_ID: "test@example.invalid",
+				APPLE_ID_PASSWORD: "test-app-specific-password",
+				APPLE_TEAM_ID: "TESTTEAM01",
+				LO_NOTARIZE_PROBE_FILE: probeFile,
+			},
+		},
+	);
+	assert.notEqual(result.status, 0, `expected a non-zero exit, got ${result.status}`);
+	assert.match(result.stderr, /Disk image notarization failed/);
+	assert.match(result.stderr, /stubbed notarization rejected/);
+	assert.equal(isAbsolute(readFileSync(probeFile, "utf8")), true);
+	assert.equal(readFileSync(probeFile, "utf8"), resolve(dist, imageName));
+});
+
+/**
  * The two markers a layout cannot answer, read from a prefix on disk.
  *
  * Both mirror `install_kind()` in `local_operator/update.py`: `INSTALLER` names
@@ -2443,7 +2908,7 @@ test("a version read that never answers is killed, not left running", () => {
 	const read = plan.script.match(/^bundle_version\(\) \{\n[\s\S]*?^\}$/m);
 	assert.ok(read, "bundle_version is in the generated script");
 	const substituted = read[0].replace(
-		/\/usr\/bin\/plutil -extract CFBundleShortVersionString raw -o - "\$_plist"/,
+		/"\$PLIST_READER" -extract CFBundleShortVersionString raw -o - "\$_plist"/,
 		`/bin/sleep ${hangSeconds}`,
 	);
 	assert.notEqual(substituted, read[0], "the reader was substituted");
