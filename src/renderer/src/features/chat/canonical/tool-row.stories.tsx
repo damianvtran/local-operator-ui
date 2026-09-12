@@ -591,6 +591,226 @@ export const TurnBoundaryAndWorkingLine: Story = {
 	),
 };
 
+/**
+ * The operator's alignment report, as one frame: prose between tool rows, and
+ * a final answer, against the ledger they are supposed to line up with.
+ *
+ * The subject is a pair of EDGES. Agent prose and a tool row are two registers
+ * of the same turn and sit in the same row content box, so a reader scanning
+ * the column sees one left rail or sees a mistake; `margin-inline: auto` on the
+ * answer gave them two, and a reading cap 62 characters wide stopped the prose
+ * hundreds of pixels short of the ledger's right edge on any comfortable
+ * window. The prose here is long enough to reach a cap if one is reintroduced,
+ * and there are rows above AND below it because the report named both cases
+ * ("text between tools as well as the agent responses").
+ *
+ * The user bubble is in the frame on purpose, as the control: it keeps its own
+ * narrower measure, and a change that widened it too would be visible here.
+ */
+export const ProseToolAlignment: Story = {
+	render: () => (
+		<Frame
+			height={320}
+			records={[
+				{
+					kind: "user",
+					id: "p0",
+					ts: TS,
+					text: "Why is the chat text indented differently from the tool rows?",
+					images: [],
+				},
+				tool({
+					id: "p1",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.05,
+				}),
+				{
+					kind: "assistant",
+					id: "p2",
+					ts: TS,
+					text: "The rendered answer was capped at a reading measure and then centred inside the row it owns, so it took a different left edge from the ledger below it and stopped well short of the same right edge.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "p3",
+					toolName: "grep",
+					args: { pattern: "lo-measured", path: "src" },
+					durationS: 0.12,
+				}),
+				tool({
+					id: "p4",
+					toolName: "edit",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.08,
+					added: 6,
+					removed: 4,
+				}),
+				{
+					kind: "assistant",
+					id: "p5",
+					ts: TS,
+					text: "Both registers now resolve against the row content box, so the answer opens on the same rail the tool names do and ends on the same right edge as their durations.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The gap between `message_start` and the first token, which is the state the
+ * transcript used to paint twice.
+ *
+ * The reducer opens an assistant record the moment the provider call starts, so
+ * for as long as the model is thinking there is a streaming record with no text
+ * in it. That record used to mint a row reading "Writing" directly above the
+ * working line, which already says `thinking` — two elements for one fact, and
+ * the redundant one sat in the answer's own register rather than on the ledger.
+ * The TUI has never had a second element here: its one `WorkingBlock` carries
+ * the whole phase.
+ *
+ * What this frame has to show after the fix is BOTH halves of the trade. No
+ * "Writing" row, and liveness still on screen — the working line is present,
+ * spinning, and naming the phase. A frame that lost the row and the signal
+ * together would be a regression, not a fix, so the story is deliberately
+ * `waiting` with a ledger the model has not written to yet.
+ */
+export const StreamingBeforeFirstToken: Story = {
+	render: () => (
+		<Frame
+			waiting
+			height={150}
+			records={[
+				tool({
+					id: "s1",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.05,
+				}),
+				// Streaming, no text: the model is on the wire. This is the record
+				// that used to paint a row of its own.
+				{
+					kind: "assistant",
+					id: "s2",
+					ts: TS,
+					text: "",
+					streaming: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The COMMON case for an agent answer: prose interleaved with a fenced code
+ * block, a table and a list, against the ledger rows that produced them.
+ *
+ * `branding.md` § 7 and the reading-measure comment in `markdown.css` both call
+ * mixed prose and code the common case rather than an edge case, and this
+ * change is precisely about what those blocks resolve against — so it is the
+ * surface that most needs a picture, and until design review round 1 (D4) it
+ * was the one with none. The plain-paragraph alignment frames cannot stand in
+ * for it: a `<pre>`, a `<table>` and a `<ul>` each have their own box model and
+ * their own history of escaping the measure.
+ *
+ * What this frame has to show is FOUR registers on ONE left rail — paragraph,
+ * code, table, list — all opening on the tool rows' rail and ending on their
+ * right edge, with nothing overflowing. Two prior findings live here and must
+ * stay fixed: applying the cap per-block gave each type step its own left edge
+ * (code review round 3, R1), and excluding `<pre>`/`<table>` from it left them
+ * on the column edge while the prose centred, showing four left edges in one
+ * message (design round 3, D13). Removing the cap is what makes all four agree
+ * structurally, and this is where that is checkable.
+ *
+ * The table is deliberately wide enough to use the room the removed cap gives
+ * back, since "the wider measure genuinely helps the table" is part of the
+ * trade this PR made.
+ */
+export const MixedProseCodeAndTables: Story = {
+	render: () => (
+		<Frame
+			// Sized to the content it holds: the four registers this frame exists
+			// to show run 688px at 1440, and a shorter frame scrolls the list off
+			// its own evidence.
+			height={700}
+			records={[
+				{
+					kind: "user",
+					id: "m0",
+					ts: TS,
+					text: "Which rule was capping the answer, and what did it measure?",
+					images: [],
+				},
+				tool({
+					id: "m1",
+					toolName: "grep",
+					args: { pattern: "max-width", path: "src/renderer/src/features" },
+					durationS: 0.09,
+				}),
+				{
+					kind: "assistant",
+					id: "m2",
+					ts: TS,
+					text: [
+						"One rule carried both halves of the report, and it lived on the rendered markdown root rather than on the column:",
+						"",
+						"```css",
+						".lo-measured .lo-markdown {",
+						"\tmax-width: 62ch;",
+						"\tmargin-inline: auto;",
+						"}",
+						"```",
+						"",
+						"Measured against the ledger row in the same turn, at the body step:",
+						"",
+						"| Viewport | Tool row | Agent prose, before | Left delta | Right delta |",
+						"| --- | --- | --- | --- | --- |",
+						"| 1024x620 | 102..962 | 258.6..805.4 | 156.6 | 156.6 |",
+						"| 1440x900 | 310..1170 | 466.6..1013.4 | 156.6 | 156.6 |",
+						"",
+						"The consequences were the ones the report named:",
+						"",
+						"- `margin-inline: auto` centred the answer inside the row it owns, so the column showed two left rails instead of one.",
+						"- `62ch` resolved to 546.7px, stopping the prose 313px short of the ledger's right edge on any comfortable window.",
+						"- Both grew with the window rather than shrinking, because the cap binds harder the more room there is.",
+						"",
+						"The measure is now the user bubble's property alone.",
+					].join("\n"),
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "m3",
+					toolName: "edit",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.07,
+					added: 34,
+					removed: 11,
+				}),
+			]}
+		/>
+	),
+};
+
 /** Each label the working line can carry, without needing a live turn to reach it. */
 export const WorkingLabels: Story = {
 	render: () => (
