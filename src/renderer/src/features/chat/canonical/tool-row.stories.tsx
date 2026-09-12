@@ -24,7 +24,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
@@ -50,6 +50,9 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	images: [],
 	added: 0,
 	removed: 0,
+	// The result's own unified diff, or `null` when the call reported none —
+	// which is every row here except the diff-body story below.
+	diff: null,
 	stopped: false,
 	...over,
 });
@@ -70,6 +73,7 @@ const Frame = ({
 	width = "100%",
 	height = 300,
 	waiting = false,
+	openRows = false,
 }: {
 	records: TranscriptRecord[];
 	width?: string;
@@ -83,8 +87,28 @@ const Frame = ({
 	 */
 	height?: number;
 	waiting?: boolean;
+	/**
+	 * Click every row's trigger after mount, the way a reader opens one.
+	 *
+	 * The diff body lives behind the row's disclosure (§ 7.4: detail is one
+	 * click away, never shown by default) and `CanonicalTranscript` deliberately
+	 * takes no "start open" prop — the terminal's `open_on_settle` is a
+	 * bang-mode behaviour this app has not ported. So a story that needs to SHOW
+	 * a body reaches it the way a reader does, through the row's own trigger.
+	 * That is also what makes these frames evidence about the disclosure itself:
+	 * if the trigger stopped reaching the body, they would come out collapsed.
+	 */
+	openRows?: boolean;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!openRows) return;
+		for (const trigger of containerRef.current?.querySelectorAll<HTMLButtonElement>(
+			'button[aria-expanded="false"]',
+		) ?? []) {
+			trigger.click();
+		}
+	}, [openRows]);
 	return (
 		<div
 			className="overflow-y-auto p-6"
@@ -562,5 +586,296 @@ export const WorkingLabels: Story = {
 			    as the whole batch's activity is a claim the rows above contradict. */}
 			<WorkingLine activity="running 3 tools" phase="running" />
 		</div>
+	),
+};
+
+/* ------------------------------------------------------------------ diff body
+
+   The `write`/`edit` expansion: the tool result's own `difflib.unified_diff`
+   payload, painted with the terminal's ink law. What to look for, since these
+   frames are the design review:
+
+   - EVERY LINE CARRIES ITS KIND'S INK, the whole line and not just its marker:
+     a `+` line is green end to end, a `-` line red end to end, an `@@` header
+     muted, context dim. That is what the terminal's own loop does
+     (`_append_diff_body`, tool_card.py:2208-2220) — the reference's docstring
+     claims the marker-only version and describes something the loop never did.
+   - The `+N -M` pill on the collapsed row and the body underneath agree,
+     because both come from the same result payload rather than from two
+     renderings of the change.
+   - A row with NO diff keeps its arguments. `_diff_details` omits `diff`
+     entirely when nothing changed, and a row that reports no change is not the
+     same claim as a row whose diff was dropped. A row that FAILED keeps them
+     too: its arguments are the only account of what was attempted.
+   - The body is a sunken well with a hairline, the app's one machine-voice
+     idiom (`output-block.tsx`), NOT a new panel, card or border treatment.
+   - At `DIFF_EXPAND_MAX_LINES`, the marker under the 40th line says how many
+     were not shown — and it is PINNED to the well's foot, because a body whose
+     lines wrap is taller than the well's derived ceiling and would otherwise
+     scroll the marker out of sight. `diff-body-narrow-wrapped-cap` is the
+     frame that shows it; see that story. */
+
+/** A two-hunk edit: context, removals, additions, both hunk headers. */
+const MULTI_HUNK_EDIT = [
+	// The NAMELESS header pair `difflib` emits (empty filenames and no line
+	// terminator, so each line is exactly `--- ` / `+++ `). Stripped
+	// positionally by the block, never by pattern.
+	"--- ",
+	"+++ ",
+	"@@ -18,7 +18,8 @@ export function diffCounts(details: unknown) {",
+	" \tconst source = (details ?? {}) as Record<string, unknown>;",
+	"-\tconst count = (value: unknown) =>",
+	'-\t\ttypeof value === "number" && value > 0 ? value : 0;',
+	"+\tconst count = (value: unknown) =>",
+	'+\t\ttypeof value === "number" && Number.isInteger(value) && value > 0',
+	"+\t\t\t? value",
+	"+\t\t\t: 0;",
+	" \treturn { added: count(source.added), removed: count(source.removed) };",
+	" }",
+	"@@ -44,6 +45,7 @@ function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {",
+	" \tfor (let i = 0; i < a.length; i++) {",
+	"-\t\tif (a[i].id !== b[i].id) return false;",
+	"+\t\tif (a[i].id !== b[i].id) return false;",
+	"+\t\tif (a[i].data !== b[i].data) return false;",
+	// A removed line whose CONTENT begins `--`. At index 2 or beyond it is what
+	// proves the header strip is POSITIONAL: a filter over the body would delete
+	// a real removal here, silently, and the diff would claim a change that the
+	// reader cannot see.
+	"--- a SQL comment inside a Lua migration, still a removal",
+	" \t}",
+	" \treturn true;",
+	" }",
+];
+
+/** A new file: every line an addition, header pair included. */
+const NEW_FILE_WRITE = [
+	"--- ",
+	"+++ ",
+	"@@ -0,0 +1,6 @@",
+	"+# Release window notes",
+	"+",
+	"+A window is the PRs merged since the last tag.",
+	"+A latecomer rides the next window.",
+	"+",
+	"+One owner per window, and the owner picks one bump for all of it.",
+];
+
+/** Longer than the body cap, built the way `difflib` builds a big hunk. */
+const CAPPED_DIFF = [
+	"--- ",
+	"+++ ",
+	"@@ -1,3 +1,43 @@",
+	...Array.from(
+		{ length: 43 },
+		(_, i) => `+\trow ${i + 1} of a generated table`,
+	),
+];
+
+/**
+ * The cap AND long lines: 43 additions wide enough to wrap in a 560px column.
+ *
+ * Two different measurements, and this is the second one. The well's ceiling is
+ * derived for UNWRAPPED rows (41 x 17.4px plus padding = 740px) and holds there
+ * exactly; at 560px each of these lines takes two rows, so the body is roughly
+ * twice the clip and the marker row would sit far below the scroll edge if it
+ * were left in the flow. Measured in the live DOM at that width: 1415px of
+ * content (`scrollHeight`) in a 738px client box, so `maxScroll` is 677px, and
+ * in the flow the marker's own row starts 648.6px BELOW the clip. 677px is a
+ * different quantity — the distance the pin lifts that row, and it equals this
+ * body's `maxScroll` only because the well's 12px bottom padding is the pin's
+ * own `bottom: -12px` offset; pinned, the row's box top lands 709.61px inside
+ * the well. `sticky -bottom-3 pb-3 -mb-3` is what keeps the well honest at
+ * every scroll position. Plain `bottom-0` is the version `diff-block.tsx`
+ * rejects: it pins 13px higher, at the content-box edge, and the next diff row
+ * shows through the band underneath the marker, so the pin stops reading as the
+ * well's foot.
+ */
+const WRAPPED_CAPPED_DIFF = [
+	"--- ",
+	"+++ ",
+	"@@ -1,3 +1,43 @@",
+	...Array.from(
+		{ length: 43 },
+		(_, i) =>
+			`+\t\tconst row${i + 1} = { cells: ["alpha", "beta", "gamma"], width: "generated" };`,
+	),
+];
+
+/** At the cap in a WRAPPING column: 40 long lines shown, the rest announced. */
+const WRAPPED_CAPPED_WRITE_ROW = tool({
+	id: "tool:8",
+	toolName: "write",
+	args: { path: "scripts/wrapped-table.mjs", content: "…" },
+	durationS: 0.5,
+	added: 43,
+	removed: 0,
+	output: "Overwrote scripts/wrapped-table.mjs (4384 chars).",
+	diff: WRAPPED_CAPPED_DIFF,
+});
+
+/* One record per case, as constants so the narrow story below reuses the same
+   rows rather than a second copy of them that can drift. */
+
+const EDIT_ROW = tool({
+	id: "tool:1",
+	toolName: "edit",
+	args: {
+		path: "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+		hunks: [{ find: "const count", replace: "const count2" }],
+	},
+	durationS: 0.12,
+	added: 6,
+	removed: 3,
+	output:
+		"Edited src/renderer/src/features/chat/components/trace/tool-row-model.ts: 2 hunk(s), 2 replacement(s) applied.",
+	diff: MULTI_HUNK_EDIT,
+});
+
+const NEW_FILE_ROW = tool({
+	id: "tool:2",
+	toolName: "write",
+	args: {
+		path: "notes/release-window.md",
+		content:
+			"# Release window notes\n\nA window is the PRs merged since the last tag.",
+	},
+	durationS: 0.03,
+	added: 6,
+	removed: 0,
+	output: "Created notes/release-window.md (124 chars).",
+	diff: NEW_FILE_WRITE,
+});
+
+/** At the cap: 40 lines shown, the rest announced. The count is the number of
+    lines actually hidden rather than a rounded-off "more". */
+const CAPPED_WRITE_ROW = tool({
+	id: "tool:3",
+	toolName: "write",
+	args: { path: "scripts/generated-table.mjs", content: "…" },
+	durationS: 0.4,
+	added: 43,
+	removed: 0,
+	output: "Overwrote scripts/generated-table.mjs (1204 chars).",
+	diff: CAPPED_DIFF,
+});
+
+/** Unchanged content: the backend omits `diff` entirely, so the row falls back
+    to its arguments. Not the same statement as a row whose diff was dropped —
+    this call reported that nothing changed. */
+const UNCHANGED_WRITE_ROW = tool({
+	id: "tool:4",
+	toolName: "write",
+	args: {
+		path: "notes/release-window.md",
+		content:
+			"# Release window notes\n\nA window is the PRs merged since the last tag.",
+	},
+	durationS: 0.02,
+	added: 0,
+	removed: 0,
+	output: "Overwrote notes/release-window.md (124 chars).",
+	diff: null,
+});
+
+/** A failure: danger ground, cross glyph, and the error in full. No diff exists
+    on this path — `execute_write` returns before it has one — so the row keeps
+    both the arguments that were rejected and the reason. `isDiffBodyRow` guards
+    the same thing at the component: a row carrying BOTH keeps its arguments and
+    its error (`scripts/tool-row.test.mjs`). */
+const FAILED_WRITE_ROW = tool({
+	id: "tool:5",
+	toolName: "write",
+	args: { path: "", content: "x" },
+	durationS: 0.01,
+	isError: true,
+	output: "path must be a non-empty string",
+	diff: null,
+});
+
+/** Composing: the model is still dictating the arguments, so there is nothing
+    to summarise and no result to render. The byte count is the only honest
+    progress signal at this point. */
+const COMPOSING_WRITE_ROW = tool({
+	id: "tool:6",
+	toolName: "write",
+	phase: "composing",
+	argumentBytes: 1204,
+	args: null,
+	output: null,
+	durationS: null,
+	diff: null,
+});
+
+/** A neighbour that is not a diff row, in the same frame, so a regression in
+    the args/output path is visible here rather than only in `states`. */
+const BASH_ROW = tool({
+	id: "tool:7",
+	toolName: "bash",
+	args: { command: "git status --short" },
+	durationS: 0.07,
+	output: " M src/renderer/src/features/chat/canonical/tool-row.stories.tsx",
+	diff: null,
+});
+
+/**
+ * The diff body across its states, at a width where no line wraps.
+ *
+ * The frame height is the height this content MEASURES at 1280px wide — the
+ * `scrollHeight` of the frame's own scroll box, read out of the story in a real
+ * browser — because the frame IS the body: a shorter one photographs a scrolled
+ * corner of it and cuts the last three cases off the bottom.
+ */
+export const DiffBody: Story = {
+	render: () => (
+		<Frame
+			height={2110}
+			openRows
+			records={[
+				EDIT_ROW,
+				NEW_FILE_ROW,
+				CAPPED_WRITE_ROW,
+				UNCHANGED_WRITE_ROW,
+				FAILED_WRITE_ROW,
+				COMPOSING_WRITE_ROW,
+				BASH_ROW,
+			]}
+		/>
+	),
+};
+
+/**
+ * The same body in a 560px column: the wrap rule, not the layout.
+ *
+ * A diff line is long by nature, and the claim this frame exists for is that
+ * the body WRAPS rather than growing a horizontal scrollbar inside a
+ * disclosure — a scroll region the reader has to discover, at the width where
+ * the transcript is most likely to be narrow. Two cases rather than seven,
+ * because under wrapping each body grows and the honest picture of the rule is
+ * one you can see whole: the multi-hunk edit, and the capped body whose
+ * remaining scroll is now vertical only.
+ */
+export const DiffBodyNarrow: Story = {
+	render: () => (
+		<Frame height={1380} openRows records={[EDIT_ROW, CAPPED_WRITE_ROW]} />
+	),
+};
+
+/**
+ * The cap at a WRAPPING width, which is the shape that actually reaches it.
+ *
+ * The ceiling above is derived for unwrapped rows and is exactly right there;
+ * a 560px column turns 40 long lines into ~80 rows — 1415px of content in a
+ * 738px client box, measured — so the marker's own row begins 648.6px BELOW the
+ * clip, and the body would say "40 lines" while 40 rows stayed hidden. (677px is
+ * the distance the pin lifts that row, not the below-the-fold gap; the
+ * WRAPPED_CAPPED_DIFF fixture above carries both quantities and why they
+ * differ.) That is the defect class the 720px ceiling was fixed for. Here the
+ * frame is at rest, scrolled to the top, and the marker is pinned to the well's
+ * foot: if it ever stops being visible, this frame shows the well claiming
+ * completeness with lines missing, which is the whole point of it.
+ */
+export const DiffBodyNarrowWrappedCap: Story = {
+	render: () => (
+		<Frame height={830} openRows records={[WRAPPED_CAPPED_WRITE_ROW]} />
 	),
 };

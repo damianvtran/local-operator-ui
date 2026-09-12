@@ -16,18 +16,14 @@
 const { notarize } = require("@electron/notarize");
 const path = require("node:path");
 const fs = require("node:fs");
-const dotenv = require("dotenv");
-
-// Load environment variables from .env.build file
-const envPath = path.resolve(process.cwd(), ".env.build");
-if (fs.existsSync(envPath)) {
-	const envConfig = dotenv.parse(fs.readFileSync(envPath));
-	for (const key in envConfig) {
-		process.env[key] = envConfig[key];
-	}
-}
 
 module.exports = async (params) => {
+	// Load environment variables from .env.build, through the same loader the
+	// disk image hook uses so the two never read a different set of variables.
+	const { loadBuildEnv } = await import("./build-env.mjs");
+	const env = loadBuildEnv();
+	if (env.loaded) console.log(`Loaded build environment from ${env.path}`);
+
 	// Only notarize the app on macOS
 	if (process.platform !== "darwin") {
 		console.log("Skipping notarization: not macOS");

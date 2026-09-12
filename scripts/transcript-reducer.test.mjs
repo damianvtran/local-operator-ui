@@ -997,3 +997,294 @@ test("a running row carries the clock its duration cannot", () => {
 	assert.equal(done.startedAt, null, "the row stops counting");
 	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
 });
+
+/* ---------------------------------------------------------------------- *
+ * The write/edit diff body.
+ *
+ * `details = {path, added, removed, diff}` is the producer's own payload
+ * (`_diff_details`, tools/builtin.py:4863-4888), and this reducer is the only
+ * thing between it and the row that paints it. Two duties: get it off BOTH
+ * wire shapes, and never let a later frame take away a diff a row already
+ * showed — the live-event budget strips `details` from a later frame when a row
+ * exceeds its share, and an absent diff is not a claim that nothing changed.
+ * ---------------------------------------------------------------------- */
+
+/** The durable shape, taken verbatim from a real transcript row. */
+const REAL_EDIT_DIFF = [
+	"--- ",
+	"+++ ",
+	"@@ -5736,5 +5736,7 @@",
+	'             "ambiguous recipient rather than resolved."',
+	'-            "running. By default the message lands in the peer\'s mailbox",',
+	'+            "running; `lop sessions --all` also lists stored ones, and",',
+	"+            \"`target` also matches stored sessions by name.\",",
+	'             "is idle, so an idle peer responds right away.",',
+];
+
+test("a write's diff rides the live result onto the row", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-edit",
+			tool_name: "edit",
+			args: { path: "notes.md" },
+		},
+		1,
+	);
+	// Running: no result yet, so no diff. The row shows its arguments.
+	assert.equal(state.records[0].diff, null);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-edit",
+			tool_name: "edit",
+			result: {
+				content: [{ type: "text", text: "Edited notes.md" }],
+				details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+			},
+			duration_s: 0.12,
+		},
+		2,
+	);
+	const row = state.records.find((r) => r.kind === "tool");
+	assert.deepEqual(row.diff, REAL_EDIT_DIFF, "the live body is the payload");
+	assert.deepEqual([row.added, row.removed], [2, 1], "counters untouched");
+});
+
+test("a durable history row carries its diff, from provider_payload.details", () => {
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-edit",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-edit",
+					tool_name: "edit",
+					content: [{ text: "Edited notes.md", type: "text" }],
+					provider_payload: {
+						duration_s: 0.12,
+						details: {
+							path: "notes.md",
+							added: 2,
+							removed: 1,
+							diff: REAL_EDIT_DIFF,
+						},
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const row = state.records.find((r) => r.kind === "tool");
+	// The reload half. Without it a conversation read back from disk renders a
+	// write as its arguments — the whole new file content — while the same row
+	// showed the diff a moment before.
+	assert.deepEqual(row.diff, REAL_EDIT_DIFF);
+	assert.deepEqual([row.added, row.removed], [2, 1]);
+});
+
+test("an unchanged replay is the same state object, diff and all", () => {
+	const event = {
+		type: "tool_execution_end",
+		tool_call_id: "c-edit",
+		tool_name: "edit",
+		result: {
+			content: [{ type: "text", text: "Edited notes.md" }],
+			details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+		},
+		duration_s: 0.12,
+	};
+	const first = applyEvent(EMPTY_TRANSCRIPT, event, 1);
+	const before = first.records.find((r) => r.kind === "tool");
+	const second = applyEvent(first, event, 2);
+	// The callback re-sends the same event on every poll. `shallowEqual` compares
+	// by `!==`, so a per-frame array would report the row as changed and re-render
+	// it — and its 200-line body — on a surface that repaints per token.
+	assert.equal(second, first, "an identical replay is the same state object");
+	assert.equal(
+		second.records.find((r) => r.kind === "tool").diff,
+		before.diff,
+		"and the body keeps its reference",
+	);
+});
+
+test("a replayed frame without details does not erase a diff already shown", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-edit",
+			tool_name: "edit",
+			result: {
+				content: [{ type: "text", text: "Edited notes.md" }],
+				details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+			},
+			duration_s: 0.12,
+		},
+		1,
+	);
+	const before = state.records.find((r) => r.kind === "tool");
+	// The reconnect seed: the backend drops `details` from a live result whose
+	// row exceeds its share of the frame (`_bound_live_result_in_place`), so the
+	// same call arrives again with the whole payload stripped.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-edit",
+			tool_name: "edit",
+			result: { content: [{ type: "text", text: "Edited notes.md" }] },
+			duration_s: 0.12,
+		},
+		2,
+	);
+	const row = state.records.find((r) => r.kind === "tool");
+	assert.equal(row.diff, before.diff, "the body survives by reference");
+	// The COUNTERS do not, and that is this frame's pre-existing behaviour rather
+	// than something the body introduced: they are read straight from `details`
+	// (`diffCounts`), so a frame carrying no `details` reports zero — which the
+	// durable row that does carry them restores on the next history read. Pinned
+	// here so the asymmetry is visible instead of assumed away.
+	assert.deepEqual([row.added, row.removed], [0, 0]);
+});
+
+test("a durable row that dropped its diff leaves the live one in place", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-edit",
+			tool_name: "edit",
+			result: {
+				content: [{ type: "text", text: "Edited notes.md" }],
+				details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+			},
+			duration_s: 0.12,
+		},
+		1,
+	);
+	const live = state.records.find((r) => r.kind === "tool");
+	// The durable row of the same call, with no diff in its details — which is
+	// exactly what a *changed* diff would look like too, so the rule is about
+	// what an absent payload means rather than about which side wins.
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "t-edit",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-edit",
+					tool_name: "edit",
+					content: [{ text: "Edited notes.md", type: "text" }],
+					provider_payload: { duration_s: 0.12, details: { added: 2, removed: 1 } },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const rows = state.records.filter((r) => r.kind === "tool");
+	assert.equal(rows.length, 1, "the durable row replaces, never duplicates");
+	assert.equal(rows[0].diff, live.diff, "still the live array, by reference");
+});
+
+test("a replayed page keeps the diff array's identity", () => {
+	const page = {
+		entries: [
+			{
+				id: "t-edit",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-edit",
+					tool_name: "edit",
+					content: [{ text: "Edited notes.md", type: "text" }],
+					provider_payload: {
+						duration_s: 0.12,
+						details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const first = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	const before = first.records.find((r) => r.kind === "tool");
+	// The poll replays the same page. `shallowEqual` compares by `!==`, so a
+	// freshly built array of identical lines would report the row as changed and
+	// re-render it — and its 200-line body — on every delta of a surface that
+	// repaints per token.
+	const second = applyHistoryPage(first, page);
+	const after = second.records.find((r) => r.kind === "tool");
+	assert.equal(after.diff, before.diff, "the array is reused, not rebuilt");
+});
+
+test("a malformed diff payload degrades to no diff, never to a broken row", () => {
+	const durable = (details) => ({
+		entries: [
+			{
+				id: `t-${JSON.stringify(details)}`,
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: `c-${JSON.stringify(details)}`,
+					tool_name: "write",
+					content: [{ text: "ok", type: "text" }],
+					provider_payload: { duration_s: 0.1, details },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const shapes = [
+		// A string payload is TOLERATED at an untyped boundary, and it is not a
+		// shape any producer emits: all 9,501 real `details.diff` values found
+		// across the 1,166 stored transcripts this machine held on 2026-09-12 (a
+		// dated snapshot of a live store) are lists of strings, and the fold this
+		// used to credit with joining them copies each key through untouched
+		// (mobile/projection.py:284-288).
+		[{ added: 1, removed: 1, diff: "+a\n-b" }, ["+a", "-b"], [1, 1]],
+		// Members that are not strings are DROPPED, not stringified: `String({})`
+		// is "[object Object]", a line no producer ever wrote.
+		[{ added: 1, removed: 0, diff: [1, "+a", null, { b: 1 }] }, ["+a"], [1, 0]],
+		// All-malformed is the same statement as absent.
+		[{ added: 1, removed: 0, diff: [1, 2] }, null, [1, 0]],
+		[{ added: 1, removed: 0, diff: [] }, null, [1, 0]],
+		[{ added: 1, removed: 0, diff: "" }, null, [1, 0]],
+		[{ added: 0, removed: 0 }, null, [0, 0]],
+		[{ added: 1, removed: 0, diff: 42 }, null, [1, 0]],
+		[null, null, [0, 0]],
+	];
+	const counts = [];
+	for (const [details, expected] of shapes) {
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, durable(details));
+		const row = state.records.find((r) => r.kind === "tool");
+		assert.deepEqual(
+			row.diff,
+			expected,
+			`${JSON.stringify(details)} -> ${JSON.stringify(expected)}`,
+		);
+		counts.push([row.added, row.removed]);
+	}
+	// The counters keep their own contract while the body degrades: a malformed
+	// OR absent diff must not take the `+N/-N` pill down with it, and the pill
+	// must read the COUNTS rather than the diff's presence or absence. Compared
+	// against a literal pair per shape — an assertion that can fail, which the
+	// `counts.map((c) => c[0] >= 0)` this replaced could not (a non-negative
+	// number by construction, against a freshly built all-true array).
+	assert.deepEqual(
+		counts,
+		shapes.map(([, , pill]) => pill),
+	);
+});
