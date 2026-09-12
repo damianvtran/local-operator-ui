@@ -82,6 +82,7 @@ const {
 	readInstallIdentity,
 	resolveCommandPath,
 	watchdogIsOurs,
+	watchdogSignals,
 	watchdogSwapTarget,
 	writePendingInstallMarker,
 } = install;
@@ -519,14 +520,19 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 
 	// No name probe survives in the executable part of the script (the comments
 	// mention pgrep to explain why it is gone), and both real signals are in it:
-	// the app's own pid, and the job label.
+	// the app's own pid, and the job label - asked of the probe the plan resolved
+	// for the platform it is planned for, which on macOS is `launchctl`. Naming
+	// the command in the script is what made the darwin branch unassertable off a
+	// Mac and what let the swap-landed case pass here and fail on ubuntu-latest.
 	const code = plan.script
 		.split("\n")
 		.filter((line) => !line.trimStart().startsWith("#"))
 		.join("\n");
 	assert.doesNotMatch(code, /pgrep/);
 	assert.match(code, /kill -0 "\$APP_PID"/);
-	assert.match(code, /launchctl list "\$SHIPIT_JOB"/);
+	assert.match(code, /"\$SHIPIT_PROBE" list "\$SHIPIT_JOB"/);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_SHIPIT_PROBE, "launchctl");
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_PLIST_READER, "/usr/bin/plutil");
 
 	// The relaunch attempt is not conditional on reaching the end of a wait: the
 	// deadline path falls through to it (review Q1), and the decision it waits on
@@ -536,8 +542,9 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(plan.script, /open -a "\$BUNDLE"/);
 	assert.match(plan.script, new RegExp(WATCHDOG_TOKEN));
 	// The on-disk half of the decision: the version in the target bundle's own
-	// Info.plist, read with plutil rather than through a preference domain.
-	assert.match(plan.script, /plutil -extract CFBundleShortVersionString raw/);
+	// Info.plist, read by the platform's plist reader (`plutil` on macOS) rather
+	// than through a preference domain.
+	assert.match(plan.script, /"\$PLIST_READER" -extract CFBundleShortVersionString raw/);
 	assert.match(plan.script, /LO_UPDATE_WATCHDOG_TARGET_VERSION/);
 	/*
 	 * And that read is bounded, because it runs inside the poll loop: an
@@ -651,6 +658,24 @@ function runWatchdog({ plan, binDir }) {
 }
 
 /**
+ * Whether the watchdog's own process group has been vacated.
+ *
+ * `runWatchdog` spawns the script detached, so it leads its own group and
+ * anything it starts - the relaunch, a backgrounded read - is a member. 
+ * `kill(-pgid, 0)` raises ESRCH on an empty group, which is the check the branch
+ * with no signals needs: its only route to a relaunch is the bound, and a bound
+ * that leaves a process behind is the one thing that branch could add.
+ */
+function processGroupIsEmpty(pid) {
+	try {
+		process.kill(-pid, 0);
+		return false;
+	} catch (error) {
+		return error.code === "ESRCH";
+	}
+}
+
+/**
  * A fixture "app" bundle plus the two commands the watchdog shells out to.
  *
  * The bundle carries a real `Info.plist` because the swap's own state is read
@@ -691,12 +716,49 @@ function makeWatchdogFixture(dir, version = "0.17.0") {
 		`#!/bin/sh\nif [ "$1" = "list" ]; then\n\tif [ -f "${stateFile}" ]; then exit 0; fi\n\texit 113\nfi\nexit 0\n`,
 		"utf8",
 	);
-	spawnSync("/bin/chmod", ["+x", openShim, launchctlShim, executable]);
+	/*
+	 * The plist reader, in the shape the script invokes it: `-extract
+	 * CFBundleShortVersionString raw -o - <plist>`.
+	 *
+	 * Substituted rather than used for real, for the same reason `launchctl` is:
+	 * the shipped one is `/usr/bin/plutil`, an absolute path that does not exist
+	 * off macOS, and a probe a test cannot install is not one the script's
+	 * behaviour can be asserted against. Taking it from the host is how the
+	 * swap-landed case came to assert a macOS-only early exit on ubuntu-latest.
+	 * The tags are stripped so the same shim reads the fixture's plist whether the
+	 * key and its string share a line or not, and an invocation the script does
+	 * not make is refused rather than answered.
+	 */
+	const plistReaderShim = join(binDir, "plutil");
+	writeFileSync(
+		plistReaderShim,
+		`#!/bin/sh
+case "$*" in
+	*"-extract CFBundleShortVersionString raw"*) ;;
+	*) echo "unexpected plutil invocation: $*" >&2; exit 1 ;;
+esac
+plist=""
+for arg in "$@"; do plist="$arg"; done
+[ -n "$plist" ] && [ -r "$plist" ] || exit 1
+tr -d '\\n\\t' < "$plist" | sed -n 's|.*<key>CFBundleShortVersionString</key><string>\\([^<]*\\)</string>.*|\\1|p'
+`,
+		"utf8",
+	);
+	spawnSync("/bin/chmod", [
+		"+x",
+		openShim,
+		launchctlShim,
+		plistReaderShim,
+		executable,
+	]);
 
 	return {
 		bundle,
 		binDir,
 		stateFile,
+		// Both probes, so the darwin plan can be driven on any host: the script
+		// calls the command the plan names, and the plan is the platform's.
+		probes: { jobProbe: launchctlShim, plistReader: plistReaderShim },
 		launchLog: log,
 		setVersion,
 		launches: () =>
@@ -748,6 +810,11 @@ test("the watchdog relaunches a real process tree and never exits without trying
 			executableName: "Fixture",
 			appPid: pid,
 			shipItJob: "com.local-operator.ShipIt",
+			// The darwin plan, with both probes pointed at the fixtures above: the
+			// branch under test is the platform's, and a test host has neither
+			// `launchctl`'s domain to ask nor a `plutil` to read with.
+			platform: "darwin",
+			signals: fixture.probes,
 			...fast,
 			...overrides,
 		});
@@ -835,6 +902,13 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 			appPid: pid,
 			shipItJob: "com.local-operator.ShipIt",
 			targetVersion: "0.18.0",
+			// The darwin plan, with both probes pointed at the fixtures: the swap
+			// this case waits on is read through the plist-reader shim, so the case
+			// asserts the branch wherever it runs instead of only where `plutil`
+			// happens to exist (which is how it passed on a Mac and failed on
+			// ubuntu-latest).
+			platform: "darwin",
+			signals: fixture.probes,
 			// A bound long enough that reaching it is distinguishable from leaving
 			// on the swap: a pass here cannot be a pass by timeout.
 			timeoutSeconds: 120,
@@ -948,6 +1022,91 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		assert.equal(await waitForLaunches(fixture, before + 1), true);
 		assert.ok(elapsed < 10000, `expected no appear window, took ${elapsed}ms`);
 	}
+});
+
+/**
+ * The branch for a platform with neither probe: the bound decides, and alone.
+ *
+ * Why this case is not decoration: the app's watchdog is macOS-only (its caller
+ * refuses to plan one anywhere else), but the script's two probes were not stated
+ * anywhere - they were whatever the host that generated the script happened to
+ * have. `plutil` exists only on macOS, so the swap-landed case above asserted an
+ * early exit that could not fire on the CI runner, and `main` went red on every
+ * push from the commit that added it (runs 34695505505, 34695566539, 34696129340,
+ * 34699012497: `expected the swap to end the wait, took 126265ms`). The fix is
+ * that the platform is in the plan (see `watchdogSignals`), and this is the other
+ * half of it: a plan for a platform without launchd or plutil must still behave,
+ * and must not read "cannot ask" as an answer.
+ *
+ * The fixture is in the shape that ends the wait in seconds on the darwin branch -
+ * the job's state file is loaded and the bundle already reports the target
+ * version - so a false early exit here is visible as one. Neither tool is
+ * provided to this run, and the assertions also pin that the script names
+ * neither, so a later edit cannot quietly reintroduce a dependency on a tool the
+ * platform lacks.
+ */
+test("without launchd or plutil the bound decides, and nothing is left behind", async () => {
+	const dir = tempDir("lo-watchdog-nosignals-");
+	const fixture = makeWatchdogFixture(dir, "0.18.0");
+	const planFor = (pid, overrides = {}) =>
+		buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: pid,
+			shipItJob: "com.local-operator.ShipIt",
+			targetVersion: "0.18.0",
+			timeoutSeconds: 4,
+			intervalSeconds: 1,
+			settleSeconds: 1,
+			appearSeconds: 1,
+			platform: "linux",
+			...overrides,
+		});
+
+	// The resolution itself: a platform with neither tool gets neither probe.
+	assert.deepEqual(watchdogSignals("linux"), {
+		jobProbe: null,
+		plistReader: null,
+	});
+	const shape = planFor(1);
+	assert.equal(shape.env.LO_UPDATE_WATCHDOG_SHIPIT_PROBE, "");
+	assert.equal(shape.env.LO_UPDATE_WATCHDOG_PLIST_READER, "");
+	const code = shape.script
+		.split("\n")
+		.filter((line) => !line.trimStart().startsWith("#"))
+		.join("\n");
+	assert.doesNotMatch(code, /launchctl|plutil/);
+
+	// Both signals that end the wait early on macOS are in their "decided" shape
+	// here - the job is loaded, the bundle reports the target version - and still
+	// cannot end it: the bound is the only decider left, so the app comes back at
+	// ~4s plus the settle, never before.
+	writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+	const app = startProcess("/bin/sleep", ["30"]);
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+	const started = Date.now();
+	app.kill();
+	const result = await watchdog.exit;
+	const elapsed = Date.now() - started;
+	assert.equal(result.code, 0);
+	assert.ok(
+		elapsed >= 3000,
+		`expected the bound to decide, exited after ${elapsed}ms`,
+	);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	assert.equal(fixture.launches().length, before + 1);
+	assert.match(fixture.launches()[before], /open -a /);
+	// And nothing of the watchdog's own is left running: the script is spawned
+	// detached, so it leads its own process group, and an empty group is the whole
+	// of what "no orphan" means here.
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	assert.equal(
+		processGroupIsEmpty(watchdog.child.pid),
+		true,
+		"the watchdog left a process in its own group",
+	);
+	rmSync(fixture.stateFile, { force: true });
 });
 
 /**
@@ -2749,7 +2908,7 @@ test("a version read that never answers is killed, not left running", () => {
 	const read = plan.script.match(/^bundle_version\(\) \{\n[\s\S]*?^\}$/m);
 	assert.ok(read, "bundle_version is in the generated script");
 	const substituted = read[0].replace(
-		/\/usr\/bin\/plutil -extract CFBundleShortVersionString raw -o - "\$_plist"/,
+		/"\$PLIST_READER" -extract CFBundleShortVersionString raw -o - "\$_plist"/,
 		`/bin/sleep ${hangSeconds}`,
 	);
 	assert.notEqual(substituted, read[0], "the reader was substituted");

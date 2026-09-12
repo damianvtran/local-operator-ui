@@ -74,11 +74,12 @@ export const WATCHDOG_TIMEOUT_SECONDS = 600;
 /**
  * How long the watchdog's on-disk version read may take before it is killed.
  *
- * The read is `plutil` on the target bundle's own Info.plist for every poll, and
- * the path is `/Applications` in every real layout - so a real read is
- * milliseconds and this bound only ever fires on a path whose mount has stopped
- * answering, where the alternative is a read that outlives the script's own
- * deadline and leaves the user with no app at all (review R17).
+ * The read is the plan's plist reader (`plutil`) on the target bundle's own
+ * Info.plist for every poll, and the path is `/Applications` in every real
+ * layout - so a real read is milliseconds and this bound only ever fires on a
+ * path whose mount has stopped answering, where the alternative is a read that
+ * outlives the script's own deadline and leaves the user with no app at all
+ * (review R17).
  */
 export const PLIST_READ_TIMEOUT_SECONDS = 5;
 
@@ -826,6 +827,12 @@ export type WatchdogPlan = {
  * before: `sh -c` puts the script in its own command line, and a script
  * carrying `/Applications/Local Operator.app/...` would show up in any process
  * listing of it.
+ *
+ * The two probes travel the same way, and they are the reason the plan carries a
+ * platform at all (`watchdogSignals`): both are macOS tools, so the script is
+ * generated for the platform it will run on rather than reading them off
+ * whichever host built it. Only the app calls this in production, on macOS, and
+ * it says so with `platform: "darwin"`.
  */
 /**
  * The version the watchdog's on-disk swap check may be handed, or null.
@@ -856,6 +863,39 @@ export function watchdogSwapTarget(input: {
 	return input.target;
 }
 
+export type WatchdogSignals = {
+	/** The command that asks launchd about a job by label, or null off macOS. */
+	jobProbe: string | null;
+	/** The command that reads a bundle's own Info.plist version, or null off macOS. */
+	plistReader: string | null;
+};
+
+/**
+ * The probes the watchdog script may use, from the platform it is planned for.
+ *
+ * Why the platform is carried in the plan rather than assumed: both signals the
+ * script waits on are macOS tools - launchd's `launchctl list <label>` and
+ * `/usr/bin/plutil` reading the bundle's own version - so a script generated on
+ * a host without them asks questions nothing can answer. That is not a
+ * hypothetical: the swap-landed case of the watchdog's own test asserted an
+ * early exit that could only fire where `plutil` exists, passed on the developer
+ * machine it was written on, and failed on `ubuntu-latest` on every push from
+ * the commit that added it (`expected the swap to end the wait, took 126265ms` -
+ * the read answered nothing on every poll, so the wait ran out its 120s bound).
+ * A test that reads its probe availability off its own host is not a test of the
+ * platform the app runs on.
+ *
+ * `null` means the platform has the tool nowhere, and the script treats it as an
+ * unavailable signal rather than as a negative answer: no job probe cannot mean
+ * "the job is not loaded", and no reader cannot mean "the swap has not landed".
+ * The bound is then the only decider, which still relaunches at the deadline and
+ * still never exits silently.
+ */
+export function watchdogSignals(platform: NodeJS.Platform): WatchdogSignals {
+	if (platform !== "darwin") return { jobProbe: null, plistReader: null };
+	return { jobProbe: "launchctl", plistReader: "/usr/bin/plutil" };
+}
+
 export function buildWatchdogPlan(input: {
 	appBundlePath: string;
 	executableName: string;
@@ -872,7 +912,25 @@ export function buildWatchdogPlan(input: {
 	appearSeconds?: number;
 	/** How long the on-disk version read may take before it is killed. */
 	plistReadTimeoutSeconds?: number;
+	/**
+	 * The platform the script is planned for. Defaults to `darwin`: this watchdog
+	 * exists for Squirrel.Mac's ShipIt and nothing else, and a caller that says
+	 * nothing gets the platform the feature is for.
+	 */
+	platform?: NodeJS.Platform;
+	/**
+	 * The probes to generate into the script, when the caller has its own.
+	 *
+	 * A seam, and the only one here: the darwin plan cannot be driven anywhere
+	 * without fixtures for both probes - `/usr/bin/plutil` does not exist off
+	 * macOS, and the real `launchctl` would ask the launchd domain of whoever runs
+	 * the test - so the caller can substitute the two commands and the darwin
+	 * branch is exercised on any host instead of only on a Mac. Production passes
+	 * neither this nor `platform` and gets `watchdogSignals("darwin")`.
+	 */
+	signals?: WatchdogSignals;
 }): WatchdogPlan {
+	const signals = input.signals ?? watchdogSignals(input.platform ?? "darwin");
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
 	const intervalSeconds = input.intervalSeconds ?? 3;
 	const settleSeconds = input.settleSeconds ?? 5;
@@ -925,13 +983,22 @@ BUNDLE="\${LO_UPDATE_WATCHDOG_APP_BUNDLE:-}"
 NAME="\${LO_UPDATE_WATCHDOG_APP_NAME:-}"
 SHIPIT_JOB="\${LO_UPDATE_WATCHDOG_SHIPIT_JOB:-}"
 TARGET_VERSION="\${LO_UPDATE_WATCHDOG_TARGET_VERSION:-}"
+# The two probes, from the platform the plan was built for. Empty means the
+# platform has no such tool and the signal is unavailable - not "the job is not
+# loaded" and not "the swap has not landed". shipit_loaded, swap_landed and
+# job_known each decline on it rather than answering, so a host without them
+# waits out the bound and still relaunches.
+SHIPIT_PROBE="\${LO_UPDATE_WATCHDOG_SHIPIT_PROBE:-}"
+PLIST_READER="\${LO_UPDATE_WATCHDOG_PLIST_READER:-}"
 if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 	exit 1
 fi
 now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
 # launchctl list <label> exits 113 when the job is not loaded, 0 when it is.
-shipit_loaded() { [ -n "$SHIPIT_JOB" ] && launchctl list "$SHIPIT_JOB" >/dev/null 2>&1; }
+# With no probe there is no launchd to ask, and this answers "cannot ask" rather
+# than "not loaded": job_known below requires the probe for the same reason.
+shipit_loaded() { [ -n "$SHIPIT_PROBE" ] && [ -n "$SHIPIT_JOB" ] && "$SHIPIT_PROBE" list "$SHIPIT_JOB" >/dev/null 2>&1; }
 # (b), the swap's own state: is the app at the target path AT OR BEYOND the
 # version this update was for? plutil rather than \`defaults read\`, which reads
 # through a preference domain and can answer from a stale cache; a half-written
@@ -1009,15 +1076,15 @@ bundle_version() {
 	_stamp="$$-$(now)"
 	_out="\${TMPDIR:-/tmp}/lo-update-watchdog-version-$_stamp.out"
 	# The pid the bound kills IS the reader: \`exec\` replaces the subshell rather
-	# than wrapping plutil, so nothing is reparented when the kill lands. The
+	# than wrapping the reader, so nothing is reparented when the kill lands. The
 	# previous shape killed a subshell whose whole job was to drop a completion
 	# marker, and the read that subshell had forked was left blocked under pid 1 -
 	# one more per poll, for as long as the mount stayed dead (review round 4,
-	# Q7). Completion is read off the answer itself instead: plutil writes the
+	# Q7). Completion is read off the answer itself instead: the reader writes the
 	# version into this file and nothing else does, so bytes in it mean the read
 	# answered, and a read that fails writes none and is stopped by the same
 	# deadline.
-	( exec /usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$_plist" ) >"$_out" 2>/dev/null &
+	( exec "$PLIST_READER" -extract CFBundleShortVersionString raw -o - "$_plist" ) >"$_out" 2>/dev/null &
 	_read_pid=$!
 	_waited=0
 	while [ ! -s "$_out" ]; do
@@ -1035,6 +1102,11 @@ bundle_version() {
 	printf '%s\n' "$_version"
 }
 swap_landed() {
+	# A platform with no plist reader cannot ask this question at all, and the
+	# answer it must not give is "not landed yet" either: the signal is declined
+	# and the job and the bound decide instead. \`bundle_version\` is only ever
+	# reached from here.
+	[ -n "$PLIST_READER" ] || return 1
 	[ -n "$TARGET_VERSION" ] || return 1
 	installed=$(bundle_version) || return 1
 	installed=\${installed#v}
@@ -1044,7 +1116,7 @@ swap_landed() {
 	version_at_least "$installed" "$target"
 }
 job_known=0
-[ -n "$SHIPIT_JOB" ] && job_known=1
+[ -n "$SHIPIT_PROBE" ] && [ -n "$SHIPIT_JOB" ] && job_known=1
 decided() {
 	if [ "$job_known" -eq 1 ] && ! shipit_loaded; then return 0; fi
 	swap_landed && return 0
@@ -1095,6 +1167,10 @@ exit 0
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,
 			LO_UPDATE_WATCHDOG_SHIPIT_JOB: input.shipItJob ?? "",
 			LO_UPDATE_WATCHDOG_TARGET_VERSION: input.targetVersion ?? "",
+			// Empty off macOS, which the script reads as "this signal is not available
+			// here" rather than as a negative answer (see `watchdogSignals`).
+			LO_UPDATE_WATCHDOG_SHIPIT_PROBE: signals.jobProbe ?? "",
+			LO_UPDATE_WATCHDOG_PLIST_READER: signals.plistReader ?? "",
 		},
 		timeoutSeconds,
 	};
