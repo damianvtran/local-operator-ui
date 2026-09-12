@@ -12,7 +12,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
@@ -123,6 +123,70 @@ const {
 	rewriteUpdateMetadata,
 	updateUpdateYmlEntry,
 } = await import("./notarize-artifacts.mjs");
+
+/**
+ * The disk image step's real code, bundled with the notarizer stubbed.
+ *
+ * The property this covers is the path the step hands the notarizer, and only a
+ * stub can read it: the real `@electron/notarize` uploads to Apple, which no
+ * developer machine and no CI runner can reach, so a wrong path there is a
+ * failure that exists only in a release build. 0.17.2 shipped a relative one -
+ * `@electron/notarize`'s `lib/notarytool.js` does `path.resolve(dir, opts.appPath)`
+ * for a `.dmg`/`.pkg` with `dir` its own submission temp dir, so the image was
+ * looked for inside that temp dir and the step reported "The file couldn't be
+ * opened because it doesn't exist".
+ *
+ * Bundled rather than imported so the fixture can be substituted, the same
+ * mechanic the Electron fixture below uses. Everything else in the bundle is the
+ * shipped module: the discovery, the absolute-path resolution, the submit →
+ * staple → re-hash → rewrite ordering, and the failure handling.
+ */
+const notarizeStepBundle = await build({
+	stdin: {
+		contents: 'export * from "./scripts/notarize-artifacts.mjs";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	// `build-env.mjs` reaches dotenv, a CJS dependency esbuild cannot `require`
+	// from ESM output without the shim the Electron fixture also carries.
+	banner: {
+		js: 'import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+	},
+	plugins: [
+		{
+			name: "notarize-fixture",
+			setup(builder) {
+				builder.onResolve({ filter: /^@electron\/notarize$/ }, () => ({
+					path: "@electron/notarize",
+					namespace: "notarize-fixture",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "notarize-fixture" },
+					() => ({
+						loader: "js",
+						contents: `
+							export const notarize = async (opts) => {
+								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool });
+								const behavior = globalThis.__loNotarizeBehavior;
+								if (behavior) await behavior(opts);
+							};
+						`,
+					}),
+				);
+			},
+		},
+	],
+});
+const notarizeStepDir = mkdtempSync(join(tmpdir(), "lo-notarize-step-"));
+const notarizeStepFile = join(notarizeStepDir, "notarize-artifacts.mjs");
+writeFileSync(notarizeStepFile, notarizeStepBundle.outputFiles[0].text);
+// Imported from a real path rather than a `data:` URL: the banner shim needs an
+// `import.meta.url` that `createRequire` can resolve.
+const { notarizeArtifacts } = await import(notarizeStepFile);
+rmSync(notarizeStepDir, { recursive: true, force: true });
 const {
 	artifactChecks,
 	discoverApp,
@@ -1874,6 +1938,248 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 			}),
 		/no update metadata was found to re-hash it in/,
 	);
+});
+
+/**
+ * The notarizer is handed an absolute path, whatever form `--dist` took.
+ *
+ * Why absolute is the assertion rather than "the file exists": the failure this
+ * covers only shows up inside `@electron/notarize`, which resolves the path
+ * against its own temp dir before uploading, so a relative path that is perfectly
+ * valid from the working directory is invalid by the time it is used. 0.17.2's
+ * publish run failed in the submission step with "The file couldn't be opened
+ * because it doesn't exist" for a path under `T/electron-notarize-*`, which is
+ * that temp dir - the image was never there. `--dist dist` is the default and
+ * what CI runs, so the relative case is the one that shipped the bug; the
+ * absolute case and a relative entry in `artifactPaths` are here because the two
+ * spellings of the same directory must not disagree.
+ *
+ * The image is real (a few bytes) and the metadata is real, because the step
+ * hashes and rewrites them after the staple; only the notarizer is a stub.
+ */
+test("the notarization step hands the notarizer an absolute path", async () => {
+	const root = tempDir("lo-notarize-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	const imageName = "local-operator-ui-0.18.0-universal.dmg";
+	const imagePath = join(dist, imageName);
+	writeFileSync(imagePath, "disk image");
+	const ymlPath = join(dist, "latest-mac.yml");
+	writeFileSync(
+		ymlPath,
+		[
+			"version: 0.18.0",
+			"files:",
+			`  - url: ${imageName}`,
+			"    sha512: PRE_STAPLE",
+			"    size: 10",
+			"",
+		].join("\n"),
+		"utf8",
+	);
+
+	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	const savedEnv = {
+		NOTARIZE: process.env.NOTARIZE,
+		APPLE_ID: process.env.APPLE_ID,
+		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
+		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+	};
+	try {
+		// The step is darwin-only and `test:desktop` runs on Linux CI, but the bug
+		// is a path resolution mistake with nothing macOS about it, so the platform
+		// check is satisfied rather than skipped. Restored in the `finally`.
+		Object.defineProperty(process, "platform", {
+			value: "darwin",
+			configurable: true,
+		});
+		process.env.NOTARIZE = "true";
+		process.env.APPLE_ID = "test@example.invalid";
+		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
+		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		globalThis.__loNotarizeCalls = [];
+		delete globalThis.__loNotarizeBehavior;
+
+		// The default CI invocation: `--dist` relative to the working directory.
+		const relativeDist = relative(process.cwd(), dist);
+		assert.equal(isAbsolute(relativeDist), false, relativeDist);
+		await notarizeArtifacts({ dist: relativeDist, log: () => {} });
+		assert.equal(globalThis.__loNotarizeCalls.length, 1);
+		assert.equal(globalThis.__loNotarizeCalls[0].tool, "notarytool");
+		assert.equal(
+			isAbsolute(globalThis.__loNotarizeCalls[0].appPath),
+			true,
+			`a relative --dist reached the notarizer as ${globalThis.__loNotarizeCalls[0].appPath}`,
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appPath, resolve(dist, imageName));
+		// The staple, hash and rewrite all finished on that same file: a wrong path
+		// here would have thrown before the rewrite, leaving the pre-staple hash.
+		assert.match(readFileSync(ymlPath, "utf8"), /sha512: [A-Za-z0-9+/=]{16}/);
+		assert.equal(readFileSync(ymlPath, "utf8").includes("PRE_STAPLE"), false);
+
+		// An absolute `--dist`, and a relative entry in `artifactPaths`, resolve to
+		// the same absolute image.
+		for (const invocation of [
+			{ dist },
+			{ dist, artifactPaths: [relative(process.cwd(), imagePath)] },
+		]) {
+			globalThis.__loNotarizeCalls.length = 0;
+			await notarizeArtifacts({ ...invocation, log: () => {} });
+			assert.equal(globalThis.__loNotarizeCalls.length, 1);
+			assert.equal(globalThis.__loNotarizeCalls[0].appPath, resolve(imagePath));
+		}
+	} finally {
+		if (platform) Object.defineProperty(process, "platform", platform);
+		for (const [key, value] of Object.entries(savedEnv)) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+		delete globalThis.__loNotarizeCalls;
+		delete globalThis.__loNotarizeBehavior;
+	}
+});
+
+/**
+ * A rejected notarization fails the step, and the CLI exits non-zero.
+ *
+ * The release that hit this bug reported "Disk image notarization failed" and
+ * failed the job, so the loud half is not the regression - it is the property the
+ * fix must not trade away, and the reason it is asserted through the real
+ * entrypoint (a child process running the shipped script with the notarizer
+ * stubbed by a module resolution hook) rather than only through the exported
+ * function: a catch added around the submission later would leave the first
+ * assertion green and turn this step into a silent no-op that ships an
+ * unnotarized image.
+ *
+ * The stub also records the path it was handed, so this doubles as a check that
+ * the relative `--dist` the CI invocation uses reaches the notarizer absolute on
+ * the real command line.
+ */
+test("a rejected notarization fails the step and exits non-zero", async () => {
+	const root = tempDir("lo-notarize-fail-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	const imageName = "local-operator-ui-0.18.0-universal.dmg";
+	writeFileSync(join(dist, imageName), "disk image");
+	const ymlPath = join(dist, "latest-mac.yml");
+	const preStapleYml = [
+		"version: 0.18.0",
+		"files:",
+		`  - url: ${imageName}`,
+		"    sha512: PRE_STAPLE",
+		"    size: 10",
+		"",
+	].join("\n");
+	writeFileSync(ymlPath, preStapleYml, "utf8");
+
+	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	const savedEnv = {
+		NOTARIZE: process.env.NOTARIZE,
+		APPLE_ID: process.env.APPLE_ID,
+		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
+		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+	};
+	try {
+		Object.defineProperty(process, "platform", {
+			value: "darwin",
+			configurable: true,
+		});
+		process.env.NOTARIZE = "true";
+		process.env.APPLE_ID = "test@example.invalid";
+		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
+		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		globalThis.__loNotarizeCalls = [];
+		globalThis.__loNotarizeBehavior = async () => {
+			throw new Error("stubbed notarization rejected");
+		};
+		await assert.rejects(
+			notarizeArtifacts({ dist, log: () => {} }),
+			/stubbed notarization rejected/,
+		);
+		// Nothing after the submission ran: the image was not re-hashed, so its
+		// metadata still describes the bytes on disk rather than a staple that never
+		// happened.
+		assert.equal(readFileSync(ymlPath, "utf8"), preStapleYml);
+	} finally {
+		if (platform) Object.defineProperty(process, "platform", platform);
+		for (const [key, value] of Object.entries(savedEnv)) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+		delete globalThis.__loNotarizeCalls;
+		delete globalThis.__loNotarizeBehavior;
+	}
+
+	// A module resolution hook substitutes the notarizer for the child, because the
+	// shipped script imports it directly; no build step or source rewrite is
+	// involved, so the entrypoint under test is the file the release runs.
+	const hookDir = join(root, "hook");
+	mkdirSync(hookDir, { recursive: true });
+	const probeFile = join(root, "notarized-path.txt");
+	writeFileSync(
+		join(hookDir, "register.mjs"),
+		[
+			'import { register } from "node:module";',
+			// The step is darwin-only and this suite runs on Linux CI, so the platform
+			// it checks is satisfied rather than skipped. The bug is a path resolution
+			// mistake with nothing macOS about it: the submission never gets far enough
+			// for Apple to be involved, and the stub answers instead of the service.
+			'Object.defineProperty(process, "platform", { value: "darwin", configurable: true });',
+			'register("./resolve.mjs", import.meta.url);',
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "resolve.mjs"),
+		[
+			"export async function resolve(specifier, context, next) {",
+			'\tif (specifier === "@electron/notarize") {',
+			'\t\treturn { url: new URL("./stub.mjs", import.meta.url).href, shortCircuit: true };',
+			"\t}",
+			"\treturn next(specifier, context);",
+			"}",
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "stub.mjs"),
+		[
+			'import { writeFileSync } from "node:fs";',
+			"export async function notarize(opts) {",
+			"\twriteFileSync(process.env.LO_NOTARIZE_PROBE_FILE, opts.appPath);",
+			'\tthrow new Error("stubbed notarization rejected");',
+			"}",
+			"",
+		].join("\n"),
+	);
+
+	const result = spawnSync(
+		process.execPath,
+		[
+			"--import",
+			join(hookDir, "register.mjs"),
+			"scripts/notarize-artifacts.mjs",
+			"--dist",
+			relative(process.cwd(), dist),
+		],
+		{
+			cwd: process.cwd(),
+			encoding: "utf8",
+			env: {
+				...process.env,
+				NOTARIZE: "true",
+				APPLE_ID: "test@example.invalid",
+				APPLE_ID_PASSWORD: "test-app-specific-password",
+				APPLE_TEAM_ID: "TESTTEAM01",
+				LO_NOTARIZE_PROBE_FILE: probeFile,
+			},
+		},
+	);
+	assert.notEqual(result.status, 0, `expected a non-zero exit, got ${result.status}`);
+	assert.match(result.stderr, /Disk image notarization failed/);
+	assert.match(result.stderr, /stubbed notarization rejected/);
+	assert.equal(isAbsolute(readFileSync(probeFile, "utf8")), true);
+	assert.equal(readFileSync(probeFile, "utf8"), resolve(dist, imageName));
 });
 
 /**
