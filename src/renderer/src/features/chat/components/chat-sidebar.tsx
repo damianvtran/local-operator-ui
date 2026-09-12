@@ -220,8 +220,17 @@ export function ChatSidebar({
 	 * non-empty, so the sentence fired on every keystroke of a word).
 	 */
 	const answered = hitsAnswerQuery(search.data, query);
+	// `!search.isError`: a FAILED search never produces an answer, so without this
+	// term `awaiting` stays true forever and `Searching conversations…` sits under
+	// the failure notice that says the search is unavailable — the panel claiming
+	// to be looking while telling the user it cannot look (design round 3, D16).
+	// The notice is the whole truth in that state, and nothing else should speak.
 	const awaiting =
-		Boolean(query.trim()) && ready && searchSupported && !answered;
+		Boolean(query.trim()) &&
+		ready &&
+		searchSupported &&
+		!search.isError &&
+		!answered;
 	/*
 	 * The mark explaining a row is a trailing slot OUTSIDE the truncating title
 	 * span, so the title truncates and the mark cannot be clipped away — with a
@@ -271,50 +280,64 @@ export function ChatSidebar({
 					? "page"
 					: undefined
 			}
-			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${row.attention?.unseen ? ", unread" : ""}`}
+			title={`${row.title || "Untitled chat"}${bindingName(row) && !conversationMatches.has(row.session_id) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${row.attention?.unseen ? ", unread" : ""}`}
 			onClick={() => onSelectConversation(row.session_id)}
 		>
 			<Status row={row} />
+			{/* The title is the ONLY thing that truncates, and everything after it
+			    is a `shrink-0` slot that holds its width. That is the structural fix
+			    for the two artifacts the earlier layouts produced, and it replaces
+			    the atomic-inline-box workaround, which only traded one for the
+			    other:
+
+			    - In one truncating span (the shipped layout, and this PR until round
+			      3) the ellipsis could land INSIDE a qualifier, so the row read
+			      `Refactor the loader ·…` — an orphan separator sharing its glyph
+			      with the mark (design round 2, D10).
+			    - Making the qualifier atomic stopped the orphan but made it
+			      all-or-nothing: on a marked row it vanished entirely while the
+			      ACCESSIBLE NAME still announced it, and the ellipsis sat after a
+			      complete title with empty space behind it — the row reporting its
+			      name was cut when the binding was what disappeared (design round 3,
+			      D17).
+
+			    With the slots outside the truncating element no qualifier is ever
+			    half-rendered, the ellipsis always refers to the title, and the
+			    accessible name is built from the same predicate as the pixels. */}
 			<span className="min-w-0 flex-1 truncate">
 				{row.title || "Untitled chat"}
-				{/* In a flat list nothing else names the profile answering, so two
-				    untitled chats on different agents were indistinguishable. Nested
-				    rows already inherit the identity from their parent. */}
-				{!nested && bindingName(row) && (
-					/* `inline-block` is load-bearing, not styling: it makes the
-					   qualifier an ATOMIC inline box, which the line-breaking
-					   algorithm cannot split. Rendered as ordinary inline text the
-					   ellipsis could land between the `·` and the name, and the row
-					   read `Refactor the loader ·… · in conversation` — two middots,
-					   the first one an orphan that is the same glyph the mark uses,
-					   so a rendering artifact looked like a qualifier (design round
-					   2, D10, reproduced in both palettes). Atomic, the qualifier
-					   either fits or disappears whole. */
-					<span className="ml-1 inline-block text-meta text-ink-muted">
+			</span>
+			{/* In a flat list nothing else names the profile answering, so two
+			    untitled chats on different agents were indistinguishable. Nested
+			    rows already inherit the identity from their parent.
+
+			    Not on a row the conversation search found: such a row spends its
+			    trailing space on the reason it is in the results, and the two do not
+			    both fit in this panel — a title, `· coder` and `· in conversation`
+			    want ~243px of the ~179px a flat row has. The mark is why the row is
+			    on screen at all. The a11y `title` drops the binding in the same
+			    case, so nothing announces a qualifier the row does not draw. */}
+			{!nested &&
+				bindingName(row) &&
+				!conversationMatches.has(row.session_id) && (
+					<span className="ml-1 shrink-0 text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
 				)}
-				{unstarted.has(row.session_id) && (
-					<span className="ml-1 inline-block text-meta text-ink-muted">
-						· Not sent yet
-					</span>
-				)}
-			</span>
+			{unstarted.has(row.session_id) && (
+				<span className="ml-1 shrink-0 text-meta text-ink-muted">
+					· Not sent yet
+				</span>
+			)}
 			{/* Says WHY a row is in a filtered list when its visible text does not
-			    contain the query. Without it the filter reads as returning an
-			    arbitrary row, which is worse than no filter: the user cannot tell a
-			    real match from a bug.
-
-			    Outside the truncating span on purpose (see `markerColumn`), rendered
-			    in the same `· …` idiom and the same `text-meta text-ink-muted` roles
-			    as the `· coder` qualifier it sits beside, and in words rather than a
-			    glyph: the first attempt was the CLI's `”`, which measures 3.5 CSS px^2
-			    of ink 3.9px above the baseline and reads as punctuation noise next to
-			    a row whose whole point is that it does not visibly match (design round
-			    1, D2). The visible words are `aria-hidden` and the sentence is carried
-			    by the `sr-only` span after them, so a screen reader hears
-			    ", matched in conversation" once, in words, rather than punctuation
-			    followed by a sentence (D7). */}
+			    contain the query. Without it a row appears in a filtered list with
+			    nothing in common with the query, which is worse than no filter: the
+			    user cannot tell a real match from a bug. Rendered in the row's own
+			    `· …` idiom and roles rather than as a glyph, and in the trailing
+			    slot that cannot truncate (D1/D2), on the rows that carry it (D9),
+			    outside the title's truncating element (D10/D17). The visible words
+			    are `aria-hidden` and the sentence is carried by the `sr-only` span
+			    after them, so a screen reader hears it once, in words. */}
 			{conversationMatches.has(row.session_id) && (
 				<>
 					<span
@@ -842,11 +865,21 @@ export function ChatSidebar({
 							</section>
 						</>
 					)}
-					{!sessions.length && !loading && (
-						<p className="text-meta text-ink-muted">
-							No chats yet. Choose an agent, team or New chat.
-						</p>
-					)}
+					{/* A COLD-START sentence, not an empty-list one: it says the store
+					    holds no chats at all, so it must not appear beside rows. The
+					    catalogue being empty while `matching` is not is reachable now
+					    that a search hit for a session beyond this client's page is
+					    rendered as a row of its own (review round 2, R13 — this gate
+					    asked only about `sessions`, and a query was the other half of
+					    the claim). */}
+					{!sessions.length &&
+						!matching.length &&
+						!loading &&
+						!query.trim() && (
+							<p className="text-meta text-ink-muted">
+								No chats yet. Choose an agent, team or New chat.
+							</p>
+						)}
 					{truncated && (
 						<p className="text-meta text-ink-muted">
 							Showing up to 500 chats. Older chats remain available in the
