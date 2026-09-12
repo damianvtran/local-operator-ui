@@ -26,12 +26,15 @@
  *
  * ## What is NOT here
  *
- * The 62ch prose cap stays in `markdown.css`, on the `.lo-markdown` root
- * rather than on this container: the measure belongs to the rendered answer
- * (prose, headings, code and tables sharing ONE left edge — see the
- * reading-measure comment there), not to the column both the transcript and
- * the composer live in. This container's 900px is the room tables, code and
- * diagrams have to render INTO once the answer's own measure is taken.
+ * The 62ch cap stays in `markdown.css`, on the `.lo-markdown` root rather than
+ * on this container. It now applies to the USER bubble alone: agent output
+ * takes no cap at all, because it has to share the left edge and the width of
+ * the tool rows in the same turn — see that file's measure comment for the
+ * operator report and the numbers.
+ *
+ * So this 900px is the whole width the agent's answer resolves against, and
+ * the ledger resolves against it too. That is the alignment: one container
+ * measure, two registers, one pair of edges.
  */
 
 /**
