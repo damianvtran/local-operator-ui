@@ -53,12 +53,13 @@ const STATES: { state: OlderHistoryState; caption: string }[] = [
 const Ruled = ({
 	state,
 	caption,
-}: { state: OlderHistoryState; caption: string }) => (
+	width = "32rem",
+}: { state: OlderHistoryState; caption: string; width?: string }) => (
 	<div className="flex items-start gap-4">
 		<span className="w-64 shrink-0 pt-1 text-ink-muted text-meta">
 			{caption}
 		</span>
-		<div className="w-[32rem] border-hairline border-y">
+		<div className="border-hairline border-y" style={{ width }}>
 			<OlderHistorySlot
 				state={state}
 				hiddenRows={137}
@@ -78,6 +79,59 @@ export const EveryState: Story = {
 			{STATES.map(({ state, caption }) => (
 				<Ruled key={state} state={state} caption={caption} />
 			))}
+		</div>
+	),
+};
+
+/**
+ * The same five states at the app's OWN minimum content width.
+ *
+ * This board exists because `EveryState` renders at a single 32rem column, and
+ * that is why a wrapping failure state shipped: the failure copy has an
+ * intrinsic width of ~258px, so it fit at 512px and wrapped to two lines at
+ * 252px, measuring 34.78px inside a 28px box and crossing the row's own bottom
+ * rule.
+ *
+ * 252px is not a hypothetical. It is what the transcript's content box measures
+ * at the window's 800px minimum: 800 minus the 220px app rail, minus the chat
+ * list pane's 280px default, minus the transcript's `p-4` (32px) and the 16px
+ * its `scrollbar-gutter: stable both-edges` reserves. The chat column itself
+ * floors lower still (220px), and opening the canvas panel reaches these widths
+ * at any window size — so this is a width the app routinely has, not an edge.
+ *
+ * A reviewer should be able to SEE the invariant hold at the narrow measure
+ * rather than derive it from three constants, which is the difference between
+ * evidence and an assertion.
+ */
+export const AppMinimumWidth: Story = {
+	render: () => (
+		<div className="flex flex-col gap-6 bg-canvas p-8">
+			<p className="max-w-[46rem] text-ink-muted text-meta">
+				Rendered at 252px, the transcript's content box at the app's 800px
+				minimum window. Every state must keep its lower rule on the same
+				baseline as the others.
+			</p>
+			{STATES.map(({ state, caption }) => (
+				<Ruled
+					key={state}
+					state={state}
+					caption={caption}
+					width="252px"
+				/>
+			))}
+			<p className="max-w-[46rem] pt-2 text-ink-muted text-meta">
+				And at 220px, the chat column's own floor.
+			</p>
+			{STATES.filter((entry) => entry.state === "failed" || entry.state === "loading").map(
+				({ state, caption }) => (
+					<Ruled
+						key={`narrow-${state}`}
+						state={state}
+						caption={caption}
+						width="220px"
+					/>
+				),
+			)}
 		</div>
 	),
 };
