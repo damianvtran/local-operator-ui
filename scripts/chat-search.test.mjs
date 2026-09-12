@@ -151,6 +151,29 @@ test("rows of equal relevance keep the catalogue's order", () => {
 	);
 });
 
+test("a tie is broken by recency, including for a row the client cannot place", () => {
+	// `(tier, recency)` is the documented order, and a synthesized hit has no
+	// position in the input array to inherit — appending it made "newest first"
+	// false for exactly the rows the search added (review round 2, R12).
+	const rows = [
+		{ session_id: "aaaaaaaaaaaa", title: "Local, older", updated_at: 100 },
+	];
+	const withTime = (id, mtime) => ({ ...hit(id, SESSION_RANK_SOFT), mtime });
+	const outcome = searchChats(rows, "release-pod", [
+		withTime("dddddddddddd", 300),
+		withTime("aaaaaaaaaaaa", 100),
+		withTime("bbbbbbbbbbbb", 200),
+	]);
+
+	// The local row's own recency (100) sorts it below the two wire rows, whose
+	// mtimes come from the catalogue the backend read.
+	assert.deepEqual(
+		outcome.rows.map((entry) => entry.session_id),
+		["dddddddddddd", "bbbbbbbbbbbb", "aaaaaaaaaaaa"],
+	);
+	assert.deepEqual([...outcome.synthesized].sort(), ["bbbbbbbbbbbb", "dddddddddddd"]);
+});
+
 test("a search is case-insensitive and ignores surrounding space", () => {
 	const rows = [row("aaaaaaaaaaaa", "Retention Sweep Design")];
 	assert.equal(searchChats(rows, "  RETENTION  ", null).rows.length, 1);
@@ -161,16 +184,16 @@ test("only the answer to the query in the box is used", () => {
 
 	assert.equal(hitsAnswerQuery(answer, "retention"), true);
 	assert.equal(hitsAnswerQuery(answer, "  retention  "), true);
-	// The box has moved on by a keystroke while this answer was in flight. The
-	// answer is the same search over a prefix of what is now in the box, so it
-	// stays usable: refusing it would collapse the list to name matches on every
-	// keystroke and re-expand, a flicker that reads as a bug (review round 1, R2).
-	assert.equal(hitsAnswerQuery(answer, "retention sweep"), true);
-	// A DIFFERENT question is still refused — select-all and retype must never
-	// leave the previous query's hits filtering the new one.
+	// EXACT, and nothing looser. A prefix answer is the same search over an
+	// EARLIER question, and a short one is a LARGER question rather than a
+	// smaller one: what is cached for `a` every session containing the letter,
+	// which is a superset of the answer to `architect`. Accepting it under
+	// `architect` puts rows in the list the box's own search would not return,
+	// each marked as a conversation match, and `keepPreviousData` re-serves it
+	// for as long as the new answer is in flight (review round 2, R10). The
+	// panel names that window instead of filling it with stale hits.
+	assert.equal(hitsAnswerQuery(answer, "retention sweep"), false);
 	assert.equal(hitsAnswerQuery(answer, "kubernetes"), false);
-	// And so is an answer for a LONGER query, which is what backspacing leaves
-	// behind: it says nothing about the shorter thing now in the box.
 	assert.equal(hitsAnswerQuery(answer, "retentio"), false);
 	assert.equal(hitsAnswerQuery(undefined, "retention"), false);
 	assert.equal(hitsAnswerQuery(answer, "   "), false);

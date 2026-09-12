@@ -27,8 +27,18 @@ export type SessionCatalogueRow = {
  * 1 id, 2 body, 3 soft — see the backend's `session.session_search`), and
  * `body_match` says the CONVERSATION is why the row surfaced, so the sidebar
  * can mark it instead of showing a highlighted row with no visible reason for
- * being there. `name`/`mtime`/`forked` ride along so a hit for a session the
- * client has never listed can still be rendered and opened.
+ * being there. `name`/`mtime` ride along so a hit for a session this client has
+ * never listed can still be rendered and opened — which is the difference
+ * between a search over the whole store and one silently capped at the
+ * client's page.
+ *
+ * `forked` mirrors the catalogue's own field for clients that draw a fork mark.
+ * The sidebar does NOT consume it — it renders the marker from `body_match` and
+ * the row's binding — so it is carried because the wire is the backend's
+ * (`SessionSearchRow` in `server/models/desktop_sessions.py`), and a client that
+ * wanted it should not have to ask for a second route. The earlier version of
+ * this comment listed it among the fields "we need to render a hit", which was
+ * a claim the renderer contradicted (review round 2, R15).
  */
 export type SessionSearchHit = {
 	id: CanonicalSessionId;

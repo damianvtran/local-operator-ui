@@ -51,6 +51,13 @@ export type ChatSearchOutcome = {
 	 * nothing in common with the query reads as a bug in the filter.
 	 */
 	conversationMatches: Set<string>;
+	/**
+	 * Ids that came from the backend's answer with no row of their own — a hit
+	 * outside this client's catalogue page, rendered from the wire. They carry no
+	 * status, so a surface that describes them has to say what it knows rather
+	 * than fall back to a resting state it never observed.
+	 */
+	synthesized: Set<string>;
 };
 
 /** A row's own searchable text, the same fields the pre-search filter used. */
@@ -96,7 +103,7 @@ export function searchChats(
 ): ChatSearchOutcome {
 	const needle = query.trim();
 	if (!needle) {
-		return { rows, conversationMatches: new Set() };
+		return { rows, conversationMatches: new Set(), synthesized: new Set() };
 	}
 	const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
 	const conversationMatches = new Set<string>();
@@ -142,8 +149,10 @@ export function searchChats(
 	 * opening it works because the id is a real session id. Rank and marker
 	 * follow the same rules as every other admitted row.
 	 */
+	const synthesized = new Set<string>();
 	for (const hit of hits ?? []) {
 		if (seen.has(hit.id)) continue;
+		synthesized.add(hit.id);
 		const row: CanonicalSessionRow = {
 			session_id: hit.id,
 			title: hit.name,
@@ -154,15 +163,28 @@ export function searchChats(
 	}
 	return {
 		rows: admitted
+			// `(tier, recency)`: the tier decides, then the newer chat first, then
+			// the order the rows arrived in (the catalogue is already newest-first,
+			// and a table-stable sort keeps it). Recency is read from `updated_at`
+			// rather than from the array position because a row the client does not
+			// list — a synthesized search hit — has no position to inherit, and
+			// appending it would have made "newest first" a lie for exactly the rows
+			// this branch added (review round 2, R12).
 			.map((entry, index) => ({ entry, index }))
-			.sort((a, b) => a.entry.rank - b.entry.rank || a.index - b.index)
+			.sort(
+				(a, b) =>
+					a.entry.rank - b.entry.rank ||
+					(b.entry.row.updated_at ?? 0) - (a.entry.row.updated_at ?? 0) ||
+					a.index - b.index,
+			)
 			.map(({ entry }) => entry.row),
 		conversationMatches,
+		synthesized,
 	};
 }
 
 /**
- * Whether a backend answer may be shown for what is in the box right now.
+ * Whether a backend answer is the answer to the question in the box.
  *
  * Answers arrive out of order (each keystroke is its own request, and a slow one
  * can land after a fast later one), so the RESPONSE's echoed query is the only
@@ -170,20 +192,19 @@ export function searchChats(
  * query's hits is a search that lies about what it found, which is the failure
  * class the echoed field exists to prevent.
  *
- * The accepted cases are exact equality and PREFIX — the query the answer was
- * computed for, and the same query with the user still typing at the end of it.
- *
- * Why the prefix case is not a hole. A debounced search is always one answer
- * behind the box: the request for the text in the box is in flight for at least
- * a debounce plus a round trip, and if only the exact answer were usable the
- * list would collapse to name matches on every keystroke and then re-expand,
- * which is a flicker the user cannot read as anything but a bug. A prefix answer
- * is the same search over a shorter word the user is still extending, so its
- * hits are related by construction; an answer for an UNRELATED query is still
- * refused, which is the part that matters (select-all and retype). Anything
- * beyond that — an answer for a longer query, say after backspacing — is
- * refused too, and the local name search carries the list until the answer for
- * the box lands.
+ * EXACT, and nothing looser. Round 1 of this review found that an
+ * exact-only rule makes the list collapse to name matches while a new answer is
+ * in flight, and this function briefly accepted a PREFIX of the box — the same
+ * search over the word still being typed. Round 2 showed why that is worse: a
+ * short prefix is not a smaller question but a LARGER one. What is cached for
+ * `a` is every session containing the letter, which is a strict superset of the
+ * answer to `architect`; shown under `architect` it puts rows in the list that
+ * the box's own search would not return, every one of them marked `· in
+ * conversation`, and `keepPreviousData` re-serves that same stale answer for as
+ * long as the new one is in flight, so the marked falsehood persists rather
+ * than flashing. A stale answer is only shown as an ANSWER when it is the
+ * answer; the transient is named in the panel instead (see the sidebar's
+ * `awaiting` state), which is what the round-1 finding was actually about.
  */
 export function hitsAnswerQuery(
 	result: { query: string; sessions: SessionSearchHit[] } | undefined,
@@ -191,5 +212,5 @@ export function hitsAnswerQuery(
 ): result is { query: string; sessions: SessionSearchHit[] } {
 	const asked = query.trim();
 	if (!result || !asked) return false;
-	return result.query === asked || asked.startsWith(result.query);
+	return result.query === asked;
 }
