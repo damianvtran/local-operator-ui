@@ -9,9 +9,9 @@ import {
 import type { OlderHistoryState } from "./older-history-slot";
 import {
 	type AnchorSample,
+	HARD_TOP_PX,
 	type PagingGeometry,
 	type PagingState,
-	HARD_TOP_PX,
 	SETTLE_MS,
 	TAIL_EPS_PX,
 	anchorDrift,
@@ -358,7 +358,10 @@ export function useScrollPaging({
 				// window already held every row), which must still settle.
 				let waited = 0;
 				const awaitCommit = () => {
-					if (live.current.hiddenRows !== before || waited >= COMMIT_WAIT_FRAMES) {
+					if (
+						live.current.hiddenRows !== before ||
+						waited >= COMMIT_WAIT_FRAMES
+					) {
 						state.current = noteSettled(state.current, { network: false });
 						schedule();
 						return;
@@ -550,6 +553,7 @@ export function useScrollPaging({
 	 * that reflows, a font that arrives — and it is the same argument the
 	 * terminal transcript's `_on_extent_changed` hook makes for itself.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `contentKey` is not read in the body; it is here because the effect must RE-RUN when the observed content node appears, which the analyser cannot infer from a querySelector
 	useEffect(() => {
 		const el = containerRef.current;
 		// By its own marker, never by position. `firstElementChild` was the
@@ -606,6 +610,7 @@ export function useScrollPaging({
 	 * is why `rowCount` is a dependency rather than something read through the
 	 * ref: it must re-run when rows arrive, which is the whole point.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `rowCount` is not read in the body; it is the SIGNAL that rows landed, and re-running before paint is the entire purpose of this effect
 	useLayoutEffect(() => {
 		correctAnchor();
 	}, [correctAnchor, rowCount]);

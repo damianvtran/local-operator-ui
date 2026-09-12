@@ -312,7 +312,12 @@ export const noteInput = (
 	// phase emits for a few hundred ms after the fingers lift, so anything
 	// shorter would split one flick into several acts.
 	const gestureEnded = input.at - state.lastInputAt >= GESTURE_GAP_MS;
-	if (input.atHardTop && input.continuous && state.clampLatched && !gestureEnded) {
+	if (
+		input.atHardTop &&
+		input.continuous &&
+		state.clampLatched &&
+		!gestureEnded
+	) {
 		// Rule 4. The gesture is still running but the content is not; this is the
 		// same act that already spent its demand.
 		//

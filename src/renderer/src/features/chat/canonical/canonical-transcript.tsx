@@ -86,10 +86,7 @@ import {
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
-import {
-	OLDER_HISTORY_HINT_ID,
-	OlderHistorySlot,
-} from "./older-history-slot";
+import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type TranscriptRecord,
 	type TranscriptState,

@@ -112,26 +112,21 @@ export const AppMinimumWidth: Story = {
 				baseline as the others.
 			</p>
 			{STATES.map(({ state, caption }) => (
-				<Ruled
-					key={state}
-					state={state}
-					caption={caption}
-					width="252px"
-				/>
+				<Ruled key={state} state={state} caption={caption} width="252px" />
 			))}
 			<p className="max-w-[46rem] pt-2 text-ink-muted text-meta">
 				And at 220px, the chat column's own floor.
 			</p>
-			{STATES.filter((entry) => entry.state === "failed" || entry.state === "loading").map(
-				({ state, caption }) => (
-					<Ruled
-						key={`narrow-${state}`}
-						state={state}
-						caption={caption}
-						width="220px"
-					/>
-				),
-			)}
+			{STATES.filter(
+				(entry) => entry.state === "failed" || entry.state === "loading",
+			).map(({ state, caption }) => (
+				<Ruled
+					key={`narrow-${state}`}
+					state={state}
+					caption={caption}
+					width="220px"
+				/>
+			))}
 		</div>
 	),
 };

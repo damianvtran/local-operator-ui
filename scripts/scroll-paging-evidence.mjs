@@ -44,7 +44,9 @@ const OUT = process.argv[4] ?? "docs/evidence/transcript-scroll-paging";
 const MODE = process.argv[5] ?? "after";
 
 if (!SESSION) {
-	console.error("usage: scroll-paging-evidence.mjs <app-origin> <session-id> <out> <mode>");
+	console.error(
+		"usage: scroll-paging-evidence.mjs <app-origin> <session-id> <out> <mode>",
+	);
 	process.exit(1);
 }
 
@@ -78,7 +80,10 @@ const chrome = spawn(CHROME, [
 ]);
 const browserWs = await new Promise((resolve, reject) => {
 	let buf = "";
-	const timer = setTimeout(() => reject(new Error("Chrome did not report a debug port")), 30_000);
+	const timer = setTimeout(
+		() => reject(new Error("Chrome did not report a debug port")),
+		30_000,
+	);
 	chrome.stderr.on("data", (chunk) => {
 		buf += chunk.toString();
 		const hit = buf.match(/ws:\/\/[^\s]+/);
@@ -99,7 +104,9 @@ const cleanup = () => {
 process.on("exit", cleanup);
 
 const browserId = new URL(browserWs).pathname.split("/").pop();
-const list = await (await fetch(`http://127.0.0.1:${new URL(browserWs).port}/json/list`)).json();
+const list = await (
+	await fetch(`http://127.0.0.1:${new URL(browserWs).port}/json/list`)
+).json();
 const page = list.find((t) => t.type === "page");
 if (!page) throw new Error("no page target in the private Chromium");
 void browserId;
@@ -146,7 +153,9 @@ ws.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
+		msg.error
+			? reject(new Error(JSON.stringify(msg.error)))
+			: resolve(msg.result);
 	}
 };
 await new Promise((r) => (ws.onopen = r));
@@ -165,7 +174,11 @@ async function evaluate(expression) {
 		returnByValue: true,
 	});
 	if (res.exceptionDetails)
-		throw new Error(JSON.stringify(res.exceptionDetails.exception?.description ?? res.exceptionDetails));
+		throw new Error(
+			JSON.stringify(
+				res.exceptionDetails.exception?.description ?? res.exceptionDetails,
+			),
+		);
 	return res.result.value;
 }
 
@@ -530,7 +543,7 @@ if (lock.locked || lock.dialogs > 0) {
 	);
 }
 
-let state = await probe();
+const state = await probe();
 if (!state.ok) {
 	const dump = await evaluate(`(() => ({
 		href: location.href,
@@ -554,7 +567,9 @@ const historyBeforeFling = historyRequests.length;
 
 // THE FLING under test: 40 notches in 400ms against the top of the content.
 // One gesture. Clause B says one page.
-const jitterPromise = beforeFling.anchor ? watchJitter(beforeFling.anchor.id, 2600) : null;
+const jitterPromise = beforeFling.anchor
+	? watchJitter(beforeFling.anchor.id, 2600)
+	: null;
 await fling(40, -400, 10);
 await sleep(2400);
 const jitter = jitterPromise ? await jitterPromise : null;
@@ -684,7 +699,10 @@ report.desktopOpsByName = desktopOps.reduce((acc, entry) => {
 	return acc;
 }, {});
 mkdirSync(OUT, { recursive: true });
-writeFileSync(join(OUT, `${MODE}-measurements.json`), JSON.stringify(report, null, 2));
+writeFileSync(
+	join(OUT, `${MODE}-measurements.json`),
+	JSON.stringify(report, null, 2),
+);
 console.log(JSON.stringify(report, null, 2));
 ws.close();
 cleanup();

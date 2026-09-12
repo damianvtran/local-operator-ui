@@ -109,7 +109,8 @@ const drive = (state, events, { frames, geometry = geo(), start = 0 }) => {
 		}
 		const result = decide(current, geometry, now + start);
 		current = result.state;
-		if (result.action !== "none") actions.push({ at: now, action: result.action });
+		if (result.action !== "none")
+			actions.push({ at: now, action: result.action });
 	}
 	return { state: current, actions };
 };
@@ -139,7 +140,7 @@ test("a fling of many wheel events yields exactly one fetch", () => {
 });
 
 test("a demand is not spent while input is still arriving", () => {
-	let state = wheelUp(initialPagingState(), 0);
+	const state = wheelUp(initialPagingState(), 0);
 	// One frame later, well inside the debounce.
 	const mid = decide(state, geo(), 16);
 	assert.equal(mid.action, "none");
@@ -153,8 +154,12 @@ test("a demand outside the prefetch zone is dropped rather than held", () => {
 	// Held, it would be spent later by an unrelated resize or clamp — the stale
 	// input the TUI's `_resume_in_zone = False` early out exists to prevent.
 	const zone = prefetchZonePx(800);
-	let state = wheelUp(initialPagingState(), 0);
-	const out = decide(state, geo({ distanceFromTopPx: zone + 200 }), SETTLE_MS + 1);
+	const state = wheelUp(initialPagingState(), 0);
+	const out = decide(
+		state,
+		geo({ distanceFromTopPx: zone + 200 }),
+		SETTLE_MS + 1,
+	);
 	assert.equal(out.action, "none");
 	assert.equal(out.state.armed, false, "stale demand dropped, not retained");
 });
@@ -162,7 +167,7 @@ test("a demand outside the prefetch zone is dropped rather than held", () => {
 test("a wheel notch clamped at the top does not re-arm the latch", () => {
 	// Spend one demand at the hard top, which latches.
 	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
-	let result = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1);
+	const result = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1);
 	assert.equal(result.action, "fetch");
 	assert.ok(result.state.clampLatched);
 	state = noteSettled(result.state);
@@ -190,7 +195,11 @@ test("a wheel notch clamped at the top does not re-arm the latch", () => {
 			state = noteSettled(state);
 		}
 	}
-	assert.equal(spent, 0, `a held gesture at the top is one act, not 200 (got ${spent})`);
+	assert.equal(
+		spent,
+		0,
+		`a held gesture at the top is one act, not 200 (got ${spent})`,
+	);
 
 	// But the reader letting go and pushing again IS a new act, and must be
 	// answered — otherwise the latch bounds a POSITION rather than a gesture and
@@ -215,7 +224,10 @@ test("a wheel notch clamped at the top does not re-arm the latch", () => {
 		atHardTop: true,
 		at: 4000,
 	});
-	assert.equal(decide(state, geo({ distanceFromTopPx: 0 }), 4001).action, "fetch");
+	assert.equal(
+		decide(state, geo({ distanceFromTopPx: 0 }), 4001).action,
+		"fetch",
+	);
 });
 
 test("leaving the top re-arms the latch, because arriving again is a new arrival", () => {
@@ -404,7 +416,11 @@ test("a local widen does not forgive the network failure budget", () => {
 	const widened = decide(state, geo({ hiddenRows: 60 }), 1000 + SETTLE_MS + 1);
 	assert.equal(widened.action, "widen");
 	state = noteSettled(widened.state, { network: false });
-	assert.equal(state.failures, 1, "a local reveal says nothing about the network");
+	assert.equal(
+		state.failures,
+		1,
+		"a local reveal says nothing about the network",
+	);
 
 	// A real page landing is evidence, and does clear it.
 	state = wheelUp(state, 2000);
@@ -451,7 +467,11 @@ test("automatic retries are bounded; the affordance still works", () => {
 		atHardTop: false,
 		at: 10_000,
 	});
-	assert.equal(isExhausted(state), false, "an explicit ask forgives the budget");
+	assert.equal(
+		isExhausted(state),
+		false,
+		"an explicit ask forgives the budget",
+	);
 	assert.equal(decide(state, geo(), 10_001).action, "fetch");
 });
 
@@ -510,7 +530,10 @@ test("the anchor correction is a no-op while the extent is stable", () => {
 		anchorDrift(before, { id: "r9", viewportOffset: 212, extent: 4600 }),
 		0,
 	);
-	assert.equal(anchorDrift(null, { id: "r1", viewportOffset: 0, extent: 1 }), 0);
+	assert.equal(
+		anchorDrift(null, { id: "r1", viewportOffset: 0, extent: 1 }),
+		0,
+	);
 	assert.equal(anchorDrift(before, null), 0);
 });
 
@@ -546,11 +569,8 @@ test("a session change discards latch, demand and chain budgets", () => {
 	// And it can act immediately: a fresh state must not sit out the settle
 	// debounce it never earned, which is the short-transcript chain's start.
 	assert.equal(
-		decide(
-			{ ...fresh, continuation: true },
-			geo({ scrollable: false }),
-			0,
-		).action,
+		decide({ ...fresh, continuation: true }, geo({ scrollable: false }), 0)
+			.action,
 		"fetch",
 	);
 });
