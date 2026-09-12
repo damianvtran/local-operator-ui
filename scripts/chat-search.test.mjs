@@ -110,12 +110,14 @@ test("the conversation marker comes from the answer, never from a local label hi
 	// A local label hit is a hit on something already visible: no marker.
 	assert.equal(searchChats(rows, "architect", null).conversationMatches.size, 0);
 
-	// The backend says the row came up on its conversation: mark it, because
-	// nothing on the row explains why it is in the results.
+	// The backend says the row came up on its conversation, and the query is not
+	// in anything the row shows: mark it, because nothing visible explains why it
+	// is in the results.
 	assert.deepEqual(
 		[
-			...searchChats(rows, "architect", [hit("aaaaaaaaaaaa", SESSION_RANK_BODY, true)])
-				.conversationMatches,
+			...searchChats(rows, "classifer", [
+				hit("aaaaaaaaaaaa", SESSION_RANK_BODY, true),
+			]).conversationMatches,
 		],
 		["aaaaaaaaaaaa"],
 	);
@@ -159,10 +161,69 @@ test("only the answer to the query in the box is used", () => {
 
 	assert.equal(hitsAnswerQuery(answer, "retention"), true);
 	assert.equal(hitsAnswerQuery(answer, "  retention  "), true);
-	// A slow request landing after a later one must not filter the list by the
-	// question it was asked about.
-	assert.equal(hitsAnswerQuery(answer, "retention sweep"), false);
+	// The box has moved on by a keystroke while this answer was in flight. The
+	// answer is the same search over a prefix of what is now in the box, so it
+	// stays usable: refusing it would collapse the list to name matches on every
+	// keystroke and re-expand, a flicker that reads as a bug (review round 1, R2).
+	assert.equal(hitsAnswerQuery(answer, "retention sweep"), true);
+	// A DIFFERENT question is still refused — select-all and retype must never
+	// leave the previous query's hits filtering the new one.
+	assert.equal(hitsAnswerQuery(answer, "kubernetes"), false);
+	// And so is an answer for a LONGER query, which is what backspacing leaves
+	// behind: it says nothing about the shorter thing now in the box.
+	assert.equal(hitsAnswerQuery(answer, "retentio"), false);
 	assert.equal(hitsAnswerQuery(undefined, "retention"), false);
+	assert.equal(hitsAnswerQuery(answer, "   "), false);
+});
+
+test("a hit for a session this client does not list is rendered, not dropped", () => {
+	// The backend scans the WHOLE store; the catalogue this sidebar renders is a
+	// page of it. Iterating the local rows alone would re-impose the client's cap
+	// on a search that deliberately has none, and report the dropped match as
+	// "no matches" — the one failure the user cannot detect (review round 1, R1).
+	const outcome = searchChats([], "retention", [
+		hit("dddddddddddd", SESSION_RANK_BODY, true, "Retention sweep notes"),
+	]);
+
+	assert.equal(outcome.rows.length, 1);
+	assert.equal(outcome.rows[0].session_id, "dddddddddddd");
+	assert.equal(outcome.rows[0].title, "Retention sweep notes");
+	assert.deepEqual([...outcome.conversationMatches], ["dddddddddddd"]);
+
+	// A hit for a row that IS listed uses that row (its title, its binding, its
+	// status), never a second copy built from the wire fields.
+	const listed = searchChats(
+		[row("aaaaaaaaaaaa", "Local title", { agent: "coder" })],
+		"retention",
+		[hit("aaaaaaaaaaaa", SESSION_RANK_NAME, false, "Stale server title")],
+	);
+	assert.equal(listed.rows.length, 1);
+	assert.equal(listed.rows[0].title, "Local title");
+});
+
+test("a row the query visibly explains is not marked as a conversation match", () => {
+	// The backend suppresses `body_match` for a row its own name answered, and
+	// the marker has to apply the same rule to the LOCAL half: a row admitted
+	// because its title or agent contains the query is explained by what is on
+	// screen, so `· in conversation` beside it would claim the conversation is
+	// why it is here (review round 1, R4).
+	const rows = [row("aaaaaaaaaaaa", "Retention notes", { agent: "coder" })];
+
+	assert.equal(
+		searchChats(rows, "retention", [hit("aaaaaaaaaaaa", SESSION_RANK_BODY, true)])
+			.conversationMatches.size,
+		0,
+	);
+	// Same row, a query its visible text does NOT contain: the conversation is
+	// the only reason it is on screen, so it is marked.
+	assert.deepEqual(
+		[
+			...searchChats(rows, "sweep interval", [
+				hit("aaaaaaaaaaaa", SESSION_RANK_BODY, true),
+			]).conversationMatches,
+		],
+		["aaaaaaaaaaaa"],
+	);
 });
 
 test("the tiers are ordered the way the backend's are", () => {

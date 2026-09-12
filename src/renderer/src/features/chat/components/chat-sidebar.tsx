@@ -8,6 +8,7 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -195,6 +196,20 @@ export function ChatSidebar({
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
+	/*
+	 * Whether the result list has a MARKER COLUMN at all.
+	 *
+	 * The mark explaining a row has to be readable, and a suffix inside the
+	 * truncating title span is not: with a long title the ellipsis eats it, which
+	 * is precisely the row whose mismatch is hardest to explain (design round 1,
+	 * D1 — a seeded long title rendered `Migrate the billing reconciliation…`
+	 * with no mark at all, while the accessible name still carried it). So the
+	 * mark is a fixed trailing slot that never truncates, and the title truncates
+	 * instead. The slot is reserved for the WHOLE list as soon as one row needs
+	 * it, the way the CLI picker latches its own marker column, so the rows stay
+	 * aligned with each other rather than each growing its own width.
+	 */
+	const markerColumn = conversationMatches.size > 0;
 	// A first send that failed after allocation but before admission leaves a real
 	// but empty session. It is NOT hidden — it exists on the backend and hiding it
 	// would make the list lie — but an unfinished draft still holding its id is
@@ -229,7 +244,7 @@ export function ChatSidebar({
 					? "page"
 					: undefined
 			}
-			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}${conversationMatches.has(row.session_id) ? ", matched in conversation" : ""}`}
+			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
 			onClick={() => onSelectConversation(row.session_id)}
 		>
 			<Status row={row} />
@@ -246,25 +261,36 @@ export function ChatSidebar({
 				{unstarted.has(row.session_id) && (
 					<span className="ml-1 text-meta text-ink-muted">· Not sent yet</span>
 				)}
-				{/* Says WHY a row is in a filtered list when its visible text does
-				    not contain the query. Without it the filter reads as returning an
-				    arbitrary row, which is worse than no filter: the user cannot tell
-				    a real match from a bug. Same `·` idiom as the qualifiers above
-				    rather than a new glyph, and the same wording the row's own `title`
-				    uses, so the tooltip and the visible mark cannot drift. */}
-				{conversationMatches.has(row.session_id) && (
-					// The CLI's marker, and deliberately the same mark: `”` reads as
-					// "something was said here", it costs one glyph rather than the
-					// words (which the row's width truncated to `in conversa…`, i.e.
-					// said nothing), and one product showing one meaning for one fact
-					// is worth more than either surface's private spelling. The full
-					// sentence rides on the row's own `title` and in the accessible
-					// name below, so the mark is never the ONLY account of itself.
-					<span className="ml-1 text-ink-dim">
-						”<span className="sr-only">matched in conversation</span>
-					</span>
-				)}
 			</span>
+			{/* Says WHY a row is in a filtered list when its visible text does not
+			    contain the query. Without it the filter reads as returning an
+			    arbitrary row, which is worse than no filter: the user cannot tell a
+			    real match from a bug.
+
+			    Outside the truncating span on purpose (see `markerColumn`), rendered
+			    in the same `· …` idiom and the same `text-meta text-ink-muted` roles
+			    as the `· coder` qualifier it sits beside, and in words rather than a
+			    glyph: the first attempt was the CLI's `”`, which measures 3.5 CSS px^2
+			    of ink 3.9px above the baseline and reads as punctuation noise next to
+			    a row whose whole point is that it does not visibly match (design round
+			    1, D2). The visible words are `aria-hidden` and the sentence is carried
+			    by the `sr-only` span after them, so a screen reader hears
+			    ", matched in conversation" once, in words, rather than punctuation
+			    followed by a sentence (D7). */}
+			{markerColumn && (
+				<span
+					aria-hidden="true"
+					className={cn(
+						"ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted",
+						!conversationMatches.has(row.session_id) && "invisible",
+					)}
+				>
+					· in conversation
+				</span>
+			)}
+			{conversationMatches.has(row.session_id) && (
+				<span className="sr-only">, matched in conversation</span>
+			)}
 			{pendingId === row.session_id && (
 				<LoaderCircle
 					className="size-4 shrink-0 motion-safe:animate-spin"
@@ -412,7 +438,16 @@ export function ChatSidebar({
 			{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
 			{Boolean(count) && (
-				<span className="text-meta tabular-nums">{count}</span>
+				<span
+					className="text-meta tabular-nums"
+					title={query ? `${count} chats match this search` : undefined}
+				>
+					{count}
+					{/* A query turns these numbers from "what you have" into "what
+					    matched", with identical styling, so the count needs to say
+					    which claim it is making (design round 1, D5). */}
+					{query ? <span className="sr-only"> matching</span> : null}
+				</span>
 			)}
 		</button>
 	);
@@ -498,20 +533,21 @@ export function ChatSidebar({
 			    indistinguishable from one that found nothing there. */}
 			{query && ready && !searchSupported && (
 				<p className="pb-2 text-meta text-ink-muted">
-					Searching chat names only. Update the backend to search inside
+					Searching chat names only. Update local operator to search inside
 					conversations.
 				</p>
 			)}
 			{query && searchSupported && search.isError && (
 				<p className="pb-2 text-meta text-ink-muted">
 					Conversation search is unavailable, so these are name matches.{" "}
-					<button
+					<Button
+						variant="link"
+						size="sm"
 						type="button"
-						className="underline"
 						onClick={() => void search.refetch()}
 					>
 						Retry
-					</button>
+					</Button>
 				</p>
 			)}
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
@@ -541,6 +577,24 @@ export function ChatSidebar({
 						unchanged.
 					</p>
 				)}
+				{/* The empty state, and it is not a nicety: the box now searches
+				    conversation text, so a blank panel asserts that NOTHING IN ANY
+				    CONVERSATION matches — a much stronger claim than the empty panel
+				    before this change made, and one the frame pair cannot distinguish
+				    from a filter that silently stopped working (design round 1, D3:
+				    before/after frames of a no-match query are byte-identical).
+
+				    Suppressed while the first answer for this query is in flight, so it
+				    cannot appear and then retract itself mid-typing — a claim about what
+				    was NOT found is exactly the claim that has to wait for the search. */}
+				{query.trim() &&
+					showList &&
+					!matching.length &&
+					!(searchSupported && search.isFetching) && (
+						<p aria-live="polite" className="px-1 text-meta text-ink-muted">
+							Nothing in your chats matches “{query.trim()}”.
+						</p>
+					)}
 				{showList && (
 					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
 						<section>
@@ -610,8 +664,16 @@ export function ChatSidebar({
 							    the active filter exactly as Active/Previous do. A zero badge
 							    beside the "No chats yet" sentence just repeats it. */}
 							{matching.length > 0 && (
-								<span className="text-meta tabular-nums">
+								<span
+									className="text-meta tabular-nums"
+									title={
+										query
+											? `${matching.length} chats match this search`
+											: undefined
+									}
+								>
 									{matching.length}
+									{query ? <span className="sr-only"> matching</span> : null}
 								</span>
 							)}
 						</button>

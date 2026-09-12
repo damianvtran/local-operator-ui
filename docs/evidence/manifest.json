@@ -133,11 +133,11 @@
     },
     {
       "path": "chat-search",
-      "frames": 6,
-      "surfaces": 5,
+      "frames": 8,
+      "surfaces": 7,
       "themes": 2,
       "source": "live renderer in the operator's real browser (Local Operator extension), served by Vite over this repository's own renderer config with the preload bridge stubbed to a no-op, against an isolated local-operator backend on its own port and config dir",
-      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, and which ones say the CONVERSATION is why they are there. The sidebar has no Storybook story, and a debounced backend round trip is not something a fixture can produce, so the frames come from the running app against an isolated seeded store. Both trees -- origin/main and this branch -- are driven by the same harness against the same store, which is what makes each pair comparable; docs/evidence/chat-search/README.md carries the re-capture procedure.",
+      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story, and a debounced backend round trip is not something a fixture can produce, so the frames come from the running app against an isolated seeded store. Both trees -- origin/main and this branch -- are driven by the same harness against the same store, which is what makes each pair comparable; docs/evidence/chat-search/README.md carries the re-capture procedure. Recaptured after the round-1 code and design reviews, which is why the mark is words in a reserved column rather than the clause inside the truncating title, and why the no-match state is one of the frames.",
       "capturedAt": "2026-09-12T16:10:00.000Z"
     }
   ]
