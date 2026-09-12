@@ -716,6 +716,101 @@ export const StreamingBeforeFirstToken: Story = {
 	),
 };
 
+/**
+ * The COMMON case for an agent answer: prose interleaved with a fenced code
+ * block, a table and a list, against the ledger rows that produced them.
+ *
+ * `branding.md` § 7 and the reading-measure comment in `markdown.css` both call
+ * mixed prose and code the common case rather than an edge case, and this
+ * change is precisely about what those blocks resolve against — so it is the
+ * surface that most needs a picture, and until design review round 1 (D4) it
+ * was the one with none. The plain-paragraph alignment frames cannot stand in
+ * for it: a `<pre>`, a `<table>` and a `<ul>` each have their own box model and
+ * their own history of escaping the measure.
+ *
+ * What this frame has to show is FOUR registers on ONE left rail — paragraph,
+ * code, table, list — all opening on the tool rows' rail and ending on their
+ * right edge, with nothing overflowing. Two prior findings live here and must
+ * stay fixed: applying the cap per-block gave each type step its own left edge
+ * (code review round 3, R1), and excluding `<pre>`/`<table>` from it left them
+ * on the column edge while the prose centred, showing four left edges in one
+ * message (design round 3, D13). Removing the cap is what makes all four agree
+ * structurally, and this is where that is checkable.
+ *
+ * The table is deliberately wide enough to use the room the removed cap gives
+ * back, since "the wider measure genuinely helps the table" is part of the
+ * trade this PR made.
+ */
+export const MixedProseCodeAndTables: Story = {
+	render: () => (
+		<Frame
+			// Sized to the content it holds: the four registers this frame exists
+			// to show run 688px at 1440, and a shorter frame scrolls the list off
+			// its own evidence.
+			height={700}
+			records={[
+				{
+					kind: "user",
+					id: "m0",
+					ts: TS,
+					text: "Which rule was capping the answer, and what did it measure?",
+					images: [],
+				},
+				tool({
+					id: "m1",
+					toolName: "grep",
+					args: { pattern: "max-width", path: "src/renderer/src/features" },
+					durationS: 0.09,
+				}),
+				{
+					kind: "assistant",
+					id: "m2",
+					ts: TS,
+					text: [
+						"One rule carried both halves of the report, and it lived on the rendered markdown root rather than on the column:",
+						"",
+						"```css",
+						".lo-measured .lo-markdown {",
+						"\tmax-width: 62ch;",
+						"\tmargin-inline: auto;",
+						"}",
+						"```",
+						"",
+						"Measured against the ledger row in the same turn, at the body step:",
+						"",
+						"| Viewport | Tool row | Agent prose, before | Left delta | Right delta |",
+						"| --- | --- | --- | --- | --- |",
+						"| 1024x620 | 102..962 | 258.6..805.4 | 156.6 | 156.6 |",
+						"| 1440x900 | 310..1170 | 466.6..1013.4 | 156.6 | 156.6 |",
+						"",
+						"The consequences were the ones the report named:",
+						"",
+						"- `margin-inline: auto` centred the answer inside the row it owns, so the column showed two left rails instead of one.",
+						"- `62ch` resolved to 546.7px, stopping the prose 313px short of the ledger's right edge on any comfortable window.",
+						"- Both grew with the window rather than shrinking, because the cap binds harder the more room there is.",
+						"",
+						"The measure is now the user bubble's property alone.",
+					].join("\n"),
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "m3",
+					toolName: "edit",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.07,
+					added: 34,
+					removed: 11,
+				}),
+			]}
+		/>
+	),
+};
+
 /** Each label the working line can carry, without needing a live turn to reach it. */
 export const WorkingLabels: Story = {
 	render: () => (

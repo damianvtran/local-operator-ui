@@ -244,6 +244,14 @@ const STORIES = [
 	["chat-tool-rows--prose-tool-alignment", 1024, 620],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The COMMON case, which had no standing frame until design review round 1
+	   (D4) asked for one: an answer mixing prose with a fenced code block, a
+	   table and a list. The alignment frames above are plain paragraphs, and
+	   `<pre>`/`<table>`/`<ul>` are exactly the blocks that escaped the measure
+	   in two earlier rounds — so the surface the change is most about was the
+	   surface the sweep could not see. Captured at 1440 because the room the
+	   removed cap gives back is what the table uses. */
+	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 900],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */
@@ -934,10 +942,25 @@ const main = async () => {
 			 * been confirmed correct. Making the viewport the size of the
 			 * content means the capture only ever asks for pixels the renderer
 			 * is actually drawing.
+			 *
+			 * `body.scrollHeight` is read ALONGSIDE the document element's, and
+			 * it is the term that carries the answer here. Since #101 contained
+			 * the document scroll, `index.css` pins `html, body { height: 100%;
+			 * overflow: hidden }` - correct for an Electron shell, which is not
+			 * a page - and a pinned, clipped root reports
+			 * `documentElement.scrollHeight` as the VIEWPORT height no matter
+			 * how tall the content is. So this probe silently became "capture
+			 * one screenful": measured on `chat-trace--conversation`, the
+			 * document element reports 900 while the story is really 1286 tall,
+			 * and the frame came back with its last third cut off. Storybook's
+			 * own root is a child of `body` and is free to grow, so `body`'s
+			 * scroll height still sees the whole story. Taking the max of both
+			 * is robust in either direction rather than swapping one single
+			 * point of failure for another.
 			 */
 			const { result: full } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
-				expression: `Math.max(document.documentElement.scrollHeight, ${height})`,
+				expression: `Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, ${height})`,
 			});
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
 				width,
