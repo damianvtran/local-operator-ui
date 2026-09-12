@@ -13,8 +13,10 @@
  * and the count is the first thing the tooltip already says.
  *
  * The trigger renders when, and only when, `hasRunDetails && !isCanvasOpen`
- * (`§3.3`). Both halves are here rather than in the header because both are facts
- * about this surface: the header's job is only to place it.
+ * (`§3.3`) — with one term added by `§6.3`: an already-OPEN panel keeps the
+ * trigger mounted, so the panel is never unmounted by the data settling under
+ * the reader. Both halves are here rather than in the header because both are
+ * facts about this surface: the header's job is only to place it.
  */
 
 import {
@@ -92,7 +94,35 @@ export const RunDetailsTrigger = ({
 		);
 	}, [open, details]);
 
-	if (isCanvasOpen || !hasRunDetails(details, seen)) return null;
+	/*
+	 * The visibility gate, which is `hasRunDetails && !isCanvasOpen` (`§3.3`) plus
+	 * one term: **an open panel is never unmounted by the data settling
+	 * underneath it.**
+	 *
+	 * `open` outlives `hasRunDetails` because the two answer different questions.
+	 * `hasRunDetails` says whether there is anything to OPEN FOR — a child or to-do
+	 * still asking for something, or a failure nobody has read. `open` says the
+	 * reader is looking at the panel right now, and the panel must not vanish out
+	 * from under them: that is what happened when the last open child or to-do
+	 * settled mid-read (the trigger nulled, and the portal went with it).
+	 *
+	 * It also closes the state the failure dot exists for. With the dot lit and
+	 * nothing else open, opening the panel acknowledges the failure in the same
+	 * commit that shows it — `hasRunDetails` goes false, and without this term the
+	 * panel unmounted in that commit, so the one state the dot announces could
+	 * never be read. Worse, `open` then stayed true, so the panel re-rendered open
+	 * and re-focused the next time any work started.
+	 *
+	 * The `!details` term is the null case, not a second visibility rule: an open
+	 * panel always has details behind it, but the compiler cannot know that, and a
+	 * non-null check is cheaper than a cast.
+	 *
+	 * `isCanvasOpen` stays a HARD close. That one is deliberate and is stated with
+	 * its cost in `§3.3`: the canvas wins the header while it is open, and a
+	 * failure arriving under it is announced by the transcript instead.
+	 */
+	if (isCanvasOpen || !details || !(hasRunDetails(details, seen) || open))
+		return null;
 
 	// One string for both the tooltip and the accessible name: the canvas button
 	// beside it does the same, and two copies of a sentence that must agree is
@@ -159,8 +189,32 @@ export const RunDetailsTrigger = ({
 				className={cn(
 					// 384px, `p-0`: the primitive ships `p-4` for content-shaped
 					// popovers, and this one is a list whose rows must reach the panel
-					// edge so hover and rules can.
+					// edge so the section rules and the row grounds can.
 					"w-96 overflow-hidden p-0",
+					/*
+					 * `outline-none` because this element takes focus PROGRAMMATICALLY on
+					 * open (`§7`), which is the case `styles/index.css:355-370` names as
+					 * legitimate: "focus is moved there programmatically and a ring would
+					 * be noise", and one that has to be visible in the component.
+					 *
+					 * Without it the app's unlayered `html :focus-visible` rule
+					 * (`:345-352`) paints a 2px accent ring around the whole panel — the
+					 * loudest line on a surface whose own hairline is 1.19:1 — and nicks
+					 * the header's bottom rule with it. It is a scroll container, not a
+					 * control: the ring marks nothing actionable, and the keyboard user
+					 * still sees the ring on the trigger they tabbed to.
+					 *
+					 * `shadow-overlay!` is the second half of the same problem and it is
+					 * why the elevation `§5` promises never painted: that same rule sets
+					 * `box-shadow: none !important` on any `:focus-visible` element, so the
+					 * panel's one shadow was suppressed by the ring's rule. The `!` is
+					 * required rather than tidy — the ring is an unlayered `!important`
+					 * declaration fighting MUI's own shadow rings, and a plain utility
+					 * cannot outrank it. Removing the ring is what makes the shadow the
+					 * boundary again, which is the elevation the evidence set had been
+					 * missing while claiming it.
+					 */
+					"outline-none shadow-overlay!",
 				)}
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
@@ -176,6 +230,21 @@ export const RunDetailsTrigger = ({
 				 * viewport.
 				 */}
 				<ScrollArea
+					/*
+					 * `type="auto"` rather than Radix's default `hover` (`§5`).
+					 *
+					 * The panel's overflow state has to be visible WITHOUT a pointer: a
+					 * still has no cursor, so a `hover`-only scrollbar means no committed
+					 * frame can ever show that the panel scrolls at all — the only cue left
+					 * is a row sliced by the panel's bottom edge, which reads as damage
+					 * rather than as "about 260px more follows". `auto` paints the thumb
+					 * whenever the content overflows and nothing when it does not, so a
+					 * short panel gains no chrome and a long one says what it is.
+					 *
+					 * `always` was the alternative and is rejected: a scrollbar on a panel
+					 * that fits is a control for something that cannot be done.
+					 */
+					type="auto"
 					className={cn(
 						"max-h-[min(60vh,480px)]",
 						"[&>[data-radix-scroll-area-viewport]]:max-h-[inherit]",

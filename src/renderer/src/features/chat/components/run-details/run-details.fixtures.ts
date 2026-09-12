@@ -125,10 +125,14 @@ const flat = (): Array<Record<string, unknown>> => [
 ];
 
 /**
- * A long plan: 14 items over three phases, 9 of them closed.
+ * A long plan: 14 items over three phases, 10 of them closed.
  *
- * Fourteen against a cap of ten, with five open items, leaves exactly four rows
- * to disclose — the `+4 more` the design's own example names.
+ * Fourteen against a cap of ten, with four open items, leaves exactly four rows
+ * to disclose — the `+4 more` the design's own example names. Ten closed against
+ * a budget of six means the four disclosed rows are the OLDEST ones (`§6.3`),
+ * which is what makes this fixture the one that pins the shed direction: the
+ * `Reconcile` phase loses all four of its closed rows and keeps only its open
+ * item, while `Verify` and `Publish` keep theirs.
  */
 const longPlan = (): Array<Record<string, unknown>> => [
 	phase("Reconcile", [
@@ -432,6 +436,60 @@ export const settled = (): RunDetailsInput => ({
 			cost: 0.02,
 		}),
 	],
+	todos: [
+		phase("Todos", [
+			item("Read the invoice export", "done"),
+			item("Total the unpaid rows", "done"),
+			item("Diff against yesterday's report", "dropped"),
+		]),
+	],
+});
+
+/**
+ * The unseen failure, and nothing else: every child settled, every to-do closed.
+ *
+ * This is the whole of `§3.3`'s failure clause and the reason the frame exists.
+ * `hasRunDetails` is true here ONLY because a child failed and nobody has opened
+ * the panel since, so this is the state where opening the panel acknowledges the
+ * failure in the same commit that shows it — the one state the `danger` dot
+ * announces, and the one that used to unmount the panel before it could be read.
+ *
+ * It is a REGRESSION frame, not decoration: re-run it against a trigger that
+ * gates only on `hasRunDetails` and the panel is gone (and the capture rig's
+ * shutter, which waits for `[data-run-details-panel]`, waits forever).
+ *
+ * The failure carries the full exception line on purpose: it is the string D4's
+ * `line-clamp-2` exists for, and the identifier is the part that has to survive.
+ */
+export const failureUnseen = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		child({
+			id: "job-ledger",
+			label: "Re-check the pending rows against the ledger",
+			role: "analyst",
+			status: "failed",
+			startedSecondsAgo: 96,
+			settledSecondsAgo: 88,
+			tokens: 23_100,
+			window: 200_000,
+			cost: 0.08,
+			error:
+				"FileNotFoundError: [Errno 2] No such file or directory: 'ledger/q1.csv'",
+		}),
+		child({
+			id: "job-totals",
+			label: "Total the unpaid rows",
+			status: "done",
+			startedSecondsAgo: 400,
+			settledSecondsAgo: 372,
+			tokens: 61_000,
+			window: 200_000,
+			cost: 0.27,
+		}),
+	],
+	// Every item closed, so the plan contributes no open work at all: the failure
+	// is the only fact keeping the trigger on screen.
 	todos: [
 		phase("Todos", [
 			item("Read the invoice export", "done"),
