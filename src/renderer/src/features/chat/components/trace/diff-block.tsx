@@ -63,14 +63,19 @@ const MARKER_INK: Record<DiffLineKind, string> = {
 /**
  * One line: the marker in its kind's ink, the rest in the body's.
  *
- * Two spans rather than a tinted class on the whole line, and `whitespace-pre`
- * on both so the diff's own alignment survives — a unified diff is read by its
- * column of markers.
+ * Two spans rather than a tinted class on the whole line, and no `white-space`
+ * on either of them: the well's own `whitespace-pre-wrap` has to be what applies,
+ * because a line is long by nature and a `whitespace-pre` here would OVERRIDE it
+ * — every long line then grew a 200px horizontal overflow that
+ * `overflow-x-hidden` clipped, so the tail of the line was neither shown nor
+ * scrollable. Measured, not anticipated: at 560px the edit body's own box was
+ * 610px wide against 418px of column, and it read as a truncated diff. `block`
+ * is what keeps one line to one row; the wrap comes from the container.
  */
 const Line: FC<{ line: DiffBodyLine }> = ({ line }) => {
 	const rest = line.text.slice(line.marker.length);
 	return (
-		<span className="block whitespace-pre">
+		<span className="block">
 			{line.marker && (
 				<span className={cn(MARKER_INK[line.kind])}>{line.marker}</span>
 			)}
@@ -102,7 +107,16 @@ export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
 				// lines wrap instead. `break-words` is required alongside it — a
 				// pre-wrapped token with no break opportunity overflows the box
 				// rather than wrapping.
-				"max-h-[320px] overflow-y-auto overflow-x-hidden rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
+				// The ceiling is DERIVED from the cap rather than picked: a diff at
+				// `DIFF_EXPAND_MAX_LINES = 40` shows 40 lines AND the `… N more diff
+				// line(s)` marker under them, which at `text-mono-sm`'s 0.75rem/1.45
+				// metrics is 41 x 17.4px plus the 12px padding on each side. A shorter
+				// ceiling hides the marker that makes the cap honest — measured rather
+				// than anticipated: at 720px the capped body clipped that row by 17px,
+				// so the frame said "40 lines" with nothing saying there were more. The
+				// scroll region that remains is for a WRAPPED body (a 560px column
+				// turns 40 lines into 80 rows), which is the case it was always for.
+				"max-h-[740px] overflow-y-auto overflow-x-hidden rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
 				className,
 			)}
 		>
@@ -114,7 +128,7 @@ export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
 				<Line key={index} line={line} />
 			))}
 			{body.hidden > 0 && (
-				<span className="block whitespace-pre text-ink-dim">
+				<span className="block text-ink-dim">
 					{diffOverflowLabel(body.hidden)}
 				</span>
 			)}
