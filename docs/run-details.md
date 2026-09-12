@@ -274,6 +274,13 @@ PhaseName · 2/4 resolved
   roster's state-icon column** (`§ 5`): the two lists are one panel and they
   share one grid. The indent that separates a plan from its phase header lives on
   the second line, not in the first column.
+- **The per-phase `+N more` sits in the item-text column too, not in the mark
+  column** (`§ 5`, one grid). It is the footer of the rows above it, so it has to
+  look like one: in the first column it took the same x as the phase headers, the
+  same 12px type and one ink step away from them, with no rule between phases to
+  say where one ended — at the boundary it read as the NEXT phase's header rather
+  than as this phase's count. Under the text it attaches to the rows it counts,
+  which is the same place a blocked row's reason sits.
 - Encoding is the TUI's, unchanged: **luminance says open or settled, a word
   says which settled state, and no item is coloured.** Pending text is
   `ink-muted`; done and dropped are `ink-dim` with a line-through; blocked is
@@ -310,16 +317,16 @@ result once it lands.
 
 | | Value | Why |
 |---|---|---|
-| Panel width | 384px | The subagent row's fixed segments plus a label floor of roughly 20 characters. The popover primitive's default `w-72` cannot hold the numbers run and the activity line. |
-| Max height | `min(60vh, 480px)`, contents in a `ScrollArea` with `type="auto"` | A long plan scrolls inside the panel rather than growing past the viewport, and the thumb paints whenever the content actually overflows — so a still can show that more follows and a panel that fits gains no chrome. Radix's default `hover` cannot: it needs a pointer, which a capture never has, and the only cue left was a row sliced by the panel's bottom edge, which reads as damage. |
+| Panel width | 384px | The subagent row's fixed segments plus a label floor of roughly 20 characters. The popover primitive's default `w-72` cannot hold the numbers run and the activity line. While the panel's scrollbar is painted, its 10px lane comes off the content rather than out of the right padding (see Max height below), so the floor there is about one character narrower. |
+| Max height | `min(60vh, 480px)`, contents in a `ScrollArea` with `type="auto"` | A long plan scrolls inside the panel rather than growing past the viewport, and the thumb paints whenever the content actually overflows — so a still can show that more follows and a panel that fits gains no chrome. Radix's default `hover` cannot: it needs a pointer, which a capture never has, and the only cue left was a row sliced by the panel's bottom edge, which reads as damage. While the thumb IS painted its lane is reserved in the CONTENT — 10px off the scroll viewport, keyed on the live scrollbar — because the bar is an overlay pinned to the viewport's right edge and would otherwise land inside the panel's 12px right padding and leave every right edge in the panel 3px from the thumb. The bar cannot move out of the padding (the panel is the edge) and a narrower thumb is a control you cannot grab, so the lane comes out of the content instead, and a panel that fits gains no gutter. |
 | Anchor | `align="end"`, `side="bottom"`, `sideOffset={6}` | Anchored to the header cluster's right edge, opening away from the transcript's own content. |
 | Panel padding | `p-0`; sections own their padding | The primitive ships `p-4` for content-shaped popovers; this one is a list, and a list needs its rows to reach the panel edge so the section rules and the row grounds can. |
 | Radius | `rounded-md` (10px) | Panel tier, inherited from the primitive. |
 | Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. The shadow is what paints the edge in the frames: the ground outside the hairline runs from the darkest pixel at the panel's edge back to the canvas ground ≈20px out (the token's `32px` blur less its `-12px` spread), in both brand themes. |
 | Between sections | one `hairline` rule | Two stacked lists need a boundary; nothing else in the panel does. |
-| Row height | subagents: 32px single line, 48px with a second line, 64px for a failure whose exception takes both clamped lines. To-dos: 24px single line, 40px for a blocked row's reason line | Both pairs sit on the 4px ramp, and 32/48 is what a 16px icon on the label's baseline plus one 16px second line measures. The line heights are pinned (`leading-5` on the first line, `leading-4` on the second) rather than inherited: `body-sm`'s 1.5 and `meta`'s 1.45 land off the ramp at 19.5px and 17.4px, which measured as a 48-50px two-line row. |
+| Row height | subagents: 32px single line, 48px with a second line, 64px for a failure whose exception takes both clamped lines. To-dos: 24px single line, 40px for a blocked row's reason line | Both pairs sit on the 4px ramp, and 32/48 is what a 16px icon on the label's baseline plus one 16px second line measures. The line heights are pinned (`leading-5` on the first line, `leading-4` on the second — both variants of it, the activity line and the wrapped exception) rather than inherited: `body-sm`'s 1.5, `meta`'s 1.45 and `mono-sm`'s 1.45 land off the ramp at 19.5px and 17.4px, which measured as a 48-50px two-line row and a 67px failure row. Measured off the frames, the failure row is 12 + 20 + 2×16 = 64px. |
 | Row hover | **none** | Nothing in this panel is clickable (`§ 4.3`), so nothing may react to a pointer: a row that lights up under the cursor is a promise the surface does not keep. The `accent-wash` step belongs to rows that do something, and the two lists agree — neither of them hovers. |
-| One grid | marks and state icons in the same 16px column at `px-3`; first-line text at the same x in both lists; second lines indented under the text | Two lists in one panel have to read as one panel. The plan used to sit 12px right of the roster's icons (marks at `pl-6`, text at `pl-6`+20px), which is what made the panel read as two lists rather than one. |
+| One grid | marks and state icons in the same 16px column at `px-3`; first-line text at the same x in both lists; second lines indented under the text, and the plan's `+N more` with them | Two lists in one panel have to read as one panel. The plan used to sit 12px right of the roster's icons (marks at `pl-6`, text at `pl-6`+20px), which is what made the panel read as two lists rather than one. The disclosure joins the indent because it belongs to the rows above it, not to the phase headers below it (`§4.2`). |
 
 ## 6. Trigger and states
 
@@ -363,7 +370,7 @@ both of which are the product's own nouns and both of which the TUI uses.
 | both sections | `Subagents` then `To-dos`, hairline between |
 | one section | the other is omitted entirely; no empty heading, no placeholder |
 | overflowing subagents | 6 rows, then `+3 more` as a quiet trailing row, ordered by the TUI's priority slice (running/queued, failed, paused, settled; ties newest-first) |
-| overflowing to-dos | cap the item rows at 10, never dropping an open or blocked item. The **oldest** closed rows are the ones shed — earliest phase first, earliest item first — so a long plan keeps its recent end, and the hidden rows are disclosed as `+N more` **inside the phase that lost them**, under its surviving rows: the plan never appears to start mid-way, and every phase header stays accountable to the rows beneath it. A phase all of whose rows were shed keeps its header and its own `+N more` |
+| overflowing to-dos | cap the item rows at 10, never dropping an open or blocked item. The **oldest** closed rows are the ones shed — earliest phase first, earliest item first — so a long plan keeps its recent end, and the hidden rows are disclosed as `+N more` **inside the phase that lost them**, under its surviving rows and in the item-text column (`§4.2`): the plan never appears to start mid-way, and every phase header stays accountable to the rows beneath it. A phase all of whose rows were shed keeps its header and its own `+N more` — photographed in `todos-only`, whose oldest phase (`Reconcile · 5/5 resolved`) is wholly closed, so the cap takes every row it has and leaves the header and `+5 more` |
 | all settled | reachable, and now by two paths: the panel was opened while work was live and the work then settled, or the last open item settled under an open panel (`§ 3.3`). Every row quiet, no activity lines, and the trigger is gone unless a failure is unseen |
 | long label | label truncates with an ellipsis; role, elapsed, context and cost are fixed-width and never truncate mid-value |
 | reduced motion | the running icon stays put; shape already distinguishes it (§ 6.4) |
