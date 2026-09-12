@@ -104,15 +104,6 @@ export const ContextWheel: FC<ContextWheelProps> = ({ reading, className }) => {
 			aria-hidden="true"
 			focusable="false"
 		>
-			{/*
-			 * The track is `border-control`, not `hairline`.
-			 *
-			 * With no reading yet the track is the wheel's ONLY mark, so it is the
-			 * sole visual boundary of the control and takes the structural role
-			 * with its 3:1 floor on all four grounds. A hairline here is exactly
-			 * the conflation docs/branding.md § 2 names: it would leave the empty
-			 * wheel bounded at around 1.2:1, which is a control with no edge.
-			 */}
 			<circle
 				cx={SIZE / 2}
 				cy={SIZE / 2}

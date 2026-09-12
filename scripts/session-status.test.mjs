@@ -66,6 +66,7 @@ const {
 	formatWindow,
 	modelIdentity,
 	sessionCost,
+	specUnresolved,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -954,7 +955,21 @@ test("the chip prints what the TUI band prints, over the whole registry", () => 
 		agg.total,
 		`aggregator rows disagreeing with the band: ${JSON.stringify(agg.differ.slice(0, 3))}`,
 	);
-	assert.ok(agg.total >= 200, "the aggregator population should not shrink");
+	/*
+	 * The fixture must cover EVERY aggregator the mirror names, not a subset:
+	 * round 3 found it pinning openrouter and radient but not radient-key, so
+	 * the population was smaller than the literal it defends (N1). Asserted
+	 * against the fixture's own provider list, which is read from Python's
+	 * frozenset at generation time.
+	 */
+	const covered = new Set(NAMES.aggregator.map((row) => row.provider));
+	assert.deepEqual(
+		[...covered].sort(),
+		[...NAMES.aggregatorProviders].sort(),
+		"every provider in AGGREGATOR_PROVIDERS must be pinned",
+	);
+	assert.equal(covered.size, 3, "three aggregators ship today");
+	assert.ok(agg.total >= 300, "the aggregator population should not shrink");
 
 	/*
 	 * First-party rows are allowed to differ ONLY by being longer: the two
@@ -1076,4 +1091,52 @@ test("an empty effort ladder is evidence of nothing", () => {
 	});
 	assert.equal(fixed.adjustable, false);
 	assert.equal(reconcileEffort(fixed, []).adjustable, false, "still read-only");
+});
+
+test("an unresolved spec is told apart from a model with no levels", () => {
+	/*
+	 * Round 3, U12. `command-entities?command=effort` is a pure read of
+	 * `remote.model.reasoning_efforts`, so on a cold owner it answers `[]` for a
+	 * model that has a full ladder. The PICKER was reading that as a capability
+	 * claim - "has no adjustable effort. Pick a reasoning model with /model
+	 * first." - about a four-rung model, which is the same inference
+	 * `reconcileEffort` had to drop. Both now ask this ONE predicate, so the
+	 * chip and the picker cannot disagree about what an empty ladder means.
+	 */
+	const cold = {
+		provider: "openrouter",
+		model_id: "openai/gpt-5-mini",
+		display_name: "",
+		reasoning: false,
+		reasoning_efforts: [],
+		reasoning_effort: null,
+		reasoning_default_effort: null,
+	};
+	assert.equal(specUnresolved(cold), true, "a cold owner is unresolved");
+
+	// A genuine fixed-effort model is NOT unresolved: it still carries a name,
+	// which is exactly what tells the two apart.
+	assert.equal(
+		specUnresolved({ ...cold, display_name: "GPT-5 Mini", reasoning: true }),
+		false,
+		"a reasoning model with a name and no rungs has really none",
+	);
+	// Any one of these resolving is enough to stop the claim.
+	assert.equal(specUnresolved({ ...cold, reasoning_effort: "high" }), false);
+	assert.equal(
+		specUnresolved({ ...cold, reasoning_default_effort: "medium" }),
+		false,
+	);
+	assert.equal(specUnresolved({ ...cold, reasoning_efforts: ["low"] }), false);
+	// A session that has chosen no model at all is silent, not amnesiac.
+	assert.equal(specUnresolved({ ...cold, model_id: "" }), false);
+	assert.equal(specUnresolved(null), false);
+	assert.equal(specUnresolved(undefined), false);
+
+	// The chip and the picker must agree, because they share this predicate.
+	assert.equal(specUnresolved(cold), effortState(cold).label === "unknown");
+	// And the chip's copy names the act that actually resolves the spec, since
+	// opening the picker is a read and cannot (U12).
+	assert.match(effortState(cold).detail, /run \/effort <level> to set one now/);
+	assert.doesNotMatch(effortState(cold).detail, /open this/);
 });

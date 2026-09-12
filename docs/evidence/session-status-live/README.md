@@ -185,3 +185,45 @@ Three round-2 findings answered by that transcript:
 all (both re-confirmed this round), which is why the naming rule is mirrored in
 the renderer rather than read off the wire. The durable fix is a
 backend-provided safe label; see the PR.
+
+---
+
+## Round 4: the picker's unresolved state (U12) and the stale window (U13)
+
+`u12-tooltip/`, `u12-picker/` and `u13-picker-converged/` walk exactly the path
+UX walked in round 3, in the packaged Electron binary against an isolated
+backend on a brand-new session that had never run a turn. Verbatim:
+
+```
+PRELOAD window.api.desktop: object
+U12 server entities: []                       <- still empty; the endpoint is a pure read
+U12 tooltip : unknown | This session has not reported its reasoning effort yet.
+              It appears after the next turn, or run /effort <level> to set one now.
+U12 picker  : Reasoning effort | openrouter/openai/gpt-5-mini has not reported its
+              effort levels yet. They appear after the next turn, or run
+              /effort <level> to set one now. | Not known yet - run /effort <level>
+              to set one. | Arrows move, Enter picks, Esc closes | Cancel
+/effort high -> 200
+U13 strip   : gpt-5-mini | high
+U13 picker (inside the 15s staleTime window):
+              Effort levels openrouter/openai/gpt-5-mini supports. | minimal | low |
+              medium | high        options: [minimal, low, medium, high]
+```
+
+- **U12** — the server answer is unchanged (`[]`), which is the point: the fix
+  is in how that answer is READ. The dialog no longer claims a four-rung model
+  "has no adjustable effort" or advises picking a different model, and both the
+  tooltip and the dialog name `/effort <level>` — the one act that resolves the
+  spec, since opening the picker is a pure read of
+  `remote.model.reasoning_efforts` and cannot.
+- **U13** — the picker was reopened WELL INSIDE the 15s `staleTime` window that
+  previously served the pre-resolution answer, and it shows all four rungs.
+
+### A harness note worth keeping
+
+The first run of this walk was intercepted by the onboarding provider modal and
+photographed *it* rather than the picker. The credential file alone is not
+enough: the provider must be registered through
+`PUT /v1/auth/providers/<id>/key` for the app to consider one connected. A
+harness that seeds only `onboarding-storage` will silently capture the wrong
+dialog.

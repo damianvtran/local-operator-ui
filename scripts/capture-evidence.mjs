@@ -245,7 +245,7 @@ const STORIES = [
 	["chat-session-status-strip--effort-states", 860, 780],
 	["chat-session-status-strip--long-model-name", 860, 420],
 	["chat-session-status-strip--absolute-rungs", 860, 600],
-	["chat-session-status-strip--honest-unknowns", 860, 600],
+	["chat-session-status-strip--honest-unknowns", 860, 760],
 	/* The 220px column is the canvas-open floor, and the width the composer's
 	   button row was already over budget at. Captured narrow, because the shed
 	   order under pressure is half the design. */

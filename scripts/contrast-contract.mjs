@@ -293,6 +293,26 @@ const CONTROLS = [
 		border: "danger",
 		ink: "inkMuted",
 	},
+	{
+		/*
+		 * The reading buttons' hover state, which is the ONLY place `accentWash`
+		 * is a ground for text in the app.
+		 *
+		 * Round 2 deleted the empty-wheel row for the right reason (it asserted a
+		 * structural floor on a decorative line), but that row was carrying two
+		 * assertions and only one was replaced: `PERCEPTIBLE` measures the ring
+		 * against `accentWash`, and nothing was left measuring INK against it
+		 * (reviewer round 3, M1). `READING_BUTTON` is
+		 * `hover:bg-accent-wash hover:text-ink`, so the pairing is reachable in
+		 * all twelve themes. It passes today; this row is what keeps a future
+		 * token move from breaking it silently.
+		 */
+		name: "reading button, hovered",
+		on: ["surface"],
+		fill: "accentWash",
+		border: "accent",
+		ink: "ink",
+	},
 	/*
 	 * The empty wheel has NO row here, and its absence is the statement.
 	 *
@@ -555,6 +575,12 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: "border-control border-b",
 		why: "this rule is the whole signal that a scrolling body continues past the fold, so it cannot ride a decorative weight that is invisible against both neighbours",
+	},
+	{
+		what: "context wheel empty track role",
+		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
+		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
+		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
 	},
 ];
 
