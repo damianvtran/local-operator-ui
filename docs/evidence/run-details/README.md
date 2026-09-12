@@ -40,6 +40,10 @@ node scripts/capture-evidence.mjs http://localhost:6041 \
   --themes=localOperatorDark,localOperatorLight \
   --allow-backend
 
+# #112 merge + round-4 fixes: NO capture this round. The frames' own source did
+# not move (see below), so `manifest.json` is re-stamped to the merge commit and
+# its counts reconciled against the tree instead.
+
 pnpm check-evidence
 ```
 
@@ -121,6 +125,24 @@ the sweep.
 **Why `--allow-backend`.** These stories render from fixture state and never call
 out, which is what that flag asserts. A backend on the configured port otherwise
 fails the run because a captured frame must be a function of the tree.
+
+**The #112 merge re-stamped and did NOT re-capture, and that is a measurement
+rather than a shortcut.** The merge brings main's `src/` and `scripts/` forward,
+so the manifest's `srcTree`/`scriptsTree` have to move with them (the gate
+compares them against `HEAD:src`/`HEAD:scripts`), and `frames`/`surfaces` had to
+be reconciled with the two sides' entries. Nothing moved under the frames' own
+source, and it was checked rather than asserted: the ten stories' import graph
+was walked at the merged head — 136 modules, from `run-details.stories.tsx`
+through `ChatHeader`, `MessageItem` and `TraceGroup` — and reaches none of
+#112's changed renderer modules (`canonical-transcript.tsx`,
+`older-history-slot.tsx`, `use-scroll-paging.ts`, `scroll-paging.ts`,
+`use-canonical-session.ts`), so no frame here renders a line #112 wrote. The
+round-4 fixes cannot move them either: R4-1 changes only a word the fold REFUSED
+and the sanitiser did not, and no fixture carries a recognised state plus junk
+(`restored-and-unrecognised`'s row is the bare word `reticulating`), while the
+rest of the round is comments and a slice indirection that returns the identical
+rows. The two clocks in `both-in-flight` would still have differed by a second
+had it been re-taken, which is churn rather than evidence.
 
 **Two of the twelve themes.** The other ten are covered numerically by
 `pnpm check-themes` (2168 assertions across all twelve palettes); these frames
