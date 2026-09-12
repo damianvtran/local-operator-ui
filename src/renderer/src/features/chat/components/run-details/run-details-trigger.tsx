@@ -34,6 +34,7 @@ import { useEffect, useRef, useState } from "react";
 import {
 	type RunDetails,
 	type SeenFailures,
+	acknowledgedOnOpen,
 	hasRunDetails,
 	hasUnseenFailure,
 	runDetailTriggerLabel,
@@ -53,8 +54,68 @@ export type RunDetailsTriggerProps = {
 	defaultOpen?: boolean;
 };
 
-const sameIds = (seen: SeenFailures, ids: string[]): boolean =>
-	seen.size === ids.length && ids.every((id) => seen.has(id));
+/**
+ * The selector the document's own tab order is read from.
+ *
+ * The usual list minus anything that cannot take focus; `[tabindex]` is included
+ * because the header's controls are plain buttons and the cluster's neighbours
+ * may not be, and `:not([tabindex="-1"])` because that is precisely the container
+ * this walk exists to leave.
+ */
+const TABBABLE_SELECTOR = [
+	"a[href]",
+	"button:not([disabled])",
+	"input:not([disabled])",
+	"select:not([disabled])",
+	"textarea:not([disabled])",
+	'[tabindex]:not([tabindex="-1"])',
+].join(", ");
+
+/**
+ * Move focus out of the open panel, in the direction Tab was pressed.
+ *
+ * **Why this is not left to the browser.** The panel is Radix's portal, so it is
+ * the LAST element in `<body>`: the document's own tab order puts it after every
+ * header control, and a Tab from the container leaves the header entirely rather
+ * than reaching the canvas button 8px to its right. It also cannot reach it by
+ * walking inwards — the rows are not interactive (`§4.3`), so the content holds
+ * no tabbable element at all.
+ *
+ * So the move is made against the TRIGGER, which is the element Radix already
+ * uses as the panel's anchor and the element the keyboard user came from: the
+ * next tabbable after it in document order, or the previous one for Shift+Tab.
+ * That is the rest of the header cluster, which is where `§7` says focus goes.
+ *
+ * Returns whether focus was moved, so the caller only suppresses the browser's
+ * own handling when this actually handled the press.
+ */
+const moveFocusOutOfPanel = (
+	trigger: HTMLElement | null,
+	backwards: boolean,
+): boolean => {
+	if (!trigger?.isConnected) return false;
+	const candidates = Array.from(
+		document.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
+	).filter(
+		(element) =>
+			/*
+			 * `getClientRects()` rather than `offsetParent`: the portal is fixed
+			 * positioned, and `offsetParent` is null for anything fixed, which
+			 * would drop the header itself out of its own tab order.
+			 */
+			element.getClientRects().length > 0,
+	);
+	const index = candidates.indexOf(trigger);
+	if (index === -1) return false;
+	/*
+	 * At either end of the document's order the walk has nothing to offer, and
+	 * the trigger is the honest destination: it is where Escape already returns
+	 * focus, and it is 8px from the panel rather than a whole document away.
+	 */
+	const destination = candidates[index + (backwards ? -1 : 1)] ?? trigger;
+	destination.focus();
+	return document.activeElement === destination;
+};
 
 export const RunDetailsTrigger = ({
 	details,
@@ -72,6 +133,16 @@ export const RunDetailsTrigger = ({
 		() => new Set(defaultOpen ? (details?.failedChildIds ?? []) : []),
 	);
 	const contentRef = useRef<HTMLDivElement | null>(null);
+	/**
+	 * The trigger button itself, which is the anchor the panel's focus moves are
+	 * measured from.
+	 *
+	 * Taken from the DOM rather than from a second `useRef` on the `Button`
+	 * because Radix owns the trigger element: `PopoverTrigger asChild` clones it
+	 * and `Tooltip asChild` clones the same node again, so an element read here is
+	 * the one the popover is actually anchored to rather than a copy of it.
+	 */
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
 
 	/**
 	 * The canvas wins the header while it is open (`§3.3`): with it open the chat
@@ -84,15 +155,39 @@ export const RunDetailsTrigger = ({
 		if (isCanvasOpen) setOpen(false);
 	}, [isCanvasOpen]);
 
-	// Opening clears the dot. Recorded per failure id, and only while the panel is
-	// open, so a failure that arrives while the user is reading is seen too.
-	useEffect(() => {
-		if (!open || !details) return;
-		const failed = details.failedChildIds;
-		setSeen((previous) =>
-			sameIds(previous, failed) ? previous : new Set(failed),
-		);
-	}, [open, details]);
+	/**
+	 * Opening clears the dot for the failures THAT WERE ON SCREEN, and only those
+	 * (`§3.3`).
+	 *
+	 * Bound to the transition rather than to a `[open, details]` effect, which is
+	 * the difference between acknowledging a failure and hiding it: the effect
+	 * re-recorded the whole failure set on every change while the panel was open,
+	 * so a child that failed while the reader was scrolled down in the plan was
+	 * marked seen without ever having been displayed — and the trigger's failure
+	 * clause was gone when they closed it. Bound here, a failure that arrives
+	 * while the panel is open keeps its dot for the next view.
+	 *
+	 * The rule is `acknowledgedOnOpen` in the model, so it is asserted rather than
+	 * described; this callback only supplies the instant it is asked about.
+	 *
+	 * `details` is read through a ref rather than closed over, because the ref is
+	 * the render that is current when the CLICK happens rather than the render
+	 * that installed the handler — Radix keeps the callback it was given and a
+	 * failure can land between the two. The write happens during render, which is
+	 * safe for a mirror of the props and is why the mirror is one line rather
+	 * than a `useEffect`: an acknowledged failure must not be missed because the
+	 * effect had not run yet.
+	 */
+	const detailsRef = useRef(details);
+	detailsRef.current = details;
+	const handleOpenChange = (next: boolean) => {
+		if (next) {
+			setSeen((previous) =>
+				acknowledgedOnOpen(detailsRef.current?.failedChildIds ?? [], previous),
+			);
+		}
+		setOpen(next);
+	};
 
 	/*
 	 * The visibility gate, which is `hasRunDetails && !isCanvasOpen` (`§3.3`) plus
@@ -130,12 +225,12 @@ export const RunDetailsTrigger = ({
 	const label = runDetailTriggerLabel(details, seen);
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={handleOpenChange}>
 			{/* Tooltip first: it needs the button as its child, and the popover's
 			 * trigger is the same element — `Tooltip` and `PopoverTrigger` both
 			 * clone through `asChild`, so the button ends up carrying both sets of
 			 * props rather than one wrapping the other in the DOM. */}
-			<Tooltip content={label} side="bottom">
+			<Tooltip content={label} side="top">
 				<PopoverTrigger asChild>
 					<Button
 						variant="ghost"
@@ -147,6 +242,11 @@ export const RunDetailsTrigger = ({
 						 */
 						className={cn("relative")}
 						aria-label={label}
+						/*
+						 * The panel's Tab move is measured from this element, which is the one
+						 * Radix anchors the popover to (`§7`).
+						 */
+						ref={triggerRef}
 						/*
 						 * Inert hook for the stories and for whatever drives this next. The
 						 * label is derived — it carries a count per state — so it is the wrong
@@ -216,6 +316,38 @@ export const RunDetailsTrigger = ({
 					 */
 					"outline-none shadow-overlay!",
 				)}
+				/*
+				 * The panel is a dialog with no name otherwise: Radix renders
+				 * `role="dialog"` on this element, and an accessible name is required for
+				 * it to be announced as anything but "dialog" (axe's
+				 * `aria-dialog-name`). A label rather than a `labelledby` pointing at the
+				 * first section heading, because the sections are conditional — with no
+				 * children on screen the only heading is `To-dos`, and a name that
+				 * changes with the contents names the contents rather than the surface.
+				 */
+				aria-label="Run details"
+				/*
+				 * Tab LEAVES the panel (`§7`), and it has to be moved by hand.
+				 *
+				 * The container is the focus target on open and the content holds no
+				 * tabbable element (the rows are not interactive), so the browser's own
+				 * Tab has no next stop inside the panel — and the panel is the LAST
+				 * element in `<body>`, so it walks out of the header rather than into
+				 * the cluster 8px away.
+				 *
+				 * `moveFocusOutOfPanel` puts focus on the trigger's next tabbable
+				 * neighbour (its previous one for Shift+Tab), and reports whether it
+				 * moved anything: when the trigger is not in the document — a story
+				 * that mounts the panel without a header — the press is left to the
+				 * browser rather than swallowed by a handler that did nothing.
+				 */
+				onKeyDown={(event) => {
+					if (event.key !== "Tab") return;
+					if (event.altKey || event.ctrlKey || event.metaKey) return;
+					if (!moveFocusOutOfPanel(triggerRef.current, event.shiftKey)) return;
+					event.preventDefault();
+					event.stopPropagation();
+				}}
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
 					contentRef.current?.focus();

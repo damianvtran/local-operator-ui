@@ -24,7 +24,11 @@
  */
 
 import { useEffect, useState } from "react";
-import { type RunDetails, retimeRunDetails } from "./run-detail-model";
+import {
+	type RunDetails,
+	hasLiveChildClock,
+	retimeRunDetails,
+} from "./run-detail-model";
 
 /** 1Hz: the label it moves carries whole seconds, so a faster clock is churn. */
 const CLOCK_MS = 1000;
@@ -32,13 +36,18 @@ const CLOCK_MS = 1000;
 export function useRunDetailsClock(details: RunDetails): RunDetails {
 	/*
 	 * Only a child that has been launched and has not settled has a clock that
-	 * is still running. A settled child is measured against its own `settled_at`
-	 * and a child with no launch time at all shows no duration, so neither of
-	 * them can go stale — and neither of them justifies a timer.
+	 * is still running; the predicate is the model's, so what it means is
+	 * asserted in `run-detail-model.test.mjs` rather than only claimed here. A
+	 * settled child is measured against its own `settled_at` and a child with no
+	 * launch time at all shows no duration, so neither of them can go stale —
+	 * and neither of them justifies a timer.
+	 *
+	 * What this file adds is the timer's LIFETIME, not its rule: the interval is
+	 * created when something live is on screen and cleared when the panel
+	 * closes or the last child settles. That part is a behaviour and is
+	 * exercised against the running panel rather than asserted here.
 	 */
-	const ticking = details.subagents.some(
-		(row) => row.startSeconds !== null && row.settledSeconds === null,
-	);
+	const ticking = hasLiveChildClock(details.subagents);
 	/*
 	 * Seeded with the instant the model was measured at, not with `Date.now()`:
 	 * until the first tick the two are the same thing, and seeding from the

@@ -7,8 +7,10 @@
  */
 
 export {
+	acknowledgedOnOpen,
 	childStateLabel,
 	deriveRunDetails,
+	hasLiveChildClock,
 	hasRunDetails,
 	hasUnseenFailure,
 	NOTHING_SEEN,

@@ -14,7 +14,6 @@
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
-	CirclePause,
 	CircleSlash,
 	Clock,
 	LoaderCircle,
@@ -33,18 +32,19 @@ import {
 
 /**
  * One mark per state, ported by meaning rather than by codepoint, exactly as
- * `trace/tool-glyphs.ts` ports the TUI's nerd-font table.
+ * `trace/tool-glyphs.ts` ports the TUI's nerd-font table. `status_glyph` has one
+ * more mark than this table — the pause circle — and no row here can carry it:
+ * the desktop roster has no pause flag to read (`OPEN_CHILD_STATUSES`).
  *
  * Two properties are load-bearing and both are `§6.4`'s: **motion is a bonus,
- * never the contract** — running and paused are different SHAPES, so the list
- * survives `prefers-reduced-motion` and survives being looked at by someone who
- * cannot separate the two inks — and **failure is the only colour the section
- * spends**, which is the dock band's own ink law.
+ * never the contract** — running and interrupted are different SHAPES, so the
+ * list survives `prefers-reduced-motion` and survives being looked at by someone
+ * who cannot separate the two inks — and **failure is the only colour the
+ * section spends**, which is the dock band's own ink law.
  */
 const CHILD_ICON: Record<ChildStatus, LucideIcon> = {
 	running: LoaderCircle,
 	queued: Clock,
-	paused: CirclePause,
 	interrupted: RotateCcw,
 	done: Check,
 	cancelled: CircleSlash,
@@ -56,7 +56,6 @@ const CHILD_INK: Record<ChildStatus, string> = {
 	// green is a scarce budget and a child at work has not done anything yet.
 	running: "text-ink-muted",
 	queued: "text-ink-dim",
-	paused: "text-ink-muted",
 	// A run cut off by the process ending is not a failure — nothing went wrong —
 	// so it takes the muted ink and the rotate mark that says it may be resumable.
 	interrupted: "text-ink-muted",
@@ -195,9 +194,19 @@ const DetailLine = ({ row }: { row: SubagentRow }) => {
 const SubagentRowView = ({ row }: { row: SubagentRow }) => {
 	/*
 	 * Line 2 is the live datum while the child works and the outcome's first line
-	 * once it has failed; a settled child that is not a failure has neither,
-	 * matching the TUI's blanked activity (`:653-660`) and keeping the settled
-	 * tail of the list quiet.
+	 * once it has failed; a settled child that is neither has none.
+	 *
+	 * **That last part is this design's own choice, not a port, and the citation
+	 * it used to carry was wrong.** The TUI's roster does blank a settled row's
+	 * activity, but not for the reason claimed here: `row_facts` fills it from
+	 * `result_text` for every settled state (`subagent_panel.py:628-640`) and only
+	 * blanks it when the row's PAGE IS OPEN (`:653-660`, `if current and not
+	 * running`), which is the collapsed preview's `current=False` — so a settled
+	 * roster row there keeps its text. What this panel does instead is drop the
+	 * second line for a settled child that did not fail, because a 384px popover
+	 * two lines per row cannot hold a paragraph of `result_text` per settled child
+	 * and keep the live rows legible. The full record is the transcript, which is
+	 * where §3.1 sends it.
 	 */
 	return (
 		<li
