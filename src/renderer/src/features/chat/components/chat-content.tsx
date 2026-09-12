@@ -17,6 +17,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -105,6 +106,16 @@ type ChatContentProps = {
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
+	 * The session's readings and the dispatcher that opens their pickers.
+	 * Forwarded verbatim to the composer; see `MessageInputProps`.
+	 */
+	sessionStatus?: {
+		frontend: CanonicalFrontendState | null;
+		onCommand?: (line: string) => void;
+		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
+		effortEntities?: readonly unknown[];
+	};
+	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
 	 * job/message list is not mounted. Absent on an old backend.
@@ -177,6 +188,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwd,
 		onChangeCwd,
 		sendError,
+		sessionStatus,
 		canonical,
 		runDetails,
 	}) => {
@@ -439,6 +451,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								cwd={cwd}
 								onChangeCwd={onChangeCwd}
 								sendError={sendError}
+								sessionStatus={sessionStatus}
 								isSmallView={isSmallView}
 							/>
 						)}

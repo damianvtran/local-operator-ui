@@ -30,6 +30,20 @@ import { deltaE, r2 } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** One git read, or null when git cannot answer (unresolvable sha, no repo). */
+const gitOut = (args) => {
+	try {
+		return execFileSync("git", args, {
+			cwd: ROOT,
+			stdio: ["ignore", "pipe", "ignore"],
+		})
+			.toString()
+			.trim();
+	} catch {
+		return null;
+	}
+};
 const EVIDENCE = join(ROOT, "docs", "evidence");
 
 /**
@@ -87,8 +101,15 @@ const overCeiling = (fraction) => {
 
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
-/** Every `.webp` under the evidence root, with the theme its filename names. */
-const frames = (dir) => {
+/**
+ * Every `.webp` under the evidence root, with the theme its filename names.
+ *
+ * Exported because `capture-evidence.mjs` has to count frames the SAME way
+ * this guard counts them when a narrowed run adds a surface: two walkers that
+ * disagreed about what a frame is would produce a manifest that fails the
+ * gate it was written to satisfy.
+ */
+export const frames = (dir) => {
 	const out = [];
 	for (const entry of readdirSync(dir)) {
 		const path = join(dir, entry);
@@ -181,6 +202,137 @@ const PALETTES = new Map(loadPalettes().map((p) => [p.id, p.palette]));
 
 /* Sweeping the whole set is what `pnpm check-evidence` does; importing this
    module for `assertFramePaints` must not trigger it. */
+
+/**
+ * Whether the manifest's stated provenance resolves to the tree under review.
+ *
+ * ## Why this exists
+ *
+ * `head`, `srcTree` and `scriptsTree` exist for exactly one purpose: letting a
+ * reader decide whether committed frames are pictures of the CURRENT source.
+ * Nothing read them. So the manifest could name a commit that was never pushed,
+ * or lag a round behind, and every gate stayed green - which is how a stamp
+ * pointing at a pre-amend `wip:` commit shipped through three rounds of review
+ * (round 4, R1/D13). That commit was reachable from no ref and would have died
+ * at the next `git gc`, leaving the audit trail permanently dead-ended.
+ *
+ * The manifest's own `countsMean.surfaces` note already admitted the shape of
+ * this: it records that the field lags and that this script "does not read it,
+ * which is how it went one round stale". A self-description nothing checks is a
+ * comment, not a record.
+ *
+ * ## What it checks, and what it deliberately does not
+ *
+ * Three things, all cheap and all local:
+ *
+ * 1. `head` must RESOLVE to a commit. An unreachable sha is the failure that
+ *    cannot be recovered from later, because the object goes away.
+ * 2. `srcTree` / `scriptsTree` must equal the CURRENT `HEAD:src` / `HEAD:scripts`.
+ *    This is the real staleness question - a docs-only commit moves `head` but
+ *    not the trees, and frames stay valid across it. Comparing trees rather
+ *    than commits is what the capture script's own comment argues for.
+ * 3. Every `supplementary[].capturedAtHead` must resolve too, for the same
+ *    reason as (1).
+ *
+ * It does NOT require `head` to equal the current HEAD. A tree-clean manifest
+ * whose `head` is an older ancestor is honest and common: docs commits land
+ * after a capture all the time, and forcing a re-stamp for them would train
+ * people to re-stamp without re-capturing, which is the habit that produced
+ * the defect in the first place.
+ *
+ * Returns a list of failure strings so the caller can report them beside the
+ * frame failures; exported so `evidence-manifest.test.mjs` binds the shipped
+ * function rather than a copy of its reasoning (round 2, R7).
+ */
+export const provenanceFailures = (manifest, git = gitOut) => {
+	const out = [];
+	/*
+	 * REACHABLE, not merely resolvable.
+	 *
+	 * `rev-parse --verify` says yes to a dangling object, which is precisely the
+	 * sha that shipped: a pre-amend `wip:` commit still resolves in the clone
+	 * that created it and nowhere else. The property that makes a citation
+	 * durable is being reachable from a ref, because that is what survives
+	 * `git gc` and what a fresh clone can look up. `--all` covers branches,
+	 * remotes and tags; a sha reachable from none of them is one this repository
+	 * will forget.
+	 */
+	const reachable = (sha) =>
+		git(["merge-base", "--is-ancestor", sha, "HEAD"]) !== null ||
+		(git([
+			"for-each-ref",
+			"--count=1",
+			"--contains",
+			sha,
+			"--format=%(refname)",
+		]) ?? "") !== "";
+	const resolves = (sha) =>
+		git(["rev-parse", "--quiet", "--verify", `${sha}^{commit}`]) !== null;
+
+	if (typeof manifest.head !== "string" || manifest.head.length < 7) {
+		out.push("manifest.json: `head` is missing or not a sha");
+	} else if (!resolves(manifest.head)) {
+		out.push(
+			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} resolves to no commit in this repository`,
+		);
+	} else if (!reachable(manifest.head)) {
+		out.push(
+			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} (${git(["log", "-1", "--format=%s", manifest.head]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
+		);
+	}
+
+	for (const [field, path] of [
+		["srcTree", "src"],
+		["scriptsTree", "scripts"],
+	]) {
+		const actual = git(["rev-parse", `HEAD:${path}`]);
+		if (actual === null) continue;
+		if (manifest[field] !== actual) {
+			out.push(
+				`manifest.json: \`${field}\` is ${String(manifest[field]).slice(0, 9)} but HEAD:${path} is ${actual.slice(0, 9)} - the frames were captured from different ${path} than the tree under review, so re-capture and re-stamp`,
+			);
+		}
+	}
+
+	/*
+	 * `surfaces` must equal the story list it names.
+	 *
+	 * Only a full sweep wrote this field, so a narrowed run carried the old
+	 * value forward and it lagged its own source for two rounds - 48 against a
+	 * STORIES of 58 (round 4, R3). Counting the list here rather than trusting
+	 * the writer is what turns the manifest's self-description into something a
+	 * gate can falsify, which is the root cause R1 and R3 share. Parsed rather
+	 * than imported because importing the capture script pulls in its whole
+	 * browser-driving surface for one number.
+	 */
+	const capture = gitOut(["show", "HEAD:scripts/capture-evidence.mjs"]);
+	if (capture !== null && typeof manifest.surfaces === "number") {
+		const block = capture.slice(capture.indexOf("const STORIES = ["));
+		const declared = (
+			block.slice(0, block.indexOf("\n];")).match(/^\t\[/gm) ?? []
+		).length;
+		if (declared > 0 && declared !== manifest.surfaces)
+			out.push(
+				`manifest.json: \`surfaces\` is ${manifest.surfaces} but capture-evidence.mjs declares ${declared} stories - a narrowed run carried the old value forward`,
+			);
+	}
+
+	for (const set of manifest.supplementary ?? []) {
+		const sha = set.capturedAtHead;
+		if (typeof sha !== "string" || sha.length < 7) continue;
+		if (!resolves(sha)) {
+			out.push(
+				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} resolves to no commit in this repository`,
+			);
+		} else if (!reachable(sha)) {
+			out.push(
+				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} is reachable from no ref - it dies at the next gc`,
+			);
+		}
+	}
+	return out;
+};
+
 const main = () => {
 	if (!existsSync(EVIDENCE)) {
 		console.error(`No evidence at ${EVIDENCE}`);
@@ -223,6 +375,9 @@ const main = () => {
 	const manifestPath = join(EVIDENCE, "manifest.json");
 	if (existsSync(manifestPath)) {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+		// A manifest that misdescribes itself is not evidence of anything, so
+		// its provenance is checked before its arithmetic.
+		failures.push(...provenanceFailures(manifest));
 		/*
 		 * `frames` is the SWEEP's own count, and it stays that way.
 		 *

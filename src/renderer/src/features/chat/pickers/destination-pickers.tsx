@@ -38,6 +38,7 @@ import type {
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import type { SlashCommandMeta } from "../components/slash-commands";
+import { specUnresolved } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
 import {
 	PickerCheck,
@@ -264,20 +265,46 @@ export const EffortPicker: FC<PickerContext> = ({
 	const label = model
 		? `${model.provider}/${model.model_id}`
 		: "the current model";
+	/*
+	 * An empty rung list has TWO causes and they are different facts, only one
+	 * of which is about the model.
+	 *
+	 * `command-entities?command=effort` reads `remote.model.reasoning_efforts`
+	 * (`desktop_catalogues.py:270-273`) - a pure read of the owner's live spec.
+	 * On a cold owner that spec is not resolved yet, so the endpoint answers
+	 * `[]` for a model that in fact has a full ladder, and only `/effort <rung>`
+	 * resolves it. Reading `[]` as "this model has no adjustable effort" turns
+	 * an unresolved read into a capability claim, and then advises the user to
+	 * "pick a reasoning model" about a four-rung reasoning model (UX round 3,
+	 * U12). It is the same inference `reconcileEffort` had to drop one file
+	 * over, which is why both now ask the SAME predicate rather than each
+	 * deciding for itself.
+	 */
+	const unresolved = specUnresolved(model);
+	const noOptions = options.length === 0 && !entities.isLoading;
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
 			title="Reasoning effort"
 			description={
-				options.length === 0 && !entities.isLoading
-					? `${label} has no adjustable effort. Pick a reasoning model with /model first.`
+				noOptions
+					? unresolved
+						? // Naming the rung matters: opening this picker is a read and
+							// cannot resolve the spec, so the only route out is the one
+							// act that does.
+							`${label} has not reported its effort levels yet. They appear after the next turn, or run /effort <level> to set one now.`
+						: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
 					: `Effort levels ${label} supports. Applies to this session.`
 			}
 			options={options}
 			loading={entities.isLoading}
 			loadError={entities.isError ? errorText(entities.error) : null}
-			emptyText="Effort is not adjustable on this model."
+			emptyText={
+				unresolved
+					? "Not known yet - run /effort <level> to set one."
+					: "Effort is not adjustable on this model."
+			}
 			onPick={(value) => void command.run("effort", value)}
 			busy={command.busy}
 			result={command.result}
