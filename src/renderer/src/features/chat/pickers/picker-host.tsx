@@ -106,19 +106,21 @@ export type PickerHostProps = {
 	/** Rendered instead of the list when set (data views). */
 	body?: ReactNode;
 	/**
-	 * The body is a long list that MAY overflow, so let it mark where it ends.
+	 * The body is a long list that MAY overflow, so reserve its scrollbar
+	 * column.
 	 *
-	 * Opt-in rather than always-on: most `body` pickers render a short form that
-	 * never scrolls, and a rule under content that stops well above the footer
-	 * draws a boundary around nothing. Set it for the dense data views.
+	 * Opt-in rather than always-on: `scrollbar-gutter: stable` is paid by every
+	 * state of the body, and a short form that never scrolls has nothing to pay
+	 * for it. Set it for the dense data views.
 	 *
-	 * Note that this ENABLES the treatment; it does not force it. Whether the
+	 * Note that this gates ONLY the gutter. The end-of-list treatment - the
+	 * closing rule and the fade - is not behind this prop at all: whether the
 	 * edge is drawn is measured per render from the scroll container itself,
-	 * because the flag is a property of the PICKER while overflow is a property
-	 * of the STATE: `/usage` sets it once, but its empty, error, fetching,
-	 * percent-only, remaining-balance and narrow states all end well above the
-	 * fold, and an unconditional rule drew a boundary under nothing in every one
-	 * of them (design D4).
+	 * because overflow is a property of the STATE, not of the PICKER: `/usage`
+	 * sets this once, but its empty, error, fetching, percent-only,
+	 * remaining-balance and narrow states all end well above the fold, and an
+	 * unconditional rule drew a boundary under nothing in every one of them
+	 * (design D4).
 	 */
 	bodyScrolls?: boolean;
 };

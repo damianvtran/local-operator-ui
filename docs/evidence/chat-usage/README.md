@@ -201,6 +201,21 @@ so the pair remains one commit stale against the fold treatment — recorded in
 `manifest.json`'s supplementary entry. Everything else it is evidence for is
 untouched, and the fold at real density is now `dense`'s to prove.
 
+### Hairline contrast is not readable from a 1x capture
+
+The closing `border-control` rule and the dotted `not-reported` rules are
+hairline-width structural elements, and they cannot be contrast-measured from
+these frames. The sweep captures at `deviceScaleFactor: 1`, where a 1px CSS
+border lands across two device pixel rows and neither row shows the border
+colour at full strength, so the rule measures about 2:1 in the committed WebP
+regardless of the token underneath it. The design round measured exactly that
+in round 2 (2.03:1 dark / 1.97:1 light against a 3:1 demand), filed it, and
+withdrew it in round 3: the same story re-captured at `deviceScaleFactor: 2`
+renders the rule as the `border-control` token itself, measuring 3.77:1 dark /
+3.95:1 light against the body ground, in agreement with the token table. Verify
+such elements against the token or at 2x, never from a 1x frame; the enforced
+guard is the contract pin at the call site plus `pnpm check-themes`.
+
 ## Rebase onto `main`: which frames came from which head
 
 This branch was cut from `2217ea59a` and rebased twice — first onto
@@ -257,6 +272,14 @@ reached.
 - The **26 story frames** (everything except `real-data/`) are from the final
   rebased head, which is what `manifest.json`'s `head`, `srcTree` and
   `scriptsTree` name. Their bytes are unchanged from the pre-rebase capture.
+  One honesty note on the label: the capture's `git rev-parse HEAD` returned
+  `601a7eece`, the rebase's finish commit, which was then amended — touching
+  only the manifest and this README, no `src/` or `scripts/` bytes — into
+  `a5e20c4bc`. The frames were taken minutes **before** that SHA existed; it
+  is named because it is the nearest reachable commit carrying the exact
+  `src`/`scripts` trees the shutter ran against, not because the capture
+  postdates it. The pre-amend `601a7eece` is on no branch and resolves
+  nowhere.
 - **`real-data/` was not re-captured** and its two frames are the same bytes as
   before. Its recorded staleness is therefore unchanged and still accurate: it
   remains one commit stale with respect to the round-2 fold treatment, for the
