@@ -108,6 +108,32 @@ export type PendingDesktopGate = {
 	question_index: number;
 	question_total: number;
 	/**
+	 * Index of the option the model recommends, into `options` AS CARRIED.
+	 *
+	 * ADDITIVE and OPTIONAL: `PendingRequest` has sent it since the ask-picker
+	 * contract landed, but a backend older than that omits the key entirely, so
+	 * this must be read as "a number or nothing" rather than defaulted to 0 —
+	 * defaulting would badge the first option on every ask a legacy backend
+	 * sends, which is a recommendation the model never made.
+	 *
+	 * `AskQuestion._shape` has ALREADY rotated the recommended option to index
+	 * 0 and set this to 0 to match, so it indexes the order as transmitted and
+	 * not the model's authored order. A consumer that re-sorts `options` must
+	 * therefore drop or recompute this value; this app renders the wire order,
+	 * so it can use it directly.
+	 */
+	recommended?: number | null;
+	/**
+	 * The `AskQuestion.persist` intent for a `secret: true` ask — whether the
+	 * answer is meant to be saved to the credential store rather than used
+	 * once.
+	 *
+	 * ADDITIVE and OPTIONAL for the same version-skew reason as `recommended`.
+	 * Carried here so the type matches the wire; the secret answer path is the
+	 * composer's masked input, which does not branch on this yet.
+	 */
+	persist?: boolean;
+	/**
 	 * The session's display name, for the notification banner only.
 	 *
 	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed
@@ -120,6 +146,61 @@ export type PendingDesktopGate = {
 	 */
 	session_name?: string | null;
 };
+/**
+ * Resolve a typed answer that is really an option number into that option's
+ * label.
+ *
+ * ## Why this exists
+ *
+ * The gate card numbers its options `1.`, `2.`, `3.` — the ordering the model
+ * wrote, and the shortcut the terminal card teaches (digits 1-9 jump to an
+ * option). A user reading that list and typing `1` into the composer means
+ * "the first one". Before this, the composer sent the literal string `"1"` as
+ * the answer, and the model received a bare numeral with no way to tell which
+ * option it indexed — the wire contract is "answer with the label the model
+ * wrote", so a positional numeral is not an answer at all, it is noise that
+ * happens to parse.
+ *
+ * So the numerals were a promise the app did not keep: visible, meaningful to
+ * the reader, and silently discarded. Either they had to go, or typing one had
+ * to do what it looks like it does. It does now, and the clickable options put
+ * the same resolution behind a pointer.
+ *
+ * ## The rules, and why each is narrow
+ *
+ * - **`ask` gates with options only.** An approval carries no options and is
+ *   answered yes/no; a `secret` ask carries empty options, so nothing matches.
+ * - **A BARE numeral only.** `"1"` resolves; `"1 of them"`, `"1."` and
+ *   `"option 1"` do not. Anything with other characters in it is prose the
+ *   user meant literally, and rewriting prose into a label the user did not
+ *   choose would be worse than the bug this fixes.
+ * - **`1`-`9` only, and only in range.** Nine is where the card's own numerals
+ *   stop being a shortcut in the terminal; past that a digit is ambiguous with
+ *   the first digit of a longer number. Out of range falls through unchanged —
+ *   typing `7` against three options is not an option pick, and answering the
+ *   seventh of three is not something this can invent.
+ *
+ * Everything else passes through untouched, so a question whose real answer IS
+ * a number ("how many retries?") still sends what the user typed — that gate
+ * carries no options, which is the case the first rule already excludes.
+ */
+/** A bare option ordinal: the whole string, one digit, never zero. */
+const BARE_OPTION_ORDINAL = /^[1-9]$/;
+
+export function resolveNumericAnswer(
+	gate: Pick<PendingDesktopGate, "kind" | "options">,
+	text: string,
+): string {
+	if (gate.kind !== "ask" || gate.options.length === 0) return text;
+	const trimmed = text.trim();
+	if (!BARE_OPTION_ORDINAL.test(trimmed)) return text;
+	const index = Number.parseInt(trimmed, 10) - 1;
+	const option = gate.options[index];
+	// `text`, not `trimmed`: a value this does not resolve must reach the
+	// backend exactly as the user typed it, including its whitespace.
+	return option ? option.label : text;
+}
+
 /**
  * One composed notification, as the backend rendered it.
  *
