@@ -228,6 +228,53 @@ const deepseek = report({
 	],
 });
 
+/**
+ * A percent window with its fraction stated, the way every OAuth utilisation
+ * fetcher reports one (Anthropic, OpenAI, Z.AI, xAI): `used` is the PERCENT
+ * against a limit of 100, and `used_fraction` says so explicitly so `2` is
+ * never read as 200%.
+ *
+ * Mind the argument order: `window` comes BEFORE `tier`, and a tier row must
+ * pass both (its window is the shared window's name, e.g. `"7 day"`) — a tier
+ * string in the `window` slot silently makes the row account-wide, which both
+ * un-indents it and lets it win the binding.
+ */
+const percentLimit = (
+	id: string,
+	label: string,
+	percent: number,
+	resetsAtMs: number | null,
+	window = label,
+	tier = "",
+): UsageLimit =>
+	limit({
+		id,
+		label,
+		window,
+		tier,
+		amount: amount({
+			used: percent,
+			limit: 100,
+			remaining: 100 - percent,
+			used_fraction: percent / 100,
+			unit: "percent",
+		}),
+		resets_at_ms: resetsAtMs,
+		shared: tier === "",
+	});
+
+/**
+ * One of several signed-in accounts of the SAME provider — the multi-account
+ * case the real 11-report response surfaced. The identity is what tells the
+ * blocks apart (the React key is `provider:identity`), so each account carries
+ * a distinct redaction-shaped stand-in of the length a real email has.
+ */
+const anthropicAccount = (
+	identity: string,
+	limits: UsageLimit[],
+): UsageReport =>
+	report({ provider: "anthropic", identity, fetched_at: NOW - 45_000, limits });
+
 const meta: Meta<typeof UsageDialog> = {
 	title: "chat-usage",
 	component: UsageDialog,
@@ -449,6 +496,190 @@ export const NotReported: Story = {
 				],
 			}),
 			openrouter,
+		]),
+	},
+};
+
+/**
+ * Real-account density: the one state where the body overflows its scroll box.
+ *
+ * The committed `real-data/` frames are the only other evidence at this
+ * density and they cannot be re-derived on demand — they need the local
+ * backend to return its cached reports, which it only does while its
+ * credentials can reach every provider's quota endpoint. This story is the
+ * same density built from fixtures, so the sweep can always re-take it: eleven
+ * reports and twenty-eight windows, which is the shape the machine's live
+ * response actually had (five of the eleven are `anthropic`, because one
+ * provider can hold several signed-in accounts — the multi-account case the
+ * React key `provider:identity` exists for).
+ *
+ * Every label, unit and window name is a real fetcher's own (`usage.py`), and
+ * the identities are the shape-preserving stand-ins the real-data capture
+ * redacts to, so the row heights are the heights the real frame photographs.
+ * The status mix is a working machine's, not a demo of every colour: mostly
+ * ok, four near limit, one dead weekly window, two remaining-only balances.
+ *
+ * This is the frame the scroll fold is judged on. Captured at 1100x1000 —
+ * `real-data`'s own viewport — where the body cap `min(60vh,520px)` bottoms
+ * out at 520px against roughly 1300px of content, so the fold is deep and
+ * unambiguous rather than a row or two of overhang. What must hold, per the
+ * design finding it answers (D4): the cut at the bottom is a 20px FADE, not a
+ * hard clip through a row's glyphs; a `border-control` rule closes the body
+ * while it scrolls; and — the half of the finding the non-overflowing stories
+ * prove — nothing of the sort is drawn by the states whose content fits.
+ */
+export const Dense: Story = {
+	args: {
+		...base,
+		payload: payload([
+			anthropicAccount("team@example.com", [
+				percentLimit("five_hour", "5 hour", 62, NOW + 3 * HOUR + 24 * MINUTE),
+				percentLimit("seven_day", "7 day", 88, NOW + 2 * DAY + 11 * HOUR),
+				percentLimit(
+					"seven_day_opus",
+					"7 day (Opus)",
+					100,
+					NOW + 2 * DAY + 11 * HOUR,
+					"7 day",
+					"opus",
+				),
+			]),
+			anthropicAccount("damian@example.com", [
+				percentLimit("five_hour", "5 hour", 12, NOW + 4 * HOUR),
+				percentLimit("seven_day", "7 day", 34, NOW + 5 * DAY + 3 * HOUR),
+				percentLimit(
+					"seven_day_opus",
+					"7 day (Opus)",
+					3,
+					NOW + 5 * DAY + 3 * HOUR,
+					"7 day",
+					"opus",
+				),
+				percentLimit(
+					"seven_day_sonnet",
+					"7 day (Sonnet)",
+					9,
+					NOW + 5 * DAY + 3 * HOUR,
+					"7 day",
+					"sonnet",
+				),
+			]),
+			anthropicAccount("ops@example.com", [
+				percentLimit("five_hour", "5 hour", 95, NOW + 41 * MINUTE),
+				percentLimit("seven_day", "7 day", 100, NOW + DAY + 6 * HOUR),
+				percentLimit(
+					"seven_day_sonnet",
+					"7 day (Sonnet)",
+					41,
+					NOW + DAY + 6 * HOUR,
+					"7 day",
+					"sonnet",
+				),
+				// The pay-as-you-go meter that tops up an exhausted plan; the
+				// real fetcher reports it only when the account has it enabled.
+				limit({
+					id: "extra_usage",
+					label: "Extra usage",
+					amount: amount({
+						used: 3.2,
+						limit: 40,
+						remaining: 36.8,
+						unit: "usd",
+					}),
+					window: "1 month",
+					resets_at_ms: NOW + 19 * DAY,
+					shared: true,
+				}),
+			]),
+			anthropicAccount("build@example.com", [
+				percentLimit("five_hour", "5 hour", 8, NOW + 2 * HOUR + 10 * MINUTE),
+				percentLimit("seven_day", "7 day", 21, NOW + 3 * DAY + 18 * HOUR),
+				percentLimit(
+					"seven_day_opus",
+					"7 day (Opus)",
+					73,
+					NOW + 3 * DAY + 18 * HOUR,
+					"7 day",
+					"opus",
+				),
+			]),
+			anthropicAccount("lab@example.com", [
+				percentLimit("five_hour", "5 hour", 44, NOW + 80 * MINUTE),
+				percentLimit("seven_day", "7 day", 57, NOW + 6 * DAY + 2 * HOUR),
+				percentLimit(
+					"seven_day_opus",
+					"7 day (Opus)",
+					66,
+					NOW + 6 * DAY + 2 * HOUR,
+					"7 day",
+					"opus",
+				),
+			]),
+			openai,
+			report({
+				provider: "zai",
+				identity: "sk-…4417",
+				fetched_at: NOW - 90_000,
+				limits: [
+					percentLimit(
+						"tokens_7d",
+						"Token quota (7 day)",
+						54,
+						NOW + 4 * DAY,
+						"7 day",
+					),
+					percentLimit(
+						"requests_30d",
+						"Request quota (30 day)",
+						7,
+						NOW + 12 * DAY,
+						"30 day",
+					),
+					limit({
+						id: "zread_30d",
+						label: "Zread quota (30 day)",
+						amount: amount({
+							used: 12,
+							limit: 100,
+							remaining: 88,
+							used_fraction: 0.12,
+							unit: "percent",
+						}),
+						window: "30 day",
+						resets_at_ms: NOW + 12 * DAY,
+						tier: "zread",
+					}),
+				],
+			}),
+			report({
+				provider: "kimi",
+				identity: "damian@example.com",
+				fetched_at: NOW - 2 * MINUTE,
+				limits: [
+					percentLimit("coding_5h", "Coding plan (5 hour)", 71, NOW + 2 * HOUR),
+					percentLimit(
+						"coding_7d",
+						"Coding plan (7 day)",
+						94,
+						NOW + DAY + 9 * HOUR,
+					),
+					limit({
+						id: "balance",
+						label: "Balance (USD)",
+						amount: amount({ remaining: 63.5, unit: "usd" }),
+						window: "lifetime",
+						shared: true,
+					}),
+				],
+			}),
+			report({
+				provider: "xai",
+				identity: "xai-…8e02",
+				fetched_at: NOW - 3 * MINUTE,
+				limits: [percentLimit("credits", "Credits", 26, NOW + 9 * DAY)],
+			}),
+			openrouter,
+			deepseek,
 		]),
 	},
 };

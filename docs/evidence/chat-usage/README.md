@@ -27,6 +27,7 @@ has to actually run out. `real-data/` answers the question fixtures cannot.
 | `reauth-required` | A dead OAuth grant naming its remedy — `Sign-in expired — run /login xai. Last known 2d ago.` — with last-known numbers still under it (rule 11). The vintage is a sentence in the vocabulary its sibling states teach, not a telegraphic `· numbers 2d ago`. |
 | `not-reported` | Windows carrying no measurable number: outlined dots, dotted rules, `not reported`, no binding window claimed, and `2 not reported` in the tally (rules 4 and 12). The dotted rule is drawn on the `ink-dim` ramp: it is the entire distinction between "reports nothing" and "at zero", which makes it structural and puts it on the 3:1 floor rather than on floor-exempt `ink-disabled`. |
 | `narrow` | The dialog at a 720px viewport. The bar surrenders space first; labels, amounts and countdowns hold. |
+| `dense` | Real-account density, re-derivable: eleven reports, twenty-eight windows, five `anthropic` accounts, tier rows and a remaining-only balance — the shape the machine's live response had, built from fixtures so the sweep can always re-take it. The one story whose body overflows its scroll box at capture (1273px of content under the 520px cap), so the one that evidences the fold: a 20px bottom FADE over the cut row rather than a hard clip, a `border-control` rule closing the body, and — see `percent-only` beside it — no treatment at all on a body that fits. |
 | `real-data` | **Not a fixture.** The shipped view against a real `/v1/desktop/usage` response from the local backend: 11 provider reports, 28 windows. See below. |
 
 ## What these frames are not
@@ -83,6 +84,10 @@ twelve-theme sweep over 45 unrelated surfaces:
 
 `node scripts/check-evidence.mjs` passes over all 522 frames on disk.
 
+Round 3 added one more story the same way: `chat-usage--dense` (× 2 themes),
+so `frames` 498 → **500** and `surfaces` 57 → **58**, corrected by hand again
+for the same reason. The gate now passes over all 524 frames on disk.
+
 ## Re-capturing the real-data frames
 
 These exist because a port can agree with its own fixtures and still be wrong
@@ -110,6 +115,15 @@ rate-limited endpoint; the backend restarted mid-session here. The payload is
 a real response either way — the flag only decides whether it is read from the
 socket now or from a response that came off it an hour earlier. It is never
 written into the repository.
+
+A genuine refill was attempted in round 3: the exact request the button makes
+(`GET /v1/desktop/usage?live=true&refresh=true`, authenticated with the
+running server's own desktop bearer) answered `source=live` with **zero**
+reports in ~50ms, and an explicit per-provider ask for every usage-capable
+provider returned zero too — the backend's current credential view holds no
+usage-reportable provider, so its cache cannot be refilled from this machine
+right now. When a populated backend returns, re-capture here and the pair
+becomes current again.
 
 What the real data surfaced that fixtures had not: **one provider can hold
 several signed-in accounts.** The live report carries five `anthropic` reports,
@@ -153,3 +167,36 @@ content in a 520px box, measuring a 1px `border-control` rule and a gradient
 mask at the top of the scroll, and the mask gone with the rule still present at
 the bottom, in both brand themes. Re-capture `real-data/` on a machine whose
 backend holds a populated usage cache.
+
+## Round 3: the fold gets a re-derivable frame
+
+Round 2's verification of the fold lived in the interaction harness and in a
+`real-data/` frame nobody could re-take — the evidence gap this round closes.
+`dense` is that density as a story: eleven reports, twenty-eight windows, five
+`anthropic` accounts, the identities and labels the real response shapes, so
+the registered sweep can re-capture both brand-theme frames any time the tree
+changes.
+
+What the committed pair shows, and what was measured against the same
+Storybook build the frames came from, in both themes:
+
+- **The body genuinely overflows**: 1273px of content in the 520px cap
+  (`min(60vh,520px)` bottoms out at the constant on the 1000px-tall viewport),
+  753px of it hidden, twelve of twenty-eight rows fully visible at the top.
+- **The cut is a fade, not a clip**: the scroll box carries
+  `mask-image: linear-gradient(black calc(100% - 20px), transparent)`, and the
+  pixels agree — the strongest contrast against the card decays monotonically
+  through the fade band (9.32 → 5.48 → 3.74 → 1.28 in dark, 6.79 → 3.50 →
+  2.02 → 1.19 in light), so the row crossing the fold fades out instead of
+  being sliced through its glyphs.
+- **The rule closes the body and stays**: a 1px `border-control` rule under
+  the scroll box at `scrollTop` 0, still present at `scrollTop` max while the
+  mask retracts — the end of the list is not ghosted. (Its 3:1 floor is
+  `pnpm check-themes`, pinned at the call site since round 2.)
+- **A body that fits draws none of it**: `percent-only` measured 0px hidden,
+  no mask, no rule.
+
+`real-data/` was not re-captured: the live refill above returned zero reports,
+so the pair remains one commit stale against the fold treatment — recorded in
+`manifest.json`'s supplementary entry. Everything else it is evidence for is
+untouched, and the fold at real density is now `dense`'s to prove.

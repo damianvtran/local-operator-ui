@@ -203,6 +203,18 @@ const STORIES = [
 	["chat-usage--unavailable-with-last-known", 1000, 480],
 	["chat-usage--reauth-required", 1000, 480],
 	["chat-usage--not-reported", 1000, 480],
+	/* Real-account density (eleven reports, twenty-eight windows, five
+	   accounts of one provider): the one story whose body overflows its scroll
+	   box, so the one that evidences the fold treatment — the 20px bottom
+	   fade, the `border-control` rule under the body, and their ABSENCE on
+	   every state that fits. 1100x1000 is `real-data`'s own viewport, chosen
+	   for the same reason: at 1000px tall the body cap `min(60vh,520px)`
+	   bottoms out at the 520px constant against ~1300px of content, so the
+	   fold is deep enough that a shallow overhang cannot masquerade as it.
+	   The density cannot be re-derived from the backend on demand (it needs
+	   live credentials at every provider), which is exactly why it is a story:
+	   the sweep can always re-take this frame. */
+	["chat-usage--dense", 1100, 1000],
 	["chat-usage--narrow", 720, 620],
 
 	["design-system-primitives--all-primitives", 1280, 1600],
