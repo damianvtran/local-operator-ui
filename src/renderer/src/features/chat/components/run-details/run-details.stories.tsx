@@ -300,3 +300,26 @@ export const HeaderTriggerFailed: Story = {
 	),
 	decorators: [withCanvasClosed],
 };
+
+/**
+ * The three states a LIVE session cannot produce — a restored pause, a row the
+ * durable graph swept, and a word this renderer has not been taught — in one
+ * roster.
+ *
+ * `§6.4` gives all nine states a mark; the other six are photographed by the
+ * frames above, and these three had no frame at all, so their glyphs and inks
+ * were asserted by the word-level tests and never seen. `paused` is the one of
+ * the three that also decides whether the trigger exists — a restored pause is
+ * open work (`§3.3`) — so this is a button raised by a state whose mark nobody
+ * had looked at.
+ *
+ * The rows carry no clock, and that is the wire's own shape rather than a
+ * fixture convenience: a restored row has neither `start_time` nor `settled_at`
+ * (`§8`), so the panel omits the elapsed segment. Both facts are in the frame.
+ */
+export const RestoredAndUnrecognised: Story = {
+	render: () => (
+		<OpenPanel details={deriveRunDetails(fixtures.restoredAndUnrecognised())} />
+	),
+	decorators: [withCanvasClosed],
+};

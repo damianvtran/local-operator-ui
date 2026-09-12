@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -39,6 +41,7 @@ const bundle = await build({
 });
 const {
 	NOTHING_SEEN,
+	accumulateSeen,
 	acknowledgedOnClose,
 	acknowledgedOnOpen,
 	childStateLabel,
@@ -46,6 +49,7 @@ const {
 	hasLiveChildClock,
 	hasRunDetails,
 	hasUnseenFailure,
+	onScreenFailures,
 	retimeRunDetails,
 	runDetailTriggerLabel,
 	subagentTally,
@@ -72,6 +76,8 @@ const job = (over) => ({
 });
 
 const NOW_MS = 1_060_000;
+
+const ROOT = process.cwd();
 
 const derive = (jobs, todos = []) =>
 	deriveRunDetails({ jobs, todos, nowMs: NOW_MS });
@@ -150,6 +156,12 @@ test("every word the wire can produce is folded explicitly", () => {
 	// `running` on the wire, and half the roster would otherwise read as work
 	// spending tokens.
 	assert.equal(folded("running", true).status, "queued");
+	// And the same state arriving the OTHER way — as `_describe`'s own word on a
+	// restored row. Without its own case this fell to `unknown`, which is the
+	// branch this model reserves for words it has not been taught, and it would
+	// have been a word `_describe` can emit.
+	assert.equal(folded("queued").status, "queued");
+	assert.equal(derive([job({ status: "queued" })]).openChildren, 1);
 	// Admitted by the capacity gate but not yet in its runner: the `queued` mark
 	// ("has not started"), and still OPEN, which is the fact `§3.3` needs.
 	assert.equal(folded("starting").status, "queued");
@@ -180,7 +192,7 @@ test("every word the wire can produce is folded explicitly", () => {
 			"interrupted",
 			"gone",
 		].filter((word) => derive([job({ status: word })]).openChildren > 0),
-		["running", "starting", "pausing", "paused"],
+		["running", "queued", "starting", "pausing", "paused"],
 	);
 });
 
@@ -198,6 +210,28 @@ test("an unrecognised status is its own quiet state, never done", () => {
 	assert.equal(row.status, "unknown");
 	assert.notEqual(row.status, "done");
 	assert.equal(childStateLabel(row), "reticulating");
+	/*
+	 * Verbatim, but not RAW: the word is painted in the visible tally and in the
+	 * row's `sr-only` label, so it goes through the same boundary as the activity
+	 * and error lines. A word carrying a newline or a control character would
+	 * otherwise break both. (The word still reads as the wire wrote it — this is a
+	 * strip, not a translation.)
+	 */
+	const noisy = derive([
+		job({ id: "noisy", status: "reticulating\u0007\nsecond line" }),
+	]).subagents[0];
+	assert.equal(childStateLabel(noisy), "reticulating");
+	assert.equal(
+		subagentTally([noisy]),
+		"1 reticulating",
+		"a machine word must not carry a line break into the tally",
+	);
+	// A word with nothing readable left in it takes the union's own name for the
+	// state rather than rendering an empty segment.
+	assert.equal(
+		childStateLabel(derive([job({ status: "\u0007\u0000" })]).subagents[0]),
+		"unknown",
+	);
 	// Settled and quiet, and not a count the reader acts on: an unknown word must
 	// not raise the trigger on its own any more than `done` does.
 	assert.equal(hasRunDetails(derive([job({ status: "reticulating" })])), false);
@@ -855,6 +889,156 @@ test("closing acknowledges the failures the panel showed, and not the ones it hi
 	assert.equal(acknowledgedOnClose(hidden, kept), kept);
 });
 
+test("the OPEN instant acknowledges the panel's own slice, not the whole roster", () => {
+	/*
+	 * The defect this pins was in the WIRING, so the argument under test is the
+	 * one the wiring passes — `onScreenFailures(details)` — rather than an id list
+	 * the test supplies for itself. The two tests above both hand `visibleFailures`
+	 * in, which is exactly why neither of them could see it: `run-details-trigger`
+	 * passed `details.failedChildIds` (every failure on the roster) to the OPEN
+	 * instant while the CLOSE instant counted the rendered slice, so past the cap a
+	 * failure behind `+N more` was marked read as the panel opened without its row
+	 * ever being on screen.
+	 *
+	 * Eight failures at a cap of six is where the two arguments answer differently,
+	 * and the second assertion is the consequence that matters: with every child
+	 * settled and every to-do closed, acknowledging the whole roster leaves
+	 * `hasRunDetails` false — so the trigger, and the panel with it, disappears in
+	 * the same commit that opens it. That is the one state the `danger` dot exists
+	 * for, unreachable.
+	 */
+	const many = derive(
+		Array.from({ length: 8 }, (_, index) =>
+			job({
+				id: `failed-${index}`,
+				status: "failed",
+				start_time: 100,
+				settled_at: 200 + index,
+			}),
+		),
+	);
+	const shown = onScreenFailures(many);
+	assert.deepEqual(shown, visibleFailures(many.subagents));
+	assert.equal(shown.length, 6);
+	assert.equal(many.failedChildIds.length, 8);
+
+	// The fix's argument: six rows were on screen, two were not, so two keep the
+	// dot — and the trigger survives the open to be read.
+	const afterOpen = acknowledgedOnOpen(shown, NOTHING_SEEN);
+	assert.deepEqual(unseenFailures(many, afterOpen).sort(), [
+		"failed-0",
+		"failed-1",
+	]);
+	assert.equal(hasUnseenFailure(many, afterOpen), true);
+	assert.equal(hasRunDetails(many, afterOpen), true);
+
+	// The defect kept as the counter-example: the roster-derived argument
+	// acknowledges failures the panel never rendered, and takes the trigger with
+	// them.
+	const rosterDerived = acknowledgedOnOpen(many.failedChildIds, NOTHING_SEEN);
+	assert.equal(hasUnseenFailure(many, rosterDerived), false);
+	assert.equal(hasRunDetails(many, rosterDerived), false);
+});
+
+test("the open period accumulates the slices it showed, and keeps the set's identity", () => {
+	/*
+	 * `viewedRef` is the mechanism that implements the close rule inside the
+	 * component, and it had neither a test nor a frame — so the accumulation is
+	 * extracted (`accumulateSeen`) and asserted here, over a SEQUENCE of slices.
+	 *
+	 * The property that makes the rule right rather than merely implemented is the
+	 * displaced row: a failure that was on screen and was then pushed out of the
+	 * slice by later arrivals has still been read, and a set read once at the close
+	 * would drop it and re-light a dot the reader had already earned.
+	 */
+	const first = derive([
+		job({ id: "in-view", status: "failed", start_time: 100, settled_at: 200 }),
+	]);
+	const seenOnce = accumulateSeen(NOTHING_SEEN, onScreenFailures(first));
+	assert.deepEqual([...seenOnce], ["in-view"]);
+
+	// The roster grows past the cap, so the oldest failure falls out of the slice.
+	const grown = derive([
+		job({ id: "in-view", status: "failed", start_time: 100, settled_at: 200 }),
+		...Array.from({ length: 6 }, (_, index) =>
+			job({
+				id: `later-${index}`,
+				status: "failed",
+				start_time: 100,
+				settled_at: 300 + index,
+			}),
+		),
+	]);
+	const displaced = onScreenFailures(grown);
+	assert.equal(
+		displaced.includes("in-view"),
+		false,
+		"the slice must have dropped it, or this asserts nothing",
+	);
+	const seenTwice = accumulateSeen(seenOnce, displaced);
+	assert.equal(seenTwice.has("in-view"), true, "a row that was read stays read");
+
+	// The identity guarantee the ref relies on: a re-render that adds nothing hands
+	// back the same set, so the 1Hz clock's re-renders do not churn the ref.
+	assert.equal(accumulateSeen(seenTwice, displaced), seenTwice);
+	assert.equal(accumulateSeen(seenTwice, []), seenTwice);
+	assert.equal(accumulateSeen(NOTHING_SEEN, []), NOTHING_SEEN);
+
+	// And the close may count only what was accumulated: every failure of the grown
+	// roster was shown at some point, so the dot goes out for all of them.
+	const closed = acknowledgedOnClose([...seenTwice], NOTHING_SEEN);
+	assert.equal(seenTwice.size, grown.failedChildIds.length);
+	assert.equal(hasUnseenFailure(grown, closed), false);
+});
+
+test("the trigger's acknowledgement wiring asks the model's predicate", () => {
+	/*
+	 * The two tests above pin the MODEL, and a model test could not catch the bug
+	 * this round exists for: the wiring was passing a different argument, so
+	 * reverting `run-details-trigger.tsx`'s one line to `details.failedChildIds`
+	 * left every assertion above green. This file's bundle contains only the model
+	 * and the fixtures, so the CALL SITE has to be asserted against the source
+	 * text — the same shape as the picker-wiring guard in
+	 * `scripts/session-status.test.mjs` (round 4, Q6) and `STRUCTURAL_CALL_SITES`
+	 * in `contrast-contract.mjs`: the pairing is only real if the component uses
+	 * it.
+	 *
+	 * Both halves are checked, because either one alone restores the defect: the
+	 * OPEN instant must ask `onScreenFailures`, and the open period must
+	 * ACCUMULATE the slices it showed (`accumulateSeen`) rather than read them
+	 * once.
+	 */
+	const trigger = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/run-details/run-details-trigger.tsx",
+		),
+		"utf8",
+	);
+	assert.match(
+		trigger,
+		/acknowledgedOnOpen\(onScreenFailures\(detailsRef\.current\), previous\)/,
+		"the open instant must acknowledge the panel's own slice",
+	);
+	assert.doesNotMatch(
+		trigger,
+		/acknowledgedOnOpen\(\s*detailsRef\.current\?\.failedChildIds/,
+		"and never the whole roster, which marks hidden failures read",
+	);
+	assert.match(
+		trigger,
+		/viewedRef\.current = accumulateSeen\(\s*viewedRef\.current,\s*onScreenFailures\(details\),\s*\)/,
+		"the open period must accumulate the slices the panel showed",
+	);
+	// The seeded open (`defaultOpen`, the capture rig's path) is an open instant
+	// too, so it asks the same question rather than the roster's.
+	assert.match(
+		trigger,
+		/new Set\(defaultOpen \? onScreenFailures\(details\) : \[\]\)/,
+		"a seeded open acknowledges the same slice a click does",
+	);
+});
+
 test("the clock ticks only for a child that has a running clock", () => {
 	// The predicate that justifies the 1Hz timer, extracted from the hook so the
 	// claim is asserted rather than described: a settled child is measured
@@ -950,26 +1134,35 @@ test("every child state the design asks for is in the fixture set", () => {
 			fixtures.crowded(),
 			fixtures.settled(),
 			fixtures.headerTriggerFailed(),
+			/*
+			 * The three states a LIVE session's `frontend.jobs` cannot produce: they
+			 * arrive on the durable graph's restored rows, or from a runtime this
+			 * renderer has not been taught. The fixture carries them the way the wire
+			 * does — as the graph's own status WORD on the row
+			 * (`getattr(node, "status", "gone")`), not as a `paused` FIELD, which
+			 * `JobState` does not have — so the frame that photographs their marks
+			 * asserts nothing the wire cannot produce.
+			 *
+			 * They were covered by the word-level tests ALONE until round 3, which
+			 * left three of `§6.4`'s nine marks unphotographed — and `paused` decides
+			 * whether the trigger exists at all (a restored pause is open work,
+			 * `§3.3`).
+			 */
+			fixtures.restoredAndUnrecognised(),
 		].flatMap((input) =>
 			deriveRunDetails(input).subagents.map((row) => row.status),
 		),
 	);
-	/*
-	 * The six states a fixture CAN carry. `paused`, `gone` and an unrecognised
-	 * word are deliberately not required here, and it is not an omission: the
-	 * fixtures model a live session's `frontend.jobs` (`docs/run-details.md` § 8),
-	 * where `paused` and `gone` cannot appear — they arrive on the durable
-	 * graph's rows after a restart, which no story reproduces and no frame should
-	 * pretend to have photographed. They are covered by the word-level tests
-	 * above instead, which is the honest division: a fixture that rendered one
-	 * would be asserting a wire shape `JobState` does not have.
-	 */
+	/* All nine, because all nine are renderable and `§6.4` claims a mark for each. */
 	for (const state of [
 		"running",
 		"queued",
+		"paused",
 		"interrupted",
 		"done",
 		"cancelled",
+		"gone",
+		"unknown",
 		"failed",
 	]) {
 		assert.ok(states.has(state), `no fixture renders a ${state} child`);

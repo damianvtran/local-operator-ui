@@ -489,6 +489,14 @@ const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 		// `starting`: the capacity gate has admitted the child but its runner has
 		// not been entered. It takes the `queued` mark ("has not started") and
 		// stays OPEN, which is the fact §3.3's visibility rule needs.
+		// The bare WORD, which the durable graph's rows can carry: `_describe`
+		// returns `queued` as text, and the restored branch copies it onto the row
+		// verbatim. The flag is read first (above), so this is the same state
+		// arriving the other way — and without this case it fell to `unknown`, a
+		// word `_describe` can emit landing on the branch this model reserves for
+		// words it has NOT been taught (§3.3).
+		case "queued":
+			return "queued";
 		case "starting":
 			return "queued";
 		case "paused":
@@ -625,7 +633,18 @@ const deriveChild = (
 		status,
 		// The band's word for a state this model knows; the wire's own word,
 		// verbatim, for one it does not (`SubagentRow.stateWord`).
-		stateWord: status === "unknown" ? rawStatus : CHILD_STATE_WORD[status],
+		//
+		// Verbatim is a claim about the WORD, not about the bytes: this string is
+		// painted in the visible tally and in a row's `sr-only` label, so it goes
+		// through the same boundary as the activity and error lines
+		// (`oneLine(firstLine(...))`) — a future word carrying a newline or a
+		// control character would otherwise break both lines. A word with nothing
+		// readable left in it takes the union's own name for the state
+		// (`"unknown"`), which is what the row's mark already says.
+		stateWord:
+			status === "unknown"
+				? oneLine(firstLine(rawStatus)) || "unknown"
+				: CHILD_STATE_WORD[status],
 		elapsedLabel: clockLabel(clock, nowSeconds),
 		startSeconds: clock.startSeconds,
 		settledSeconds: clock.settledSeconds,
@@ -802,10 +821,33 @@ export function acknowledgedOnOpen(
 	alreadySeen: SeenFailures = NOTHING_SEEN,
 ): SeenFailures {
 	// Identity is preserved when the snapshot adds nothing, so an open panel that
-	// is re-rendered with the same failures does not churn its own state.
-	if (openedWith.every((id) => alreadySeen.has(id))) return alreadySeen;
-	const next = new Set(alreadySeen);
-	for (const id of openedWith) next.add(id);
+	// is re-rendered with the same failures does not churn its own state — and
+	// that guarantee lives in `accumulateSeen`, which this shares.
+	return accumulateSeen(alreadySeen, openedWith);
+}
+
+/**
+ * Add ids to a seen set, handing back the SAME set when nothing is new.
+ *
+ * The union every acknowledgement performs, named once because three call sites
+ * need it and they have to agree: the two instants the model states as rules
+ * (`acknowledgedOnOpen` / `acknowledgedOnClose`) and the trigger's own
+ * accumulation of the slices its panel showed while it was open (`viewedRef`).
+ * A second implementation beside this one is how the two instants drifted in the
+ * first place — the open half was asking a different question from the close
+ * half (`onScreenFailures`).
+ *
+ * The identity guarantee is load-bearing rather than tidy: the panel re-renders
+ * at 1Hz while a child's clock ticks, and a version that always built a fresh
+ * set would hand its caller new state on every one of those renders.
+ */
+export function accumulateSeen(
+	previous: SeenFailures,
+	added: readonly string[],
+): SeenFailures {
+	if (added.every((id) => previous.has(id))) return previous;
+	const next = new Set(previous);
+	for (const id of added) next.add(id);
 	return next;
 }
 
@@ -1113,6 +1155,30 @@ export function visibleFailures(rows: readonly SubagentRow[]): string[] {
 	return visibleSubagents([...rows])
 		.rows.filter((row) => row.status === "failed")
 		.map((row) => row.id);
+}
+
+/**
+ * The failures a panel OPEN at this instant puts on screen — the ONE predicate
+ * both acknowledgement instants are asked about (`§3.3`).
+ *
+ * It is `visibleFailures(details.subagents)` and nothing more, and it is a named
+ * function rather than that expression written twice because the two instants
+ * drifted apart: the close half asked `visibleFailures` while the open half
+ * asked `details.failedChildIds` — the WHOLE roster — so past the cap a failure
+ * behind `+N more` was marked read by an open that never displayed it. With
+ * nothing else outstanding, `hasRunDetails` then went false and the trigger
+ * disappeared: the one state the `danger` dot exists for could not be read at
+ * all. A name both call sites share makes that a compile-visible edit rather
+ * than a silent difference, and it is the argument the model test pins — the
+ * WIRING's own, not an id list the test supplies for itself.
+ *
+ * `details` may be null (the trigger's ref is read at click time), and a null
+ * view model has no rows to show.
+ */
+export function onScreenFailures(
+	details: RunDetails | null | undefined,
+): string[] {
+	return visibleFailures(details?.subagents ?? []);
 }
 
 /**

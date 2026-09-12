@@ -239,23 +239,42 @@ hasRunDetails(state) || open
   carried over. A failure that nobody has seen is precisely the state where the
   affordance must not disappear, so the trigger stays and carries a `danger`
   dot (§ 6.1) until the popover is opened.
-- **Acknowledgement follows the panel's own view, in both directions.** Opening
-  records the failures that were present at that instant and those only: a child
-  that fails while the panel is open keeps its dot for the next view, because the
-  reader may be scrolled down in the plan and never see the row it belongs to.
-  Closing then records the failures whose ROWS THE PANEL SHOWED while it was open
-  (`visibleFailures` accumulated over the open period), because a dot that says
-  "you have not looked" about a row the reader watched arrive is the same defect
+- **Acknowledgement follows the panel's own view, in both directions, and both
+  instants are asked the SAME question.** That question is
+  `onScreenFailures(details)` — `visibleFailures` over the roster: the rows the
+  panel actually RENDERS, after the cap, which is the slice `§6.3` describes.
+  Opening records the failures in that slice at that instant and those only: a
+  child that fails while the panel is open keeps its dot for the next view,
+  because the reader may be scrolled down in the plan and never see the row it
+  belongs to. Closing then records the failures whose rows the slice HELD at any
+  point while the panel was open (`accumulateSeen` over those slices, which is
+  what the trigger's own `viewedRef` accumulates), because a dot that says "you
+  have not looked" about a row the reader watched arrive is the same defect
   pointing the other way — and clearing it used to cost a reopen. The two halves
   between them leave exactly one case carrying its dot: a failure that was never
-  in view. A row behind `+N more` is in neither set, so the trigger's failure
-  clause survives the close for it. The rules are pure functions in the model
-  (`acknowledgedOnOpen`, `acknowledgedOnClose`, `visibleFailures`), so they are
-  asserted rather than described. The version this replaces broke the first half:
-  a `[open, details]` effect re-recorded the whole failure set on every change
-  while the panel was open, so a failure arriving while the reader was scrolled
-  down in the plan was marked read without ever having been displayed, and the
-  trigger's failure clause was gone when they closed the panel.
+  in the slice. A row behind `+N more` is in neither set, so the trigger's
+  failure clause survives the close for it.
+  **"Shown" means RENDERED IN THE LIST, not scrolled into view.** The frame the
+  rule is about is the panel's rendered slice: a row in it has been put in front
+  of the reader, and the alternative reading — the part of the list currently in
+  the viewport — would make a rule this surface cannot implement, since the view
+  model has no viewport in it. The two readings coincide in practice today: the
+  panel's `min(60vh, 480px)` ceiling is taller than a roster row, so no roster
+  row can be scrolled out of an ordinary window.
+  The rules are pure functions in the model (`onScreenFailures`,
+  `accumulateSeen`, `acknowledgedOnOpen`, `acknowledgedOnClose`), so they are
+  asserted rather than described; the two CALL SITES are asserted against the
+  trigger's own source (`scripts/run-detail-model.test.mjs`), because the model
+  alone cannot see the wiring — which is exactly how this was found. The version
+  this replaces broke the first half twice over: a `[open, details]` effect
+  re-recorded the whole failure set on every change while the panel was open, so
+  a failure arriving while the reader was scrolled down in the plan was marked
+  read without ever having been displayed; and the open instant then recorded
+  `details.failedChildIds` — EVERY failure on the roster — so past the cap a
+  failure behind `+N more` was marked read by an open that never rendered its
+  row, and with nothing else outstanding `hasRunDetails` went false and the
+  trigger, panel and all, disappeared in the commit that opened it (round 3,
+  R3-2 = U1).
 - `!isCanvasOpen` is as requested, and it has a real rationale: with the canvas
   open the chat column is narrowed (default 800px) and its header holds one
   action beside the title block; a second panel-opening control there competes
@@ -413,7 +432,7 @@ result once it lands.
 | Anchor | `align="end"`, `side="bottom"`, `sideOffset={6}` | Anchored to the header cluster's right edge, opening away from the transcript's own content. |
 | Panel padding | `p-0`; sections own their padding | The primitive ships `p-4` for content-shaped popovers; this one is a list, and a list needs its rows to reach the panel edge so the section rules and the row grounds can. |
 | Radius | `rounded-md` (10px) | Panel tier, inherited from the primitive. |
-| Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. The shadow is what paints the edge in the frames, measured by walking DOWNWARD from the panel's floor — a horizontal probe crosses the transcript the panel overlaps, which is what made the previous set's edge numbers a mixture of shadow and glyph ink: dark `(16,14,8)` just below the hairline → `(23,19,14)`, light `(217,214,206)` → `(245,239,230)`, with the falloff reaching the ground 21px below the floor in dark and 37px in light (at three units per channel it is 21px / 29px; the reach is uniform across the panel's span). Naming the token's parts is what makes the two distances one quantity: it is `0 12px 32px -12px` (`--lo-overlay-shadow`), so `32 − 12 = 20` is the LATERAL reach and the downward reach is that plus the y-offset — the vertical number is the larger one, and a probe has to say which direction it walked. **That ground is `canvas`**, which is what the app paints under this popover since #113 gave the working surface the page ground; a frame set that rendered the story's column on `surface` measured the falloff against a plane the app no longer paints there, and `docs/evidence/run-details/README.md` carries the re-measured pair. The change can only widen the step: `elevated` already clears `canvas`, so a panel that used to sit on the lighter `surface` now starts further from its ground — measured from the frames, dark L* 6.14 → 13.62 (Δ 7.48) and light 95.28 → 99.43 (Δ 4.16), against the token's own `elevated`-over-`canvas` step of 7.90 (dark) and 4.73 (light) and its `elevated`-over-`surface` step of 4.41 / 2.10 — which is the 4.50 / 2.07 the previous set's frames certified, on the wrong plane. |
+| Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. The shadow is what paints the edge in the frames, measured by walking DOWNWARD from the panel's floor — a horizontal probe crosses the transcript the panel overlaps, which is what made the previous set's edge numbers a mixture of shadow and glyph ink: dark `(16,14,8)` just below the hairline → `(23,19,14)`, light `(217,214,206)` → `(245,239,230)`, with the falloff reaching the ground 21px below the floor in dark and 37px in light (at three units per channel it is 21px / 29px; the reach is uniform across the panel's INTERIOR — the columns nearest the rounded frame read shorter, 15px and 19px in dark, because the frame cuts the shadow there, which is why this row no longer claims one number across the whole span). Naming the token's parts is what makes the two directions checkable rather than one quantity read twice: it is `0 12px 32px -12px` (`--lo-overlay-shadow`), so the nominal reach is `32 − 12 = 20px`, and the LATERAL reach the pixels actually show is 8px in dark and 24px in light — it is palette-dependent, because the two palettes' shadows sit on grounds of very different luminance (the dark theme's `rgb(0 0 0 / 0.6)` perturbs a `(23,19,14)` ground by a few units and is gone within 8px, while the light theme's `rgb(20 17 12 / 0.25)` darkens a `(246,241,231)` ground much further and still reads at 24px). The DOWNWARD reach is the larger one for a stated reason rather than by symmetry: the token's 12px y-offset pushes the shadow down, so the vertical number (21 / 37) carries that offset and the lateral one (8 / 24) does not — a probe has to say which direction it walked, and `32 − 12 = 20` is the arithmetic, not a measurement. **That ground is `canvas`**, which is what the app paints under this popover since #113 gave the working surface the page ground; a frame set that rendered the story's column on `surface` measured the falloff against a plane the app no longer paints there, and `docs/evidence/run-details/README.md` carries the re-measured pair. The change can only widen the step: `elevated` already clears `canvas`, so a panel that used to sit on the lighter `surface` now starts further from its ground — measured from the frames, dark L* 6.14 → 13.62 (Δ 7.48) and light 95.28 → 99.43 (Δ 4.16), against the token's own `elevated`-over-`canvas` step of 7.90 (dark) and 4.73 (light) and its `elevated`-over-`surface` step of 4.41 / 2.10 — which is the ≈4.4 / ≈2.1 that the frames rendered on the wrong plane certified. Read those two as an APPROXIMATION: they are the panel's modal colour against the `surface` plane around its upper body, measured on a frame set that is not the one under review, and the pairing is lossy in a way the exact token steps are not (this head's frames read 4.07 dark / 1.85 light on a text-free band probe at `x0..112`, and 4.57 / 2.62 at the `x520, y200` point the row quotes; the round-4 capture read 4.50 / 2.07 there). What the approximation does carry is the DIRECTION, which the tokens settle exactly: `elevated` clears `canvas` further than `surface` in both palettes. |
 | Between sections | one `hairline` rule | Two stacked lists need a boundary; nothing else in the panel does. |
 | Row height | subagents: 32px single line, 48px with a second line, 64px for a failure whose exception takes both clamped lines. To-dos: 24px single line, 40px for a blocked row's reason line | Both pairs sit on the 4px ramp, and 32/48 is what a 16px icon on the label's baseline plus one 16px second line measures. The line heights are pinned (`leading-5` on the first line, `leading-4` on the second — both variants of it, the activity line and the wrapped exception) rather than inherited: `body-sm`'s 1.5, `meta`'s 1.45 and `mono-sm`'s 1.45 land off the ramp at 19.5px and 17.4px, which measured as a 48-50px two-line row and a 67px failure row. Measured off the frames, the failure row is 12 + 20 + 2×16 = 64px. |
 | Row hover | **none** | Nothing in this panel is clickable (`§ 4.3`), so nothing may react to a pointer: a row that lights up under the cursor is a promise the surface does not keep. The `accent-wash` step belongs to rows that do something, and the two lists agree — neither of them hovers. |
@@ -432,7 +451,9 @@ view over both. One new symbol is cheaper than re-teaching an existing one.
 A single 8px `danger` dot at the button's top-right corner carries the
 unseen-failure state described in § 3.3. It is not decoration and it is not a
 count: it says a child failed and nobody has looked. It clears when the popover
-opens.
+opens, **for the rows that open put on screen** — the panel's own rendered slice,
+which is the rule § 3.3 states in both directions; a failure behind `+N more` is
+not one of them and keeps its dot.
 
 Icon-only, with the meaning carried by the tooltip and the `aria-label` — the
 same contract as the canvas button beside it. No count badge: a badge that
@@ -486,10 +507,15 @@ other two — `gone` and an unrecognised word both fall through to its completed
 check — and each has its own here instead, because that fall-through is exactly
 the rule § 3.3 refuses. Three of the nine are reachable only from the durable
 graph (a restored pause) or from a runtime this renderer has not been taught
-(`gone`, an unrecognised word), which is why the fixture set renders six of them
-and the word-level tests in `scripts/run-detail-model.test.mjs` cover the rest:
-a fixture that carried `paused` would be asserting a `JobState` field that does
-not exist (§ 8).
+(`gone`, an unrecognised word) — and all three are photographed in
+`restored-and-unrecognised`, which carries them the way the wire does: as the
+graph's own status WORD on a restored row (`getattr(node, "status", "gone")`),
+not as a `paused` field, which `JobState` does not have (§ 8). Before that frame
+these three were the only marks the word-level tests in
+`scripts/run-detail-model.test.mjs` covered and no frame had ever shown —
+including `paused`, which is the one of the three that also decides whether the
+trigger exists at all (a restored pause is open work). The fixture set now
+renders all nine states.
 
 Motion is a bonus, never the contract: the running spinner and the three settled
 marks are different *shapes*, so the list survives `prefers-reduced-motion` and
@@ -539,9 +565,14 @@ to a screen reader rather than as a column of unlabelled icons.
   stated as rules are pure functions in the model with real assertions in
   `scripts/run-detail-model.test.mjs`: the visibility predicate
   (`hasRunDetails`), the acknowledgement rules both ways
-  (`acknowledgedOnOpen` / `acknowledgedOnClose`, with `visibleFailures` deciding
-  which rows the second one may count) and the clock predicate
-  (`hasLiveChildClock`). What cannot be a pure function is
+  (`acknowledgedOnOpen` / `acknowledgedOnClose`, with `onScreenFailures` deciding
+  which rows either one may count, and `accumulateSeen` accumulating them over an
+  open period) and the clock predicate
+  (`hasLiveChildClock`). The acknowledgement's two CALL SITES are asserted too,
+  against the trigger's own source, because a model test cannot see which
+  argument the component passes — which is how the open half came to acknowledge
+  the whole roster while the close half counted the rendered slice. What cannot
+  be a pure function is
   the timer's LIFETIME — that it starts when a live child is on screen, ticks at
   1Hz and is cleared when the panel closes — and that is exercised against the
   running panel in QA rather than claimed by a comment here.
@@ -685,8 +716,11 @@ deliberately out of chronological order, so a tie-break that reads the array
 index shows a different six rows from one that reads the children's own clocks
 (`scripts/run-detail-model.test.mjs` asserts both the fixture and the rule).
 
-All eighteen frames were re-taken on the head that remediated those review
-rounds, and again on the head that closed them. The first re-capture is the one
+All twenty frames were re-taken on the head that remediated those review
+rounds, and again on the head that closed them, and the tenth story
+(`restored-and-unrecognised`) was added at the end for the three states a live
+session cannot produce — a restored pause, a swept row and an unrecognised word
+— whose marks rounded out `§ 6.4`'s nine. The first re-capture is the one
 that moved every frame: #113 gave the working surface the page ground, so the
 story now paints the ground the app actually paints under this popover (§ 5);
 the frames whose CONTENT changed are `crowded` and `subagents-only` — the rows
@@ -694,7 +728,10 @@ the slice now selects and the tally that follows them — plus the live clock in
 `both-in-flight`. The second moved none of them: its only rig-side change was
 giving the story's chat column a definite height, so the panel's floor and
 shadow sit on the column the panel is over rather than on the preview frame's
-own ground, and 14 of the 18 frames came back byte-identical with the other four
-differing only in a running row's elapsed label. The distinction and the pixel
-counts are in `docs/evidence/run-details/README.md`, and the counting is what
+own ground, and 14 of the 18 frames it re-took came back byte-identical with the
+other four differing only in a running row's elapsed label. The third added the
+two frames of the new story and re-took eighteen to no visible change: their
+pixel-count differences from the set they replaced are in
+`docs/evidence/run-details/README.md`, quoted with the capture they were read
+off, and the counting is what
 keeps this paragraph falsifiable rather than reassuring.
