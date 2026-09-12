@@ -43,6 +43,7 @@ import { useNavigate } from "react-router-dom";
 import {
 	hitsAnswerQuery,
 	lostRowsToStaleAnswer,
+	rowTrailingStatement,
 	searchChats,
 } from "../chat-search";
 
@@ -288,125 +289,117 @@ export function ChatSidebar({
 			),
 		[drafts],
 	);
-	const sessionRow = (row: CanonicalSessionRow, nested = false) => (
-		<button
-			key={row.session_id}
-			type="button"
-			data-chat-row
-			data-child={nested || undefined}
-			className={cn(
-				rowStyle,
-				"w-full text-left",
-				nested && "pl-7",
-				selectedConversation === row.session_id &&
-					!activeDraftKey &&
-					"bg-accent-wash text-ink",
-				row.attention?.unseen && "font-semibold",
-			)}
-			aria-current={
-				selectedConversation === row.session_id && !activeDraftKey
-					? "page"
-					: undefined
-			}
-			title={`${row.title || "Untitled chat"}${bindingName(row) && !conversationMatches.has(row.session_id) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${row.attention?.unseen ? ", unread" : ""}`}
-			onClick={() => onSelectConversation(row.session_id)}
-		>
-			<Status row={row} />
-			{/* The title is the ONLY thing that truncates, and everything after it
-			    is a `shrink-0` slot that holds its width. That is the structural fix
-			    for the two artifacts the earlier layouts produced, and it replaces
-			    the atomic-inline-box workaround, which only traded one for the
-			    other:
+	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
+		const trailing = rowTrailingStatement({
+			marked: conversationMatches.has(row.session_id),
+			unstarted: unstarted.has(row.session_id),
+			nested,
+			binding: bindingName(row),
+		});
+		return (
+			<button
+				key={row.session_id}
+				type="button"
+				data-chat-row
+				data-child={nested || undefined}
+				className={cn(
+					rowStyle,
+					"w-full text-left",
+					nested && "pl-7",
+					selectedConversation === row.session_id &&
+						!activeDraftKey &&
+						"bg-accent-wash text-ink",
+					row.attention?.unseen && "font-semibold",
+				)}
+				aria-current={
+					selectedConversation === row.session_id && !activeDraftKey
+						? "page"
+						: undefined
+				}
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}${conversationMatches.has(row.session_id) ? ", matched in conversation" : ""}`}
+				onClick={() => onSelectConversation(row.session_id)}
+			>
+				<Status row={row} />
+				{/* ONE trailing statement per row, and the title yields last.
+			    Three layouts have now been measured on this row, and each failed
+			    in the opposite direction from the last:
 
-			    - In one truncating span (the shipped layout, and this PR until round
-			      3) the ellipsis could land INSIDE a qualifier, so the row read
-			      `Refactor the loader ·…` — an orphan separator sharing its glyph
-			      with the mark (design round 2, D10).
-			    - Making the qualifier atomic stopped the orphan but made it
-			      all-or-nothing: on a marked row it vanished entirely while the
-			      ACCESSIBLE NAME still announced it, and the ellipsis sat after a
-			      complete title with empty space behind it — the row reporting its
-			      name was cut when the binding was what disappeared (design round 3,
-			      D17).
+			    - One truncating span (shipped): the ellipsis could land inside a
+			      qualifier, so a row read `Refactor the loader ·…` — an orphan
+			      separator sharing its glyph with the mark (design round 2, D10).
+			    - Every slot atomic and `shrink-0`: no orphan, but the title took
+			      the squeeze, and a row carrying a binding AND `· Not sent yet`
+			      gave it 38px of 179 (design round 4, D18).
+			    - A floor on the title with shrinkable qualifiers: the floor made
+			      the arithmetic worse than the row could pay — 88px of floor plus
+			      65px of mark plus gaps is 161px against a nested row's 158.6px, so
+			      at the default panel width the qualifier was squeezed to a bare
+			      `·` and at 240px the row overflowed its container (design round 5,
+			      D19). `truncate` is a rendering rule, not a reservation: a
+			      shrinking qualifier ends up showing the one glyph that means
+			      nothing on its own.
 
-			    With the slots outside the truncating element no qualifier is ever
-			    half-rendered, the ellipsis always refers to the title, and the
-			    accessible name is built from the same predicate as the pixels. */}
-			{/* `min-w-[5.5rem]` is a FLOOR, and the floor is what makes the priority
-			    order real. The title is `flex-1`, so it takes whatever the trailing
-			    slots leave — right while it has room, wrong when it does not: with
-			    two `shrink-0` qualifiers beside it, a row carrying both a binding and
-			    `· Not sent yet` gave the title 38px of 179 (`Watchli… · release-pod ·
-			    Not sent yet`), where the pre-change layout rendered the same fixture
-			    as `Watchlist dossiers · release-pod · No…` — the old layout truncated
-			    the LEAST important element and the first attempt at this one
-			    truncated the most important, on a row a user hunts for by name
-			    (design round 4, D18).
+			    So the number of trailing STATEMENTS is capped by construction rather
+			    than negotiated by the flex algorithm, and each is `shrink-0` so none
+			    can be clipped mid-glyph. In priority order: the search mark (it is
+			    why the row is onscreen at all), else the row's own state
+			    (`· Not sent yet` — a chat that never carried a message), else the
+			    binding. The two that are not drawn are recoverable — both are in the
+			    row's `title`, the binding is in the nested list, and the chat itself
+			    says the rest — which is the same priority ruling design round 4
+			    endorsed for the mark, applied to the rest of the row.
 
-			    So the title holds a floor and the SECONDARY qualifiers yield
-			    (`min-w-0 shrink truncate` below), which restores the old priority
-			    without restoring the old single-span layout that let the ellipsis
-			    land inside a qualifier. The mark stays `shrink-0`: it is the row's
-			    justification, and it is short. */}
-			<span className="min-w-[5.5rem] flex-1 truncate">
-				{row.title || "Untitled chat"}
-			</span>
-			{/* In a flat list nothing else names the profile answering, so two
+			    With at most one such statement the worst case fits: a flat row has
+			    ~232px of content and a nested row ~158px, and the widest statement
+			    is ~70px, which leaves the title both readable and the only element
+			    that truncates. No floor is needed, so nothing can overflow. */}
+				<span className="min-w-0 flex-1 truncate">
+					{row.title || "Untitled chat"}
+				</span>
+				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
-			    rows already inherit the identity from their parent.
-
-			    Not on a row the conversation search found: such a row spends its
-			    trailing space on the reason it is in the results, and the two do not
-			    both fit in this panel — a title, `· coder` and `· in conversation`
-			    want ~243px of the ~179px a flat row has. The mark is why the row is
-			    on screen at all. The a11y `title` drops the binding in the same
-			    case, so nothing announces a qualifier the row does not draw. */}
-			{!nested &&
-				bindingName(row) &&
-				!conversationMatches.has(row.session_id) && (
-					/* Shrinkable, unlike the mark: a secondary qualifier is recoverable
-					   (the tooltip, the nested list, the chat itself) and a title is
-					   not (design round 4, D18). `truncate` rather than a bare shrink
-					   so a squeezed qualifier ends in its own ellipsis instead of being
-					   clipped mid-glyph — and never renders as a bare `·`, because an
-					   ellipsis follows text. */
-					<span className="ml-1 min-w-0 shrink truncate text-meta text-ink-muted">
+			    rows already inherit the identity from their parent, and a row that
+			    has something more important to say (the paragraph above) says that
+			    instead. The row's `title` carries the binding in every case, so the
+			    accessible description is never narrower than the pixels. */}
+				{trailing === "binding" && (
+					<span className="ml-1 shrink-0 text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
 				)}
-			{unstarted.has(row.session_id) && (
-				<span className="ml-1 min-w-0 shrink truncate text-meta text-ink-muted">
-					· Not sent yet
-				</span>
-			)}
-			{/* Says WHY a row is in a filtered list when its visible text does not
+				{trailing === "not_sent" && (
+					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+						· Not sent yet
+					</span>
+				)}
+				{/* Says WHY a row is in a filtered list when its visible text does not
 			    contain the query. Without it a row appears in a filtered list with
 			    nothing in common with the query, which is worse than no filter: the
 			    user cannot tell a real match from a bug. Rendered in the row's own
-			    `· …` idiom and roles rather than as a glyph, and in the trailing
-			    slot that cannot truncate (D1/D2), on the rows that carry it (D9),
-			    outside the title's truncating element (D10/D17). The visible words
-			    are `aria-hidden` and the sentence is carried by the `sr-only` span
-			    after them, so a screen reader hears it once, in words. */}
-			{conversationMatches.has(row.session_id) && (
-				<>
-					<span
-						aria-hidden="true"
-						className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
-					>
-						· in conversation
-					</span>
-					<span className="sr-only">, matched in conversation</span>
-				</>
-			)}
-			{pendingId === row.session_id && (
-				<LoaderCircle
-					className="size-4 shrink-0 motion-safe:animate-spin"
-					aria-label="Opening chat"
-				/>
-			)}
-		</button>
-	);
+			    `· …` idiom and roles rather than as a glyph, outside the truncating
+			    element so it can never be clipped, and on the rows that carry it.
+			    The visible words are `aria-hidden` and the sentence is carried by
+			    the `sr-only` span after them, so a screen reader hears it once. */}
+				{trailing === "conversation" && (
+					<>
+						<span
+							aria-hidden="true"
+							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+						>
+							· in conversation
+						</span>
+						<span className="sr-only">, matched in conversation</span>
+					</>
+				)}
+				{pendingId === row.session_id && (
+					<LoaderCircle
+						className="size-4 shrink-0 motion-safe:animate-spin"
+						aria-label="Opening chat"
+					/>
+				)}
+			</button>
+		);
+	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
 		const rows = children(kind, name);
 		const key = `${kind}:${name}`;

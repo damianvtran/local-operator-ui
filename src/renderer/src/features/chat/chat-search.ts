@@ -187,6 +187,45 @@ export function searchChats(
 }
 
 /**
+ * Which trailing statement a row shows — at most one, decided by importance.
+ *
+ * Why a rule rather than a flex negotiation. Three layouts were measured on this
+ * row and each failed in the opposite direction from the last: one truncating
+ * span let the ellipsis land inside a qualifier and render an orphan `·` (design
+ * round 2, D10); every slot atomic and `shrink-0` made the TITLE take the squeeze
+ * and starve it to 38px of 179 (round 4, D18); a floor on the title then made the
+ * arithmetic worse than the row could pay, so a qualifier was clipped to a bare
+ * `·` and the row overflowed at 240px (round 5, D19). The common cause is that
+ * CSS was being asked to arbitrate between two claims whose relative importance
+ * it cannot know.
+ *
+ * So the number of claims is capped here, in the priority order a reader would
+ * pick, and every slot is `shrink-0`: the search mark (why the row is onscreen at
+ * all), else the row's own state (`· Not sent yet` — a chat that never carried a
+ * message), else the binding. Whatever is not drawn stays reachable through the
+ * row's `title`, the nested list, and the chat itself.
+ */
+export type RowTrailingStatement =
+	| "conversation"
+	| "not_sent"
+	| "binding"
+	| "none";
+
+export function rowTrailingStatement(input: {
+	marked: boolean;
+	unstarted: boolean;
+	nested: boolean;
+	binding: string;
+}): RowTrailingStatement {
+	if (input.marked) return "conversation";
+	if (input.unstarted) return "not_sent";
+	// A nested row inherits the identity from its parent, so it has nothing to
+	// say here even when it is bound.
+	if (!input.nested && input.binding) return "binding";
+	return "none";
+}
+
+/**
  * Whether the list LOST rows to a stale answer — the state the sidebar's
  * in-flight line exists to explain.
  *
