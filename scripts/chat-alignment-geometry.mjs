@@ -22,9 +22,11 @@
  *
  * What it reports per story, all in CSS pixels at the stated viewport:
  *
- *  - `prose`    the agent answer's rendered box (`.lo-markdown` under
- *               `.lo-measured`), which is the block the cap and the centring
- *               act on.
+ *  - `prose`    the agent answer's rendered box: the `.lo-markdown` root that
+ *               is NOT inside the user bubble, which is the block the cap and
+ *               the centring used to act on. Deliberately not keyed on
+ *               `.lo-measured` — see the selector comment further down, where
+ *               the same distinction decides what the probe queries.
  *  - `toolRow`  the ledger row's box, the reference edge prose must match.
  *  - `glyph`    the tool icon column, the leftmost ink on a ledger row.
  *  - `content`  the row content box both of them live in — the
@@ -33,7 +35,11 @@
  *
  * `leftDelta` is prose.left - toolRow.left and `rightDelta` is
  * toolRow.right - prose.right. Both are zero when the two registers share an
- * edge; before this change they were 20 and 265 at 1024, which is the defect.
+ * edge; before this change they were 156.6 and 156.6 at 1024, which is the
+ * defect. The same figure on both edges is what `margin-inline: auto` plus a
+ * cap must produce — the centring splits the 313px the cap gives up evenly —
+ * and the derivation is in the reading-measure comment in `markdown.css`,
+ * which is the single place those numbers are argued.
  */
 
 import { spawn } from "node:child_process";

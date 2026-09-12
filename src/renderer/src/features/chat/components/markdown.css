@@ -310,6 +310,32 @@
  * which is the same box the ledger resolves against — one edge, structurally,
  * rather than two that have to be kept in agreement.
  *
+ * ## What the removal costs, stated rather than deleted
+ *
+ * This comment used to justify the cap with a measurement — "at 900px a
+ * paragraph runs past 100 characters a line" — and that measurement is still
+ * TRUE, so answering it is better than deleting it. Measured at the 14px body
+ * step (design review round 1, D2): 98.1 characters a line at 1024, 1440 AND
+ * 1920, and 66.6 at 700. Above the 45-75 the typographic guidance cites.
+ *
+ * Two facts make the trade acceptable, and both are why the number is recorded
+ * here instead of being argued again next round:
+ *
+ *  - **98.1 is a CEILING, not a slope.** The column is capped at 900px by
+ *    `CHAT_MEASURE` (`chat-measure.ts`), so the line length stops growing with
+ *    the window — 1920 reads exactly as 1024 does. The failure mode a reading
+ *    cap exists to prevent, prose stretching across a wide display, cannot
+ *    happen on this surface.
+ *  - **This is a ledger, not a reading pane** (branding.md § 7). The reader
+ *    scans it and matches an answer against the rows that produced it, so the
+ *    two registers sharing one pair of edges is worth more than a comfortable
+ *    measure on one of them.
+ *
+ * If a measure is ever wanted back, the ONLY version that survives this is one
+ * that narrows the whole row content box — prose and ledger together, i.e.
+ * `CHAT_MEASURE` — never one applied to prose alone, which puts the second
+ * left edge straight back. That rule is in branding.md § 7 as contract.
+ *
  * DO NOT reinstate `margin-inline: auto` or a max-width on agent prose. The
  * centring was itself a fix for an earlier report (design round 2, D4) that
  * the prose looked "shoved left" when the cap left 40px on one side and 245px
@@ -337,6 +363,22 @@
  * On the root, `ch` resolves ONCE against the root's own body-size font, so
  * headings, prose, lists, blockquotes, code and tables inherit one box and
  * therefore one left edge at every type step.
+ *
+ * ## Why `margin-inline: auto` stays here, given the warning above
+ *
+ * It is INERT on the user branch, and that is the point. The bubble
+ * shrink-wraps its capped content, so there is almost nothing for the centring
+ * to distribute: measured at 1440 with a long user message, the frame is
+ * 589.3..1170 and the markdown 606.3..1153, leaving 1.0px of slack on each
+ * side (design review round 1, D3). It survives as the second half of the pair
+ * that makes `62ch` mean "this box is 62ch wide" rather than "this box is at
+ * most 62ch wide, aligned however the flow happens to leave it".
+ *
+ * So the declaration the paragraph above forbids on AGENT prose is still
+ * present on the USER bubble, and that is not a contradiction: on a
+ * shrink-wrapped aside it moves a pixel, while on a full-width answer it moved
+ * 156.6px and created the second rail. The rule is about the box it lands on,
+ * not about the property.
  *
  * The class is applied by `canonical-transcript.tsx` and `message-paper.tsx`,
  * on their USER branches only.
