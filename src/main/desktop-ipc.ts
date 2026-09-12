@@ -19,8 +19,15 @@ const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
  * because `DesktopNotifier` holds its own reference to the same underlying
  * sender and calls it directly. Guarding only the IPC entry would leave that
  * path unguarded — harmless while the notifier emits nothing but
- * `sessions.watch`, but it is exactly how a future main-process caller would
- * acquire an ungated `sessions.seen`.
+ * `sessions.watch` and `sessions.notified`, but it is exactly how a future
+ * main-process caller would acquire an ungated `sessions.seen`.
+ *
+ * The guard is deliberately scoped to `sessions.seen` alone. `sessions.notified`
+ * must NOT be gated on it: it claims cross-surface DELIVERY of a notification,
+ * which by definition fires when the window is not in the foreground, so a
+ * foreground requirement there would refuse every legitimate claim. The two
+ * watermarks are separate on purpose — a delivery claim never marks anything
+ * read (docs/design/descriptive-notifications.md 7.2).
  *
  * The renderer's own visibility test cannot establish this: an occluded,
  * hidden or minimized window still reports `visibilityState === "visible"` and
