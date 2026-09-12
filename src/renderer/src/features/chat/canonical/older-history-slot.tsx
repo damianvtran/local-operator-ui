@@ -168,6 +168,18 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 				 * an error for the user to answer. The recoverable `Try again` below
 				 * is untouched and still covers the case this branch does not: the
 				 * transport is up and the fetch genuinely failed.
+				 *
+				 * This branch is DEFENSIVE, and a reader should not mistake it for
+				 * the product's offline experience. In the flows a UX pass could
+				 * actually produce, a real transport loss tears the session view down
+				 * — rows go to 0 and the empty state takes the surface — before this
+				 * branch ever renders; and on the browser-development surface a
+				 * killed backend never flips `status` at all, because the
+				 * `EventSource` stays in CONNECTING rather than erroring. Both are
+				 * pre-existing behaviours of the session stream and the shell, not of
+				 * this slot, and neither is addressed here. What this branch
+				 * guarantees is that IF the state is reachable, it does not stack a
+				 * second red claim on the transcript's own notice.
 				 */
 				<span className="min-w-0 truncate text-ink-dim text-meta">
 					<span className={SHORT_COPY}>Not loaded</span>

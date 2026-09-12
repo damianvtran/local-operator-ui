@@ -303,3 +303,29 @@ chain to be the only route.
   persistent "Reconnecting" after ~130 history requests across many browser
   sessions), reproduced once here. Restarting the backend clears it. Not on this
   diff and recorded rather than charged against it.
+
+- **The transport-down quiet line is a defensive branch, not the offline UX.**
+  In the flows a UX pass could actually produce, a real transport loss tears the
+  session view down — rows go to 0 and the empty state takes the surface —
+  before that branch renders; and on this browser-development surface a killed
+  backend never flips `status` at all, because the `EventSource` stays in
+  CONNECTING rather than erroring. Both are pre-existing behaviours of the
+  session stream and the shell, outside this diff and deliberately not
+  redesigned here. The branch is verified from the rendered stories, which is
+  why it has story coverage and no live frame.
+
+- **The `transportDown={status !== "live"}` wiring is verified by reading, not
+  by running**, for the reason above: QA documented seven approaches and none
+  reached the state on a live surface. A coverage gap, not a known defect.
+
+- **Deferred, with reasons.** The two short failure spellings under-use their
+  budget and stop naming the object (`Not loaded` 62px, `Did not load` 68px
+  against 143px available; `Earlier messages failed` 130.34px and `Earlier
+  messages did not load` 166.36px both fit) — deferred because changing rendered
+  copy now would invalidate the design round that verified these exact strings.
+  The 260px container-query switch sits 4px under the windowed branch's own full
+  spelling (264.03px), so a 260–264px band can clip `…to load`. Focus drops to
+  `<body>` when the affordance unmounts after a load or a failure (one keystroke
+  of friction). The quiet row offers no route back and does not change when the
+  transport returns — which pairs with the defensive-branch finding above. The
+  `Reconnecting` notice the quiet line leans on has no live region.

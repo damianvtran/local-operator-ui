@@ -757,8 +757,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			tabIndex={collapsed ? -1 : 0}
 			role="log"
 			aria-label="Conversation transcript"
+			// Only the `windowed` branch renders that id, so the description has to
+			// track the branch rather than the looser "history exists" condition it
+			// was derived from: `hasMore` with no hidden rows yields `idle`, whose
+			// button carries its own label, and pointing at an absent element makes
+			// the scroller's accessible description resolve to nothing at all — a
+			// worse outcome than omitting it, and invisible unless someone reads the
+			// tree while the slot happens to be idle.
 			aria-describedby={
-				transcript.hasMore || hidden > 0 ? OLDER_HISTORY_HINT_ID : undefined
+				slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
 			}
 			className={cn(
 				// `min-h-0`, not `h-full`: this is the flex child that must absorb

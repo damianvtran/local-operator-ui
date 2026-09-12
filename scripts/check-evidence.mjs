@@ -26,6 +26,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { STORIES, THEMES } from "./capture-evidence.mjs";
 import { deltaE, r2 } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
@@ -399,6 +400,32 @@ const main = () => {
 		 * sweep's own count is checked against the frames left OUTSIDE every
 		 * declared set, so neither term can absorb the other's error.
 		 */
+		/*
+		 * `surfaces` and `themes` are DERIVED, not transcribed.
+		 *
+		 * They are the sweep's own `STORIES.length` and `THEMES.length`, and
+		 * nothing read them until now - which is how `surfaces` went a round
+		 * stale, and how an explanatory sentence beside it came to say "the two
+		 * `chat-tool-rows--diff-body*` entries" when the tree had three. A
+		 * number a human retypes after editing a list is a number that is wrong
+		 * the moment someone forgets, and prose about that number is wrong
+		 * twice.
+		 *
+		 * Importing the lists is safe: `capture-evidence.mjs` only runs its
+		 * sweep under an `import.meta.url === process.argv[1]` guard, so this
+		 * import costs nothing but the module's own constants.
+		 */
+		if (manifest.surfaces !== STORIES.length) {
+			failures.push(
+				`manifest.json: surfaces says ${manifest.surfaces}; capture-evidence.mjs declares ${STORIES.length} stories`,
+			);
+		}
+		if (manifest.themes !== THEMES.length) {
+			failures.push(
+				`manifest.json: themes says ${manifest.themes}; capture-evidence.mjs declares ${THEMES.length} themes`,
+			);
+		}
+
 		const extra = manifest.supplementary ?? [];
 
 		/*

@@ -86,6 +86,20 @@ import {
  * finished growing within ~400ms; 1200ms is three times that, and the hold is
  * self-cancelling (`anchorDrift` returns 0 on a stable extent) so overshooting
  * costs a comparison per frame rather than a correction.
+ *
+ * The hold does not distinguish WHOSE growth it corrects, and during the window
+ * that has one consequence worth naming. Growth BELOW the held row moves
+ * nothing above it, so the correction computes zero and the reader sees their
+ * own expansion open normally. Growth ABOVE the held row is what the hold
+ * exists to absorb — including a reader who, inside the same 1200ms, expands a
+ * tool row's diff body (`max-h-[740px]`) on a row above the anchor: the
+ * correction holds the anchor still and so scrolls their expansion back out of
+ * view. That is the feature applied to an unexpected actor rather than a defect
+ * — holding reading position while content grows above IS what the reader asked
+ * for by scrolling up — and it is bounded by the window and by the body's own
+ * cap. Distinguishing reader-initiated growth from a landing page would mean
+ * attributing every extent change to a cause, which is the inference clause A
+ * deliberately refuses to make.
  */
 const ANCHOR_HOLD_MS = 1200;
 
