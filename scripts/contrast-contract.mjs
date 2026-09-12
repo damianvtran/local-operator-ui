@@ -201,6 +201,40 @@ const CONTROLS = [
 		border: "accent",
 		ink: "accent",
 	},
+	/*
+	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).
+	 *
+	 * `on: ["canvas"]` is the measurement that shaped the component. These sit
+	 * BELOW the accent-washed question callout on the transcript's own ground,
+	 * not inside it, because `borderControl` on `accentWash` measures 2.89:1 on
+	 * iceberg — under the 3:1 structural floor, so a standard control edge is
+	 * not legal inside the wash. The only border role that clears it there is
+	 * `accent`, which this card already spends on the callout and which the TUI
+	 * refused to spend twice on one frame for the same reason.
+	 *
+	 * The triple is the `secondary` button's, which is deliberate: an option is
+	 * an ordinary control and should not invent a fourth way to draw one. Listed
+	 * separately anyway because `on` differs — `secondary` is not asserted on
+	 * `canvas` by any other row, and a green run about a component nobody listed
+	 * is not evidence about that component.
+	 */
+	{
+		name: "ask option button",
+		on: ["canvas", "surface"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/* Hover is a colour step, so the stepped fill is its own triple: the
+		   label has to clear the text floor on the ground hover moves it to,
+		   not merely on the resting one. */
+		name: "ask option button (hover)",
+		on: ["canvas", "surface"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
 	{
 		/*
 		 * The user's message bubble in the transcript.

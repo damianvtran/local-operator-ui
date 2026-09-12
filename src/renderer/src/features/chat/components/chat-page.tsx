@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import { resolveNumericAnswer } from "../../../../../shared/desktop-session-contract";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
@@ -339,7 +340,10 @@ function SessionPanel({
 						sessionId,
 						epoch: canonical.ownerEpoch,
 						requestId: gate.request_id,
-						value: content,
+						// A bare `1`-`9` typed against an options list is a pick, not a
+						// literal answer: the card shows those numerals, so typing one is
+						// the answer it invites. See `resolveNumericAnswer`.
+						value: resolveNumericAnswer(gate, content),
 						questionIndex: gate.question_index,
 					});
 				return true;
@@ -387,6 +391,55 @@ function SessionPanel({
 					: undefined,
 			);
 			return false;
+		} finally {
+			sendLock.current = false;
+			setAdmitting(false);
+		}
+	};
+	/**
+	 * Answer the pending `ask` gate by pressing one of its options.
+	 *
+	 * This is `send`'s gate branch reached from a click instead of from the
+	 * composer, and it deliberately reuses that path's machinery rather than
+	 * growing a second one: the same `sendLock` ref (so a click and a typed send
+	 * cannot both post an answer for one question), the same `admitting` flag
+	 * (which is what disables the options and the composer together while one is
+	 * in flight), and the same `setSendError` surface (so a failed answer is
+	 * reported where a failed send is, in the composer's alert, instead of
+	 * inventing a second error affordance on the card).
+	 *
+	 * `value` is the option's LABEL. The wire contract is "answer with the label
+	 * the model wrote" — the terminal picker hands text back for the same reason
+	 * (`ask_picker.py`: "It answers with TEXT, not an index"), because its
+	 * free-text row can return a string that was never in `options` and an index
+	 * cannot express that.
+	 */
+	const answerWithOption = async (label: string) => {
+		const gate = canonical.frontend?.pending_gate;
+		// Every precondition the transport needs, checked before the lock is
+		// taken: an answer without an epoch or a session id cannot be addressed,
+		// and taking the lock first would leave the composer disabled on a request
+		// that was never sent.
+		if (!gate || gate.kind !== "ask" || !canonical.ownerEpoch || !sessionId)
+			return;
+		if (pendingNavigation || sendLock.current) return;
+		sendLock.current = true;
+		setAdmitting(true);
+		setSendError(null);
+		setSendErrorCode(undefined);
+		try {
+			await desktopResult({
+				op: "sessions.answer",
+				sessionId,
+				epoch: canonical.ownerEpoch,
+				requestId: gate.request_id,
+				value: label,
+				questionIndex: gate.question_index,
+			});
+		} catch (error) {
+			// Same authored-copy rule as `send`: `error.message` on a runtime
+			// exception is a stack-trace fragment, not a sentence for a user.
+			setSendError(userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE));
 		} finally {
 			sendLock.current = false;
 			setAdmitting(false);
@@ -757,6 +810,7 @@ function SessionPanel({
 						busy,
 						admitting: admitting || pendingNavigation,
 						onStop: stop,
+						onAnswer: (label: string) => void answerWithOption(label),
 					}}
 				/>
 			</div>

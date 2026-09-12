@@ -73,7 +73,12 @@ import {
 } from "../components/message-item/message-container";
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { OutputBlock } from "../components/message-item/output-block";
-import { AgentQuestion, DiffBlock, TraceLine } from "../components/trace";
+import {
+	AgentQuestion,
+	AskOptions,
+	DiffBlock,
+	TraceLine,
+} from "../components/trace";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	displayName,
@@ -127,6 +132,23 @@ export type CanonicalTranscriptProps = {
 
 	status: "connecting" | "live" | "reconnecting" | "unavailable";
 	error: string | null;
+	/**
+	 * Submit `label` as the answer to the pending `ask` gate.
+	 *
+	 * Optional because the transcript renders in surfaces that have no answer
+	 * path at all (stories, and any caller without a live session). Absent, the
+	 * options still render but do nothing — so the callers that CAN answer are
+	 * the only ones that offer it, and the component never fakes a send.
+	 */
+	onAnswer?: (label: string) => void;
+	/**
+	 * An answer is already in flight, from a click or from the composer.
+	 *
+	 * Shared with the composer's own in-flight flag rather than tracked locally:
+	 * a second source of truth here is how a click and a typed send end up both
+	 * believing they are the only answer.
+	 */
+	answering?: boolean;
 };
 
 // ---------------------------------------------------------------- rows
@@ -516,6 +538,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	isSmallView,
 	status,
 	error,
+	onAnswer,
+	answering = false,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -866,28 +890,39 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								gate.detail ? `**${gate.title}**\n\n${gate.detail}` : gate.title
 							}
 						/>
-						{gate.kind === "ask" && gate.options.length > 0 && (
-							<ul className="mt-2 flex flex-col gap-1 pl-1">
-								{gate.options.map((option, index) => (
-									<li
-										key={`${gate.request_id}-${String(index)}`}
-										className="text-body-sm text-ink-muted"
-									>
-										<span className="font-mono text-ink-dim text-mono-sm">
-											{index + 1}.
-										</span>{" "}
-										{option.label}
-										{option.description ? ` — ${option.description}` : ""}
-									</li>
-								))}
-							</ul>
+						{gate.kind === "ask" && (
+							<AskOptions
+								options={gate.options}
+								recommended={gate.recommended}
+								requestId={gate.request_id}
+								// One answer in flight at a time. `admitting` is the same
+								// flag the composer disables on, so a click and a typed send
+								// cannot both post an answer for one question.
+								busy={answering}
+								onAnswer={(label) => onAnswer?.(label)}
+							/>
 						)}
 						<p className="mt-2 text-ink-dim text-meta">
 							{gate.kind === "approval"
 								? "Reply yes or no in the composer."
-								: gate.question_total > 1
-									? `Question ${gate.question_index + 1} of ${gate.question_total}. Type your answer below.`
-									: "Type your answer below."}
+								: /*
+									 * The hint names the new affordance first and keeps the
+									 * free-text path honest, because both are real: the
+									 * options are never guaranteed exhaustive (the terminal
+									 * card carries an explicit free-text row for exactly this
+									 * reason), and a `secret` ask renders no options at all,
+									 * where the composer is the only answer path.
+									 */
+									[
+										gate.question_total > 1
+											? `Question ${gate.question_index + 1} of ${gate.question_total}.`
+											: null,
+										gate.options.length > 0
+											? "Choose an option, or type your own answer below."
+											: "Type your answer below.",
+									]
+										.filter(Boolean)
+										.join(" ")}
 						</p>
 					</div>
 				)}
