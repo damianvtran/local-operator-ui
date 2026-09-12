@@ -179,6 +179,9 @@ const api = {
 				message: string;
 				command: string;
 				detail?: string;
+				latestVersion?: string | null;
+				currentVersion?: string | null;
+				sourceBuild?: boolean;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);

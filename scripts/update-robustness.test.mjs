@@ -12,7 +12,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
@@ -72,6 +72,7 @@ const {
 	reapFailedInstall,
 	recordInstallFailure,
 	requiredDiskBytes,
+	resolveDistributionMarkers,
 	resolveGlobalInstallPlan,
 	resolveStagedArtifactPath,
 	shipItCacheDir,
@@ -81,9 +82,12 @@ const {
 	writePendingInstallMarker,
 } = install;
 
-const { dmgArtifacts, removeTransientZip, updateUpdateYmlEntry } = await import(
-	"./notarize-artifacts.mjs"
-);
+const {
+	dmgArtifacts,
+	removeTransientZip,
+	rewriteUpdateMetadata,
+	updateUpdateYmlEntry,
+} = await import("./notarize-artifacts.mjs");
 const {
 	artifactChecks,
 	discoverApp,
@@ -426,18 +430,27 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(code, /launchctl list "\$SHIPIT_JOB"/);
 
 	// The relaunch attempt is not conditional on reaching the end of a wait: the
-	// deadline path falls through to it (review Q1).
-	assert.match(plan.script, /deadline=\$\(\( \$\(now\) \+ 900 \)\)/);
+	// deadline path falls through to it (review Q1), and the decision it waits on
+	// is made of the job going AND the swap landing on disk (review R11).
+	assert.match(plan.script, /deadline=\$\(\( \$\(now\) \+ 600 \)\)/);
 	assert.match(plan.script, /if app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/);
 	assert.match(plan.script, /open -a "\$BUNDLE"/);
 	assert.match(plan.script, new RegExp(WATCHDOG_TOKEN));
-	assert.equal(plan.timeoutSeconds, 900);
+	// The on-disk half of the decision: the version in the target bundle's own
+	// Info.plist, read with plutil rather than through a preference domain.
+	assert.match(plan.script, /plutil -extract CFBundleShortVersionString raw/);
+	assert.match(plan.script, /LO_UPDATE_WATCHDOG_TARGET_VERSION/);
+	// Both halves reach a single decision, and the reload only happens after it.
+	assert.match(plan.script, /decided\(\) \{/);
+	assert.match(plan.script, /while :; do\n\tif decided; then break; fi/);
+	assert.equal(plan.timeoutSeconds, 600);
 
 	const bounded = buildWatchdogPlan({
 		appBundlePath: "/Applications/Local Operator.app",
 		executableName: "Local Operator",
 		appPid: 1,
 		shipItJob: null,
+		targetVersion: "0.18.0",
 		timeoutSeconds: 60,
 		intervalSeconds: 1,
 		settleSeconds: 1,
@@ -449,6 +462,14 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// Without a label there is no job to ask about, and the script still waits on
 	// the pid alone rather than falling back to a name.
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB, "");
+	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_TARGET_VERSION, "0.18.0");
+	// And with no label the appear window is skipped rather than spent pretending
+	// to observe a job it cannot see, which used to end in a relaunch carrying no
+	// evidence about the install at all (review R14).
+	assert.match(
+		bounded.script,
+		/if \[ "\$job_known" -eq 1 \]; then\n\tappear_deadline=/,
+	);
 
 	assert.equal(shipItJobLabel("com.local-operator"), "com.local-operator.ShipIt");
 	assert.equal(
@@ -477,13 +498,28 @@ function runWatchdog({ plan, binDir }) {
 	return { child, exit };
 }
 
-/** A fixture "app" bundle plus the two commands the watchdog shells out to. */
-function makeWatchdogFixture(dir) {
+/**
+ * A fixture "app" bundle plus the two commands the watchdog shells out to.
+ *
+ * The bundle carries a real `Info.plist` because the swap's own state is read
+ * from it: the watchdog compares the version there against the version the
+ * update was for, which is half of what it waits on (review R11).
+ */
+function makeWatchdogFixture(dir, version = "0.17.0") {
 	const log = join(dir, "launches.log");
 	const bundle = join(dir, "Fixture.app");
 	mkdirSync(join(bundle, "Contents", "MacOS"), { recursive: true });
 	const executable = join(bundle, "Contents", "MacOS", "Fixture");
 	writeFileSync(executable, "#!/bin/sh\nexit 0\n", "utf8");
+	/** Rewrite the bundle's own version, i.e. land (or un-land) the swap. */
+	const setVersion = (next) => {
+		writeFileSync(
+			join(bundle, "Contents", "Info.plist"),
+			`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>CFBundleShortVersionString</key>\n\t<string>${next}</string>\n</dict>\n</plist>\n`,
+			"utf8",
+		);
+	};
+	setVersion(version);
 
 	// `open` records the relaunch instead of starting an app.
 	const binDir = join(dir, "bin");
@@ -510,6 +546,7 @@ function makeWatchdogFixture(dir) {
 		binDir,
 		stateFile,
 		launchLog: log,
+		setVersion,
 		launches: () =>
 			existsSync(log)
 				? readFileSync(log, "utf8").trim().split("\n").filter(Boolean)
@@ -624,6 +661,116 @@ test("the watchdog relaunches a real process tree and never exits without trying
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		assert.equal(fixture.launches().length, before);
 		app.kill();
+	}
+});
+
+/**
+ * The exit that does not need Squirrel's job to go away.
+ *
+ * The 0.17.0 failure left its job loaded and respawning for hours (runs=3114), so
+ * a watchdog that waited only on the job waited out its whole bound with the user
+ * staring at nothing - the R1 outcome, fifteen minutes later (review R11). The
+ * bundle at the target path reporting the version the update was for is the swap
+ * saying it landed, and it is what makes leaving early safe rather than a guess.
+ */
+test("the watchdog leaves early when the swap has landed, job or no job", async () => {
+	const dir = tempDir("lo-watchdog-swap-");
+	const fixture = makeWatchdogFixture(dir, "0.17.0");
+	const planFor = (pid, overrides = {}) =>
+		buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: pid,
+			shipItJob: "com.local-operator.ShipIt",
+			targetVersion: "0.18.0",
+			// A bound long enough that reaching it is distinguishable from leaving
+			// on the swap: a pass here cannot be a pass by timeout.
+			timeoutSeconds: 120,
+			intervalSeconds: 1,
+			settleSeconds: 1,
+			appearSeconds: 1,
+			...overrides,
+		});
+
+	// 1. The hung install that DID swap: the job stays loaded forever and the new
+	//    app is in place. The app comes back in seconds, not at 120 s.
+	{
+		writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+		fixture.setVersion("0.18.0");
+		const app = startProcess("/bin/sleep", ["30"]);
+		const before = fixture.launches().length;
+		const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+		const started = Date.now();
+		app.kill();
+		const result = await watchdog.exit;
+		const elapsed = Date.now() - started;
+		assert.equal(result.code, 0);
+		assert.equal(await waitForLaunches(fixture, before + 1), true);
+		assert.ok(
+			elapsed < 15000,
+			`expected the swap to end the wait, took ${elapsed}ms`,
+		);
+		rmSync(fixture.stateFile, { force: true });
+	}
+
+	// 2. The swap has NOT landed and the job is still loaded: nothing is launched
+	//    into a live install, even past the point where the swap check would fire.
+	{
+		fixture.setVersion("0.17.0");
+		writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+		const app = startProcess("/bin/sleep", ["30"]);
+		const before = fixture.launches().length;
+		const watchdog = runWatchdog({
+			plan: planFor(app.pid, { timeoutSeconds: 4 }),
+			binDir: fixture.binDir,
+		});
+		app.kill();
+		await new Promise((resolve) => setTimeout(resolve, 2500));
+		assert.equal(fixture.launches().length, before);
+		const result = await watchdog.exit;
+		assert.equal(result.code, 0);
+		assert.equal(await waitForLaunches(fixture, before + 1), true);
+		rmSync(fixture.stateFile, { force: true });
+	}
+
+	// 3. The label could not be read (R14): the job cannot be asked about, so the
+	//    swap is the whole signal - and waiting for it must not be confused with
+	//    relaunching on no evidence. No launch while the swap is pending.
+	{
+		fixture.setVersion("0.17.0");
+		const app = startProcess("/bin/sleep", ["30"]);
+		const before = fixture.launches().length;
+		const watchdog = runWatchdog({
+			plan: planFor(app.pid, { shipItJob: null, timeoutSeconds: 4 }),
+			binDir: fixture.binDir,
+		});
+		app.kill();
+		await new Promise((resolve) => setTimeout(resolve, 2500));
+		assert.equal(fixture.launches().length, before);
+		const result = await watchdog.exit;
+		assert.equal(result.code, 0);
+		assert.equal(await waitForLaunches(fixture, before + 1), true);
+	}
+
+	// 4. The label could not be read and the swap HAS landed: the app comes back
+	//    at once. With a 30 s appear window in the plan, a prompt exit is the
+	//    proof that the window was skipped rather than spent on a job the script
+	//    cannot see (review R14).
+	{
+		fixture.setVersion("0.18.0");
+		const app = startProcess("/bin/sleep", ["30"]);
+		const before = fixture.launches().length;
+		const watchdog = runWatchdog({
+			plan: planFor(app.pid, { shipItJob: null, appearSeconds: 30 }),
+			binDir: fixture.binDir,
+		});
+		const started = Date.now();
+		app.kill();
+		const result = await watchdog.exit;
+		const elapsed = Date.now() - started;
+		assert.equal(result.code, 0);
+		assert.equal(await waitForLaunches(fixture, before + 1), true);
+		assert.ok(elapsed < 10000, `expected no appear window, took ${elapsed}ms`);
 	}
 });
 
@@ -1040,12 +1187,20 @@ test("the operator's own install is classified rather than told to use pip", (t)
 		realPath = null;
 	}
 	const firstLine = readFileSync(shimPath, "utf8").split("\n", 1)[0] ?? "";
+	// The markers the layout cannot answer, read from the real prefix on this
+	// machine: the uv tool records `INSTALLER = uv`, which is exactly why the
+	// pip class consults that file only for the value `pip` (review R13).
+	const prefix = dirname(dirname(realPath ?? shimPath));
+	const markers = resolveDistributionMarkers(prefix);
+	assert.equal(markers.installer, "uv");
+	assert.equal(markers.editable, false);
 	const kind = classifyGlobalInstall({
 		path: shimPath,
 		realPath,
 		shebang: firstLine.startsWith("#!") ? firstLine : null,
+		...markers,
 	});
-	assert.notEqual(kind, "global-unknown");
+	assert.equal(kind, "uv-tool");
 	const plan = resolveGlobalInstallPlan({
 		identity: { path: shimPath, realPath, shebang: firstLine },
 		lopUpdatePath: null,
@@ -1414,4 +1569,226 @@ test("stapling rewrites the image hash in the update metadata, and nothing else"
 	assert.equal(missing.matched, false);
 	assert.equal(missing.replaced, 0);
 	assert.equal(missing.text, yml);
+});
+
+/**
+ * The metadata rewrite's own decision, exercised on real files.
+ *
+ * The case that used to ship: the entry is there, its `sha512`/`size` lines have
+ * drifted, nothing is rewritten, and the step passed with the PRE-staple hash
+ * still in the file - a hash of bytes nobody downloads, for every user of the
+ * release (review R12). `matched` alone cannot answer it, because it is true
+ * whenever the `- url:` line exists.
+ */
+test("stapling fails when the entry is listed but nothing was rewritten", () => {
+	const dir = tempDir("lo-yml-");
+	const good = join(dir, "latest-mac.yml");
+	const drifted = join(dir, "latest.yml");
+	const unrelated = join(dir, "latest-linux.yml");
+	const yml = (shaKey, sizeKey, hash) =>
+		[
+			"version: 0.18.0",
+			"files:",
+			"  - url: local-operator-ui-0.18.0-universal.dmg",
+			`    ${shaKey}: ${hash}`,
+			`    ${sizeKey}: 366211328`,
+			"",
+		].join("\n");
+	writeFileSync(good, yml("sha512", "size", "PRE_STAPLE"), "utf8");
+	writeFileSync(drifted, yml("sha-512", "bytes", "PRE_STAPLE"), "utf8");
+	writeFileSync(unrelated, "version: 0.18.0\nfiles: []\n", "utf8");
+
+	// A matching entry that IS rewritten passes, and the rewrite lands on disk.
+	const logs = [];
+	rewriteUpdateMetadata({
+		ymlPaths: [good],
+		name: "local-operator-ui-0.18.0-universal.dmg",
+		sha512: "POST_STAPLE",
+		size: 366211329,
+		log: (line) => logs.push(line),
+	});
+	assert.match(readFileSync(good, "utf8"), /sha512: POST_STAPLE/);
+	assert.equal(logs.length, 1);
+
+	// Listed, matched, and nothing rewritten: that is a failure, and it names the
+	// file rather than reporting a missing entry.
+	assert.throws(
+		() =>
+			rewriteUpdateMetadata({
+				ymlPaths: [drifted],
+				name: "local-operator-ui-0.18.0-universal.dmg",
+				sha512: "POST_STAPLE",
+				size: 366211329,
+			}),
+		/latest\.yml but its sha512\/size lines were not rewritten/,
+	);
+	assert.match(readFileSync(drifted, "utf8"), /PRE_STAPLE/);
+
+	// Not listed anywhere, and no metadata at all: both fail, with the second
+	// saying that nothing was there to re-hash it in (reviews R8, R12).
+	assert.throws(
+		() =>
+			rewriteUpdateMetadata({
+				ymlPaths: [unrelated],
+				name: "local-operator-ui-0.18.0-universal.dmg",
+				sha512: "POST_STAPLE",
+				size: 366211329,
+			}),
+		/has no entry in latest-linux\.yml/,
+	);
+	assert.throws(
+		() =>
+			rewriteUpdateMetadata({
+				ymlPaths: [],
+				name: "local-operator-ui-0.18.0-universal.dmg",
+				sha512: "POST_STAPLE",
+				size: 366211329,
+			}),
+		/no update metadata was found to re-hash it in/,
+	);
+});
+
+/**
+ * The two markers a layout cannot answer, read from a prefix on disk.
+ *
+ * Both mirror `install_kind()` in `local_operator/update.py`: `INSTALLER` names
+ * pip for a base-prefix install that writes no `pyvenv.cfg` (the #396 case),
+ * and `direct_url.json`'s `dir_info.editable` is the only positive evidence that
+ * a prefix is the repo checkout rather than an installed copy.
+ */
+test("a prefix's dist-info says which installer owns it, and whether it is a checkout", () => {
+	/** A prefix with a `local_operator-<version>.dist-info` and a chosen shape. */
+	const makePrefix = (name, { pythonDir = "python3.14", files = {} } = {}) => {
+		const dir = tempDir(`lo-${name}-`);
+		const distInfo = join(
+			dir,
+			"lib",
+			pythonDir,
+			"site-packages",
+			"local_operator-0.54.20.dist-info",
+		);
+		mkdirSync(distInfo, { recursive: true });
+		for (const [file, contents] of Object.entries(files)) {
+			writeFileSync(join(distInfo, file), contents, "utf8");
+		}
+		return dir;
+	};
+
+	// pip's own marker, in a base prefix with no `pyvenv.cfg` at all: the shape
+	// the app used to answer `global-unknown` for, naming no command (review R13).
+	const basePrefixPip = makePrefix("pip", {
+		files: { INSTALLER: "pip\n" },
+	});
+	assert.deepEqual(resolveDistributionMarkers(basePrefixPip), {
+		installer: "pip",
+		editable: false,
+	});
+	assert.equal(
+		classifyGlobalInstall({
+			path: "/usr/local/bin/local-operator",
+			installer: "pip",
+		}),
+		"pip",
+	);
+	assert.equal(
+		resolveGlobalInstallPlan({
+			identity: { path: "/usr/local/bin/local-operator", installer: "pip" },
+			lopUpdatePath: null,
+		}).updateCommand,
+		"pip install --upgrade local-operator",
+	);
+
+	// The exact-value rule: uv writes `uv`, and that is not pip's answer.
+	const uvOwned = makePrefix("uv", { files: { INSTALLER: "uv\n" } });
+	assert.equal(resolveDistributionMarkers(uvOwned).installer, "uv");
+	assert.equal(
+		classifyGlobalInstall({
+			path: "/usr/local/bin/local-operator",
+			installer: "uv",
+		}),
+		"global-unknown",
+	);
+
+	// A checkout: `dir_info.editable` is the tell, and it outranks the venv layout
+	// that pyvenv.cfg would otherwise report as an ordinary pip install (review Q5).
+	const checkout = makePrefix("editable", {
+		pythonDir: "python3.13",
+		files: {
+			INSTALLER: "uv\n",
+			"direct_url.json": JSON.stringify({
+				url: "file:///Users/operator/local-operator",
+				dir_info: { editable: true },
+			}),
+		},
+	});
+	assert.equal(resolveDistributionMarkers(checkout).editable, true);
+	assert.equal(
+		classifyGlobalInstall({
+			path: "/Users/operator/local-operator/.venv/bin/local-operator",
+			venvPrefix: "/Users/operator/local-operator/.venv",
+			editable: true,
+		}),
+		"editable",
+	);
+	// And an editable install is refused by name, with no command well at all -
+	// the shape `editable_refusal()` produces on the Python side.
+	const editablePlan = resolveGlobalInstallPlan({
+		identity: {
+			path: "/Users/operator/local-operator/.venv/bin/local-operator",
+			realPath: "/Users/operator/local-operator/.venv/bin/local-operator",
+			venvPrefix: "/Users/operator/local-operator/.venv",
+			editable: true,
+		},
+		lopUpdatePath: null,
+	});
+	assert.equal(editablePlan.updateCommand, "");
+	assert.equal(editablePlan.sourceBuild, true);
+	assert.match(editablePlan.remedy, /source checkout/);
+	assert.match(editablePlan.detail, /classified as editable/);
+
+	// A registry (non-editable) direct_url.json is an installed copy, not a checkout.
+	const installed = makePrefix("installed", {
+		files: {
+			INSTALLER: "uv\n",
+			"direct_url.json": JSON.stringify({
+				url: "https://files.pythonhosted.org/local_operator-0.54.20-py3-none-any.whl",
+			}),
+		},
+	});
+	assert.equal(resolveDistributionMarkers(installed).editable, false);
+
+	// A prefix with no distribution at all is not evidence of anything, so the
+	// classifier's answer stays "unknown" rather than becoming a guess.
+	assert.deepEqual(resolveDistributionMarkers(tempDir("lo-empty-")), {
+		installer: null,
+		editable: false,
+	});
+});
+
+/**
+ * The details line has to name the record that explains the failure.
+ *
+ * The app is dead while ShipIt installs, so the failure notice cannot quote a
+ * reason the way the pre-flight refusal can - Squirrel's log is the only thing
+ * that says why, and it is the line the copy button hands to a support thread
+ * (review U14).
+ */
+test("the failure detail points at Squirrel's log when the caller has one", () => {
+	const marker = {
+		targetVersion: "0.18.0",
+		artifactPath: "/tmp/local-operator-ui-0.18.0-universal.zip",
+		startedAt: "2026-09-11T22:36:48.000Z",
+		watchdogPid: 4242,
+	};
+	const without = installFailurePayload(marker, "0.17.0");
+	assert.equal(without.detail.includes("Squirrel"), false);
+	const withLog = installFailurePayload(marker, "0.17.0", {
+		shipItLogPath:
+			"/Users/operator/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log",
+	});
+	assert.match(
+		withLog.detail,
+		/Squirrel's own log is at \/Users\/operator\/Library\/Caches\/com\.local-operator\.ShipIt\/ShipIt_stderr\.log\.$/,
+	);
+	assert.match(withLog.detail, /Install started /);
 });

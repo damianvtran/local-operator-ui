@@ -121,6 +121,8 @@ const mockUpdaterApi = () => {
 				canManageUpdate?: boolean;
 				startupMode?: string;
 				remedy?: string;
+				detail?: string;
+				sourceBuild?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -143,6 +145,13 @@ const mockUpdaterApi = () => {
 					startupMode: "GLOBAL_INSTALL",
 					remedy:
 						"The server is a uv tool install, so update it from your terminal:",
+					// Both producers of this state render the same details line and the
+					// same closing sentence now, so the fixture carries what the main
+					// process sends rather than the thinner payload this path used to
+					// have (review U15).
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+					sourceBuild: false,
 				});
 			}
 			return () => {};
@@ -227,16 +236,27 @@ const mockUpdaterApi = () => {
 				message: string;
 				command: string;
 				detail?: string;
+				latestVersion?: string | null;
+				currentVersion?: string | null;
+				sourceBuild?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateManualRequired) {
+				// The operator's own machine: a uv tool whose `lop-update` is on PATH,
+				// so the remedy is the source build's and the panel says its ceiling.
+				// It is the case that could never clear itself on an exact version
+				// match, because `lop-update` reports the checkout's version rather
+				// than the published one (review U12).
 				callback({
 					message:
-						"The server is a uv tool install, so update it from your terminal:",
-					command: "uv tool upgrade local-operator",
+						"The server is a uv tool install built from source on this machine, so update it from your terminal:",
+					command: "lop-update",
 					detail:
-						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool, built from source on this machine, so it follows the checkout rather than the published release",
+					latestVersion: "0.54.20",
+					currentVersion: "0.54.14",
+					sourceBuild: true,
 				});
 			}
 			// The same state reached the other way: the app attached to a server
@@ -254,6 +274,9 @@ const mockUpdaterApi = () => {
 					command: "pipx upgrade local-operator",
 					detail:
 						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/pipx/venvs/local-operator/bin/local-operator), classified as pipx",
+					latestVersion: "0.54.20",
+					currentVersion: "0.54.17",
+					sourceBuild: false,
 				});
 			}
 			return () => {};
@@ -304,7 +327,7 @@ const mockUpdaterApi = () => {
 						url: "https://local-operator.com/download",
 					},
 					detail:
-						"Install started 11/09/2026, 22:36:48 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip.",
+						"Install started 11/09/2026, 22:36:48 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip. Squirrel's own log is at /Users/operator/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log.",
 					attempts: 2,
 				});
 			}
@@ -671,70 +694,20 @@ export const Downloading: Story = {
 };
 
 /**
- * Shows the notification when an update has been downloaded and is ready to install.
+ * The state on screen once the bundle has been downloaded and is waiting for the
+ * user to commit to the restart.
+ *
+ * It renders the component's own markup rather than a copy of it, the way the
+ * install outcomes below do: this frame is what a reviewer looks at to see the
+ * footer that the install fix changed (`Install now`, and the disabled
+ * `Update later` while the pre-flight runs), and a hand-copied fixture drifted
+ * from the component the moment the footer changed - so the pending state had no
+ * frame at all and the fix could not be seen in the set (review U16).
  */
 export const Downloaded: Story = {
-	args: {
-		autoCheck: false,
-	},
-	parameters: {
-		triggerUpdateDownloaded: true,
-	},
-	render: () => {
-		// Create a component that directly renders the downloaded state
-		const DownloadedComponent = () => {
-			// Use state to force the component to render with downloaded state
-			const [downloaded, setDownloaded] = useState(true);
-			const [info, setInfo] = useState(mockUpdateInfo);
-
-			useEffect(() => {
-				// Set the state immediately
-				setDownloaded(true);
-				setInfo(mockUpdateInfo);
-
-				// Set the trigger flag
-				window.triggerUpdateDownloaded = true;
-			}, []);
-
-			// If update is downloaded, render the UI directly
-			if (downloaded && info) {
-				return (
-					<UpdateContainer>
-						<h2 className="mb-3 text-heading text-ink">
-							Update ready to install
-						</h2>
-						<p className="mb-2 text-body text-ink-muted">
-							{/* The component's sentence. "ready to install" repeated the
-							    heading directly above and dropped the version the user
-							    is on, which is the one comparison the heading cannot
-							    make. */}
-							Version {info.version} has been downloaded. You are currently
-							using version 1.0.0.
-						</p>
-						<p className="mt-2 text-body-sm text-ink-muted">
-							The application will restart to apply the update.
-						</p>
-
-						<UpdateActions>
-							{/* Dismiss first, commit last - the component's order,
-							    same as the UpdateAvailable story above. */}
-							<Button variant="outline" size="sm" onClick={() => {}}>
-								Update later
-							</Button>
-							<Button variant="primary" size="sm" onClick={() => {}}>
-								Install now
-							</Button>
-						</UpdateActions>
-					</UpdateContainer>
-				);
-			}
-
-			// Fallback to the actual component
-			return <UpdateNotification autoCheck={false} />;
-		};
-
-		return <DownloadedComponent />;
-	},
+	args: { autoCheck: false },
+	parameters: { triggerUpdateDownloaded: true },
+	render: () => <Triggered flag="triggerUpdateDownloaded" />,
 };
 
 /**
@@ -788,6 +761,7 @@ export const ErrorState: Story = {
 };
 
 type UpdaterTriggerFlag =
+	| "triggerUpdateDownloaded"
 	| "triggerUpdateInstallBlocked"
 	| "triggerUpdateInstallFailed"
 	| "triggerBackendUpdateManualRequired"

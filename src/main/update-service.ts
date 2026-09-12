@@ -53,8 +53,10 @@ import {
 	reapFailedInstall,
 	recordInstallFailure,
 	requiredDiskBytes,
+	resolveDistributionMarkers,
 	resolveGlobalInstallPlan,
 	resolveStagedArtifactPath,
+	shipItCacheDir,
 	shipItJobLabel,
 	verifyStagedArtifact,
 	watchdogIsOurs,
@@ -187,6 +189,21 @@ export type BackendUpdateInfo = {
 	 * backend is actually installed (uv tool, pipx, or a server outside the app).
 	 */
 	remedy?: string;
+	/**
+	 * How the install was classified, and where it resolved to.
+	 *
+	 * Carried to the prompt so both producers of the by-hand state render the
+	 * same details line: the command has to be checkable against the install it
+	 * was chosen for, and the producer reached by a plain version check used to
+	 * send none at all (review U15).
+	 */
+	detail?: string;
+	/**
+	 * Whether this install follows a source tree on this machine rather than the
+	 * published release, in which case the prompt says so instead of promising the
+	 * offered version (review U12).
+	 */
+	sourceBuild?: boolean;
 };
 
 /**
@@ -409,15 +426,20 @@ export class UpdateService {
 				clearPendingInstallMarker(this.markerDir());
 				return;
 			case "failed": {
+				// The log Squirrel wrote is the only record of WHY, because this
+				// process was dead while the install failed (review U14).
+				const shipItLogPath = this.shipItLog();
 				const record = recordInstallFailure(this.markerDir(), {
-					payload: installFailurePayload(outcome.marker, app.getVersion()),
+					payload: installFailurePayload(outcome.marker, app.getVersion(), {
+						shipItLogPath,
+					}),
 					startedAt: outcome.marker.startedAt || null,
 					detectedAt: new Date().toISOString(),
 				});
 				const payload = installFailurePayload(
 					outcome.marker,
 					app.getVersion(),
-					{ attempts: record.attempts },
+					{ attempts: record.attempts, shipItLogPath },
 				);
 				logger.error(
 					`Update marker: install of version ${outcome.marker.targetVersion} did not complete (attempt ${record.attempts}). ${payload.detail}`,
@@ -458,6 +480,25 @@ export class UpdateService {
 	}
 
 	/**
+	 * Squirrel's own stderr log for this app, when it exists.
+	 *
+	 * It is the only record of why an install failed: the app is not running
+	 * while ShipIt works, so the failure notice cannot quote a reason the way the
+	 * pre-flight refusal can. The log is preserved by `reapFailedInstallLeftovers`
+	 * for exactly this reason, so the details line points at the thing that is
+	 * still there afterwards (review U14).
+	 */
+	private shipItLog(): string | null {
+		const bundleId = this.bundleIdentifier();
+		if (!bundleId) return null;
+		const candidate = join(
+			shipItCacheDir(join(homedir(), "Library", "Caches"), bundleId),
+			"ShipIt_stderr.log",
+		);
+		return existsSync(candidate) ? candidate : null;
+	}
+
+	/**
 	 * Remove the launchd job and the staged update a failed install left behind.
 	 *
 	 * Why: the 0.17.0 failure left `com.local-operator.ShipIt` loaded in the
@@ -482,11 +523,16 @@ export class UpdateService {
 						timeout: 5000,
 					});
 					const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
-					// `launchctl remove` prints its complaint and exits non-zero when
-					// the job is not loaded; that is the common case and not an error,
-					// so it is reported as "not found". Anything else travels as a
-					// real failure, so the log says why the job is still there.
-					const notFound = LAUNCHCTL_NOT_LOADED_REGEX.test(output);
+					// `launchctl remove` answers a job that is not loaded in two ways on
+					// this macOS, and neither is a failure: the "Could not find service"
+					// text, or a non-zero exit with NO output at all (measured here: exit
+					// 3, empty stdout and stderr, against exit 0 when the job is there).
+					// Matching only the text meant every start after the job had gone
+					// logged a cleanup failure for a cleanup with nothing left to do
+					// (review Q4). Silence plus a non-zero exit is the not-loaded case.
+					const notFound =
+						LAUNCHCTL_NOT_LOADED_REGEX.test(output) ||
+						(output === "" && result.status !== 0);
 					if (result.status !== 0 && !notFound) {
 						throw new Error(
 							output || `launchctl remove exited ${result.status}`,
@@ -857,7 +903,7 @@ export class UpdateService {
 	 * Spawned detached so it survives this process exiting, with stdio ignored so
 	 * it holds no pipe open and cannot keep the app alive.
 	 */
-	private launchWatchdog(): number | null {
+	private launchWatchdog(targetVersion: string | null): number | null {
 		if (process.platform !== "darwin" || !app.isPackaged) return null;
 		const bundlePath = appBundleFromExecutable(process.execPath);
 		if (!bundlePath) return null;
@@ -869,6 +915,8 @@ export class UpdateService {
 			// watchdog cannot ask a name about its own ancestor (review R1).
 			appPid: process.pid,
 			shipItJob: this.shipItJob(),
+			// What "the install is over" is measured against on disk (review R11).
+			targetVersion,
 		});
 
 		try {
@@ -878,8 +926,10 @@ export class UpdateService {
 				env: { ...process.env, ...plan.env },
 			});
 			child.unref();
+			// The bound is the promise the user is given, so it is stated here with
+			// what shortens it rather than as a bare timeout (review R11).
 			logger.info(
-				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}, bound ${plan.timeoutSeconds}s).`,
+				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${targetVersion ?? "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return child.pid ?? null;
@@ -1389,10 +1439,14 @@ export class UpdateService {
 			}
 
 			// Written before the quit, because after it there is nothing left of
-			// this process to record that an install was in flight.
-			const watchdogPid = this.launchWatchdog();
+			// this process to record that an install was in flight. The target is
+			// decided once: the marker records it and the watchdog's on-disk swap
+			// check compares against it, and two computations of one fact are two
+			// chances to disagree (review R11).
+			const targetVersion = this.lastUpdateInfo?.version ?? app.getVersion();
+			const watchdogPid = this.launchWatchdog(targetVersion);
 			const marker = writePendingInstallMarker(this.markerDir(), {
-				targetVersion: this.lastUpdateInfo?.version ?? app.getVersion(),
+				targetVersion,
 				artifactPath:
 					this.downloadedArtifactPath ??
 					this.downloadHelper()?.file ??
@@ -1830,6 +1884,7 @@ export class UpdateService {
 		updateCommand: string;
 		remedy: string;
 		detail: string;
+		sourceBuild: boolean;
 	}> {
 		if (
 			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
@@ -1848,6 +1903,7 @@ export class UpdateService {
 				updateCommand: plan.updateCommand,
 				remedy: plan.remedy,
 				detail: plan.detail,
+				sourceBuild: plan.sourceBuild,
 			};
 		}
 
@@ -1856,6 +1912,7 @@ export class UpdateService {
 			updateCommand: "pip install --upgrade local-operator",
 			remedy: "Updating the server will improve AI functionality.",
 			detail: `The app started this server itself (${startupMode}).`,
+			sourceBuild: false,
 		};
 	}
 
@@ -1875,7 +1932,7 @@ export class UpdateService {
 
 	/**
 	 * Everything `classifyGlobalInstall` needs to tell a uv tool install from a
-	 * pipx one from an ordinary pip venv.
+	 * pipx one from an ordinary pip venv from the checkout a developer runs.
 	 *
 	 * The cheap signals are gathered first and the two CLI probes are skipped when
 	 * the path, the resolved target or the script's own shebang already answered -
@@ -1884,6 +1941,13 @@ export class UpdateService {
 	 * tool environment lives at `<...>/uv/tools/<name>`, and its console script in
 	 * `~/.local/bin` is a symlink into it, so the resolved path carries the marker
 	 * the printed path does not (review R2).
+	 *
+	 * Two markers are read out of the dist-info itself, because the layout cannot
+	 * answer them: `INSTALLER`, which is what names pip for a base-prefix install
+	 * (`mise`/`pyenv`/`asdf` write no `pyvenv.cfg`, review R13), and
+	 * `direct_url.json`'s `dir_info.editable`, which is the only positive evidence
+	 * that a prefix IS the repo checkout rather than an installed copy (review
+	 * Q5). Both mirror `install_kind()` in `local_operator/update.py`.
 	 */
 	private resolveInstallIdentity(): InstallIdentity {
 		const shimPath = this.resolveLocalOperatorPath();
@@ -1911,6 +1975,7 @@ export class UpdateService {
 		const prefix = path.dirname(path.dirname(executable));
 		const existing = (candidate: string) =>
 			existsSync(candidate) ? candidate : null;
+		const markers = resolveDistributionMarkers(prefix);
 
 		const identity: InstallIdentity = {
 			path: shimPath,
@@ -1918,6 +1983,8 @@ export class UpdateService {
 			shebang,
 			uvReceipt: existing(join(prefix, "uv-receipt.toml")),
 			venvPrefix: existsSync(join(prefix, "pyvenv.cfg")) ? prefix : null,
+			installer: markers.installer,
+			editable: markers.editable,
 		};
 
 		if (classifyGlobalInstall(identity) !== "global-unknown") {
@@ -2020,7 +2087,7 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
-				const { canManageUpdate, updateCommand, remedy } =
+				const { canManageUpdate, updateCommand, remedy, detail, sourceBuild } =
 					await this.resolveBackendUpdatePlan(startupMode);
 
 				const updateInfo: BackendUpdateInfo = {
@@ -2030,6 +2097,8 @@ export class UpdateService {
 					canManageUpdate,
 					startupMode,
 					remedy,
+					detail,
+					sourceBuild,
 				};
 
 				logger.info(
@@ -2219,18 +2288,29 @@ export class UpdateService {
 					// report is the one that mattered: a uv tool install told to run
 					// `pip install --upgrade`. The plan classifies the install from what
 					// it actually is (the shim's target, the script's shebang, uv's
-					// receipt, the installers' own listings) and names the command that
-					// owns it - or names none, rather than defaulting to pip
-					// (reviews R10, U4, D4).
+					// receipt, the installers' own listings, the dist-info's own markers)
+					// and names the command that owns it - or names none, rather than
+					// defaulting to pip (reviews R10, U4, D4, R13, Q5).
 					const plan = await this.resolveBackendUpdatePlan(startupMode);
 					logger.info(
 						`Cannot manage the update for ${startupMode}: ${plan.detail}`,
 						LogFileType.UPDATE_SERVICE,
 					);
+					// The panel names the version it is waiting for, so the producer has
+					// to send one: the event carries no version of its own, and the
+					// renderer used to reconstruct the target from whatever offer
+					// happened to precede it (reviews U12, U17). The running version
+					// travels too, because the sibling panel is able to say both and a
+					// user comparing the two doors would expect the same sentence.
+					const installed = await this.getInstalledBackendVersion();
 					this.sendToRenderer("backend-update-manual-required", {
 						message: plan.remedy,
 						command: plan.updateCommand,
 						detail: plan.detail,
+						latestVersion: targetVersion ?? null,
+						currentVersion:
+							installed && installed !== "Unknown" ? installed : null,
+						sourceBuild: plan.sourceBuild,
 					});
 					return false;
 				}

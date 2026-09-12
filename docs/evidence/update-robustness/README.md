@@ -27,6 +27,7 @@ Copied from the audit of the operator's machine
 | [notarize-step-guards.txt](notarize-step-guards.txt) | What the disk image step does on a machine with no signing identity or Apple credentials, and why the positive direction is only exercised in CI. |
 | [leftover-shipit-job.txt](leftover-shipit-job.txt) | What the failed install left *running* on the operator's machine: the ShipIt launchd job in a respawn loop and the staging tree beside it. This is what the app now reaps itself, and why. |
 | [remediation-round-1.txt](remediation-round-1.txt) | Every gate run on the review remediation: lint, typecheck, theme contract, the desktop suite, the build, the artifact gate against the real 0.17.0 artifacts, and the environment checks behind the classification and the watchdog. |
+| [remediation-round-2.txt](remediation-round-2.txt) | The same gates on the second remediation, plus the measurements the watchdog's bound is derived from: every ShipIt attempt in this log by timestamp (255 s slowest), the `plutil` read the swap check makes against the real bundle, and the launchd answer for a job that is not loaded (exit 3, no output) that Q4 is about. |
 
 ## The gate, run against the shipped 0.17.0 release
 

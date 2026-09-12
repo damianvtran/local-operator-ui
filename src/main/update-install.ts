@@ -50,8 +50,24 @@ export const INSTALL_DISK_SLACK_BYTES = 256 * 1024 * 1024;
 /** Where a user gets a fresh copy when the app can no longer update itself. */
 export const DOWNLOAD_PAGE_URL = "https://local-operator.com/download";
 
-/** Default bound on the relaunch watchdog, in seconds. */
-export const WATCHDOG_TIMEOUT_SECONDS = 900;
+/**
+ * Bound on the relaunch watchdog, in seconds.
+ *
+ * This is the user-visible promise, so the number is measured rather than
+ * picked: the ShipIt attempts recorded on this machine for the 1 GiB app ran
+ * 255 s (2026-09-11 22:36:49 request -> 22:41:04 `-67028` verdict, the install
+ * that stranded the operator) and 168 s (2026-09-09 19:34:20 -> 19:37:08, a
+ * swap that completed and relaunched) from request to settled. 600 s is ~2.4x
+ * the slowest of them, which is the margin a cold cache or a slower volume
+ * needs, and it is the OUTER bound only: the script exits as soon as either
+ * the ShipIt job goes or the swap has landed on disk, so a successful install
+ * never waits for it and a failed one that did swap does not either.
+ *
+ * It used to be 900 s, and 900 s was the *only* exit on a failed install -
+ * which is why the app came back fifteen minutes later - so the number and the
+ * decision the script makes are one change, not two (review R11).
+ */
+export const WATCHDOG_TIMEOUT_SECONDS = 600;
 
 /** Sentinel inside the watchdog script; see `watchdogIsOurs`. */
 export const WATCHDOG_TOKEN = "local-operator-update-watchdog";
@@ -695,24 +711,34 @@ export type InstallFailurePayload = {
  * kept failing had no way out of the cycle (reviews U1, D3). And the timestamp
  * is rendered in the user's own locale rather than as a raw ISO-8601 UTC stamp:
  * it is read by a person, and the machine-readable form stays in the log.
+ *
+ * The details line also names Squirrel's own log for this install when the
+ * caller can point at it. The app was dead while the install failed, so the log
+ * is the only record of WHY - the refusal panel can quote an OSStatus code
+ * because the app was alive to read one, and this one cannot (review U14). The
+ * detail is the line the panel's copy button hands to a support thread, so it
+ * has to carry the reason rather than only the artifact that was staged.
  */
 export function installFailurePayload(
 	marker: PendingInstallMarker,
 	runningVersion: string,
-	options: { attempts?: number } = {},
+	options: { attempts?: number; shipItLogPath?: string | null } = {},
 ): InstallFailurePayload {
 	const started = marker.startedAt ? new Date(marker.startedAt) : null;
 	const startedText =
 		started && !Number.isNaN(started.getTime())
 			? started.toLocaleString()
 			: "at an unknown time";
+	const logText = options.shipItLogPath
+		? ` Squirrel's own log is at ${options.shipItLogPath}.`
+		: "";
 	return {
 		message: `The update to version ${marker.targetVersion} didn't finish, so version ${runningVersion} is still running.`,
 		remedy: {
 			text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app.",
 			url: DOWNLOAD_PAGE_URL,
 		},
-		detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}.`,
+		detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}.${logText}`,
 		targetVersion: marker.targetVersion,
 		attempts: options.attempts ?? 1,
 	};
@@ -759,7 +785,7 @@ export type WatchdogPlan = {
 /**
  * Build the detached relaunch watchdog.
  *
- * Why the two signals are what they are (both were wrong, and each in a way
+ * Why the signals are what they are (each was wrong at some point, and in a way
  * that produced the operator's outcome - see the docstring in the script):
  *
  * - "has the app exited" is asked of the APP'S OWN PID with `kill -0`. The pid
@@ -767,8 +793,18 @@ export type WatchdogPlan = {
  *   this question: macOS `pgrep -f` does not report its own ancestors, and this
  *   script is spawned BY the app, so `pgrep -f <app path>` returned "not
  *   running" while the app was very much running (review R1, reproduced).
- * - "is the install over" is asked of the ShipIt launchd job by label, not by
- *   process name.
+ * - "is the install over" is asked of the ShipIt launchd job by label AND of
+ *   the version in the bundle's own Info.plist at the target path. The job
+ *   alone is not an answer: a failed install never unloads it (this PR's own
+ *   evidence: runs=3114, still loaded until it was removed by hand), so the job
+ *   was the reason a failed install waited out the whole bound with no app on
+ *   screen (review R11). The bundle's version is the swap's own state, and it
+ *   is what makes an early exit safe rather than a guess.
+ *
+ * `targetVersion` is the version the update was for - the marker's
+ * `targetVersion`, which is the updater's advertised version or, when the
+ * updater has nothing to say, the running version. `null` means the caller
+ * could not name a target, and the script then has only the job to go on.
  *
  * The paths travel in the environment rather than in the script text, as
  * before: `sh -c` puts the script in its own command line, and a script
@@ -782,6 +818,8 @@ export function buildWatchdogPlan(input: {
 	appPid: number;
 	/** The launchd job label ShipIt's install runs under. */
 	shipItJob: string | null;
+	/** The version the install is for, for the on-disk swap check. */
+	targetVersion?: string | null;
 	timeoutSeconds?: number;
 	intervalSeconds?: number;
 	settleSeconds?: number;
@@ -805,22 +843,39 @@ export function buildWatchdogPlan(input: {
 #   - "the app has exited" is asked of the app's own pid (kill -0), captured by
 #     the app before it quit. A name probe cannot answer it on macOS: pgrep -f
 #     does not report its own ancestors, and this script is the app's child.
-#   - "the install is over" is asked of the ShipIt launchd job, by label. The job
-#     is submitted as part of the quit and unloaded when the install settles, so
-#     it is also the only signal that separates a hung install from an unrelated
-#     process that merely has the word in its command line.
+#   - "the install is over" is asked of BOTH the ShipIt launchd job, by label,
+#     AND the state of the swap on disk. The job is submitted as part of the quit
+#     and unloaded when an install settles, so it is the signal that separates a
+#     hung install from an unrelated process that merely has the word in its
+#     command line - but it is not sufficient on its own: the 0.17.0 failure
+#     left its job loaded and respawning for hours (runs=3114), so waiting only
+#     on the job meant waiting for the bound with the user staring at nothing
+#     (review R11). The version in the target bundle's own Info.plist is what
+#     says the swap landed, whether or not the job ever goes away.
 #
 # It starts the app in exactly one situation - the app is not running - and it
-# reaches that point on two paths: the install is decided (ShipIt's job is gone),
-# which is the conservative case, or the deadline arrived with no decision, where
-# trying is still better than leaving the user with nothing. The deadline path is
-# what makes the previous version's silent exit 0 impossible: there is no exit
-# from this script that skips the relaunch attempt.
+# reaches that point on three paths:
+#   (a) ShipIt's job is gone: the install is decided. The conservative case.
+#   (b) the bundle at the target path reports the version this update was for:
+#       the new app is in place and ShipIt has nothing left to do. This is what
+#       makes an early exit safe rather than a guess, and it is the path a
+#       failed-but-swapped install takes.
+#   (c) the bound arrived with no decision. Trying is still better than leaving
+#       the user with nothing, and the bound is what makes the previous
+#       version's silent exit 0 impossible. It is ~2.4x the slowest ShipIt
+#       attempt measured on this machine (255s from request to verdict for a
+#       1 GiB app), and it is the ONE path that can start the app while a swap
+#       is still in flight - an accepted risk, not an oversight.
+#
+# With no job label to ask about, the job cannot be consulted at all, so the swap
+# state is the whole signal: the script waits for (b) rather than spending an
+# appear window on a job it cannot see and then relaunching on no evidence.
 set -u
 APP_PID="\${LO_UPDATE_WATCHDOG_APP_PID:-}"
 BUNDLE="\${LO_UPDATE_WATCHDOG_APP_BUNDLE:-}"
 NAME="\${LO_UPDATE_WATCHDOG_APP_NAME:-}"
 SHIPIT_JOB="\${LO_UPDATE_WATCHDOG_SHIPIT_JOB:-}"
+TARGET_VERSION="\${LO_UPDATE_WATCHDOG_TARGET_VERSION:-}"
 if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 	exit 1
 fi
@@ -828,6 +883,24 @@ now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
 # launchctl list <label> exits 113 when the job is not loaded, 0 when it is.
 shipit_loaded() { [ -n "$SHIPIT_JOB" ] && launchctl list "$SHIPIT_JOB" >/dev/null 2>&1; }
+# (b), the swap's own state: is the app at the target path the version this
+# update was for? plutil rather than \`defaults read\`, which reads through a
+# preference domain and can answer from a stale cache; a half-written plist and
+# a missing one both read as "not landed yet", which is the safe direction.
+swap_landed() {
+	[ -n "$TARGET_VERSION" ] || return 1
+	installed=$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$BUNDLE/Contents/Info.plist" 2>/dev/null) || return 1
+	installed=\${installed#v}
+	[ -n "$installed" ] || return 1
+	[ "$installed" = "\${TARGET_VERSION#v}" ]
+}
+job_known=0
+[ -n "$SHIPIT_JOB" ] && job_known=1
+decided() {
+	if [ "$job_known" -eq 1 ] && ! shipit_loaded; then return 0; fi
+	swap_landed && return 0
+	return 1
+}
 deadline=$(( $(now) + ${timeoutSeconds} ))
 # 1. The install only starts once the old app has exited.
 while app_running; do
@@ -836,19 +909,26 @@ while app_running; do
 done
 # 2. ShipIt's job is submitted as part of the quit, so it may not be loaded the
 #    instant the app is gone: give it a bounded window to appear before treating
-#    "no job" as "the install is over".
-appear_deadline=$(( $(now) + ${appearSeconds} ))
-while ! shipit_loaded; do
-	if [ "$(now)" -ge "$appear_deadline" ] || [ "$(now)" -ge "$deadline" ]; then break; fi
-	sleep ${intervalSeconds}
-done
-while shipit_loaded; do
+#    "no job" as "the install is over". Skipped when there is no label to ask
+#    about: an appear window for an unaskable job is 30s of pretending, and it
+#    used to end by relaunching with no evidence about the install at all.
+if [ "$job_known" -eq 1 ]; then
+	appear_deadline=$(( $(now) + ${appearSeconds} ))
+	while ! shipit_loaded; do
+		if [ "$(now)" -ge "$appear_deadline" ] || [ "$(now)" -ge "$deadline" ]; then break; fi
+		sleep ${intervalSeconds}
+	done
+fi
+# 3. Wait for the install to be decided - by the job going, or by the swap
+#    landing - and never past the bound.
+while :; do
+	if decided; then break; fi
 	if [ "$(now)" -ge "$deadline" ]; then break; fi
 	sleep ${intervalSeconds}
 done
 # Let Squirrel's own relaunch (which happens as the job finishes) land first.
 sleep ${settleSeconds}
-# 3. Nothing to do if Squirrel relaunched the app or the user started it. This is
+# 4. Nothing to do if Squirrel relaunched the app or the user started it. This is
 #    what makes the script a no-op when the install succeeded, by construction
 #    rather than by claim.
 if app_running; then exit 0; fi
@@ -865,6 +945,7 @@ exit 0
 			LO_UPDATE_WATCHDOG_APP_BUNDLE: input.appBundlePath,
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,
 			LO_UPDATE_WATCHDOG_SHIPIT_JOB: input.shipItJob ?? "",
+			LO_UPDATE_WATCHDOG_TARGET_VERSION: input.targetVersion ?? "",
 		},
 		timeoutSeconds,
 	};
@@ -991,13 +1072,14 @@ export type BackendRemedyKind =
 	| "uv-tool"
 	| "pipx"
 	| "pip"
+	| "editable"
 	| "global-unknown";
 
 /**
  * What a global `local-operator` install actually is.
  *
  * Mirrors `local_operator/update.py`'s `install_kind()` on the Python side - same
- * five outcomes for the same reasons - because the app and the server have to
+ * six outcomes for the same reasons - because the app and the server have to
  * agree about who owns the environment before either names a command for it.
  */
 export type GlobalInstallKind = Exclude<
@@ -1010,6 +1092,18 @@ export type BackendPlan = {
 	updateCommand: string;
 	remedy: string;
 	detail: string;
+	/**
+	 * Whether this install follows a source tree on this machine rather than the
+	 * published release - a uv tool built by `lop-update`, or the checkout
+	 * itself.
+	 *
+	 * Why the prompt needs to know: for these installs the version the server
+	 * reports afterwards is the CHECKOUT's, which is not the version the app
+	 * offered, so a closing line promising "the new server version" promises
+	 * something this install may never reach (review U12). The detail line and
+	 * the closing sentence both say so instead.
+	 */
+	sourceBuild: boolean;
 };
 
 /**
@@ -1037,6 +1131,31 @@ export type InstallIdentity = {
 	uvReceipt?: string | null;
 	/** A `pyvenv.cfg` in the prefix the script lives in, when one exists. */
 	venvPrefix?: string | null;
+	/**
+	 * Lower-cased `INSTALLER` from the `local-operator` dist-info beside the
+	 * resolved install, when there is one.
+	 *
+	 * Why a file read and not another layout test: pip, uv and pipx each write
+	 * it, so it states outright which tool owns the install. The Python side
+	 * consults it last and only for the exact value `pip` - a `mise`, `pyenv` or
+	 * `asdf` toolchain installs into a BASE prefix that writes no
+	 * `pyvenv.cfg` (#396), and `pip install --upgrade` is the right command
+	 * there. Without it the app called that install `global-unknown` and named
+	 * no command at all, which is where this began to diverge from the server
+	 * (review R13).
+	 */
+	installer?: string | null;
+	/**
+	 * Whether the dist-info's `direct_url.json` marks this install editable.
+	 *
+	 * PEP 610/660: `dir_info.editable` is what pip and uv write for `-e`, and it
+	 * is the only POSITIVE evidence that an install is a checkout rather than an
+	 * installed distribution. The Python side answers `editable` - a refusal -
+	 * before any layout probe, and `pyvenv.cfg` alone cannot tell the two apart:
+	 * a developer's repo `.venv` has one, so the app classified it `pip` and
+	 * told them to install a wheel over their own checkout (review Q5).
+	 */
+	editable?: boolean;
 	/** `uv tool list` output, when the uv CLI could be run. */
 	uvToolList?: string | null;
 	/** `pipx list` output, when the pipx CLI could be run. */
@@ -1066,17 +1185,111 @@ function pipxListNamesLocalOperator(
 	return PIPX_LIST_ENTRY_REGEX.test(output ?? "");
 }
 
+/** `<prefix>/lib/pythonX.Y` — the POSIX interpreter directory of a prefix. */
+const PYTHON_LIB_DIR = /^python\d/;
+
+/** A dist-info for this package, under either name normalisation. */
+const LOCAL_OPERATOR_DIST_INFO = /^local[-_]operator[-_]/;
+
+/**
+ * The two files in a `local-operator` dist-info that state who owns an install.
+ *
+ * Read from disk rather than inferred from a layout, because two of the install
+ * kinds the server recognises cannot be told apart any other way:
+ *
+ * - `INSTALLER` is what says `pip` for a BASE-prefix install. A
+ *   `mise`/`pyenv`/`asdf` toolchain reports `sys.prefix == sys.base_prefix` and
+ *   writes no `pyvenv.cfg`, so the layout probes all decline and the app used to
+ *   answer `global-unknown` - naming no command for a user whose environment
+ *   `pip install -U` upgrades fine (#396, review R13). Consulted only for the
+ *   exact value `pip`, as `_is_ordinary_pip` does: uv and pipx write their own
+ *   value, and answering `pip` for them is the guess this module exists to
+ *   refuse.
+ * - `direct_url.json`'s `dir_info.editable` (PEP 610/660) is the only positive
+ *   evidence that a prefix is the repo checkout rather than an installed copy.
+ *   A checkout usually has a `pyvenv.cfg` too, so the layout says `pip` - and
+ *   `pip install --upgrade local-operator` would put a wheel over the code the
+ *   user is working in (review Q5).
+ *
+ * Every `site-packages` under the prefix is read, and `editable` wins over
+ * `installer`: a prefix rebuilt against a second interpreter leaves the previous
+ * one's dist-info behind, and the order `install_kind()` uses is the checkout
+ * first. A prefix with no readable distribution is not evidence of anything, so
+ * the caller's answer stays "unknown" rather than becoming a guess.
+ */
+export function resolveDistributionMarkers(prefix: string): {
+	installer: string | null;
+	editable: boolean;
+} {
+	const sitePackages: string[] = [];
+	// POSIX: `<prefix>/lib/pythonX.Y/site-packages`. Windows: `Lib/site-packages`.
+	try {
+		for (const entry of readdirSync(join(prefix, "lib"))) {
+			if (!PYTHON_LIB_DIR.test(entry)) continue;
+			const candidate = join(prefix, "lib", entry, "site-packages");
+			if (existsSync(candidate)) sitePackages.push(candidate);
+		}
+	} catch {
+		// No `lib`: not a POSIX Python prefix. The Windows layout below still runs.
+	}
+	const windowsSitePackages = join(prefix, "Lib", "site-packages");
+	if (existsSync(windowsSitePackages)) sitePackages.push(windowsSitePackages);
+
+	let installer: string | null = null;
+	let editable = false;
+	for (const dir of sitePackages) {
+		let entries: string[];
+		try {
+			entries = readdirSync(dir);
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			// `local-operator` normalises to `local_operator` in a dist-info name;
+			// accept either separator rather than depending on the normalisation.
+			if (!LOCAL_OPERATOR_DIST_INFO.test(entry)) continue;
+			if (!entry.endsWith(".dist-info")) continue;
+			const distInfo = join(dir, entry);
+			try {
+				const installerText = readFileSync(join(distInfo, "INSTALLER"), "utf8");
+				installer = installerText.trim().toLowerCase() || installer;
+			} catch {
+				// Absent is no evidence, never a negative.
+			}
+			try {
+				const payload = JSON.parse(
+					readFileSync(join(distInfo, "direct_url.json"), "utf8"),
+				) as { editable?: unknown; dir_info?: { editable?: unknown } };
+				if (payload.editable === true || payload.dir_info?.editable === true) {
+					editable = true;
+				}
+			} catch {
+				// No direct_url.json, or not JSON: not an editable install.
+			}
+		}
+	}
+
+	return { installer, editable };
+}
+
 /**
  * Classify a global `local-operator` install from what the install IS.
  *
- * Order matters and follows the Python side: a uv tool install is recognised by
- * its receipt before any layout guess, pipx next, an ordinary pip venv last -
- * and "unknown" is a real answer, never a fallback to pip.
+ * Order matters and follows the Python side: a checkout is answered first (it
+ * is not an install to upgrade), a uv tool install is recognised by its receipt
+ * before any layout guess, pipx next, an ordinary pip venv last - and "unknown"
+ * is a real answer, never a fallback to pip.
  */
 export function classifyGlobalInstall(
 	identity: InstallIdentity,
 ): GlobalInstallKind {
 	if (!identity.path) return "global-unknown";
+	// An editable install is the repo checkout, or a checkout beside it. Answered
+	// before the layout probes because every layout probe would match it too - it
+	// has a `pyvenv.cfg` when it is a venv, and often a uv receipt when uv made
+	// it - and `pip install --upgrade` would install a wheel over the checkout
+	// the user is working in (review Q5).
+	if (identity.editable) return "editable";
 	// The resolved path and the script's own shebang both name the interpreter
 	// that owns the install, which is where the layout markers actually live.
 	const haystack = [
@@ -1098,6 +1311,11 @@ export function classifyGlobalInstall(
 	// A `local-operator` script inside a virtualenv prefix: the README's
 	// `pip install` path, and the one case where pip is the right command.
 	if (identity.venvPrefix) return "pip";
+	// The base-prefix case, consulted last and only for the exact value `pip`,
+	// as `_is_ordinary_pip` does: uv and pipx write their own INSTALLER value and
+	// have already been answered above, so reading "pip" as a guess for them is
+	// the thing this classifier exists to refuse (review R13).
+	if (identity.installer === "pip") return "pip";
 	return "global-unknown";
 }
 
@@ -1121,15 +1339,39 @@ export function resolveGlobalInstallPlan(input: {
 	lopUpdatePath: string | null;
 }): BackendPlan {
 	const kind = classifyGlobalInstall(input.identity);
+	// A uv tool built by `lop-update` and the checkout itself both report the
+	// CHECKOUT's version after they are updated, so neither can be promised the
+	// version the app offered (review U12).
+	const sourceBuild =
+		kind === "editable" || (kind === "uv-tool" && Boolean(input.lopUpdatePath));
 	const detail = input.identity.path
 		? `local-operator resolves to ${input.identity.path}${
 				input.identity.realPath &&
 				input.identity.realPath !== input.identity.path
 					? ` (${input.identity.realPath})`
 					: ""
-			}, classified as ${kind}`
+			}, classified as ${kind}${
+				sourceBuild
+					? ", built from source on this machine, so it follows the checkout rather than the published release"
+					: ""
+			}`
 		: "local-operator was not found on PATH";
 
+	if (kind === "editable") {
+		// The Python side refuses this case by name (`editable_refusal()`), and the
+		// refusal is the point: `pip install -U` into the checkout either no-ops or
+		// breaks the editable link, and the tools that own the environment are not
+		// named for it either. No command, then - the sentence says what to do
+		// instead.
+		return {
+			canManageUpdate: false,
+			updateCommand: "",
+			remedy:
+				"The server is running from a source checkout on this machine rather than an installed copy, so update it with lop-update after your change is merged.",
+			detail,
+			sourceBuild: true,
+		};
+	}
 	if (kind === "uv-tool") {
 		const useLopUpdate = Boolean(input.lopUpdatePath);
 		return {
@@ -1141,6 +1383,7 @@ export function resolveGlobalInstallPlan(input: {
 				? "The server is a uv tool install built from source on this machine, so update it from your terminal:"
 				: "The server is a uv tool install, so update it from your terminal:",
 			detail,
+			sourceBuild,
 		};
 	}
 	if (kind === "pipx") {
@@ -1149,6 +1392,7 @@ export function resolveGlobalInstallPlan(input: {
 			updateCommand: "pipx upgrade local-operator",
 			remedy: "The server is a pipx install, so update it from your terminal:",
 			detail,
+			sourceBuild: false,
 		};
 	}
 	if (kind === "pip") {
@@ -1157,6 +1401,7 @@ export function resolveGlobalInstallPlan(input: {
 			updateCommand: "pip install --upgrade local-operator",
 			remedy: "The server is a pip install, so update it from your terminal:",
 			detail,
+			sourceBuild: false,
 		};
 	}
 	return {
@@ -1165,6 +1410,7 @@ export function resolveGlobalInstallPlan(input: {
 		remedy:
 			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip:",
 		detail,
+		sourceBuild: false,
 	};
 }
 

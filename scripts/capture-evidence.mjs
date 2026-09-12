@@ -203,6 +203,10 @@ const STORIES = [
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
+	// The state before an install commits: the bundle is downloaded and the footer
+	// that the install fix changed is on screen. It renders the component's own
+	// markup now, so the frame cannot drift from it (review U16).
+	["common-updatenotification--downloaded", 1280, 900],
 	// The install outcomes the 0.17.0 update never showed: a refusal with its
 	// remedy, and the next start admitting the install did not take.
 	["common-updatenotification--install-blocked", 1280, 900],

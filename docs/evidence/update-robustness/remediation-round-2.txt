@@ -1,0 +1,153 @@
+Every gate on the second review remediation, run from the PR branch worktree on
+2026-09-12. Raw commands and their real output. The round-1 file
+(remediation-round-1.txt) covers the first remediation; this one covers the
+15-minute watchdog silence (R11), the by-hand panel that could never clear (U12)
+and the cheap minors from the same round.
+
+==============================================================================
+$ pnpm lint
+==============================================================================
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 4.
+Checked 410 files in 114ms. No fixes applied.
+Found 24 warnings.
+exit=0
+(24 warnings, all pre-existing and none in this delta's files: the
+useTopLevelRegex warnings in bin/, scripts/linux-sandbox.test.mjs,
+src/main/desktop-stream.ts, destination-pickers.tsx and
+use-radient-user-query.ts. Both regexes this round added were hoisted to module
+scope to keep that true.)
+
+==============================================================================
+$ pnpm check-types
+==============================================================================
+
+> local-operator-ui@0.17.0 check-types:main /Users/damian/local-operator-ui-worktrees/update-robustness
+> tsc --noEmit -p tsconfig.node.json
+
+
+> local-operator-ui@0.17.0 check-types:renderer /Users/damian/local-operator-ui-worktrees/update-robustness
+> tsc --noEmit -p tsconfig.app.json
+
+exit=0
+
+==============================================================================
+$ pnpm check-themes
+==============================================================================
+> node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs
+
+themes.generated.css is up to date (12 themes).
+Contrast contract holds: 1910 assertions across 12 themes, 0 pinned exception(s).
+exit=0
+
+==============================================================================
+$ pnpm test:desktop
+==============================================================================
+ℹ tests 223
+ℹ suites 0
+ℹ pass 223
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90208.576291
+exit=0
+(219 before this round, 4 added: the swap-state watchdog cases, the
+metadata-rewrite failure, the dist-info markers and the Squirrel log in the
+failure detail.)
+
+==============================================================================
+$ pnpm check-evidence
+==============================================================================
+
+Evidence holds: 506 frames are pictures of their own theme (worst ΔE00 18.1,
+docs/evidence/command-palette-commandpalette/default/localOperatorLight.webp).
+exit=0
+
+==============================================================================
+$ pnpm build
+==============================================================================
+
+✓ built in 19.18s
+
+> local-operator-ui@0.17.0 postbuild /Users/damian/local-operator-ui-worktrees/update-robustness
+> chmod +x ./bin/local-operator-ui.js
+
+exit=0
+
+==============================================================================
+$ node scripts/verify-macos-artifacts.mjs \
+    --dmg ~/Downloads/local-operator-ui-0.17.0-universal.dmg \
+    --app "/Applications/Local Operator.app"
+==============================================================================
+Checking app: /Applications/Local Operator.app
+Checking disk image: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg
+PASS app-codesign: codesign --verify --deep --strict on the app
+PASS app-spctl: spctl -a -vvv -t exec on the app
+PASS app-stapler: stapler validate on the app
+FAIL dmg-spctl: spctl -a -vvv -t open on the disk image -> /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg: rejected | source=no usable signature
+FAIL dmg-stapler: stapler validate on the disk image -> Processing: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg | local-operator-ui-0.17.0-universal.dmg does not have a ticket stapled to it.
+
+2 of 5 artifact checks failed. The release must not be published until the disk image is signed, notarized and stapled.
+exit=1
+(the direction that matters: the shipped 0.17.0 image is refused, and the
+notarized app inside and in /Applications passes its three checks.)
+
+------------------------------------------------------------------------------
+R11 -- the bound, measured rather than chosen
+------------------------------------------------------------------------------
+Source: the operator's own Squirrel log, docs/evidence/update-robustness/
+ShipIt_stderr.log, by timestamp:
+
+  2026-09-11 22:36:49.264  Detected this as an install request
+  2026-09-11 22:36:54.594  Beginning installation
+  2026-09-11 22:41:04.608  Installation error: -67028 (errSecCSBadBundleFormat)
+  -> 255.3 s from request to verdict. This is the install that stranded the app.
+
+  2026-09-09 19:32:01.275  Detected this as an install request
+  2026-09-09 19:34:20.007  Installation error: -67062
+  -> 138.7 s.
+
+  2026-09-09 19:34:20.483  Detected this as an install request (attempt 2)
+  2026-09-09 19:36:32.055  Moving bundle from /Applications/Local Operator.app
+  2026-09-09 19:37:01.966  On main thread and launching
+  -> 167.7 s from request to relaunch, on the attempt that SUCCEEDED.
+
+So 255 s is the slowest install this machine has performed for the 1 GiB app, and
+WATCHDOG_TIMEOUT_SECONDS is 600 s: ~2.4x it. The bound is the outer edge only -
+the script leaves as soon as ShipIt's job goes OR the bundle at the target path
+reports the version the update was for - so it is reached only by an install that
+neither settles nor swaps.
+
+The mechanism the swap check uses, against the real bundle on this machine:
+
+  $ /usr/bin/plutil -extract CFBundleShortVersionString raw -o - \
+      "/Applications/Local Operator.app/Contents/Info.plist"
+  0.17.0
+  rc=0
+
+and the launchd answer Q4 is about, measured:
+
+  $ /bin/launchctl remove com.local-operator.does-not-exist.ShipIt
+  rc=3 stdout=[] stderr=[]
+  (exit 3 with NO output, which the shipped regex could not match - so every
+  start after the job had gone logged a cleanup failure for a cleanup with
+  nothing left to do.)
+
+------------------------------------------------------------------------------
+R13 / Q5 -- the two markers a layout cannot answer, on this machine
+------------------------------------------------------------------------------
+  $ which -a local-operator
+  /Users/damian/.local/bin/local-operator
+  /Users/damian/.local/share/uv/tools/local-operator/uv-receipt.toml   <- receipt
+  $ cat .../uv/tools/local-operator/lib/python*/site-packages/local_operator*/INSTALLER
+  uv
+  $ cat ~/local-operator/.venv/lib/python3.14/site-packages/local_operator*/direct_url.json
+  {"url":"file:///Users/damian/local-operator","dir_info":{"editable":true}}
+
+i.e. the uv tool install still classifies `uv-tool` (its own receipt/path, which
+the classifier answers first), and the repo checkout behind an editable
+`direct_url.json` now classifies `editable` - a refusal - rather than `pip`,
+while `INSTALLER == "pip"` is what names pip for a base-prefix install that
+writes no pyvenv.cfg (the #396 shape).

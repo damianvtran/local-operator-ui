@@ -52,7 +52,9 @@ export function dmgArtifacts(artifactPaths = []) {
  * Returns `matched` as well as the text: a stapled image whose entry is not in
  * the file leaves the pre-staple hash in place, and the caller has to be able
  * to tell that from "rewritten" rather than shipping a hash of bytes nobody
- * downloads (review R8).
+ * downloads (review R8). `matched` answers "is the entry here"; `replaced`
+ * answers "was anything in it rewritten", and the caller needs the second -
+ * an entry whose keys have drifted matches and rewrites nothing (review R12).
  */
 export function updateUpdateYmlEntry(ymlText, fileName, { sha512, size }) {
 	const lines = ymlText.split("\n");
@@ -121,6 +123,55 @@ function parseArgs(argv) {
 	return args;
 }
 
+
+/**
+ * Rewrite every update-metadata file that lists `name`, and fail when none of
+ * them was rewritten.
+ *
+ * Why this is its own function: it is the decision that ships a hash of bytes
+ * nobody downloads when it is wrong, and it needs no signing identity to
+ * exercise - a temp directory of `.yml` files is the whole fixture. It used to
+ * live inline in the notarization step, where only a real Apple credential could
+ * reach it, which is how an entry whose `sha512`/`size` lines had drifted passed
+ * the step with the PRE-staple hash still in the file (review R12).
+ *
+ * A rewrite is the only thing that counts as "described". `matched` alone is true
+ * whenever the `- url:` line exists, so the two are reported as the different
+ * failures they are: listed-but-not-rewritten names the file that drifted, and
+ * described-nowhere names the ymls that do not mention the image at all. No
+ * metadata at all is the second case with nothing to name.
+ *
+ * Failing is deliberate over both. electron-updater verifies a download against
+ * this hash, so a stale one is a failed install for every user of the release:
+ * the release is late rather than wrong (reviews R8, R12).
+ */
+export function rewriteUpdateMetadata({ ymlPaths, name, sha512, size, log = () => {} }) {
+	let describedSomewhere = false;
+	const matchedButNotRewritten = [];
+	for (const ymlPath of ymlPaths) {
+		const before = readFileSync(ymlPath, "utf8");
+		const entry = updateUpdateYmlEntry(before, name, { sha512, size });
+		if (entry.replaced > 0) describedSomewhere = true;
+		else if (entry.matched) matchedButNotRewritten.push(basename(ymlPath));
+		if (entry.text !== before) {
+			writeFileSync(ymlPath, entry.text, "utf8");
+			log(`Updated ${basename(ymlPath)}: ${name} size ${size}`);
+		}
+	}
+	if (matchedButNotRewritten.length > 0) {
+		throw new Error(
+			`Stapled disk image ${name} is listed in ${matchedButNotRewritten.join(", ")} but its sha512/size lines were not rewritten; the update metadata still describes the pre-staple bytes`,
+		);
+	}
+	if (!describedSomewhere) {
+		throw new Error(
+			ymlPaths.length > 0
+				? `Stapled disk image ${name} has no entry in ${ymlPaths.map((yml) => basename(yml)).join(", ")}; its update metadata cannot be rewritten`
+				: `Stapled disk image ${name} was stapled but no update metadata was found to re-hash it in`,
+		);
+	}
+}
+
 export async function notarizeArtifacts({ dist, artifactPaths, log = console.log }) {
 	const env = loadBuildEnv();
 
@@ -170,37 +221,13 @@ export async function notarizeArtifacts({ dist, artifactPaths, log = console.log
 		const removedZip = removeTransientZip(dmgPath);
 		if (removedZip) log(`Removed transient archive: ${removedZip}`);
 
-		// The staple rewrote the image, so the hash electron-builder recorded
-		// before this step no longer describes the file that ships.
 		const sha512 = await sha512Base64(dmgPath);
 		const size = statSync(dmgPath).size;
 		const name = basename(dmgPath);
-		let describedSomewhere = false;
-		for (const ymlPath of ymlFiles) {
-			const before = readFileSync(ymlPath, "utf8");
-			const entry = updateUpdateYmlEntry(before, name, { sha512, size });
-			if (entry.matched) describedSomewhere = true;
-			if (entry.text !== before) {
-				writeFileSync(ymlPath, entry.text, "utf8");
-				log(`Updated ${basename(ymlPath)}: ${name} size ${size}`);
-			}
-		}
-		/*
-		 * A stapled image that appears in none of the metadata files is the one
-		 * case where doing nothing would ship the pre-staple hash with no signal:
-		 * electron-updater would verify the download against a hash of bytes that
-		 * no longer exist. The step fails instead - the release is late rather
-		 * than wrong (review R8). A yml that legitimately describes another
-		 * platform is fine: it is the image being described nowhere that is not.
-		 */
-		if (!describedSomewhere && ymlFiles.length > 0) {
-			throw new Error(
-				`Stapled disk image ${name} has no entry in ${ymlFiles.map((yml) => basename(yml)).join(", ")}; its update metadata cannot be rewritten`,
-			);
-		}
-		if (ymlFiles.length === 0) {
-			log(`No update metadata files found in ${dist}: ${name} was stapled but not re-hashed`);
-		}
+		// The staple rewrote the image, so the hash electron-builder recorded before
+		// this step no longer describes the file that ships; every metadata file that
+		// references it has to be rewritten, and the step fails if none was.
+		rewriteUpdateMetadata({ ymlPaths: ymlFiles, name, sha512, size, log });
 		notarized.push({ path: dmgPath, sha512, size });
 		log(`Disk image notarized and stapled: ${dmgPath}`);
 	}

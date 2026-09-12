@@ -28,6 +28,10 @@ type BackendUpdateInfo = {
 	startupMode?: string;
 	/** Sentence introducing the manual command, chosen by how the server is installed. */
 	remedy?: string;
+	/** How the install was classified, and where it resolved to. */
+	detail?: string;
+	/** True when the install follows a source tree on this machine. */
+	sourceBuild?: boolean;
 };
 
 /** A remedy the main process can spell out in the user's own terms. */
@@ -68,6 +72,50 @@ type ManualUpdateInfo = {
 	message: string;
 	command: string;
 	detail?: string;
+	/**
+	 * The version this panel is waiting for, and what is running now.
+	 *
+	 * Both travel from the main process, which is the side that knows how the
+	 * install was classified and what the server last reported: the panel used to
+	 * reconstruct the target from whatever offer happened to precede the event,
+	 * and said no version at all in its copy (reviews U12, U17).
+	 */
+	latestVersion?: string | null;
+	currentVersion?: string | null;
+	/** True when the install follows a source tree on this machine. */
+	sourceBuild?: boolean;
+};
+
+/** A version tag's leading `v`, which the app and the server do not agree on. */
+const LEADING_V = /^v/i;
+
+/**
+ * Is `version` at or beyond `target`?
+ *
+ * The by-hand panel clears when the server is no longer BEHIND the version the
+ * panel named, and it used to require an exact match - so a release that moved
+ * on between the offer and the user running the command left the panel
+ * instructing them to do what they had just done (review U12). Dotted numerics
+ * compared numerically; a pre-release suffix on either side that is not an exact
+ * match counts as "not beyond", which keeps the instruction on screen rather
+ * than clearing over a real gap.
+ */
+const atLeastVersion = (version: string, target: string): boolean => {
+	const strip = (value: string) => value.trim().replace(LEADING_V, "");
+	const reported = strip(version);
+	const wanted = strip(target);
+	if (reported === wanted) return true;
+	if (reported.includes("-") || wanted.includes("-")) return false;
+	const left = reported.split(".").map(Number);
+	const right = wanted.split(".").map(Number);
+	for (let index = 0; index < Math.max(left.length, right.length); index++) {
+		const a = left[index] ?? 0;
+		const b = right[index] ?? 0;
+		if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+		if (a > b) return true;
+		if (a < b) return false;
+	}
+	return true;
 };
 
 /** Headings for the refusal states, sentence case, one line each. */
@@ -155,9 +203,17 @@ export const PanelDetails = ({ detail }: { detail: string }) => {
 	return (
 		<div className="mt-4 flex items-start gap-2">
 			<span className="shrink-0 text-meta text-ink-dim">Details:</span>
-			<span className="min-w-0 flex-1 break-words text-mono-sm text-ink-dim">
+			{/* `font-mono` and not only `text-mono-sm`: the latter is a SIZE token
+			    (0.75rem), so the value rendered in the body face and a path or an
+			    OSStatus constant lost the distinction between l/I/1 and 0/O that
+			    monospace exists for here, while the evidence README claimed the
+			    machine voice (review D10). The label stays sans: it is a word. */}
+			<span className="min-w-0 flex-1 break-words font-mono text-mono-sm text-ink-dim">
 				{detail}
 			</span>
+			{/* Named, not a bare "Copy": both by-hand panels carry a copy button
+			    beside the command well as well as this one, and only position said
+			    which copied what (review D12). */}
 			<Button
 				variant="ghost"
 				size="sm"
@@ -169,7 +225,7 @@ export const PanelDetails = ({ detail }: { detail: string }) => {
 				}}
 			>
 				{copied ? <Check /> : <Copy />}
-				{copied ? "Copied" : "Copy"}
+				{copied ? "Copied" : "Copy details"}
 			</Button>
 		</div>
 	);
@@ -200,7 +256,7 @@ export const CommandBlock = ({ command }: { command: string }) => {
 				}}
 			>
 				{copied ? <Check /> : <Copy />}
-				{copied ? "Copied" : "Copy"}
+				{copied ? "Copied" : "Copy command"}
 			</Button>
 		</div>
 	);
@@ -230,11 +286,94 @@ export const RELEASE_NOTES_PROSE = [
 	"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:px-1 [&_code]:font-mono [&_code]:text-mono-sm",
 ].join(" ");
 
+/**
+ * The sentence that closes a by-hand panel: what to do about the command above,
+ * and what the versions mean afterwards.
+ *
+ * One component for both producers, because the same state has to read the same
+ * from either door: the producer a plain version check reaches rendered neither
+ * this sentence nor the details line, so the state a user actually walks into
+ * was the thinner one (review U15). The source-build wording exists because a uv
+ * tool rebuilt by `lop-update` and a checkout both report the CHECKOUT's version
+ * afterwards, which may never equal the version the app offered - promising "the
+ * new server version" there asks for something the install cannot deliver, on
+ * the one surface that told the user to go and do work (review U12).
+ */
+const ManualRemedyNote = ({
+	command,
+	sourceBuild,
+}: {
+	/** Whether a command well was rendered above this note. */
+	command: boolean;
+	sourceBuild: boolean;
+}) => {
+	if (sourceBuild && !command) {
+		return (
+			<p className="mt-2 text-body text-ink">
+				This server follows this machine's checkout, so there is no command to
+				run here.
+			</p>
+		);
+	}
+	return (
+		<p className="mt-2 text-body text-ink">
+			{sourceBuild
+				? "Run this in a terminal. It rebuilds the server from this machine's checkout, so the version it reports afterwards is your checkout's rather than the published release."
+				: command
+					? "Run this in a terminal, then check for updates again to pick up the new server version."
+					: "Then check for updates again to pick up the new server version."}
+		</p>
+	);
+};
+
+/**
+ * The version a by-hand panel is waiting for, in the same shape the offer uses.
+ *
+ * The panel that asks the user to go and do work was the only one that said no
+ * version at all, so there was nothing to work towards and - with the clear rule
+ * above - nothing to tell them whether they had arrived (review U17).
+ */
+const ManualUpdateVersions = ({
+	latestVersion,
+	currentVersion,
+}: {
+	latestVersion?: string | null;
+	currentVersion?: string | null;
+}) => {
+	if (!latestVersion) return null;
+	return (
+		<p className="mb-2 text-body text-ink-muted">
+			{`Server version ${latestVersion} is available.`}
+			{currentVersion
+				? ` You are currently using version ${currentVersion}.`
+				: ""}
+		</p>
+	);
+};
+
 export const UpdateActions = ({
 	className,
 	...props
 }: HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("mt-6 flex justify-end gap-3", className)} {...props} />
+	/*
+	 * The action row is the widest thing in a panel, and the failure panel's three
+	 * buttons do not fit the content box at 1280: measured 378px of buttons inside
+	 * 368px, which put the first button's left border 8px outside every other
+	 * element's 16px inset and its right border 1px past the content edge (review
+	 * D11). `flex-wrap` lets the row take a second line instead of overhanging.
+	 *
+	 * It also fixes the narrow case the same round measured - the first button
+	 * running 28px outside the window at 380px, its label clipped to "date later"
+	 * - which is NOT reachable in the shipped desktop window (minWidth is 800 in
+	 * `src/main/index.ts`), so it is fixed by the same change rather than being
+	 * the reason for it. The by-hand panels (two 112px buttons) and the blocked
+	 * panel (two buttons, 240px) fit on one line and are unaffected: wrapping only
+	 * engages when something would have overflowed.
+	 */
+	<div
+		className={cn("mt-6 flex flex-wrap justify-end gap-3", className)}
+		{...props}
+	/>
 );
 
 export const ProgressContainer = ({
@@ -278,15 +417,20 @@ export const UpdateNotification = ({
 	const [manualUpdateInfo, setManualUpdateInfo] =
 		useState<ManualUpdateInfo | null>(null);
 	/**
-	 * The server version the by-hand panel is waiting for.
+	 * What the by-hand panel is waiting for, and whether that install can reach it.
 	 *
-	 * Held so the panel can clear itself when /health reports it: the panel's own
-	 * copy says to run the command and check again, and it used to stay up
-	 * afterwards until the user pressed Dismiss (review U2). Read from the backend
-	 * info the update attempt was made against, because the manual-required event
-	 * itself carries no version.
+	 * Held so the panel can clear itself when the server stops being behind the
+	 * version it named: the panel's own copy says to run the command and check
+	 * again, and it used to stay up afterwards until the user pressed Dismiss
+	 * (review U2). Both facts travel in the manual-required event now - it used to
+	 * carry neither, so the target was reconstructed from whatever offer happened
+	 * to precede it (reviews U12, U17) - but the clear decision is made inside a
+	 * listener registered once, so they are kept in a ref as well as in state.
 	 */
-	const manualUpdateTargetRef = useRef<string | null>(null);
+	const manualUpdateExpectationRef = useRef<{
+		target: string | null;
+		sourceBuild: boolean;
+	}>({ target: null, sourceBuild: false });
 
 	/** True while `Install now` has been pressed and the pre-flight is running. */
 	const [installing, setInstalling] = useState(false);
@@ -526,10 +670,17 @@ export const UpdateNotification = ({
 		// Backend update requires a manual command (a server the app does not own)
 		const removeBackendManualRequiredListener =
 			window.api.updater.onBackendUpdateManualRequired((info) => {
-				// The event carries no version, and this panel has to know which one it
-				// is waiting for so it can clear itself once the server reaches it.
-				manualUpdateTargetRef.current =
-					backendUpdateInfoRef.current?.latestVersion ?? null;
+				// The panel has to know which version it is waiting for, so it can name it
+				// and clear itself once the server reaches it. The producer sends it; the
+				// offer that preceded the attempt is the fallback for a producer that
+				// could not name one.
+				manualUpdateExpectationRef.current = {
+					target:
+						info.latestVersion ??
+						backendUpdateInfoRef.current?.latestVersion ??
+						null,
+					sourceBuild: info.sourceBuild === true,
+				};
 				setManualUpdateRequired(true);
 				setManualUpdateInfo(info);
 				setChecking(false);
@@ -593,19 +744,39 @@ export const UpdateNotification = ({
 			window.api.updater.onBackendUpdateNotAvailable((info) => {
 				const currentInfo = backendUpdateInfoRef.current;
 				setBackendUpdateAvailable((prev) => {
-					if (currentInfo && currentInfo.latestVersion === info.version) {
+					// At or beyond the offer, not equal to it: a release that moved on
+					// between the offer and the check is a server the app no longer needs
+					// to nag about, and an exact match left the offer up in that window
+					// (review U12).
+					if (
+						currentInfo &&
+						atLeastVersion(info.version, currentInfo.latestVersion)
+					) {
 						setBackendUpdateInfo(null);
 						return false;
 					}
 					return prev;
 				});
-				// The by-hand panel's own instruction is "run this, then check again".
-				// When the server that answers is the version it was waiting for, the
-				// panel has been satisfied and clears itself - it used to stay up until
-				// the user pressed Dismiss, which made a successful upgrade look like a
-				// failed one (review U2).
-				const target = manualUpdateTargetRef.current;
-				if (target == null || target === info.version) {
+				/*
+				 * The by-hand panel's own instruction is "run this, then check again", so a
+				 * check the user asked for is what ends it - and it ends when the server is
+				 * no longer BEHIND the version the panel named rather than when it matches
+				 * exactly, which is the condition that could not be reached for a source
+				 * build (review U12). It used to stay up until the user pressed Dismiss,
+				 * which made a successful upgrade look like a failed one (review U2).
+				 *
+				 * A source build is the one case where the version cannot decide it: the
+				 * panel has just said its version is the checkout's rather than the
+				 * release's, so the check the user ran completes the instruction on its
+				 * own. Only a user-initiated check sends this event at all, so a silent
+				 * one can never clear the panel out from under the user.
+				 */
+				const { target, sourceBuild } = manualUpdateExpectationRef.current;
+				if (
+					target == null ||
+					sourceBuild ||
+					atLeastVersion(info.version, target)
+				) {
 					setManualUpdateRequired(false);
 					setManualUpdateInfo(null);
 				}
@@ -673,12 +844,19 @@ export const UpdateNotification = ({
 				    happened (review D2). */}
 				<p className="mt-2 text-body text-ink">{installFailed.remedy.text}</p>
 				{(installFailed.attempts ?? 1) > 1 && (
+					/* The count is the new information; the sentence that used to follow it
+					   repeated the remedy four lines below the remedy (review D13). */
 					<p className="mt-1 text-body-sm text-ink-muted">
 						Version {installFailed.targetVersion} has failed to install{" "}
-						{installFailed.attempts} times on this machine. Downloading a fresh
-						copy is the reliable way out.
+						{installFailed.attempts} times on this machine.
 					</p>
 				)}
+				{/* What survives the dismiss, and where to find it: the record is written
+				    to disk and rendered in Settings, but this panel never said so, so the
+				    only way to see the failure again was to already know (review U13). */}
+				<p className="mt-1 text-body-sm text-ink-muted">
+					This is also recorded in Settings, under Application updates.
+				</p>
 				<UpdateActions>
 					<Button
 						variant="outline"
@@ -805,19 +983,17 @@ export const UpdateNotification = ({
 				    the same weight, and the words carry which one needs the user
 				    (review D5). */}
 				<p className="mb-2 text-body text-ink">{manualUpdateInfo.message}</p>
+				<ManualUpdateVersions
+					latestVersion={manualUpdateInfo.latestVersion}
+					currentVersion={manualUpdateInfo.currentVersion}
+				/>
 				{manualUpdateInfo.command ? (
-					<>
-						<CommandBlock command={manualUpdateInfo.command} />
-						<p className="mt-2 text-body text-ink">
-							Run this in a terminal, then check for updates again to pick up
-							the new server version.
-						</p>
-					</>
-				) : (
-					<p className="mt-2 text-body text-ink">
-						Then check for updates again to pick up the new server version.
-					</p>
-				)}
+					<CommandBlock command={manualUpdateInfo.command} />
+				) : null}
+				<ManualRemedyNote
+					command={Boolean(manualUpdateInfo.command)}
+					sourceBuild={manualUpdateInfo.sourceBuild === true}
+				/>
 				<UpdateActions>
 					<Button
 						variant="outline"
@@ -1061,6 +1237,14 @@ export const UpdateNotification = ({
 							{backendUpdateInfo.updateCommand && (
 								<CommandBlock command={backendUpdateInfo.updateCommand} />
 							)}
+							{/* The same closing sentence and the same details line as the other
+							    producer of this state: a user who reached it from a version check
+							    used to get the command with no explanation of what was classified,
+							    and no hint that the button below re-reads the server (review U15). */}
+							<ManualRemedyNote
+								command={Boolean(backendUpdateInfo.updateCommand)}
+								sourceBuild={backendUpdateInfo.sourceBuild === true}
+							/>
 							<UpdateActions>
 								<Button
 									variant="outline"
@@ -1079,6 +1263,9 @@ export const UpdateNotification = ({
 									{checking ? "Checking..." : "Check for updates"}
 								</Button>
 							</UpdateActions>
+							{backendUpdateInfo.detail && (
+								<PanelDetails detail={backendUpdateInfo.detail} />
+							)}
 						</>
 					)}
 				</UpdateContainer>

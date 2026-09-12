@@ -77,6 +77,10 @@ declare global {
 						canManageUpdate?: boolean;
 						remedy?: string;
 						startupMode?: string;
+						/** How the install was classified, for the details line. */
+						detail?: string;
+						/** True when the install follows a source tree, not the release. */
+						sourceBuild?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (
@@ -91,6 +95,10 @@ declare global {
 						message: string;
 						command: string;
 						detail?: string;
+						/** The version the panel is waiting for, and what is running. */
+						latestVersion?: string | null;
+						currentVersion?: string | null;
+						sourceBuild?: boolean;
 					}) => void,
 				) => () => void;
 				onUpdateDownloaded: (
