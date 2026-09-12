@@ -15,9 +15,11 @@ as `scripts/capture-evidence.mjs`.
 
 That means the account is signed in, the agent list, sessions and transcripts
 are genuine backend responses, and the populated frames are a real conversation
-with real tool rows. The 12-theme sweep is deliberately **not** regenerated
-here; these are `localOperatorDark` only, which is the default theme and the one
-the reported screenshot was taken in.
+with real tool rows. The 12-theme sweep is deliberately **not** regenerated in
+this earlier set, which is `localOperatorDark` only - the default theme and the
+one the reported screenshot was taken in. The sets added further down for the
+working-surface ground are the exception: they render both brand palettes, plus
+`iceberg`, the tightest end of the range.
 
 **How the transcript in the populated frames was produced (round 2).** The
 agent prose is real rendered prose, not a mock: the transcript is seeded
@@ -205,6 +207,19 @@ conversation at the same window size:
 **The 120px figure and the improvement claim were both withdrawn in round 1**,
 after re-capture put this branch at 140px against `origin/main`'s 128px. See
 below.
+
+**Provenance of the `origin/main` row (measured by QA in round 1 of the ground
+change, and recorded rather than edited).** Those three numbers describe
+**v0.16.0**, not this branch's base `2217ea59a`: `git show
+v0.16.0:src/renderer/src/app.tsx` is `<div className="flex h-screen
+overflow-hidden">`, while v0.17.0 and `2217ea59a` both carry `relative` (the
+document-scroll fix). Re-measured on `2217ea59a` with the same dock-open
+populated chat, the row (`relative flex h-full w-full flex-row overflow-hidden`)
+gives **140px** overflow, header **56px** (`h-14`), document overflow **0** -
+identical to this branch. So "about 12px worse than `origin/main`" is a
+statement about v0.16.0, not about the base this branch is cut from; the numbers
+above are left as measured because nobody has re-measured a tree that still
+renders v0.16.0.
 
 The cause is a 450px-minimum canvas plus a 220px-minimum chat column plus a
 900px-preferred transcript demanding more width than the row has; fixing it
@@ -592,10 +607,13 @@ literals, every ternary branch inside a `cn()` call, and the UPPERCASE class
 constants those elements reference (resolved locally and through named
 imports). The rule asserted: no ancestor of the popup may carry an overflow
 class other than `visible`, a max-height, or an inline overflow, on the axis
-`bottom-full` escapes along; the band itself is identified by the composed
-`shrink-0` + `bg-surface` set (the discriminator QA used, which deliberately
-does not match the transcript scroller). If the scanner can no longer balance
-the file's tree, the guard FAILS rather than passing green.
+`bottom-full` escapes along; the band itself is identified by its
+`data-lo-composer-band` attribute (which deliberately does not match the
+transcript scroller). That sentence previously said the guard finds the band by
+the composed `shrink-0` + `bg-surface` set - which is what the guard never
+matched, and `bg-surface` has since been removed from the band altogether
+(`message-input.tsx`), so it was both imprecise and stale. If the scanner can no
+longer balance the file's tree, the guard FAILS rather than passing green.
 
 Four mutants, four killed, each applied with its diff shown, parse-checked
 with esbuild, and restored byte-identical between runs:
@@ -626,11 +644,15 @@ the interaction. It now takes `cursor-pointer`; the read-only chip keeps
 
 ## Recorded, not fixed here
 
-- **check-evidence does not cover this PR's frames.** It globs `.webp` only
-  (`scripts/check-evidence.mjs`), and all 48 chat-shell frames are `.png`, so
-  the "456 frames" gate passes without reading a single frame from this PR.
-  Pre-existing; the 456-frame number should not be cited as evidence for these
-  captures.
+- **check-evidence does not cover these frames, and the count in an earlier
+  draft was stale.** The gate globs `.webp` only (`scripts/check-evidence.mjs`),
+  while every frame in `docs/evidence/chat-shell` is a `.png` - **52** of them at
+  this head (50 at `95d019dcc`, 38 at this branch's base `2217ea59a`). Its
+  `496 frames are pictures of their own theme` green run therefore reads none of
+  the ground sets and none of the frames this branch adds; the theme honesty of
+  those frames is a measured claim by the review rounds that checked them, not
+  the gate's. Stated plainly rather than left implied: **the PNG frame sets are
+  outside `check-evidence`'s glob.**
 - **The D9 capture harness is not committed.** Its state assertion is real
   (the round-2 designer rebuilt it and it fired twice) but it is not
   third-party reproducible from this repo, and the README no longer claims a
@@ -641,3 +663,284 @@ the interaction. It now takes `cursor-pointer`; the read-only chip keeps
   one slash-popup row on a real click. `scroll-to-bottom-button.tsx` is
   byte-identical to pre-PR main and `slash-commands.tsx` is untouched by this
   PR; QA recommends tracking it rather than blocking on it.
+
+---
+
+# Chat shell ground: the list panel / working surface step
+
+Before/after frames and boundary measurements for one reported defect: the left
+Chats list panel and the chat working area read as one flat slab. The ask was a
+*slight*, *borderless* step between them, with the far-left rail still clearly
+the stronger separation.
+
+## What produced these frames
+
+**The real Electron app**, not Storybook, the same way as the sets above:
+`electron-vite dev` on this worktree's source, with the app's own main and
+preload processes, its real IPC bridge, and a real `local-operator serve`
+backend on `127.0.0.1:1111` paired through a shared
+`LOCAL_OPERATOR_DESKTOP_TOKEN`.
+
+Three things about this set are worth stating rather than implying:
+
+- **The instance had its own Chromium profile** (`--user-data-dir`). The
+  operator's installed `Local Operator.app` was running and holds the default
+  userData singleton, so these frames neither read nor wrote its localStorage or
+  window state.
+- **No CSP change was needed.** The app's Content Security Policy allows 1111
+  and 8080 only, so the pair lives on 1111 — the app's own port. An earlier
+  attempt paired a private backend on a private port, which required widening
+  the CSP to reach it; that edit was reverted and is not in the tree.
+- **The populated frames are a fixture conversation, not the operator's own.**
+  `127.0.0.1:1111` was held by another session's scroll-paging fixture at
+  capture time (260 rows of `[row NNNN] …` prose). The frames are a real
+  backend response rendered by the real transcript; the *prose* is synthetic,
+  and it is labelled as such here rather than passed off as a conversation. Its
+  row count is what the state assertion reads.
+
+Every frame asserts its own state before it is written, and the capture refuses
+to produce a frame that fails: a "populated" frame must report more than five
+rows in the transcript's own sr-only perf line (`rows=60`), an "empty" frame
+must report zero rows *and* the greeting *and* the composer band, and no frame
+may contain the first-run onboarding modal — that overlay dims the ground it
+covers, so it would have become part of every boundary number below. The theme
+is the persisted store value, verified against
+`document.documentElement.dataset.theme` before the frame is taken. The
+`before-` frames come from the same worktree with the change stashed, at the
+same window size (1380x872), the same backend, the same states.
+
+## The measurement
+
+One pixel either side of each boundary, at the vertical midpoint of the window,
+CIEDE2000 between them (`scripts/color.mjs`, the same implementation
+`pnpm check-themes` uses). "Run" is the nine-pixel sequence across the boundary:
+two colours means a bare step with nothing painted between them, three or more
+would mean something is drawn there.
+
+| Frame | rail | list panel | working area | rail / list ΔE00 | list / working ΔE00 | run at list / working |
+| --- | --- | --- | --- | --- | --- | --- |
+| before, empty, dark | #0F0C08 | #1D1A15 | #1D1A15 | **4.07** | **0** | `#1D1A15` — one colour |
+| after, empty, dark | #0F0C08 | #1D1A15 | #15130F | **4.07** | **2.54** | `#1D1A15`, `#15130F` |
+| before, populated, dark | #0F0C08 | #1D1A15 | #1D1A15 | **4.07** | **0** | `#1D1A15` — one colour |
+| after, populated, dark | #0F0C08 | #1D1A15 | #15130F | **4.07** | **2.54** | `#1D1A15`, `#15130F` |
+| before, empty, light | #EEE9DC | #FAF8F2 | #FAF8F2 | **4.38** | **0** | `#FAF8F2` — one colour |
+| after, empty, light | #EEE9DC | #FAF8F2 | #F4F0E7 | **4.38** | **2.18** | `#FAF8F2`, `#F4F0E7` |
+| before, populated, light | #EEE9DC | #FAF8F2 | #FAF8F2 | **4.38** | **0** | `#FAF8F2` — one colour |
+| after, populated, light | #EEE9DC | #FAF8F2 | #F4F0E7 | **4.38** | **2.18** | `#FAF8F2`, `#F4F0E7` |
+
+Three facts this table is meant to settle: the list panel and the working area
+were **the same colour** before (ΔE00 0, a single-colour run — no rule, because
+the divider between them is `w-0`); they now differ by a step that is visible
+but slight; and the rail's own separation is **unchanged and larger** in both
+themes (4.07 / 4.38 against 2.54 / 2.18), which is the relationship the report
+asked to keep. No third colour appears in any run **in these four frames**, so
+nothing is painted at either boundary while the dock is closed. (The dock-open
+pair is the exception: that boundary carries the dock's own `border-hairline`,
+measured in "The pixel that marks the dock is a rule, and it is the dock's own
+border" below.)
+
+The rendered working-area pixel is one unit off the palette token (dark:
+rendered #15130F against token #16130E; light: rendered #F4F0E7 against token
+#F5F0E6), which is the capture's **Display P3 re-encoding** of that token rather
+than a second palette: these frames are captured in P3, so every measured colour
+is its palette value re-encoded (`#147842` measures as `rgb(56,118,71)`), and the
+shift is a unit or two on these near-neutral grounds, which is why the
+significant-step claims are made on P3-space measurements taken from the frames
+themselves. Against the tokens the same step measures ΔE00 2.61 (dark) and 2.31
+(light).
+
+## The other ten themes: token-derived, not rendered
+
+These frames cover the two `localOperator*` themes, which is where light/dark
+correctness was asked for. The remaining ten are **not rendered here** — the
+numbers below are computed from the palettes (`scripts/color.mjs deltaE`), and
+are the same pair the rendered table measures:
+
+| Theme | surface | canvas | sunken | surface→canvas ΔE00 | ratio | surface→sunken ΔE00 | ratio |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| dracula | #2F3146 | #282A36 | #21222C | 4.94 | 1.12 | 7.10 | 1.24 |
+| dune | #1A1714 | #0F0D0B | #050403 | 2.94 | 1.09 | 4.59 | 1.15 |
+| iceberg | #F2F3F6 | #E8E9EC | #E1E2E7 | **2.11** (min) | 1.09 | **3.75** (min) | 1.17 |
+| localOperatorDark | #1E1A14 | #16130E | #0F0C08 | 2.61 | 1.07 | 4.48 | 1.13 |
+| localOperatorLight | #FAF8F1 | #F5F0E6 | #EFE9DB | 2.31 | 1.07 | 4.40 | 1.14 |
+| monokai | #2E2F28 | #272822 | #1E1F1A | 2.26 | 1.10 | 5.11 | 1.23 |
+| neon | #0F1524 | #080C18 | #03040A | 3.61 | 1.07 | 7.77 | 1.12 |
+| obsidian | #18181B | #09090B | #030307 | 3.80 | 1.12 | 4.49 | 1.16 |
+| radient | #1A1F2F | #10151C | #0A0D12 | 6.37 | 1.12 | 8.80 | 1.19 |
+| sage | #FBF7EC | #F3EEE0 | #E9E2D0 | 2.24 | 1.08 | 5.27 | 1.21 |
+| synth | #1B0A2F | #120720 | #06020D | **6.56** (max) | 1.05 | 14.94 | 1.11 |
+| tokyoNight | #24283B | #1A1B26 | #14141B | 5.49 | 1.17 | 8.68 | 1.26 |
+
+Every palette clears the ~2.0 perceptual threshold § 3 of `docs/branding.md`
+cites, and `surface`→`sunken` (the rail's step) is stronger than
+`surface`→`canvas` in all twelve. Two bounds belong next to that claim rather
+than behind one number. **The loud end of the new pair is synth 6.56** (radient
+6.37, tokyoNight 5.49), so a synth user gets a step about three times iceberg's;
+**the quiet end is iceberg 2.11**, which is the step that palette already draws
+between every card and its page - § 3 names iceberg's 2.1 as sufficient where a
+1.5 was not - so chat adopts an existing magnitude rather than introducing one.
+And **the rail's margin is thinnest in obsidian**, where a ΔE00 ratio of
+**1.18x** (4.49 against 3.80) is the smallest of the twelve; then radient 1.38x
+and dracula 1.44x. Those are ratios of the two ΔE00 steps, which is a different
+quantity from the `ratio` column in the table above: that column is a WCAG
+contrast ratio (obsidian's rail pair is 1.16:1 there, iceberg 1.17:1), so 1.18x
+and 1.16 are two measurements of two things rather than a contradiction. On one
+basis, the brand palettes' rendered frames show 2.0x (light) and 1.6x (dark), so
+the 1.9x/1.6x quoted in an earlier draft of this paragraph mixed a token ratio
+with a rendered one. If that margin ever needs widening, the lever is the
+palette, not this column. `pnpm check-themes` asserts both pairs as adjacent
+grounds, so neither is maintained by hand.
+
+## The dock, open
+
+The chat column is not only flanked by the list panel: with the canvas dock
+open it also abuts the dock. That boundary moved too, so it is measured here
+rather than assumed. Same method, same viewport, dock opened through the
+header's own control; the column is 220px wide in this state, i.e. its
+`min-w-[220px]` floor.
+
+| Frame | rail | list panel | chat column | dock | list / column ΔE00 | column / dock ΔE00 |
+| --- | --- | --- | --- | --- | --- | --- |
+| before, dark | #0F0C08 | #1D1A15 | #1D1A15 | #15130F | **0** | **2.54** |
+| after, dark | #0F0C08 | #1D1A15 | #15130F | #15130F | **2.54** | **0** |
+| before, light | #EEE9DC | #FAF8F2 | #FAF8F2 | #F4F0E7 | **0** | **2.18** |
+| after, light | #EEE9DC | #FAF8F2 | #F4F0E7 | #F4F0E7 | **2.18** | **0** |
+
+Read as a row left to right, the step in the working area did not appear or
+disappear — it **moved from the column's right edge to its left edge**: before,
+the column merged with the list panel and the dock's empty ground stepped down
+from it; after, the column steps down from the list panel and the dock shares
+the column's ground. One slight step either way, and the rail's 4.07 / 4.38 is
+untouched in both.
+
+**Is the dock's change an improvement or a defect? Neither is a clean answer,
+so here is the honest one.** The dock's empty state is `bg-canvas`
+(`canvas/index.tsx`) and it therefore *already* agreed with the dock's own role
+as a working surface; the outlier was the chat column, which was the only
+working plane painted `surface`. After the change the two working planes agree,
+which is the same reasoning that makes `PlaceholderView` `canvas` — "the same
+ground the conversation uses, so selecting an agent does not repaint the pane a
+different colour". The dock is still demarcated by its own `sunken` chrome bar
+(the 40px bar above it, visible in both frames) and by the resize affordance.
+What is weaker is the *lightness* signal at that boundary when no document is
+open: the dock and the column are one ground, and only the chrome says where
+the dock begins.
+
+**The diff between the pair is confined to the column.** Compositing the
+two dock frames and taking the bounding box of every non-identical pixel gives
+`220x872+500+0` in both themes — the chat column's own box, its full height,
+and nothing else: not the rail, not the list panel, and not one pixel of the
+dock. That is the strongest statement this pair makes: the dock's rendering is
+identical before and after, and what moved is which ground the column carries.
+
+One thing this pair does **not** cover is the dock's document-open state, and
+that case is no longer left as reasoning: **QA measured it.** Driving the dock's
+own "New file" flow (which does not call `createFile`) with a document open, the
+dock renders `surface` against the `canvas` column, so the step returns at that
+boundary in the other direction while the list/column seam stays 2.54. The
+code-reading conclusion above is therefore confirmed by a round that did not
+share this harness. What remains unattributed to a frame is only this set's own
+capture of it: reaching that state from here would mean writing a file into the
+operator's workspace (`utils/file-creation`).
+
+### The pixel that marks the dock is a rule, and it is the dock's own border
+
+The nine-pixel run across the column/dock boundary contains a fourth colour in
+both halves of the pair: `#343024` (dark) / `#DCD8CF` (light), which is each
+palette's own `hairline` after the capture's Display P3 re-encoding. It is
+**not** a scrollbar. It is the dock container's own `border-l border-hairline`
+(`chat-content.tsx`), whose left edge is exactly x=720 and which `h-full` gives
+the full window height: measured in all four dock-open frames, x=720 is one
+uniform colour across **all 872 rows, y=0..871** — including the header band and
+the composer row, where no scroll container reaches. A scrollbar is not one
+pixel wide and cannot paint outside the scroller it belongs to.
+
+So the working surface and the dock are separated by a painted rule rather than
+a bare ground step, and that rule is **pre-existing and unchanged** by this
+change (the pair's diff is confined to x=500..719, so x=720 is byte-identical
+between the halves). It measures **ΔE00 5.26** from the canvas under it in
+`localOperatorLight` and **10.21** in `localOperatorDark` (contrast 1.41 in
+dark, 1.25 in light) — above the rail's own 4.38 / 4.07. With the dock open,
+then, the strongest
+vertical *edge* in the window is the dock divider, while the rail remains the
+strongest ground *step*. Both stay: a resizable split needs a visible edge, and
+the boundary this PR adds between the list panel and the working surface stays
+bare. What marks the dock is that hairline **plus** its own `sunken` 40px header
+band — not the chrome alone, which is what an earlier version of this paragraph
+claimed.
+
+## The frames
+
+### The light empty pair, and what can still differ between the halves
+
+The `localOperatorLight` and `iceberg` empty pairs were recaptured through the
+harness with the synthetic pointer parked at 4,4 and nothing focused, so the
+transient UI state a first pass left in them is gone: the earlier light pair had
+the composer's accent focus ring in one half only, and a hover highlight on a
+sidebar row (`+ Create agent`) in its before half - **8082** differing pixels
+**within the sidebar region x=220..499** (the whole-frame difference of that
+same comparison is 29687, so this is a region count and not a frame count),
+**7624** of them the tint `#FFFEFB` by exact comparison; a per-channel
+`>2/255` tolerance counts 7942 in the same region, which is where an earlier
+draft's unqualified "7942 pixels" came from. The superseded frame is not lost -
+`git show 95d019dcc:docs/evidence/chat-shell/before-ground-empty-loLight.png`
+fetches it, and a design round reproduced all three figures from exactly there -
+but what the committed pair no longer carries is the highlight itself: the
+committed before half differs from its after half by **0** pixels in that
+region. In the committed
+pair the sidebar is **byte-identical** (0 differing pixels across x=220-499, the
+whole list panel) and the composer carries its resting `border-control` edge in
+both halves.
+
+One difference is **not** removable, and it is the application's own: the
+empty-state suggestion chips are drawn from a randomised pool at mount
+(`message-input.tsx`: `[...initialSuggestions].sort(() => Math.random() - 0.5)`),
+so the two halves of every empty pair necessarily carry different chips. The
+shift that follows is pair-specific rather than uniform, because the block is
+laid out from its content: in the recaptured `localOperatorLight` pair the two
+chip sets happen to be the same height, so the composer box sits at **identical**
+y (389-500) in both halves, while in the `iceberg` pair they are not and the
+whole centred block moves **19px** (composer y=389→370, greeting y=346→327, with
+an extra chip row). No ground measurement rests on either position. The ground claim does not rest on the empty
+frames' content: it rests on the numbers in the table above (0 → 2.18 across
+that boundary in both halves), on the populated and dock pairs, and on the
+pixel-diff bounding boxes, which show nothing outside the column changed.
+
+| Frame pair | What it shows |
+| --- | --- |
+| [before-ground-empty-loDark.png](before-ground-empty-loDark.png) / [after-ground-empty-loDark.png](after-ground-empty-loDark.png) | The reported state and the fix, dark, empty draft. Before: the Chats panel and the working area are one colour from x=220 to the right edge, with the greeting and composer sitting on it. After: the list panel meets a slightly darker working surface; the rail keeps its clearly darker ground. |
+| [before-ground-empty-loLight.png](before-ground-empty-loLight.png) / [after-ground-empty-loLight.png](after-ground-empty-loLight.png) | The same, light. The step is a slightly deeper cream inside the same warm family; the light themes are where a 2.2 ΔE00 step is most easily lost, which is why both brand themes are captured rather than the default one. |
+| [before-ground-populated-loDark.png](before-ground-populated-loDark.png) / [after-ground-populated-loDark.png](after-ground-populated-loDark.png) | The same pair over a populated transcript (fixture prose, 60 rows). Confirms the step is a property of the ground and not of the empty state's content. |
+| [before-ground-populated-loLight.png](before-ground-populated-loLight.png) / [after-ground-populated-loLight.png](after-ground-populated-loLight.png) | The same, light. |
+| [before-ground-empty-iceberg.png](before-ground-empty-iceberg.png) / [after-ground-empty-iceberg.png](after-ground-empty-iceberg.png) | The tightest theme in the range, rendered rather than computed: the step renders at **2.11**, the token's own value, against an iceberg rail step of **3.75** (1.78x). Iceberg is the palette closest to the contract's threshold and the one a design round asked to see a frame of. |
+| [before-ground-canvas-loDark.png](before-ground-canvas-loDark.png) / [after-ground-canvas-loDark.png](after-ground-canvas-loDark.png) | Canvas dock open, dark, populated transcript. Before: the column matches the list panel and the dock's own ground steps away from it. After: the column steps from the list panel and shares the dock's ground. |
+| [before-ground-canvas-loLight.png](before-ground-canvas-loLight.png) / [after-ground-canvas-loLight.png](after-ground-canvas-loLight.png) | The same, light. |
+
+## What these frames do not prove
+
+- **Nine of the twelve themes are token-derived, not rendered.** Three are
+  rendered: `localOperatorDark`, `localOperatorLight` and `iceberg` (the tightest
+  end of the range); the twelve-row table above is arithmetic on the palettes.
+- **The populated content is a fixture conversation** written by another
+  session's paging harness, not a real chat.
+- **The legacy transcript scroller (`messages-view.tsx`) is changed but not
+  framed.** It is the non-canonical path and could not be reached by driving the
+  app - canonical sessions render the canonical transcript and the dev-only Raw
+  tab renders the raw JSON view - which QA recorded as BLOCKED for the same
+  reason. The change there is inherit-only (the element names no ground), so it
+  cannot disagree with its column. Source-level claim, not a measurement.
+- **The state assertions are not reproducible from this repository.** Each frame
+  asserts its own state before it is written - a populated frame must report
+  more than five rows in the transcript's own sr-only perf line, an empty frame
+  must report zero rows *and* the greeting *and* the composer band, the document
+  must carry the requested `data-theme`, and no frame may contain the first-run
+  onboarding overlay - but the harness is not committed, the same limitation the
+  #101 set records. The asserted values are recorded here instead: `rows=60` for
+  both populated pairs, `rows=0` plus the greeting for the empty pairs,
+  `data-theme` equal to the palette named in the filename, and no onboarding
+  overlay in any frame of this set. Everything the tables ask a reader to believe
+  *about the boundary* is reproducible from the committed PNGs.
+- **The dock's with-a-document state is not in this set** (QA measured it; see
+  "The dock, open").
+- The dev framing includes the `Chat | Raw` tab row, which a packaged build does
+  not render; it is present identically in both halves of every pair.

@@ -90,11 +90,23 @@ const api = {
 
 	// Add methods for auto-updater
 	updater: {
-		checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+		/**
+		 * Check for a UI update.
+		 *
+		 * `manual` marks a check the user asked for, which the main process lets
+		 * re-offer a release whose artifact failed verification - the refusal
+		 * panels tell the user to make space or re-download and then check again.
+		 */
+		checkForUpdates: (options?: { manual?: boolean }) =>
+			ipcRenderer.invoke("check-for-updates", options),
 		checkForBackendUpdates: () =>
 			ipcRenderer.invoke("check-for-backend-updates"),
-		checkForAllUpdates: () => ipcRenderer.invoke("check-for-all-updates"),
-		updateBackend: () => ipcRenderer.invoke("update-backend"),
+		checkForAllUpdates: (options?: { manual?: boolean }) =>
+			ipcRenderer.invoke("check-for-all-updates", options),
+		/** The last install that did not complete, for Settings -> App updates. */
+		getLastInstallAttempt: () => ipcRenderer.invoke("get-last-install-attempt"),
+		updateBackend: (targetVersion?: string) =>
+			ipcRenderer.invoke("update-backend", targetVersion),
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
 		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
@@ -155,6 +167,29 @@ const api = {
 				ipcRenderer.removeListener("backend-update-completed", handler);
 			};
 		},
+		/**
+		 * A server the app cannot update itself, with the command that can.
+		 *
+		 * The main process has always sent this; nothing subscribed to it, so the
+		 * renderer guessed the command from the word "manually" in an error
+		 * string instead.
+		 */
+		onBackendUpdateManualRequired: (
+			callback: (info: {
+				message: string;
+				command: string;
+				detail?: string;
+				latestVersion?: string | null;
+				currentVersion?: string | null;
+				sourceBuild?: boolean;
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("backend-update-manual-required", handler);
+			return () => {
+				ipcRenderer.removeListener("backend-update-manual-required", handler);
+			};
+		},
 		onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("update-downloaded", handler);
@@ -167,6 +202,48 @@ const api = {
 			ipcRenderer.on("update-error", handler);
 			return () => {
 				ipcRenderer.removeListener("update-error", handler);
+			};
+		},
+		/**
+		 * An install the app refused to start, with the reason and the remedy.
+		 *
+		 * Separate from `onUpdateError`: these are deliberate refusals (the
+		 * installed bundle's seal, the artifact's checksum, free disk space), not
+		 * failures of a check that already happened.
+		 */
+		onUpdateInstallBlocked: (
+			callback: (info: {
+				code: string;
+				version: string | null;
+				message: string;
+				remedy: { text: string; url?: string; command?: string };
+				detail?: string;
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-blocked", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-blocked", handler);
+			};
+		},
+		/**
+		 * A previous install that Squirrel never completed, reported on the next
+		 * start because a failed install produces no error the app can observe.
+		 */
+		onUpdateInstallFailed: (
+			callback: (info: {
+				targetVersion: string;
+				message: string;
+				remedy: { text: string; url?: string; command?: string };
+				detail: string;
+				/** How many times this target has failed on this machine. */
+				attempts?: number;
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-failed", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-failed", handler);
 			};
 		},
 		onUpdateProgress: (callback: (progressObj: ProgressInfo) => void) => {

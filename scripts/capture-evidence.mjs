@@ -156,6 +156,24 @@ const STORIES = [
 	["chat-tool-rows--narrow", 560, 260],
 	["chat-tool-rows--working", 1280, 900],
 	["chat-tool-rows--working-labels", 760, 300],
+	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
+	   arguments. Captured at the height the story declares, because the frame IS
+	   the body — a viewport shorter than the content photographs a scrolled
+	   corner of it and cuts the last three cases off. The 560px pass is the same
+	   content under the wrap rule: the body must wrap its long lines rather than
+	   grow a horizontal scrollbar inside a disclosure. */
+	["chat-tool-rows--diff-body", 1280, 2110],
+	/* The narrow pass is a SECOND story rather than a second width of the first:
+	   under wrapping each body grows, and the honest picture of the wrap rule is
+	   one you can see whole (two cases, sized to their content) rather than seven
+	   cases cropped at the frame edge. */
+	["chat-tool-rows--diff-body-narrow", 560, 1380],
+	/* And the case neither of those can show: the body AT THE CAP in a wrapping
+	   column, where the derived 740px ceiling is too short for 40 wrapped lines
+	   and the `… N more diff lines` marker would scroll out of the well. Sized to
+	   its own content — one row and its body — because the marker's visibility at
+	   rest is the whole claim. */
+	["chat-tool-rows--diff-body-narrow-wrapped-cap", 560, 830],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
@@ -192,6 +210,25 @@ const STORIES = [
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
+	// The state before an install commits: the bundle is downloaded and the footer
+	// that the install fix changed is on screen. It renders the component's own
+	// markup now, so the frame cannot drift from it (review U16).
+	["common-updatenotification--downloaded", 1280, 900],
+	// The install outcomes the 0.17.0 update never showed: a refusal with its
+	// remedy, and the next start admitting the install did not take.
+	["common-updatenotification--install-blocked", 1280, 900],
+	["common-updatenotification--install-failed", 1280, 900],
+	// A server the app does not own, with the command that fits how it was
+	// installed (the pip line the operator was shown is gone) - from both
+	// producers of that state: one the app installed itself, and one it merely
+	// attached to after the user started it in a terminal.
+	["common-updatenotification--backend-manual-required", 1280, 900],
+	[
+		"common-updatenotification--backend-manual-required-existing-server",
+		1280,
+		900,
+	],
+	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 
@@ -521,6 +558,8 @@ const main = async () => {
 	// rest of the tree. A full sweep still must not take the supplementary
 	// sets with it — those are live-app captures this script cannot re-derive
 	// (`clearSweptFrames` is the preservation rule, not a plain `rmSync`).
+	/** Every frame this run wrote, and whether it was already on disk. */
+	const writtenFrames = [];
 	const supplementary = PARTIAL
 		? (() => {
 				try {
@@ -538,8 +577,6 @@ const main = async () => {
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
-	/** Frames this run wrote that were not on disk before, and that the sweep owns. */
-	let addedToSweep = 0;
 	for (const [story, width, height] of stories) {
 		for (const theme of themes) {
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
@@ -867,30 +904,31 @@ const main = async () => {
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
 			/*
-			 * Counted before the write: a partial run that ADDS a story grows the set,
-			 * and `check-evidence` compares the sweep's declared total against the
-			 * frames on disk that no supplementary set claims. Preserving the previous
-			 * total through an add left those two out of step by exactly the frames the
-			 * run had just written - which is how this set reached a red gate at 474
-			 * declared against 488 on disk, with nothing wrong in any frame.
+			/*
+			 * A partial run can ADD a surface as well as refresh one, and the
+			 * whole-set totals have to grow with it. `writeFileSync` overwrites
+			 * either way, so the only thing that tells the two apart is whether
+			 * the file was there before - which is what `frames`/`surfaces`
+			 * need, and what a refreshed-only count got wrong: eight new
+			 * frames landed on disk while the manifest still said 474.
 			 *
-			 * A supplementary set is captured by its own procedure and declares its own
-			 * count, so a frame inside one is not the sweep's to add.
+			 * A frame inside a DECLARED set is not the sweep's to add: those
+			 * sets declare their own counts, and counting theirs here would
+			 * double them. The comparison is separator-aware because a sibling
+			 * whose name merely starts with a declared set's name
+			 * (`tool-rows-baseline` against `tool-rows`) is not inside it.
 			 */
-			// Separator-aware: a sibling whose name merely STARTS with a declared
-			// set's name (`tool-rows` vs `tool-rows-baseline`) is not inside it,
-			// and a raw `startsWith` would skip its frames here while
-			// `check-evidence` still charged them to the sweep.
-			if (
-				!existsSync(framePath) &&
+			const existedBefore =
+				existsSync(framePath) &&
 				!supplementary.some((set) => {
 					const declared = join(OUT, set.path);
 					return dir === declared || dir.startsWith(`${declared}${sep}`);
-				})
-			) {
-				addedToSweep++;
-			}
+				});
 			writeFileSync(framePath, Buffer.from(data, "base64"));
+			writtenFrames.push({
+				surface: `${story.split("--")[0]}/${leaf}`,
+				existedBefore,
+			});
 			/*
 			 * And check it is a picture of the app before moving on.
 			 *
@@ -969,16 +1007,20 @@ const main = async () => {
 	} catch {
 		// No prior manifest: a full sweep writes the first one.
 	}
+	const addedFrames = writtenFrames.filter((frame) => !frame.existedBefore);
+	const addedSurfaces = [...new Set(addedFrames.map((frame) => frame.surface))];
 	const manifest = PARTIAL
 		? {
 				...previous,
-				/*
-				 * The sweep's own total, grown by whatever this run ADDED. A refresh
-				 * leaves it where it was, which is what the rest of this branch does; an
-				 * add has to raise it or the gate reports the new frames as undeclared.
-				 */
-				frames: (previous.frames ?? 0) + addedToSweep,
 				head,
+				/*
+				 * A narrowed run that only refreshed frames leaves the totals
+				 * alone; one that added a surface moves them, because otherwise
+				 * the set it did not take and the frames it did add no longer
+				 * add up to what is on disk.
+				 */
+				frames: (previous.frames ?? 0) + addedFrames.length,
+				surfaces: (previous.surfaces ?? 0) + addedSurfaces.length,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
@@ -989,6 +1031,10 @@ const main = async () => {
 					refreshedFrames: captured,
 					refreshedStories: [...new Set(stories.map(([id]) => id))],
 					refreshedThemes: themes,
+					addedFrames: addedFrames.length,
+					addedSurfaces,
+					addedAt: new Date().toISOString(),
+					addedAtHead: head,
 				},
 			}
 		: {

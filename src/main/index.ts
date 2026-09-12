@@ -417,6 +417,26 @@ app
 			(input) => backendService.requestDesktop(input),
 		);
 		const desktopNotifier = new DesktopNotifier(() => mainWindow, sendDesktop);
+		// Read `features.notification_contract` whenever the backend becomes
+		// reachable, NOT here: the desktop token is minted inside
+		// `backendService.start()` below, so a capability request issued now
+		// would hit a dead port on the ordinary self-managed cold start, be
+		// swallowed, and leave the notifier on its legacy path against a backend
+		// that composes — two banners for one turn, which is the defect this
+		// change exists to remove.
+		//
+		// Registering the observer (rather than calling after `start()`) is what
+		// keeps it correct on every later transition too: a health-check restart
+		// or external-backend discovery can put a DIFFERENT backend version
+		// underneath a running app, in both directions. Re-reading is also the
+		// downgrade path in docs/design/descriptive-notifications.md 4.3.
+		//
+		// Not awaited: a slow backend must not delay first paint. The notifier
+		// defers the legacy toast until the read settles, so nothing can slip
+		// through the window in between.
+		backendService.onBackendReady(() => {
+			void desktopNotifier.refreshNotificationContract();
+		});
 		backendService.observeStream((sessionId, data) => {
 			try {
 				desktopNotifier.observe(sessionId, JSON.parse(data));

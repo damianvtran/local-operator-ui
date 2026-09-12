@@ -426,3 +426,252 @@ export function toolNameColumn(names: readonly string[]): number {
 	for (const name of names) longest = Math.max(longest, name.length);
 	return Math.min(TOOL_NAME_COL_MAX, Math.max(TOOL_NAME_COL_MIN, longest));
 }
+
+/* ----------------------------------------------------------- diff body */
+
+/**
+ * The tools whose expansion IS the diff.
+ *
+ * Only the two this backend has. `_TOOL_CATEGORY` (tool_card.py:178-198) lists
+ * exactly `write` and `edit` as mutating tools, and `_diff_details`
+ * (tools/builtin.py:4863-4888) is called from `execute_write` and
+ * `execute_edit` alone. The mobile port's set also names `apply_patch` and
+ * `patch` (mobile/web/src/components/tool-row.tsx:75); this backend exposes no
+ * such tool, so listing them here would claim support for a name that can only
+ * arrive from an MCP server shadowing it — and an MCP row's `details` are not
+ * this payload.
+ */
+export const DIFF_BODY_TOOLS = new Set(["write", "edit"]);
+
+/** Whether a row's expansion is the diff body rather than its arguments. */
+export function isDiffBodyTool(toolName: string): boolean {
+	return DIFF_BODY_TOOLS.has(toolName.trim().toLowerCase());
+}
+
+/**
+ * Whether a settled row expands to its DIFF rather than to its arguments.
+ *
+ * Three conditions, and the third is the terminal's own: `_build_content`
+ * selects the diff-alone body on `self._state == "success" and self._diff`
+ * (tool_card.py:1928-1939), and that success gate is not decorative. A case it
+ * rejects is a write that FAILED: the args are the only account of what was
+ * attempted and the error only makes sense beside them, so a row that shipped
+ * both a diff and an error must paint the arguments and the error, not a diff
+ * alone. The producer agrees today — every error exit goes through `_error`
+ * (tools/builtin.py:1041) or `_invalid_arguments` (`:1051`, which does set
+ * `details`, but only its `FAULT_KEY` fault marker at `:1066`; it is
+ * `details.diff` that no error path sets), and all 9,501 real rows carrying
+ * `details.diff` measured on 2026-09-12 are successful
+ * `write`/`edit` results — so the guard has no live case; it is here because the
+ * reference keeps it and "no producer does this yet" is not a rule a renderer
+ * can rely on. `scripts/tool-row.test.mjs` pins it.
+ *
+ * It lives here rather than inline in `canonical-transcript.tsx` so the rule has
+ * one home a test can exercise: there is no React test host in this repo, and an
+ * expression buried in a JSX ternary is only assertable by reading the source.
+ */
+export function isDiffBodyRow<
+	T extends {
+		toolName: string;
+		diff: readonly string[] | null;
+		isError: boolean;
+	},
+>(row: T): row is T & { diff: readonly string[] } {
+	return isDiffBodyTool(row.toolName) && row.diff !== null && !row.isError;
+}
+
+/**
+ * The unified diff a `write`/`edit` RESULT carries, as view-ready lines.
+ *
+ * Source of truth: `_diff_details` (tools/builtin.py:4863-4888) puts a
+ * `difflib.unified_diff(..., n=2, lineterm="")` line list on `details.diff`,
+ * capped at `_DIFF_DETAILS_CAP_LINES = 200` with a literal `…` appended as the
+ * LAST element when it truncated. Nothing on this side recomputes a diff — the
+ * payload is the producer's own bytes, which is what keeps the row's `+N/-N`
+ * counters and the body beside them describing one change.
+ *
+ * A string payload is tolerated, and it is DEFENSIVE TOLERANCE rather than a
+ * shape any producer emits. Measured over every transcript on this machine:
+ * 9,501 `details.diff` values across the 1,166 stored transcripts it held on
+ * 2026-09-12 are lists of strings
+ * — no strings, no non-string members, no empty lists, none on an `is_error` row
+ * (a dated snapshot of a live store, not a fixed property) — and the fold this file
+ * used to blame for the string shape does not produce one either:
+ * `mobile/projection.py:284-288` copies each key through untouched, so a list
+ * stays a list. (The phone's `diff?: string | string[]` type is its own
+ * normaliser's tolerance, not evidence about the wire.) The belt costs one
+ * `typeof` at a boundary that is `unknown` by construction; `Array.isArray`
+ * alone would drop a row's body while the counters beside it still said `+42`.
+ * The reason to keep it is untyped boundaries, not provenance.
+ *
+ * Non-string members are DROPPED rather than stringified: `String({})` is
+ * `"[object Object]"`, a line no producer ever wrote, and a diff is a record of
+ * what happened. Absent, empty and all-malformed payloads are `null` — "this
+ * call reported no diff" — and a row with no diff keeps its arguments, which is
+ * the honest shape for a call that reported nothing.
+ */
+export function diffFromDetails(details: unknown): string[] | null {
+	if (!details || typeof details !== "object") return null;
+	const raw = (details as Record<string, unknown>).diff;
+	if (typeof raw === "string") {
+		// Tolerance for an untyped boundary, not a producer's shape: every real
+		// payload measured is a list (see the doc above). An empty string is "no
+		// diff", not one blank line.
+		return raw ? raw.split("\n") : null;
+	}
+	if (!Array.isArray(raw)) return null;
+	const lines = raw.filter((line): line is string => typeof line === "string");
+	return lines.length ? lines : null;
+}
+
+/** Element-wise equality, for the identity gate below. */
+export function sameDiff(
+	a: readonly string[] | null,
+	b: readonly string[] | null,
+): boolean {
+	if (a === b) return true;
+	if (!a || !b || a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+	return true;
+}
+
+/**
+ * Never let a replay erase a diff a row already showed.
+ *
+ * "This event carried no diff" and "this call reported no change" are different
+ * claims, and only the second may clear a row — the same argument
+ * `preferExisting` makes for images. The live-event budget strips `details` from
+ * a later frame (`_bound_live_result_in_place`, session/frontend_state.py,
+ * drops `details` when the row exceeds its share of the frame), so a replayed
+ * `tool_execution_end` legitimately arrives with nothing where a diff already
+ * sat, and letting that win would blank the body of the row the user is
+ * reading.
+ *
+ * Returns the previous array BY REFERENCE whenever the two are equal, which is
+ * what keeps the record's identity stable: `shallowEqual` compares by `!==`, so
+ * a freshly built array of identical lines would report every polled delta as a
+ * change and re-render the row (and its 200-line body) on a surface that
+ * repaints per token.
+ */
+export function preferDiff(
+	next: string[] | null,
+	previous: string[] | null,
+): string[] | null {
+	if (next === null) return previous;
+	if (sameDiff(next, previous)) return previous;
+	return next;
+}
+
+/**
+ * Drop the nameless `---`/`+++` file-header pair, POSITIONALLY.
+ *
+ * `_append_diff_body` (tool_card.py:2178-2225). The tool diffs one file's
+ * before/after in memory, so `difflib` emits the headers with EMPTY filenames
+ * (`"--- "` / `"+++ "`, trailing space from the empty name and no line
+ * terminator) and the path already heads the summary row. Two blank-label rows
+ * above every diff were pure chrome.
+ *
+ * Only lines 0 and 1 are examined, and only when they are exactly that pair
+ * after trailing-whitespace removal. A PATTERN filter over the body would be a
+ * data-loss bug rather than a cosmetic one: a removed content line can itself
+ * begin `--` (a SQL/Lua comment, say) and renders as `--- …` inside the body,
+ * so a pattern filter would silently delete the very record this body now
+ * solely carries.
+ */
+export function stripDiffHeader(diff: readonly string[]): string[] {
+	if (
+		diff.length >= 2 &&
+		rstrip(diff[0]) === "---" &&
+		rstrip(diff[1]) === "+++"
+	) {
+		return diff.slice(2);
+	}
+	return diff.slice();
+}
+
+/** Trailing whitespace on a diff line, for the terminal's `rstrip()`. */
+const TRAILING_WHITESPACE = /\s+$/;
+
+/** Trailing-whitespace removal, matching the terminal's `rstrip()` per line. */
+function rstrip(line: string): string {
+	return line.replace(TRAILING_WHITESPACE, "");
+}
+
+/** Where a diff line's ink comes from, by its LEADING character only. */
+export type DiffLineKind = "hunk" | "added" | "removed" | "context";
+
+/**
+ * The line's kind, from its leading character alone.
+ *
+ * `_append_diff_body` (tool_card.py:2208-2218): `@` is a hunk header, `+` an
+ * addition, `-` a removal, and everything else is context. Only the FIRST
+ * character is consulted, so a context line whose text happens to start with
+ * `-` after its own marker is still context.
+ *
+ * The KIND decides the ink for the WHOLE line (diff-block.tsx), which is what
+ * the same loop does at `:2220`.
+ */
+export function diffLineKind(line: string): DiffLineKind {
+	const marker = line.slice(0, 1);
+	if (marker === "@") return "hunk";
+	if (marker === "+") return "added";
+	if (marker === "-") return "removed";
+	return "context";
+}
+
+/**
+ * Lines the expanded body shows, `EXPAND_MAX_LINES` in the terminal.
+ *
+ * `EXPAND_MAX_LINES = 40` (tool_card.py:276) is the shared cap for every
+ * expanded body, so a diff and an output block shed at the same depth.
+ */
+export const DIFF_EXPAND_MAX_LINES = 40;
+
+/** One rendered diff line: the ink marker, the rest, and the kind they came from. */
+export type DiffBodyLine = {
+	/** The line as painted, trailing whitespace removed. */
+	text: string;
+	/** The leading character the marker ink is chosen by; `""` on a blank line. */
+	marker: string;
+	kind: DiffLineKind;
+};
+
+export type DiffBody = {
+	lines: DiffBodyLine[];
+	/** Lines the cap hid, for the overflow marker. */
+	hidden: number;
+};
+
+/**
+ * The body the expanded row paints: header-stripped, rstripped, classified and
+ * capped, so the component below stays presentational.
+ *
+ * The cap counts lines AFTER the header strip, as the terminal does, and the
+ * overflow count is the number of remaining lines — including the producer's
+ * own trailing `…` on a diff truncated at 200, which is ordinary content line
+ * 201 rather than this marker. That is why the two are separate ideas here: the
+ * producer's `…` is a dim line inside the body, this one is the dim line below
+ * it that says how much is not shown.
+ */
+export function diffBody(diff: readonly string[]): DiffBody {
+	const stripped = stripDiffHeader(diff);
+	const shown = stripped.slice(0, DIFF_EXPAND_MAX_LINES);
+	return {
+		lines: shown.map((raw) => {
+			const text = rstrip(raw);
+			return { text, marker: text.slice(0, 1), kind: diffLineKind(text) };
+		}),
+		hidden: stripped.length - shown.length,
+	};
+}
+
+/**
+ * The overflow marker, spelled exactly as the terminal spells it.
+ *
+ * `f"… {hidden} more diff line{'s' if hidden != 1 else ''}"`
+ * (tool_card.py:2222-2223) — including the singular case, because "… 1 more
+ * diff lines" is the kind of copy a reader notices instead of the number.
+ */
+export function diffOverflowLabel(hidden: number): string {
+	return `… ${hidden} more diff line${hidden === 1 ? "" : "s"}`;
+}

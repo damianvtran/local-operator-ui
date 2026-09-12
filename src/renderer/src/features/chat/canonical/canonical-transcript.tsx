@@ -63,12 +63,13 @@ import {
 } from "../components/message-item/message-container";
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { OutputBlock } from "../components/message-item/output-block";
-import { AgentQuestion, TraceLine } from "../components/trace";
+import { AgentQuestion, DiffBlock, TraceLine } from "../components/trace";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	displayName,
 	formatBytes,
 	isBareToolName,
+	isDiffBodyRow,
 	outputFallbackLine,
 	summaryFromArgs,
 	toolNameColumn,
@@ -120,10 +121,13 @@ const UserRow = memo(function UserRow({
 			<div className="group relative flex w-full justify-end">
 				<div
 					className={cn(
-						// `border-control`, not `hairline`. The bubble is `bg-surface` on
-						// a `bg-surface` column, so this border is its ONLY edge - and
-						// because the agent side has no bubble at all, that edge is also
-						// the whole visual distinction between the two speakers.
+						// `border-control`, not `hairline`. The bubble keeps its own
+						// ground (`surface`) on a column that is `canvas` for the working
+						// surface's sake (see chat-content.tsx), so the fill is a
+						// lightness step as well as this edge - but a step is not an
+						// edge, and this border is still the boundary the design contract
+						// asks for. Because the agent side has no bubble at all, the edge
+						// is also the whole visual distinction between the two speakers.
 						// Removing it would lose information, which is the contract's own
 						// test for a structural boundary, so it takes the role with the
 						// 3:1 floor rather than the decorative one with no floor.
@@ -259,7 +263,24 @@ const ToolRow = memo(function ToolRow({
 			? outputFallbackLine(record.output)
 			: null;
 	const details =
-		record.output || record.args ? (
+		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
+		// when a settled, SUCCESSFUL `write`/`edit` reported a diff, the expansion is
+		// the DIFF ALONE. The arguments of a `write` are the whole new file content —
+		// the same change stated a second way — and the output line underneath is
+		// `edited` or `wrote N bytes`, which says nothing the diff does not. The
+		// mobile port drops the same two for the same tools
+		// (mobile/web/src/components/tool-row.tsx:95-96, 179-182).
+		//
+		// The three conditions live in `isDiffBodyRow` so they can be tested: the
+		// tool, the payload, and the call's own state. A row with no diff keeps its
+		// arguments, which is the honest shape for a call that changed nothing
+		// (`_diff_details` omits `diff` entirely when `_line_delta` is zero) and for a
+		// transcript predating `details` on the wire; a row that FAILED keeps them
+		// too, because there the arguments are the only account of what was attempted
+		// and the error only makes sense beside them.
+		isDiffBodyRow(record) ? (
+			<DiffBlock diff={record.diff} />
+		) : record.output || record.args ? (
 			<>
 				{record.args && (
 					<pre
