@@ -21,6 +21,7 @@ const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	lostRowsToStaleAnswer,
 	SESSION_RANK_NAME,
 	SESSION_RANK_ID,
 	SESSION_RANK_BODY,
@@ -254,4 +255,38 @@ test("the tiers are ordered the way the backend's are", () => {
 		[SESSION_RANK_NAME, SESSION_RANK_ID, SESSION_RANK_BODY, SESSION_RANK_SOFT],
 		[0, 1, 2, 3],
 	);
+});
+
+test("the in-flight explanation fires on the collapse, not on emptiness", () => {
+	// Round 3's R17: the line was gated on an EMPTY list, which is the one state
+	// where nothing has visibly changed, and it stayed silent in the state it was
+	// written for — the box moving past the answer in hand, so the list falls back
+	// to local matches and the conversation matches it was showing disappear.
+	const rows = [
+		row("aaaaaaaaaaaa", "Retention sweep notes"),
+		row("bbbbbbbbbbbb", "Refactor the loader"),
+	];
+	// The answer for `retention` is in hand: name match + body match.
+	const previous = searchChats(rows, "retention", [
+		hit("aaaaaaaaaaaa", SESSION_RANK_NAME),
+		hit("bbbbbbbbbbbb", SESSION_RANK_BODY, true),
+	]);
+	// The box has moved on by one character (`retention s`); its answer has not
+	// arrived, so the list falls back to what matches locally — the name row
+	// survives, the conversation match does not.
+	const collapsed = searchChats(rows, "retention s", null);
+
+	assert.equal(previous.rows.length, 2);
+	assert.equal(collapsed.rows.length, 1);
+	assert.equal(
+		lostRowsToStaleAnswer(previous.rows.length, collapsed.rows.length),
+		true,
+	);
+
+	// Nothing was lost: a list that grew, or one that is unchanged, says nothing.
+	assert.equal(lostRowsToStaleAnswer(1, 1), false);
+	assert.equal(lostRowsToStaleAnswer(1, 2), false);
+	// No answer in hand at all (the first keystroke of a word) is not a collapse
+	// either: there is nothing to have lost.
+	assert.equal(lostRowsToStaleAnswer(0, 1), false);
 });

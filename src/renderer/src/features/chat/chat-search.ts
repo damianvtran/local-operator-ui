@@ -143,7 +143,7 @@ export function searchChats(
 	 * reported as "no matches" -- a search that lies in the direction the user
 	 * cannot detect.
 	 *
-	 * Hence the wire carries `name`, `mtime` and `forked`, and hence this branch:
+	 * Hence the wire carries `name` and `mtime`, and hence this branch:
 	 * a hit with no local row is rendered as a minimal row of its own. It has no
 	 * binding, so it lands in the flat section rather than under an agent, and
 	 * opening it works because the id is a real session id. Rank and marker
@@ -163,13 +163,16 @@ export function searchChats(
 	}
 	return {
 		rows: admitted
-			// `(tier, recency)`: the tier decides, then the newer chat first, then
-			// the order the rows arrived in (the catalogue is already newest-first,
-			// and a table-stable sort keeps it). Recency is read from `updated_at`
-			// rather than from the array position because a row the client does not
-			// list — a synthesized search hit — has no position to inherit, and
-			// appending it would have made "newest first" a lie for exactly the rows
-			// this branch added (review round 2, R12).
+			// Three keys, in this order: the tier; then recency, newest first; and
+			// only then the order the rows arrived in, which is the tie-break of
+			// last resort for rows the first two keys cannot separate (the
+			// catalogue is already newest-first, and a table-stable sort keeps it).
+			// Recency is read from `updated_at` rather than from the array position
+			// because a row the client does not list — a synthesized search hit —
+			// has no position to inherit, and appending it would have made "newest
+			// first" a lie for exactly the rows this branch added (review round 2,
+			// R12; the wording here was ambiguous about the precedence until review
+			// round 3, R20).
 			.map((entry, index) => ({ entry, index }))
 			.sort(
 				(a, b) =>
@@ -181,6 +184,31 @@ export function searchChats(
 		conversationMatches,
 		synthesized,
 	};
+}
+
+/**
+ * Whether the list LOST rows to a stale answer — the state the sidebar's
+ * in-flight line exists to explain.
+ *
+ * Round 1 of this review reported the symptom (the list visibly drops the
+ * conversation matches it was showing, with no explanation, while the answer for
+ * the new box is in flight). The first attempt at explaining it was gated on the
+ * list being EMPTY, which is the one state where nothing has visibly changed, so
+ * it spoke when nothing was wrong and stayed silent in the case it was written
+ * for (review round 3, R17, reproduced on a seeded store: two rows with one
+ * marked, then one row with none).
+ *
+ * As a rule it is "the list shows fewer rows than the answer in hand would",
+ * which is exactly the collapse: an answer for a query the box has moved past is
+ * still in `search.data` (`keepPreviousData` serves it), the local fallback is
+ * showing instead, and when the fallback shows LESS than that answer would have,
+ * the difference is what the user just watched disappear.
+ */
+export function lostRowsToStaleAnswer(
+	previousCount: number,
+	currentCount: number,
+): boolean {
+	return previousCount > currentCount;
 }
 
 /**
