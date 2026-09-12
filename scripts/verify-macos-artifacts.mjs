@@ -131,23 +131,66 @@ export function summarize(results) {
 	return { ok: failures.length === 0, failures };
 }
 
-/** The packaged app inside a `dist` directory, if the build produced one. */
-export function discoverApp(distDir, { listDir = readdirSync } = {}) {
-	if (!existsSync(distDir)) return null;
-	for (const entry of listDir(distDir)) {
+/**
+ * Everything under `dist` the gate is responsible for.
+ *
+ * Why a plural discovery rather than "the first match": `package.json` builds
+ * one `universal` dmg today, so asserting only the first image was complete by
+ * accident rather than by construction - `mac.target` already lists a dmg and a
+ * zip, and a per-architecture matrix would leave images unaudited (review R9).
+ *
+ * Each entry is inspected inside a try/catch: a broken symlink where an image
+ * should be is a failing check with a reason, not an exception out of discovery.
+ */
+export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
+	const apps = [];
+	const dmgs = [];
+	const errors = [];
+	if (!existsSync(distDir)) return { apps, dmgs, errors };
+
+	let entries = [];
+	try {
+		entries = listDir(distDir);
+	} catch (error) {
+		errors.push(`${distDir}: ${error.message ?? String(error)}`);
+		return { apps, dmgs, errors };
+	}
+
+	for (const entry of entries) {
+		if (entry.endsWith(".dmg")) {
+			dmgs.push(join(distDir, entry));
+			continue;
+		}
+		if (!entry.startsWith("mac")) continue;
 		const candidate = join(distDir, entry);
-		if (!entry.startsWith("mac") || !statSync(candidate).isDirectory()) continue;
+		try {
+			if (!statSync(candidate).isDirectory()) continue;
 		for (const inner of listDir(candidate)) {
-			if (inner.endsWith(".app")) return join(candidate, inner);
+				if (!inner.endsWith(".app")) continue;
+				const appPath = join(candidate, inner);
+				// statSync, not existsSync: a dangling symlink where a bundle should be
+				// is a discovery failure with a reason, rather than a candidate that
+				// silently disappears from the set to be checked (review R9).
+				try {
+					if (statSync(appPath)) apps.push(appPath);
+				} catch (error) {
+					errors.push(`${appPath}: ${error.message ?? String(error)}`);
+				}
+			}
+		} catch (error) {
+			errors.push(`${candidate}: ${error.message ?? String(error)}`);
 		}
 	}
-	return null;
+	return { apps, dmgs, errors };
 }
 
-export function discoverDmg(distDir, { listDir = readdirSync } = {}) {
-	if (!existsSync(distDir)) return null;
-	const match = listDir(distDir).find((entry) => entry.endsWith(".dmg"));
-	return match ? join(distDir, match) : null;
+/** The first packaged app inside a `dist` directory, if the build produced one. */
+export function discoverApp(distDir, options = {}) {
+	return discoverArtifacts(distDir, options).apps[0] ?? null;
+}
+
+export function discoverDmg(distDir, options = {}) {
+	return discoverArtifacts(distDir, options).dmgs[0] ?? null;
 }
 
 /** `spawnSync` runner: the real thing, used by the CLI. */
@@ -177,21 +220,44 @@ export function verifyArtifacts({
 	run = spawnRunner,
 	log = console.log,
 } = {}) {
-	const appPath = app ?? discoverApp(dist);
-	const dmgPath = dmg ?? discoverDmg(dist);
+	const discovered = discoverArtifacts(dist);
+	const appPaths = app ? [app] : discovered.apps;
+	const dmgPaths = dmg ? [dmg] : discovered.dmgs;
 
-	if (!appPath || !existsSync(appPath)) {
-		log(`No packaged app found under ${dist}`);
+	const problems = [];
+	if (appPaths.length === 0) problems.push(`No packaged app found under ${dist}`);
+	if (dmgPaths.length === 0) problems.push(`No disk image found under ${dist}`);
+	for (const error of discovered.errors) {
+		problems.push(`An artifact under ${dist} could not be read: ${error}`);
+	}
+	if (problems.length > 0) {
+		for (const problem of problems) log(problem);
 		return { ok: false, results: [] };
 	}
-	if (!dmgPath || !existsSync(dmgPath)) {
-		log(`No disk image found under ${dist}`);
-		return { ok: false, results: [] };
+
+	/*
+	 * Every image is asserted, and the app checks run against each app bundle:
+	 * the whole point of this gate is that no artifact reaches a release without
+	 * having been asked the questions a user's Gatekeeper asks.
+	 */
+	const results = [];
+	for (const appPath of appPaths) {
+		if (!existsSync(appPath)) {
+			log(`No packaged app at ${appPath}`);
+			return { ok: false, results: [] };
+		}
+		log(`Checking app: ${appPath}`);
+		results.push(...runChecks({ appPath, dmgPath: null, run }));
+	}
+	for (const dmgPath of dmgPaths) {
+		if (!existsSync(dmgPath)) {
+			log(`No disk image at ${dmgPath}`);
+			return { ok: false, results: [] };
+		}
+		log(`Checking disk image: ${dmgPath}`);
+		results.push(...runChecks({ appPath: null, dmgPath, run }));
 	}
 
-	log(`Checking app: ${appPath}`);
-	log(`Checking disk image: ${dmgPath}`);
-	const results = runChecks({ appPath, dmgPath, run });
 	for (const result of results) {
 		log(
 			`${result.passed ? "PASS" : "FAIL"} ${result.id}: ${result.description}${result.passed ? "" : ` -> ${result.output}`}`,

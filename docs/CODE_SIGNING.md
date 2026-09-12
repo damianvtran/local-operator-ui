@@ -117,6 +117,16 @@ build actually produced, and any failure fails the release before upload:
 | Image is accepted | `spctl -a -vvv -t open --context context:primary-signature` on the `.dmg` |
 | Image ticket is stapled | `xcrun stapler validate` on the `.dmg` |
 
+Every app bundle and every disk image the build produced is asserted, not the
+first of each: `mac.target` already lists more than one artifact kind, so a
+per-architecture matrix would otherwise leave images unaudited by construction.
+A `dist` entry that cannot be read (a dangling symlink where a bundle should be)
+fails the step with a reason rather than throwing out of discovery. Each image
+also has to appear in the update metadata, or the step fails: a stapled image
+that no `latest*.yml` describes would otherwise ship with the pre-staple hash
+still in the file the updater verifies against — a release that is late rather
+than wrong.
+
 The first three passed on 0.17.0 and the last two failed, which is exactly how a
 release whose app could not be opened from its own download page got out: only
 the app was ever asserted. `context:primary-signature` is what makes the fourth

@@ -208,8 +208,15 @@ const STORIES = [
 	["common-updatenotification--install-blocked", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// A server the app does not own, with the command that fits how it was
-	// installed (the pip line the operator was shown is gone).
+	// installed (the pip line the operator was shown is gone) - from both
+	// producers of that state: one the app installed itself, and one it merely
+	// attached to after the user started it in a terminal.
 	["common-updatenotification--backend-manual-required", 1280, 900],
+	[
+		"common-updatenotification--backend-manual-required-existing-server",
+		1280,
+		900,
+	],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],

@@ -48,11 +48,16 @@ export function dmgArtifacts(artifactPaths = []) {
  * A targeted line rewrite rather than a parse-and-re-dump: the rest of the file
  * (release date, channel, paths) is not ours to reformat, and the file is read
  * by tools that care about the values, not the layout.
+ *
+ * Returns `matched` as well as the text: a stapled image whose entry is not in
+ * the file leaves the pre-staple hash in place, and the caller has to be able
+ * to tell that from "rewritten" rather than shipping a hash of bytes nobody
+ * downloads (review R8).
  */
 export function updateUpdateYmlEntry(ymlText, fileName, { sha512, size }) {
 	const lines = ymlText.split("\n");
 	const entryIndex = lines.findIndex((line) => line.trim() === `- url: ${fileName}`);
-	if (entryIndex === -1) return ymlText;
+	if (entryIndex === -1) return { text: ymlText, matched: false, replaced: 0 };
 
 	let replaced = 0;
 	for (let index = entryIndex + 1; index < lines.length; index++) {
@@ -67,7 +72,11 @@ export function updateUpdateYmlEntry(ymlText, fileName, { sha512, size }) {
 			replaced++;
 		}
 	}
-	return replaced > 0 ? lines.join("\n") : ymlText;
+	return {
+		text: replaced > 0 ? lines.join("\n") : ymlText,
+		matched: true,
+		replaced,
+	};
 }
 
 export function sha512Base64(filePath) {
@@ -166,13 +175,31 @@ export async function notarizeArtifacts({ dist, artifactPaths, log = console.log
 		const sha512 = await sha512Base64(dmgPath);
 		const size = statSync(dmgPath).size;
 		const name = basename(dmgPath);
+		let describedSomewhere = false;
 		for (const ymlPath of ymlFiles) {
 			const before = readFileSync(ymlPath, "utf8");
-			const after = updateUpdateYmlEntry(before, name, { sha512, size });
-			if (after !== before) {
-				writeFileSync(ymlPath, after, "utf8");
+			const entry = updateUpdateYmlEntry(before, name, { sha512, size });
+			if (entry.matched) describedSomewhere = true;
+			if (entry.text !== before) {
+				writeFileSync(ymlPath, entry.text, "utf8");
 				log(`Updated ${basename(ymlPath)}: ${name} size ${size}`);
 			}
+		}
+		/*
+		 * A stapled image that appears in none of the metadata files is the one
+		 * case where doing nothing would ship the pre-staple hash with no signal:
+		 * electron-updater would verify the download against a hash of bytes that
+		 * no longer exist. The step fails instead - the release is late rather
+		 * than wrong (review R8). A yml that legitimately describes another
+		 * platform is fine: it is the image being described nowhere that is not.
+		 */
+		if (!describedSomewhere && ymlFiles.length > 0) {
+			throw new Error(
+				`Stapled disk image ${name} has no entry in ${ymlFiles.map((yml) => basename(yml)).join(", ")}; its update metadata cannot be rewritten`,
+			);
+		}
+		if (ymlFiles.length === 0) {
+			log(`No update metadata files found in ${dist}: ${name} was stapled but not re-hashed`);
 		}
 		notarized.push({ path: dmgPath, sha512, size });
 		log(`Disk image notarized and stapled: ${dmgPath}`);
