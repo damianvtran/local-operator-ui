@@ -7,8 +7,10 @@ import {
 } from "@shared/store/deferred-updates-store";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
+import { AlertTriangle, Check, Copy } from "lucide-react";
 import {
 	type HTMLAttributes,
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useRef,
@@ -57,6 +59,15 @@ type InstallFailedInfo = {
 	message: string;
 	remedy: UpdateRemedy;
 	detail?: string;
+	/** How many times this target has failed on this machine. */
+	attempts?: number;
+};
+
+/** The by-hand server state: what to run, and what installation it was read from. */
+type ManualUpdateInfo = {
+	message: string;
+	command: string;
+	detail?: string;
 };
 
 /** Headings for the refusal states, sentence case, one line each. */
@@ -74,12 +85,20 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
  * border. The `[&_a]` rule is the only descendant selector kept from the MUI
  * version: release notes arrive as HTML from GitHub, so their anchors cannot be
  * given a class at the call site.
+ *
+ * `tone` is what assistive technology is told, and it is the same split
+ * `FloatingAlert` uses: these panels are the ones a user most needs to notice -
+ * an update was refused, an install failed - and they were announced to nobody
+ * while every transient message in this file went out as a live region
+ * (review U6).
  */
 export const UpdateContainer = ({
 	className,
+	tone = "notice",
 	...props
-}: HTMLAttributes<HTMLDivElement>) => (
+}: HTMLAttributes<HTMLDivElement> & { tone?: "notice" | "failed" }) => (
 	<div
+		role={tone === "failed" ? "alert" : "status"}
 		className={cn(
 			"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 			"rounded-lg bg-elevated p-4 shadow-overlay",
@@ -89,6 +108,103 @@ export const UpdateContainer = ({
 		{...props}
 	/>
 );
+
+/**
+ * A panel heading, with the marker that says this one failed.
+ *
+ * Why an icon and not `text-danger` on the words: the two failure states were
+ * typographically identical to the informational one - same 16px `text-ink`
+ * heading, same body, same right-aligned buttons - so a user who had learned
+ * "top-right panel = an update is available" read a broken install as one more
+ * notice (review D1). `danger` as TEXT on `elevated` measures 3.76:1 in monokai
+ * and 3.81:1 in dracula, under the 4.5:1 text floor `check-themes` asserts for
+ * every theme, while the same ink as a graphical mark clears the 3:1 non-text
+ * floor everywhere. So the colour is spent on the glyph and the distinction is
+ * carried by the glyph's shape plus the words themselves.
+ */
+export const UpdateHeading = ({
+	children,
+	tone = "notice",
+}: {
+	children: ReactNode;
+	tone?: "notice" | "failed";
+}) => (
+	<h2 className={cn("mb-3 flex items-center gap-2 text-heading text-ink")}>
+		{tone === "failed" && (
+			<AlertTriangle
+				className="size-4 shrink-0 text-danger"
+				aria-hidden={true}
+			/>
+		)}
+		{children}
+	</h2>
+);
+
+/**
+ * Machine voice at the bottom of a panel, labelled and copyable.
+ *
+ * It used to sit directly above the buttons, unlabelled and at 12px mono, so the
+ * last thing the eye crossed before the primary action was an OSStatus code -
+ * and the only way to get that code into a support report was to hand-select a
+ * wrapped path (reviews D2, D6, U11). It is below the actions now, it says what
+ * it is, and one click copies it, which is the affordance the rest of the app
+ * already has for the same job.
+ */
+export const PanelDetails = ({ detail }: { detail: string }) => {
+	const [copied, setCopied] = useState(false);
+	return (
+		<div className="mt-4 flex items-start gap-2">
+			<span className="shrink-0 text-meta text-ink-dim">Details:</span>
+			<span className="min-w-0 flex-1 break-words text-mono-sm text-ink-dim">
+				{detail}
+			</span>
+			<Button
+				variant="ghost"
+				size="sm"
+				onClick={() => {
+					void navigator.clipboard
+						.writeText(detail)
+						.then(() => setCopied(true))
+						.catch(() => undefined);
+				}}
+			>
+				{copied ? <Check /> : <Copy />}
+				{copied ? "Copied" : "Copy"}
+			</Button>
+		</div>
+	);
+};
+
+/**
+ * A command the user has to run themselves, with a way to take it with them.
+ *
+ * The app already had this pattern (MCP setup prompts, provider details), and a
+ * bare `<code>` block floating over the app made the user hand-select a command
+ * out of a panel (review U7).
+ */
+export const CommandBlock = ({ command }: { command: string }) => {
+	const [copied, setCopied] = useState(false);
+	return (
+		<div className="mt-2 flex items-start gap-2">
+			<code className="min-w-0 flex-1 rounded-sm bg-sunken p-2 text-mono-sm break-all text-ink">
+				{command}
+			</code>
+			<Button
+				variant="outline"
+				size="sm"
+				onClick={() => {
+					void navigator.clipboard
+						.writeText(command)
+						.then(() => setCopied(true))
+						.catch(() => undefined);
+				}}
+			>
+				{copied ? <Check /> : <Copy />}
+				{copied ? "Copied" : "Copy"}
+			</Button>
+		</div>
+	);
+};
 
 /**
  * Prose semantics for the one place in the app that injects third-party HTML.
@@ -159,10 +275,21 @@ export const UpdateNotification = ({
 		useState<BackendUpdateInfo | null>(null);
 	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
 	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
-	const [manualUpdateInfo, setManualUpdateInfo] = useState<{
-		message: string;
-		command: string;
-	} | null>(null);
+	const [manualUpdateInfo, setManualUpdateInfo] =
+		useState<ManualUpdateInfo | null>(null);
+	/**
+	 * The server version the by-hand panel is waiting for.
+	 *
+	 * Held so the panel can clear itself when /health reports it: the panel's own
+	 * copy says to run the command and check again, and it used to stay up
+	 * afterwards until the user pressed Dismiss (review U2). Read from the backend
+	 * info the update attempt was made against, because the manual-required event
+	 * itself carries no version.
+	 */
+	const manualUpdateTargetRef = useRef<string | null>(null);
+
+	/** True while `Install now` has been pressed and the pre-flight is running. */
+	const [installing, setInstalling] = useState(false);
 
 	// Install refusals and a failed install detected on this start. Kept apart
 	// from each other because only one of them has an installed app to talk about.
@@ -188,23 +315,56 @@ export const UpdateNotification = ({
 			.catch(() => setAppVersion("unknown"));
 	}, []);
 
-	// Check for updates
-	const checkForUpdates = useCallback(async () => {
+	/**
+	 * Check for updates.
+	 *
+	 * `manual` marks a check the user asked for. It travels to the main process so
+	 * an explicit check can re-offer a release whose artifact failed verification:
+	 * two of the refusal panels tell the user to free space or re-download and
+	 * then check again, and with the suppression applied to every check that
+	 * remedy was inert for the rest of the session (reviews R3, U3).
+	 */
+	const checkForUpdates = useCallback(
+		async (options?: { manual?: boolean }) => {
+			try {
+				setChecking(true);
+				setError(null);
+				await window.api.updater.checkForUpdates(options);
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : String(err);
+				// If the error is because the release artifact is not found, don't show an error
+				if (RELEASE_ARTIFACT_ERROR_REGEX.test(errorMessage)) {
+					setUpdateAvailable(false);
+					setUpdateInfo(null);
+					console.warn(`Error checking for updates: ${errorMessage}`);
+					return;
+				}
+
+				setError(`Error checking for updates: ${errorMessage}`);
+				setSnackbarOpen(true);
+			} finally {
+				setChecking(false);
+			}
+		},
+		[],
+	);
+
+	/**
+	 * Re-check the *server*, for the panel whose copy says to.
+	 *
+	 * That panel's button used to call the UI-only check, so the action it named
+	 * could not observe the thing it was about, and after the user did upgrade the
+	 * server the panel stayed up anyway (review U2).
+	 */
+	const checkForAllUpdates = useCallback(async () => {
 		try {
 			setChecking(true);
 			setError(null);
-			await window.api.updater.checkForUpdates();
+			await window.api.updater.checkForAllUpdates({ manual: true });
 		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : String(err);
-			// If the error is because the release artifact is not found, don't show an error
-			if (RELEASE_ARTIFACT_ERROR_REGEX.test(errorMessage)) {
-				setUpdateAvailable(false);
-				setUpdateInfo(null);
-				console.warn(`Error checking for updates: ${errorMessage}`);
-				return;
-			}
-
-			setError(`Error checking for updates: ${errorMessage}`);
+			setError(
+				`Error checking for updates: ${err instanceof Error ? err.message : String(err)}`,
+			);
 			setSnackbarOpen(true);
 		} finally {
 			setChecking(false);
@@ -226,13 +386,38 @@ export const UpdateNotification = ({
 		}
 	}, []);
 
-	// Install the update
-	const installUpdate = useCallback(() => {
-		window.api.updater.quitAndInstall();
+	/**
+	 * Install the update.
+	 *
+	 * The pre-flight behind this call can run `codesign` over a 1 GiB bundle and
+	 * hash a 350 MB artifact, and the panel used to look untouched with its
+	 * primary button still live for those seconds - so the natural response to
+	 * "nothing happened" was a second click, which re-entered the pre-flight and
+	 * could spawn a second watchdog (review U5). The panel now shows a pending
+	 * state, and the main process holds the concurrency guard.
+	 */
+	const installUpdate = useCallback(async () => {
+		setInstalling(true);
+		setError(null);
+		try {
+			const started = await window.api.updater.quitAndInstall();
+			if (!started) {
+				// Refused or already in flight: the refusal panel is the messenger, and
+				// the app is still here to show it.
+				setInstalling(false);
+			}
+		} catch (err) {
+			setInstalling(false);
+			setError(
+				`Error starting the update: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setSnackbarOpen(true);
+		}
 	}, []);
 
 	/** Open a remedy's page in the user's browser. */
-	const openRemedyUrl = useCallback((url: string) => {
+	const openRemedyUrl = useCallback((url: string | undefined) => {
+		if (!url) return;
 		void window.api.openExternal(url);
 	}, []);
 
@@ -283,6 +468,10 @@ export const UpdateNotification = ({
 		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
 			(info) => {
 				if (shouldShowUpdate(UpdateType.UI, info.version)) {
+					// The offer supersedes the failure notice: the panel that explains an
+					// install that did not finish would otherwise sit over the update it is
+					// asking for. The durable record survives in Settings -> App updates.
+					setInstallFailed(null);
 					setUpdateAvailable(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
@@ -302,6 +491,7 @@ export const UpdateNotification = ({
 			window.api.updater.onUpdateDownloaded((info) => {
 				setDownloading(false);
 				if (shouldShowUpdate(UpdateType.UI, info.version)) {
+					setInstallFailed(null);
 					setUpdateDownloaded(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
@@ -312,11 +502,16 @@ export const UpdateNotification = ({
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
 				if (errorMessage.includes("manually")) {
+					// Legacy wording from a main process that named pip for every
+					// unmanaged server. No command is offered here any more: the app
+					// cannot tell which installer owns an environment from a string it
+					// was handed, and naming the wrong one is the defect this whole change
+					// exists to fix (reviews U4, D4).
 					setManualUpdateRequired(true);
 					setManualUpdateInfo({
 						message:
-							"Please update the local-operator package manually using pip.",
-						command: "pip install --upgrade local-operator",
+							"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
+						command: "",
 					});
 					setSnackbarOpen(true);
 				} else {
@@ -331,6 +526,10 @@ export const UpdateNotification = ({
 		// Backend update requires a manual command (a server the app does not own)
 		const removeBackendManualRequiredListener =
 			window.api.updater.onBackendUpdateManualRequired((info) => {
+				// The event carries no version, and this panel has to know which one it
+				// is waiting for so it can clear itself once the server reaches it.
+				manualUpdateTargetRef.current =
+					backendUpdateInfoRef.current?.latestVersion ?? null;
 				setManualUpdateRequired(true);
 				setManualUpdateInfo(info);
 				setChecking(false);
@@ -350,6 +549,14 @@ export const UpdateNotification = ({
 		const removeInstallFailedListener =
 			window.api.updater.onUpdateInstallFailed((info) => {
 				setInstallFailed(info);
+				/*
+				 * The notice explains why the app came back on the old version, and it used
+				 * to be queued behind this component's own start-up check: a user watching
+				 * their app reappear saw "Checking for updates..." for the whole check and
+				 * nothing at all if the check never settled (review U8). The failure is not
+				 * a function of the check, so it takes the panel and the check steps aside.
+				 */
+				setChecking(false);
 			});
 
 		// Frontend update progress
@@ -392,6 +599,16 @@ export const UpdateNotification = ({
 					}
 					return prev;
 				});
+				// The by-hand panel's own instruction is "run this, then check again".
+				// When the server that answers is the version it was waiting for, the
+				// panel has been satisfied and clears itself - it used to stay up until
+				// the user pressed Dismiss, which made a successful upgrade look like a
+				// failed one (review U2).
+				const target = manualUpdateTargetRef.current;
+				if (target == null || target === info.version) {
+					setManualUpdateRequired(false);
+					setManualUpdateInfo(null);
+				}
 			});
 
 		// Backend update completed
@@ -435,6 +652,65 @@ export const UpdateNotification = ({
 		setSnackbarOpen(false);
 	};
 
+	/*
+	 * The failure notice comes before the check's own progress panel.
+	 *
+	 * It explains why the app came back on the old version, and it used to be
+	 * queued behind this component's start-up check - so a user watching their app
+	 * reappear saw "Checking for updates..." for the whole check, and nothing at
+	 * all if the check never settled, because this path has no timeout (review
+	 * U8). The failure is not a function of the check.
+	 */
+	if (installFailed) {
+		return (
+			<UpdateContainer tone="failed">
+				<UpdateHeading tone="failed">
+					The last update didn't finish
+				</UpdateHeading>
+				<p className="mb-2 text-body text-ink-muted">{installFailed.message}</p>
+				{/* The actionable sentence at the panel's reading weight: it was set one
+				    step below the explanation, so the thing to DO lost to the thing that
+				    happened (review D2). */}
+				<p className="mt-2 text-body text-ink">{installFailed.remedy.text}</p>
+				{(installFailed.attempts ?? 1) > 1 && (
+					<p className="mt-1 text-body-sm text-ink-muted">
+						Version {installFailed.targetVersion} has failed to install{" "}
+						{installFailed.attempts} times on this machine. Downloading a fresh
+						copy is the reliable way out.
+					</p>
+				)}
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setInstallFailed(null)}
+					>
+						Update later
+					</Button>
+					{/* One click at the retry the copy names, and it has to be a check the
+					    main process can tell apart from its own periodic one, or the
+					    suppression keeps the release away (reviews D3, R3). */}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => void checkForUpdates({ manual: true })}
+						disabled={checking}
+					>
+						{checking ? "Checking..." : "Check for updates"}
+					</Button>
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => openRemedyUrl(installFailed.remedy.url)}
+					>
+						Open download page
+					</Button>
+				</UpdateActions>
+				{installFailed.detail && <PanelDetails detail={installFailed.detail} />}
+			</UpdateContainer>
+		);
+	}
+
 	// If checking for updates or updating backend, show a loading indicator
 	if (checking) {
 		return (
@@ -472,21 +748,17 @@ export const UpdateNotification = ({
 	// still running, the update is still staged, and the remedy is the point.
 	if (installBlocked) {
 		return (
-			<UpdateContainer>
-				<h2 className="mb-3 text-heading text-ink">
+			<UpdateContainer tone="failed">
+				<UpdateHeading tone="failed">
 					{INSTALL_BLOCK_HEADINGS[installBlocked.code] ??
 						"The update wasn't installed"}
-				</h2>
+				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{installBlocked.message}
 				</p>
-				<p className="mt-2 text-body-sm text-ink-muted">
-					{installBlocked.remedy.text}
-				</p>
-				{installBlocked.detail && (
-					<p className="mt-1 text-mono-sm text-ink-dim">
-						{installBlocked.detail}
-					</p>
+				<p className="mt-2 text-body text-ink">{installBlocked.remedy.text}</p>
+				{installBlocked.remedy.command && (
+					<CommandBlock command={installBlocked.remedy.command} />
 				)}
 				<UpdateActions>
 					<Button
@@ -494,61 +766,30 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={() => setInstallBlocked(null)}
 					>
-						Dismiss
+						Update later
 					</Button>
 					{installBlocked.remedy.url ? (
 						<Button
 							variant="primary"
 							size="sm"
-							onClick={() => openRemedyUrl(installBlocked.remedy.url as string)}
+							onClick={() => openRemedyUrl(installBlocked.remedy.url)}
 						>
 							Open download page
 						</Button>
 					) : (
-						<Button variant="primary" size="sm" onClick={checkForUpdates}>
-							Check for updates
-						</Button>
-					)}
-				</UpdateActions>
-			</UpdateContainer>
-		);
-	}
-
-	// A previous install that ShipIt never completed. The user saw the app quit
-	// and come back on the old version, so this is that explanation.
-	if (installFailed) {
-		return (
-			<UpdateContainer>
-				<h2 className="mb-3 text-heading text-ink">
-					The last update didn't finish
-				</h2>
-				<p className="mb-2 text-body text-ink-muted">{installFailed.message}</p>
-				<p className="mt-2 text-body-sm text-ink-muted">
-					{installFailed.remedy.text}
-				</p>
-				{installFailed.detail && (
-					<p className="mt-1 text-mono-sm text-ink-dim">
-						{installFailed.detail}
-					</p>
-				)}
-				<UpdateActions>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => setInstallFailed(null)}
-					>
-						Dismiss
-					</Button>
-					{installFailed.remedy.url && (
 						<Button
 							variant="primary"
 							size="sm"
-							onClick={() => openRemedyUrl(installFailed.remedy.url as string)}
+							onClick={() => void checkForUpdates({ manual: true })}
+							disabled={checking}
 						>
-							Open download page
+							{checking ? "Checking..." : "Check for updates"}
 						</Button>
 					)}
 				</UpdateActions>
+				{installBlocked.detail && (
+					<PanelDetails detail={installBlocked.detail} />
+				)}
 			</UpdateContainer>
 		);
 	}
@@ -558,19 +799,25 @@ export const UpdateNotification = ({
 	if (manualUpdateRequired && manualUpdateInfo) {
 		return (
 			<UpdateContainer>
-				<h2 className="mb-3 text-heading text-ink">
-					The server needs updating by hand
-				</h2>
-				<p className="mb-2 text-body text-ink-muted">
-					{manualUpdateInfo.message}
-				</p>
-				<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
-					{manualUpdateInfo.command}
-				</code>
-				<p className="mt-2 text-body-sm text-ink-muted">
-					Run this in a terminal, then check for updates again to pick up the
-					new server version.
-				</p>
+				<UpdateHeading>The server needs updating by hand</UpdateHeading>
+				{/* Same emphasis as the other producer of this state
+				    (`backend-update-non-managed`, which used a warning hue): one sentence,
+				    the same weight, and the words carry which one needs the user
+				    (review D5). */}
+				<p className="mb-2 text-body text-ink">{manualUpdateInfo.message}</p>
+				{manualUpdateInfo.command ? (
+					<>
+						<CommandBlock command={manualUpdateInfo.command} />
+						<p className="mt-2 text-body text-ink">
+							Run this in a terminal, then check for updates again to pick up
+							the new server version.
+						</p>
+					</>
+				) : (
+					<p className="mt-2 text-body text-ink">
+						Then check for updates again to pick up the new server version.
+					</p>
+				)}
 				<UpdateActions>
 					<Button
 						variant="outline"
@@ -580,12 +827,24 @@ export const UpdateNotification = ({
 							setManualUpdateInfo(null);
 						}}
 					>
-						Dismiss
+						Update later
 					</Button>
-					<Button variant="primary" size="sm" onClick={checkForUpdates}>
-						Check for updates
+					{/* This button's own copy says "check again to pick up the new server
+					    version", so it has to re-read the SERVER: it used to call the
+					    UI-only check, which could not observe the thing the panel is about
+					    (review U2). */}
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => void checkForAllUpdates()}
+						disabled={checking}
+					>
+						{checking ? "Checking..." : "Check for updates"}
 					</Button>
 				</UpdateActions>
+				{manualUpdateInfo.detail && (
+					<PanelDetails detail={manualUpdateInfo.detail} />
+				)}
 			</UpdateContainer>
 		);
 	}
@@ -720,11 +979,23 @@ export const UpdateNotification = ({
 					</p>
 
 					<UpdateActions>
-						<Button variant="outline" size="sm" onClick={handleDeferUpdate}>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleDeferUpdate}
+							disabled={installing}
+						>
 							Update later
 						</Button>
-						<Button variant="primary" size="sm" onClick={installUpdate}>
-							Install now
+						{/* One click, then a panel that says it heard: the pre-flight behind this
+						    button can take seconds over a 1 GiB bundle. */}
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => void installUpdate()}
+							disabled={installing}
+						>
+							{installing ? "Preparing to install..." : "Install now"}
 						</Button>
 					</UpdateActions>
 				</UpdateContainer>
@@ -779,13 +1050,17 @@ export const UpdateNotification = ({
 						</UpdateActions>
 					) : (
 						<>
-							<p className="mt-4 text-body-sm text-warning">
+							{/* The same treatment as the manual-required panel's sentence - one
+							    weight, no hue swap. It used to be `text-warning` here and 13px
+							    `text-ink-muted` there, for the same sentence, so the only thing
+							    marking "this one needs you" was a colour (review D5). */}
+							<p className="mt-4 text-body text-ink">
 								{backendUpdateInfo.remedy ??
-									"The server is installed outside the app, so update it from your terminal:"}
+									"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip:"}
 							</p>
-							<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
-								{backendUpdateInfo.updateCommand}
-							</code>
+							{backendUpdateInfo.updateCommand && (
+								<CommandBlock command={backendUpdateInfo.updateCommand} />
+							)}
 							<UpdateActions>
 								<Button
 									variant="outline"
@@ -793,21 +1068,37 @@ export const UpdateNotification = ({
 									onClick={handleDeferBackendUpdate}
 									disabled={checking}
 								>
-									Dismiss
+									Update later
+								</Button>
+								<Button
+									variant="primary"
+									size="sm"
+									onClick={() => void checkForAllUpdates()}
+									disabled={checking}
+								>
+									{checking ? "Checking..." : "Check for updates"}
 								</Button>
 							</UpdateActions>
 						</>
 					)}
 				</UpdateContainer>
 
-				<FloatingAlert
-					open={snackbarOpen}
-					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
-					variant="info"
-				>
-					A new server update is available: v{backendUpdateInfo.latestVersion}
-				</FloatingAlert>
+				{/*
+				 * The panel IS the notification here, so the toast that used to sit in the
+				 * opposite corner saying the same sentence is gone - and it is gone for the
+				 * state that never raised one, rather than being raised twice or not at
+				 * all depending on the branch (review D8).
+				 */}
+				{backendUpdateInfo.canManageUpdate && (
+					<FloatingAlert
+						open={snackbarOpen}
+						autoHideDuration={6000}
+						onClose={handleSnackbarClose}
+						variant="info"
+					>
+						A new server update is available: v{backendUpdateInfo.latestVersion}
+					</FloatingAlert>
+				)}
 			</>
 		);
 	}

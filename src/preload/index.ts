@@ -90,10 +90,21 @@ const api = {
 
 	// Add methods for auto-updater
 	updater: {
-		checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+		/**
+		 * Check for a UI update.
+		 *
+		 * `manual` marks a check the user asked for, which the main process lets
+		 * re-offer a release whose artifact failed verification - the refusal
+		 * panels tell the user to make space or re-download and then check again.
+		 */
+		checkForUpdates: (options?: { manual?: boolean }) =>
+			ipcRenderer.invoke("check-for-updates", options),
 		checkForBackendUpdates: () =>
 			ipcRenderer.invoke("check-for-backend-updates"),
-		checkForAllUpdates: () => ipcRenderer.invoke("check-for-all-updates"),
+		checkForAllUpdates: (options?: { manual?: boolean }) =>
+			ipcRenderer.invoke("check-for-all-updates", options),
+		/** The last install that did not complete, for Settings -> App updates. */
+		getLastInstallAttempt: () => ipcRenderer.invoke("get-last-install-attempt"),
 		updateBackend: (targetVersion?: string) =>
 			ipcRenderer.invoke("update-backend", targetVersion),
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
@@ -164,7 +175,11 @@ const api = {
 		 * string instead.
 		 */
 		onBackendUpdateManualRequired: (
-			callback: (info: { message: string; command: string }) => void,
+			callback: (info: {
+				message: string;
+				command: string;
+				detail?: string;
+			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("backend-update-manual-required", handler);
@@ -218,6 +233,8 @@ const api = {
 				message: string;
 				remedy: { text: string; url?: string; command?: string };
 				detail: string;
+				/** How many times this target has failed on this machine. */
+				attempts?: number;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);

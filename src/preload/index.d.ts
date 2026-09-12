@@ -30,7 +30,8 @@ declare global {
 				}>;
 			};
 			updater: {
-				checkForUpdates: () => Promise<{
+				/** `manual` marks a check the user asked for (see the preload note). */
+				checkForUpdates: (options?: { manual?: boolean }) => Promise<{
 					updateInfo: UpdateInfo;
 					// biome-ignore lint/suspicious/noExplicitAny: Complex type from electron-updater
 					cancellationToken: any;
@@ -42,7 +43,16 @@ declare global {
 					canManageUpdate?: boolean;
 					remedy?: string;
 				} | null>;
-				checkForAllUpdates: () => Promise<void>;
+				checkForAllUpdates: (options?: { manual?: boolean }) => Promise<void>;
+				/** The last install that did not complete, if the app recorded one. */
+				getLastInstallAttempt: () => Promise<{
+					targetVersion: string;
+					runningVersion: string;
+					startedAt: string | null;
+					detectedAt: string;
+					detail: string;
+					attempts: number;
+				} | null>;
 				updateBackend: (targetVersion?: string) => Promise<boolean>;
 				// biome-ignore lint/suspicious/noExplicitAny: Return type from electron-updater is complex
 				downloadUpdate: () => Promise<any[]>;
@@ -77,7 +87,11 @@ declare global {
 				) => () => void;
 				onBackendUpdateCompleted: (callback: () => void) => () => void;
 				onBackendUpdateManualRequired: (
-					callback: (info: { message: string; command: string }) => void,
+					callback: (info: {
+						message: string;
+						command: string;
+						detail?: string;
+					}) => void,
 				) => () => void;
 				onUpdateDownloaded: (
 					callback: (info: UpdateInfo) => void,
@@ -100,6 +114,8 @@ declare global {
 						message: string;
 						remedy: { text: string; url?: string; command?: string };
 						detail: string;
+						/** How many times this target has failed here. */
+						attempts?: number;
 					}) => void,
 				) => () => void;
 				onUpdateProgress: (

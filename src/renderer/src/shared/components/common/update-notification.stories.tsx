@@ -44,6 +44,7 @@ const createEmptyUpdaterMethods = () => {
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
 			checkForBackendUpdates: async () => Promise.resolve(null),
 			checkForAllUpdates: async () => Promise.resolve(),
+			getLastInstallAttempt: async () => null,
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
@@ -82,6 +83,7 @@ const mockUpdaterApi = () => {
 			}),
 		checkForBackendUpdates: async () => Promise.resolve(null),
 		checkForAllUpdates: async () => Promise.resolve(),
+		getLastInstallAttempt: async () => null,
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
@@ -221,7 +223,11 @@ const mockUpdaterApi = () => {
 			return () => {};
 		},
 		onBackendUpdateManualRequired: (
-			callback: (info: { message: string; command: string }) => void,
+			callback: (info: {
+				message: string;
+				command: string;
+				detail?: string;
+			}) => void,
 		) => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateManualRequired) {
@@ -229,6 +235,25 @@ const mockUpdaterApi = () => {
 					message:
 						"The server is a uv tool install, so update it from your terminal:",
 					command: "uv tool upgrade local-operator",
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+				});
+			}
+			// The same state reached the other way: the app attached to a server
+			// started in a terminal (`EXISTING_SERVER`) rather than one it installed
+			// itself. That path used to send a hardcoded `pip install --upgrade
+			// local-operator` three lines below the code that had already learned
+			// better, and this release promoted the notice from a toast into a
+			// standing panel - so the wrong command would have stayed on screen
+			// (review D4). This payload is a pipx-owned server, which is what that
+			// path has to name now.
+			if (window.triggerBackendUpdateManualRequiredExistingServer) {
+				callback({
+					message:
+						"The server is a pipx install, so update it from your terminal:",
+					command: "pipx upgrade local-operator",
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/pipx/venvs/local-operator/bin/local-operator), classified as pipx",
 				});
 			}
 			return () => {};
@@ -248,9 +273,9 @@ const mockUpdaterApi = () => {
 					code: "installed-bundle-not-sealed",
 					version: "0.18.0",
 					message:
-						"This install of Local Operator can't be updated in place, so the update was stopped before the app quit.",
+						"This install of Local Operator can't be updated in place, so the update to version 0.18.0 was stopped before the app quit.",
 					remedy: {
-						text: "Download a fresh copy and replace the app in Applications.",
+						text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
 						url: "https://local-operator.com/download",
 					},
 					detail:
@@ -265,6 +290,7 @@ const mockUpdaterApi = () => {
 				message: string;
 				remedy: { text: string; url?: string; command?: string };
 				detail: string;
+				attempts?: number;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -274,10 +300,12 @@ const mockUpdaterApi = () => {
 					message:
 						"The update to version 0.18.0 didn't finish, so version 0.17.0 is still running.",
 					remedy: {
-						text: "Try installing the update again from the update prompt.",
+						text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app.",
+						url: "https://local-operator.com/download",
 					},
 					detail:
-						"Install started 2026-09-11T22:36:48.000Z from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip.",
+						"Install started 11/09/2026, 22:36:48 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip.",
+					attempts: 2,
 				});
 			}
 			return () => {};
@@ -311,6 +339,7 @@ declare global {
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
+		triggerBackendUpdateManualRequiredExistingServer?: boolean;
 		triggerBackendUpdateNonManaged?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallFailed?: boolean;
@@ -354,6 +383,8 @@ const meta = {
 					context.parameters.triggerUpdateInstallFailed;
 				window.triggerBackendUpdateManualRequired =
 					context.parameters.triggerBackendUpdateManualRequired;
+				window.triggerBackendUpdateManualRequiredExistingServer =
+					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
 				window.triggerBackendUpdateNonManaged =
 					context.parameters.triggerBackendUpdateNonManaged;
 			}, [
@@ -365,6 +396,7 @@ const meta = {
 				context.parameters.triggerUpdateInstallBlocked,
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
+				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
 				context.parameters.triggerBackendUpdateNonManaged,
 			]);
 
@@ -759,6 +791,7 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateInstallBlocked"
 	| "triggerUpdateInstallFailed"
 	| "triggerBackendUpdateManualRequired"
+	| "triggerBackendUpdateManualRequiredExistingServer"
 	| "triggerBackendUpdateNonManaged";
 
 /**
@@ -809,6 +842,23 @@ export const BackendManualRequired: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerBackendUpdateManualRequired: true },
 	render: () => <Triggered flag="triggerBackendUpdateManualRequired" />,
+};
+
+/**
+ * The same by-hand state, reached through the other producer: the app attached
+ * to a server the user started in a terminal, rather than one it installed
+ * itself. That path used to hardcode `pip install --upgrade local-operator` in
+ * the main process whatever owned the environment - and this release is what
+ * promoted the notice from a toast into a standing panel, so a wrong command
+ * would now stay on screen until dismissed (review D4). Here the server is a
+ * pipx install, so the command the panel names is pipx's.
+ */
+export const BackendManualRequiredExistingServer: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateManualRequiredExistingServer: true },
+	render: () => (
+		<Triggered flag="triggerBackendUpdateManualRequiredExistingServer" />
+	),
 };
 
 /**
