@@ -191,6 +191,50 @@ const STORIES = [
 	   where the hierarchy that must SURVIVE the tightening is judged. */
 	["chat-tool-rows--operator-spacing-cases", 1024, 620],
 	["chat-tool-rows--turn-boundary-and-working-line", 1024, 620],
+	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
+	   `usage_panel.py`. Swept for the states that cannot be produced on demand
+	   live — an OAuth grant has to die, a provider has to go idle past its
+	   cache TTL, a weekly window has to actually run out. 1100x760 is a
+	   comfortable window for the `wide` dialog (max-w-3xl = 768px) with room
+	   for the scrim around it, so the frame is a picture of the dialog in its
+	   ground rather than of the dialog alone.
+
+	   `narrow` is captured at 720 because the dialog is portal-rendered and
+	   viewport-fixed: a wrapper div constrains nothing, so the VIEWPORT is the
+	   only thing that can produce the narrow layout. The shorter states
+	   (loading, empty, error, single-provider) are captured in a viewport sized
+	   to them — at 1100x760 they are mostly scrim and cross
+	   `check-evidence`'s uniformity ceiling, which is that guard working. */
+	["chat-usage--multi-provider", 1100, 760],
+	["chat-usage--percent-only", 900, 420],
+	["chat-usage--remaining-balance", 900, 400],
+	/* Tall enough for all three skeleton blocks: the loading body is now
+	   skeleton rows shaped like the blocks that replace them, and at 360 the
+	   third one was sliced through its own card border — which is the very
+	   reading ("a rendering defect, not more content below") the scroll edge
+	   treatment exists to prevent, reproduced in the frame meant to show it. */
+	["chat-usage--loading", 900, 470],
+	["chat-usage--empty", 900, 380],
+	["chat-usage--query-error", 900, 400],
+	["chat-usage--fetching", 1000, 560],
+	["chat-usage--stale-report", 1100, 620],
+	["chat-usage--unavailable-with-last-known", 1000, 480],
+	["chat-usage--reauth-required", 1000, 480],
+	["chat-usage--not-reported", 1000, 480],
+	/* Real-account density (eleven reports, twenty-eight windows, five
+	   accounts of one provider): the one story whose body overflows its scroll
+	   box, so the one that evidences the fold treatment — the 20px bottom
+	   fade, the `border-control` rule under the body, and their ABSENCE on
+	   every state that fits. 1100x1000 is `real-data`'s own viewport, chosen
+	   for the same reason: at 1000px tall the body cap `min(60vh,520px)`
+	   bottoms out at the 520px constant against ~1300px of content, so the
+	   fold is deep enough that a shallow overhang cannot masquerade as it.
+	   The density cannot be re-derived from the backend on demand (it needs
+	   live credentials at every provider), which is exactly why it is a story:
+	   the sweep can always re-take this frame. */
+	["chat-usage--dense", 1100, 1000],
+	["chat-usage--narrow", 720, 620],
+
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */
