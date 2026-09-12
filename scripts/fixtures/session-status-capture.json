@@ -1,0 +1,209 @@
+{
+	"_comment": [
+		"Frontend-state payloads captured from a REAL local-operator backend, so the",
+		"cost and context mirrors in src/renderer/src/features/chat/session-status/",
+		"are pinned against what the owner actually sends rather than against what a",
+		"reader of the Python thought it sends.",
+		"",
+		"How this was captured (repeatable):",
+		"  1. An ISOLATED backend, never the operator's live one:",
+		"       LOCAL_OPERATOR_CONFIG_DIR=<tmp>/config LOCAL_OPERATOR_HOME=<tmp>/home \\",
+		"       LOCAL_OPERATOR_DESKTOP_TOKEN=<token> local-operator serve --port 1179",
+		"     with a minimal config.yml naming a provider, and one credential line",
+		"     copied into <tmp>/config/credentials.env.",
+		"  2. POST /v1/desktop/sessions to create a session in that tmp cwd.",
+		"  3. An SSE reader on GET /v1/desktop/sessions/{id}/events held open while a",
+		"     prompt was POSTed to .../messages and /model and /effort were POSTed to",
+		"     .../commands. The accounting fields arrive ONLY as `frontend.update`",
+		"     changes on that stream -- the cold `GET /v1/desktop/sessions/{id}`",
+		"     snapshot reports them all null, which is why a fixture taken from the",
+		"     snapshot alone would have pinned nothing.",
+		"  4. Each capture below is the merged snapshot+updates state at that moment.",
+		"",
+		"Backend version at capture: 0.54.14. Model: openrouter/openai/gpt-4o-mini,",
+		"then openrouter/openai/gpt-5.",
+		"",
+		"The `expect` blocks are what the TUI would render for the same state, per",
+		"the symbols named in session-cost.ts and session-context.ts."
+	],
+	"captures": [
+		{
+			"name": "first turn settled, gpt-4o-mini",
+			"note": [
+				"One real assistant turn. `cost_knowledge` is `floor` and",
+				"`subagent_cost_knowledge` is `exact` -- the combination that proves the",
+				"ORDER in cumulative_cost_knowledge matters: the session's own `floor`",
+				"has to win over a child ledger that is exact, which it does because",
+				"the own-rung test comes first."
+			],
+			"state": {
+				"context_tokens": 12977,
+				"context_window": 128000,
+				"context_is_estimate": false,
+				"cumulative_parent_cost": 0.00194775,
+				"child_costs": {},
+				"subagent_cost": null,
+				"subagent_cost_knowledge": "exact",
+				"cost_knowledge": "floor"
+			},
+			"model": {
+				"provider": "openrouter",
+				"model_id": "openai/gpt-4o-mini",
+				"display_name": "OpenAI: GPT-4o-mini",
+				"reasoning": false,
+				"reasoning_effort": null,
+				"reasoning_efforts": [],
+				"reasoning_default_effort": null,
+				"context_window": 128000,
+				"max_context_window": null
+			},
+			"expect": {
+				"total": 0.00194775,
+				"knowledge": "floor",
+				"costText": "≥$0.0019",
+				"spelling": "10.1%/128k",
+				"rung": "signal",
+				"contextStatus": "measured",
+				"modelName": "OpenAI: GPT-4o-mini",
+				"modelSelector": "openrouter/openai/gpt-4o-mini",
+				"effort": null
+			}
+		},
+		{
+			"name": "second turn accrued",
+			"note": "The parent cost has grown; the floor mark survives, per _spend_text.",
+			"state": {
+				"context_tokens": 13591,
+				"context_window": 128000,
+				"context_is_estimate": false,
+				"cumulative_parent_cost": 0.003018,
+				"child_costs": {},
+				"subagent_cost": null,
+				"subagent_cost_knowledge": "exact",
+				"cost_knowledge": "floor"
+			},
+			"expect": {
+				"total": 0.003018,
+				"knowledge": "floor",
+				"costText": "≥$0.0030",
+				"spelling": "10.6%/128k",
+				"rung": "signal",
+				"contextStatus": "measured"
+			}
+		},
+		{
+			"name": "reasoning model with a real ladder, effort set",
+			"note": [
+				"After `/model openrouter/openai/gpt-5` and `/effort high`. This is the",
+				"payload that proves `reasoning_efforts` arrives as a JSON ARRAY (the",
+				"Python field is a tuple) and that `reasoning_default_effort` is",
+				"genuinely null on a listing-derived model -- the case effortState's",
+				"`auto` branch must not spell as a level."
+			],
+			"state": {
+				"context_tokens": 13591,
+				"context_window": 400000,
+				"context_is_estimate": false,
+				"cumulative_parent_cost": 0.003018,
+				"child_costs": {},
+				"subagent_cost": null,
+				"subagent_cost_knowledge": "exact",
+				"cost_knowledge": "floor"
+			},
+			"model": {
+				"provider": "openrouter",
+				"model_id": "openai/gpt-5",
+				"display_name": "OpenAI: GPT-5",
+				"reasoning": true,
+				"reasoning_effort": "high",
+				"reasoning_efforts": ["minimal", "low", "medium", "high"],
+				"reasoning_default_effort": null,
+				"context_window": 400000,
+				"max_context_window": null
+			},
+			"expect": {
+				"total": 0.003018,
+				"knowledge": "floor",
+				"costText": "≥$0.0030",
+				"spelling": "3.4%/400k",
+				"rung": "signal",
+				"contextStatus": "measured",
+				"modelName": "OpenAI: GPT-5",
+				"modelSelector": "openrouter/openai/gpt-5",
+				"effort": "high",
+				"effortAdjustable": true
+			}
+		},
+		{
+			"name": "same model, no effort chosen",
+			"note": [
+				"The state the session was in between `/model` and `/effort`: a full",
+				"ladder with `reasoning_effort` null. `_effort_label` spells this",
+				"`auto`, sharing the word with `/effort auto`."
+			],
+			"state": {
+				"context_tokens": 13591,
+				"context_window": 400000,
+				"context_is_estimate": false,
+				"cumulative_parent_cost": 0.003018,
+				"child_costs": {},
+				"subagent_cost": null,
+				"subagent_cost_knowledge": "exact",
+				"cost_knowledge": "floor"
+			},
+			"model": {
+				"provider": "openrouter",
+				"model_id": "openai/gpt-5",
+				"display_name": "OpenAI: GPT-5",
+				"reasoning": true,
+				"reasoning_effort": null,
+				"reasoning_efforts": ["minimal", "low", "medium", "high"],
+				"reasoning_default_effort": null,
+				"context_window": 400000,
+				"max_context_window": null
+			},
+			"expect": {
+				"effort": "auto",
+				"effortAdjustable": true
+			}
+		},
+		{
+			"name": "cold session, nothing reported yet",
+			"note": [
+				"The GET snapshot of a freshly created session, verbatim. Every",
+				"accounting field is null and the model dump carries empty strings --",
+				"the state the strip must render as silence rather than as zeros."
+			],
+			"state": {
+				"context_tokens": null,
+				"context_window": null,
+				"context_is_estimate": null,
+				"cumulative_parent_cost": null,
+				"child_costs": {},
+				"subagent_cost": null,
+				"subagent_cost_knowledge": null,
+				"cost_knowledge": "unknown"
+			},
+			"model": {
+				"provider": "",
+				"model_id": "",
+				"display_name": "",
+				"reasoning": false,
+				"reasoning_effort": null,
+				"reasoning_efforts": [],
+				"reasoning_default_effort": null,
+				"context_window": 128000,
+				"max_context_window": null
+			},
+			"expect": {
+				"total": null,
+				"knowledge": "unknown",
+				"costText": "",
+				"spelling": "",
+				"contextStatus": "no-reading",
+				"modelName": null,
+				"effort": null
+			}
+		}
+	]
+}

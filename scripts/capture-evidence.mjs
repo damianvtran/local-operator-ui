@@ -31,7 +31,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertFramePaints } from "./check-evidence.mjs";
+import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
@@ -234,6 +234,22 @@ const STORIES = [
 	   the sweep can always re-take this frame. */
 	["chat-usage--dense", 1100, 1000],
 	["chat-usage--narrow", 720, 620],
+	/* The session status strip. Captured at a viewport SIZED TO THE FRAMES for
+	   the same reason the tool rows are: these are short rows in a box, and at
+	   1280x900 they are mostly empty ground, which crosses `check-evidence`'s
+	   uniformity ceiling. The two tooltip stories need vertical room for the
+	   panel to open ABOVE the trigger, which is why they are taller than the
+	   content they hold. */
+	["chat-session-status-strip--states", 860, 1140],
+	["chat-session-status-strip--cost-states", 860, 780],
+	["chat-session-status-strip--effort-states", 860, 780],
+	["chat-session-status-strip--long-model-name", 860, 420],
+	/* The 220px column is the canvas-open floor, and the width the composer's
+	   button row was already over budget at. Captured narrow, because the shed
+	   order under pressure is half the design. */
+	["chat-session-status-strip--collapsed-column", 340, 560],
+	["chat-session-status-strip--context-tooltip", 860, 400],
+	["chat-session-status-strip--cost-tooltip", 860, 400],
 
 	["design-system-primitives--all-primitives", 1280, 1600],
 

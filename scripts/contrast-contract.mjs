@@ -235,6 +235,69 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
+	/*
+	 * The composer's context wheel, one row per rung it can be drawn in.
+	 *
+	 * Listed because it is a control whose ENTIRE visual body is an edge: a
+	 * 1.75px ring with no fill, on the composer's `surface` ground, plus the
+	 * monospace reading beside it. There is nothing else for a viewer to see,
+	 * so "is the edge perceivable against the ground behind it" is not one
+	 * property of this control among several - it is the whole question of
+	 * whether the control renders at all.
+	 *
+	 * `fill: null` is therefore literal rather than a shortcut: the ring paints
+	 * no interior, so the script's `fill = ground` fallback is exactly right,
+	 * and the ink assertion it produces (`inkMuted` on `surface`) is the real
+	 * pairing the percentage beside the ring is read at.
+	 *
+	 * Three rows rather than one because the ring takes three DIFFERENT border
+	 * colours depending on how full the window is - the union of the TUI's
+	 * absolute and proportional ladders, mirrored in
+	 * `features/chat/session-status/session-context.ts`. A single row naming
+	 * one of them would leave the other two unmeasured, which is the same
+	 * "green output about a component nobody listed" this section warns about,
+	 * one level down.
+	 *
+	 * Only `surface` is asserted, and that is not laziness: the wheel has
+	 * exactly one mount site, inside `COMPOSER_BOX`, which is `bg-surface`.
+	 * Listing grounds it never renders on would be asserting a pairing the
+	 * design does not promise.
+	 */
+	{
+		name: "context wheel, calm reading",
+		on: ["surface"],
+		fill: null,
+		border: "info",
+		ink: "inkMuted",
+	},
+	{
+		name: "context wheel, worth noticing",
+		on: ["surface"],
+		fill: null,
+		border: "warning",
+		ink: "inkMuted",
+	},
+	{
+		name: "context wheel, compaction due",
+		on: ["surface"],
+		fill: null,
+		border: "danger",
+		ink: "inkMuted",
+	},
+	{
+		/*
+		 * The empty wheel, which is a reachable state and not a loading
+		 * placeholder: a session that has not reported a reading yet renders
+		 * the track ALONE. With no arc over it the track is the control's sole
+		 * boundary, which is what puts it on `borderControl` rather than
+		 * `hairline` and what this row pins.
+		 */
+		name: "context wheel, no reading yet",
+		on: ["surface"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 ];
 
 /**
