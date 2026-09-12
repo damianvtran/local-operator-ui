@@ -210,25 +210,50 @@ export function isBareToolName(summary: string, toolName: string): boolean {
  * `exit code: -9`, and one observed in a real transcript reports a bare
  * `exit code` on its second line. Either way the number is not news — the
  * row's own glyph carries the outcome — so it is never worth the column.
+ *
+ * `(empty)` is the third spelling of the same nothing: the producer writes it
+ * as the SECTION's body when a call printed on that stream at all
+ * (`tools/builtin.py:1694-1695`, joined with the outcome line at `:2379`; same
+ * shape in `tools/eval.py:992-993`), so the real result of a silent call is
+ * `exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)`. Skipping the
+ * markers but not this left the worst case reading `(empty)` in the object
+ * column — the same class of wiring-as-prose the whole rule exists to stop.
+ *
  * Nothing else is filtered: `TIMEOUT after 120.0s (process killed)`, which
  * opens those same results, IS the fact worth standing in.
  */
 const OUTPUT_WIRING_LINE =
-	/^(?:exit code:?\s*-?\d*|--- (?:stdout|stderr) ---)$/;
+	/^(?:exit code:?\s*-?\d*|\(empty\)|--- (?:stdout|stderr) ---)$/;
+
+/**
+ * The mark that says the object column is a STAND-IN, not the call's own object.
+ *
+ * Call for it from the design round on this change (D1): the recovered rows of
+ * `joined-mid-turn` put a call's own command beside a bare line of its result,
+ * in the same column, font and ink, at the same left edge — so a column that is
+ * always a command reads as one for the result line too. A leading ellipsis is
+ * the cheapest honest mark: it is the character truncation already uses, it
+ * cannot be confused with content that a call's own arguments could contain,
+ * and it survives the column's own right-side truncation because it sits at the
+ * left. It is part of the STRING rather than a span so that every surface that
+ * renders the fallback — the row, a story, a test — carries it.
+ */
+const STAND_IN_MARK = "… ";
 
 /**
  * What the row shows in the object column when the arguments taught it nothing.
  *
- * The first line of the result that actually says something, bounded because
- * the object column is one line: a multi-line result is truncated by CSS
- * anyway, and choosing the line explicitly means the row shows a whole thought
- * rather than a fragment cut mid-word by the layout. The cap matches what fits
- * at the widest sensible column, so a 4 KB result cannot push a long string
- * through the truncation machinery on every render.
+ * The first line of the result that actually says something, marked as a
+ * stand-in (see `STAND_IN_MARK`) and bounded because the object column is one
+ * line: a multi-line result is truncated by CSS anyway, and choosing the line
+ * explicitly means the row shows a whole thought rather than a fragment cut
+ * mid-word by the layout. The cap matches what fits at the widest sensible
+ * column, so a 4 KB result cannot push a long string through the truncation
+ * machinery on every render.
  *
  * `null` means the result had nothing to offer and the row should stay empty:
  * "no stand-in exists" is a different claim from "the stand-in is a blank",
- * and only the first lets the caller fall through to its own placeholder.
+ * and the caller renders the two differently (an empty slot against a mark).
  */
 export function outputFallbackLine(output: string | null): string | null {
 	if (!output) return null;
@@ -236,7 +261,7 @@ export function outputFallbackLine(output: string | null): string | null {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
 		if (OUTPUT_WIRING_LINE.test(trimmed)) continue;
-		return trimmed.slice(0, 160);
+		return `${STAND_IN_MARK}${trimmed.slice(0, 160)}`;
 	}
 	return null;
 }
@@ -292,6 +317,33 @@ export function formatSettledDuration(seconds: number | null): string {
 }
 
 /**
+ * One decimal, rounded the way the TUI's `f"{value:.1f}"` rounds: HALF TO EVEN.
+ *
+ * `Number#toFixed` rounds halves away from zero, so a naked port prints
+ * `1.3 KB` for the 1280-byte dictation the TUI prints as `1.2 KB` (and `3.2`
+ * for 3328) — measured against `python3 -c 'print(f"{1280/1024:.1f}")'`. The
+ * values here are counts over 1024, so an exact tie is arithmetic rather than
+ * a tolerance: `x * 10` is exactly `n + 0.5` and the choice is decidable.
+ * A tenth either way is invisible until someone compares the two surfaces,
+ * which is exactly what this port is for.
+ */
+function fixed1(value: number): string {
+	const scaled = value * 10;
+	const floor = Math.floor(scaled);
+	const rest = scaled - floor;
+	// The tie goes to the EVEN neighbour, which is what Python does.
+	const rounded =
+		rest > 0.5
+			? floor + 1
+			: rest < 0.5
+				? floor
+				: floor % 2 === 0
+					? floor
+					: floor + 1;
+	return (rounded / 10).toFixed(1);
+}
+
+/**
  * A byte count at a glance: `812 B`, `12.4 KB`, `1.2 MB`.
  *
  * `_format_bytes` (tool_card.py:360-371), ported because the composing row's
@@ -302,8 +354,8 @@ export function formatSettledDuration(seconds: number | null): string {
  */
 export function formatBytes(count: number): string {
 	if (count < 1024) return `${count} B`;
-	if (count < 1024 * 1024) return `${(count / 1024).toFixed(1)} KB`;
-	return `${(count / (1024 * 1024)).toFixed(1)} MB`;
+	if (count < 1024 * 1024) return `${fixed1(count / 1024)} KB`;
+	return `${fixed1(count / (1024 * 1024))} MB`;
 }
 
 /**

@@ -550,25 +550,54 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 	// glyph into a cross.
 	assert.equal(
 		outputFallbackLine("exit code: 0\n--- stdout ---\n=== downloads ===\nLO.app"),
-		"=== downloads ===",
+		"… === downloads ===",
 		"the status line and the section marker both step aside",
 	);
 	assert.equal(
 		outputFallbackLine("exit code: -9\n--- stderr ---\n/LO.app: killed"),
-		"/LO.app: killed",
+		"… /LO.app: killed",
 	);
 	// Observed in a real transcript: a killed call writes the marker without a
 	// number at all, and an indented one.
-	assert.equal(outputFallbackLine("      exit code\n--- stdout ---\nreal"), "real");
+	assert.equal(outputFallbackLine("      exit code\n--- stdout ---\nreal"), "… real");
+
+	// The marker is what keeps a line of the RESULT from reading as the call's
+	// own object in that column — the design round's D1. Every line that reaches
+	// the column through this path carries it.
+	assert.ok(
+		outputFallbackLine("exit code: 0\n--- stdout ---\n=== x ===").startsWith("… "),
+	);
+
+	// The producer's shape for a call that printed nothing, verbatim
+	// (`tools/builtin.py:1694-1695`, joined at `:2379`). Skipping the markers but
+	// not the `(empty)` bodies left the worst case reading `(empty)` — wiring
+	// quoted as prose, which is the class this rule exists to stop.
+	assert.equal(
+		outputFallbackLine(
+			"exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)",
+		),
+		null,
+		"a silent call has no stand-in to offer",
+	);
+	assert.equal(
+		outputFallbackLine(
+			"exit code: 1\n--- stdout ---\n(empty)\n--- stderr ---\n(bash: x: command not found)",
+		),
+		"… (bash: x: command not found)",
+		"the marker steps aside only where the section had nothing",
+	);
 
 	// A timeout DOES open with the fact the row exists to carry, so it stays.
 	assert.equal(
 		outputFallbackLine("TIMEOUT after 120.0s (process killed)\nexit code: -9"),
-		"TIMEOUT after 120.0s (process killed)",
+		"… TIMEOUT after 120.0s (process killed)",
 	);
 	// Anything that is not those markers is text, whatever it looks like.
-	assert.equal(outputFallbackLine("exit code: 0 and then some"), "exit code: 0 and then some");
-	assert.equal(outputFallbackLine("200 match(es) for 'wake'"), "200 match(es) for 'wake'");
+	assert.equal(
+		outputFallbackLine("exit code: 0 and then some"),
+		"… exit code: 0 and then some",
+	);
+	assert.equal(outputFallbackLine("200 match(es) for 'wake'"), "… 200 match(es) for 'wake'");
 
 	// Nothing to offer is `null`, not an empty string: the row must be able to
 	// tell "there was no stand-in" from "the stand-in is blank".
@@ -583,5 +612,5 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 	// Bounded, because the object column is one line: a 4 KB result must not
 	// push a long string through the truncation machinery on every render.
 	const long = `exit code: 0\n--- stdout ---\n${"x".repeat(400)}`;
-	assert.equal(outputFallbackLine(long).length, 160);
+	assert.equal(outputFallbackLine(long).length, 160 + "… ".length);
 });

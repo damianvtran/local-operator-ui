@@ -28,7 +28,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFramePaints } from "./check-evidence.mjs";
 
@@ -835,9 +835,16 @@ const main = async () => {
 			 * A supplementary set is captured by its own procedure and declares its own
 			 * count, so a frame inside one is not the sweep's to add.
 			 */
+			// Separator-aware: a sibling whose name merely STARTS with a declared
+			// set's name (`tool-rows` vs `tool-rows-baseline`) is not inside it,
+			// and a raw `startsWith` would skip its frames here while
+			// `check-evidence` still charged them to the sweep.
 			if (
 				!existsSync(framePath) &&
-				!supplementary.some((set) => dir.startsWith(join(OUT, set.path)))
+				!supplementary.some((set) => {
+					const declared = join(OUT, set.path);
+					return dir === declared || dir.startsWith(`${declared}${sep}`);
+				})
 			) {
 				addedToSweep++;
 			}

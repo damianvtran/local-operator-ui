@@ -121,11 +121,12 @@ export default meta;
 
 type Story = StoryObj;
 
-/** Every outcome, in one column, at a comfortable width. */
+/** Every outcome in one column, at a comfortable width — plus the state
+ * before there is an outcome at all: a call still being dictated. */
 export const States: Story = {
 	render: () => (
 		<Frame
-			height={210}
+			height={232}
 			records={[
 				tool({
 					id: "tool:1",
@@ -140,6 +141,20 @@ export const States: Story = {
 					args: { path: "/Users/damian/local-operator-ui/docs/branding.md" },
 					durationS: 0.04,
 					output: "# Branding and design system",
+				}),
+				// The composing row, which has no execution time to report: the
+				// duration slot stays reserved and EMPTY (`tool_card.py:2503-2507`),
+				// and the dictation counter in the object column is the only thing on
+				// the row that moves. Bytes chosen to land on a KB step, because the
+				// spelling is what this row is for.
+				tool({
+					id: "tool:1c",
+					toolName: "write",
+					args: null,
+					phase: "composing",
+					argumentBytes: 12_688,
+					durationS: null,
+					output: null,
 				}),
 				// The diff counters, which is the row shape a write produces.
 				tool({
@@ -592,8 +607,11 @@ export const WorkingLabels: Story = {
  *    `--- stdout ---`). When the arguments really are unknown — a call from an
  *    older runtime, or one whose plan was rejected — the object column steps
  *    over that wiring instead of quoting it.
- * 3. A normal row, whose arguments arrived on the live start. Unchanged, and
- *    here as the control: it is what rows 1 and 2 must look like.
+ * 3. A call that printed NOTHING, whose object column is therefore empty rather
+ *    than quoting `(empty)`: the stand-in exists to say something, and this is
+ *    the state that must not be mistaken for a rendering failure.
+ * 4. A normal row, whose arguments arrived on the live start. Unchanged, and
+ *    here as the control: it is what the rows above must look like.
  */
 export const JoinedMidTurn: Story = {
 	render: () => <Frame height={170} records={joinedMidTurn()} />,
@@ -683,6 +701,24 @@ function joinedMidTurn(): TranscriptRecord[] {
 			duration_s: 0.2,
 		},
 		TS + 1_200,
+	);
+	// The producer's own shape for a call that PRINTED NOTHING
+	// (`tools/builtin.py:1694-1695`): outcome line and two empty sections. Unknown
+	// arguments AND no result line to stand in, so the object column is empty —
+	// the state QA round 1's Q1 asked for, and the one a reader is most likely to
+	// misread as a rendering bug.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-silent",
+			tool_name: "bash",
+			result: result(
+				"exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)",
+			),
+			duration_s: 0.1,
+		},
+		TS + 1_300,
 	);
 	// The control: arguments arrived on the start, which is what every settled
 	// row looks like when the viewer was there for the whole turn.

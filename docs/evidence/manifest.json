@@ -1,10 +1,10 @@
 {
-  "head": "2217ea59a13b4eeb77461435746b246760249b06",
-  "srcTree": "9bb63194665e53beb1295192d9b6375f08e9e740",
-  "scriptsTree": "778c4136a7015ecd7f501d1a31245a2d1e2f59b5",
+  "head": "12f4e4080e83585e3dd07cc17aeec96db3e8d0e3",
+  "srcTree": "e45a0d00712d553343918704bc28b7a147d35bd7",
+  "scriptsTree": "842bff4b08ed21123a582c51a4ba629bc51ab303",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 482,
+  "frames": 478,
   "surfaces": 45,
   "themes": 12,
   "partialCapture": {
@@ -23,24 +23,18 @@
       "tool-rows/working-labels",
       "transcript-images/real-conversation-images"
     ],
-    "refreshedAt": "2026-09-12T04:05:18.920Z",
-    "refreshedAtHead": "2217ea59a13b4eeb77461435746b246760249b06",
-    "refreshedFrames": 16,
+    "refreshedAt": "2026-09-12T01:24:00.000Z",
+    "refreshedAtHead": "12f4e4080e83585e3dd07cc17aeec96db3e8d0e3",
+    "refreshedFrames": 4,
     "refreshedStories": [
       "chat-tool-rows--states",
-      "chat-tool-rows--names-and-fallbacks",
-      "chat-tool-rows--joined-mid-turn",
-      "chat-tool-rows--narrow",
-      "chat-tool-rows--working",
-      "chat-tool-rows--working-labels",
-      "chat-tool-rows--operator-spacing-cases",
-      "chat-tool-rows--turn-boundary-and-working-line"
+      "chat-tool-rows--joined-mid-turn"
     ],
     "refreshedThemes": [
       "localOperatorDark",
       "localOperatorLight"
     ],
-    "refreshedNote": "REFRESHED: the eight `chat-tool-rows--*` surfaces, in the two brand themes, after the row's object column and its duration/byte spellings changed (a settling frame with no arguments now recovers the call's arguments, the stand-in line steps over the harness's own `exit code: 0` wiring, a sub-50 ms call reads `<0.1s` and the dictation counter reads `KB`/`MB`). RENAMED: `docs/evidence/tool-rows` -> `docs/evidence/chat-tool-rows`, because the capture names a surface from its story title slug and the title gained a `Chat/` prefix after the set was first written; a refresh now lands in the new name, and leaving both would have split one surface family across two directories. The sweep total is 480 rather than 492 because the add-then-rename sequence counted twelve frames twice (the five surfaces that existed under both names); this note is the correction, and a full sweep re-derives the number anyway. NOT REFRESHED: `real-conversation-tool-rows`, whose capture harness is not in this repo - it is the one committed surface whose durations predate the `<0.1s` spelling. ADDED OUTSIDE THE SWEEP: `chat-tool-rows/joined-mid-turn/before/*.webp`, the same story captured from unmodified `origin/main` through the same harness, kept beside the fixed frames so the before/after pair is one directory. A sweep cannot regenerate them (it would capture the current tree), so they are evidence of record and are counted in the sweep total rather than declared as a set."
+    "refreshedNote": "REFRESHED: the eight `chat-tool-rows--*` surfaces in the two brand themes after the row's object column, its duration/byte spellings and its stand-in mark changed. The `states` surface now carries a COMPOSING row (the duration slot reserved and empty, the dictation counter at 12.4 KB) and `joined-mid-turn` a SILENT call whose object column is deliberately empty; both were asked for by the design and QA rounds as states with no pixels. RENAMED: `docs/evidence/tool-rows` -> `docs/evidence/chat-tool-rows`, because the capture names a surface from its story title slug and the title gained a `Chat/` prefix after the set was first written. REMOVED: `chat-tool-rows/turn-boundary`, superseded by `turn-boundary-and-working-line` (its story no longer exists under the old name, so no sweep could ever refresh it, and it still rendered the removed `0s` on a composing row). NOT REFRESHED: `chat-tool-rows/real-conversation-tool-rows`, whose capture harness is not in this repo; its durations predate the `<0.1s` spelling. The sweep total is therefore 478, and it is the count of frames a full sweep would reproduce rather than a running sum: the add-then-rename sequence that produced this set counted twelve frames twice once, which is why an arithmetic total is not relied on here."
   },
   "supplementary": [
     {
@@ -51,6 +45,17 @@
       "source": "live renderer over CDP",
       "why": "The claims are a real pointer hover and a click that stages a draft. Storybook can force the revealed class but not produce the hover, and a staged draft is store state a fixture would have to fake, so these are captured from the running app against an isolated seeded backend instead. The sidebar has no story, so re-running the sweep cannot re-derive them; docs/evidence/sidebar-new-chat/README.md carries the re-capture procedure.",
       "capturedAt": "2026-09-10T06:00:00.000Z"
+    },
+    {
+      "path": "tool-rows-baseline",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "scripts/capture-evidence.mjs against unmodified origin/main (2217ea59a), same story and fixture as chat-tool-rows/joined-mid-turn",
+      "why": [
+        "The fixed frames cannot show what was wrong, and this pair cannot be regenerated by a sweep: a sweep captures the CURRENT tree, while these need main's reducer under the same story. It is declared as its own set so clearSweptFrames preserves it and the sweep's own count stays honest. See its README.md for the one-line reproduction."
+      ],
+      "capturedAt": "2026-09-12T00:25:00.000Z"
     }
   ]
 }

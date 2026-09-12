@@ -29,7 +29,7 @@ const {
 	applyLiveSeed,
 	clearTranscript,
 	dropLiveRecords,
-	labelGapRetries,
+	labelGapCandidates,
 	reconcileLimit,
 	seedCallsMissingLabels,
 	withRecoveredOutcome,
@@ -1150,17 +1150,36 @@ test("an unlabelable call costs a bounded number of read-backs", () => {
 	]);
 	const labelled = new Set(["labelled-since"]);
 	assert.deepEqual(
-		labelGapRetries(outstanding, labelled, 2),
+		labelGapCandidates(outstanding, outstanding.keys(), labelled, 2),
 		["one-left", "fresh"],
 		"a labelled call and an exhausted one are both dropped",
 	);
 	// Nothing outstanding means no request at all, which is the common case on
 	// every flush after the gap closes.
-	assert.deepEqual(labelGapRetries(new Map(), new Set(), 2), []);
+	assert.deepEqual(labelGapCandidates(new Map(), [], new Set(), 2), []);
 	// And an id that is ALREADY labelled never earns a read even at zero
 	// attempts: a durable page may have answered for it before the retry ran.
 	assert.deepEqual(
-		labelGapRetries(new Map([["x", 0]]), new Set(["x"]), 2),
+		labelGapCandidates(new Map([["x", 0]]), ["x"], new Set(["x"]), 2),
 		[],
+	);
+	// A later snapshot's seed must not re-admit a call that has spent its
+	// budget: the map still holds it, and that is the whole reason the hook
+	// keeps an exhausted id instead of deleting it.
+	assert.deepEqual(
+		labelGapCandidates(
+			new Map([["spent", 2]]),
+			["spent", "new"],
+			new Set(),
+			2,
+		),
+		["new"],
+		"an exhausted call cannot be re-admitted by a fresh seed",
+	);
+	// The seed and the retry path ask the same question about different
+	// candidate sets, and a candidate named twice is asked about once.
+	assert.deepEqual(
+		labelGapCandidates(new Map(), ["a", "a", "b"], new Set(), 2),
+		["a", "b"],
 	);
 });

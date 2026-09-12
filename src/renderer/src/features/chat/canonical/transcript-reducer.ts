@@ -1247,30 +1247,37 @@ export function seedCallsMissingLabels(
 }
 
 /**
- * The calls still worth another read-back, and the rule that bounds them.
+ * Which calls are still worth a read-back, and the rule that bounds them.
  *
- * The seed's unlabelled calls are found ONCE, at the snapshot (`
- * seedCallsMissingLabels`). Half of them are labelled by that read; the rest
+ * ONE rule for both callers, because they answer the same question about
+ * different candidate sets: the snapshot's seed names its unlabelled calls once
+ * (`seedCallsMissingLabels`), and a round end re-asks about the ones that read
+ * could not answer. Half of a seed is labelled by that first read; the rest
  * belong to the round still running, which only becomes durable at its own turn
- * end — so the retry has to be driven by those rounds and capped, or it becomes
- * an unbounded poll of the history endpoint.
+ * end — so the retry is driven by those rounds and capped, or it becomes an
+ * unbounded poll of the history endpoint.
  *
- * Capped PER CALL rather than per session: `maxAttempts` reads is what one
- * unlabelable call may cost. Past it, the call has no arguments anywhere to
- * find — a plan the harness rejected emits no start and leaves no assistant row
- * — and retrying it would spend a history page per turn for the rest of the
- * conversation to learn nothing. A call the transcript has labelled since the
- * last flush is dropped, which is what keeps the caller's bookkeeping from
- * growing with the conversation.
+ * Capped PER CALL rather than per session: `maxAttempts` reads is what ONE
+ * unlabelable call may cost, and the budget is spent across snapshots. Past it
+ * the call has no arguments anywhere to find — a plan the harness rejected emits
+ * no start and leaves no assistant row — and re-admitting it through a later
+ * snapshot's seed would spend a history page per turn for the rest of the
+ * conversation to learn nothing. That is why the caller keeps exhausted ids in
+ * `outstanding` instead of forgetting them.
  */
-export function labelGapRetries(
+export function labelGapCandidates(
 	outstanding: ReadonlyMap<string, number>,
+	candidateIds: Iterable<string>,
 	labelled: ReadonlySet<string>,
 	maxAttempts: number,
 ): string[] {
 	const retries: string[] = [];
-	for (const [callId, attempts] of outstanding) {
-		if (labelled.has(callId) || attempts >= maxAttempts) continue;
+	const seen = new Set<string>();
+	for (const callId of candidateIds) {
+		if (seen.has(callId)) continue;
+		seen.add(callId);
+		if (labelled.has(callId)) continue;
+		if ((outstanding.get(callId) ?? 0) >= maxAttempts) continue;
 		retries.push(callId);
 	}
 	return retries;

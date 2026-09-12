@@ -34,7 +34,7 @@ import {
 	applyLiveSeed,
 	clearTranscript,
 	dropLiveRecords,
-	labelGapRetries,
+	labelGapCandidates,
 	reconcileLimit,
 	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
@@ -100,6 +100,16 @@ const TERMINAL_EVENTS = new Set([
 
 /** Flush cadence when no animation frame arrives (hidden window). */
 const HIDDEN_FLUSH_MS = 250;
+
+/**
+ * How many unlabelled calls the retry bookkeeping remembers.
+ *
+ * Evicted oldest-first, so the entries that go are the ones nothing has asked
+ * about for longest. Generous against any real seed — the owner caps its own at
+ * 100 ends — and it exists only so a pathological session cannot grow the map
+ * without bound.
+ */
+const LABEL_GAP_MAX_TRACKED = 512;
 
 /**
  * The events after which a round's tool rows are IN the durable transcript.
@@ -246,28 +256,46 @@ export function useCanonicalSessionStream(
 					frame.type === "event" &&
 					DURABLE_ROUND_ENDINGS.has(String(frame.payload.type ?? "")),
 			);
+			/*
+			 * Retry candidates are filtered through the SAME budget the retry path
+			 * uses, so a seed that keeps naming a call nothing can ever label does not
+			 * reset its count: without this, each new snapshot granted an exhausted id
+			 * two more reads — a slow drip against the history endpoint rather than the
+			 * per-call bound `labelGapCandidates` promises.
+			 */
+			const seedMissing = labelGapCandidates(
+				labelGapRef.current,
+				seedCallsMissingLabels(seedEvents, labelled),
+				labelled,
+				LABEL_GAP_ATTEMPTS,
+			);
 			const retryLabels = roundEnded
-				? labelGapRetries(labelGapRef.current, labelled, LABEL_GAP_ATTEMPTS)
+				? labelGapCandidates(
+						labelGapRef.current,
+						labelGapRef.current.keys(),
+						labelled,
+						LABEL_GAP_ATTEMPTS,
+					)
 				: [];
-			const missingLabels = [
-				...new Set([
-					...seedCallsMissingLabels(seedEvents, labelled),
-					...retryLabels,
-				]),
-			];
+			const missingLabels = [...new Set([...seedMissing, ...retryLabels])];
 			/*
 			 * Bookkeeping BEFORE the request, because this counts ATTEMPTS: a read that
-			 * fails or arrives too early must still not be retried forever. Ids the
-			 * transcript has learned since the last flush are dropped here, which is
-			 * what keeps the map from growing with the conversation.
+			 * fails or arrives too early must still not be retried forever. An id the
+			 * transcript has learned is dropped; an EXHAUSTED one is KEPT, because
+			 * deleting it would let the next snapshot's seed re-admit it with a fresh
+			 * budget. The map's oldest entries are evicted past a plausible bound so
+			 * the bookkeeping cannot outgrow any seed the owner can send.
 			 */
-			for (const [id, attempts] of [...labelGapRef.current]) {
-				if (labelled.has(id) || attempts >= LABEL_GAP_ATTEMPTS) {
-					labelGapRef.current.delete(id);
-				}
+			for (const id of [...labelGapRef.current.keys()]) {
+				if (labelled.has(id)) labelGapRef.current.delete(id);
 			}
 			for (const id of missingLabels) {
 				labelGapRef.current.set(id, (labelGapRef.current.get(id) ?? 0) + 1);
+			}
+			while (labelGapRef.current.size > LABEL_GAP_MAX_TRACKED) {
+				const oldest = labelGapRef.current.keys().next().value;
+				if (oldest === undefined) break;
+				labelGapRef.current.delete(oldest);
 			}
 			performance.mark("lop:transcript:flush:start");
 
@@ -548,6 +576,11 @@ export function useCanonicalSessionStream(
 			transcript: EMPTY_TRANSCRIPT,
 			status: "connecting",
 		}));
+		// The retry bookkeeping is per SESSION: a previous session's outstanding call
+		// ids would each buy a history page for the new one, sized by the old gap,
+		// that can only be a no-op. `reconnectRef`, `receiptRef` and `paintedIds` are
+		// cleared here for the same reason.
+		labelGapRef.current = new Map();
 	}, [sessionId]);
 
 	// Latest view for callbacks that must not re-create per render.
