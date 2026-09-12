@@ -1,10 +1,10 @@
 {
-  "head": "6f659757231d7c9df414f17f66c401819d4a7876",
-  "srcTree": "be8a455cbd293ff9c9801b217141c7648422560f",
-  "scriptsTree": "d098a16201f591568e07b51d2891369421662554",
+  "head": "a5d699ab16336bd1c490768457169a15e540d48c",
+  "srcTree": "e7253d68b9137f78315802aba1f080fe9ae45bf6",
+  "scriptsTree": "892f9b9d21974cecb2491c4e1ecbea0ff5cc4890",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 462,
+  "frames": 460,
   "surfaces": 45,
   "themes": 12,
   "partialCapture": {
@@ -23,17 +23,17 @@
       "tool-rows/working-labels",
       "transcript-images/real-conversation-images"
     ],
-    "refreshedAt": "2026-09-12T06:14:12.105Z",
-    "refreshedAtHead": "6f659757231d7c9df414f17f66c401819d4a7876",
+    "refreshedAt": "2026-09-12T06:55:25.866Z",
+    "refreshedAtHead": "a5d699ab16336bd1c490768457169a15e540d48c",
     "refreshedFrames": 2,
     "refreshedStories": [
-      "chat-tool-rows--joined-mid-turn"
+      "chat-tool-rows--names-and-fallbacks"
     ],
     "refreshedThemes": [
       "localOperatorDark",
       "localOperatorLight"
     ],
-    "refreshedNote": "REFRESHED across this change: the eight `chat-tool-rows--*` story surfaces in the two brand themes when the row's object column, its duration/byte spellings and its stand-in mark changed, then `states` and `joined-mid-turn` again when the composing row, the silent call and the truncated stand-in row were added (the LAST capture run is what `refreshedStories`/`refreshedFrames`/`refreshedThemes` describe; this note covers the whole PR). `names-and-fallbacks` was re-captured a second time because the mark changed its own fallback row and the first refresh predated it. RENAMED: `docs/evidence/tool-rows` -> `docs/evidence/chat-tool-rows`, because the capture names a surface from its story title slug and the title gained a `Chat/` prefix after the set was first written. REMOVED: `chat-tool-rows/turn-boundary`, superseded by `turn-boundary-and-working-line`; its story title no longer exists, so no sweep could refresh it. DECLARED, not swept: `tool-rows-baseline` (this change's before/after pair, which needs an older SOURCE TREE), `chat-tool-rows/spacing-uniformity` and `chat-tool-rows/real-conversation-tool-rows` (no story, captured by hand) - a full sweep would otherwise delete all three. SWEEP TOTAL: 474 is the count of frames the tree holds OUTSIDE every declared set, which is the number this manifest must claim for the gate to tell a declared directory from an undeclared one. It is NOT the count a full 12-theme sweep would reproduce: a sweep writes its own total from what it captures, and `capture-evidence` records that instead when it runs. PRE-EXISTING, FIXED HERE BECAUSE IT BLOCKED THE SWEEP: the capture list named `onboarding-onboardingmodal--radient-sign-in`, a story removed with the Tailwind v4 landing (bb57a4080). The harness validates every id before capturing, so that one dead entry aborted a full `pnpm capture-evidence` - QA round 2 hit it. The entry is gone and the twelve frames the story used to produce are declared as a historical set, so the sweep runs and the frames are visible rather than silently deleted."
+    "refreshedNote": "REFRESHED across this change: the eight `chat-tool-rows--*` story surfaces in the two brand themes when the row's object column, its duration/byte spellings and its stand-in mark changed, then `states` and `joined-mid-turn` again when the composing row, the silent call and the truncated stand-in row were added (the LAST capture run is what `refreshedStories`/`refreshedFrames`/`refreshedThemes` describe; this note covers the whole PR). `names-and-fallbacks` was re-captured a second time because the mark changed its own fallback row and the first refresh predated it. RENAMED: `docs/evidence/tool-rows` -> `docs/evidence/chat-tool-rows`, because the capture names a surface from its story title slug and the title gained a `Chat/` prefix after the set was first written. REMOVED: `chat-tool-rows/turn-boundary`, superseded by `turn-boundary-and-working-line`; its story title no longer exists, so no sweep could refresh it. DECLARED, not swept: six sets, each one a surface this tool cannot retake - `tool-rows-baseline` (the before/after pair, which needs an older SOURCE TREE), `chat-tool-rows/spacing-uniformity`, `chat-tool-rows/real-conversation-tool-rows` and `transcript-images/real-conversation-images` (no story, captured by hand), `onboarding-onboardingmodal/radient-sign-in` (its story was removed), and `sidebar-new-chat`. A sweep does not ignore undeclared frames in silence: it rewrites its own total in the same pass, so the gate stays green over the loss - which is why each of these has to be named here rather than counted. SWEEP TOTAL: 460 is the count of frames the tree holds OUTSIDE every declared set, which is the number this manifest must claim for the gate to tell a declared directory from an undeclared one. It is NOT the count a full 12-theme sweep would reproduce: a sweep writes its own total from what it captures, and `capture-evidence` records that instead when it runs. PRE-EXISTING, FIXED HERE BECAUSE IT BLOCKED THE SWEEP: the capture list named `onboarding-onboardingmodal--radient-sign-in`, a story removed with the Tailwind v4 landing (bb57a4080). The harness validates every id before capturing, so that one dead entry aborted a full `pnpm capture-evidence` - QA round 2 hit it. The entry is gone and the twelve frames the story used to produce are declared as a historical set, so the sweep runs and the frames are visible rather than silently deleted. TABLE OF WHAT A SWEEP DOES: it clears the `.webp` frames it can retake and keeps everything else. An undeclared directory does not only hold frames - measured on this tree it held 123 committed non-`.webp` files across seven surfaces, including `tui-parity/OPERATOR-TUI-REFERENCE.md` - so `clearSweptFrames` sweeps frames, removes a directory only once that empties it, and has a test for both properties (`scripts/capture-evidence.test.mjs`). PROVENANCE OF `dirtyWorkingTree: true` HERE: the last two surfaces were captured while this commit's own tooling was still uncommitted, so the flag is accurate and the tree hashes are of the commit that carries that content (`a5d699ab1`). The substantive question - do the frames reproduce from the committed tree - was settled by two independent captures from `git archive a5d699ab1` (reviewer and QA round 3), both byte-identical to the committed frames."
   },
   "supplementary": [
     {
@@ -82,6 +82,15 @@
       "source": "scripts/capture-evidence.mjs in the twelve-theme sweep before the story was removed",
       "why": "Historical: the Radient sign-in onboarding screen as it stood before the Tailwind v4 landing (bb57a4080) removed its story, which is what left the capture list naming an id that no longer exists. Kept as the record of the pre-v4 screen, and declared so a sweep neither deletes it silently nor reports it as unaccounted.",
       "capturedAt": "2026-08-06T18:36:03.218Z"
+    },
+    {
+      "path": "transcript-images/real-conversation-images",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "a bespoke harness over a real conversation's history and attachment endpoints",
+      "why": "Two frames of the same real conversation as `chat-tool-rows/real-conversation-tool-rows`, captured to show what the transcript does with the images a `browser` or `read` call returns: a durable row carries only a content-addressed digest and the bytes are fetched separately, which is the path this surface proves end to end. It has no story and its harness was not committed, so a sweep cannot re-derive it - and until it was declared, a sweep DELETED it while the gate stayed green, because the sweep rewrites its own frame count in the same pass.",
+      "capturedAt": "2026-09-10T02:37:03.000Z"
     }
   ]
 }

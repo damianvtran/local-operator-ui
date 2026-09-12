@@ -6,15 +6,16 @@ three pulsing dots.
 
 Two capture surfaces, and the difference matters when reading them:
 
-- **Storybook frames** (`states`, `names-and-fallbacks`, `narrow`,
-  `operator-spacing-cases`, `turn-boundary-and-working-line`,
+- **Storybook frames** (`states`, `names-and-fallbacks`, `narrow`, `working`,
+  `working-labels`, `operator-spacing-cases`, `turn-boundary-and-working-line`,
+  `joined-mid-turn`,
   `working`, `working-labels`) render the **production `CanonicalTranscript`**
   from fixture `TranscriptRecord`s. They cover the states that are slow or
   awkward to produce live: an interrupted call needs a turn stopped at exactly
   the right moment, an `mcp__*` row needs a server connected, a narrow row needs
   a resize. Captured over CDP with `scripts/check-evidence.mjs`'s own
   `assertFramePaints` guard.
-- **`real-conversation-tool-rows`** renders the **shipped `applyHistoryPage`
+- **`real-conversation-tool-rows`** (and, in `transcript-images/`, its image-side sibling) renders the **shipped `applyHistoryPage`
   reducer and the shipped `CanonicalTranscript`** over real `/history` pages
   from one of the operator's actual conversations, served by a real
   `local-operator serve` backend. Electron is not required to render this
@@ -38,9 +39,9 @@ Two capture surfaces, and the difference matters when reading them:
 | [`working`](working/) | The working line under a running tool row. The row states the ARGUMENTS and that call's own execution time; the line states the KIND of work and the phase age. They do not restate each other. |
 | [`working-labels`](working-labels/) | Every label the line can carry — `thinking`, `responding`, `composing a call`, the model's own sanitised intent, and `running 3 tools` for a batch. No trailing ellipsis anywhere: the clock is what says it is ongoing. |
 | [`real-conversation-tool-rows`](real-conversation-tool-rows/) *(declared, not swept)* | The shipped reducer and transcript over a real backend and a real conversation, paged oldest-first in 20-entry pages: **38 real tool rows, 0 blank object columns**, every row on a 20px pitch, 38 `sr-only` outcome labels. Every row carries its own arguments — the defect this replaced showed a run of unlabelled `bash`/`wait`/`task` rows. |
-| [`joined-mid-turn`](joined-mid-turn/) | The reported defect, at the only moment it is visible: a viewer that joins a turn already in flight. The owner's seed keeps the settling frame of every call that finished before the viewer attached and drops the start it replaces, and the settling frame carries no `args` — so a run of rows used to read `exit code: 0`, the file's first line, or `result: None` instead of the call. Five rows: one whose row is recreated by that settling frame after a receipt gap (it must still say the command), one whose arguments are genuinely unknown with a result opening on the harness's own `exit code: 0` wiring, a `read` in the same state, a call that printed NOTHING (so the object column is deliberately EMPTY rather than quoting the producer's `(empty)` section body), and a control row whose arguments arrived normally. Records are built by the PRODUCTION reducer in the order the session hook applies them. Where a row shows a line of its RESULT rather than its own object, the line is marked with a leading `…` — the design round's D1 — so a column that is normally a command cannot be misread as one. The same story captured from UNMODIFIED `origin/main` (`2217ea59a`) lives in [`../tool-rows-baseline/`](../tool-rows-baseline/), with the row-by-row pair and the one-line reproduction: rows 1 and 2 read `exit code: 0` there, which is the reported defect. |
+| [`joined-mid-turn`](joined-mid-turn/) | The reported defect, at the only moment it is visible: a viewer that joins a turn already in flight. The owner's seed keeps the settling frame of every call that finished before the viewer attached and drops the start it replaces, and the settling frame carries no `args` — so a run of rows used to read `exit code: 0`, the file's first line, or `result: None` instead of the call. Six rows: one whose row is recreated by that settling frame after a receipt gap (it must still say the command), one whose arguments are genuinely unknown with a result opening on the harness's own `exit code: 0` wiring, a `read` in the same state, a call that printed NOTHING (so the object column is deliberately EMPTY rather than quoting the producer's `(empty)` section body), a stand-in line long enough that the column truncates it, and a control row whose arguments arrived normally. Records are built by the PRODUCTION reducer in the order the session hook applies them. Where a row shows a line of its RESULT rather than its own object, the line is marked with a leading `…` — the design round's D1 — so a column that is normally a command cannot be misread as one. The same story captured from UNMODIFIED `origin/main` (`2217ea59a`) lives in [`../tool-rows-baseline/`](../tool-rows-baseline/), with the row-by-row pair and the one-line reproduction: rows 1 and 2 read `exit code: 0` there, which is the reported defect. |
 | [`operator-spacing-cases`](operator-spacing-cases/) | The same three runs as a STORY, so they are re-captured by every sweep: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch. |
-| [`spacing-uniformity`](spacing-uniformity/) *(declared, not swept)* | The three runs the operator screenshotted when he called the spacing "much too wide" and "not very uniform", reproduced as a regression surface: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch. |
+| [`spacing-uniformity`](spacing-uniformity/) *(declared, not swept)* | The two runs as they were captured by hand for the spacing round: a short run of settled rows, and the mixed run beside an assistant line. Its sibling above is the same claim as a story; this is the pair the operator's own screenshot was compared against, and what it holds is what those frames show, not the story's fuller set. |
 | [`turn-boundary-and-working-line`](turn-boundary-and-working-line/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. (The older `turn-boundary/` frames were removed: they came from a story title that no longer exists, so no sweep could refresh them.) |
 
 > **How the headline frame was proven to be a real reading.** A frame showing
@@ -82,7 +83,7 @@ assistant entry fell on another page, and the rows left with nothing to say
 fall back to the output's first line rather than rendering empty.
 
 Both brand themes for each. The 12-theme sweep was **not** regenerated — see
-`manifest.json`'s `partialCapture` — but the seven story ids are registered in
+`manifest.json`'s `partialCapture` — but the eight story ids are registered in
 `STORIES` in `scripts/capture-evidence.mjs`, so the next full recapture covers
 them.
 
@@ -208,11 +209,13 @@ that indistinguishability is why the defect survived a review round.
 
 ## Declared, not swept
 
-Three surfaces in this set cannot be regenerated by `pnpm capture-evidence`, and each
+Three surfaces in this set cannot be regenerated by `node scripts/capture-evidence.mjs`, and each
 is therefore its own `supplementary` declaration in `manifest.json` — the same
-mechanism `sidebar-new-chat` uses. A sweep DELETES every top-level entry no
-declaration names, so without this they would be lost the first time anyone ran
-the full sweep, and the manifest's arithmetic would stop matching the disk.
+mechanism `sidebar-new-chat` uses. A sweep clears the frames it can retake and keeps everything else, but an
+undeclared frame set is still deleted — and because the sweep rewrites its own
+frame count in the same pass, `check-evidence` stays GREEN over the loss. That is
+why each of these is named rather than counted: not to keep the arithmetic
+honest, but because nothing else would notice they had gone.
 
 | surface | why a sweep cannot produce it |
 | --- | --- |

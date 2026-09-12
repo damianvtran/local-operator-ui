@@ -12,6 +12,7 @@ They exist because the fixed frames cannot show what was wrong. Read the pair:
 | unknown arguments, `bash` | `exit code: 0` | `… === /Volumes ===` |
 | unknown arguments, `read` | `1130\|  private setupUpdateEvents(): void {` | `… 1130\|  private setupUpdateEvents(): void {` |
 | silent call (printed nothing) | *not in this set* | *empty object column* |
+| a stand-in line longer than the column | *not in this set* | `… src/renderer/…/tool-row.tsx:412: …` with the column's own ellipsis |
 | control (arguments on the start) | `pnpm check-types && pnpm test:desktop` | *(unchanged)* |
 
 ## Why these live outside `chat-tool-rows/`

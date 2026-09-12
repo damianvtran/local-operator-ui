@@ -25,6 +25,7 @@ import {
 	readFileSync,
 	readdirSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -252,6 +253,19 @@ const STORIES = [
  * safe direction of the trade: a swept sibling under a preserved parent
  * survives a sweep that no longer captures it, and the gate reports it as an
  * unaccounted frame instead of silently losing an irreplaceable one.
+ *
+ * What is swept is the `.webp` FRAMES, not the directories holding them. The
+ * distinction is the same one the paragraphs above are about, one level down:
+ * an undeclared directory does not only hold frames this script can retake. It
+ * holds the README that says how its frames were captured, hand-taken PNG
+ * pairs from before this script existed, and - measured on this tree - 123
+ * committed non-`.webp` files across seven surfaces, including
+ * `tui-parity/OPERATOR-TUI-REFERENCE.md`, the reference the tool rows were
+ * ported from. Deleting whole directories took all of that on the next sweep,
+ * and the gate cannot see any of it: it counts frames. A sweep still cannot
+ * leave a stale frame behind (every `.webp` outside a declared set goes), and
+ * a directory emptied of its frames is removed; a file the sweep did not write
+ * is not the sweep's to delete.
  */
 export const clearSweptFrames = (out) => {
 	const manifestPath = join(out, "manifest.json");
@@ -264,11 +278,31 @@ export const clearSweptFrames = (out) => {
 	if (existsSync(out)) {
 		for (const entry of readdirSync(out)) {
 			if (entry === "manifest.json" || preserved.has(entry)) continue;
-			rmSync(join(out, entry), { recursive: true, force: true });
+			sweepFramesFrom(join(out, entry));
 		}
 	}
 	mkdirSync(out, { recursive: true });
 	return supplementary;
+};
+
+/**
+ * Remove the frames under `path`, and `path` itself once it holds none.
+ *
+ * A FILE is swept only when it is a frame; anything else was written by a hand
+ * or by another tool, and `clearSweptFrames` documents why that is not the
+ * sweep's to delete. A directory is swept recursively and then removed only if
+ * that leaves it empty, so a surface that still carries its README keeps it
+ * while its stale frames go.
+ */
+const sweepFramesFrom = (path) => {
+	const stats = statSync(path, { throwIfNoEntry: false });
+	if (!stats) return;
+	if (!stats.isDirectory()) {
+		if (path.endsWith(".webp")) rmSync(path, { force: true });
+		return;
+	}
+	for (const entry of readdirSync(path)) sweepFramesFrom(join(path, entry));
+	if (readdirSync(path).length === 0) rmSync(path, { recursive: true, force: true });
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
