@@ -644,11 +644,15 @@ the interaction. It now takes `cursor-pointer`; the read-only chip keeps
 
 ## Recorded, not fixed here
 
-- **check-evidence does not cover this PR's frames.** It globs `.webp` only
-  (`scripts/check-evidence.mjs`), and all 48 chat-shell frames are `.png`, so
-  the "456 frames" gate passes without reading a single frame from this PR.
-  Pre-existing; the 456-frame number should not be cited as evidence for these
-  captures.
+- **check-evidence does not cover these frames, and the count in an earlier
+  draft was stale.** The gate globs `.webp` only (`scripts/check-evidence.mjs`),
+  while every frame in `docs/evidence/chat-shell` is a `.png` - **52** of them at
+  this head (50 at `95d019dcc`, 38 at this branch's base `2217ea59a`). Its
+  `496 frames are pictures of their own theme` green run therefore reads none of
+  the ground sets and none of the frames this branch adds; the theme honesty of
+  those frames is a measured claim by the review rounds that checked them, not
+  the gate's. Stated plainly rather than left implied: **the PNG frame sets are
+  outside `check-evidence`'s glob.**
 - **The D9 capture harness is not committed.** Its state assertion is real
   (the round-2 designer rebuilt it and it fired twice) but it is not
   third-party reproducible from this repo, and the README no longer claims a
@@ -731,13 +735,18 @@ but slight; and the rail's own separation is **unchanged and larger** in both
 themes (4.07 / 4.38 against 2.54 / 2.18), which is the relationship the report
 asked to keep. No third colour appears in any run **in these four frames**, so
 nothing is painted at either boundary while the dock is closed. (The dock-open
-pair has one extra pixel at the column's edge; see "One pixel that is not a
-rule" below — it is the transcript's scrollbar, not a boundary.)
+pair is the exception: that boundary carries the dock's own `border-hairline`,
+measured in "The pixel that marks the dock is a rule, and it is the dock's own
+border" below.)
 
 The rendered working-area pixel is one unit off the palette token (dark:
 rendered #15130F against token #16130E; light: rendered #F4F0E7 against token
-#F5F0E6), which is the capture's colour-profile conversion, not a second
-palette. Against the tokens the same step measures ΔE00 2.61 (dark) and 2.31
+#F5F0E6), which is the capture's **Display P3 re-encoding** of that token rather
+than a second palette: these frames are captured in P3, so every measured colour
+is its palette value re-encoded (`#147842` measures as `rgb(56,118,71)`), and the
+shift is a unit or two on these near-neutral grounds, which is why the
+significant-step claims are made on P3-space measurements taken from the frames
+themselves. Against the tokens the same step measures ΔE00 2.61 (dark) and 2.31
 (light).
 
 ## The other ten themes: token-derived, not rendered
@@ -770,11 +779,17 @@ than behind one number. **The loud end of the new pair is synth 6.56** (radient
 **the quiet end is iceberg 2.11**, which is the step that palette already draws
 between every card and its page - § 3 names iceberg's 2.1 as sufficient where a
 1.5 was not - so chat adopts an existing magnitude rather than introducing one.
-And **the rail's margin is thinnest in obsidian**, where its 4.49 is only
-**1.18x** the 3.80 step (then radient 1.38x, dracula 1.44x): the 1.9x/1.6x the
-brand frames show is not the worst case. If that margin ever needs widening, the
-lever is the palette, not this column. `pnpm check-themes` asserts both pairs as
-adjacent grounds, so neither is maintained by hand.
+And **the rail's margin is thinnest in obsidian**, where a ΔE00 ratio of
+**1.18x** (4.49 against 3.80) is the smallest of the twelve; then radient 1.38x
+and dracula 1.44x. Those are ratios of the two ΔE00 steps, which is a different
+quantity from the `ratio` column in the table above: that column is a WCAG
+contrast ratio (obsidian's rail pair is 1.16:1 there, iceberg 1.17:1), so 1.18x
+and 1.16 are two measurements of two things rather than a contradiction. On one
+basis, the brand palettes' rendered frames show 2.0x (light) and 1.6x (dark), so
+the 1.9x/1.6x quoted in an earlier draft of this paragraph mixed a token ratio
+with a rendered one. If that margin ever needs widening, the lever is the
+palette, not this column. `pnpm check-themes` asserts both pairs as adjacent
+grounds, so neither is maintained by hand.
 
 ## The dock, open
 
@@ -832,7 +847,7 @@ operator's workspace (`utils/file-creation`).
 
 The nine-pixel run across the column/dock boundary contains a fourth colour in
 both halves of the pair: `#343024` (dark) / `#DCD8CF` (light), which is each
-palette's own `hairline` after the capture's one-unit colour conversion. It is
+palette's own `hairline` after the capture's Display P3 re-encoding. It is
 **not** a scrollbar. It is the dock container's own `border-l border-hairline`
 (`chat-content.tsx`), whose left edge is exactly x=720 and which `h-full` gives
 the full window height: measured in all four dock-open frames, x=720 is one
@@ -844,8 +859,9 @@ So the working surface and the dock are separated by a painted rule rather than
 a bare ground step, and that rule is **pre-existing and unchanged** by this
 change (the pair's diff is confined to x=500..719, so x=720 is byte-identical
 between the halves). It measures **ΔE00 5.26** from the canvas under it in
-`localOperatorLight` and **10.21** in `localOperatorDark` (contrast 1.41) —
-above the rail's own 4.38 / 4.07. With the dock open, then, the strongest
+`localOperatorLight` and **10.21** in `localOperatorDark` (contrast 1.41 in
+dark, 1.25 in light) — above the rail's own 4.38 / 4.07. With the dock open,
+then, the strongest
 vertical *edge* in the window is the dock divider, while the rail remains the
 strongest ground *step*. Both stay: a resizable split needs a visible edge, and
 the boundary this PR adds between the list panel and the working surface stays
@@ -861,7 +877,13 @@ The `localOperatorLight` and `iceberg` empty pairs were recaptured through the
 harness with the synthetic pointer parked at 4,4 and nothing focused, so the
 transient UI state a first pass left in them is gone: the earlier light pair had
 the composer's accent focus ring in one half only, and a hover highlight on a
-sidebar row (`+ Create agent`, 7942 pixels) in its before half. In the committed
+sidebar row (`+ Create agent`) in its before half - **8082** differing pixels
+against the after half in that superseded frame, 7624 of them the tint
+`#FFFEFB` (exact comparison; a per-channel `>2/255` tolerance counts 7942, which
+is where an earlier draft's "7942 pixels" came from). The figure is quoted from
+the frame this commit replaces, so it is not reproducible from the committed
+set - the direction of the claim is what matters, and the frame that carried the
+highlight is gone. In the committed
 pair the sidebar is **byte-identical** (0 differing pixels across x=220-499, the
 whole list panel) and the composer carries its resting `border-control` edge in
 both halves.
@@ -869,9 +891,13 @@ both halves.
 One difference is **not** removable, and it is the application's own: the
 empty-state suggestion chips are drawn from a randomised pool at mount
 (`message-input.tsx`: `[...initialSuggestions].sort(() => Math.random() - 0.5)`),
-so the two halves of every empty pair necessarily carry different chips - and
-because the empty block is laid out from its content, the composer sits a few
-pixels higher or lower between them. The ground claim does not rest on the empty
+so the two halves of every empty pair necessarily carry different chips. The
+shift that follows is pair-specific rather than uniform, because the block is
+laid out from its content: in the recaptured `localOperatorLight` pair the two
+chip sets happen to be the same height, so the composer box sits at **identical**
+y (389-500) in both halves, while in the `iceberg` pair they are not and the
+whole centred block moves **19px** (composer y=389→370, greeting y=346→327, with
+an extra chip row). No ground measurement rests on either position. The ground claim does not rest on the empty
 frames' content: it rests on the numbers in the table above (0 → 2.18 across
 that boundary in both halves), on the populated and dock pairs, and on the
 pixel-diff bounding boxes, which show nothing outside the column changed.
