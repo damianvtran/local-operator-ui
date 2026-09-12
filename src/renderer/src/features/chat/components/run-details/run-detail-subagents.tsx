@@ -14,6 +14,9 @@
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
+	CircleDashed,
+	CircleHelp,
+	CirclePause,
 	CircleSlash,
 	Clock,
 	LoaderCircle,
@@ -32,9 +35,12 @@ import {
 
 /**
  * One mark per state, ported by meaning rather than by codepoint, exactly as
- * `trace/tool-glyphs.ts` ports the TUI's nerd-font table. `status_glyph` has one
- * more mark than this table — the pause circle — and no row here can carry it:
- * the desktop roster has no pause flag to read (`OPEN_CHILD_STATUSES`).
+ * `trace/tool-glyphs.ts` ports the TUI's nerd-font table. `status_glyph` has a
+ * mark for the pause circle and no branch at all for `gone` or an unrecognised
+ * word — both fall through to its completed check — and all three have their
+ * own mark here. `CirclePause` is the TUI's own `GLYPH_PAUSED`, reachable from
+ * the restored path rather than from a live pause; the other two are the quiet
+ * marks for "this state did not resolve into an outcome".
  *
  * Two properties are load-bearing and both are `§6.4`'s: **motion is a bonus,
  * never the contract** — running and interrupted are different SHAPES, so the
@@ -45,9 +51,12 @@ import {
 const CHILD_ICON: Record<ChildStatus, LucideIcon> = {
 	running: LoaderCircle,
 	queued: Clock,
+	paused: CirclePause,
 	interrupted: RotateCcw,
 	done: Check,
 	cancelled: CircleSlash,
+	gone: CircleDashed,
+	unknown: CircleHelp,
 	failed: X,
 };
 
@@ -56,11 +65,20 @@ const CHILD_INK: Record<ChildStatus, string> = {
 	// green is a scarce budget and a child at work has not done anything yet.
 	running: "text-ink-muted",
 	queued: "text-ink-dim",
+	// Muted like `interrupted`, and for the same reason: the child is not gone
+	// and did not fail — it is parked where the user left it, which is a state
+	// they may come back to (`subagent_panel.py` returns `muted` for both).
+	paused: "text-ink-muted",
 	// A run cut off by the process ending is not a failure — nothing went wrong —
 	// so it takes the muted ink and the rotate mark that says it may be resumable.
 	interrupted: "text-ink-muted",
 	done: "text-ink-dim",
 	cancelled: "text-ink-dim",
+	// Settled and quiet, and NOT `done`: both of these are states whose outcome
+	// is unknown, so they take the quietest ink without claiming a green check
+	// (`foldStatus`).
+	gone: "text-ink-dim",
+	unknown: "text-ink-dim",
 	failed: "text-danger",
 };
 
@@ -245,7 +263,7 @@ const SubagentRowView = ({ row }: { row: SubagentRow }) => {
 					 * never whether the child was still going or had failed, which is
 					 * the one fact the row exists to carry (`§6.4`).
 					 */}
-					<span className={cn("sr-only")}>{childStateLabel(row.status)}</span>
+					<span className={cn("sr-only")}>{childStateLabel(row)}</span>
 					<NumbersRun row={row} />
 				</div>
 				<DetailLine row={row} />

@@ -7,6 +7,7 @@
  */
 
 export {
+	acknowledgedOnClose,
 	acknowledgedOnOpen,
 	childStateLabel,
 	deriveRunDetails,
@@ -23,6 +24,7 @@ export {
 	TODO_ITEM_CAP,
 	todoTally,
 	unseenFailures,
+	visibleFailures,
 	visibleSubagents,
 	visibleTodoPhases,
 } from "./run-detail-model";

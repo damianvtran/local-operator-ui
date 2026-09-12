@@ -55,8 +55,10 @@ type JobSpec = {
  * and shows the session's plan (`docs/run-details.md` § 8), so a fixture that
  * carried them would invite a reader to think they mattered. A third is absent
  * for a harder reason: **there is no `paused` field on `JobState` at all**, so a
- * fixture that set one would be a fixture asserting a wire shape that does not
- * exist (`OPEN_CHILD_STATUSES`).
+ * fixture that set one would assert a wire shape that does not exist. A paused
+ * child is instead reproduced the way the wire produces one — as the WORD
+ * `paused` on a restored row, which is what `foldStatus` folds and what the
+ * model's own tests drive.
  */
 const child = (spec: JobSpec): Record<string, unknown> => ({
 	id: spec.id,
@@ -375,10 +377,12 @@ export const crowded = (): RunDetailsInput => ({
 			cost: 0.11,
 		}),
 		// The newest settled child in this fixture, which is why it is the row
-		// that shows in the frame. A pause is implemented as a cancel on the wire
-		// and this row carries no flag saying otherwise — `JobState` has no pause
-		// field to read (`OPEN_CHILD_STATUSES`), so a child the user paused arrives
-		// at this popover as a plain `cancelled` one.
+		// that shows in the frame. A LIVE pause is implemented as a cancel on the
+		// wire and this row carries no flag saying otherwise — `JobState` has no
+		// pause field to read — so a child the user paused in this session arrives
+		// at this popover as a plain `cancelled` one. The `paused` state is
+		// reachable all the same, from the durable graph after a restart
+		// (`foldStatus`), which is why it has a mark and a rank of its own.
 		child({
 			id: "job-e",
 			label: "Draft the migration plan",

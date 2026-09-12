@@ -36,53 +36,75 @@
 /* ------------------------------------------------------------------ */
 
 /**
- * The states a child row can render, which is the set THIS wire can put on a
- * row: `JobState.status` (`running|completed|failed|cancelled|interrupted`,
- * `local_operator/session/frontend_state.py:1279-1291`) plus the `queued` flag.
- * `subagent_panel.status_glyph` (`:345-391`) has a mark for one more — `paused`
- * — which no row here can carry; `OPEN_CHILD_STATUSES` records why that state
- * is absent rather than handled.
+ * The states a child row can render, enumerated from the WORDS THE WIRE CAN
+ * CARRY rather than from `subagent_panel.status_glyph`'s table — which answers
+ * a different question and is one branch short of this one.
  *
- * Anything else on the wire — a status from a runtime this renderer has not
- * been taught — folds to `done`, which is that function's own default. The
- * alternative (treating an unknown word as open) was considered and rejected
- * for parity: the TUI's roster has read `GLYPH_DONE, status or "completed"` for
- * its whole life, and a second answer here would be a second vocabulary for one
- * job. The cost is named rather than hidden: a future status must be added to
- * THIS table, or it will read as finished.
+ * There are two producers of `frontend.jobs` rows, and the second is why this
+ * list is longer than `JobState.status`:
+ *
+ * - The execution ledgers: `JobState.status` is
+ *   `running|completed|failed|cancelled|interrupted`
+ *   (`harness/jobs.py:215`, `session/frontend_state.py:1279-1291`) plus the
+ *   `queued` flag.
+ * - The DURABLE GRAPH, for the cold-restart case: `frontend_state._jobs`
+ *   appends one `JobState` per `SubagentNode` whose id is not already in the
+ *   live rows, with `status=getattr(node, "status", "gone")`, and
+ *   `SubagentNode.status` is `SubagentComms._describe(record, now).status`
+ *   (`harness/comms.py:793`) — the roster vocabulary `_describe` derives
+ *   (`comms.py:1207-1345`):
+ *   `pausing|paused|running|queued|starting|completed|failed|cancelled|interrupted|gone`.
+ *   The `ChildInfo.status` docstring (`comms.py:288-299`) enumerates nine of
+ *   those and omits `interrupted`, which reaches a row from a restored outcome
+ *   and from `JobStatus` — `harness/jobs.py:205-215` documents it as
+ *   RESTORE-only, so it is in this union on the same authority as `paused`. A
+ *   nested child is exactly one whose job row never reaches the root's sidecar,
+ *   so this is the branch that materialises them.
+ *
+ * So the words that can arrive here are `running`, `queued`, `starting`,
+ * `pausing`, `paused`, `completed`, `failed`, `cancelled`, `interrupted` and
+ * `gone`, and `foldStatus` below folds every one of them explicitly. `paused`
+ * is in that list from the restored path and NOT from a live pause: a live
+ * pause is mechanically a cancel and still arrives as `cancelled`.
+ *
+ * The two remaining states are this model's own, for words it has not been
+ * taught: `gone` is the graph's own word for a row swept without an outcome,
+ * and `unknown` is what a word from a runtime this renderer has never seen
+ * becomes. **Neither is `done`** — see `foldStatus` for why that rule is worth
+ * the extra mark.
  */
 export type ChildStatus =
 	| "running"
 	| "queued"
+	| "paused"
 	| "interrupted"
 	| "done"
 	| "cancelled"
+	| "gone"
+	| "unknown"
 	| "failed";
 
 /**
  * The statuses that mean "this child has not settled", which is what §3.3's
  * visibility rule and the roster's rank both turn on.
  *
- * **There is no `paused` here, and that is a fact about the wire rather than a
- * simplification.** `frontend.jobs` rows are `JobState`
- * (`local_operator/session/frontend_state.py:1279`), whose `status` domain is
- * `running|completed|failed|cancelled|interrupted` plus the `queued` flag: it
- * has no `paused` field, and `starting`/`pausing` live only on the `hub`
- * roster's `ChildInfo`, not on this one. The pause INTENT is
- * `harness/comms.py::_ChildRecord.paused`, and the TUI has it on its own dock
- * only because `tui/app.py:22215` injects `paused=<id> in paused_ids` into its
- * own frontend. Nothing injects it here, so **a child the user paused arrives
- * at this popover as `cancelled`** — indistinguishable from a cancel.
+ * `paused` is one of them, and it is reachable: a restored record whose child
+ * was paused before the process ended comes back through the durable-graph
+ * branch with the word `paused` (`_ChildRecord.paused` outranks the recorded
+ * outcome in `_describe`, and `record_outcome` deliberately does not clear the
+ * flag). A row the user parked to come back to is open work — excluding it
+ * would let a restored pause hide the trigger and render the child as a settled
+ * green check, which is the defect this membership fixes.
  *
- * §3.3 states the cost of that: a pause that leaves no other open work hides
- * the trigger, and the transcript's own notice is the fallback. The fix is on
- * the other side of the wire — publish the intent on the roster row where
- * `comms.job_rows()` builds it — and is recorded as deferred in §10 rather
- * than approximated here with a state no user can reach.
+ * A LIVE pause still arrives as `cancelled` and is still indistinguishable
+ * from a cancel: nothing publishes `_ChildRecord.paused` onto the job row or
+ * the desktop frontend, and §10 records that follow-up with the mechanism the
+ * harness actually allows.
  */
 export const OPEN_CHILD_STATUSES: readonly ChildStatus[] = [
 	"running",
 	"queued",
+	"paused",
 ];
 
 /** Every to-do state the panel draws, from the TUI's `STATUS_MARKS` (`:177`). */
@@ -95,37 +117,46 @@ export const OPEN_TODO_STATUSES: readonly TodoItemStatus[] = [
 ];
 
 /**
- * The TUI's roster vocabulary, in the band's own words (`status_glyph:371-391`).
- * Used for the tally, and for the visually-hidden state each row carries so the
- * panel reads as a sentence to a screen reader rather than as a column of
- * unlabelled icons.
+ * The band's roster vocabulary, in its own words (`status_glyph:371-391`), for
+ * every state that HAS a word of its own.
+ *
+ * `unknown` is deliberately not a key: that state's word is the wire's, not this
+ * table's, so a fixed entry here would be a word the model invented for a status
+ * it has just said it does not know (`SubagentRow.stateWord`). `satisfies` keeps
+ * the completeness check that the `Record` would have given, so adding a state
+ * without a word is still a compile error.
  */
-const CHILD_STATE_WORD: Record<ChildStatus, string> = {
+const CHILD_STATE_WORD = {
 	running: "running",
 	queued: "queued",
+	paused: "paused",
 	interrupted: "interrupted",
 	done: "done",
 	cancelled: "cancelled",
+	gone: "gone",
 	failed: "failed",
-};
+} as const satisfies Record<Exclude<ChildStatus, "unknown">, string>;
 
 /**
  * The rank the overflow slice evicts by (`subagent_panel._EVICTION_RANK:256-262`).
  *
  * Running and queued share the top rank — a child behind the capacity gate is
- * still work the user is waiting on — then failure, then interrupted (the state
- * that ends without settling), then everything settled quietly, which is where a
- * cancelled child sits too: `_EVICTION_RANK` ranks `interrupted` and `paused`
- * together at 2 and gives everything else its default 3, and `cancelled` is one
- * of those defaults.
+ * still work the user is waiting on — then failure, then the two states that end
+ * without settling, `interrupted` and `paused` (the TUI ranks both at 2), then
+ * everything settled quietly, which is where `cancelled`, `gone` and an
+ * unrecognised word sit: the TUI gives them its default 3, and `done` is the
+ * one state that means the child finished.
  */
 const EVICTION_RANK: Record<ChildStatus, number> = {
 	running: 0,
 	queued: 0,
 	failed: 1,
 	interrupted: 2,
+	paused: 2,
 	done: 3,
 	cancelled: 3,
+	gone: 3,
+	unknown: 3,
 };
 
 /** Rows the subagents section shows before it starts disclosing (`§6.3`). */
@@ -185,6 +216,18 @@ export type SubagentRow = {
 	activity: string | null;
 	/** The first line of `error_text`, on a failed child. */
 	errorLine: string | null;
+	/**
+	 * The state in words, for the reader who cannot see the mark (`§6.4`).
+	 *
+	 * The band's own word for a state this model knows, and the WIRE's own word
+	 * for one it does not: a status nobody has taught this renderer is announced
+	 * exactly as it arrived rather than translated into a word the model
+	 * invented. That is the same rule the failure row's exception follows — a
+	 * fabricated rendering of machine text is a claim nobody can check — and it
+	 * is what makes `unknown` falsifiable in the panel instead of being a
+	 * second, vaguer vocabulary for the same fact.
+	 */
+	stateWord: string;
 };
 
 /** One to-do item, pass-through from the wire plus the state's own word. */
@@ -408,21 +451,68 @@ const formatCost = (cost: number | null): string | null => {
 /**
  * Fold the job manager's word plus the capacity flag into one renderable state.
  *
- * The order is `status_glyph`'s (`:371-391`) minus the branches this wire cannot
- * reach: a queued child's status is still `running` on the wire, so the flag has
- * to be read before the word or half the roster reads as spending tokens. There
- * is no pause branch because there is no pause on this wire — `paused` and
- * `starting` are `ChildInfo` states, not `JobState` ones, and a paused child
- * arrives here as `cancelled` (`OPEN_CHILD_STATUSES`).
+ * Every word the wire can put on a row is folded here EXPLICITLY (the union is
+ * enumerated on `ChildStatus`), because a fall-through is a guess about a state
+ * nobody has reasoned about. The two rules that need stating:
+ *
+ * - The capacity flag is read BEFORE the word: a queued child's live status is
+ *   still `running`, and the flag is the only thing that distinguishes it.
+ * - **An unrecognised word is never `done`.** The TUI's `status_glyph` ends
+ *   `GLYPH_DONE, status or "completed"` — an unknown status painted the
+ *   completed check with its own word — and that default is the one branch of
+ *   its table this port refuses. Silently promoting a state to "finished" is
+ *   how a row the user is waiting on disappears: it stops counting as open work
+ *   in §3.3's visibility rule, it is ranked with the settled rows in the slice,
+ *   and it renders as a green check. An unrecognised word instead gets its own
+ *   quiet settled mark and ITS OWN WORD (`SubagentRow.stateWord`), so the row
+ *   stays visible and says what the wire actually said. Same reason `gone` —
+ *   the graph's word for a row swept without an outcome — is its own state
+ *   rather than the TUI's default check.
+ *
+ * `paused` is folded from the WORD, which is the shape the restored path sends
+ * (`_describe` returns it ahead of the recorded outcome, and `record_outcome`
+ * keeps the flag set across the child's exit). A live pause never carries it:
+ * pause is mechanically a cancel, so a live pause still arrives as `cancelled`.
  */
 const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 	const status = raw.toLowerCase();
 	if (queued) return "queued";
-	if (status === "running") return "running";
-	if (status === "failed") return "failed";
-	if (status === "cancelled" || status === "canceled") return "cancelled";
-	if (status === "interrupted") return "interrupted";
-	return "done";
+	switch (status) {
+		case "running":
+			return "running";
+		// `pausing`: the pause flag is set before the cancel it awaits, so the
+		// child is demonstrably still going. `status_glyph:371-376` gates its
+		// paused branch on `status != "running"` for exactly this window; folding
+		// `pausing` to `running` is that guard expressed once, in the model.
+		case "pausing":
+			return "running";
+		// `starting`: the capacity gate has admitted the child but its runner has
+		// not been entered. It takes the `queued` mark ("has not started") and
+		// stays OPEN, which is the fact §3.3's visibility rule needs.
+		case "starting":
+			return "queued";
+		case "paused":
+			return "paused";
+		case "failed":
+			return "failed";
+		case "cancelled":
+		// The other spelling of the same word, so a runtime that sends it lands on
+		// the same mark rather than on `unknown`.
+		case "canceled":
+			return "cancelled";
+		case "interrupted":
+			return "interrupted";
+		// The wire's own word for a clean finish (`JobStatus`) and the dock band's
+		// word for the same fact: both are accepted so the two spellings cannot
+		// diverge into two states.
+		case "completed":
+		case "done":
+			return "done";
+		case "gone":
+			return "gone";
+		default:
+			return "unknown";
+	}
 };
 
 /** Whether a folded state has settled. */
@@ -514,10 +604,8 @@ const deriveChild = (
 	// printing it spends the row's scarcest column saying nothing.
 	const role = rawRole === "" || rawRole === "task" ? null : rawRole;
 	const clock = readClock(job);
-	const status = foldStatus(
-		wireText(job.status) || "running",
-		job.queued === true,
-	);
+	const rawStatus = wireText(job.status) || "running";
+	const status = foldStatus(rawStatus, job.queued === true);
 	const usage = readUsage(job.usage);
 	// `job_stats:504`: context is the last point-in-time reading, falling back to
 	// `input_tokens` — a running sum, so only an approximation of occupancy, used
@@ -535,6 +623,9 @@ const deriveChild = (
 		label,
 		role,
 		status,
+		// The band's word for a state this model knows; the wire's own word,
+		// verbatim, for one it does not (`SubagentRow.stateWord`).
+		stateWord: status === "unknown" ? rawStatus : CHILD_STATE_WORD[status],
 		elapsedLabel: clockLabel(clock, nowSeconds),
 		startSeconds: clock.startSeconds,
 		settledSeconds: clock.settledSeconds,
@@ -563,8 +654,9 @@ const deriveTodoItem = (item: unknown): TodoItemView => {
 		text: wireText(record.text),
 		// An unrecognised status falls back to the OPEN rendering, never the
 		// settled one (`todo_panel.py:1785-1788`): a future status must not
-		// silently read as finished work. The child roster makes the opposite
-		// call for its own reasons, and both are deliberate.
+		// silently read as finished work. The child roster now makes the same
+		// call, by its own route: an unrecognised status is its own quiet
+		// settled state carrying the wire's own word, never `done` (`foldStatus`).
 		status: known ? (rawStatus as TodoItemStatus) : "pending",
 		reason: wireText(record.reason) || null,
 	};
@@ -718,6 +810,33 @@ export function acknowledgedOnOpen(
 }
 
 /**
+ * The failure set a CLOSING panel records as read (`§3.3`).
+ *
+ * The second half of the dot's promise, and the mirror of `acknowledgedOnOpen`:
+ * opening acknowledges the failures that were on screen AT THE OPEN, and closing
+ * acknowledges the failures whose ROWS THE PANEL SHOWED while it was open.
+ * `shownWhileOpen` is `visibleFailures` accumulated across the open period
+ * rather than a snapshot taken at the close, so a failure the reader watched
+ * arrive and that a later arrival then displaced is still read.
+ *
+ * The rule is one sentence, and it is wrong in both directions if either half
+ * is dropped: the dot must not claim "you have not looked" about a row the
+ * reader has just read, and it must keep claiming it about a row they never saw.
+ * A failure behind `+N more` is not in `visibleFailures`, so it keeps its dot
+ * for the next view and the trigger's failure clause survives the close with it.
+ *
+ * It shares `acknowledgedOnOpen`'s union rather than re-implementing it — the
+ * carry-forward and the identity-preservation guarantees are the same — so only
+ * the set of ids is a rule of its own, and that rule is `visibleFailures`.
+ */
+export function acknowledgedOnClose(
+	shownWhileOpen: readonly string[],
+	alreadySeen: SeenFailures = NOTHING_SEEN,
+): SeenFailures {
+	return acknowledgedOnOpen(shownWhileOpen, alreadySeen);
+}
+
+/**
  * Whether any row's clock is still running, which is the ONE condition that
  * justifies a 1Hz timer (`§8`).
  *
@@ -799,24 +918,36 @@ const shedSegments = (segments: string[], maxChars?: number): string => {
  *
  * Order is the eviction ladder read left to right — the states that need
  * attention first — so shedding from the end drops the quietest fact first and
- * the tally degrades toward the one number that matters.
+ * the tally degrades toward the one number that matters. `gone` and an
+ * unrecognised word sort last for the same reason: they are rare, quiet, and
+ * neither of them is a count the reader acts on.
  */
 export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
-	const counts = new Map<ChildStatus, number>();
-	for (const row of rows) {
-		counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
-	}
 	const segments: string[] = [];
 	for (const status of [
 		"running",
 		"queued",
 		"failed",
 		"interrupted",
+		"paused",
 		"cancelled",
 		"done",
+		"gone",
+		"unknown",
 	] as ChildStatus[]) {
-		const count = counts.get(status) ?? 0;
-		if (count > 0) segments.push(`${count} ${CHILD_STATE_WORD[status]}`);
+		const matched = rows.filter((row) => row.status === status);
+		if (matched.length === 0) continue;
+		/*
+		 * Grouped by the row's own WORD rather than by the folded state, because
+		 * an unrecognised word is the wire's and two rows can carry two of them
+		 * (`"1 reticulating · 1 frobnicating"`) — one segment saying "2
+		 * unrecognised" would be a number the reader cannot trace to a row.
+		 */
+		const words = new Map<string, number>();
+		for (const row of matched) {
+			words.set(row.stateWord, (words.get(row.stateWord) ?? 0) + 1);
+		}
+		for (const [word, count] of words) segments.push(`${count} ${word}`);
 	}
 	return shedSegments(segments, maxChars);
 }
@@ -914,16 +1045,27 @@ const byPriority = (a: SubagentRow, b: SubagentRow): number =>
  * React list has no such constraint, so the rule the slice picks by is the rule
  * the list shows.
  *
- * **A failed row is never shed.** Rank alone does not guarantee that: six
- * running children is ordinary (`DEFAULT_MAX_RUNNING_JOBS` is 15), and at a cap
- * of six the failed row — which ranks BELOW running — was the one pushed out.
- * The `danger` dot then promised "a child failed and you have not looked" while
- * the panel it opened could not show which child failed or print its exception,
- * and opening the panel cleared the dot. So failures are reserved first: the
- * quietest visible rows are evicted to make room, one per dropped failure, and
- * the disclosure count reports what is actually hidden rather than what the cap
- * arithmetic would have said. Reserving first rather than appending keeps the
- * displayed order the rank order `§6.3` describes.
+ * **A failed row is never shed WHILE THE FAILURES FIT THE CAP.** Rank alone
+ * does not guarantee even that: six running children is ordinary
+ * (`DEFAULT_MAX_RUNNING_JOBS` is 15), and at a cap of six the failed row — which
+ * ranks BELOW running — was the one pushed out. The `danger` dot then promised
+ * "a child failed and you have not looked" while the panel it opened could not
+ * show which child failed or print its exception, and opening the panel cleared
+ * the dot. So failures are reserved first: the quietest visible rows are
+ * evicted to make room, one per dropped failure, and the disclosure count
+ * reports what is actually hidden rather than what the cap arithmetic would
+ * have said. Reserving first rather than appending keeps the displayed order the
+ * rank order `§6.3` describes.
+ *
+ * The reservation is bounded by the cap like everything else on this list, and
+ * the bound is stated rather than left to be found: once EVERY kept row is
+ * already a failure the walk has no victim left (`victim === -1`, below) and it
+ * stops, so eight failures at a cap of six show six of them and hide the two
+ * oldest behind `+N more` like any other over-cap rows. That is the arithmetic
+ * maximum a six-row cap allows and the disclosure still counts them, but it is
+ * not the absolute the earlier wording of this comment claimed — and the dot's
+ * promise, once the reader has closed the panel, is redeemed only for the
+ * failures the slice showed (`visibleFailures`).
  */
 export function visibleSubagents(rows: SubagentRow[]): {
 	rows: SubagentRow[];
@@ -955,6 +1097,22 @@ export function visibleSubagents(rows: SubagentRow[]): {
 	}
 	kept.sort(byPriority);
 	return { rows: kept, hidden: ordered.length - kept.length };
+}
+
+/**
+ * The failed children the roster's VISIBLE slice puts on screen (`§3.3`).
+ *
+ * The other half of the `danger` dot's promise, and the reason it is a function
+ * here rather than a few lines in the trigger: "a child failed and you have not
+ * looked" is answered by which rows the reader could actually see, and the
+ * slice that decides that is the same one the panel renders (`visibleSubagents`)
+ * — the cap, the reservation and the rank order all apply, so a failure behind
+ * `+N more` is not in this list and keeps its dot.
+ */
+export function visibleFailures(rows: readonly SubagentRow[]): string[] {
+	return visibleSubagents([...rows])
+		.rows.filter((row) => row.status === "failed")
+		.map((row) => row.id);
 }
 
 /**
@@ -1087,7 +1245,14 @@ export function runDetailTriggerLabel(
 	return LABEL_PREFIX + clauses.join(CLAUSE_SEAM);
 }
 
-/** The state word a row carries for a reader who cannot see its icon (`§6.4`). */
-export function childStateLabel(status: ChildStatus): string {
-	return CHILD_STATE_WORD[status];
+/**
+ * The state word a row carries for a reader who cannot see its icon (`§6.4`).
+ *
+ * Read off the row rather than derived from the folded status: an unrecognised
+ * word's own word is the WIRE's (`SubagentRow.stateWord`), and a table lookup
+ * here would announce this model's guess about a state it has just said it does
+ * not know.
+ */
+export function childStateLabel(row: SubagentRow): string {
+	return row.stateWord;
 }

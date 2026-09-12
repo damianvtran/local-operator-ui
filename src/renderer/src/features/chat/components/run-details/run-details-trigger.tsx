@@ -34,10 +34,12 @@ import { useEffect, useRef, useState } from "react";
 import {
 	type RunDetails,
 	type SeenFailures,
+	acknowledgedOnClose,
 	acknowledgedOnOpen,
 	hasRunDetails,
 	hasUnseenFailure,
 	runDetailTriggerLabel,
+	visibleFailures,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
 
@@ -84,7 +86,9 @@ const TABBABLE_SELECTOR = [
  * So the move is made against the TRIGGER, which is the element Radix already
  * uses as the panel's anchor and the element the keyboard user came from: the
  * next tabbable after it in document order, or the previous one for Shift+Tab.
- * That is the rest of the header cluster, which is where `§7` says focus goes.
+ * On this layout that is the canvas button going forward and the canvas RESIZE
+ * HANDLE going back (`docs/run-details.md` `§7` records both destinations, which
+ * QA measured in the running app) — the header cluster is only the forward half.
  *
  * Returns whether focus was moved, so the caller only suppresses the browser's
  * own handling when this actually handled the press.
@@ -96,21 +100,37 @@ const moveFocusOutOfPanel = (
 	if (!trigger?.isConnected) return false;
 	const candidates = Array.from(
 		document.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
-	).filter(
-		(element) =>
-			/*
-			 * `getClientRects()` rather than `offsetParent`: the portal is fixed
-			 * positioned, and `offsetParent` is null for anything fixed, which
-			 * would drop the header itself out of its own tab order.
-			 */
-			element.getClientRects().length > 0,
-	);
+	).filter((element) => {
+		/*
+		 * Radix parks two zero-size `[data-radix-focus-guard]` spans as `<body>`'s
+		 * children while a non-modal popover is open, both `tabindex=0` and both
+		 * invisible. They match the selector above and they carry a client rect
+		 * (an inline element has one even at 0x0), so without this filter
+		 * Shift+Tab from a freshly opened panel landed on one and the keyboard
+		 * user was left with NO visible focus at all (UX round 2, U1). A guard is
+		 * not a tab stop the user can see or use, so it is never a destination.
+		 *
+		 * The size test is what makes that general rather than one vendor's
+		 * attribute: a 0x0 candidate is not something anyone can be shown focus on
+		 * either, whatever it is.
+		 */
+		if (element.matches("[data-radix-focus-guard]")) return false;
+		/*
+		 * Measured with `getBoundingClientRect()` rather than `offsetParent`:
+		 * the portal is fixed positioned, `offsetParent` is null for anything
+		 * fixed, and the header would be dropped out of its own tab order.
+		 */
+		const rect = element.getBoundingClientRect();
+		return rect.width > 0 && rect.height > 0;
+	});
 	const index = candidates.indexOf(trigger);
 	if (index === -1) return false;
 	/*
 	 * At either end of the document's order the walk has nothing to offer, and
 	 * the trigger is the honest destination: it is where Escape already returns
-	 * focus, and it is 8px from the panel rather than a whole document away.
+	 * focus, and it is 8px from the panel rather than a whole document away. It
+	 * is also what the filtered-out guard leaves behind when the trigger is the
+	 * first tabbable on the page.
 	 */
 	const destination = candidates[index + (backwards ? -1 : 1)] ?? trigger;
 	destination.focus();
@@ -134,13 +154,33 @@ export const RunDetailsTrigger = ({
 	);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	/**
+	 * The failed rows the panel has SHOWN while it was open (`§3.3`).
+	 *
+	 * Accumulated across the whole open period rather than read at the close,
+	 * because the ids are `visibleFailures`' — the roster's visible slice, the
+	 * same one the panel renders — and a failure that was on screen and was then
+	 * displaced by a later arrival has still been read. Empty while the panel is
+	 * closed, so a failure cannot be acknowledged by a view it was never part of.
+	 *
+	 * Written during render, like `detailsRef` below and for the same reason: the
+	 * ids have to be current when the CLOSE happens, and an effect that had not
+	 * run yet would drop the row the reader was looking at.
+	 */
+	const viewedRef = useRef<ReadonlySet<string>>(new Set());
+	if (open && details) {
+		const viewed = new Set(viewedRef.current);
+		for (const id of visibleFailures(details.subagents)) viewed.add(id);
+		viewedRef.current = viewed;
+	}
+
+	/**
 	 * The trigger button itself, which is the anchor the panel's focus moves are
 	 * measured from.
 	 *
-	 * Taken from the DOM rather than from a second `useRef` on the `Button`
-	 * because Radix owns the trigger element: `PopoverTrigger asChild` clones it
-	 * and `Tooltip asChild` clones the same node again, so an element read here is
-	 * the one the popover is actually anchored to rather than a copy of it.
+	 * Radix owns the trigger element: `PopoverTrigger asChild` clones it and
+	 * `Tooltip asChild` clones the same node again, so the composed ref lands on
+	 * the real button rather than on a copy of it — which is the node the popover
+	 * is actually anchored to, and the one this component has to move focus from.
 	 */
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -150,25 +190,41 @@ export const RunDetailsTrigger = ({
 	 * popover would open across the canvas pane. The cost is stated there and not
 	 * hidden: a failure arriving while the canvas is open is not announced by the
 	 * trigger, and the trigger returns with its dot when the canvas closes.
+	 *
+	 * The accumulated view is dropped here rather than acknowledged, the one place
+	 * a close does not acknowledge: this path is not the reader closing the panel,
+	 * and §3.3's rule for it is that the canvas takes the announcement over. A
+	 * failure the reader had on screen is therefore not marked read by it — the
+	 * conservative direction, since the dot can be cleared by the next real close
+	 * and never the reverse.
 	 */
 	useEffect(() => {
-		if (isCanvasOpen) setOpen(false);
+		if (!isCanvasOpen) return;
+		setOpen(false);
+		viewedRef.current = new Set();
 	}, [isCanvasOpen]);
 
 	/**
-	 * Opening clears the dot for the failures THAT WERE ON SCREEN, and only those
-	 * (`§3.3`).
+	 * Opening and closing each clear the dot for the failures that were ON SCREEN,
+	 * and only those (`§3.3`).
 	 *
-	 * Bound to the transition rather than to a `[open, details]` effect, which is
+	 * Bound to the transitions rather than to a `[open, details]` effect, which is
 	 * the difference between acknowledging a failure and hiding it: the effect
 	 * re-recorded the whole failure set on every change while the panel was open,
 	 * so a child that failed while the reader was scrolled down in the plan was
 	 * marked seen without ever having been displayed — and the trigger's failure
-	 * clause was gone when they closed it. Bound here, a failure that arrives
-	 * while the panel is open keeps its dot for the next view.
+	 * clause was gone when they closed it.
 	 *
-	 * The rule is `acknowledgedOnOpen` in the model, so it is asserted rather than
-	 * described; this callback only supplies the instant it is asked about.
+	 * Both transitions are needed, and each answers the other's failure mode. The
+	 * OPEN records the failures present at that instant, so one that arrives while
+	 * the panel is open is not acknowledged on arrival; the CLOSE records the rows
+	 * the panel actually showed while it was open (`viewedRef`), so a reader who
+	 * watched a failure arrive and read it does not keep a dot telling them they
+	 * have not looked, and does not have to spend a second cycle clearing it.
+	 *
+	 * The rules are `acknowledgedOnOpen` / `acknowledgedOnClose` in the model, so
+	 * they are asserted rather than described; this callback only supplies the
+	 * instant each is asked about.
 	 *
 	 * `details` is read through a ref rather than closed over, because the ref is
 	 * the render that is current when the CLICK happens rather than the render
@@ -185,6 +241,11 @@ export const RunDetailsTrigger = ({
 			setSeen((previous) =>
 				acknowledgedOnOpen(detailsRef.current?.failedChildIds ?? [], previous),
 			);
+		} else {
+			setSeen((previous) =>
+				acknowledgedOnClose([...viewedRef.current], previous),
+			);
+			viewedRef.current = new Set();
 		}
 		setOpen(next);
 	};

@@ -39,7 +39,9 @@ const bundle = await build({
 });
 const {
 	NOTHING_SEEN,
+	acknowledgedOnClose,
 	acknowledgedOnOpen,
+	childStateLabel,
 	deriveRunDetails,
 	hasLiveChildClock,
 	hasRunDetails,
@@ -49,6 +51,7 @@ const {
 	subagentTally,
 	todoTally,
 	unseenFailures,
+	visibleFailures,
 	visibleSubagents,
 	visibleTodoPhases,
 	fixtures,
@@ -85,17 +88,16 @@ test("a queued child is queued, not running", () => {
 	assert.equal(subagents[0].activity, null);
 });
 
-test("a pause is not a state this wire can carry, and the flag does not make one", () => {
+test("the pause FLAG is not a field this wire has, and it does not make a state", () => {
 	// `frontend.jobs` rows are `JobState`, which has no `paused` field at all: the
-	// pause intent lives on `harness.comms._ChildRecord.paused` and reaches a
-	// view only where something injects it (`tui/app.py:22215` does that for its
-	// OWN frontend). Nothing does here, so a paused child arrives as the
-	// `cancelled` its job row actually carries — and an extra `paused` key is
-	// therefore data from a runtime this renderer has not been taught.
+	// pause intent lives on `harness.comms._ChildRecord.paused` and reaches a view
+	// only where something injects it (`tui/app.py:22215` does that for its OWN
+	// frontend). Nothing does here, so an extra `paused` key is data from a runtime
+	// this renderer has not been taught, and the WORD is what the row folds by.
 	const paused = derive([job({ status: "cancelled", paused: true })]);
 	assert.equal(paused.subagents[0].status, "cancelled");
-	// The consequence `§3.3` states rather than hides: a pause is not open work
-	// here, so a pause that leaves nothing else in flight does not raise the
+	// The consequence `§3.3` states rather than hides: a LIVE pause arrives as a
+	// cancel, so a pause that leaves nothing else in flight does not raise the
 	// trigger, and the transcript's own notice is the fallback.
 	assert.equal(paused.openChildren, 0);
 	assert.equal(hasRunDetails(paused), false);
@@ -105,16 +107,116 @@ test("a pause is not a state this wire can carry, and the flag does not make one
 	);
 });
 
-test("the hub roster's own states are not on this wire either", () => {
-	// `starting` and `pausing` are `ChildInfo` states (`comms.py:1256`), which is
-	// the `hub op='list'` view rather than the job roster. Pinned rather than left
-	// implicit because the fold's default is what a future runtime meets: they
-	// read as finished until the vocabulary is taught them, which is the cost the
-	// `ChildStatus` comment names.
-	const starting = derive([job({ status: "starting" })]);
-	assert.equal(starting.subagents[0].status, "done");
-	assert.equal(starting.openChildren, 0);
-	assert.equal(derive([job({ status: "pausing" })]).subagents[0].status, "done");
+test("a RESTORED pause is on this wire, and it is open work", () => {
+	/*
+	 * The word, not the flag. `frontend_state._jobs` appends one row per node of
+	 * the durable graph — the cold-restart case, where nested execution ledgers
+	 * are gone and the shared graph still exists — with `status=getattr(node,
+	 * "status", "gone")`, and `SubagentNode.status` is `_describe`'s. `_describe`
+	 * returns `paused` AHEAD of the recorded outcome, and `record_outcome`
+	 * deliberately keeps the flag set across the child's exit, so a parked child
+	 * comes back carrying that word. A nested child is exactly one whose job row
+	 * never reaches the root's sidecar, which is why that branch exists at all.
+	 *
+	 * Without the fold the row rendered a settled green check and left
+	 * `openChildren`, so it could leave `hasRunDetails` false: a child the user
+	 * parked to come back to, drawn as finished, with no trigger to reach the
+	 * roster through.
+	 */
+	const restored = derive([
+		job({ id: "parked", status: "paused", start_time: 0, settled_at: null }),
+	]);
+	assert.equal(restored.subagents[0].status, "paused");
+	assert.equal(restored.subagents[0].stateWord, "paused");
+	assert.equal(restored.openChildren, 1);
+	assert.equal(hasRunDetails(restored), true);
+	// A restored row is a reader row: the graph carries no clock for it, so the
+	// panel shows it without one rather than measuring it against now.
+	assert.equal(hasLiveChildClock(restored.subagents), false);
+});
+
+test("every word the wire can produce is folded explicitly", () => {
+	/*
+	 * The union is enumerated from the two producers: `JobStatus`
+	 * (`harness/jobs.py:215`) plus the `queued` flag, and the roster vocabulary
+	 * `_describe` returns (`comms.py`), which the durable-graph branch copies onto
+	 * the row verbatim. Pinned word by word so a status added to the wire cannot
+	 * land on this model's fall-through unnoticed.
+	 */
+	const folded = (status, queued = false) =>
+		derive([job({ status, queued })]).subagents[0];
+	assert.equal(folded("running").status, "running");
+	// The flag is read before the word: a queued child's status is still
+	// `running` on the wire, and half the roster would otherwise read as work
+	// spending tokens.
+	assert.equal(folded("running", true).status, "queued");
+	// Admitted by the capacity gate but not yet in its runner: the `queued` mark
+	// ("has not started"), and still OPEN, which is the fact `§3.3` needs.
+	assert.equal(folded("starting").status, "queued");
+	assert.equal(derive([job({ status: "starting" })]).openChildren, 1);
+	// Pause asked for and still landing: `status_glyph` keeps its running mark
+	// for that window, so the fold does too.
+	assert.equal(folded("pausing").status, "running");
+	assert.equal(folded("paused").status, "paused");
+	assert.equal(folded("completed").status, "done");
+	assert.equal(folded("done").status, "done");
+	assert.equal(folded("failed").status, "failed");
+	assert.equal(folded("cancelled").status, "cancelled");
+	assert.equal(folded("canceled").status, "cancelled");
+	assert.equal(folded("interrupted").status, "interrupted");
+	assert.equal(folded("gone").status, "gone");
+	// The OPEN set is exactly the states `§3.3`'s visibility rule counts.
+	assert.deepEqual(
+		[
+			"running",
+			"queued",
+			"starting",
+			"pausing",
+			"paused",
+			"completed",
+			"done",
+			"failed",
+			"cancelled",
+			"interrupted",
+			"gone",
+		].filter((word) => derive([job({ status: word })]).openChildren > 0),
+		["running", "starting", "pausing", "paused"],
+	);
+});
+
+test("an unrecognised status is its own quiet state, never done", () => {
+	/*
+	 * The rule, and the one place this port refuses the TUI: `status_glyph` ends
+	 * `GLYPH_DONE, status or "completed"`, so an unknown status painted the
+	 * completed check with its own word. Promoting a state to "finished" is how a
+	 * row the user is waiting on disappears — it stops counting as open work, it
+	 * ranks with the settled tail in the slice, and it renders as a green check.
+	 * The word it carries is the WIRE's, announced verbatim, so a reader can act
+	 * on a state this renderer has not been taught.
+	 */
+	const row = derive([job({ status: "reticulating" })]).subagents[0];
+	assert.equal(row.status, "unknown");
+	assert.notEqual(row.status, "done");
+	assert.equal(childStateLabel(row), "reticulating");
+	// Settled and quiet, and not a count the reader acts on: an unknown word must
+	// not raise the trigger on its own any more than `done` does.
+	assert.equal(hasRunDetails(derive([job({ status: "reticulating" })])), false);
+	// `gone` — the graph's word for a row swept without a recorded outcome — is
+	// its own state for the same reason, from the same branch.
+	const gone = derive([job({ status: "gone" })]).subagents[0];
+	assert.equal(gone.status, "gone");
+	assert.equal(childStateLabel(gone), "gone");
+	// Both count in the tally under their own word, in the quietest segments.
+	assert.equal(
+		subagentTally(
+			derive([
+				job({ id: "a", status: "running" }),
+				job({ id: "b", status: "gone" }),
+				job({ id: "c", status: "reticulating" }),
+			]).subagents,
+		),
+		"1 running · 1 gone · 1 reticulating",
+	);
 });
 
 test("failure, cancellation and interruption keep their own words", () => {
@@ -128,15 +230,9 @@ test("failure, cancellation and interruption keep their own words", () => {
 		rows.map((row) => row.status),
 		["failed", "cancelled", "interrupted", "done"],
 	);
-	// Only running and queued are open: a cancelled child the user stopped and a
-	// run the process ended are both settled.
+	// None of these is open: a cancelled child the user stopped and a run the
+	// process ended are both settled.
 	assert.equal(derive([job({ status: "interrupted" })]).openChildren, 0);
-});
-
-test("an unknown status folds to done, which is the TUI's own default", () => {
-	// The cost of the parity call, asserted rather than hidden: a status this
-	// renderer has not been taught reads as finished.
-	assert.equal(derive([job({ status: "reticulating" })]).subagents[0].status, "done");
 });
 
 /* ------------------------------------------------------------------ */
@@ -417,6 +513,57 @@ test("more failures than the cap keep the failures, and say what they cost", () 
 	assert.equal(visible.hidden, 3);
 });
 
+test("failures BEYOND the cap are shed like anything else, and the panel says so", () => {
+	/*
+	 * The reservation's own limit, and the reason its wording is "while the
+	 * failures fit the cap" rather than "never": once every kept row is already
+	 * a failure the walk has no victim left, so it stops. Eight failures at a cap
+	 * of six show six and hide the two OLDEST behind `+N more` — the arithmetic
+	 * maximum a six-row cap allows, and the same rule that sheds any other
+	 * over-cap row.
+	 *
+	 * Live QA reproduced this on the real panel (eight failing children, a trigger
+	 * reading `7 subagents failed`, and one announced failure behind the
+	 * disclosure), so the assertion is pinned at the same size rather than one
+	 * short of it.
+	 */
+	const rows = derive([
+		...Array.from({ length: 8 }, (_, index) =>
+			job({
+				id: `failed-${index}`,
+				status: "failed",
+				start_time: 100,
+				settled_at: 200 + index,
+			}),
+		),
+		...Array.from({ length: 3 }, (_, index) =>
+			job({ id: `running-${index}`, status: "running", start_time: 900 }),
+		),
+	]).subagents;
+	const visible = visibleSubagents(rows);
+	assert.equal(visible.rows.length, 6);
+	assert.equal(visible.rows.filter((row) => row.status === "failed").length, 6);
+	// The two oldest failures are the ones behind the disclosure — the same
+	// "oldest goes" rule every other over-cap row follows.
+	assert.deepEqual(
+		visible.rows.map((row) => row.id),
+		["failed-7", "failed-6", "failed-5", "failed-4", "failed-3", "failed-2"],
+	);
+	// The disclosure count stays honest: eleven rows, six shown, five hidden.
+	assert.equal(visible.hidden, 5);
+	// And the dot's own ledger agrees with what the slice showed: the two rows the
+	// panel could NOT display are not acknowledged by opening or closing it.
+	assert.deepEqual(visibleFailures(rows), [
+		"failed-7",
+		"failed-6",
+		"failed-5",
+		"failed-4",
+		"failed-3",
+		"failed-2",
+	]);
+	assert.equal(visibleFailures(rows).includes("failed-0"), false);
+});
+
 test("six rows are shown and the rest are disclosed, never dropped", () => {
 	const rows = derive(
 		Array.from({ length: 9 }, (_, index) =>
@@ -654,6 +801,60 @@ test("opening acknowledges the failures that were on screen, and only those", ()
 	assert.deepEqual([...later].sort(), ["failed-1", "failed-2"]);
 });
 
+test("closing acknowledges the failures the panel showed, and not the ones it hid", () => {
+	/*
+	 * The other half of the dot's promise (`§3.3`, UX round 2 U2). The open
+	 * snapshot alone left the dot lit for a failure whose row the reader watched
+	 * arrive INSIDE the visible slice: the trigger went on saying "a child failed
+	 * and you have not looked" about something they had just read, and clearing it
+	 * cost an extra open/close cycle.
+	 */
+	const details = derive([
+		job({ id: "seen-onscreen", status: "failed", start_time: 100, settled_at: 200 }),
+		job({ id: "arrived-later", status: "failed", start_time: 100, settled_at: 300 }),
+	]);
+	// Opened with one failure on screen, the second arriving while it was open:
+	// both rows were in the slice at some point during the open period, which is
+	// the set the close acknowledges (accumulated, not read at the close).
+	const shown = new Set([
+		...visibleFailures(details.subagents.slice(0, 1)),
+		...visibleFailures(details.subagents),
+	]);
+	assert.deepEqual([...shown].sort(), ["arrived-later", "seen-onscreen"]);
+	const afterClose = acknowledgedOnClose(
+		[...shown],
+		acknowledgedOnOpen(["seen-onscreen"], NOTHING_SEEN),
+	);
+	assert.deepEqual([...afterClose].sort(), ["arrived-later", "seen-onscreen"]);
+	assert.equal(hasUnseenFailure(details, afterClose), false);
+
+	/*
+	 * And a failure the panel could NOT display keeps its dot. Eight failures at
+	 * a cap of six is where the reservation runs out of victims, so the two oldest
+	 * sit behind `+N more` — the reader has been told a number, not shown a row,
+	 * and the clause has to survive the close for exactly that case.
+	 */
+	const many = derive(
+		Array.from({ length: 8 }, (_, index) =>
+			job({
+				id: `failed-${index}`,
+				status: "failed",
+				start_time: 100,
+				settled_at: 200 + index,
+			}),
+		),
+	);
+	const hidden = visibleFailures(many.subagents);
+	assert.equal(hidden.length, 6);
+	const kept = acknowledgedOnClose(hidden, NOTHING_SEEN);
+	assert.equal(kept.has("failed-7"), true);
+	assert.equal(kept.has("failed-0"), false);
+	assert.deepEqual(unseenFailures(many, kept).sort(), ["failed-0", "failed-1"]);
+	// Same identity guarantee as the open side: a close that adds nothing must not
+	// churn the seen set.
+	assert.equal(acknowledgedOnClose(hidden, kept), kept);
+});
+
 test("the clock ticks only for a child that has a running clock", () => {
 	// The predicate that justifies the 1Hz timer, extracted from the hook so the
 	// claim is asserted rather than described: a settled child is measured
@@ -753,6 +954,16 @@ test("every child state the design asks for is in the fixture set", () => {
 			deriveRunDetails(input).subagents.map((row) => row.status),
 		),
 	);
+	/*
+	 * The six states a fixture CAN carry. `paused`, `gone` and an unrecognised
+	 * word are deliberately not required here, and it is not an omission: the
+	 * fixtures model a live session's `frontend.jobs` (`docs/run-details.md` § 8),
+	 * where `paused` and `gone` cannot appear — they arrive on the durable
+	 * graph's rows after a restart, which no story reproduces and no frame should
+	 * pretend to have photographed. They are covered by the word-level tests
+	 * above instead, which is the honest division: a fixture that rendered one
+	 * would be asserting a wire shape `JobState` does not have.
+	 */
 	for (const state of [
 		"running",
 		"queued",
