@@ -151,3 +151,45 @@ the classifier answers first), and the repo checkout behind an editable
 `direct_url.json` now classifies `editable` - a refusal - rather than `pip`,
 while `INSTALLER == "pip"` is what names pip for a base-prefix install that
 writes no pyvenv.cfg (the #396 shape).
+==============================================================================
+$ node scripts/capture-evidence.mjs http://localhost:6021 \
+    --only=common-updatenotification --themes=localOperatorDark,localOperatorLight \
+    --allow-backend
+==============================================================================
+Captured 14 frames into .../docs/evidence at c1fabefe8
+exit=0
+
+Seven surfaces across the two brand themes, which is the coverage the previous
+remediation gave these surfaces: the six it changed carry two frames each, and
+`update-available` - which this round does not touch - keeps its twelve. The set
+grew by one surface and two frames: `downloaded`, which renders the component's
+own markup rather than a hand-copied fixture, so the footer the install fix
+changed is in the set (review U16).
+
+Which frames moved, against the set the round-2 reviewers saw (dd097298a), by
+sha256 - the twelve that the copy or layout changed, and the twelve that did not:
+
+  changed  backend-manual-required/{dark,light}                 dd7d47e91cee -> 1585d3a24ce3
+  changed  backend-manual-required-existing-server/{dark,light}  4edeb5872df0 -> 1c1244ef1245
+  changed  backend-update-non-managed/{dark,light}               97dbd6d37a1f -> 419c5e891b30
+  changed  install-blocked/{dark,light}                          9f90a7949cfd -> e754aa361309
+  changed  install-failed/{dark,light}                           88425f0db1c3 -> c315ffa3c5ad
+  added    downloaded/{dark,light}                              (new)        -> 90ae6853acbc
+  same     update-available/{all twelve themes}                 bdefe90da6ab -> bdefe90da6ab
+
+(one sha shown per surface, dark theme first; the full table is reproducible with
+`git diff --stat dd097298a -- docs/evidence` and `git show <sha>:<path>`.)
+
+`manifest.json` is re-committed from this run, so `head`, `srcTree`, `scriptsTree`
+and `dirtyWorkingTree` describe the tree the frames came from. The previous set
+named a dirty pre-remediation tree, which is the provenance defect the design
+round flagged: the frames were current, but a reader comparing `srcTree` against
+`HEAD:src` would have concluded they were stale.
+
+==============================================================================
+$ pnpm check-evidence
+==============================================================================
+
+Evidence holds: 508 frames are pictures of their own theme (worst ΔE00 18.1,
+docs/evidence/command-palette-commandpalette/default/localOperatorLight.webp).
+exit=0
