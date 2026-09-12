@@ -32,7 +32,7 @@ import {
 	statSync,
 	writeFileSync,
 } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { notarize } from "@electron/notarize";
 import { loadBuildEnv } from "./build-env.mjs";
@@ -191,19 +191,30 @@ export async function notarizeArtifacts({ dist, artifactPaths, log = console.log
 	}
 	if (env.loaded) log(`Loaded build environment from ${env.path}`);
 
-	const discovered = existsSync(dist) ? readdirSync(dist) : [];
+	// Absolute paths, resolved once here so every consumer below gets the same
+	// one. `--dist dist` (the default, and what CI runs) makes these paths
+	// relative to the working directory, and `@electron/notarize` resolves a
+	// relative `appPath` for a `.dmg`/`.pkg` against ITS OWN submission temp dir
+	// (`path.resolve(dir, opts.appPath)` in lib/notarytool.js), where the image
+	// of course does not exist - the 0.17.2 release failed in the notarytool
+	// submission for exactly that reason. The app bundle never hit it because
+	// `afterSign` is handed an absolute `appOutDir` by electron-builder. The
+	// staple and re-hash use the same path, so resolving at discovery keeps one
+	// answer for submit, staple, hash, size and the transient-zip cleanup.
+	const distDir = resolve(dist);
+	const discovered = existsSync(distDir) ? readdirSync(distDir) : [];
 	const dmgs = dmgArtifacts(
 		artifactPaths ??
 			discovered
 				.filter((name) => name.endsWith(".dmg"))
-				.map((name) => join(dist, name)),
-	);
+				.map((name) => join(distDir, name)),
+	).map((dmgPath) => resolve(dmgPath));
 	if (dmgs.length === 0) {
-		log(`No disk images found in ${dist}`);
+		log(`No disk images found in ${distDir}`);
 		return { notarized: [] };
 	}
 
-	const ymlFiles = updateYmlFiles(dist);
+	const ymlFiles = updateYmlFiles(distDir);
 	const notarized = [];
 
 	for (const dmgPath of dmgs) {
