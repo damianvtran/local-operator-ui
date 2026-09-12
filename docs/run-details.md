@@ -230,9 +230,19 @@ hasRunDetails(state) || open
   waiting on disappears: it stops counting as open work, it ranks with the settled
   tail in the slice, and it renders as a green check. A word this model has not
   been taught therefore becomes its own quiet settled mark carrying **the wire's
-  own word, verbatim**, so the row stays visible and says what the wire actually
-  said. `gone` — the graph's word for a row swept without a recorded outcome — is
-  its own state for the same reason, from the same branch. Neither raises the
+  own word**, so the row stays visible and says what the wire actually said — and
+  that word is the WIRE's, not this renderer's: not its raw bytes, and not a state
+  the fold knows. Two rules, both about the same failure: the string is flattened to
+  its first line with control characters stripped, because it is painted in the
+  visible tally and in the row's `sr-only` label and a newline would break both;
+  and it is kept only when the fold does not recognise IT either, because the
+  fold reads the WHOLE raw string. `"done\u0000"` folds to `unknown` while its
+  first line still says `done`, which would put a recognised state word on a row
+  drawn as the question mark and print `1 done` in the tally — exactly the count
+  this rule reserves for words nobody has been taught. Keeping the two in step is
+  the rule; `scripts/run-detail-model.test.mjs` pins the four shapes (round 4,
+  R4-1). `gone` — the graph's word for a row swept without a recorded outcome —
+  is its own state for the same reason, from the same branch. Neither raises the
   trigger on its own: an unknown state is not evidence of anything to act on, and
   inventing an announcement for it would be a second guess on top of the first.
 - The failure clause is the TUI's `note_child_failed` rule (`:1837-1852`)
@@ -263,9 +273,16 @@ hasRunDetails(state) || open
   row can be scrolled out of an ordinary window.
   The rules are pure functions in the model (`onScreenFailures`,
   `accumulateSeen`, `acknowledgedOnOpen`, `acknowledgedOnClose`), so they are
-  asserted rather than described; the two CALL SITES are asserted against the
-  trigger's own source (`scripts/run-detail-model.test.mjs`), because the model
-  alone cannot see the wiring — which is exactly how this was found. The version
+  asserted rather than described; the call sites are asserted against their own
+  components' source (`scripts/run-detail-model.test.mjs`), because the model
+  alone cannot see the wiring — which is exactly how this was found. That pin
+  covers three sites rather than the trigger's two, because the pairing has two
+  ends and the PANEL's end is the one a model test cannot reach: the open
+  instant, the close (which counts the accumulated ref rather than re-asking the
+  slice, since a row displaced by a later arrival has still been read) and the
+  section's own `panelSlice(...)` call, which must be the same function
+  `visibleFailures` counts out of — a panel-side filter or cap would otherwise
+  restore the divergence with every test green. The version
   this replaces broke the first half twice over: a `[open, details]` effect
   re-recorded the whole failure set on every change while the panel was open, so
   a failure arriving while the reader was scrolled down in the plan was marked
@@ -568,9 +585,12 @@ to a screen reader rather than as a column of unlabelled icons.
   (`acknowledgedOnOpen` / `acknowledgedOnClose`, with `onScreenFailures` deciding
   which rows either one may count, and `accumulateSeen` accumulating them over an
   open period) and the clock predicate
-  (`hasLiveChildClock`). The acknowledgement's two CALL SITES are asserted too,
-  against the trigger's own source, because a model test cannot see which
-  argument the component passes — which is how the open half came to acknowledge
+  (`hasLiveChildClock`). The acknowledgement's call sites are asserted too,
+  against the source of the components that hold them — the trigger's two
+  instants and the section's `panelSlice(...)` call, so the slice the dot counts
+  and the slice the section renders cannot drift apart — because a model test
+  cannot see which
+  argument the component passes: which is how the open half came to acknowledge
   the whole roster while the close half counted the rendered slice. What cannot
   be a pure function is
   the timer's LIFETIME — that it starts when a live child is on screen, ticks at
@@ -614,8 +634,9 @@ frontend.todos (TodoPhaseState[]) -> TodoPhaseView[]
 
 `JobState` to `SubagentRow`: `id`, `label`, `agent_role`, the status WORD folded
 into one of the nine renderable states — with the `queued` flag fused in, and the
-word itself kept verbatim as `stateWord` when the model does not recognise it
-(§ 3.3) — elapsed from `start_time`/`settled_at`, activity from
+word itself carried as `stateWord` when the model does not recognise it: its first
+line, control characters stripped, and refused if that text is itself a state the
+fold knows (§ 3.3) — elapsed from `start_time`/`settled_at`, activity from
 `latest_details.progress`, context tokens over `context_window`, `direct_cost`,
 and the first line of `error_text` for a failure.
 
