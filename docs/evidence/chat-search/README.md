@@ -18,6 +18,7 @@ These frames are the change, captured on two trees against the same store:
 | --- | --- | --- |
 | Query `retention` | [`before-retention`](before-retention/localOperatorDark.webp) — **1 row**: the one whose TITLE contains the word. The sessions about the retention sweep are absent, and nothing in the panel says anything is missing | [`after-retention`](after-retention/localOperatorDark.webp) (dark, [light](after-retention/localOperatorLight.webp)) — **3 rows**: the name match first, then `Migrate the billing reconciliation pipeline …` and `Refactor the loader` below it, each marked `· in conversation` because its CONVERSATION is why it is there. Heading counts follow the filter |
 | Query `classifer` (a typo) | [`before-typo`](before-typo/localOperatorDark.webp) — **nothing at all**: an empty panel, no count, no explanation | [`after-typo`](after-typo/localOperatorDark.webp) — **1 row**: `Investigate throughput`, surfaced by the word `classifier` inside it and marked as such |
+| Query `classifer` against a backend that cannot search conversations | the same empty panel | [`after-namesonly`](after-namesonly/localOperatorDark.webp) — the panel says `Searching chat names only. Update Local Operator to search inside conversations.` and stops there. It does **not** add `Nothing in your chats matches "classifer"`: that row's conversation DOES match, the app has just said it cannot see inside conversations, and the sentence would be a falsehood the backend cannot check (design round 2, D11). Reached with a proxy that deletes the `session_search` capability from a real backend's answer |
 | Query `kubernetes` (no match) | [`before-nomatch`](before-nomatch/localOperatorDark.webp) — an empty panel | [`after-nomatch`](after-nomatch/localOperatorDark.webp) — the same rows, plus `Nothing in your chats matches “kubernetes”.` The box now searches conversation text, so a blank panel asserts a much stronger claim than it used to; the sentence is `aria-live` for the same reason |
 | Sidebar at rest | the query path is the only changed path, and the pair above shows the list it feeds | [`after-rest`](after-rest/localOperatorDark.webp) — unchanged from the shipped rest state: the same agents, teams, counts and groups, because search runs only when a query is present |
 
@@ -36,8 +37,13 @@ The mark is the same `· …` idiom and the same `text-meta text-ink-muted` role
 as the `· coder` qualifier beside it, in words: the visible words are
 `aria-hidden` and the sentence is carried by an `sr-only` span, so a screen
 reader hears `, matched in conversation` once rather than punctuation followed
-by a sentence. It sits OUTSIDE the truncating span in a column reserved for the
-whole result list, so a long title truncates and the mark never does.
+by a sentence. It sits OUTSIDE the truncating span, so a long title truncates
+and the mark never does, and it is rendered only on the rows that carry it —
+reserving the slot list-wide cost every title ~39% of its width, including rows
+that matched by their own name and therefore had nothing to explain (design
+round 2, D9). The `· coder` qualifier beside it is an atomic inline box, so the
+ellipsis cannot land between the separator and the name and leave an orphan `·`
+(design round 2, D10).
 
 ## What these frames are evidence OF
 
@@ -47,7 +53,12 @@ whole result list, so a long title truncates and the mark never does.
   returning nothing.
 - Results are ranked, not merely filtered: the name match comes first and the
   conversation matches after it, in a list that is still grouped by agent.
-- Nothing matched (`kubernetes`) says so rather than going blank.
+- Nothing matched (`kubernetes`) says so rather than going blank, and says
+  nothing at all when the search could not run, because then the claim is not
+  checkable.
+- While the box has no answer yet (the debounce plus the round trip), the panel
+  says `Searching conversations…` instead of either collapsing silently or
+  filling the list with the previous question's hits.
 - Nothing else about the panel moved: the rest state, the group structure and
   the row anatomy are the shipped ones.
 

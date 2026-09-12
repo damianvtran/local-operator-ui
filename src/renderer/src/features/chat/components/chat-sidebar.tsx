@@ -178,7 +178,11 @@ export function ChatSidebar({
 		"session_search",
 	);
 	const search = useChatSearch(query, ready && searchSupported);
-	const { rows: matching, conversationMatches } = useMemo(
+	const {
+		rows: matching,
+		conversationMatches,
+		synthesized,
+	} = useMemo(
 		() =>
 			searchChats(
 				sessions,
@@ -197,19 +201,42 @@ export function ChatSidebar({
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
 	/*
-	 * Whether the result list has a MARKER COLUMN at all.
+	 * The two states the box can be in while it has no answer, and why they are
+	 * states rather than silence.
 	 *
-	 * The mark explaining a row has to be readable, and a suffix inside the
-	 * truncating title span is not: with a long title the ellipsis eats it, which
-	 * is precisely the row whose mismatch is hardest to explain (design round 1,
-	 * D1 — a seeded long title rendered `Migrate the billing reconciliation…`
-	 * with no mark at all, while the accessible name still carried it). So the
-	 * mark is a fixed trailing slot that never truncates, and the title truncates
-	 * instead. The slot is reserved for the WHOLE list as soon as one row needs
-	 * it, the way the CLI picker latches its own marker column, so the rows stay
-	 * aligned with each other rather than each growing its own width.
+	 * `answered` is the answer to the question IN THE BOX (exact, per
+	 * `hitsAnswerQuery`). Anything else — a request in flight, a keystroke that
+	 * invalidated the previous answer — means the list below holds name and label
+	 * matches only, and that is a fact the panel has to say out loud: the list
+	 * visibly drops the conversation matches it was just showing, which reads as a
+	 * bug unless the state is named (review round 1, R2 — which the prefix rule
+	 * tried to fix, and review round 2, R10, which showed the prefix rule put rows
+	 * in the list that the box's own search would not return).
+	 *
+	 * It is also the gate for the no-match claim: `Nothing in your chats matches
+	 * X` while the answer for X has not arrived asserts, then retracts a moment
+	 * later (review round 2, R11 — `isFetching` is FALSE while the debounce is
+	 * still empty, because the query is not enabled until the debounced value is
+	 * non-empty, so the sentence fired on every keystroke of a word).
 	 */
-	const markerColumn = conversationMatches.size > 0;
+	const answered = hitsAnswerQuery(search.data, query);
+	const awaiting =
+		Boolean(query.trim()) && ready && searchSupported && !answered;
+	/*
+	 * The mark explaining a row is a trailing slot OUTSIDE the truncating title
+	 * span, so the title truncates and the mark cannot be clipped away — with a
+	 * long title the ellipsis used to eat it, on exactly the row whose mismatch is
+	 * hardest to explain (design round 1, D1).
+	 *
+	 * It is rendered on the rows that carry it and NOT reserved list-wide. The
+	 * reservation was the first attempt, and design round 2 (D9) measured what it
+	 * cost: every title in a list containing one marked row lost ~39% (70px of
+	 * 179px; ~46% on nested rows), including `Retention sweep notes` — a row that
+	 * matched by its own NAME, whose query is visible inside its own title, and
+	 * which therefore paid to explain a DIFFERENT row. The ragged right edge a
+	 * per-row mark produces is the panel's existing condition: `· coder`,
+	 * `· Not sent yet` and bare rows already end at three different x positions.
+	 */
 	// A first send that failed after allocation but before admission leaves a real
 	// but empty session. It is NOT hidden — it exists on the backend and hiding it
 	// would make the list lie — but an unfinished draft still holding its id is
@@ -244,7 +271,7 @@ export function ChatSidebar({
 					? "page"
 					: undefined
 			}
-			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
+			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${row.attention?.unseen ? ", unread" : ""}`}
 			onClick={() => onSelectConversation(row.session_id)}
 		>
 			<Status row={row} />
@@ -254,12 +281,23 @@ export function ChatSidebar({
 				    untitled chats on different agents were indistinguishable. Nested
 				    rows already inherit the identity from their parent. */}
 				{!nested && bindingName(row) && (
-					<span className="ml-1 text-meta text-ink-muted">
+					/* `inline-block` is load-bearing, not styling: it makes the
+					   qualifier an ATOMIC inline box, which the line-breaking
+					   algorithm cannot split. Rendered as ordinary inline text the
+					   ellipsis could land between the `·` and the name, and the row
+					   read `Refactor the loader ·… · in conversation` — two middots,
+					   the first one an orphan that is the same glyph the mark uses,
+					   so a rendering artifact looked like a qualifier (design round
+					   2, D10, reproduced in both palettes). Atomic, the qualifier
+					   either fits or disappears whole. */
+					<span className="ml-1 inline-block text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
 				)}
 				{unstarted.has(row.session_id) && (
-					<span className="ml-1 text-meta text-ink-muted">· Not sent yet</span>
+					<span className="ml-1 inline-block text-meta text-ink-muted">
+						· Not sent yet
+					</span>
 				)}
 			</span>
 			{/* Says WHY a row is in a filtered list when its visible text does not
@@ -277,19 +315,16 @@ export function ChatSidebar({
 			    by the `sr-only` span after them, so a screen reader hears
 			    ", matched in conversation" once, in words, rather than punctuation
 			    followed by a sentence (D7). */}
-			{markerColumn && (
-				<span
-					aria-hidden="true"
-					className={cn(
-						"ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted",
-						!conversationMatches.has(row.session_id) && "invisible",
-					)}
-				>
-					· in conversation
-				</span>
-			)}
 			{conversationMatches.has(row.session_id) && (
-				<span className="sr-only">, matched in conversation</span>
+				<>
+					<span
+						aria-hidden="true"
+						className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+					>
+						· in conversation
+					</span>
+					<span className="sr-only">, matched in conversation</span>
+				</>
 			)}
 			{pendingId === row.session_id && (
 				<LoaderCircle
@@ -440,7 +475,11 @@ export function ChatSidebar({
 			{Boolean(count) && (
 				<span
 					className="text-meta tabular-nums"
-					title={query ? `${count} chats match this search` : undefined}
+					title={
+						query
+							? `${count} ${count === 1 ? "chat matches" : "chats match"} this search`
+							: undefined
+					}
 				>
 					{count}
 					{/* A query turns these numbers from "what you have" into "what
@@ -533,7 +572,7 @@ export function ChatSidebar({
 			    indistinguishable from one that found nothing there. */}
 			{query && ready && !searchSupported && (
 				<p className="pb-2 text-meta text-ink-muted">
-					Searching chat names only. Update local operator to search inside
+					Searching chat names only. Update Local Operator to search inside
 					conversations.
 				</p>
 			)}
@@ -550,6 +589,52 @@ export function ChatSidebar({
 					</Button>
 				</p>
 			)}
+			{/* The two states of "there is no answer for what you typed yet", and the
+			    empty result once there is. All three sit here, beside the notices,
+			    rather than inside the scrolling list: they are statements about the
+			    SEARCH, and every other line that says something about the search
+			    holds this column — inside the container they sat ~6px off it, which
+			    showed as a stagger whenever a notice and the sentence appeared
+			    together (design round 2, D13).
+
+			    The no-match sentence is rendered only when the conversation search
+			    actually RAN and answered this exact query. `Nothing in your chats
+			    matches X` is otherwise unverifiable, and on a names-only or failed
+			    backend it is simply false: the app would say it cannot see inside
+			    conversations and then assert that nothing in any conversation
+			    matches (design round 2, D11 — `classifer` matches a conversation on
+			    the capable backend, in the same fixture). When the search could not
+			    run, the notice above is the whole truth and this says nothing.
+
+			    `Searching conversations…` covers the other window: the debounce plus
+			    the round trip, during which the list legitimately holds name and
+			    label matches only. The list visibly loses the conversation matches it
+			    was showing, and without this line that reads as a bug (review round
+			    1, R2) — naming the state is the honest answer, not filling it with
+			    the previous question's hits (review round 2, R10). */}
+			{query.trim() && showList && !matching.length && answered && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Nothing in your chats matches “{query.trim()}”.
+				</p>
+			)}
+			{awaiting && !matching.length && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Searching conversations…
+				</p>
+			)}
+			{/* Mounted at all times and filled later: a live region added to the
+			    tree WITH its text already inside is frequently not announced at
+			    all, because the region has to exist before the change for the
+			    change to be the event (design round 2, D15). `sr-only`, so the
+			    announcement mirrors the visible sentence without a second visible
+			    copy of it. */}
+			<p aria-live="polite" className="sr-only">
+				{awaiting && !matching.length
+					? "Searching conversations."
+					: query.trim() && showList && !matching.length && answered
+						? `Nothing in your chats matches ${query.trim()}.`
+						: ""}
+			</p>
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-muted">
@@ -577,24 +662,6 @@ export function ChatSidebar({
 						unchanged.
 					</p>
 				)}
-				{/* The empty state, and it is not a nicety: the box now searches
-				    conversation text, so a blank panel asserts that NOTHING IN ANY
-				    CONVERSATION matches — a much stronger claim than the empty panel
-				    before this change made, and one the frame pair cannot distinguish
-				    from a filter that silently stopped working (design round 1, D3:
-				    before/after frames of a no-match query are byte-identical).
-
-				    Suppressed while the first answer for this query is in flight, so it
-				    cannot appear and then retract itself mid-typing — a claim about what
-				    was NOT found is exactly the claim that has to wait for the search. */}
-				{query.trim() &&
-					showList &&
-					!matching.length &&
-					!(searchSupported && search.isFetching) && (
-						<p aria-live="polite" className="px-1 text-meta text-ink-muted">
-							Nothing in your chats matches “{query.trim()}”.
-						</p>
-					)}
 				{showList && (
 					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
 						<section>
@@ -668,7 +735,7 @@ export function ChatSidebar({
 									className="text-meta tabular-nums"
 									title={
 										query
-											? `${matching.length} chats match this search`
+											? `${matching.length} ${matching.length === 1 ? "chat matches" : "chats match"} this search`
 											: undefined
 									}
 								>
