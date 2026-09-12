@@ -1,0 +1,24 @@
+### DMG container (as downloaded by Arc)
+0281;6aa4bb2f;Arc;BEEFFE66-0F03-44CA-919F-57EC28263544
+/Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg: code object is not signed at all
+/Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg: rejected
+source=no usable signature
+
+### App inside the mounted DMG
+Executable=/Volumes/Local Operator 0.17.0-universal/Local Operator.app/Contents/MacOS/Local Operator
+Identifier=com.local-operator
+Format=app bundle with Mach-O universal (x86_64 arm64)
+CodeDirectory v=20500 size=478 flags=0x10000(runtime) hashes=4+7 location=embedded
+Signature size=8972
+Timestamp=Sep 10, 2026 at 4:43:33 PM
+Info.plist entries=31
+TeamIdentifier=SHA2U6KT7V
+Runtime Version=15.1.0
+Sealed Resources version=2 rules=13 files=3775
+Internal requirements count=1 size=180
+codesign --verify: OK
+/Volumes/Local Operator 0.17.0-universal/Local Operator.app: accepted
+source=Notarized Developer ID
+origin=Developer ID Application: Damian Tran (SHA2U6KT7V)
+Processing: /Volumes/Local Operator 0.17.0-universal/Local Operator.app
+The validate action worked!
