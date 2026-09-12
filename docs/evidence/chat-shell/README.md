@@ -711,8 +711,10 @@ were **the same colour** before (ΔE00 0, a single-colour run — no rule, becau
 the divider between them is `w-0`); they now differ by a step that is visible
 but slight; and the rail's own separation is **unchanged and larger** in both
 themes (4.07 / 4.38 against 2.54 / 2.18), which is the relationship the report
-asked to keep. No third colour appears in any run, so nothing is painted at
-either boundary.
+asked to keep. No third colour appears in any run **in these four frames**, so
+nothing is painted at either boundary while the dock is closed. (The dock-open
+pair has one extra pixel at the column's edge; see "One pixel that is not a
+rule" below — it is the transcript's scrollbar, not a boundary.)
 
 The rendered working-area pixel is one unit off the palette token (dark:
 rendered #15130F against token #16130E; light: rendered #F4F0E7 against token
@@ -748,6 +750,71 @@ cites, and `surface`→`sunken` (the rail's step) is stronger than
 (2.24 against 5.27). `pnpm check-themes` asserts both pairs as adjacent grounds,
 so neither is maintained by hand.
 
+## The dock, open
+
+The chat column is not only flanked by the list panel: with the canvas dock
+open it also abuts the dock. That boundary moved too, so it is measured here
+rather than assumed. Same method, same viewport, dock opened through the
+header's own control; the column is 220px wide in this state, i.e. its
+`min-w-[220px]` floor.
+
+| Frame | rail | list panel | chat column | dock | list / column ΔE00 | column / dock ΔE00 |
+| --- | --- | --- | --- | --- | --- | --- |
+| before, dark | #0F0C08 | #1D1A15 | #1D1A15 | #15130F | **0** | **2.54** |
+| after, dark | #0F0C08 | #1D1A15 | #15130F | #15130F | **2.54** | **0** |
+| before, light | #EEE9DC | #FAF8F2 | #FAF8F2 | #F4F0E7 | **0** | **2.18** |
+| after, light | #EEE9DC | #FAF8F2 | #F4F0E7 | #F4F0E7 | **2.18** | **0** |
+
+Read as a row left to right, the step in the working area did not appear or
+disappear — it **moved from the column's right edge to its left edge**: before,
+the column merged with the list panel and the dock's empty ground stepped down
+from it; after, the column steps down from the list panel and the dock shares
+the column's ground. One slight step either way, and the rail's 4.07 / 4.38 is
+untouched in both.
+
+**Is the dock's change an improvement or a defect? Neither is a clean answer,
+so here is the honest one.** The dock's empty state is `bg-canvas`
+(`canvas/index.tsx`) and it therefore *already* agreed with the dock's own role
+as a working surface; the outlier was the chat column, which was the only
+working plane painted `surface`. After the change the two working planes agree,
+which is the same reasoning that makes `PlaceholderView` `canvas` — "the same
+ground the conversation uses, so selecting an agent does not repaint the pane a
+different colour". The dock is still demarcated by its own `sunken` chrome bar
+(the 40px bar above it, visible in both frames) and by the resize affordance.
+What is weaker is the *lightness* signal at that boundary when no document is
+open: the dock and the column are one ground, and only the chrome says where
+the dock begins.
+
+**The diff between the pair is confined to the column.** Compositing the
+two dock frames and taking the bounding box of every non-identical pixel gives
+`220x872+500+0` in both themes — the chat column's own box, its full height,
+and nothing else: not the rail, not the list panel, and not one pixel of the
+dock. That is the strongest statement this pair makes: the dock's rendering is
+identical before and after, and what moved is which ground the column carries.
+
+One thing this pair does **not** cover, and the reason is a real one: with a
+document open the dock's document area takes the section's `surface`
+(`canvas/index.tsx` renders the section as `bg-surface` with a `sunken` header),
+so the step at the column/dock boundary returns — the dock then reads as a
+panel over the working surface. Reaching a document requires the dock's "New
+file" / "Open file" actions, which call `createFile` and write to disk
+(`utils/file-creation`), so it was not done in this workspace. That case is
+**code-level reasoning, not a measurement**, and is called out as such.
+
+### One pixel that is not a rule
+
+The nine-pixel run across the column/dock boundary contains a fourth colour in
+both halves of the pair: `#343024` (dark) / `#DCD8CF` (light), one unit off each
+palette's `hairline`. It is **the transcript scroller's native scrollbar**, not
+a painted boundary rule: the dock-open column is 220px wide, the transcript
+overflows in it, and the platform paints a scrollbar themed through the
+`color-scheme` the palette emits. Confirmed two ways — every element at that x
+computes `background-color: rgba(0,0,0,0)` with `border-*-width: 0px`, and the
+resize divider's own line is `bg-control` at `opacity: 0` at rest (read from the
+live DOM); and hiding scrollbars at runtime removes the pixel entirely while
+nothing else in the row changes. It is identical in the before and after
+frames, so it is not part of this change either way.
+
 ## The frames
 
 | Frame pair | What it shows |
@@ -756,6 +823,8 @@ so neither is maintained by hand.
 | [before-ground-empty-loLight.png](before-ground-empty-loLight.png) / [after-ground-empty-loLight.png](after-ground-empty-loLight.png) | The same, light. The step is a slightly deeper cream inside the same warm family; the light themes are where a 2.2 ΔE00 step is most easily lost, which is why both brand themes are captured rather than the default one. |
 | [before-ground-populated-loDark.png](before-ground-populated-loDark.png) / [after-ground-populated-loDark.png](after-ground-populated-loDark.png) | The same pair over a populated transcript (fixture prose, 60 rows). Confirms the step is a property of the ground and not of the empty state's content. |
 | [before-ground-populated-loLight.png](before-ground-populated-loLight.png) / [after-ground-populated-loLight.png](after-ground-populated-loLight.png) | The same, light. |
+| [before-ground-canvas-loDark.png](before-ground-canvas-loDark.png) / [after-ground-canvas-loDark.png](after-ground-canvas-loDark.png) | Canvas dock open, dark, populated transcript. Before: the column matches the list panel and the dock's own ground steps away from it. After: the column steps from the list panel and shares the dock's ground. |
+| [before-ground-canvas-loLight.png](before-ground-canvas-loLight.png) / [after-ground-canvas-loLight.png](after-ground-canvas-loLight.png) | The same, light. |
 
 ## What these frames do not prove
 
@@ -763,10 +832,7 @@ so neither is maintained by hand.
   palettes are rendered; the table above is arithmetic on the palettes.
 - **The populated content is a fixture conversation** written by another
   session's paging harness, not a real chat.
-- **The canvas dock was not re-captured.** The dock's own empty-state ground is
-  `canvas`, so the chat column and it now agree where they previously differed
-  by a step, and the dock's chrome is `sunken` so it stays distinct — but that
-  pair was captured under an earlier, different backend pairing and is not part
-  of this set.
+- **The dock's with-a-document state is not captured.** See "The dock, open"
+  above: it would need a file written to disk.
 - The dev framing includes the `Chat | Raw` tab row, which a packaged build does
   not render; it is present identically in both halves of every pair.
