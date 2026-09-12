@@ -23,7 +23,13 @@ These frames are the change, captured on two trees against the same store:
 | Sidebar at rest | the query path is the only changed path, and the pair above shows the list it feeds | [`after-rest`](after-rest/localOperatorDark.webp) — unchanged from the shipped rest state: the same agents, teams, counts and groups, because search runs only when a query is present |
 | A row with a state worth reporting (`dossier`) | not reachable without a failed first send; the shipped layout rendered the same fixture as `Watchlist dossiers · release-pod · No…` | not re-captured — see "The one state that is not here" below |
 
-Read out of the live DOM in the same runs, not from the pixels:
+Read out of the live DOM in the same runs, not from the pixels. **These dumps are
+from `cf0db490e`**, and the marker row's slots have changed since: a row the
+conversation search found now draws the mark alone, so the
+`Refactor the loader · coder · in conversation` line below is a record of that
+run and not of what the row draws today (`rowTrailingStatement` decides, and its
+answer for that row is `conversation`). The frames have the same provenance —
+see "The one state that is not here".
 
 ```
 before  q=retention   "… Agents coder 1 … All chats 1 … Previous chats 1"
@@ -37,14 +43,26 @@ after   q=kubernetes  "Nothing in your chats matches “kubernetes”. … All c
 The mark is the same `· …` idiom and the same `text-meta text-ink-muted` roles
 as the `· coder` qualifier beside it, in words: the visible words are
 `aria-hidden` and the sentence is carried by an `sr-only` span, so a screen
-reader hears `, matched in conversation` once rather than punctuation followed
-by a sentence. It sits OUTSIDE the truncating span, so a long title truncates
-and the mark never does, and it is rendered only on the rows that carry it —
+reader hears `, matched in conversation` once rather than punctuation followed by
+a sentence. It sits OUTSIDE the truncating span, so a long title truncates and
+the mark never does, and it is rendered only on the rows that carry it —
 reserving the slot list-wide cost every title ~39% of its width, including rows
 that matched by their own name and therefore had nothing to explain (design
-round 2, D9). The `· coder` qualifier beside it is an atomic inline box, so the
-ellipsis cannot land between the separator and the name and leave an orphan `·`
-(design round 2, D10). The TITLE is the only element that truncates, and the secondary qualifiers (`· coder`, `· Not sent yet`) shrink and take their own ellipsis before the title loses anything — recoverable information yields to the name the user is searching by (design round 4, D18).
+round 2, D9).
+
+**Which trailing statement a row draws is a rule, not a flex negotiation.**
+`rowTrailingStatement` in `features/chat/chat-search.ts` answers at most one of
+`conversation` (the mark), `not_sent` (the row's own state) or `binding`, in that
+order; the title is the only element that truncates, and the binding slot — the
+one that carries a user-authored name — is capped at 45% of the row because a
+64-character agent name cannot be allowed to sit in a slot that neither shrinks
+nor truncates (review round 4, R21). Three earlier layouts fixed that number by
+asking CSS to rank the claims, and each failed in the opposite direction: one
+truncating span let the ellipsis land inside a qualifier and render an orphan `·`
+(design round 2, D10); every slot unbounded and `shrink-0` starved the title
+(design round 4, D18); a title floor with shrinkable qualifiers clipped a
+qualifier to a bare `·` and overflowed the container (design round 5, D19). The
+history lives on `rowTrailingStatement` now.
 
 ## What these frames are evidence OF
 

@@ -316,43 +316,28 @@ export function ChatSidebar({
 						? "page"
 						: undefined
 				}
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}${conversationMatches.has(row.session_id) ? ", matched in conversation" : ""}`}
+				/* The tooltip carries what the row does NOT draw: the binding, and the
+			   row's own state — the statements `rowTrailingStatement` withheld. It
+			   deliberately does NOT repeat the search mark's words, because those
+			   are announced by the row itself through the `sr-only` span beside it,
+			   and both channels saying "matched in conversation" would be one fact
+			   announced twice (review round 4, R23). Rule, stated: the row draws
+			   the top statement, the tooltip completes the set minus that one. */
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
 				onClick={() => onSelectConversation(row.session_id)}
 			>
 				<Status row={row} />
-				{/* ONE trailing statement per row, and the title yields last.
-			    Three layouts have now been measured on this row, and each failed
-			    in the opposite direction from the last:
+				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
+				    in `features/chat/chat-search.ts` — which is also where the three
+				    failed layouts that led to it are written down (an orphan `·` from
+				    a single truncating span, a starved title from unbounded slots, and
+				    a qualifier clipped to a bare `·` by a floor the row could not pay).
+				    Read that docstring before changing anything here.
 
-			    - One truncating span (shipped): the ellipsis could land inside a
-			      qualifier, so a row read `Refactor the loader ·…` — an orphan
-			      separator sharing its glyph with the mark (design round 2, D10).
-			    - Every slot atomic and `shrink-0`: no orphan, but the title took
-			      the squeeze, and a row carrying a binding AND `· Not sent yet`
-			      gave it 38px of 179 (design round 4, D18).
-			    - A floor on the title with shrinkable qualifiers: the floor made
-			      the arithmetic worse than the row could pay — 88px of floor plus
-			      65px of mark plus gaps is 161px against a nested row's 158.6px, so
-			      at the default panel width the qualifier was squeezed to a bare
-			      `·` and at 240px the row overflowed its container (design round 5,
-			      D19). `truncate` is a rendering rule, not a reservation: a
-			      shrinking qualifier ends up showing the one glyph that means
-			      nothing on its own.
-
-			    So the number of trailing STATEMENTS is capped by construction rather
-			    than negotiated by the flex algorithm, and each is `shrink-0` so none
-			    can be clipped mid-glyph. In priority order: the search mark (it is
-			    why the row is onscreen at all), else the row's own state
-			    (`· Not sent yet` — a chat that never carried a message), else the
-			    binding. The two that are not drawn are recoverable — both are in the
-			    row's `title`, the binding is in the nested list, and the chat itself
-			    says the rest — which is the same priority ruling design round 4
-			    endorsed for the mark, applied to the rest of the row.
-
-			    With at most one such statement the worst case fits: a flat row has
-			    ~232px of content and a nested row ~158px, and the widest statement
-			    is ~70px, which leaves the title both readable and the only element
-			    that truncates. No floor is needed, so nothing can overflow. */}
+				    What matters at this call site: the number of statements is capped
+				    rather than negotiated by the flex algorithm, the title is the only
+				    element that truncates, and no floor is needed because at most one
+				    statement can ever be drawn. */}
 				<span className="min-w-0 flex-1 truncate">
 					{row.title || "Untitled chat"}
 				</span>

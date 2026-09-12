@@ -61,7 +61,7 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
 				gate={null}
 				waiting={false}
 				loadingOlder={false}
-				onLoadOlder={() => undefined}
+				onLoadOlder={async () => true}
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"

@@ -31,7 +31,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertFramePaints } from "./check-evidence.mjs";
+import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
@@ -91,7 +91,7 @@ const BACKEND_ORIGIN = (() => {
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
-const THEMES = [
+export const THEMES = [
 	"localOperatorDark",
 	"localOperatorLight",
 	"dracula",
@@ -126,7 +126,7 @@ const THEMES = [
  * 28.5% of the window before any content, and a single wide capture hides
  * exactly that class of defect.
  */
-const STORIES = [
+export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
@@ -234,6 +234,25 @@ const STORIES = [
 	   the sweep can always re-take this frame. */
 	["chat-usage--dense", 1100, 1000],
 	["chat-usage--narrow", 720, 620],
+	/* The session status strip. Captured at a viewport SIZED TO THE FRAMES for
+	   the same reason the tool rows are: these are short rows in a box, and at
+	   1280x900 they are mostly empty ground, which crosses `check-evidence`'s
+	   uniformity ceiling. The two tooltip stories need vertical room for the
+	   panel to open ABOVE the trigger, which is why they are taller than the
+	   content they hold. */
+	["chat-session-status-strip--states", 860, 1140],
+	["chat-session-status-strip--cost-states", 860, 780],
+	["chat-session-status-strip--effort-states", 860, 780],
+	["chat-session-status-strip--long-model-name", 860, 420],
+	["chat-session-status-strip--absolute-rungs", 860, 600],
+	["chat-session-status-strip--honest-unknowns", 860, 760],
+	/* The 220px column is the canvas-open floor, and the width the composer's
+	   button row was already over budget at. Captured narrow, because the shed
+	   order under pressure is half the design. */
+	["chat-session-status-strip--collapsed-column", 340, 560],
+	["chat-session-status-strip--context-tooltip", 860, 400],
+	["chat-session-status-strip--tooltip-honesty", 860, 400],
+	["chat-session-status-strip--cost-tooltip", 860, 400],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap
@@ -324,6 +343,19 @@ const STORIES = [
 
 	/* 1380x800 is what the story declares and what the app window ships. */
 	["installer-installercontent--default", 1380, 800],
+	/* The transcript's top slot. Its whole claim is that it does not change
+	   height, which is a COMPARISON between states — so the boards stack the
+	   states between rules rather than showing one per frame. `app-minimum-width`
+	   is captured because the wide board is what let a wrapping failure state
+	   ship: the failure copy fits at 512px and wraps at the 252px the content box
+	   measures at the app's own 800px minimum window. Sized to the boards. */
+	["chat-older-history-slot--every-state", 900, 460],
+	["chat-older-history-slot--app-minimum-width", 900, 720],
+	["chat-older-history-slot--one-hidden-row", 900, 260],
+	/* The transport-down branch: a failure the reader cannot answer is not
+	   painted as one. Paired rows at both widths, so the comparison is in the
+	   frame rather than across two of them. */
+	["chat-older-history-slot--transport-down", 900, 800],
 ];
 
 /**
@@ -416,7 +448,8 @@ const sweepFramesFrom = (path) => {
 		return;
 	}
 	for (const entry of readdirSync(path)) sweepFramesFrom(join(path, entry));
-	if (readdirSync(path).length === 0) rmSync(path, { recursive: true, force: true });
+	if (readdirSync(path).length === 0)
+		rmSync(path, { recursive: true, force: true });
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -546,6 +579,26 @@ const assertBackendDown = async () => {
 		`A Local Operator backend is answering on ${BACKEND_ORIGIN}. Captured frames would show its replies instead of the offline state every committed frame depicts. Stop it and re-run.`,
 	);
 };
+
+/**
+ * The frame count a PARTIAL run declares.
+ *
+ * Exported so `scripts/evidence-manifest.test.mjs` can bind the shipped
+ * expression instead of reimplementing it. Round 2 found the test reproducing
+ * this arithmetic locally, which meant reverting this file to the absorbing
+ * tree-derived version left all five tests green - coverage of a copy rather
+ * than of the code (R7). `check-evidence.mjs` already exports `frames` for the
+ * same reason.
+ *
+ * The count is a DECLARATION, never a measurement of the tree: the previous
+ * total plus the frames this run wrote into directories that did not exist
+ * before it. Deriving it from the tree - with the same walker and exclusion
+ * list `check-evidence.mjs` compares it against - makes the comparison
+ * unfalsifiable and absorbs stray undeclared directories (round 1, R2).
+ */
+export function partialFrameCount(previous, added) {
+	return (previous.frames ?? 0) + added.length;
+}
 
 const main = async () => {
 	sweepStaleProfiles();
@@ -997,6 +1050,18 @@ const main = async () => {
 					? `${story.split("--")[1]}@${width}`
 					: story.split("--")[1];
 			const dir = join(OUT, story.split("--")[0], leaf);
+			/*
+			 * Whether this directory existed BEFORE the run, recorded before
+			 * `mkdirSync` creates it.
+			 *
+			 * A partial run that refreshes an existing surface overwrites frames
+			 * the manifest already counts; one that adds a surface writes frames
+			 * it does not. Only the second may raise the declared total, and the
+			 * difference is not recoverable after the fact — which is why it is
+			 * captured here rather than derived from the tree later. See the
+			 * manifest block at the end of this file for why deriving it from
+			 * the tree is precisely the bug this replaces.
+			 */
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
 			/*
@@ -1117,7 +1182,7 @@ const main = async () => {
 				 * the set it did not take and the frames it did add no longer
 				 * add up to what is on disk.
 				 */
-				frames: (previous.frames ?? 0) + addedFrames.length,
+				frames: partialFrameCount(previous, addedFrames),
 				surfaces: (previous.surfaces ?? 0) + addedSurfaces.length,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),

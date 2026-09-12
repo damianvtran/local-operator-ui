@@ -235,6 +235,131 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
+	/*
+	 * The composer's context wheel, one row per rung it can be drawn in.
+	 *
+	 * Listed because it is a control whose ENTIRE visual body is an edge: a
+	 * 1.75px ring with no fill, on the composer's `surface` ground, plus the
+	 * monospace reading beside it. There is nothing else for a viewer to see,
+	 * so "is the edge perceivable against the ground behind it" is not one
+	 * property of this control among several - it is the whole question of
+	 * whether the control renders at all.
+	 *
+	 * `fill: null` is therefore literal rather than a shortcut: the ring paints
+	 * no interior, so the script's `fill = ground` fallback is exactly right,
+	 * and the ink assertion it produces (`inkMuted` on `surface`) is the real
+	 * pairing the percentage beside the ring is read at.
+	 *
+	 * Three rows rather than one because the ring takes three DIFFERENT border
+	 * colours depending on how full the window is - the union of the TUI's
+	 * absolute and proportional ladders, mirrored in
+	 * `features/chat/session-status/session-context.ts`. A single row naming
+	 * one of them would leave the other two unmeasured, which is the same
+	 * "green output about a component nobody listed" this section warns about,
+	 * one level down.
+	 *
+	 * Only `surface` is asserted, and that is not laziness: the wheel has
+	 * exactly one mount site, inside `COMPOSER_BOX`, which is `bg-surface`.
+	 * Listing grounds it never renders on would be asserting a pairing the
+	 * design does not promise.
+	 */
+	/*
+	 * `ink: "inkMuted"` on all four rows, while the inert reading and the
+	 * `estimate` marker render `inkDim`. That is not a coverage hole: `inkDim`
+	 * is asserted against every ground at the text floor by the role loop above,
+	 * so the pairing IS measured - just not from here. Noted rather than
+	 * duplicated, because a fifth row asserting a pair another loop already
+	 * covers is a second place to update when the token moves (review round 1,
+	 * R5).
+	 */
+	{
+		name: "context wheel, calm reading",
+		on: ["surface"],
+		fill: null,
+		border: "info",
+		ink: "inkMuted",
+	},
+	{
+		name: "context wheel, worth noticing",
+		on: ["surface"],
+		fill: null,
+		border: "warning",
+		ink: "inkMuted",
+	},
+	{
+		name: "context wheel, compaction due",
+		on: ["surface"],
+		fill: null,
+		border: "danger",
+		ink: "inkMuted",
+	},
+	{
+		/*
+		 * The reading buttons' hover state, which is the ONLY place `accentWash`
+		 * is a ground for text in the app.
+		 *
+		 * Round 2 deleted the empty-wheel row for the right reason (it asserted a
+		 * structural floor on a decorative line), but that row was carrying two
+		 * assertions and only one was replaced: `PERCEPTIBLE` measures the ring
+		 * against `accentWash`, and nothing was left measuring INK against it
+		 * (reviewer round 3, M1). `READING_BUTTON` is
+		 * `hover:bg-accent-wash hover:text-ink`, so the pairing is reachable in
+		 * all twelve themes. It passes today; this row is what keeps a future
+		 * token move from breaking it silently.
+		 */
+		name: "reading button, hovered",
+		on: ["surface"],
+		fill: "accentWash",
+		border: "accent",
+		ink: "ink",
+	},
+	/*
+	 * The empty wheel has NO row here, and its absence is the statement.
+	 *
+	 * Round 1 listed it with `border: "inkDim"` to clear the 3:1 structural
+	 * floor on `surface` and the `accentWash` hover. That passed, and it was
+	 * the wrong assertion: it treated a decorative line as a control boundary,
+	 * which made the empty ring an INK where the populated track is a GROUND -
+	 * 4.4-5.6x heavier, ΔE00 38.6-53.8 apart, one component with two identities
+	 * (design round 2, D7).
+	 *
+	 * The ring is now `hairline` when empty, and § 2's decorative rule is that a
+	 * hairline owes perceptibility rather than a contrast floor. A floor row
+	 * here would re-assert the thing that was wrong. What replaces it is
+	 * `PERCEPTIBLE` below, which measures ΔE00 on both grounds AND pins the two
+	 * states to one weight - the property D7 was actually about, and one no
+	 * pair-or-triple row can express.
+	 */
+];
+
+/**
+ * Pairs where BOTH sides are foreground roles, so neither is the ground.
+ *
+ * `CONTROLS` can only express ink-on-fill and edge-against-ground. That is the
+ * right shape for a button, and it cannot state the one boundary a dial is made
+ * of: the arc against its own TRACK. Round 1 added four `CONTROLS` rows for the
+ * context wheel, all of which passed, and none of which measured that pair -
+ * which is how an arc at 1.05:1 against its track shipped behind a green gate
+ * (design round 1, D1). § 3 says it in the file's own words: green output about
+ * a pairing nobody listed is not evidence about that pairing.
+ *
+ * Listed at the STRUCTURAL floor, because this is an edge that carries meaning
+ * by position rather than text that has to be read.
+ */
+const ADJACENT = [
+	{
+		/*
+		 * The populated ring only. With no arc the track is measured against the
+		 * ground instead, by the `no reading yet` row above - the component
+		 * switches its track role with its state precisely because no single
+		 * value clears 3:1 from both the arc and the composer ground (that would
+		 * need ~9:1 between arc and ground; the best theme has 7.33:1).
+		 */
+		name: "context wheel arc against its track",
+		a: ["info", "warning", "danger"],
+		b: "sunken",
+		floor: FLOOR.nonText,
+	},
 ];
 
 /**
@@ -285,6 +410,45 @@ const GRAPHICS = [
 		name: "usage unmeasured mark",
 		on: ["surface"],
 		fg: "inkDim",
+	},
+];
+
+/**
+ * Decorative lines, and states of one component that must stay one component.
+ *
+ * Two assertions neither `CONTROLS` nor `ADJACENT` can make.
+ *
+ * **Perceptibility, not contrast.** § 2 makes `hairline` the decorative rule
+ * and § 3's floors govern controls and text. A decorative line that owes 3:1
+ * is a control wearing a hairline's name - which is exactly how round 1 put
+ * the empty context ring on `inkDim` and passed. What a hairline owes is being
+ * SEEN, measured as ΔE00 against every ground it renders on, at the
+ * perceptual threshold § 3 already cites.
+ *
+ * **Weight parity.** One component in two states must not change weight
+ * enough to read as two components. The empty ring was 4.4-5.6x heavier than
+ * the populated track and ΔE00 38.6-53.8 from it, so the instrument lost about
+ * three quarters of its weight at the moment it gained a reading (design round
+ * 2, D7). No pair-or-triple row can state that, because both sides are the
+ * same element at different times.
+ */
+const PERCEPTIBLE = [
+	{
+		name: "context wheel track, empty state",
+		role: "hairline",
+		/* Both grounds the empty ring renders on: the composer, and the reading
+		   button's hover fill. */
+		on: ["surface", "accentWash"],
+		/* § 3's own threshold for "a human can tell these apart". Set at 3.0
+		   rather than 2.0 because a 1.75px stroke has far less area to carry the
+		   difference than a filled region does; the measured worst case is 3.2. */
+		minDeltaE: 3.0,
+		/* The same element's other state. Sibling weight is the D7 property. */
+		pairedWith: "sunken",
+		/* Contrast-ratio quotient across the transition, both directions. A
+		   value near 1.0 is one ring in two states; round 1 shipped 5.59. */
+		maxWeightChange: 2.0,
+		against: "surface",
 	},
 ];
 
@@ -411,6 +575,12 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: "border-control border-b",
 		why: "this rule is the whole signal that a scrolling body continues past the fold, so it cannot ride a decorative weight that is invisible against both neighbours",
+	},
+	{
+		what: "context wheel empty track role",
+		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
+		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
+		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
 	},
 ];
 
@@ -712,6 +882,51 @@ for (const { id, palette: p } of palettes) {
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
 			assertPair(id, p, g.fg, ground, FLOOR.nonText, g.name);
+		}
+	}
+
+	/* Foreground pairs: an edge whose two sides are both foreground roles. */
+	for (const pair of ADJACENT) {
+		const b = p[pair.b];
+		if (!isHex(b)) continue;
+		for (const roleName of pair.a) {
+			const a = p[roleName];
+			if (!isHex(a)) continue;
+			assertions++;
+			const got = ratio(a, b);
+			if (got < pair.floor && !findException(id, roleName, pair.b, got)) {
+				fail(
+					`${id}: ${pair.name} — ${roleName} ${a} against ${pair.b} ${b} = ${got}:1, need ${pair.floor}:1`,
+				);
+			}
+		}
+	}
+
+	/* Decorative lines: seen rather than contrasted, and stable across states. */
+	for (const item of PERCEPTIBLE) {
+		const role = p[item.role];
+		const sibling = p[item.pairedWith];
+		const ground = p[item.against];
+		if (!isHex(role) || !isHex(sibling) || !isHex(ground)) continue;
+		for (const g of item.on) {
+			if (!isHex(p[g])) continue;
+			assertions++;
+			const got = deltaE(role, p[g]);
+			if (got < item.minDeltaE) {
+				fail(
+					`${id}: ${item.name} — ${item.role} ${role} on ${g} ${p[g]} is ΔE00 ${r2(got)}, need ${item.minDeltaE} to be seen at all`,
+				);
+			}
+		}
+		/* One component, two states: the weight may not jump. */
+		assertions++;
+		const a = ratio(role, ground);
+		const b = ratio(sibling, ground);
+		const change = Math.max(a / b, b / a);
+		if (change > item.maxWeightChange) {
+			fail(
+				`${id}: ${item.name} — ${item.role} is ${r2(change)}x the weight of ${item.pairedWith} against ${item.against}; one component must not change weight by more than ${item.maxWeightChange}x between states`,
+			);
 		}
 	}
 

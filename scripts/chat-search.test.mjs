@@ -315,13 +315,18 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	assert.equal(show({ ...base, marked: true, unstarted: true }), "conversation");
 	assert.equal(show({ ...base, marked: true, nested: true }), "conversation");
 
-	// The property that matters: at most one statement, whatever the input.
+	// The property that matters: whatever the input, the answer is exactly one of
+	// the four literals — never undefined, never a list. The return type is what
+	// enforces "at most one" today, so this loop is here to catch a future
+	// refactor that widens it (returning an array of statements would pass every
+	// assertion above and fail here), not to re-assert the type.
+	const allowed = ["conversation", "not_sent", "binding", "none"];
 	for (const marked of [false, true])
 		for (const unstarted of [false, true])
 			for (const nested of [false, true])
 				for (const binding of ["", "coder"])
-					assert.notEqual(
-						show({ marked, unstarted, nested, binding }),
-						undefined,
+					assert.ok(
+						allowed.includes(show({ marked, unstarted, nested, binding })),
+						`${JSON.stringify({ marked, unstarted, nested, binding })} produced something outside the four literals`,
 					);
 });

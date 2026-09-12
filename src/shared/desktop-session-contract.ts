@@ -92,11 +92,46 @@ export function mergeCompletionAttention(
 	return incoming;
 }
 
+/**
+ * One `ModelSpec` as the owner dumps it (`local_operator/harness/types.py`
+ * `ModelSpec`, serialised at `local_operator/session/frontend_state.py`'s
+ * `selected_model`/`effective_model`).
+ *
+ * Every field below `model_id` is OPTIONAL even though the Python model gives
+ * most of them a default, because the wire is the contract and an older owner
+ * predates them: `display_name`, `reasoning_efforts` and
+ * `reasoning_default_effort` were added to the spec after this app shipped, so
+ * a session running against an older backend delivers a dump without them. A
+ * required field here would not make them appear; it would only make the
+ * renderer read `undefined` off a value TypeScript promised was a string, and
+ * the session strip's whole design is that a missing field degrades to an
+ * honest unknown rather than throwing.
+ */
 export type CanonicalModel = {
 	provider: string;
 	model_id: string;
+	/**
+	 * The model's human name as metadata resolution found it ("Claude Opus 5").
+	 * A RAW name, not a display decision, and `""` means resolution had none —
+	 * which is why every reader falls back to `model_id` rather than treating
+	 * this as authoritative.
+	 */
+	display_name?: string | null;
+	/** The level selected right now. Null/absent means nothing is chosen. */
 	reasoning_effort?: string | null;
+	/**
+	 * The ladder this model accepts, ASCENDING. EMPTY is the non-reasoning
+	 * model, and it is what lets `/effort` say so instead of accepting a level
+	 * the request would silently drop.
+	 */
+	reasoning_efforts?: string[] | null;
+	/** What this model runs at when nothing is chosen; what `/effort auto` restores. */
+	reasoning_default_effort?: string | null;
+	/** Whether the model reasons at all, with or without a ladder. */
+	reasoning?: boolean | null;
+	/** The active budget. `max_context_window` retains provider provenance. */
 	context_window?: number | null;
+	max_context_window?: number | null;
 	[key: string]: unknown;
 };
 export type PendingDesktopGate = {
@@ -225,8 +260,37 @@ export type CanonicalFrontendState = {
 	context_window: number | null;
 	context_breakdown: Record<string, number> | null;
 	cumulative_parent_cost: number | null;
+	/**
+	 * Per-child spend keyed by job id — the COMPATIBILITY ledger, used only
+	 * when the owner reports no `subagent_cost_knowledge`. Mirrors
+	 * `FrontendSessionState.child_costs`; `session-cost.ts` is the only place
+	 * in this app that reads it, and it explains why the two ledgers are never
+	 * summed together.
+	 */
+	child_costs?: Record<string, number> | null;
 	subagent_cost: number | null;
+	/**
+	 * How well the OWNER ledger's `subagent_cost` is known. `null`/absent means
+	 * the owner ledger is not in play at all, which is the switch that selects
+	 * `child_costs` instead — see `FrontendSessionState.cumulative_cost`.
+	 */
+	subagent_cost_knowledge?: "unknown" | "exact" | "partial" | "floor" | null;
 	cost_knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * The most recent turn's token usage, when the owner reported one.
+	 *
+	 * Read by `session-cost.ts` to tell "this session has spent nothing" from
+	 * "this session has run and nobody could price it" - the difference between
+	 * showing no cost segment and showing the honest unknown-price spelling. It
+	 * is declared here rather than reached through the index signature because
+	 * it is the field that decides whether a reading renders at all, and an
+	 * `as never` cast at the call site would let a rename on the wire pass
+	 * type-checking silently (review round 1, R4).
+	 */
+	last_usage?: {
+		input_tokens?: number | null;
+		output_tokens?: number | null;
+	} | null;
 	// Canonical runtime fields are additive; preserve unknown fields rather
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;
