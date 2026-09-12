@@ -1,0 +1,19 @@
+### update-service.log excerpts (operator's machine, 2026-09-11)
+
+## The auto-update that quit and never returned (22:36-22:41)
+4330:[2026-09-09 19:32:00.936] [debug] nativeUpdater.update-downloaded
+12023:[2026-09-11 22:36:48.663] [debug] nativeUpdater.update-downloaded
+
+## The server update offer, APP_BUNDLED_VENV (22:37:29)
+11603:[2026-09-11 22:35:42.451] [info]  Sending backend-update-available event with info: {"currentVersion":"0.52.18","latestVersion":"0.54.17","updateCommand":"pip install --upgrade local-operator","canManageUpdate":true,"startupMode":"APP_BUNDLED_VENV"}
+12155:[2026-09-11 22:37:29.582] [info]  Installed backend version: 0.52.18, Latest: 0.54.17, Update needed: true, Startup mode: APP_BUNDLED_VENV
+12156:[2026-09-11 22:37:29.583] [info]  New backend version available: 0.54.17 (installed: 0.52.18)
+12157:[2026-09-11 22:37:29.583] [info]  Sending backend-update-available event with info: {"currentVersion":"0.52.18","latestVersion":"0.54.17","updateCommand":"pip install --upgrade local-operator","canManageUpdate":true,"startupMode":"APP_BUNDLED_VENV"}
+
+## The same offer one hour later, GLOBAL_INSTALL on a uv tool install (22:59)
+4535:[2026-09-09 19:42:17.021] [info]  Installed backend version: 0.52.18, Latest: 0.52.18, Update needed: false, Startup mode: APP_BUNDLED_VENV
+4596:[2026-09-09 19:47:16.627] [info]  Installed backend version: 0.52.18, Latest: 0.52.18, Update needed: false, Startup mode: APP_BUNDLED_VENV
+11601:[2026-09-11 22:35:42.450] [info]  Installed backend version: 0.52.18, Latest: 0.54.17, Update needed: true, Startup mode: APP_BUNDLED_VENV
+11603:[2026-09-11 22:35:42.451] [info]  Sending backend-update-available event with info: {"currentVersion":"0.52.18","latestVersion":"0.54.17","updateCommand":"pip install --upgrade local-operator","canManageUpdate":true,"startupMode":"APP_BUNDLED_VENV"}
+12155:[2026-09-11 22:37:29.582] [info]  Installed backend version: 0.52.18, Latest: 0.54.17, Update needed: true, Startup mode: APP_BUNDLED_VENV
+12157:[2026-09-11 22:37:29.583] [info]  Sending backend-update-available event with info: {"currentVersion":"0.52.18","latestVersion":"0.54.17","updateCommand":"pip install --upgrade local-operator","canManageUpdate":true,"startupMode":"APP_BUNDLED_VENV"}

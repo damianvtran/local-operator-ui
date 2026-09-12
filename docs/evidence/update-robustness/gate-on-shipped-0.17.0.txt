@@ -1,0 +1,10 @@
+Checking app: /Volumes/Local Operator 0.17.0-universal/Local Operator.app
+Checking disk image: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg
+PASS app-codesign: codesign --verify --deep --strict on the app
+PASS app-spctl: spctl -a -vvv -t exec on the app
+PASS app-stapler: stapler validate on the app
+FAIL dmg-spctl: spctl -a -vvv -t open on the disk image -> /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg: rejected | source=no usable signature
+FAIL dmg-stapler: stapler validate on the disk image -> Processing: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg | local-operator-ui-0.17.0-universal.dmg does not have a ticket stapled to it.
+
+2 of 5 artifact checks failed. The release must not be published until the disk image is signed, notarized and stapled.
+gate exit=1
