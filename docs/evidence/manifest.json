@@ -130,6 +130,15 @@
       "source": "scripts/capture-evidence.mjs, the `chat-tool-rows--*` story that renders the shipped CanonicalTranscript",
       "why": "The diff body at the wrap ceiling. The capturer derives a surface directory from the story id, which would be `chat-tool-rows/diff-body-narrow-wrapped-cap`; upstream filed these beside this README, the DIFF-BODY-SPEC and the real-conversation rows instead so the spec and its frames sit together. Declared here so a sweep's derived writes are counted as ADDED frames rather than landing inside a set this manifest already accounts for, which is the arithmetic `check-evidence` asserts.",
       "capturedAt": "2026-09-12T09:20:00.000Z"
+    },
+    {
+      "path": "chat-search",
+      "frames": 6,
+      "surfaces": 5,
+      "themes": 2,
+      "source": "live renderer in the operator's real browser (Local Operator extension), served by Vite over this repository's own renderer config with the preload bridge stubbed to a no-op, against an isolated local-operator backend on its own port and config dir",
+      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, and which ones say the CONVERSATION is why they are there. The sidebar has no Storybook story, and a debounced backend round trip is not something a fixture can produce, so the frames come from the running app against an isolated seeded store. Both trees -- origin/main and this branch -- are driven by the same harness against the same store, which is what makes each pair comparable; docs/evidence/chat-search/README.md carries the re-capture procedure.",
+      "capturedAt": "2026-09-12T16:10:00.000Z"
     }
   ]
 }
