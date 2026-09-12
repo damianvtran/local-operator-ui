@@ -1,15 +1,15 @@
 {
-	"head": "de4509668b2e8d08c64dd6196f15b99c2274dc2e",
-	"srcTree": "7f6ae93a3c997d50541bd73ea391969601ee9860",
-	"scriptsTree": "158ac8ee94a84ef84aa1ae859da2218388cdc3a1",
+	"head": "2eebaa2d995cc028e98f02d2ddb375d5487cff04",
+	"srcTree": "1fe8df63c66c24d1a604d0e4796b339cccf5bfd7",
+	"scriptsTree": "cb729c6e691bcde2dc6e19bd8859fbdb8b3b1032",
 	"dirtyWorkingTree": false,
 	"capturedAt": "2026-08-06T18:36:03.218Z",
-	"frames": 500,
-	"surfaces": 67,
+	"frames": 518,
+	"surfaces": 77,
 	"themes": 12,
 	"countsMean": {
-		"frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared set.",
-		"surfaces": "`capture-evidence.mjs`'s `STORIES.length` at this head - 67 entries over 64 unique story ids (`shell-app-shell--agents` is captured at four widths). Written by a full sweep only.",
+		"frames": "The SWEPT total: every frame outside a declared `supplementary` set. 518 here - this branch's 500 plus the 18 that #108, #110 and #113 added to main while it was in review. Reconciled against the tree at the rebase rather than carried over, because the rebase united two sweeps and neither side's scalar described the union.",
+		"surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 77, the union of main's story list and this branch's. `check-evidence.mjs` counts the list and fails a mismatch (round 4, R3), so this field cannot silently lag its own source again.",
 		"themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
 	},
 	"partialCapture": {
@@ -18,23 +18,11 @@
 		"addedAt": "2026-09-12T13:29:16.125Z",
 		"addedAtHead": "69664578fc7999b09406d91e79e94c382a6841ec",
 		"addedSurfaces": [],
-		"refreshedAt": "2026-09-12T13:29:16.124Z",
-		"refreshedAtHead": "de4509668b2e8d08c64dd6196f15b99c2274dc2e",
-		"refreshedFrames": 26,
+		"refreshedAt": "2026-09-12T15:26:43.613924Z",
+		"refreshedAtHead": "2eebaa2d995cc028e98f02d2ddb375d5487cff04",
+		"refreshedFrames": 20,
 		"refreshedStories": [
-			"chat-usage--multi-provider",
-			"chat-usage--percent-only",
-			"chat-usage--remaining-balance",
-			"chat-usage--loading",
-			"chat-usage--empty",
-			"chat-usage--query-error",
-			"chat-usage--fetching",
-			"chat-usage--stale-report",
-			"chat-usage--unavailable-with-last-known",
-			"chat-usage--reauth-required",
-			"chat-usage--not-reported",
-			"chat-usage--dense",
-			"chat-usage--narrow"
+			"chat-session-status-strip"
 		],
 		"refreshedThemes": [
 			"localOperatorDark",
@@ -42,7 +30,7 @@
 		],
 		"addedBySweptRefresh": 0,
 		"addedDirectories": [],
-		"provenanceNote": "Round-3 correction. This block recorded head 34139e2a9 / refreshedFrames 2 / refreshedStories [tooltip-honesty] while the branch had rewritten 29 webp files across 18 directories; `check-evidence` did not catch it because it reconciles TOTALS, not provenance (design round 3, D12). The counts above now name what this branch actually captured: 20 Storybook frames across the 10 strip stories and 9 live frames under `session-status-live/`. `honest-unknowns` was re-captured at 860x760 after its fourth frame pushed the story's content to 724px inside an 860x600 viewport, which clipped the read-only `reasoning` strip - the rendered proof of this branch's own knownLadder claim."
+		"provenanceNote": "Re-captured at this head after the rebase onto main: the strip's 20 brand-theme frames came back BYTE-IDENTICAL to the pre-rebase ones, which is the evidence that uniting the two series changed no rendering of this branch's own surfaces. A full sweep is not possible on any current tree - `shell-app-shell--settings-appearance` times out preparing in Storybook, reproduced on clean origin/main, so it is pre-existing rather than this branch's. `fonts.css` gains `font-display: swap`, which changes what renders WHILE a face loads and not the settled paint: re-capturing `chat-tool-rows` (the most monospace-dense surface) moved 7 of 22 frames by 2-16 bytes of ~15kB, i.e. encoder noise and no pixel a reviewer can see, so main's frames are left as committed rather than churned."
 	},
 	"supplementary": [
 		{
@@ -154,7 +142,7 @@
 			"source": "live renderer over CDP against an isolated backend",
 			"why": "Live frames from the packaged Electron app over real IPC, which Storybook cannot produce: a cold snapshot, a reload, the backend-down error path, and round 3's aggregator route plus cold-owner effort states. One theme only (localOperatorDark) because these prove BEHAVIOUR, not colour; the theme matrix is the Storybook set's job.",
 			"capturedAt": "2026-09-12T09:53:17.005018Z",
-			"capturedAtHead": "6e0d41580e24cacc3de08d659b8f6058d78ead53"
+			"capturedAtHead": "2eebaa2d995cc028e98f02d2ddb375d5487cff04"
 		}
 	]
 }

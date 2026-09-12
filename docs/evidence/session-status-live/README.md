@@ -40,6 +40,25 @@ OpenAI: GPT-5 | auto | 3.4%/400k | ≥$0.028
 `auto` because no effort level was set on that session and the model has a
 ladder; `≥` because the owner reported `cost_knowledge: floor`.
 
+> **The model name in this frame set predates `4f750beed`.** That session ran on
+> `openrouter/openai/gpt-5`, and the shipped code now renders the name segment
+> as **`gpt-5`**, not `OpenAI: GPT-5` — an aggregator route gets the bare id,
+> because `model_label` refuses a reseller's listing name and the chip mirrors
+> that refusal (round 2, Q3/R8/U9):
+>
+> ```
+> modelIdentity("openrouter", "openai/gpt-5", "OpenAI: GPT-5").name  ->  "gpt-5"
+> format_model_label("openrouter/openai/gpt-5", short=True, ...)     ->  "gpt-5"
+> ```
+>
+> The two agree, which is the point of the fix. The frames and the transcripts
+> below are left as captured rather than re-shot or edited: they are a record of
+> what the app printed on that run, and rewriting a quoted transcript to match
+> later code would make it a worse record, not a better one. Every OTHER reading
+> in these frames — effort, context, cost, chip count, focus behaviour — is
+> current. Affected sets: `composer/`, `picker-model/`, `picker-context/`,
+> `reload/`, `backend-down/` (QA round 3, Q5).
+
 ## The two assertions these frames carry
 
 **The chips reuse the slash-dispatch path.** The harness clicks the chip and
@@ -112,6 +131,10 @@ each learned by getting it wrong first:
 
 | Frame | Finding | Before (round 1) | After |
 | --- | --- | --- | --- |
+> The `OpenAI: GPT-5 Mini` strings in the table and transcript below are the
+> pre-`4f750beed` name for the same reason as above; that route now reads
+> `gpt-5-mini`, which `reload-aggregator/` (round 3) shows on current code.
+
 | `reload/` | U1 | `openai/gpt-5-mini`, effort chip GONE, 3 chips | `OpenAI: GPT-5 Mini \| auto \| 3.3%/400k \| >=$0.0040`, 4 chips |
 | `backend-down/` | U2 | 16 s of nothing | `/model could not run: The backend could not complete this request. Check its connection and try again.` |
 

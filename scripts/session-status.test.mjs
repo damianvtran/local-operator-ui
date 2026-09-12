@@ -1140,3 +1140,51 @@ test("an unresolved spec is told apart from a model with no levels", () => {
 	assert.match(effortState(cold).detail, /run \/effort <level> to set one now/);
 	assert.doesNotMatch(effortState(cold).detail, /open this/);
 });
+
+test("the picker is wired to the shared predicate, not to a copy of the read", () => {
+	/*
+	 * Round 4, Q6. `specUnresolved` itself is well covered above, but the bundle
+	 * this file builds contains only `session-status/*`, so nothing exercised
+	 * the PICKER - and reverting its one line to the pre-U12 wiring left the
+	 * suite green. That is the same shape as the `test:desktop` near-miss this
+	 * round exists to catch: a green suite that is not testing the thing.
+	 *
+	 * Asserted against the source text rather than by bundling the module,
+	 * because importing it would pull React and the whole picker surface into a
+	 * unit test for one boolean. This mirrors `STRUCTURAL_CALL_SITES` in
+	 * `contrast-contract.mjs`, which guards a call site the same way and for the
+	 * same reason: the pairing is only real if the component uses it.
+	 */
+	const picker = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+		),
+		"utf8",
+	);
+	assert.match(
+		picker,
+		/const unresolved = specUnresolved\(model\)/,
+		"the effort picker must ask the shared predicate",
+	);
+	assert.match(
+		picker,
+		/import \{ specUnresolved \} from "\.\.\/session-status\/session-model"/,
+		"and import it rather than reimplement it",
+	);
+	// The honest branch and the fixed-effort branch must BOTH remain reachable:
+	// deleting either is how this regresses without the import disappearing.
+	assert.match(picker, /has not reported its effort levels yet/);
+	assert.match(picker, /has no adjustable effort/);
+	// The claim must be gated on the predicate, never on the empty read alone -
+	// deriving it from `options.length` is the defect U12 named.
+	const gate = picker.slice(
+		picker.indexOf("const unresolved = specUnresolved"),
+	);
+	const honest = gate.indexOf("has not reported its effort levels yet");
+	const fixed = gate.indexOf("has no adjustable effort");
+	assert.ok(
+		honest > 0 && fixed > honest,
+		"unresolved must be tested before the capability claim",
+	);
+});
