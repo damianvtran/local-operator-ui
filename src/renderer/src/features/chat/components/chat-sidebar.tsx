@@ -40,7 +40,11 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { hitsAnswerQuery, searchChats } from "../chat-search";
+import {
+	hitsAnswerQuery,
+	lostRowsToStaleAnswer,
+	searchChats,
+} from "../chat-search";
 
 type Props = {
 	selectedConversation?: string;
@@ -220,6 +224,30 @@ export function ChatSidebar({
 	 * non-empty, so the sentence fired on every keystroke of a word).
 	 */
 	const answered = hitsAnswerQuery(search.data, query);
+	/*
+	 * What the list was showing while the LAST answer was still in hand.
+	 *
+	 * The in-flight line exists to explain a visible COLLAPSE — round 1's R2: the
+	 * box has moved on, the answer in hand is stale, and the list falls back to
+	 * name and label matches, so the conversation matches it was showing
+	 * disappear. The line therefore has to fire on the SHRINK, not on emptiness:
+	 * gated on `!matching.length` it spoke in the one state where nothing had
+	 * visibly changed, and stayed silent in the state it was written for (review
+	 * round 3, R17 — reproduced there on a seeded store: two rows with one marked,
+	 * then one row with none, and no explanation for the lost row or the lost
+	 * mark).
+	 *
+	 * `search.data` still holds the previous query's answer (the cache is keyed
+	 * per query string and `keepPreviousData` serves the last one), so the
+	 * comparison is against a real answer rather than a remembered count:
+	 * `searchChats` over the STALE query says what that answer would have shown,
+	 * and the line appears when it would have shown more than the local fallback
+	 * does now.
+	 */
+	const previous = useMemo(() => {
+		if (answered || !search.data || !query.trim()) return null;
+		return searchChats(sessions, search.data.query, search.data.sessions);
+	}, [answered, search.data, sessions, query]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
 	// term `awaiting` stays true forever and `Searching conversations…` sits under
 	// the failure notice that says the search is unavailable — the panel claiming
@@ -662,11 +690,12 @@ export function ChatSidebar({
 					Nothing in your chats matches “{query.trim()}”.
 				</p>
 			)}
-			{awaiting && !matching.length && (
-				<p className="pb-2 text-meta text-ink-muted">
-					Searching conversations…
-				</p>
-			)}
+			{awaiting &&
+				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length) && (
+					<p className="pb-2 text-meta text-ink-muted">
+						Searching conversations…
+					</p>
+				)}
 			{/* Mounted at all times and filled later: a live region added to the
 			    tree WITH its text already inside is frequently not announced at
 			    all, because the region has to exist before the change for the
@@ -674,7 +703,8 @@ export function ChatSidebar({
 			    announcement mirrors the visible sentence without a second visible
 			    copy of it. */}
 			<p aria-live="polite" className="sr-only">
-				{awaiting && !matching.length
+				{awaiting &&
+				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
 					? "Searching conversations."
 					: query.trim() && showList && !matching.length && answered
 						? `Nothing in your chats matches ${query.trim()}.`
