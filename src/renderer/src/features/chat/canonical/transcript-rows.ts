@@ -175,23 +175,34 @@ export function buildRows(
  * because nothing else on the surface marks a boundary (§ 2: remove a border
  * before you tighten the spacing — there are no borders left here to remove).
  *
- * - `trace` is ZERO. Adjacent ledger rows butt against each other so a run
- *   reads as one block the eye runs down rather than as a list of separated
- *   items, which is the operator's "much too wide" and the TUI reference's
- *   ~20.4px per line. The row's own height IS the pitch: the tool row's dense
- *   trigger is 20px, so a run measures 20px per row with no gap arithmetic on
- *   top. Uniformity is then structural rather than lucky — every adjacent like
- *   pair is the same distance apart because that distance is zero.
+ * - `trace` is a 2px HAIRLINE. Adjacent ledger rows read as one block the eye
+ *   runs down rather than as a list of separated items — the operator's "much
+ *   too wide" and the TUI reference's ~20.4px per line — but they are not
+ *   fused: at zero the run was one unbroken column in which a reader looking
+ *   for where one call ended and the next began had only the text to go on.
+ *   Two pixels is the smallest step that reinstates that boundary, and it is
+ *   deliberately NOT four: the designer rendered the same run at both, and at
+ *   4px the rows float as separate items again, which is the spacing this
+ *   whole tier was tightened away from. So a run of N rows measures
+ *   `N × 20px + (N-1) × 2px` — the tool row's dense trigger is 20px — and
+ *   uniformity is still structural rather than lucky, because every adjacent
+ *   like pair gets the same tier and therefore the same distance.
  * - `item` separates the two REGISTERS (prose and ledger) inside one agent
- *   turn. Small, but non-zero: proportional prose sitting flush on a monospace
- *   row reads as one wrapped paragraph.
+ *   turn. Small, but four times the hairline: proportional prose sitting flush
+ *   on a monospace row reads as one wrapped paragraph.
  * - `turn` is deliberately left wide. Tightening a run is only correct if the
  *   turn boundary survives it, and the contrast is what carries the hierarchy —
- *   24px against 0px inside a run, where it used to be 24px against 4px.
+ *   24px against 2px inside a run, where it used to be 24px against 4px.
+ *
+ * The hairline does NOT shrink in the small view, unlike every other tier. The
+ * tiers above shrink because they are made of several pixels to spend; 2px is
+ * already the floor at which a gap is still a gap, and 1px on a hairline reads
+ * as an antialiasing artifact rather than as a boundary.
  */
 export const GAP: Record<Row["gap"], [string, string]> = {
 	first: ["", ""],
 	turn: ["mt-6", "mt-4"],
 	item: ["mt-2", "mt-1.5"],
-	trace: ["", ""],
+	// 2px on the 4px ramp, the same step `TraceGroup` composes its lines with.
+	trace: ["mt-0.5", "mt-0.5"],
 };

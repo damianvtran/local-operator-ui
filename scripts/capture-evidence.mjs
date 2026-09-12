@@ -191,6 +191,11 @@ export const STORIES = [
 	   where the hierarchy that must SURVIVE the tightening is judged. */
 	["chat-tool-rows--operator-spacing-cases", 1024, 620],
 	["chat-tool-rows--turn-boundary-and-working-line", 1024, 620],
+	/* Where the 2px `trace` hairline applies and where it does not: a lone call,
+	   a notice inside a run, and a run that opens a turn. `operator-spacing-cases`
+	   above shows the pitch INSIDE a run, which a per-row margin would reproduce
+	   exactly; only these three boundaries tell the two apart. */
+	["chat-tool-rows--trace-gap-boundaries", 1024, 620],
 
 	/* The run-details popover, in the REAL ChatHeader inside a chat-column ground.
 	   Sized to the panel rather than to a window: 384px of popover plus the 12px

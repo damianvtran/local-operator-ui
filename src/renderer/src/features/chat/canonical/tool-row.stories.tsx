@@ -395,9 +395,18 @@ export const Working: Story = {
 export const OperatorSpacingCases: Story = {
 	render: () => (
 		<div className="flex flex-col gap-8 p-6">
-			{/* (a) Four consecutive settled rows: one pitch, repeated. */}
+			{/* (a) Four consecutive settled rows: one pitch, repeated.
+			    Heights here and below are the block's own content plus the Frame's
+			    48px of padding, measured against a captured frame rather than
+			    guessed. The transcript pins its content to the BOTTOM, so a frame
+			    too short does not letterbox - it drops the OLDEST rows off the top,
+			    which on a spacing surface silently becomes a picture of a shorter
+			    run. At the declared 130/150/210 these three now lose two rows each:
+			    `Start of conversation` (#112) took a line of the slack, and the 2px
+			    hairline takes 2px per gap on top. Verified by capturing at both
+			    heights - at the old ones block (a) photographs 2 of its 4 rows. */}
 			<Frame
-				height={130}
+				height={190}
 				records={[
 					tool({
 						id: "a1",
@@ -429,7 +438,7 @@ export const OperatorSpacingCases: Story = {
 			    assistant record, then a `send` row. All four rows must sit on one
 			    pitch: the invisible record between them is not a spacer. */}
 			<Frame
-				height={150}
+				height={200}
 				records={[
 					{
 						kind: "assistant",
@@ -474,7 +483,7 @@ export const OperatorSpacingCases: Story = {
 			{/* (c) The long ragged run: two more invisible records seeded mid-run,
 			    which is what made some adjacent pairs tight and others wide. */}
 			<Frame
-				height={210}
+				height={215}
 				records={[
 					tool({
 						id: "c1",
@@ -527,6 +536,128 @@ export const OperatorSpacingCases: Story = {
 						durationS: 0.1,
 						added: 8,
 						removed: 3,
+					}),
+				]}
+			/>
+		</div>
+	),
+};
+
+/**
+ * Where the `trace` hairline applies, and — just as much the point — where it
+ * does NOT.
+ *
+ * The gap between adjacent ledger rows is 2px, and the claim a run of identical
+ * rows cannot make on its own is that this is a gap BETWEEN rows rather than a
+ * margin every row carries. A per-row margin looks identical in a picture of a
+ * run and is wrong everywhere else: it would push the first row of a run down
+ * off its own turn boundary and re-space the prose/ledger tier that carries the
+ * "same run vs new turn" signal. So each block here isolates one boundary:
+ *
+ * - (a) a LONE call, with prose either side. Nothing is adjacent to it on the
+ *   ledger tier, so it takes no hairline at all — `item` above and below.
+ * - (b) a mixed run: calls, a NOTICE between them, then more calls. The notice
+ *   is `trace`-like and opts into the same dense height, so the hairline is
+ *   uniform across the whole block; a run whose pitch changed wherever a notice
+ *   appeared is the raggedness this tier was built to prevent.
+ * - (c) a run that OPENS a turn. Its first row takes the turn boundary and the
+ *   rest take the hairline, which is the ordering the gap must not disturb.
+ */
+export const TraceGapBoundaries: Story = {
+	render: () => (
+		<div className="flex flex-col gap-8 p-6">
+			{/* (a) A lone call between two paragraphs: no neighbour, no hairline. */}
+			<Frame
+				height={185}
+				records={[
+					{
+						kind: "assistant",
+						id: "l0",
+						ts: TS,
+						text: "Checking the lockfile before I touch anything.",
+						streaming: false,
+						complete: true,
+						stopReason: null,
+						error: false,
+					},
+					tool({
+						id: "l1",
+						toolName: "read",
+						args: { path: "pnpm-lock.yaml" },
+						durationS: 0.06,
+					}),
+					{
+						kind: "assistant",
+						id: "l2",
+						ts: TS,
+						text: "It is unchanged, so the install is not the cause.",
+						streaming: false,
+						complete: true,
+						stopReason: null,
+						error: false,
+					},
+				]}
+			/>
+			{/* (b) A notice inside a run: one tier, one pitch, all the way down. */}
+			<Frame
+				height={195}
+				records={[
+					tool({
+						id: "m1",
+						toolName: "bash",
+						args: { command: "pnpm check-types" },
+						durationS: 11.2,
+					}),
+					{
+						kind: "notice",
+						id: "m2",
+						ts: TS,
+						text: "Reconnected to the backend.",
+						level: "info",
+					},
+					tool({
+						id: "m3",
+						toolName: "bash",
+						args: { command: "pnpm lint" },
+						durationS: 2.8,
+					}),
+					tool({
+						id: "m4",
+						toolName: "grep",
+						args: { pattern: "GAP", path: "src" },
+						durationS: 0.11,
+					}),
+				]}
+			/>
+			{/* (c) The first row of a run takes the TURN boundary, not the
+			    hairline: the gap is between rows, never above the first one. */}
+			<Frame
+				height={240}
+				records={[
+					{
+						kind: "user",
+						id: "n0",
+						ts: TS,
+						text: "Run the gates.",
+						images: [],
+					},
+					tool({
+						id: "n1",
+						toolName: "bash",
+						args: { command: "pnpm lint" },
+						durationS: 3.1,
+					}),
+					tool({
+						id: "n2",
+						toolName: "bash",
+						args: { command: "pnpm check-themes" },
+						durationS: 6.4,
+					}),
+					tool({
+						id: "n3",
+						toolName: "bash",
+						args: { command: "pnpm build" },
+						durationS: 41,
 					}),
 				]}
 			/>

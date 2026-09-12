@@ -443,8 +443,42 @@ test("an invisible record does not break trace adjacency", () => {
 		run.map((row) => row.gap),
 		["first", "trace", "trace", "trace", "trace"],
 	);
-	// `trace` carries no margin at all, so the row's own height IS the pitch.
-	assert.deepEqual(GAP.trace, ["", ""]);
+	// `trace` is the 2px hairline, and the SAME 2px in the small view: every
+	// other tier shrinks there, but 2px is already the floor at which a gap is
+	// still a gap. `mt-0.5` on the 4px ramp, the step `TraceGroup` composes with.
+	assert.deepEqual(GAP.trace, ["mt-0.5", "mt-0.5"]);
+	// The gap applies only BETWEEN rows of a run: the row that OPENS one takes
+	// `first` or `turn`, never `trace`, so nothing is pushed off the top.
+	assert.equal(run[0].gap, "first");
+	assert.equal(GAP.first[0], "", "the opening row carries no margin");
+});
+
+/*
+ * The ladder, as numbers rather than as class names.
+ *
+ * The tiers only carry information if they are DISTINGUISHABLE and ordered:
+ * `transcript-rows.ts` says the distance between tiers is what tells "still the
+ * same run" from "a new turn started". Two tiers that happen to compile to the
+ * same margin would still pass a deepEqual on their own spellings, which is why
+ * this resolves them through the ramp and compares the pixels.
+ */
+test("the gap tiers are strictly ordered, trace tightest", () => {
+	// Tailwind v4's `--spacing: 0.25rem` (styles/index.css) at a 16px root.
+	const px = (cls) => (cls === "" ? 0 : Number(cls.replace("mt-", "")) * 4);
+	for (const view of [0, 1]) {
+		const trace = px(GAP.trace[view]);
+		const item = px(GAP.item[view]);
+		const turn = px(GAP.turn[view]);
+		assert.equal(trace, 2, "a run's rows sit a hairline apart");
+		assert.ok(
+			trace < item && item < turn,
+			`tiers must widen: trace ${trace} < item ${item} < turn ${turn}`,
+		);
+		// The hierarchy the tightening had to preserve: a turn boundary is an
+		// order of magnitude airier than an adjacent pair inside a run, so the
+		// density buys nothing at the boundary's expense.
+		assert.ok(turn >= trace * 8, "a turn boundary still reads as a boundary");
+	}
 });
 
 test("an invisible record does not consume the avatar or a turn boundary", () => {
