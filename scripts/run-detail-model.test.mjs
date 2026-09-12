@@ -42,6 +42,7 @@ const {
 	deriveRunDetails,
 	hasRunDetails,
 	hasUnseenFailure,
+	retimeRunDetails,
 	runDetailTriggerLabel,
 	subagentTally,
 	todoTally,
@@ -674,4 +675,81 @@ test("the unseen-failure fixture is a run whose only open fact is a failure", ()
 	// A flat, closed plan on top: headerless, and `resolved` reaching the tally.
 	assert.equal(details.todos[0].name, null);
 	assert.equal(todoTally(details), "3 of 3 resolved · 1 dropped");
+});
+
+/* ------------------------------------------------------------------ */
+/* The clock                                                           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * `retimeRunDetails` is the panel's 1Hz tick, and it is the ONE part of this
+ * model whose answer depends on when it is asked. The wire gives it nothing to
+ * do — `frontend.update` arrives only when the runtime has a delta, and the
+ * stream's only periodic frame is a heartbeat the renderer drops — so a running
+ * child's clock would otherwise freeze the moment the backend went quiet.
+ *
+ * What is asserted here is exactly that, and no more: an open child's label
+ * moves, a settled one's does not, nothing else in the model moves with it, and
+ * a re-measure that changes nothing returns the SAME object — because the tick
+ * runs once a second inside the open panel and a fresh object each second would
+ * re-render rows that have nothing to say.
+ */
+
+test("an open child's clock is re-measured, a settled child's is not", () => {
+	const details = derive([
+		job({ id: "open", start_time: 1_000 }),
+		job({ id: "settled", start_time: 1_000, settled_at: 1_010 }),
+	]);
+	assert.deepEqual(
+		details.subagents.map((row) => row.elapsedLabel),
+		["1m", "10s"],
+	);
+	// Two minutes later, in the model's own clock.
+	const later = retimeRunDetails(details, NOW_MS + 120_000);
+	assert.deepEqual(
+		later.subagents.map((row) => row.elapsedLabel),
+		["3m", "10s"],
+		"the settled child keeps the duration it settled at",
+	);
+	// And nothing else about the run moved with the clock: same statuses, same
+	// counts, same plan — the tick is a re-measure, not a re-derivation.
+	assert.deepEqual(
+		later.subagents.map((row) => row.status),
+		details.subagents.map((row) => row.status),
+	);
+	assert.equal(later.openChildren, details.openChildren);
+	assert.equal(later.todos, details.todos);
+});
+
+test("a child with no launch clock is never given one by a re-measure", () => {
+	const details = derive([job({ start_time: 0, settled_at: null })]);
+	assert.equal(details.subagents[0].elapsedLabel, null);
+	const later = retimeRunDetails(details, NOW_MS + 600_000);
+	assert.equal(later.subagents[0].elapsedLabel, null);
+	// Nothing moved, so nothing was copied: the panel's rows keep their identity.
+	assert.equal(later, details);
+});
+
+test("a re-measure that moves no label hands back the same model", () => {
+	const settledOnly = derive([
+		job({ id: "a", start_time: 1_000, settled_at: 1_010 }),
+	]);
+	assert.equal(retimeRunDetails(settledOnly, NOW_MS + 60_000), settledOnly);
+
+	// The same holds inside the second: the label carries whole seconds, so a
+	// tick that lands 400ms after the model was derived has nothing to say.
+	const running = derive([job({ start_time: 1_000 })]);
+	assert.equal(retimeRunDetails(running, NOW_MS + 400), running);
+});
+
+test("the model records the instant it was measured at, and the real one", () => {
+	const pinned = derive([job({})]);
+	assert.equal(pinned.measuredAtMs, NOW_MS);
+	// The second stamp is a real wall-clock reading, whatever instant the first
+	// one names. That is what lets a story pin a fixture's clock and still have
+	// its running rows count up while the frame is open — and what keeps the
+	// clock off the months between a March fixture and now.
+	assert.ok(Math.abs(pinned.measuredAtRealMs - Date.now()) < 5_000);
+	const live = deriveRunDetails({ jobs: [], todos: [] });
+	assert.ok(Math.abs(live.measuredAtMs - Date.now()) < 5_000);
 });

@@ -14,6 +14,7 @@ export {
 	NOTHING_SEEN,
 	OPEN_CHILD_STATUSES,
 	OPEN_TODO_STATUSES,
+	retimeRunDetails,
 	runDetailTriggerLabel,
 	SUBAGENT_ROW_CAP,
 	subagentTally,

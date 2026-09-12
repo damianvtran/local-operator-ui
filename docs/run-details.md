@@ -1,8 +1,10 @@
 # Run details — subagents and to-dos in the desktop chat header
 
-Status: design proposal. Nothing in the application is wired to this document
-yet; the view model, the components and the story states exist so the surface
-can be judged as rendered frames before any of it is connected.
+Status: the surface is WIRED as of the finish round — `chat-page.tsx` derives the
+view model from the canonical stream and hands it to `ChatHeader`, so the trigger
+appears in the running app for a session with work in flight. The design record
+below is written as the proposal it was judged as; § 8 carries the two notes the
+wiring added.
 
 Scope: the Electron renderer (`local-operator-ui`). The TUI
 (`~/local-operator`) is the reference implementation for both data models and is
@@ -454,6 +456,20 @@ Two notes on what is *not* in the model:
   latter would be a mistake worth naming here so nobody makes it again.
 - A child's own plan (`JobState.todos`) is carried on the wire and unused. The
   popover shows the session's plan, not each child's.
+
+And one note on *when* the model is read, which the wiring made load-bearing:
+
+- **A running child's elapsed label is the one figure here that is a function of
+  the current time**, so it is the one figure a live session can show stale.
+  `frontend.update` arrives only when the runtime has a field delta, and the
+  stream's only periodic frame is a 15s heartbeat the renderer drops on purpose,
+  so a child thinking for ninety seconds would read the same number for ninety
+  seconds. The row therefore keeps the clock it was measured from
+  (`startSeconds`/`settledSeconds`) and `retimeRunDetails` re-measures that label
+  and nothing else, at 1Hz, inside the panel that draws it — the same scope the
+  TUI's own re-derivation has, and the same reason the transcript's tool rows
+  keep their own clock in their own row. Nothing above the panel ticks, so the
+  transcript is not re-rendered once a second to move one number.
 
 ## 9. Why this is non-invasive
 

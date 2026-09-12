@@ -9,6 +9,10 @@
  * The panel is presentational and in-flow: the popover, the width, the scroll
  * region and the focus target are the TRIGGER's, because they are all facts about
  * where this body is shown rather than about what it says.
+ *
+ * Its one behaviour is its clock (`useRunDetailsClock`), which is here rather
+ * than higher up because this is the surface that draws a running child's
+ * elapsed time and the only one that has to repaint when it moves.
  */
 
 import { Separator } from "@shared/components/ui";
@@ -17,6 +21,7 @@ import { Fragment, type HTMLAttributes, type ReactNode } from "react";
 import type { RunDetails } from "./run-detail-model";
 import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
+import { useRunDetailsClock } from "./run-details-clock";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
@@ -28,6 +33,13 @@ export const RunDetailsPanel = ({
 	...props
 }: RunDetailsPanelProps) => {
 	/*
+	 * The clock is taken HERE, at the body, and the re-measured model is what
+	 * both sections render. Nothing above this component ticks (see
+	 * `useRunDetailsClock`): the panel is the only surface that draws an elapsed
+	 * value, so it is the only one that has to be repainted when one moves.
+	 */
+	const measured = useRunDetailsClock(details);
+	/*
 	 * Presence is judged on the DERIVED lists rather than on the visible slices:
 	 * a section whose rows are all over the cap still has content, and its `+N
 	 * more` row is the thing that says so. Both sections empty is unreachable
@@ -38,11 +50,14 @@ export const RunDetailsPanel = ({
 	if (details.subagents.length > 0) {
 		sections.push({
 			key: "subagents",
-			body: <RunDetailSubagents details={details} />,
+			body: <RunDetailSubagents details={measured} />,
 		});
 	}
 	if (details.todos.length > 0) {
-		sections.push({ key: "todos", body: <RunDetailTodos details={details} /> });
+		sections.push({
+			key: "todos",
+			body: <RunDetailTodos details={measured} />,
+		});
 	}
 
 	return (
