@@ -1,14 +1,14 @@
 {
-  "head": "21d28d3c65e13f9071152dc19f04d856bbb41d55",
-  "srcTree": "217ef43b8ec893bb440f2960965d30d7a8141ebe",
-  "scriptsTree": "76014fc30796cb13fbb04463b1044cd14d058c20",
+  "head": "2217ea59a13b4eeb77461435746b246760249b06",
+  "srcTree": "9bb63194665e53beb1295192d9b6375f08e9e740",
+  "scriptsTree": "778c4136a7015ecd7f501d1a31245a2d1e2f59b5",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 474,
+  "frames": 482,
   "surfaces": 45,
   "themes": 12,
   "partialCapture": {
-    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content — at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. REMEDIATION ROUND 2: `real-conversation-tool-rows` was RE-CAPTURED and is no longer stale. It now shows 38 real tool rows with 0 blank object columns on a 20px pitch, rendered by the shipped reducer and the shipped CanonicalTranscript over real /history pages paged oldest-first in 20-entry pages (the cross-page condition the blank-summary defect needed). Electron is not required for this surface — the desktop API answers a plain bearer request. The reading was proven falsifiable by running the SAME harness with the reducer starved: stripping tool_calls alone still yields 0 blanks (the output fallback carries it), stripping tool_calls AND output yields 53 of 53 blank, reproducing the original defect from the current head.",
+    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content \u2014 at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. REMEDIATION ROUND 2: `real-conversation-tool-rows` was RE-CAPTURED and is no longer stale. It now shows 38 real tool rows with 0 blank object columns on a 20px pitch, rendered by the shipped reducer and the shipped CanonicalTranscript over real /history pages paged oldest-first in 20-entry pages (the cross-page condition the blank-summary defect needed). Electron is not required for this surface \u2014 the desktop API answers a plain bearer request. The reading was proven falsifiable by running the SAME harness with the reducer starved: stripping tool_calls alone still yields 0 blanks (the output fallback carries it), stripping tool_calls AND output yields 53 of 53 blank, reproducing the original defect from the current head.",
     "addedFrames": 18,
     "addedAt": "2026-09-10T02:37:03.000Z",
     "addedAtHead": "9f12fc8779fbddbdee450519da2b30811967fdaa",
@@ -23,12 +23,13 @@
       "tool-rows/working-labels",
       "transcript-images/real-conversation-images"
     ],
-    "refreshedAt": "2026-09-10T06:37:56.203Z",
-    "refreshedAtHead": "21d28d3c65e13f9071152dc19f04d856bbb41d55",
-    "refreshedFrames": 14,
+    "refreshedAt": "2026-09-12T04:05:18.920Z",
+    "refreshedAtHead": "2217ea59a13b4eeb77461435746b246760249b06",
+    "refreshedFrames": 16,
     "refreshedStories": [
       "chat-tool-rows--states",
       "chat-tool-rows--names-and-fallbacks",
+      "chat-tool-rows--joined-mid-turn",
       "chat-tool-rows--narrow",
       "chat-tool-rows--working",
       "chat-tool-rows--working-labels",
@@ -38,7 +39,8 @@
     "refreshedThemes": [
       "localOperatorDark",
       "localOperatorLight"
-    ]
+    ],
+    "refreshedNote": "REFRESHED: the eight `chat-tool-rows--*` surfaces, in the two brand themes, after the row's object column and its duration/byte spellings changed (a settling frame with no arguments now recovers the call's arguments, the stand-in line steps over the harness's own `exit code: 0` wiring, a sub-50 ms call reads `<0.1s` and the dictation counter reads `KB`/`MB`). RENAMED: `docs/evidence/tool-rows` -> `docs/evidence/chat-tool-rows`, because the capture names a surface from its story title slug and the title gained a `Chat/` prefix after the set was first written; a refresh now lands in the new name, and leaving both would have split one surface family across two directories. The sweep total is 480 rather than 492 because the add-then-rename sequence counted twelve frames twice (the five surfaces that existed under both names); this note is the correction, and a full sweep re-derives the number anyway. NOT REFRESHED: `real-conversation-tool-rows`, whose capture harness is not in this repo - it is the one committed surface whose durations predate the `<0.1s` spelling. ADDED OUTSIDE THE SWEEP: `chat-tool-rows/joined-mid-turn/before/*.webp`, the same story captured from unmodified `origin/main` through the same harness, kept beside the fixed frames so the before/after pair is one directory. A sweep cannot regenerate them (it would capture the current tree), so they are evidence of record and are counted in the sweep total rather than declared as a set."
   },
   "supplementary": [
     {

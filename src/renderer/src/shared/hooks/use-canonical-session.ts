@@ -34,6 +34,9 @@ import {
 	applyLiveSeed,
 	clearTranscript,
 	dropLiveRecords,
+	labelGapRetries,
+	reconcileLimit,
+	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
 import {
 	desktopResult,
@@ -98,6 +101,28 @@ const TERMINAL_EVENTS = new Set([
 /** Flush cadence when no animation frame arrives (hidden window). */
 const HIDDEN_FLUSH_MS = 250;
 
+/**
+ * The events after which a round's tool rows are IN the durable transcript.
+ *
+ * The runtime appends a round's assistant row and its tool results as the round
+ * closes, so these are the only moments at which reading history back can learn
+ * a call's arguments that a mid-turn seed could not carry. Deliberately NOT the
+ * whole of `TERMINAL_EVENTS`: `agent_start` and `provider_start` are the same
+ * set's other members and mark nothing durable at all.
+ */
+const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
+
+/**
+ * How many read-backs one unlabelled call is worth.
+ *
+ * The first read usually closes the gap for a call whose rows had already
+ * landed; the second catches one that was still running at the join. Past that,
+ * the call has no arguments anywhere to find — a plan the harness rejected
+ * emits no start and leaves no assistant row — and a permanent retry would buy a
+ * history page per turn for the rest of the conversation to learn nothing.
+ */
+const LABEL_GAP_ATTEMPTS = 2;
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -121,6 +146,23 @@ export function useCanonicalSessionStream(
 	// Read outside the React updater (see the flush comment), so the painted set
 	// is tracked here rather than through the view state itself.
 	const paintedIds = useRef<TranscriptState["index"]>(EMPTY_TRANSCRIPT.index);
+	/*
+	 * Call ids a mid-turn snapshot's seed could not label, and how many times we
+	 * have read back for each. See `seedCallsMissingLabels`: the seed keeps only
+	 * the settling frame, so a viewer that joins a turn in flight is handed rows
+	 * with no arguments, and the arguments live in the durable transcript —
+	 * which does not hold the round that is still running yet.
+	 *
+	 * THAT is why this outlives its flush. A single read-back at the snapshot can
+	 * only label the calls whose rows became durable BEFORE the join; the round
+	 * in flight becomes durable at its own turn end, so the read has to be
+	 * repeated once per round for as long as the gap lasts. Capped per id rather
+	 * than globally, because the gap closes for most calls on the first retry and
+	 * a call that can never be labelled must not buy a history page per turn for
+	 * the rest of the conversation: a rejected plan never emitted a start and has
+	 * no assistant row either, so nothing will ever name it.
+	 */
+	const labelGapRef = useRef<Map<string, number>>(new Map());
 	const receiptRef = useRef<{ epoch: string; seq: number } | null>(null);
 	const reconnectRef = useRef<{ epoch?: string; afterSeq?: number }>({});
 	const generationRef = useRef(0);
@@ -166,6 +208,67 @@ export function useCanonicalSessionStream(
 							frame.payload.history.cursor_missing ||
 							frame.payload.history.entries.length === 0),
 			);
+			// The second reason to read back: a snapshot's live seed names calls that
+			// settled before this viewer arrived, and the seed carries no arguments for
+			// them (see `knownArgs`), so those rows render nothing but their output —
+			// `exit code: 0` for every bash call. Everything the transcript IN HAND can
+			// label is its session map plus the assistant rows of the page arriving in
+			// this very batch; what is left is the gap, and its size decides the page
+			// below instead of a fixed constant.
+			//
+			// Gathered here, from the frames and the last painted view, rather than
+			// inside the updater like `paintedIds`: the decision must be made before
+			// this flush returns, and an updater runs lazily (and twice under
+			// StrictMode).
+			const labelled = new Set<string>(
+				viewRef.current.transcript.argsByCall.keys(),
+			);
+			const seedEvents: Record<string, unknown>[] = [];
+			for (const frame of frames) {
+				if (frame.type !== "snapshot") continue;
+				for (const entry of frame.payload.history.entries) {
+					const calls = entry.payload?.tool_calls;
+					if (!Array.isArray(calls)) continue;
+					for (const call of calls as Record<string, unknown>[]) {
+						if (call && typeof call.id === "string") labelled.add(call.id);
+					}
+				}
+				seedEvents.push(...(frame.payload.frontend.snapshot.live_events ?? []));
+			}
+			/*
+			 * A round just ended, which is the moment the round BEFORE it becomes
+			 * durable — so it is the only moment a retry can learn anything. Reading
+			 * back on every frame batch instead would spend its budget on the frames
+			 * that arrive before the rows exist and label nothing.
+			 */
+			const roundEnded = frames.some(
+				(frame) =>
+					frame.type === "event" &&
+					DURABLE_ROUND_ENDINGS.has(String(frame.payload.type ?? "")),
+			);
+			const retryLabels = roundEnded
+				? labelGapRetries(labelGapRef.current, labelled, LABEL_GAP_ATTEMPTS)
+				: [];
+			const missingLabels = [
+				...new Set([
+					...seedCallsMissingLabels(seedEvents, labelled),
+					...retryLabels,
+				]),
+			];
+			/*
+			 * Bookkeeping BEFORE the request, because this counts ATTEMPTS: a read that
+			 * fails or arrives too early must still not be retried forever. Ids the
+			 * transcript has learned since the last flush are dropped here, which is
+			 * what keeps the map from growing with the conversation.
+			 */
+			for (const [id, attempts] of [...labelGapRef.current]) {
+				if (labelled.has(id) || attempts >= LABEL_GAP_ATTEMPTS) {
+					labelGapRef.current.delete(id);
+				}
+			}
+			for (const id of missingLabels) {
+				labelGapRef.current.set(id, (labelGapRef.current.get(id) ?? 0) + 1);
+			}
 			performance.mark("lop:transcript:flush:start");
 
 			setView((current) => {
@@ -340,11 +443,11 @@ export function useCanonicalSessionStream(
 				paintedIds.current = next.transcript.index;
 				return next;
 			});
-			if (needsReconcile) {
+			if (needsReconcile || missingLabels.length > 0) {
 				void desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
 					sessionId,
-					limit: 100,
+					limit: reconcileLimit(missingLabels.length),
 				})
 					.then((page) => {
 						if (generationRef.current !== generation) return;

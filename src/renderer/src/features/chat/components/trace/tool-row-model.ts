@@ -196,6 +196,52 @@ export function isBareToolName(summary: string, toolName: string): boolean {
 }
 
 /**
+ * The wiring each `bash` result opens with, which the row must not quote.
+ *
+ * `exit code: N` is the harness's own OUTCOME line, and `--- stdout ---` /
+ * `--- stderr ---` are its section markers — so as the object column's stand-in
+ * they say the least of anything in the result. The TUI never had to worry
+ * about this because it has a dedicated outcome column and never reads the
+ * result for an object; a port with no such column inherited the wiring as
+ * prose. On a machine where every second row is a `bash` call that is how a
+ * transcript came to read forty times `exit code: 0`.
+ *
+ * Matched after trimming, and the code is optional: a killed call reports
+ * `exit code: -9`, and one observed in a real transcript reports a bare
+ * `exit code` on its second line. Either way the number is not news — the
+ * row's own glyph carries the outcome — so it is never worth the column.
+ * Nothing else is filtered: `TIMEOUT after 120.0s (process killed)`, which
+ * opens those same results, IS the fact worth standing in.
+ */
+const OUTPUT_WIRING_LINE =
+	/^(?:exit code:?\s*-?\d*|--- (?:stdout|stderr) ---)$/;
+
+/**
+ * What the row shows in the object column when the arguments taught it nothing.
+ *
+ * The first line of the result that actually says something, bounded because
+ * the object column is one line: a multi-line result is truncated by CSS
+ * anyway, and choosing the line explicitly means the row shows a whole thought
+ * rather than a fragment cut mid-word by the layout. The cap matches what fits
+ * at the widest sensible column, so a 4 KB result cannot push a long string
+ * through the truncation machinery on every render.
+ *
+ * `null` means the result had nothing to offer and the row should stay empty:
+ * "no stand-in exists" is a different claim from "the stand-in is a blank",
+ * and only the first lets the caller fall through to its own placeholder.
+ */
+export function outputFallbackLine(output: string | null): string | null {
+	if (!output) return null;
+	for (const line of output.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		if (OUTPUT_WIRING_LINE.test(trimmed)) continue;
+		return trimmed.slice(0, 160);
+	}
+	return null;
+}
+
+/**
  * Integer-seconds duration, bounded at six characters over its whole domain.
  *
  * `format_duration` (tool_card.py:338-387). Used for a RUNNING row and for any
@@ -234,9 +280,30 @@ export function formatDuration(seconds: number): string {
 export function formatSettledDuration(seconds: number | null): string {
 	if (seconds === null) return "";
 	const elapsed = Math.max(0, seconds);
+	// `<0.1s`, never `0.0s` (`tool_card.py:2615-2623`). Printing `0.0s` for a
+	// call that genuinely returned at once reprints the exact string the old
+	// fabricated-duration bug produced, so a reader cannot tell a real sub-50 ms
+	// call from a row whose duration was lost. The TUI's own reasoning for the
+	// spelling: "reads as too fast to measure".
+	if (elapsed < 0.05) return "<0.1s";
 	if (elapsed < 10) return `${elapsed.toFixed(1)}s`;
 	if (elapsed < 60) return `${Math.round(elapsed)}s`;
 	return formatDuration(elapsed);
+}
+
+/**
+ * A byte count at a glance: `812 B`, `12.4 KB`, `1.2 MB`.
+ *
+ * `_format_bytes` (tool_card.py:360-371), ported because the composing row's
+ * number is meant to MOVE: a counter that ticks is what says the model is still
+ * dictating, and the app's own spelling — `KiB`, with no step above a kilobyte
+ * — spelled a multi-megabyte dictation as `2048.0 KiB`: a number nobody reads
+ * at a glance, which is the whole point of the field.
+ */
+export function formatBytes(count: number): string {
+	if (count < 1024) return `${count} B`;
+	if (count < 1024 * 1024) return `${(count / 1024).toFixed(1)} KB`;
+	return `${(count / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**

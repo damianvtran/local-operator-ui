@@ -139,6 +139,12 @@ const STORIES = [
 	   well as wide, because the shed order under pressure is half the design. */
 	["chat-tool-rows--states", 1280, 900],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
+	/* The reported defect, and the only new surface this set added: a viewer that
+	   joins a turn already in flight. Its rows are built by the PRODUCTION
+	   reducer from wire-shaped frames, so the frame shows what the object column
+	   is actually given rather than what a hand-written row can be made to say.
+	   Sized to the four rows it holds, for the reason `working-labels` is. */
+	["chat-tool-rows--joined-mid-turn", 1024, 300],
 	/* `narrow` is a 420px column and `working-labels` is six short lines, so
 	   both are captured in a viewport SIZED TO THEM rather than in the 1280x900
 	   default. At the default they are mostly empty ground — and once the rows
@@ -490,6 +496,8 @@ const main = async () => {
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
+	/** Frames this run wrote that were not on disk before, and that the sweep owns. */
+	let addedToSweep = 0;
 	for (const [story, width, height] of stories) {
 		for (const theme of themes) {
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
@@ -816,6 +824,23 @@ const main = async () => {
 			const dir = join(OUT, story.split("--")[0], leaf);
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
+			/*
+			 * Counted before the write: a partial run that ADDS a story grows the set,
+			 * and `check-evidence` compares the sweep's declared total against the
+			 * frames on disk that no supplementary set claims. Preserving the previous
+			 * total through an add left those two out of step by exactly the frames the
+			 * run had just written - which is how this set reached a red gate at 474
+			 * declared against 488 on disk, with nothing wrong in any frame.
+			 *
+			 * A supplementary set is captured by its own procedure and declares its own
+			 * count, so a frame inside one is not the sweep's to add.
+			 */
+			if (
+				!existsSync(framePath) &&
+				!supplementary.some((set) => dir.startsWith(join(OUT, set.path)))
+			) {
+				addedToSweep++;
+			}
 			writeFileSync(framePath, Buffer.from(data, "base64"));
 			/*
 			 * And check it is a picture of the app before moving on.
@@ -898,6 +923,12 @@ const main = async () => {
 	const manifest = PARTIAL
 		? {
 				...previous,
+				/*
+				 * The sweep's own total, grown by whatever this run ADDED. A refresh
+				 * leaves it where it was, which is what the rest of this branch does; an
+				 * add has to raise it or the gate reports the new frames as undeclared.
+				 */
+				frames: (previous.frames ?? 0) + addedToSweep,
 				head,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),

@@ -28,7 +28,14 @@ import { useRef } from "react";
 import "../../../styles/index.css";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
-import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
+import {
+	EMPTY_TRANSCRIPT,
+	type TranscriptRecord,
+	type TranscriptState,
+	applyEvent,
+	applyHistoryPage,
+	dropLiveRecords,
+} from "./transcript-reducer";
 
 const TS = 1_760_000_000_000;
 
@@ -564,3 +571,141 @@ export const WorkingLabels: Story = {
 		</div>
 	),
 };
+
+/**
+ * The reported case: a viewer that joins a turn ALREADY IN FLIGHT.
+ *
+ * The owner's snapshot seed keeps the settling frame of every call that
+ * finished before the viewer attached and drops the start it replaces, and the
+ * settling frame carries no `args` — so the seed is a list of calls nobody can
+ * name. Records here are built by the PRODUCTION reducer, in the same order the
+ * session hook applies them, because the defect was never in the row's
+ * presentation: it was in what the row was given.
+ *
+ * Three rows say what to look for:
+ *
+ * 1. A live start, then a receipt gap (`dropLiveRecords`), then the durable
+ *    page and the seed's settling frame. The row is created by that settling
+ *    frame, and it must still say the command — before the fix it fell through
+ *    to the result's first line and read `exit code: 0`.
+ * 2. A result that opens with the harness's own wiring (`exit code: 0`, then
+ *    `--- stdout ---`). When the arguments really are unknown — a call from an
+ *    older runtime, or one whose plan was rejected — the object column steps
+ *    over that wiring instead of quoting it.
+ * 3. A normal row, whose arguments arrived on the live start. Unchanged, and
+ *    here as the control: it is what rows 1 and 2 must look like.
+ */
+export const JoinedMidTurn: Story = {
+	render: () => <Frame height={170} records={joinedMidTurn()} />,
+};
+
+/**
+ * The transcript a mid-turn join produces, through the real reducer.
+ *
+ * Deterministic on purpose: frames captured from this story are compared
+ * against `main`, so anything read from the clock would make the pair differ
+ * for a reason that has nothing to do with the change.
+ */
+function joinedMidTurn(): TranscriptRecord[] {
+	const args = {
+		command: "sed -n '1130,1230p' src/main/update-service.ts",
+		i: "Reading the updater",
+	};
+	const result = (text: string) => ({
+		content: [{ type: "text", text }],
+		details: {},
+	});
+	// The live start, which is the only frame that carries the arguments.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-gap",
+			tool_name: "bash",
+			args,
+		},
+		TS,
+	);
+	// A receipt gap: live projections are dropped, durable rows are not.
+	state = dropLiveRecords(state);
+	// The snapshot's durable page, whose assistant row holds the arguments.
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "a-gap",
+				ts: TS,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "assistant",
+					content: [],
+					tool_calls: [{ id: "c-gap", name: "bash", arguments: args }],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	// Then the seed's settling frame — no arguments, and the row does not exist.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-gap",
+			tool_name: "bash",
+			result: result(
+				"exit code: 0\n--- stdout ---\n      this.updateAvailable = false",
+			),
+			duration_s: 0.1,
+		},
+		TS + 100,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-unknown",
+			tool_name: "bash",
+			result: result(
+				"exit code: 0\n--- stdout ---\n=== /Volumes ===\nLocal Operator 0.17.0",
+			),
+			duration_s: 0.3,
+		},
+		TS + 900,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-read",
+			tool_name: "read",
+			result: result("1130|  private setupUpdateEvents(): void {"),
+			duration_s: 0.2,
+		},
+		TS + 1_200,
+	);
+	// The control: arguments arrived on the start, which is what every settled
+	// row looks like when the viewer was there for the whole turn.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-known",
+			tool_name: "bash",
+			args: { command: "pnpm check-types && pnpm test:desktop" },
+		},
+		TS + 1_500,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-known",
+			tool_name: "bash",
+			result: result("exit code: 0\n--- stdout ---\nall checks passed"),
+			duration_s: 12.4,
+		},
+		TS + 13_900,
+	);
+	return state.records;
+}

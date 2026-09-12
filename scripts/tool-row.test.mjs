@@ -39,9 +39,11 @@ const {
 	compactPath,
 	diffCount,
 	displayName,
+	formatBytes,
 	formatDuration,
 	isBareToolName,
 	formatSettledDuration,
+	outputFallbackLine,
 	requestDesktopMedia,
 	summaryFromArgs,
 	toolCategory,
@@ -130,7 +132,13 @@ test("an MCP tool displays as the call, not the mint", () => {
 test("durations are spelled the way each state spells them", () => {
 	// Settled: a tenth below ten seconds, whole seconds below a minute.
 	assert.equal(formatSettledDuration(2.94), "2.9s");
-	assert.equal(formatSettledDuration(0), "0.0s");
+	// `<0.1s`, never `0.0s`: rounding a genuinely instant call to `0.0s`
+	// reprints the string the old fabricated-duration bug produced, so a reader
+	// cannot tell a real sub-50 ms call from a row whose duration was lost
+	// (`tool_card.py:2615-2623`).
+	assert.equal(formatSettledDuration(0), "<0.1s");
+	assert.equal(formatSettledDuration(0.04), "<0.1s");
+	assert.equal(formatSettledDuration(0.05), "0.1s");
 	assert.equal(formatSettledDuration(34.4), "34s");
 	assert.equal(formatSettledDuration(117), "1m57s");
 	assert.equal(formatSettledDuration(7500), "2h5m");
@@ -149,6 +157,18 @@ test("durations are spelled the way each state spells them", () => {
 	for (const seconds of [0, 59, 3599, 86399, 99 * 86400 + 82800]) {
 		assert.ok(formatDuration(seconds).length <= 6, `${seconds}`);
 	}
+});
+
+test("the dictation counter is spelled at a glance", () => {
+	// `_format_bytes` (tool_card.py:360-371). The number exists to MOVE, so an
+	// unreadable spelling defeats it: the app's own `KiB` had no step above a
+	// kilobyte and printed a multi-megabyte dictation as `2048.0 KiB`.
+	assert.equal(formatBytes(0), "0 B");
+	assert.equal(formatBytes(812), "812 B");
+	assert.equal(formatBytes(1024), "1.0 KB");
+	assert.equal(formatBytes(12_688), "12.4 KB");
+	assert.equal(formatBytes(1024 * 1024), "1.0 MB");
+	assert.equal(formatBytes(2_097_152), "2.0 MB");
 });
 
 test("a diff counter is a positive integer or it is unknown", () => {
@@ -518,4 +538,50 @@ test("the name/summary stutter guard covers MCP rows too (R6)", () => {
 		false,
 		"a summary matching ANOTHER tool's name is still a summary",
 	);
+});
+
+test("the stand-in line skips the harness wiring a result opens with", () => {
+	// A `bash` result opens with its own OUTCOME, then section markers. The TUI
+	// never had to care, because it has an outcome column and never reads the
+	// result for an object; this port has no such column, which is how a
+	// transcript came to read forty rows of `exit code: 0` under a heading that
+	// promised the command. Nothing informative is dropped with it: the row's own
+	// glyph already carries the outcome, and a non-zero exit is what turns that
+	// glyph into a cross.
+	assert.equal(
+		outputFallbackLine("exit code: 0\n--- stdout ---\n=== downloads ===\nLO.app"),
+		"=== downloads ===",
+		"the status line and the section marker both step aside",
+	);
+	assert.equal(
+		outputFallbackLine("exit code: -9\n--- stderr ---\n/LO.app: killed"),
+		"/LO.app: killed",
+	);
+	// Observed in a real transcript: a killed call writes the marker without a
+	// number at all, and an indented one.
+	assert.equal(outputFallbackLine("      exit code\n--- stdout ---\nreal"), "real");
+
+	// A timeout DOES open with the fact the row exists to carry, so it stays.
+	assert.equal(
+		outputFallbackLine("TIMEOUT after 120.0s (process killed)\nexit code: -9"),
+		"TIMEOUT after 120.0s (process killed)",
+	);
+	// Anything that is not those markers is text, whatever it looks like.
+	assert.equal(outputFallbackLine("exit code: 0 and then some"), "exit code: 0 and then some");
+	assert.equal(outputFallbackLine("200 match(es) for 'wake'"), "200 match(es) for 'wake'");
+
+	// Nothing to offer is `null`, not an empty string: the row must be able to
+	// tell "there was no stand-in" from "the stand-in is blank".
+	assert.equal(outputFallbackLine(null), null);
+	assert.equal(outputFallbackLine(""), null);
+	assert.equal(outputFallbackLine("exit code: 0\n--- stdout ---\n\n"), null);
+	assert.equal(
+		outputFallbackLine("exit code: 0\n--- stdout ---\n   \n--- stderr ---"),
+		null,
+	);
+
+	// Bounded, because the object column is one line: a 4 KB result must not
+	// push a long string through the truncation machinery on every render.
+	const long = `exit code: 0\n--- stdout ---\n${"x".repeat(400)}`;
+	assert.equal(outputFallbackLine(long).length, 160);
 });

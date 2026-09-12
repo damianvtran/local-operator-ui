@@ -29,6 +29,9 @@ const {
 	applyLiveSeed,
 	clearTranscript,
 	dropLiveRecords,
+	labelGapRetries,
+	reconcileLimit,
+	seedCallsMissingLabels,
 	withRecoveredOutcome,
 } = reducer;
 
@@ -996,4 +999,168 @@ test("a running row carries the clock its duration cannot", () => {
 	const done = settled.records.find((r) => r.kind === "tool");
 	assert.equal(done.startedAt, null, "the row stops counting");
 	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
+});
+
+/*
+ * The mid-turn join, which is the reported bug: a viewer that opens a session
+ * while a turn is RUNNING is handed a snapshot whose live seed is a list of
+ * `tool_execution_end` frames — the owner keeps the settling frame and drops
+ * the start it replaces (`frontend_state._fold_live_event`), and the start is
+ * the only frame that carries `args`. A row painted from one of those ends had
+ * no object column at all, so it fell through to the output's first line, which
+ * for `bash` is the literal string `exit code: 0`.
+ *
+ * Two mechanisms close it, and they are exercised here in the order they
+ * matter: recovering the arguments the transcript already knows, then naming
+ * (and sizing a page for) the calls only a deeper durable read can label.
+ */
+test("a settling frame with no arguments keeps the ones the session already learned", () => {
+	// The row was painted from the live start, which is the frame that carries
+	// the command. The end that replaces it carries none, so the row must keep
+	// the ones on the record rather than blanking its own object column.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-bash",
+			tool_name: "bash",
+			args: { command: "pnpm check-types", i: "Typechecking" },
+		},
+		1_000,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-bash",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "exit code: 0" }], details: {} },
+			duration_s: 4.2,
+		},
+		5_200,
+	);
+	const row = state.records.find((r) => r.kind === "tool");
+	assert.equal(row.phase, "done");
+	assert.equal(
+		row.args.command,
+		"pnpm check-types",
+		"the object column survives the settling frame",
+	);
+
+	// The case the frame-order independence exists for: the row the start
+	// painted was DROPPED (a receipt gap, or a replayed snapshot), and the row
+	// the seed then paints comes from the settling frame alone. `applyHistoryPage`
+	// alone does not heal this one: its backfill only runs when a page TEACHES
+	// new arguments, and the map already held them, so the page is a no-op and
+	// the row would settle with no object column at all.
+	let dropped = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-gap",
+			tool_name: "bash",
+			args: { command: "sed -n '1130,1230p' src/main/update-service.ts" },
+		},
+		10,
+	);
+	dropped = dropLiveRecords(dropped);
+	assert.equal(dropped.records.length, 0, "the gap dropped the live row");
+	const page = {
+		entries: [
+			{
+				id: "a-gap",
+				ts: 0,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "assistant",
+					content: [],
+					tool_calls: [
+						{
+							id: "c-gap",
+							name: "bash",
+							arguments: {
+								command: "sed -n '1130,1230p' src/main/update-service.ts",
+							},
+						},
+					],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const reconciled = applyHistoryPage(dropped, page);
+	const reseeded = applyLiveSeed(reconciled, {
+		live_events: [
+			{
+				type: "tool_execution_end",
+				tool_call_id: "c-gap",
+				tool_name: "bash",
+				result: { content: [{ type: "text", text: "exit code: 0" }], details: {} },
+				duration_s: 0.9,
+			},
+		],
+	});
+	const recreated = reseeded.records.find((r) => r.kind === "tool");
+	assert.equal(recreated.phase, "done");
+	assert.equal(
+		recreated.args.command,
+		"sed -n '1130,1230p' src/main/update-service.ts",
+		"the settling frame recovers the command the session already learned",
+	);
+});
+
+test("the seed names the calls nothing in hand can label, and the page is sized for them", () => {
+	const seed = [
+		{ type: "tool_execution_end", tool_call_id: "c1", tool_name: "bash" },
+		{ type: "tool_execution_end", tool_call_id: "c2", tool_name: "bash" },
+		{ type: "tool_execution_end", tool_call_id: "c2", tool_name: "bash" },
+		{ type: "tool_execution_start", tool_call_id: "c3", tool_name: "bash", args: {} },
+	];
+	// `c2` is known (a durable page in the same batch, or a live start earlier),
+	// so only `c1` justifies reading further back. The running call is never in
+	// the list: its own start frame carries its arguments.
+	assert.deepEqual(seedCallsMissingLabels(seed, new Set(["c2"])), ["c1"]);
+	assert.deepEqual(seedCallsMissingLabels(seed, new Set(["c1", "c2"])), []);
+	assert.deepEqual(seedCallsMissingLabels([], new Set()), []);
+	assert.deepEqual(seedCallsMissingLabels(undefined, new Set()), []);
+
+	// The ordinary tail when there is no gap, and two entries per named call
+	// above it — the seed keeps at most 100 settled calls and the durable
+	// transcript spends one assistant row plus one result on each.
+	assert.equal(reconcileLimit(0), 100);
+	assert.equal(reconcileLimit(1), 102);
+	assert.equal(reconcileLimit(50), 200);
+	// Clamped to the backend's own ceiling, where asking for more is a 422.
+	assert.equal(reconcileLimit(100), 300);
+	assert.equal(reconcileLimit(1_000), 500);
+});
+
+test("an unlabelable call costs a bounded number of read-backs", () => {
+	// The seed names its gap once; close to half of it is labelled by the first
+	// read. What is left belongs to the round still running, so the retries are
+	// driven by turn ends — and this is the rule that stops that from becoming a
+	// poll of the history endpoint for the rest of the conversation.
+	const outstanding = new Map([
+		["labelled-since", 1],
+		["spent", 2],
+		["one-left", 1],
+		["fresh", 0],
+	]);
+	const labelled = new Set(["labelled-since"]);
+	assert.deepEqual(
+		labelGapRetries(outstanding, labelled, 2),
+		["one-left", "fresh"],
+		"a labelled call and an exhausted one are both dropped",
+	);
+	// Nothing outstanding means no request at all, which is the common case on
+	// every flush after the gap closes.
+	assert.deepEqual(labelGapRetries(new Map(), new Set(), 2), []);
+	// And an id that is ALREADY labelled never earns a read even at zero
+	// attempts: a durable page may have answered for it before the retry ran.
+	assert.deepEqual(
+		labelGapRetries(new Map([["x", 0]]), new Set(["x"]), 2),
+		[],
+	);
 });
