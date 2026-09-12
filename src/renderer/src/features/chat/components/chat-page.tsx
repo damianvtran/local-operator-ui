@@ -19,10 +19,12 @@ import {
 	draftIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import { PickerOutlet } from "../pickers/picker-registry";
+import { specUnresolved } from "../session-status/session-model";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
 import {
 	messageBodyBytes,
@@ -172,11 +174,82 @@ function SessionPanel({
 				if (ok) navigate(`/chat/${id}`);
 			});
 	};
-	const { dispatch, picker } = useSlashDispatch({
+	/*
+	 * The effort rungs the owner will accept, shared with `EffortPicker`.
+	 *
+	 * Same `queryKey` and same `queryFn` shape as the picker's own `useEntities`
+	 * call, so this is one cache entry rather than a second source of truth -
+	 * which is the entire point, since the two disagreeing is what the strip's
+	 * chip advertised and the picker then denied. Disabled without a session for
+	 * the same reason the strip itself is withheld then.
+	 */
+	const effortEntities = useQuery({
+		queryKey: ["desktop", "entities", sessionId, "effort", ""],
+		queryFn: () =>
+			desktopResult<{ entities: { value: string }[]; current: unknown }>({
+				op: "commands.entities",
+				sessionId: sessionId as string,
+				command: "effort",
+			}),
+		enabled: Boolean(sessionId),
+		staleTime: 15_000,
+	});
+	/*
+	 * Refetch the rung list the moment the owner's spec becomes KNOWN.
+	 *
+	 * The 15s `staleTime` is right for a list that rarely changes, but it is
+	 * measured from the last fetch rather than from the last time the answer
+	 * could have changed - and resolving the spec is exactly when it changes.
+	 * Without this, the very act that gives the model its ladder leaves the
+	 * picker serving the pre-resolution answer for up to 15s, so the chip reads
+	 * `high` while the dialog it opens says the model has no adjustable effort
+	 * (UX round 3, U13).
+	 *
+	 * Keyed on the resolved SELECTOR rather than on the spec object: the
+	 * projection repaints on every token, and an object identity would refetch
+	 * on each one. `specUnresolved` going false is the edge that matters, and it
+	 * happens once per model.
+	 */
+	const queryClient = useQueryClient();
+	const resolvedModel = specUnresolved(canonical.frontend?.effective_model)
+		? null
+		: (canonical.frontend?.effective_model?.model_id ?? null);
+	/*
+	 * Only an actual unresolved -> resolved TRANSITION invalidates.
+	 *
+	 * Gating on `resolvedModel` being truthy fired on mount too, so every warm
+	 * session open - where the model is already resolved at first paint - spent
+	 * a redundant `commands.entities` round trip on a query fetched
+	 * milliseconds earlier and well inside its own staleTime
+	 * (`invalidateQueries` refetches an active query regardless of freshness).
+	 * The previous comment claimed this gated on an edge; it did not, and a
+	 * mount with the value already settled is not one (round 4, R2).
+	 */
+	// `undefined` means "not observed yet". Distinct from `null` (observed, and
+	// unresolved): the FIRST observation seeds the ref without invalidating,
+	// because a query fetched on this same mount is already the answer. Keyed
+	// per session so switching sessions re-arms rather than inheriting.
+	const wasResolved = useRef<
+		{ session: string | null; model: string | null } | undefined
+	>(undefined);
+	useEffect(() => {
+		const previous = wasResolved.current;
+		wasResolved.current = { session: sessionId ?? null, model: resolvedModel };
+		if (!sessionId || !resolvedModel) return;
+		const sameSession = previous?.session === sessionId;
+		// Seed-only on first sight of this session, and no-op when the model has
+		// not actually changed under us.
+		if (!sameSession || previous?.model === resolvedModel) return;
+		void queryClient.invalidateQueries({
+			queryKey: ["desktop", "entities", sessionId, "effort", ""],
+		});
+	}, [sessionId, resolvedModel, queryClient]);
+	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
 		sessionId,
 		canonical,
 		rebind,
 		addMessage: (message) => canonical.addNote(message.message ?? ""),
+		focusComposer: () => input.current?.focusInput(),
 	});
 	useEffect(() => {
 		if (draftKey) input.current?.focusInput();
@@ -624,6 +697,40 @@ function SessionPanel({
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
 					sendError={composerSendError}
+					/*
+					 * The session's readings, straight off the canonical stream, and
+					 * the SAME dispatcher the composer submits through. Routing the
+					 * chips' clicks here rather than mounting a picker directly is
+					 * what keeps `/model` typed and `/model` clicked on one path:
+					 * there is no second way to open a picker in this app.
+					 *
+					 * A draft has no session yet, so it has no readings and no owner
+					 * to ask - `dispatch` itself answers "/model needs an open
+					 * conversation" in that state, which is a worse way to learn it
+					 * than not offering the control, so the strip is withheld until
+					 * the session exists.
+					 */
+					sessionStatus={
+						sessionId
+							? {
+									frontend: canonical.frontend,
+									/*
+									 * `dispatchFromControl`, not `dispatch`: a chip has no
+									 * fallback path to report a failure the way typed text
+									 * does, so an unconsumed outcome has to be surfaced here
+									 * rather than dropped into a `void` (round 1, U2).
+									 */
+									onCommand: (line: string) => void dispatchFromControl(line),
+									/*
+									 * The SAME query `EffortPicker` renders from, by the
+									 * same key, so React Query serves both from one cache
+									 * entry and the chip cannot offer a rung the picker
+									 * would then refuse (round 1, U3).
+									 */
+									effortEntities: effortEntities.data?.entities,
+								}
+							: undefined
+					}
 					currentJobId={null}
 					onCancelJob={stop}
 					messageInputRef={input}
