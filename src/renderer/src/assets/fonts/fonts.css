@@ -21,12 +21,22 @@
  * bold. The Thin/Light/Medium/Black/UltraBlack faces were declared but never
  * requested by any selector, so they only inflated the installer. Adding a
  * weight here means re-adding the matching OTF under this directory.
+ *
+ * `font-display: swap` matches the Roboto Mono faces above, and matters more
+ * here than file size suggests: at 2.1 MB a weight, the default `auto` gives a
+ * block period during which every monospace value in the app renders as
+ * NOTHING. The composer's session strip is almost entirely machine values, so
+ * under that block it shows a model name, an empty ring and no readings - which
+ * is pixel-for-pixel the honest "no reading, no spend" state the strip
+ * deliberately renders. A slow font turned a true empty state into a false one
+ * (design review round 1, D3).
  */
 @font-face {
 	font-family: "Geist Mono";
 	src: url("./GeistMonoNerdFontMono-Regular.otf") format("opentype");
 	font-weight: 400;
 	font-style: normal;
+	font-display: swap;
 }
 
 @font-face {
@@ -34,4 +44,5 @@
 	src: url("./GeistMonoNerdFontMono-Bold.otf") format("opentype");
 	font-weight: 700;
 	font-style: normal;
+	font-display: swap;
 }
