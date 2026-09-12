@@ -24,7 +24,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
@@ -50,6 +50,9 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	images: [],
 	added: 0,
 	removed: 0,
+	// The result's own unified diff, or `null` when the call reported none —
+	// which is every row here except the diff-body story below.
+	diff: null,
 	stopped: false,
 	...over,
 });
@@ -70,6 +73,7 @@ const Frame = ({
 	width = "100%",
 	height = 300,
 	waiting = false,
+	openRows = false,
 }: {
 	records: TranscriptRecord[];
 	width?: string;
@@ -83,8 +87,28 @@ const Frame = ({
 	 */
 	height?: number;
 	waiting?: boolean;
+	/**
+	 * Click every row's trigger after mount, the way a reader opens one.
+	 *
+	 * The diff body lives behind the row's disclosure (§ 7.4: detail is one
+	 * click away, never shown by default) and `CanonicalTranscript` deliberately
+	 * takes no "start open" prop — the terminal's `open_on_settle` is a
+	 * bang-mode behaviour this app has not ported. So a story that needs to SHOW
+	 * a body reaches it the way a reader does, through the row's own trigger.
+	 * That is also what makes these frames evidence about the disclosure itself:
+	 * if the trigger stopped reaching the body, they would come out collapsed.
+	 */
+	openRows?: boolean;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!openRows) return;
+		for (const trigger of containerRef.current?.querySelectorAll<HTMLButtonElement>(
+			'button[aria-expanded="false"]',
+		) ?? []) {
+			trigger.click();
+		}
+	}, [openRows]);
 	return (
 		<div
 			className="overflow-y-auto p-6"
@@ -562,5 +586,187 @@ export const WorkingLabels: Story = {
 			    as the whole batch's activity is a claim the rows above contradict. */}
 			<WorkingLine activity="running 3 tools" phase="running" />
 		</div>
+	),
+};
+
+/* ------------------------------------------------------------------ diff body
+
+   The `write`/`edit` expansion: the tool result's own `difflib.unified_diff`
+   payload, painted with the terminal's ink law. What to look for, since these
+   frames are the design review:
+
+   - `@@` hunk headers, `+` additions and `-` removals are the ONLY things that
+     carry colour, and only their leading marker does — the text of every line
+     rides the ordinary body ink, because a 40-line body painted green-on-green
+     loses the one thing that makes a diff readable.
+   - The `+N -M` pill on the collapsed row and the body underneath agree,
+     because both come from the same result payload rather than from two
+     renderings of the change.
+   - A row with NO diff keeps its arguments. `_diff_details` omits `diff`
+     entirely when nothing changed, and a row that reports no change is not the
+     same claim as a row whose diff was dropped.
+   - The body is a sunken well with a hairline, the app's one machine-voice
+     idiom (`output-block.tsx`), NOT a new panel, card or border treatment. */
+
+/** A two-hunk edit: context, removals, additions, both hunk headers. */
+const MULTI_HUNK_EDIT = [
+	// The NAMELESS header pair `difflib` emits (empty filenames and no line
+	// terminator, so each line is exactly `--- ` / `+++ `). Stripped
+	// positionally by the block, never by pattern.
+	"--- ",
+	"+++ ",
+	"@@ -18,7 +18,8 @@ export function diffCounts(details: unknown) {",
+	" \tconst source = (details ?? {}) as Record<string, unknown>;",
+	"-\tconst count = (value: unknown) =>",
+	'-\t\ttypeof value === "number" && value > 0 ? value : 0;',
+	"+\tconst count = (value: unknown) =>",
+	'+\t\ttypeof value === "number" && Number.isInteger(value) && value > 0',
+	"+\t\t\t? value",
+	"+\t\t\t: 0;",
+	" \treturn { added: count(source.added), removed: count(source.removed) };",
+	" }",
+	"@@ -44,6 +45,7 @@ function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {",
+	" \tfor (let i = 0; i < a.length; i++) {",
+	"-\t\tif (a[i].id !== b[i].id) return false;",
+	"+\t\tif (a[i].id !== b[i].id) return false;",
+	"+\t\tif (a[i].data !== b[i].data) return false;",
+	// A removed line whose CONTENT begins `--`. At index 2 or beyond it is what
+	// proves the header strip is POSITIONAL: a filter over the body would delete
+	// a real removal here, silently, and the diff would claim a change that the
+	// reader cannot see.
+	"--- a SQL comment inside a Lua migration, still a removal",
+	" \t}",
+	" \treturn true;",
+	" }",
+];
+
+/** A new file: every line an addition, header pair included. */
+const NEW_FILE_WRITE = [
+	"--- ",
+	"+++ ",
+	"@@ -0,0 +1,6 @@",
+	"+# Release window notes",
+	"+",
+	"+A window is the PRs merged since the last tag.",
+	"+A latecomer rides the next window.",
+	"+",
+	"+One owner per window, and the owner picks one bump for all of it.",
+];
+
+/** Longer than the body cap, built the way `difflib` builds a big hunk. */
+const CAPPED_DIFF = [
+	"--- ",
+	"+++ ",
+	"@@ -1,3 +1,43 @@",
+	...Array.from(
+		{ length: 43 },
+		(_, i) => `+\trow ${i + 1} of a generated table`,
+	),
+];
+
+/** The diff body across its states, at a width where the lines do not wrap. */
+export const DiffBody: Story = {
+	render: () => (
+		<Frame
+			height={1180}
+			openRows
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "edit",
+					args: {
+						path: "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+						hunks: [{ find: "const count", replace: "const count2" }],
+					},
+					durationS: 0.12,
+					added: 6,
+					removed: 3,
+					output:
+						"Edited src/renderer/src/features/chat/components/trace/tool-row-model.ts: 2 hunk(s), 2 replacement(s) applied.",
+					diff: MULTI_HUNK_EDIT,
+				}),
+				tool({
+					id: "tool:2",
+					toolName: "write",
+					args: {
+						path: "notes/release-window.md",
+						content:
+							"# Release window notes\n\nA window is the PRs merged since the last tag.",
+					},
+					durationS: 0.03,
+					added: 6,
+					removed: 0,
+					output: "Created notes/release-window.md (124 chars).",
+					diff: NEW_FILE_WRITE,
+				}),
+				// At the cap: 40 lines shown, the rest announced. The count is the
+				// number of lines actually hidden rather than a rounded-off "more".
+				tool({
+					id: "tool:3",
+					toolName: "write",
+					args: { path: "scripts/generated-table.mjs", content: "…" },
+					durationS: 0.4,
+					added: 43,
+					removed: 0,
+					output: "Overwrote scripts/generated-table.mjs (1204 chars).",
+					diff: CAPPED_DIFF,
+				}),
+				// Unchanged content: the backend omits `diff` entirely, so the row
+				// falls back to its arguments. Not the same statement as a row whose
+				// diff was dropped — this call reported that nothing changed.
+				tool({
+					id: "tool:4",
+					toolName: "write",
+					args: {
+						path: "notes/release-window.md",
+						content:
+							"# Release window notes\n\nA window is the PRs merged since the last tag.",
+					},
+					durationS: 0.02,
+					added: 0,
+					removed: 0,
+					output: "Overwrote notes/release-window.md (124 chars).",
+					diff: null,
+				}),
+				// A failure: danger ground, cross glyph, and the error in full. No
+				// diff exists on this path — `execute_write` returns before it has
+				// one — so the row keeps both the arguments that were rejected and
+				// the reason.
+				tool({
+					id: "tool:5",
+					toolName: "write",
+					args: { path: "", content: "x" },
+					durationS: 0.01,
+					isError: true,
+					output: "path must be a non-empty string",
+					diff: null,
+				}),
+				// Composing: the model is still dictating the arguments, so there is
+				// nothing to summarise and no result to render. The byte count is the
+				// only honest progress signal at this point.
+				tool({
+					id: "tool:6",
+					toolName: "write",
+					phase: "composing",
+					argumentBytes: 1204,
+					args: null,
+					output: null,
+					durationS: null,
+					diff: null,
+				}),
+				// A neighbour that is not a diff row, in the same frame, so a
+				// regression in the args/output path would be visible here rather
+				// than only in the `states` story.
+				tool({
+					id: "tool:7",
+					toolName: "bash",
+					args: { command: "git status --short" },
+					durationS: 0.07,
+					output:
+						" M src/renderer/src/features/chat/canonical/tool-row.stories.tsx",
+					diff: null,
+				}),
+			]}
+		/>
 	),
 };
