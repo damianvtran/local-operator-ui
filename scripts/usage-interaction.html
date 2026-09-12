@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Interaction harness: the shipped `/usage` CONTAINER, driven by real clicks.
+
+  Sibling to `usage-real-evidence.html`, and deliberately a different question.
+  That one asks "does the shipped view render the shape the backend really
+  sends"; this one asks "what does the shipped container DO over time" — which
+  is where this view's two majors lived, and which no still can answer:
+
+    - asking for live numbers blanked the table for the whole probe, and
+      rendered empty-state copy during a failed attempt's retry backoff;
+    - "Ask providers again" was inert, because `setLive(true)` on an
+      already-true state is a React no-op.
+
+  Both are properties of the click handler and the query lifecycle, so they need
+  a real button, a real event, and a real react-query — not props handed in.
+
+  It mounts `UsageView` (the component the picker registry mounts, with its own
+  query and live state) behind a fake `window.api.desktop` that LOGS every
+  request and can be told to hang, fail, or answer. The transport below the
+  fake is the shipped one. Nothing here is committed as a frame; the capture
+  surface is `usage-real-evidence.html`.
+
+  Not part of the app or the test suite — a verification surface, run by hand.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Provider usage — interaction harness</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./usage-interaction.tsx"></script>
+	</body>
+</html>
