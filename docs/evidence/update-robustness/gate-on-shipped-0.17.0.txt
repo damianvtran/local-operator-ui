@@ -1,3 +1,6 @@
+$ node scripts/verify-macos-artifacts.mjs \
+    --app "/Volumes/Local Operator 0.17.0-universal/Local Operator.app" \
+    --dmg ~/Downloads/local-operator-ui-0.17.0-universal.dmg
 Checking app: /Volumes/Local Operator 0.17.0-universal/Local Operator.app
 Checking disk image: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg
 PASS app-codesign: codesign --verify --deep --strict on the app

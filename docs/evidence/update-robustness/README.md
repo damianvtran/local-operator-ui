@@ -25,6 +25,8 @@ Copied from the audit of the operator's machine
 | [update-service-log-excerpts.txt](update-service-log-excerpts.txt) | The update service's own log: the 22:36:48 `update-downloaded`, the pip offer made for a `GLOBAL_INSTALL` server, and the `APP_BUNDLED_VENV` offer an hour earlier. |
 | [gate-on-shipped-0.17.0.txt](gate-on-shipped-0.17.0.txt) | The new release gate run against the real 0.17.0 artifacts (below). |
 | [notarize-step-guards.txt](notarize-step-guards.txt) | What the disk image step does on a machine with no signing identity or Apple credentials, and why the positive direction is only exercised in CI. |
+| [leftover-shipit-job.txt](leftover-shipit-job.txt) | What the failed install left *running* on the operator's machine: the ShipIt launchd job in a respawn loop and the staging tree beside it. This is what the app now reaps itself, and why. |
+| [remediation-round-1.txt](remediation-round-1.txt) | Every gate run on the review remediation: lint, typecheck, theme contract, the desktop suite, the build, the artifact gate against the real 0.17.0 artifacts, and the environment checks behind the classification and the watchdog. |
 
 ## The gate, run against the shipped 0.17.0 release
 
@@ -63,12 +65,60 @@ with `hdiutil` on this machine.
 ## The pre-flight, run against a real bundle
 
 `scripts/update-robustness.test.mjs` builds a small bundle, signs it ad-hoc,
-runs the real `/usr/bin/codesign --verify --deep --strict` on it, and then
-re-runs it after changing a sealed resource — the audit's own "damaged"
-reproduction. The first run exits 0 and the pre-flight proceeds; the second
-exits 1 with `a sealed resource is missing or invalid` and the install is
-refused without quitting. Ad-hoc signatures verify exactly like Developer ID
-ones for this purpose, which is what lets the case run anywhere macOS does.
+runs the real `/usr/bin/codesign --verify --deep` on it, and then re-runs it
+after changing a sealed resource — the audit's own "damaged" reproduction. The
+first run exits 0 and the pre-flight proceeds; the second exits 1 with `a sealed
+resource is missing or invalid` and the install is refused without quitting.
+Ad-hoc signatures verify exactly like Developer ID ones for this purpose, which
+is what lets the case run anywhere macOS does.
+
+The probe deliberately does **not** pass `--strict`. `--strict` does not test the
+seal — `--verify` does that — it additionally rejects FinderInfo/detritus xattrs
+that ShipIt itself tolerates, so it could only ever refuse installs Squirrel
+would have performed. Dropping it is safe because the case above still fails
+without it: measured on this machine, a tampered sealed resource reports `a
+sealed resource is missing or invalid` and exits 1 with or without `--strict`.
+
+A probe that could not run at all (a timeout, a failure to exec) is a third
+outcome, not a rejection: the pre-flight retries it once and then proceeds,
+logging why. Treating "we could not ask" as "the bundle is bad" is how a
+transient failure became a permanent reinstall message.
+
+## How the relaunch watchdog decides
+
+The watchdog exists for one outcome: a failed Squirrel.Mac install quits the app
+and never brings it back, so the user is left with no app and no message. Both
+of its inputs were wrong and are now measured against the machine rather than
+inferred:
+
+- **Has the app exited?** Asked of the app's own pid with `kill -0`, captured by
+the app before it quit. A name probe cannot answer this: macOS `pgrep -f` does
+not report its own ancestors, and the watchdog *is* the app's child — so
+`pgrep -f <app path>` returned "not running" while the app was running.
+- **Is the install over?** Asked of the ShipIt *launchd job* by label
+(`launchctl list com.local-operator.ShipIt`), not of a process name. `pgrep -f
+ShipIt` matched any process with the word in its command line, including an
+unrelated sampling loop, and could not tell a hung install from a bystander.
+
+The script relaunches in exactly one situation — the app is not running — and it
+reaches that point on two paths: the install is decided (the job is gone, the
+conservative case), or the deadline arrived with no decision. There is no exit
+from the script that skips the attempt, which is what the previous version did
+at its deadline, leaving the reporter with nothing.
+
+## What the app cleans up afterwards
+
+A failed install leaves the ShipIt launchd job loaded in the user's domain, and
+nothing in Squirrel retires it: on this machine it respawned every ~2.5 s
+(`runs=3114`, `LastExitStatus=256`) and wrote `Could not read update request` to
+`ShipIt_stderr.log` until the file was 3.4 MB, with the staged update tree beside
+it. It was removed by hand during round 1 of the review, and the product does it
+now: on detecting a failed install from the pending marker, the app removes its
+own `<bundle id>.ShipIt` job (`launchctl remove`, treating "not loaded" as the
+ordinary case) and deletes the `update.*` staging directories under
+`~/Library/Caches/<bundle id>.ShipIt`. The ShipIt logs are deliberately left
+alone — they are the only record of why the install failed, and the failure
+detail points at them. See [leftover-shipit-job.txt](leftover-shipit-job.txt).
 
 ## The frames
 
@@ -78,10 +128,15 @@ Captured with `node scripts/capture-evidence.mjs http://localhost:6006
 
 | Surface | Frame | State |
 | --- | --- | --- |
-| install-blocked | [dark](common-updatenotification/install-blocked/localOperatorDark.webp) · [light](common-updatenotification/install-blocked/localOperatorLight.webp) | The install refused before the app quit, with the remedy (open the download page) and codesign's own line in machine voice below it. |
-| install-failed | [dark](common-updatenotification/install-failed/localOperatorDark.webp) · [light](common-updatenotification/install-failed/localOperatorLight.webp) | The next start after an install that never completed: the app came back on the old version and now says so instead of silently re-offering. |
-| backend-manual-required | [dark](common-updatenotification/backend-manual-required/localOperatorDark.webp) · [light](common-updatenotification/backend-manual-required/localOperatorLight.webp) | A server the app does not own, with the command for how it was installed. |
-| backend-update-non-managed | [dark](common-updatenotification/backend-update-non-managed/localOperatorDark.webp) · [light](common-updatenotification/backend-update-non-managed/localOperatorLight.webp) | A uv tool install: `uv tool upgrade local-operator`, no "Update server" button (`canManageUpdate: false` is now honoured rather than guessed from a substring). |
+| install-blocked | [dark](common-updatenotification/install-blocked/localOperatorDark.webp) · [light](common-updatenotification/install-blocked/localOperatorLight.webp) | The install refused before the app quit: a danger-marked heading (the marker is the glyph, because `danger` as *text* on `elevated` measures 3.76:1 in monokai — under the 4.5:1 text floor the theme contract asserts), the version being refused, the remedy at reading weight with `Open download page` on the panel, and codesign's own line below the actions under a `Details:` label with a copy button. |
+| install-failed | [dark](common-updatenotification/install-failed/localOperatorDark.webp) · [light](common-updatenotification/install-failed/localOperatorLight.webp) | The next start after an install that never completed: the app came back on the old version and now says so, offers the one-click retry its copy names, offers the manual page as well, counts a repeat failure (`2 attempts`), and puts the machine detail — starting time in the user's own locale, and the artifact path — below the actions. |
+| backend-manual-required | [dark](common-updatenotification/backend-manual-required/localOperatorDark.webp) · [light](common-updatenotification/backend-manual-required/localOperatorLight.webp) | A server the app installed itself, with the command for how it was installed, a copy button, and a `Check for updates` that re-reads the *server* rather than only the UI. |
+| backend-manual-required-existing-server | [dark](common-updatenotification/backend-manual-required-existing-server/localOperatorDark.webp) · [light](common-updatenotification/backend-manual-required-existing-server/localOperatorLight.webp) | The same state reached through `EXISTING_SERVER` — a server the user started in a terminal. This path used to send a hardcoded `pip install --upgrade local-operator` whatever owned the environment; here it is a pipx install, so the panel names `pipx upgrade local-operator` and the `Details:` line carries the classification it was decided from. |
+| backend-update-non-managed | [dark](common-updatenotification/backend-update-non-managed/localOperatorDark.webp) · [light](common-updatenotification/backend-update-non-managed/localOperatorLight.webp) | A uv tool install: `uv tool upgrade local-operator`, a copy button, no `Update server` button (`canManageUpdate: false` is honoured rather than guessed from a substring), no duplicate toast (the panel is the notification), and one emphasis shared with the manual-required panel instead of a warning hue. |
 
-The four new surfaces are declared in `docs/evidence/manifest.json` under
+The five surfaces are declared in `docs/evidence/manifest.json` under
 `partialCapture`, so `pnpm check-evidence` accounts for every frame on disk.
+
+The `update-available` frame was re-captured too and came out byte-identical:
+this change does not touch the informational state, which is the point — the
+failure states now differ from it by construction rather than in principle.
