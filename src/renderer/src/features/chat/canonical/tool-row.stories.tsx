@@ -595,21 +595,25 @@ export const WorkingLabels: Story = {
    payload, painted with the terminal's ink law. What to look for, since these
    frames are the design review:
 
-   - `@@` hunk headers, `+` additions and `-` removals are the ONLY things that
-     carry colour, and only their leading marker does — the text of every line
-     rides the ordinary body ink, because a 40-line body painted green-on-green
-     loses the one thing that makes a diff readable.
+   - EVERY LINE CARRIES ITS KIND'S INK, the whole line and not just its marker:
+     a `+` line is green end to end, a `-` line red end to end, an `@@` header
+     muted, context dim. That is what the terminal's own loop does
+     (`_append_diff_body`, tool_card.py:2208-2220) — the reference's docstring
+     claims the marker-only version and describes something the loop never did.
    - The `+N -M` pill on the collapsed row and the body underneath agree,
      because both come from the same result payload rather than from two
      renderings of the change.
    - A row with NO diff keeps its arguments. `_diff_details` omits `diff`
      entirely when nothing changed, and a row that reports no change is not the
-     same claim as a row whose diff was dropped.
+     same claim as a row whose diff was dropped. A row that FAILED keeps them
+     too: its arguments are the only account of what was attempted.
    - The body is a sunken well with a hairline, the app's one machine-voice
      idiom (`output-block.tsx`), NOT a new panel, card or border treatment.
    - At `DIFF_EXPAND_MAX_LINES`, the marker under the 40th line says how many
-     were not shown. The body's height ceiling is derived from that cap, so the
-     marker is inside the well rather than below a scroll edge. */
+     were not shown — and it is PINNED to the well's foot, because a body whose
+     lines wrap is taller than the well's derived ceiling and would otherwise
+     scroll the marker out of sight. `diff-body-narrow-wrapped-cap` is the
+     frame that shows it; see that story. */
 
 /** A two-hunk edit: context, removals, additions, both hunk headers. */
 const MULTI_HUNK_EDIT = [
@@ -666,6 +670,40 @@ const CAPPED_DIFF = [
 		(_, i) => `+\trow ${i + 1} of a generated table`,
 	),
 ];
+
+/**
+ * The cap AND long lines: 43 additions wide enough to wrap in a 560px column.
+ *
+ * Two different measurements, and this is the second one. The well's ceiling is
+ * derived for UNWRAPPED rows (41 x 17.4px plus padding = 740px) and holds there
+ * exactly; at 560px each of these lines takes two rows, so the body is roughly
+ * twice the clip and the marker row would sit far below the scroll edge if it
+ * were left in the flow. Its arithmetic: ~80 content rows at 17.4px is ~1392px
+ * inside a 740px clip, so the marker begins ~650px below the fold. `sticky
+ * bottom-0` is what keeps the well honest at every scroll position.
+ */
+const WRAPPED_CAPPED_DIFF = [
+	"--- ",
+	"+++ ",
+	"@@ -1,3 +1,43 @@",
+	...Array.from(
+		{ length: 43 },
+		(_, i) =>
+			`+\t\tconst row${i + 1} = { cells: ["alpha", "beta", "gamma"], width: "generated" };`,
+	),
+];
+
+/** At the cap in a WRAPPING column: 40 long lines shown, the rest announced. */
+const WRAPPED_CAPPED_WRITE_ROW = tool({
+	id: "tool:8",
+	toolName: "write",
+	args: { path: "scripts/wrapped-table.mjs", content: "…" },
+	durationS: 0.5,
+	added: 43,
+	removed: 0,
+	output: "Overwrote scripts/wrapped-table.mjs (4384 chars).",
+	diff: WRAPPED_CAPPED_DIFF,
+});
 
 /* One record per case, as constants so the narrow story below reuses the same
    rows rather than a second copy of them that can drift. */
@@ -733,7 +771,9 @@ const UNCHANGED_WRITE_ROW = tool({
 
 /** A failure: danger ground, cross glyph, and the error in full. No diff exists
     on this path — `execute_write` returns before it has one — so the row keeps
-    both the arguments that were rejected and the reason. */
+    both the arguments that were rejected and the reason. `isDiffBodyRow` guards
+    the same thing at the component: a row carrying BOTH keeps its arguments and
+    its error (`scripts/tool-row.test.mjs`). */
 const FAILED_WRITE_ROW = tool({
 	id: "tool:5",
 	toolName: "write",
@@ -809,5 +849,22 @@ export const DiffBody: Story = {
 export const DiffBodyNarrow: Story = {
 	render: () => (
 		<Frame height={1380} openRows records={[EDIT_ROW, CAPPED_WRITE_ROW]} />
+	),
+};
+
+/**
+ * The cap at a WRAPPING width, which is the shape that actually reaches it.
+ *
+ * The ceiling above is derived for unwrapped rows and is exactly right there;
+ * a 560px column turns 40 long lines into ~80 rows, so the marker's row would
+ * begin ~650px BELOW the 740px clip — a body that says "40 lines" while 40 rows
+ * are hidden, which is the defect class the 720px ceiling was fixed for. Here
+ * the frame is at rest, scrolled to the top, and the marker is pinned to the
+ * well's foot: if it ever stops being visible, this frame shows the well
+ * claiming completeness with lines missing, which is the whole point of it.
+ */
+export const DiffBodyNarrowWrappedCap: Story = {
+	render: () => (
+		<Frame height={830} openRows records={[WRAPPED_CAPPED_WRITE_ROW]} />
 	),
 };

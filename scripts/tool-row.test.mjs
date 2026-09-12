@@ -47,6 +47,7 @@ const {
 	isBareToolName,
 	formatSettledDuration,
 	isDiffBodyTool,
+	isDiffBodyRow,
 	preferDiff,
 	requestDesktopMedia,
 	stripDiffHeader,
@@ -532,7 +533,7 @@ test("the name/summary stutter guard covers MCP rows too (R6)", () => {
  *
  * The rules asserted here are ported from `_append_diff_body`
  * (tool_card.py:2178-2225) and the producer it reads
- * (`_diff_details`, tools/builtin.py:4863-4896). Asserting them is not
+ * (`_diff_details`, tools/builtin.py:4863-4888). Asserting them is not
  * ceremony: the header strip and the cap are the two places where a plausible
  * implementation is WRONG in a way a frame cannot show — a pattern-based header
  * filter deletes a real removed line, and a cap applied before the strip
@@ -665,13 +666,16 @@ test("the body shows at most 40 lines and says how many it hid", () => {
 	assert.equal(small.lines[1].text, "…");
 });
 
-test("a diff payload is normalised off both wire shapes", () => {
+test("a diff payload is normalised, and a malformed one degrades to no diff", () => {
 	// A durable row's list, through pydantic, stays a list.
 	assert.deepEqual(diffFromDetails({ diff: ["+a", "-b"] }), ["+a", "-b"]);
 	assert.equal(diffFromDetails({ diff: [] }), null);
-	// A pre-joined string, which is what the mobile fold puts on the wire
-	// (mobile/projection.py:285). `Array.isArray` alone drops that row's body
-	// while the counters beside it still say `+42`.
+	// A pre-joined string is TOLERATED, and it is defensive tolerance rather than
+	// a shape anything sends: every real payload measured is a list of strings
+	// (8,850 of them across 1,102 stored sessions), and the mobile fold copies
+	// each key through untouched (mobile/projection.py:284-288), so a list stays
+	// a list. The comment here used to claim the fold pre-joined them, which
+	// measured false.
 	assert.deepEqual(diffFromDetails({ diff: "+a\n-b" }), ["+a", "-b"]);
 	assert.equal(diffFromDetails({ diff: "" }), null);
 	// Members that are not strings are DROPPED rather than stringified:
@@ -717,4 +721,37 @@ test("only the two tools this backend has take a diff body", () => {
 	assert.equal(isDiffBodyTool("bash"), false);
 	assert.equal(isDiffBodyTool("read"), false);
 	assert.equal(isDiffBodyTool(""), false);
+});
+
+test("a FAILED write keeps its arguments even when a diff came with it", () => {
+	// The terminal gates the diff-alone body on the call's own state as well as
+	// on the payload (`self._state == "success" and self._diff`,
+	// tool_card.py:1928). On a failure the arguments are the only account of what
+	// was attempted and the error only makes sense beside them, so a row that
+	// somehow carried BOTH must paint the args and the error rather than a diff
+	// alone. No producer does that today — every error exit goes through `_error`
+	// (tools/builtin.py:1041) or `_invalid_arguments` (`:1058`), neither of which
+	// sets `details`, and all 8,850 real `details.diff` rows are successful
+	// `write`/`edit` results — which is why this is pinned by an assertion on the
+	// rule instead of by a frame: the frame would have to depict a payload the
+	// wire does not produce. Remove `!row.isError` from `isDiffBodyRow` and the
+	// first assertion below fails.
+	assert.equal(
+		isDiffBodyRow({ toolName: "write", diff: ["+a"], isError: true }),
+		false,
+	);
+	assert.equal(
+		isDiffBodyRow({ toolName: "write", diff: ["+a"], isError: false }),
+		true,
+	);
+	// The other two conditions hold on their own: it is a diff body only for the
+	// two tools that emit this payload, and only when there is one.
+	assert.equal(
+		isDiffBodyRow({ toolName: "bash", diff: ["+a"], isError: false }),
+		false,
+	);
+	assert.equal(
+		isDiffBodyRow({ toolName: "write", diff: null, isError: false }),
+		false,
+	);
 });

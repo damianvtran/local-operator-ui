@@ -315,7 +315,7 @@ export function toolNameColumn(names: readonly string[]): number {
  *
  * Only the two this backend has. `_TOOL_CATEGORY` (tool_card.py:178-198) lists
  * exactly `write` and `edit` as mutating tools, and `_diff_details`
- * (tools/builtin.py:4863-4896) is called from `execute_write` and
+ * (tools/builtin.py:4863-4888) is called from `execute_write` and
  * `execute_edit` alone. The mobile port's set also names `apply_patch` and
  * `patch` (mobile/web/src/components/tool-row.tsx:75); this backend exposes no
  * such tool, so listing them here would claim support for a name that can only
@@ -330,20 +330,56 @@ export function isDiffBodyTool(toolName: string): boolean {
 }
 
 /**
+ * Whether a settled row expands to its DIFF rather than to its arguments.
+ *
+ * Three conditions, and the third is the terminal's own: `_build_content`
+ * selects the diff-alone body on `self._state == "success" and self._diff`
+ * (tool_card.py:1928-1939), and that success gate is not decorative. A case it
+ * rejects is a write that FAILED: the args are the only account of what was
+ * attempted and the error only makes sense beside them, so a row that shipped
+ * both a diff and an error must paint the arguments and the error, not a diff
+ * alone. The producer agrees today — every error exit goes through `_error`
+ * (tools/builtin.py:1041) or `_invalid_arguments` (`:1058`), neither of which
+ * sets `details`, and all 8,850 real rows carrying `details.diff` are successful
+ * `write`/`edit` results — so the guard has no live case; it is here because the
+ * reference keeps it and "no producer does this yet" is not a rule a renderer
+ * can rely on. `scripts/tool-row.test.mjs` pins it.
+ *
+ * It lives here rather than inline in `canonical-transcript.tsx` so the rule has
+ * one home a test can exercise: there is no React test host in this repo, and an
+ * expression buried in a JSX ternary is only assertable by reading the source.
+ */
+export function isDiffBodyRow<
+	T extends {
+		toolName: string;
+		diff: readonly string[] | null;
+		isError: boolean;
+	},
+>(row: T): row is T & { diff: readonly string[] } {
+	return isDiffBodyTool(row.toolName) && row.diff !== null && !row.isError;
+}
+
+/**
  * The unified diff a `write`/`edit` RESULT carries, as view-ready lines.
  *
- * Source of truth: `_diff_details` (tools/builtin.py:4863-4896) puts a
+ * Source of truth: `_diff_details` (tools/builtin.py:4863-4888) puts a
  * `difflib.unified_diff(..., n=2, lineterm="")` line list on `details.diff`,
  * capped at `_DIFF_DETAILS_CAP_LINES = 200` with a literal `…` appended as the
  * LAST element when it truncated. Nothing on this side recomputes a diff — the
  * payload is the producer's own bytes, which is what keeps the row's `+N/-N`
  * counters and the body beside them describing one change.
  *
- * Both wire shapes are accepted because both exist. A durable row round-trips
- * through pydantic, so a list stays a list; the mobile fold
- * (`mobile/projection.py:285`) and any producer that pre-joined the lines put a
- * STRING there, and an `Array.isArray`-only extraction would silently drop that
- * row's body while the counters beside it still said `+42`.
+ * A string payload is tolerated, and it is DEFENSIVE TOLERANCE rather than a
+ * shape any producer emits. Measured over every transcript on this machine:
+ * 8,850 `details.diff` values across 1,102 stored sessions are lists of strings
+ * — no strings, no non-string members, no empty lists — and the fold this file
+ * used to blame for the string shape does not produce one either:
+ * `mobile/projection.py:284-288` copies each key through untouched, so a list
+ * stays a list. (The phone's `diff?: string | string[]` type is its own
+ * normaliser's tolerance, not evidence about the wire.) The belt costs one
+ * `typeof` at a boundary that is `unknown` by construction; `Array.isArray`
+ * alone would drop a row's body while the counters beside it still said `+42`.
+ * The reason to keep it is untyped boundaries, not provenance.
  *
  * Non-string members are DROPPED rather than stringified: `String({})` is
  * `"[object Object]"`, a line no producer ever wrote, and a diff is a record of
@@ -355,7 +391,9 @@ export function diffFromDetails(details: unknown): string[] | null {
 	if (!details || typeof details !== "object") return null;
 	const raw = (details as Record<string, unknown>).diff;
 	if (typeof raw === "string") {
-		// A pre-joined payload. An empty string is "no diff", not one blank line.
+		// Tolerance for an untyped boundary, not a producer's shape: every real
+		// payload measured is a list (see the doc above). An empty string is "no
+		// diff", not one blank line.
 		return raw ? raw.split("\n") : null;
 	}
 	if (!Array.isArray(raw)) return null;
@@ -442,10 +480,13 @@ export type DiffLineKind = "hunk" | "added" | "removed" | "context";
 /**
  * The line's kind, from its leading character alone.
  *
- * `_append_diff_body` (tool_card.py:2199-2211): `@` is a hunk header, `+` an
+ * `_append_diff_body` (tool_card.py:2208-2218): `@` is a hunk header, `+` an
  * addition, `-` a removal, and everything else is context. Only the FIRST
  * character is consulted, so a context line whose text happens to start with
  * `-` after its own marker is still context.
+ *
+ * The KIND decides the ink for the WHOLE line (diff-block.tsx), which is what
+ * the same loop does at `:2220`.
  */
 export function diffLineKind(line: string): DiffLineKind {
 	const marker = line.slice(0, 1);
@@ -458,7 +499,7 @@ export function diffLineKind(line: string): DiffLineKind {
 /**
  * Lines the expanded body shows, `EXPAND_MAX_LINES` in the terminal.
  *
- * `EXPAND_MAX_LINES = 40` (tool_card.py:294) is the shared cap for every
+ * `EXPAND_MAX_LINES = 40` (tool_card.py:276) is the shared cap for every
  * expanded body, so a diff and an output block shed at the same depth.
  */
 export const DIFF_EXPAND_MAX_LINES = 40;

@@ -2,8 +2,15 @@
 /**
  * Capture the write/edit diff body from a REAL durable transcript.
  *
- *     node scripts/diff-body-evidence.mjs [--session=<id>] [--anchor=<row id>]
+ *     node scripts/diff-body-evidence.mjs --session=<id> --anchor=<row id>
  *         [--before=4] [--after=4] [--themes=a,b] [--store=<dir>] [--port=5198]
+ *
+ * `--session` and `--anchor` are REQUIRED and there is no default, deliberately.
+ * The payload is a real conversation: a default session id in a public repository
+ * would publish which of the operator's sessions the committed frames depict,
+ * and a guessed one would silently frame somebody else's rows. Name your own —
+ * a directory under `--store` (default `~/.local-operator/sessions`) and an entry
+ * `id` from its `transcript.jsonl`.
  *
  * Why this exists alongside `chat-tool-rows--diff-body`. That story renders a
  * `TranscriptRecord` this repository built, so it proves the component. This
@@ -29,6 +36,7 @@
 
 import { spawn } from "node:child_process";
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -40,7 +48,18 @@ import { join, resolve } from "node:path";
 import { assertFramePaints } from "./check-evidence.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+/**
+ * Chrome, overridable because this path is macOS-only.
+ *
+ * `CHROME_PATH` when set, the macOS install otherwise. The check below turns a
+ * missing browser into one sentence naming the setting; without it `spawn`
+ * throws an ENOENT that names a path inside Node rather than the value to fix.
+ * (`scripts/capture-evidence.mjs` still hard-codes its own copy — pre-existing,
+ * and not changed here.)
+ */
+const CHROME =
+	process.env.CHROME_PATH ??
+	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 /** Chrome prints the DevTools websocket on stderr; this is how it is found. */
 const DEBUG_PORT = /ws:\/\/[^:]+:(\d+)\//;
 
@@ -51,16 +70,38 @@ const flag = (name, fallback) => {
 };
 
 /*
- * The default is one real conversation on this machine: a run of consecutive
- * `edit` rows whose diffs are 197, 58 and 14 lines, so ONE frame carries the
- * three shapes that matter — a body the producer capped at 200 with its own
- * trailing `…`, a body longer than the 40-line display cap with the overflow
- * marker under it, and a short body shown whole. Reproducing on another machine
- * means naming a session of your own: `--session=<id> --anchor=<row id>`.
+ * The shapes worth framing, from whatever conversation `--session` names. The
+ * committed set in `docs/evidence/write-edit-diff/` came from a run of
+ * consecutive `edit` rows whose diffs are 197, 58 and 14 lines, so ONE frame
+ * carries the three shapes that matter — a body the producer capped at 200 with
+ * its own trailing `…`, a body longer than the 40-line display cap with the
+ * overflow marker under it, and a short body shown whole. Reproducing that on
+ * another machine means finding your own such run: `--anchor` is the middle row
+ * and `--before`/`--after` widen the window around it.
  */
 const STORE = flag("store", join(homedir(), ".local-operator", "sessions"));
-const SESSION = flag("session", "03fc7a26484a");
-const ANCHOR = flag("anchor", "b3988cb0846b492086447e1626c5ee8c");
+/*
+ * No default for either. The harness frames ONE real conversation, and a
+ * committed default would both name a reader's session in a public repository
+ * and silently photograph the wrong rows on any other machine. `--session` is a
+ * directory under `--store`; `--anchor` is an entry `id` in its
+ * `transcript.jsonl`.
+ */
+const SESSION = flag("session", null);
+const ANCHOR = flag("anchor", null);
+if (!SESSION || !ANCHOR) {
+	console.error(
+		[
+			"This harness reads one REAL conversation and will not guess which.",
+			"",
+			"  node scripts/diff-body-evidence.mjs --session=<id> --anchor=<row id>",
+			"",
+			"`--session` is a directory under `--store` (default " + STORE + ")",
+			"and `--anchor` is an entry `id` from that session's `transcript.jsonl`.",
+		].join("\n"),
+	);
+	process.exit(2);
+}
 const BEFORE = Number(flag("before", "4"));
 const AFTER = Number(flag("after", "4"));
 const THEMES = flag("themes", "localOperatorDark,localOperatorLight").split(
@@ -101,6 +142,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** A private headless Chrome over raw CDP, the same shape the capture uses. */
 async function launchChrome(profile) {
+	if (!existsSync(CHROME))
+		throw new Error(
+			`no Chrome at ${CHROME} — set CHROME_PATH to one`,
+		);
 	const chrome = spawn(CHROME, [
 		"--headless=new",
 		"--no-first-run",

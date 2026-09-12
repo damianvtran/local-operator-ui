@@ -1002,7 +1002,7 @@ test("a running row carries the clock its duration cannot", () => {
  * The write/edit diff body.
  *
  * `details = {path, added, removed, diff}` is the producer's own payload
- * (`_diff_details`, tools/builtin.py:4863-4896), and this reducer is the only
+ * (`_diff_details`, tools/builtin.py:4863-4888), and this reducer is the only
  * thing between it and the row that paints it. Two duties: get it off BOTH
  * wire shapes, and never let a later frame take away a diff a row already
  * showed — the live-event budget strips `details` from a later frame when a row
@@ -1248,18 +1248,22 @@ test("a malformed diff payload degrades to no diff, never to a broken row", () =
 		cursor_missing: false,
 	});
 	const shapes = [
-		// A pre-joined string, which the mobile fold puts on the wire.
-		[{ added: 1, removed: 1, diff: "+a\n-b" }, ["+a", "-b"]],
+		// A string payload is TOLERATED at an untyped boundary, and it is not a
+		// shape any producer emits: all 8,850 real `details.diff` values across
+		// 1,102 stored sessions are lists of strings, and the fold this used to
+		// credit with joining them copies each key through untouched
+		// (mobile/projection.py:284-288).
+		[{ added: 1, removed: 1, diff: "+a\n-b" }, ["+a", "-b"], [1, 1]],
 		// Members that are not strings are DROPPED, not stringified: `String({})`
 		// is "[object Object]", a line no producer ever wrote.
-		[{ added: 1, removed: 0, diff: [1, "+a", null, { b: 1 }] }, ["+a"]],
+		[{ added: 1, removed: 0, diff: [1, "+a", null, { b: 1 }] }, ["+a"], [1, 0]],
 		// All-malformed is the same statement as absent.
-		[{ added: 1, removed: 0, diff: [1, 2] }, null],
-		[{ added: 1, removed: 0, diff: [] }, null],
-		[{ added: 1, removed: 0, diff: "" }, null],
-		[{ added: 0, removed: 0 }, null],
-		[{ added: 1, removed: 0, diff: 42 }, null],
-		[null, null],
+		[{ added: 1, removed: 0, diff: [1, 2] }, null, [1, 0]],
+		[{ added: 1, removed: 0, diff: [] }, null, [1, 0]],
+		[{ added: 1, removed: 0, diff: "" }, null, [1, 0]],
+		[{ added: 0, removed: 0 }, null, [0, 0]],
+		[{ added: 1, removed: 0, diff: 42 }, null, [1, 0]],
+		[null, null, [0, 0]],
 	];
 	const counts = [];
 	for (const [details, expected] of shapes) {
@@ -1273,11 +1277,13 @@ test("a malformed diff payload degrades to no diff, never to a broken row", () =
 		counts.push([row.added, row.removed]);
 	}
 	// The counters keep their own contract while the body degrades: a malformed
-	// OR absent diff must not take the `+N/-N` pill down with it.
+	// OR absent diff must not take the `+N/-N` pill down with it, and the pill
+	// must read the COUNTS rather than the diff's presence or absence. Compared
+	// against a literal pair per shape — an assertion that can fail, which the
+	// `counts.map((c) => c[0] >= 0)` this replaced could not (a non-negative
+	// number by construction, against a freshly built all-true array).
 	assert.deepEqual(
-		counts.map((c) => c[0] >= 0),
-		shapes.map(() => true),
+		counts,
+		shapes.map(([, , pill]) => pill),
 	);
-	assert.deepEqual(counts[0], [1, 1]);
-	assert.deepEqual(counts[6], [1, 0]);
 });

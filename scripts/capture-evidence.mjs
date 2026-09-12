@@ -161,6 +161,12 @@ const STORIES = [
 	   one you can see whole (two cases, sized to their content) rather than seven
 	   cases cropped at the frame edge. */
 	["chat-tool-rows--diff-body-narrow", 560, 1380],
+	/* And the case neither of those can show: the body AT THE CAP in a wrapping
+	   column, where the derived 740px ceiling is too short for 40 wrapped lines
+	   and the `… N more diff lines` marker would scroll out of the well. Sized to
+	   its own content — one row and its body — because the marker's visibility at
+	   rest is the whole claim. */
+	["chat-tool-rows--diff-body-narrow-wrapped-cap", 560, 830],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is

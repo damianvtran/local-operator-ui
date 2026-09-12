@@ -127,7 +127,7 @@ export type TranscriptRecord =
 			 * when it reported none.
 			 *
 			 * `write`/`edit` results carry `details = {path, added, removed, diff}`
-			 * (`_diff_details`, tools/builtin.py:4863-4896) and the expanded row
+			 * (`_diff_details`, tools/builtin.py:4863-4888) and the expanded row
 			 * paints THIS rather than the arguments, because a `write`'s arguments
 			 * are the whole new file content — the same change stated a second way,
 			 * at full payload length. The backend omits `diff` entirely when nothing
@@ -135,10 +135,11 @@ export type TranscriptRecord =
 			 * real statement: this call reported no change, and the row falls back
 			 * to its arguments.
 			 *
-			 * Normalised by `diffFromDetails` rather than read inline, because both
-			 * wire shapes arrive at this field (a list from a durable row, a
-			 * pre-joined string from a fold) and the rule for what to do with a
-			 * malformed one is the ported arithmetic's, not the reducer's.
+			 * Normalised by `diffFromDetails` rather than read inline: the extraction is
+			 * the ported arithmetic's rule, not the reducer's, and it tolerates a
+			 * malformed or unexpected payload (and a pre-joined string, which is
+			 * defensive tolerance at an untyped boundary rather than a shape any
+			 * producer sends — see `tool-row-model.ts`) without taking the row down.
 			 */
 			diff: string[] | null;
 			/**

@@ -1,13 +1,14 @@
 # The write/edit diff body — frames
 
-Six frames, two surfaces, and the honest boundary between them. The law itself
-is in [`DIFF-BODY-SPEC.md`](DIFF-BODY-SPEC.md); this file says what a reader can
-and cannot read out of these pixels.
+Eight frames, two kinds of surface, and the honest boundary between them.
+The law itself is in [`DIFF-BODY-SPEC.md`](DIFF-BODY-SPEC.md); this file says
+what a reader can and cannot read out of these pixels.
 
 | Frame | Viewport | What it shows |
 | --- | --- | --- |
-| [`diff-body`](diff-body/) | 1280 × 2110 | Seven rows in one frame: a two-hunk `edit` whose diff has additions, removals, context and two `@@` headers (including a REMOVED line whose content begins `--`, which a pattern-based header filter would silently delete); a new-file `write` (all additions, the nameless `---`/`+++` pair present in the payload); a `write` at the display cap with `… 4 more diff lines` under the 40th line; a `write` whose content did not change, keeping its ARGUMENTS because the producer omitted `diff` entirely; a FAILED `write` on the danger ground with the error in full; a composing `write` with no result; and a `bash` neighbour, so a regression in the ordinary args/output path is visible here rather than only in `states`. |
+| [`diff-body`](diff-body/) | 1280 × 2110 | Seven rows in one frame: a two-hunk `edit` whose diff has additions, removals, context and two `@@` headers (including a REMOVED line whose content begins `--`, which a pattern-based header filter would silently delete); a new-file `write` (all additions, the nameless `---`/`+++` pair present in the payload); a `write` at the display cap with `… 4 more diff lines` under the 40th line; a `write` whose content did not change, keeping its ARGUMENTS because the producer omitted `diff` entirely; a FAILED `write` on the danger ground with the error in full; a composing `write` with no result; and a `bash` neighbour, so a regression in the ordinary args/output path is visible here rather than only in `states`. Each line carries its kind's ink END TO END here — a `+` line green, a `-` line red, `@@` muted, context dim — which is what the terminal's own loop paints and what this frame exists to show. |
 | [`diff-body-narrow`](diff-body-narrow/) | 560 × 1380 | The same body in a narrow column: the wrap rule rather than the layout. Two cases — the two-hunk `edit` and the body at the cap — because under wrapping each body grows, and a picture of the rule cropped at the frame edge is not a picture of it. No horizontal scrollbar anywhere. |
+| [`diff-body-narrow-wrapped-cap`](diff-body-narrow-wrapped-cap/) | 560 × 830 | The case the other two cannot show: a body AT THE CAP whose 40 lines are long enough to wrap, which is the shape that actually reaches the cap. The well clips 1415px of content into 738px, and the `… 4 more diff lines` marker is pinned to the well's foot so it is visible at rest — in the flow it would begin 677px below the fold, and the body would claim to be complete while 40 rows were hidden. If this marker stops being visible, this frame is where that shows. |
 | [`real-durable-diff-rows`](real-durable-diff-rows/) | 1280 × 2734 | The same body over a REAL durable transcript: nine real rows of one of the operator's conversations around three consecutive `edit` results, folded by the SHIPPED `applyHistoryPage` and painted by the SHIPPED `CanonicalTranscript`. Two of the three diffs are longer than the display cap (197 and 58 lines) and one is shown whole (14 lines). |
 
 Both brand palettes for each. The `write`/`edit` rows are opened the way a
@@ -30,10 +31,19 @@ needs a diff longer than 40 lines.
 this proves the payload reaches pixels. It is captured with:
 
 ```
-node scripts/diff-body-evidence.mjs
-    [--session=<id>] [--anchor=<row id>] [--before=4] [--after=4]
+node scripts/diff-body-evidence.mjs --session=<id> --anchor=<row id>
+    [--before=4] [--after=4]
     [--themes=localOperatorDark,localOperatorLight] [--store=<dir>] [--port=5198]
 ```
+
+`--session` and `--anchor` are **required** and have no default, deliberately:
+these frames are a picture of a REAL conversation on the operator's machine, and
+a session id committed here would both publish that and silently frame the wrong
+rows on another machine. So say it plainly rather than let the README read as a
+no-real-data claim: the rows in this frame are real tool results from one real
+session, chosen because three consecutive `edit` results happen to have 197, 58
+and 14 diff lines — the three shapes above. `CHROME_PATH` overrides the browser
+if it is not at the macOS default.
 
 The harness reads `<store>/<session>/transcript.jsonl` — the durable transcript
 `read_transcript_page` reads, whose rows are serialised verbatim onto the wire
@@ -59,6 +69,12 @@ DOM in each surface:
 ```
 diff-body @1280        bodies 356, 148, 739px      boxes 838/838, 838/838, 838/838  (scroll/client)
 diff-body-narrow @560  bodies 476, 737px           boxes 418/418, 418/418
+diff-body-narrow-wrapped-cap @560
+                       1 row, 1 body: scrollHeight 1415 / clientHeight 738,
+                       scrollWidth === clientWidth === 418, line spans 41
+                       (40 shown + the marker), marker top 709.61px in the well,
+                       its box flush with the well's inner edge; in the flow it
+                       would start 677px BELOW the 738px clip
 real-durable @1280     5 rows, 3 bodies, 2734px    markers "… 155 more diff lines", "… 16 more diff lines"
                        first painted line "@@ -1120,2 +1120,194 @@"
 ```
@@ -79,7 +95,19 @@ The body's height ceiling is derived the same way. At `DIFF_EXPAND_MAX_LINES =
 plus 24px of padding: `max-h-[740px]`. It was 720 for one round, and the frame
 showed 39 lines with the marker clipped by 17px — a body claiming to be complete
 while lines were hidden, caught by looking at the render and not by a green
-test.
+test. The derivation holds for UNWRAPPED rows only, which is why the marker is
+pinned and why `diff-body-narrow-wrapped-cap` exists; the numbers in both cases
+are read out of the live DOM rather than asserted as CSS in a unit test.
+
+The whole-line ink is measured the same way. The tightest pairs across the twelve
+palettes are `success` on `sunken` at 4.58:1 and `danger` on `sunken` at 4.73:1
+(both sage), inside the 4.5 floor and already asserted as text pairs by
+`scripts/contrast-contract.mjs` (`AS_TEXT` against `canvas`/`surface`/`sunken`),
+so a wholly green line is a pair this repo re-proves on every run rather than a
+new unasserted one. A role WASH was rejected on the same measurements: no
+contrast gain (`success` on `success-wash` bottoms out at 4.66:1) and it puts a
+second ground inside a well whose point is being `sunken`. `DIFF-BODY-SPEC.md`
+§ 4 carries the table.
 
 ## What these frames do NOT prove
 
@@ -102,10 +130,30 @@ test.
 - **Ten of the twelve themes.** Only the two brand palettes are captured.
   `pnpm check-themes` covers all twelve numerically (1910 assertions); these
   frames do not.
-- **The tabs inside a real diff.** Real payloads contain tab-indented lines, and
-  a browser renders a tab at its `<pre>` default (8 columns) where the terminal
-  counts one cell. The frames show the resulting alignment; they do not argue it
-  is right.
+- **The tabs inside a real diff.** Real payloads contain tab-indented lines and
+  there are THREE answers, not two. `rich.cells.cell_len("\t")` returns 0, so the
+  terminal's own arithmetic counts a tab as zero cells while it paints an
+  8-column stop; this browser advances a tab by 21.61px against a 7.22px space —
+  3 columns at the fixture's tab positions — because Tailwind v4's preflight sets
+  `tab-size: 4` on `html, :host`, not the `<pre>` default of 8; and the app's
+  other machine-voice blocks (`output-block`, the args block) inherit that same
+  4. No `tab-size` is invented here. The frames show the resulting alignment;
+  they do not argue it is right.
+- **Keyboard reach into the scroll region.** The well is `overflow-y: auto` and
+  has no tab stop: when a body scrolls, its remaining lines are reachable by
+  pointer, trackpad and screen-reader virtual cursor, but not by Tab. That is the
+  app's own scroll wells' behaviour (`output-block`, the args block) rather than
+  something this body introduced, so it is an app-wide focus-model question, not a
+  claim of these frames. (The wrapped-cap frame is at rest, scrolled to the top,
+  which is the state the pinned marker is claimed for.)
+- **The neighbour `tool-rows/*` frames.** They are from an August head
+  (`manifest.json`: `capturedAt` 2026-08-06) and do NOT reproduce pixel-exactly on
+  this head: a fresh capture of `states`, `narrow` and `names-and-fallbacks` puts
+  the whole transcript block 11px lower with identical internal geometry
+  (uniform across three stories of different content, and this change's story edits
+  are purely additive), so it is not attributable to the diff body. They were NOT
+  re-captured here. Flagged so nobody diffs them against a fresh capture and
+  reads it as a regression.
 - **That the operator's own machine renders it this way.** These are fixed
   viewport and device-scale captures; they cannot speak to his display, his zoom
   level, or a route nobody captured.

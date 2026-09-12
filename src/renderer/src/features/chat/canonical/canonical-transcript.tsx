@@ -68,7 +68,7 @@ import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	displayName,
 	isBareToolName,
-	isDiffBodyTool,
+	isDiffBodyRow,
 	summaryFromArgs,
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
@@ -258,20 +258,22 @@ const ToolRow = memo(function ToolRow({
 			? firstLine(record.output)
 			: null;
 	const details =
-		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1731-1736):
-		// when a settled `write`/`edit` reported a diff, the expansion is the DIFF
-		// ALONE. The arguments of a `write` are the whole new file content — the
-		// same change stated a second way — and the output line underneath is
+		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
+		// when a settled, SUCCESSFUL `write`/`edit` reported a diff, the expansion is
+		// the DIFF ALONE. The arguments of a `write` are the whole new file content —
+		// the same change stated a second way — and the output line underneath is
 		// `edited` or `wrote N bytes`, which says nothing the diff does not. The
 		// mobile port drops the same two for the same tools
 		// (mobile/web/src/components/tool-row.tsx:95-96, 179-182).
 		//
-		// Guarded on the TOOL and the DIFF together, exactly as the mobile port
-		// guards it: a row with no diff keeps its arguments, which is the honest
-		// shape for a call that changed nothing (`_diff_details` omits `diff`
-		// entirely when `_line_delta` is zero) and for a transcript predating
-		// `details` on the wire.
-		isDiffBodyTool(record.toolName) && record.diff ? (
+		// The three conditions live in `isDiffBodyRow` so they can be tested: the
+		// tool, the payload, and the call's own state. A row with no diff keeps its
+		// arguments, which is the honest shape for a call that changed nothing
+		// (`_diff_details` omits `diff` entirely when `_line_delta` is zero) and for a
+		// transcript predating `details` on the wire; a row that FAILED keeps them
+		// too, because there the arguments are the only account of what was attempted
+		// and the error only makes sense beside them.
+		isDiffBodyRow(record) ? (
 			<DiffBlock diff={record.diff} />
 		) : record.output || record.args ? (
 			<>
