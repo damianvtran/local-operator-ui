@@ -101,11 +101,19 @@ export function searchChats(
 	const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
 	const conversationMatches = new Set<string>();
 	const admitted: { row: CanonicalSessionRow; rank: number }[] = [];
+	const seen = new Set<string>();
 	for (const row of rows) {
 		const hit = byId.get(row.session_id);
 		const labelMatch = matchesLabel(row, needle);
 		if (!hit && !labelMatch) continue;
-		if (hit?.body_match) conversationMatches.add(row.session_id);
+		seen.add(row.session_id);
+		// The marker explains a row the query cannot be seen to match. A row whose
+		// OWN label contains the query is already explained by what is on screen,
+		// so it is not marked -- the same rule the backend applies before it sets
+		// `body_match` (it sets it only when the visible name did not match), and
+		// the same rule the CLI picker applies. Without it a name match reads
+		// "· in conversation" under a title that visibly contains the query.
+		if (hit?.body_match && !labelMatch) conversationMatches.add(row.session_id);
 		admitted.push({
 			row,
 			// A local label hit and a backend name hit are the same tier, so a row
@@ -115,6 +123,34 @@ export function searchChats(
 				labelMatch ? SESSION_RANK_LABEL : Number.POSITIVE_INFINITY,
 			),
 		});
+	}
+	/*
+	 * Hits for sessions this client does not list.
+	 *
+	 * The backend scans the WHOLE store, uncapped and on purpose: a session past
+	 * a cap is not merely off-screen, it is unfindable and indistinguishable from
+	 * one that was deleted. The catalogue page this sidebar renders is capped
+	 * (500 rows, and it reports `truncated` past that), so iterating the local
+	 * rows alone would re-impose exactly the cap the search exists to escape: a
+	 * conversation that matches would be found by the backend, dropped here, and
+	 * reported as "no matches" -- a search that lies in the direction the user
+	 * cannot detect.
+	 *
+	 * Hence the wire carries `name`, `mtime` and `forked`, and hence this branch:
+	 * a hit with no local row is rendered as a minimal row of its own. It has no
+	 * binding, so it lands in the flat section rather than under an agent, and
+	 * opening it works because the id is a real session id. Rank and marker
+	 * follow the same rules as every other admitted row.
+	 */
+	for (const hit of hits ?? []) {
+		if (seen.has(hit.id)) continue;
+		const row: CanonicalSessionRow = {
+			session_id: hit.id,
+			title: hit.name,
+			updated_at: hit.mtime,
+		};
+		if (hit.body_match) conversationMatches.add(hit.id);
+		admitted.push({ row, rank: hit.rank });
 	}
 	return {
 		rows: admitted
@@ -126,17 +162,34 @@ export function searchChats(
 }
 
 /**
- * Whether a backend answer belongs to `query`.
+ * Whether a backend answer may be shown for what is in the box right now.
  *
  * Answers arrive out of order (each keystroke is its own request, and a slow one
  * can land after a fast later one), so the RESPONSE's echoed query is the only
  * thing that says which question it answers. Filtering a list by the wrong
  * query's hits is a search that lies about what it found, which is the failure
  * class the echoed field exists to prevent.
+ *
+ * The accepted cases are exact equality and PREFIX — the query the answer was
+ * computed for, and the same query with the user still typing at the end of it.
+ *
+ * Why the prefix case is not a hole. A debounced search is always one answer
+ * behind the box: the request for the text in the box is in flight for at least
+ * a debounce plus a round trip, and if only the exact answer were usable the
+ * list would collapse to name matches on every keystroke and then re-expand,
+ * which is a flicker the user cannot read as anything but a bug. A prefix answer
+ * is the same search over a shorter word the user is still extending, so its
+ * hits are related by construction; an answer for an UNRELATED query is still
+ * refused, which is the part that matters (select-all and retype). Anything
+ * beyond that — an answer for a longer query, say after backspacing — is
+ * refused too, and the local name search carries the list until the answer for
+ * the box lands.
  */
 export function hitsAnswerQuery(
 	result: { query: string; sessions: SessionSearchHit[] } | undefined,
 	query: string,
 ): result is { query: string; sessions: SessionSearchHit[] } {
-	return Boolean(result) && result?.query === query.trim();
+	const asked = query.trim();
+	if (!result || !asked) return false;
+	return result.query === asked || asked.startsWith(result.query);
 }

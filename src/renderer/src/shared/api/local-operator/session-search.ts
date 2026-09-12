@@ -63,8 +63,13 @@ export function useChatSearch(query: string, enabled: boolean) {
 		// name is typed without waiting for a refetch.
 		staleTime: 30_000,
 		// Keeps the previous answer visible while the next request runs, so the
-		// list does not flash empty between keystrokes. It is NOT treated as an
-		// answer for the new query -- `hitsAnswerQuery` compares the echoed query.
+		// list does not flash empty between keystrokes. It is only USED when the
+		// echoed query is the box's or a prefix of it (`hitsAnswerQuery`), so what
+		// survives a keystroke is the answer to the word being extended -- never an
+		// answer to some unrelated earlier query (select-all and retype). The cost
+		// is that conversation matches lag the box by at most one debounce plus a
+		// round trip, which is the trade this makes against a list that collapses
+		// and re-expands on every character.
 		placeholderData: keepPreviousData,
 		retry: false,
 	});

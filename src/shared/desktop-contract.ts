@@ -213,7 +213,14 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			// bound so an over-long query is refused here, by name, rather than by
 			// the backend's generic "invalid fields" 422.
 			op: z.literal("sessions.search"),
-			q: z.string().max(SESSION_SEARCH_MAX_CHARS),
+			// `.min(1)`: an EMPTY query is not a search. The backend answers one by
+			// listing the whole store (documented there, and used by the phone's web
+			// client), but this surface has that list already — its box is a filter
+			// over the catalogue — so an empty `q` here would ask the server to send
+			// back everything the client is holding. Refusing it by name is how the
+			// closed vocabulary stays closed: no caller can send a request whose
+			// answer it would have to discard.
+			q: z.string().min(1).max(SESSION_SEARCH_MAX_CHARS),
 			limit: z.number().int().min(1).max(500).optional(),
 		})
 		.strict(),
