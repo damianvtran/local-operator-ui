@@ -22,6 +22,7 @@ const module = await import(
 );
 const {
 	lostRowsToStaleAnswer,
+	rowTrailingStatement,
 	SESSION_RANK_NAME,
 	SESSION_RANK_ID,
 	SESSION_RANK_BODY,
@@ -289,4 +290,38 @@ test("the in-flight explanation fires on the collapse, not on emptiness", () => 
 	// No answer in hand at all (the first keystroke of a word) is not a collapse
 	// either: there is nothing to have lost.
 	assert.equal(lostRowsToStaleAnswer(0, 1), false);
+});
+
+test("a row shows ONE trailing statement, in priority order", () => {
+	// The cap is the fix for round 5's D19: CSS was being asked to arbitrate
+	// between two claims whose relative importance it cannot know, and three
+	// layouts in a row failed in opposite directions. The rule decides here, so
+	// the flex algorithm never has to.
+	const show = (input) => rowTrailingStatement(input);
+	const base = { marked: false, unstarted: false, nested: false, binding: "coder" };
+
+	assert.equal(show(base), "binding");
+	// A nested row inherits its identity from the parent.
+	assert.equal(show({ ...base, nested: true }), "none");
+	// A draft that never carried a message has more to say than its binding.
+	assert.equal(show({ ...base, unstarted: true }), "not_sent");
+	assert.equal(
+		show({ ...base, unstarted: true, binding: "" }),
+		"not_sent",
+		"a state is not conditional on the row having a binding",
+	);
+	// The search mark outranks both, and it is the ONLY case a marked row draws.
+	assert.equal(show({ ...base, marked: true }), "conversation");
+	assert.equal(show({ ...base, marked: true, unstarted: true }), "conversation");
+	assert.equal(show({ ...base, marked: true, nested: true }), "conversation");
+
+	// The property that matters: at most one statement, whatever the input.
+	for (const marked of [false, true])
+		for (const unstarted of [false, true])
+			for (const nested of [false, true])
+				for (const binding of ["", "coder"])
+					assert.notEqual(
+						show({ marked, unstarted, nested, binding }),
+						undefined,
+					);
 });
