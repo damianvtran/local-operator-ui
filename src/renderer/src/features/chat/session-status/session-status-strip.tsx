@@ -3,6 +3,7 @@ import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { ContextWheel } from "./context-wheel";
+import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import { costTooltip, sessionCost } from "./session-cost";
 import { effortState, modelIdentity, reconcileEffort } from "./session-model";
@@ -211,6 +212,31 @@ const TooltipLines: FC<{ lines: string[]; mono?: boolean }> = ({
 	</span>
 );
 
+/**
+ * The tooltip's closing line, which has to agree with the number above it.
+ *
+ * The chip reports what has been MEASURED so far; the breakdown it opens
+ * estimates the NEXT request, so the two legitimately differ (3.1% against
+ * 4.0% in the reported case) and naming both is worth a line (round 1, U7).
+ *
+ * But round 1 appended that line unconditionally, which made the two states
+ * that have measured nothing contradict themselves in three lines: the
+ * no-reading tooltip said "No reading yet" and then "Measured now", and the
+ * estimate tooltip labelled its number an estimate and then called it a
+ * measurement (round 2, D8). The distinction between measured and estimated is
+ * the one this strip is built on - `context_spelling` refuses the
+ * invented-window lie in words - so the closing line follows the reading
+ * rather than overriding it.
+ */
+function contextBreakdownLine(status: ContextReading["status"]): string {
+	if (status === "measured")
+		return "Measured now; click for the full breakdown, which estimates your next request";
+	if (status === "estimate")
+		return "Estimated now; click for the full breakdown, which estimates your next request";
+	// Nothing has been counted, so there is no "now" to contrast with.
+	return "Click for the full breakdown";
+}
+
 export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	frontend,
 	onCommand,
@@ -224,10 +250,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	// `selected_model` is the fallback for an owner that reports no effective
 	// spec (nothing has run yet), which is the state a fresh session is in.
 	const model = frontend.effective_model ?? frontend.selected_model;
-	// The catalogue is the backend's own curated naming pass (see
-	// `modelIdentity`), and it is on the wire even on a cold snapshot where the
-	// spec's `display_name` is still empty.
-	const identity = modelIdentity(model, frontend.model_catalogue);
+	const identity = modelIdentity(model);
 	const effort = reconcileEffort(effortState(model), effortEntities);
 	const reading = contextReading({
 		context_tokens: frontend.context_tokens,
@@ -318,17 +341,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 									? model.max_context_window
 									: null,
 							),
-							/*
-							 * Names both numbers before the user meets the second one.
-							 * This reading is what has been MEASURED so far; the
-							 * breakdown behind it estimates the NEXT request, so the
-							 * two legitimately differ (3.1% here, 4.0% there). The
-							 * duality is inherited from the Python `/context` and is
-							 * not new — but the chip makes it the primary way users
-							 * reach that view, so the pairing is now seen far more
-							 * often (UX round 1, U7).
-							 */
-							"Measured now; click for the full breakdown, which estimates your next request",
+							contextBreakdownLine(reading.status),
 						]}
 					/>
 				}

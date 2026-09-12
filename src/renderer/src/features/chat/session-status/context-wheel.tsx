@@ -123,13 +123,25 @@ export const ContextWheel: FC<ContextWheelProps> = ({ reading, className }) => {
 				 * The track's ROLE depends on whether an arc is over it, because
 				 * its job does.
 				 *
-				 * With no arc, the track is the control's sole boundary and must
-				 * clear the 3:1 structural floor against every ground it renders on
-				 * - which is `surface` AND the reading button's `accentWash` hover.
-				 * `borderControl` cleared the first (3.65:1 worst) and failed the
-				 * second on iceberg at 2.89:1 (design round 1, D6), so the empty
-				 * track takes `inkDim`: the same role the inert reading's text
-				 * already uses, and 5.11:1 / 4.49:1 worst-case on the two grounds.
+				 * With no arc, the track is DECORATIVE - the wrapping button is the
+				 * control and carries the `aria-label`, so removing the ring loses
+				 * no information - which is what § 2 names `hairline` for.
+				 *
+				 * It reached `hairline` the long way. Round 1 put it on `inkDim` to
+				 * clear a 3:1 structural floor on both grounds, and that gave one
+				 * component two identities: an INK where the populated track is a
+				 * GROUND, 4.4-5.6x heavier and ΔE00 38.6-53.8 apart against a
+				 * perceptual threshold of ~2. The instrument lost roughly three
+				 * quarters of its weight at the exact moment it gained a reading,
+				 * which a user sees as the ring fading out on the first turn
+				 * (design round 2, D7).
+				 *
+				 * `hairline` carries no floor because a decorative line does not owe
+				 * one; what it owes is PERCEPTIBILITY, measured across all twelve
+				 * themes: ΔE00 7.0-15.3 against `surface` and 3.2-12.8 against the
+				 * `accentWash` hover, every one above the ~2 threshold, so D6 does
+				 * not regress. Weight change across the transition falls from 5.59x
+				 * to 1.34x - one ring in two states.
 				 *
 				 * With an arc, the boundary that carries the reading is arc against
 				 * TRACK, not track against ground: "how far has it swept" is read by
@@ -147,7 +159,7 @@ export const ContextWheel: FC<ContextWheelProps> = ({ reading, className }) => {
 				 * option that satisfies every floor that is reachable at all rather
 				 * than trading one failure for another.
 				 */
-				className={cn(hasArc ? "stroke-sunken" : "stroke-ink-dim")}
+				className={cn(hasArc ? "stroke-sunken" : "stroke-hairline")}
 			/>
 			{hasArc && (
 				<circle

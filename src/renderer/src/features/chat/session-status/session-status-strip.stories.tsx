@@ -34,6 +34,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
@@ -583,12 +584,16 @@ export const AbsoluteRungs: Story = {
 export const HonestUnknowns: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4 bg-canvas p-2">
-			<Frame label="Cold snapshot: no metadata on the wire, name resolved from the catalogue, effort unknown rather than absent">
+			<Frame label="Cold snapshot, first-party: the listing name stands, effort unknown rather than absent">
 				<SessionStatusStrip
 					frontend={state({
 						effective_model: {
 							provider: "anthropic",
 							model_id: "claude-opus-5",
+							// Empty on a cold snapshot, so the chip falls back to the id
+							// rather than inventing a name it cannot vouch for. The
+							// `model_catalogue` this story used to pass is gone: nothing
+							// on the desktop path ever publishes it (round 2, Q4/U9).
 							display_name: "",
 							reasoning: false,
 							reasoning_effort: null,
@@ -597,15 +602,6 @@ export const HonestUnknowns: Story = {
 							context_window: null,
 							max_context_window: null,
 						},
-						// On the wire even when the spec is bare, which is what lets the
-						// chip say `Claude Opus 5` instead of `claude-opus-5`.
-						model_catalogue: [
-							{
-								provider: "anthropic",
-								model_id: "claude-opus-5",
-								label: "Claude Opus 5",
-							},
-						],
 						context_tokens: 12_405,
 						context_window: 200_000,
 						cumulative_parent_cost: 0.0213,
@@ -627,21 +623,104 @@ export const HonestUnknowns: Story = {
 					onCommand={() => undefined}
 				/>
 			</Frame>
-			<Frame label="Fixed-effort model: the owner accepts no other rung, so the chip reports without offering">
+			<Frame label="Aggregator route: the chip refuses the listing name, exactly as the TUI band does">
 				<SessionStatusStrip
 					frontend={state({
-						effective_model: GPT_5,
+						effective_model: {
+							provider: "openrouter",
+							model_id: "openai/gpt-5-mini",
+							// The raw LISTING name. `model_label` refuses it for a
+							// reseller, because 398 of ~400 names are shared between the
+							// two shipped aggregators and none can say which route is
+							// answering. The band prints `gpt-5-mini`; so does this
+							// (round 2, Q3/R8/U9).
+							display_name: "OpenAI: GPT-5 Mini",
+							reasoning: true,
+							reasoning_effort: "high",
+							reasoning_efforts: ["minimal", "low", "medium", "high"],
+							reasoning_default_effort: null,
+							context_window: 400_000,
+							max_context_window: null,
+						},
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0.0042,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="Fixed-effort model: the SPEC says the ladder is empty, so the chip reports without offering">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: {
+							...GPT_5,
+							// A reasoning model whose spec carries NO rungs. This is the
+							// only source entitled to make the control read-only: round 1
+							// inferred it from an empty picker list instead, which is a
+							// cold owner rather than a fixed one (round 2, U8).
+							reasoning_effort: null,
+							reasoning_efforts: [],
+						},
 						context_tokens: 40_000,
 						context_window: 400_000,
 						cumulative_parent_cost: 0.21,
 						cost_knowledge: "exact",
 					})}
-					// The picker's own list, empty: the chip must stop offering to
-					// change what `/effort` would refuse to change (UX round 1, U3).
 					effortEntities={[]}
 					onCommand={() => undefined}
 				/>
 			</Frame>
 		</div>
 	),
+};
+
+/**
+ * The closing line of the context tooltip, in the two states that measured
+ * nothing.
+ *
+ * Round 1 appended "Measured now; …" to every context tooltip, so the
+ * no-reading tooltip said there was no reading and then that it was measured
+ * now, and the estimate tooltip labelled its number an estimate and called it a
+ * measurement one line later (round 2, D8). The estimate case is visible in
+ * `ContextTooltip` above; this frame is the other one, beside a measured
+ * reading for comparison.
+ */
+export const TooltipHonesty: Story = {
+	render: () => {
+		const Focused: FC<{
+			frontend: CanonicalFrontendState;
+		}> = ({ frontend }) => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				// The context reading is the third control in the row.
+				const buttons = host.current?.querySelectorAll("button");
+				(buttons?.[2] as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip frontend={frontend} onCommand={() => undefined} />
+				</div>
+			);
+		};
+		/*
+		 * ONE tooltip per frame. Two `Focused` blocks in one story cannot both
+		 * show their tooltip - focus is singular, so the second steals it and the
+		 * first frame photographs an empty state, which is exactly the kind of
+		 * absence that looks like evidence and is not.
+		 */
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame label="No reading: the closing line does not claim a measurement that has not happened">
+					<Focused
+						frontend={state({
+							effective_model: GPT_5,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+					/>
+				</Frame>
+			</div>
+		);
+	},
 };

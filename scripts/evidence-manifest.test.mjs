@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { partialFrameCount } from "./capture-evidence.mjs";
 import { frames as frameFiles } from "./check-evidence.mjs";
 
 /*
@@ -60,16 +61,22 @@ function guardAccepts(root, manifest) {
 }
 
 /**
- * `capture-evidence.mjs`'s partial branch: the declared total rises by the
- * frames written into directories that did not exist before the run, and by
- * nothing else.
+ * `capture-evidence.mjs`'s partial branch, CALLED rather than copied.
+ *
+ * Round 2, R7: this file previously reimplemented the arithmetic, so reverting
+ * `capture-evidence.mjs` to the absorbing tree-derived version left all five
+ * tests green - the suite pinned the reasoning and not the code. The shipped
+ * expression is now exported as `partialFrameCount` and invoked here, so an
+ * edit to it fails in this file.
  */
 function partialManifest(previous, root, newDirs) {
-	const addedFrames = newDirs.reduce(
-		(total, dir) => total + frameFiles(join(root, dir)).length,
-		0,
-	);
-	return { ...previous, frames: (previous.frames ?? 0) + addedFrames };
+	return {
+		...previous,
+		frames: partialFrameCount(
+			previous,
+			newDirs.map((dir) => join(root, dir)),
+		),
+	};
 }
 
 /** The rejected implementation, kept so the regression it caused stays pinned. */
