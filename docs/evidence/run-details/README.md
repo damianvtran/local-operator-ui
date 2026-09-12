@@ -1,8 +1,8 @@
 # Run details — the header popover, as a design proposal
 
 `docs/run-details.md` specifies a header button that opens a popover over the
-session's subagent roster and its to-do plan. Nothing in the application is wired
-to it yet: this is a design proposal, and these frames are how it was judged.
+session's subagent roster and its to-do plan. These frames are the design
+proposal as it was judged, re-taken on the base the feature was wired onto.
 
 The frames render the **real `ChatHeader`** — the production component, with its
 own action cluster, its own 32px controls and its own `!isCanvasOpen` gate — with
@@ -69,10 +69,17 @@ cover the two palettes that *are* the brand.
 
 ## What these frames do NOT prove
 
-- **That the product behaves this way.** Nothing passes `runDetails`; the header's
-  new prop is unwired and the popover cannot be reached in the running app. Every
-  frame is real components over fixture state, and `Settled`'s missing button is a
-  claim about the derived model, not about a session anyone has run.
+- **That the product behaves this way.** The frames are real components over
+  fixture state: `chat-page.tsx` derives the model from the canonical stream and
+  hands it down, so the trigger IS reachable in the running app now, but no frame
+  here is a photograph of a session anyone has run — and `Settled`'s missing
+  button is a claim about the derived model, not about a live session. What the
+  frames do carry is the pair that makes the claim checkable: `header-trigger`
+  (a run with work in flight, button present) beside `settled` (everything
+  settled, no button). The elapsed value is measured afresh once a second while
+  a frame's panel is open (`run-details-clock.ts`), which is why the clock in a
+  re-taken frame may read a second or two past its fixture anchor: that drift IS
+  the behaviour — a frozen clock is the defect it exists to prevent.
 - **The tooltip copy.** A still cannot show a hover tooltip and the frames are
   captured without a pointer. The strings — the clause order, the shedding, the
   singular/plural forms — are asserted in `scripts/run-detail-model.test.mjs`

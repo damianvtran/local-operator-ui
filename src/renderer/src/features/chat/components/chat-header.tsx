@@ -13,13 +13,14 @@ import { type RunDetails, RunDetailsTrigger } from "./run-details";
  * @property runDetails - The session's derived subagent and to-do view model, or
  * `null`/absent when the session has none.
  *
- * `runDetails` is OPTIONAL and, deliberately, unwired: nothing in the app passes
- * it, so application behaviour is unchanged by its presence. It exists so the
- * design frames for the run-details surface can render the REAL header rather
- * than a reproduction of it, and so the seam the wiring will use is the one the
- * frames were judged on. The trigger's own visibility rule (has work, and the
- * canvas closed) lives inside `RunDetailsTrigger`, because both halves are facts
- * about that surface rather than about where the header puts it.
+ * `runDetails` is passed by `chat-page.tsx`, which owns the canonical stream and
+ * derives the model per wire frame (`run-details.md` § 8); stories pass a fixture
+ * instead. It stays OPTIONAL because its absence is a real state: `ChatContent`
+ * also renders this header for a session with no canonical stream, where there
+ * is nothing to derive from and the trigger must not appear. The trigger's own
+ * visibility rule (has work, and the canvas closed) lives inside
+ * `RunDetailsTrigger`, because both halves are facts about that surface rather
+ * than about where the header puts it.
  */
 type ChatHeaderProps = {
 	agentName?: string;

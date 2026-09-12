@@ -19,7 +19,7 @@ import {
 	draftIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import { PickerOutlet } from "../pickers/picker-registry";
@@ -31,6 +31,7 @@ import {
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import type { MessageInputHandle } from "./message-input";
+import { deriveRunDetails } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
@@ -134,6 +135,34 @@ function SessionPanel({
 		canonical.transcript.records.length,
 	);
 	const busy = canonical.frontend?.streaming === true;
+	/*
+	 * The run-details view model (`docs/run-details.md` § 8), derived once per
+	 * wire frame from the two lists the canonical stream already carries and
+	 * currently drops on the floor: `frontend.jobs` -> the subagent roster,
+	 * `frontend.todos` -> the plan. Derived, never stored: the popover reads this
+	 * and `RunDetailsTrigger` keeps only what the reader has already SEEN.
+	 *
+	 * No `nowMs` is pinned and no clock is taken here, deliberately. The model's
+	 * only time-dependent figure is a running child's elapsed label, and a tick
+	 * in THIS component would re-render `ChatContent` and the transcript inside
+	 * it once a second to move one number. That figure is re-measured where it
+	 * is drawn instead - in the panel, at 1Hz, and only while a child is actually
+	 * in flight (`run-details-clock.ts`).
+	 *
+	 * With no canonical frontend there is no model, which is what leaves the
+	 * legacy path - `ChatContent`'s header without a canonical session - with no
+	 * trigger at all rather than one that opens an empty panel.
+	 */
+	const runDetails = useMemo(
+		() =>
+			canonical.frontend
+				? deriveRunDetails({
+						jobs: canonical.frontend.jobs,
+						todos: canonical.frontend.todos,
+					})
+				: null,
+		[canonical.frontend],
+	);
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		void useCanonicalSessionsStore
@@ -598,6 +627,7 @@ function SessionPanel({
 					currentJobId={null}
 					onCancelJob={stop}
 					messageInputRef={input}
+					runDetails={runDetails}
 					canonical={{
 						view,
 						busy,

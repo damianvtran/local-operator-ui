@@ -164,6 +164,13 @@ export type SubagentRow = {
 	status: ChildStatus;
 	/** `7m49s`, or `null` when the job has no trustworthy launch clock. */
 	elapsedLabel: string | null;
+	/**
+	 * The clock `elapsedLabel` was measured from, kept so the label can be
+	 * re-measured at a later instant without re-reading the wire; `null` on both
+	 * when the job has no launch time at all.
+	 */
+	startSeconds: number | null;
+	settledSeconds: number | null;
 	/** `46%`, or `null` when either half of the fraction is unknown. */
 	contextLabel: string | null;
 	/** `$0.31`, or `null` when no cost has been reported. */
@@ -230,6 +237,19 @@ export type RunDetails = {
 	doneTodos: number;
 	droppedTodos: number;
 	totalTodos: number;
+	/**
+	 * The instant this model was measured at, in the same unit as a job's
+	 * `start_time` (epoch milliseconds), and the wall-clock instant the
+	 * derivation actually ran.
+	 *
+	 * Two stamps rather than one because only the first is a fact about the
+	 * session: a story PINS it so its frames are reproducible, and cannot pin the
+	 * second. Adding real elapsed time to the pinned instant is what lets the
+	 * same 1Hz tick advance a fixture and a live session alike; reading the wall
+	 * clock directly against a pinned fixture would report the months between.
+	 */
+	measuredAtMs: number;
+	measuredAtRealMs: number;
 };
 
 /**
@@ -430,17 +450,46 @@ const readLatestDetails = (value: unknown): string => {
 	return "";
 };
 
-const readElapsed = (
-	job: Record<string, unknown>,
-	nowSeconds: number,
-): string | null => {
+type JobClock = {
+	/** Launch instant in epoch seconds, or `null` when the job has no clock. */
+	startSeconds: number | null;
+	/** Settle instant in epoch seconds, or `null` while the job is still open. */
+	settledSeconds: number | null;
+};
+
+/**
+ * A job's own clock inputs, read from the wire.
+ *
+ * The elapsed LABEL is a string because that is what a row draws, but a running
+ * child's duration is the one figure in this model that is a function of WHEN
+ * the model is read; every other field is a fact about the job. Keeping the two
+ * inputs as well is what lets that one figure be re-measured later from the
+ * model itself (`retimeRunDetails`), so the 1Hz clock can live in the panel
+ * that draws it rather than in a parent — where a tick would re-render the
+ * transcript's own tree once a second to move one number.
+ */
+const readClock = (job: Record<string, unknown>): JobClock => {
 	const start = wireNumber(job.start_time);
 	// `job_elapsed:414-417`: epoch zero is not a launch time, and "0s" would
 	// invent a duration for a row that has no clock at all.
-	if (start === null || start <= 0) return null;
+	if (start === null || start <= 0) {
+		return { startSeconds: null, settledSeconds: null };
+	}
 	const settled = wireNumber(job.settled_at);
-	const end = settled !== null && settled > 0 ? settled : nowSeconds;
-	return formatElapsed(Math.max(end - start, 0));
+	return {
+		startSeconds: start,
+		settledSeconds: settled !== null && settled > 0 ? settled : null,
+	};
+};
+
+/**
+ * The clock's own word: a settled job measured against its settle time, an open
+ * one against the instant the model was read.
+ */
+const clockLabel = (clock: JobClock, nowSeconds: number): string | null => {
+	if (clock.startSeconds === null) return null;
+	const end = clock.settledSeconds ?? nowSeconds;
+	return formatElapsed(Math.max(end - clock.startSeconds, 0));
 };
 
 const readUsage = (value: unknown): Record<string, unknown> | null =>
@@ -457,6 +506,7 @@ const deriveChild = (
 	// title: "task" is what every child with no role of its own is called, so
 	// printing it spends the row's scarcest column saying nothing.
 	const role = rawRole === "" || rawRole === "task" ? null : rawRole;
+	const clock = readClock(job);
 	const status = foldStatus(
 		wireText(job.status) || "running",
 		job.queued === true,
@@ -479,7 +529,9 @@ const deriveChild = (
 		label,
 		role,
 		status,
-		elapsedLabel: readElapsed(job, nowSeconds),
+		elapsedLabel: clockLabel(clock, nowSeconds),
+		startSeconds: clock.startSeconds,
+		settledSeconds: clock.settledSeconds,
 		contextLabel: formatContext(tokens, wireNumber(job.context_window)),
 		costLabel: formatCost(wireNumber(job.direct_cost)),
 		// Line 2 belongs to live work: a settled row's activity was blanked by the
@@ -542,7 +594,8 @@ const toWireList = (value: unknown): Array<Record<string, unknown>> =>
 export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobs = toWireList(input?.jobs);
 	const rawTodos = Array.isArray(input?.todos) ? input.todos : [];
-	const nowSeconds = (input?.nowMs ?? Date.now()) / 1000;
+	const nowMs = input?.nowMs ?? Date.now();
+	const nowSeconds = nowMs / 1000;
 
 	const subagents = jobs.map((job) => deriveChild(job, nowSeconds));
 	// Headerless only for the flat case the TUI special-cases: ONE phase that
@@ -569,7 +622,41 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 		doneTodos: items.filter((item) => item.status === "done").length,
 		droppedTodos: items.filter((item) => item.status === "dropped").length,
 		totalTodos: items.length,
+		measuredAtMs: nowMs,
+		measuredAtRealMs: Date.now(),
 	};
+}
+
+/**
+ * The same model re-measured against a later instant.
+ *
+ * Only elapsed labels move, and only on children whose clock is still live (no
+ * `settled_at`): a settled child's duration is a fact about the job, and
+ * everything else here — statuses, activity, error lines, counts, the plan — is
+ * likewise a fact about the run rather than about when it was read. So nothing
+ * else is recomputed and the wire is never re-read.
+ *
+ * `nowMs` is passed in the model's own clock, normally as
+ * `measuredAtMs + (real elapsed since measurement)`; see `measuredAtMs`.
+ *
+ * Returns the SAME object when no open child carries a clock, so the ordinary
+ * case — a settled roster, or a plan being read with nothing running — takes no
+ * re-render at all.
+ */
+export function retimeRunDetails(
+	details: RunDetails,
+	nowMs: number,
+): RunDetails {
+	const nowSeconds = nowMs / 1000;
+	let moved = false;
+	const subagents = details.subagents.map((row) => {
+		if (row.startSeconds === null || row.settledSeconds !== null) return row;
+		const label = clockLabel(row, nowSeconds);
+		if (label === row.elapsedLabel) return row;
+		moved = true;
+		return { ...row, elapsedLabel: label };
+	});
+	return moved ? { ...details, subagents } : details;
 }
 
 /** Whether a phase carries a name of its own rather than the implicit default. */
