@@ -253,8 +253,15 @@ export function ChatSidebar({
 				    rather than a new glyph, and the same wording the row's own `title`
 				    uses, so the tooltip and the visible mark cannot drift. */}
 				{conversationMatches.has(row.session_id) && (
-					<span className="ml-1 text-meta text-ink-dim">
-						· matched in conversation
+					// The CLI's marker, and deliberately the same mark: `”` reads as
+					// "something was said here", it costs one glyph rather than the
+					// words (which the row's width truncated to `in conversa…`, i.e.
+					// said nothing), and one product showing one meaning for one fact
+					// is worth more than either surface's private spelling. The full
+					// sentence rides on the row's own `title` and in the accessible
+					// name below, so the mark is never the ONLY account of itself.
+					<span className="ml-1 text-ink-dim">
+						”<span className="sr-only">matched in conversation</span>
 					</span>
 				)}
 			</span>
