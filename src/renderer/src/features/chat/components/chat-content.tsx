@@ -290,9 +290,42 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 */
 			<div className="relative flex h-full w-full flex-row overflow-hidden">
 				<div className="relative h-full w-0 min-w-[220px] flex-1">
+					{/*
+					 * The working surface takes the PAGE ground, `canvas`, not the panel
+					 * ground.
+					 *
+					 * The depth model this app is built on reads three planes left to
+					 * right: the icon rail is `sunken`, the list panel beside it is
+					 * `surface`, and the thing you are working on is `canvas`
+					 * (sidebar-navigation.tsx states the model, and why the rail moved off
+					 * `surface`). This column was the one main area in the app painted
+					 * `surface`, and `surface` is exactly what the list panel next to it
+					 * uses - measured in the running app, the boundary between them was
+					 * ΔE00 0 in every sampled theme, so the two read as one slab with
+					 * nothing between them: no rule (the divider is `w-0`), no border, no
+					 * step. Settings and agents already root their main area at `canvas`;
+					 * chat was contradicting the model, not extending it.
+					 *
+					 * The step this creates is deliberately the SLIGHT one of the two, and
+					 * it is the only boundary between list panel and working surface - no
+					 * rule, no border, no shadow, because elevation in this system is a
+					 * lightness step (branding § 2). `check-themes` already asserts
+					 * `canvas`/`surface` and `surface`/`sunken` as adjacent ground pairs:
+					 * across the twelve palettes `surface`→`canvas` measures ΔE00 2.11
+					 * (iceberg) to 6.56 (synth), against 3.75 (iceberg) to 14.94 (synth)
+					 * for `surface`→`sunken`. The rail therefore keeps the clearly
+					 * stronger separation, which is the relationship the report asked
+					 * for.
+					 *
+					 * Everything inside this column that paints a ground of its own was
+					 * sized against a `surface` column; the composer band and the legacy
+					 * transcript scroller now inherit rather than name one, and the
+					 * canonical user bubble carries a note. Each is annotated where it
+					 * sits.
+					 */}
 					<div
 						ref={chatContainerRef}
-						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-surface"
+						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						<ChatHeader

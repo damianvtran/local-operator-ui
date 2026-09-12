@@ -205,22 +205,32 @@ const CONTROLS = [
 		/*
 		 * The user's message bubble in the transcript.
 		 *
-		 * Listed because it is `surface` on a `surface` column: its fill is the
-		 * same colour as the ground behind it, so its border is doing ALL of the
-		 * work of separating one speaker from the other - the agent side renders
-		 * no bubble at all. That makes the edge structural rather than
-		 * decorative.
+		 * `on` names `canvas` because that is the ground the bubble is drawn on
+		 * and therefore the ground its edge floor is measured against: the
+		 * transcript renders inside the chat column, and that column is the
+		 * working surface, `canvas` (see chat-content.tsx). It used to say
+		 * `surface`, matching a surface-coloured column - a stale `on` would keep
+		 * measuring this component against a ground it is no longer drawn on,
+		 * which is the failure mode a green run cannot report.
+		 *
+		 * The bubble keeps its own `surface` fill, so it now has a lightness step
+		 * against the column as well as its border. The border is still what
+		 * makes the edge structural: the agent side renders no bubble at all, so
+		 * this edge is the whole distinction between the two speakers. A step is
+		 * not an edge, and the fill alone cannot carry it - a ground is not
+		 * supposed to clear 3:1 against the next ground.
 		 *
 		 * NOTE what this row does and does not buy. It asserts the PALETTE
-		 * pairing - that `borderControl` clears 3:1 on `surface` in all twelve
-		 * themes - which `STRUCTURAL` already implies at the same floor. It
+		 * pairing - that the bubble's edge clears the structural floor on the
+		 * ground behind it in all twelve themes - which here resolves through
+		 * `borderControl`, since `surface` on `canvas` is only a few ΔE00. It
 		 * cannot see which class the component actually renders, because this
 		 * script only reads palettes. The call site is asserted separately by
 		 * `STRUCTURAL_CALL_SITES` below, which is what would fail if someone
 		 * changed the bubble back to `hairline`.
 		 */
 		name: "user message bubble",
-		on: ["surface"],
+		on: ["canvas"],
 		fill: "surface",
 		border: "borderControl",
 		ink: "ink",
@@ -248,7 +258,7 @@ const STRUCTURAL_CALL_SITES = [
 		what: "user message bubble edge",
 		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		must: "border border-control bg-surface",
-		why: "the bubble is surface-on-surface, so its border is the whole distinction between speakers",
+		why: "the bubble is drawn on the canvas-coloured working surface and keeps its own surface fill; the agent side has no bubble, so this border is the edge that distinguishes the speakers",
 	},
 	{
 		what: "chat header bottom rule",

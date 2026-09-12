@@ -118,10 +118,13 @@ const UserRow = memo(function UserRow({
 			<div className="group relative flex w-full justify-end">
 				<div
 					className={cn(
-						// `border-control`, not `hairline`. The bubble is `bg-surface` on
-						// a `bg-surface` column, so this border is its ONLY edge - and
-						// because the agent side has no bubble at all, that edge is also
-						// the whole visual distinction between the two speakers.
+						// `border-control`, not `hairline`. The bubble keeps its own
+						// ground (`surface`) on a column that is `canvas` for the working
+						// surface's sake (see chat-content.tsx), so the fill is a
+						// lightness step as well as this edge - but a step is not an
+						// edge, and this border is still the boundary the design contract
+						// asks for. Because the agent side has no bubble at all, the edge
+						// is also the whole visual distinction between the two speakers.
 						// Removing it would lose information, which is the contract's own
 						// test for a structural boundary, so it takes the role with the
 						// 3:1 floor rather than the decorative one with no floor.

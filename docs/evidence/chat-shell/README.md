@@ -641,3 +641,132 @@ the interaction. It now takes `cursor-pointer`; the read-only chip keeps
   one slash-popup row on a real click. `scroll-to-bottom-button.tsx` is
   byte-identical to pre-PR main and `slash-commands.tsx` is untouched by this
   PR; QA recommends tracking it rather than blocking on it.
+
+---
+
+# Chat shell ground: the list panel / working surface step
+
+Before/after frames and boundary measurements for one reported defect: the left
+Chats list panel and the chat working area read as one flat slab. The ask was a
+*slight*, *borderless* step between them, with the far-left rail still clearly
+the stronger separation.
+
+## What produced these frames
+
+**The real Electron app**, not Storybook, the same way as the sets above:
+`electron-vite dev` on this worktree's source, with the app's own main and
+preload processes, its real IPC bridge, and a real `local-operator serve`
+backend on `127.0.0.1:1111` paired through a shared
+`LOCAL_OPERATOR_DESKTOP_TOKEN`.
+
+Three things about this set are worth stating rather than implying:
+
+- **The instance had its own Chromium profile** (`--user-data-dir`). The
+  operator's installed `Local Operator.app` was running and holds the default
+  userData singleton, so these frames neither read nor wrote its localStorage or
+  window state.
+- **No CSP change was needed.** The app's Content Security Policy allows 1111
+  and 8080 only, so the pair lives on 1111 — the app's own port. An earlier
+  attempt paired a private backend on a private port, which required widening
+  the CSP to reach it; that edit was reverted and is not in the tree.
+- **The populated frames are a fixture conversation, not the operator's own.**
+  `127.0.0.1:1111` was held by another session's scroll-paging fixture at
+  capture time (260 rows of `[row NNNN] …` prose). The frames are a real
+  backend response rendered by the real transcript; the *prose* is synthetic,
+  and it is labelled as such here rather than passed off as a conversation. Its
+  row count is what the state assertion reads.
+
+Every frame asserts its own state before it is written, and the capture refuses
+to produce a frame that fails: a "populated" frame must report more than five
+rows in the transcript's own sr-only perf line (`rows=60`), an "empty" frame
+must report zero rows *and* the greeting *and* the composer band, and no frame
+may contain the first-run onboarding modal — that overlay dims the ground it
+covers, so it would have become part of every boundary number below. The theme
+is the persisted store value, verified against
+`document.documentElement.dataset.theme` before the frame is taken. The
+`before-` frames come from the same worktree with the change stashed, at the
+same window size (1380x872), the same backend, the same states.
+
+## The measurement
+
+One pixel either side of each boundary, at the vertical midpoint of the window,
+CIEDE2000 between them (`scripts/color.mjs`, the same implementation
+`pnpm check-themes` uses). "Run" is the nine-pixel sequence across the boundary:
+two colours means a bare step with nothing painted between them, three or more
+would mean something is drawn there.
+
+| Frame | rail | list panel | working area | rail / list ΔE00 | list / working ΔE00 | run at list / working |
+| --- | --- | --- | --- | --- | --- | --- |
+| before, empty, dark | #0F0C08 | #1D1A15 | #1D1A15 | **4.07** | **0** | `#1D1A15` — one colour |
+| after, empty, dark | #0F0C08 | #1D1A15 | #15130F | **4.07** | **2.54** | `#1D1A15`, `#15130F` |
+| before, populated, dark | #0F0C08 | #1D1A15 | #1D1A15 | **4.07** | **0** | `#1D1A15` — one colour |
+| after, populated, dark | #0F0C08 | #1D1A15 | #15130F | **4.07** | **2.54** | `#1D1A15`, `#15130F` |
+| before, empty, light | #EEE9DC | #FAF8F2 | #FAF8F2 | **4.38** | **0** | `#FAF8F2` — one colour |
+| after, empty, light | #EEE9DC | #FAF8F2 | #F4F0E7 | **4.38** | **2.18** | `#FAF8F2`, `#F4F0E7` |
+| before, populated, light | #EEE9DC | #FAF8F2 | #FAF8F2 | **4.38** | **0** | `#FAF8F2` — one colour |
+| after, populated, light | #EEE9DC | #FAF8F2 | #F4F0E7 | **4.38** | **2.18** | `#FAF8F2`, `#F4F0E7` |
+
+Three facts this table is meant to settle: the list panel and the working area
+were **the same colour** before (ΔE00 0, a single-colour run — no rule, because
+the divider between them is `w-0`); they now differ by a step that is visible
+but slight; and the rail's own separation is **unchanged and larger** in both
+themes (4.07 / 4.38 against 2.54 / 2.18), which is the relationship the report
+asked to keep. No third colour appears in any run, so nothing is painted at
+either boundary.
+
+The rendered working-area pixel is one unit off the palette token (dark:
+rendered #15130F against token #16130E; light: rendered #F4F0E7 against token
+#F5F0E6), which is the capture's colour-profile conversion, not a second
+palette. Against the tokens the same step measures ΔE00 2.61 (dark) and 2.31
+(light).
+
+## The other ten themes: token-derived, not rendered
+
+These frames cover the two `localOperator*` themes, which is where light/dark
+correctness was asked for. The remaining ten are **not rendered here** — the
+numbers below are computed from the palettes (`scripts/color.mjs deltaE`), and
+are the same pair the rendered table measures:
+
+| Theme | surface | canvas | sunken | surface→canvas ΔE00 | ratio | surface→sunken ΔE00 | ratio |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| dracula | #2F3146 | #282A36 | #21222C | 4.94 | 1.12 | 7.10 | 1.24 |
+| dune | #1A1714 | #0F0D0B | #050403 | 2.94 | 1.09 | 4.59 | 1.15 |
+| iceberg | #F2F3F6 | #E8E9EC | #E1E2E7 | **2.11** (min) | 1.09 | **3.75** (min) | 1.17 |
+| localOperatorDark | #1E1A14 | #16130E | #0F0C08 | 2.61 | 1.07 | 4.48 | 1.13 |
+| localOperatorLight | #FAF8F1 | #F5F0E6 | #EFE9DB | 2.31 | 1.07 | 4.40 | 1.14 |
+| monokai | #2E2F28 | #272822 | #1E1F1A | 2.26 | 1.10 | 5.11 | 1.23 |
+| neon | #0F1524 | #080C18 | #03040A | 3.61 | 1.07 | 7.77 | 1.12 |
+| obsidian | #18181B | #09090B | #030307 | 3.80 | 1.12 | 4.49 | 1.16 |
+| radient | #1A1F2F | #10151C | #0A0D12 | 6.37 | 1.12 | 8.80 | 1.19 |
+| sage | #FBF7EC | #F3EEE0 | #E9E2D0 | 2.24 | 1.08 | 5.27 | 1.21 |
+| synth | #1B0A2F | #120720 | #06020D | **6.56** (max) | 1.05 | 14.94 | 1.11 |
+| tokyoNight | #24283B | #1A1B26 | #14141B | 5.49 | 1.17 | 8.68 | 1.26 |
+
+Every palette clears the ~2.0 perceptual threshold § 3 of `docs/branding.md`
+cites, and `surface`→`sunken` (the rail's step) is stronger than
+`surface`→`canvas` in all twelve — the narrowest gap between the two is sage
+(2.24 against 5.27). `pnpm check-themes` asserts both pairs as adjacent grounds,
+so neither is maintained by hand.
+
+## The frames
+
+| Frame pair | What it shows |
+| --- | --- |
+| [before-ground-empty-loDark.png](before-ground-empty-loDark.png) / [after-ground-empty-loDark.png](after-ground-empty-loDark.png) | The reported state and the fix, dark, empty draft. Before: the Chats panel and the working area are one colour from x=220 to the right edge, with the greeting and composer sitting on it. After: the list panel meets a slightly darker working surface; the rail keeps its clearly darker ground. |
+| [before-ground-empty-loLight.png](before-ground-empty-loLight.png) / [after-ground-empty-loLight.png](after-ground-empty-loLight.png) | The same, light. The step is a slightly deeper cream inside the same warm family; the light themes are where a 2.2 ΔE00 step is most easily lost, which is why both brand themes are captured rather than the default one. |
+| [before-ground-populated-loDark.png](before-ground-populated-loDark.png) / [after-ground-populated-loDark.png](after-ground-populated-loDark.png) | The same pair over a populated transcript (fixture prose, 60 rows). Confirms the step is a property of the ground and not of the empty state's content. |
+| [before-ground-populated-loLight.png](before-ground-populated-loLight.png) / [after-ground-populated-loLight.png](after-ground-populated-loLight.png) | The same, light. |
+
+## What these frames do not prove
+
+- **Ten of the twelve themes are token-derived, not rendered.** The two brand
+  palettes are rendered; the table above is arithmetic on the palettes.
+- **The populated content is a fixture conversation** written by another
+  session's paging harness, not a real chat.
+- **The canvas dock was not re-captured.** The dock's own empty-state ground is
+  `canvas`, so the chat column and it now agree where they previously differed
+  by a step, and the dock's chrome is `sunken` so it stays distinct — but that
+  pair was captured under an earlier, different backend pairing and is not part
+  of this set.
+- The dev framing includes the `Chat | Raw` tab row, which a packaged build does
+  not render; it is present identically in both halves of every pair.
