@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
@@ -259,10 +260,20 @@ function SessionPanel({
 		// Only metadata comes from the stream. Membership/order remain list-owned,
 		// and attention merges by the durable revision rather than arrival time.
 		const store = useCanonicalSessionsStore.getState();
-		if (!store.sessions.some((row) => row.session_id === sessionId)) return;
+		const current = store.sessions.find((row) => row.session_id === sessionId);
+		if (!current) return;
+		// The live title is the backend's JOURNALLED title, so it is blank for the
+		// majority of a real store (see chat-title.ts). Writing it unconditionally
+		// blanked the row this click came from until the next 5s list poll, and
+		// re-blanked it on every frontend update. `catalogueTitleUpdate` returns a
+		// partial row precisely so that "nothing to say" omits the key, which is
+		// what leaves the catalogue's own name standing through the spread merge.
 		store.upsertSession({
 			session_id: sessionId,
-			title: canonical.frontend.conversation_title,
+			...catalogueTitleUpdate({
+				liveTitle: canonical.frontend.conversation_title,
+				catalogueTitle: current.title,
+			}),
 			attention: canonical.frontend.attention,
 		});
 	}, [sessionId, canonical.frontend]);
@@ -400,11 +411,6 @@ function SessionPanel({
 		canonical.frontend?.active_team ||
 		canonical.frontend?.active_agent ||
 		draft?.target?.name;
-	const title = draftKey
-		? loadedTarget
-			? `New chat with ${loadedTarget}`
-			: "New chat"
-		: canonical.frontend?.conversation_title || "Untitled chat";
 	// active_agent/active_team come from the LIVE stream, so a cold session (no
 	// running owner) reports nulls and the header fell back to the cwd, naming
 	// nothing. The catalogue row's binding is the durable answer and is already
@@ -422,6 +428,19 @@ function SessionPanel({
 		[boundRow?.binding?.agent, boundRow?.binding?.team]
 			.filter(Boolean)
 			.join(" · ");
+	// The header names the conversation the user clicked, so it falls back to the
+	// catalogue row's name for the same reason `loaded` falls back to its binding:
+	// `conversation_title` is the journalled title only, and the row's name is
+	// derived from the opening message when nothing is journalled. Deliberately a
+	// READ — the stand-in is never written back, or the backend's naming errand
+	// would be told this conversation already has a name it chose for itself.
+	// See chat-title.ts for the TUI precedent both rules follow.
+	const title = resolveChatTitle({
+		draftKey,
+		draftTarget: loadedTarget,
+		liveTitle: canonical.frontend?.conversation_title,
+		catalogueTitle: boundRow?.title,
+	});
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
