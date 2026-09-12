@@ -1,5 +1,6 @@
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
+import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
@@ -37,11 +38,13 @@ import {
 } from "react";
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
+import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
@@ -151,6 +154,22 @@ type MessageInputProps = {
 	 * then repainted (design D7).
 	 */
 	isHydrating?: boolean;
+	/**
+	 * The session's own readings — model, effort, context, spend — and the way
+	 * to open each one's picker.
+	 *
+	 * Optional because the legacy (non-canonical) chat path has no canonical
+	 * snapshot to read and no command dispatcher to hand back; there the strip
+	 * simply does not mount. `onCommand` runs a slash command exactly as typing
+	 * it would, which is what keeps the chips from becoming a second way to
+	 * reach a picker. See `session-status/session-status-strip.tsx`.
+	 */
+	sessionStatus?: {
+		frontend: CanonicalFrontendState | null;
+		onCommand?: (line: string) => void;
+		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
+		effortEntities?: readonly unknown[];
+	};
 };
 
 /**
@@ -237,6 +256,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			onChangeCwd,
 			isSmallView = false,
 			isHydrating = false,
+			sessionStatus,
 		},
 		ref,
 	) => {
@@ -1169,6 +1189,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									: undefined
 							}
 						/>
+					)}
+
+					{/*
+					 * The session's readings, on their own row above the controls.
+					 *
+					 * Its own row rather than four more items in the button row below:
+					 * that row is already over budget at the 220px column floor (see
+					 * the working-directory chip's shrink notes, design round 2 D11),
+					 * and these four readings describe the SESSION where the row below
+					 * describes the message being composed. A crash in the strip must
+					 * not take the composer down with it — the readings are metadata
+					 * and the ability to type is not — so it renders inside an error
+					 * boundary with an empty fallback: a missing strip is a degradation
+					 * a user can work through, and a fallback panel here would be a
+					 * bigger interruption than the thing it reports.
+					 */}
+					{sessionStatus && (
+						<ErrorBoundary fallback={null}>
+							<SessionStatusStrip
+								frontend={sessionStatus.frontend}
+								onCommand={sessionStatus.onCommand}
+								effortEntities={sessionStatus.effortEntities}
+							/>
+						</ErrorBoundary>
 					)}
 
 					{/* § 2 budgets the accent at about three spends per screen and the

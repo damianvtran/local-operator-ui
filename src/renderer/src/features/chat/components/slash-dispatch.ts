@@ -25,7 +25,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
@@ -45,6 +45,13 @@ type SlashDispatchOptions = {
 	canonical: CanonicalSessionHandle;
 	/** Bind the current agent to another canonical session (resume/fork/new). */
 	rebind: (sessionId: string) => void;
+	/**
+	 * Put focus back in the composer.
+	 *
+	 * Only used when a picker's invoking control no longer exists on close; see
+	 * `invoker` below for why that happens and what it broke.
+	 */
+	focusComposer?: () => void;
 };
 
 /**
@@ -120,6 +127,7 @@ export function useSlashDispatch({
 	addMessage,
 	canonical,
 	rebind,
+	focusComposer,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -136,7 +144,39 @@ export function useSlashDispatch({
 	// The one active presentation request. A new command replaces it; Esc or
 	// Done clears it. Consumed once per command receipt, never per reconnect.
 	const [picker, setPicker] = useState<PickerContext | null>(null);
-	const closePicker = useCallback(() => setPicker(null), []);
+	/**
+	 * The control that opened the current picker, so Escape can give focus back.
+	 *
+	 * A picker opened by TYPING has the composer focused when it opens and the
+	 * composer is still mounted when it closes, so focus lands somewhere useful
+	 * without help. A picker opened by CLICKING a chip does not: the chip that
+	 * invoked it can be replaced during the picker's life - the model and effort
+	 * chips repaint from the canonical stream while the picker is open, the
+	 * context chip happens not to - and Radix then restores focus to a detached
+	 * node, which the browser resolves as BODY. Keyboard users landed at the
+	 * document start and could not Tab back within 25 presses (round 1, U4).
+	 *
+	 * Recorded here rather than in the strip because this hook owns the open and
+	 * close edges; the strip only knows about the open one.
+	 */
+	const invoker = useRef<HTMLElement | null>(null);
+	const closePicker = useCallback(() => {
+		setPicker(null);
+		const origin = invoker.current;
+		invoker.current = null;
+		if (!origin) return;
+		/*
+		 * After the dialog has unmounted and Radix has done its own restoration,
+		 * so this is the last word rather than a race with it. A node that was
+		 * replaced while the picker was open is no longer in the document, and
+		 * focusing it would be the same silent no-op that produces the defect -
+		 * so the composer, which is always mounted, takes it instead.
+		 */
+		requestAnimationFrame(() => {
+			if (origin.isConnected) origin.focus();
+			else focusComposer?.();
+		});
+	}, [focusComposer]);
 
 	// Receipts land in the transcript the user is looking at: the canonical
 	// one when the session is live, the legacy chat store otherwise.
@@ -281,6 +321,10 @@ export function useSlashDispatch({
 						);
 						return "consumed";
 					}
+					invoker.current =
+						document.activeElement instanceof HTMLElement
+							? document.activeElement
+							: null;
 					setPicker({
 						action,
 						spec,
@@ -342,5 +386,33 @@ export function useSlashDispatch({
 		],
 	);
 
-	return { dispatch, picker, closePicker };
+	/**
+	 * Run a command the user did not type, and never fail silently.
+	 *
+	 * `dispatch` is written for the COMPOSER, where "not-a-command" means "this
+	 * is ordinary prose, send it as a message" and the message path reports
+	 * whatever goes wrong next. A chip has no such next step: it is only ever a
+	 * command, so the same return value means the command did not run and
+	 * nothing anywhere will say so. That is exactly what happened with the
+	 * backend down - `commandsEnabled` is false while capabilities are
+	 * unreachable, so clicking a chip returned "not-a-command" into a `void`
+	 * and the user watched a dead control for 16 seconds while typing `/model`
+	 * in the same state explained the failure and offered a retry (round 1, U2).
+	 *
+	 * The note is the composer's own error idiom, not a second one, so the chip
+	 * and the typed command report through the same surface.
+	 */
+	const dispatchFromControl = useCallback(
+		async (line: string) => {
+			const outcome = await dispatch(line);
+			if (outcome !== "not-a-command") return;
+			note(
+				"The backend could not complete this request. Check its connection and try again.",
+				true,
+			);
+		},
+		[dispatch, note],
+	);
+
+	return { dispatch, dispatchFromControl, picker, closePicker };
 }
