@@ -250,8 +250,13 @@ const STORIES = [
 	   `<pre>`/`<table>`/`<ul>` are exactly the blocks that escaped the measure
 	   in two earlier rounds — so the surface the change is most about was the
 	   surface the sweep could not see. Captured at 1440 because the room the
-	   removed cap gives back is what the table uses. */
-	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 900],
+	   removed cap gives back is what the table uses.
+
+	   The declared height MATCHES the story's own `Frame height={700}`. The
+	   probe below floors the capture at the declared viewport, so declaring 900
+	   against a 700px story padded the frame with 257px of empty ground that
+	   no reviewer is meant to read (design review round 2, D9). */
+	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 700],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */
@@ -952,11 +957,15 @@ const main = async () => {
 			 * how tall the content is. So this probe silently became "capture
 			 * one screenful": measured on `chat-trace--conversation`, the
 			 * document element reports 900 while the story is really 1286 tall,
-			 * and the frame came back with its last third cut off. Storybook's
-			 * own root is a child of `body` and is free to grow, so `body`'s
-			 * scroll height still sees the whole story. Taking the max of both
-			 * is robust in either direction rather than swapping one single
-			 * point of failure for another.
+			 * and the frame came back with its last third cut off. `body` is
+			 * pinned and clipped by that same rule, but `scrollHeight` on a
+			 * clipped element still reports its SCROLLABLE CONTENT extent — so
+			 * `body.scrollHeight` sees the overflowing Storybook root even
+			 * though `body`'s own box is one viewport tall, which is what makes
+			 * it the term that carries the answer (QA round 2). Do not read
+			 * this as `body` being free to grow: unpinning it would not be
+			 * harmless. Taking the max of both is robust in either direction
+			 * rather than swapping one single point of failure for another.
 			 */
 			const { result: full } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,

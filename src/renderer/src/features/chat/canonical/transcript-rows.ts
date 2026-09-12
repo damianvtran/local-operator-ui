@@ -73,7 +73,8 @@ export type Row = {
  * the only thing left moving. That state is unreachable, and the reason is that
  * the two are not derived from the same thing by accident — the working line's
  * visibility keys on the SESSION-level `frontend.streaming` flag
- * (`chat-page.tsx` reads `canonical.frontend?.streaming` into `waiting`), not on
+ * (`chat-page.tsx` reads `canonical.frontend?.streaming` into `busy`, which
+ * arrives here as `waiting` via `chat-content.tsx`), not on
  * any record in the list, so it is live for the whole provider call regardless
  * of what the record list currently holds. `agent_end` settles the record and
  * that flag together, and `dropLiveRecords` clears live records on a gap, so
