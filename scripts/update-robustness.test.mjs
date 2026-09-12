@@ -2156,3 +2156,511 @@ test("a check's answer ends the by-hand panel once the server is not behind it",
 	assert.equal(atLeastVersion("0.55.0", "0.55.0-rc1"), false);
 	assert.equal(atLeastVersion("0.55.0-rc1", "0.55.0-rc1"), true);
 });
+
+/**
+ * The installers are resolved the way the platform resolves them.
+ *
+ * `resolveCommandPath` used to be POSIX-only by construction: an exact file name
+ * checked with `existsSync`, and a uv tool environment's scripts looked for in
+ * `<tool>/bin`. Both are wrong on Windows, where `uv` is `uv.exe` and uv keeps a
+ * tool environment's console scripts in `Scripts` - so the two listing probes
+ * the classifier falls back to (which are gated on resolving `uv` and `pipx`)
+ * answered nothing, and a uv-tool or pipx install came out unidentifiable with
+ * an empty command where the previous build named `uv tool upgrade` (review
+ * round 4, M1). The XDG cases are the same defect class for an install
+ * configured with a data home alone (review round 4, M2).
+ *
+ * The platform is injected, because this suite runs on the host and the rule is
+ * what has to be asserted: which file names get tried inside each directory, and
+ * which directories those are. Path separators come from the host's `join`,
+ * so the assertions name the parts rather than reconstructed path strings.
+ */
+test("a Windows install and an XDG data home are searched by their own rules", () => {
+	const home = join(tmpdir(), "lo-platform-home");
+	const windows = {
+		PATH: "/nonexistent-on-this-host",
+		HOME: home,
+		PATHEXT: ".COM;.EXE;.BAT;.CMD",
+	};
+	const tried = [];
+	const misses = (candidate) => {
+		tried.push(candidate);
+		return false;
+	};
+
+	// POSIX keeps its exact-name search: no extension is invented for it.
+	tried.length = 0;
+	assert.equal(
+		resolveCommandPath("uv", {
+			env: { PATH: "/nonexistent-on-this-host", HOME: home },
+			home,
+			platform: "linux",
+			listDir: () => [],
+			exists: misses,
+		}),
+		null,
+	);
+	assert.ok(tried.every((candidate) => !candidate.endsWith(".EXE")));
+
+	// Windows: the bare name is still tried, and every PATHEXT spelling follows,
+	// in the order the platform tries them.
+	tried.length = 0;
+	assert.equal(
+		resolveCommandPath("uv", {
+			env: windows,
+			home,
+			platform: "win32",
+			listDir: () => [],
+			exists: misses,
+		}),
+		null,
+	);
+	assert.ok(tried.some((candidate) => candidate.endsWith(join("uv"))));
+	assert.ok(tried.some((candidate) => candidate.endsWith("uv.EXE")));
+	assert.ok(
+		tried.indexOf(tried.find((c) => c.endsWith("uv.EXE"))) <
+			tried.indexOf(tried.find((c) => c.endsWith("uv.BAT"))),
+		"PATHEXT order is the platform's",
+	);
+	// And the hit is the `.exe`, which is what an install actually is there.
+	const found = resolveCommandPath("uv", {
+		env: windows,
+		home,
+		platform: "win32",
+		listDir: () => [],
+		exists: (candidate) => candidate.endsWith("uv.EXE"),
+	});
+	assert.ok(found && found.endsWith("uv.EXE"), `expected an .exe, got ${found}`);
+	// A machine whose environment carries no PATHEXT still resolves: the
+	// documented default is used, because the app is a process that may not have
+	// inherited a shell's environment at all.
+	const noPathext = resolveCommandPath("pipx", {
+		env: { PATH: "/nonexistent-on-this-host", HOME: home },
+		home,
+		platform: "win32",
+		listDir: () => [],
+		exists: (candidate) => candidate.endsWith("pipx.EXE"),
+	});
+	assert.ok(noPathext && noPathext.endsWith("pipx.EXE"), `${noPathext}`);
+
+	// The tool environment's own scripts: `Scripts` on Windows, `bin` elsewhere.
+	const toolRoot = join(home, "tools");
+	const windowsTool = [];
+	resolveCommandPath("local-operator", {
+		env: { ...windows, UV_TOOL_DIR: toolRoot },
+		home,
+		platform: "win32",
+		listDir: (dir) => (dir === toolRoot ? ["local-operator"] : []),
+		exists: (candidate) => {
+			windowsTool.push(candidate);
+			return false;
+		},
+	});
+	assert.ok(
+		windowsTool.some((candidate) => candidate.includes("Scripts")),
+		`windows tool envs keep Scripts: ${windowsTool.join(", ")}`,
+	);
+	const posixTool = [];
+	resolveCommandPath("local-operator", {
+		env: { PATH: "/nonexistent-on-this-host", HOME: home, UV_TOOL_DIR: toolRoot },
+		home,
+		platform: "darwin",
+		listDir: (dir) => (dir === toolRoot ? ["local-operator"] : []),
+		exists: (candidate) => {
+			posixTool.push(candidate);
+			return false;
+		},
+	});
+	assert.ok(posixTool.some((candidate) => candidate.includes(join("bin"))));
+	assert.ok(posixTool.every((candidate) => !candidate.includes("Scripts")));
+
+	// `XDG_DATA_HOME`: uv's shim dir is `$XDG_DATA_HOME/../bin` and its tool root
+	// is `$XDG_DATA_HOME/uv/tools`, so an install configured with the data home
+	// alone used to be searched nowhere under it.
+	const dataHome = join(home, "xdg-data");
+	const xdgTried = [];
+	resolveCommandPath("local-operator", {
+		env: { PATH: "/nonexistent-on-this-host", HOME: home, XDG_DATA_HOME: dataHome },
+		home,
+		platform: "darwin",
+		listDir: (dir) => (dir === join(dataHome, "uv", "tools") ? ["local-operator"] : []),
+		exists: (candidate) => {
+			xdgTried.push(candidate);
+			return false;
+		},
+	});
+	assert.ok(
+		xdgTried.includes(join(dataHome, "..", "bin", "local-operator")),
+		"the XDG shim dir is searched",
+	);
+	assert.ok(
+		xdgTried.includes(
+			join(dataHome, "uv", "tools", "local-operator", "bin", "local-operator"),
+		),
+		"the XDG tool root is searched",
+	);
+});
+
+/**
+ * The script's at-or-beyond rule and the renderer's are one rule.
+ *
+ * The disposition for the round-3 finding claimed the two halves agreed, and
+ * they only did for equal-width dotted numerics: `0.18.0.1` against `0.18.0`
+ * read as not-landed in the shell (the loop returned as soon as one side ran
+ * out) and as landed in the renderer (which pads with zero), and a pre-release
+ * against a higher numeric prefix differed the other way (review round 4, M3).
+ * The direction was safe - the script waits rather than exiting early - but a
+ * future reader "fixing" the shell half in that direction turns the wait into
+ * a false early exit, which is why the rule rather than a comment is what gets
+ * pinned here. The shell half is driven from the generated script, so the text
+ * under test is the text the app writes. The single input the two still answer
+ * differently - an absent operand - is asserted as itself at the end of the
+ * test, and the script says in place why that one stays.
+ */
+test("the script's version rule agrees with the renderer's, absent operands aside", () => {
+	const script = buildWatchdogPlan({
+		appBundlePath: "/Applications/Local Operator.app",
+		executableName: "Local Operator",
+		appPid: 1,
+		shipItJob: null,
+		targetVersion: "0.18.0",
+	}).script;
+	const rule = script.match(/^version_at_least\(\) \{\n[\s\S]*?^\}$/m);
+	assert.ok(rule, "version_at_least is in the generated script");
+
+	const versions = [
+		"0.9.9",
+		"0.10.0",
+		"0.17.0",
+		"0.18",
+		"0.18.0",
+		"0.18.0.0",
+		"0.18.0.1",
+		"0.18.1",
+		"0.19.0",
+		"1.0.0",
+		"0.18.0-rc1",
+		"0.18.0-beta.1",
+	];
+	const pairs = [];
+	for (const installed of versions) {
+		for (const target of versions) pairs.push([installed, target]);
+	}
+	// The two empty-operand cases are the one deliberate divergence and are
+	// asserted as themselves below, not in the agreement sweep.
+
+	const workDir = mkdtempSync(join(tmpdir(), "lo-version-rule-"));
+	const ruleFile = join(workDir, "rule.sh");
+	writeFileSync(
+		ruleFile,
+		`${rule[0]}\n${pairs
+			.map(([installed, target]) => `version_at_least '${installed}' '${target}'; echo $?`)
+			.join("\n")}\n`,
+	);
+	const output = spawnSync("/bin/sh", [ruleFile], { encoding: "utf8" });
+	rmSync(workDir, { recursive: true, force: true });
+	assert.equal(output.status, 0, output.stderr);
+	const answers = output.stdout.trim().split("\n").map((line) => line.trim() === "0");
+	assert.equal(answers.length, pairs.length);
+	const byPair = new Map();
+	pairs.forEach(([installed, target], index) => {
+		byPair.set(`${installed}->${target}`, answers[index]);
+	});
+
+	const disagreeing = [];
+	for (const [installed, target] of pairs) {
+		const shell = byPair.get(`${installed}->${target}`);
+		const renderer = atLeastVersion(installed, target);
+		if (shell !== renderer) {
+			disagreeing.push(`${installed} vs ${target}: shell=${shell} renderer=${renderer}`);
+		}
+	}
+	assert.deepEqual(disagreeing, []);
+
+	// The measured pairs, as themselves: a regression names the case it broke.
+	assert.equal(byPair.get("0.18.0.1->0.18.0"), true);
+	assert.equal(byPair.get("0.18.0->0.18.0.1"), false);
+	assert.equal(byPair.get("0.18->0.18.0"), true);
+	assert.equal(byPair.get("0.18.0->0.18"), true);
+	assert.equal(byPair.get("1.0.0->0.18.0-rc1"), false);
+	assert.equal(byPair.get("0.18.0-rc1->0.18.0-rc1"), true);
+	assert.equal(byPair.get("0.17.0->0.18.0"), false);
+	/*
+	 * The one input the two answer differently, and the one the shell's rule
+	 * refuses on purpose: an absent operand. A relaunch is not started over a
+	 * version nobody reported, and both callers prove the operand non-empty
+	 * before the rule sees it - the script's `swap_landed` declines an empty
+	 * target outright. The renderer pads it with zero instead.
+	 */
+	const emptyDriver = [
+		rule[0],
+		`version_at_least '' '0.18.0'; echo $?`,
+		`version_at_least '0.18.0' ''; echo $?`,
+	].join("\n");
+	const emptyDir = mkdtempSync(join(tmpdir(), "lo-version-empty-"));
+	const emptyFile = join(emptyDir, "rule.sh");
+	writeFileSync(emptyFile, `${emptyDriver}\n`);
+	const emptyOutput = spawnSync("/bin/sh", [emptyFile], { encoding: "utf8" });
+	rmSync(emptyDir, { recursive: true, force: true });
+	assert.deepEqual(
+		emptyOutput.stdout.trim().split("\n").map((line) => line.trim() === "0"),
+		[false, false],
+	);
+	assert.equal(atLeastVersion("", "0.18.0"), false);
+});
+
+/**
+ * The bound stops the wait AND the read.
+ *
+ * The bound's promise is that the script does not wait on a path that stopped
+ * answering, and the shipped read kept it while leaving the reader alive: the
+ * backgrounded pid was a subshell whose job was to drop a completion marker, so
+ * the `kill -9` landed on the wrapper and the `plutil` it had forked was
+ * reparented to pid 1, still blocked - one more per poll, up to ~200 over the
+ * bound (review round 4, Q7, measured at 5 survivors).
+ *
+ * The reader is substituted for `/bin/sleep` here, with its own unique duration
+ * so the survivor scan cannot see anything else: what is under test is where the
+ * kill lands, and a real `plutil` on a healthy volume answers in milliseconds so
+ * it cannot be held open. Everything else in the driven function - the
+ * readability pre-check, the redirect, the bound, the kill - is the generated
+ * script's own text.
+ */
+test("a version read that never answers is killed, not left running", () => {
+	const hangSeconds = "317";
+	const plan = buildWatchdogPlan({
+		appBundlePath: "/Applications/Local Operator.app",
+		executableName: "Local Operator",
+		appPid: 1,
+		shipItJob: null,
+		targetVersion: "0.18.0",
+		plistReadTimeoutSeconds: 1,
+	});
+	const read = plan.script.match(/^bundle_version\(\) \{\n[\s\S]*?^\}$/m);
+	assert.ok(read, "bundle_version is in the generated script");
+	const substituted = read[0].replace(
+		/\/usr\/bin\/plutil -extract CFBundleShortVersionString raw -o - "\$_plist"/,
+		`/bin/sleep ${hangSeconds}`,
+	);
+	assert.notEqual(substituted, read[0], "the reader was substituted");
+
+	const bundle = mkdtempSync(join(tmpdir(), "lo-read-bound-"));
+	mkdirSync(join(bundle, "Contents"), { recursive: true });
+	// The readability pre-check the function does before it starts anything.
+	writeFileSync(join(bundle, "Contents", "Info.plist"), "not a plist");
+	const driver = [
+		"now() { date +%s; }",
+		`BUNDLE=${bundle}`,
+		`TMPDIR=${bundle}`,
+		substituted,
+		"bundle_version",
+		'echo "rc=$?"',
+	].join("\n");
+	const started = Date.now();
+	const output = spawnSync("/bin/sh", ["-c", driver], { encoding: "utf8" });
+	const elapsed = Date.now() - started;
+	const survivors = spawnSync("/bin/ps", ["-A", "-o", "pid=,command="], {
+		encoding: "utf8",
+	})
+		.stdout.split("\n")
+		.filter((line) => line.includes(`sleep ${hangSeconds}`));
+	// Clean up a survivor before failing, so a regression does not leave the
+	// suite's own `sleep` behind for the rest of the run.
+	for (const line of survivors) {
+		const pid = line.trim().split(/\s+/)[0];
+		try {
+			process.kill(Number(pid), "SIGKILL");
+		} catch {
+			// Already gone between the scan and the kill.
+		}
+	}
+	rmSync(bundle, { recursive: true, force: true });
+
+	assert.equal(output.stdout.includes("rc=1"), true, output.stdout);
+	// The bound is the plan's (1s), not the read's (317s): the script stopped
+	// waiting on its own deadline.
+	assert.ok(elapsed < 30_000, `the read held the script for ${elapsed}ms`);
+	assert.deepEqual(survivors, [], "the killed pid is the reader's");
+});
+
+/**
+ * The remedy the compatibility banner produces names the release the last check
+ * read.
+ *
+ * This is the one defect class this change was reviewed for three times: a value
+ * the code looks like it sets that never reaches the payload on the path that
+ * matters (review U17). The panel's version sentence renders from
+ * `latestVersion`, the banner's remedy calls `updateBackend()` with no target at
+ * all, and the fallback to the published release the last check read is the
+ * whole fix. It only had coverage through the real banner path, so a regression
+ * in the fallback would look exactly like the original defect: a panel with no
+ * version sentence on the path most users take.
+ *
+ * Driven against the SHIPPED main process, bundled the way the rest of this file
+ * bundles its modules - but with Electron stubbed instead of launched, because
+ * what is under test is one function's payload rather than a window. Every path
+ * the module reads or writes is redirected into a temp dir and the health probe
+ * is pointed at a closed port, so nothing of the operator's own install, state
+ * or running server is touched.
+ */
+test("the banner's remedy names the release the last check read", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	// The bundled module graph is the app's main process, so the fixtures have to
+	// cover every surface it touches at import time: `app.getPath` for the logger
+	// and the pending-install marker, `electron-log`'s transports, and the
+	// autoUpdater object the constructor configures.
+	const fixture = (contents) => ({ contents, loader: "js" });
+	const bundle = await build({
+		stdin: {
+			contents:
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		// The graph reaches CJS dependencies (dotenv, zod), which esbuild's ESM
+		// output cannot `require` without this shim; without it the bundle throws
+		// "Dynamic require of \"fs\" is not supported" on first use.
+		banner: {
+			js: 'import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+		},
+		plugins: [
+			{
+				name: "electron-fixture",
+				setup(builder) {
+					builder.onResolve(
+						{ filter: /^(electron|electron-updater|electron-log)$/ },
+						(args) => ({ path: args.path, namespace: "fixture" }),
+					);
+					builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
+						if (args.path === "electron") {
+							return fixture(`
+								const paths = globalThis.__loTestPaths;
+								export const app = {
+									isPackaged: true,
+									getPath: (name) => paths[name] ?? paths.userData,
+									getVersion: () => "0.0.0-test",
+									getName: () => "Local Operator",
+									getAppPath: () => process.cwd(),
+									whenReady: async () => {},
+									on: () => app,
+									once: () => app,
+									quit: () => {},
+									relaunch: () => {},
+									exit: () => {},
+									isReady: () => true,
+									commandLine: { appendSwitch: () => {} },
+									setAsDefaultProtocolClient: () => true,
+									requestSingleInstanceLock: () => true,
+									releaseSingleInstanceLock: () => {},
+								};
+								export const ipcMain = { handle: () => {}, on: () => {}, once: () => {}, removeHandler: () => {}, removeAllListeners: () => {} };
+								export class BrowserWindow {
+									constructor() {
+										this.webContents = { send: () => {}, isDestroyed: () => false, on: () => {}, once: () => {}, setWindowOpenHandler: () => {} };
+									}
+									isDestroyed() { return false; }
+									static getAllWindows() { return []; }
+									static getFocusedWindow() { return null; }
+								}
+								export const dialog = { showMessageBox: async () => ({ response: 0 }), showOpenDialog: async () => ({ canceled: true, filePaths: [] }), showErrorBox: () => {} };
+								export class Notification { static isSupported() { return false; } show() {} }
+								export const shell = { openExternal: async () => {}, openPath: async () => {} };
+								export const nativeTheme = { shouldUseDarkColors: false, on: () => {} };
+								export const Menu = { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) };
+								export const session = { defaultSession: { webRequest: { onHeadersReceived: () => {} } } };
+							`);
+						}
+						if (args.path === "electron-updater") {
+							return fixture(`
+								export const autoUpdater = {
+									on: () => {}, once: () => {}, removeAllListeners: () => {},
+									checkForUpdates: async () => null,
+									downloadUpdate: async () => [],
+									quitAndInstall: () => {},
+									setFeedURL: () => {},
+									autoDownload: false,
+									autoInstallOnAppQuit: false,
+									logger: null,
+								};
+							`);
+						}
+						return fixture(`
+							const logger = () => ({
+								info: () => {}, warn: () => {}, error: () => {}, debug: () => {},
+								verbose: () => {}, silly: () => {},
+								transports: {
+									file: { resolvePath: () => "", level: "debug", format: "", maxSize: 0 },
+									console: { level: "info" },
+								},
+							});
+							const electronLog = logger();
+							electronLog.create = () => logger();
+							electronLog.initialize = () => {};
+							export default electronLog;
+						`);
+					});
+				},
+			},
+		],
+	});
+
+	const serviceDir = mkdtempSync(join(tmpdir(), "lo-service-bundle-"));
+	const serviceFile = join(serviceDir, "update-service.mjs");
+	writeFileSync(serviceFile, bundle.outputFiles[0].text);
+	// Imported from a real path rather than a `data:` URL: the banner shim above
+	// needs an `import.meta.url` that `createRequire` can resolve.
+	const service = await import(serviceFile);
+	const sent = [];
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: (channel, payload) => sent.push({ channel, payload }),
+					isDestroyed: () => false,
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		// Keep the health probe off anything real: the constructor derives this
+		// URL from config, and a live server on that port would be a session this
+		// test must not touch.
+		updateService.backendUrl = "http://127.0.0.1:9";
+		// The field `checkForBackendUpdates` writes when a check read the published
+		// release (`:2064`). Setting it here is the point of the case: the question
+		// is whether the value reaches the payload, not how it was fetched.
+		updateService.lastPublishedBackendVersion = "0.54.21";
+
+		// The banner's own shape: no target at all.
+		await updateService.updateBackend();
+		const manual = sent.filter(
+			({ channel }) => channel === "backend-update-manual-required",
+		);
+		assert.equal(manual.length, 1, JSON.stringify(sent));
+		assert.equal(manual[0].payload.latestVersion, "0.54.21");
+		assert.equal(manual[0].payload.currentVersion, null);
+
+		// A caller that does name a target still wins, so the fallback cannot
+		// shadow the version an explicit check asked about.
+		sent.length = 0;
+		await updateService.updateBackend("0.99.0");
+		const targeted = sent.filter(
+			({ channel }) => channel === "backend-update-manual-required",
+		);
+		assert.equal(targeted.length, 1, JSON.stringify(sent));
+		assert.equal(targeted[0].payload.latestVersion, "0.99.0");
+	} finally {
+		if (interval) clearInterval(interval);
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});

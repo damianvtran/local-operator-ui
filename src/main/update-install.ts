@@ -944,6 +944,28 @@ shipit_loaded() { [ -n "$SHIPIT_JOB" ] && launchctl list "$SHIPIT_JOB" >/dev/nul
 # not leave the app waiting out the whole bound for a bundle already past the
 # target (review Q6).
 version_at_least() {
+	# An absent version is not a version. This is the ONE input the two halves
+	# answer differently on, deliberately: the renderer pads a missing side with
+	# zero (\`left[index] ?? 0\`), so it reads an empty target as "at least 0",
+	# while a rule that can start a relaunch must not call a version nobody
+	# reported "landed". Both callers prove the operand non-empty first - the
+	# script's \`swap_landed\` declines an empty target outright and the read
+	# answers nothing rather than a version - so no path reaches this with one.
+	[ -n "$1" ] && [ -n "$2" ] || return 1
+	# Exact match first, as the renderer's rule does: a pre-release pair that
+	# matches exactly IS the version that was waited for, and the digit checks
+	# below cannot order a suffix at all. The caller strips a leading \`v\` before
+	# calling, which is the other half of what the renderer's rule does itself.
+	[ "$1" = "$2" ] && return 0
+	# Anything else carrying a suffix is not orderable here, and the renderer's
+	# rule refuses the same inputs for the same reason ("keeps the instruction on
+	# screen rather than clearing over a real gap"). Answered before the digit
+	# walk, because a suffix the unrelated leading numeric components never reach
+	# would otherwise be ignored - \`1.0.0\` against \`0.18.0-rc1\` compared as
+	# landed here and as not-beyond there. Not-landed is the safe direction in
+	# this script: the job and the bound still decide, and the app still comes
+	# back.
+	case "$1$2" in *-*) return 1 ;; esac
 	_va="$1"
 	_vb="$2"
 	while :; do
@@ -958,8 +980,16 @@ version_at_least() {
 		# A component with no digits in it is a pre-release suffix, which this
 		# cannot order: it reads as "not landed", so the job and the bound stay
 		# the deciders. Same shape as the renderer's rule.
-		case "$_ha" in "" | *[!0-9]*) return 1 ;; esac
-		case "$_hb" in "" | *[!0-9]*) return 1 ;; esac
+		case "$_ha" in *[!0-9]*) return 1 ;; esac
+		case "$_hb" in *[!0-9]*) return 1 ;; esac
+		# A side that has run out contributes zero, which is what the renderer's
+		# \`left[index] ?? 0\` does, so unequally wide dotted versions order the
+		# same way in both halves of "at or beyond". Without this, \`0.18.0.1\`
+		# against \`0.18.0\` read as not-landed here and as landed there (review
+		# round 4, M3): the safe direction is not a reason to leave two
+		# implementations of one rule disagreeing.
+		[ -n "$_ha" ] || _ha=0
+		[ -n "$_hb" ] || _hb=0
 		if [ "$_ha" -gt "$_hb" ]; then return 0; fi
 		if [ "$_ha" -lt "$_hb" ]; then return 1; fi
 		if [ -z "$_va" ] && [ -z "$_vb" ]; then return 0; fi
@@ -969,26 +999,38 @@ version_at_least() {
 # loop, and an unbounded read of a path on a mount that has stopped answering
 # would outlive the script's own deadline and leave the user with no app - the
 # very outcome this script exists to undo. macOS ships no \`timeout(1)\`, so the
-# bound is a background read plus a completion file and a kill (review R17).
+# bound is a background read the script can stop waiting on (review R17).
 bundle_version() {
+	_plist="$BUNDLE/Contents/Info.plist"
+	# A plist that is not readable yet - the ordinary state while a swap is in
+	# flight - answers without starting a read at all, so the bound below is only
+	# ever spent on a read that started and did not answer.
+	[ -r "$_plist" ] || return 1
 	_stamp="$$-$(now)"
 	_out="\${TMPDIR:-/tmp}/lo-update-watchdog-version-$_stamp.out"
-	_done="\${TMPDIR:-/tmp}/lo-update-watchdog-version-$_stamp.done"
-	( /usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$BUNDLE/Contents/Info.plist" >"$_out" 2>/dev/null; : >"$_done" ) &
+	# The pid the bound kills IS the reader: \`exec\` replaces the subshell rather
+	# than wrapping plutil, so nothing is reparented when the kill lands. The
+	# previous shape killed a subshell whose whole job was to drop a completion
+	# marker, and the read that subshell had forked was left blocked under pid 1 -
+	# one more per poll, for as long as the mount stayed dead (review round 4,
+	# Q7). Completion is read off the answer itself instead: plutil writes the
+	# version into this file and nothing else does, so bytes in it mean the read
+	# answered, and a read that fails writes none and is stopped by the same
+	# deadline.
+	( exec /usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$_plist" ) >"$_out" 2>/dev/null &
 	_read_pid=$!
 	_waited=0
-	while [ ! -f "$_done" ]; do
+	while [ ! -s "$_out" ]; do
 		if [ "$_waited" -ge ${plistTimeoutSeconds} ]; then
 			kill -9 "$_read_pid" 2>/dev/null
-			rm -f "$_out" "$_done"
+			rm -f "$_out"
 			return 1
 		fi
 		sleep 1
 		_waited=$((_waited + 1))
 	done
-	wait "$_read_pid" 2>/dev/null || { rm -f "$_out" "$_done"; return 1; }
 	_version="$(cat "$_out" 2>/dev/null)"
-	rm -f "$_out" "$_done"
+	rm -f "$_out"
 	[ -n "$_version" ] || return 1
 	printf '%s\n' "$_version"
 }
@@ -1411,6 +1453,15 @@ function commandSearchDirs(env: NodeJS.ProcessEnv, home: string): string[] {
 	// pipx links into it too - then the two Homebrew prefixes and the OS's own.
 	add(env.UV_TOOL_BIN_DIR);
 	add(env.XDG_BIN_HOME);
+	// uv's own bin-dir precedence runs `UV_TOOL_BIN_DIR` -> `XDG_BIN_HOME` ->
+	// `$XDG_DATA_HOME/../bin` -> `~/.local/bin` (measured on uv 0.10.8:
+	// `XDG_DATA_HOME=/tmp/xdgd uv tool dir --bin` -> `/tmp/xdgd/../bin`), so an
+	// install configured with a data home alone put its shim in a directory
+	// nothing searched: the classification then answered "could not tell how this
+	// was installed" for an install whose command was right there (review round
+	// 4, M2). `join` normalises the `..` away because the directory searched is
+	// the same one either way.
+	if (env.XDG_DATA_HOME) add(join(env.XDG_DATA_HOME, "..", "bin"));
 	add(join(home, ".local", "bin"));
 	add("/opt/homebrew/bin");
 	add("/usr/local/bin");
@@ -1420,22 +1471,45 @@ function commandSearchDirs(env: NodeJS.ProcessEnv, home: string): string[] {
 }
 
 /**
- * The uv tool environments' own `bin` directories.
+ * The uv tool environments' own script directories.
  *
  * A tool's console script is normally linked into the tool bin dir above, but a
  * link that was removed, or a `UV_TOOL_DIR` that is not uv's default, still
- * leaves `bin/<name>` inside the environment itself - beside the
- * `uv-receipt.toml` that names the install as a uv tool.
+ * leaves the script inside the environment itself - beside the
+ * `uv-receipt.toml` that names the install as a uv tool - and that is the one
+ * place `readInstallIdentity` can still see the layout markers from.
+ *
+ * Three platform rules live here, all of them measured against uv's own answers
+ * rather than assumed (review round 4, M1/M2): the tool root is `UV_TOOL_DIR`,
+ * then `$XDG_DATA_HOME/uv/tools`, then `~/.local/share/uv/tools`; and the
+ * scripts sit in `Scripts` on Windows and `bin` everywhere else - the same
+ * split `updateBackend` writes for a bundled venv.
+ *
+ * Known and deliberate: uv's own default root on Windows is under the user's
+ * app data (`%LOCALAPPDATA%\uv\tools`, uv's storage reference), which this
+ * does not model - there is no Windows host to measure it on, and a guessed
+ * path is worse than a stated gap. Nothing depends on it being right: the
+ * shims live in `%USERPROFILE%\.local\bin`, which `commandSearchDirs` searches
+ * and `where` finds, and a Windows tool install is then classified by the
+ * `uv tool list` probe the resolved `uv.exe` answers (review round 4, M1).
  */
 function uvToolBinDirs(
 	env: NodeJS.ProcessEnv,
 	home: string,
 	listDir: (dir: string) => string[],
+	platform: NodeJS.Platform,
 ): string[] {
-	const root = env.UV_TOOL_DIR ?? join(home, ".local", "share", "uv", "tools");
+	const root =
+		env.UV_TOOL_DIR ??
+		(env.XDG_DATA_HOME
+			? join(env.XDG_DATA_HOME, "uv", "tools")
+			: join(home, ".local", "share", "uv", "tools"));
+	const scriptDir = platform === "win32" ? "Scripts" : "bin";
 	const dirs: string[] = [];
 	try {
-		for (const entry of listDir(root)) dirs.push(join(root, entry, "bin"));
+		for (const entry of listDir(root)) {
+			dirs.push(join(root, entry, scriptDir));
+		}
 	} catch {
 		// No uv tool environments on this machine: nothing to add.
 	}
@@ -1443,24 +1517,81 @@ function uvToolBinDirs(
 }
 
 /**
+ * What Windows appends to a bare command name, in the platform's own order.
+ *
+ * `PATHEXT` is the machine's list; the documented default is used when the
+ * environment carries none, so the search still resolves an executable in a
+ * context that never inherited a shell's environment - the case this whole
+ * module exists for. The case is kept as written because it is only ever
+ * concatenated onto a name the caller gave, and Windows compares file names
+ * case-insensitively.
+ */
+const WINDOWS_DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
+
+function windowsCommandExtensions(env: NodeJS.ProcessEnv): string[] {
+	const raw = (env.PATHEXT ?? "").trim();
+	const parts = (raw.length > 0 ? raw : WINDOWS_DEFAULT_PATHEXT).split(";");
+	const extensions: string[] = [];
+	for (const part of parts) {
+		const extension = part.trim();
+		if (extension.length === 0 || extensions.includes(extension)) continue;
+		extensions.push(extension);
+	}
+	return extensions;
+}
+
+/**
+ * The file names to try inside one directory, in the order the platform does.
+ *
+ * POSIX resolves a bare command name to the file of that same name, and that is
+ * all this has to do there. Windows resolves it through `PATHEXT`: `uv` is
+ * `uv.exe`, pipx writes its shims as `.exe` trampolines rather than symlinks,
+ * and uv does the same - so an exact-name `existsSync` finds nothing on a
+ * machine that has both installed. That answer then read as "nothing here",
+ * which is how a uv-tool or pipx install came out unidentifiable with no
+ * command at all on Windows (review round 4, M1). The bare name is tried first
+ * because an extensionless executable is legitimate on Windows too.
+ */
+function commandCandidates(
+	dir: string,
+	name: string,
+	env: NodeJS.ProcessEnv,
+	platform: NodeJS.Platform,
+): string[] {
+	const candidates = [join(dir, name)];
+	if (platform !== "win32") return candidates;
+	for (const extension of windowsCommandExtensions(env)) {
+		candidates.push(join(dir, name + extension));
+	}
+	return candidates;
+}
+
+/**
  * The path `name` resolves to, or null when it is nowhere to be found.
  *
- * POSIX only - see `commandSearchDirs` for why this is not `which`, and the
- * caller for the Windows case, where `where` already searches the user's own
- * install locations. The injected options exist so the contract tests can drive
- * a synthetic tree instead of the developer's machine.
+ * Not `which`, for the reason `commandSearchDirs` gives: the app is normally
+ * started without a shell, so the search has to cover the installers' own
+ * locations, not just the PATH it inherited. On Windows a bare name is resolved
+ * through `PATHEXT` (`commandCandidates`), which is the part of `where`'s
+ * semantics that matters to the callers here.
+ *
+ * The injected options exist so the contract tests can drive a synthetic tree -
+ * including the Windows one - instead of the developer's machine.
  */
 export function resolveCommandPath(
 	name: string,
 	options: {
 		env?: NodeJS.ProcessEnv;
 		home?: string;
+		/** The platform whose resolution rules to apply; defaults to this one. */
+		platform?: NodeJS.Platform;
 		listDir?: (dir: string) => string[];
 		exists?: (path: string) => boolean;
 	} = {},
 ): string | null {
 	const env = options.env ?? process.env;
 	const home = options.home ?? homedir();
+	const platform = options.platform ?? process.platform;
 	const exists = options.exists ?? existsSync;
 	const listDir =
 		options.listDir ??
@@ -1474,14 +1605,15 @@ export function resolveCommandPath(
 
 	const dirs = [
 		...commandSearchDirs(env, home),
-		...uvToolBinDirs(env, home, listDir),
+		...uvToolBinDirs(env, home, listDir, platform),
 	];
 	for (const dir of dirs) {
-		const candidate = join(dir, name);
-		try {
-			if (exists(candidate)) return candidate;
-		} catch {
-			// An unreadable entry is not an answer: try the next location.
+		for (const candidate of commandCandidates(dir, name, env, platform)) {
+			try {
+				if (exists(candidate)) return candidate;
+			} catch {
+				// An unreadable entry is not an answer: try the next location.
+			}
 		}
 	}
 	return null;
