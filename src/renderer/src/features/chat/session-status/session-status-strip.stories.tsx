@@ -510,3 +510,138 @@ export const CostTooltip: Story = {
 		);
 	},
 };
+
+/**
+ * The ABSOLUTE band rungs, which no other story draws.
+ *
+ * The TUI added these precisely because the fractional ladder alone leaves a
+ * big window looking calm at the size that costs the most: 300k tokens is slow
+ * and expensive to re-send whether the window is 1M or 200k. On a 1M-token
+ * model the fractional rungs are unreachable in practice, so these two frames
+ * are the only picture of `CONTEXT_COLOR_BANDS` doing its job — and round 1
+ * shipped without them (design round 1, D4).
+ */
+export const AbsoluteRungs: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame label="Under both ladders: 150k on a 1M window is calm by either rule">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: { ...GPT_5, context_window: 1_000_000 },
+						context_tokens: 150_000,
+						context_window: 1_000_000,
+						context_is_estimate: false,
+						cumulative_parent_cost: 0.94,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="Absolute 200k rung: warm at 20% of the window, which the fractional ladder alone would call calm">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: { ...GPT_5, context_window: 1_000_000 },
+						context_tokens: 210_000,
+						context_window: 1_000_000,
+						context_is_estimate: false,
+						cumulative_parent_cost: 1.31,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="Absolute 500k rung: the top rung at 51% of the window, on size alone">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: { ...GPT_5, context_window: 1_000_000 },
+						context_tokens: 510_000,
+						context_window: 1_000_000,
+						context_is_estimate: false,
+						cumulative_parent_cost: 3.18,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/**
+ * States where the strip must not claim more than it knows.
+ *
+ * The cold-snapshot frame is the one round 1 got wrong (UX round 1, U1): after
+ * a reload the owner answers with a selector and nothing else, and the strip
+ * rendered that as a confident raw id with the effort chip silently absent. The
+ * frame below is what it must look like instead — a catalogue-resolved name and
+ * an effort reading that says it does not know yet.
+ *
+ * The small-reading frame is the other half of D4: a 3.4% arc used to be four
+ * coloured pixels and read as an empty ring, so `MIN_DRAWN_FRACTION` floors the
+ * DRAWING while the number beside it stays exact.
+ */
+export const HonestUnknowns: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame label="Cold snapshot: no metadata on the wire, name resolved from the catalogue, effort unknown rather than absent">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: {
+							provider: "anthropic",
+							model_id: "claude-opus-5",
+							display_name: "",
+							reasoning: false,
+							reasoning_effort: null,
+							reasoning_efforts: [],
+							reasoning_default_effort: null,
+							context_window: null,
+							max_context_window: null,
+						},
+						// On the wire even when the spec is bare, which is what lets the
+						// chip say `Claude Opus 5` instead of `claude-opus-5`.
+						model_catalogue: [
+							{
+								provider: "anthropic",
+								model_id: "claude-opus-5",
+								label: "Claude Opus 5",
+							},
+						],
+						context_tokens: 12_405,
+						context_window: 200_000,
+						cumulative_parent_cost: 0.0213,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="Small but real: 3.4% draws a visible sweep, and the number stays unrounded">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						context_is_estimate: false,
+						cumulative_parent_cost: 0.003018,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="Fixed-effort model: the owner accepts no other rung, so the chip reports without offering">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 40_000,
+						context_window: 400_000,
+						cumulative_parent_cost: 0.21,
+						cost_knowledge: "exact",
+					})}
+					// The picker's own list, empty: the chip must stop offering to
+					// change what `/effort` would refuse to change (UX round 1, U3).
+					effortEntities={[]}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};

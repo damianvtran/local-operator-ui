@@ -79,3 +79,62 @@ build directory), and the procedure is the one in
 page is open, or the accounting fields never arrive. Start the backend with an
 isolated `LOCAL_OPERATOR_CONFIG_DIR` and `LOCAL_OPERATOR_HOME`, point
 `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` at it, and never at the operator's own.
+
+---
+
+## Round 2: the real Electron app
+
+`reload/` and `backend-down/` were taken in the **packaged Electron binary**,
+not the renderer-in-Chrome surface the frames above used. That closes the first
+limitation this README declares: `window.api.desktop` is the real preload
+bridge (asserted as `"object"` before anything else runs), so every desktop call
+in these two frames crossed real IPC rather than the `/__desktop` HTTP path.
+
+The harness is `out/evidence-harness/r2-live.mjs` (gitignored with the rest of
+`out/`). It drives `out/main/index.js` under
+`node_modules/electron/dist/.../Electron` over CDP on a port it owns, against an
+isolated backend on its own config dir and home. Three things it must get right,
+each learned by getting it wrong first:
+
+1. **Run Electron from a cwd with no `.env`.** `src/main/backend/config.ts`
+   loads `join(process.cwd(), ".env")` with `override: true`, so the repo's own
+   `.env` beats the environment and silently pointed main at port 1111 — the
+   OPERATOR's live backend. The harness sets `cwd` to its throwaway
+   user-data-dir.
+2. **Put the isolated backend on 8080.** `src/renderer/index.html`'s CSP pins
+   `connect-src` to 1111 and 8080, so a backend anywhere else is unreachable by
+   the renderer's own health probe (the same CSP note QA filed as Q3).
+   `VITE_DISABLE_BACKEND_MANAGER=true` stops main starting a second one.
+3. **Seed `isTourComplete` as well as `isModalComplete`.** They are separate
+   flags and the tour alone covers the composer.
+
+### What these two frames prove
+
+| Frame | Finding | Before (round 1) | After |
+| --- | --- | --- | --- |
+| `reload/` | U1 | `openai/gpt-5-mini`, effort chip GONE, 3 chips | `OpenAI: GPT-5 Mini \| auto \| 3.3%/400k \| >=$0.0040`, 4 chips |
+| `backend-down/` | U2 | 16 s of nothing | `/model could not run: The backend could not complete this request. Check its connection and try again.` |
+
+Read out of the live DOM in the same run, not from the pixels:
+
+```
+PRELOAD window.api.desktop: object
+WARM   strip: OpenAI: GPT-5 Mini | auto | 3.3%/400k | >=$0.0040   (4 chips)
+RELOAD strip: OpenAI: GPT-5 Mini | auto | 3.3%/400k | >=$0.0040   (4 chips)
+RELOAD +20s : OpenAI: GPT-5 Mini | auto | 3.3%/400k | >=$0.0040
+U4 model : opened "Model | This session runs openrouter/openai/gpt-5-mini..." -> Escape -> BUTTON / IN-STRIP / "OpenAI: GPT-5 Mini"
+U4 effort: opened "Reasoning effort | Effort levels openrouter/openai/gpt-5-mini" -> Escape -> BUTTON / IN-STRIP / "auto"
+U2 click with backend down: "The backend could not complete this request. Check its connection and try again."
+```
+
+U4 is the assertion that cannot be photographed: round 1 left focus on `BODY`
+after Escape and 25 Tabs did not reach the chip again. `IN-STRIP` is the
+`document.activeElement` being the invoking chip itself.
+
+### Still not proven here
+
+- **Twelve themes.** These two are `localOperatorDark` only; the Storybook
+  sweep owns the rest.
+- **The warm and danger rungs live.** The session sat at 3.3% of a 400k window,
+  so the coloured rungs remain Storybook frames plus the contrast contract's
+  new arc-vs-track assertions.

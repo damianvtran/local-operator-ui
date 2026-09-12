@@ -244,6 +244,8 @@ const STORIES = [
 	["chat-session-status-strip--cost-states", 860, 780],
 	["chat-session-status-strip--effort-states", 860, 780],
 	["chat-session-status-strip--long-model-name", 860, 420],
+	["chat-session-status-strip--absolute-rungs", 860, 600],
+	["chat-session-status-strip--honest-unknowns", 860, 600],
 	/* The 220px column is the canvas-open floor, and the width the composer's
 	   button row was already over budget at. Captured narrow, because the shed
 	   order under pressure is half the design. */
@@ -972,6 +974,18 @@ const main = async () => {
 					? `${story.split("--")[1]}@${width}`
 					: story.split("--")[1];
 			const dir = join(OUT, story.split("--")[0], leaf);
+			/*
+			 * Whether this directory existed BEFORE the run, recorded before
+			 * `mkdirSync` creates it.
+			 *
+			 * A partial run that refreshes an existing surface overwrites frames
+			 * the manifest already counts; one that adds a surface writes frames
+			 * it does not. Only the second may raise the declared total, and the
+			 * difference is not recoverable after the fact — which is why it is
+			 * captured here rather than derived from the tree later. See the
+			 * manifest block at the end of this file for why deriving it from
+			 * the tree is precisely the bug this replaces.
+			 */
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
 			/*

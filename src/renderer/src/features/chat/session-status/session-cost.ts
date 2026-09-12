@@ -45,7 +45,15 @@
  *    otherwise print a confident zero over real billed tokens, which
  *    `turn_cost` calls the more expensive of the two lies.
  *
- * A fifth, less obvious: `CostKnowledge` gaining a rung. `partial` and `floor`
+ * A fifth: `format_cost` is spelled through `pyFixed` rather than `toFixed`,
+ * because Python rounds half-to-even on the exact binary value. Real prices
+ * essentially never land on a representable tie (round 1 swept 58,260 realistic
+ * totals and found none), so this one is insurance rather than a live defect —
+ * but the context reading next to it diverged once per 351 counts on a 32k
+ * window, and one rounding rule for the strip is the only version of this that
+ * stays true.
+ *
+ * A sixth, less obvious: `CostKnowledge` gaining a rung. `partial` and `floor`
  * both mark the figure as a floor here; a new rung would land in neither set
  * and would silently render as exact.
  *
@@ -55,6 +63,7 @@
  */
 
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import { pyFixed } from "./fixed-point";
 
 /**
  * `local_operator/session/frontend_state.py:787` `CostKnowledge`.
@@ -154,9 +163,9 @@ function rung(value: unknown): CostKnowledge {
  * reading.
  */
 export function formatCost(cost: number): string {
-	if (cost < 0.01) return `$${cost.toFixed(4)}`;
-	if (cost < 1.0) return `$${cost.toFixed(3)}`;
-	return `$${cost.toFixed(2)}`;
+	if (cost < 0.01) return `$${pyFixed(cost, 4)}`;
+	if (cost < 1.0) return `$${pyFixed(cost, 3)}`;
+	return `$${pyFixed(cost, 2)}`;
 }
 
 /**
