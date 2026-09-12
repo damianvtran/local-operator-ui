@@ -33,6 +33,7 @@ import {
 } from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop } from "../desktop-transport";
+import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
 
@@ -242,6 +243,17 @@ export class BackendServiceManager {
 				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
 				LogFileType.BACKEND,
 			);
+
+			// Both spawn paths below inherit this environment: the app-bundled venv
+			// - whose `python` IS the interpreter we ship, stdlib and all - and the
+			// globally installed `local-operator`. The bundled one is the reason:
+			// CPython writes `__pycache__/*.pyc` beside the sources it imports, those
+			// sources are inside the code-sealed `.app`, and every such write breaks
+			// the signature ShipIt validates before an in-place update. Setting the
+			// prefix here - after the platform loaders, which are what can inject a
+			// value from the operator's shell rc - keeps it to one rule instead of
+			// one per spawn site that can drift.
+			this.shellEnv = withPythonBytecodeCache(this.shellEnv, this.appDataPath);
 		} catch (error) {
 			logger.error(
 				"Error loading shell environment variables:",

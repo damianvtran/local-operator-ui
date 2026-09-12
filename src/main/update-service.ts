@@ -26,6 +26,7 @@ import type { BackendServiceManager } from "./backend/backend-service";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
 	type InstallBlock,
 	type InstallFailurePayload,
@@ -41,11 +42,13 @@ import {
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
+	healPythonBytecode,
 	installFailurePayload,
 	installedBundleSealBlock,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePipShowVersion,
+	parseSealViolations,
 	readInstallIdentity,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
@@ -103,7 +106,15 @@ function versionSuffix(version: string | null | undefined): string {
 function runCommand(
 	command: string,
 	args: string[],
-	options: { timeoutMs?: number } = {},
+	options: {
+		timeoutMs?: number;
+		/**
+		 * Environment for the child, when the default (`process.env`) is wrong for
+		 * it. The python spawns pass `pythonSpawnEnv()`; everything else here runs
+		 * a macOS tool that wants the inherited environment.
+		 */
+		env?: Record<string, string | undefined>;
+	} = {},
 ): Promise<{
 	exitCode: number;
 	stdout: string;
@@ -115,7 +126,11 @@ function runCommand(
 		execFile(
 			command,
 			args,
-			{ timeout: options.timeoutMs ?? 20000, maxBuffer: 4 * 1024 * 1024 },
+			{
+				timeout: options.timeoutMs ?? 20000,
+				maxBuffer: 4 * 1024 * 1024,
+				...(options.env ? { env: options.env } : {}),
+			},
 			(error, stdout, stderr) => {
 				const code = (error as { code?: unknown; killed?: boolean } | null)
 					?.code;
@@ -380,6 +395,21 @@ export class UpdateService {
 	 */
 	private markerDir(): string {
 		return app.getPath("userData");
+	}
+
+	/**
+	 * The environment every python this service spawns has to run under.
+	 *
+	 * The bundled venv's `python` is the interpreter we ship, so its stdlib - and
+	 * therefore any `__pycache__` CPython writes for it - is inside the code-sealed
+	 * `.app`. `pip show` and the pip upgrade both compile stdlib modules, so both
+	 * would unseal the bundle the pre-flight is about to ask ShipIt to replace.
+	 *
+	 * userData is the location for the same reason the pending marker uses it: it
+	 * is never inside the bundle being swapped.
+	 */
+	private pythonSpawnEnv(): Record<string, string | undefined> {
+		return withPythonBytecodeCache(process.env, this.markerDir());
 	}
 
 	private sendToRenderer(channel: string, payload: unknown): boolean {
@@ -680,6 +710,13 @@ export class UpdateService {
 	 * - A probe that could not run is retried once and then *allowed to proceed*.
 	 *   "We could not ask" is not "the bundle is bad", and treating it as one is
 	 *   how a transient hiccup became a permanent reinstall message (R5).
+	 *
+	 * A bundle that fails the check is given one chance to heal itself, because
+	 * the failure every 0.17.x/0.18.0 install has is ours rather than the user's:
+	 * a CPython stdlib bytecode cache written into the sealed bundle by our own
+	 * backend. Those writes are `file added:` violations and deleting exactly
+	 * those files restores the seal (measured; see `healPythonBytecode`), where a
+	 * bundle broken any other way still gets the reinstall refusal below.
 	 */
 	private async probeInstalledBundleSeal(
 		version?: string | null,
@@ -705,13 +742,15 @@ export class UpdateService {
 				{ timeoutMs: SEAL_PROBE_TIMEOUT_MS },
 			);
 
-		let seal = evaluateBundleSeal(await probeBundle());
+		let probe = await probeBundle();
+		let seal = evaluateBundleSeal(probe);
 		if (seal.kind === "unavailable") {
 			logger.warn(
 				`Seal check did not complete, retrying once: ${seal.detail}`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			seal = evaluateBundleSeal(await probeBundle());
+			probe = await probeBundle();
+			seal = evaluateBundleSeal(probe);
 		}
 		if (seal.kind === "unavailable") {
 			// Proceeding is the conservative choice here: Squirrel validates the
@@ -735,7 +774,48 @@ export class UpdateService {
 			`Installed bundle failed its seal check: ${seal.detail}`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		return installedBundleSealBlock(bundlePath, seal.detail, version);
+
+		// The violations come from stdout: `codesign` prints one `file <kind>:`
+		// line per resource there and its verdict on stderr, and the verdict is
+		// not a violation of the bundle (see `parseSealViolations`).
+		const violations = parseSealViolations(probe.stdout);
+		const heal = healPythonBytecode(bundlePath, violations);
+		if (!heal.healable) {
+			logger.warn(
+				`Installed bundle is not healable in place: ${heal.reason}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return installedBundleSealBlock(bundlePath, seal.detail, version);
+		}
+
+		logger.info(
+			`Removed ${heal.removed.length} bytecode file(s) our own interpreter had written into the sealed bundle: ${heal.reason}. Paths:\n${heal.removed.join("\n")}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+
+		/*
+		 * Re-probe immediately, and only continue on a fresh verdict: the heal is
+		 * a deletion, and the bundle is sealed again only if codesign says so. It
+		 * is also why there is no second probe just before `quitAndInstall`: the
+		 * backend python is still running at that point (the quit stops it), so a
+		 * bundle re-broken between the two probes is one a probe placed there
+		 * could not prevent either - the writer would go on writing. The one place
+		 * the answer can be trusted is here, seconds before the decision it feeds.
+		 */
+		const healed = evaluateBundleSeal(await probeBundle());
+		if (healed.kind === "sealed") {
+			logger.info(
+				`Installed bundle sealed again after removing ${heal.removed.length} added bytecode file(s); continuing with the install.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+
+		logger.error(
+			`Installed bundle still fails its seal check after healing: ${healed.detail}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		return installedBundleSealBlock(bundlePath, healed.detail, version);
 	}
 
 	/** File names the updater's metadata knows this update by. */
@@ -2196,7 +2276,7 @@ export class UpdateService {
 		const probe = await runCommand(
 			pythonPath,
 			["-m", "pip", "show", "local-operator"],
-			{ timeoutMs: 120000 },
+			{ timeoutMs: 120000, env: this.pythonSpawnEnv() },
 		);
 		if (probe.exitCode !== 0) {
 			logger.warn(
@@ -2423,6 +2503,7 @@ export class UpdateService {
 			);
 			const pipRun = await runCommand(pip.command, pip.args, {
 				timeoutMs: 15 * 60 * 1000,
+				env: this.pythonSpawnEnv(),
 			});
 			// Both streams are captured into update-service.log: a pip failure with
 			// no output is what made the earlier failures unreadable.
