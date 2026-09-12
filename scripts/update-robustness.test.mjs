@@ -11,7 +11,7 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
@@ -48,6 +48,7 @@ const install = await import(
 );
 const {
 	INSTALL_DISK_SLACK_BYTES,
+	PLIST_READ_TIMEOUT_SECONDS,
 	PENDING_INSTALL_MARKER_FILE,
 	WATCHDOG_TOKEN,
 	appBundleFromExecutable,
@@ -78,9 +79,43 @@ const {
 	shipItCacheDir,
 	shipItJobLabel,
 	verifyStagedArtifact,
+	readInstallIdentity,
+	resolveCommandPath,
 	watchdogIsOurs,
+	watchdogSwapTarget,
 	writePendingInstallMarker,
 } = install;
+
+/**
+ * The by-hand panel's clear rules, bundled from the shipped renderer module.
+ *
+ * Pure TypeScript with no React or DOM imports, so it runs here the way the
+ * transcript reducer does. These rules decide whether a manual instruction stays
+ * on screen, and both times they were wrong it was the rule rather than the
+ * rendering: the panel could not clear after a successful upgrade (review U2),
+ * and then could not clear at all on the machine this change was measured on
+ * (review U12, round 3).
+ */
+const manualStateBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/components/common/update-manual-state";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	atLeastVersion,
+	manualPanelClearedByAvailable,
+	manualPanelClearedByCheck,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		manualStateBundle.outputFiles[0].text,
+	).toString("base64")}`
+);
 
 const {
 	dmgArtifacts,
@@ -440,6 +475,26 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// Info.plist, read with plutil rather than through a preference domain.
 	assert.match(plan.script, /plutil -extract CFBundleShortVersionString raw/);
 	assert.match(plan.script, /LO_UPDATE_WATCHDOG_TARGET_VERSION/);
+	/*
+	 * And that read is bounded, because it runs inside the poll loop: an
+	 * unbounded read of a path on a mount that has stopped answering would
+	 * outlive the script's own deadline and leave the user with no app (R17).
+	 * The bound is the plan's, so a test can shorten it and the script holds no
+	 * bare number.
+	 */
+	assert.match(
+		plan.script,
+		new RegExp(`-ge ${PLIST_READ_TIMEOUT_SECONDS} \\]; then`),
+	);
+	assert.match(plan.script, /kill -9 "\$_read_pid"/);
+	assert.match(plan.script, /lo-update-watchdog-version-/);
+	assert.equal(PLIST_READ_TIMEOUT_SECONDS, 5);
+	/*
+	 * At or beyond the target, not equal to it: the same question the renderer's
+	 * own clear rule asks, so a bundle already past the target is not waited out
+	 * to the bound (review Q6).
+	 */
+	assert.match(plan.script, /version_at_least "\$installed" "\$target"/);
 	// Both halves reach a single decision, and the reload only happens after it.
 	assert.match(plan.script, /decided\(\) \{/);
 	assert.match(plan.script, /while :; do\n\tif decided; then break; fi/);
@@ -455,9 +510,11 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 2,
+		plistReadTimeoutSeconds: 7,
 	});
 	assert.match(bounded.script, /\+ 60 \)\)/);
 	assert.match(bounded.script, /appear_deadline=\$\(\( \$\(now\) \+ 2 \)\)/);
+	assert.match(bounded.script, /-ge 7 \]; then/);
 	assert.match(bounded.script, /sleep 1/);
 	// Without a label there is no job to ask about, and the script still waits on
 	// the pid alone rather than falling back to a name.
@@ -475,6 +532,37 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.equal(
 		shipItCacheDir("/Users/operator/Library/Caches", "com.local-operator"),
 		"/Users/operator/Library/Caches/com.local-operator.ShipIt",
+	);
+});
+
+/**
+ * The target the watchdog may be handed, which is not always the one the install
+ * is for.
+ *
+ * The app used to fall back to its own running version when the updater named
+ * none, and that target is already in place: the on-disk check would read the
+ * bundle at the target path as "the swap landed" on its first poll, `decided()`
+ * would return at once and the app would come back seconds into a live install -
+ * the exact outcome that check exists to prevent (review R15).
+ */
+test("a target that is already installed is never handed to the watchdog", () => {
+	assert.equal(
+		watchdogSwapTarget({ target: "0.18.0", running: "0.17.0" }),
+		"0.18.0",
+	);
+	// No nameable target: the job and the bound decide instead.
+	assert.equal(watchdogSwapTarget({ target: null, running: "0.17.0" }), null);
+	assert.equal(watchdogSwapTarget({ target: "0.17.0", running: "0.17.0" }), null);
+	assert.equal(watchdogSwapTarget({ target: "v0.17.0", running: "0.17.0" }), null);
+	// Already past it: with the at-or-beyond compare this target would answer yes
+	// before the install begins, so it is dropped for the same reason (Q6).
+	assert.equal(watchdogSwapTarget({ target: "0.16.0", running: "0.17.0" }), null);
+	// A target the running version cannot be ordered against is kept: the
+	// script's own compare reads it as "not landed", which waits rather than
+	// guesses.
+	assert.equal(
+		watchdogSwapTarget({ target: "0.18.0-rc1", running: "0.17.0" }),
+		"0.18.0-rc1",
 	);
 });
 
@@ -752,7 +840,31 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		assert.equal(await waitForLaunches(fixture, before + 1), true);
 	}
 
-	// 4. The label could not be read and the swap HAS landed: the app comes back
+	// 4. The swap has landed and gone PAST the target: a release that moved on
+	//    between the offer and the install leaves a bundle reporting a version
+	//    this update did not install, and the renderer's own clear rule is "not
+	//    behind" - so both halves of this story answer the same question. Waiting
+	//    out the bound here is what QA measured before this case existed (Q6).
+	{
+		fixture.setVersion("0.19.0");
+		writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+		const app = startProcess("/bin/sleep", ["30"]);
+		const before = fixture.launches().length;
+		const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+		const started = Date.now();
+		app.kill();
+		const result = await watchdog.exit;
+		const elapsed = Date.now() - started;
+		assert.equal(result.code, 0);
+		assert.equal(await waitForLaunches(fixture, before + 1), true);
+		assert.ok(
+			elapsed < 15000,
+			`expected a superseded target to end the wait, took ${elapsed}ms`,
+		);
+		rmSync(fixture.stateFile, { force: true });
+	}
+
+	// 5. The label could not be read and the swap HAS landed: the app comes back
 	//    at once. With a 30 s appear window in the plan, a prompt exit is the
 	//    proof that the window was skipped rather than spent on a job the script
 	//    cannot see (review R14).
@@ -1206,6 +1318,122 @@ test("the operator's own install is classified rather than told to use pip", (t)
 		lopUpdatePath: null,
 	});
 	assert.doesNotMatch(plan.updateCommand, /^pip install/);
+});
+
+/**
+ * Where the install is found when the app was not started by a shell.
+ *
+ * The app is normally started by Finder or `open`, and macOS gives such a
+ * process the launchd default PATH - `/usr/bin:/bin:/usr/sbin:/sbin`, with no
+ * `~/.local/bin` in it. That is where uv and pipx link their console scripts and
+ * where this machine's `lop-update` lives, so resolving the install with `which`
+ * alone answered "nothing is installed" for the very install this whole
+ * classification exists to describe: no path, so no kind, so a remedy carrying no
+ * command at all - the empty-command panel nobody had rendered.
+ */
+test("the install resolves without the shell's PATH, and names the same remedy", (t) => {
+	const home = homedir();
+	// What the app's own environment looks like, against the login PATH a
+	// terminal would give it.
+	const appEnv = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin", HOME: home };
+	const loginEnv = {
+		PATH: [
+			join(home, ".local", "bin"),
+			"/opt/homebrew/bin",
+			"/usr/local/bin",
+			"/usr/bin",
+			"/bin",
+		].join(":"),
+		HOME: home,
+	};
+	const userShim = join(home, ".local", "bin", "local-operator");
+
+	// Which locations are searched: the inherited PATH first, then the
+	// installers' own bin directories, then Homebrew's and the OS's.
+	const tried = [];
+	assert.equal(
+		resolveCommandPath("local-operator", {
+			env: appEnv,
+			home,
+			listDir: () => [],
+			exists: (candidate) => {
+				tried.push(candidate);
+				return false;
+			},
+		}),
+		null,
+	);
+	assert.equal(tried[0], "/usr/bin/local-operator");
+	assert.ok(tried.includes(userShim));
+	assert.ok(tried.includes("/opt/homebrew/bin/local-operator"));
+	assert.ok(tried.includes("/usr/local/bin/local-operator"));
+
+	// Found with the launchd PATH alone.
+	assert.equal(
+		resolveCommandPath("local-operator", {
+			env: appEnv,
+			home,
+			listDir: () => [],
+			exists: (candidate) => candidate === userShim,
+		}),
+		userShim,
+	);
+
+	// A `UV_TOOL_BIN_DIR` the installers were pointed at is searched too, and so
+	// is the uv tool environment itself: `uv tool install` links a console script
+	// into the bin dir, but a link that is gone still leaves `bin/<name>` beside
+	// the receipt that names the install as a uv tool.
+	const toolsRoot = join(home, ".local", "share", "uv", "tools");
+	const toolBin = join(toolsRoot, "local-operator", "bin", "local-operator");
+	const envShim = join(home, "custom-bin", "local-operator");
+	assert.equal(
+		resolveCommandPath("local-operator", {
+			env: { ...appEnv, UV_TOOL_BIN_DIR: join(home, "custom-bin") },
+			home,
+			listDir: (dir) => (dir === toolsRoot ? ["local-operator"] : []),
+			exists: (candidate) => candidate === toolBin,
+		}),
+		toolBin,
+	);
+	assert.equal(
+		resolveCommandPath("local-operator", {
+			env: { ...appEnv, UV_TOOL_BIN_DIR: join(home, "custom-bin") },
+			home,
+			listDir: () => [],
+			exists: (candidate) => candidate === envShim,
+		}),
+		envShim,
+	);
+
+	// The real machine: both environments have to point at the same install, and
+	// that install has to classify as the uv tool install whose remedy is the
+	// source-build instruction rather than a pip or pipx command.
+	const underLaunchd = resolveCommandPath("local-operator", { env: appEnv, home });
+	const underLogin = resolveCommandPath("local-operator", { env: loginEnv, home });
+	if (!underLaunchd || !underLogin) {
+		t.skip("no local-operator installed outside this machine's PATH");
+		return;
+	}
+	assert.equal(underLaunchd, underLogin);
+	assert.equal(classifyGlobalInstall(readInstallIdentity(underLogin)), "uv-tool");
+
+	const lopLaunchd = resolveCommandPath("lop-update", { env: appEnv, home });
+	assert.equal(
+		resolveCommandPath("lop-update", { env: loginEnv, home }),
+		lopLaunchd,
+	);
+	if (!lopLaunchd) {
+		t.diagnostic("no lop-update here: the source-build remedy is not nameable");
+		return;
+	}
+	const plan = resolveGlobalInstallPlan({
+		identity: readInstallIdentity(underLaunchd),
+		lopUpdatePath: lopLaunchd,
+	});
+	assert.equal(plan.sourceBuild, true);
+	assert.equal(plan.updateCommand, "lop-update");
+	assert.equal(plan.canManageUpdate, false);
+	assert.doesNotMatch(plan.updateCommand, /^pip /);
 });
 
 test("the bundled pip invocation is non-interactive and version-verified", () => {
@@ -1791,4 +2019,140 @@ test("the failure detail points at Squirrel's log when the caller has one", () =
 		/Squirrel's own log is at \/Users\/operator\/Library\/Caches\/com\.local-operator\.ShipIt\/ShipIt_stderr\.log\.$/,
 	);
 	assert.match(withLog.detail, /Install started /);
+});
+
+
+// ---------------------------------------------------------------------------
+// The by-hand panel's clear rules
+// ---------------------------------------------------------------------------
+
+/**
+ * The source-build escape hatch has to end when the user does what it says.
+ *
+ * The panel's copy is "run this command, then check again". Its clear rule used
+ * to live only in the "nothing newer is available" branch, and the install it
+ * was written for never reaches that branch: this machine's checkout trails the
+ * published release (0.54.14 against 0.54.20), so the next check reports an
+ * update as AVAILABLE and the panel stayed up telling the user to run the
+ * command they had just run, behind a button that visibly did nothing (review
+ * U12, round 3). A five-minute background check, by contrast, must never dismiss
+ * a panel out from under the reader.
+ */
+test("a source build's by-hand panel ends on the user's own check", () => {
+	const sourceBuildPanel = { target: "0.54.20", sourceBuild: true };
+
+	// The operator's own case: `lop-update` leaves the checkout on 0.54.14 and
+	// the check that follows reports 0.54.20 as available.
+	assert.equal(
+		manualPanelClearedByAvailable({
+			manual: true,
+			currentVersion: "0.54.14",
+			expectation: sourceBuildPanel,
+		}),
+		true,
+	);
+	// A release newer than the one the panel named is the same gap from the other
+	// side, so the version cannot decide that case either.
+	assert.equal(
+		manualPanelClearedByAvailable({
+			manual: true,
+			currentVersion: "0.54.13",
+			expectation: { target: "0.55.0", sourceBuild: true },
+		}),
+		true,
+	);
+	// The deliberate rule this must not regress: the periodic check sends no
+	// `manual`, and the start-up check sends false - neither may clear.
+	assert.equal(
+		manualPanelClearedByAvailable({
+			currentVersion: "0.54.14",
+			expectation: sourceBuildPanel,
+		}),
+		false,
+	);
+	assert.equal(
+		manualPanelClearedByAvailable({
+			manual: false,
+			currentVersion: "0.54.14",
+			expectation: sourceBuildPanel,
+		}),
+		false,
+	);
+
+	// A reachable install is decided by the version the SERVER reports - the one
+	// the panel is waiting for - not by the latest published one.
+	const pipPanel = { target: "0.55.0", sourceBuild: false };
+	assert.equal(
+		manualPanelClearedByAvailable({
+			manual: true,
+			currentVersion: "0.55.1",
+			expectation: pipPanel,
+		}),
+		true,
+	);
+	assert.equal(
+		manualPanelClearedByAvailable({
+			manual: true,
+			currentVersion: "0.54.14",
+			expectation: pipPanel,
+		}),
+		false,
+	);
+	// Work left to do and no version to measure it against: the panel stays up.
+	assert.equal(
+		manualPanelClearedByAvailable({
+			manual: true,
+			currentVersion: "0.54.14",
+			expectation: { target: null, sourceBuild: false },
+		}),
+		false,
+	);
+});
+
+test("a check's answer ends the by-hand panel once the server is not behind it", () => {
+	// The "nothing newer" answer, which the main process only sends for a check
+	// the user asked for.
+	assert.equal(
+		manualPanelClearedByCheck({
+			reported: "0.55.0",
+			expectation: { target: "0.55.0", sourceBuild: false },
+		}),
+		true,
+	);
+	assert.equal(
+		manualPanelClearedByCheck({
+			reported: "0.55.2",
+			expectation: { target: "0.55.0", sourceBuild: false },
+		}),
+		true,
+	);
+	assert.equal(
+		manualPanelClearedByCheck({
+			reported: "0.54.14",
+			expectation: { target: "0.55.0", sourceBuild: false },
+		}),
+		false,
+	);
+	// A prefixed tag on either side is the same version.
+	assert.equal(
+		manualPanelClearedByCheck({
+			reported: "v0.55.0",
+			expectation: { target: "0.55.0", sourceBuild: false },
+		}),
+		true,
+	);
+	// Nothing reported, nothing proven.
+	assert.equal(
+		manualPanelClearedByCheck({
+			reported: null,
+			expectation: { target: "0.55.0", sourceBuild: false },
+		}),
+		false,
+	);
+	assert.equal(atLeastVersion("0.10.0", "0.9.9"), true);
+	// A pre-release that is not an exact match is not "beyond": the instruction
+	// stays up rather than clearing over a real gap.
+	assert.equal(atLeastVersion("0.55.0-rc1", "0.55.0"), false);
+	assert.equal(atLeastVersion("0.55.0", "0.55.0-rc1"), false);
+	assert.equal(atLeastVersion("0.55.0-rc1", "0.55.0-rc1"), true);
 });

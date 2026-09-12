@@ -81,6 +81,12 @@ declare global {
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/**
+						 * True when this event answers a check the user asked for, as
+						 * opposed to the periodic or start-up check. The by-hand panel
+						 * is only dismissed by the user's own check (review U12).
+						 */
+						manual?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (

@@ -4,11 +4,13 @@ import {
 	mkdirSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	renameSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import { basename, join } from "node:path";
+import { homedir } from "node:os";
+import { basename, delimiter, dirname, join } from "node:path";
 
 /**
  * Pure helpers behind the application update path.
@@ -68,6 +70,17 @@ export const DOWNLOAD_PAGE_URL = "https://local-operator.com/download";
  * decision the script makes are one change, not two (review R11).
  */
 export const WATCHDOG_TIMEOUT_SECONDS = 600;
+
+/**
+ * How long the watchdog's on-disk version read may take before it is killed.
+ *
+ * The read is `plutil` on the target bundle's own Info.plist for every poll, and
+ * the path is `/Applications` in every real layout - so a real read is
+ * milliseconds and this bound only ever fires on a path whose mount has stopped
+ * answering, where the alternative is a read that outlives the script's own
+ * deadline and leaves the user with no app at all (review R17).
+ */
+export const PLIST_READ_TIMEOUT_SECONDS = 5;
 
 /** Sentinel inside the watchdog script; see `watchdogIsOurs`. */
 export const WATCHDOG_TOKEN = "local-operator-update-watchdog";
@@ -799,18 +812,50 @@ export type WatchdogPlan = {
  *   evidence: runs=3114, still loaded until it was removed by hand), so the job
  *   was the reason a failed install waited out the whole bound with no app on
  *   screen (review R11). The bundle's version is the swap's own state, and it
- *   is what makes an early exit safe rather than a guess.
+ *   is what makes an early exit safe rather than a guess - and it is read as "at
+ *   or beyond the target", the same shape as the renderer's own clear rule, so a
+ *   bundle already past the target is not waited out to the bound (review Q6).
  *
- * `targetVersion` is the version the update was for - the marker's
- * `targetVersion`, which is the updater's advertised version or, when the
- * updater has nothing to say, the running version. `null` means the caller
- * could not name a target, and the script then has only the job to go on.
+ * `targetVersion` is the version the update was for - the updater's advertised
+ * version, which is the same fact the pending-install marker records. `null`
+ * means the caller could name no version OTHER than the one already installed,
+ * and the script then has only the job and the bound to go on: a target that is
+ * already in place would read as "the swap landed" on the first poll.
  *
  * The paths travel in the environment rather than in the script text, as
  * before: `sh -c` puts the script in its own command line, and a script
  * carrying `/Applications/Local Operator.app/...` would show up in any process
  * listing of it.
  */
+/**
+ * The version the watchdog's on-disk swap check may be handed, or null.
+ *
+ * The app used to fall back to its own running version when the updater named
+ * none. That target is already in place, so `swap_landed` was true on the
+ * script's first poll, `decided()` returned at once and the app came back ~5 s
+ * into a live install - the one outcome the on-disk check exists to prevent
+ * (review R15). The pre-flight refuses an install the updater has no version
+ * for, so this is belt-and-braces rather than a live path; `null` means the
+ * script waits on ShipIt's job and the bound instead of on a version that can
+ * say nothing.
+ */
+export function watchdogSwapTarget(input: {
+	/** The version the update was for, when the updater named one. */
+	target: string | null;
+	/** The version already installed, which proves nothing about a swap. */
+	running: string | null;
+}): string | null {
+	if (!input.target) return null;
+	if (!input.running) return input.target;
+	// The on-disk check reads "at or beyond the target", so a target the running
+	// version is already at - or past - is a target that answers yes before the
+	// install has begun.
+	const order = compareVersions(input.target, input.running);
+	if (order !== null && order <= 0) return null;
+	if (input.target === input.running) return null;
+	return input.target;
+}
+
 export function buildWatchdogPlan(input: {
 	appBundlePath: string;
 	executableName: string;
@@ -825,11 +870,15 @@ export function buildWatchdogPlan(input: {
 	settleSeconds?: number;
 	/** How long to wait for ShipIt's job to be submitted after the app exits. */
 	appearSeconds?: number;
+	/** How long the on-disk version read may take before it is killed. */
+	plistReadTimeoutSeconds?: number;
 }): WatchdogPlan {
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
 	const intervalSeconds = input.intervalSeconds ?? 3;
 	const settleSeconds = input.settleSeconds ?? 5;
 	const appearSeconds = input.appearSeconds ?? 30;
+	const plistTimeoutSeconds =
+		input.plistReadTimeoutSeconds ?? PLIST_READ_TIMEOUT_SECONDS;
 
 	const script = `#!/bin/sh
 # ${WATCHDOG_TOKEN}
@@ -856,10 +905,10 @@ export function buildWatchdogPlan(input: {
 # It starts the app in exactly one situation - the app is not running - and it
 # reaches that point on three paths:
 #   (a) ShipIt's job is gone: the install is decided. The conservative case.
-#   (b) the bundle at the target path reports the version this update was for:
-#       the new app is in place and ShipIt has nothing left to do. This is what
-#       makes an early exit safe rather than a guess, and it is the path a
-#       failed-but-swapped install takes.
+#   (b) the bundle at the target path reports the version this update was for, or
+#       one beyond it: the new app is in place and ShipIt has nothing left to do.
+#       This is what makes an early exit safe rather than a guess, and it is the
+#       path a failed-but-swapped install takes.
 #   (c) the bound arrived with no decision. Trying is still better than leaving
 #       the user with nothing, and the bound is what makes the previous
 #       version's silent exit 0 impossible. It is ~2.4x the slowest ShipIt
@@ -883,16 +932,74 @@ now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
 # launchctl list <label> exits 113 when the job is not loaded, 0 when it is.
 shipit_loaded() { [ -n "$SHIPIT_JOB" ] && launchctl list "$SHIPIT_JOB" >/dev/null 2>&1; }
-# (b), the swap's own state: is the app at the target path the version this
-# update was for? plutil rather than \`defaults read\`, which reads through a
-# preference domain and can answer from a stale cache; a half-written plist and
-# a missing one both read as "not landed yet", which is the safe direction.
+# (b), the swap's own state: is the app at the target path AT OR BEYOND the
+# version this update was for? plutil rather than \`defaults read\`, which reads
+# through a preference domain and can answer from a stale cache; a half-written
+# plist and a missing one both read as "not landed yet", which is the safe
+# direction.
+#
+# At or beyond rather than an exact match, because this is the same question the
+# renderer's clear rule asks ("is the server no longer behind the version the
+# panel named?"): a release that moves on between the offer and the check must
+# not leave the app waiting out the whole bound for a bundle already past the
+# target (review Q6).
+version_at_least() {
+	_va="$1"
+	_vb="$2"
+	while :; do
+		case "$_va" in
+			*.*) _ha="\${_va%%.*}"; _va="\${_va#*.}" ;;
+			*) _ha="$_va"; _va="" ;;
+		esac
+		case "$_vb" in
+			*.*) _hb="\${_vb%%.*}"; _vb="\${_vb#*.}" ;;
+			*) _hb="$_vb"; _vb="" ;;
+		esac
+		# A component with no digits in it is a pre-release suffix, which this
+		# cannot order: it reads as "not landed", so the job and the bound stay
+		# the deciders. Same shape as the renderer's rule.
+		case "$_ha" in "" | *[!0-9]*) return 1 ;; esac
+		case "$_hb" in "" | *[!0-9]*) return 1 ;; esac
+		if [ "$_ha" -gt "$_hb" ]; then return 0; fi
+		if [ "$_ha" -lt "$_hb" ]; then return 1; fi
+		if [ -z "$_va" ] && [ -z "$_vb" ]; then return 0; fi
+	done
+}
+# Read the bundle's version under a hard time bound. This sits inside the poll
+# loop, and an unbounded read of a path on a mount that has stopped answering
+# would outlive the script's own deadline and leave the user with no app - the
+# very outcome this script exists to undo. macOS ships no \`timeout(1)\`, so the
+# bound is a background read plus a completion file and a kill (review R17).
+bundle_version() {
+	_stamp="$$-$(now)"
+	_out="\${TMPDIR:-/tmp}/lo-update-watchdog-version-$_stamp.out"
+	_done="\${TMPDIR:-/tmp}/lo-update-watchdog-version-$_stamp.done"
+	( /usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$BUNDLE/Contents/Info.plist" >"$_out" 2>/dev/null; : >"$_done" ) &
+	_read_pid=$!
+	_waited=0
+	while [ ! -f "$_done" ]; do
+		if [ "$_waited" -ge ${plistTimeoutSeconds} ]; then
+			kill -9 "$_read_pid" 2>/dev/null
+			rm -f "$_out" "$_done"
+			return 1
+		fi
+		sleep 1
+		_waited=$((_waited + 1))
+	done
+	wait "$_read_pid" 2>/dev/null || { rm -f "$_out" "$_done"; return 1; }
+	_version="$(cat "$_out" 2>/dev/null)"
+	rm -f "$_out" "$_done"
+	[ -n "$_version" ] || return 1
+	printf '%s\n' "$_version"
+}
 swap_landed() {
 	[ -n "$TARGET_VERSION" ] || return 1
-	installed=$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$BUNDLE/Contents/Info.plist" 2>/dev/null) || return 1
+	installed=$(bundle_version) || return 1
 	installed=\${installed#v}
 	[ -n "$installed" ] || return 1
-	[ "$installed" = "\${TARGET_VERSION#v}" ]
+	target=\${TARGET_VERSION#v}
+	[ "$installed" = "$target" ] && return 0
+	version_at_least "$installed" "$target"
 }
 job_known=0
 [ -n "$SHIPIT_JOB" ] && job_known=1
@@ -1270,6 +1377,166 @@ export function resolveDistributionMarkers(prefix: string): {
 	}
 
 	return { installer, editable };
+}
+
+/** Trailing slashes in a PATH entry, which `join` would faithfully double. */
+const TRAILING_SLASHES = /\/+$/;
+
+/**
+ * Where a user-installed command can live, in the order to try them.
+ *
+ * Why the app cannot just ask the shell's `which`: the app is normally started
+ * by Finder or `open`, and macOS gives such a process the launchd default PATH
+ * (`/usr/bin:/bin:/usr/sbin:/sbin`) with no `~/.local/bin` in it - which is
+ * where uv and pipx link their console scripts, and where `lop-update` lives on
+ * this machine. Resolving the install from `which` alone therefore answered
+ * "nothing is installed" for the very install this classification exists to
+ * describe: no path, so no kind, so a remedy carrying no command at all (the
+ * empty-command panel nobody had rendered). The inherited PATH is still
+ * searched first, so a shell launch, a custom prefix or a `UV_TOOL_BIN_DIR`
+ * override keeps its own precedence; these locations are what answers the
+ * question when it is not there.
+ */
+function commandSearchDirs(env: NodeJS.ProcessEnv, home: string): string[] {
+	const dirs: string[] = [];
+	const add = (dir: string | undefined) => {
+		if (!dir) return;
+		const trimmed = dir.replace(TRAILING_SLASHES, "");
+		if (trimmed.length === 0 || dirs.includes(trimmed)) return;
+		dirs.push(trimmed);
+	};
+	for (const dir of (env.PATH ?? "").split(delimiter)) add(dir);
+	// The installers' own bin directories first - uv's default tool bin dir IS
+	// `~/.local/bin`, `XDG_BIN_HOME` is the XDG spelling of the same thing, and
+	// pipx links into it too - then the two Homebrew prefixes and the OS's own.
+	add(env.UV_TOOL_BIN_DIR);
+	add(env.XDG_BIN_HOME);
+	add(join(home, ".local", "bin"));
+	add("/opt/homebrew/bin");
+	add("/usr/local/bin");
+	add("/usr/bin");
+	add("/bin");
+	return dirs;
+}
+
+/**
+ * The uv tool environments' own `bin` directories.
+ *
+ * A tool's console script is normally linked into the tool bin dir above, but a
+ * link that was removed, or a `UV_TOOL_DIR` that is not uv's default, still
+ * leaves `bin/<name>` inside the environment itself - beside the
+ * `uv-receipt.toml` that names the install as a uv tool.
+ */
+function uvToolBinDirs(
+	env: NodeJS.ProcessEnv,
+	home: string,
+	listDir: (dir: string) => string[],
+): string[] {
+	const root = env.UV_TOOL_DIR ?? join(home, ".local", "share", "uv", "tools");
+	const dirs: string[] = [];
+	try {
+		for (const entry of listDir(root)) dirs.push(join(root, entry, "bin"));
+	} catch {
+		// No uv tool environments on this machine: nothing to add.
+	}
+	return dirs;
+}
+
+/**
+ * The path `name` resolves to, or null when it is nowhere to be found.
+ *
+ * POSIX only - see `commandSearchDirs` for why this is not `which`, and the
+ * caller for the Windows case, where `where` already searches the user's own
+ * install locations. The injected options exist so the contract tests can drive
+ * a synthetic tree instead of the developer's machine.
+ */
+export function resolveCommandPath(
+	name: string,
+	options: {
+		env?: NodeJS.ProcessEnv;
+		home?: string;
+		listDir?: (dir: string) => string[];
+		exists?: (path: string) => boolean;
+	} = {},
+): string | null {
+	const env = options.env ?? process.env;
+	const home = options.home ?? homedir();
+	const exists = options.exists ?? existsSync;
+	const listDir =
+		options.listDir ??
+		((dir: string): string[] => {
+			try {
+				return readdirSync(dir);
+			} catch {
+				return [];
+			}
+		});
+
+	const dirs = [
+		...commandSearchDirs(env, home),
+		...uvToolBinDirs(env, home, listDir),
+	];
+	for (const dir of dirs) {
+		const candidate = join(dir, name);
+		try {
+			if (exists(candidate)) return candidate;
+		} catch {
+			// An unreadable entry is not an answer: try the next location.
+		}
+	}
+	return null;
+}
+
+/**
+ * Everything `classifyGlobalInstall` needs to tell a uv tool install from a
+ * pipx one from an ordinary pip venv from the checkout a developer runs.
+ *
+ * Two markers are read out of the dist-info itself, because the layout cannot
+ * answer them: `INSTALLER`, which is what names pip for a base-prefix install
+ * (`mise`/`pyenv`/`asdf` write no `pyvenv.cfg`, review R13), and
+ * `direct_url.json`'s `dir_info.editable`, which is the only positive evidence
+ * that a prefix IS the repo checkout rather than an installed copy (review Q5).
+ * Both mirror `install_kind()` in `local_operator/update.py`. The markers are
+ * where they are: a uv tool environment lives at `<...>/uv/tools/<name>`, and
+ * its console script in `~/.local/bin` is a symlink into it, so the resolved
+ * path carries the marker the printed path does not (review R2).
+ */
+export function readInstallIdentity(shimPath: string | null): InstallIdentity {
+	if (!shimPath) return { path: null };
+
+	let realPath: string | null = null;
+	try {
+		realPath = realpathSync(shimPath);
+	} catch {
+		realPath = null;
+	}
+
+	let shebang: string | null = null;
+	try {
+		const firstLine = readFileSync(shimPath, "utf8").split("\n", 1)[0] ?? "";
+		shebang = firstLine.startsWith("#!") ? firstLine : null;
+	} catch {
+		shebang = null;
+	}
+
+	// The script lives in `<prefix>/bin/<name>`, and a Python install records
+	// its own kind next to that prefix: uv writes `uv-receipt.toml` beside the
+	// environment, and pip leaves `pyvenv.cfg` in it.
+	const executable = realPath ?? shimPath;
+	const prefix = dirname(dirname(executable));
+	const existing = (candidate: string) =>
+		existsSync(candidate) ? candidate : null;
+	const markers = resolveDistributionMarkers(prefix);
+
+	return {
+		path: shimPath,
+		realPath,
+		shebang,
+		uvReceipt: existing(join(prefix, "uv-receipt.toml")),
+		venvPrefix: existsSync(join(prefix, "pyvenv.cfg")) ? prefix : null,
+		installer: markers.installer,
+		editable: markers.editable,
+	};
 }
 
 /**

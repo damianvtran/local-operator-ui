@@ -9,9 +9,7 @@ import { createHash } from "node:crypto";
 import {
 	createReadStream,
 	existsSync,
-	readFileSync,
 	readdirSync,
-	realpathSync,
 	rmSync,
 	statSync,
 	statfsSync,
@@ -48,18 +46,20 @@ import {
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePipShowVersion,
+	readInstallIdentity,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
 	reapFailedInstall,
 	recordInstallFailure,
 	requiredDiskBytes,
-	resolveDistributionMarkers,
+	resolveCommandPath,
 	resolveGlobalInstallPlan,
 	resolveStagedArtifactPath,
 	shipItCacheDir,
 	shipItJobLabel,
 	verifyStagedArtifact,
 	watchdogIsOurs,
+	watchdogSwapTarget,
 	writePendingInstallMarker,
 } from "./update-install";
 
@@ -204,6 +204,18 @@ export type BackendUpdateInfo = {
 	 * offered version (review U12).
 	 */
 	sourceBuild?: boolean;
+	/**
+	 * Whether this event answers a check the user asked for.
+	 *
+	 * The by-hand panel's own instruction says to run a command and check again,
+	 * so the answer to a check the USER ran is what ends it - while a periodic or
+	 * start-up check must not dismiss a panel out from under the reader. The
+	 * renderer cannot tell the two apart from the payload's contents (both carry
+	 * the same fields), so the producer states it: `silent` is exactly that
+	 * distinction on this side, and it is the same line that already decides
+	 * whether "nothing newer" is sent at all (review U12, round 3).
+	 */
+	manual?: boolean;
 };
 
 /**
@@ -229,6 +241,17 @@ export class UpdateService {
 
 	/** The last update the updater told us about, for its file metadata. */
 	private lastUpdateInfo: UpdateInfo | null = null;
+
+	/**
+	 * The version the published release last answered with, or null.
+	 *
+	 * The by-hand prompt is produced from a click, not from a check, so it has no
+	 * version of its own to name - and the panel that tells the user to go and do
+	 * work is the one that most needs to say what they are working towards. The
+	 * periodic and start-up checks read this from the published release already,
+	 * so it is kept rather than fetched again on the click (review U17).
+	 */
+	private lastPublishedBackendVersion: string | null = null;
 
 	/** Path of the artifact this run downloaded, when the updater reported one. */
 	private downloadedArtifactPath: string | null = null;
@@ -915,8 +938,13 @@ export class UpdateService {
 			// watchdog cannot ask a name about its own ancestor (review R1).
 			appPid: process.pid,
 			shipItJob: this.shipItJob(),
-			// What "the install is over" is measured against on disk (review R11).
-			targetVersion,
+			// What "the install is over" is measured against on disk (review R11):
+			// the updater's advertised version, and nothing that is already in place
+			// (review R15).
+			targetVersion: watchdogSwapTarget({
+				target: targetVersion,
+				running: app.getVersion(),
+			}),
 		});
 
 		try {
@@ -929,7 +957,7 @@ export class UpdateService {
 			// The bound is the promise the user is given, so it is stated here with
 			// what shortens it rather than as a bare timeout (review R11).
 			logger.info(
-				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${targetVersion ?? "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens.`,
+				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${plan.env.LO_UPDATE_WATCHDOG_TARGET_VERSION || "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return child.pid ?? null;
@@ -1442,7 +1470,10 @@ export class UpdateService {
 			// this process to record that an install was in flight. The target is
 			// decided once: the marker records it and the watchdog's on-disk swap
 			// check compares against it, and two computations of one fact are two
-			// chances to disagree (review R11).
+			// chances to disagree (review R11). The one place the two must differ is
+			// a fallback: the watchdog never gets a target that is already installed,
+			// because such a target reads as "the swap landed" before the install has
+			// started (review R15, see `watchdogSwapTarget`).
 			const targetVersion = this.lastUpdateInfo?.version ?? app.getVersion();
 			const watchdogPid = this.launchWatchdog(targetVersion);
 			const marker = writePendingInstallMarker(this.markerDir(), {
@@ -1892,7 +1923,7 @@ export class UpdateService {
 		) {
 			const plan = resolveGlobalInstallPlan({
 				identity: this.resolveInstallIdentity(),
-				lopUpdatePath: readCommandOutput("which", ["lop-update"]) ?? null,
+				lopUpdatePath: this.resolveLopUpdatePath(),
 			});
 			logger.info(
 				`External backend install (${startupMode}): ${plan.detail}; remedy is \`${plan.updateCommand || "nothing the app can name"}\``,
@@ -1917,81 +1948,66 @@ export class UpdateService {
 	}
 
 	/**
-	 * Path `which local-operator` resolves to, or null when it does not exist.
+	 * Path the `local-operator` shim resolves to, or null when it is not installed.
 	 *
 	 * Sync on purpose: it runs once per backend check, and the answer decides
 	 * which installer the prompt names, so the caller wants it before it builds
 	 * the message rather than a promise to settle afterwards.
+	 *
+	 * It does NOT ask the shell's `which` on macOS: the app is normally started
+	 * by Finder or `open`, whose PATH is the launchd default and does not contain
+	 * `~/.local/bin` - so the uv tool install this whole classification exists to
+	 * describe was invisible, and its remedy came out with no command in it.
+	 * `resolveCommandPath` searches the standard install locations for the same
+	 * markers (see `commandSearchDirs`). Windows keeps `where`, which already
+	 * searches the machine's and the user's own install locations.
 	 */
 	private resolveLocalOperatorPath(): string | null {
-		const command = process.platform === "win32" ? "where" : "which";
-		const output = readCommandOutput(command, ["local-operator"]);
-		const first = output?.split("\n")[0]?.trim();
-		return first && first.length > 0 ? first : null;
+		if (process.platform === "win32") {
+			const first = readCommandOutput("where", ["local-operator"])
+				?.split("\n")[0]
+				?.trim();
+			return first && first.length > 0 ? first : null;
+		}
+		return resolveCommandPath("local-operator");
+	}
+
+	/**
+	 * Path the `lop-update` shim resolves to, or null when this machine has none.
+	 *
+	 * The same problem as the shim above, for the remedy rather than the
+	 * classification: `lop-update` is what the source-build wording tells the user
+	 * to run, and it lives in `~/.local/bin`, which a Finder launch cannot see
+	 * through PATH alone - so the plan fell back to the pip/pipx wording for an
+	 * install that is neither. It is a shell script, so there is no Windows
+	 * counterpart to look for.
+	 */
+	private resolveLopUpdatePath(): string | null {
+		if (process.platform === "win32") return null;
+		return resolveCommandPath("lop-update");
 	}
 
 	/**
 	 * Everything `classifyGlobalInstall` needs to tell a uv tool install from a
 	 * pipx one from an ordinary pip venv from the checkout a developer runs.
 	 *
-	 * The cheap signals are gathered first and the two CLI probes are skipped when
-	 * the path, the resolved target or the script's own shebang already answered -
-	 * spawning `uv` and `pipx` on every backend check for a question three string
-	 * tests settled is work nobody asked for. The markers are where they are: a uv
-	 * tool environment lives at `<...>/uv/tools/<name>`, and its console script in
-	 * `~/.local/bin` is a symlink into it, so the resolved path carries the marker
-	 * the printed path does not (review R2).
-	 *
-	 * Two markers are read out of the dist-info itself, because the layout cannot
-	 * answer them: `INSTALLER`, which is what names pip for a base-prefix install
-	 * (`mise`/`pyenv`/`asdf` write no `pyvenv.cfg`, review R13), and
-	 * `direct_url.json`'s `dir_info.editable`, which is the only positive evidence
-	 * that a prefix IS the repo checkout rather than an installed copy (review
-	 * Q5). Both mirror `install_kind()` in `local_operator/update.py`.
+	 * The cheap signals are gathered first - `readInstallIdentity` reads the
+	 * shim's path, its resolved target, its shebang and the dist-info's own
+	 * markers - and the two CLI probes are skipped when a string test already
+	 * answered: spawning `uv` and `pipx` on every backend check for a question
+	 * three string tests settled is work nobody asked for.
 	 */
 	private resolveInstallIdentity(): InstallIdentity {
-		const shimPath = this.resolveLocalOperatorPath();
-		if (!shimPath) return { path: null };
-
-		let realPath: string | null = null;
-		try {
-			realPath = realpathSync(shimPath);
-		} catch {
-			realPath = null;
-		}
-
-		let shebang: string | null = null;
-		try {
-			const firstLine = readFileSync(shimPath, "utf8").split("\n", 1)[0] ?? "";
-			shebang = firstLine.startsWith("#!") ? firstLine : null;
-		} catch {
-			shebang = null;
-		}
-
-		// The script lives in `<prefix>/bin/<name>`, and a Python install records
-		// its own kind next to that prefix: uv writes `uv-receipt.toml` beside the
-		// environment, and pip leaves `pyvenv.cfg` in it.
-		const executable = realPath ?? shimPath;
-		const prefix = path.dirname(path.dirname(executable));
-		const existing = (candidate: string) =>
-			existsSync(candidate) ? candidate : null;
-		const markers = resolveDistributionMarkers(prefix);
-
-		const identity: InstallIdentity = {
-			path: shimPath,
-			realPath,
-			shebang,
-			uvReceipt: existing(join(prefix, "uv-receipt.toml")),
-			venvPrefix: existsSync(join(prefix, "pyvenv.cfg")) ? prefix : null,
-			installer: markers.installer,
-			editable: markers.editable,
-		};
-
-		if (classifyGlobalInstall(identity) !== "global-unknown") {
+		const identity = readInstallIdentity(this.resolveLocalOperatorPath());
+		if (identity.path && classifyGlobalInstall(identity) !== "global-unknown") {
 			return identity;
 		}
-		identity.uvToolList = readCommandOutput("uv", ["tool", "list"]);
-		identity.pipxList = readCommandOutput("pipx", ["list"]);
+		// Resolved the same way as the shims: a shell the app did not inherit also
+		// hides these two, and a probe that cannot be spawned is not evidence.
+		const uv = resolveCommandPath("uv");
+		const pipx = resolveCommandPath("pipx");
+		identity.uvToolList = uv ? readCommandOutput(uv, ["tool", "list"]) : null;
+		identity.pipxList = pipx ? readCommandOutput(pipx, ["list"]) : null;
 		return identity;
 	}
 
@@ -2042,6 +2058,10 @@ export class UpdateService {
 
 			const installedVersion = await this.getInstalledBackendVersion();
 			const latestVersion = await this.getLatestPypiVersion();
+			// Remembered for the by-hand prompt: that event is produced from a click
+			// rather than from a check, and it has to be able to name the published
+			// release the user is working towards (review U17).
+			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
 
 			if (!installedVersion || !latestVersion) {
 				logger.error(
@@ -2099,6 +2119,13 @@ export class UpdateService {
 					remedy,
 					detail,
 					sourceBuild,
+					/* `silent` is the whole difference between the two callers: the periodic
+					   and start-up checks pass `true`, the IPC handlers behind the buttons
+					   pass `false`. The renderer needs to know which one it is answering,
+					   because the by-hand panel's instruction deliberately outlives a
+					   background check and is only ended by a check the user asked for
+					   (review U12, round 3). */
+					manual: !silent,
 				};
 
 				logger.info(
@@ -2307,7 +2334,13 @@ export class UpdateService {
 						message: plan.remedy,
 						command: plan.updateCommand,
 						detail: plan.detail,
-						latestVersion: targetVersion ?? null,
+						// The caller's target when it named one (the "Update server"
+						// button does), otherwise the published release the last check
+						// read: the compatibility banner calls this with no target at
+						// all, and the panel's version sentence then had nothing to
+						// render on the path that actually produces it (review U17).
+						latestVersion:
+							targetVersion ?? this.lastPublishedBackendVersion ?? null,
 						currentVersion:
 							installed && installed !== "Unknown" ? installed : null,
 						sourceBuild: plan.sourceBuild,

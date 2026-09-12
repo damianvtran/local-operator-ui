@@ -16,6 +16,12 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	type ManualUpdateExpectation,
+	atLeastVersion,
+	manualPanelClearedByAvailable,
+	manualPanelClearedByCheck,
+} from "./update-manual-state";
 
 const RELEASE_ARTIFACT_ERROR_REGEX =
 	/cannot find .* in the latest release artifacts/i;
@@ -32,6 +38,14 @@ type BackendUpdateInfo = {
 	detail?: string;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
+	/**
+	 * True when this event answers a check the user asked for.
+	 *
+	 * The by-hand panel's own copy says to run a command and check again, so the
+	 * answer to a check the USER ran is what ends it - while the periodic check
+	 * must not dismiss a panel out from under the reader (review U12).
+	 */
+	manual?: boolean;
 };
 
 /** A remedy the main process can spell out in the user's own terms. */
@@ -84,38 +98,6 @@ type ManualUpdateInfo = {
 	currentVersion?: string | null;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
-};
-
-/** A version tag's leading `v`, which the app and the server do not agree on. */
-const LEADING_V = /^v/i;
-
-/**
- * Is `version` at or beyond `target`?
- *
- * The by-hand panel clears when the server is no longer BEHIND the version the
- * panel named, and it used to require an exact match - so a release that moved
- * on between the offer and the user running the command left the panel
- * instructing them to do what they had just done (review U12). Dotted numerics
- * compared numerically; a pre-release suffix on either side that is not an exact
- * match counts as "not beyond", which keeps the instruction on screen rather
- * than clearing over a real gap.
- */
-const atLeastVersion = (version: string, target: string): boolean => {
-	const strip = (value: string) => value.trim().replace(LEADING_V, "");
-	const reported = strip(version);
-	const wanted = strip(target);
-	if (reported === wanted) return true;
-	if (reported.includes("-") || wanted.includes("-")) return false;
-	const left = reported.split(".").map(Number);
-	const right = wanted.split(".").map(Number);
-	for (let index = 0; index < Math.max(left.length, right.length); index++) {
-		const a = left[index] ?? 0;
-		const b = right[index] ?? 0;
-		if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
-		if (a > b) return true;
-		if (a < b) return false;
-	}
-	return true;
 };
 
 /** Headings for the refusal states, sentence case, one line each. */
@@ -336,13 +318,16 @@ const ManualRemedyNote = ({
 const ManualUpdateVersions = ({
 	latestVersion,
 	currentVersion,
+	className,
 }: {
 	latestVersion?: string | null;
 	currentVersion?: string | null;
+	/** Spacing the caller owns when this line does not follow its usual sibling. */
+	className?: string;
 }) => {
 	if (!latestVersion) return null;
 	return (
-		<p className="mb-2 text-body text-ink-muted">
+		<p className={cn("mb-2 text-body text-ink-muted", className)}>
 			{`Server version ${latestVersion} is available.`}
 			{currentVersion
 				? ` You are currently using version ${currentVersion}.`
@@ -427,10 +412,10 @@ export const UpdateNotification = ({
 	 * to precede it (reviews U12, U17) - but the clear decision is made inside a
 	 * listener registered once, so they are kept in a ref as well as in state.
 	 */
-	const manualUpdateExpectationRef = useRef<{
-		target: string | null;
-		sourceBuild: boolean;
-	}>({ target: null, sourceBuild: false });
+	const manualUpdateExpectationRef = useRef<ManualUpdateExpectation>({
+		target: null,
+		sourceBuild: false,
+	});
 
 	/** True while `Install now` has been pressed and the pre-flight is running. */
 	const [installing, setInstalling] = useState(false);
@@ -720,6 +705,33 @@ export const UpdateNotification = ({
 		// Backend update available
 		const removeBackendUpdateAvailableListener =
 			window.api.updater.onBackendUpdateAvailable((info) => {
+				/*
+				 * The by-hand panel's instruction ends where its own check's answer
+				 * arrives, not only where that answer is "nothing newer". This is the
+				 * event a source build actually reaches: a checkout that trails the
+				 * published release reports an update as available, so the panel used
+				 * to stay up telling the user to run the command they had just run,
+				 * behind a button that visibly did nothing (review U12, round 3).
+				 *
+				 * `info.manual` is the producer saying the check was the user's own,
+				 * and the rule itself lives in `update-manual-state` - where tests
+				 * drive it, since every wrong version of it was wrong in the rule
+				 * rather than in the rendering.
+				 */
+				if (
+					manualPanelClearedByAvailable({
+						manual: info.manual,
+						currentVersion: info.currentVersion,
+						expectation: manualUpdateExpectationRef.current,
+					})
+				) {
+					setManualUpdateRequired(false);
+					setManualUpdateInfo(null);
+					manualUpdateExpectationRef.current = {
+						target: null,
+						sourceBuild: false,
+					};
+				}
 				if (shouldShowUpdate(UpdateType.BACKEND, info.latestVersion)) {
 					const enhancedInfo: BackendUpdateInfo = {
 						...info,
@@ -759,26 +771,26 @@ export const UpdateNotification = ({
 				});
 				/*
 				 * The by-hand panel's own instruction is "run this, then check again", so a
-				 * check the user asked for is what ends it - and it ends when the server is
-				 * no longer BEHIND the version the panel named rather than when it matches
-				 * exactly, which is the condition that could not be reached for a source
-				 * build (review U12). It used to stay up until the user pressed Dismiss,
-				 * which made a successful upgrade look like a failed one (review U2).
-				 *
-				 * A source build is the one case where the version cannot decide it: the
-				 * panel has just said its version is the checkout's rather than the
-				 * release's, so the check the user ran completes the instruction on its
-				 * own. Only a user-initiated check sends this event at all, so a silent
-				 * one can never clear the panel out from under the user.
+				 * check the user asked for is what ends it (review U2, U12). Only a
+				 * user-initiated check sends this event at all - the periodic one is
+				 * filtered to a silent check in the main process - so a background check
+				 * can never clear the panel out from under the user, and the rule for what
+				 * the answer has to say is in `update-manual-state`.
 				 */
-				const { target, sourceBuild } = manualUpdateExpectationRef.current;
+				const expectation = manualUpdateExpectationRef.current;
 				if (
-					target == null ||
-					sourceBuild ||
-					atLeastVersion(info.version, target)
+					expectation.target == null ||
+					manualPanelClearedByCheck({
+						reported: info.version,
+						expectation,
+					})
 				) {
 					setManualUpdateRequired(false);
 					setManualUpdateInfo(null);
+					manualUpdateExpectationRef.current = {
+						target: null,
+						sourceBuild: false,
+					};
 				}
 			});
 
@@ -983,17 +995,49 @@ export const UpdateNotification = ({
 				    the same weight, and the words carry which one needs the user
 				    (review D5). */}
 				<p className="mb-2 text-body text-ink">{manualUpdateInfo.message}</p>
-				<ManualUpdateVersions
-					latestVersion={manualUpdateInfo.latestVersion}
-					currentVersion={manualUpdateInfo.currentVersion}
-				/>
-				{manualUpdateInfo.command ? (
-					<CommandBlock command={manualUpdateInfo.command} />
-				) : null}
-				<ManualRemedyNote
-					command={Boolean(manualUpdateInfo.command)}
-					sourceBuild={manualUpdateInfo.sourceBuild === true}
-				/>
+				{/*
+				 * The offer line follows the caveat that qualifies it. On a source
+				 * build the version sentence cannot name a target the install reaches -
+				 * the closing paragraph of this very panel says the version it reports
+				 * afterwards is the checkout's - so reading "Server version X is
+				 * available" above that paragraph promises an outcome the next line
+				 * withdraws (reviews R16, D15). The qualified branch therefore puts the
+				 * command and its note first and the availability line last; the branch
+				 * whose offer is reachable keeps its shape, and so does the copy.
+				 */}
+				{manualUpdateInfo.sourceBuild === true ? (
+					<>
+						{manualUpdateInfo.command ? (
+							<CommandBlock command={manualUpdateInfo.command} />
+						) : null}
+						<ManualRemedyNote
+							command={Boolean(manualUpdateInfo.command)}
+							sourceBuild
+						/>
+						{/* Its own gap, because it follows the caveat rather than the command
+						    well here: without it, the offer line reads as the last sentence
+						    of the paragraph above. */}
+						<ManualUpdateVersions
+							className="mt-2"
+							latestVersion={manualUpdateInfo.latestVersion}
+							currentVersion={manualUpdateInfo.currentVersion}
+						/>
+					</>
+				) : (
+					<>
+						<ManualUpdateVersions
+							latestVersion={manualUpdateInfo.latestVersion}
+							currentVersion={manualUpdateInfo.currentVersion}
+						/>
+						{manualUpdateInfo.command ? (
+							<CommandBlock command={manualUpdateInfo.command} />
+						) : null}
+						<ManualRemedyNote
+							command={Boolean(manualUpdateInfo.command)}
+							sourceBuild={false}
+						/>
+					</>
+				)}
 				<UpdateActions>
 					<Button
 						variant="outline"
