@@ -37,12 +37,19 @@ const bundle = await build({
 });
 const {
 	compactPath,
+	diffBody,
 	diffCount,
+	diffFromDetails,
+	diffLineKind,
+	diffOverflowLabel,
 	displayName,
 	formatDuration,
 	isBareToolName,
 	formatSettledDuration,
+	isDiffBodyTool,
+	preferDiff,
 	requestDesktopMedia,
+	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
 	toolNameColumn,
@@ -518,4 +525,196 @@ test("the name/summary stutter guard covers MCP rows too (R6)", () => {
 		false,
 		"a summary matching ANOTHER tool's name is still a summary",
 	);
+});
+
+/* ---------------------------------------------------------------------- *
+ * The write/edit diff body.
+ *
+ * The rules asserted here are ported from `_append_diff_body`
+ * (tool_card.py:2178-2225) and the producer it reads
+ * (`_diff_details`, tools/builtin.py:4863-4896). Asserting them is not
+ * ceremony: the header strip and the cap are the two places where a plausible
+ * implementation is WRONG in a way a frame cannot show — a pattern-based header
+ * filter deletes a real removed line, and a cap applied before the strip
+ * announces two lines more than it hid. Each assertion below names the
+ * implementation it rejects.
+ * ---------------------------------------------------------------------- */
+
+/** A diff exactly as `difflib.unified_diff(..., n=2, lineterm="")` emits it. */
+const EDIT_DIFF = [
+	"--- ",
+	"+++ ",
+	"@@ -18,7 +18,8 @@ export function diffCounts(details: unknown) {",
+	" \tconst source = (details ?? {}) as Record<string, unknown>;",
+	"-\tconst count = (value: unknown) =>",
+	"-\t\ttypeof value === \"number\" && value > 0 ? value : 0;",
+	"+\tconst count = (value: unknown) =>",
+	"+\t\ttypeof value === \"number\" && Number.isInteger(value) && value > 0;",
+	' \treturn { added: count(source.added), removed: count(source.removed) };',
+	" }",
+];
+
+test("the file-header pair is stripped POSITIONALLY, never by pattern", () => {
+	// The nameless pair: difflib emits `--- ` / `+++ ` (empty filename, and with
+	// `lineterm=""` no line terminator) so each line is exactly the separator
+	// plus a trailing space.
+	const stripped = stripDiffHeader(EDIT_DIFF);
+	assert.equal(stripped.length, EDIT_DIFF.length - 2);
+	assert.equal(stripped[0].startsWith("@@"), true);
+	// Trailing-whitespace-insensitive, as the terminal's `rstrip()` comparison
+	// is: a producer that emitted the pair without the trailing space still gets
+	// it stripped rather than printed as two blank-label lines.
+	assert.deepEqual(stripDiffHeader(["---", "+++", "+a"]), ["+a"]);
+	// The argument is not mutated: the record's own array is shared with the
+	// identity gate, and a function that shifted it would corrupt every row.
+	assert.equal(EDIT_DIFF.length, 10);
+
+	// The case the positional rule exists for. A REMOVED line whose content
+	// begins `--` (a SQL or Lua comment, in a diff of a .sql file) renders as
+	// `--- …`. A pattern filter over the body — `line.startsWith("---")` —
+	// deletes it, and the diff then reports a removal the reader cannot see.
+	const withComment = [
+		"--- ",
+		"+++ ",
+		"@@ -1,3 +1,3 @@",
+		"--- keep the migration idempotent",
+		"+\t-- keep the migration idempotent, now with a guard",
+		" \tDROP TABLE IF EXISTS t;",
+	];
+	const body = diffBody(withComment);
+	// Four body lines after the strip: the hunk header, the removed comment, its
+	// replacement, and the context line.
+	assert.equal(body.lines.length, 4, "the comment line survives the strip");
+	assert.equal(body.lines[1].kind, "removed");
+	assert.equal(body.lines[1].text, "--- keep the migration idempotent");
+
+	// And the pair is only stripped when BOTH lines are the pair: a `---` at
+	// line 0 followed by anything else is content.
+	assert.deepEqual(stripDiffHeader(["--- ", "@@ -1 +1 @@"]), [
+		"--- ",
+		"@@ -1 +1 @@",
+	]);
+	// A single-line diff has no pair to strip.
+	assert.deepEqual(stripDiffHeader(["--- "]), ["--- "]);
+});
+
+test("ink is chosen by the LEADING character alone", () => {
+	assert.equal(diffLineKind("@@ -1,3 +1,4 @@"), "hunk");
+	// `@` is the marker, not `@@`: a hunk header with a function context after
+	// the closing `@@` is still a hunk, and a context line that merely contains
+	// `@@` is still context.
+	assert.equal(diffLineKind("@"), "hunk");
+	assert.equal(diffLineKind("+added"), "added");
+	assert.equal(diffLineKind("-removed"), "removed");
+	assert.equal(diffLineKind(" context"), "context");
+	assert.equal(diffLineKind(""), "context");
+	// The producer's own truncation marker is ORDINARY content: it is the last
+	// element of a 200-line-cap payload, not this component's overflow marker.
+	assert.equal(diffLineKind("…"), "context");
+
+	// The marker column survives: leading whitespace is what carries a unified
+	// diff's structure, so the rstrip is trailing-only. A `trim()` would move
+	// every context line to column 0 and the body would stop reading as a diff.
+	const body = diffBody([" context", "+added", "-removed"]);
+	assert.equal(body.lines[0].text, " context");
+	assert.equal(body.lines[0].marker, " ");
+	assert.equal(body.lines[0].kind, "context");
+	assert.equal(body.lines[1].text, "+added");
+	assert.equal(body.lines[1].marker, "+");
+	// Trailing whitespace does go, exactly as the terminal rstrips.
+	assert.equal(diffBody([" \tcontext   "]).lines[0].text, " \tcontext");
+	// And a blank context line — difflib's `" "` prefix over an empty line —
+	// rstrips to nothing at all, in the terminal as here: the marker is empty
+	// and there is no tint to paint on it.
+	const blank = diffBody([" "]).lines[0];
+	assert.equal(blank.text, "");
+	assert.equal(blank.marker, "");
+	assert.equal(blank.kind, "context");
+});
+
+test("the body shows at most 40 lines and says how many it hid", () => {
+	const long = [
+		"--- ",
+		"+++ ",
+		"@@ -1,3 +1,43 @@",
+		...Array.from({ length: 43 }, (_, i) => `+\trow ${i + 1}`),
+	];
+	const body = diffBody(long);
+	// 43 additions + 1 hunk header = 44 body lines after the strip; 40 shown.
+	assert.equal(body.lines.length, 40);
+	assert.equal(body.hidden, 4, "the cap counts AFTER the header strip");
+	// The pre-fix shape this rejects: capping before the strip reports 6 hidden
+	// while showing the same 40 lines, and the marker overstates the body.
+	assert.equal(body.hidden, long.length - 2 - 40);
+	// Exactly at the cap, nothing is announced. An off-by-one here prints
+	// "… 0 more diff lines" under a complete diff.
+	assert.equal(diffBody(long.slice(0, 42)).hidden, 0);
+	assert.equal(diffBody(long.slice(0, 43)).hidden, 1);
+
+	// Singular and plural, spelled as the terminal spells them.
+	assert.equal(diffOverflowLabel(1), "… 1 more diff line");
+	assert.equal(diffOverflowLabel(2), "… 2 more diff lines");
+	assert.equal(diffOverflowLabel(161), "… 161 more diff lines");
+
+	// The producer's trailing `…` is a LINE, so it is counted and hidden like
+	// any other. An implementation that special-cased it would under-count the
+	// hidden lines by one on every capped payload.
+	const capped = ["--- ", "+++ ", "@@ -1 +1 @@", "…"];
+	const small = diffBody(capped);
+	assert.equal(small.hidden, 0);
+	assert.equal(small.lines[1].text, "…");
+});
+
+test("a diff payload is normalised off both wire shapes", () => {
+	// A durable row's list, through pydantic, stays a list.
+	assert.deepEqual(diffFromDetails({ diff: ["+a", "-b"] }), ["+a", "-b"]);
+	assert.equal(diffFromDetails({ diff: [] }), null);
+	// A pre-joined string, which is what the mobile fold puts on the wire
+	// (mobile/projection.py:285). `Array.isArray` alone drops that row's body
+	// while the counters beside it still say `+42`.
+	assert.deepEqual(diffFromDetails({ diff: "+a\n-b" }), ["+a", "-b"]);
+	assert.equal(diffFromDetails({ diff: "" }), null);
+	// Members that are not strings are DROPPED rather than stringified:
+	// `String({})` is "[object Object]", a line no producer ever wrote.
+	assert.deepEqual(diffFromDetails({ diff: [1, "+a", null] }), ["+a"]);
+	assert.equal(diffFromDetails({ diff: [1, 2] }), null);
+	// Absent, wrong-typed and non-object payloads are all "no diff reported",
+	// which is what makes the row fall back to its arguments.
+	assert.equal(diffFromDetails({ path: "a.md" }), null);
+	assert.equal(diffFromDetails({ diff: 42 }), null);
+	assert.equal(diffFromDetails(undefined), null);
+	assert.equal(diffFromDetails(null), null);
+	assert.equal(diffFromDetails("+a\n-b"), null);
+
+	// `preferDiff` is the identity gate's half: an equal extraction returns the
+	// PREVIOUS array by reference, because `shallowEqual` compares by `!==` and a
+	// rebuilt array would re-render the row on every polled delta.
+	const previous = ["+a", "-b"];
+	const rebuilt = ["+a", "-b"];
+	assert.equal(preferDiff(rebuilt, previous), previous);
+	// A genuinely different diff wins, and it is the NEW array rather than the
+	// previous one.
+	const replacement = ["+c"];
+	assert.equal(preferDiff(replacement, previous), replacement);
+	// An absent extraction never clears a body a row already showed.
+	assert.equal(preferDiff(null, previous), previous);
+	assert.equal(preferDiff(null, null), null);
+});
+
+test("only the two tools this backend has take a diff body", () => {
+	assert.equal(isDiffBodyTool("write"), true);
+	assert.equal(isDiffBodyTool("edit"), true);
+	// Case and padding, because the wire name is the model's to spell.
+	assert.equal(isDiffBodyTool(" Write "), true);
+	assert.equal(isDiffBodyTool("EDIT"), true);
+	// Deliberately NOT the mobile port's set: it also names `apply_patch` and
+	// `patch` (mobile/web/src/components/tool-row.tsx:75), which this backend
+	// does not expose — `_TOOL_CATEGORY` lists `write` and `edit` alone. Naming
+	// them here would claim a diff body for a tool that can only arrive as an
+	// MCP server's own name, whose `details` are not this payload.
+	assert.equal(isDiffBodyTool("apply_patch"), false);
+	assert.equal(isDiffBodyTool("patch"), false);
+	assert.equal(isDiffBodyTool("bash"), false);
+	assert.equal(isDiffBodyTool("read"), false);
+	assert.equal(isDiffBodyTool(""), false);
 });
