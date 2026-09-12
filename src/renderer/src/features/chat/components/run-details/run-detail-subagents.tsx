@@ -29,8 +29,8 @@ import {
 	type RunDetails,
 	type SubagentRow,
 	childStateLabel,
+	panelSlice,
 	subagentTally,
-	visibleSubagents,
 } from "./run-detail-model";
 
 /**
@@ -273,7 +273,14 @@ const SubagentRowView = ({ row }: { row: SubagentRow }) => {
 };
 
 export const RunDetailSubagents = ({ details }: { details: RunDetails }) => {
-	const { rows, hidden } = visibleSubagents(details.subagents);
+	/*
+	 * The rows come from the model's `panelSlice`, never from a local narrowing:
+	 * the acknowledgement predicates count failures out of the SAME call, so a
+	 * filter or cap applied here would leave the `danger` dot answering a slice
+	 * this section does not render (`§3.3`). The pairing is pinned by source text
+	 * in `scripts/run-detail-model.test.mjs` from both ends.
+	 */
+	const { rows, hidden } = panelSlice(details.subagents);
 	return (
 		<section className={cn("flex flex-col pb-1.5")}>
 			{/*

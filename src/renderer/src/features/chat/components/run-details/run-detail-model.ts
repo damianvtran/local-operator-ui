@@ -486,9 +486,6 @@ const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 		// `pausing` to `running` is that guard expressed once, in the model.
 		case "pausing":
 			return "running";
-		// `starting`: the capacity gate has admitted the child but its runner has
-		// not been entered. It takes the `queued` mark ("has not started") and
-		// stays OPEN, which is the fact §3.3's visibility rule needs.
 		// The bare WORD, which the durable graph's rows can carry: `_describe`
 		// returns `queued` as text, and the restored branch copies it onto the row
 		// verbatim. The flag is read first (above), so this is the same state
@@ -497,6 +494,9 @@ const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 		// words it has NOT been taught (§3.3).
 		case "queued":
 			return "queued";
+		// `starting`: the capacity gate has admitted the child but its runner has
+		// not been entered. It takes the `queued` mark ("has not started") and
+		// stays OPEN, which is the fact §3.3's visibility rule needs.
 		case "starting":
 			return "queued";
 		case "paused":
@@ -530,6 +530,32 @@ const isSettled = (status: ChildStatus): boolean =>
 /* ------------------------------------------------------------------ */
 /* Derivation                                                          */
 /* ------------------------------------------------------------------ */
+
+/**
+ * The wire's own word for a row whose state the fold did NOT recognise (§3.3).
+ *
+ * Verbatim is a claim about the WORD, not about the bytes: the string is painted
+ * in the visible tally and in a row's `sr-only` label, so it goes through the
+ * same display boundary as the activity and error lines
+ * (`oneLine(firstLine(...))`) — a word carrying a newline or a control character
+ * would otherwise break both lines.
+ *
+ * Flattening alone is not enough, because the fold reads the WHOLE raw string
+ * while the word is its first line: `"done\u0000"` folds to `unknown`, and the
+ * surviving `done` would then be a RECOGNISED state word on a row drawn as the
+ * question mark — with the tally's `1 done` stating exactly the count
+ * `foldStatus` reserves for words it has not been taught. So a sanitised word is
+ * kept only when the fold does not recognise it either, which is the rule that
+ * keeps a row's word and its mark saying the same thing. A word with nothing
+ * readable left in it takes the union's own name for the state (`"unknown"`),
+ * which is what the row's mark already says.
+ */
+const unrecognisedStateWord = (rawStatus: string): string => {
+	const sanitised = oneLine(firstLine(rawStatus));
+	return sanitised !== "" && foldStatus(sanitised, false) === "unknown"
+		? sanitised
+		: "unknown";
+};
 
 export type RunDetailsInput = {
 	jobs: Array<Record<string, unknown>>;
@@ -631,19 +657,13 @@ const deriveChild = (
 		label,
 		role,
 		status,
-		// The band's word for a state this model knows; the wire's own word,
-		// verbatim, for one it does not (`SubagentRow.stateWord`).
-		//
-		// Verbatim is a claim about the WORD, not about the bytes: this string is
-		// painted in the visible tally and in a row's `sr-only` label, so it goes
-		// through the same boundary as the activity and error lines
-		// (`oneLine(firstLine(...))`) — a future word carrying a newline or a
-		// control character would otherwise break both lines. A word with nothing
-		// readable left in it takes the union's own name for the state
-		// (`"unknown"`), which is what the row's mark already says.
+		// The band's word for a state this model knows; the wire's own word for one
+		// it does not (`SubagentRow.stateWord`) — sanitised, and refused when the
+		// sanitised text is itself a state the fold recognises
+		// (`unrecognisedStateWord`).
 		stateWord:
 			status === "unknown"
-				? oneLine(firstLine(rawStatus)) || "unknown"
+				? unrecognisedStateWord(rawStatus)
 				: CHILD_STATE_WORD[status],
 		elapsedLabel: clockLabel(clock, nowSeconds),
 		startSeconds: clock.startSeconds,
@@ -837,9 +857,14 @@ export function acknowledgedOnOpen(
  * first place — the open half was asking a different question from the close
  * half (`onScreenFailures`).
  *
- * The identity guarantee is load-bearing rather than tidy: the panel re-renders
- * at 1Hz while a child's clock ticks, and a version that always built a fresh
- * set would hand its caller new state on every one of those renders.
+ * The identity guarantee is load-bearing rather than tidy, and the mechanism is
+ * `setSeen`: both instants funnel through it, and handing back the SAME set when
+ * an open or close adds nothing is what lets React bail out of that state update
+ * instead of re-rendering the trigger for a change that did not happen. (The
+ * panel's 1Hz clock is not the caller — `useRunDetailsClock` is scoped to
+ * `RunDetailsPanel` precisely so a tick repaints the rows and not the tree above
+ * them, so it never re-renders the trigger that owns `viewedRef`, and that ref is
+ * written during render because a ref assignment is not state.)
  */
 export function accumulateSeen(
 	previous: SeenFailures,
@@ -1142,17 +1167,42 @@ export function visibleSubagents(rows: SubagentRow[]): {
 }
 
 /**
+ * The subagents section's slice: the rows it renders, and how many it hid.
+ *
+ * This is the ONE slice the section and the `danger` dot are both built from, and
+ * it is named rather than spelled at each end because the two ends can drift: a
+ * filter or a cap applied at the PANEL's call site would leave the
+ * acknowledgement predicates counting a slice the reader was never shown, so past
+ * the cap a failure behind `+N more` would be marked read by a panel that never
+ * displayed it (`§3.3`). The panel renders `panelSlice(...).rows` and
+ * `visibleFailures` counts failures out of the same call, so the two are one
+ * expression — and `scripts/run-detail-model.test.mjs` pins BOTH call sites by
+ * source text, because a model test cannot see which slice a component renders.
+ *
+ * A renamed or re-tuned slice still has to come through here, which is the point:
+ * the cap, the failure reservation and the rank order all live in
+ * `visibleSubagents`, and nothing but the panel's own rendering may narrow them
+ * further.
+ */
+export function panelSlice(rows: readonly SubagentRow[]): {
+	rows: SubagentRow[];
+	hidden: number;
+} {
+	return visibleSubagents([...rows]);
+}
+
+/**
  * The failed children the roster's VISIBLE slice puts on screen (`§3.3`).
  *
  * The other half of the `danger` dot's promise, and the reason it is a function
  * here rather than a few lines in the trigger: "a child failed and you have not
  * looked" is answered by which rows the reader could actually see, and the
- * slice that decides that is the same one the panel renders (`visibleSubagents`)
- * — the cap, the reservation and the rank order all apply, so a failure behind
+ * slice that decides that is the same one the panel renders (`panelSlice`) —
+ * the cap, the reservation and the rank order all apply, so a failure behind
  * `+N more` is not in this list and keeps its dot.
  */
 export function visibleFailures(rows: readonly SubagentRow[]): string[] {
-	return visibleSubagents([...rows])
+	return panelSlice(rows)
 		.rows.filter((row) => row.status === "failed")
 		.map((row) => row.id);
 }

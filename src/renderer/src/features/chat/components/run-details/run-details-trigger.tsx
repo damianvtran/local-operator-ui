@@ -257,6 +257,10 @@ export const RunDetailsTrigger = ({
 				acknowledgedOnOpen(onScreenFailures(detailsRef.current), previous),
 			);
 		} else {
+			// What the panel SHOWED, accumulated across the open period, and never
+			// the slice re-read here: a failure displaced by a later arrival was
+			// still read, and asking for the slice at this instant would re-light
+			// its dot (`§3.3`). The ref is emptied so the next open starts clean.
 			setSeen((previous) =>
 				acknowledgedOnClose([...viewedRef.current], previous),
 			);
