@@ -10,6 +10,7 @@ import {
 	type AnchorSample,
 	type PagingGeometry,
 	type PagingState,
+	HARD_TOP_PX,
 	SETTLE_MS,
 	TAIL_EPS_PX,
 	anchorDrift,
@@ -75,11 +76,31 @@ import {
  * re-clamps the offset itself.
  */
 
-/** How long after a reveal the anchor keeps being re-asserted. */
+/**
+ * How long after a reveal the anchor keeps being re-asserted.
+ *
+ * Long enough to outlast the slowest settle a reveal can cause: a page of 100
+ * rows whose markdown, code blocks and images each author their height on a
+ * later layout pass. Measured on the 260-row fixture, a durable page's extent
+ * finished growing within ~400ms; 1200ms is three times that, and the hold is
+ * self-cancelling (`anchorDrift` returns 0 on a stable extent) so overshooting
+ * costs a comparison per frame rather than a correction.
+ */
 const ANCHOR_HOLD_MS = 1200;
 
 /** How long a scrollbar drag's attribution window outlives its `pointerup`. */
 const DRAG_TAIL_MS = 120;
+
+/**
+ * Frames a widen waits for React to commit before it settles anyway.
+ *
+ * Eight frames is ~130ms at 60Hz — an order of magnitude more than the one or
+ * two frames a `setState` needs, and short enough that a stall cannot leave the
+ * pump wedged. Exceeding it settles on a possibly-stale `hiddenRows`, which
+ * costs at most one redundant decision: the next real gesture re-measures from
+ * the DOM, so the error does not accumulate.
+ */
+const COMMIT_WAIT_FRAMES = 8;
 
 export type ScrollPagingOptions = {
 	/** The scroll container (`column-reverse`). */
@@ -104,6 +125,11 @@ export type ScrollPagingOptions = {
 	onLoadOlder: () => Promise<boolean>;
 	/** A page fetch is in flight, as the session hook sees it. */
 	loadingOlder: boolean;
+	/**
+	 * Changes when the observed content node appears or is replaced, so the
+	 * ResizeObserver re-attaches deterministically rather than incidentally.
+	 */
+	contentKey: string | number;
 };
 
 export type ScrollPagingHandle = {
@@ -126,6 +152,7 @@ export function useScrollPaging({
 	onWiden,
 	onLoadOlder,
 	loadingOlder,
+	contentKey,
 }: ScrollPagingOptions): ScrollPagingHandle {
 	const state = useRef<PagingState>(initialPagingState());
 	// The slot's rendered state is the only thing this hook publishes, so it is
@@ -196,6 +223,36 @@ export function useScrollPaging({
 		return null;
 	}, [containerRef]);
 
+	/**
+	 * Measure the SPECIFIC row being held, by id.
+	 *
+	 * Distinct from `sampleAnchor`, which answers "what is at the top now" and is
+	 * only right for CHOOSING an anchor. Re-sampling it to CORRECT one is the bug
+	 * that made the widen path drag the reader: mounting rows above the viewport
+	 * changes which row is topmost, so the re-sample returned a different id,
+	 * `anchorDrift` saw a mismatch, and returned 0 — the correction stood down at
+	 * exactly the moment it was needed. Measured before this fix: a local widen
+	 * displaced the held row by 6609px in one frame while a durable page (which
+	 * mounts nothing new above the window) moved it 24px.
+	 */
+	const measureHeld = useCallback(
+		(id: string): AnchorSample | null => {
+			const el = containerRef.current;
+			if (!el) return null;
+			const row = el.querySelector<HTMLElement>(
+				`[data-record-id="${CSS.escape(id)}"]`,
+			);
+			if (!row) return null;
+			return {
+				id,
+				viewportOffset:
+					row.getBoundingClientRect().top - el.getBoundingClientRect().top,
+				extent: el.scrollHeight,
+			};
+		},
+		[containerRef],
+	);
+
 	/** Re-assert the held anchor. Cheap, and a no-op on a stable extent. */
 	const correctAnchor = useCallback(() => {
 		const el = containerRef.current;
@@ -205,15 +262,33 @@ export function useScrollPaging({
 			anchor.current.sample = null;
 			return;
 		}
-		const drift = anchorDrift(held, sampleAnchor());
+		const drift = anchorDrift(held, measureHeld(held.id));
 		if (drift === 0) return;
 		programmatic.current += 1;
-		el.scrollTop -= drift;
+		/*
+		 * `+=`, and the sign is not the obvious one — it is inverted by
+		 * `column-reverse`.
+		 *
+		 * In a normal scroller, content that moved DOWN by `drift` is put back by
+		 * scrolling down, `scrollTop += drift`; the instinct is to write `-=` here
+		 * on the theory that the axis is reversed. Measured on the real scroller,
+		 * that instinct is wrong twice over and cancels out to the wrong answer:
+		 * making `scrollTop` MORE negative moves content DOWN (offset grows). So
+		 * a positive drift — the held row pushed down by rows mounting above it —
+		 * is undone by moving `scrollTop` toward zero, which is `+=`.
+		 *
+		 * Written as `-=`, every correction doubled the error it was meant to
+		 * remove: measured, a local widen displaced the held row by 6609px in a
+		 * single frame while the correction ran on every one of them. The
+		 * observation that settled it is in the evidence README (`scrollTop -100`
+		 * => offset +100) so the next reader does not have to re-derive it.
+		 */
+		el.scrollTop += drift;
 		// The sample's extent is refreshed, not the offset: the offset is the
 		// invariant being defended, and re-reading it would let each correction
 		// ratify whatever the previous one failed to fix.
 		anchor.current.sample = { ...held, extent: el.scrollHeight };
-	}, [containerRef, sampleAnchor]);
+	}, [containerRef, measureHeld]);
 
 	/** Hold the reader's place across the next `ANCHOR_HOLD_MS` of settling. */
 	const holdAnchor = useCallback(() => {
@@ -275,8 +350,8 @@ export function useScrollPaging({
 				// window already held every row), which must still settle.
 				let waited = 0;
 				const awaitCommit = () => {
-					if (live.current.hiddenRows !== before || waited >= 8) {
-						state.current = noteSettled(state.current);
+					if (live.current.hiddenRows !== before || waited >= COMMIT_WAIT_FRAMES) {
+						state.current = noteSettled(state.current, { network: false });
 						schedule();
 						return;
 					}
@@ -304,7 +379,8 @@ export function useScrollPaging({
 				direction,
 				continuous,
 				deliberate,
-				atHardTop: (geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= 2,
+				atHardTop:
+					(geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= HARD_TOP_PX,
 				at: performance.now(),
 			});
 			if (deliberate) setFailed(false);
@@ -379,15 +455,29 @@ export function useScrollPaging({
 					break;
 			}
 		};
-		const onPointerDown = (event: PointerEvent) => {
-			// Inside the scrollbar gutter: past the content box on either edge.
-			// `scrollbar-gutter: stable both-edges` puts one on each side, so both
-			// are checked.
-			const rect = el.getBoundingClientRect();
-			const inGutter =
-				event.clientX > rect.left + el.clientLeft + el.clientWidth ||
-				event.clientX < rect.left + el.clientLeft;
-			if (inGutter) dragUntil = Number.POSITIVE_INFINITY;
+		const onPointerDown = () => {
+			/*
+			 * Any pointer press on the scroller opens the attribution window, not
+			 * just one landing in the scrollbar gutter.
+			 *
+			 * The gutter test this replaces computed the scrollbar's band from
+			 * `clientLeft`/`clientWidth`, which is correct arithmetic for a
+			 * classic scrollbar and wrong wherever the platform draws an OVERLAY
+			 * one: macOS overlay scrollbars take no layout width, so
+			 * `clientWidth` spans the full box, the band is empty, and the test
+			 * could never be true. Measured: a real press-drag-release on the
+			 * scrollbar reached the hard top and issued 0 requests, while a wheel
+			 * from the same position issued a page — the reader's most explicit
+			 * "take me back" gesture was the one input the policy ignored.
+			 *
+			 * Widening it to the whole element costs nothing and is more honest:
+			 * a press followed by scrolling is a reader dragging something (the
+			 * scrollbar, or a text selection that auto-scrolls), and neither is
+			 * layout motion. Presses that scroll nothing open a window that
+			 * expires unused, because `onScroll` still requires the offset to
+			 * have actually changed.
+			 */
+			dragUntil = Number.POSITIVE_INFINITY;
 		};
 		const onPointerUp = () => {
 			if (dragUntil === Number.POSITIVE_INFINITY)
@@ -463,6 +553,10 @@ export function useScrollPaging({
 		const content = el?.querySelector<HTMLElement>(
 			"[data-lo-transcript-content]",
 		);
+		// A transcript that mounts EMPTY has no content node yet, and this effect's
+		// other deps do not change when the first row arrives — so the attachment
+		// was incidental rather than guaranteed. `contentKey` changes when the
+		// transcript stops being empty, which is exactly when the node appears.
 		if (!el || !content) return;
 		const observer = new ResizeObserver(() => {
 			correctAnchor();
@@ -471,7 +565,7 @@ export function useScrollPaging({
 		observer.observe(content);
 		observer.observe(el);
 		return () => observer.disconnect();
-	}, [containerRef, correctAnchor, schedule]);
+	}, [containerRef, correctAnchor, schedule, contentKey]);
 
 	// Geometry the policy reads can change without any event at all — a durable
 	// page landing turns `hiddenRows` positive, exhausting the backend turns

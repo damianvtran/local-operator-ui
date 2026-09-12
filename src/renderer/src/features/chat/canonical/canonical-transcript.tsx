@@ -19,9 +19,9 @@
  *   reducer returns the SAME record object when nothing changed, so a delta
  *   to one assistant record re-renders exactly that row.
  * - Long transcripts are windowed: only the newest `WINDOW` rows mount, and
- *   scrolling up widens the window in batches — the same shape the legacy
- *   view uses, so the scroll container's `column-reverse` overflow anchor
- *   keeps the reader pinned.
+ *   scrolling up widens the window one step per deliberate act under the
+ *   paging policy below, so the scroll container's `column-reverse` overflow
+ *   anchor keeps the reader pinned.
  * - `performance.mark("lop:transcript:render")` per commit lets the numbers
  *   be read from the browser rather than asserted.
  *
@@ -86,7 +86,10 @@ import {
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
-import { OlderHistorySlot } from "./older-history-slot";
+import {
+	OLDER_HISTORY_HINT_ID,
+	OlderHistorySlot,
+} from "./older-history-slot";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
@@ -624,6 +627,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		onWiden: widen,
 		onLoadOlder,
 		loadingOlder,
+		// The content node exists only once the transcript is non-empty; this is
+		// what re-runs the observer effect at that moment.
+		contentKey: collapsed ? "empty" : "filled",
 	});
 
 	// Measurement hook: one mark per commit of this list. Read with
@@ -730,6 +736,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		<div
 			ref={containerRef}
 			data-lo-canonical-transcript={true}
+			/*
+			 * The transcript is a tab stop, and that is an accessibility fix rather
+			 * than a nicety.
+			 *
+			 * Paging responds to Home/PageUp/ArrowUp through a `keydown` listener on
+			 * THIS element, but a plain scrolling div is not in the tab order, so
+			 * nothing a keyboard reader could do would deliver those keys. Measured
+			 * on the previous head: 40 Tab presses never entered the transcript, and
+			 * in the state a reader arrives in it contained zero focusable elements
+			 * — so with the click-only button gone, older history was unreachable
+			 * without a pointer. A scrollable region is independently required to be
+			 * keyboard-operable (WCAG 2.1.1); this satisfies both at once.
+			 *
+			 * `role="log"` with a name is what makes the stop explicable when it is
+			 * announced, instead of an unlabelled group the reader has to probe.
+			 */
+			tabIndex={collapsed ? -1 : 0}
+			role="log"
+			aria-label="Conversation transcript"
+			aria-describedby={
+				transcript.hasMore || hidden > 0 ? OLDER_HISTORY_HINT_ID : undefined
+			}
 			className={cn(
 				// `min-h-0`, not `h-full`: this is the flex child that must absorb
 				// the column's leftover height. `h-full` resolves its flex base to
@@ -764,11 +792,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			>
 				{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
-				    row can never shift the conversation under the reader. */}
-				{(transcript.hasMore || hidden > 0 || slotState === "loading") && (
+				    row can never shift the conversation under the reader.
+				
+				    Rendered whenever the transcript has any rows at all, rather than
+				    only while history remains. The previous guard
+				    (`hasMore || hidden > 0 || loading`) was the exact inverse of the
+				    condition that yields `exhausted`, so "Start of conversation" was
+				    copy the product could never show — and reaching the oldest
+				    message unmounted the slot, moving every row below it up by 44px
+				    at that moment. Keeping it mounted is what makes the end of
+				    history a statement instead of an absence, and costs nothing: the
+				    slot is one fixed-height row either way. */}
+				{transcript.records.length > 0 && (
 					<OlderHistorySlot
 						state={slotState}
 						hiddenRows={hidden}
+						// A retry cannot succeed while the transport is down, and the
+						// transcript's own notice below already explains why. The slot
+						// drops its gesture hint rather than stacking a second claim on
+						// top of that one.
+						transportDown={status !== "live"}
 						onLoadOlder={requestOlder}
 					/>
 				)}

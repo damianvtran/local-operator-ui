@@ -35,6 +35,7 @@ const paging = await import(
 );
 const {
 	ANCHOR_EPSILON_PX,
+	GESTURE_GAP_MS,
 	MAX_AUTO_ATTEMPTS,
 	MAX_CHAIN_FETCH,
 	SETTLE_MS,
@@ -48,16 +49,38 @@ const {
 	prefetchZonePx,
 } = paging;
 
-/** A scroller with history behind it, the reader near the top, nothing hidden locally. */
-const geo = (over = {}) => ({
-	distanceFromTopPx: 100,
-	clientHeight: 800,
-	hiddenRows: 0,
-	hasMore: true,
-	scrollable: true,
-	followingTail: false,
-	...over,
-});
+/*
+ * A scroller with history behind it, the reader near the top, nothing hidden
+ * locally.
+ *
+ * The derivation at the end is not a convenience, it is the fixture's whole
+ * correctness argument. `followingTail` and `scrollable` are BOTH computed by
+ * the DOM layer from one number (`scrollTop`): an unscrollable transcript has
+ * `scrollTop === 0`, so `!scrollable` strictly implies `followingTail`. A
+ * fixture that lets a caller override one without the other can express a
+ * geometry `measure()` can never emit — and it did: the clause L test passed
+ * against `{scrollable:false, followingTail:false}` while the real app returned
+ * "none" on the tail guard and never chained at all. A test that certifies an
+ * impossible state is worse than no test, so the impossible state is made
+ * unrepresentable here.
+ */
+const geo = (over = {}) => {
+	const base = {
+		distanceFromTopPx: 100,
+		clientHeight: 800,
+		hiddenRows: 0,
+		hasMore: true,
+		scrollable: true,
+		followingTail: false,
+		...over,
+	};
+	if (!base.scrollable) {
+		// Unscrollable implies at the tail AND at the top, both by construction.
+		base.followingTail = true;
+		base.distanceFromTopPx = 0;
+	}
+	return base;
+};
 
 /** One upward wheel notch at time `at`. */
 const wheelUp = (state, at, over = {}) =>
@@ -149,26 +172,38 @@ test("a wheel notch clamped at the top does not re-arm the latch", () => {
 	// because a state machine left permanently `busy` would pass this assertion
 	// for the wrong reason.
 	//
-	// Zero is NOT the expectation here. The reader is still pinned against the
-	// top edge with history behind them, so the continuation legitimately keeps
-	// offering pages - that is the clause that stops the reveal being a
-	// one-page-per-gesture stutter. What the latch guarantees is that those
-	// pages come from the BOUND and not from the 200 notches: the count is
-	// `MAX_CHAIN_FETCH`, and it stays there however long the finger rests.
+	// Zero, now that a scrollable transcript gets one reveal per act: the latch
+	// refuses to re-arm from the clamped notches, and the continuation stands
+	// down as soon as it sees a scroller the reader could have used. A held
+	// gesture is one act however long it is held.
+	// Continuous: 10ms apart, well inside GESTURE_GAP_MS, so this is ONE act
+	// that happens to last two seconds. It has already been answered.
 	let spent = 0;
+	let t = SETTLE_MS + 2;
 	for (let i = 0; i < 200; i++) {
-		state = wheelUp(state, 1000 + i * 10, { atHardTop: true });
-		const frame = decide(state, geo({ distanceFromTopPx: 0 }), 1000 + i * 10 + 8);
+		t += 10;
+		state = wheelUp(state, t, { atHardTop: true });
+		const frame = decide(state, geo({ distanceFromTopPx: 0 }), t + 8);
 		state = frame.state;
 		if (frame.action !== "none") {
 			spent++;
 			state = noteSettled(state);
 		}
 	}
+	assert.equal(spent, 0, `a held gesture at the top is one act, not 200 (got ${spent})`);
+
+	// But the reader letting go and pushing again IS a new act, and must be
+	// answered — otherwise the latch bounds a POSITION rather than a gesture and
+	// a reader parked at the top can never load another page. Measured before
+	// this distinction existed: four separate flicks, zero pages, the slot stuck
+	// reading "Load earlier messages".
+	t += GESTURE_GAP_MS + 1;
+	state = wheelUp(state, t, { atHardTop: true });
+	const fresh = decide(state, geo({ distanceFromTopPx: 0 }), t + SETTLE_MS + 1);
 	assert.equal(
-		spent,
-		MAX_CHAIN_FETCH - 1,
-		`a held gesture at the top is bounded by the chain, not by its event count (got ${spent})`,
+		fresh.action,
+		"fetch",
+		"a new gesture after a quiet gap is answered",
 	);
 
 	// A deliberate act does re-arm it: clause D's other half and clause K's
@@ -237,42 +272,48 @@ test("a retained demand is honoured when the page lands", () => {
 test("the local window is widened before the network is reached", () => {
 	// Clause J. With rows held back locally, a demand spends on `widen`; the
 	// fetch only becomes available once the window holds everything it has.
+	// Each reveal takes its own gesture now, which is the point of the change:
+	// one act, one reveal.
 	let state = wheelUp(initialPagingState(), 0);
 	const widened = decide(state, geo({ hiddenRows: 120 }), SETTLE_MS + 1);
 	assert.equal(widened.action, "widen");
 
-	state = noteSettled(widened.state);
-	const next = decide(state, geo({ hiddenRows: 60 }), SETTLE_MS + 2);
+	state = noteSettled(widened.state, { network: false });
+	state = wheelUp(state, 1000);
+	const next = decide(state, geo({ hiddenRows: 60 }), 1000 + SETTLE_MS + 1);
 	assert.equal(next.action, "widen", "still local while rows remain hidden");
 
-	state = noteSettled(next.state);
-	const network = decide(state, geo({ hiddenRows: 0 }), SETTLE_MS + 3);
+	state = noteSettled(next.state, { network: false });
+	state = wheelUp(state, 2000);
+	const network = decide(state, geo({ hiddenRows: 0 }), 2000 + SETTLE_MS + 1);
 	assert.equal(network.action, "fetch");
 });
 
-test("a reveal that leaves the reader in the zone continues; one that does not, stops", () => {
-	// The self-limiting property the chain depends on. A page of 100 rows puts
-	// thousands of pixels above the reader, which takes them out of the prefetch
-	// zone and ends the chain on the next frame. Only a reveal too SHORT to move
-	// them keeps going — which is the case the reader would otherwise have to
-	// answer with a second gesture.
-	const zone = prefetchZonePx(800);
-	let stops = noteSettled(
-		decide(wheelUp(initialPagingState(), 0), geo(), SETTLE_MS + 1).state,
-	);
+test("one gesture yields one reveal, however near the top it leaves the reader", () => {
+	// The replacement for round 1's "continue while still in the zone" rule,
+	// and the reason it had to go. Measured in the running app, that rule turned
+	// ONE fling into rows 60 -> 100 -> 160 -> 200 -> 260 and scrollHeight
+	// 6482 -> 27853: every reveal re-pinned the reader near the top edge, which
+	// put them back in the zone and authorised the next one. The zone test
+	// cannot terminate a chain whose own effect is to satisfy it.
+	let state = wheelUp(initialPagingState(), 0);
+	const first = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1);
+	assert.equal(first.action, "fetch");
+
+	// The reveal lands and leaves them still hard against the top, with history
+	// behind them. No further gesture: nothing more may be spent.
+	state = noteSettled(first.state);
 	assert.equal(
-		decide(stops, geo({ distanceFromTopPx: zone + 1 }), 1000).action,
+		decide(state, geo({ distanceFromTopPx: 0 }), 1000).action,
 		"none",
-		"a page that moved the reader out of the zone ends the chain",
+		"a settled reveal on a scrollable transcript does not chain",
 	);
 
-	let continues = noteSettled(
-		decide(wheelUp(initialPagingState(), 0), geo(), SETTLE_MS + 1).state,
-	);
+	// Their next flick is answered immediately.
+	state = wheelUp(state, 2000);
 	assert.equal(
-		decide(continues, geo({ distanceFromTopPx: 10 }), 1000).action,
+		decide(state, geo({ distanceFromTopPx: 0 }), 2000 + SETTLE_MS + 1).action,
 		"fetch",
-		"a page too short to move the reader is answered by another",
 	);
 });
 
@@ -309,6 +350,67 @@ test("a transcript too short to scroll chains a bounded number of pages", () => 
 		"none",
 		"a scrollable transcript with room above waits for a gesture",
 	);
+});
+
+test("an unscrollable transcript is not treated as following the tail", () => {
+	// B1/Q2, as a test that could not have passed before the fix. The two terms
+	// are not independent: the DOM computes both from `scrollTop`, so an
+	// unscrollable transcript reports BOTH `followingTail` and `!scrollable`.
+	// A bare tail guard therefore returned before the branch that owns exactly
+	// this case, and a conversation shorter than its viewport never loaded its
+	// history at all — with the click-only button removed, its history was
+	// unreachable by any means.
+	//
+	// `geo()` derives the pair now, so this test cannot be written against a
+	// geometry the app can never produce.
+	const short = geo({ scrollable: false });
+	assert.equal(short.followingTail, true, "the fixture derives the pair");
+	assert.equal(short.distanceFromTopPx, 0);
+
+	const state = { ...initialPagingState(), continuation: true };
+	const result = decide(state, short, 0);
+	assert.equal(
+		result.action,
+		"fetch",
+		"a transcript the reader cannot scroll must still reach its history",
+	);
+});
+
+test("the chain stops as soon as the reader has a gesture available", () => {
+	// The complement of the rule above: the chain exists ONLY where no act is
+	// possible. The moment the content becomes scrollable, control returns to
+	// the reader rather than the app continuing to mount on their behalf.
+	let state = { ...initialPagingState(), continuation: true };
+	const first = decide(state, geo({ scrollable: false }), 0);
+	assert.equal(first.action, "fetch");
+	state = noteSettled(first.state);
+	assert.equal(
+		decide(state, geo({ scrollable: true, distanceFromTopPx: 0 }), 100).action,
+		"none",
+		"a scrollable transcript waits for the reader",
+	);
+});
+
+test("a local widen does not forgive the network failure budget", () => {
+	// MINOR 4. `failures` is a fact about the backend; revealing rows already in
+	// memory is no evidence the backend recovered. Clearing it on a widen let a
+	// reader with a dead backend buy MAX_AUTO_ATTEMPTS fresh tries per widen.
+	let state = initialPagingState();
+	state = wheelUp(state, 0);
+	state = noteFailed(decide(state, geo(), SETTLE_MS + 1).state);
+	assert.equal(state.failures, 1);
+
+	state = wheelUp(state, 1000);
+	const widened = decide(state, geo({ hiddenRows: 60 }), 1000 + SETTLE_MS + 1);
+	assert.equal(widened.action, "widen");
+	state = noteSettled(widened.state, { network: false });
+	assert.equal(state.failures, 1, "a local reveal says nothing about the network");
+
+	// A real page landing is evidence, and does clear it.
+	state = wheelUp(state, 2000);
+	const fetched = decide(state, geo(), 2000 + SETTLE_MS + 1);
+	assert.equal(fetched.action, "fetch");
+	assert.equal(noteSettled(fetched.state).failures, 0);
 });
 
 test("a reader following the tail is never paged under", () => {

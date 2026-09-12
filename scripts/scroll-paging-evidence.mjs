@@ -106,14 +106,42 @@ void browserId;
 
 let nextId = 1;
 const pending = new Map();
-/** Every `sessions.history` request main issued, in order. See clause B. */
+/** Every `sessions.history` op the renderer issued, in order. See clause B. */
 const historyRequests = [];
+/** Every desktop op, so a zero above can be told apart from a dead counter. */
+const desktopOps = [];
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 ws.onmessage = (event) => {
 	const msg = JSON.parse(event.data);
 	if (msg.method === "Network.requestWillBeSent") {
+		/*
+		 * Count the op out of the POST BODY, not out of the URL.
+		 *
+		 * Every desktop op posts to the same same-origin `/__desktop` endpoint
+		 * with the op name in the JSON body (`desktop-api.ts`), so no request URL
+		 * on this surface ever contains "/history". The previous predicate
+		 * (`url.includes("/history")`) could therefore never match, and would have
+		 * reported 0 for any behaviour whatsoever -- including a fling that issued
+		 * forty pages -- while reading as proof of coalescing. A counter that
+		 * cannot fire is worse than no counter, because it produces a number.
+		 *
+		 * `desktopOps` exists as the positive control: if it is 0 too, the harness
+		 * saw no traffic at all and the history count means nothing.
+		 */
 		const url = msg.params?.request?.url ?? "";
-		if (url.includes("/history")) historyRequests.push({ url, at: Date.now() });
+		if (url.includes("/__desktop")) {
+			let op = null;
+			try {
+				op = JSON.parse(msg.params.request.postData ?? "{}").op ?? null;
+			} catch {
+				// A body we cannot parse is still traffic; record it as unknown so
+				// it cannot masquerade as silence.
+				op = "<unparsed>";
+			}
+			desktopOps.push({ op, at: Date.now() });
+			if (op === "sessions.history")
+				historyRequests.push({ op, at: Date.now() });
+		}
 	}
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
@@ -351,9 +379,31 @@ const ELECTRON_SHIM = `(() => {
   return 'shimmed';
 })()`;
 
-// The onboarding modal is a focus trap over the whole app and would swallow
-// every wheel event; a first-run profile always shows it. Completing it in
-// localStorage is the same state a returning user has.
+/*
+ * The onboarding modal, and why getting this wrong voids every measurement.
+ *
+ * A first-run profile opens "Connect a provider", which is a Radix dialog. Radix
+ * locks page scroll through `react-remove-scroll`, and that lock is a DOCUMENT
+ * handler that calls `preventDefault()` on every wheel event before it reaches
+ * the transcript. The scroller then does not move, the paging policy never sees
+ * an upward gesture, and the harness records zero history ops -- which reads
+ * exactly like perfect coalescing and is in fact a locked page.
+ *
+ * Round 1 of this PR reported "headless Chromium cannot synthesize wheel
+ * events" on the strength of that zero. That conclusion was wrong: the wheel
+ * pipeline was fine and the page was locked. Two harness bugs caused it, and
+ * both are fixed below --
+ *
+ *   1. the bypass wrote the legacy `isComplete` key while the store persists
+ *      `isModalComplete` (`shared/store/onboarding-store.ts`), so the modal
+ *      opened anyway;
+ *   2. the app was reached by a HASH-only navigation, which is a same-document
+ *      navigation -- zustand had already hydrated from an empty key at first
+ *      load and never re-read what we wrote.
+ *
+ * Hence: write both keys, then force a real document load. The assertion after
+ * it turns a recurrence into a loud failure instead of a plausible zero.
+ */
 await send("Page.addScriptToEvaluateOnNewDocument", { source: ELECTRON_SHIM });
 await send("Page.navigate", { url: `${APP}/#/chat` });
 // `about:blank` has an opaque origin with no localStorage, so the navigation
@@ -373,10 +423,30 @@ for (let i = 0; i < 60; i++) {
 }
 await sleep(3000);
 await evaluate(
-	`(() => { localStorage.setItem('onboarding-storage', JSON.stringify({state:{isComplete:true,isTourComplete:true,currentStep:'complete'},version:0})); return true; })()`,
+	// Both keys: the current one the store actually persists, and the legacy one
+	// so its migration path is exercised rather than bypassed.
+	`(() => { localStorage.setItem('onboarding-storage', JSON.stringify({state:{isComplete:true,isModalComplete:true,isTourComplete:true,currentStep:'complete'},version:0})); return true; })()`,
 );
 await send("Page.navigate", { url: `${APP}/#/chat/${SESSION}` });
+await sleep(500);
+// A real document load, so the store re-hydrates from what was just written.
+await send("Page.reload", { ignoreCache: false });
 await sleep(9000);
+
+// Refuse to measure a locked page. `data-scroll-locked` is what
+// react-remove-scroll sets on the body; an open dialog is the other half of the
+// same condition. Failing here costs a run, whereas measuring through a lock
+// costs a review round and a false claim in the evidence.
+const lock = JSON.parse(
+	await evaluate(
+		`JSON.stringify({ locked: document.body.getAttribute('data-scroll-locked'), dialogs: document.querySelectorAll('[role=dialog][data-state=open]').length })`,
+	),
+);
+if (lock.locked || lock.dialogs > 0) {
+	throw new Error(
+		`scroll is locked by an open layer, measurements would be void: ${JSON.stringify(lock)}`,
+	);
+}
 
 let state = await probe();
 if (!state.ok) {

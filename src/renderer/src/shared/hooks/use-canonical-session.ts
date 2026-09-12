@@ -584,6 +584,9 @@ export function useCanonicalSessionStream(
 			terminal: null,
 			transcript: EMPTY_TRANSCRIPT,
 			status: "connecting",
+			// Belt to the early return's braces: whatever a superseded page in
+			// flight does, a freshly opened session is not loading older rows.
+			loadingOlder: false,
 		}));
 		// The retry bookkeeping is per SESSION: a previous session's outstanding call
 		// ids would each buy a history page for the new one, sized by the old gap,
@@ -621,7 +624,19 @@ export function useCanonicalSessionStream(
 				beforeId: transcript.oldestId,
 				limit: 100,
 			});
-			if (sessionRef.current !== requested) return false;
+			if (sessionRef.current !== requested) {
+				// Clear the flag before standing down. The rows are not spliced (a
+				// foreign page must never reach this transcript), but `loadingOlder`
+				// is the OLD session's view state and nothing else clears it: the
+				// `finally` below resets only the module-level ref, and the
+				// session-switch effect deliberately leaves view fields alone. Left
+				// true, switching back showed a disabled "Loading earlier messages"
+				// spinner with no request in flight and no way to clear it short of
+				// a reload — and because the affordance renders disabled in that
+				// state, the reader could not even retry.
+				setView((current) => ({ ...current, loadingOlder: false }));
+				return false;
+			}
 			setView((current) => ({
 				...current,
 				loadingOlder: false,

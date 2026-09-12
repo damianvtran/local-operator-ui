@@ -12,9 +12,10 @@
  * below in memory.
  *
  * The semantics mirror the terminal UI's bounded-resume paging
- * (`local_operator/tui/app.py`: `_transcript_scrolled`, `_check_resume_page`;
- * `local_operator/tui/widgets/transcript.py`: the latch contract documented on
- * `_on_user_scroll`), so a reader who learned how history loads in the terminal
+ * (in the sibling `local-operator` repository — `local_operator/tui/app.py`:
+ * `_transcript_scrolled`, `_check_resume_page`; `local_operator/tui/widgets/
+ * transcript.py`: the latch contract documented on `_on_user_scroll`), so a
+ * reader who learned how history loads in the terminal
  * meets the same behaviour here. Where this file diverges it says so and why —
  * the two surfaces have different input vocabularies (a wheel is not a Textual
  * key binding) and different units (pixels, not terminal rows).
@@ -59,6 +60,18 @@
  * demands; higher and a reader who stops at the top waits on us visibly.
  */
 export const SETTLE_MS = 120;
+
+/**
+ * Quiet period after which further input counts as a NEW gesture.
+ *
+ * Bounds an ACT rather than a position: the clamp latch (rule 4) refuses to
+ * re-arm while one gesture keeps reporting itself against the top edge, and
+ * this is what tells it that gesture is over. 400ms clears a trackpad's
+ * momentum tail — which keeps emitting for a few hundred ms after the fingers
+ * lift, and would otherwise split one flick into several acts — while staying
+ * far below the pause between two deliberate flicks.
+ */
+export const GESTURE_GAP_MS = 400;
 
 /**
  * The prefetch zone: how close to the top of the content a demand may be spent,
@@ -281,7 +294,25 @@ export const noteInput = (
 			...(state.busy ? { retained: true } : { armed: true }),
 		};
 	}
-	if (input.atHardTop && input.continuous && state.clampLatched) {
+	// A gesture ENDS when input stops; the next notch after that is a new act.
+	//
+	// Without this the latch was a position bound rather than a gesture bound:
+	// once it had been set at the hard top it refused every later notch from the
+	// same position forever, so a reader parked at the top of a partially-loaded
+	// conversation could flick as often as they liked and never get another page
+	// (measured: four separate gestures, 0 pages, the slot stuck on "Load
+	// earlier messages"). Under round 1's design the continuation chain hid this
+	// by mounting everything up front; with one reveal per act the latch had to
+	// learn where an act ends.
+	//
+	// `GESTURE_GAP_MS` is the quiet period that separates two acts. It is longer
+	// than `SETTLE_MS` on purpose: settling decides when a demand may be SPENT
+	// (the motion has stopped), while this decides when a new demand may be
+	// ARMED (the reader has let go and pushed again). A trackpad's momentum
+	// phase emits for a few hundred ms after the fingers lift, so anything
+	// shorter would split one flick into several acts.
+	const gestureEnded = input.at - state.lastInputAt >= GESTURE_GAP_MS;
+	if (input.atHardTop && input.continuous && state.clampLatched && !gestureEnded) {
 		// Rule 4. The gesture is still running but the content is not; this is the
 		// same act that already spent its demand.
 		//
@@ -367,10 +398,18 @@ export const decide = (
 
 	// A reader pinned to the newest row is reading the present. Growing the past
 	// under them is at best invisible and at worst drags them; either way they
-	// did not ask. The `scrollable` term matters: an unscrollable transcript
-	// reports offset 0, which is both "at the tail" and "at the top", and the
-	// short-conversation chain below is the rule that owns that case.
-	if (geo.followingTail) return { action: "none", state };
+	// did not ask.
+	//
+	// `scrollable` is load-bearing, and leaving it out made clause L dead code.
+	// Both terms are computed from ONE number: `followingTail` is
+	// `|scrollTop| <= TAIL_EPS` and `scrollable` is `scrollHeight - clientHeight
+	// > 1`. An unscrollable transcript has `scrollTop === 0` by construction, so
+	// `!scrollable` STRICTLY IMPLIES `followingTail` — a bare tail guard returned
+	// here every time and the short-content branch below could never be reached.
+	// A reader looking at a conversation that does not fill its viewport is not
+	// "following the tail" in any sense they would recognise: they can see the
+	// whole thing at once, including its first row.
+	if (geo.followingTail && geo.scrollable) return { action: "none", state };
 
 	const inZone = geo.distanceFromTopPx <= prefetchZonePx(geo.clientHeight);
 	const settled =
@@ -396,51 +435,45 @@ export const decide = (
 	}
 
 	if (state.continuation) {
-		// A reveal answers a demand only if it actually moved the top of the
-		// content away from the reader. A page of 100 one-line notices can be
-		// shorter than the viewport, and stopping there would leave them still
-		// pressed against the edge with nothing having visibly happened — so they
-		// would scroll again, and the "one gesture, one page" accounting would be
-		// honoured in letter while the reader made four gestures.
-		//
-		// So a settled reveal may continue while the reader is STILL in the
-		// prefetch zone, which is the desktop spelling of the terminal UI's
-		// `_fill_resume_until_scrollable(target=scroll_y + viewport)`: fill until
-		// about a viewport of content sits above the held reading position, then
-		// stop. It is self-limiting in the normal case — one widen of 60 rows or
-		// one page of 100 puts thousands of pixels above the reader and takes
-		// them out of the zone on the next frame — and the chain counters are the
-		// backstop for the case where it does not.
-		//
-		// The second clause is rule L on its own: a transcript that cannot scroll
-		// reports distance 0 and offers no gesture to ask with, so the chain is
-		// the only way its history is ever reachable.
-		if (growth === "widen") {
-			if (inZone && state.chainWiden < MAX_CHAIN_WIDEN)
-				return spend(state, growth, geo);
-		} else if (
-			(inZone || !geo.scrollable) &&
-			state.chainFetch < MAX_CHAIN_FETCH &&
-			state.failures < MAX_AUTO_ATTEMPTS
-		) {
-			// Deliberately NOT gated on the clamp latch, and this is the one place
-			// where saying so matters. Measured in the running app: one fling
-			// revealed the 40 locally-held rows and left the reader pinned against
-			// the content's top edge with 160 durable rows still behind it. A latch
-			// test here refused the page, so the slot sat saying "Load earlier
-			// messages" to a reader who had just asked for exactly that by
-			// scrolling - the click-to-load defect this change exists to remove,
-			// reintroduced one reveal later.
-			//
-			// The division of labour: the latch bounds a GESTURE that keeps
-			// reporting itself without the reader acting (rule 4), and `noteInput`
-			// enforces it at the source by refusing to arm on a clamped notch. A
-			// continuation has no input behind it at all - it is the reveal saying
-			// "that did not move you", and it is bounded by `chainFetch` and
-			// `chainWiden`, which only a fresh gesture resets. Counters bound a
-			// chain; the latch bounds a gesture.
-			return spend(state, growth, geo);
+		/*
+		 * ONE GESTURE, ONE REVEAL — and the chain exists only where no gesture is
+		 * possible.
+		 *
+		 * Round 1 let a settled reveal continue whenever the reader was still in
+		 * the prefetch zone, reasoning that a reveal too short to move them should
+		 * not cost a second gesture. Measured in the running app, that reasoning
+		 * was wrong in the direction that matters. One fling on a 260-row
+		 * conversation ran the whole chain: rows 60 -> 100 -> 160 -> 200 -> 260,
+		 * `scrollHeight` 6482 -> 27853, two durable pages and four window steps
+		 * out of ONE act, ending with the reader 141 rows from where they started
+		 * and 59 rows of already-mounted conversation stranded above them. Each
+		 * reveal re-pinned them near the top edge, which put them back in the zone
+		 * and authorised the next one. The zone test cannot terminate a chain
+		 * whose own effect is to satisfy it.
+		 *
+		 * The premise was also false at this scale: a single `WINDOW_STEP` widen
+		 * measured 6294px of new extent against a 489px viewport — twelve
+		 * viewports, not "too short to notice". A reveal that small is a case the
+		 * reader answers with another flick; a chain that large is one they cannot
+		 * undo.
+		 *
+		 * So a scrollable transcript gets exactly one reveal per act, which is the
+		 * terminal UI's own contract (one page per `_check_resume_page`), and the
+		 * continuation survives for the single case that has no act available:
+		 * a transcript that cannot scroll (clause L). There the reader has no
+		 * gesture to give — there is no scrollbar and no overflow — so the chain
+		 * is the only route to their history, and it stops the moment the content
+		 * becomes scrollable and hands control back to them.
+		 */
+		if (geo.scrollable) {
+			return { action: "none", state: { ...state, continuation: false } };
 		}
+		const bound =
+			growth === "widen"
+				? state.chainWiden < MAX_CHAIN_WIDEN
+				: state.chainFetch < MAX_CHAIN_FETCH &&
+					state.failures < MAX_AUTO_ATTEMPTS;
+		if (bound) return spend(state, growth, geo);
 		return { action: "none", state: { ...state, continuation: false } };
 	}
 
@@ -451,10 +484,19 @@ export const decide = (
  * A reveal landed. Service a retained demand if one is owed, otherwise offer a
  * continuation that `decide` will accept only if its own bounds still hold.
  */
-export const noteSettled = (state: PagingState): PagingState => ({
+export const noteSettled = (
+	state: PagingState,
+	/**
+	 * Whether the reveal that settled reached the NETWORK. A widen is purely
+	 * local, so it is no evidence that a failing backend has recovered —
+	 * clearing the budget on one let a reader with a dead backend buy three
+	 * fresh fetch attempts per local widen.
+	 */
+	{ network = true }: { network?: boolean } = {},
+): PagingState => ({
 	...state,
 	busy: false,
-	failures: 0,
+	failures: network ? 0 : state.failures,
 	armed: state.retained,
 	deliberate: state.retained ? state.deliberate : false,
 	retained: false,
@@ -525,6 +567,16 @@ export const anchorDrift = (
 	// to hold to, and picking the new topmost row would silently redefine the
 	// invariant mid-measurement.
 	if (before.id !== after.id) return 0;
+	/*
+	 * A stable extent means the reader moved, not the content — and correcting
+	 * THAT would scroll the transcript out from under them. This is the one
+	 * guard that keeps the correction from fighting its own reader, so it stays.
+	 *
+	 * It is also why the caller must only hold an anchor across a reveal it
+	 * initiated (`holdAnchor` is called on the action, and the hold expires):
+	 * outside that window every offset change is the reader's and none of it is
+	 * ours to undo.
+	 */
 	if (before.extent === after.extent) return 0;
 	const drift = after.viewportOffset - before.viewportOffset;
 	return Math.abs(drift) < ANCHOR_EPSILON_PX ? 0 : drift;
