@@ -413,7 +413,8 @@ const sweepFramesFrom = (path) => {
 		return;
 	}
 	for (const entry of readdirSync(path)) sweepFramesFrom(join(path, entry));
-	if (readdirSync(path).length === 0) rmSync(path, { recursive: true, force: true });
+	if (readdirSync(path).length === 0)
+		rmSync(path, { recursive: true, force: true });
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

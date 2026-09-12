@@ -185,8 +185,32 @@ function SessionPanel({
 	const resolvedModel = specUnresolved(canonical.frontend?.effective_model)
 		? null
 		: (canonical.frontend?.effective_model?.model_id ?? null);
+	/*
+	 * Only an actual unresolved -> resolved TRANSITION invalidates.
+	 *
+	 * Gating on `resolvedModel` being truthy fired on mount too, so every warm
+	 * session open - where the model is already resolved at first paint - spent
+	 * a redundant `commands.entities` round trip on a query fetched
+	 * milliseconds earlier and well inside its own staleTime
+	 * (`invalidateQueries` refetches an active query regardless of freshness).
+	 * The previous comment claimed this gated on an edge; it did not, and a
+	 * mount with the value already settled is not one (round 4, R2).
+	 */
+	// `undefined` means "not observed yet". Distinct from `null` (observed, and
+	// unresolved): the FIRST observation seeds the ref without invalidating,
+	// because a query fetched on this same mount is already the answer. Keyed
+	// per session so switching sessions re-arms rather than inheriting.
+	const wasResolved = useRef<
+		{ session: string | null; model: string | null } | undefined
+	>(undefined);
 	useEffect(() => {
+		const previous = wasResolved.current;
+		wasResolved.current = { session: sessionId ?? null, model: resolvedModel };
 		if (!sessionId || !resolvedModel) return;
+		const sameSession = previous?.session === sessionId;
+		// Seed-only on first sight of this session, and no-op when the model has
+		// not actually changed under us.
+		if (!sameSession || previous?.model === resolvedModel) return;
 		void queryClient.invalidateQueries({
 			queryKey: ["desktop", "entities", sessionId, "effort", ""],
 		});

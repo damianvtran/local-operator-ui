@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { partialFrameCount } from "./capture-evidence.mjs";
-import { frames as frameFiles } from "./check-evidence.mjs";
+import { frames as frameFiles, provenanceFailures } from "./check-evidence.mjs";
 
 /*
  * The evidence manifest's falsifiability, on a synthetic tree.
@@ -70,12 +70,18 @@ function guardAccepts(root, manifest) {
  * edit to it fails in this file.
  */
 function partialManifest(previous, root, newDirs) {
+	/*
+	 * `added` is the per-FRAME list the capture loop records in `writtenFrames`,
+	 * which is what the shipped signature takes. #110 landed that tighter form
+	 * while this branch was in review - it keys on whether each FRAME existed
+	 * before the run rather than on whether its directory did - so the branch
+	 * adopted it instead of shipping a second rule beside it, and this helper
+	 * expands the test's directory fixtures into the frames inside them.
+	 */
+	const added = newDirs.flatMap((dir) => frameFiles(join(root, dir)));
 	return {
 		...previous,
-		frames: partialFrameCount(
-			previous,
-			newDirs.map((dir) => join(root, dir)),
-		),
+		frames: partialFrameCount(previous, added),
 	};
 }
 
@@ -184,4 +190,130 @@ test("declared supplementary sets are excluded from the swept count", () => {
 		"STRAY-UNDECLARED": 1,
 	});
 	assert.equal(guardAccepts(withStray, manifest), false);
+});
+
+/* ---- the manifest's own provenance -------------------------------------- */
+
+/**
+ * A fake `git` so these run without touching the repository's real history.
+ *
+ * The shipped `provenanceFailures` takes its git reader as an argument for
+ * exactly this reason: the property under test is what the function CONCLUDES
+ * from git's answers, and pinning that against real history would make the test
+ * pass or fail on which commits happen to exist today.
+ */
+const fakeGit =
+	({ resolvable = [], reachable = [], src, scripts }) =>
+	(args) => {
+		if (args[0] === "rev-parse" && args[1] === "--quiet")
+			return resolvable.includes(args[3].replace("^{commit}", ""))
+				? args[3]
+				: null;
+		if (args[0] === "rev-parse" && args[1] === "HEAD:src") return src ?? null;
+		if (args[0] === "rev-parse" && args[1] === "HEAD:scripts")
+			return scripts ?? null;
+		if (args[0] === "merge-base")
+			return reachable.includes(args[2]) ? "" : null;
+		if (args[0] === "for-each-ref")
+			return reachable.includes(args[2]) ? "refs/heads/x" : "";
+		if (args[0] === "log") return "wip: a commit that was amended away";
+		return null;
+	};
+
+const GOOD = {
+	head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	srcTree: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+	scriptsTree: "cccccccccccccccccccccccccccccccccccccccc",
+	supplementary: [
+		{
+			path: "live",
+			capturedAtHead: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
+	],
+};
+const git = fakeGit({
+	resolvable: [GOOD.head, "6e0d41580e24cacc3de08d659b8f6058d78ead53"],
+	reachable: [GOOD.head],
+	src: GOOD.srcTree,
+	scripts: GOOD.scriptsTree,
+});
+
+test("a manifest stamped at the tree under review passes", () => {
+	assert.deepEqual(provenanceFailures(GOOD, git), []);
+});
+
+test("a head that is merely RESOLVABLE is not good enough", () => {
+	/*
+	 * The defect this check exists for (round 4, R1/D13): the manifest named a
+	 * pre-amend `wip:` commit. It still resolved in the clone that created it,
+	 * so a resolvability check passes it - and it was reachable from no ref, so
+	 * it would have died at the next gc and left the citation dead-ended. The
+	 * durable property is REACHABILITY.
+	 */
+	const dangling = {
+		...GOOD,
+		head: "6e0d41580e24cacc3de08d659b8f6058d78ead53",
+	};
+	const out = provenanceFailures(dangling, git);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /reachable from no ref/);
+	assert.match(out[0], /dies at the next gc/);
+	// It must name the commit, so the reader knows WHICH stamp is wrong.
+	assert.match(out[0], /wip: a commit that was amended away/);
+});
+
+test("a head that resolves to nothing at all fails", () => {
+	const out = provenanceFailures({ ...GOOD, head: "d".repeat(40) }, git);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /resolves to no commit/);
+});
+
+test("a stale tree hash fails, per tree, naming both sides", () => {
+	/*
+	 * Trees rather than commits are the real staleness question: a docs-only
+	 * commit moves `head` and leaves the frames valid, which is why `head` is
+	 * only required to be reachable while the TREES must match exactly.
+	 */
+	const src = provenanceFailures({ ...GOOD, srcTree: "e".repeat(40) }, git);
+	assert.equal(src.length, 1);
+	assert.match(src[0], /`srcTree` is eeeeeeeee but HEAD:src is bbbbbbbbb/);
+	const scripts = provenanceFailures(
+		{ ...GOOD, scriptsTree: "f".repeat(40) },
+		git,
+	);
+	assert.equal(scripts.length, 1);
+	assert.match(
+		scripts[0],
+		/`scriptsTree` is fffffffff but HEAD:scripts is ccccccccc/,
+	);
+});
+
+test("a supplementary set's capturedAtHead is held to the same bar", () => {
+	const out = provenanceFailures(
+		{
+			...GOOD,
+			supplementary: [
+				{
+					path: "live",
+					capturedAtHead: "6e0d41580e24cacc3de08d659b8f6058d78ead53",
+				},
+			],
+		},
+		git,
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /supplementary\[live\]/);
+	assert.match(out[0], /reachable from no ref/);
+});
+
+test("a missing head is a failure, not a pass by omission", () => {
+	// The absence of a claim must not be quieter than a wrong one.
+	assert.match(
+		provenanceFailures({ ...GOOD, head: undefined }, git)[0],
+		/missing or not a sha/,
+	);
+	assert.match(
+		provenanceFailures({ ...GOOD, head: "abc" }, git)[0],
+		/missing or not a sha/,
+	);
 });
