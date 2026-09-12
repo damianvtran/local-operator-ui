@@ -19,6 +19,7 @@ export {
 	onScreenFailures,
 	OPEN_CHILD_STATUSES,
 	OPEN_TODO_STATUSES,
+	panelSlice,
 	retimeRunDetails,
 	runDetailTriggerLabel,
 	SUBAGENT_ROW_CAP,

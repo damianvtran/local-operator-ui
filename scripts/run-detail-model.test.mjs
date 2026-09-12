@@ -232,6 +232,39 @@ test("an unrecognised status is its own quiet state, never done", () => {
 		childStateLabel(derive([job({ status: "\u0007\u0000" })]).subagents[0]),
 		"unknown",
 	);
+	/*
+	 * The word is reconciled with the FOLD, which reads the WHOLE raw string
+	 * (round 4, R4-1). A recognised state plus junk therefore folds to `unknown`
+	 * while its first line still names that state — and the surviving word is a
+	 * confident, wrong `done` on a row drawn as the question mark, with the tally
+	 * stating exactly the count `foldStatus` reserves for words it has NOT been
+	 * taught. The four shapes below are the reviewer's reproductions; each asserts
+	 * all three surfaces at once, because the defect was one word reaching two of
+	 * them (`stateWord` -> the `sr-only` label and the tally).
+	 */
+	for (const raw of [
+		"running\u0007",
+		"running\nstarting",
+		"done\u0000",
+		"paused\nresumed",
+	]) {
+		const foldedAway = derive([job({ status: raw })]).subagents[0];
+		assert.equal(
+			foldedAway.status,
+			"unknown",
+			`${JSON.stringify(raw)} folds to unknown, or this asserts nothing`,
+		);
+		assert.equal(
+			childStateLabel(foldedAway),
+			"unknown",
+			`the sanitised first line of ${JSON.stringify(raw)} is a state the fold KNOWS, so it cannot be this row's word`,
+		);
+		assert.equal(
+			subagentTally([foldedAway]),
+			"1 unknown",
+			`and the tally may not state a recognised count for ${JSON.stringify(raw)}`,
+		);
+	}
 	// Settled and quiet, and not a count the reader acts on: an unknown word must
 	// not raise the trigger on its own any more than `done` does.
 	assert.equal(hasRunDetails(derive([job({ status: "reticulating" })])), false);
@@ -978,8 +1011,9 @@ test("the open period accumulates the slices it showed, and keeps the set's iden
 	const seenTwice = accumulateSeen(seenOnce, displaced);
 	assert.equal(seenTwice.has("in-view"), true, "a row that was read stays read");
 
-	// The identity guarantee the ref relies on: a re-render that adds nothing hands
-	// back the same set, so the 1Hz clock's re-renders do not churn the ref.
+	// The identity guarantee the ref relies on, for the reason that is true of the
+	// caller (`setSeen`): a re-render that adds nothing hands back the same set, so
+	// an open or close that adds nothing does not churn the trigger's state.
 	assert.equal(accumulateSeen(seenTwice, displaced), seenTwice);
 	assert.equal(accumulateSeen(seenTwice, []), seenTwice);
 	assert.equal(accumulateSeen(NOTHING_SEEN, []), NOTHING_SEEN);
@@ -1036,6 +1070,57 @@ test("the trigger's acknowledgement wiring asks the model's predicate", () => {
 		trigger,
 		/new Set\(defaultOpen \? onScreenFailures\(details\) : \[\]\)/,
 		"a seeded open acknowledges the same slice a click does",
+	);
+	/*
+	 * The CLOSE is the second instant the round's claim covers, and it is pinned to
+	 * the accumulated ref rather than to a fresh read (round 4, R4-2). The
+	 * regression is the mirror image of the one above and passes every model test
+	 * in this file: a close that re-asks the slice marks only the failures still in
+	 * it at the close instant, so a row the reader watched fail and then displace
+	 * keeps its dot — telling the reader who read it that they have not.
+	 */
+	assert.match(
+		trigger,
+		/acknowledgedOnClose\(\[\.\.\.viewedRef\.current\], previous\)/,
+		"the close must acknowledge what the open period accumulated",
+	);
+	assert.doesNotMatch(
+		trigger,
+		/acknowledgedOnClose\(\s*(onScreenFailures\(|detailsRef\.current\?\.failedChildIds)/,
+		"and must never re-ask for the slice at the close instant, which leaves a displaced row unread",
+	);
+});
+
+test("the panel renders the slice the acknowledgement predicates count", () => {
+	/*
+	 * The OTHER end of the pairing the test above pins (round 4, R4-2). The model
+	 * can only promise that the dot answers the rows the reader could see if the
+	 * section renders that same slice: a panel-side filter or cap restores the
+	 * divergence with every model assertion in this file green, because the model
+	 * is then asked about a slice the component never rendered.
+	 *
+	 * Asserted by source text for the same reason as the trigger's call sites, and
+	 * in the same shape. The slice has ONE entry point (`panelSlice`) - which is
+	 * what `visibleFailures` counts and what this test refuses to see bypassed at
+	 * the panel - so a change to the cap, the failure reservation or the rank
+	 * order is a change both ends inherit rather than one they can drift from.
+	 */
+	const panel = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/run-details/run-detail-subagents.tsx",
+		),
+		"utf8",
+	);
+	assert.match(
+		panel,
+		/const \{ rows, hidden \} = panelSlice\(details\.subagents\);/,
+		"the section must render the model's own slice, not one it narrows itself",
+	);
+	assert.doesNotMatch(
+		panel,
+		/visibleSubagents\(/,
+		"slicing the roster at the panel is how the two ends drift apart",
 	);
 });
 
