@@ -21,7 +21,7 @@ These frames are the change, captured on two trees against the same store:
 | Query `classifer` against a backend that cannot search conversations | the same empty panel | [`after-namesonly`](after-namesonly/localOperatorDark.webp) — the panel says `Searching chat names only. Update Local Operator to search inside conversations.` and stops there. It does **not** add `Nothing in your chats matches "classifer"`: that row's conversation DOES match, the app has just said it cannot see inside conversations, and the sentence would be a falsehood the backend cannot check (design round 2, D11). Reached with a proxy that deletes the `session_search` capability from a real backend's answer |
 | Query `kubernetes` (no match) | [`before-nomatch`](before-nomatch/localOperatorDark.webp) — an empty panel | [`after-nomatch`](after-nomatch/localOperatorDark.webp) — the same rows, plus `Nothing in your chats matches “kubernetes”.` The box now searches conversation text, so a blank panel asserts a much stronger claim than it used to; the sentence is `aria-live` for the same reason |
 | Sidebar at rest | the query path is the only changed path, and the pair above shows the list it feeds | [`after-rest`](after-rest/localOperatorDark.webp) — unchanged from the shipped rest state: the same agents, teams, counts and groups, because search runs only when a query is present |
-| A row with TWO trailing qualifiers (`dossier`) | not reachable before this change without a failed first send; the shipped layout rendered the same fixture as `Watchlist dossiers · release-pod · No…` | [`after-unstarted`](after-unstarted/localOperatorDark.webp) — `Watchlist do… · release-… · Not sent…`. The title holds a width FLOOR and the secondary qualifiers yield, so the row a user is hunting by name keeps its name; measured title ink 83.5px against 38.0px for the first layout of this change, which truncated the title and kept both qualifiers whole (design round 4, D18) |
+| A row with a state worth reporting (`dossier`) | not reachable without a failed first send; the shipped layout rendered the same fixture as `Watchlist dossiers · release-pod · No…` | not re-captured — see "The one state that is not here" below |
 
 Read out of the live DOM in the same runs, not from the pixels:
 
@@ -78,6 +78,28 @@ ellipsis cannot land between the separator and the name and leave an orphan `·`
   surface has no story.
 - **The phone's search and the TUI picker**, which share the same backend
   mechanic, are covered by that repository's tests rather than by these frames.
+
+## The one state that is not here
+
+`after-unstarted` was captured at `cf0db490e` to show the D18 fix (a title floor
+with shrinkable qualifiers). The layout it photographed **no longer exists**:
+the marker row has since moved to one bounded statement per row, so
+`rowTrailingStatement` answers `not_sent` for that fixture and the row draws a
+single qualifier rather than the two in that frame. The frame and the two prose
+claims that described it have been **removed rather than relabelled**, and this
+set's `capturedAtHead` in the manifest names the head the remaining frames are
+from.
+
+It could not be re-shot: the browser bridge lost its pairing mid-session — the
+daemon's pairing file was deleted *and* the extension's own token was removed
+from `chrome.storage.local`, so neither side can reconstruct it, and the operator
+has to enter a code in the extension popup. Until then **no browser-driven
+capture is possible on this machine**, including for the states in the table
+above: they were taken at `cf0db490e`, and the two commits after it changed the
+marker row's slot classes. The current row is verified by
+`scripts/chat-search.test.mjs` (the trailing-statement rule, exhaustively over
+its inputs) and by the arithmetic in the commits, not by pixels, and the PR says
+so.
 
 ## Re-capturing this set
 

@@ -363,7 +363,18 @@ export function ChatSidebar({
 			    instead. The row's `title` carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
 				{trailing === "binding" && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+					/* Bounded, unlike the two literals below. `bindingName` is a
+					   user-authored agent or team name and the agent-name field
+					   accepts 64 characters, so `shrink-0` with no `truncate` left an
+					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
+					   which restored round 4's D18 at roughly 35 characters and
+					   overflowed the row at roughly 45 — reachable from the product's
+					   own input limit, with no dragging involved (review round 4,
+					   R21). The cap is a share of the row rather than a fixed width so
+					   it scales with the panel, and `truncate` clips inside it. The
+					   other two are literals and stay `shrink-0`: they cannot grow,
+					   so they cannot starve anything. */
+					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
 				)}

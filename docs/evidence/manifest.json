@@ -133,12 +133,13 @@
     },
     {
       "path": "chat-search",
-      "frames": 11,
-      "surfaces": 10,
+      "frames": 10,
+      "surfaces": 9,
       "themes": 2,
       "source": "live renderer in the operator's real browser (Local Operator extension), served by Vite over this repository's own renderer config with the preload bridge stubbed to a no-op, against an isolated local-operator backend on its own port and config dir",
-      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story, and a debounced backend round trip is not something a fixture can produce, so the frames come from the running app against an isolated seeded store. Both trees -- origin/main and this branch -- are driven by the same harness against the same store, which is what makes each pair comparable; docs/evidence/chat-search/README.md carries the re-capture procedure. Recaptured after the round-1 and round-2 code and design reviews, which is why the mark is words on the rows that carry it rather than a clause inside the truncating title or a column reserved list-wide, why the degraded-backend and in-flight states are frames of their own, and why the no-match state is one of them.",
-      "capturedAt": "2026-09-12T16:10:00.000Z"
+      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story, and a debounced backend round trip is not something a fixture can produce, so the frames come from the running app against an isolated seeded store. Both trees -- origin/main and this branch -- are driven by the same harness against the same store, which is what makes each pair comparable; docs/evidence/chat-search/README.md carries the re-capture procedure. Captured at the head named below, which is NOT the branch head: the marker row's slot classes changed afterwards (one bounded statement per row), and the browser bridge lost its pairing before those states could be re-shot -- the daemon's pairing file was deleted and the extension's own token was removed, so neither side can reconstruct it without the operator. The states a reader cannot see here are therefore covered by scripts/chat-search.test.mjs and by the arithmetic in the commits, and the PR says so rather than implying pixels it does not have. Read the frames as evidence of the QUERY PATH, which is what they were taken for, and not of the row's current slot widths.",
+      "capturedAt": "2026-09-12T21:05:00.000Z",
+      "capturedAtHead": "cf0db490e1190b621df962408d80555fcedff166"
     }
   ]
 }
