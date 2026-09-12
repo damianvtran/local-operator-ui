@@ -46,8 +46,8 @@
   "supplementary": [
     {
       "path": "chat-title",
-      "frames": 24,
-      "surfaces": 12,
+      "frames": 16,
+      "surfaces": 8,
       "themes": 2,
       "source": "the REAL built Electron app: npx electron . from each tree's own out/ (built with pnpm build, so import.meta.env.DEV is false and the development-only Chat|Raw tab strip does not exist), against an isolated local-operator serve on its own port, seeded from out/evidence-harness/seed.mjs and paired through a shared LOCAL_OPERATOR_DESKTOP_TOKEN; driven over raw CDP by out/evidence-harness/app-drive.mjs. The before tree is a detached worktree at a09f2e6f4 with the same script and the same backend.",
       "why": "The claim is a CLICK that both opens a conversation and writes its title into the catalogue store the sidebar reads, and the two surfaces it moves between - the sidebar row and the chat header - have no story (the sidebar's absence from the sweep is recorded in docs/evidence/sidebar-new-chat), so no sweep can re-derive these frames and Storybook would have to fake both the store write and the press. Captured from the built app rather than electron-vite dev because in dev the development-only Chat|Raw tab strip paints over the header: the first attempt at this evidence produced byte-identical before/after frames with a correct DOM and the subject covered.",

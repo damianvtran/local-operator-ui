@@ -101,12 +101,12 @@ Geometry asserted before every frame, and recorded in the run's JSON: window
   two brand palettes — at one window size, 1380x872.
 - **Not the transient blanking of the row.** The click-through frames show the
   header and the selected row agreeing after the change and disagreeing before
-  it; a 1s sample on the pre-fix tree did not catch the row itself blanked before
-  the 5s catalogue poll restored it, so that half of the defect is pinned by the
-  unit suite (`scripts/chat-title.test.mjs` exercises the store merge directly)
-  rather than photographed. `before-open-alpha-transient` and
-  `after-open-alpha-transient` are in the set and show no difference beyond the
-  title.
+  it, but the row's own transient blanking is not among them: the set was taken
+  with three samples after the click (~1s, ~2s and past the 5s catalogue poll),
+  and on both trees the three were BYTE-IDENTICAL, so they were not committed -
+  a frame that repeats its sibling is not evidence of a second state. That half of
+  the defect is pinned by the unit suite instead, which drives the store merge
+  directly (`scripts/chat-title.test.mjs`).
 - **No model inference.** No turn is sent; what is proven is which name each
   surface wears, not what an agent would then reply.
 - The offline banner is hidden, as described above.
@@ -123,12 +123,16 @@ chat header or the sidebar — so the set is declared `supplementary` in
 2. `bash out/evidence-harness/run-app.sh` (gitignored, like the rest of `out/`).
    It seeds the isolated store, starts the backend, runs the built app from each
    tree in turn with its own `--user-data-dir` and CDP port, and drives
-   `out/evidence-harness/app-drive.mjs` over raw CDP for both palettes.
+   `out/evidence-harness/app-drive.mjs` over raw CDP for both palettes. The driver
+   takes three samples after the click; the duplicates they produce on this store
+   were dropped from the committed set, so a re-capture should expect sixteen
+   distinct frames out of twenty-four taken.
    `BASELINE=…` points it at the before tree; it refuses to capture if a port is
    held by a process it did not start.
-3. Assert before committing: no two frames in the set share a SHA-256, and every
-   `before-*` frame differs from its `after-*` counterpart in the header band —
-   `magick compare -metric AE` over the crop above.
+3. Assert before committing: no two frames in the set share a SHA-256 (sixteen
+   frames, sixteen hashes), and every `before-*` frame differs from its
+   `after-*` counterpart in the header band — `magick compare -metric AE` over
+   the crop above.
 
 The harness and the driver are gitignored because they exist to take evidence,
 not to run in CI; the numbers above are what a reviewer checks them against.
