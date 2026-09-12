@@ -1,14 +1,14 @@
 {
-  "head": "21d28d3c65e13f9071152dc19f04d856bbb41d55",
-  "srcTree": "217ef43b8ec893bb440f2960965d30d7a8141ebe",
-  "scriptsTree": "76014fc30796cb13fbb04463b1044cd14d058c20",
-  "dirtyWorkingTree": true,
+  "head": "2b0ebd58652bc694f615c584f968cf8da1141f97",
+  "srcTree": "b116f0cfd2c7c2c8d40fbb56474cba0feb8e0424",
+  "scriptsTree": "c4976c74a22479563b7aa0d718038f6ab8e9c2d6",
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 474,
-  "surfaces": 45,
+  "frames": 478,
+  "surfaces": 47,
   "themes": 12,
   "partialCapture": {
-    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content — at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. REMEDIATION ROUND 2: `real-conversation-tool-rows` was RE-CAPTURED and is no longer stale. It now shows 38 real tool rows with 0 blank object columns on a 20px pitch, rendered by the shipped reducer and the shipped CanonicalTranscript over real /history pages paged oldest-first in 20-entry pages (the cross-page condition the blank-summary defect needed). Electron is not required for this surface — the desktop API answers a plain bearer request. The reading was proven falsifiable by running the SAME harness with the reducer starved: stripping tool_calls alone still yields 0 blanks (the output fallback carries it), stripping tool_calls AND output yields 53 of 53 blank, reproducing the original defect from the current head.",
+    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content — at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. REMEDIATION ROUND 2: `real-conversation-tool-rows` was RE-CAPTURED and is no longer stale. It now shows 38 real tool rows with 0 blank object columns on a 20px pitch, rendered by the shipped reducer and the shipped CanonicalTranscript over real /history pages paged oldest-first in 20-entry pages (the cross-page condition the blank-summary defect needed). Electron is not required for this surface — the desktop API answers a plain bearer request. The reading was proven falsifiable by running the SAME harness with the reducer starved: stripping tool_calls alone still yields 0 blanks (the output fallback carries it), stripping tool_calls AND output yields 53 of 53 blank, reproducing the original defect from the current head. DIFF BODY: two surfaces were ADDED — the `write`/`edit` row's expansion now paints the result's own unified diff instead of its arguments JSON — and four frames were taken for them in the two brand palettes (`chat-tool-rows--diff-body` at 1280x2110 and `chat-tool-rows--diff-body-narrow` at 560x1380). The four Storybook frames are committed under `write-edit-diff/` rather than under the story-id directory the capturer derives (`chat-tool-rows/<leaf>`), following the `tool-rows/` precedent, so that the frames sit beside the spec and README that explain them; a re-capture writes them back to `chat-tool-rows/`. `surfaces` counts the two new STORIES entries. The 12-theme sweep was NOT regenerated. A sixth frame set is declared in `supplementary` below: three real durable diff rows in one conversation (197, 58 and 14 diff lines — the first two longer than the 40-line display cap, so two overflow markers and one body shown whole) rendered by the SHIPPED reducer and transcript over real transcript.jsonl rows. The story proves the component; that one proves the wire payload reaches pixels.",
     "addedFrames": 18,
     "addedAt": "2026-09-10T02:37:03.000Z",
     "addedAtHead": "9f12fc8779fbddbdee450519da2b30811967fdaa",
@@ -23,17 +23,12 @@
       "tool-rows/working-labels",
       "transcript-images/real-conversation-images"
     ],
-    "refreshedAt": "2026-09-10T06:37:56.203Z",
-    "refreshedAtHead": "21d28d3c65e13f9071152dc19f04d856bbb41d55",
-    "refreshedFrames": 14,
+    "refreshedAt": "2026-09-12T05:41:09.189Z",
+    "refreshedAtHead": "2b0ebd58652bc694f615c584f968cf8da1141f97",
+    "refreshedFrames": 4,
     "refreshedStories": [
-      "chat-tool-rows--states",
-      "chat-tool-rows--names-and-fallbacks",
-      "chat-tool-rows--narrow",
-      "chat-tool-rows--working",
-      "chat-tool-rows--working-labels",
-      "chat-tool-rows--operator-spacing-cases",
-      "chat-tool-rows--turn-boundary-and-working-line"
+      "chat-tool-rows--diff-body",
+      "chat-tool-rows--diff-body-narrow"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -49,6 +44,15 @@
       "source": "live renderer over CDP",
       "why": "The claims are a real pointer hover and a click that stages a draft. Storybook can force the revealed class but not produce the hover, and a staged draft is store state a fixture would have to fake, so these are captured from the running app against an isolated seeded backend instead. The sidebar has no story, so re-running the sweep cannot re-derive them; docs/evidence/sidebar-new-chat/README.md carries the re-capture procedure.",
       "capturedAt": "2026-09-10T06:00:00.000Z"
+    },
+    {
+      "path": "write-edit-diff/real-durable-diff-rows",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "headless Chrome over CDP, driven by `node scripts/diff-body-evidence.mjs`: the shipped `applyHistoryPage` reducer and the shipped `CanonicalTranscript` over a real durable history page read from `<store>/03fc7a26484a/transcript.jsonl`",
+      "why": "The story renders a TranscriptRecord this repository built, so it proves the component. This set starts one layer earlier, at the bytes `/v1/desktop/sessions/{id}/history` serves — the stored rows, serialised verbatim by `read_transcript_page` — and runs them through the shipped reducer, which is what proves the payload reaches pixels: the durable row's own encoding, the extraction of `provider_payload.details.diff`, the identity gate and the args-drop rule. It cannot be re-derived by the sweep, and the payload itself is deliberately NOT committed: the harness writes it to a temp file and deletes it. Re-run with `node scripts/diff-body-evidence.mjs` (see docs/evidence/write-edit-diff/README.md).",
+      "capturedAt": "2026-09-12T05:56:20Z"
     }
   ]
 }
