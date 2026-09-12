@@ -1384,15 +1384,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		return (
 			<div
 				className={cn(
-					// `bg-surface`, not `bg-canvas`. `canvas` is the PAGE ground and
-					// `surface` is the panel ground, so painting canvas inside the
-					// surface-coloured chat column ran the elevation step backwards and
-					// read as a hole punched through the panel to the page behind it.
-					// On an empty chat this band holds the greeting, the composer and
-					// the suggestion chips, so it covered most of the column - which is
-					// the "large empty space with the wrong background colour". The
-					// composer box keeps its own `border-control` edge (floored at 3:1
-					// on all four grounds), so it stays legible without the band.
+					// No ground of its own: this band inherits the chat column's, so
+					// the two cannot drift apart. That invariant is the requirement,
+					// not the role it names. It was written as `bg-surface` to MATCH a
+					// column that was also `surface`, and the reason was sound - a
+					// band painted on a different ground from its column reads as a
+					// hole punched through the panel to the page behind it, and on an
+					// empty chat this band holds the greeting, the composer and the
+					// suggestion chips, so it covers most of the column (the reported
+					// "large empty space with the wrong background colour"). Naming
+					// the ground instead of the relationship is what went stale: the
+					// column is `canvas` now, because it is the working surface (see
+					// chat-content.tsx), and a hardcoded `bg-surface` here would have
+					// re-opened that hole in reverse. The composer box keeps its own
+					// `border-control` edge (floored at 3:1 on all four grounds), so
+					// it stays legible whatever ground the band sits on.
 					//
 					// `shrink-0` alone: `grow` on the same element contradicted it and
 					// became actively harmful once the transcript stopped declaring
@@ -1439,7 +1445,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// any ancestor of the popup clipping. Do not re-add a bound here:
 					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
-					"flex w-full flex-col items-center justify-center bg-surface",
+					"flex w-full flex-col items-center justify-center",
 					messages.length === 0 ? "grow" : "shrink-0",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see

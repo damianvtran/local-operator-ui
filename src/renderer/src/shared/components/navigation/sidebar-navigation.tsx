@@ -59,6 +59,11 @@ type NavItem = {
  * permanent chrome recedes, the secondary list sits between, and the thing you
  * are working on comes forward. No border is needed to separate any of them.
  *
+ * The chat route is the same rule one plane to the right: its list panel is
+ * `surface` and the column it opens is `canvas`, so the pair never repeats the
+ * merge described above. Repainting that column `surface` puts the two back
+ * into one slab, and there is no rule between them to fall back on.
+ *
  * ## Density
  *
  * 220px expanded, 48px collapsed. 48 is the VS Code activity-bar width and it

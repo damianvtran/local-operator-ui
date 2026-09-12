@@ -205,22 +205,32 @@ const CONTROLS = [
 		/*
 		 * The user's message bubble in the transcript.
 		 *
-		 * Listed because it is `surface` on a `surface` column: its fill is the
-		 * same colour as the ground behind it, so its border is doing ALL of the
-		 * work of separating one speaker from the other - the agent side renders
-		 * no bubble at all. That makes the edge structural rather than
-		 * decorative.
+		 * `on` names `canvas` because that is the ground the bubble is drawn on
+		 * and therefore the ground its edge floor is measured against: the
+		 * transcript renders inside the chat column, and that column is the
+		 * working surface, `canvas` (see chat-content.tsx). It used to say
+		 * `surface`, matching a surface-coloured column - a stale `on` would keep
+		 * measuring this component against a ground it is no longer drawn on,
+		 * which is the failure mode a green run cannot report.
+		 *
+		 * The bubble keeps its own `surface` fill, so it now has a lightness step
+		 * against the column as well as its border. The border is still what
+		 * makes the edge structural: the agent side renders no bubble at all, so
+		 * this edge is the whole distinction between the two speakers. A step is
+		 * not an edge, and the fill alone cannot carry it - a ground is not
+		 * supposed to clear 3:1 against the next ground.
 		 *
 		 * NOTE what this row does and does not buy. It asserts the PALETTE
-		 * pairing - that `borderControl` clears 3:1 on `surface` in all twelve
-		 * themes - which `STRUCTURAL` already implies at the same floor. It
+		 * pairing - that the bubble's edge clears the structural floor on the
+		 * ground behind it in all twelve themes - which here resolves through
+		 * `borderControl`, since `surface` on `canvas` is only a few ΔE00. It
 		 * cannot see which class the component actually renders, because this
 		 * script only reads palettes. The call site is asserted separately by
 		 * `STRUCTURAL_CALL_SITES` below, which is what would fail if someone
 		 * changed the bubble back to `hairline`.
 		 */
 		name: "user message bubble",
-		on: ["surface"],
+		on: ["canvas"],
 		fill: "surface",
 		border: "borderControl",
 		ink: "ink",
@@ -242,13 +252,53 @@ const CONTROLS = [
  * appear in it. Deliberately a substring check on the shipped source: this
  * script has no parser and does not need one to answer "does this component
  * still declare a structural edge".
+ *
+ * Two entries are not edges at all. The chat list panel's ground and the
+ * working surface's ground are a palette-only fact on the other half of this
+ * file (`surface` against `canvas` is asserted there as an adjacent pair, and
+ * either colour clears every floor wherever it is used), so the one place the
+ * relationship can be undone is at the call sites - and it can be undone from
+ * EITHER side. Repaint the column `surface`, or the panel `canvas`, and the two
+ * merge into one slab with no rule between them (the divider is `w-0` and draws
+ * nothing) while every palette assertion stays green. Both panes are pinned to
+ * their own composed class string rather than to a bare ground token, so a bare
+ * `bg-canvas` in a comment cannot satisfy the column's row (mutation-tested).
+ *
+ * HOW THESE PINS MATCH, AND WHAT THAT COSTS. Every `must` is a plain
+ * `source.includes(...)` over the whole file, comments included: there is no
+ * parser here, deliberately (see the section above on why a substring is enough
+ * to answer "does this component still declare the role"). Two consequences are
+ * known, accepted, and should not be changed without their own verification
+ * round:
+ *
+ *   - A comment that quotes the pinned string EXACTLY re-arms that row, so
+ *     documenting a pin in prose inside the file it pins can silently disable
+ *     it. Keep the pinned string out of comments in that file, or pin something
+ *     narrower than the prose contains.
+ *   - The pins are class-order-sensitive: a behaviour-identical reorder
+ *     (`bg-canvas rounded-none` for `rounded-none bg-canvas`) fails the gate.
+ *     That direction fails CLOSED - it costs a reviewer a minute, it does not
+ *     let a merged slab through - which is why it is acceptable rather than
+ *     worth a parser.
  */
 const STRUCTURAL_CALL_SITES = [
+	{
+		what: "chat working surface ground",
+		file: "src/renderer/src/features/chat/components/chat-content.tsx",
+		must: "overflow-hidden rounded-none bg-canvas",
+		why: "the working surface takes the PAGE ground so it steps away from the `surface` list panel beside it; repainting this column `surface` merges the two into one slab and no palette assertion can see it",
+	},
+	{
+		what: "chat list panel ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: "flex-col bg-surface p-2 text-ink",
+		why: "the list panel takes the `surface` panel ground so it steps away from the `canvas` working surface it opens; repainting this panel `canvas` produces the same merged slab from the other side, which the column's own row cannot see",
+	},
 	{
 		what: "user message bubble edge",
 		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		must: "border border-control bg-surface",
-		why: "the bubble is surface-on-surface, so its border is the whole distinction between speakers",
+		why: "the bubble is drawn on the canvas-coloured working surface and keeps its own surface fill; the agent side has no bubble, so this border is the edge that distinguishes the speakers",
 	},
 	{
 		what: "chat header bottom rule",
