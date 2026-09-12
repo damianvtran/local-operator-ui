@@ -10,6 +10,8 @@ export { AgentQuestion } from "./agent-question";
 export type { AgentQuestionProps } from "./agent-question";
 export { AgentReasoning } from "./agent-reasoning";
 export type { AgentReasoningProps } from "./agent-reasoning";
+export { DiffBlock } from "./diff-block";
+export type { DiffBlockProps } from "./diff-block";
 export { SecurityNotice } from "./security-notice";
 export type { SecurityNoticeProps } from "./security-notice";
 export { TraceGroup } from "./trace-group";

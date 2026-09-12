@@ -149,6 +149,24 @@ const STORIES = [
 	["chat-tool-rows--narrow", 560, 260],
 	["chat-tool-rows--working", 1280, 900],
 	["chat-tool-rows--working-labels", 760, 300],
+	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
+	   arguments. Captured at the height the story declares, because the frame IS
+	   the body — a viewport shorter than the content photographs a scrolled
+	   corner of it and cuts the last three cases off. The 560px pass is the same
+	   content under the wrap rule: the body must wrap its long lines rather than
+	   grow a horizontal scrollbar inside a disclosure. */
+	["chat-tool-rows--diff-body", 1280, 2110],
+	/* The narrow pass is a SECOND story rather than a second width of the first:
+	   under wrapping each body grows, and the honest picture of the wrap rule is
+	   one you can see whole (two cases, sized to their content) rather than seven
+	   cases cropped at the frame edge. */
+	["chat-tool-rows--diff-body-narrow", 560, 1380],
+	/* And the case neither of those can show: the body AT THE CAP in a wrapping
+	   column, where the derived 740px ceiling is too short for 40 wrapped lines
+	   and the `… N more diff lines` marker would scroll out of the well. Sized to
+	   its own content — one row and its body — because the marker's visibility at
+	   rest is the whole claim. */
+	["chat-tool-rows--diff-body-narrow-wrapped-cap", 560, 830],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
