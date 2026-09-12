@@ -15,6 +15,7 @@
 
 import { UsageView } from "@features/chat/pickers/usage-view";
 import type { UsagePayload } from "@features/chat/pickers/usage-view-model";
+import { defaultQueryOptions } from "@shared/api/query-client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -88,9 +89,23 @@ const makePayload = (source: string, usedFraction: number): UsagePayload => ({
 
 let releaseHung: (() => void) | null = null;
 
+/*
+ * The starting mode, from `?mode=`, because some states are only reachable
+ * BEFORE mount.
+ *
+ * A driver that sets `mode` after the page loads can only fail an ask that
+ * follows a successful cached read. The failed FIRST load is a different frame
+ * — there is no payload to fall back on, so it is the one that decides whether
+ * the empty-state copy ("No usage reports. Sign in to a provider…") is shown to
+ * a user whose backend is merely down. That frame was unreachable here, which
+ * is why the false copy survived a round (UX U8, consequence 4).
+ */
+const startMode = (new URLSearchParams(window.location.search).get("mode") ??
+	"answer") as Mode;
+
 const harness: Window["__USAGE_HARNESS__"] = {
 	requests: [],
-	mode: "answer",
+	mode: startMode,
 	payload: makePayload("cached", 0.62),
 	release: () => releaseHung?.(),
 	closes: 0,
@@ -117,8 +132,29 @@ window.__USAGE_HARNESS__ = harness;
 	},
 };
 
+/*
+ * The SHIPPED policy, imported rather than restated.
+ *
+ * This harness previously built `retry: false`, and that single divergence is
+ * why a blocker survived a whole review round: under `retry: false` a failure
+ * settles in one tick, so the harness could never observe the window where one
+ * attempt has been spent, `errorUpdatedAt` is still 0 and the query reports
+ * neither loading nor settled — which is the window the user actually sees and
+ * the window the receipt has to speak for. A harness that runs a policy the app
+ * does not ship is evidence about the harness.
+ *
+ * `gcTime` is the one deliberate override: an unmounted query must not be
+ * collected between steps of a driven run, or a later step would measure a
+ * cold start rather than the state the previous step left behind.
+ */
 const client = new QueryClient({
-	defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+	defaultOptions: {
+		...defaultQueryOptions,
+		queries: {
+			...defaultQueryOptions.queries,
+			gcTime: Number.POSITIVE_INFINITY,
+		},
+	},
 });
 
 createRoot(document.getElementById("root") as HTMLElement).render(

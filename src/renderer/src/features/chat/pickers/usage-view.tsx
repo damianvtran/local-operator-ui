@@ -34,8 +34,8 @@ import type { PickerContext } from "./destination-pickers";
 import { PickerHost } from "./picker-host";
 import {
 	type LimitRow,
+	NOT_REPORTED,
 	type ProviderBlock,
-	type ReportedStatus,
 	type StatusTone,
 	type UsagePayload,
 	type UsageReport,
@@ -111,8 +111,30 @@ const KNOWN_WORD: Record<string, string> = {
 	unknown: STATUS_WORD.dim,
 };
 
-const statusWord = (status: ReportedStatus): string =>
-	KNOWN_WORD[status] ?? status;
+/**
+ * What a row whose status is merely UNMEASURED says when it prints a number.
+ *
+ * `not reported` is right for a row with no number at all, and wrong for a
+ * balance row: both account-balance fetchers report a remaining figure and no
+ * limit, so the row printed `519.86 USD left` and a screen reader said
+ * `519.86 USD left, not reported` — the spoken status contradicting the
+ * printed number (UX U10). What is missing there is the LIMIT, not the report.
+ */
+const NO_LIMIT_WORD = "no limit reported";
+
+/**
+ * The spoken status for one row.
+ *
+ * Takes the row rather than the status alone because the honest phrase depends
+ * on whether a number was printed beside it. A vendor's own word is still
+ * spoken verbatim — only the DERIVED `unknown` is refined, since that is the
+ * one this view invented and therefore the one it can get wrong.
+ */
+const statusWord = (row: LimitRow): string => {
+	if (row.status === "unknown" && row.amount !== NOT_REPORTED)
+		return NO_LIMIT_WORD;
+	return KNOWN_WORD[row.status] ?? row.status;
+};
 
 /**
  * The column template every window row in every block shares.
@@ -232,7 +254,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 				)}
 			>
 				{row.amount}
-				<span className={cn("sr-only")}>, {statusWord(row.status)}</span>
+				<span className={cn("sr-only")}>, {statusWord(row)}</span>
 			</span>
 			{/* A window with no countdown still occupies its cell, so the rows that do
 			    have one stay in a column rather than starting wherever their numbers
@@ -579,7 +601,14 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					{/* Named for what it does to the world, not for the widget: the
 					    button reaches every signed-in provider's usage endpoint, which
 					    is slow and rate-limited, so "ask" is the honest verb. In-flight
-					    state is the label, not a spinner — there is nothing to watch. */}
+					    state is the label, not a spinner — there is nothing to watch.
+
+					    The in-flight label distinguishes the two fetches this view
+					    makes, because only one of them is an ask. Opening the dialog
+					    reads the backend's CACHE, and labelling that `Asking providers`
+					    claimed a live provider probe the user never requested — harmless
+					    when the read is fast, misleading for exactly as long as it is
+					    slow, which is when the label is actually read (UX U9). */}
 					<Button
 						ref={actionRef}
 						className={cn("ml-auto")}
@@ -590,7 +619,9 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 						disabled={fetching}
 					>
 						{fetching
-							? "Asking providers"
+							? asked
+								? "Asking providers"
+								: "Reading cached usage"
 							: asked
 								? "Ask providers again"
 								: "Ask providers now"}
@@ -608,31 +639,45 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 				 * mouse wheel. `role="region"` with a name is what makes the tab stop
 				 * announce itself as something rather than as an unlabelled group.
 				 *
+				 * The name describes the REGION, not the screen it is on: named
+				 * `Provider usage` it duplicated the dialog title, so a screen reader
+				 * read "Provider usage region" inside "Provider usage dialog" and the
+				 * tab stop said nothing new about where focus had landed (UX U11).
+				 *
 				 * Esc is unaffected: the dialog's handler is on the Radix content
 				 * element above this, and nothing here stops propagation.
 				 */
-				/* biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the
-				   fix. The rows are static `li`s, so this region holds no focusable
-				   descendant, and without an explicit stop a keyboard user cannot
-				   scroll it at all — at real-account density roughly two thirds of the
-				   content sits below the fold. A labelled scroll container is the case
-				   WAI-ARIA's authoring practices tell you to make focusable. */
 				<section
 					ref={bodyRef}
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a labelled scroll container with no focusable descendant has to be focusable or a keyboard user cannot reach its content at all.
 					tabIndex={0}
-					aria-label="Provider usage"
+					aria-label="Report list"
 					className={cn("block rounded-sm")}
 				>
 					{showSkeleton ? (
 						<UsageSkeleton />
 					) : error ? (
 						<p className={cn("text-body-sm text-danger")}>{error}</p>
-					) : reports.length === 0 ? (
+					) : /*
+					 * The empty state is a claim about the ANSWER, so it requires one.
+					 *
+					 * `reports.length === 0` alone is also true when no response has
+					 * arrived at all, and every branch above it is about a state that
+					 * has a payload or an error — so a load that had neither fell
+					 * through to here and told a user whose backend was merely down
+					 * that they should go sign in to a provider (UX U8, second
+					 * consequence). Requiring the payload makes the copy say only what
+					 * it can know: the providers answered, and reported nothing.
+					 */
+					payload && reports.length === 0 ? (
 						<p className={cn("text-body-sm text-ink-muted")}>
 							No usage reports. Sign in to a provider that publishes quota, then
 							ask providers for live numbers.
 						</p>
+					) : reports.length === 0 ? (
+						/* No answer yet and nothing to show: the in-flight state, which the
+						   toolbar label is already reporting. Never the empty-state copy. */
+						<UsageSkeleton />
 					) : (
 						<UsageReports
 							reports={reports}
@@ -697,6 +742,26 @@ export const usageQueryOptions = (
 		 * is the wiring that lets the container produce it.
 		 */
 		placeholderData: keepPreviousData,
+		/*
+		 * The failure contract, owned here rather than inherited.
+		 *
+		 * `query-client.ts` sets `retry: 1` for the whole app, which is right for a
+		 * cheap idempotent read and wrong for this one. A live `usage.get` fans out
+		 * to every signed-in provider's usage endpoint — slow, rate-limited, and
+		 * already retried per-account inside the backend's own `ProviderController`
+		 * — so a second attempt from the renderer re-probes every provider a second
+		 * time and mostly earns a 429 for it. The user also has an explicit retry in
+		 * front of them: the action button is right there and says `Ask providers
+		 * again`.
+		 *
+		 * Stating it here is the point, not the value. Inherited, the global default
+		 * put a silent ~1s window between the click and any settled state, during
+		 * which the query reported neither loading nor error and the view had
+		 * nothing true to say — which is how a failed ask came to show no receipt at
+		 * all. The receipt below now speaks for the in-between explicitly, and this
+		 * makes the window it has to speak for a decision rather than an accident.
+		 */
+		retry: 0,
 	}) as const;
 
 /**
@@ -747,19 +812,51 @@ export const UsageView: FC<PickerContext> = ({ onClose, action }) => {
 	 * Report each settled ask once. Keyed on `dataUpdatedAt`/`errorUpdatedAt`,
 	 * which react-query moves on every settle even when the payload is
 	 * byte-identical — that is exactly the case a receipt exists for.
+	 *
+	 * `failureCount`/`failureReason` are read alongside the settled state
+	 * because a settle is not the only thing the user needs told about. An
+	 * attempt that has failed but not yet settled — the retry window, and the
+	 * whole of it under any `retry` above 0 — leaves `errorUpdatedAt` at 0 while
+	 * `failureCount` is already 1. Reading only the settled transition made that
+	 * window indistinguishable from a request still in its first attempt, which
+	 * is how a failed ask showed no receipt at all (UX U8). These two fields are
+	 * the only ones that speak for it.
 	 */
-	const { dataUpdatedAt, errorUpdatedAt, isError, error } = usage;
+	const {
+		dataUpdatedAt,
+		errorUpdatedAt,
+		isError,
+		error,
+		failureCount,
+		failureReason,
+	} = usage;
 	const settledAt = Math.max(dataUpdatedAt, errorUpdatedAt);
 	const askedRef = useRef(false);
 	if (live) askedRef.current = true;
 	useEffect(() => {
-		if (!askedRef.current || !settledAt) return;
-		setOutcome(
-			isError
-				? { tone: "error", text: errorText(error) }
-				: { tone: "info", text: "Providers answered." },
-		);
-	}, [settledAt, isError, error]);
+		if (!askedRef.current) return;
+		if (isError) {
+			setOutcome({ tone: "error", text: errorText(error) });
+			return;
+		}
+		/*
+		 * An attempt failed and another is queued. Said in the present tense and
+		 * with the reason attached, so "still trying" is never mistaken for
+		 * "failed" — nor for silence, which is what it used to be. Unreachable at
+		 * this view's own `retry: 0` and kept because the contract above is a
+		 * decision that can be revisited, and the receipt must stay honest if it
+		 * is.
+		 */
+		if (failureCount > 0) {
+			setOutcome({
+				tone: "error",
+				text: `${errorText(failureReason)} Retrying…`,
+			});
+			return;
+		}
+		if (!settledAt) return;
+		setOutcome({ tone: "info", text: "Providers answered." });
+	}, [settledAt, isError, error, failureCount, failureReason]);
 
 	/*
 	 * The last payload that actually arrived, kept so a failed ask cannot blank
@@ -776,6 +873,9 @@ export const UsageView: FC<PickerContext> = ({ onClose, action }) => {
 	const lastGood = useRef<UsagePayload | null>(null);
 	if (usage.data) lastGood.current = usage.data;
 	const payload = usage.data ?? lastGood.current;
+
+	/* The failure that has nothing to hide behind, so it becomes the body. */
+	const bodyError = usage.isError && !payload ? errorText(usage.error) : null;
 
 	/*
 	 * A clock that moves, so an open dialog's countdowns stay true. State rather
@@ -799,15 +899,29 @@ export const UsageView: FC<PickerContext> = ({ onClose, action }) => {
 			// An error with numbers still on screen is reported by the action's
 			// receipt, not by replacing the table the user is reading. With nothing
 			// to show, the error IS the body.
-			error={usage.isError && !payload ? errorText(usage.error) : null}
+			error={bodyError}
 			// react-query dedupes a second click, but the label has to say so too.
 			fetching={usage.isFetching}
 			asked={live}
 			onFetchLive={askLive}
-			// Suppressed while a fetch is out: the button already says
-			// "Asking providers", and the previous ask's receipt beside it would
-			// be reporting a round that is no longer the current one.
-			outcome={usage.isFetching ? null : outcome}
+			// A previous round's receipt is suppressed while a fetch is out: the
+			// button already says "Asking providers", and the old receipt beside it
+			// would be reporting a round that is no longer the current one.
+			//
+			// A receipt about the CURRENT round survives, because during a retry
+			// window the fetch is still out and the failure it reports is the live
+			// fact — suppressing it there is what left a failed ask with nothing on
+			// screen at all (UX U8).
+			//
+			// It is also suppressed when the same failure is ALREADY the body: with
+			// no payload to keep on screen the error is the body, and a receipt
+			// beneath it printed the provider's sentence twice in a row.
+			outcome={
+				(usage.isFetching && usage.failureCount === 0) ||
+				(bodyError !== null && outcome?.tone === "error")
+					? null
+					: outcome
+			}
 			// One clock reading per render, shared by every countdown and age on
 			// screen, so two rows in the same frame cannot disagree about the time.
 			now={now}

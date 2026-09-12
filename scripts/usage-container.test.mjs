@@ -50,6 +50,11 @@ const bundle = await build({
 			export const fetchingStoryArgs = Fetching.args;
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
 			export { usageQueryOptions } from "./src/renderer/src/features/chat/pickers/usage-view";
+			/*
+			 * The APP's own query defaults, so the client below is the shipped
+			 * policy rather than a convenient one. See newClient.
+			 */
+			export { defaultQueryOptions } from "./src/renderer/src/shared/api/query-client";
 
 			/*
 			 * The picker registry mounts UsageView with a PickerContext; the only
@@ -184,6 +189,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	QueryClient,
 	QueryObserver,
+	defaultQueryOptions,
 	fetchingStoryArgs,
 	loadingStoryArgs,
 	renderDialog,
@@ -246,9 +252,31 @@ const text = (html) =>
 		.replace(/\s+/g, " ")
 		.trim();
 
+/**
+ * A client running the SHIPPED policy.
+ *
+ * This used to build `retry: false`, and that one divergence is why a blocker
+ * survived a full review round (UX U8): under `retry: false` a failure settles
+ * in a single tick, so no test here could observe the window where an attempt
+ * has failed, `errorUpdatedAt` is still 0, and the query reports neither
+ * loading nor settled. The app spent ~1s in that window on every failed ask and
+ * showed nothing at all. A test that only passes under a policy the app does
+ * not use is not evidence about the app, so the defaults are IMPORTED.
+ *
+ * `gcTime` is the one deliberate override, and it is about the test rather than
+ * the policy: `renderToStaticMarkup` mounts and unmounts on every call, and a
+ * collected query between two steps would make a later assertion measure a cold
+ * start instead of the state the previous step left behind.
+ */
 const newClient = () =>
 	new QueryClient({
-		defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+		defaultOptions: {
+			...defaultQueryOptions,
+			queries: {
+				...defaultQueryOptions.queries,
+				gcTime: Number.POSITIVE_INFINITY,
+			},
+		},
 	});
 
 /** Let react-query settle its microtasks and any queued state. */
@@ -272,10 +300,15 @@ test("the loading story photographs the toolbar the container really produces", 
 	// The `loading` evidence frame photographed `Ask providers now`, ENABLED,
 	// and the shipped container cannot produce that at first paint: react-query
 	// sets `isLoading` and `isFetching` together on a first load, so the action
-	// always reads `Asking providers` and is disabled. The frame was a picture
-	// of a state the app has no path to — and loading is precisely the state a
-	// reviewer cannot check any other way, which is what makes an unreachable
-	// frame worse than no frame.
+	// is always in-flight and disabled. The frame was a picture of a state the
+	// app has no path to — and loading is precisely the state a reviewer cannot
+	// check any other way, which is what makes an unreachable frame worse than
+	// no frame.
+	//
+	// The in-flight label at FIRST PAINT is `Reading cached usage`, not
+	// `Asking providers`: opening the view reads the backend's cache, and the
+	// ask has not been made (UX U9). The two labels are asserted apart here
+	// precisely because they used to be the same string.
 	//
 	// So this asserts the STORY against the CONTAINER rather than either against
 	// itself: render the container at first paint, render the dialog with the
@@ -290,8 +323,13 @@ test("the loading story photographs the toolbar the container really produces", 
 	const firstPaint = renderUsage(client);
 	assert.match(
 		text(firstPaint),
+		/Reading cached usage/,
+		"first paint must show the in-flight label for a CACHED read",
+	);
+	assert.doesNotMatch(
+		text(firstPaint),
 		/Asking providers/,
-		"first paint must show the in-flight label",
+		"first paint must not claim a live provider ask the user never made",
 	);
 	assert.match(
 		firstPaint,
@@ -307,7 +345,7 @@ test("the loading story photographs the toolbar the container really produces", 
 	const storyFrame = renderDialog({ ...loadingStoryArgs });
 	assert.match(
 		text(storyFrame),
-		/Asking providers/,
+		/Reading cached usage/,
 		"the loading story must depict the toolbar the container produces",
 	);
 	assert.match(
@@ -563,12 +601,12 @@ test("the scroll body is a labelled, focusable region", async () => {
 	// correctly rejects as redundant.
 	assert.match(
 		rendered,
-		/<section[^>]*aria-label="Provider usage"[^>]*>/,
+		/<section[^>]*aria-label="Report list"[^>]*>/,
 		"the scroll body must be a labelled region",
 	);
 	assert.match(
 		rendered,
-		/<section[^>]*tabindex="0"[^>]*aria-label="Provider usage"/i,
+		/<section[^>]*tabindex="0"[^>]*aria-label="Report list"/i,
 		"the region must be a tab stop, or a keyboard user cannot scroll it",
 	);
 	// And it is the element that actually scrolls, not a sibling of it: the
@@ -579,4 +617,189 @@ test("the scroll body is a labelled, focusable region", async () => {
 		"the tab stop must sit inside the overflow container",
 	);
 	client.clear();
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * The failure contract, under the policy the app actually ships.
+ *
+ * These exist because the round that verified the receipt and the re-ask wiring
+ * did so under a `retry: false` client this file used to construct, and the app
+ * runs `retry: 1`. Everything below therefore asserts against `newClient()`,
+ * which imports `defaultQueryOptions` from the app.
+ * ---------------------------------------------------------------------------
+ */
+
+test("the query owns its retry contract instead of inheriting the global one", () => {
+	// The app-wide default is `retry: 1`, which is right for a cheap read and
+	// wrong for a fan-out across every signed-in provider's rate-limited usage
+	// endpoint — and, left inherited, it put a silent retry window between the
+	// click and any settled state, which is the window a failed ask showed
+	// nothing in. The value matters less than the fact that this query STATES
+	// one; an option object that omits `retry` is the defect.
+	const options = usageQueryOptions(undefined, true);
+	assert.ok(
+		Object.hasOwn(options, "retry"),
+		"usageQueryOptions must state its own retry policy, not inherit it",
+	);
+	assert.equal(options.retry, 0);
+
+	// And the policy it is being stated AGAINST is the one the app ships, so a
+	// change to `query-client.ts` re-opens this decision rather than silently
+	// altering what these tests are evidence about.
+	assert.equal(defaultQueryOptions.queries.retry, 1);
+});
+
+test("a failed ask settles and carries a reason under the shipped policy", async () => {
+	// The blocker: under `retry: 1` the failure did not settle inside the window
+	// the user was looking at, so `errorUpdatedAt` stayed 0 and the view had
+	// nothing to report. With the contract owned above, one attempt fires and
+	// the query settles into a real error state carrying the provider's own
+	// message.
+	const client = newClient();
+	respond = async () => ({ status: 200, body: { result: payload("cached") } });
+
+	const before = requests.length;
+	const { observer, unsubscribe } = await askLive(client, { hang: false });
+	await settle(60);
+	const state = observer.getCurrentResult();
+
+	assert.equal(state.isError, true, "the failed ask must reach an error state");
+	assert.ok(
+		state.errorUpdatedAt > 0,
+		"the failure must be stamped, or no receipt can be derived from it",
+	);
+	assert.equal(state.fetchStatus, "idle", "nothing may still be in flight");
+	// Exactly one attempt per ask: the retry contract, observed at the bridge
+	// rather than read off the options.
+	assert.equal(
+		requests.length - before,
+		2,
+		"the cached read plus exactly one live attempt — no silent retry",
+	);
+	// The reason survives, which is what the receipt prints. `askLive`'s failure
+	// mode is a rejected bridge call, so the shipped transport reports it as an
+	// unreachable backend rather than as a provider's own refusal — either way
+	// the receipt has a real sentence to print instead of nothing.
+	assert.match(
+		String(state.failureReason ?? state.error),
+		/could not reach the backend/i,
+	);
+
+	unsubscribe();
+	client.clear();
+});
+
+test("the re-ask sends a request after a failure, measured at the bridge", async () => {
+	// U8's user-visible half: after a failed ask the button relabelled itself
+	// and then sent nothing. Asserted by REQUEST COUNT rather than by reading
+	// the rendered label, because the label was already right while the click
+	// was dead.
+	const client = newClient();
+	respond = async () => ({ status: 200, body: { result: payload("cached") } });
+
+	const { observer, unsubscribe } = await askLive(client, { hang: false });
+	await settle(60);
+	assert.equal(observer.getCurrentResult().isError, true);
+
+	const afterFailure = requests.length;
+	// The shipped handler's recovery path on an already-live view.
+	await observer.refetch().catch(() => undefined);
+	await settle(60);
+
+	assert.equal(
+		requests.length - afterFailure,
+		1,
+		"asking again after a failure must reach the backend",
+	);
+	const last = requests[requests.length - 1];
+	assert.equal(last.op, "usage.get");
+	assert.equal(last.live, true);
+	assert.equal(last.refresh, true);
+
+	unsubscribe();
+	client.clear();
+});
+
+test("a failed initial load shows the failure, never the sign-in copy", async () => {
+	// The second consequence of U8: with the backend down at open there is no
+	// payload, so `reports.length === 0` was true and the body told a user with
+	// eleven reports to go sign in to a provider — outage advice replaced by
+	// sign-in advice. The empty state is a claim about an ANSWER, so it now
+	// requires one.
+	const frame = text(
+		renderDialog({
+			payload: null,
+			loading: false,
+			fetching: false,
+			asked: false,
+			error: "Providers refused.",
+		}),
+	);
+	assert.match(frame, /Providers refused\./);
+	assert.doesNotMatch(
+		frame,
+		/No usage reports/,
+		"a failed load must not render the empty state",
+	);
+	assert.doesNotMatch(frame, /Sign in to a provider that publishes quota/);
+});
+
+test("an unanswered load shows neither the empty copy nor a false receipt", async () => {
+	// The in-between: no payload, no error, nothing settled. Previously this
+	// fell through to the empty-state sentence as well, because every branch
+	// above it required a payload or an error.
+	const frame = text(
+		renderDialog({
+			payload: null,
+			loading: false,
+			fetching: true,
+			asked: false,
+			error: null,
+		}),
+	);
+	assert.doesNotMatch(frame, /No usage reports/);
+	assert.doesNotMatch(frame, /Sign in to a provider that publishes quota/);
+});
+
+test("the in-flight label distinguishes a cached read from a live ask", async () => {
+	// U9: opening the view reads the backend's cache, and labelling that
+	// `Asking providers` claimed a provider probe the user never asked for.
+	const cachedRead = text(
+		renderDialog({ payload: null, loading: true, fetching: true, asked: false }),
+	);
+	assert.match(cachedRead, /Reading cached usage/);
+	assert.doesNotMatch(cachedRead, /Asking providers/);
+
+	const liveAsk = text(
+		renderDialog({
+			payload: payload("cached"),
+			loading: false,
+			fetching: true,
+			asked: true,
+		}),
+	);
+	assert.match(liveAsk, /Asking providers/);
+});
+
+test("a balance row is spoken as missing a limit, not as missing a report", async () => {
+	// U10: a remaining-only row prints `519.86 USD left` and was announced
+	// `519.86 USD left, not reported` — the spoken status contradicting the
+	// printed number. What is missing is the LIMIT.
+	const balance = payload("cached");
+	balance.reports[0].limits[0].amount = {
+		used: null,
+		limit: null,
+		remaining: 519.86,
+		used_fraction: null,
+		unit: "usd",
+	};
+	const frame = text(renderDialog({ payload: balance, now: NOW }));
+	assert.match(frame, /519\.86 USD left/);
+	assert.match(frame, /no limit reported/);
+	assert.doesNotMatch(
+		frame,
+		/519\.86 USD left, not reported/,
+		"the spoken status must not contradict the printed number",
+	);
 });

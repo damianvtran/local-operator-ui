@@ -126,3 +126,30 @@ set, and the re-captured frame reads `Cached report, 34m ago.` and marks 10 of
 11: `openrouter`, the one account actually confirmed at that newest stamp, is
 unmarked. A fixture would not have caught either, because a fixture's stamps are
 whatever the fixture says they are.
+
+## Round 2 (remediation): what these frames do and do not show
+
+The story frames were re-captured for the scroll-fold change. The rule under a
+scrolling body is no longer drawn from the picker's `bodyScrolls` flag alone —
+it is measured per state from the scroll container — so the six states whose
+content ends above the fold (`empty`, `query-error`, `fetching`,
+`percent-only`, `remaining-balance`, `narrow`) no longer carry a boundary under
+nothing, and an overflowing body gets a `border-control` rule plus a 20px
+bottom fade that retracts once the list is scrolled to its end. `loading` also
+changed copy: a first paint reads `Reading cached usage`, because opening the
+view reads the backend's cache rather than asking the providers.
+
+**`real-data/` is stale with respect to that change** and still shows the
+round-1 clip. It cannot be re-derived right now: this machine's backend returns
+zero provider reports, and the `--payload` file that replayed the 11-report
+response is deliberately never committed, so neither the live path nor the
+replay path can reproduce it. Everything else the frame is evidence for — the
+staleness baseline, the description line, the per-account multi-login keying —
+is untouched by this round.
+
+The fold was instead verified at that same density in
+`scripts/usage-interaction.html`: 11 provider blocks and 22 windows, 1217px of
+content in a 520px box, measuring a 1px `border-control` rule and a gradient
+mask at the top of the scroll, and the mask gone with the rule still present at
+the bottom, in both brand themes. Re-capture `real-data/` on a machine whose
+backend holds a populated usage cache.

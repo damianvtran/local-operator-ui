@@ -343,6 +343,25 @@ const STRUCTURAL_CALL_SITES = [
 		must: "border border-control bg-sunken",
 		why: "the track is the reference the fill is read against, so at 0% and 100% it is the only thing distinguishing a meter from blank card or a coloured rule",
 	},
+	{
+		/*
+		 * The rule under a scrolling picker body.
+		 *
+		 * It shipped as `hairline` and measured 1.08:1 dark / 1.03:1 light
+		 * against the body above it and 1.01:1 against the footer below — below
+		 * its own visibility floor, on the element that is the ENTIRE answer to
+		 * "is there more below". By § 2's test (would removing it lose
+		 * information?) that makes it structural, which is the 3:1 floor only
+		 * `border-control` carries. Pinned at the call site for the same reason
+		 * as the track above: `hairline` is the tempting weight here and the
+		 * contract caps it below 2:1 by design, so reverting the word would keep
+		 * every palette assertion green.
+		 */
+		what: "picker scrolling body fold",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: "border-control border-b",
+		why: "this rule is the whole signal that a scrolling body continues past the fold, so it cannot ride a decorative weight that is invisible against both neighbours",
+	},
 ];
 
 /** Roles that must clear the structural 3:1 floor on all four grounds. */

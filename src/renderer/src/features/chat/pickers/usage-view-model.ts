@@ -631,20 +631,68 @@ export const describeStats = (stats: UsageStats): string =>
  * stuck account pin the whole header at `2h ago` over rows that were two
  * minutes old.
  *
- * Falls back to `nowMs` for an empty set, where there is no confirmation to
- * measure from and nothing to mark either way.
+ * **Only a CONFIRMATION counts**, which is the half of the rule a first port
+ * of this function missed. A failing account's report is not evidence of
+ * freshness even though it carries a `fetched_at`: a report served from
+ * last-good keeps the stamp of its last SUCCESS (fine, but not new), and
+ * `ProviderController._mark_account_failure` stamps a never-successful
+ * account's stub with `now_ms` — the moment of a FAILED probe, on a report
+ * carrying no limits at all. Counting that stub let the title read `just now`
+ * sourced from an account that has never once reported a number, above blocks
+ * dated `40m ago` and every one of them marked: R1's own symptom, reachable
+ * whenever any account is failing, which one new login during a provider
+ * outage is enough to produce.
+ *
+ * So a report is a confirmation only when it carries NEITHER a failure streak
+ * NOR `usage_unavailable` — the flag is reachable on its own, since
+ * `_reset_account_for_force` zeroes the streak while a cache round-trip can
+ * carry the flag alone — and `credential_invalid` is tested FIRST and
+ * separately, because a dead grant never enters the retry path that sets
+ * either of the other two and would otherwise pass both tests while being the
+ * least confirmed state there is.
+ *
+ * Honest when the whole set is stale: if nothing is confirmed, the newest
+ * stamp among the failing reports THAT CARRY LIMITS is used instead, so a
+ * wholly-degraded panel reports the true age of its last-good numbers rather
+ * than `just now`. The limits requirement is what keeps the stub out of this
+ * branch too — with only the confirmation filter it would simply win here
+ * instead of above.
+ *
+ * Falls back to `nowMs` when no usable stamp survives those rules: an empty
+ * set, reports whose stamps are all zero, or a set where nothing is confirmed
+ * and no failing report carries limits. Nothing is misdated by that last case
+ * — such a frame has no meters in it, and the per-account notes already say
+ * the accounts are not reporting.
  */
+const isConfirmation = (report: UsageReport): boolean => {
+	// Tested first and separately: a dead grant carries neither a streak nor the
+	// unavailable flag, so the two checks below would both pass for the least
+	// confirmed state there is.
+	if (report.credential_invalid) return false;
+	return (report.consecutive_failures || 0) <= 0 && !report.usage_unavailable;
+};
+
 export const newestConfirmedMs = (
 	reports: UsageReport[],
 	nowMs: number,
 ): number => {
-	let newest: number | null = null;
-	for (const report of reports) {
-		const fetchedAt = report.fetched_at || 0;
-		if (fetchedAt && (newest === null || fetchedAt > newest))
-			newest = fetchedAt;
-	}
-	return newest ?? nowMs;
+	const newestOf = (
+		eligible: (report: UsageReport) => boolean,
+	): number | null => {
+		let newest: number | null = null;
+		for (const report of reports) {
+			if (!eligible(report)) continue;
+			const fetchedAt = report.fetched_at || 0;
+			if (fetchedAt > 0 && (newest === null || fetchedAt > newest))
+				newest = fetchedAt;
+		}
+		return newest;
+	};
+	return (
+		newestOf(isConfirmation) ??
+		newestOf((report) => report.limits.length > 0) ??
+		nowMs
+	);
 };
 
 /**

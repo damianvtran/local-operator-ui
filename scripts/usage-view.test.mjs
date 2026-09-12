@@ -798,6 +798,109 @@ test("the newest confirmation is the max, so one stuck account cannot pin the se
 	assert.equal(newestConfirmedMs([], NOW), NOW);
 });
 
+test("only a CONFIRMED report can be the freshness baseline", () => {
+	// The gap this closes: the stamp on a failing report is not evidence of
+	// freshness. `ProviderController._mark_account_failure` builds a
+	// never-successful account's stub as `UsageReport(fetched_at=now_ms)` with
+	// no limits at all — the moment a probe FAILED — so under a plain `max` the
+	// account that has never once reported a number became the baseline every
+	// healthy sibling was aged against. The title then read `just now` above
+	// blocks dated `40m ago` with all of them marked, which is the exact symptom
+	// the confirmed-baseline rule exists to prevent, reachable whenever any
+	// account is failing.
+	const fortyMinutesAgo = NOW - 40 * 60_000;
+	const confirmed = report({
+		provider: "anthropic",
+		fetched_at: fortyMinutesAgo,
+		limits: [limit({ amount: amount({ used_fraction: 0.4 }) })],
+	});
+
+	// A failure stub holding the NEWEST stamp must not win.
+	const withStub = [
+		confirmed,
+		report({
+			provider: "kimi",
+			fetched_at: NOW,
+			consecutive_failures: 3,
+			usage_unavailable: true,
+			limits: [],
+		}),
+	];
+	assert.equal(newestConfirmedMs(withStub, NOW), fortyMinutesAgo);
+	// And the consequence the user reads: the set is described at its true age
+	// rather than as `just now`.
+	assert.match(describeSource("cached", newestConfirmedMs(withStub, NOW), NOW), /40m ago/);
+
+	// A dead grant is tested FIRST and separately in the Python, because it
+	// carries neither a streak nor the unavailable flag — it never enters the
+	// retry path that sets them — and would otherwise pass both tests while
+	// being the least confirmed state there is.
+	const withDeadGrant = [
+		confirmed,
+		report({ provider: "xai", fetched_at: NOW, credential_invalid: true, limits: [] }),
+	];
+	assert.equal(newestConfirmedMs(withDeadGrant, NOW), fortyMinutesAgo);
+
+	// `usage_unavailable` is reachable on its own: `_reset_account_for_force`
+	// zeroes the streak while a cache round-trip can carry the flag alone, so
+	// the flag alone must also disqualify.
+	const withFlagOnly = [
+		confirmed,
+		report({
+			provider: "openrouter",
+			fetched_at: NOW,
+			consecutive_failures: 0,
+			usage_unavailable: true,
+			limits: [limit({ amount: amount({ used_fraction: 0.2 }) })],
+		}),
+	];
+	assert.equal(newestConfirmedMs(withFlagOnly, NOW), fortyMinutesAgo);
+});
+
+test("a wholly degraded set reports the age of its last-good numbers", () => {
+	// When NOTHING is confirmed the baseline falls back to the newest stamp
+	// among failing reports THAT CARRY LIMITS, so a fully degraded panel states
+	// the true age of the numbers on screen instead of `just now`. The limits
+	// requirement is what keeps the failure stub out of this branch too — with
+	// only the confirmation filter it would simply win here instead.
+	const anHourAgo = NOW - 60 * 60_000;
+	const degraded = [
+		report({
+			provider: "anthropic",
+			fetched_at: anHourAgo,
+			consecutive_failures: 2,
+			usage_unavailable: true,
+			limits: [limit({ amount: amount({ used_fraction: 0.4 }) })],
+		}),
+		// Newer, but it is a stub carrying no numbers: it dates a failed probe
+		// rather than any data, so it must not be the baseline.
+		report({
+			provider: "kimi",
+			fetched_at: NOW,
+			consecutive_failures: 4,
+			usage_unavailable: true,
+			limits: [],
+		}),
+	];
+	assert.equal(newestConfirmedMs(degraded, NOW), anHourAgo);
+	assert.match(describeSource("cached", newestConfirmedMs(degraded, NOW), NOW), /1h ago/);
+
+	// Nothing confirmed AND no failing report carries limits: real stamps exist,
+	// but every one of them dates a failed probe, so the wall clock is the only
+	// honest answer. Such a frame has no meters in it and the per-account notes
+	// already say the accounts are not reporting.
+	const noNumbersAnywhere = [
+		report({
+			provider: "kimi",
+			fetched_at: NOW - 1000,
+			consecutive_failures: 1,
+			usage_unavailable: true,
+			limits: [],
+		}),
+	];
+	assert.equal(newestConfirmedMs(noNumbersAnywhere, NOW), NOW);
+});
+
 test("unavailable names itself, and dates its numbers only when that helps", () => {
 	const withNumbers = report({
 		usage_unavailable: true,
