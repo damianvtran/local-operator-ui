@@ -7,6 +7,7 @@
  */
 
 export {
+	accumulateSeen,
 	acknowledgedOnClose,
 	acknowledgedOnOpen,
 	childStateLabel,
@@ -15,6 +16,7 @@ export {
 	hasRunDetails,
 	hasUnseenFailure,
 	NOTHING_SEEN,
+	onScreenFailures,
 	OPEN_CHILD_STATUSES,
 	OPEN_TODO_STATUSES,
 	retimeRunDetails,

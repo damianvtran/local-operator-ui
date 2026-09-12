@@ -587,3 +587,63 @@ export const headerTriggerFailed = (): RunDetailsInput => ({
 	],
 	todos: [],
 });
+
+/**
+ * The three states a LIVE session cannot produce: a restored pause, a row the
+ * durable graph swept without an outcome, and a word from a runtime this
+ * renderer has not been taught.
+ *
+ * `§ 6.4` gives all nine states a mark, and the set's other fixtures carry six
+ * of them — so until this one existed, three of the nine were glyphs and inks
+ * that no frame had ever shown, and one of the three (`paused`) is also the
+ * state that decides whether the trigger exists at all: a restored pause is OPEN
+ * work (`§ 3.3`), so this roster raises the button on a state whose mark nobody
+ * had looked at.
+ *
+ * Every row is produced the way the WIRE produces one, which is why none of them
+ * carries a clock: the durable graph's rows (`frontend_state._jobs`, one per
+ * `SubagentNode`) carry `id`, `label`, `status`, `prompt`, `agent_role`, `effort`
+ * and the terminal texts — no `start_time` and no `settled_at` (`§ 8`) — so a
+ * restored child renders with the elapsed segment omitted rather than zeroed.
+ * The paused row is the graph's own status WORD on the row
+ * (`status=getattr(node, "status", "gone")`), not a `paused` field: `JobState`
+ * has no such field (see `child` above), and `foldStatus` is what folds the word.
+ *
+ * The third row's word is deliberately one no runtime defines — `reticulating`,
+ * the same word `scripts/run-detail-model.test.mjs` drives — because the claim is
+ * about a word this renderer has NOT been taught; a real status here would
+ * photograph the branch this one exists to distinguish from it.
+ */
+export const restoredAndUnrecognised = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		child({
+			id: "job-parked",
+			label: "Confirm the ledger's opening balance",
+			role: "analyst",
+			status: "paused",
+			tokens: 44_200,
+			window: 200_000,
+			cost: 0.22,
+		}),
+		child({
+			id: "job-swept",
+			label: "Reconcile the April export",
+			status: "gone",
+			tokens: 12_800,
+			window: 200_000,
+			cost: 0.06,
+		}),
+		child({
+			id: "job-unrecognised",
+			label: "Cross-check the totals again",
+			status: "reticulating",
+			tokens: 9_400,
+			window: 200_000,
+			cost: 0.03,
+		}),
+	],
+	// No plan at all: the three marks are the subject, and a to-do section would
+	// push the third row toward the panel's floor.
+	todos: [],
+});

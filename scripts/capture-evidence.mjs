@@ -222,6 +222,15 @@ const STORIES = [
 	   scroll, which is the other half of what `--crowded` proves about `type`
 	   (a short panel gains no scrollbar chrome). */
 	["chat-run-details--failure-unseen", 560, 520],
+	/* The three states a LIVE session cannot produce — a restored pause, a row the
+	   durable graph swept without an outcome, and a word from a runtime this
+	   renderer has not been taught. `§6.4` gives all nine states a mark and the
+	   six above are photographed; these three were glyphs and inks no frame had
+	   ever shown, so they are photographed here rather than asserted. Sized to
+	   their content like `subagents-only`: three single-line rows over no plan is
+	   the whole panel, and the panel is content-height, so a taller viewport buys
+	   ground and nothing else. */
+	["chat-run-details--restored-and-unrecognised", 560, 400],
 	["chat-run-details--crowded", 560, 820],
 	["chat-run-details--settled", 460, 220],
 	["chat-run-details--header-trigger", 460, 220],

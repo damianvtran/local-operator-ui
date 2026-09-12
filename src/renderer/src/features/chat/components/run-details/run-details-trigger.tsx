@@ -34,12 +34,13 @@ import { useEffect, useRef, useState } from "react";
 import {
 	type RunDetails,
 	type SeenFailures,
+	accumulateSeen,
 	acknowledgedOnClose,
 	acknowledgedOnOpen,
 	hasRunDetails,
 	hasUnseenFailure,
+	onScreenFailures,
 	runDetailTriggerLabel,
-	visibleFailures,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
 
@@ -49,9 +50,11 @@ export type RunDetailsTriggerProps = {
 	/**
 	 * Stories and previews open the panel without a click.
 	 *
-	 * It seeds the open state (and the failure acknowledgement with it), which is
-	 * the only honest way to photograph the panel from a capture rig: clicking a
-	 * control the rig cannot see is a state the rig would have to fake.
+	 * It seeds the open state (and the failure acknowledgement with it — with the
+	 * panel's own slice, `onScreenFailures`, the predicate the click path uses
+	 * too), which is the only honest way to photograph the panel from a capture
+	 * rig: clicking a control the rig cannot see is a state the rig would have to
+	 * fake.
 	 */
 	defaultOpen?: boolean;
 };
@@ -150,17 +153,18 @@ export const RunDetailsTrigger = ({
 	 * "has been opened", the last failure of a turn is the one nobody sees.
 	 */
 	const [seen, setSeen] = useState<SeenFailures>(
-		() => new Set(defaultOpen ? (details?.failedChildIds ?? []) : []),
+		() => new Set(defaultOpen ? onScreenFailures(details) : []),
 	);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	/**
 	 * The failed rows the panel has SHOWN while it was open (`§3.3`).
 	 *
 	 * Accumulated across the whole open period rather than read at the close,
-	 * because the ids are `visibleFailures`' — the roster's visible slice, the
-	 * same one the panel renders — and a failure that was on screen and was then
-	 * displaced by a later arrival has still been read. Empty while the panel is
-	 * closed, so a failure cannot be acknowledged by a view it was never part of.
+	 * because the ids are `onScreenFailures`' — the roster's visible slice, the
+	 * same one the panel renders, and the same one the OPEN instant is now asked
+	 * about too. A failure that was on screen and was then displaced by a later
+	 * arrival has still been read. Empty while the panel is closed, so a failure
+	 * cannot be acknowledged by a view it was never part of.
 	 *
 	 * Written during render, like `detailsRef` below and for the same reason: the
 	 * ids have to be current when the CLOSE happens, and an effect that had not
@@ -168,9 +172,10 @@ export const RunDetailsTrigger = ({
 	 */
 	const viewedRef = useRef<ReadonlySet<string>>(new Set());
 	if (open && details) {
-		const viewed = new Set(viewedRef.current);
-		for (const id of visibleFailures(details.subagents)) viewed.add(id);
-		viewedRef.current = viewed;
+		viewedRef.current = accumulateSeen(
+			viewedRef.current,
+			onScreenFailures(details),
+		);
 	}
 
 	/**
@@ -215,12 +220,20 @@ export const RunDetailsTrigger = ({
 	 * marked seen without ever having been displayed — and the trigger's failure
 	 * clause was gone when they closed it.
 	 *
-	 * Both transitions are needed, and each answers the other's failure mode. The
-	 * OPEN records the failures present at that instant, so one that arrives while
-	 * the panel is open is not acknowledged on arrival; the CLOSE records the rows
-	 * the panel actually showed while it was open (`viewedRef`), so a reader who
-	 * watched a failure arrive and read it does not keep a dot telling them they
-	 * have not looked, and does not have to spend a second cycle clearing it.
+	 * Both transitions are needed, and each answers the other's failure mode, and
+	 * BOTH ARE ASKED THE SAME QUESTION — `onScreenFailures`, the slice the panel
+	 * actually renders. The OPEN records the failures that slice held at that
+	 * instant, so one that arrives while the panel is open is not acknowledged on
+	 * arrival; the CLOSE records the rows the slice showed at any point during the
+	 * open period (`viewedRef`), so a reader who watched a failure arrive and read
+	 * it does not keep a dot telling them they have not looked, and does not have
+	 * to spend a second cycle clearing it.
+	 *
+	 * The open half used to ask `details.failedChildIds` — the WHOLE roster — and
+	 * that was a real defect rather than a wording slip: past the cap, a failure
+	 * behind `+N more` was marked read by an open that never put its row on
+	 * screen, and with nothing else outstanding the trigger then went false and
+	 * the panel with it. One predicate for both instants is the fix (`§3.3`).
 	 *
 	 * The rules are `acknowledgedOnOpen` / `acknowledgedOnClose` in the model, so
 	 * they are asserted rather than described; this callback only supplies the
@@ -238,8 +251,10 @@ export const RunDetailsTrigger = ({
 	detailsRef.current = details;
 	const handleOpenChange = (next: boolean) => {
 		if (next) {
+			// The panel's own slice at this instant, not the roster: the same
+			// predicate the close half counts (`onScreenFailures`).
 			setSeen((previous) =>
-				acknowledgedOnOpen(detailsRef.current?.failedChildIds ?? [], previous),
+				acknowledgedOnOpen(onScreenFailures(detailsRef.current), previous),
 			);
 		} else {
 			setSeen((previous) =>
