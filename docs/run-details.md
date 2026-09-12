@@ -67,11 +67,17 @@ The rules that matter for the port:
 - **Motion means alive, colour means failure.** The running state is a spinner
   in `muted` ink; queued, cancelled and done are `dim`; failed is `danger` —
   and failure is the only colour the panel spends (`subagent_panel.py:345-391`).
-- **A settled child is a quiet `✓` with no activity text** (`:653-660`).
+- **A settled roster row carries its OUTCOME, not its progress.** `row_facts`
+  fills the row's second field from `error_text` for a failure and from
+  `result_text` for every other settled state (`:628-640`); the only settled row
+  that goes quiet is the one whose page is already open (`:653-660`, `if current
+  and not running`), and the collapsed preview never is that row (`current=False`).
+  **§4.1 departs from this on purpose, and says so there.**
 - **Numbers are omitted when unknown, never zeroed** (`:429-450`).
 - **Overflow is a budgeted priority slice**, not the newest N: running and
-  queued first, then failed, then interrupted/paused, then settled, ties
-  newest-first (`:2051-2099`), always disclosing `+N more` (`:1964-1982`).
+  queued first, then failed, then interrupted (which is where the TUI's
+  `paused` also ranks), then settled, ties newest-first (`:2051-2099`), always
+  disclosing `+N more` (`:1964-1982`).
 - **Failure re-emerges a hidden panel.** `note_child_failed` brings a hidden
   panel back as a single `1 failed` summary row regardless of the user's
   density setting (`:1837-1852`). This is the one case the TUI refuses to let
@@ -164,16 +170,43 @@ hasRunDetails(state) || open
   because `open` outlived that gate, the panel then re-rendered open, and
   re-focused, the next time work started. `§ 6.3` states the resulting state that
   is now reachable.
-- `hasRunDetails` is true when **any child is open** (running, queued, starting,
-  pausing, paused) **or any to-do is open** (pending, blocked) **or a child has
-  failed and the popover has not been opened since**. Settled work alone does not
-  raise the trigger: a finished roster is history, and history lives in the
-  transcript. This is what "only when applicable" has to mean, or the button
-  becomes permanent furniture after the first `task` call.
+- `hasRunDetails` is true when **any child is open** (running or queued) **or
+  any to-do is open** (pending, blocked) **or a child has failed and the popover
+  has not been opened since**. Settled work alone does not raise the trigger: a
+  finished roster is history, and history lives in the transcript. This is what
+  "only when applicable" has to mean, or the button becomes permanent furniture
+  after the first `task` call.
+- **The list is exactly the states the wire can produce, and `paused` is not one
+  of them.** `frontend.jobs` rows are `JobState`
+  (`local_operator/session/frontend_state.py:1279-1291`): `status` is
+  `running|completed|failed|cancelled|interrupted` plus the `queued` flag, and
+  there is no pause field. The pause intent is `harness/comms.py`'s
+  `_ChildRecord.paused`, and the TUI has it on its dock only because
+  `tui/app.py:22215` injects `paused=<id> in paused_ids` into its OWN frontend.
+  **A child the user paused therefore reaches this popover as `cancelled`**, and
+  the two are indistinguishable here — which has a stated cost: a pause that
+  leaves no other open work hides the trigger, because as far as this surface can
+  tell the child was cancelled. The transcript's own notice is the fallback, the
+  same one § 3.2's canvas case uses. Earlier drafts of this section and § 6.4
+  described `paused`, `starting` and `pausing` as reachable states with their own
+  mark, tally segment, eviction rank and fixture; none of them can be seen by a
+  user, and they are removed rather than kept as forward-compatible handling. The
+  real fix is on the wire — publish the intent on the roster row `comms.job_rows()`
+  builds — and is deferred in § 10.
 - The failure clause is the TUI's `note_child_failed` rule (`:1837-1852`)
   carried over. A failure that nobody has seen is precisely the state where the
   affordance must not disappear, so the trigger stays and carries a `danger`
   dot (§ 6.1) until the popover is opened.
+- **Acknowledgement is bound to OPENING, not to the failure being on screen.**
+  Opening records the failures that were present at that instant and those only;
+  a child that fails while the panel is open keeps its dot for the next view.
+  The rule is the dot's own promise — "a child failed and you have not looked" —
+  and the version this replaces broke it: a `[open, details]` effect re-recorded
+  the whole failure set on every change while the panel was open, so a failure
+  arriving while the reader was scrolled down in the plan was marked read without
+  ever having been displayed, and the trigger's failure clause was gone when they
+  closed the panel. The rule is a pure function in the model
+  (`acknowledgedOnOpen`), so it is asserted rather than described.
 - `!isCanvasOpen` is as requested, and it has a real rationale: with the canvas
   open the chat column is narrowed (default 800px) and its header holds one
   action beside the title block; a second panel-opening control there competes
@@ -229,8 +262,15 @@ its own line rather than being the first thing shed:
     `FileNotFoundError: [Errno 2] No such file or directory: 'ledger/q1.csv'`
     rendered as `…'le…` — the exception's preamble survived and the identifier,
     the only part that says WHAT failed, was cut.
-  - A settled child that did not fail has no second line, matching the TUI's
-    blanked activity (`:653-660`) and keeping the settled tail of the list quiet.
+  - A settled child that did not fail has no second line here, and **that is this
+    design's own choice rather than a port** — the citation this used to carry
+    (`:653-660`) is the row whose page is OPEN, and §2.1 records what the TUI's
+    roster actually does instead. The reason is the medium: a 384px popover two
+    lines a row cannot hold a paragraph of `result_text` per settled child and
+    keep the live rows legible, and the outcome of settled work is the
+    transcript's job (§3.1). The distinction that survives is the one that
+    matters: a FAILURE keeps its line, because it is the settled state that has
+    something the reader has to act on.
 - Every number is omitted rather than zeroed when unknown
   (`subagent_panel.py:429-450`); a child with no cost reported shows no cost
   segment, not `$0.00`.
@@ -324,7 +364,7 @@ result once it lands.
 | Anchor | `align="end"`, `side="bottom"`, `sideOffset={6}` | Anchored to the header cluster's right edge, opening away from the transcript's own content. |
 | Panel padding | `p-0`; sections own their padding | The primitive ships `p-4` for content-shaped popovers; this one is a list, and a list needs its rows to reach the panel edge so the section rules and the row grounds can. |
 | Radius | `rounded-md` (10px) | Panel tier, inherited from the primitive. |
-| Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. The shadow is what paints the edge in the frames: the ground outside the hairline runs from the darkest pixel at the panel's edge back to the canvas ground ≈20px out (the token's `32px` blur less its `-12px` spread), in both brand themes. |
+| Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. The shadow is what paints the edge in the frames: the ground outside the hairline runs from the darkest pixel at the panel's edge back to the working column's own ground ≈20px out (the token's `32px` blur less its `-12px` spread), in both brand themes. **That ground is `canvas`**, which is what the app paints under this popover since #113 gave the working surface the page ground; a frame set that rendered the story's column on `surface` measured the falloff against a plane the app no longer paints there, and `docs/evidence/run-details/README.md` carries the re-measured pair. The change can only widen the step: `elevated` already clears `canvas`, so a panel that used to sit on the lighter `surface` now starts further from its ground — measured from the frames, dark L* 6.14 → 13.62 (Δ 7.48) and light 95.28 → 99.43 (Δ 4.16), against the token's own 7.90 / 4.41 and the 4.41 / 1.78 step the previous set's `surface` ground gave. |
 | Between sections | one `hairline` rule | Two stacked lists need a boundary; nothing else in the panel does. |
 | Row height | subagents: 32px single line, 48px with a second line, 64px for a failure whose exception takes both clamped lines. To-dos: 24px single line, 40px for a blocked row's reason line | Both pairs sit on the 4px ramp, and 32/48 is what a 16px icon on the label's baseline plus one 16px second line measures. The line heights are pinned (`leading-5` on the first line, `leading-4` on the second — both variants of it, the activity line and the wrapped exception) rather than inherited: `body-sm`'s 1.5, `meta`'s 1.45 and `mono-sm`'s 1.45 land off the ramp at 19.5px and 17.4px, which measured as a 48-50px two-line row and a 67px failure row. Measured off the frames, the failure row is 12 + 20 + 2×16 = 64px. |
 | Row hover | **none** | Nothing in this panel is clickable (`§ 4.3`), so nothing may react to a pointer: a row that lights up under the cursor is a promise the surface does not keep. The `accent-wash` step belongs to rows that do something, and the two lists agree — neither of them hovers. |
@@ -371,7 +411,7 @@ both of which are the product's own nouns and both of which the TUI uses.
 |---|---|
 | both sections | `Subagents` then `To-dos`, hairline between |
 | one section | the other is omitted entirely; no empty heading, no placeholder |
-| overflowing subagents | 6 rows, then `+3 more` as a quiet trailing row, ordered by the TUI's priority slice (running/queued, failed, paused, settled; ties newest-first) |
+| overflowing subagents | 6 rows, then `+N more` as a quiet trailing row, ordered by the TUI's priority slice (running/queued, failed, interrupted, then settled; ties to the NEWEST, by the child's own `settled_at` for a settled row and `start_time` otherwise). **A failed row is never shed**: failures are reserved before the ranked slice, evicting the quietest visible row, so the `danger` dot's promise — a child failed and you have not looked — is always redeemable in the panel. The reservation keeps the rank order rather than moving failures to the top, and the disclosure count reports what is actually hidden. The extreme is stated rather than left to be found: with more failures than the cap, failures displace running children, because the promise the dot makes is about failure specifically |
 | overflowing to-dos | cap the item rows at 10, never dropping an open or blocked item. The **oldest** closed rows are the ones shed — earliest phase first, earliest item first — so a long plan keeps its recent end, and the hidden rows are disclosed as `+N more` **inside the phase that lost them**, under its surviving rows and in the item-text column (`§4.2`): the plan never appears to start mid-way, and every phase header stays accountable to the rows beneath it. A phase all of whose rows were shed keeps its header and its own `+N more` — photographed in `todos-only`, whose oldest phase (`Reconcile · 5/5 resolved`) is wholly closed, so the cap takes every row it has and leaves the header and `+5 more` |
 | all settled | reachable, and now by two paths: the panel was opened while work was live and the work then settled, or the last open item settled under an open panel (`§ 3.3`). Every row quiet, no activity lines, and the trigger is gone unless a failure is unseen |
 | long label | label truncates with an ellipsis; role, elapsed, context and cost are fixed-width and never truncate mid-value |
@@ -384,17 +424,21 @@ both of which are the product's own nouns and both of which the TUI uses.
 |---|---|---|
 | running | spinner | `ink-muted`, animated |
 | queued | clock | `ink-dim` |
-| paused | pause circle | `ink-muted` |
 | interrupted | rotate | `ink-muted` |
 | done | check | `ink-dim` |
 | cancelled | slashed circle | `ink-dim` |
 | failed | cross | **`danger`** |
 
-Motion is a bonus, never the contract: running and paused are different
-*shapes*, so the list survives `prefers-reduced-motion` and survives being
-looked at by someone who cannot separate the two inks. Each row also carries the
-state as visually-hidden text, so the panel reads as a sentence to a screen
-reader rather than as a column of unlabelled icons.
+Six marks, and `status_glyph` has a seventh: the pause circle. It is not in this
+table because no row here can carry the state — see § 3.3, where the wire's own
+vocabulary is set out. Keeping a mark for a state a user cannot reach would put
+a shape in the legend that no frame can ever show.
+
+Motion is a bonus, never the contract: the running spinner and the three settled
+marks are different *shapes*, so the list survives `prefers-reduced-motion` and
+survives being looked at by someone who cannot separate the two inks. Each row
+also carries the state as visually-hidden text, so the panel reads as a sentence
+to a screen reader rather than as a column of unlabelled icons.
 
 ## 7. Keyboard, focus and motion
 
@@ -404,6 +448,34 @@ reader rather than as a column of unlabelled icons.
 - Opening moves focus to the panel container (rendered `tabIndex={-1}`), not to
   the first row — the rows are not interactive and focusing one would imply
   they are. Escape closes and returns focus to the trigger.
+- **Tab and Shift+Tab move OUT of the panel, into the header cluster** — and the
+  move is made by the component rather than left to the browser. It cannot be
+  left to it: the panel is Radix's portal, so it is the last element in `<body>`,
+  and the document's own order puts it after every header control — a Tab from
+  the container would leave the header entirely rather than reach the canvas
+  button 8px away. It cannot walk inwards either, because the content holds no
+  tabbable element at all (the rows are not interactive). So focus goes to the
+  trigger's next tabbable neighbour, or to its previous one for Shift+Tab, with
+  the trigger itself as the destination at either end of the document's order —
+  which is where Escape already returns focus. Live QA had measured four Tab
+  presses leaving `document.activeElement` on the container; that is checked
+  again against the running panel rather than assumed from this paragraph.
+- **The panel is a named dialog.** Radix renders `role="dialog"` on the content,
+  and an unnamed dialog is announced as "dialog" and fails axe's
+  `aria-dialog-name`. It carries `aria-label="Run details"` rather than a
+  `labelledby` pointing at the first section heading, because the sections are
+  conditional — with no children on screen the only heading would be `To-dos`,
+  and a name that changes with the contents names the contents rather than the
+  surface. The TRIGGER keeps its derived `aria-label` (`§ 6.2`): one is the
+  control's name, the other is the dialog's.
+- **What is asserted and what is exercised live.** The decisions that can be
+  stated as rules are pure functions in the model with real assertions in
+  `scripts/run-detail-model.test.mjs`: the visibility predicate
+  (`hasRunDetails`), the acknowledgement-on-open rule (`acknowledgedOnOpen`) and
+  the clock predicate (`hasLiveChildClock`). What cannot be a pure function is
+  the timer's LIFETIME — that it starts when a live child is on screen, ticks at
+  1Hz and is cleared when the panel closes — and that is exercised against the
+  running panel in QA rather than claimed by a comment here.
 - **That container carries `outline-none`, and this is the case the app's own
   focus doctrine names as legitimate.** `styles/index.css:355-370` allows the
   suppression when "focus is moved there programmatically and a ring would be
@@ -441,9 +513,17 @@ frontend.todos (TodoPhaseState[]) -> TodoPhaseView[]
 ```
 
 `JobState` to `SubagentRow`: `id`, `label`, `agent_role`, status with `queued`
-and `paused` folded in, elapsed from `start_time`/`settled_at`, activity from
-`latest_details.progress`, `model_label`, context tokens over `context_window`,
-`direct_cost`, and the first line of `error_text` for a failure.
+fused in (and nothing else — the wire has no pause field to fold, § 3.3),
+elapsed from `start_time`/`settled_at`, activity from `latest_details.progress`,
+context tokens over `context_window`, `direct_cost`, and the first line of
+`error_text` for a failure.
+
+`model_label` is on the job and is deliberately NOT read. It was listed here in
+an earlier draft, and the row grammar has no model segment (`§ 4.1`): a mapping
+that names a field the model never reads is a claim about the code that the code
+does not make. Carrying it would mean a third fixed-width segment on a 384px row
+competing with the label, and a model name is not a datum this list is for — the
+child's own page is.
 
 `TodoPhaseState` to `TodoPhaseView`: pass-through. The wire shape is already
 the shape the panel wants — which is the second reason this change is small.
@@ -469,7 +549,13 @@ And one note on *when* the model is read, which the wiring made load-bearing:
   and nothing else, at 1Hz, inside the panel that draws it — the same scope the
   TUI's own re-derivation has, and the same reason the transcript's tool rows
   keep their own clock in their own row. Nothing above the panel ticks, so the
-  transcript is not re-rendered once a second to move one number.
+  transcript is not re-rendered once a second to move one number — **and the
+  re-measured model is handed only to the SUBAGENT rows.** The to-dos section has
+  no time-dependent field in it: an item is pending, done, dropped or blocked and
+  every count is derived from those, so passing it the re-measured object would
+  re-render the whole plan once a second to paint the same pixels. The clock's own
+  predicate (`hasLiveChildClock`) is a pure function with assertions; the timer's
+  lifetime is exercised live (§ 7).
 
 ## 9. Why this is non-invasive
 
@@ -495,6 +581,7 @@ And one note on *when* the model is read, which the wiring made load-bearing:
 | Consuming `subagent_start` / `subagent_progress` in the reducer | The popover derives liveness from `frontend.jobs` and needs no reducer change. The events would add per-tool granularity to the activity line. |
 | Per-child plans (`JobState.todos`) | Carried on the wire, unused. Needs a nested rendering decision first. |
 | A child blocked on a question (`hub ask`) | The TUI has no such dock state either — there is no blocked-while-waiting glyph in its vocabulary. Inventing one here would be new vocabulary, not a port. |
+| The pause intent on the roster row | **The real fix for § 3.3's pause gap, and it is a `local-operator` change rather than this PR's.** A paused child is mechanically a cancelled one on `frontend.jobs`: `comms.job_rows()` builds the row the frontend publishes, and `_ChildRecord.paused` — the intent — is not on it. Publishing it there would make `paused` a state this surface could render truthfully, with its own mark in § 6.4 and its own rank in the slice, and would let a pause that leaves nothing else in flight keep the trigger raised. Until then this popover reports what the wire says, which is `cancelled`. |
 | Unread markers on to-do items | The TUI has none, and a plan is read as a whole rather than item by item. |
 
 ## 11. Evidence
@@ -509,3 +596,16 @@ run whose ONLY reason for a trigger is a failure nobody has read — is the
 regression frame for the panel surviving its own acknowledgement (§ 3.3). Against
 a trigger gated on `hasRunDetails` alone it renders no panel at all, so the frame
 cannot quietly pass if that gate comes back.
+
+`crowded` carries the same kind of claim for the slice: its children are stored
+deliberately out of chronological order, so a tie-break that reads the array
+index shows a different six rows from one that reads the children's own clocks
+(`scripts/run-detail-model.test.mjs` asserts both the fixture and the rule).
+
+All eighteen frames were re-taken on the head that remediated these review
+rounds. Every one of them moved, because the story now paints the ground the app
+actually paints under this popover (§ 5); the frames whose CONTENT changed are
+`crowded` and `subagents-only` — the rows the slice now selects and the tally
+that follows them — plus the live clock in `both-in-flight`. The distinction and
+the pixel counts are in `docs/evidence/run-details/README.md`, and the counting
+is what keeps this paragraph falsifiable rather than reassuring.

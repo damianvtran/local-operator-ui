@@ -31,7 +31,6 @@ type JobSpec = {
 	role?: string;
 	/** The capacity gate's flag: the status stays `running` on the wire. */
 	queued?: boolean;
-	paused?: boolean;
 	startedSecondsAgo?: number;
 	settledSecondsAgo?: number;
 	/** `latest_details.progress` — the child's own activity line. */
@@ -54,7 +53,10 @@ type JobSpec = {
  * `start_time`/`settled_at` as epoch seconds. Two fields are deliberately NOT
  * here — `parent_job_id` and the child's own `todos` — because the panel is flat
  * and shows the session's plan (`docs/run-details.md` § 8), so a fixture that
- * carried them would invite a reader to think they mattered.
+ * carried them would invite a reader to think they mattered. A third is absent
+ * for a harder reason: **there is no `paused` field on `JobState` at all**, so a
+ * fixture that set one would be a fixture asserting a wire shape that does not
+ * exist (`OPEN_CHILD_STATUSES`).
  */
 const child = (spec: JobSpec): Record<string, unknown> => ({
 	id: spec.id,
@@ -78,7 +80,6 @@ const child = (spec: JobSpec): Record<string, unknown> => ({
 		spec.startedSecondsAgo === undefined ? 0 : at(spec.startedSecondsAgo),
 	settled_at:
 		spec.settledSecondsAgo === undefined ? null : at(spec.settledSecondsAgo),
-	...(spec.paused ? { paused: true } : {}),
 });
 
 const item = (
@@ -302,38 +303,27 @@ export const failure = (): RunDetailsInput => ({
 	todos: flat(),
 });
 
-/** Nine children over a 15-item plan: both overflow disclosures at once. */
+/**
+ * Nine children over a 15-item plan: both overflow disclosures at once.
+ *
+ * **The array's order is deliberately NOT chronological, and this is the fixture
+ * that pins the slice's tie-break.** Every other fixture here is listed
+ * oldest-first, which agrees with a slice that reads the array index as a clock
+ * and so could never catch one: live QA measured a real nine-child roster in an
+ * order with no time meaning in either direction (`Hold, Canvas failure, Role,
+ * Slow, File inventory, Arithmetic, Broken tier, Quiet window, Clock`), because
+ * `frontend.jobs` is whatever the comms graph and the execution ledgers hand
+ * back. This fixture is shuffled so index order and clock order disagree — the
+ * newest settled child (`job-e`) sits at index 5 and the oldest (`job-i`) at
+ * index 3, while among the running children the newest (`job-c`) is at index 2
+ * and the oldest (`job-a`) at index 4. A slice that ties by index therefore
+ * keeps a DIFFERENT six rows from one that ties by `settled_at`/`start_time`,
+ * which is what `scripts/run-detail-model.test.mjs` asserts and what
+ * `crowded`'s frame shows.
+ */
 export const crowded = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
 	jobs: [
-		child({
-			id: "job-a",
-			label: "Read invoices/march.csv",
-			status: "running",
-			startedSecondsAgo: 150,
-			progress: "reading rows 1-412",
-			tokens: 30_000,
-			window: 200_000,
-			cost: 0.11,
-		}),
-		child({
-			id: "job-b",
-			label: "Read invoices/april.csv",
-			role: "reader",
-			status: "running",
-			startedSecondsAgo: 140,
-			progress: "reading rows 1-980",
-			tokens: 44_000,
-			window: 200_000,
-			cost: 0.14,
-		}),
-		child({
-			id: "job-c",
-			label: "Normalise the customer names",
-			status: "running",
-			queued: true,
-			startedSecondsAgo: 9,
-		}),
 		child({
 			id: "job-d",
 			label: "Compare against ledger/q1.csv",
@@ -345,29 +335,6 @@ export const crowded = (): RunDetailsInput => ({
 			window: 200_000,
 			cost: 0.05,
 			error: "FileNotFoundError: ledger/q1.csv is not in this workspace",
-		}),
-		// A pause is implemented as a cancel, so the status underneath says
-		// `cancelled` and only the flag says the user meant it.
-		child({
-			id: "job-e",
-			label: "Draft the migration plan",
-			status: "cancelled",
-			paused: true,
-			startedSecondsAgo: 600,
-			settledSecondsAgo: 420,
-			tokens: 12_000,
-			window: 200_000,
-			cost: 0.03,
-		}),
-		child({
-			id: "job-f",
-			label: "Summarise the findings",
-			status: "interrupted",
-			startedSecondsAgo: 3_600,
-			settledSecondsAgo: 3_100,
-			tokens: 51_000,
-			window: 200_000,
-			cost: 0.22,
 		}),
 		child({
 			id: "job-g",
@@ -381,14 +348,11 @@ export const crowded = (): RunDetailsInput => ({
 			cost: 0.36,
 		}),
 		child({
-			id: "job-h",
-			label: "Write reports/unpaid-march.md",
-			status: "done",
-			startedSecondsAgo: 1_200,
-			settledSecondsAgo: 1_150,
-			tokens: 80_000,
-			window: 200_000,
-			cost: 0.41,
+			id: "job-c",
+			label: "Normalise the customer names",
+			status: "running",
+			queued: true,
+			startedSecondsAgo: 9,
 		}),
 		child({
 			id: "job-i",
@@ -399,6 +363,62 @@ export const crowded = (): RunDetailsInput => ({
 			tokens: 66_000,
 			window: 200_000,
 			cost: 0.29,
+		}),
+		child({
+			id: "job-a",
+			label: "Read invoices/march.csv",
+			status: "running",
+			startedSecondsAgo: 150,
+			progress: "reading rows 1-412",
+			tokens: 30_000,
+			window: 200_000,
+			cost: 0.11,
+		}),
+		// The newest settled child in this fixture, which is why it is the row
+		// that shows in the frame. A pause is implemented as a cancel on the wire
+		// and this row carries no flag saying otherwise — `JobState` has no pause
+		// field to read (`OPEN_CHILD_STATUSES`), so a child the user paused arrives
+		// at this popover as a plain `cancelled` one.
+		child({
+			id: "job-e",
+			label: "Draft the migration plan",
+			status: "cancelled",
+			startedSecondsAgo: 600,
+			settledSecondsAgo: 420,
+			tokens: 12_000,
+			window: 200_000,
+			cost: 0.03,
+		}),
+		child({
+			id: "job-b",
+			label: "Read invoices/april.csv",
+			role: "reader",
+			status: "running",
+			startedSecondsAgo: 140,
+			progress: "reading rows 1-980",
+			tokens: 44_000,
+			window: 200_000,
+			cost: 0.14,
+		}),
+		child({
+			id: "job-h",
+			label: "Write reports/unpaid-march.md",
+			status: "done",
+			startedSecondsAgo: 1_200,
+			settledSecondsAgo: 1_150,
+			tokens: 80_000,
+			window: 200_000,
+			cost: 0.41,
+		}),
+		child({
+			id: "job-f",
+			label: "Summarise the findings",
+			status: "interrupted",
+			startedSecondsAgo: 3_600,
+			settledSecondsAgo: 3_100,
+			tokens: 51_000,
+			window: 200_000,
+			cost: 0.22,
 		}),
 	],
 	todos: longPlan(),

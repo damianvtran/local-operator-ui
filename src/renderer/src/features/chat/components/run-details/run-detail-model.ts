@@ -36,8 +36,12 @@
 /* ------------------------------------------------------------------ */
 
 /**
- * The states a child row can render, which is exactly the set
- * `subagent_panel.status_glyph` has a mark for (`:345-391`).
+ * The states a child row can render, which is the set THIS wire can put on a
+ * row: `JobState.status` (`running|completed|failed|cancelled|interrupted`,
+ * `local_operator/session/frontend_state.py:1279-1291`) plus the `queued` flag.
+ * `subagent_panel.status_glyph` (`:345-391`) has a mark for one more — `paused`
+ * — which no row here can carry; `OPEN_CHILD_STATUSES` records why that state
+ * is absent rather than handled.
  *
  * Anything else on the wire — a status from a runtime this renderer has not
  * been taught — folds to `done`, which is that function's own default. The
@@ -50,7 +54,6 @@
 export type ChildStatus =
 	| "running"
 	| "queued"
-	| "paused"
 	| "interrupted"
 	| "done"
 	| "cancelled"
@@ -60,21 +63,26 @@ export type ChildStatus =
  * The statuses that mean "this child has not settled", which is what §3.3's
  * visibility rule and the roster's rank both turn on.
  *
- * `starting` and `pausing` are on the wire and are deliberately handled by the
- * fold below rather than by a mark of their own:
+ * **There is no `paused` here, and that is a fact about the wire rather than a
+ * simplification.** `frontend.jobs` rows are `JobState`
+ * (`local_operator/session/frontend_state.py:1279`), whose `status` domain is
+ * `running|completed|failed|cancelled|interrupted` plus the `queued` flag: it
+ * has no `paused` field, and `starting`/`pausing` live only on the `hub`
+ * roster's `ChildInfo`, not on this one. The pause INTENT is
+ * `harness/comms.py::_ChildRecord.paused`, and the TUI has it on its own dock
+ * only because `tui/app.py:22215` injects `paused=<id> in paused_ids` into its
+ * own frontend. Nothing injects it here, so **a child the user paused arrives
+ * at this popover as `cancelled`** — indistinguishable from a cancel.
  *
- * - `starting` — the capacity gate has admitted the child but it is not yet
- *   working, so it takes the `queued` mark (a clock: "has not started"). It
- *   stays OPEN, which is the fact the visibility rule needs.
- * - `pausing` — the pause flag is set before the cancel it awaits, so the child
- *   is demonstrably still going. `status_glyph:371-376` gates its paused branch
- *   on `status != "running"` for exactly this window; folding `pausing` to
- *   `running` is the same guard expressed once, in the model.
+ * §3.3 states the cost of that: a pause that leaves no other open work hides
+ * the trigger, and the transcript's own notice is the fallback. The fix is on
+ * the other side of the wire — publish the intent on the roster row where
+ * `comms.job_rows()` builds it — and is recorded as deferred in §10 rather
+ * than approximated here with a state no user can reach.
  */
 export const OPEN_CHILD_STATUSES: readonly ChildStatus[] = [
 	"running",
 	"queued",
-	"paused",
 ];
 
 /** Every to-do state the panel draws, from the TUI's `STATUS_MARKS` (`:177`). */
@@ -95,7 +103,6 @@ export const OPEN_TODO_STATUSES: readonly TodoItemStatus[] = [
 const CHILD_STATE_WORD: Record<ChildStatus, string> = {
 	running: "running",
 	queued: "queued",
-	paused: "paused",
 	interrupted: "interrupted",
 	done: "done",
 	cancelled: "cancelled",
@@ -106,17 +113,16 @@ const CHILD_STATE_WORD: Record<ChildStatus, string> = {
  * The rank the overflow slice evicts by (`subagent_panel._EVICTION_RANK:256-262`).
  *
  * Running and queued share the top rank — a child behind the capacity gate is
- * still work the user is waiting on — then failure, then interrupted/paused
- * (the two states that end without settling), then everything settled quietly.
- * The TUI ranks `interrupted` above `paused`; they are one rank apart in the
- * table but adjacent once ties fall to the newest, and collapsing them keeps
- * the ladder to the four rungs §2.1 names.
+ * still work the user is waiting on — then failure, then interrupted (the state
+ * that ends without settling), then everything settled quietly, which is where a
+ * cancelled child sits too: `_EVICTION_RANK` ranks `interrupted` and `paused`
+ * together at 2 and gives everything else its default 3, and `cancelled` is one
+ * of those defaults.
  */
 const EVICTION_RANK: Record<ChildStatus, number> = {
 	running: 0,
 	queued: 0,
 	failed: 1,
-	paused: 2,
 	interrupted: 2,
 	done: 3,
 	cancelled: 3,
@@ -228,7 +234,7 @@ export type TodoPhaseSlice = TodoPhaseView & {
 export type RunDetails = {
 	subagents: SubagentRow[];
 	todos: TodoPhaseView[];
-	/** Children that have not settled: running, queued or paused (`§3.3`). */
+	/** Children that have not settled: running or queued (`§3.3`). */
 	openChildren: number;
 	/** Ids of every failed child, in roster order — the "unseen failure" ledger. */
 	failedChildIds: string[];
@@ -238,10 +244,17 @@ export type RunDetails = {
 	droppedTodos: number;
 	totalTodos: number;
 	/**
-	 * The instant this model was measured at, in the same unit as a job's
-	 * `start_time` (epoch milliseconds), and the wall-clock instant the
-	 * derivation actually ran.
+	 * The instant this model was measured at, in EPOCH MILLISECONDS — the unit
+	 * the model's own arithmetic works in, and NOT the unit the wire uses.
 	 *
+	 * Every clock on the wire (`start_time`, `settled_at`) is epoch SECONDS, so
+	 * the derivation divides this by 1000 before comparing (`readClock`). A
+	 * caller that passed milliseconds where the wire's unit was expected, or
+	 * seconds here, would be off by three orders of magnitude with nothing on
+	 * screen to say so — which is why the unit is spelled out on both sides of
+	 * that division rather than only on the wire's.
+	 *
+	 * The second stamp is the wall-clock instant the derivation actually ran.
 	 * Two stamps rather than one because only the first is a fact about the
 	 * session: a story PINS it so its frames are reproducible, and cannot pin the
 	 * second. Adding real elapsed time to the pinned instant is what lets the
@@ -393,25 +406,19 @@ const formatCost = (cost: number | null): string | null => {
 };
 
 /**
- * Fold the job manager's word plus its two flags into one renderable state.
+ * Fold the job manager's word plus the capacity flag into one renderable state.
  *
- * Order is `status_glyph`'s (`:371-391`) and each step is load-bearing: a pause
- * outranks the status it cancelled, but only once `running` has cleared, so a
- * pause still landing does not paint a stopped child while it is still going; a
- * queued child's status is still `running` on the wire, so the flag has to be
- * read before the word or half the roster reads as spending tokens.
+ * The order is `status_glyph`'s (`:371-391`) minus the branches this wire cannot
+ * reach: a queued child's status is still `running` on the wire, so the flag has
+ * to be read before the word or half the roster reads as spending tokens. There
+ * is no pause branch because there is no pause on this wire — `paused` and
+ * `starting` are `ChildInfo` states, not `JobState` ones, and a paused child
+ * arrives here as `cancelled` (`OPEN_CHILD_STATUSES`).
  */
-const foldStatus = (
-	raw: string,
-	queued: boolean,
-	paused: boolean,
-): ChildStatus => {
+const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 	const status = raw.toLowerCase();
-	if (paused && status !== "running") return "paused";
-	if (queued || status === "starting") return "queued";
-	if (status === "pausing") return "running";
+	if (queued) return "queued";
 	if (status === "running") return "running";
-	if (status === "paused") return "paused";
 	if (status === "failed") return "failed";
 	if (status === "cancelled" || status === "canceled") return "cancelled";
 	if (status === "interrupted") return "interrupted";
@@ -510,7 +517,6 @@ const deriveChild = (
 	const status = foldStatus(
 		wireText(job.status) || "running",
 		job.queued === true,
-		job.paused === true,
 	);
 	const usage = readUsage(job.usage);
 	// `job_stats:504`: context is the last point-in-time reading, falling back to
@@ -680,6 +686,56 @@ export function unseenFailures(
 }
 
 /**
+ * The failure set an OPEN panel records as read (`§3.3`).
+ *
+ * `openedWith` is exactly the failures that were on screen at the instant the
+ * panel opened, and the rule is that only those are acknowledged: a failure that
+ * arrives WHILE the panel is open is not, because the reader may be scrolled
+ * down in the plan and never see the row it belongs to — and the dot it keeps is
+ * the only thing that will tell them, on the next view, that there is one.
+ *
+ * `alreadySeen` is carried forward rather than replaced by the snapshot, so a
+ * failure whose row leaves the wire for a frame (a roster that sheds, a
+ * reconnect that republishes) cannot re-light a dot the user has already read.
+ *
+ * It is a pure function rather than three lines inside an effect because the
+ * claim being made is about a rule, and a rule that lives only in an effect's
+ * dependency array cannot be asserted: the version this replaces re-recorded the
+ * WHOLE failure set on every change while the panel was open, which marked
+ * failures the reader had never been shown as read and cleared the dot when they
+ * closed the panel.
+ */
+export function acknowledgedOnOpen(
+	openedWith: readonly string[],
+	alreadySeen: SeenFailures = NOTHING_SEEN,
+): SeenFailures {
+	// Identity is preserved when the snapshot adds nothing, so an open panel that
+	// is re-rendered with the same failures does not churn its own state.
+	if (openedWith.every((id) => alreadySeen.has(id))) return alreadySeen;
+	const next = new Set(alreadySeen);
+	for (const id of openedWith) next.add(id);
+	return next;
+}
+
+/**
+ * Whether any row's clock is still running, which is the ONE condition that
+ * justifies a 1Hz timer (`§8`).
+ *
+ * A settled child is measured against its own `settled_at`, and a child with no
+ * launch time shows no duration at all, so neither of them can go stale and
+ * neither of them can pay for a timer. Extracted from `useRunDetailsClock` so
+ * the predicate is a rule a test can hold rather than a claim in a comment; what
+ * remains outside this file is the timer's LIFETIME — that it starts, ticks and
+ * is cleared when the panel closes — which is a behaviour, and is exercised live
+ * rather than asserted here.
+ */
+export function hasLiveChildClock(rows: readonly SubagentRow[]): boolean {
+	return rows.some(
+		(row) => row.startSeconds !== null && row.settledSeconds === null,
+	);
+}
+
+/**
  * Whether a child has failed and nobody has looked (`§3.3`).
  *
  * This is the TUI's `note_child_failed` rule (`:1837-1852`) carried over: it is
@@ -755,7 +811,6 @@ export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
 		"running",
 		"queued",
 		"failed",
-		"paused",
 		"interrupted",
 		"cancelled",
 		"done",
@@ -809,35 +864,97 @@ export function resolvedTodos(details: RunDetails): number {
 /* ------------------------------------------------------------------ */
 
 /**
+ * The clock a row is ranked by when ranks tie: when it settled, or when it
+ * started if it has not. Both are epoch SECONDS on the wire.
+ *
+ * The TUI ties by `-index`, and that is correct THERE because `job_ids` is its
+ * own list in start order, so a later index IS a later start. It is wrong here:
+ * `frontend.jobs` is not append-ordered. QA measured a nine-child live roster as
+ * `Hold, Canvas failure, Role, Slow, File inventory, Arithmetic, Broken tier,
+ * Quiet window, Clock` — no time order in either direction — because the list is
+ * whatever the comms graph and the execution ledgers hand back. Index is not a
+ * timestamp, and reading it as one selected an arbitrary subset of settled rows
+ * (the two MOST RECENT completions ended up behind `+N more` while the two
+ * oldest stayed on screen) and let the list's own order change between frames.
+ */
+const recencyKey = (row: SubagentRow): number | null =>
+	row.settledSeconds ?? row.startSeconds;
+
+/**
+ * `b` before `a` when `b` is newer, with no clock at all ordered last.
+ *
+ * "No clock at all" is the epoch-zero row — a child that never launched
+ * (`init`'s own `start_time: 0`) — and it is not a timestamp either: ranking it
+ * by the wire's position would reinstate the bug above for exactly the rows that
+ * have nothing to be newest BY. It goes after every row that does have a clock,
+ * and rows with no clock keep the wire's order between themselves.
+ */
+const byRecency = (a: SubagentRow, b: SubagentRow): number => {
+	const at = recencyKey(a);
+	const bt = recencyKey(b);
+	if (at !== null && bt !== null) return at === bt ? 0 : bt - at;
+	if (at === null && bt === null) return 0;
+	return at === null ? 1 : -1;
+};
+
+/** Rank, then recency. Stable, so equal rows keep the order they arrived in. */
+const byPriority = (a: SubagentRow, b: SubagentRow): number =>
+	EVICTION_RANK[a.status] - EVICTION_RANK[b.status] || byRecency(a, b);
+
+/**
  * The rows the roster shows, and how many it had to hide.
  *
  * Ordering is the priority slice's own (`§6.3`): running/queued, then failed,
- * then interrupted/paused, then settled, ties to the newest. It is applied to
- * the WHOLE roster rather than only to the overflowing one, because a list that
- * reordered the moment a seventh child arrived would reflow under the reader —
- * a defect the design names in the very paragraph that removes the TUI's other
- * reflow (`§2.2`). The TUI itself keeps start order because its DOM is
- * `_sync_rows`'s and reordering it would thrash; a keyed React list has no such
- * constraint, so the rule the slice picks by is the rule the list shows.
+ * then interrupted, then settled, ties to the NEWEST by the child's own clock.
+ * It is applied to the WHOLE roster rather than only to the overflowing one,
+ * because a list that reordered the moment a seventh child arrived would reflow
+ * under the reader — a defect the design names in the very paragraph that
+ * removes the TUI's other reflow (`§2.2`). The TUI itself keeps start order
+ * because its DOM is `_sync_rows`'s and reordering it would thrash; a keyed
+ * React list has no such constraint, so the rule the slice picks by is the rule
+ * the list shows.
+ *
+ * **A failed row is never shed.** Rank alone does not guarantee that: six
+ * running children is ordinary (`DEFAULT_MAX_RUNNING_JOBS` is 15), and at a cap
+ * of six the failed row — which ranks BELOW running — was the one pushed out.
+ * The `danger` dot then promised "a child failed and you have not looked" while
+ * the panel it opened could not show which child failed or print its exception,
+ * and opening the panel cleared the dot. So failures are reserved first: the
+ * quietest visible rows are evicted to make room, one per dropped failure, and
+ * the disclosure count reports what is actually hidden rather than what the cap
+ * arithmetic would have said. Reserving first rather than appending keeps the
+ * displayed order the rank order `§6.3` describes.
  */
 export function visibleSubagents(rows: SubagentRow[]): {
 	rows: SubagentRow[];
 	hidden: number;
 } {
-	const ordered = rows
-		.map((row, index) => ({ row, index }))
-		.sort((a, b) => {
-			const rank = EVICTION_RANK[a.row.status] - EVICTION_RANK[b.row.status];
-			// Newest first within a rank, which is the `[-budget:]` rule the slice
-			// had before it ranked at all.
-			if (rank !== 0) return rank;
-			return b.index - a.index;
-		})
-		.map((entry) => entry.row);
-	return {
-		rows: ordered.slice(0, SUBAGENT_ROW_CAP),
-		hidden: Math.max(0, ordered.length - SUBAGENT_ROW_CAP),
-	};
+	const ordered = [...rows].sort(byPriority);
+	if (ordered.length <= SUBAGENT_ROW_CAP) {
+		return { rows: ordered, hidden: 0 };
+	}
+	const kept = ordered.slice(0, SUBAGENT_ROW_CAP);
+	/*
+	 * Every settled row keeps a slot only if nothing failed needs one. `kept` is
+	 * in rank order, so the LAST non-failed row is the quietest thing on screen
+	 * — the one the reader loses least by — and evicting from the tail is what
+	 * leaves the order above it untouched. Written as a backward walk rather than
+	 * `findLastIndex` because the renderer's `lib` predates it.
+	 */
+	for (const failed of ordered.slice(SUBAGENT_ROW_CAP)) {
+		if (failed.status !== "failed") continue;
+		let victim = -1;
+		for (let index = kept.length - 1; index >= 0; index--) {
+			if (kept[index].status !== "failed") {
+				victim = index;
+				break;
+			}
+		}
+		if (victim === -1) break;
+		kept[victim] = failed;
+	}
+	kept.sort(byPriority);
+	return { rows: kept, hidden: ordered.length - kept.length };
 }
 
 /**

@@ -33,10 +33,18 @@ export const RunDetailsPanel = ({
 	...props
 }: RunDetailsPanelProps) => {
 	/*
-	 * The clock is taken HERE, at the body, and the re-measured model is what
-	 * both sections render. Nothing above this component ticks (see
-	 * `useRunDetailsClock`): the panel is the only surface that draws an elapsed
-	 * value, so it is the only one that has to be repainted when one moves.
+	 * The clock is taken HERE, at the body, and the re-measured model is handed to
+	 * the SUBAGENT rows only. Nothing above this component ticks (see
+	 * `useRunDetailsClock`): the roster is the only surface that draws a value
+	 * which moves, so it is the only one that has to be repainted when one does.
+	 *
+	 * The to-dos section deliberately takes the UNTIMED model. There is no
+	 * time-dependent field anywhere in the plan — an item is pending, done,
+	 * dropped or blocked, and every count is derived from those — so handing it
+	 * the re-measured object would re-render the whole plan once a second to
+	 * paint the same pixels, which is the reflow §6.3 exists to prevent, one
+	 * component over. The re-measured object is a fresh object whenever anything
+	 * moved, so a memo would not save it either.
 	 */
 	const measured = useRunDetailsClock(details);
 	/*
@@ -56,7 +64,7 @@ export const RunDetailsPanel = ({
 	if (details.todos.length > 0) {
 		sections.push({
 			key: "todos",
-			body: <RunDetailTodos details={measured} />,
+			body: <RunDetailTodos details={details} />,
 		});
 	}
 

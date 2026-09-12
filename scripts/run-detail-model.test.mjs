@@ -39,7 +39,9 @@ const bundle = await build({
 });
 const {
 	NOTHING_SEEN,
+	acknowledgedOnOpen,
 	deriveRunDetails,
+	hasLiveChildClock,
 	hasRunDetails,
 	hasUnseenFailure,
 	retimeRunDetails,
@@ -83,24 +85,36 @@ test("a queued child is queued, not running", () => {
 	assert.equal(subagents[0].activity, null);
 });
 
-test("a pause still landing reads as running, a landed pause as paused", () => {
-	// The flag is set before the cancel it awaits; painting a stopped child while
-	// it is demonstrably still going is the window `status_glyph` guards.
-	const landing = derive([job({ status: "running", paused: true })]);
-	assert.equal(landing.subagents[0].status, "running");
-
-	const landed = derive([job({ status: "cancelled", paused: true })]);
-	assert.equal(landed.subagents[0].status, "paused");
+test("a pause is not a state this wire can carry, and the flag does not make one", () => {
+	// `frontend.jobs` rows are `JobState`, which has no `paused` field at all: the
+	// pause intent lives on `harness.comms._ChildRecord.paused` and reaches a
+	// view only where something injects it (`tui/app.py:22215` does that for its
+	// OWN frontend). Nothing does here, so a paused child arrives as the
+	// `cancelled` its job row actually carries — and an extra `paused` key is
+	// therefore data from a runtime this renderer has not been taught.
+	const paused = derive([job({ status: "cancelled", paused: true })]);
+	assert.equal(paused.subagents[0].status, "cancelled");
+	// The consequence `§3.3` states rather than hides: a pause is not open work
+	// here, so a pause that leaves nothing else in flight does not raise the
+	// trigger, and the transcript's own notice is the fallback.
+	assert.equal(paused.openChildren, 0);
+	assert.equal(hasRunDetails(paused), false);
+	assert.deepEqual(
+		paused.subagents.map((row) => row.activity || null),
+		[null],
+	);
 });
 
-test("starting and pausing stay open, and take a mark that says so", () => {
+test("the hub roster's own states are not on this wire either", () => {
+	// `starting` and `pausing` are `ChildInfo` states (`comms.py:1256`), which is
+	// the `hub op='list'` view rather than the job roster. Pinned rather than left
+	// implicit because the fold's default is what a future runtime meets: they
+	// read as finished until the vocabulary is taught them, which is the cost the
+	// `ChildStatus` comment names.
 	const starting = derive([job({ status: "starting" })]);
-	assert.equal(starting.subagents[0].status, "queued");
-	assert.equal(starting.openChildren, 1);
-
-	const pausing = derive([job({ status: "pausing" })]);
-	assert.equal(pausing.subagents[0].status, "running");
-	assert.equal(pausing.openChildren, 1);
+	assert.equal(starting.subagents[0].status, "done");
+	assert.equal(starting.openChildren, 0);
+	assert.equal(derive([job({ status: "pausing" })]).subagents[0].status, "done");
 });
 
 test("failure, cancellation and interruption keep their own words", () => {
@@ -114,8 +128,8 @@ test("failure, cancellation and interruption keep their own words", () => {
 		rows.map((row) => row.status),
 		["failed", "cancelled", "interrupted", "done"],
 	);
-	// Only running, queued and paused are open: a cancelled child the user
-	// stopped and a run the process ended are both settled.
+	// Only running and queued are open: a cancelled child the user stopped and a
+	// run the process ended are both settled.
 	assert.equal(derive([job({ status: "interrupted" })]).openChildren, 0);
 });
 
@@ -251,34 +265,156 @@ test("the default role is suppressed, a real one is carried", () => {
 
 test("the roster orders by what needs attention, ties to the newest", () => {
 	const rows = derive([
-		job({ id: "done-1", status: "done" }),
-		job({ id: "done-2", status: "done" }),
-		job({ id: "failed", status: "failed" }),
-		job({ id: "running", status: "running" }),
-		job({ id: "interrupted", status: "interrupted" }),
-		job({ id: "done-3", status: "done" }),
-		job({ id: "queued", status: "running", queued: true }),
-		job({ id: "paused", status: "cancelled", paused: true }),
+		job({ id: "done-1", status: "done", start_time: 100, settled_at: 200 }),
+		job({ id: "done-2", status: "done", start_time: 300, settled_at: 400 }),
+		job({ id: "failed", status: "failed", start_time: 500, settled_at: 600 }),
+		job({ id: "running", status: "running", start_time: 1_000 }),
+		job({ id: "interrupted", status: "interrupted", start_time: 700, settled_at: 800 }),
+		job({ id: "done-3", status: "done", start_time: 900, settled_at: 950 }),
+		job({ id: "queued", status: "running", queued: true, start_time: 990 }),
+		job({ id: "cancelled", status: "cancelled", start_time: 810, settled_at: 820 }),
 	]).subagents;
-	// running/queued, failed, paused/interrupted, settled.
+	// running/queued, failed, interrupted, then settled — and within the last rank
+	// the newest settled child, not the last one in the array.
 	const visible = visibleSubagents(rows);
 	assert.deepEqual(
 		visible.rows.map((row) => row.id),
-		["queued", "running", "failed", "paused", "interrupted", "done-3"],
+		[
+			"running",
+			"queued",
+			"failed",
+			"interrupted",
+			"done-3",
+			"cancelled",
+		],
 	);
 	assert.equal(visible.hidden, 2);
+});
 
-	// Within a rank the newest wins, which is the rule the slice had before it
-	// ranked at all.
-	const settledOnly = derive([
-		job({ id: "oldest", status: "done" }),
-		job({ id: "middle", status: "done" }),
-		job({ id: "newest", status: "done" }),
-	]).subagents;
+test("a rank's ties fall to the child's own clock, not to its array index", () => {
+	/*
+	 * The regression this pins: QA measured a live nine-child roster in an order
+	 * with no time meaning (`Hold, Canvas failure, Role, Slow, ...`), because
+	 * `frontend.jobs` is not append-ordered. Tying by index selected an arbitrary
+	 * subset — the two MOST RECENT completions behind `+3 more` while the two
+	 * oldest stayed on screen — and made the displayed order change between
+	 * frames, which is the reflow §6.3 exists to prevent.
+	 *
+	 * `settled_at` for a settled row and `start_time` otherwise, both in epoch
+	 * seconds. The three cases below are the rule from every side: array order
+	 * that agrees with the clocks, array order that INVERTS them, and clocks that
+	 * are equal.
+	 */
+	const settled = (id, start, settledAt) =>
+		job({ id, status: "done", start_time: start, settled_at: settledAt });
+	const ids = (jobs) =>
+		visibleSubagents(derive(jobs).subagents).rows.map((row) => row.id);
+
+	// Chronological, which the index rule happens to get right.
+	assert.deepEqual(ids([settled("oldest", 100, 150), settled("middle", 200, 250), settled("newest", 300, 350)]), [
+		"newest",
+		"middle",
+		"oldest",
+	]);
+	// The same three rows in the OPPOSITE array order. The index rule returns
+	// `oldest, middle, newest` here — the oldest completion on screen and the
+	// newest one hidden — and this is the assertion that fails on it.
+	assert.deepEqual(ids([settled("newest", 300, 350), settled("oldest", 100, 150), settled("middle", 200, 250)]), [
+		"newest",
+		"middle",
+		"oldest",
+	]);
+	// A settled row is ranked by when it SETTLED, so a child that started last
+	// but finished first is the older completion.
+	assert.deepEqual(ids([settled("late-start", 900, 950), settled("early-start", 100, 990)]), [
+		"early-start",
+		"late-start",
+	]);
+	// Simultaneous rows have no “newest” to fall to, so they keep the wire's
+	// order: any rule here would be a claim the timestamps do not support.
+	assert.deepEqual(ids([settled("first", 100, 150), settled("second", 100, 150)]), [
+		"first",
+		"second",
+	]);
+	// And a row with no clock at all — a child that never launched, so
+	// `start_time` is epoch zero — has nothing to be newest BY and sorts after
+	// every row that does.
 	assert.deepEqual(
-		visibleSubagents(settledOnly).rows.map((row) => row.id),
-		["newest", "middle", "oldest"],
+		ids([
+			job({ id: "never-started", status: "done", start_time: 0 }),
+			settled("ran", 100, 150),
+		]),
+		["ran", "never-started"],
 	);
+});
+
+test("the crowded frame's slice follows the clocks, not the array's order", () => {
+	// The fixture is deliberately stored out of chronological order — that is its
+	// subject — so this asserts the six rows the FRAME shows. Under an
+	// index tie-break the visible set is `job-b, job-a, job-c, job-d, job-f,
+	// job-h`, which is a different six rows: a done child is shown and the newest
+	// settled child is not.
+	const { subagents } = deriveRunDetails(fixtures.crowded());
+	const visible = visibleSubagents(subagents);
+	assert.deepEqual(
+		visible.rows.map((row) => row.id),
+		["job-c", "job-b", "job-a", "job-d", "job-f", "job-e"],
+	);
+	assert.equal(visible.hidden, 3);
+});
+
+test("a failed child is never shed, however many are running", () => {
+	/*
+	 * Six concurrent children is ordinary (`DEFAULT_MAX_RUNNING_JOBS` is 15), and
+	 * failure ranks BELOW running: at a cap of six the ranked slice pushed the
+	 * failed row out, so the `danger` dot said “a child failed and you have not
+	 * looked” while the panel it opened could not show which child or print its
+	 * exception — and opening the panel cleared the dot.
+	 */
+	const rows = derive([
+		job({ id: "failed", status: "failed", start_time: 100, settled_at: 200 }),
+		...Array.from({ length: 6 }, (_, index) =>
+			job({ id: `running-${index}`, status: "running", start_time: 900 + index }),
+		),
+	]).subagents;
+	const visible = visibleSubagents(rows);
+	assert.equal(rows.length, 7);
+	assert.equal(visible.rows.length, 6);
+	assert.ok(visible.rows.some((row) => row.id === "failed"));
+	// The reservation evicts the QUIETEST visible row — the oldest running child
+	// — and the disclosure count reports that, so `+1 more` is one child and not
+	// the failure the dot promised.
+	assert.equal(visible.hidden, 1);
+	assert.ok(!visible.rows.some((row) => row.id === "running-0"));
+	// The displayed order is still the rank order: the failure did not jump to
+	// the top of the list to be reserved.
+	assert.deepEqual(
+		visible.rows.map((row) => row.id),
+		["running-5", "running-4", "running-3", "running-2", "running-1", "failed"],
+	);
+});
+
+test("more failures than the cap keep the failures, and say what they cost", () => {
+	// The extreme of the reservation rule, stated rather than left to be
+	// discovered: a failure outranks a running child for a slot, because the dot's
+	// promise is about failure specifically. The count stays honest either way.
+	const rows = derive([
+		...Array.from({ length: 6 }, (_, index) =>
+			job({
+				id: `failed-${index}`,
+				status: "failed",
+				start_time: 100,
+				settled_at: 200 + index,
+			}),
+		),
+		...Array.from({ length: 3 }, (_, index) =>
+			job({ id: `running-${index}`, status: "running", start_time: 900 }),
+		),
+	]).subagents;
+	const visible = visibleSubagents(rows);
+	assert.equal(visible.rows.length, 6);
+	assert.equal(visible.rows.filter((row) => row.status === "failed").length, 6);
+	assert.equal(visible.hidden, 3);
 });
 
 test("six rows are shown and the rest are disclosed, never dropped", () => {
@@ -468,9 +604,11 @@ test("settled work alone does not raise the trigger", () => {
 
 test("open work, and an unseen failure, both raise it", () => {
 	assert.equal(hasRunDetails(derive([job({ status: "running" })])), true);
-	assert.equal(hasRunDetails(derive([job({ status: "cancelled", paused: true })])), true);
 	assert.equal(hasRunDetails(derive([], plan(["blocked"]))), true);
 	assert.equal(hasRunDetails(null), false);
+	// A cancelled child — which is what a paused one looks like here — is settled
+	// work: on its own it is not a reason to raise the trigger (`§3.3`).
+	assert.equal(hasRunDetails(derive([job({ status: "cancelled" })])), false);
 });
 
 test("a failure raises the trigger until it has been seen", () => {
@@ -492,6 +630,54 @@ test("a failure raises the trigger until it has been seen", () => {
 	]);
 	assert.equal(hasRunDetails(two, seen), true);
 	assert.deepEqual(unseenFailures(two, seen), ["failed-2"]);
+});
+
+test("opening acknowledges the failures that were on screen, and only those", () => {
+	/*
+	 * The rule the dot's promise rests on (`§3.3`). What this replaces bound the
+	 * acknowledgement to a `[open, details]` effect: every failure the roster
+	 * gained while the panel was open was re-recorded as seen, so a child that
+	 * failed while the reader was scrolled down in the plan was marked read
+	 * without ever having been displayed, and the trigger's failure clause was
+	 * gone when they closed the panel.
+	 */
+	const opened = acknowledgedOnOpen(["failed-1"], NOTHING_SEEN);
+	assert.deepEqual([...opened], ["failed-1"]);
+	// A failure that arrives WHILE the panel is open is not acknowledged: the
+	// snapshot is the only thing consulted, and it was taken at the open.
+	const whileOpen = acknowledgedOnOpen(["failed-1"], opened);
+	assert.equal(whileOpen, opened, "an unchanged snapshot must not churn state");
+	assert.equal(hasUnseenFailure(derive([job({ id: "failed-2", status: "failed" })]), whileOpen), true);
+	// A failure acknowledged BEFORE stays acknowledged, so a roster that sheds a
+	// row for a frame and republishes it cannot re-light a dot already read.
+	const later = acknowledgedOnOpen(["failed-2"], opened);
+	assert.deepEqual([...later].sort(), ["failed-1", "failed-2"]);
+});
+
+test("the clock ticks only for a child that has a running clock", () => {
+	// The predicate that justifies the 1Hz timer, extracted from the hook so the
+	// claim is asserted rather than described: a settled child is measured
+	// against its own `settled_at` and a child with no launch time shows no
+	// duration, so neither can go stale and neither can pay for a timer.
+	assert.equal(hasLiveChildClock(derive([job({ status: "running" })]).subagents), true);
+	assert.equal(hasLiveChildClock(derive([job({ status: "running", queued: true })]).subagents), true);
+	assert.equal(
+		hasLiveChildClock(derive([job({ status: "done", settled_at: 1_050 })]).subagents),
+		false,
+	);
+	assert.equal(
+		hasLiveChildClock(
+			derive([job({ status: "failed", settled_at: 1_050 })]).subagents,
+		),
+		false,
+		"a failed child has settled",
+	);
+	// Epoch zero is not a launch time, so it is not a clock to tick.
+	assert.equal(
+		hasLiveChildClock(derive([job({ status: "running", start_time: 0 })]).subagents),
+		false,
+	);
+	assert.equal(hasLiveChildClock([]), false);
 });
 
 /* ------------------------------------------------------------------ */
@@ -570,9 +756,9 @@ test("every child state the design asks for is in the fixture set", () => {
 	for (const state of [
 		"running",
 		"queued",
-		"paused",
 		"interrupted",
 		"done",
+		"cancelled",
 		"failed",
 	]) {
 		assert.ok(states.has(state), `no fixture renders a ${state} child`);

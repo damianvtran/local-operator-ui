@@ -108,14 +108,24 @@ const TranscriptGround = () => (
 );
 
 /**
- * The chat column: the app's own ground (`surface`), the app's own header, and
- * the transcript beneath it. `onOpenOptions` is supplied so the canvas button is
- * in frame beside the trigger — § 3.2's cluster is the placement being judged.
+ * The chat column: the app's own page ground (`canvas`), the app's own header,
+ * and the transcript beneath it. `onOpenOptions` is supplied so the canvas button
+ * is in frame beside the trigger — § 3.2's cluster is the placement being judged.
+ *
+ * **`bg-canvas`, not `bg-surface`.** #113 gave the working surface the PAGE
+ * ground so the list panel could step from it; the popover opens over the
+ * working column, which is `canvas`, so that is what has to be under it for the
+ * frame's ground to be the app's. Painting `surface` here made every committed
+ * frame certify the panel's elevation against a plane the app no longer paints
+ * under this popover — and made the geometry notes call that plane "canvas"
+ * while measuring `surface`. The change moves the panel FURTHER from its ground,
+ * not closer: see the measured falloff in
+ * `docs/evidence/run-details/README.md`.
  */
 const ChatColumn = ({
 	details,
 }: { details: ReturnType<typeof deriveRunDetails> }) => (
-	<div className="flex h-full flex-col overflow-hidden bg-surface">
+	<div className="flex h-full flex-col overflow-hidden bg-canvas">
 		<ChatHeader
 			agentName="Core"
 			description="Invoices workspace · on this machine"
@@ -236,9 +246,16 @@ export const FailureUnseen: Story = {
 };
 
 /**
- * Nine children over a fourteen-item plan: both overflow disclosures, and the
+ * Nine children over a fifteen-item plan: both overflow disclosures, and the
  * panel's own `min(60vh, 480px)` ceiling doing its job — the list scrolls inside
  * the panel rather than growing past the viewport.
+ *
+ * Its children are deliberately NOT in wire order (see the fixture): this is the
+ * frame where the overflow slice is visible, so it is also the frame where a
+ * slice that ties by array index instead of by the children's own clocks picks
+ * different rows. Six show and three are disclosed; the settled row that
+ * survives is the NEWEST settled child, and the tally sheds whole segments down
+ * to the states that are actually on screen (`§4.1`).
  */
 export const Crowded: Story = {
 	render: () => <OpenPanel details={deriveRunDetails(fixtures.crowded())} />,
