@@ -1292,6 +1292,19 @@ test("a malformed diff payload degrades to no diff, never to a broken row", () =
 	);
 });
 
+/*
+ * The mid-turn join, which is the reported bug: a viewer that opens a session
+ * while a turn is RUNNING is handed a snapshot whose live seed is a list of
+ * `tool_execution_end` frames — the owner keeps the settling frame and drops
+ * the start it replaces (`frontend_state._fold_live_event`), and the start is
+ * the only frame that carries `args`. A row painted from one of those ends had
+ * no object column at all, so it fell through to the output's first line, which
+ * for `bash` is the literal string `exit code: 0`.
+ *
+ * Two mechanisms close it, and they are exercised here in the order they
+ * matter: recovering the arguments the transcript already knows, then naming
+ * (and sizing a page for) the calls only a deeper durable read can label.
+ */
 test("a settling frame with no arguments keeps the ones the session already learned", () => {
 	// The row was painted from the live start, which is the frame that carries
 	// the command. The end that replaces it carries none, so the row must keep

@@ -1,10 +1,10 @@
 {
-  "head": "149b6d42d7981493f5f77b465e75ce8b2db18c26",
-  "srcTree": "e7253d68b9137f78315802aba1f080fe9ae45bf6",
-  "scriptsTree": "af89e200fb1320b21f5efb8e3fdf54513ec9fa20",
+  "head": "fe8a1ffeaefa8e18c39c74a4af4bd04c12967cc2",
+  "srcTree": "7f6ae93a3c997d50541bd73ea391969601ee9860",
+  "scriptsTree": "b2e560148e3ae9b33f08b0a4a24beb1fc9458647",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 478,
+  "frames": 472,
   "surfaces": 53,
   "themes": 12,
   "countsMean": {
@@ -19,7 +19,7 @@
     "addedAtHead": "149b6d42d7981493f5f77b465e75ce8b2db18c26",
     "addedSurfaces": [],
     "refreshedAt": "2026-09-12T13:27:33.739Z",
-    "refreshedAtHead": "149b6d42d7981493f5f77b465e75ce8b2db18c26",
+    "refreshedAtHead": "fe8a1ffeaefa8e18c39c74a4af4bd04c12967cc2",
     "refreshedFrames": 2,
     "refreshedStories": [
       "chat-trace--security-notice-states"
@@ -94,6 +94,33 @@
       "source": "a bespoke harness over a real conversation's history and attachment endpoints",
       "why": "Two frames of the same real conversation as `chat-tool-rows/real-conversation-tool-rows`, captured to show what the transcript does with the images a `browser` or `read` call returns: a durable row carries only a content-addressed digest and the bytes are fetched separately, which is the path this surface proves end to end. It has no story and its harness was not committed, so a sweep cannot re-derive it - and until it was declared, a sweep DELETED it while the gate stayed green, because the sweep rewrites its own frame count in the same pass.",
       "capturedAt": "2026-09-10T02:37:03.000Z"
+    },
+    {
+      "path": "write-edit-diff/diff-body",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "scripts/capture-evidence.mjs, the `chat-tool-rows--*` story that renders the shipped CanonicalTranscript",
+      "why": "The wide diff-body frame of the `write`/`edit` row's expansion. The capturer derives a surface directory from the story id, which would be `chat-tool-rows/diff-body`; upstream filed these beside this README, the DIFF-BODY-SPEC and the real-conversation rows instead so the spec and its frames sit together. Declared here so a sweep's derived writes are counted as ADDED frames rather than landing inside a set this manifest already accounts for, which is the arithmetic `check-evidence` asserts.",
+      "capturedAt": "2026-09-12T09:20:00.000Z"
+    },
+    {
+      "path": "write-edit-diff/diff-body-narrow",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "scripts/capture-evidence.mjs, the `chat-tool-rows--*` story that renders the shipped CanonicalTranscript",
+      "why": "The same row's diff body at 560px, where the body wraps. The capturer derives a surface directory from the story id, which would be `chat-tool-rows/diff-body-narrow`; upstream filed these beside this README, the DIFF-BODY-SPEC and the real-conversation rows instead so the spec and its frames sit together. Declared here so a sweep's derived writes are counted as ADDED frames rather than landing inside a set this manifest already accounts for, which is the arithmetic `check-evidence` asserts.",
+      "capturedAt": "2026-09-12T09:20:00.000Z"
+    },
+    {
+      "path": "write-edit-diff/diff-body-narrow-wrapped-cap",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "scripts/capture-evidence.mjs, the `chat-tool-rows--*` story that renders the shipped CanonicalTranscript",
+      "why": "The diff body at the wrap ceiling. The capturer derives a surface directory from the story id, which would be `chat-tool-rows/diff-body-narrow-wrapped-cap`; upstream filed these beside this README, the DIFF-BODY-SPEC and the real-conversation rows instead so the spec and its frames sit together. Declared here so a sweep's derived writes are counted as ADDED frames rather than landing inside a set this manifest already accounts for, which is the arithmetic `check-evidence` asserts.",
+      "capturedAt": "2026-09-12T09:20:00.000Z"
     }
   ]
 }

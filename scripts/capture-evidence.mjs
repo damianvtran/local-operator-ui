@@ -904,7 +904,6 @@ const main = async () => {
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
 			/*
-			/*
 			 * A partial run can ADD a surface as well as refresh one, and the
 			 * whole-set totals have to grow with it. `writeFileSync` overwrites
 			 * either way, so the only thing that tells the two apart is whether
@@ -912,15 +911,18 @@ const main = async () => {
 			 * need, and what a refreshed-only count got wrong: eight new
 			 * frames landed on disk while the manifest still said 474.
 			 *
-			 * A frame inside a DECLARED set is not the sweep's to add: those
-			 * sets declare their own counts, and counting theirs here would
-			 * double them. The comparison is separator-aware because a sibling
-			 * whose name merely starts with a declared set's name
-			 * (`tool-rows-baseline` against `tool-rows`) is not inside it.
+			 * A frame inside a DECLARED set is not the sweep's to ADD either:
+			 * those sets declare their own counts, so counting theirs here
+			 * would count them twice. That is why the declared-set test ORs
+			 * with `existsSync` rather than narrowing it - the question this
+			 * variable answers is "was this frame already accounted for", and a
+			 * declared frame always was. The comparison is separator-aware
+			 * because a sibling whose name merely starts with a declared set's
+			 * name (`tool-rows-baseline` against `tool-rows`) is not inside it.
 			 */
 			const existedBefore =
-				existsSync(framePath) &&
-				!supplementary.some((set) => {
+				existsSync(framePath) ||
+				supplementary.some((set) => {
 					const declared = join(OUT, set.path);
 					return dir === declared || dir.startsWith(`${declared}${sep}`);
 				});
