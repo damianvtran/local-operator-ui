@@ -9,7 +9,7 @@
   "themes": 12,
   "countsMean": {
     "frames": "The full sweep's OWN frame count as it stood at the head this branch merged, grown by the frames this round's narrowed runs added; `check-evidence.mjs` asserts it against the frames on disk that fall outside any declared set, and that is the only reading of the field that is checked. It is NOT a total: the declared sets are counted separately in `supplementary`.",
-    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at this head - 54 entries over 51 unique story ids (three stories are captured at two widths). Written by a full sweep only, so a narrowed run carries it over; `check-evidence.mjs` does not read it.",
+    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at this head - 54 entries over 51 unique story ids: `shell-app-shell--agents` is captured at four widths (1280/1000/900/800), which is where the three extra entries come from. Written by a full sweep only, so a narrowed run carries it over; `check-evidence.mjs` does not read it.",
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
   },
   "partialCapture": {
