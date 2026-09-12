@@ -14,11 +14,13 @@ of the product's surface rather than a reproduction of it.
 
 ```
 # Storybook walks forward when a port is taken, so read the port off the banner
-# rather than assuming it: an earlier round found 6017 held and bound 6018, and
-# the attempt before that landed on 6019. This round found 6017 free.
+# rather than assuming it: the design round found 6017 held and bound 6018, the
+# attempt before that landed on 6019, and the re-capture below found 6017 AND
+# 6018 held by other worktrees' Storybooks and bound 6019 itself.
 pnpm storybook --port 6017 --no-open
 
-node scripts/capture-evidence.mjs http://localhost:6017 \
+# Bound 6019 this round (6017 and 6018 were held).
+node scripts/capture-evidence.mjs http://localhost:6019 \
   --only=run-details \
   --themes=localOperatorDark,localOperatorLight \
   --allow-backend
@@ -26,27 +28,41 @@ node scripts/capture-evidence.mjs http://localhost:6017 \
 pnpm check-evidence
 ```
 
+**This set was re-taken on the merged base, and 13 of its 18 frames came back
+byte-identical.** The five that moved — `both-in-flight` (light), `crowded`
+(both) and `subagents-only` (both) — moved in the elapsed column and nowhere
+else, which is measurable rather than asserted: at an 8% threshold the changed
+pixels occupy a 7x9 box at x394,y124 in `subagents-only` and a 90x89 box at
+x384,y92 in `crowded`, and reading them as images shows the running children's
+clocks ticking (`3m34s` -> `3m36s`, `18s` -> `20s`, `1m12s` -> `1m14s`) while
+their context, cost and activity lines are untouched. That is the live clock the
+wiring added (`run-details-clock.ts`), caught in the act: it is also why a
+re-taken frame may read a second or two past its fixture anchor, and why the
+thirteen frames with nothing in flight are exactly the ones that did not move.
+
 **Why narrowed rather than swept.** A full sweep is 514 frames and about half an
 hour, and it DELETES the set before re-taking it — so a sweep to add eighteen
 frames rewrites 514 nobody reviewed and buries the eighteen that changed. `--only`
 plus `--themes` switches `capture-evidence.mjs` to append mode: nothing is swept,
 and `manifest.json`'s `partialCapture` records that this surface arrived outside
-the sweep (it is also why `frames`/`surfaces` had to be raised by hand, which is
-the same step the front-end tool-rows round took).
+the sweep. (`frames`/`surfaces` were raised by hand when this surface was first
+added, because a narrowed run preserved the sweep's totals by construction; the
+version of `capture-evidence.mjs` on main now also moves them for a partial run
+that ADDS a surface, which is what this branch meets at the merge.)
 
 **Why `--allow-backend`.** These stories render from fixture state and never call
 out, which is what that flag asserts. A backend on the configured port otherwise
 fails the run because a captured frame must be a function of the tree.
 
 **Two of the twelve themes.** The other ten are covered numerically by
-`pnpm check-themes` (1910 assertions across all twelve palettes); these frames
+`pnpm check-themes` (1912 assertions across all twelve palettes); these frames
 cover the two palettes that *are* the brand.
 
 ## What each frame shows
 
 | Frame | What it shows |
 | --- | --- |
-| [`both-in-flight`](both-in-flight/) | Both sections and the hairline between them. Two children at work — a long label truncating with an ellipsis while the numbers run (`reviewer · 1m12s · 46% · $0.31`) stays whole, and an activity line indented under its label — over a phased plan with a blocked item and its reason. Both sections overflow here, so the panel is at its ceiling (`min(60vh, 480px)`) and paints its scrollbar (y≈52..327): this is the ordinary mid-run state, where `todos-only` is the content-sized one that paints nothing. |
+| [`both-in-flight`](both-in-flight/) | Both sections and the hairline between them. Two children at work — a long label truncating with an ellipsis while the numbers run (`reviewer · 1m12s · 46% · $0.31`) stays whole, and an activity line indented under its label — over a phased plan with a blocked item and its reason. Both sections overflow here, so the panel is at its ceiling (`min(60vh, 480px)`) and paints its scrollbar (y≈52..327): this is the ordinary mid-run state, where `todos-only` is the content-sized one that paints nothing. The clock in this row is LIVE, so the two themes' frames were taken seconds apart and the light one reads `1m14s`: that is the same number's next second, not a difference between the palettes. |
 | [`subagents-only`](subagents-only/) | One section only, no empty `To-dos` heading. Three children in priority order: queued first, then running, then settled. The queued row carries **no numbers at all** — no clock, no context, no cost — because the wire reported none for it, which is the omission rule (a number that is unknown is ABSENT, never zeroed); the rule is not "a queued child has no clock", and `crowded` shows the other side of it, where the queued child did carry a start time and prints its `9s` clock. The settled row shows no role (`agent_role` is the default `task`) and no second line. |
 | [`todos-only`](todos-only/) | One section only: fifteen items over three phases, capped at ten with the five hidden rows disclosed **inside the phase that lost them**, and all five of them in the panel's OLDEST phase — `Reconcile` is wholly closed (`5/5 resolved`), so nothing of it survives the cap and the frame shows the state `§6.3` names but no earlier set reached: a phase header, its own `+5 more` in the item-text column, and **no rows under it**. Every item state in one plan — pending, done (struck, `ink-dim`), dropped (struck, `— dropped`, tag not struck), blocked (full `ink`, the loudest row, its `— blocked: <reason>` on its own indented line beneath it, complete rather than cut mid-word) — and the flat/headerless path is in `failure` rather than here. The tallies read in one grammar: `11 of 15 resolved · 1 dropped` for the section, `Reconcile · 5/5 resolved` and `Verify · 4/5 resolved` for the phases, where `resolved` is done **or** dropped. The plan's roster-order is visible too: the shed rows are the OLDEST, so `Verify` keeps `Re-run the totals` and its dropped row while the earliest phase's finished rows are the ones disclosed. |
 | [`failure`](failure/) | The only colour the panel spends: the cross on the failed row, `danger`. Its second line is the first line of `error_text`, in monospace and allowed to wrap to two lines — the frame reads `FileNotFoundError: [Errno 2] No such file or` / `directory: 'ledger/q1.csv'`, so the identifier survives where a one-line head-truncation kept the exception's preamble and cut it. Nothing else on the row is red. Beside it a settled child with its role suppressed and no activity line. Below: the **flat single-phase plan**, rendering headerless with no `Todos · 0/3` it does not need. |
