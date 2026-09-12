@@ -25,10 +25,11 @@ import {
 	readFileSync,
 	readdirSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFramePaints } from "./check-evidence.mjs";
 
@@ -126,9 +127,20 @@ const THEMES = [
  * exactly that class of defect.
  */
 const STORIES = [
-	["chat-trace--conversation", 1280, 900],
-	["chat-trace--conversation-with-reasoning", 1280, 900],
-	["chat-trace--conversation-reasoning-open", 1280, 900],
+	/*
+	 * These three DECLARE their content height rather than the 900 the harness
+	 * defaults to, and the reason is a trap that cost real pixels: since the
+	 * transcript became its own `overflow-auto` container, the document reports
+	 * the VIEWPORT height, so `max(documentElement.scrollHeight, declared)`
+	 * returns the declared 900 and the capture clips the conversation mid-line -
+	 * `conversation-reasoning-open` lost 2,427px including two of the three open
+	 * reasoning panels it exists to evidence. The heights are the ones these
+	 * surfaces were committed with (1308 / 1409 / 3327), so the frames keep the
+	 * full transcript and a re-capture is a fair comparison again.
+	 */
+	["chat-trace--conversation", 1280, 1308],
+	["chat-trace--conversation-with-reasoning", 1280, 1409],
+	["chat-trace--conversation-reasoning-open", 1280, 3327],
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
@@ -139,6 +151,12 @@ const STORIES = [
 	   well as wide, because the shed order under pressure is half the design. */
 	["chat-tool-rows--states", 1280, 900],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
+	/* The reported defect, and the only new surface this set added: a viewer that
+	   joins a turn already in flight. Its rows are built by the PRODUCTION
+	   reducer from wire-shaped frames, so the frame shows what the object column
+	   is actually given rather than what a hand-written row can be made to say.
+	   Sized to the four rows it holds, for the reason `working-labels` is. */
+	["chat-tool-rows--joined-mid-turn", 1024, 300],
 	/* `narrow` is a 420px column and `working-labels` is six short lines, so
 	   both are captured in a viewport SIZED TO THEM rather than in the 1280x900
 	   default. At the default they are mostly empty ground — and once the rows
@@ -208,6 +226,49 @@ const STORIES = [
 	["chat-run-details--settled", 460, 220],
 	["chat-run-details--header-trigger", 460, 220],
 	["chat-run-details--header-trigger-failed", 460, 220],
+	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
+	   `usage_panel.py`. Swept for the states that cannot be produced on demand
+	   live — an OAuth grant has to die, a provider has to go idle past its
+	   cache TTL, a weekly window has to actually run out. 1100x760 is a
+	   comfortable window for the `wide` dialog (max-w-3xl = 768px) with room
+	   for the scrim around it, so the frame is a picture of the dialog in its
+	   ground rather than of the dialog alone.
+
+	   `narrow` is captured at 720 because the dialog is portal-rendered and
+	   viewport-fixed: a wrapper div constrains nothing, so the VIEWPORT is the
+	   only thing that can produce the narrow layout. The shorter states
+	   (loading, empty, error, single-provider) are captured in a viewport sized
+	   to them — at 1100x760 they are mostly scrim and cross
+	   `check-evidence`'s uniformity ceiling, which is that guard working. */
+	["chat-usage--multi-provider", 1100, 760],
+	["chat-usage--percent-only", 900, 420],
+	["chat-usage--remaining-balance", 900, 400],
+	/* Tall enough for all three skeleton blocks: the loading body is now
+	   skeleton rows shaped like the blocks that replace them, and at 360 the
+	   third one was sliced through its own card border — which is the very
+	   reading ("a rendering defect, not more content below") the scroll edge
+	   treatment exists to prevent, reproduced in the frame meant to show it. */
+	["chat-usage--loading", 900, 470],
+	["chat-usage--empty", 900, 380],
+	["chat-usage--query-error", 900, 400],
+	["chat-usage--fetching", 1000, 560],
+	["chat-usage--stale-report", 1100, 620],
+	["chat-usage--unavailable-with-last-known", 1000, 480],
+	["chat-usage--reauth-required", 1000, 480],
+	["chat-usage--not-reported", 1000, 480],
+	/* Real-account density (eleven reports, twenty-eight windows, five
+	   accounts of one provider): the one story whose body overflows its scroll
+	   box, so the one that evidences the fold treatment — the 20px bottom
+	   fade, the `border-control` rule under the body, and their ABSENCE on
+	   every state that fits. 1100x1000 is `real-data`'s own viewport, chosen
+	   for the same reason: at 1000px tall the body cap `min(60vh,520px)`
+	   bottoms out at the 520px constant against ~1300px of content, so the
+	   fold is deep enough that a shallow overhang cannot masquerade as it.
+	   The density cannot be re-derived from the backend on demand (it needs
+	   live credentials at every provider), which is exactly why it is a story:
+	   the sweep can always re-take this frame. */
+	["chat-usage--dense", 1100, 1000],
+	["chat-usage--narrow", 720, 620],
 
 	["design-system-primitives--all-primitives", 1280, 1600],
 
@@ -262,7 +323,15 @@ const STORIES = [
 	["command-palette-commandpalette--no-results", 1280, 800],
 
 	["onboarding-onboardingmodal--default", 1280, 900],
-	["onboarding-onboardingmodal--radient-sign-in", 1280, 900],
+	/*
+	 * `--radient-sign-in` was REMOVED, not renamed: the story went away with the
+	 * Tailwind v4 landing (bb57a4080) and this list was not updated with it. The
+	 * harness checks every id against the manifest before it captures anything,
+	 * so ONE dead id made the whole sweep abort - `unknown story id(s):
+	 * onboarding-onboardingmodal--radient-sign-in`. The frames the story used to
+	 * produce are declared in `manifest.json` as a historical set rather than
+	 * re-derived by a sweep that cannot reach them.
+	 */
 	["onboarding-onboardingmodal--create-agent", 1280, 900],
 	["onboarding-onboardingmodal--congratulations", 1280, 900],
 
@@ -311,6 +380,19 @@ const STORIES = [
  * safe direction of the trade: a swept sibling under a preserved parent
  * survives a sweep that no longer captures it, and the gate reports it as an
  * unaccounted frame instead of silently losing an irreplaceable one.
+ *
+ * What is swept is the `.webp` FRAMES, not the directories holding them. The
+ * distinction is the same one the paragraphs above are about, one level down:
+ * an undeclared directory does not only hold frames this script can retake. It
+ * holds the README that says how its frames were captured, hand-taken PNG
+ * pairs from before this script existed, and - measured on this tree - 123
+ * committed non-`.webp` files across seven surfaces, including
+ * `tui-parity/OPERATOR-TUI-REFERENCE.md`, the reference the tool rows were
+ * ported from. Deleting whole directories took all of that on the next sweep,
+ * and the gate cannot see any of it: it counts frames. A sweep still cannot
+ * leave a stale frame behind (every `.webp` outside a declared set goes), and
+ * a directory emptied of its frames is removed; a file the sweep did not write
+ * is not the sweep's to delete.
  */
 export const clearSweptFrames = (out) => {
 	const manifestPath = join(out, "manifest.json");
@@ -323,11 +405,31 @@ export const clearSweptFrames = (out) => {
 	if (existsSync(out)) {
 		for (const entry of readdirSync(out)) {
 			if (entry === "manifest.json" || preserved.has(entry)) continue;
-			rmSync(join(out, entry), { recursive: true, force: true });
+			sweepFramesFrom(join(out, entry));
 		}
 	}
 	mkdirSync(out, { recursive: true });
 	return supplementary;
+};
+
+/**
+ * Remove the frames under `path`, and `path` itself once it holds none.
+ *
+ * A FILE is swept only when it is a frame; anything else was written by a hand
+ * or by another tool, and `clearSweptFrames` documents why that is not the
+ * sweep's to delete. A directory is swept recursively and then removed only if
+ * that leaves it empty, so a surface that still carries its README keeps it
+ * while its stale frames go.
+ */
+const sweepFramesFrom = (path) => {
+	const stats = statSync(path, { throwIfNoEntry: false });
+	if (!stats) return;
+	if (!stats.isDirectory()) {
+		if (path.endsWith(".webp")) rmSync(path, { force: true });
+		return;
+	}
+	for (const entry of readdirSync(path)) sweepFramesFrom(join(path, entry));
+	if (readdirSync(path).length === 0) rmSync(path, { recursive: true, force: true });
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -898,8 +1000,22 @@ const main = async () => {
 			 * the file was there before - which is what `frames`/`surfaces`
 			 * need, and what a refreshed-only count got wrong: eight new
 			 * frames landed on disk while the manifest still said 474.
+			 *
+			 * A frame inside a DECLARED set is not the sweep's to ADD either:
+			 * those sets declare their own counts, so counting theirs here
+			 * would count them twice. That is why the declared-set test ORs
+			 * with `existsSync` rather than narrowing it - the question this
+			 * variable answers is "was this frame already accounted for", and a
+			 * declared frame always was. The comparison is separator-aware
+			 * because a sibling whose name merely starts with a declared set's
+			 * name (`tool-rows-baseline` against `tool-rows`) is not inside it.
 			 */
-			const existedBefore = existsSync(framePath);
+			const existedBefore =
+				existsSync(framePath) ||
+				supplementary.some((set) => {
+					const declared = join(OUT, set.path);
+					return dir === declared || dir.startsWith(`${declared}${sep}`);
+				});
 			writeFileSync(framePath, Buffer.from(data, "base64"));
 			writtenFrames.push({
 				surface: `${story.split("--")[0]}/${leaf}`,

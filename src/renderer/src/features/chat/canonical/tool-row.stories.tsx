@@ -28,7 +28,14 @@ import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
-import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
+import {
+	EMPTY_TRANSCRIPT,
+	type TranscriptRecord,
+	type TranscriptState,
+	applyEvent,
+	applyHistoryPage,
+	dropLiveRecords,
+} from "./transcript-reducer";
 
 const TS = 1_760_000_000_000;
 
@@ -138,11 +145,12 @@ export default meta;
 
 type Story = StoryObj;
 
-/** Every outcome, in one column, at a comfortable width. */
+/** Every outcome in one column, at a comfortable width — plus the state
+ * before there is an outcome at all: a call still being dictated. */
 export const States: Story = {
 	render: () => (
 		<Frame
-			height={210}
+			height={232}
 			records={[
 				tool({
 					id: "tool:1",
@@ -157,6 +165,20 @@ export const States: Story = {
 					args: { path: "/Users/damian/local-operator-ui/docs/branding.md" },
 					durationS: 0.04,
 					output: "# Branding and design system",
+				}),
+				// The composing row, which has no execution time to report: the
+				// duration slot stays reserved and EMPTY (`tool_card.py:2503-2507`),
+				// and the dictation counter in the object column is the only thing on
+				// the row that moves. Bytes chosen to land on a KB step, because the
+				// spelling is what this row is for.
+				tool({
+					id: "tool:1c",
+					toolName: "write",
+					args: null,
+					phase: "composing",
+					argumentBytes: 12_688,
+					durationS: null,
+					output: null,
 				}),
 				// The diff counters, which is the row shape a write produces.
 				tool({
@@ -589,6 +611,184 @@ export const WorkingLabels: Story = {
 	),
 };
 
+/**
+ * The reported case: a viewer that joins a turn ALREADY IN FLIGHT.
+ *
+ * The owner's snapshot seed keeps the settling frame of every call that
+ * finished before the viewer attached and drops the start it replaces, and the
+ * settling frame carries no `args` — so the seed is a list of calls nobody can
+ * name. Records here are built by the PRODUCTION reducer, in the same order the
+ * session hook applies them, because the defect was never in the row's
+ * presentation: it was in what the row was given.
+ *
+ * Three rows say what to look for:
+ *
+ * 1. A live start, then a receipt gap (`dropLiveRecords`), then the durable
+ *    page and the seed's settling frame. The row is created by that settling
+ *    frame, and it must still say the command — before the fix it fell through
+ *    to the result's first line and read `exit code: 0`.
+ * 2. A result that opens with the harness's own wiring (`exit code: 0`, then
+ *    `--- stdout ---`). When the arguments really are unknown — a call from an
+ *    older runtime, or one whose plan was rejected — the object column steps
+ *    over that wiring instead of quoting it.
+ * 3. A call that printed NOTHING, whose object column is therefore empty rather
+ *    than quoting `(empty)`: the stand-in exists to say something, and this is
+ *    the state that must not be mistaken for a rendering failure.
+ * 4. A stand-in line long enough that the column truncates it, so the mark is
+ *    judged where it has to survive an ellipsis rather than on a line of its own.
+ * 5. A normal row, whose arguments arrived on the live start. Unchanged, and
+ *    here as the control: it is what the rows above must look like.
+ */
+export const JoinedMidTurn: Story = {
+	render: () => <Frame height={190} records={joinedMidTurn()} />,
+};
+
+/**
+ * The transcript a mid-turn join produces, through the real reducer.
+ *
+ * Deterministic on purpose: frames captured from this story are compared
+ * against `main`, so anything read from the clock would make the pair differ
+ * for a reason that has nothing to do with the change.
+ */
+function joinedMidTurn(): TranscriptRecord[] {
+	const args = {
+		command: "sed -n '1130,1230p' src/main/update-service.ts",
+		i: "Reading the updater",
+	};
+	const result = (text: string) => ({
+		content: [{ type: "text", text }],
+		details: {},
+	});
+	// The live start, which is the only frame that carries the arguments.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-gap",
+			tool_name: "bash",
+			args,
+		},
+		TS,
+	);
+	// A receipt gap: live projections are dropped, durable rows are not.
+	state = dropLiveRecords(state);
+	// The snapshot's durable page, whose assistant row holds the arguments.
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "a-gap",
+				ts: TS,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "assistant",
+					content: [],
+					tool_calls: [{ id: "c-gap", name: "bash", arguments: args }],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	// Then the seed's settling frame — no arguments, and the row does not exist.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-gap",
+			tool_name: "bash",
+			result: result(
+				"exit code: 0\n--- stdout ---\n      this.updateAvailable = false",
+			),
+			duration_s: 0.1,
+		},
+		TS + 100,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-unknown",
+			tool_name: "bash",
+			result: result(
+				"exit code: 0\n--- stdout ---\n=== /Volumes ===\nLocal Operator 0.17.0",
+			),
+			duration_s: 0.3,
+		},
+		TS + 900,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-read",
+			tool_name: "read",
+			result: result("1130|  private setupUpdateEvents(): void {"),
+			duration_s: 0.2,
+		},
+		TS + 1_200,
+	);
+	// The producer's own shape for a call that PRINTED NOTHING
+	// (`tools/builtin.py:1694-1695`): outcome line and two empty sections. Unknown
+	// arguments AND no result line to stand in, so the object column is empty —
+	// the state QA round 1's Q1 asked for, and the one a reader is most likely to
+	// misread as a rendering bug.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-silent",
+			tool_name: "bash",
+			result: result(
+				"exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)",
+			),
+			duration_s: 0.1,
+		},
+		TS + 1_300,
+	);
+	// A stand-in line long enough to be truncated by the column itself, so the
+	// mark and the column's own right-side ellipsis are visible TOGETHER: the
+	// design round's D1, which asked for the state where the mark has to survive
+	// truncation rather than being the only thing on the line.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-long",
+			tool_name: "grep",
+			result: result(
+				"exit code: 0\n--- stdout ---\n" +
+					"src/renderer/src/features/chat/components/trace/tool-row.tsx:412: a line long enough that the object column truncates it",
+			),
+			duration_s: 0.4,
+		},
+		TS + 1_400,
+	);
+	// The control: arguments arrived on the start, which is what every settled
+	// row looks like when the viewer was there for the whole turn.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-known",
+			tool_name: "bash",
+			args: { command: "pnpm check-types && pnpm test:desktop" },
+		},
+		TS + 1_500,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-known",
+			tool_name: "bash",
+			result: result("exit code: 0\n--- stdout ---\nall checks passed"),
+			duration_s: 12.4,
+		},
+		TS + 13_900,
+	);
+	return state.records;
+}
 /* ------------------------------------------------------------------ diff body
 
    The `write`/`edit` expansion: the tool result's own `difflib.unified_diff`

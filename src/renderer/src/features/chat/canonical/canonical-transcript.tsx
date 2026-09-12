@@ -67,8 +67,10 @@ import { AgentQuestion, DiffBlock, TraceLine } from "../components/trace";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	displayName,
+	formatBytes,
 	isBareToolName,
 	isDiffBodyRow,
+	outputFallbackLine,
 	summaryFromArgs,
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
@@ -258,7 +260,7 @@ const ToolRow = memo(function ToolRow({
 	// was asked) and it is deliberately second choice, but it beats a void.
 	const derived =
 		!composing && isBareToolName(summary, record.toolName)
-			? firstLine(record.output)
+			? outputFallbackLine(record.output)
 			: null;
 	const details =
 		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
@@ -347,28 +349,6 @@ const ToolRow = memo(function ToolRow({
 		</MessageContainer>
 	);
 });
-
-/**
- * The first non-empty line of a tool's output, bounded so it stays a summary.
- *
- * One line because the object column is one line: a multi-line result would be
- * truncated by CSS anyway, and taking the first line explicitly means the row
- * shows a whole thought rather than a fragment cut mid-word by the layout. The
- * cap matches what fits at the widest sensible column, so a 4 KB `bash` result
- * cannot push a long string through the truncation machinery on every render.
- */
-function firstLine(output: string | null): string | null {
-	if (!output) return null;
-	for (const line of output.split("\n")) {
-		const trimmed = line.trim();
-		if (trimmed) return trimmed.slice(0, 160);
-	}
-	return null;
-}
-
-function formatBytes(count: number) {
-	return count >= 1024 ? `${(count / 1024).toFixed(1)} KiB` : `${count} B`;
-}
 
 const NoticeRow = memo(function NoticeRow({
 	record,

@@ -945,6 +945,12 @@ export class UpdateService {
 				target: targetVersion,
 				running: app.getVersion(),
 			}),
+			// Stated rather than read off `process.platform` at the plan: this
+			// watchdog exists for Squirrel.Mac's ShipIt, the guard above already
+			// refuses it anywhere else, and the script's two probes (launchd's job
+			// lookup, `plutil`) are generated for the platform the script runs on
+			// rather than for whichever host planned it (see `watchdogSignals`).
+			platform: "darwin",
 		});
 
 		try {

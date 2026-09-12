@@ -105,6 +105,24 @@ export type PickerHostProps = {
 	toolbar?: ReactNode;
 	/** Rendered instead of the list when set (data views). */
 	body?: ReactNode;
+	/**
+	 * The body is a long list that MAY overflow, so reserve its scrollbar
+	 * column.
+	 *
+	 * Opt-in rather than always-on: `scrollbar-gutter: stable` is paid by every
+	 * state of the body, and a short form that never scrolls has nothing to pay
+	 * for it. Set it for the dense data views.
+	 *
+	 * Note that this gates ONLY the gutter. The end-of-list treatment - the
+	 * closing rule and the fade - is not behind this prop at all: whether the
+	 * edge is drawn is measured per render from the scroll container itself,
+	 * because overflow is a property of the STATE, not of the PICKER: `/usage`
+	 * sets this once, but its empty, error, fetching, percent-only,
+	 * remaining-balance and narrow states all end well above the fold, and an
+	 * unconditional rule drew a boundary under nothing in every one of them
+	 * (design D4).
+	 */
+	bodyScrolls?: boolean;
 };
 
 const TONE_CLASS: Record<PickerResult["tone"], string> = {
@@ -135,12 +153,83 @@ export const PickerHost: FC<PickerHostProps> = ({
 	wide = false,
 	toolbar,
 	body,
+	bodyScrolls = false,
 }) => {
 	const listId = useId();
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState(0);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
+
+	/*
+	 * Whether the body overflows, and whether there is content below the current
+	 * scroll position. Two booleans because the two treatments differ in when
+	 * they apply: the rule marks where the body ends and stays for as long as the
+	 * body is scrollable at all, while the fade is a promise that the list
+	 * CONTINUES and so must retract at the bottom — drawn on overflow alone it
+	 * ghosts the final row, the bug `canvas-tabs.tsx` hit with this same
+	 * treatment on its horizontal strip.
+	 */
+	const [bodyOverflows, setBodyOverflows] = useState(false);
+	const [bodyHasMoreBelow, setBodyHasMoreBelow] = useState(false);
+
+	/*
+	 * Measurement is attached by a REF CALLBACK rather than by an effect over a
+	 * ref object, and that is load-bearing here.
+	 *
+	 * The body renders inside Radix's dialog portal, so on the first commit the
+	 * ref object is still null when an effect would run: the element does not
+	 * exist yet. An effect keyed on `[bodyScrolls, body]` therefore measured
+	 * nothing and never re-ran, leaving a genuinely overflowing table with no
+	 * fold treatment at all — measured at 414px of content in a 252px box with
+	 * neither class applied. A ref callback fires when the node actually
+	 * attaches, which is the moment there is something to measure.
+	 *
+	 * The observers then track reality: the box resizes when the dialog does, and
+	 * the CONTENT resizes when a query settles under it — a `/usage` ask that
+	 * returns eleven reports replaces a three-block skeleton, and only the
+	 * child's box changes. Watching the scroll container alone misses exactly the
+	 * transition that creates the overflow.
+	 */
+	const cleanupBodyBox = useRef<(() => void) | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `body` is deliberately a dependency though the callback never reads it. Changing the body replaces the observed child nodes, and a stable callback identity would leave React holding the original attachment with a `ResizeObserver` still watching detached nodes — so the growth that creates the overflow is never seen. The new identity IS the re-subscription.
+	const bodyBoxRef = useCallback(
+		(box: HTMLDivElement | null) => {
+			cleanupBodyBox.current?.();
+			cleanupBodyBox.current = null;
+			if (!box) {
+				setBodyOverflows(false);
+				setBodyHasMoreBelow(false);
+				return;
+			}
+			/* 1px: `scrollHeight` and `clientHeight` round independently, so a body
+			   that does not overflow can measure a fraction over and a fully
+			   scrolled one a fraction under. Below anything a user can scroll to and
+			   above the rounding noise — the same threshold, and the same reason, as
+			   `canvas-tabs.tsx`. */
+			const measure = () => {
+				const hidden = box.scrollHeight - box.clientHeight;
+				setBodyOverflows(hidden > 1);
+				setBodyHasMoreBelow(hidden - box.scrollTop > 1);
+			};
+			measure();
+			box.addEventListener("scroll", measure, { passive: true });
+			let observer: ResizeObserver | undefined;
+			if (typeof ResizeObserver !== "undefined") {
+				observer = new ResizeObserver(measure);
+				observer.observe(box);
+				for (const child of box.children) observer.observe(child);
+			}
+			cleanupBodyBox.current = () => {
+				box.removeEventListener("scroll", measure);
+				observer?.disconnect();
+			};
+		},
+		// `body` is not read, but swapping it replaces the observed children, and
+		// a new callback identity is what makes React re-attach and re-measure
+		// against the new content.
+		[body],
+	);
 
 	const hasList = options !== undefined;
 	const filtered = useMemo(() => {
@@ -396,8 +485,55 @@ export const PickerHost: FC<PickerHostProps> = ({
 				)}
 
 				{body && (
-					<div className="max-h-[min(60vh,520px)] overflow-y-auto px-5 pt-3">
-						{body}
+					/*
+					 * A scrolling body announces its own overflow — and only then.
+					 *
+					 * Without an edge at the fold, content clipped mid-glyph read as a
+					 * rendering defect rather than as "there is more below": in the
+					 * densest usage frame the cut ran horizontally through a `41%` and
+					 * through the card's border mid-stroke, with nothing separating the
+					 * body from the footer.
+					 *
+					 * Two things the first attempt at this got wrong, both measured on
+					 * rendered frames (design D4):
+					 *
+					 * - It was `hairline`, measuring 1.08:1 dark and 1.03:1 light against
+					 *   the body above and 1.01:1 against the footer below. This rule is
+					 *   the ENTIRE answer to "is there more below", so by branding § 2's
+					 *   own test — would removing it lose information? — it is structural
+					 *   and sits on the 3:1 floor, which only `border-control` carries.
+					 * - It drew from the flag alone, so six `/usage` states whose content
+					 *   ends well above the fold got a boundary under nothing.
+					 *
+					 * `scrollbar-gutter: stable` stays tied to the FLAG rather than to
+					 * measured overflow: it reserves the scrollbar column in every state,
+					 * the same call the TUI makes (`SCROLLBAR_GUTTER_CELLS`) and for the
+					 * same reason — reserving it only when the bar appears slides every
+					 * right-aligned number sideways the moment content overflows. Making
+					 * THAT conditional would reintroduce the jump it prevents.
+					 *
+					 * The rule sits on the WRAPPER rather than on the scrolling box
+					 * because the box carries the fade mask, and a mask applies to an
+					 * element's border as much as to its content — both on one element
+					 * fades out the very rule that has to hold the 3:1 floor.
+					 */
+					<div className={cn(bodyOverflows && "border-control border-b")}>
+						<div
+							ref={bodyBoxRef}
+							className={cn(
+								"max-h-[min(60vh,520px)] overflow-y-auto px-5 pt-3",
+								bodyScrolls && "[scrollbar-gutter:stable]",
+								// The last 20px of a CONTINUING list fade out, so a row cut
+								// through its glyphs reads as "there is more" rather than as a
+								// rendering defect. Clipping to a row boundary instead is not
+								// available here: the body holds cards of several heights, so
+								// there is no single row pitch to snap to.
+								bodyHasMoreBelow &&
+									"[mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]",
+							)}
+						>
+							{body}
+						</div>
 					</div>
 				)}
 

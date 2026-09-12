@@ -1803,99 +1803,13 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 
 // ------------------------------------------------------------- data views
 
-type UsageReport = Record<string, unknown> & {
-	provider?: string;
-	state?: string;
-	age_seconds?: number;
-	error?: string;
-};
-
-export const UsageView: FC<PickerContext> = ({ onClose, action }) => {
-	const [live, setLive] = useState(false);
-	const provider = action.args.trim() || undefined;
-	const usage = useQuery({
-		queryKey: ["desktop", "usage", provider ?? "", live],
-		queryFn: () =>
-			desktopResult<{
-				reports: UsageReport[];
-				source: string;
-				fetched_at: number;
-			}>({
-				op: "usage.get",
-				provider,
-				live,
-				refresh: live,
-			}),
-	});
-	return (
-		<PickerHost
-			open
-			onClose={onClose}
-			title="Provider usage"
-			wide
-			description={
-				usage.data
-					? `${usage.data.source} report, fetched ${new Date(usage.data.fetched_at).toLocaleTimeString()}.`
-					: "Quota and usage as the providers report it."
-			}
-			toolbar={
-				<Button
-					variant="ghost"
-					size="sm"
-					type="button"
-					onClick={() => setLive(true)}
-				>
-					{live ? "Refresh again" : "Fetch live from providers"}
-				</Button>
-			}
-			body={
-				usage.isLoading ? (
-					<p className="text-ink-dim text-meta">Loading</p>
-				) : usage.isError ? (
-					<p className="text-body-sm text-danger">{errorText(usage.error)}</p>
-				) : (usage.data?.reports.length ?? 0) === 0 ? (
-					<p className="text-body-sm text-ink-muted">
-						No usage reports. Sign in to a provider that publishes quota, then
-						fetch live.
-					</p>
-				) : (
-					<div className="flex flex-col gap-3">
-						{usage.data?.reports.map((report, index) => (
-							<div
-								key={`${report.provider ?? "report"}-${String(index)}`}
-								className="rounded-md border border-hairline bg-sunken px-3 py-2"
-							>
-								<p className="text-body-sm text-ink">
-									{String(report.provider ?? "provider")}
-								</p>
-								<PickerKeyValue
-									label="State"
-									value={String(report.state ?? "unknown")}
-								/>
-								{typeof report.age_seconds === "number" && (
-									<PickerKeyValue
-										label="Age"
-										value={`${Math.round(report.age_seconds)}s`}
-									/>
-								)}
-								{report.error && (
-									<PickerKeyValue
-										label="Error"
-										value={String(report.error)}
-										mono={false}
-									/>
-								)}
-								<pre className="mt-2 max-h-40 overflow-auto font-mono text-ink-muted text-mono-sm">
-									{JSON.stringify(report, null, 2)}
-								</pre>
-							</div>
-						))}
-					</div>
-				)
-			}
-		/>
-	);
-};
+/*
+ * `/usage` lives in `usage-view.tsx`: it is the one data view with ported
+ * rules of its own (`usage-view-model.ts` mirrors the TUI's `usage_panel.py`)
+ * and a presentational half that stories render without a backend. Re-exported
+ * here so `picker-registry.tsx` keeps importing every adapter from one module.
+ */
+export { UsageView } from "./usage-view";
 
 export const FailoversView: FC<PickerContext> = ({ sessionId, onClose }) => {
 	const data = useQuery({

@@ -1,0 +1,16 @@
+/*
+ * Stylesheet for the real-data `/usage` evidence harness.
+ *
+ * It exists only to tell Tailwind where the classes are. Tailwind v4 detects
+ * source files relative to the VITE ROOT, and this harness's root is
+ * `scripts/` — so the app's own utilities were never generated and the first
+ * captured frame was the real data rendered as unstyled HTML: correct content,
+ * no design system, and therefore evidence of nothing.
+ *
+ * `@source` points the scanner back at the renderer tree. The app stylesheet is
+ * imported rather than restated so the harness and the product resolve the same
+ * roles, radii and type ramp.
+ */
+
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
