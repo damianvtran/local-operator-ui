@@ -208,14 +208,21 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		return (
 			<div
 				className={cn(
-					// `bg-surface` for the same reason as the canonical composer band:
-					// this sits inside the surface-coloured chat column, so `bg-canvas`
-					// stepped the ground the wrong way. `min-h-0` rather than `h-full`
-					// so this flex child is bounded by the column instead of declaring a
-					// base equal to the whole container - the legacy twin of the
-					// canonical transcript fix, changed together so this path does not
-					// quietly keep the defect.
-					"relative flex items-center justify-center bg-surface",
+					// No ground of its own, for the same reason as the canonical
+					// composer band: this scroller sits inside the chat column and
+					// takes whichever ground that column uses, so the two cannot
+					// drift apart. It used to be `bg-surface` to match a
+					// surface-coloured column, and `bg-canvas` was the same mistake
+					// mirrored - the column is `canvas` now (see chat-content.tsx),
+					// so naming a role here is what would put the band back on a
+					// different ground from the panel behind it.
+					//
+					// `min-h-0` rather than `h-full` so this flex child is bounded by
+					// the column instead of declaring a base equal to the whole
+					// container - the legacy twin of the canonical transcript fix,
+					// changed together so this path does not quietly keep the
+					// defect.
+					"relative flex items-center justify-center",
 					collapsed
 						? "h-0 grow-0 overflow-hidden"
 						: "min-h-0 grow overflow-auto",

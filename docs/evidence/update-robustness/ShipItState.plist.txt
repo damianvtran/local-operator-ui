@@ -1,0 +1,7 @@
+{
+  "bundleIdentifier" => "com.local-operator"
+  "launchAfterInstallation" => true
+  "targetBundleURL" => "file:///Applications/Local%20Operator.app/"
+  "updateBundleURL" => "file:///Users/damian/Library/Caches/com.local-operator.ShipIt/update.ctfjaw5/Local%20Operator.app/"
+  "useUpdateBundleName" => true
+}

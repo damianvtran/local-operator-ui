@@ -1,0 +1,11 @@
+### scripts/notarize-artifacts.mjs, guards run on this machine (no Developer ID identity, no Apple credentials here)
+$ security find-identity -v -p codesigning
+     0 valid identities found
+
+$ env -u NOTARIZE node scripts/notarize-artifacts.mjs
+Skipping disk image notarization: NOTARIZE not set to true
+
+$ NOTARIZE=true node scripts/notarize-artifacts.mjs
+Skipping disk image notarization: set APPLE_ID, APPLE_ID_PASSWORD and APPLE_TEAM_ID (in .env.build when building locally)
+
+The signed+notarized+stapled direction cannot be produced on this machine: there is no Developer ID identity in any keychain and no APPLE_ID/APPLE_ID_PASSWORD/APPLE_TEAM_ID. It runs in .github/workflows/publish.yml's build-macos job on every release, where the gate above must pass or the release fails before upload.

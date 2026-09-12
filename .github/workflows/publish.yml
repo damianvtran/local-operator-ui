@@ -256,6 +256,31 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
 
+      # The app inside the image is signed and notarized by electron-builder
+      # and afterSign, but the image itself was not: `dmg.sign` defaults to
+      # false, and only the app was submitted. A freshly downloaded 0.17.0 DMG
+      # therefore answered `spctl -t open` with "no usable signature", which is
+      # the Gatekeeper-friction class behind a user seeing "damaged and can't be
+      # opened". Notarize and staple each image here, then correct the sha512
+      # electron-builder already wrote into latest-mac.yml for it - that hash is
+      # computed as the artifact is created, so stapling afterwards makes it
+      # stale, and the update metadata has to describe the file we ship.
+      - name: Notarize and staple the disk images
+        run: pnpm notarize-dmg
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # Assert on the artifacts that were really built, before anything is
+      # uploaded. These are the checks a user's Gatekeeper performs, and a
+      # release whose DMG fails them cannot be opened on a fresh machine - so
+      # this fails the release rather than shipping it and finding out from a
+      # user. `pnpm verify-macos-artifacts` exits non-zero on the first failure
+      # it cannot clear, and prints each check with its raw output.
+      - name: Verify macOS artifacts
+        run: pnpm verify-macos-artifacts
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:

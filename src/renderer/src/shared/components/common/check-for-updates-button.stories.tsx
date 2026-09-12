@@ -46,15 +46,19 @@ const createEmptyUpdaterMethods = () => {
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
 			checkForBackendUpdates: async () => Promise.resolve(null),
 			checkForAllUpdates: async () => Promise.resolve(),
+			getLastInstallAttempt: async () => null,
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
-			quitAndInstall: () => {},
+			quitAndInstall: async () => true,
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
 			onBackendUpdateDevMode: () => () => {},
 			onBackendUpdateNotAvailable: () => () => {},
 			onBackendUpdateCompleted: () => () => {},
+			onBackendUpdateManualRequired: () => () => {},
+			onUpdateInstallBlocked: () => () => {},
+			onUpdateInstallFailed: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -81,9 +85,10 @@ const mockUpdaterApi = () => {
 			}),
 		checkForBackendUpdates: async () => Promise.resolve(null),
 		checkForAllUpdates: async () => Promise.resolve(),
+		getLastInstallAttempt: async () => null,
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
-		quitAndInstall: () => {},
+		quitAndInstall: async () => true,
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {
@@ -201,6 +206,15 @@ const mockUpdaterApi = () => {
 
 				// No need for interval that might get cleared too soon
 			}
+			return () => {};
+		},
+		onBackendUpdateManualRequired: () => {
+			return () => {};
+		},
+		onUpdateInstallBlocked: () => {
+			return () => {};
+		},
+		onUpdateInstallFailed: () => {
 			return () => {};
 		},
 		onBeforeQuitForUpdate: () => {
