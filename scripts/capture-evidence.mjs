@@ -173,6 +173,33 @@ const STORIES = [
 	   where the hierarchy that must SURVIVE the tightening is judged. */
 	["chat-tool-rows--operator-spacing-cases", 1024, 620],
 	["chat-tool-rows--turn-boundary-and-working-line", 1024, 620],
+	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
+	   `usage_panel.py`. Swept for the states that cannot be produced on demand
+	   live — an OAuth grant has to die, a provider has to go idle past its
+	   cache TTL, a weekly window has to actually run out. 1100x760 is a
+	   comfortable window for the `wide` dialog (max-w-3xl = 768px) with room
+	   for the scrim around it, so the frame is a picture of the dialog in its
+	   ground rather than of the dialog alone.
+
+	   `narrow` is captured at 720 because the dialog is portal-rendered and
+	   viewport-fixed: a wrapper div constrains nothing, so the VIEWPORT is the
+	   only thing that can produce the narrow layout. The shorter states
+	   (loading, empty, error, single-provider) are captured in a viewport sized
+	   to them — at 1100x760 they are mostly scrim and cross
+	   `check-evidence`'s uniformity ceiling, which is that guard working. */
+	["chat-usage--multi-provider", 1100, 760],
+	["chat-usage--percent-only", 900, 420],
+	["chat-usage--remaining-balance", 900, 400],
+	["chat-usage--loading", 900, 360],
+	["chat-usage--empty", 900, 380],
+	["chat-usage--query-error", 900, 400],
+	["chat-usage--fetching", 1000, 560],
+	["chat-usage--stale-report", 1100, 620],
+	["chat-usage--unavailable-with-last-known", 1000, 480],
+	["chat-usage--reauth-required", 1000, 480],
+	["chat-usage--not-reported", 1000, 480],
+	["chat-usage--narrow", 720, 620],
+
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */
