@@ -685,10 +685,16 @@ deliberately out of chronological order, so a tie-break that reads the array
 index shows a different six rows from one that reads the children's own clocks
 (`scripts/run-detail-model.test.mjs` asserts both the fixture and the rule).
 
-All eighteen frames were re-taken on the head that remediated these review
-rounds. Every one of them moved, because the story now paints the ground the app
-actually paints under this popover (§ 5); the frames whose CONTENT changed are
-`crowded` and `subagents-only` — the rows the slice now selects and the tally
-that follows them — plus the live clock in `both-in-flight`. The distinction and
-the pixel counts are in `docs/evidence/run-details/README.md`, and the counting
-is what keeps this paragraph falsifiable rather than reassuring.
+All eighteen frames were re-taken on the head that remediated those review
+rounds, and again on the head that closed them. The first re-capture is the one
+that moved every frame: #113 gave the working surface the page ground, so the
+story now paints the ground the app actually paints under this popover (§ 5);
+the frames whose CONTENT changed are `crowded` and `subagents-only` — the rows
+the slice now selects and the tally that follows them — plus the live clock in
+`both-in-flight`. The second moved none of them: its only rig-side change was
+giving the story's chat column a definite height, so the panel's floor and
+shadow sit on the column the panel is over rather than on the preview frame's
+own ground, and 14 of the 18 frames came back byte-identical with the other four
+differing only in a running row's elapsed label. The distinction and the pixel
+counts are in `docs/evidence/run-details/README.md`, and the counting is what
+keeps this paragraph falsifiable rather than reassuring.

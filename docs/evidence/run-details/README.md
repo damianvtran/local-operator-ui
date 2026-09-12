@@ -25,8 +25,27 @@ node scripts/capture-evidence.mjs http://localhost:6017 \
   --themes=localOperatorDark,localOperatorLight \
   --allow-backend
 
+# Final remediation round: bound 6017 again, same command.
+
 pnpm check-evidence
 ```
+
+**The last re-capture changed nothing but the clock, and that is the point of
+it.** The one rig-side fix in that round was giving the story's chat column a
+definite height (`h-screen` rather than `h-full` against the preview decorator's
+auto-height `min-h-screen`), so the panel's floor and its shadow sit on the
+column they are supposed to be over instead of on the preview frame's own
+ground — see the Panel-edge row below, and `docs/run-details.md` § 5. Fourteen of
+the eighteen frames came back BYTE-IDENTICAL, and the four that differ are
+exactly the panel frames with a live running clock in them (`both-in-flight` in
+both themes, plus the light `crowded` and light `subagents-only`): their elapsed
+labels differ by one second, which is the same number at a different instant and
+not a layout or ink change. One of those differences is a second SMALLER
+(`3m35s` → `3m34s`), which is the throttled-tick artefact the UX round recorded
+rather than a clock regression: a backgrounded tab's 1 Hz tick can fire with a
+stale timestamp, and the re-measured instant is `measuredAtMs + (tickMs −
+measuredAtRealMs)`. In a visible window the tick cannot be stale by more than a
+second and the instant is monotone; a capture never has one.
 
 **This round ALL EIGHTEEN frames moved, and the reason is the ground.** #113 gave
 the working surface the page ground, so the story now paints `canvas` under this
