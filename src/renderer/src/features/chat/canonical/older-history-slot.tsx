@@ -86,7 +86,32 @@ export type OlderHistorySlotProps = {
  * (`status` errors, "Reconnecting") is left-aligned, and two notice idioms 16px
  * apart in one column is the inconsistency branding § 7 asks us not to ship.
  */
-const BOX = "mb-4 flex h-7 min-w-0 items-center gap-2";
+const BOX = "@container/olderhistory mb-4 flex h-7 min-w-0 items-center gap-2";
+
+/*
+ * Two spellings of each sentence, chosen by the width of THIS row.
+ *
+ * The fixed height (clause F) is not negotiable: the slot sits directly above
+ * the oldest row, so any height it gains is height the whole conversation moves
+ * by, at the moment the reader is looking at the top of the screen. That makes
+ * truncation the only way a too-long sentence can degrade — and truncation was
+ * eating the part that carries the meaning. Measured at the app's own floors:
+ * the fault line clipped 6px at 252px and 38px at 220px, and the windowed hint
+ * clipped 44px of 264px at 220px, losing the gesture it exists to name.
+ *
+ * A shorter sentence at a narrower column is the fix that keeps F. The
+ * container is this row rather than the chat column because the row is what
+ * has to fit: the same 220px column yields a different budget here depending on
+ * whether an action sits beside the text, and `@container` asks the question
+ * that determines the answer.
+ *
+ * 260px is where the long spellings stop fitting, not a round number: the fault
+ * line's own intrinsic width is ~258px.
+ */
+/** The short spelling: shown only BELOW 260px, hidden at or above it. */
+const SHORT_COPY = "@min-[260px]/olderhistory:hidden";
+/** The full spelling: shown at or above 260px, hidden below it. */
+const FULL_COPY = "@max-[260px]/olderhistory:hidden";
 
 /** Stable id so the scroller can point `aria-describedby` at the hint. */
 export const OLDER_HISTORY_HINT_ID = "lo-older-history-hint";
@@ -103,11 +128,18 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	// reader announce the same line twice. What is worth announcing is the
 	// transition a reader did not initiate and cannot see if they are reading
 	// further down: a load starting, a load failing.
+	//
+	// The transport case is announced in the same quiet terms it is painted in:
+	// telling a screen-reader user that something "could not" load, when the
+	// transcript is simultaneously announcing that it is reconnecting, is the
+	// same contradiction D4 removes from the visual row.
 	const announcement =
 		state === "loading"
 			? "Loading earlier messages"
 			: state === "failed"
-				? "Could not load earlier messages"
+				? transportDown
+					? "Earlier messages did not load"
+					: "Could not load earlier messages"
 				: null;
 
 	const busy = state === "loading";
@@ -117,22 +149,49 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 			<output className="sr-only" aria-live="polite">
 				{announcement}
 			</output>
-			{state === "failed" ? (
+			{state === "failed" && transportDown ? (
+				/*
+				 * The transport is down, so this is not a fault the reader can answer.
+				 *
+				 * Painting a red fault with a `Try again` here put a retry that cannot
+				 * succeed directly above the transcript's own dim "Reconnecting" line,
+				 * and in the session-error case stacked two red lines 16px apart — two
+				 * claims about one event, with the action attached to the symptom
+				 * rather than the cause. The rule that already fixes the `windowed`
+				 * case is the rule this case needs: when the transport is down, the
+				 * transcript's notice carries the sentence and the slot goes quiet.
+				 *
+				 * Quiet, not silent. The row keeps its height (clause F) and still
+				 * states that the fetch did not happen, at `ink-dim` rather than
+				 * `danger` — which is the terminal UI's own reasoning for keeping the
+				 * transport case non-red: the condition resolves itself, so it is not
+				 * an error for the user to answer. The recoverable `Try again` below
+				 * is untouched and still covers the case this branch does not: the
+				 * transport is up and the fetch genuinely failed.
+				 */
+				<span className="min-w-0 truncate text-ink-dim text-meta">
+					<span className={SHORT_COPY}>Not loaded</span>
+					<span className={FULL_COPY}>Earlier messages did not load</span>
+				</span>
+			) : state === "failed" ? (
 				// Red, and not the terminal UI's quiet note. The TUI can afford a
 				// calm phrasing because it classifies the failure first and only
 				// stays quiet for the transport case that heals itself; the desktop
-				// transport collapses every cause into one rejected request, so this
-				// layer cannot honestly claim the failure is the harmless kind.
+				// transport collapses every remaining cause into one rejected
+				// request, so this layer cannot honestly claim THIS failure is the
+				// harmless kind — the harmless kind is handled one branch above.
 				// Branding § 8: say what happened, and give the next step beside it.
 				//
 				// `min-w-0` + `truncate` on the sentence and `shrink-0` on the action
-				// is what keeps this one line at 252px; see the head comment.
+				// is what keeps this one line; the short spelling is what keeps the
+				// words when truncation would eat them. See the head comment.
 				<>
 					<span
 						className="min-w-0 truncate text-danger text-meta"
 						title="Could not load earlier messages"
 					>
-						Could not load earlier messages
+						<span className={SHORT_COPY}>Did not load</span>
+						<span className={FULL_COPY}>Could not load earlier messages</span>
 					</span>
 					<Button
 						variant="ghost"
@@ -174,8 +233,16 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 					id={OLDER_HISTORY_HINT_ID}
 					className="min-w-0 truncate text-ink-dim text-meta"
 				>
-					{hiddenRows} earlier {hiddenRows === 1 ? "message" : "messages"} above
-					{transportDown ? "" : " — scroll up to load"}
+					{/* The gesture is the payload, so it is the count that goes when the
+					    column cannot hold both. Truncation would have dropped the
+					    gesture instead, which is the half a reader cannot infer. */}
+					<span className={SHORT_COPY}>
+						{transportDown ? "Earlier messages above" : "Scroll up for earlier"}
+					</span>
+					<span className={FULL_COPY}>
+						{hiddenRows} earlier {hiddenRows === 1 ? "message" : "messages"}{" "}
+						above{transportDown ? "" : " — scroll up to load"}
+					</span>
 				</span>
 			) : (
 				// The start of the conversation, stated rather than left to absence.

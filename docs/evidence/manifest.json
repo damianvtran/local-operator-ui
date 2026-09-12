@@ -48,7 +48,8 @@
 			"chat-tool-rows--diff-body-narrow-wrapped-cap",
 			"chat-older-history-slot--every-state",
 			"chat-older-history-slot--app-minimum-width",
-			"chat-older-history-slot--one-hidden-row"
+			"chat-older-history-slot--one-hidden-row",
+			"chat-older-history-slot--transport-down"
 		],
 		"refreshedThemes": [
 			"localOperatorDark",

@@ -98,11 +98,28 @@ Fixture: 260 rows / 3 backend pages, viewport 489px, `WINDOW` 60 rows,
 | `after-03-clamped/` | After 50 further notches clamped against the top. |
 | `after-04-after-isolated-reveals/` | The end of the isolated-reveal trials. |
 
-`after-03` and `after-04` are byte-identical, and that is the honest result
-rather than an oversight: both show the top of a fully-mounted transcript, where
-the correct behaviour is that nothing further happens. (In round 1 `after-02`
-and `after-03` were identical, which was a real defect — no reveal had occurred
-anywhere in that capture. They differ now.)
+**`after-02` and `after-04` are byte-identical** (`13ebfe0f1d779ae8`), and an
+earlier version of this file named the wrong pair. Both end at the hard top of a
+fully-mounted transcript, which is the same scene by construction: the fling
+step drives the transcript to the end of its history, and the isolated trials
+reload and drive it there again. Nothing further is supposed to happen at that
+point, so the pixels agree.
+
+That is a weak thing to have to assert, because it is indistinguishable from
+shipping one file twice — which is exactly what round 1's Q5 was. What
+distinguishes them is the measurement JSON: the two steps record different row
+counts, different request counts and different traces on the way to that scene.
+If you want a frame that cannot be confused this way, capture the second
+mid-sequence; this set does not, and says so rather than leaving a reader to
+hash the files themselves.
+
+All four `after` frames also carry the app's **"server is offline" banner**,
+which no `before` frame has. It is an artefact of the harness reloading the page
+while the backend connection re-establishes, not of the change: the same run
+issued 6 real `sessions.history` ops and mounted 260 rows, so the transport was
+demonstrably working. It is named here because it is a systematic difference
+inside a pair offered as before/after evidence, and an unexplained difference is
+one a reader has to discount on trust.
 
 ### Clause B — one gesture, one page
 
@@ -147,16 +164,16 @@ A 6608px reveal held the anchor at **0.00px**. For comparison, QA measured
 previous head — so the worst case improved by roughly 17x and the typical case
 by far more.
 
-**The residual is named rather than rounded away.** 209-392px on three of the
-five trials is about half a wheel notch, and it is not yet proven to be the
-reader's own motion: the stamp bounds when the harness stopped sending, but
-Chromium delivers a synthesized wheel asynchronously, so a notch can still be
-in flight when the stamp is taken. Two of those trials (2 and 5) grew by 24px or
-nothing at all, which means there was no reveal to displace anything — those
-numbers are the reader scrolling, by construction. Trials 1 and 4 are genuinely
-ambiguous. What is certain is the direction and the scale: the largest real
-reveal in the set holds at zero, and nothing in the set approaches the
-multi-thousand-pixel drags measured before.
+**On the nonzero numbers in that column.** Every trial in which rows were
+actually inserted held the anchor at **0.00px**. The nonzero figures land on
+trials whose extent grew by 24px or not at all — that is, trials in which
+nothing was revealed and the movement is the reader's own wheel notch still
+arriving. An earlier version of this file listed a "209-392px residual" under
+open defects; two independent passes then reproduced the measurement and found
+the same split, with no displacement attributable to the app on any real
+insertion. There is no residual to inherit, and the paragraph that implied one
+has been removed rather than softened: a phantom bug in an evidence file costs
+the next reader a day.
 
 ### What the fix actually was
 
@@ -227,6 +244,26 @@ overflow: 0.00px in every state at every width
 `docs/evidence/chat-older-history-slot/app-minimum-width/` is the frame; the
 failure state measured 34.78px inside a 28px box before this round.
 
+The height held from the first round of that fix, but the copy did not survive
+it: truncation kept the box honest while eating the words, clipping 6px off the
+fault line at 252px, 38px at 220px, and 44px off the windowed hint at 220px —
+which cost that hint the gesture it exists to name. Each sentence now has a
+short spelling chosen by a container query on the row itself, so the invariant
+is kept by rewording rather than by clipping. Measured, no visible text node
+clips at any supported width:
+
+```
+                       512px                         220px
+failed (transport up)  "Could not load earlier..."   "Did not load" + Try again
+failed (transport down) "Earlier messages did not..." "Not loaded"
+windowed               "137 earlier messages above   "Scroll up for earlier"
+                        — scroll up to load"
+clipped: none, at 512 / 252 / 220px
+```
+
+`docs/evidence/chat-older-history-slot/transport-down/` is the frame for the
+paired transport states.
+
 ## Reproducing it
 
 Ports here are the ones this pass was assigned; any free pair works.
@@ -261,7 +298,7 @@ chain to be the only route.
 
 - **`GESTURE_GAP_MS = 400` is unmeasured against real hardware.** It is reasoned
   from a trackpad's momentum tail, not observed on one.
-- **The 209-392px residual** described above.
+
 - **Q7, the backend degrading under sustained paging** (rows mounting as 0 and a
   persistent "Reconnecting" after ~130 history requests across many browser
   sessions), reproduced once here. Restarting the backend clears it. Not on this

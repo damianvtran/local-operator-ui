@@ -54,7 +54,13 @@ const Ruled = ({
 	state,
 	caption,
 	width = "32rem",
-}: { state: OlderHistoryState; caption: string; width?: string }) => (
+	transportDown = false,
+}: {
+	state: OlderHistoryState;
+	caption: string;
+	width?: string;
+	transportDown?: boolean;
+}) => (
 	<div className="flex items-start gap-4">
 		<span className="w-64 shrink-0 pt-1 text-ink-muted text-meta">
 			{caption}
@@ -63,6 +69,7 @@ const Ruled = ({
 			<OlderHistorySlot
 				state={state}
 				hiddenRows={137}
+				transportDown={transportDown}
 				onLoadOlder={() => undefined}
 			/>
 		</div>
@@ -127,6 +134,54 @@ export const AppMinimumWidth: Story = {
 					width="220px"
 				/>
 			))}
+		</div>
+	),
+};
+
+/**
+ * What the slot says while the transport is down, beside what it says when the
+ * transport is up and the fetch genuinely failed.
+ *
+ * The claim: a failure the reader cannot answer is not painted as one. The
+ * transcript below the slot is already saying "Reconnecting" (or carrying a
+ * session error) in those rows, so a red fault with a `Try again` above it
+ * would be two claims about one event with the action attached to the symptom.
+ * These two rows are the comparison that shows the branch works — same state,
+ * same width, different transport, and only one of them is red or actionable.
+ */
+export const TransportDown: Story = {
+	render: () => (
+		<div className="flex flex-col gap-6 bg-canvas p-8">
+			<p className="max-w-[46rem] text-ink-muted text-meta">
+				`failed` in both rows. Only the second offers a retry, because only the
+				second describes something a retry could fix.
+			</p>
+			<Ruled state="failed" caption="failed, transport down" transportDown />
+			<Ruled state="failed" caption="failed, transport up" />
+			<Ruled
+				state="windowed"
+				caption="windowed, transport down"
+				transportDown
+			/>
+			<Ruled state="windowed" caption="windowed, transport up" />
+			<p className="max-w-[46rem] pt-2 text-ink-muted text-meta">
+				The same four at the 220px chat-column floor, where the short spellings
+				take over.
+			</p>
+			<Ruled
+				state="failed"
+				caption="failed, transport down"
+				width="220px"
+				transportDown
+			/>
+			<Ruled state="failed" caption="failed, transport up" width="220px" />
+			<Ruled
+				state="windowed"
+				caption="windowed, transport down"
+				width="220px"
+				transportDown
+			/>
+			<Ruled state="windowed" caption="windowed, transport up" width="220px" />
 		</div>
 	),
 };
