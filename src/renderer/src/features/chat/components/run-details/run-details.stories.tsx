@@ -112,6 +112,19 @@ const TranscriptGround = () => (
  * and the transcript beneath it. `onOpenOptions` is supplied so the canvas button
  * is in frame beside the trigger — § 3.2's cluster is the placement being judged.
  *
+ * **`h-screen`, not `h-full`.** The preview frame above this story is
+ * `min-h-screen`, whose height is AUTO — so a percentage height against it
+ * resolves to auto and this column was CONTENT-height (428px in every one of the
+ * eighteen frames). The panel opens from y51 to y530, so its floor and its
+ * shadow sat below the column's own box, on the preview frame's ground rather
+ * than on the column the panel is supposed to be over: a seam through the middle
+ * of the panel that is invisible today only because the story and the frame both
+ * paint `canvas`. The moment either ground moves it reappears as a horizontal
+ * step, and the elevation the frames certify would be measured against the wrong
+ * plane — the same class of defect the `bg-canvas` change above fixed. `100vh`
+ * is the definite height the app's own shell gives this column, so the story
+ * states it rather than inheriting it from a coincidence (design round 4, D2).
+ *
  * **`bg-canvas`, not `bg-surface`.** #113 gave the working surface the PAGE
  * ground so the list panel could step from it; the popover opens over the
  * working column, which is `canvas`, so that is what has to be under it for the
@@ -125,7 +138,7 @@ const TranscriptGround = () => (
 const ChatColumn = ({
 	details,
 }: { details: ReturnType<typeof deriveRunDetails> }) => (
-	<div className="flex h-full flex-col overflow-hidden bg-canvas">
+	<div className="flex h-screen flex-col overflow-hidden bg-canvas">
 		<ChatHeader
 			agentName="Core"
 			description="Invoices workspace · on this machine"
