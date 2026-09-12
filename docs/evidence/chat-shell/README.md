@@ -15,9 +15,11 @@ as `scripts/capture-evidence.mjs`.
 
 That means the account is signed in, the agent list, sessions and transcripts
 are genuine backend responses, and the populated frames are a real conversation
-with real tool rows. The 12-theme sweep is deliberately **not** regenerated
-here; these are `localOperatorDark` only, which is the default theme and the one
-the reported screenshot was taken in.
+with real tool rows. The 12-theme sweep is deliberately **not** regenerated in
+this earlier set, which is `localOperatorDark` only - the default theme and the
+one the reported screenshot was taken in. The sets added further down for the
+working-surface ground are the exception: they render both brand palettes, plus
+`iceberg`, the tightest end of the range.
 
 **How the transcript in the populated frames was produced (round 2).** The
 agent prose is real rendered prose, not a mock: the transcript is seeded
@@ -205,6 +207,19 @@ conversation at the same window size:
 **The 120px figure and the improvement claim were both withdrawn in round 1**,
 after re-capture put this branch at 140px against `origin/main`'s 128px. See
 below.
+
+**Provenance of the `origin/main` row (measured by QA in round 1 of the ground
+change, and recorded rather than edited).** Those three numbers describe
+**v0.16.0**, not this branch's base `2217ea59a`: `git show
+v0.16.0:src/renderer/src/app.tsx` is `<div className="flex h-screen
+overflow-hidden">`, while v0.17.0 and `2217ea59a` both carry `relative` (the
+document-scroll fix). Re-measured on `2217ea59a` with the same dock-open
+populated chat, the row (`relative flex h-full w-full flex-row overflow-hidden`)
+gives **140px** overflow, header **56px** (`h-14`), document overflow **0** -
+identical to this branch. So "about 12px worse than `origin/main`" is a
+statement about v0.16.0, not about the base this branch is cut from; the numbers
+above are left as measured because nobody has re-measured a tree that still
+renders v0.16.0.
 
 The cause is a 450px-minimum canvas plus a 220px-minimum chat column plus a
 900px-preferred transcript demanding more width than the row has; fixing it
@@ -592,10 +607,13 @@ literals, every ternary branch inside a `cn()` call, and the UPPERCASE class
 constants those elements reference (resolved locally and through named
 imports). The rule asserted: no ancestor of the popup may carry an overflow
 class other than `visible`, a max-height, or an inline overflow, on the axis
-`bottom-full` escapes along; the band itself is identified by the composed
-`shrink-0` + `bg-surface` set (the discriminator QA used, which deliberately
-does not match the transcript scroller). If the scanner can no longer balance
-the file's tree, the guard FAILS rather than passing green.
+`bottom-full` escapes along; the band itself is identified by its
+`data-lo-composer-band` attribute (which deliberately does not match the
+transcript scroller). That sentence previously said the guard finds the band by
+the composed `shrink-0` + `bg-surface` set - which is what the guard never
+matched, and `bg-surface` has since been removed from the band altogether
+(`message-input.tsx`), so it was both imprecise and stale. If the scanner can no
+longer balance the file's tree, the guard FAILS rather than passing green.
 
 Four mutants, four killed, each applied with its diff shown, parse-checked
 with esbuild, and restored byte-identical between runs:
@@ -746,9 +764,17 @@ are the same pair the rendered table measures:
 
 Every palette clears the ~2.0 perceptual threshold § 3 of `docs/branding.md`
 cites, and `surface`→`sunken` (the rail's step) is stronger than
-`surface`→`canvas` in all twelve — the narrowest gap between the two is sage
-(2.24 against 5.27). `pnpm check-themes` asserts both pairs as adjacent grounds,
-so neither is maintained by hand.
+`surface`→`canvas` in all twelve. Two bounds belong next to that claim rather
+than behind one number. **The loud end of the new pair is synth 6.56** (radient
+6.37, tokyoNight 5.49), so a synth user gets a step about three times iceberg's;
+**the quiet end is iceberg 2.11**, which is the step that palette already draws
+between every card and its page - § 3 names iceberg's 2.1 as sufficient where a
+1.5 was not - so chat adopts an existing magnitude rather than introducing one.
+And **the rail's margin is thinnest in obsidian**, where its 4.49 is only
+**1.18x** the 3.80 step (then radient 1.38x, dracula 1.44x): the 1.9x/1.6x the
+brand frames show is not the worst case. If that margin ever needs widening, the
+lever is the palette, not this column. `pnpm check-themes` asserts both pairs as
+adjacent grounds, so neither is maintained by hand.
 
 ## The dock, open
 
@@ -792,30 +818,63 @@ and nothing else: not the rail, not the list panel, and not one pixel of the
 dock. That is the strongest statement this pair makes: the dock's rendering is
 identical before and after, and what moved is which ground the column carries.
 
-One thing this pair does **not** cover, and the reason is a real one: with a
-document open the dock's document area takes the section's `surface`
-(`canvas/index.tsx` renders the section as `bg-surface` with a `sunken` header),
-so the step at the column/dock boundary returns — the dock then reads as a
-panel over the working surface. Reaching a document requires the dock's "New
-file" / "Open file" actions, which call `createFile` and write to disk
-(`utils/file-creation`), so it was not done in this workspace. That case is
-**code-level reasoning, not a measurement**, and is called out as such.
+One thing this pair does **not** cover is the dock's document-open state, and
+that case is no longer left as reasoning: **QA measured it.** Driving the dock's
+own "New file" flow (which does not call `createFile`) with a document open, the
+dock renders `surface` against the `canvas` column, so the step returns at that
+boundary in the other direction while the list/column seam stays 2.54. The
+code-reading conclusion above is therefore confirmed by a round that did not
+share this harness. What remains unattributed to a frame is only this set's own
+capture of it: reaching that state from here would mean writing a file into the
+operator's workspace (`utils/file-creation`).
 
-### One pixel that is not a rule
+### The pixel that marks the dock is a rule, and it is the dock's own border
 
 The nine-pixel run across the column/dock boundary contains a fourth colour in
-both halves of the pair: `#343024` (dark) / `#DCD8CF` (light), one unit off each
-palette's `hairline`. It is **the transcript scroller's native scrollbar**, not
-a painted boundary rule: the dock-open column is 220px wide, the transcript
-overflows in it, and the platform paints a scrollbar themed through the
-`color-scheme` the palette emits. Confirmed two ways — every element at that x
-computes `background-color: rgba(0,0,0,0)` with `border-*-width: 0px`, and the
-resize divider's own line is `bg-control` at `opacity: 0` at rest (read from the
-live DOM); and hiding scrollbars at runtime removes the pixel entirely while
-nothing else in the row changes. It is identical in the before and after
-frames, so it is not part of this change either way.
+both halves of the pair: `#343024` (dark) / `#DCD8CF` (light), which is each
+palette's own `hairline` after the capture's one-unit colour conversion. It is
+**not** a scrollbar. It is the dock container's own `border-l border-hairline`
+(`chat-content.tsx`), whose left edge is exactly x=720 and which `h-full` gives
+the full window height: measured in all four dock-open frames, x=720 is one
+uniform colour across **all 872 rows, y=0..871** — including the header band and
+the composer row, where no scroll container reaches. A scrollbar is not one
+pixel wide and cannot paint outside the scroller it belongs to.
+
+So the working surface and the dock are separated by a painted rule rather than
+a bare ground step, and that rule is **pre-existing and unchanged** by this
+change (the pair's diff is confined to x=500..719, so x=720 is byte-identical
+between the halves). It measures **ΔE00 5.26** from the canvas under it in
+`localOperatorLight` and **10.21** in `localOperatorDark` (contrast 1.41) —
+above the rail's own 4.38 / 4.07. With the dock open, then, the strongest
+vertical *edge* in the window is the dock divider, while the rail remains the
+strongest ground *step*. Both stay: a resizable split needs a visible edge, and
+the boundary this PR adds between the list panel and the working surface stays
+bare. What marks the dock is that hairline **plus** its own `sunken` 40px header
+band — not the chrome alone, which is what an earlier version of this paragraph
+claimed.
 
 ## The frames
+
+### The light empty pair, and what can still differ between the halves
+
+The `localOperatorLight` and `iceberg` empty pairs were recaptured through the
+harness with the synthetic pointer parked at 4,4 and nothing focused, so the
+transient UI state a first pass left in them is gone: the earlier light pair had
+the composer's accent focus ring in one half only, and a hover highlight on a
+sidebar row (`+ Create agent`, 7942 pixels) in its before half. In the committed
+pair the sidebar is **byte-identical** (0 differing pixels across x=220-499, the
+whole list panel) and the composer carries its resting `border-control` edge in
+both halves.
+
+One difference is **not** removable, and it is the application's own: the
+empty-state suggestion chips are drawn from a randomised pool at mount
+(`message-input.tsx`: `[...initialSuggestions].sort(() => Math.random() - 0.5)`),
+so the two halves of every empty pair necessarily carry different chips - and
+because the empty block is laid out from its content, the composer sits a few
+pixels higher or lower between them. The ground claim does not rest on the empty
+frames' content: it rests on the numbers in the table above (0 → 2.18 across
+that boundary in both halves), on the populated and dock pairs, and on the
+pixel-diff bounding boxes, which show nothing outside the column changed.
 
 | Frame pair | What it shows |
 | --- | --- |
@@ -823,16 +882,35 @@ frames, so it is not part of this change either way.
 | [before-ground-empty-loLight.png](before-ground-empty-loLight.png) / [after-ground-empty-loLight.png](after-ground-empty-loLight.png) | The same, light. The step is a slightly deeper cream inside the same warm family; the light themes are where a 2.2 ΔE00 step is most easily lost, which is why both brand themes are captured rather than the default one. |
 | [before-ground-populated-loDark.png](before-ground-populated-loDark.png) / [after-ground-populated-loDark.png](after-ground-populated-loDark.png) | The same pair over a populated transcript (fixture prose, 60 rows). Confirms the step is a property of the ground and not of the empty state's content. |
 | [before-ground-populated-loLight.png](before-ground-populated-loLight.png) / [after-ground-populated-loLight.png](after-ground-populated-loLight.png) | The same, light. |
+| [before-ground-empty-iceberg.png](before-ground-empty-iceberg.png) / [after-ground-empty-iceberg.png](after-ground-empty-iceberg.png) | The tightest theme in the range, rendered rather than computed: the step renders at **2.11**, the token's own value, against an iceberg rail step of **3.75** (1.78x). Iceberg is the palette closest to the contract's threshold and the one a design round asked to see a frame of. |
 | [before-ground-canvas-loDark.png](before-ground-canvas-loDark.png) / [after-ground-canvas-loDark.png](after-ground-canvas-loDark.png) | Canvas dock open, dark, populated transcript. Before: the column matches the list panel and the dock's own ground steps away from it. After: the column steps from the list panel and shares the dock's ground. |
 | [before-ground-canvas-loLight.png](before-ground-canvas-loLight.png) / [after-ground-canvas-loLight.png](after-ground-canvas-loLight.png) | The same, light. |
 
 ## What these frames do not prove
 
-- **Ten of the twelve themes are token-derived, not rendered.** The two brand
-  palettes are rendered; the table above is arithmetic on the palettes.
+- **Nine of the twelve themes are token-derived, not rendered.** Three are
+  rendered: `localOperatorDark`, `localOperatorLight` and `iceberg` (the tightest
+  end of the range); the twelve-row table above is arithmetic on the palettes.
 - **The populated content is a fixture conversation** written by another
   session's paging harness, not a real chat.
-- **The dock's with-a-document state is not captured.** See "The dock, open"
-  above: it would need a file written to disk.
+- **The legacy transcript scroller (`messages-view.tsx`) is changed but not
+  framed.** It is the non-canonical path and could not be reached by driving the
+  app - canonical sessions render the canonical transcript and the dev-only Raw
+  tab renders the raw JSON view - which QA recorded as BLOCKED for the same
+  reason. The change there is inherit-only (the element names no ground), so it
+  cannot disagree with its column. Source-level claim, not a measurement.
+- **The state assertions are not reproducible from this repository.** Each frame
+  asserts its own state before it is written - a populated frame must report
+  more than five rows in the transcript's own sr-only perf line, an empty frame
+  must report zero rows *and* the greeting *and* the composer band, the document
+  must carry the requested `data-theme`, and no frame may contain the first-run
+  onboarding overlay - but the harness is not committed, the same limitation the
+  #101 set records. The asserted values are recorded here instead: `rows=60` for
+  both populated pairs, `rows=0` plus the greeting for the empty pairs,
+  `data-theme` equal to the palette named in the filename, and no onboarding
+  overlay in any frame of this set. Everything the tables ask a reader to believe
+  *about the boundary* is reproducible from the committed PNGs.
+- **The dock's with-a-document state is not in this set** (QA measured it; see
+  "The dock, open").
 - The dev framing includes the `Chat | Raw` tab row, which a packaged build does
   not render; it is present identically in both halves of every pair.

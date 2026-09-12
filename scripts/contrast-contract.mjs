@@ -252,8 +252,21 @@ const CONTROLS = [
  * appear in it. Deliberately a substring check on the shipped source: this
  * script has no parser and does not need one to answer "does this component
  * still declare a structural edge".
+ *
+ * One entry is not an edge at all. The chat working surface's ground is a
+ * palette-only fact on the other half of this file (`canvas` on `canvas` clears
+ * every floor however it is used), so the one place the swap can be undone is
+ * the call site - repaint that column `surface` and the list panel merges back
+ * into it with no rule between them, while every colour assertion stays green.
+ * The row pins the invariant to the file that carries it.
  */
 const STRUCTURAL_CALL_SITES = [
+	{
+		what: "chat working surface ground",
+		file: "src/renderer/src/features/chat/components/chat-content.tsx",
+		must: "bg-canvas",
+		why: "the working surface takes the PAGE ground so it steps away from the `surface` list panel beside it; repainting this column `surface` merges the two into one slab (the divider between them is `w-0` and draws nothing) and no palette assertion can see it",
+	},
 	{
 		what: "user message bubble edge",
 		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
