@@ -76,6 +76,12 @@ const CAPTURE = JSON.parse(
 		"utf8",
 	),
 );
+const NAMES = JSON.parse(
+	readFileSync(
+		join(ROOT, "scripts/fixtures/model-name-agreement.json"),
+		"utf8",
+	),
+);
 const TIES = JSON.parse(
 	readFileSync(
 		join(ROOT, "scripts/fixtures/session-status-rounding-ties.json"),
@@ -782,77 +788,22 @@ test("no reading anywhere in the strip is spelled with toFixed", () => {
 
 /* ---- 10. naming, cold snapshots and the picker's veto ------------------- */
 
-/** A catalogue row as `refresh_model_catalogue` publishes it. */
-const CATALOGUE = [
-	{ provider: "anthropic", model_id: "claude-opus-5", label: "Claude Opus 5" },
-	{
-		provider: "openrouter",
-		model_id: "openai/gpt-5",
-		// What `model_label` returns for a RESELLER: it refuses to borrow the
-		// model's name for a route, so the label is the selector again.
-		label: "openrouter/openai/gpt-5",
-	},
-];
-
-test("the model name comes from the catalogue when the spec has none", () => {
-	// Q2/U1: the band supplies a curated name through `format_model_label`
-	// exactly when metadata resolution gave none, and the catalogue's `label`
-	// IS that pass, computed backend-side.
-	const cold = {
-		provider: "anthropic",
-		model_id: "claude-opus-5",
-		display_name: "",
-	};
-	assert.equal(modelIdentity(cold, CATALOGUE).name, "Claude Opus 5");
-	assert.equal(
-		modelIdentity(cold, CATALOGUE).selector,
-		"anthropic/claude-opus-5",
-	);
-	// Without a catalogue there is nothing better than the id, and that is the
-	// honest floor rather than an invented name.
-	assert.equal(modelIdentity(cold, undefined).name, "claude-opus-5");
-	assert.equal(modelIdentity(cold, []).name, "claude-opus-5");
-});
-
-test("the spec's own display_name still wins over the catalogue", () => {
-	const warm = {
-		provider: "anthropic",
-		model_id: "claude-opus-5",
-		display_name: "Claude Opus 5 (preview)",
-	};
-	assert.equal(modelIdentity(warm, CATALOGUE).name, "Claude Opus 5 (preview)");
-});
-
-test("a catalogue label that is just the selector is not treated as a name", () => {
-	// `model_label` returns the selector when it refuses to name a reseller's
-	// route. Printing that in the chip would be strictly worse than the id.
-	const route = {
-		provider: "openrouter",
-		model_id: "openai/gpt-5",
-		display_name: "",
-	};
-	assert.equal(modelIdentity(route, CATALOGUE).name, "openai/gpt-5");
-});
-
-test("a catalogue row matches on provider AND model_id", () => {
-	// An aggregator's model_id carries its own slashes, so a joined selector
-	// cannot be split back apart reliably.
-	const other = [
-		{ provider: "openai", model_id: "gpt-5", label: "WRONG ROW" },
-		{
-			provider: "openrouter",
-			model_id: "openai/gpt-5",
-			label: "OpenAI: GPT-5",
-		},
-	];
-	assert.equal(
-		modelIdentity(
-			{ provider: "openrouter", model_id: "openai/gpt-5", display_name: "" },
-			other,
-		).name,
-		"OpenAI: GPT-5",
-	);
-});
+/*
+ * The catalogue tests that stood here are DELETED, not weakened.
+ *
+ * They asserted that `modelIdentity` resolves a name from
+ * `frontend.model_catalogue`. Round 2 established that nothing on the desktop
+ * server path ever publishes that field - its only caller is
+ * `_publish_model_catalogue` in `tui/app.py` - and that for an aggregator route
+ * the catalogue's own label IS the selector anyway, because the publisher
+ * filters aggregated rows out (`tui/app.py:27736`) and `AGGREGATOR_PROVIDERS` is
+ * exactly the set `model_label` refuses to name (Q3/Q4/U9).
+ *
+ * So the tests passed against a fixture describing a wire shape this app never
+ * receives - coverage of a code path that could not run. They are replaced by
+ * "the chip prints what the TUI band prints, over the whole registry" below,
+ * which measures the real rule against the real `format_model_label`.
+ */
 
 test("a cold snapshot reports effort as unknown, not as absent", () => {
 	/*
@@ -872,7 +823,15 @@ test("a cold snapshot reports effort as unknown, not as absent", () => {
 	});
 	assert.ok(cold, "a cold snapshot must still render a reading");
 	assert.equal(cold.label, "unknown");
-	assert.equal(cold.adjustable, false);
+	/*
+	 * ADJUSTABLE as of round 3. This assertion said `false` because round 1
+	 * reasoned a chip should not offer what it cannot describe; round 2 measured
+	 * the cost (U8/U10) - this is the state every app start begins in, `/effort`
+	 * succeeds in it, and an inert chip left the picker reachable only by typing
+	 * the command the chip exists to replace.
+	 */
+	assert.equal(cold.adjustable, true);
+	assert.equal(cold.knownLadder, false);
 
 	// And a GENUINE non-reasoning model - which always arrives with a real
 	// display_name - still renders nothing, so the chip's presence stays
@@ -891,30 +850,230 @@ test("a cold snapshot reports effort as unknown, not as absent", () => {
 	);
 });
 
-test("the picker's empty ladder vetoes the chip's offer", () => {
-	// U3: the stream said four rungs while `commands.entities` said none, so the
-	// chip offered a control the picker then refused. The picker's list wins on
-	// adjustability, because it is the one `/effort <value>` validates against.
-	const offered = effortState({
+test("a non-empty picker list opens a chip whose spec named no ladder", () => {
+	/*
+	 * Replaces "the picker's empty ladder vetoes the chip's offer", whose
+	 * premise round 2 refuted: `command-entities?command=effort` and
+	 * `/effort <rung>` read the SAME owner field, so an empty list is an
+	 * unresolved spec rather than a refusal (U8). The veto direction is gone;
+	 * what remains is the direction that adds information.
+	 */
+	const cold = effortState({
 		provider: "openrouter",
 		model_id: "openai/gpt-5-mini",
-		display_name: "OpenAI: GPT-5 Mini",
-		reasoning: true,
-		reasoning_efforts: ["minimal", "low", "medium", "high"],
+		display_name: "",
+		reasoning: false,
+		reasoning_efforts: [],
 		reasoning_effort: null,
 		reasoning_default_effort: null,
 	});
-	assert.equal(offered.adjustable, true, "the stream's own reading");
+	const opened = reconcileEffort(cold, [{ value: "low" }, { value: "high" }]);
+	assert.equal(opened.adjustable, true);
+	assert.match(opened.detail, /low, high/);
 
-	const vetoed = reconcileEffort(offered, []);
-	assert.equal(vetoed.adjustable, false);
-	assert.equal(vetoed.label, offered.label, "the level in force is still true");
+	// A spec that already named the ladder is authoritative; the list restates
+	// it and must not rewrite the reading.
+	const warm = effortState({
+		provider: "openai",
+		model_id: "gpt-5",
+		display_name: "GPT-5",
+		reasoning: true,
+		reasoning_efforts: ["minimal", "low", "medium", "high"],
+		reasoning_effort: "high",
+		reasoning_default_effort: null,
+	});
+	assert.deepEqual(reconcileEffort(warm, [{ value: "low" }]), warm);
+});
 
-	// Pending is NOT empty: an unresolved query must not flicker the chip to
-	// inert on every mount.
-	assert.equal(reconcileEffort(offered, undefined).adjustable, true);
-	// A non-empty list leaves the reading exactly as the stream stated it.
-	assert.deepEqual(reconcileEffort(offered, [{ value: "high" }]), offered);
-	// Nothing to reconcile stays nothing.
-	assert.equal(reconcileEffort(null, []), null);
+/* ---- 11. the sign, and the name the band actually prints ---------------- */
+
+test("pyFixed carries the sign, at every precision and magnitude", () => {
+	/*
+	 * Round 2, R6: `exactDecimal(Math.abs(value))` destroyed the sign before the
+	 * bits were read, so `negative` was permanently false and the prefixes were
+	 * dead code. The round-1 suite passed 43/43 with the bug present, because
+	 * not one fixture entry was negative.
+	 */
+	for (const { value, digits, py } of TIES.negative.pyFixed)
+		assert.equal(pyFixed(value, digits), py, `pyFixed(${value}, ${digits})`);
+	// The reviewer's four reproductions, named so a regression points at a line.
+	assert.equal(pyFixed(-4, 0), "-4");
+	assert.equal(pyFixed(-2.5, 0), "-2");
+	assert.equal(pyFixed(-0.125, 2), "-0.12");
+	assert.equal(pyFixed(-12.345, 1), "-12.3");
+	// Half-to-even is symmetric: -2.5 -> -2 and 2.5 -> 2, both toward even.
+	assert.equal(pyFixed(2.5, 0), "2");
+	assert.equal(pyFixed(-3.5, 0), "-4");
+});
+
+test("formatCost prints a negative total as negative", () => {
+	for (const { value, py } of TIES.negative.formatCost)
+		assert.equal(formatCost(value), py, `formatCost(${value})`);
+	assert.equal(formatCost(-0.0042), "$-0.0042");
+	/*
+	 * Four decimals, not two, and that is CORRECT: Python's own ladder is
+	 * unguarded (`cost < 0.01` is true for every negative), so the sub-cent
+	 * branch takes every negative there too. Mirroring the quirk is the job;
+	 * "fixing" it here would be a second divergence.
+	 */
+	assert.equal(formatCost(-1.25), "$-1.2500");
+});
+
+test("the chip prints what the TUI band prints, over the whole registry", () => {
+	/*
+	 * Round 2, Q3/R8/U9: the chip preferred `display_name`, which for a reseller
+	 * route is the raw LISTING name - exactly the string `model_label` refuses,
+	 * because 398 of ~400 names are shared between the two shipped aggregators
+	 * and none of them can say which route is answering. QA measured 445 of 563
+	 * live catalogue rows disagreeing with the picker the chip opens.
+	 *
+	 * `scripts/fixtures/model-name-agreement.json` holds every shipped registry
+	 * row and the same rows as they arrive over each aggregator, with the string
+	 * the REAL `format_model_label` prints. This is that measurement, pinned.
+	 */
+	const check = (pool) => {
+		let agree = 0;
+		const differ = [];
+		for (const row of pool) {
+			const got = modelIdentity({
+				provider: row.provider,
+				model_id: row.model_id,
+				display_name: row.display_name,
+			}).name;
+			if (got === row.band) agree++;
+			else differ.push({ ...row, got });
+		}
+		return { agree, total: pool.length, differ };
+	};
+
+	// EVERY aggregator route must agree: this is the population round 2 measured
+	// at 0/445, and the refusal rule is what closes it.
+	const agg = check(NAMES.aggregator);
+	assert.equal(
+		agg.agree,
+		agg.total,
+		`aggregator rows disagreeing with the band: ${JSON.stringify(agg.differ.slice(0, 3))}`,
+	);
+	assert.ok(agg.total >= 200, "the aggregator population should not shrink");
+
+	/*
+	 * First-party rows are allowed to differ ONLY by being longer: the two
+	 * remaining `model_label` steps (qualifier dropping, the `_ID_MARGIN` width
+	 * fallback) both need the shipped registry index, which this app does not
+	 * have. Dropping a qualifier blindly collapses 5 distinct model pairs onto
+	 * one string, so the omission is deliberate - see `modelIdentity`.
+	 *
+	 * The assertion is the SHAPE of every difference, not a tolerated count: a
+	 * chip may print a name the band shortens, never one the band refused.
+	 */
+	const first = check(NAMES.firstParty);
+	for (const row of first.differ) {
+		const bare = row.model_id.slice(row.model_id.lastIndexOf("/") + 1);
+		assert.equal(
+			row.got,
+			row.display_name,
+			`${row.provider}/${row.model_id}: a first-party difference must be the listing name itself`,
+		);
+		assert.notEqual(
+			row.got,
+			bare,
+			`${row.provider}/${row.model_id}: the chip must not refuse where the band named`,
+		);
+		assert.ok(
+			row.got.length >= row.band.length,
+			`${row.provider}/${row.model_id}: chip ${row.got} is shorter than band ${row.band}`,
+		);
+	}
+	assert.ok(
+		first.agree >= 100,
+		`first-party agreement regressed: ${first.agree}/${first.total}`,
+	);
+});
+
+test("the refusal rules are mirrored one by one", () => {
+	const name = (provider, model_id, display_name) =>
+		modelIdentity({ provider, model_id, display_name }).name;
+	// 1. A reseller gets no name, however good the listing name looks.
+	for (const agg of ["openrouter", "radient", "radient-key"])
+		assert.equal(
+			name(agg, "openai/gpt-5-mini", "OpenAI: GPT-5 Mini"),
+			"gpt-5-mini",
+		);
+	// 2. A name that echoes the id is not a name - both the whole id and the
+	//    vendor-scoped tail, as `_echoes_id` has it.
+	assert.equal(name("openai", "gpt-5", "gpt-5"), "gpt-5");
+	assert.equal(
+		name("kimi", "moonshotai/kimi-k2", "moonshotai/kimi-k2"),
+		"kimi-k2",
+	);
+	// 3. "Unknown" is the placeholder's identity, not a model's.
+	assert.equal(name("openai", "gpt-5", "Unknown"), "gpt-5");
+	// Otherwise a direct provider's listing name stands.
+	assert.equal(
+		name("anthropic", "claude-opus-5", "Claude Opus 5"),
+		"Claude Opus 5",
+	);
+	// And an empty name falls back to the id rather than rendering blank.
+	assert.equal(name("anthropic", "claude-opus-5", ""), "claude-opus-5");
+	// The selector is always the full provider-qualified form, for the tooltip.
+	assert.equal(
+		modelIdentity({ provider: "openrouter", model_id: "openai/gpt-5-mini" })
+			.selector,
+		"openrouter/openai/gpt-5-mini",
+	);
+});
+
+test("an empty effort ladder is evidence of nothing", () => {
+	/*
+	 * Round 2, U8/U10/U11. `command-entities?command=effort` reads
+	 * `remote.model.reasoning_efforts` and `/effort <rung>` validates against the
+	 * same field on the same spec - one field at two times, not a policy. So an
+	 * empty list means unresolved, and round 1's reading of it as "every value
+	 * will be refused" made the chip inert on every cold owner while asserting a
+	 * falsehood `/effort low` disproved on the next line.
+	 */
+	const cold = effortState({
+		provider: "openrouter",
+		model_id: "openai/gpt-5-mini",
+		display_name: "",
+		reasoning: false,
+		reasoning_efforts: [],
+		reasoning_effort: null,
+		reasoning_default_effort: null,
+	});
+	assert.equal(cold.label, "unknown");
+	assert.equal(cold.adjustable, true, "the cold chip must be able to find out");
+	assert.match(cold.detail, /has not reported/);
+
+	// An empty list must not overwrite that, in either direction.
+	const reconciled = reconcileEffort(cold, []);
+	assert.deepEqual(reconciled, cold, "an empty list changes nothing");
+	assert.equal(reconcileEffort(cold, undefined).adjustable, true);
+	// The sentence that made the honest copy unreachable must be gone.
+	assert.doesNotMatch(reconciled.detail, /fixed reasoning effort/);
+	assert.doesNotMatch(reconciled.detail, /no other level can be set/);
+
+	// A non-empty list is real news and opens the control up.
+	const opened = reconcileEffort(cold, [
+		{ value: "minimal" },
+		{ value: "low" },
+		{ value: "medium" },
+		{ value: "high" },
+	]);
+	assert.equal(opened.adjustable, true);
+	assert.match(opened.detail, /minimal, low, medium, high/);
+
+	// A genuine no-ladder spec still reports read-only, from the SPEC - which is
+	// the only source that can say so.
+	const fixed = effortState({
+		provider: "openai",
+		model_id: "o4-mini",
+		display_name: "OpenAI o4 mini",
+		reasoning: true,
+		reasoning_efforts: [],
+		reasoning_effort: null,
+		reasoning_default_effort: null,
+	});
+	assert.equal(fixed.adjustable, false);
+	assert.equal(reconcileEffort(fixed, []).adjustable, false, "still read-only");
 });

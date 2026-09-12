@@ -108,7 +108,12 @@ function withPoint(value: bigint, digits: number): string {
  */
 export function pyFixed(value: number, digits: number): string {
 	if (!Number.isFinite(value)) return "";
-	const { negative, num, scale } = exactDecimal(Math.abs(value));
+	// `value`, not `Math.abs(value)`: stripping the sign before the bits are read
+	// left `negative` permanently false and the prefixes below dead, so a
+	// negative cost printed as positive - `$0.0042` where Python prints
+	// `$-0.0042` - and a negative over a dollar also missed the magnitude ladder
+	// because `cost < 0.01` is true for every negative (round 2, R6).
+	const { negative, num, scale } = exactDecimal(value);
 	// Already coarser than the requested precision: scale up, nothing to round.
 	if (digits >= scale)
 		return (

@@ -251,6 +251,7 @@ const STORIES = [
 	   order under pressure is half the design. */
 	["chat-session-status-strip--collapsed-column", 340, 560],
 	["chat-session-status-strip--context-tooltip", 860, 400],
+	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
 
 	["design-system-primitives--all-primitives", 1280, 1600],
@@ -542,6 +543,26 @@ const assertBackendDown = async () => {
 		`A Local Operator backend is answering on ${BACKEND_ORIGIN}. Captured frames would show its replies instead of the offline state every committed frame depicts. Stop it and re-run.`,
 	);
 };
+
+/**
+ * The frame count a PARTIAL run declares.
+ *
+ * Exported so `scripts/evidence-manifest.test.mjs` can bind the shipped
+ * expression instead of reimplementing it. Round 2 found the test reproducing
+ * this arithmetic locally, which meant reverting this file to the absorbing
+ * tree-derived version left all five tests green - coverage of a copy rather
+ * than of the code (R7). `check-evidence.mjs` already exports `frames` for the
+ * same reason.
+ *
+ * The count is a DECLARATION, never a measurement of the tree: the previous
+ * total plus the frames this run wrote into directories that did not exist
+ * before it. Deriving it from the tree - with the same walker and exclusion
+ * list `check-evidence.mjs` compares it against - makes the comparison
+ * unfalsifiable and absorbs stray undeclared directories (round 1, R2).
+ */
+export function partialFrameCount(previous, added) {
+	return (previous.frames ?? 0) + added.length;
+}
 
 const main = async () => {
 	sweepStaleProfiles();
@@ -1106,7 +1127,7 @@ const main = async () => {
 				 * the set it did not take and the frames it did add no longer
 				 * add up to what is on disk.
 				 */
-				frames: (previous.frames ?? 0) + addedFrames.length,
+				frames: partialFrameCount(previous, addedFrames),
 				surfaces: (previous.surfaces ?? 0) + addedSurfaces.length,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),

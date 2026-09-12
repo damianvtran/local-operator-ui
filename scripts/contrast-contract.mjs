@@ -293,33 +293,23 @@ const CONTROLS = [
 		border: "danger",
 		ink: "inkMuted",
 	},
-	{
-		/*
-		 * The empty wheel, which is a reachable state and not a loading
-		 * placeholder: a session that has not reported a reading yet renders
-		 * the track ALONE. With no arc over it the track is the control's sole
-		 * boundary, which is what puts it on `borderControl` rather than
-		 * `hairline` and what this row pins.
-		 */
-		name: "context wheel, no reading yet",
-		/*
-		 * `accentWash` is the reading button's HOVER ground, and the empty wheel
-		 * is the one state whose track is measured against the ground rather than
-		 * against an arc - so this is where a hover fill can push the control's
-		 * sole boundary under the floor. It did: iceberg measured 2.89:1 (design
-		 * round 1, D6). Listed so the gate says so rather than a reviewer.
-		 */
-		on: ["surface", "accentWash"],
-		fill: null,
-		border: "inkDim",
-		/*
-		 * `ink` is the LABEL beside the wheel, and `READING_BUTTON` swaps it to
-		 * `ink` on hover - so the hovered row's text is `ink`, not the resting
-		 * `inkMuted`. Stating the resting ink against the hover ground would
-		 * assert a combination the component never renders.
-		 */
-		ink: "ink",
-	},
+	/*
+	 * The empty wheel has NO row here, and its absence is the statement.
+	 *
+	 * Round 1 listed it with `border: "inkDim"` to clear the 3:1 structural
+	 * floor on `surface` and the `accentWash` hover. That passed, and it was
+	 * the wrong assertion: it treated a decorative line as a control boundary,
+	 * which made the empty ring an INK where the populated track is a GROUND -
+	 * 4.4-5.6x heavier, ΔE00 38.6-53.8 apart, one component with two identities
+	 * (design round 2, D7).
+	 *
+	 * The ring is now `hairline` when empty, and § 2's decorative rule is that a
+	 * hairline owes perceptibility rather than a contrast floor. A floor row
+	 * here would re-assert the thing that was wrong. What replaces it is
+	 * `PERCEPTIBLE` below, which measures ΔE00 on both grounds AND pins the two
+	 * states to one weight - the property D7 was actually about, and one no
+	 * pair-or-triple row can express.
+	 */
 ];
 
 /**
@@ -400,6 +390,45 @@ const GRAPHICS = [
 		name: "usage unmeasured mark",
 		on: ["surface"],
 		fg: "inkDim",
+	},
+];
+
+/**
+ * Decorative lines, and states of one component that must stay one component.
+ *
+ * Two assertions neither `CONTROLS` nor `ADJACENT` can make.
+ *
+ * **Perceptibility, not contrast.** § 2 makes `hairline` the decorative rule
+ * and § 3's floors govern controls and text. A decorative line that owes 3:1
+ * is a control wearing a hairline's name - which is exactly how round 1 put
+ * the empty context ring on `inkDim` and passed. What a hairline owes is being
+ * SEEN, measured as ΔE00 against every ground it renders on, at the
+ * perceptual threshold § 3 already cites.
+ *
+ * **Weight parity.** One component in two states must not change weight
+ * enough to read as two components. The empty ring was 4.4-5.6x heavier than
+ * the populated track and ΔE00 38.6-53.8 from it, so the instrument lost about
+ * three quarters of its weight at the moment it gained a reading (design round
+ * 2, D7). No pair-or-triple row can state that, because both sides are the
+ * same element at different times.
+ */
+const PERCEPTIBLE = [
+	{
+		name: "context wheel track, empty state",
+		role: "hairline",
+		/* Both grounds the empty ring renders on: the composer, and the reading
+		   button's hover fill. */
+		on: ["surface", "accentWash"],
+		/* § 3's own threshold for "a human can tell these apart". Set at 3.0
+		   rather than 2.0 because a 1.75px stroke has far less area to carry the
+		   difference than a filled region does; the measured worst case is 3.2. */
+		minDeltaE: 3.0,
+		/* The same element's other state. Sibling weight is the D7 property. */
+		pairedWith: "sunken",
+		/* Contrast-ratio quotient across the transition, both directions. A
+		   value near 1.0 is one ring in two states; round 1 shipped 5.59. */
+		maxWeightChange: 2.0,
+		against: "surface",
 	},
 ];
 
@@ -844,6 +873,34 @@ for (const { id, palette: p } of palettes) {
 					`${id}: ${pair.name} — ${roleName} ${a} against ${pair.b} ${b} = ${got}:1, need ${pair.floor}:1`,
 				);
 			}
+		}
+	}
+
+	/* Decorative lines: seen rather than contrasted, and stable across states. */
+	for (const item of PERCEPTIBLE) {
+		const role = p[item.role];
+		const sibling = p[item.pairedWith];
+		const ground = p[item.against];
+		if (!isHex(role) || !isHex(sibling) || !isHex(ground)) continue;
+		for (const g of item.on) {
+			if (!isHex(p[g])) continue;
+			assertions++;
+			const got = deltaE(role, p[g]);
+			if (got < item.minDeltaE) {
+				fail(
+					`${id}: ${item.name} — ${item.role} ${role} on ${g} ${p[g]} is ΔE00 ${r2(got)}, need ${item.minDeltaE} to be seen at all`,
+				);
+			}
+		}
+		/* One component, two states: the weight may not jump. */
+		assertions++;
+		const a = ratio(role, ground);
+		const b = ratio(sibling, ground);
+		const change = Math.max(a / b, b / a);
+		if (change > item.maxWeightChange) {
+			fail(
+				`${id}: ${item.name} — ${item.role} is ${r2(change)}x the weight of ${item.pairedWith} against ${item.against}; one component must not change weight by more than ${item.maxWeightChange}x between states`,
+			);
 		}
 	}
 

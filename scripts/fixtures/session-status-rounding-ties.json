@@ -483,5 +483,89 @@
         "intlHalfEven": "0.14"
       }
     ]
+  },
+  "negative": {
+    "_why": "Round 2 R6: `exactDecimal(Math.abs(value))` destroyed the sign before the bits were read, so `negative` was permanently false and the prefixes were dead code. 43/43 passed with the bug present because no fixture entry was negative - the same falsifiability gap R7 describes. These came out of Python; none was typed by hand. Note `$-1.2500`: Python's own ladder is unguarded (`cost < 0.01` is true for every negative), so the four-decimal branch is the CORRECT mirror, not a second bug.",
+    "pyFixed": [
+      {
+        "value": -4,
+        "digits": 0,
+        "py": "-4"
+      },
+      {
+        "value": -2.5,
+        "digits": 0,
+        "py": "-2"
+      },
+      {
+        "value": -0.125,
+        "digits": 2,
+        "py": "-0.12"
+      },
+      {
+        "value": -12.345,
+        "digits": 1,
+        "py": "-12.3"
+      },
+      {
+        "value": -0.5625,
+        "digits": 3,
+        "py": "-0.562"
+      },
+      {
+        "value": -1.125,
+        "digits": 2,
+        "py": "-1.12"
+      },
+      {
+        "value": -158.25,
+        "digits": 1,
+        "py": "-158.2"
+      },
+      {
+        "value": -0.0625,
+        "digits": 3,
+        "py": "-0.062"
+      },
+      {
+        "value": -0.375,
+        "digits": 2,
+        "py": "-0.38"
+      }
+    ],
+    "formatCost": [
+      {
+        "value": -0.0042,
+        "py": "$-0.0042"
+      },
+      {
+        "value": -0.498,
+        "py": "$-0.4980"
+      },
+      {
+        "value": -1.25,
+        "py": "$-1.2500"
+      },
+      {
+        "value": -0.0001,
+        "py": "$-0.0001"
+      },
+      {
+        "value": -0.009999,
+        "py": "$-0.0100"
+      },
+      {
+        "value": -0.01,
+        "py": "$-0.0100"
+      },
+      {
+        "value": -1.0,
+        "py": "$-1.0000"
+      },
+      {
+        "value": -2.675,
+        "py": "$-2.6750"
+      }
+    ]
   }
 }

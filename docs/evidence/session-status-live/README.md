@@ -138,3 +138,50 @@ after Escape and 25 Tabs did not reach the chip again. `IN-STRIP` is the
 - **The warm and danger rungs live.** The session sat at 3.3% of a 400k window,
   so the coloured rungs remain Storybook frames plus the contrast contract's
   new arc-vs-track assertions.
+
+---
+
+## Round 3: the aggregator route and the cold owner
+
+`reload-aggregator/`, `cold-effort-tooltip/` and `after-effort/` were taken in
+the packaged Electron binary against an isolated backend, on an **openrouter**
+route — the population round 2 measured at 0/445 agreement with the picker.
+
+Driven by `out/evidence-harness/r3-live.mjs` (not committed; it is a harness,
+not a fixture), which asserts `window.api.desktop` is the real preload bridge
+before anything else runs. What the run printed, verbatim:
+
+```
+PRELOAD window.api.desktop: object
+WARM   strip: gpt-5-mini | unknown
+RELOAD strip: gpt-5-mini | unknown
+RELOAD effort: {"text":"unknown","tag":"BUTTON","interactive":true,
+                "aria":"Reasoning effort: unknown. Change it."}
+COLD effort tooltip: unknown | This session has not reported its reasoning
+                effort yet. It appears after the next turn, or open this to
+                see the levels now.
+/effort low -> 200
+AFTER /effort strip: gpt-5-mini | low | 3.2%/400k | >=$0.0033
+AFTER /effort effort: {"text":"low","interactive":true,
+                "aria":"Reasoning effort: low. Change it."}
+```
+
+Three round-2 findings answered by that transcript:
+
+- **Q3/Q4/U9** — the chip reads `gpt-5-mini`, which is what
+  `format_model_label('openrouter/openai/gpt-5-mini', short=True, name='OpenAI:
+  GPT-5 Mini')` returns. Round 2 measured `openai/gpt-5-mini` here.
+- **U8/U10** — the cold chip is `interactive: true` and its tooltip is the
+  honest-unknown copy. The sentence "This model runs at a fixed reasoning
+  effort" is gone, and `/effort low` succeeded in exactly the state the tooltip
+  describes. The chip then converged to `low` **without a reload**, which is the
+  part round 2 could only get by reloading.
+- **U11** — the aria-label reads `Change it.` in both states, so the control's
+  nature no longer changes silently for a screen-reader user.
+
+### Still not reached
+
+`model_catalogue` is **0** on this path and the session GET carries no spec at
+all (both re-confirmed this round), which is why the naming rule is mirrored in
+the renderer rather than read off the wire. The durable fix is a
+backend-provided safe label; see the PR.

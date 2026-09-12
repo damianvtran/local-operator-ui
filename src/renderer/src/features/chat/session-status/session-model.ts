@@ -51,96 +51,108 @@ export type ModelIdentity = {
  * this falls back rather than treating the field as authoritative.
  */
 /**
- * One catalogue row, as the backend publishes it.
+ * Providers that RESELL models rather than serving them.
  *
- * `label` is the ONLY field read here, and it is not a raw listing name: the
- * provider controller computes it as `model_label(provider, model_id,
- * info.name).full` (`local_operator/providers/controller.py:1403,1437,1454,
- * 1525,1643`), which is the same curated-naming pass the TUI band's
- * `format_model_label` runs. Reading it is therefore not a second naming
- * implementation - it is the backend's answer, already computed.
+ * Mirrors `AGGREGATOR_PROVIDERS` (`local_operator/providers/registry.py`), read
+ * by `_resells` (`model/naming.py:234-244`). Kept as a literal rather than
+ * derived from the wire because nothing on the desktop contract carries it, and
+ * a three-element frozenset that has not changed is cheaper to mirror than to
+ * discover. What would make this mirror wrong: a fourth aggregator shipping in
+ * the registry without this list learning about it - in which case the chip
+ * over-names that one provider's routes, which is the pre-round-3 behaviour
+ * rather than a new failure.
  */
-type CatalogueRow = {
-	provider?: unknown;
-	model_id?: unknown;
-	label?: unknown;
-};
+const AGGREGATOR_PROVIDERS = new Set(["openrouter", "radient", "radient-key"]);
 
 /**
- * The catalogue's curated label for a selector, or `""`.
- *
- * Matched on provider AND model_id rather than on a joined string, because an
- * aggregator's model_id contains slashes of its own (`openrouter` +
- * `openai/gpt-5`) and splitting a joined selector back apart cannot tell the
- * provider's slash from the vendor's.
+ * The bare tail of a selector: what the band falls back to when it will not
+ * name a model. `openrouter/openai/gpt-5-mini` -> `gpt-5-mini`.
  */
-function catalogueLabel(
-	catalogue: readonly CatalogueRow[] | null | undefined,
-	provider: string,
-	modelId: string,
-): string {
-	if (!Array.isArray(catalogue)) return "";
-	for (const row of catalogue) {
-		if (
-			typeof row?.label === "string" &&
-			row.provider === provider &&
-			row.model_id === modelId
-		)
-			return row.label.trim();
-	}
-	return "";
+function bareId(selector: string): string {
+	return selector.slice(selector.lastIndexOf("/") + 1) || selector;
+}
+
+/**
+ * Whether a "name" is just the id handed back.
+ *
+ * Mirrors `_echoes_id` (`model/naming.py:247-256`) exactly, including the
+ * vendor-scoped form: an endpoint with no display metadata answers with the key
+ * it was asked about, and promoting that spends the whole honesty budget to
+ * render the string it started from.
+ */
+function echoesId(name: string, modelId: string): boolean {
+	return name === modelId || name === bareId(modelId);
 }
 
 /**
  * The model's human name and its full selector.
  *
- * ## Where the name comes from, and why it is not `display_name` alone
+ * ## The rule, and why it is this rule
  *
- * The band does not print `display_name || model_id`. It runs the selector
- * through `format_model_label` (`status_line.py:814`), which supplies a CURATED
- * name precisely when metadata resolution gave none - so the TUI shows
- * `Claude Opus 5` where a naive fallback shows `claude-opus-5`, and the app's
- * own `/model` picker (which this chip opens) lists the curated name too. A
- * chip disagreeing with the picker one click behind it is the defect this
- * resolves (round 1, Q2/U1).
+ * The band does not print `display_name`. It prints
+ * `format_model_label(selector, short=True, name=...)` (`status_line.py:814`,
+ * called at `:1686`), which routes through `model_label` and REFUSES a name it
+ * cannot vouch for, falling back to the bare id. Round 2 measured the cost of
+ * missing that: for an aggregator route the chip printed `OpenAI: GPT-5 Mini`
+ * where the band prints `gpt-5-mini` and the picker lists the selector -
+ * 445 of 563 live catalogue rows disagreed with the picker the chip opens
+ * (Q3/R8/U9).
  *
- * The order below is therefore: the spec's own `display_name`, then the
- * catalogue row's `label`, then the raw id. The middle step is what makes a
- * cold snapshot - which carries a selector and an EMPTY `display_name` - still
- * name the model, because `model_catalogue` is on the same wire and is already
- * populated at that point.
+ * `display_name` is `ModelInfo.name`, which is the raw LISTING name and the
+ * *input* to curation, not its output. So the refusals have to be mirrored
+ * here, in the order `_unambiguous_name` applies them:
  *
- * ## The residual difference from `model_label_forms`, stated
+ * 1. **A reseller gets no name at all** (`_resells`, `naming.py:214-219`).
+ *    Every aggregator resells the same models - 398 of ~400 names are shared
+ *    between the two shipped ones - so no listing name can say which route is
+ *    answering, and the route is what differs in price and quota.
+ * 2. **A name that echoes the id is not a name** (`_echoes_id`).
+ * 3. **`Unknown` is the placeholder's identity, not a model's** - the shipped
+ *    registry's own word for a listing that left the name blank.
  *
- * `label` is the `full` form. The band renders the `compact` form
- * (`status_line.py:1686`, `short=True`), which drops a qualifier when doing so
- * still names one model and falls back to the bare id when the curated name is
- * WIDER than the id it replaces - a width trade that exists because the band
- * competes for cells on one terminal row. This strip wraps and truncates with
- * an ellipsis instead, so it has no such budget, and the `full` form is the
- * more informative of the two. Both forms come from the same refusal rules, so
- * the strip can never print a curated name the band would have rejected as
- * ambiguous or borrowed; it can print a longer one. That is the whole residual.
+ * Otherwise the listing name stands, which is what a direct provider's row is.
+ *
+ * ## What is deliberately NOT mirrored, and why
+ *
+ * `model_label`'s two remaining steps both need the shipped registry index,
+ * which this app does not have and must not guess at:
+ *
+ * - **Qualifier dropping** (`Claude Opus 4.5 (2025-11-01)` -> `Claude Opus
+ *   4.5`) is only safe because `_names_one` re-checks the shortened form for
+ *   ambiguity afterwards. Dropping blindly collapses 5 distinct model pairs in
+ *   the shipped registry onto a shared string - `Claude 3.7 Sonnet` would name
+ *   both `-20250219` and `-latest` - which is precisely the ambiguity the band
+ *   refuses. Measured, not assumed.
+ * - **The width fallback** (`_ID_MARGIN`) exists because the band competes for
+ *   cells on one terminal row. This strip wraps and truncates with an ellipsis,
+ *   so it has no such budget and the longer name is the more informative one.
+ *
+ * Both omissions make the chip print a name the band SHORTENS, never one the
+ * band REFUSED. Measured against the real `format_model_label` over the shipped
+ * registry plus its aggregator-routed variants: 347 of 354 rows identical, the
+ * 7 differences all of that shape, and 236/236 on aggregator routes where round
+ * 2 found 0/445. `scripts/session-status.test.mjs` pins the count.
+ *
+ * The at-the-source fix is a backend-provided safe label on the wire: the
+ * naming policy lives in Python and owns the registry index, so a
+ * `display_label` field beside `display_name` would let this function collapse
+ * to one read. Proposed in the PR; not something the desktop can do alone.
  */
 export function modelIdentity(
 	model: CanonicalModel | null | undefined,
-	catalogue?: readonly CatalogueRow[] | null,
 ): ModelIdentity | null {
 	if (!model || typeof model.model_id !== "string" || !model.model_id)
 		return null;
 	const provider = typeof model.provider === "string" ? model.provider : "";
+	const selector = provider ? `${provider}/${model.model_id}` : model.model_id;
 	const display =
 		typeof model.display_name === "string" ? model.display_name.trim() : "";
-	const curated =
-		display || catalogueLabel(catalogue, provider, model.model_id);
-	const selector = provider ? `${provider}/${model.model_id}` : model.model_id;
-	return {
-		// A curated name that is just the selector again (what `model_label`
-		// returns when it refuses to name a reseller's route) is not a name, so
-		// the id is the better short form in that case.
-		name: curated && curated !== selector ? curated : model.model_id,
-		selector,
-	};
+	const refused =
+		AGGREGATOR_PROVIDERS.has(provider) ||
+		!display ||
+		echoesId(display, model.model_id) ||
+		display.toLowerCase() === "unknown";
+	return { name: refused ? bareId(selector) : display, selector };
 }
 
 export type EffortState = {
@@ -156,6 +168,17 @@ export type EffortState = {
 	 * read-only working-directory chip for the same rule).
 	 */
 	adjustable: boolean;
+	/**
+	 * Whether the LADDER itself is known, as opposed to the level in force.
+	 *
+	 * Distinct from `adjustable` because the two answer different questions and
+	 * round 2 showed what conflating them costs: a cold owner's chip is
+	 * adjustable (opening it is how the spec resolves) while its ladder is
+	 * unknown, and a fixed-effort model's ladder is known to be empty while the
+	 * chip is not adjustable. Only this flag may decide whether the picker's
+	 * rung list has anything to add.
+	 */
+	knownLadder: boolean;
 	/** Why the level reads the way it does, for the tooltip. */
 	detail: string;
 };
@@ -225,6 +248,8 @@ export function effortState(
 			// this dump does not carry one: the owner's own `/effort` is the
 			// authority on what else it could be set to.
 			adjustable: ladder === null || ladder.length > 0,
+			// Known only when this dump actually carried the rungs.
+			knownLadder: Boolean(ladder && ladder.length > 0),
 			detail:
 				ladder && ladder.length > 0
 					? `Reasoning effort. This model offers ${ladder.join(", ")}.`
@@ -239,6 +264,7 @@ export function effortState(
 			// sixth level.
 			label: "auto",
 			adjustable: true,
+			knownLadder: true,
 			detail: `No level is set, so this model runs at its own default${
 				fallbackDefault ? ` (${fallbackDefault})` : ""
 			}. It offers ${ladder.join(", ")}.`,
@@ -263,15 +289,34 @@ export function effortState(
 	if (metadataAbsent)
 		return {
 			label: "unknown",
-			adjustable: false,
+			/*
+			 * ADJUSTABLE, despite knowing nothing.
+			 *
+			 * Round 1 made this inert on the reasoning that a chip should not
+			 * offer what it cannot describe. Round 2 showed the cost: this is the
+			 * state every app start begins in, `/effort low` succeeds in it, and
+			 * an inert chip left the picker - which resolves the spec by asking
+			 * the owner - reachable only by typing the command the chip exists to
+			 * replace (U8/U10).
+			 *
+			 * An unresolved ladder is not an absent one, so the honest control is
+			 * the one that can find out. The copy says so rather than naming
+			 * rungs it does not know.
+			 */
+			adjustable: true,
+			// The whole point of this branch: the ladder is NOT known.
+			knownLadder: false,
 			detail:
-				"This session has not reported its reasoning effort yet. It appears after the next turn, or run /effort to see the levels now.",
+				"This session has not reported its reasoning effort yet. It appears after the next turn, or open this to see the levels now.",
 		};
 	// Ladder present and EMPTY: a reasoning model with no rungs to choose from.
 	if (ladder && model.reasoning)
 		return {
 			label: "reasoning",
 			adjustable: false,
+			// The spec DID carry the ladder; it is empty. That is knowledge, and
+			// it is the only source entitled to make this control read-only.
+			knownLadder: true,
 			detail:
 				"This model reasons, but exposes no effort levels to choose between.",
 		};
@@ -283,6 +328,7 @@ export function effortState(
 		return {
 			label: fallbackDefault,
 			adjustable: false,
+			knownLadder: false,
 			detail:
 				"The level this model runs at by default. This backend does not report which other levels it accepts.",
 		};
@@ -293,49 +339,61 @@ export function effortState(
 }
 
 /**
- * Reconcile the chip's offer with what `/effort` will actually accept.
+ * Fold the picker's live rung list into the chip's reading.
  *
- * ## Why this exists
+ * ## What round 2 proved, and why this is not the round-1 rule inverted
  *
- * The strip reads `reasoning_efforts` off the canonical stream; `EffortPicker`
- * reads `commands.entities?command=effort`. Round 1 found the two disagreeing
- * for one model seconds apart: the stream said
- * `["minimal","low","medium","high"]` while the entities call returned `[]`, so
- * the chip advertised a four-rung ladder and the picker it opened answered
- * "this model has no adjustable effort. Pick a reasoning model with /model
- * first" (U3). A control that offers what the thing behind it refuses is worse
- * than no control.
+ * Round 1's rule was "the picker's list wins, because it is the source that
+ * acts". That premise was wrong, and the evidence is in the backend:
+ * `command-entities?command=effort` reads `remote.model.reasoning_efforts`
+ * (`server/routes/desktop_catalogues.py:270-273`) and `/effort <rung>`
+ * validates against `spec.reasoning_efforts` on the SAME owner spec
+ * (`serving.py:1977-1991`). They are one field read at two times, not a policy
+ * and a mirror of it. So an empty list does not mean "every value will be
+ * refused" - it means the owner has not resolved its spec yet, and setting a
+ * rung is itself what resolves it.
  *
- * ## Which source wins, and why
+ * Treating empty as a refusal made the chip inert on every cold owner - the
+ * first state every user meets - while telling them "this model runs at a fixed
+ * reasoning effort; no other level can be set for it" about a model with four
+ * rungs, which `/effort low` then set successfully (round 2, U8). That is a
+ * confident falsehood where round 1 merely had an over-offer, and it survived a
+ * full turn and 25s; only a reload cleared it.
  *
- * **The picker's.** Not because it is more likely to be right in the abstract,
- * but because it is the one that ACTS: `/effort <value>` is validated against
- * the same entities list the picker renders, so a rung absent from it cannot be
- * set no matter what the stream says. Offering it would be offering a control
- * that fails. The stream's ladder stays the source for the chip's TEXT - it is
- * present on the first paint, where the entities query has not resolved yet -
- * and only adjustability defers.
+ * ## The rule now
  *
- * ## Pending is not empty
+ * An empty list is EVIDENCE OF NOTHING and is treated that way: the chip keeps
+ * its own reading, because the stream's spec is the fresher fact and the only
+ * one either side can act on. The list is consulted only when it is non-empty,
+ * where it genuinely adds information the stream may lack - a rung the owner
+ * accepts that this dump did not carry - and then it makes the chip adjustable
+ * rather than less so.
  *
- * `entities === undefined` means "not asked yet", and the chip keeps its own
- * reading until an answer arrives. Treating a pending query as an empty ladder
- * would make the chip flicker from adjustable to inert on every mount, which is
- * the same "absence is a claim" mistake in a smaller frame.
+ * The read-only form is therefore reached the way it always should have been:
+ * from the SPEC saying a reasoning model exposes no rungs (`effortState`), not
+ * from an absence in a second source. Nothing here overwrites `detail`, which
+ * is what made the honest-unknown copy unreachable (round 2, U10).
  */
 export function reconcileEffort(
 	state: EffortState | null,
 	entities: readonly unknown[] | undefined,
 ): EffortState | null {
 	if (!state) return null;
-	if (entities === undefined) return state;
-	if (entities.length > 0) return state;
-	// The owner will refuse every value, so the chip must stop offering to set
-	// one. It still reports the level in force, which remains true.
+	if (!entities || entities.length === 0) return state;
+	// Nothing to add when the spec already named the ladder: the stream is the
+	// authority on the reading, and this list would only restate it.
+	if (state.knownLadder) return state;
+	const rungs = entities
+		.map((row) =>
+			typeof row === "object" && row !== null && "value" in row
+				? String((row as { value: unknown }).value)
+				: "",
+		)
+		.filter(Boolean);
+	if (rungs.length === 0) return state;
 	return {
 		...state,
-		adjustable: false,
-		detail:
-			"This model runs at a fixed reasoning effort; no other level can be set for it.",
+		adjustable: true,
+		detail: `Reasoning effort. This model offers ${rungs.join(", ")}.`,
 	};
 }
