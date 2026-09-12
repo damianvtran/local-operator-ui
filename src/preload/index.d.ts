@@ -39,12 +39,14 @@ declare global {
 					currentVersion: string;
 					latestVersion: string;
 					updateCommand: string;
+					canManageUpdate?: boolean;
+					remedy?: string;
 				} | null>;
 				checkForAllUpdates: () => Promise<void>;
-				updateBackend: () => Promise<boolean>;
+				updateBackend: (targetVersion?: string) => Promise<boolean>;
 				// biome-ignore lint/suspicious/noExplicitAny: Return type from electron-updater is complex
 				downloadUpdate: () => Promise<any[]>;
-				quitAndInstall: () => void;
+				quitAndInstall: () => Promise<boolean>;
 				onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
 				onUpdateNotAvailable: (
 					callback: (info: UpdateInfo) => void,
@@ -62,6 +64,9 @@ declare global {
 						currentVersion: string;
 						latestVersion: string;
 						updateCommand: string;
+						canManageUpdate?: boolean;
+						remedy?: string;
+						startupMode?: string;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (
@@ -71,10 +76,32 @@ declare global {
 					callback: (info: { version: string }) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (callback: () => void) => () => void;
+				onBackendUpdateManualRequired: (
+					callback: (info: { message: string; command: string }) => void,
+				) => () => void;
 				onUpdateDownloaded: (
 					callback: (info: UpdateInfo) => void,
 				) => () => void;
 				onUpdateError: (callback: (error: string) => void) => () => void;
+				/** Reasons the app refused to start an install, with the remedy. */
+				onUpdateInstallBlocked: (
+					callback: (info: {
+						code: string;
+						version: string | null;
+						message: string;
+						remedy: { text: string; url?: string; command?: string };
+						detail?: string;
+					}) => void,
+				) => () => void;
+				/** A previous install that never completed, reported on the next start. */
+				onUpdateInstallFailed: (
+					callback: (info: {
+						targetVersion: string;
+						message: string;
+						remedy: { text: string; url?: string; command?: string };
+						detail: string;
+					}) => void,
+				) => () => void;
 				onUpdateProgress: (
 					callback: (progressObj: ProgressInfo) => void,
 				) => () => void;

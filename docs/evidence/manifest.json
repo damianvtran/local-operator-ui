@@ -1,11 +1,11 @@
 {
-  "head": "96171dac1f6641e95cd29d8f4a1669d1f96d58aa",
-  "srcTree": "26564819c0d24fa47c90b6ddc6431254ca6825a4",
-  "scriptsTree": "b93e67ef8ac8c016942e78c156cb601deef3ed38",
-  "dirtyWorkingTree": false,
+  "head": "2217ea59a13b4eeb77461435746b246760249b06",
+  "srcTree": "9bb63194665e53beb1295192d9b6375f08e9e740",
+  "scriptsTree": "778c4136a7015ecd7f501d1a31245a2d1e2f59b5",
+  "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 480,
-  "surfaces": 48,
+  "frames": 482,
+  "surfaces": 49,
   "themes": 12,
   "countsMean": {
     "frames": "The full sweep's OWN frame count - 480 after REMEDIATION ROUND 1's 478 -> 480 move - carried over by every narrowed run since, because a narrowed run preserves the previous manifest's counts by construction. It is not a total: 504 frame files are committed, which is these 480 plus the declared `supplementary` sets (22 `sidebar-new-chat` + 2 `write-edit-diff/real-durable-diff-rows`). `check-evidence.mjs` asserts this field against the frames on disk that fall outside any declared set.",
@@ -13,28 +13,20 @@
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
   },
   "partialCapture": {
-    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content \u2014 at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. REMEDIATION ROUND 2: `real-conversation-tool-rows` was RE-CAPTURED and is no longer stale. It now shows 38 real tool rows with 0 blank object columns on a 20px pitch, rendered by the shipped reducer and the shipped CanonicalTranscript over real /history pages paged oldest-first in 20-entry pages (the cross-page condition the blank-summary defect needed). Electron is not required for this surface \u2014 the desktop API answers a plain bearer request. The reading was proven falsifiable by running the SAME harness with the reducer starved: stripping tool_calls alone still yields 0 blanks (the output fallback carries it), stripping tool_calls AND output yields 53 of 53 blank, reproducing the original defect from the current head. DIFF BODY: two surfaces were ADDED \u2014 the `write`/`edit` row's expansion now paints the result's own unified diff instead of its arguments JSON \u2014 and four frames were taken for them in the two brand palettes (`chat-tool-rows--diff-body` at 1280x2110 and `chat-tool-rows--diff-body-narrow` at 560x1380). The four Storybook frames are committed under `write-edit-diff/` rather than under the story-id directory the capturer derives (`chat-tool-rows/<leaf>`), following the `tool-rows/` precedent, so that the frames sit beside the spec and README that explain them; a re-capture writes them back to `chat-tool-rows/`. `surfaces` counts the two new STORIES entries. The 12-theme sweep was NOT regenerated. A sixth frame set is declared in `supplementary` below: three real durable diff rows in one conversation (197, 58 and 14 diff lines \u2014 the first two longer than the 40-line display cap, so two overflow markers and one body shown whole) rendered by the SHIPPED reducer and transcript over real transcript.jsonl rows. The story proves the component; that one proves the wire payload reaches pixels. DIFF BODY, REMEDIATION ROUND 1: the same two Storybook surfaces were refreshed again and a THIRD was added, because the body now paints each line whole in its kind's ink instead of tinting only the leading marker (the terminal's loop is the authority; its docstring promises the other thing), and because the cap's `\u2026 N more diff lines` marker is now pinned to the well's foot with `sticky -bottom-3 pb-3 -mb-3` \u2014 it used to scroll out of view in exactly the wrapped-at-cap case it exists for. The new surface, `chat-tool-rows--diff-body-narrow-wrapped-cap` at 560x830, is the frame that shows the marker visible at rest; `frames` moves 478 -> 480 for its two palettes, and it is the only frame count that changed. The `real-durable-diff-rows` pair was RE-CAPTURED in the same round for the same reason (on the same real conversation, same three diffs of 197, 58 and 14 lines) and carries the identical marker arithmetic. It was captured from the committed source, not from a dirty tree: this partial run's `head`, `srcTree` and `scriptsTree` name the commit whose pixels these are. The neighbour `tool-rows/*` frames were NOT re-captured \u2014 they are from the August head and do not reproduce pixel-exactly on this one (a uniform 11px shift with identical internal geometry, across three stories of different content), which the write-edit-diff README records so nobody reads it as a regression from this change.",
-    "addedFrames": 18,
-    "addedAt": "2026-09-10T02:37:03.000Z",
-    "addedAtHead": "9f12fc8779fbddbdee450519da2b30811967fdaa",
-    "addedSurfaces": [
-      "tool-rows/names-and-fallbacks",
-      "tool-rows/narrow",
-      "tool-rows/real-conversation-tool-rows",
-      "tool-rows/spacing-uniformity",
-      "tool-rows/states",
-      "tool-rows/turn-boundary",
-      "tool-rows/working",
-      "tool-rows/working-labels",
-      "transcript-images/real-conversation-images"
-    ],
-    "refreshedAt": "2026-09-12T08:35:20.887Z",
-    "refreshedAtHead": "96171dac1f6641e95cd29d8f4a1669d1f96d58aa",
-    "refreshedFrames": 6,
+    "note": "Neither the 456-frame sweep nor the 12-theme sweep was regenerated. Frames added or refreshed here were captured against the same guards (assertFramePaints) but only in the two brand themes, and the live-app frames came from the real Electron window rather than Storybook. The spacing round REFRESHED the five chat-tool-rows surfaces because the row pitch changed under them, and added two: `spacing-uniformity` reproduces the three runs the operator screenshotted, `turn-boundary` shows the hierarchy that survives the tightening. `narrow` and `working-labels` are now captured in a viewport sized to their content — at 1280x900 they were mostly empty ground and crossed the uniformity ceiling once the rows tightened. REMEDIATION ROUND 1: all seven chat-tool-rows surfaces were refreshed again, because the name/summary gutter, the running row's live clock, the sr-only outcome text and the summary fallback all changed what they show. REMEDIATION ROUND 2: `real-conversation-tool-rows` was RE-CAPTURED and is no longer stale. It now shows 38 real tool rows with 0 blank object columns on a 20px pitch, rendered by the shipped reducer and the shipped CanonicalTranscript over real /history pages paged oldest-first in 20-entry pages (the cross-page condition the blank-summary defect needed). Electron is not required for this surface — the desktop API answers a plain bearer request. The reading was proven falsifiable by running the SAME harness with the reducer starved: stripping tool_calls alone still yields 0 blanks (the output fallback carries it), stripping tool_calls AND output yields 53 of 53 blank, reproducing the original defect from the current head.",
+    "addedFrames": 0,
+    "addedAt": "2026-09-12T04:21:14.723Z",
+    "addedAtHead": "2217ea59a13b4eeb77461435746b246760249b06",
+    "addedSurfaces": [],
+    "refreshedAt": "2026-09-12T04:21:14.722Z",
+    "refreshedAtHead": "2217ea59a13b4eeb77461435746b246760249b06",
+    "refreshedFrames": 10,
     "refreshedStories": [
-      "chat-tool-rows--diff-body",
-      "chat-tool-rows--diff-body-narrow",
-      "chat-tool-rows--diff-body-narrow-wrapped-cap"
+      "common-updatenotification--update-available",
+      "common-updatenotification--install-blocked",
+      "common-updatenotification--install-failed",
+      "common-updatenotification--backend-manual-required",
+      "common-updatenotification--backend-update-non-managed"
     ],
     "refreshedThemes": [
       "localOperatorDark",

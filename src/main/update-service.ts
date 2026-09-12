@@ -1,20 +1,94 @@
-import { exec } from "node:child_process";
+import { exec, execFile, execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+	createReadStream,
+	existsSync,
+	readdirSync,
+	statSync,
+	statfsSync,
+} from "node:fs";
 import * as https from "node:https";
 import * as path from "node:path";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { promisify } from "node:util";
 import { type BrowserWindow, app, ipcMain } from "electron";
-import { autoUpdater } from "electron-updater";
+import { type UpdateInfo, autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
 
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import {
+	type InstallBlock,
+	type InstallFailurePayload,
+	type PendingInstallMarker,
+	type UpdateFileMetadata,
+	appBundleFromExecutable,
+	buildPipUpgradeCommand,
+	buildWatchdogPlan,
+	clearPendingInstallMarker,
+	didVersionChange,
+	evaluateBundleSeal,
+	evaluatePendingInstall,
+	installFailurePayload,
+	installedBundleSealBlock,
+	matchArtifactMetadata,
+	parsePipShowVersion,
+	readPendingInstallMarker,
+	requiredDiskBytes,
+	resolveGlobalInstallPlan,
+	resolveStagedArtifactPath,
+	verifyStagedArtifact,
+	watchdogIsOurs,
+	writePendingInstallMarker,
+} from "./update-install";
 
 // Regex constants for performance (moved to top-level)
 const VERSION_LINE_REGEX = /Version:\s*([^\n]+)/;
 const VERSION_CLEAN_REGEX = /^v/i;
 const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
+
+/**
+ * Run a command and report its exit code rather than throwing on failure.
+ *
+ * The seal probes need the code and the raw output together: the -67028 that
+ * ShipIt reports for a half-replaced bundle is only distinguishable from a
+ * missing one by what `codesign` actually printed.
+ */
+function runCommand(
+	command: string,
+	args: string[],
+	options: { timeoutMs?: number } = {},
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+	return new Promise((resolve) => {
+		execFile(
+			command,
+			args,
+			{ timeout: options.timeoutMs ?? 20000, maxBuffer: 4 * 1024 * 1024 },
+			(error, stdout, stderr) => {
+				const code = (error as { code?: unknown } | null)?.code;
+				resolve({
+					exitCode: error ? (typeof code === "number" ? code : 1) : 0,
+					stdout: stdout?.toString() ?? "",
+					stderr: stderr?.toString() ?? "",
+				});
+			},
+		);
+	});
+}
+
+/** Read a command's trimmed stdout, or null when it fails to run. */
+function readCommandOutput(command: string, args: string[]): string | null {
+	try {
+		const output = execFileSync(command, args, {
+			encoding: "utf8",
+			timeout: 5000,
+		});
+		return output.trim();
+	} catch {
+		return null;
+	}
+}
 
 /**
  * Health check result containing version information
@@ -47,6 +121,11 @@ export type BackendUpdateInfo = {
 	canManageUpdate: boolean;
 	/** The startup mode of the backend service */
 	startupMode?: LocalOperatorStartupMode;
+	/**
+	 * Sentence introducing `updateCommand` in the prompt, chosen for how the
+	 * backend is actually installed (uv tool, pipx, or a server outside the app).
+	 */
+	remedy?: string;
 };
 
 /**
@@ -60,6 +139,34 @@ export class UpdateService {
 	private backendUrl: string;
 	private updateCheckInterval: NodeJS.Timeout | null = null;
 	private backendService: BackendServiceManager | null = null;
+
+	/**
+	 * What the updater is doing right now.
+	 *
+	 * Only used to decide whether an `error` event is a failure the user has to
+	 * hear about: a download or an install that dies is not "no update
+	 * available", which is how `shouldFilterUpdateError` would otherwise read it.
+	 */
+	private updateStage: "idle" | "downloading" | "installing" = "idle";
+
+	/** The last update the updater told us about, for its file metadata. */
+	private lastUpdateInfo: UpdateInfo | null = null;
+
+	/** Path of the artifact this run downloaded, when the updater reported one. */
+	private downloadedArtifactPath: string | null = null;
+
+	/**
+	 * Artifacts that failed their size/sha512/disk check, by version.
+	 *
+	 * The 5-minute periodic check runs regardless of what the user dismissed, so
+	 * without this an update that cannot be verified is offered again every five
+	 * minutes for as long as the app is open.
+	 */
+	private failedVerificationVersions = new Set<string>();
+
+	/** A failed install detected from the marker on this start, if any. */
+	private pendingInstallFailure: InstallFailurePayload | null = null;
+	private installFailureDelivered = false;
 
 	/**
 	 * Initialize the update service
@@ -106,10 +213,20 @@ export class UpdateService {
 
 		// Configure autoUpdater
 		autoUpdater.autoDownload = false;
-		autoUpdater.autoInstallOnAppQuit = true;
+		// Install only through the explicit "install now" action, which runs the
+		// pre-flight checks first (see quit-and-install below). With this on, a
+		// staged update is applied at whatever quit comes next - the user quits
+		// for the day and Squirrel installs with no seal check, no marker and no
+		// watchdog, and a failed install leaves them with no app (operator report,
+		// 2026-09-11). The download stays staged on disk; "install now" re-checks it.
+		autoUpdater.autoInstallOnAppQuit = false;
 
 		// Set up event handlers
 		this.setupUpdateEvents();
+
+		// A marker left behind by a previous run means that run's install never
+		// completed. Recover it before anything else can offer the update again.
+		this.recoverPendingInstall();
 
 		// Start periodic update checks (every 5 minutes)
 		this.startPeriodicUpdateChecks();
@@ -138,6 +255,411 @@ export class UpdateService {
 			"Periodic update checks scheduled (every 5 minutes)",
 			LogFileType.UPDATE_SERVICE,
 		);
+	}
+
+	// -----------------------------------------------------------------------
+	// Install robustness
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Where the pending-update marker lives.
+	 *
+	 * userData, not the app bundle: the marker has to survive the bundle being
+	 * replaced (that is exactly the case it describes) and it must not be inside
+	 * the thing ShipIt is swapping.
+	 */
+	private markerDir(): string {
+		return app.getPath("userData");
+	}
+
+	private sendToRenderer(channel: string, payload: unknown): boolean {
+		const webContents = this.mainWindow?.webContents;
+		if (!webContents || webContents.isDestroyed()) return false;
+		webContents.send(channel, payload);
+		return true;
+	}
+
+	/**
+	 * Report a refusal to start an install, with the reason and the remedy.
+	 *
+	 * Sent rather than thrown: the caller is an IPC handler the renderer fires and
+	 * forgets, and the whole point of these checks is that the user gets an
+	 * explanation instead of an app that quits and never returns.
+	 */
+	private sendInstallBlock(block: InstallBlock, version?: string): void {
+		logger.error(
+			`Update refused (${block.code}): ${block.detail}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("update-install-blocked", {
+			code: block.code,
+			version: version ?? null,
+			message: block.message,
+			remedy: block.remedy,
+			detail: block.detail,
+		});
+	}
+
+	/**
+	 * Read the marker a previous run may have left, and act on it.
+	 *
+	 * A failed Squirrel install leaves no exit status and never relaunches the
+	 * app, so the marker plus the running version is the only record that the
+	 * update did not happen.
+	 */
+	private recoverPendingInstall(): void {
+		const marker = readPendingInstallMarker(this.markerDir());
+		const outcome = evaluatePendingInstall({
+			marker,
+			runningVersion: app.getVersion(),
+		});
+
+		switch (outcome.kind) {
+			case "none":
+				return;
+			case "succeeded":
+				logger.info(
+					`Update marker: install of version ${outcome.marker.targetVersion} succeeded (running ${app.getVersion()}).`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.reapWatchdog(outcome.marker, true);
+				clearPendingInstallMarker(this.markerDir());
+				return;
+			case "failed": {
+				const payload = installFailurePayload(outcome.marker, app.getVersion());
+				logger.error(
+					`Update marker: install of version ${outcome.marker.targetVersion} did not complete. ${payload.detail}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.pendingInstallFailure = payload;
+				this.reapWatchdog(outcome.marker, false);
+				clearPendingInstallMarker(this.markerDir());
+				this.schedulePendingInstallFailureDelivery();
+			}
+		}
+	}
+
+	/**
+	 * Deliver the failed-install notice once the renderer can hear it.
+	 *
+	 * The marker is read while the window is still loading, so the push happens
+	 * on `did-finish-load` with a delayed fallback: the component subscribes from
+	 * a React effect, which may run after the load event.
+	 */
+	private schedulePendingInstallFailureDelivery(): void {
+		if (!this.pendingInstallFailure) return;
+		const deliver = () => this.deliverPendingInstallFailure();
+		const webContents = this.mainWindow?.webContents;
+		if (webContents && !webContents.isDestroyed()) {
+			webContents.once("did-finish-load", deliver);
+		}
+		setTimeout(deliver, 5000);
+	}
+
+	private deliverPendingInstallFailure(): void {
+		if (!this.pendingInstallFailure || this.installFailureDelivered) return;
+		if (
+			!this.sendToRenderer("update-install-failed", this.pendingInstallFailure)
+		) {
+			return;
+		}
+		this.installFailureDelivered = true;
+		logger.info(
+			"Reported a failed update install to the renderer",
+			LogFileType.UPDATE_SERVICE,
+		);
+	}
+
+	/**
+	 * Kill a watchdog still running from the recorded install attempt.
+	 *
+	 * Killing by pid alone would be unsafe after a pid reuse, so the process's
+	 * command line has to still carry the script's sentinel.
+	 */
+	private reapWatchdog(
+		marker: PendingInstallMarker,
+		installSucceeded: boolean,
+	): void {
+		const pid = marker.watchdogPid;
+		if (pid == null) return;
+
+		let commandLine: string | null = null;
+		let alive = false;
+		commandLine = readCommandOutput("/bin/ps", [
+			"-o",
+			"command=",
+			"-p",
+			String(pid),
+		]);
+		alive = commandLine != null;
+
+		if (!watchdogIsOurs({ alive, commandLine, installSucceeded })) {
+			if (alive && !installSucceeded) {
+				logger.info(
+					`Relaunch watchdog ${pid} is still running; leaving it to finish or hit its deadline.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+			return;
+		}
+
+		try {
+			process.kill(pid, "SIGTERM");
+			logger.info(
+				`Reaped relaunch watchdog ${pid} left over from the previous install.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		} catch (error) {
+			logger.warn(
+				`Could not reap relaunch watchdog ${pid}: ${String(error)}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+	}
+
+	/**
+	 * Ask `codesign` whether the installed bundle is a sealed code object.
+	 *
+	 * This is the exact question ShipIt asks of the same bundle before it
+	 * installs (`SecStaticCodeCreateWithPath` in SQRLInstaller): on 2026-09-11 it
+	 * answered -67028 errSecCSBadBundleFormat because a Finder copy was replacing
+	 * the app at that moment, ShipIt quit, and nothing relaunched the app.
+	 * Refusing the install here keeps the user with a working app instead.
+	 */
+	private async probeInstalledBundleSeal(): Promise<InstallBlock | null> {
+		if (process.platform !== "darwin" || !app.isPackaged) return null;
+
+		const bundlePath = appBundleFromExecutable(process.execPath);
+		if (!bundlePath) {
+			// Not a bundle layout we recognise (unpacked/dev run): nothing to
+			// verify, and refusing every install because the path did not parse
+			// would be worse than the risk it guards against.
+			logger.warn(
+				`Could not derive an app bundle from ${process.execPath}; skipping the seal pre-flight.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+
+		const probe = await runCommand("/usr/bin/codesign", [
+			"--verify",
+			"--deep",
+			"--strict",
+			"--verbose=2",
+			bundlePath,
+		]);
+		const seal = evaluateBundleSeal(probe);
+		if (seal.ok) {
+			logger.info(
+				`Installed bundle passed its seal check: ${bundlePath}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+
+		logger.error(
+			`Installed bundle failed its seal check: ${seal.detail}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		return installedBundleSealBlock(bundlePath, seal.detail);
+	}
+
+	/** File names the updater's metadata knows this update by. */
+	private stagedArtifactCandidates(info: UpdateInfo | null): string[] {
+		const names = new Set<string>();
+		if (info?.path) names.add(basename(info.path));
+		for (const file of info?.files ?? []) {
+			if (file.url) names.add(basename(decodeURIComponent(file.url)));
+		}
+		if (this.downloadedArtifactPath) {
+			names.add(basename(this.downloadedArtifactPath));
+		}
+		return [...names];
+	}
+
+	/**
+	 * electron-updater exposes no public path for the staged file; the private
+	 * download helper is authoritative for a download this run performed, and a
+	 * null simply falls back to the updater's pending cache directory.
+	 */
+	private downloadHelper(): {
+		file?: string | null;
+		cacheDirForPendingUpdate?: string | null;
+	} | null {
+		const updater = autoUpdater as unknown as {
+			downloadedUpdateHelper?: {
+				file?: string | null;
+				cacheDirForPendingUpdate?: string | null;
+			} | null;
+		};
+		return updater.downloadedUpdateHelper ?? null;
+	}
+
+	/** Free bytes on the volume holding `dir`, or null when it cannot be read. */
+	private freeBytesAt(dir: string): number | null {
+		try {
+			const stats = statfsSync(dir);
+			return stats.bavail * stats.bsize;
+		} catch (error) {
+			logger.warn(
+				`Could not read free space for ${dir}: ${String(error)}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+	}
+
+	private static async sha512Base64(filePath: string): Promise<string> {
+		const hash = createHash("sha512");
+		const stream = createReadStream(filePath);
+		for await (const chunk of stream) {
+			hash.update(chunk as Buffer);
+		}
+		return hash.digest("base64");
+	}
+
+	/**
+	 * Verify the staged artifact against the metadata the updater parsed.
+	 *
+	 * electron-updater checks a file's sha512 while downloading it, but a staged
+	 * file reused on a later start is only checked for existence (`"check here
+	 * only existence, not checksum"` in its own DownloadedUpdateHelper), and the
+	 * install's real footprint - a full copy of the app - is never checked
+	 * against the free space available.
+	 */
+	private async ensureStagedArtifactVerified(
+		info: UpdateInfo | null,
+	): Promise<InstallBlock | null> {
+		const helper = this.downloadHelper();
+		const pendingDir = helper?.cacheDirForPendingUpdate ?? null;
+		const candidates = this.stagedArtifactCandidates(info);
+
+		const artifactPath = resolveStagedArtifactPath({
+			downloadHelperFile: this.downloadedArtifactPath ?? helper?.file ?? null,
+			pendingDir: pendingDir ?? "",
+			candidateNames: candidates,
+			listDir: (dir) => {
+				try {
+					return readdirSync(dir);
+				} catch {
+					return [];
+				}
+			},
+		});
+
+		if (!artifactPath) {
+			return {
+				code: "download-verification-failed",
+				message:
+					"The downloaded update could not be found on disk, so it wasn't installed.",
+				remedy: {
+					text: "Check for updates again to re-download the release.",
+				},
+				detail: `No staged artifact matching ${candidates.join(", ") || "the update metadata"}.`,
+			};
+		}
+
+		const files = (info?.files ?? []) as UpdateFileMetadata[];
+		const metadata = matchArtifactMetadata(
+			artifactPath,
+			files,
+			info?.path ?? null,
+		);
+
+		let actualSize: number;
+		let actualSha512: string;
+		try {
+			actualSize = statSync(artifactPath).size;
+			actualSha512 = await UpdateService.sha512Base64(artifactPath);
+		} catch (error) {
+			return {
+				code: "download-verification-failed",
+				message:
+					"The downloaded update could not be read, so it wasn't installed.",
+				remedy: {
+					text: "Check for updates again to re-download the release.",
+				},
+				detail: `${artifactPath}: ${String(error)}`,
+			};
+		}
+
+		// The install copies the whole app into a temp directory, so both the
+		// artifact's volume and the temp volume have to hold it.
+		const freeCandidates = [
+			this.freeBytesAt(path.dirname(artifactPath)),
+			this.freeBytesAt(app.getPath("temp")),
+		].filter((value): value is number => value != null);
+		const freeBytes =
+			freeCandidates.length > 0
+				? Math.min(...freeCandidates)
+				: Number.MAX_SAFE_INTEGER;
+
+		const verdict = verifyStagedArtifact({
+			filePath: artifactPath,
+			actualSize,
+			actualSha512,
+			metadata,
+			freeBytes,
+		});
+		if (verdict.ok) {
+			logger.info(
+				`Staged artifact verified: ${artifactPath} (${verdict.size} bytes, sha512 matches, ${requiredDiskBytes(verdict.size)} bytes required free).`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		return verdict.block;
+	}
+
+	/**
+	 * Everything that has to hold before the app is allowed to quit.
+	 *
+	 * Returns the reason to refuse, or null to go ahead.
+	 */
+	private async runInstallPreflight(
+		info: UpdateInfo | null,
+	): Promise<InstallBlock | null> {
+		const sealBlock = await this.probeInstalledBundleSeal();
+		if (sealBlock) return sealBlock;
+		return this.ensureStagedArtifactVerified(info);
+	}
+
+	/**
+	 * Start the detached relaunch watchdog.
+	 *
+	 * Spawned detached so it survives this process exiting, with stdio ignored so
+	 * it holds no pipe open and cannot keep the app alive.
+	 */
+	private launchWatchdog(): number | null {
+		if (process.platform !== "darwin" || !app.isPackaged) return null;
+		const bundlePath = appBundleFromExecutable(process.execPath);
+		if (!bundlePath) return null;
+
+		const plan = buildWatchdogPlan({
+			appExecutablePath: process.execPath,
+			appBundlePath: bundlePath,
+			executableName: basename(process.execPath),
+		});
+
+		try {
+			const child = spawn("sh", ["-c", plan.script], {
+				detached: true,
+				stdio: "ignore",
+				env: { ...process.env, ...plan.env },
+			});
+			child.unref();
+			logger.info(
+				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}, bound ${plan.timeoutSeconds}s).`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return child.pid ?? null;
+		} catch (error) {
+			logger.error(
+				`Could not start the update relaunch watchdog: ${String(error)}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
 	}
 
 	/**
@@ -280,74 +802,67 @@ export class UpdateService {
 		// When an update is available
 		autoUpdater.on("update-available", (info) => {
 			logger.info("Update available:", LogFileType.UPDATE_SERVICE, info);
-			if (
-				this.mainWindow &&
-				!this.mainWindow.isDestroyed() &&
-				this.mainWindow.webContents &&
-				!this.mainWindow.webContents.isDestroyed()
-			) {
-				this.mainWindow.webContents.send("update-available", info);
+			this.lastUpdateInfo = info;
+
+			// An update whose artifact failed its size/sha512/disk check is not
+			// offered again: the 5-minute check would otherwise re-offer it
+			// forever, and every offer ends in the same refusal.
+			if (this.failedVerificationVersions.has(info.version)) {
+				logger.warn(
+					`Not offering version ${info.version} again: its artifact already failed verification in this session.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return;
 			}
+
+			this.sendToRenderer("update-available", info);
 		});
 
 		// When no update is available
 		autoUpdater.on("update-not-available", (info) => {
 			logger.info("No update available:", LogFileType.UPDATE_SERVICE, info);
-			if (
-				this.mainWindow &&
-				!this.mainWindow.isDestroyed() &&
-				this.mainWindow.webContents &&
-				!this.mainWindow.webContents.isDestroyed()
-			) {
-				this.mainWindow.webContents.send("update-not-available", info);
-			}
+			this.sendToRenderer("update-not-available", info);
 		});
 
 		// When an update has been downloaded
-		autoUpdater.on("update-downloaded", (info) => {
+		//
+		// Verified before it is forwarded: the renderer only offers "install now"
+		// once it has seen this event, so refusing here is what keeps an install
+		// prompt away from an artifact we cannot vouch for.
+		autoUpdater.on("update-downloaded", async (info) => {
 			logger.info("Update downloaded:", LogFileType.UPDATE_SERVICE, info);
-			if (
-				this.mainWindow &&
-				!this.mainWindow.isDestroyed() &&
-				this.mainWindow.webContents &&
-				!this.mainWindow.webContents.isDestroyed()
-			) {
-				this.mainWindow.webContents.send("update-downloaded", info);
+			this.lastUpdateInfo = info;
+
+			const block = await this.ensureStagedArtifactVerified(info);
+			if (block) {
+				this.failedVerificationVersions.add(info.version);
+				this.sendInstallBlock(block, info.version);
+				return;
 			}
+
+			this.sendToRenderer("update-downloaded", info);
 		});
 
 		// When there's an error with the update
 		autoUpdater.on("error", (err) => {
 			logger.error("Update error:", LogFileType.UPDATE_SERVICE, err);
 
-			// Check if the error should be filtered based on our requirements
-			const shouldFilter = this.shouldFilterUpdateError(err);
+			// A download or an install that dies is not an availability problem:
+			// the user asked for something and it failed, so it has to be shown.
+			const actionable = this.updateStage !== "idle";
+			const shouldFilter = !actionable && this.shouldFilterUpdateError(err);
 
 			if (shouldFilter) {
 				logger.info(
 					"Error filtering result: Reporting as no updates available",
 				);
 				// Send update-not-available instead of the error
-				if (
-					this.mainWindow &&
-					!this.mainWindow.isDestroyed() &&
-					this.mainWindow.webContents &&
-					!this.mainWindow.webContents.isDestroyed()
-				) {
-					this.mainWindow.webContents.send("update-not-available", {
-						version: app.getVersion(),
-					});
-				}
+				this.sendToRenderer("update-not-available", {
+					version: app.getVersion(),
+				});
 			} else {
 				// Only send the error to the renderer if it shouldn't be filtered
-				if (
-					this.mainWindow &&
-					!this.mainWindow.isDestroyed() &&
-					this.mainWindow.webContents &&
-					!this.mainWindow.webContents.isDestroyed()
-				) {
-					this.mainWindow.webContents.send("update-error", err.message);
-				}
+				this.sendToRenderer("update-error", err.message);
 			}
 		});
 
@@ -486,25 +1001,37 @@ export class UpdateService {
 		});
 
 		// Update backend
-		ipcMain.handle("update-backend", async () => {
-			logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
-			try {
-				return await this.updateBackend();
-			} catch (error) {
-				logger.error(
-					"Error updating backend:",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-				throw error;
-			}
-		});
+		ipcMain.handle(
+			"update-backend",
+			async (_event, targetVersion?: unknown) => {
+				logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
+				try {
+					return await this.updateBackend(
+						typeof targetVersion === "string" ? targetVersion : undefined,
+					);
+				} catch (error) {
+					logger.error(
+						"Error updating backend:",
+						LogFileType.UPDATE_SERVICE,
+						error,
+					);
+					throw error;
+				}
+			},
+		);
 
 		// Download update
 		ipcMain.handle("download-update", async () => {
 			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
+			this.updateStage = "downloading";
 			try {
-				return await autoUpdater.downloadUpdate();
+				const downloadedPaths = await autoUpdater.downloadUpdate();
+				// The paths are the updater's own answer for where the artifact
+				// landed, so the verification that follows does not have to guess.
+				if (Array.isArray(downloadedPaths) && downloadedPaths.length > 0) {
+					this.downloadedArtifactPath = downloadedPaths[0];
+				}
+				return downloadedPaths;
 			} catch (error) {
 				logger.error(
 					"Error downloading update:",
@@ -538,17 +1065,50 @@ export class UpdateService {
 				}
 
 				throw error;
+			} finally {
+				this.updateStage = "idle";
 			}
 		});
 
 		// Quit and install update
-		ipcMain.handle("quit-and-install", () => {
+		//
+		// Async, and deliberately capable of refusing: this is the only place an
+		// install starts, and it starts only after the installed bundle and the
+		// staged artifact have been checked (see runInstallPreflight).
+		ipcMain.handle("quit-and-install", async () => {
 			logger.info(
-				"Quitting and installing update...",
+				"Preparing to quit and install the update...",
 				LogFileType.UPDATE_SERVICE,
 			);
+
+			this.updateStage = "installing";
+			const block = await this.runInstallPreflight(this.lastUpdateInfo);
+			if (block) {
+				this.updateStage = "idle";
+				this.sendInstallBlock(block, this.lastUpdateInfo?.version ?? undefined);
+				return false;
+			}
+
+			// Written before the quit, because after it there is nothing left of
+			// this process to record that an install was in flight.
+			const watchdogPid = this.launchWatchdog();
+			const marker = writePendingInstallMarker(this.markerDir(), {
+				targetVersion: this.lastUpdateInfo?.version ?? app.getVersion(),
+				artifactPath:
+					this.downloadedArtifactPath ??
+					this.downloadHelper()?.file ??
+					"unknown",
+				startedAt: new Date().toISOString(),
+				watchdogPid,
+			});
+			logger.info(
+				`Pending install marker written for version ${marker.targetVersion} (watchdog pid ${watchdogPid ?? "none"}).`,
+				LogFileType.UPDATE_SERVICE,
+			);
+
 			this.backendService?.setAutoUpdating(true);
 			autoUpdater.quitAndInstall(false, true);
+			return true;
 		});
 	}
 
@@ -950,6 +1510,70 @@ export class UpdateService {
 	 * @param silent - Whether to suppress notifications on no update
 	 * @returns Promise resolving to update info or null if no update is available
 	 */
+	/**
+	 * Decide what the backend update prompt may offer for a startup mode.
+	 *
+	 * GLOBAL_INSTALL is the mode that produced the operator's report: the app
+	 * offered `pip install --upgrade local-operator` for a server that was a uv
+	 * tool install (0.54.17, read from /health) with `canManageUpdate: true`. pip
+	 * is the wrong installer for that environment - uv owns it, and the
+	 * environment lives outside anything the app may write to.
+	 */
+	private async resolveBackendUpdatePlan(
+		startupMode: LocalOperatorStartupMode,
+	): Promise<{
+		canManageUpdate: boolean;
+		updateCommand: string;
+		remedy: string;
+	}> {
+		if (startupMode === LocalOperatorStartupMode.EXISTING_SERVER) {
+			return {
+				canManageUpdate: false,
+				updateCommand: "pip install --upgrade local-operator",
+				remedy:
+					"The server is running externally, so update it from your terminal:",
+			};
+		}
+
+		if (startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL) {
+			const localOperatorPath = this.resolveLocalOperatorPath();
+			const lopUpdatePath = readCommandOutput("which", ["lop-update"]);
+			const plan = resolveGlobalInstallPlan({
+				localOperatorPath,
+				lopUpdatePath: lopUpdatePath ?? null,
+			});
+			logger.info(
+				`Global backend install: ${plan.detail}; remedy is \`${plan.updateCommand}\``,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return {
+				canManageUpdate: plan.canManageUpdate,
+				updateCommand: plan.updateCommand,
+				remedy: plan.remedy,
+			};
+		}
+
+		return {
+			canManageUpdate: true,
+			updateCommand: "pip install --upgrade local-operator",
+			remedy: "Updating the server will improve AI functionality.",
+		};
+	}
+
+	/**
+	 * Path `which local-operator` resolves to, or null when it does not exist.
+	 *
+	 * Sync on purpose: it runs once per backend check, and the answer decides
+	 * which installer the prompt names, so the caller wants it before it builds
+	 * the message rather than a promise to settle afterwards.
+	 */
+	private resolveLocalOperatorPath(): string | null {
+		const command = process.platform === "win32" ? "where" : "which";
+		const output = readCommandOutput(command, ["local-operator"]);
+		const first = output?.split("\n")[0]?.trim();
+		return first && first.length > 0 ? first : null;
+	}
+
 	public async checkForBackendUpdates(
 		silent = false,
 	): Promise<BackendUpdateInfo | null> {
@@ -1003,14 +1627,8 @@ export class UpdateService {
 					"Unable to determine backend versions.",
 					LogFileType.UPDATE_SERVICE,
 				);
-				if (
-					!silent &&
-					this.mainWindow &&
-					!this.mainWindow.isDestroyed() &&
-					this.mainWindow.webContents &&
-					!this.mainWindow.webContents.isDestroyed()
-				) {
-					this.mainWindow.webContents.send(
+				if (!silent) {
+					this.sendToRenderer(
 						"backend-update-error",
 						"Unable to determine backend version.",
 					);
@@ -1018,10 +1636,24 @@ export class UpdateService {
 				return null;
 			}
 
-			// If installed version is "Unknown", we should recommend an update
-			const shouldUpdate =
-				installedVersion === "Unknown" ||
-				this.isNewerVersion(latestVersion, installedVersion);
+			// "Unknown" is not a version older than the latest one - it is the
+			// absence of a reading. Treating it as "needs update" is what produced a
+			// pip command for a server whose version could not even be read.
+			if (installedVersion === "Unknown") {
+				logger.error(
+					"The installed backend version could not be determined from the health endpoint.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				if (!silent) {
+					this.sendToRenderer(
+						"backend-update-error",
+						"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+					);
+				}
+				return null;
+			}
+
+			const shouldUpdate = this.isNewerVersion(latestVersion, installedVersion);
 
 			logger.info(
 				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Startup mode: ${startupMode}`,
@@ -1034,15 +1666,8 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
-				// Determine if we can manage the update based on startup mode
-				const canManageUpdate =
-					startupMode !== LocalOperatorStartupMode.EXISTING_SERVER;
-
-				// Determine the appropriate update command based on startup mode
-				let updateCommand = "pip install --upgrade local-operator";
-				if (startupMode === LocalOperatorStartupMode.EXISTING_SERVER) {
-					updateCommand = "pip install --upgrade local-operator";
-				}
+				const { canManageUpdate, updateCommand, remedy } =
+					await this.resolveBackendUpdatePlan(startupMode);
 
 				const updateInfo: BackendUpdateInfo = {
 					currentVersion: installedVersion,
@@ -1050,28 +1675,14 @@ export class UpdateService {
 					updateCommand,
 					canManageUpdate,
 					startupMode,
+					remedy,
 				};
 
-				if (
-					this.mainWindow &&
-					!this.mainWindow.isDestroyed() &&
-					this.mainWindow.webContents &&
-					!this.mainWindow.webContents.isDestroyed()
-				) {
-					logger.info(
-						`Sending backend-update-available event with info: ${JSON.stringify(updateInfo)}`,
-						LogFileType.UPDATE_SERVICE,
-					);
-					this.mainWindow.webContents.send(
-						"backend-update-available",
-						updateInfo,
-					);
-				} else {
-					logger.error(
-						"Cannot send backend-update-available event: mainWindow is not available or destroyed",
-						LogFileType.UPDATE_SERVICE,
-					);
-				}
+				logger.info(
+					`Sending backend-update-available event with info: ${JSON.stringify(updateInfo)}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.sendToRenderer("backend-update-available", updateInfo);
 
 				return updateInfo;
 			}
@@ -1122,7 +1733,77 @@ export class UpdateService {
 	 * Update the backend using pip and restart the backend service
 	 * @returns Promise resolving to true if update was successful, false otherwise
 	 */
-	public async updateBackend(): Promise<boolean> {
+	/** The version the bundled environment has installed, via `pip show`. */
+	private async readBundledBackendVersion(
+		pythonPath: string,
+	): Promise<string | null> {
+		const probe = await runCommand(
+			pythonPath,
+			["-m", "pip", "show", "local-operator"],
+			{ timeoutMs: 120000 },
+		);
+		if (probe.exitCode !== 0) {
+			logger.warn(
+				`pip show local-operator exited ${probe.exitCode}: ${(probe.stderr || probe.stdout).trim()}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		return parsePipShowVersion(probe.stdout);
+	}
+
+	/**
+	 * Bring the previous server back after a failed upgrade.
+	 *
+	 * A failure here must not leave the user with no backend at all: whatever pip
+	 * did or did not do, the environment still holds a working install, so start
+	 * it again.
+	 */
+	private async restartBackendAfterFailedUpgrade(): Promise<void> {
+		try {
+			await this.backendService?.start();
+			logger.info(
+				"Restarted the previous backend after a failed update",
+				LogFileType.UPDATE_SERVICE,
+			);
+		} catch (error) {
+			logger.error(
+				"Could not restart the backend after a failed update:",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Poll /health until it reports `targetVersion`, bounded by a timeout.
+	 *
+	 * Returns null when the version never matched (or could not be read), which
+	 * the caller reports as a failure rather than as a completed update.
+	 */
+	private async waitForBackendVersion(
+		target: string | null,
+		timeoutMs = 60000,
+		intervalMs = 2000,
+	): Promise<string | null> {
+		const deadline = Date.now() + timeoutMs;
+		let last: string | null = null;
+		while (Date.now() < deadline) {
+			const version = await this.getInstalledBackendVersion();
+			if (version && version !== "Unknown") {
+				last = version;
+				if (target == null || version === target) return version;
+			}
+			await new Promise((resolve) => setTimeout(resolve, intervalMs));
+		}
+		logger.warn(
+			`Backend version poll timed out after ${timeoutMs}ms (target ${target ?? "any"}, last seen ${last ?? "none"})`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		return null;
+	}
+
+	public async updateBackend(targetVersion?: string): Promise<boolean> {
 		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 
 		try {
@@ -1188,9 +1869,25 @@ export class UpdateService {
 					}
 					return false;
 
-				case LocalOperatorStartupMode.GLOBAL_INSTALL:
+				case LocalOperatorStartupMode.GLOBAL_INSTALL: {
+					// Same reasoning as EXISTING_SERVER, and the operator's own report:
+					// this environment belongs to whatever installed it (a uv tool or
+					// pipx), so the app may not pip into it. Say how to update it
+					// instead of running the wrong installer against it.
+					const plan = await this.resolveBackendUpdatePlan(startupMode);
+					logger.info(
+						`Cannot manage the update for a global install: ${plan.updateCommand}`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					this.sendToRenderer("backend-update-manual-required", {
+						message: plan.remedy,
+						command: plan.updateCommand,
+					});
+					return false;
+				}
+
 				case LocalOperatorStartupMode.APP_BUNDLED_VENV:
-					// Continue with update process for these modes
+					// Continue with update process for this mode
 					break;
 
 				default:
@@ -1216,89 +1913,82 @@ export class UpdateService {
 				);
 			}
 
-			// Update the backend using pip
-			const execAsync = promisify(exec);
+			// Update the backend using pip.
+			//
+			// Only the app's own bundled environment reaches this point: a global
+			// install returns above. `pip install --upgrade` against a uv tool or
+			// pipx environment either fails or corrupts it, and a fallback to the
+			// bare `pip` on PATH was how the app ended up offering to update an
+			// install it did not own.
 			let pythonPath = "";
-			let pipCommand = "";
-
-			// Determine the appropriate Python/pip command based on startup mode
-			if (startupMode === LocalOperatorStartupMode.APP_BUNDLED_VENV) {
-				// For APP_BUNDLED_VENV, use the bundled Python binary
-				try {
-					// First try to get Python path from virtual environment path
-					if (app.isPackaged) {
-						if (process.platform === "darwin") {
-							pythonPath = join(
-								this.backendService?.getVenvPath(),
-								"bin",
-								"python3",
-							);
-						} else if (process.platform === "win32") {
-							pythonPath = join(
-								this.backendService?.getVenvPath(),
-								"Scripts",
-								"python.exe",
-							);
-						} else if (process.platform === "linux") {
-							pythonPath = join(
-								this.backendService?.getVenvPath(),
-								"bin",
-								"python3",
-							);
-						}
-
-						// Check if the Python path exists
-						if (pythonPath) {
-							logger.info(
-								`Using bundled Python at: ${pythonPath}`,
-								LogFileType.UPDATE_SERVICE,
-							);
-							pipCommand = `"${pythonPath}" -m pip install --upgrade local-operator`;
-						}
-					}
-				} catch (error) {
-					logger.warn(
-						"Error finding bundled Python path:",
-						LogFileType.UPDATE_SERVICE,
-						error,
-					);
-					pythonPath = "";
-				}
-			} else if (startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL) {
-				// For GLOBAL_INSTALL, use the system Python that has local-operator installed
-				try {
-					// Try to find the Python that has local-operator installed
-					const { stdout } = await execAsync("which python3 || which python");
-					pythonPath = stdout.trim();
-					logger.info(
-						`Using system Python at: ${pythonPath}`,
-						LogFileType.UPDATE_SERVICE,
-					);
-					pipCommand = `"${pythonPath}" -m pip install --upgrade local-operator`;
-				} catch (error) {
-					logger.warn(
-						"Could not find system Python:",
-						LogFileType.UPDATE_SERVICE,
-						error,
-					);
-				}
+			const venvPath = this.backendService?.getVenvPath();
+			if (venvPath && app.isPackaged) {
+				const venvBinDir = process.platform === "win32" ? "Scripts" : "bin";
+				const pythonName =
+					process.platform === "win32" ? "python.exe" : "python3";
+				pythonPath = join(venvPath, venvBinDir, pythonName);
 			}
 
-			// If we couldn't determine a specific pip command, use a fallback
-			if (!pipCommand) {
-				logger.warn("Using fallback pip command", LogFileType.UPDATE_SERVICE);
-				pipCommand = "pip install --upgrade local-operator";
+			if (!pythonPath || !existsSync(pythonPath)) {
+				logger.error(
+					`Cannot update the bundled backend: no Python at ${pythonPath || "an unknown path"}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				await this.restartBackendAfterFailedUpgrade();
+				this.sendToRenderer(
+					"backend-update-error",
+					"The bundled server's Python environment could not be found, so the update did not run. Please reinstall the application.",
+				);
+				return false;
 			}
 
-			// Execute the pip command
+			const pip = buildPipUpgradeCommand(pythonPath);
+
+			// Read what the environment has NOW. "pip exited 0" is not evidence that
+			// anything was installed - pip reports success when the requirement is
+			// already satisfied - so the post-check needs a version to compare.
+			const versionBefore = await this.readBundledBackendVersion(pythonPath);
+
 			logger.info(
-				`Executing pip command: ${pipCommand}`,
+				`Executing pip command: ${pip.display}`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			await execAsync(pipCommand);
+			const pipRun = await runCommand(pip.command, pip.args, {
+				timeoutMs: 15 * 60 * 1000,
+			});
+			// Both streams are captured into update-service.log: a pip failure with
+			// no output is what made the earlier failures unreadable.
+			logger.info(
+				`pip stdout:\n${pipRun.stdout.trim()}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			if (pipRun.stderr.trim().length > 0) {
+				logger.warn(
+					`pip stderr:\n${pipRun.stderr.trim()}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+
+			const versionAfter = await this.readBundledBackendVersion(pythonPath);
+			const upgradeLanded =
+				pipRun.exitCode === 0 && didVersionChange(versionBefore, versionAfter);
+			if (!upgradeLanded) {
+				logger.error(
+					`Backend upgrade did not land: pip exited ${pipRun.exitCode}; version ${versionBefore ?? "unknown"} -> ${versionAfter ?? "unknown"}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				await this.restartBackendAfterFailedUpgrade();
+				this.sendToRenderer(
+					"backend-update-error",
+					pipRun.exitCode !== 0
+						? "The server update failed to install. The previous server is still installed and will keep running; see the update service log for pip's output."
+						: `The server update ran but the installed version did not change (still ${versionAfter ?? "unknown"}), so it is reported as failed.`,
+				);
+				return false;
+			}
 
 			logger.info(
-				"Backend package updated successfully via pip",
+				`Backend package upgraded: ${versionBefore ?? "unknown"} -> ${versionAfter}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 
@@ -1390,6 +2080,28 @@ export class UpdateService {
 				}
 				return false;
 			}
+
+			// Confirm the version the server actually reports before claiming
+			// success: a restart that came back on the old version is not an update,
+			// and "pip exited 0" is not evidence that it took effect.
+			const reportedVersion = await this.waitForBackendVersion(
+				targetVersion ?? null,
+			);
+			if (reportedVersion == null) {
+				logger.error(
+					`Backend did not report version ${targetVersion ?? "the new one"} after the update`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.sendToRenderer(
+					"backend-update-error",
+					`The server restarted but did not report ${targetVersion ? `version ${targetVersion}` : "the updated version"}. Check the update service log, then try again.`,
+				);
+				return false;
+			}
+			logger.info(
+				`Backend reports version ${reportedVersion} after the update`,
+				LogFileType.UPDATE_SERVICE,
+			);
 
 			logger.info(
 				"Backend update and restart completed successfully",
@@ -1496,6 +2208,14 @@ export class UpdateService {
 	 * Determines if an update error should be filtered (not shown to the user)
 	 * @param err The error object from autoUpdater
 	 * @returns True if the error should be filtered, false if it should be shown to the user
+	 */
+	/**
+	 * Whether an error from the updater is a genuine availability problem.
+	 *
+	 * Only availability checks may be filtered. A download, verification or
+	 * install failure means something the user asked for did not happen, and
+	 * reporting it as "no update available" (the previous behaviour) is how the
+	 * operator's failed install produced no message at all.
 	 */
 	private shouldFilterUpdateError(err: Error): boolean {
 		const errorMessage = err.message || "";

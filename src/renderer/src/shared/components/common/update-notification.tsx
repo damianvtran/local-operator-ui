@@ -24,6 +24,47 @@ type BackendUpdateInfo = {
 	updateCommand: string;
 	canManageUpdate?: boolean;
 	startupMode?: string;
+	/** Sentence introducing the manual command, chosen by how the server is installed. */
+	remedy?: string;
+};
+
+/** A remedy the main process can spell out in the user's own terms. */
+type UpdateRemedy = {
+	text: string;
+	url?: string;
+	command?: string;
+};
+
+/**
+ * An install the app refused to start.
+ *
+ * Deliberately its own state rather than an entry in `error`: the app is still
+ * running and nothing has failed yet, and the refusal needs the remedy on
+ * screen next to it - the operator's report was an install that vanished with
+ * no message at all.
+ */
+type InstallBlockedInfo = {
+	code: string;
+	version: string | null;
+	message: string;
+	remedy: UpdateRemedy;
+	detail?: string;
+};
+
+/** A previous install Squirrel never completed, reported on the next start. */
+type InstallFailedInfo = {
+	targetVersion: string;
+	message: string;
+	remedy: UpdateRemedy;
+	detail?: string;
+};
+
+/** Headings for the refusal states, sentence case, one line each. */
+const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
+	"installed-bundle-not-sealed": "This app can't update itself",
+	"download-verification-failed": "The update couldn't be verified",
+	"artifact-metadata-missing": "The update couldn't be verified",
+	"insufficient-disk-space": "Not enough disk space to update",
 };
 
 /**
@@ -123,6 +164,14 @@ export const UpdateNotification = ({
 		command: string;
 	} | null>(null);
 
+	// Install refusals and a failed install detected on this start. Kept apart
+	// from each other because only one of them has an installed app to talk about.
+	const [installBlocked, setInstallBlocked] =
+		useState<InstallBlockedInfo | null>(null);
+	const [installFailed, setInstallFailed] = useState<InstallFailedInfo | null>(
+		null,
+	);
+
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
@@ -182,13 +231,22 @@ export const UpdateNotification = ({
 		window.api.updater.quitAndInstall();
 	}, []);
 
+	/** Open a remedy's page in the user's browser. */
+	const openRemedyUrl = useCallback((url: string) => {
+		void window.api.openExternal(url);
+	}, []);
+
 	// Update the backend
 	const updateBackend = useCallback(async () => {
 		try {
 			setChecking(true);
 			setUpdatingBackend(true);
 			setError(null);
-			await window.api.updater.updateBackend();
+			// The target version travels with the request so the main process can
+			// confirm the restarted server actually reports it.
+			await window.api.updater.updateBackend(
+				backendUpdateInfoRef.current?.latestVersion,
+			);
 		} catch (err) {
 			setError(
 				`Error updating server: ${err instanceof Error ? err.message : String(err)}`,
@@ -270,6 +328,30 @@ export const UpdateNotification = ({
 			},
 		);
 
+		// Backend update requires a manual command (a server the app does not own)
+		const removeBackendManualRequiredListener =
+			window.api.updater.onBackendUpdateManualRequired((info) => {
+				setManualUpdateRequired(true);
+				setManualUpdateInfo(info);
+				setChecking(false);
+				setUpdatingBackend(false);
+				setBackendUpdateAvailable(false);
+				setBackendUpdateInfo(null);
+			});
+
+		// The app refused to start an install, or a previous one never finished
+		const removeInstallBlockedListener =
+			window.api.updater.onUpdateInstallBlocked((info) => {
+				setInstallBlocked(info);
+				setChecking(false);
+				setUpdatingBackend(false);
+				setDownloading(false);
+			});
+		const removeInstallFailedListener =
+			window.api.updater.onUpdateInstallFailed((info) => {
+				setInstallFailed(info);
+			});
+
 		// Frontend update progress
 		const removeUpdateProgressListener = window.api.updater.onUpdateProgress(
 			(progressObj) => {
@@ -283,7 +365,15 @@ export const UpdateNotification = ({
 				if (shouldShowUpdate(UpdateType.BACKEND, info.latestVersion)) {
 					const enhancedInfo: BackendUpdateInfo = {
 						...info,
-						canManageUpdate: !info.updateCommand.includes("manually"),
+						// Trust the flag the main process sent: it is the side that
+						// knows how the server was installed (a uv tool and a pipx
+						// install cannot be updated from here at all). The old
+						// substring test guessed from the word "manually" in a
+						// legacy string, which reads `uv tool upgrade
+						// local-operator` - a command we deliberately never run -
+						// as one we do, and offers a button that always fails.
+						canManageUpdate:
+							info.canManageUpdate ?? !info.updateCommand.includes("manually"),
 					};
 					setBackendUpdateAvailable(true);
 					setBackendUpdateInfo(enhancedInfo);
@@ -334,6 +424,9 @@ export const UpdateNotification = ({
 			removeBackendUpdateAvailableListener();
 			removeBackendUpdateNotAvailableListener();
 			removeBackendUpdateCompletedListener();
+			removeBackendManualRequiredListener();
+			removeInstallBlockedListener();
+			removeInstallFailedListener();
 		};
 	}, [autoCheck, checkForUpdates, shouldShowUpdate]);
 
@@ -372,6 +465,128 @@ export const UpdateNotification = ({
 			>
 				{error}
 			</FloatingAlert>
+		);
+	}
+
+	// An install the app refused to start. A panel rather than a toast: the app is
+	// still running, the update is still staged, and the remedy is the point.
+	if (installBlocked) {
+		return (
+			<UpdateContainer>
+				<h2 className="mb-3 text-heading text-ink">
+					{INSTALL_BLOCK_HEADINGS[installBlocked.code] ??
+						"The update wasn't installed"}
+				</h2>
+				<p className="mb-2 text-body text-ink-muted">
+					{installBlocked.message}
+				</p>
+				<p className="mt-2 text-body-sm text-ink-muted">
+					{installBlocked.remedy.text}
+				</p>
+				{installBlocked.detail && (
+					<p className="mt-1 text-mono-sm text-ink-dim">
+						{installBlocked.detail}
+					</p>
+				)}
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setInstallBlocked(null)}
+					>
+						Dismiss
+					</Button>
+					{installBlocked.remedy.url ? (
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => openRemedyUrl(installBlocked.remedy.url as string)}
+						>
+							Open download page
+						</Button>
+					) : (
+						<Button variant="primary" size="sm" onClick={checkForUpdates}>
+							Check for updates
+						</Button>
+					)}
+				</UpdateActions>
+			</UpdateContainer>
+		);
+	}
+
+	// A previous install that ShipIt never completed. The user saw the app quit
+	// and come back on the old version, so this is that explanation.
+	if (installFailed) {
+		return (
+			<UpdateContainer>
+				<h2 className="mb-3 text-heading text-ink">
+					The last update didn't finish
+				</h2>
+				<p className="mb-2 text-body text-ink-muted">{installFailed.message}</p>
+				<p className="mt-2 text-body-sm text-ink-muted">
+					{installFailed.remedy.text}
+				</p>
+				{installFailed.detail && (
+					<p className="mt-1 text-mono-sm text-ink-dim">
+						{installFailed.detail}
+					</p>
+				)}
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setInstallFailed(null)}
+					>
+						Dismiss
+					</Button>
+					{installFailed.remedy.url && (
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => openRemedyUrl(installFailed.remedy.url as string)}
+						>
+							Open download page
+						</Button>
+					)}
+				</UpdateActions>
+			</UpdateContainer>
+		);
+	}
+
+	// A manual backend update: a server the app does not own, so the command is
+	// the whole answer and it has to stay on screen long enough to be read.
+	if (manualUpdateRequired && manualUpdateInfo) {
+		return (
+			<UpdateContainer>
+				<h2 className="mb-3 text-heading text-ink">
+					The server needs updating by hand
+				</h2>
+				<p className="mb-2 text-body text-ink-muted">
+					{manualUpdateInfo.message}
+				</p>
+				<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
+					{manualUpdateInfo.command}
+				</code>
+				<p className="mt-2 text-body-sm text-ink-muted">
+					Run this in a terminal, then check for updates again to pick up the
+					new server version.
+				</p>
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => {
+							setManualUpdateRequired(false);
+							setManualUpdateInfo(null);
+						}}
+					>
+						Dismiss
+					</Button>
+					<Button variant="primary" size="sm" onClick={checkForUpdates}>
+						Check for updates
+					</Button>
+				</UpdateActions>
+			</UpdateContainer>
 		);
 	}
 
@@ -565,9 +780,8 @@ export const UpdateNotification = ({
 					) : (
 						<>
 							<p className="mt-4 text-body-sm text-warning">
-								The backend server is running externally and cannot be updated
-								automatically. Please update it manually using the following
-								command:
+								{backendUpdateInfo.remedy ??
+									"The server is installed outside the app, so update it from your terminal:"}
 							</p>
 							<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
 								{backendUpdateInfo.updateCommand}
@@ -595,23 +809,6 @@ export const UpdateNotification = ({
 					A new server update is available: v{backendUpdateInfo.latestVersion}
 				</FloatingAlert>
 			</>
-		);
-	}
-
-	// If a manual update is required
-	if (manualUpdateRequired && manualUpdateInfo) {
-		return (
-			<FloatingAlert
-				open={snackbarOpen}
-				autoHideDuration={10000}
-				onClose={handleSnackbarClose}
-				variant="warning"
-			>
-				<p className="text-body-sm">{manualUpdateInfo.message}</p>
-				<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
-					{manualUpdateInfo.command}
-				</code>
-			</FloatingAlert>
 		);
 	}
 

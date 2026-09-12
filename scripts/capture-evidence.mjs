@@ -203,6 +203,14 @@ const STORIES = [
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
+	// The install outcomes the 0.17.0 update never showed: a refusal with its
+	// remedy, and the next start admitting the install did not take.
+	["common-updatenotification--install-blocked", 1280, 900],
+	["common-updatenotification--install-failed", 1280, 900],
+	// A server the app does not own, with the command that fits how it was
+	// installed (the pip line the operator was shown is gone).
+	["common-updatenotification--backend-manual-required", 1280, 900],
+	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 
@@ -491,6 +499,8 @@ const main = async () => {
 	// rest of the tree. A full sweep still must not take the supplementary
 	// sets with it — those are live-app captures this script cannot re-derive
 	// (`clearSweptFrames` is the preservation rule, not a plain `rmSync`).
+	/** Every frame this run wrote, and whether it was already on disk. */
+	const writtenFrames = [];
 	const supplementary = PARTIAL
 		? (() => {
 				try {
@@ -834,7 +844,20 @@ const main = async () => {
 			const dir = join(OUT, story.split("--")[0], leaf);
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
+			/*
+			 * A partial run can ADD a surface as well as refresh one, and the
+			 * whole-set totals have to grow with it. `writeFileSync` overwrites
+			 * either way, so the only thing that tells the two apart is whether
+			 * the file was there before - which is what `frames`/`surfaces`
+			 * need, and what a refreshed-only count got wrong: eight new
+			 * frames landed on disk while the manifest still said 474.
+			 */
+			const existedBefore = existsSync(framePath);
 			writeFileSync(framePath, Buffer.from(data, "base64"));
+			writtenFrames.push({
+				surface: `${story.split("--")[0]}/${leaf}`,
+				existedBefore,
+			});
 			/*
 			 * And check it is a picture of the app before moving on.
 			 *
@@ -913,10 +936,20 @@ const main = async () => {
 	} catch {
 		// No prior manifest: a full sweep writes the first one.
 	}
+	const addedFrames = writtenFrames.filter((frame) => !frame.existedBefore);
+	const addedSurfaces = [...new Set(addedFrames.map((frame) => frame.surface))];
 	const manifest = PARTIAL
 		? {
 				...previous,
 				head,
+				/*
+				 * A narrowed run that only refreshed frames leaves the totals
+				 * alone; one that added a surface moves them, because otherwise
+				 * the set it did not take and the frames it did add no longer
+				 * add up to what is on disk.
+				 */
+				frames: (previous.frames ?? 0) + addedFrames.length,
+				surfaces: (previous.surfaces ?? 0) + addedSurfaces.length,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
@@ -927,6 +960,10 @@ const main = async () => {
 					refreshedFrames: captured,
 					refreshedStories: [...new Set(stories.map(([id]) => id))],
 					refreshedThemes: themes,
+					addedFrames: addedFrames.length,
+					addedSurfaces,
+					addedAt: new Date().toISOString(),
+					addedAtHead: head,
 				},
 			}
 		: {

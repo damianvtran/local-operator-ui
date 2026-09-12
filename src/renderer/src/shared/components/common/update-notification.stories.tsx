@@ -46,7 +46,7 @@ const createEmptyUpdaterMethods = () => {
 			checkForAllUpdates: async () => Promise.resolve(),
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
-			quitAndInstall: () => {},
+			quitAndInstall: async () => true,
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
@@ -59,6 +59,9 @@ const createEmptyUpdaterMethods = () => {
 			onUpdateError: noop,
 			onUpdateProgress: noop,
 			onBeforeQuitForUpdate: noop,
+			onBackendUpdateManualRequired: noop,
+			onUpdateInstallBlocked: noop,
+			onUpdateInstallFailed: noop,
 		};
 	}
 };
@@ -81,7 +84,7 @@ const mockUpdaterApi = () => {
 		checkForAllUpdates: async () => Promise.resolve(),
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
-		quitAndInstall: () => {},
+		quitAndInstall: async () => true,
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {
@@ -113,6 +116,9 @@ const mockUpdaterApi = () => {
 				currentVersion: string;
 				latestVersion: string;
 				updateCommand: string;
+				canManageUpdate?: boolean;
+				startupMode?: string;
+				remedy?: string;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -122,6 +128,19 @@ const mockUpdaterApi = () => {
 					currentVersion: "1.0.0",
 					latestVersion: "2.0.0",
 					updateCommand: "pip install --upgrade local-operator",
+				});
+			}
+			// The operator's own case: a server installed as a uv tool, which the
+			// app must not pip into, with the remedy named for that install.
+			if (window.triggerBackendUpdateNonManaged) {
+				callback({
+					currentVersion: "0.54.17",
+					latestVersion: "0.55.0",
+					updateCommand: "uv tool upgrade local-operator",
+					canManageUpdate: false,
+					startupMode: "GLOBAL_INSTALL",
+					remedy:
+						"The server is a uv tool install, so update it from your terminal:",
 				});
 			}
 			return () => {};
@@ -201,6 +220,68 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
+		onBackendUpdateManualRequired: (
+			callback: (info: { message: string; command: string }) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateManualRequired) {
+				callback({
+					message:
+						"The server is a uv tool install, so update it from your terminal:",
+					command: "uv tool upgrade local-operator",
+				});
+			}
+			return () => {};
+		},
+		onUpdateInstallBlocked: (
+			callback: (info: {
+				code: string;
+				version: string | null;
+				message: string;
+				remedy: { text: string; url?: string; command?: string };
+				detail?: string;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerUpdateInstallBlocked) {
+				callback({
+					code: "installed-bundle-not-sealed",
+					version: "0.18.0",
+					message:
+						"This install of Local Operator can't be updated in place, so the update was stopped before the app quit.",
+					remedy: {
+						text: "Download a fresh copy and replace the app in Applications.",
+						url: "https://local-operator.com/download",
+					},
+					detail:
+						"/Applications/Local Operator.app: errSecCSBadBundleFormat: a sealed resource is missing or invalid",
+				});
+			}
+			return () => {};
+		},
+		onUpdateInstallFailed: (
+			callback: (info: {
+				targetVersion: string;
+				message: string;
+				remedy: { text: string; url?: string; command?: string };
+				detail: string;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerUpdateInstallFailed) {
+				callback({
+					targetVersion: "0.18.0",
+					message:
+						"The update to version 0.18.0 didn't finish, so version 0.17.0 is still running.",
+					remedy: {
+						text: "Try installing the update again from the update prompt.",
+					},
+					detail:
+						"Install started 2026-09-11T22:36:48.000Z from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip.",
+				});
+			}
+			return () => {};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -229,6 +310,10 @@ declare global {
 		triggerBackendUpdateNotAvailable?: boolean;
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateDevMode?: boolean;
+		triggerBackendUpdateManualRequired?: boolean;
+		triggerBackendUpdateNonManaged?: boolean;
+		triggerUpdateInstallBlocked?: boolean;
+		triggerUpdateInstallFailed?: boolean;
 		triggerNpxUpdate?: boolean;
 		triggerDevMode?: boolean;
 	}
@@ -263,12 +348,24 @@ const meta = {
 					context.parameters.triggerUpdateDownloaded;
 				window.triggerUpdateError = context.parameters.triggerUpdateError;
 				window.triggerUpdateProgress = context.parameters.triggerUpdateProgress;
+				window.triggerUpdateInstallBlocked =
+					context.parameters.triggerUpdateInstallBlocked;
+				window.triggerUpdateInstallFailed =
+					context.parameters.triggerUpdateInstallFailed;
+				window.triggerBackendUpdateManualRequired =
+					context.parameters.triggerBackendUpdateManualRequired;
+				window.triggerBackendUpdateNonManaged =
+					context.parameters.triggerBackendUpdateNonManaged;
 			}, [
 				context.parameters.triggerUpdateAvailable,
 				context.parameters.triggerUpdateNotAvailable,
 				context.parameters.triggerUpdateDownloaded,
 				context.parameters.triggerUpdateError,
 				context.parameters.triggerUpdateProgress,
+				context.parameters.triggerUpdateInstallBlocked,
+				context.parameters.triggerUpdateInstallFailed,
+				context.parameters.triggerBackendUpdateManualRequired,
+				context.parameters.triggerBackendUpdateNonManaged,
 			]);
 
 			return (
@@ -656,4 +753,71 @@ export const ErrorState: Story = {
 
 		return <ErrorComponent />;
 	},
+};
+
+type UpdaterTriggerFlag =
+	| "triggerUpdateInstallBlocked"
+	| "triggerUpdateInstallFailed"
+	| "triggerBackendUpdateManualRequired"
+	| "triggerBackendUpdateNonManaged";
+
+/**
+ * Mount the real component with one of its event triggers already set.
+ *
+ * The mock updater delivers each event synchronously at subscribe time, so the
+ * flag has to be in place before the component mounts: a `parameters` flag set
+ * by the decorator arrives too late, which is why the older stories here draw
+ * their own copy of the panel. These stories render the component's own markup
+ * instead - a fixture that has drifted from the component is how a defect stays
+ * invisible in a set of hundreds of pictures.
+ */
+const Triggered = ({ flag }: { flag: UpdaterTriggerFlag }) => {
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		window[flag] = true;
+		setReady(true);
+	}, [flag]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+/**
+ * The app refused to install the update because the installed bundle's code
+ * seal does not verify - the state behind the operator's "damaged" report,
+ * caught before the app quits and with a way out on screen.
+ */
+export const InstallBlocked: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlocked: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlocked" />,
+};
+
+/**
+ * The next start after a ShipIt install that never completed: the app came back
+ * on the old version and now says so, instead of silently re-offering.
+ */
+export const InstallFailed: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallFailed: true },
+	render: () => <Triggered flag="triggerUpdateInstallFailed" />,
+};
+
+/**
+ * A server the app cannot update itself (a uv tool install), with the command
+ * that can - named for how that server is installed, not the bare pip guess.
+ */
+export const BackendManualRequired: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateManualRequired: true },
+	render: () => <Triggered flag="triggerBackendUpdateManualRequired" />,
+};
+
+/**
+ * A server installed as a uv tool: the app cannot update it, and the command it
+ * names is the one that installer owns - not the pip line the operator was
+ * shown for a uv tool install.
+ */
+export const BackendUpdateNonManaged: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateNonManaged: true },
+	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
 };
