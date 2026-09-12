@@ -74,7 +74,6 @@ import {
 	summaryFromArgs,
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
-import { TraceGlyph } from "../components/trace/trace-rail";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
 import {
@@ -84,7 +83,14 @@ import {
 } from "./transcript-reducer";
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
 
-/** Opts prose into the ~72-character measure defined in `markdown.css`. */
+/**
+ * Opts the USER bubble into the reading measure defined in `markdown.css`.
+ *
+ * Agent-side prose deliberately does not take it. It resolves against the row
+ * content box instead, so it shares one left edge and one right edge with the
+ * tool rows of the same turn — see the measure comment in `markdown.css` for
+ * the operator report that requires it and the numbers behind it.
+ */
 const MEASURE = "lo-measured";
 
 const WINDOW = 60;
@@ -181,30 +187,24 @@ const AssistantRow = memo(function AssistantRow({
 			isSmallView={isSmallView}
 			showAvatar={showAvatar}
 		>
+			{/*
+			 * No measure class here. The answer takes the full row content box, which
+			 * is the box `ToolRow` resolves against, so prose and ledger in one turn
+			 * share both edges structurally rather than by agreement.
+			 */}
 			<div
-				className={cn("group relative w-full break-words text-ink", MEASURE)}
+				className={cn("group relative w-full break-words text-ink")}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
 			>
-				{record.text ? (
-					<MarkdownRenderer
-						content={record.text}
-						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
-						styleProps={{
-							fontSize: isSmallView
-								? "var(--text-body-sm)"
-								: "var(--text-body)",
-							lineHeight: 1.6,
-						}}
-					/>
-				) : (
-					// Streaming but no text yet: the model is on the wire. One quiet
-					// present-tense line at the trace tier, not a spinner card.
-					<span className="flex items-center gap-2 text-ink-dim text-meta">
-						<TraceGlyph />
-						Writing
-					</span>
-				)}
+				<MarkdownRenderer
+					content={record.text}
+					className={cn(refused && "[--md-ink:var(--lo-danger)]")}
+					styleProps={{
+						fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
+						lineHeight: 1.6,
+					}}
+				/>
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
 						Stopped before finishing

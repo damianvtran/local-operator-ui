@@ -19,25 +19,28 @@
  *
  * ## Why the gutter is NOT simply removed (design rounds 1 and 2, D4)
  *
- * The reported complaint is that the chat view reads off-centre on a wide
- * window. Measured at 1380 with real agent prose, the prose block sits 40px
- * from the column's left edge and stops 245px short on the right — a 6.1:1
- * asymmetry against a user bubble and composer that both run the full width.
- * The 40px is this gutter; the 245px is the 62ch reading cap in `markdown.css`.
+ * This 40px indent applies to EVERY agent-side row — prose, trace lines, the
+ * question callout, the security notice and the tool rows alike — so it moves
+ * them together and cannot put one register out of line with another. That is
+ * the point of it, and it is why the gutter was never the cause of the
+ * misalignment reported against this surface: the answer sat inboard of the
+ * ledger because `markdown.css` capped and centred it INSIDE this padding,
+ * not because of the padding. Removing the cap (see that file's measure
+ * comment) put both registers on this gutter's inner edge, measured 102..962
+ * for each at 1024x620.
  *
- * Deleting the gutter does not fix it, and this was measured rather than
- * assumed: with `pl-10` removed and the avatar still `absolute`, the avatar's
- * box `[524..552]` lands on the first prose line, which now also starts at
- * 524. The probe that reports this was verified against a positive control
- * (shoving the avatar onto the text turns it red) so its "no collision" at
- * rest means something.
+ * Deleting the gutter would not have fixed the alignment and would break the
+ * avatar, which was measured rather than assumed: with `pl-10` removed and the
+ * avatar still `absolute`, its box `[524..552]` lands on the first prose line,
+ * which now also starts at 524. The probe that reports this was verified
+ * against a positive control (shoving the avatar onto the text turns it red)
+ * so its "no collision" at rest means something.
  *
  * The gutter therefore stays until the row is restructured so the avatar
  * occupies its own flex slot rather than an absolutely-positioned one. That is
  * a change to every agent row's box model with a real regression surface
- * (streaming rows, notices, tool rows, the small view), and it is deliberately
- * NOT bundled into a remediation commit whose other changes are one-token
- * alignment fixes. See the PR's not-addressed section.
+ * (streaming rows, notices, tool rows, the small view), and nothing currently
+ * reported requires it: the rail is shared, which is what the reader sees.
  */
 
 import { cn } from "@shared/lib/utils";

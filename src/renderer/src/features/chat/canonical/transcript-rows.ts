@@ -21,6 +21,14 @@ export type Row = {
 /**
  * Does this record paint anything the reader can see?
  *
+ * For an assistant record the answer is its TEXT, and nothing else. An empty
+ * one paints nothing whether it is finished or still streaming. Both halves of
+ * that are deliberate: the streaming case is the "Writing" row discussed below,
+ * and the SETTLED case — a finished assistant record that never carried prose,
+ * because its tool rows were the whole turn — is the invisible-row trap
+ * immediately below. One predicate covers both because they are the same fact:
+ * a record with nothing in it.
+ *
  * THE INVISIBLE-ROW TRAP, because this is exactly the kind of thing that gets
  * reintroduced. The reducer deliberately KEEPS an assistant record that carried
  * only tool calls: it has no prose to show — its tool rows carry the turn — but
@@ -40,6 +48,60 @@ export type Row = {
  * operator's report — the gap had no visible cause because its cause was
  * invisible.
  *
+ * ## Why `streaming` is NOT a reason to paint
+ *
+ * It used to be. A streaming record with no text yet is the gap between
+ * `message_start` and the first token, and the transcript minted a row for it
+ * that read "Writing" — which put a second liveness element directly above the
+ * working line, where that line was already saying `thinking`. Two elements for
+ * one fact, and the redundant one sat in the ANSWER's register rather than on
+ * the ledger, so it read as the turn having started when nothing had been
+ * written.
+ *
+ * The TUI has one aggregate liveness element and no per-record equivalent
+ * (`WorkingBlock`, `tui/widgets/transcript.py`), and the working line here is
+ * the port of it: its `thinking` → `composing N calls` → `running` →
+ * `responding` ladder already covers every state this row could have described,
+ * including composing tool calls, which paint as `composing · N B` on their own
+ * tool rows. So liveness has ONE channel, and a record with nothing in it
+ * paints nothing.
+ *
+ * ### The safety net that went with it, and why it is not needed
+ *
+ * The old `|| record.streaming` branch also covered a DESYNC: if a record said
+ * it was streaming while the working line was suppressed, the "Writing" row was
+ * the only thing left moving. That state is unreachable, and the reason is that
+ * the two are not derived from the same thing by accident — the working line's
+ * visibility keys on the SESSION-level `frontend.streaming` flag
+ * (`chat-page.tsx` reads `canonical.frontend?.streaming` into `busy`, which
+ * arrives here as `waiting` via `chat-content.tsx`), not on
+ * any record in the list, so it is live for the whole provider call regardless
+ * of what the record list currently holds. `agent_end` settles the record and
+ * that flag together, and `dropLiveRecords` clears live records on a gap, so
+ * there is no ordering in the normal event path that leaves one true and the
+ * other false (UX review round 1, U2: the state had to be forced by hand and
+ * could not be reached by walking the app). If a future change derives
+ * `waiting` from the record list instead, this net has to come back with it.
+ *
+ * ### The 46.4px step at the first token, accepted deliberately
+ *
+ * Removing the row unmasked a real motion: before the first token the working
+ * line is alone in the column, and at the first token the avatar and the first
+ * line of prose appear ABOVE it, so the working line drops from top 96.4 to
+ * 142.8 at 1024 — 46.4px in one frame (design review round 1, D5, measured
+ * across the two consecutive states). This is accepted, not overlooked.
+ *
+ * It is legible rather than glitchy: what pushes the status line down is the
+ * answer the reader is waiting for, and a status line yielding to content is an
+ * event with a cause on screen. The alternative — showing the avatar before the
+ * first token so the gutter is already occupied — removes only the horizontal
+ * half of the step, adds an avatar that then has to move again when the prose
+ * row mounts under it, and the version that removes the step entirely is the
+ * avatar taking a real flex slot, which is the row restructure
+ * `message-container.tsx` documents as deliberately deferred with a measured
+ * collision. Paying that for 46.4px is the wrong trade; if the step is ever
+ * reported, fix it there rather than by reinstating a row.
+ *
  * Adjacency and spacing are therefore computed over what the reader can SEE,
  * never over what the record list contains. `AssistantRow` returns `null` on
  * this same predicate rather than on a copy of the condition, because two
@@ -47,7 +109,7 @@ export type Row = {
  */
 export function paintsSomething(record: TranscriptRecord): boolean {
 	if (record.kind !== "assistant") return true;
-	return Boolean(record.text) || record.streaming;
+	return Boolean(record.text);
 }
 
 /**
