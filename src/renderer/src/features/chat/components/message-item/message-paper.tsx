@@ -11,15 +11,22 @@
  *
  * ## Measure
  *
- * Prose is capped at `MEASURE`, not at the width of the column. The column is
- * 900px; at the size this used to render — a hardcoded `1.05rem`, the only
- * 16.8px text anywhere in the app and not a step on the § 4 ramp — a
- * paragraph ran to about 104 characters per line, well past the 60-80 that
- * reading research and every reading pane worth copying (Superhuman, Notion,
- * Things) settle on. Both halves of that are fixed here: the size is the
- * ramp's `text-body`, and the measure is what buys the comfort back. The user
- * bubble gets a narrower cap again, which is what makes a user turn read as
- * an aside and the agent's answer read as the document.
+ * The USER bubble is capped at `MEASURE`; the agent's answer is not. A user
+ * turn is an aside — a quotation of the reader's own words — and the narrower
+ * box is what makes it read as one while the agent's answer reads as the
+ * document.
+ *
+ * The agent side used to take the same cap, and no longer does. It must share
+ * the left edge and the width of the tool rows in the same turn, which is an
+ * operator requirement about the seam between the two registers rather than a
+ * taste call about line length; `markdown.css`'s measure comment carries the
+ * report and the measured numbers. This file is the LEGACY message path and
+ * `canonical-transcript.tsx` is the canonical one, so they have to agree —
+ * a cap left here would show up as the same defect on whichever surface still
+ * renders through this component.
+ *
+ * The type size is separate and unchanged: `text-body` on the § 4 ramp, not
+ * the hardcoded `1.05rem` this once used.
  *
  * The `thinking` field renders through `AgentReasoning`, which honours the
  * `showAgentReasoning` preference (default false, § 7). The word "Thinking"
@@ -37,7 +44,7 @@ import { AgentReasoning } from "../trace";
 import { MessageControls } from "./message-controls";
 import { StreamingMessage } from "./streaming-message";
 
-/** Opts the prose elements into the ~72-character cap defined in `markdown.css`. */
+/** Opts the USER bubble into the reading measure defined in `markdown.css`. */
 const MEASURE = "lo-measured";
 
 // Props for the MessagePaper component
@@ -182,14 +189,14 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 					}
 				}}
 				styleProps={markdownStyleProps}
-				className={cn("relative w-full break-words text-ink", MEASURE)}
+				className={cn("relative w-full break-words text-ink")}
 			/>
 		);
 
 		const regularMessageComponents =
 			!shouldShowStreaming && message ? (
 				<div
-					className={cn("relative w-full break-words text-ink", MEASURE)}
+					className={cn("relative w-full break-words text-ink")}
 					ref={messageContentRef}
 				>
 					{replies.length > 0 && <ReplyPreview replies={replies} />}

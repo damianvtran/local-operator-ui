@@ -4,8 +4,8 @@
 	"scriptsTree": "34f86480baed18cb90017f4ac7f9e22499eed493",
 	"dirtyWorkingTree": false,
 	"capturedAt": "2026-08-06T18:36:03.218Z",
-	"frames": 518,
-	"surfaces": 77,
+	"frames": 526,
+	"surfaces": 81,
 	"themes": 12,
 	"countsMean": {
 		"frames": "The SWEPT total: every frame outside a declared `supplementary` set. 518 here - this branch's 500 plus the 18 that #108, #110 and #113 added to main while it was in review. Reconciled against the tree at the rebase rather than carried over, because the rebase united two sweeps and neither side's scalar described the union.",

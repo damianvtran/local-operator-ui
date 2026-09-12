@@ -370,6 +370,27 @@ equally important**, and the interface must not present them as though they are.
   is a bug, not a style choice.
 - Never show a spinner and a trace line for the same action; the line's own
   state carries it.
+- **One liveness element per turn, and it is the working line.** A turn that is
+  in flight but has produced nothing yet says so once, on the aggregate line at
+  the foot of the transcript — never additionally as a row in the answer's own
+  register. The line's ladder (`thinking`, `composing N calls`, `running …`,
+  `responding`) already names every such state, and a record with no content in
+  it paints nothing. This mirrors the TUI, which has one `WorkingBlock` and no
+  per-message equivalent.
+- **Agent output shares the tool rows' edges.** Prose and the ledger are two
+  registers of one turn and resolve against the same row content box, so they
+  take one left rail and one right edge. Agent prose therefore carries **no
+  reading cap and no centring** — the reading measure belongs to the user
+  bubble, whose narrower box is what makes a user turn read as an aside and the
+  agent's answer read as the document. A cap on the answer puts a second left
+  edge in the column, which reads as a mistake rather than as a decision.
+  **If a reading measure is ever wanted back on agent output, it must narrow
+  the whole row content box — prose and the ledger together, i.e. the shared
+  `CHAT_MEASURE` container — never `max-width` on `.lo-markdown` alone.**
+  Narrowing prose by itself re-creates the two rails this rule removes. The
+  cost of not having one is recorded rather than hidden: measured 98.1
+  characters a line, which is the ceiling and not a slope, because the column
+  is capped at 900px and so reads the same at 1920 as at 1024.
 - A security notice is **retrospective** — it records that a risk was reviewed
   and averted. It must not be styled as a prompt, because nothing consumes a
   response to it.
