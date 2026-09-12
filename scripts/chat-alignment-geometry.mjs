@@ -98,7 +98,20 @@ const teardown = () => {
 		chrome = null;
 	}
 	if (dataDir) {
-		rmSync(dataDir, { recursive: true, force: true });
+		/*
+		 * `maxRetries` because SIGKILL returns before the kernel has finished
+		 * reaping the process, and Chrome's profile keeps being written to for a
+		 * few milliseconds after that — long enough that a plain recursive remove
+		 * loses the race and throws ENOTEMPTY, turning a successful measurement
+		 * into a non-zero exit. `force` alone does not cover it: that suppresses
+		 * a missing path, not a directory that is still filling up.
+		 */
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 10,
+			retryDelay: 100,
+		});
 		dataDir = null;
 	}
 };
@@ -238,18 +251,49 @@ const main = async () => {
 		await cdp.send("Page.navigate", {
 			url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:localOperatorDark`,
 		});
-		/* Fonts decide `ch`, and `ch` decided the cap that is being removed, so a
-		   measurement taken against the fallback face would be a number about
-		   this machine rather than about the product. */
-		for (let i = 0; i < 60; i++) {
+		/*
+		 * Wait for the story to be MEASURABLE, which is three separate
+		 * conditions and not one.
+		 *
+		 * Storybook's own "preparing" wrapper has to be gone: it renders inside an
+		 * otherwise-ready document, so the transcript query below can pass while
+		 * the visible page is still a loader. Fonts have to have resolved, because
+		 * `ch` resolves against the loaded face and the cap this change removes
+		 * was expressed in `ch` — a measurement taken against the fallback would
+		 * be a number about this machine rather than about the product. And the
+		 * transcript itself has to be in the DOM.
+		 *
+		 * Polled rather than slept on: a fixed delay long enough for a cold start
+		 * is paid by every story, and a delay short enough to be cheap is the one
+		 * that intermittently reports "no transcript rendered" for a story that
+		 * renders perfectly well.
+		 */
+		let ready = false;
+		for (let i = 0; i < 120 && !ready; i++) {
 			const { result } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
-				expression: `document.fonts.status === "loaded" && !!document.querySelector("[data-lo-canonical-transcript]")`,
+				expression: `(() => {
+					const loading = [...document.querySelectorAll(
+						".sb-preparing-story, .sb-preparing-docs, .sb-nopreview, .sb-loader",
+					)].some((el) => el.getBoundingClientRect().height > 0);
+					if (loading) return false;
+					if (document.fonts.status !== "loaded") return false;
+					return !!document.querySelector("[data-lo-canonical-transcript]");
+				})()`,
 			});
-			if (result.value) break;
-			await sleep(150);
+			ready = result.value === true;
+			if (!ready) await sleep(250);
 		}
-		await sleep(400);
+		if (!ready) {
+			throw new Error(
+				`${story} @ ${width}x${height}: story never became measurable`,
+			);
+		}
+		/* One settled frame after layout, so the rects are post-reflow. */
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression: `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`,
+		});
 		const { result } = await cdp.send("Runtime.evaluate", {
 			returnByValue: true,
 			expression: PROBE,
