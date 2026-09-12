@@ -1,7 +1,7 @@
 {
 	"head": "af374b62531b0275c6c8e070e3e85d45cbf35a75",
-	"srcTree": "1fe8df63c66c24d1a604d0e4796b339cccf5bfd7",
-	"scriptsTree": "cb729c6e691bcde2dc6e19bd8859fbdb8b3b1032",
+	"srcTree": "34d1ae8129d9c527d9cee0d72916af18031b851f",
+	"scriptsTree": "34f86480baed18cb90017f4ac7f9e22499eed493",
 	"dirtyWorkingTree": false,
 	"capturedAt": "2026-08-06T18:36:03.218Z",
 	"frames": 518,
@@ -30,7 +30,7 @@
 		],
 		"addedBySweptRefresh": 0,
 		"addedDirectories": [],
-		"provenanceNote": "Re-captured at this head after the rebase onto main: the strip's 20 brand-theme frames came back BYTE-IDENTICAL to the pre-rebase ones, which is the evidence that uniting the two series changed no rendering of this branch's own surfaces. A full sweep is not possible on any current tree - `shell-app-shell--settings-appearance` times out preparing in Storybook, reproduced on clean origin/main, so it is pre-existing rather than this branch's. `fonts.css` gains `font-display: swap`, which changes what renders WHILE a face loads and not the settled paint: re-capturing `chat-tool-rows` (the most monospace-dense surface) moved 7 of 22 frames by 2-16 bytes of ~15kB, i.e. encoder noise and no pixel a reviewer can see, so main's frames are left as committed rather than churned."
+		"provenanceNote": "Re-captured at this head after the rebase onto main: the strip's 20 brand-theme frames came back BYTE-IDENTICAL to the pre-rebase ones, which is the evidence that uniting the two series changed no rendering of this branch's own surfaces. A full sweep is not possible on any current tree - `shell-app-shell--settings-appearance` times out preparing in Storybook, reproduced on clean origin/main, so it is pre-existing rather than this branch's. `fonts.css` gains `font-display: swap`, which changes what renders WHILE a face loads and not the settled paint: re-capturing `chat-tool-rows` (the most monospace-dense surface) moved 7 of 22 frames by 2-16 bytes of ~15kB, i.e. encoder noise and no pixel a reviewer can see, so main's frames are left as committed rather than churned. Re-stamped for the #116 sync merge: that commit changes `src/main/` and two scripts, so both tree hashes move, but it touches NO renderer source (`git diff --name-only 57ff92432 HEAD -- 'src/renderer/**'` is empty), so every frame is still a picture of the code under review and none were re-captured. `head` is unchanged - the provenance ancestor stays reachable and an ancestor across an unrelated merge."
 	},
 	"supplementary": [
 		{
