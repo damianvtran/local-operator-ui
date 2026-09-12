@@ -111,6 +111,8 @@ type ChatContentProps = {
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
 		onCommand?: (line: string) => void;
+		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
+		effortEntities?: readonly unknown[];
 	};
 	/**
 	 * Present when the conversation is a canonical backend session: the

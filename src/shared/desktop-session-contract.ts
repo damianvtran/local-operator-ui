@@ -236,6 +236,21 @@ export type CanonicalFrontendState = {
 	 */
 	subagent_cost_knowledge?: "unknown" | "exact" | "partial" | "floor" | null;
 	cost_knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * The most recent turn's token usage, when the owner reported one.
+	 *
+	 * Read by `session-cost.ts` to tell "this session has spent nothing" from
+	 * "this session has run and nobody could price it" - the difference between
+	 * showing no cost segment and showing the honest unknown-price spelling. It
+	 * is declared here rather than reached through the index signature because
+	 * it is the field that decides whether a reading renders at all, and an
+	 * `as never` cast at the call site would let a rename on the wire pass
+	 * type-checking silently (review round 1, R4).
+	 */
+	last_usage?: {
+		input_tokens?: number | null;
+		output_tokens?: number | null;
+	} | null;
 	// Canonical runtime fields are additive; preserve unknown fields rather
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;

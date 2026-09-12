@@ -5,7 +5,7 @@ import type { CanonicalFrontendState } from "../../../../../shared/desktop-sessi
 import { ContextWheel } from "./context-wheel";
 import { contextReading, contextTooltipLines } from "./session-context";
 import { costTooltip, sessionCost } from "./session-cost";
-import { effortState, modelIdentity } from "./session-model";
+import { effortState, modelIdentity, reconcileEffort } from "./session-model";
 
 /**
  * The session status strip: model, reasoning effort, context and spend.
@@ -76,6 +76,15 @@ export type SessionStatusStripProps = {
 	 * every reading as a plain label rather than a control that cannot succeed.
 	 */
 	onCommand?: (line: string) => void;
+	/**
+	 * The effort rungs `/effort` will accept, or `undefined` while unknown.
+	 *
+	 * Passed in rather than queried here so this component stays a pure
+	 * projection of state it is handed — the same reason it holds no optimistic
+	 * local state. See `reconcileEffort` for why the picker's list wins over the
+	 * stream's on adjustability, and why pending is not the same as empty.
+	 */
+	effortEntities?: readonly unknown[];
 	className?: string;
 };
 
@@ -169,17 +178,31 @@ const Reading: FC<{
 	);
 
 /** A tooltip body of several lines: the first at reading weight, rest as meta. */
-const TooltipLines: FC<{ lines: string[] }> = ({ lines }) => (
+/**
+ * A tooltip's lines: the machine value on top, prose under it.
+ *
+ * `mono` is explicit per call rather than inferred from position. Round 1
+ * monospaced the first line of every multi-line tooltip, which is right for
+ * `3.4%/400k` and `>=$2.10` and wrong for the no-reading tooltip, whose first
+ * line is the English word "Context" used as a heading - rendered in Geist Mono
+ * it broke the branding contract's "monospace is machine voice, never prose"
+ * and made the empty state look like a different component from the populated
+ * one (round 1, D2). Position is not a reliable proxy for voice, so the caller
+ * says which it is.
+ */
+const TooltipLines: FC<{ lines: string[]; mono?: boolean }> = ({
+	lines,
+	mono = true,
+}) => (
 	<span className="flex flex-col gap-0.5">
 		{lines.map((line, index) => (
 			<span
 				key={line}
 				className={cn(
 					index === 0 ? "text-ink" : "text-ink-muted",
-					// The leading line of a context reading is a NUMBER, and § 4 makes
-					// monospace the machine voice. The explanations under it are prose
-					// and stay proportional.
-					index === 0 && lines.length > 1 && "font-mono text-mono-sm",
+					// The leading line is the machine value where there is one; the
+					// explanations under it are prose and stay proportional.
+					mono && index === 0 && lines.length > 1 && "font-mono text-mono-sm",
 				)}
 			>
 				{line}
@@ -191,6 +214,7 @@ const TooltipLines: FC<{ lines: string[] }> = ({ lines }) => (
 export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	frontend,
 	onCommand,
+	effortEntities,
 	className,
 }) => {
 	if (!frontend) return null;
@@ -200,14 +224,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	// `selected_model` is the fallback for an owner that reports no effective
 	// spec (nothing has run yet), which is the state a fresh session is in.
 	const model = frontend.effective_model ?? frontend.selected_model;
-	const identity = modelIdentity(model);
-	const effort = effortState(model);
+	// The catalogue is the backend's own curated naming pass (see
+	// `modelIdentity`), and it is on the wire even on a cold snapshot where the
+	// spec's `display_name` is still empty.
+	const identity = modelIdentity(model, frontend.model_catalogue);
+	const effort = reconcileEffort(effortState(model), effortEntities);
 	const reading = contextReading({
 		context_tokens: frontend.context_tokens,
 		context_window: frontend.context_window,
 		context_is_estimate: frontend.context_is_estimate,
 	});
-	const cost = sessionCost(frontend, frontend.last_usage as never);
+	const cost = sessionCost(frontend, frontend.last_usage);
 
 	// Nothing known at all: a session that has connected but reported no model,
 	// no reading and no spend. An empty row is better than a row of dashes.
@@ -278,6 +305,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				}
 				tooltip={
 					<TooltipLines
+						/*
+						 * The no-reading tooltip leads with the word "Context", which is
+						 * prose, not a machine value - § 4 forbids monospace there
+						 * (round 1, D2). Every other context state leads with a number.
+						 */
+						mono={reading.status !== "no-reading"}
 						lines={[
 							...contextTooltipLines(
 								reading,

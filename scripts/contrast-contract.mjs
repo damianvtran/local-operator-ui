@@ -263,6 +263,15 @@ const CONTROLS = [
 	 * Listing grounds it never renders on would be asserting a pairing the
 	 * design does not promise.
 	 */
+	/*
+	 * `ink: "inkMuted"` on all four rows, while the inert reading and the
+	 * `estimate` marker render `inkDim`. That is not a coverage hole: `inkDim`
+	 * is asserted against every ground at the text floor by the role loop above,
+	 * so the pairing IS measured - just not from here. Noted rather than
+	 * duplicated, because a fifth row asserting a pair another loop already
+	 * covers is a second place to update when the token moves (review round 1,
+	 * R5).
+	 */
 	{
 		name: "context wheel, calm reading",
 		on: ["surface"],
@@ -293,10 +302,53 @@ const CONTROLS = [
 		 * `hairline` and what this row pins.
 		 */
 		name: "context wheel, no reading yet",
-		on: ["surface"],
+		/*
+		 * `accentWash` is the reading button's HOVER ground, and the empty wheel
+		 * is the one state whose track is measured against the ground rather than
+		 * against an arc - so this is where a hover fill can push the control's
+		 * sole boundary under the floor. It did: iceberg measured 2.89:1 (design
+		 * round 1, D6). Listed so the gate says so rather than a reviewer.
+		 */
+		on: ["surface", "accentWash"],
 		fill: null,
-		border: "borderControl",
-		ink: "inkMuted",
+		border: "inkDim",
+		/*
+		 * `ink` is the LABEL beside the wheel, and `READING_BUTTON` swaps it to
+		 * `ink` on hover - so the hovered row's text is `ink`, not the resting
+		 * `inkMuted`. Stating the resting ink against the hover ground would
+		 * assert a combination the component never renders.
+		 */
+		ink: "ink",
+	},
+];
+
+/**
+ * Pairs where BOTH sides are foreground roles, so neither is the ground.
+ *
+ * `CONTROLS` can only express ink-on-fill and edge-against-ground. That is the
+ * right shape for a button, and it cannot state the one boundary a dial is made
+ * of: the arc against its own TRACK. Round 1 added four `CONTROLS` rows for the
+ * context wheel, all of which passed, and none of which measured that pair -
+ * which is how an arc at 1.05:1 against its track shipped behind a green gate
+ * (design round 1, D1). § 3 says it in the file's own words: green output about
+ * a pairing nobody listed is not evidence about that pairing.
+ *
+ * Listed at the STRUCTURAL floor, because this is an edge that carries meaning
+ * by position rather than text that has to be read.
+ */
+const ADJACENT = [
+	{
+		/*
+		 * The populated ring only. With no arc the track is measured against the
+		 * ground instead, by the `no reading yet` row above - the component
+		 * switches its track role with its state precisely because no single
+		 * value clears 3:1 from both the arc and the composer ground (that would
+		 * need ~9:1 between arc and ground; the best theme has 7.33:1).
+		 */
+		name: "context wheel arc against its track",
+		a: ["info", "warning", "danger"],
+		b: "sunken",
+		floor: FLOOR.nonText,
 	},
 ];
 
@@ -775,6 +827,23 @@ for (const { id, palette: p } of palettes) {
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
 			assertPair(id, p, g.fg, ground, FLOOR.nonText, g.name);
+		}
+	}
+
+	/* Foreground pairs: an edge whose two sides are both foreground roles. */
+	for (const pair of ADJACENT) {
+		const b = p[pair.b];
+		if (!isHex(b)) continue;
+		for (const roleName of pair.a) {
+			const a = p[roleName];
+			if (!isHex(a)) continue;
+			assertions++;
+			const got = ratio(a, b);
+			if (got < pair.floor && !findException(id, roleName, pair.b, got)) {
+				fail(
+					`${id}: ${pair.name} — ${roleName} ${a} against ${pair.b} ${b} = ${got}:1, need ${pair.floor}:1`,
+				);
+			}
 		}
 	}
 

@@ -13,6 +13,11 @@
  *   - `format_context_tokens` (`local_operator/session/frontend_state.py:3712`)
  *   - `format_window` (`local_operator/session/frontend_state.py:3729`)
  *
+ * Every number below is spelled through `pyFixed`, never `toFixed`: Python
+ * rounds half-to-even on the exact binary value and `toFixed` rounds half away
+ * from zero, which made the band and this strip print different percentages for
+ * the same session (round 1, R1/Q1). See `fixed-point.ts`.
+ *
  * ## Why the colour is a union of two ladders
  *
  * Straight from `context_semantic_color`'s own reasoning. An ABSOLUTE token
@@ -52,6 +57,8 @@
  * `scripts/session-status.test.mjs` asserts the ladders, the union, the
  * boundary behaviour and the spellings against the Python semantics.
  */
+
+import { pyFixed } from "./fixed-point";
 
 /**
  * The semantic rungs, warmest first — `_CONTEXT_COLOR_RANK`.
@@ -128,8 +135,8 @@ export function contextSemanticColor(tokens: number, window = 0): ContextRung {
  * differently on purpose.
  */
 export function formatContextTokens(tokens: number): string {
-	if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}m`;
-	if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
+	if (tokens >= 1_000_000) return `${pyFixed(tokens / 1_000_000, 1)}m`;
+	if (tokens >= 1_000) return `${pyFixed(tokens / 1_000, 1)}k`;
 	return String(tokens);
 }
 
@@ -143,14 +150,14 @@ export function formatWindow(window: number): string {
 	if (window >= 1_000_000) {
 		const scaled = window / 1_000_000;
 		return scaled === Math.trunc(scaled)
-			? `${scaled.toFixed(0)}M`
-			: `${scaled.toFixed(1)}M`;
+			? `${pyFixed(scaled, 0)}M`
+			: `${pyFixed(scaled, 1)}M`;
 	}
 	if (window >= 1_000) {
 		const scaled = window / 1_000;
 		return scaled === Math.trunc(scaled)
-			? `${scaled.toFixed(0)}k`
-			: `${scaled.toFixed(1)}k`;
+			? `${pyFixed(scaled, 0)}k`
+			: `${pyFixed(scaled, 1)}k`;
 	}
 	return String(window);
 }
@@ -170,7 +177,7 @@ export function contextSpelling(tokens: number, window: number): string {
 	// A rounded `0%` over a non-zero reading is refused, for the same reason a
 	// confident `$0.0000` over real spend is.
 	if (percent < 0.05) return `<0.1%/${formatWindow(window)}`;
-	return `${percent.toFixed(1)}%/${formatWindow(window)}`;
+	return `${pyFixed(percent, 1)}%/${formatWindow(window)}`;
 }
 
 /** The four states a context reading can be in, named so the UI can branch. */

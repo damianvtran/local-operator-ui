@@ -167,6 +167,8 @@ type MessageInputProps = {
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
 		onCommand?: (line: string) => void;
+		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
+		effortEntities?: readonly unknown[];
 	};
 };
 
@@ -1208,6 +1210,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							<SessionStatusStrip
 								frontend={sessionStatus.frontend}
 								onCommand={sessionStatus.onCommand}
+								effortEntities={sessionStatus.effortEntities}
 							/>
 						</ErrorBoundary>
 					)}

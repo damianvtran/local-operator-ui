@@ -19,6 +19,7 @@ import {
 	draftIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
@@ -143,11 +144,32 @@ function SessionPanel({
 				if (ok) navigate(`/chat/${id}`);
 			});
 	};
-	const { dispatch, picker } = useSlashDispatch({
+	/*
+	 * The effort rungs the owner will accept, shared with `EffortPicker`.
+	 *
+	 * Same `queryKey` and same `queryFn` shape as the picker's own `useEntities`
+	 * call, so this is one cache entry rather than a second source of truth -
+	 * which is the entire point, since the two disagreeing is what the strip's
+	 * chip advertised and the picker then denied. Disabled without a session for
+	 * the same reason the strip itself is withheld then.
+	 */
+	const effortEntities = useQuery({
+		queryKey: ["desktop", "entities", sessionId, "effort", ""],
+		queryFn: () =>
+			desktopResult<{ entities: { value: string }[]; current: unknown }>({
+				op: "commands.entities",
+				sessionId: sessionId as string,
+				command: "effort",
+			}),
+		enabled: Boolean(sessionId),
+		staleTime: 15_000,
+	});
+	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
 		sessionId,
 		canonical,
 		rebind,
 		addMessage: (message) => canonical.addNote(message.message ?? ""),
+		focusComposer: () => input.current?.focusInput(),
 	});
 	useEffect(() => {
 		if (draftKey) input.current?.focusInput();
@@ -612,7 +634,20 @@ function SessionPanel({
 						sessionId
 							? {
 									frontend: canonical.frontend,
-									onCommand: (line: string) => void dispatch(line),
+									/*
+									 * `dispatchFromControl`, not `dispatch`: a chip has no
+									 * fallback path to report a failure the way typed text
+									 * does, so an unconsumed outcome has to be surfaced here
+									 * rather than dropped into a `void` (round 1, U2).
+									 */
+									onCommand: (line: string) => void dispatchFromControl(line),
+									/*
+									 * The SAME query `EffortPicker` renders from, by the
+									 * same key, so React Query serves both from one cache
+									 * entry and the chip cannot offer a rung the picker
+									 * would then refuse (round 1, U3).
+									 */
+									effortEntities: effortEntities.data?.entities,
 								}
 							: undefined
 					}
