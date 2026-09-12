@@ -610,11 +610,13 @@ export const WorkingLabels: Story = {
  * 3. A call that printed NOTHING, whose object column is therefore empty rather
  *    than quoting `(empty)`: the stand-in exists to say something, and this is
  *    the state that must not be mistaken for a rendering failure.
- * 4. A normal row, whose arguments arrived on the live start. Unchanged, and
+ * 4. A stand-in line long enough that the column truncates it, so the mark is
+ *    judged where it has to survive an ellipsis rather than on a line of its own.
+ * 5. A normal row, whose arguments arrived on the live start. Unchanged, and
  *    here as the control: it is what the rows above must look like.
  */
 export const JoinedMidTurn: Story = {
-	render: () => <Frame height={170} records={joinedMidTurn()} />,
+	render: () => <Frame height={190} records={joinedMidTurn()} />,
 };
 
 /**
@@ -719,6 +721,24 @@ function joinedMidTurn(): TranscriptRecord[] {
 			duration_s: 0.1,
 		},
 		TS + 1_300,
+	);
+	// A stand-in line long enough to be truncated by the column itself, so the
+	// mark and the column's own right-side ellipsis are visible TOGETHER: the
+	// design round's D1, which asked for the state where the mark has to survive
+	// truncation rather than being the only thing on the line.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-long",
+			tool_name: "grep",
+			result: result(
+				"exit code: 0\n--- stdout ---\n" +
+					"src/renderer/src/features/chat/components/trace/tool-row.tsx:412: a line long enough that the object column truncates it",
+			),
+			duration_s: 0.4,
+		},
+		TS + 1_400,
 	);
 	// The control: arguments arrived on the start, which is what every settled
 	// row looks like when the viewer was there for the whole turn.

@@ -195,7 +195,15 @@ const STORIES = [
 	["command-palette-commandpalette--no-results", 1280, 800],
 
 	["onboarding-onboardingmodal--default", 1280, 900],
-	["onboarding-onboardingmodal--radient-sign-in", 1280, 900],
+	/*
+	 * `--radient-sign-in` was REMOVED, not renamed: the story went away with the
+	 * Tailwind v4 landing (bb57a4080) and this list was not updated with it. The
+	 * harness checks every id against the manifest before it captures anything,
+	 * so ONE dead id made the whole sweep abort - `unknown story id(s):
+	 * onboarding-onboardingmodal--radient-sign-in`. The frames the story used to
+	 * produce are declared in `manifest.json` as a historical set rather than
+	 * re-derived by a sweep that cannot reach them.
+	 */
 	["onboarding-onboardingmodal--create-agent", 1280, 900],
 	["onboarding-onboardingmodal--congratulations", 1280, 900],
 
