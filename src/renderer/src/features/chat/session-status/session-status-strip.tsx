@@ -318,7 +318,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 									? model.max_context_window
 									: null,
 							),
-							"Click for the full breakdown",
+							/*
+							 * Names both numbers before the user meets the second one.
+							 * This reading is what has been MEASURED so far; the
+							 * breakdown behind it estimates the NEXT request, so the
+							 * two legitimately differ (3.1% here, 4.0% there). The
+							 * duality is inherited from the Python `/context` and is
+							 * not new — but the chip makes it the primary way users
+							 * reach that view, so the pairing is now seen far more
+							 * often (UX round 1, U7).
+							 */
+							"Measured now; click for the full breakdown, which estimates your next request",
 						]}
 					/>
 				}
