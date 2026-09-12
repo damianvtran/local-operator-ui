@@ -304,7 +304,23 @@ export function ChatSidebar({
 			    With the slots outside the truncating element no qualifier is ever
 			    half-rendered, the ellipsis always refers to the title, and the
 			    accessible name is built from the same predicate as the pixels. */}
-			<span className="min-w-0 flex-1 truncate">
+			{/* `min-w-[5.5rem]` is a FLOOR, and the floor is what makes the priority
+			    order real. The title is `flex-1`, so it takes whatever the trailing
+			    slots leave — right while it has room, wrong when it does not: with
+			    two `shrink-0` qualifiers beside it, a row carrying both a binding and
+			    `· Not sent yet` gave the title 38px of 179 (`Watchli… · release-pod ·
+			    Not sent yet`), where the pre-change layout rendered the same fixture
+			    as `Watchlist dossiers · release-pod · No…` — the old layout truncated
+			    the LEAST important element and the first attempt at this one
+			    truncated the most important, on a row a user hunts for by name
+			    (design round 4, D18).
+
+			    So the title holds a floor and the SECONDARY qualifiers yield
+			    (`min-w-0 shrink truncate` below), which restores the old priority
+			    without restoring the old single-span layout that let the ellipsis
+			    land inside a qualifier. The mark stays `shrink-0`: it is the row's
+			    justification, and it is short. */}
+			<span className="min-w-[5.5rem] flex-1 truncate">
 				{row.title || "Untitled chat"}
 			</span>
 			{/* In a flat list nothing else names the profile answering, so two
@@ -320,12 +336,18 @@ export function ChatSidebar({
 			{!nested &&
 				bindingName(row) &&
 				!conversationMatches.has(row.session_id) && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+					/* Shrinkable, unlike the mark: a secondary qualifier is recoverable
+					   (the tooltip, the nested list, the chat itself) and a title is
+					   not (design round 4, D18). `truncate` rather than a bare shrink
+					   so a squeezed qualifier ends in its own ellipsis instead of being
+					   clipped mid-glyph — and never renders as a bare `·`, because an
+					   ellipsis follows text. */
+					<span className="ml-1 min-w-0 shrink truncate text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
 				)}
 			{unstarted.has(row.session_id) && (
-				<span className="ml-1 shrink-0 text-meta text-ink-muted">
+				<span className="ml-1 min-w-0 shrink truncate text-meta text-ink-muted">
 					· Not sent yet
 				</span>
 			)}
