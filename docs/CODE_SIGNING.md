@@ -40,9 +40,33 @@ The following environment variables are used for code signing:
    - electron-builder automatically signs the application using the provided certificate
 
 3. **Notarization (macOS only)**:
-   - After signing, the `scripts/notarize.js` script is executed (configured in package.json)
-   - This script submits the app to Apple for notarization using `notarytool` (via `@electron/notarize`)
+   - After signing, the `scripts/notarize.js` script is executed (configured in package.json as `afterSign`)
+   - This script submits the **app bundle** to Apple for notarization using `notarytool` (via `@electron/notarize`)
    - The notarization process requires `APPLE_ID`, `APPLE_ID_PASSWORD`, and `APPLE_TEAM_ID`
+   - `@electron/notarize` staples the returned ticket to the app as part of the same call
+
+4. **Disk image signing, notarization and stapling (macOS only)**:
+   - `dmg.sign` is `true`, so the DMG container is signed with the Developer ID
+     certificate as electron-builder creates it
+   - After electron-builder finishes, `pnpm notarize-dmg`
+     (`scripts/notarize-artifacts.mjs`) runs: it submits each `.dmg` to Apple,
+     staples the ticket to it, and rewrites that image's `sha512`/`size` in
+     `latest-mac.yml`. Stapling changes the image's bytes and electron-builder
+     hashes artifacts as it creates them, so without the rewrite the update
+     metadata would describe a file that no longer exists
+   - This is the step 0.17.0 was missing. The app inside the image was signed
+     and notarized; the image itself was not, and
+     `spctl -a -vvv -t open --context context:primary-signature` answered
+     `rejected / source=no usable signature` for a freshly downloaded DMG
+
+### Why `mac.notarize` stays `false`
+
+It is not a second way of doing step 3. electron-builder's built-in
+notarization reads `APPLE_APP_SPECIFIC_PASSWORD`, while this project's secrets
+and `.env.build` carry `APPLE_ID_PASSWORD`; enabling it would make
+`notarizeIfProvided` throw `APPLE_APP_SPECIFIC_PASSWORD env var needs to be set`
+partway through a release. `afterSign` owns app notarization, and
+`dmg.sign: true` plus `scripts/notarize-artifacts.mjs` own the image.
 
 ## Setting Up for Local Development
 
@@ -77,6 +101,29 @@ The GitHub Actions workflow is configured to:
 2. Set up the environment for code signing
 3. Build and sign the application for each platform
 4. Notarize the macOS application
+5. Notarize and staple each macOS disk image (`pnpm notarize-dmg`)
+6. Assert the real artifacts before they are uploaded (`pnpm verify-macos-artifacts`)
+
+### The macOS artifact assertions
+
+`scripts/verify-macos-artifacts.mjs` runs five checks against the artifacts the
+build actually produced, and any failure fails the release before upload:
+
+| Check | Command |
+| --- | --- |
+| App is sealed | `codesign --verify --deep --strict` on the `.app` |
+| App is accepted | `spctl -a -vvv -t exec` on the `.app` |
+| App ticket is stapled | `xcrun stapler validate` on the `.app` |
+| Image is accepted | `spctl -a -vvv -t open --context context:primary-signature` on the `.dmg` |
+| Image ticket is stapled | `xcrun stapler validate` on the `.dmg` |
+
+The first three passed on 0.17.0 and the last two failed, which is exactly how a
+release whose app could not be opened from its own download page got out: only
+the app was ever asserted. `context:primary-signature` is what makes the fourth
+check about the image's own signature rather than the app inside it, and
+`spctl` prints `accepted`/`rejected` on stdout whether or not spctl itself
+exited cleanly, so the script judges that check on the output rather than the
+exit status.
 
 ### Required GitHub Secrets
 
