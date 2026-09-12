@@ -1,5 +1,5 @@
 {
-	"head": "2eebaa2d995cc028e98f02d2ddb375d5487cff04",
+	"head": "af374b62531b0275c6c8e070e3e85d45cbf35a75",
 	"srcTree": "1fe8df63c66c24d1a604d0e4796b339cccf5bfd7",
 	"scriptsTree": "cb729c6e691bcde2dc6e19bd8859fbdb8b3b1032",
 	"dirtyWorkingTree": false,
@@ -19,7 +19,7 @@
 		"addedAtHead": "69664578fc7999b09406d91e79e94c382a6841ec",
 		"addedSurfaces": [],
 		"refreshedAt": "2026-09-12T15:26:43.613924Z",
-		"refreshedAtHead": "2eebaa2d995cc028e98f02d2ddb375d5487cff04",
+		"refreshedAtHead": "af374b62531b0275c6c8e070e3e85d45cbf35a75",
 		"refreshedFrames": 20,
 		"refreshedStories": [
 			"chat-session-status-strip"
@@ -142,7 +142,7 @@
 			"source": "live renderer over CDP against an isolated backend",
 			"why": "Live frames from the packaged Electron app over real IPC, which Storybook cannot produce: a cold snapshot, a reload, the backend-down error path, and round 3's aggregator route plus cold-owner effort states. One theme only (localOperatorDark) because these prove BEHAVIOUR, not colour; the theme matrix is the Storybook set's job.",
 			"capturedAt": "2026-09-12T09:53:17.005018Z",
-			"capturedAtHead": "2eebaa2d995cc028e98f02d2ddb375d5487cff04"
+			"capturedAtHead": "af374b62531b0275c6c8e070e3e85d45cbf35a75"
 		}
 	]
 }
