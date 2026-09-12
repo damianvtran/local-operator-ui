@@ -7,6 +7,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -38,6 +39,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { hitsAnswerQuery, searchChats } from "../chat-search";
 
 type Props = {
 	selectedConversation?: string;
@@ -162,14 +164,27 @@ export function ChatSidebar({
 		}, 5000);
 		return () => window.clearInterval(timer);
 	}, [ready, fetchSessions]);
-	const matching = useMemo(
+	// Search is the backend's (`sessions.search`, negotiated as `session_search`),
+	// not a filter over titles: a conversation is remembered by what was SAID in
+	// it, and the sidebar only holds titles. The backend's answer is used only
+	// when it is the answer to what is in the box RIGHT NOW (see
+	// `hitsAnswerQuery`), and the local title/agent/team match is applied on top
+	// either way — `searchChats` ORs them — so a query the backend cannot answer
+	// (an older backend, a failed request) still finds chats by name and label
+	// instead of finding nothing.
+	const searchSupported = desktopFeatureEnabled(
+		capabilities.data,
+		"session_search",
+	);
+	const search = useChatSearch(query, ready && searchSupported);
+	const { rows: matching, conversationMatches } = useMemo(
 		() =>
-			sessions.filter((row) =>
-				`${row.title ?? ""} ${row.binding?.agent ?? ""} ${row.binding?.team ?? ""}`
-					.toLocaleLowerCase()
-					.includes(query.toLocaleLowerCase()),
+			searchChats(
+				sessions,
+				query,
+				hitsAnswerQuery(search.data, query) ? search.data.sessions : null,
 			),
-		[sessions, query],
+		[sessions, query, search.data],
 	);
 	const children = (kind: ChatTarget["kind"], name: string) =>
 		matching.filter((row) =>
@@ -214,7 +229,7 @@ export function ChatSidebar({
 					? "page"
 					: undefined
 			}
-			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
+			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}${conversationMatches.has(row.session_id) ? ", matched in conversation" : ""}`}
 			onClick={() => onSelectConversation(row.session_id)}
 		>
 			<Status row={row} />
@@ -230,6 +245,17 @@ export function ChatSidebar({
 				)}
 				{unstarted.has(row.session_id) && (
 					<span className="ml-1 text-meta text-ink-muted">· Not sent yet</span>
+				)}
+				{/* Says WHY a row is in a filtered list when its visible text does
+				    not contain the query. Without it the filter reads as returning an
+				    arbitrary row, which is worse than no filter: the user cannot tell
+				    a real match from a bug. Same `·` idiom as the qualifiers above
+				    rather than a new glyph, and the same wording the row's own `title`
+				    uses, so the tooltip and the visible mark cannot drift. */}
+				{conversationMatches.has(row.session_id) && (
+					<span className="ml-1 text-meta text-ink-dim">
+						· matched in conversation
+					</span>
 				)}
 			</span>
 			{pendingId === row.session_id && (
@@ -457,6 +483,30 @@ export function ChatSidebar({
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
 			/>
+			{/* Says what the search actually LOOKED AT, and only while a query is
+			    active, because that is the moment the claim is true and relevant.
+			    Both cases are degradations the user cannot see otherwise: the list
+			    still narrows, it just narrows by less than the box promises, and a
+			    search that quietly stops looking inside conversations is
+			    indistinguishable from one that found nothing there. */}
+			{query && ready && !searchSupported && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Searching chat names only. Update the backend to search inside
+					conversations.
+				</p>
+			)}
+			{query && searchSupported && search.isError && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Conversation search is unavailable, so these are name matches.{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() => void search.refetch()}
+					>
+						Retry
+					</button>
+				</p>
+			)}
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-muted">
