@@ -77,8 +77,17 @@ export type CanonicalSessionView = {
 };
 
 export type CanonicalSessionHandle = CanonicalSessionView & {
-	/** Fetch the page of durable rows before the oldest painted one. */
-	loadOlder: () => Promise<void>;
+	/**
+	 * Fetch the page of durable rows before the oldest painted one.
+	 *
+	 * Resolves `true` when a page was applied and `false` when the request
+	 * failed or there was nothing to ask for. It never rejects: the rows already
+	 * painted stay correct through a failure, so this is not exceptional
+	 * control flow. The boolean exists because scroll-driven paging has to bound
+	 * its own retries, and a caller that cannot tell success from failure either
+	 * retries forever or never.
+	 */
+	loadOlder: () => Promise<boolean>;
 	/** View-only clear (the `/clear` contract): nothing is deleted. */
 	clearView: () => void;
 	/**
@@ -575,6 +584,9 @@ export function useCanonicalSessionStream(
 			terminal: null,
 			transcript: EMPTY_TRANSCRIPT,
 			status: "connecting",
+			// Belt to the early return's braces: whatever a superseded page in
+			// flight does, a freshly opened session is not loading older rows.
+			loadingOlder: false,
 		}));
 		// The retry bookkeeping is per SESSION: a previous session's outstanding call
 		// ids would each buy a history page for the new one, sized by the old gap,
@@ -586,30 +598,56 @@ export function useCanonicalSessionStream(
 	// Latest view for callbacks that must not re-create per render.
 	const viewRef = useRef(view);
 	viewRef.current = view;
+	// The conversation currently on screen, read at resolution time rather than
+	// closed over, so an in-flight page can tell whether it is still wanted.
+	const sessionRef = useRef(sessionId);
+	sessionRef.current = sessionId;
 
 	const loadingOlderRef = useRef(false);
-	const loadOlder = useCallback(async () => {
-		if (!sessionId || loadingOlderRef.current) return;
+	const loadOlder = useCallback(async (): Promise<boolean> => {
+		if (!sessionId || loadingOlderRef.current) return false;
 		const { transcript } = viewRef.current;
-		if (!transcript.hasMore || !transcript.oldestId) return;
+		if (!transcript.hasMore || !transcript.oldestId) return false;
+		// The session this request is being made for. A page that resolves after
+		// the reader has switched conversations describes a transcript that is no
+		// longer on screen, and `applyHistoryPage` would happily splice it into
+		// the new one (clause H). Scroll paging makes this reachable in a way
+		// clicking never did: a page can be in flight for any scroll that happens
+		// to precede a click in the sidebar.
+		const requested = sessionId;
 		loadingOlderRef.current = true;
 		setView((current) => ({ ...current, loadingOlder: true }));
 		try {
 			const page = await desktopResult<DesktopHistoryPage>({
 				op: "sessions.history",
-				sessionId,
+				sessionId: requested,
 				beforeId: transcript.oldestId,
 				limit: 100,
 			});
+			if (sessionRef.current !== requested) {
+				// Clear the flag before standing down. The rows are not spliced (a
+				// foreign page must never reach this transcript), but `loadingOlder`
+				// is the OLD session's view state and nothing else clears it: the
+				// `finally` below resets only the module-level ref, and the
+				// session-switch effect deliberately leaves view fields alone. Left
+				// true, switching back showed a disabled "Loading earlier messages"
+				// spinner with no request in flight and no way to clear it short of
+				// a reload — and because the affordance renders disabled in that
+				// state, the reader could not even retry.
+				setView((current) => ({ ...current, loadingOlder: false }));
+				return false;
+			}
 			setView((current) => ({
 				...current,
 				loadingOlder: false,
 				transcript: applyHistoryPage(current.transcript, page),
 			}));
+			return true;
 		} catch {
 			// The rows already painted are still correct; the affordance simply
 			// stays available for another try.
 			setView((current) => ({ ...current, loadingOlder: false }));
+			return false;
 		} finally {
 			loadingOlderRef.current = false;
 		}
