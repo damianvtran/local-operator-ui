@@ -99,6 +99,13 @@ type ChatContentProps = {
 	agentData?: AgentDetails | null;
 	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
+	/**
+	 * The user has begun composing. Forwarded verbatim to the composer, which
+	 * calls it on the textarea's own onChange; the POLICY of what that triggers
+	 * (at most one speculative runtime warm per session) lives in
+	 * `useWarmSession`, not here.
+	 */
+	onComposerInput?: () => void;
 	/** Working directory for this conversation, shown on the composer's chip. */
 	cwd?: string;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
@@ -182,6 +189,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onSendMessage,
 		currentJobId,
 		onCancelJob,
+		onComposerInput,
 		agentData,
 		refetch,
 		messageInputRef,
@@ -415,6 +423,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
+								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								isLoading={canonical ? Boolean(canonical.admitting) : isLoading}
 								conversationId={agentId}

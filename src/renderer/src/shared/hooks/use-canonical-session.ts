@@ -27,8 +27,10 @@
 
 import {
 	EMPTY_TRANSCRIPT,
+	type TranscriptImage,
 	type TranscriptState,
 	appendLocalNote,
+	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
 	applyLiveSeed,
@@ -36,6 +38,7 @@ import {
 	dropLiveRecords,
 	labelGapCandidates,
 	reconcileLimit,
+	removeRecord,
 	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
 import {
@@ -141,6 +144,46 @@ const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
  * history page per turn for the rest of the conversation to learn nothing.
  */
 const LABEL_GAP_ATTEMPTS = 2;
+
+/**
+ * Mounted transcripts, by session, that an optimistic echo can reach.
+ *
+ * The seam exists because the STORE paints the echo (it is the only place that
+ * knows the session id and the admission request id at the same moment, and it
+ * must do so before its first `await`), while this hook owns `setView`. A
+ * direct import the other way would make the store depend on React state.
+ *
+ * A call for a session with nothing mounted is a silent no-op, which is the
+ * correct behaviour rather than an error: the transcript that would have shown
+ * the echo does not exist, and the owner's own row will paint when it does.
+ */
+const echoTargets = new Map<
+	string,
+	(mutate: (state: TranscriptState) => TranscriptState) => void
+>();
+
+/**
+ * Paint the user's message optimistically, keyed by the admission request id
+ * so the owner's durable row coalesces with it instead of duplicating it.
+ */
+export function echoPendingUser(
+	sessionId: string,
+	id: string,
+	text: string,
+	images: TranscriptImage[],
+): void {
+	echoTargets.get(sessionId)?.((state) =>
+		appendPendingUser(state, id, text, images),
+	);
+}
+
+/**
+ * Remove an echo whose send was refused before anything was admitted. Never
+ * call this for an ambiguous failure: see `admitChatDraft`.
+ */
+export function retractPendingUser(sessionId: string, id: string): void {
+	echoTargets.get(sessionId)?.((state) => removeRecord(state, id));
+}
 
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
@@ -651,6 +694,29 @@ export function useCanonicalSessionStream(
 		} finally {
 			loadingOlderRef.current = false;
 		}
+	}, [sessionId]);
+
+	// Registered for as long as this session is on screen, so the store's echo
+	// reaches the transcript the user is looking at. Registration is keyed by
+	// session rather than by panel: two panels for one session would be the same
+	// conversation, and the last mounted one is the one being looked at.
+	useEffect(() => {
+		if (!sessionId) return;
+		const apply = (mutate: (state: TranscriptState) => TranscriptState) => {
+			setView((current) => {
+				const transcript = mutate(current.transcript);
+				return transcript === current.transcript
+					? current
+					: { ...current, transcript };
+			});
+		};
+		echoTargets.set(sessionId, apply);
+		return () => {
+			// Only if still ours: a remount for the same session registers before
+			// the old effect cleans up, and an unconditional delete would drop the
+			// live registration.
+			if (echoTargets.get(sessionId) === apply) echoTargets.delete(sessionId);
+		};
 	}, [sessionId]);
 
 	const clearView = useCallback(() => {

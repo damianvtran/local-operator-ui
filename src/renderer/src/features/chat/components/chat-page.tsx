@@ -11,12 +11,14 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	UNCONFIRMED_SEND_CODE,
 	admitChatDraft,
 	draftIdentityFor,
+	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -116,6 +118,12 @@ function SessionPanel({
 }) {
 	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
 	useDesktopWatchLease(sessionId, canonical.subscriptionId);
+	// Read here rather than threaded from the page: the query is cached with a
+	// 60 s staleTime, so this is a store read and not a second request.
+	const panelCapabilities = useDesktopCapabilities();
+	// Fired from the composer's first keystroke, never from this mount - see
+	// `useWarmSession` for why browsing must not spawn runtimes.
+	const warm = useWarmSession(sessionId, panelCapabilities.data);
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
 	const end = useRef<HTMLDivElement>(null);
@@ -752,6 +760,7 @@ function SessionPanel({
 					onCancelJob={stop}
 					messageInputRef={input}
 					runDetails={runDetails}
+					onComposerInput={warm}
 					canonical={{
 						view,
 						busy,
@@ -828,7 +837,9 @@ export function ChatPage() {
 			});
 	};
 	const id = draftKey ? draft?.sessionId : (active ?? undefined);
-	const identity = draftKey ?? id;
+	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
+	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`.
+	const identity = panelIdentityFor(draftKey, id);
 	return (
 		<ChatLayout
 			sidebar={

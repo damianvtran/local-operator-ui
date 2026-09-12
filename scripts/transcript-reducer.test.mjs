@@ -33,7 +33,12 @@ const {
 	reconcileLimit,
 	seedCallsMissingLabels,
 	withRecoveredOutcome,
+	appendPendingUser,
+	removeRecord,
 } = reducer;
+
+/** A fresh empty transcript, so each echo test starts from a known state. */
+const state0 = () => EMPTY_TRANSCRIPT;
 
 const assistant = (id, text) => ({
 	role: "assistant",
@@ -725,11 +730,8 @@ test("a tool row keeps its arguments when they arrive on a different page", () =
 		},
 	});
 	// The results arrive FIRST and alone: no assistant row on this page.
-	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
-		entries: [
-			toolEntry("t1", "c1", "bash"),
-			toolEntry("t2", "c2", "bash"),
-		],
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [toolEntry("t1", "c1", "bash"), toolEntry("t2", "c2", "bash")],
 		has_more: true,
 		cursor_missing: false,
 	});
@@ -950,7 +952,7 @@ test("a running row carries the clock its duration cannot", () => {
 	 * to finish and a four-minute `bash` looked identical to an instant one.
 	 * The row needs a start timestamp of its own to count from.
 	 */
-	let state = applyEvent(
+	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
 		{
 			type: "tool_execution_start",
@@ -1020,7 +1022,7 @@ const REAL_EDIT_DIFF = [
 	'             "ambiguous recipient rather than resolved."',
 	'-            "running. By default the message lands in the peer\'s mailbox",',
 	'+            "running; `lop sessions --all` also lists stored ones, and",',
-	"+            \"`target` also matches stored sessions by name.\",",
+	'+            "`target` also matches stored sessions by name.",',
 	'             "is idle, so an idle peer responds right away.",',
 ];
 
@@ -1045,7 +1047,12 @@ test("a write's diff rides the live result onto the row", () => {
 			tool_name: "edit",
 			result: {
 				content: [{ type: "text", text: "Edited notes.md" }],
-				details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+				details: {
+					path: "notes.md",
+					added: 2,
+					removed: 1,
+					diff: REAL_EDIT_DIFF,
+				},
 			},
 			duration_s: 0.12,
 		},
@@ -1125,7 +1132,12 @@ test("a replayed frame without details does not erase a diff already shown", () 
 			tool_name: "edit",
 			result: {
 				content: [{ type: "text", text: "Edited notes.md" }],
-				details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+				details: {
+					path: "notes.md",
+					added: 2,
+					removed: 1,
+					diff: REAL_EDIT_DIFF,
+				},
 			},
 			duration_s: 0.12,
 		},
@@ -1165,7 +1177,12 @@ test("a durable row that dropped its diff leaves the live one in place", () => {
 			tool_name: "edit",
 			result: {
 				content: [{ type: "text", text: "Edited notes.md" }],
-				details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+				details: {
+					path: "notes.md",
+					added: 2,
+					removed: 1,
+					diff: REAL_EDIT_DIFF,
+				},
 			},
 			duration_s: 0.12,
 		},
@@ -1186,7 +1203,10 @@ test("a durable row that dropped its diff leaves the live one in place", () => {
 					tool_call_id: "c-edit",
 					tool_name: "edit",
 					content: [{ text: "Edited notes.md", type: "text" }],
-					provider_payload: { duration_s: 0.12, details: { added: 2, removed: 1 } },
+					provider_payload: {
+						duration_s: 0.12,
+						details: { added: 2, removed: 1 },
+					},
 				},
 			},
 		],
@@ -1212,7 +1232,12 @@ test("a replayed page keeps the diff array's identity", () => {
 					content: [{ text: "Edited notes.md", type: "text" }],
 					provider_payload: {
 						duration_s: 0.12,
-						details: { path: "notes.md", added: 2, removed: 1, diff: REAL_EDIT_DIFF },
+						details: {
+							path: "notes.md",
+							added: 2,
+							removed: 1,
+							diff: REAL_EDIT_DIFF,
+						},
 					},
 				},
 			},
@@ -1325,7 +1350,10 @@ test("a settling frame with no arguments keeps the ones the session already lear
 			type: "tool_execution_end",
 			tool_call_id: "c-bash",
 			tool_name: "bash",
-			result: { content: [{ type: "text", text: "exit code: 0" }], details: {} },
+			result: {
+				content: [{ type: "text", text: "exit code: 0" }],
+				details: {},
+			},
 			duration_s: 4.2,
 		},
 		5_200,
@@ -1388,7 +1416,10 @@ test("a settling frame with no arguments keeps the ones the session already lear
 				type: "tool_execution_end",
 				tool_call_id: "c-gap",
 				tool_name: "bash",
-				result: { content: [{ type: "text", text: "exit code: 0" }], details: {} },
+				result: {
+					content: [{ type: "text", text: "exit code: 0" }],
+					details: {},
+				},
 				duration_s: 0.9,
 			},
 		],
@@ -1407,7 +1438,12 @@ test("the seed names the calls nothing in hand can label, and the page is sized 
 		{ type: "tool_execution_end", tool_call_id: "c1", tool_name: "bash" },
 		{ type: "tool_execution_end", tool_call_id: "c2", tool_name: "bash" },
 		{ type: "tool_execution_end", tool_call_id: "c2", tool_name: "bash" },
-		{ type: "tool_execution_start", tool_call_id: "c3", tool_name: "bash", args: {} },
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c3",
+			tool_name: "bash",
+			args: {},
+		},
 	];
 	// `c2` is known (a durable page in the same batch, or a live start earlier),
 	// so only `c1` justifies reading further back. The running call is never in
@@ -1458,12 +1494,7 @@ test("an unlabelable call costs a bounded number of read-backs", () => {
 	// budget: the map still holds it, and that is the whole reason the hook
 	// keeps an exhausted id instead of deleting it.
 	assert.deepEqual(
-		labelGapCandidates(
-			new Map([["spent", 2]]),
-			["spent", "new"],
-			new Set(),
-			2,
-		),
+		labelGapCandidates(new Map([["spent", 2]]), ["spent", "new"], new Set(), 2),
 		["new"],
 		"an exhausted call cannot be re-admitted by a fresh seed",
 	);
@@ -1473,4 +1504,74 @@ test("an unlabelable call costs a bounded number of read-backs", () => {
 		labelGapCandidates(new Map(), ["a", "a", "b"], new Set(), 2),
 		["a", "b"],
 	);
+});
+
+test("an optimistic echo coalesces with the owner's own row instead of painting twice", () => {
+	// The admission request UUID: the renderer sends it as `requestId`, and the
+	// owner carries it through `command_id` -> `message_id` -> `Message.user(id=)`
+	// -> the durable `TranscriptEntry` id. That identity is the entire reason an
+	// echo is safe, so this test asserts it across all three sources of truth.
+	const requestId = "b2b1f0d4-0a3a-4b1e-9c1d-7f5a2e6c9a10";
+	let state = appendPendingUser(state0(), requestId, "warm the runtime", []);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].kind, "user");
+	assert.equal(state.records[0].text, "warm the runtime");
+
+	// 1. The live frame for the same turn.
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: user(requestId, "warm the runtime") },
+		2,
+	);
+	assert.equal(
+		state.records.length,
+		1,
+		"message_start replaces the echo in place rather than appending beside it",
+	);
+
+	// 2. The durable row, which is what a reconnect or a history page delivers.
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: requestId,
+				ts: 3,
+				type: "message",
+				payload: { kind: "message", ...user(requestId, "warm the runtime") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(
+		state.records.length,
+		1,
+		"the durable row is the same record, so history cannot duplicate the echo",
+	);
+	assert.equal(state.records[0].text, "warm the runtime");
+
+	// 3. A second echo for an id already painted must not overwrite reconciled
+	// content with the composer's original text.
+	const after = appendPendingUser(state, requestId, "different text", []);
+	assert.equal(after, state, "re-echoing a painted id is a no-op");
+
+	// A gap drops live records; user rows deliberately survive it, which is what
+	// makes leaving an echo painted on an ambiguous failure safe.
+	assert.equal(dropLiveRecords(state).records.length, 1);
+});
+
+test("removeRecord retracts exactly the echo it names", () => {
+	let state = appendPendingUser(state0(), "req-1", "first", []);
+	state = appendPendingUser(state, "req-2", "second", []);
+	assert.deepEqual(
+		removeRecord(state, "req-1").records.map((r) => r.id),
+		["req-2"],
+	);
+	assert.equal(
+		removeRecord(state, "absent"),
+		state,
+		"removing an id that was never painted is a no-op returning the same state",
+	);
+	// The index must be rebuilt, or a later upsert writes at a stale position.
+	const pruned = removeRecord(state, "req-1");
+	assert.equal(pruned.index.get("req-2"), 0);
 });

@@ -106,6 +106,16 @@ type MessageInputProps = {
 	currentJobId?: string | null;
 	onCancelJob?: (jobId: string) => void;
 	isFarFromBottom?: boolean;
+	/**
+	 * The user started composing into an empty box.
+	 *
+	 * Called from the textarea's own onChange because that is the only place a
+	 * keystroke is observable; the composer deliberately knows nothing about
+	 * what it triggers. Its consumer warms the session's runtime so the send
+	 * that follows does not pay a cold engage, and the latch that makes it fire
+	 * once per session lives there (`useWarmSession`).
+	 */
+	onComposerInput?: () => void;
 	/** New messages landed while the reader was scrolled up. */
 	hasNewActivity?: boolean;
 	scrollToBottom?: () => void;
@@ -245,6 +255,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			messages,
 			currentJobId,
 			onCancelJob,
+			onComposerInput,
 			isFarFromBottom = false,
 			hasNewActivity = false,
 			scrollToBottom = () => {},
@@ -1157,6 +1168,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							}
 							value={newMessage}
 							onChange={(e) => {
+								// Only the empty -> non-empty edge: the whole point is one
+								// statement of intent per composed message, and the
+								// consumer's latch should not be asked to absorb a
+								// per-character call it can only discard.
+								if (!newMessage && e.target.value) onComposerInput?.();
 								setNewMessage(e.target.value);
 								setCaret(e.target.selectionStart);
 								// Editing the text answers the alert. Leaving it up over a
