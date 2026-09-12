@@ -4,7 +4,7 @@
 	"scriptsTree": "158ac8ee94a84ef84aa1ae859da2218388cdc3a1",
 	"dirtyWorkingTree": false,
 	"capturedAt": "2026-08-06T18:36:03.218Z",
-	"frames": 498,
+	"frames": 500,
 	"surfaces": 67,
 	"themes": 12,
 	"countsMean": {
@@ -39,7 +39,10 @@
 		"refreshedThemes": [
 			"localOperatorDark",
 			"localOperatorLight"
-		]
+		],
+		"addedBySweptRefresh": 0,
+		"addedDirectories": [],
+		"provenanceNote": "Round-3 correction. This block recorded head 34139e2a9 / refreshedFrames 2 / refreshedStories [tooltip-honesty] while the branch had rewritten 29 webp files across 18 directories; `check-evidence` did not catch it because it reconciles TOTALS, not provenance (design round 3, D12). The counts above now name what this branch actually captured: 20 Storybook frames across the 10 strip stories and 9 live frames under `session-status-live/`. `honest-unknowns` was re-captured at 860x760 after its fourth frame pushed the story's content to 724px inside an 860x600 viewport, which clipped the read-only `reasoning` strip - the rendered proof of this branch's own knownLadder claim."
 	},
 	"supplementary": [
 		{
@@ -145,13 +148,13 @@
 		},
 		{
 			"path": "session-status-live",
-			"frames": 4,
-			"surfaces": 3,
+			"frames": 12,
+			"surfaces": 11,
 			"themes": 2,
 			"source": "live renderer over CDP against an isolated backend",
-			"why": "The claim is that the strip reads a real CanonicalFrontendState off the live canonical stream and that its chips open the EXISTING pickers through slash dispatch. Neither survives a fixture: the accounting fields arrive only as frontend.update changes from a running owner, and 'the chip opens the same picker the command opens' is a behaviour, not a look. The composer in a live session has no story, so the sweep cannot re-derive these; docs/evidence/session-status-live/README.md carries the re-capture procedure.",
-			"capturedAt": "2026-09-12T04:48:36.509807Z",
-			"capturedAtHead": "2217ea59a13b4eeb77461435746b246760249b06"
+			"why": "Live frames from the packaged Electron app over real IPC, which Storybook cannot produce: a cold snapshot, a reload, the backend-down error path, and round 3's aggregator route plus cold-owner effort states. One theme only (localOperatorDark) because these prove BEHAVIOUR, not colour; the theme matrix is the Storybook set's job.",
+			"capturedAt": "2026-09-12T09:53:17.005018Z",
+			"capturedAtHead": "6e0d41580e24cacc3de08d659b8f6058d78ead53"
 		}
 	]
 }

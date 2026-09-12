@@ -19,11 +19,12 @@ import {
 	draftIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import { PickerOutlet } from "../pickers/picker-registry";
+import { specUnresolved } from "../session-status/session-model";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
 import {
 	messageBodyBytes,
@@ -164,6 +165,32 @@ function SessionPanel({
 		enabled: Boolean(sessionId),
 		staleTime: 15_000,
 	});
+	/*
+	 * Refetch the rung list the moment the owner's spec becomes KNOWN.
+	 *
+	 * The 15s `staleTime` is right for a list that rarely changes, but it is
+	 * measured from the last fetch rather than from the last time the answer
+	 * could have changed - and resolving the spec is exactly when it changes.
+	 * Without this, the very act that gives the model its ladder leaves the
+	 * picker serving the pre-resolution answer for up to 15s, so the chip reads
+	 * `high` while the dialog it opens says the model has no adjustable effort
+	 * (UX round 3, U13).
+	 *
+	 * Keyed on the resolved SELECTOR rather than on the spec object: the
+	 * projection repaints on every token, and an object identity would refetch
+	 * on each one. `specUnresolved` going false is the edge that matters, and it
+	 * happens once per model.
+	 */
+	const queryClient = useQueryClient();
+	const resolvedModel = specUnresolved(canonical.frontend?.effective_model)
+		? null
+		: (canonical.frontend?.effective_model?.model_id ?? null);
+	useEffect(() => {
+		if (!sessionId || !resolvedModel) return;
+		void queryClient.invalidateQueries({
+			queryKey: ["desktop", "entities", sessionId, "effort", ""],
+		});
+	}, [sessionId, resolvedModel, queryClient]);
 	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
 		sessionId,
 		canonical,

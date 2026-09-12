@@ -43,14 +43,6 @@ export type ModelIdentity = {
 };
 
 /**
- * The model's name for display, with the id as the fallback.
- *
- * `display_name` is a RAW name rather than a display decision (the backend's
- * `model/naming.py` owns whether it is safe to show), and `""` means metadata
- * resolution found none — which is different from "no name exists" and is why
- * this falls back rather than treating the field as authoritative.
- */
-/**
  * Providers that RESELL models rather than serving them.
  *
  * Mirrors `AGGREGATOR_PROVIDERS` (`local_operator/providers/registry.py`), read
@@ -184,6 +176,55 @@ export type EffortState = {
 };
 
 /**
+ * Whether this spec is UNRESOLVED, as opposed to describing a model with
+ * nothing to report.
+ *
+ * An owner that has not yet resolved its model answers with a selector and
+ * nothing else: no `display_name`, `reasoning: false`, `reasoning_efforts: []`.
+ * A genuine non-reasoning model never matches, because it still carries a
+ * `display_name`. That distinction is the whole difference between "not known
+ * yet" and "this model has no levels", and every surface that reads an empty
+ * ladder needs it.
+ *
+ * Exported because the `/effort` PICKER needs the same test. It was deriving a
+ * capability claim from an unresolved read - telling the user a four-rung model
+ * "has no adjustable effort" and to "pick a reasoning model with /model first"
+ * - which is exactly the inference removed from `reconcileEffort` one file over
+ * (UX round 3, U12). One predicate, so the chip and the picker cannot disagree
+ * about what an empty ladder means; a second copy would be the defect this
+ * consolidates.
+ *
+ * A session that has not chosen a model at all reports an EMPTY selector and
+ * has no effort to be unknown about - it is silent, not amnesiac. Verified
+ * against the real cold-session capture in
+ * `scripts/fixtures/session-status-capture.json`.
+ */
+export function specUnresolved(
+	model: CanonicalModel | null | undefined,
+): boolean {
+	if (!model) return false;
+	const explicit =
+		typeof model.reasoning_effort === "string"
+			? model.reasoning_effort.trim()
+			: "";
+	const fallbackDefault =
+		typeof model.reasoning_default_effort === "string"
+			? model.reasoning_default_effort.trim()
+			: "";
+	return (
+		typeof model.model_id === "string" &&
+		model.model_id !== "" &&
+		!explicit &&
+		!fallbackDefault &&
+		!model.reasoning &&
+		Array.isArray(model.reasoning_efforts) &&
+		model.reasoning_efforts.length === 0 &&
+		typeof model.display_name === "string" &&
+		model.display_name.trim() === ""
+	);
+}
+
+/**
  * `_effort_label`, plus the older-backend degradation the TUI never needs.
  *
  * The TUI reads a live `ModelSpec` object and can rely on every field being
@@ -226,20 +267,7 @@ export function effortState(
 	 * A genuine non-reasoning model never matches, because it still has a
 	 * `display_name`.
 	 */
-	const metadataAbsent =
-		// A session that has not chosen a model at all reports an EMPTY selector,
-		// and has no effort to be unknown about - it is silent, not amnesiac.
-		// Verified against the real cold-session capture in
-		// `scripts/fixtures/session-status-capture.json`.
-		typeof model.model_id === "string" &&
-		model.model_id !== "" &&
-		!explicit &&
-		!fallbackDefault &&
-		!model.reasoning &&
-		Array.isArray(model.reasoning_efforts) &&
-		model.reasoning_efforts.length === 0 &&
-		typeof model.display_name === "string" &&
-		model.display_name.trim() === "";
+	const metadataAbsent = specUnresolved(model);
 
 	if (explicit)
 		return {
@@ -306,8 +334,16 @@ export function effortState(
 			adjustable: true,
 			// The whole point of this branch: the ladder is NOT known.
 			knownLadder: false,
+			/*
+			 * Promises only what the click delivers. Round 2 said "run /effort",
+			 * round 3 said "open this to see the levels now" - and opening the
+			 * chip is a READ (`desktop_catalogues.py:270-273`), so it cannot
+			 * resolve the spec and the picker had nothing to show. Setting a rung
+			 * is the one act that resolves it, so that is what the sentence names
+			 * (UX round 3, U12).
+			 */
 			detail:
-				"This session has not reported its reasoning effort yet. It appears after the next turn, or open this to see the levels now.",
+				"This session has not reported its reasoning effort yet. It appears after the next turn, or run /effort <level> to set one now.",
 		};
 	// Ladder present and EMPTY: a reasoning model with no rungs to choose from.
 	if (ladder && model.reasoning)
