@@ -591,6 +591,131 @@ export const TurnBoundaryAndWorkingLine: Story = {
 	),
 };
 
+/**
+ * The operator's alignment report, as one frame: prose between tool rows, and
+ * a final answer, against the ledger they are supposed to line up with.
+ *
+ * The subject is a pair of EDGES. Agent prose and a tool row are two registers
+ * of the same turn and sit in the same row content box, so a reader scanning
+ * the column sees one left rail or sees a mistake; `margin-inline: auto` on the
+ * answer gave them two, and a reading cap 62 characters wide stopped the prose
+ * hundreds of pixels short of the ledger's right edge on any comfortable
+ * window. The prose here is long enough to reach a cap if one is reintroduced,
+ * and there are rows above AND below it because the report named both cases
+ * ("text between tools as well as the agent responses").
+ *
+ * The user bubble is in the frame on purpose, as the control: it keeps its own
+ * narrower measure, and a change that widened it too would be visible here.
+ */
+export const ProseToolAlignment: Story = {
+	render: () => (
+		<Frame
+			height={320}
+			records={[
+				{
+					kind: "user",
+					id: "p0",
+					ts: TS,
+					text: "Why is the chat text indented differently from the tool rows?",
+					images: [],
+				},
+				tool({
+					id: "p1",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.05,
+				}),
+				{
+					kind: "assistant",
+					id: "p2",
+					ts: TS,
+					text: "The rendered answer was capped at a reading measure and then centred inside the row it owns, so it took a different left edge from the ledger below it and stopped well short of the same right edge.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "p3",
+					toolName: "grep",
+					args: { pattern: "lo-measured", path: "src" },
+					durationS: 0.12,
+				}),
+				tool({
+					id: "p4",
+					toolName: "edit",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.08,
+					added: 6,
+					removed: 4,
+				}),
+				{
+					kind: "assistant",
+					id: "p5",
+					ts: TS,
+					text: "Both registers now resolve against the row content box, so the answer opens on the same rail the tool names do and ends on the same right edge as their durations.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The gap between `message_start` and the first token, which is the state the
+ * transcript used to paint twice.
+ *
+ * The reducer opens an assistant record the moment the provider call starts, so
+ * for as long as the model is thinking there is a streaming record with no text
+ * in it. That record used to mint a row reading "Writing" directly above the
+ * working line, which already says `thinking` — two elements for one fact, and
+ * the redundant one sat in the answer's own register rather than on the ledger.
+ * The TUI has never had a second element here: its one `WorkingBlock` carries
+ * the whole phase.
+ *
+ * What this frame has to show after the fix is BOTH halves of the trade. No
+ * "Writing" row, and liveness still on screen — the working line is present,
+ * spinning, and naming the phase. A frame that lost the row and the signal
+ * together would be a regression, not a fix, so the story is deliberately
+ * `waiting` with a ledger the model has not written to yet.
+ */
+export const StreamingBeforeFirstToken: Story = {
+	render: () => (
+		<Frame
+			waiting
+			height={150}
+			records={[
+				tool({
+					id: "s1",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/components/markdown.css",
+					},
+					durationS: 0.05,
+				}),
+				// Streaming, no text: the model is on the wire. This is the record
+				// that used to paint a row of its own.
+				{
+					kind: "assistant",
+					id: "s2",
+					ts: TS,
+					text: "",
+					streaming: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
 /** Each label the working line can carry, without needing a live turn to reach it. */
 export const WorkingLabels: Story = {
 	render: () => (

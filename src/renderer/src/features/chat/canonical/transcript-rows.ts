@@ -21,6 +21,9 @@ export type Row = {
 /**
  * Does this record paint anything the reader can see?
  *
+ * For an assistant record the answer is its TEXT, and nothing else. An empty
+ * one paints nothing whether it is finished or still streaming.
+ *
  * THE INVISIBLE-ROW TRAP, because this is exactly the kind of thing that gets
  * reintroduced. The reducer deliberately KEEPS an assistant record that carried
  * only tool calls: it has no prose to show — its tool rows carry the turn — but
@@ -40,6 +43,24 @@ export type Row = {
  * operator's report — the gap had no visible cause because its cause was
  * invisible.
  *
+ * ## Why `streaming` is NOT a reason to paint
+ *
+ * It used to be. A streaming record with no text yet is the gap between
+ * `message_start` and the first token, and the transcript minted a row for it
+ * that read "Writing" — which put a second liveness element directly above the
+ * working line, where that line was already saying `thinking`. Two elements for
+ * one fact, and the redundant one sat in the ANSWER's register rather than on
+ * the ledger, so it read as the turn having started when nothing had been
+ * written.
+ *
+ * The TUI has one aggregate liveness element and no per-record equivalent
+ * (`WorkingBlock`, `tui/widgets/transcript.py`), and the working line here is
+ * the port of it: its `thinking` → `composing N calls` → `running` →
+ * `responding` ladder already covers every state this row could have described,
+ * including composing tool calls, which paint as `composing · N B` on their own
+ * tool rows. So liveness has ONE channel, and a record with nothing in it
+ * paints nothing.
+ *
  * Adjacency and spacing are therefore computed over what the reader can SEE,
  * never over what the record list contains. `AssistantRow` returns `null` on
  * this same predicate rather than on a copy of the condition, because two
@@ -47,7 +68,7 @@ export type Row = {
  */
 export function paintsSomething(record: TranscriptRecord): boolean {
 	if (record.kind !== "assistant") return true;
-	return Boolean(record.text) || record.streaming;
+	return Boolean(record.text);
 }
 
 /**

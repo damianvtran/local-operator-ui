@@ -234,7 +234,16 @@ const STORIES = [
 	   the sweep can always re-take this frame. */
 	["chat-usage--dense", 1100, 1000],
 	["chat-usage--narrow", 720, 620],
-
+	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
+	   report is judged — agent prose and a ledger row sharing one left rail and
+	   one right edge — and it is swept at two widths because a max-width cap
+	   only binds on a wide column, so a single narrow capture would photograph
+	   the defect as absent. `streaming-before-first-token` is the state that
+	   used to paint a "Writing" row above the working line; its claim is an
+	   ABSENCE, so it needs a frame of its own to be checkable. */
+	["chat-tool-rows--prose-tool-alignment", 1024, 620],
+	["chat-tool-rows--prose-tool-alignment", 1440, 900],
+	["chat-tool-rows--streaming-before-first-token", 1024, 620],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */

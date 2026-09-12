@@ -116,10 +116,7 @@ test("a whole-token absolute path is shortened against home", () => {
 	assert.equal(compactPath("/home/damian/src/app.ts"), "~/src/app.ts");
 	// Not a whole token: a sentence that merely mentions a slash keeps its
 	// wording, because the rewrite exists for paths eating the budget.
-	assert.equal(
-		compactPath("/Users/damian/a b.md"),
-		"/Users/damian/a b.md",
-	);
+	assert.equal(compactPath("/Users/damian/a b.md"), "/Users/damian/a b.md");
 	assert.equal(compactPath("relative/path.md"), "relative/path.md");
 });
 
@@ -262,10 +259,22 @@ test("a renderer cannot steer the attachment fetch anywhere else", async () => {
 			sessionId: "0123456789ab",
 			digest: "../../../etc/passwd",
 		},
-		{ op: "sessions.attachment", sessionId: "../admin", digest: "a".repeat(32) },
+		{
+			op: "sessions.attachment",
+			sessionId: "../admin",
+			digest: "a".repeat(32),
+		},
 		// Wrong lengths and wrong alphabet.
-		{ op: "sessions.attachment", sessionId: "0123456789ab", digest: "a".repeat(31) },
-		{ op: "sessions.attachment", sessionId: "0123456789ab", digest: "A".repeat(32) },
+		{
+			op: "sessions.attachment",
+			sessionId: "0123456789ab",
+			digest: "a".repeat(31),
+		},
+		{
+			op: "sessions.attachment",
+			sessionId: "0123456789ab",
+			digest: "A".repeat(32),
+		},
 		{ op: "sessions.attachment", sessionId: "short", digest: "a".repeat(32) },
 		// Extra fields are refused rather than ignored: the schema is `.strict()`
 		// precisely so a caller cannot smuggle one past it.
@@ -319,11 +328,17 @@ test("the app window's CSP admits the blob images the attachment path produces",
 	const policy = html.match(/content="([^"]*default-src[^"]*)"/)?.[1] ?? "";
 	assert.ok(policy, "index.html declares a CSP");
 	const imgSrc = policy.match(/img-src ([^;]*)/)?.[1] ?? "";
-	assert.ok(imgSrc.includes("blob:"), `img-src must allow blob: (got "${imgSrc}")`);
+	assert.ok(
+		imgSrc.includes("blob:"),
+		`img-src must allow blob: (got "${imgSrc}")`,
+	);
 	// `media-src` already had it; keeping both in one assertion documents that
 	// they are the same requirement for two element types.
 	const mediaSrc = policy.match(/media-src ([^;]*)/)?.[1] ?? "";
-	assert.ok(mediaSrc.includes("blob:"), `media-src must allow blob: (got "${mediaSrc}")`);
+	assert.ok(
+		mediaSrc.includes("blob:"),
+		`media-src must allow blob: (got "${mediaSrc}")`,
+	);
 });
 
 /* ------------------------------------------------- transcript row spacing */
@@ -339,7 +354,7 @@ test("the app window's CSP admits the blob images the attachment path produces",
 const rowsBundle = await build({
 	stdin: {
 		contents:
-			'export { buildRows, GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { buildRows, GAP, paintsSomething } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -356,7 +371,7 @@ const rowsBundle = await build({
 	},
 	write: false,
 });
-const { buildRows, GAP } = await import(
+const { buildRows, GAP, paintsSomething } = await import(
 	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -423,10 +438,7 @@ test("an invisible record does not break trace adjacency", () => {
 	assert.equal(withGhost[1].gap, "trace");
 	// And a run of like rows is ONE tier throughout, which is what "uniform"
 	// means here: every adjacent pair is the same distance apart.
-	const run = buildRows(
-		["t1", "t2", "t3", "t4", "t5"].map(toolRecord),
-		[],
-	);
+	const run = buildRows(["t1", "t2", "t3", "t4", "t5"].map(toolRecord), []);
 	assert.deepEqual(
 		run.map((row) => row.gap),
 		["first", "trace", "trace", "trace", "trace"],
@@ -457,6 +469,124 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 	assert.notDeepEqual(GAP.turn, GAP.trace);
 });
 
+test("a streaming record with no text yet paints nothing", () => {
+	// The gap between `message_start` and the first token. This used to paint a
+	// row reading "Writing" directly above the working line, which was already
+	// saying `thinking` — two elements for one fact, and the redundant one in
+	// the answer's register rather than on the ledger. Liveness has ONE channel
+	// here, the same way the TUI has one `WorkingBlock` and no per-message
+	// equivalent.
+	const streamingEmpty = {
+		kind: "assistant",
+		id: "s1",
+		ts: 1,
+		text: "",
+		streaming: true,
+		stopReason: null,
+		error: false,
+	};
+	assert.equal(paintsSomething(streamingEmpty), false);
+	// And it must not reach the row list, for the same reason a settled empty
+	// record must not: a wrapper with a margin around a box of zero height.
+	const rows = buildRows([toolRecord("t1"), streamingEmpty], []);
+	assert.deepEqual(
+		rows.map((row) => row.record.id),
+		["t1"],
+	);
+	// The first token is what makes it visible, and nothing else changes.
+	assert.equal(paintsSomething({ ...streamingEmpty, text: "Here" }), true);
+});
+
+test("a streaming record cannot swallow the avatar or a gap tier", () => {
+	// The avatar marks the first row of an agent turn, and the gap tier is
+	// decided from the previous row that PAINTED. An empty streaming record
+	// leading a turn must therefore be as invisible to both as a settled empty
+	// one — this is the invisible-row defect's own regression surface, re-run
+	// for the record that just stopped painting.
+	const streamingEmpty = {
+		kind: "assistant",
+		id: "s1",
+		ts: 1,
+		text: "",
+		streaming: true,
+		stopReason: null,
+		error: false,
+	};
+	const rows = buildRows(
+		[
+			{ kind: "user", id: "u1", ts: 1, text: "go", images: [] },
+			streamingEmpty,
+			toolRecord("t1"),
+		],
+		[],
+	);
+	assert.deepEqual(
+		rows.map((row) => row.record.id),
+		["u1", "t1"],
+	);
+	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
+	// And it cannot break trace adjacency between two ledger rows either.
+	const run = buildRows(
+		[toolRecord("t1"), streamingEmpty, toolRecord("t2")],
+		[],
+	);
+	assert.equal(run[1].gap, "trace");
+});
+
+test("the transcript no longer renders a Writing row", () => {
+	// A source assertion, because the component's own guard and the predicate
+	// have to agree and only one of them is reachable from here. Both halves are
+	// checked: the copy is gone, and `AssistantRow` still returns null on
+	// `paintsSomething` rather than on a second copy of the condition — two
+	// copies of it is how the row comes back.
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.ok(!/>\s*Writing\s*</.test(transcript), "no Writing row is rendered");
+	assert.match(
+		transcript,
+		/if \(!paintsSomething\(record\)\) return null;/,
+		"AssistantRow guards on the shared predicate",
+	);
+});
+
+test("agent prose takes no reading cap, and the user bubble keeps one", () => {
+	// The operator's report: agent prose must share the tool rows' left edge and
+	// width, so it carries no `lo-measured` and therefore no 62ch cap and no
+	// `margin-inline: auto`. The user bubble is deliberately unchanged — it is
+	// an aside, and widening it is the unrequested half of this change.
+	// The bare `MEASURE` token only — `CHAT_MEASURE` is the column's shared
+	// width and a different thing entirely, so a substring match would count it.
+	const measured = (path) =>
+		readFileSync(path, "utf8")
+			.split("\n")
+			.filter(
+				(line) => /(?<![A-Z_])MEASURE\b/.test(line) && line.includes("cn("),
+			);
+	// The canonical transcript: exactly one application, on the user row.
+	const canonical = measured(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.equal(canonical.length, 1, "one measured box in the canonical path");
+	// The legacy path must not keep the old behaviour either, or the same defect
+	// returns on whichever surface still renders through it.
+	const legacy = measured(
+		"src/renderer/src/features/chat/components/message-item/message-paper.tsx",
+	);
+	assert.equal(legacy.length, 1, "one measured box in the legacy path");
+	// The cap itself still exists, for the bubble that still wants it.
+	assert.match(
+		readFileSync(
+			"src/renderer/src/features/chat/components/markdown.css",
+			"utf8",
+		),
+		/\.lo-measured \.lo-markdown \{\s*max-width: 62ch;/,
+		"the reading measure is still defined for the user bubble",
+	);
+});
+
 test("an unchanged row keeps its object identity across a rebuild", () => {
 	// `TranscriptRow` is memoised on the row object, on a surface that repaints
 	// per token. A rebuild that minted fresh rows for unchanged records would
@@ -476,9 +606,7 @@ test("the ledger row height is one number, not two that can drift", () => {
 	// specific row type), so the constants are asserted equal here instead.
 	const source = (path) => readFileSync(path, "utf8");
 	const heightOf = (path, name) =>
-		source(path).match(
-			new RegExp(`const ${name} = "([^"]+)"`),
-		)?.[1];
+		source(path).match(new RegExp(`const ${name} = "([^"]+)"`))?.[1];
 	const toolRow = heightOf(
 		"src/renderer/src/features/chat/components/trace/tool-row.tsx",
 		"ROW_HEIGHT",
@@ -516,7 +644,11 @@ test("the name/summary stutter guard covers MCP rows too (R6)", () => {
 	const wire = "mcp__linear_list_issues";
 	const summary = summaryFromArgs(wire, {});
 	assert.equal(summary, wire, "the fallback really is the wire name");
-	assert.notEqual(displayName(wire), wire, "and the column shows something else");
+	assert.notEqual(
+		displayName(wire),
+		wire,
+		"and the column shows something else",
+	);
 	assert.equal(
 		isBareToolName(summary, wire),
 		true,
