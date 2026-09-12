@@ -309,7 +309,7 @@ test("the subagents tally sheds whole segments", () => {
 	assert.equal(subagentTally(rows, 1), "2 running");
 });
 
-test("the to-dos tally leads with progress and confesses dropped work", () => {
+test("the to-dos tally says resolved, and names dropped work inside it", () => {
 	const details = derive([], [
 		{
 			name: "Plan",
@@ -321,8 +321,11 @@ test("the to-dos tally leads with progress and confesses dropped work", () => {
 			],
 		},
 	]);
-	assert.equal(todoTally(details), "2 of 4 done · 1 dropped");
-	assert.equal(todoTally(details, 14), "2 of 4 done");
+	// `resolved` is closure — done OR dropped — and it is the same notion the
+	// phase headers count. `2 of 4 done` above a header reading `3/4` was two
+	// notions of closure under two spellings, with nothing saying which was which.
+	assert.equal(todoTally(details), "3 of 4 resolved · 1 dropped");
+	assert.equal(todoTally(details, 14), "3 of 4 resolved");
 });
 
 /* ------------------------------------------------------------------ */
@@ -333,30 +336,39 @@ const plan = (statuses) => [
 	{ name: "Plan", items: statuses.map((status, index) => ({ text: `item ${index}`, status })) },
 ];
 
-test("ten item rows are shown, closed rows go first, open ones never do", () => {
-	// Fourteen items: five open, nine closed. Five open plus five closed is ten,
-	// so four closed rows are disclosed.
+test("ten item rows are shown, the OLDEST closed rows go first, open ones never do", () => {
+	// Fourteen items: nine closed, five open. Five open plus five closed is ten,
+	// so four closed rows are disclosed — and they are the FIRST four closed rows
+	// in plan order, because the plan sheds its oldest settled work and keeps its
+	// recent end (`§6.3`). Shedding the newest instead reads as a plan that stopped
+	// recording, which is the defect this pins.
 	const statuses = [
-		"done",
-		"done",
-		"done",
-		"done",
-		"pending",
-		"done",
-		"blocked",
-		"done",
-		"done",
-		"done",
-		"pending",
-		"dropped",
-		"pending",
-		"pending",
+		"done", // shed
+		"done", // shed
+		"done", // shed
+		"done", // shed
+		"pending", // open, never hidden
+		"done", // kept
+		"blocked", // open, never hidden
+		"done", // kept
+		"done", // kept
+		"done", // kept
+		"pending", // open, never hidden
+		"dropped", // kept
+		"pending", // open, never hidden
+		"pending", // open, never hidden
 	];
 	const details = derive([], plan(statuses));
 	const visible = visibleTodoPhases(details.todos);
 	const shown = visible.phases.flatMap((phase) => phase.items);
 	assert.equal(shown.length, 10);
 	assert.equal(visible.hidden, 4);
+	assert.equal(visible.phases[0].hidden, 4, "the phase's own hidden count is not attributed");
+	// The tail survives whole: indices 4..13 are exactly the ten rows on screen.
+	assert.deepEqual(
+		shown.map((item) => item.text),
+		[4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((index) => `item ${index}`),
+	);
 	// Never dropping an open or blocked item is the rule the cap is subordinate
 	// to, so it is asserted item by item rather than by count: no open item may
 	// be missing from what is shown.
@@ -366,6 +378,30 @@ test("ten item rows are shown, closed rows go first, open ones never do", () => 
 			!shown.some((item) => item.text === `item ${index}`),
 	);
 	assert.deepEqual(hiddenOpen, []);
+});
+
+test("a phase whose rows were all shed keeps its header and discloses them itself", () => {
+	// The oldest closed rows fall off the FRONT, so the earliest phase can lose
+	// every row it has. It keeps its header and its own `+N more` rather than
+	// silently vanishing: a plan that appears to start at phase two is a plan
+	// lying about its own size, and the header above the gap is then accountable
+	// to nothing.
+	const visible = visibleTodoPhases(deriveRunDetails(fixtures.todosOnly()).todos);
+	assert.deepEqual(
+		visible.phases.map((phase) => [phase.name, phase.hidden]),
+		[
+			["Reconcile", 4],
+			["Verify", 0],
+			["Publish", 0],
+		],
+	);
+	// Four closed rows out, four rows of disclosure in — and the phase that lost
+	// them is still rendered, with only its open item under its header.
+	assert.deepEqual(
+		visible.phases[0].items.map((item) => item.text),
+		["Compare against ledger/q1.csv"],
+	);
+	assert.equal(visible.hidden, 4);
 });
 
 test("more open items than the cap shows every one of them", () => {
@@ -607,4 +643,35 @@ test("the fixtures cover the flat plan, the failure line and both overflows", ()
 		hasUnseenFailure(deriveRunDetails(fixtures.headerTriggerFailed())),
 		true,
 	);
+});
+
+test("the unseen-failure fixture is a run whose only open fact is a failure", () => {
+	const details = deriveRunDetails(fixtures.failureUnseen());
+	// Everything settled: no open child, no open to-do. That is the point of the
+	// fixture — the trigger stays on screen for the failure clause and nothing
+	// else, so the frame is the acknowledgement path D1 broke.
+	assert.equal(details.openChildren, 0);
+	assert.equal(details.openTodos, 0);
+	assert.equal(hasRunDetails(details, NOTHING_SEEN), true);
+	assert.equal(
+		hasRunDetails(details, new Set(details.failedChildIds)),
+		false,
+		"the fixture keeps a second reason for the trigger alive",
+	);
+	// And the run is the all-settled panel `§6.3` describes: no activity line on
+	// any row, one exception line verbatim on the failed one.
+	assert.deepEqual(
+		details.subagents.map((row) => row.activity),
+		[null, null],
+	);
+	assert.equal(
+		details.subagents[0].errorLine,
+		"FileNotFoundError: [Errno 2] No such file or directory: 'ledger/q1.csv'",
+	);
+	// The failure's identifier is the datum the mono second line exists to keep,
+	// so the fixture must carry one long enough to need the second line.
+	assert.ok(details.subagents[0].errorLine.length > 60);
+	// A flat, closed plan on top: headerless, and `resolved` reaching the tally.
+	assert.equal(details.todos[0].name, null);
+	assert.equal(todoTally(details), "3 of 3 resolved · 1 dropped");
 });

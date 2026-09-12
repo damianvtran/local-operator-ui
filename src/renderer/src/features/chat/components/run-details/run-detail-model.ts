@@ -198,6 +198,19 @@ export type TodoPhaseView = {
 };
 
 /**
+ * A phase as the CAPPED list renders it.
+ *
+ * `items` are the rows that survived the item cap and `hidden` is how many of
+ * this phase's own closed rows it hid, so the disclosure can sit inside the
+ * phase that lost them (`§6.3`). Two facts stay counted over the WHOLE phase
+ * rather than over the slice: `closed`/`total` behind the header, because a
+ * header that shrank as rows overflowed would read as work disappearing.
+ */
+export type TodoPhaseSlice = TodoPhaseView & {
+	hidden: number;
+};
+
+/**
  * Everything the panel and the trigger read, derived once per wire frame.
  *
  * The counts are over the WHOLE wire lists, not the visible slice: a capped
@@ -667,12 +680,22 @@ export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
 }
 
 /**
- * The to-dos section's trailing tally: `4 of 9 done`, plus ` · 1 dropped`.
+ * The to-dos section's trailing tally: `10 of 14 resolved · 1 dropped`.
  *
- * Plainer than the TUI's `n/total resolved`, which is a terminal's compression
- * of the same fact: `done` counts what finished and `dropped` is named
- * separately, because "4 of 9 done" and "4 of 9 resolved" are different claims
- * about a plan that abandoned work.
+ * **`resolved` is closure — done OR dropped — and it is the same notion the
+ * phase headers count** (`TodoPhaseView.closed`). One word for one fact, or the
+ * section and the headers beneath it disagree: a tally that said `9 of 14 done`
+ * over a header reading `4/5` was counting two different things under two
+ * spellings, with nothing on screen saying which was which.
+ *
+ * The `dropped` segment is the breakdown of that closure, not a second count:
+ * `resolved` says how much of the plan is finished with, and `dropped` says how
+ * much of it was abandoned rather than done. Both facts are worth stating — a
+ * plan that quietly abandoned a third of itself should not read like one that
+ * completed — which is why the word survives alongside the count that contains
+ * it.
+ *
+ * The TUI's `n/total resolved` is the same claim in a terminal's compression.
  */
 export function todoTally(
 	details: RunDetails | null | undefined,
@@ -680,10 +703,18 @@ export function todoTally(
 ): string {
 	if (!details) return "";
 	const segments = [
-		`${details.doneTodos} of ${details.totalTodos} done`,
+		`${resolvedTodos(details)} of ${details.totalTodos} resolved`,
 		...(details.droppedTodos > 0 ? [`${details.droppedTodos} dropped`] : []),
 	];
 	return shedSegments(segments, maxChars);
+}
+
+/**
+ * How much of the plan is finished with, in the one sense of "finished with"
+ * this surface uses: done plus dropped. The TUI's `RESOLVED_STATUSES`.
+ */
+export function resolvedTodos(details: RunDetails): number {
+	return details.doneTodos + details.droppedTodos;
 }
 
 /* ------------------------------------------------------------------ */
@@ -723,54 +754,73 @@ export function visibleSubagents(rows: SubagentRow[]): {
 }
 
 /**
- * The items the to-dos section shows, and how many it hid.
+ * The rows the to-dos section shows, and how many it hid.
  *
  * `§6.3`: cap the item rows at `TODO_ITEM_CAP`, **never dropping an open or
- * blocked item**. Within that, closed rows go first, earliest phase first — so a
- * long plan sheds its oldest settled work and keeps its recent end plus every
- * item that is still asking for something. A phase left with nothing is dropped
- * entirely: a header with no rows under it is the "empty heading" `§6.3` forbids
- * everywhere else.
+ * blocked item**. Within that, the OLDEST closed rows go first — earliest phase
+ * first, and within a phase the earlier item first — so a long plan sheds the
+ * settled work at its start and keeps its recent end plus every item that is
+ * still asking for something.
+ *
+ * **The direction is load-bearing and is not interchangeable.** Shedding the
+ * NEWEST closed rows instead reads as a plan that stopped recording: the recent
+ * end is the part a reader is checking against the live work, and a phase that
+ * keeps its oldest rows while losing the ones just finished looks like it lost
+ * track. It is also what the TUI's own budget does (`todo_panel.py`), which is
+ * the model this ports.
+ *
+ * The hidden rows are attributed per phase rather than only totalled: a plan
+ * that went from fourteen rows to ten has to say WHERE the four went, or every
+ * phase header below the cut is silently unaccountable to the rows under it.
  *
  * The cap is a ceiling, not a guarantee: ten open items are ten rows, because
  * the alternative is hiding work the user has to act on.
  */
 export function visibleTodoPhases(phases: TodoPhaseView[]): {
-	phases: TodoPhaseView[];
+	phases: TodoPhaseSlice[];
 	hidden: number;
 } {
 	const total = phases.reduce((sum, phase) => sum + phase.items.length, 0);
-	if (total <= TODO_ITEM_CAP) return { phases, hidden: 0 };
+	if (total <= TODO_ITEM_CAP) {
+		return {
+			phases: phases.map((phase) => ({ ...phase, hidden: 0 })),
+			hidden: 0,
+		};
+	}
 
-	const openCount = phases.reduce(
-		(sum, phase) =>
-			sum +
-			phase.items.filter((item) => OPEN_TODO_STATUSES.includes(item.status))
-				.length,
+	const isOpen = (item: TodoItemView): boolean =>
+		OPEN_TODO_STATUSES.includes(item.status);
+	const closedCount = phases.reduce(
+		(sum, phase) => sum + phase.items.filter((item) => !isOpen(item)).length,
 		0,
 	);
-	let closedBudget = Math.max(0, TODO_ITEM_CAP - openCount);
-	// Walk the plan in order: the earliest closed item is the first to go.
-	const kept = phases.map((phase) => {
+	const openCount = total - closedCount;
+	const closedBudget = Math.max(0, TODO_ITEM_CAP - openCount);
+	// How many of the plan's closed rows fall off the FRONT: the oldest first.
+	const shed = Math.max(0, closedCount - closedBudget);
+
+	let seenClosed = 0;
+	const slices = phases.map((phase) => {
 		const items: TodoItemView[] = [];
+		let hidden = 0;
 		for (const item of phase.items) {
-			if (OPEN_TODO_STATUSES.includes(item.status)) {
+			if (isOpen(item)) {
 				items.push(item);
 				continue;
 			}
-			if (closedBudget > 0) {
-				closedBudget -= 1;
-				items.push(item);
-			}
+			// A closed row's position in the plan's own closed sequence decides
+			// whether it survives, which is what makes the shed oldest-first
+			// across phase boundaries rather than per phase.
+			const index = seenClosed++;
+			if (index < shed) hidden += 1;
+			else items.push(item);
 		}
-		return { ...phase, items };
+		return { ...phase, items, hidden };
 	});
-	const visible = kept.filter((phase) => phase.items.length > 0);
-	const hidden = visible.reduce(
-		(sum, phase) => sum + (phase.total - phase.items.length),
-		0,
-	);
-	return { phases: visible, hidden };
+	return {
+		phases: slices,
+		hidden: slices.reduce((sum, phase) => sum + phase.hidden, 0),
+	};
 }
 
 /* ------------------------------------------------------------------ */

@@ -159,9 +159,9 @@ const STORIES = [
 	/* The run-details popover, in the REAL ChatHeader inside a chat-column ground.
 	   Sized to the panel rather than to a window: 384px of popover plus the 12px
 	   anchor offset leaves the left of a 560px frame showing the transcript it
-	   opens over, and around 500px tall is where the five content states stop
+	   opens over, and around 500px tall is where the six content states stop
 	   being mostly ground - a popover on an empty page is what the uniformity
-	   ceiling exists to reject, and at 1280x900 four of these five came back at
+	   ceiling exists to reject, and at 1280x900 four of those six came back at
 	   over 99% one colour.
 
 	   `crowded` and `todos-only` are taller on purpose: their subject is an overflow
@@ -178,6 +178,14 @@ const STORIES = [
 	["chat-run-details--subagents-only", 560, 440],
 	["chat-run-details--todos-only", 560, 820],
 	["chat-run-details--failure", 560, 460],
+	/* The unseen-failure state photographed OPEN — the regression frame for the
+	   panel unmounting while it is read, and the only frame whose trigger has a
+	   failure as its sole reason to exist. Sized like `both-in-flight`: a
+	   two-child roster over a closed three-item plan fits well inside the panel's
+	   `min(60vh, 480px)` ceiling, so this frame shows a panel that does NOT
+	   scroll, which is the other half of what `--crowded` proves about `type`
+	   (a short panel gains no scrollbar chrome). */
+	["chat-run-details--failure-unseen", 560, 520],
 	["chat-run-details--crowded", 560, 820],
 	["chat-run-details--settled", 460, 220],
 	["chat-run-details--header-trigger", 460, 220],

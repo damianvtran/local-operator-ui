@@ -57,13 +57,20 @@ const TODO_INK: Record<TodoItemStatus, string> = {
 	blocked: "text-ink",
 };
 
-/** The trailing tag, in one grammar: `— state`, or `— state: reason`. */
-const itemTag = (item: TodoItemView): string | null => {
-	if (item.status === "blocked") {
-		return item.reason ? `— blocked: ${item.reason}` : "— blocked";
-	}
-	if (item.status === "dropped") return "— dropped";
-	return null;
+/** The trailing tag for a settled row: one fixed word, so it stays inline. */
+const settledTag = (item: TodoItemView): string | null =>
+	item.status === "dropped" ? "— dropped" : null;
+
+/**
+ * The blocked row's own line: the word that says which open state this is, and
+ * why it is open. `null` on every other state.
+ *
+ * The reason is the only variable-length string in the plan, and that is the
+ * whole reason it does not share the item's line (`§4.2`).
+ */
+const blockedReason = (item: TodoItemView): string | null => {
+	if (item.status !== "blocked") return null;
+	return item.reason ? `— blocked: ${item.reason}` : "— blocked";
 };
 
 /** The state in words, for the settled states that carry no visible tag. */
@@ -75,10 +82,11 @@ const HIDDEN_STATE: Partial<Record<TodoItemStatus, string>> = {
 
 const TodoRow = ({ item }: { item: TodoItemView }) => {
 	const Mark = TODO_MARK[item.status];
-	const tag = itemTag(item);
+	const tag = settledTag(item);
+	const reason = blockedReason(item);
 	const settled = item.status === "done" || item.status === "dropped";
 	return (
-		<li className={cn("flex items-center gap-2 py-0.5 pr-3 pl-6")}>
+		<li className={cn("flex gap-2 px-3 py-0.5")}>
 			{/*
 			 * The mark column is one ink on every row.
 			 *
@@ -87,46 +95,76 @@ const TodoRow = ({ item }: { item: TodoItemView }) => {
 			 * state is said in the TEXT rather than duplicated in the mark. It is
 			 * also what keeps four rows of one plan reading as one list.
 			 */}
-			<Mark aria-hidden={true} className={cn("size-4 shrink-0 text-ink-dim")} />
-			<span
-				className={cn(
-					"min-w-0 flex-1 truncate text-body-sm",
-					TODO_INK[item.status],
-					settled && "line-through",
-				)}
-				title={item.text}
-			>
-				{item.text}
-			</span>
-			{HIDDEN_STATE[item.status] && (
-				<span className={cn("sr-only")}>{HIDDEN_STATE[item.status]}</span>
-			)}
-			{tag && (
-				/*
-				 * The tag is NOT struck, so it stays readable on a row that is
-				 * crossed out (`todo_panel.py:1763-1766`), and it steps up to
-				 * `ink-muted`: on the blocked row it is the part that says what the
-				 * item waits on, which is the whole reason the user has to look.
-				 *
-				 * Capped at 60% so a long reason truncates rather than eating the
-				 * item's own text — the item is the subject, the reason qualifies it.
-				 */
+			<span className={cn("pt-0.5")}>
+				{/*
+				 * `pl-3` and this 16px box put the mark in the SUBAGENT rows' state
+				 * column exactly: the two lists are one panel and they share one
+				 * grid (`§5`). The plan's own indent lives on the second line, not
+				 * in this column.
+				 */}
 				<span
+					aria-hidden={true}
 					className={cn(
-						"max-w-[60%] shrink-0 truncate text-meta",
-						item.status === "blocked" ? "text-ink-muted" : "text-ink-dim",
+						"flex size-4 shrink-0 items-center justify-center text-ink-dim",
 					)}
-					title={tag}
 				>
-					{tag}
+					<Mark className={cn("size-4")} />
 				</span>
-			)}
+			</span>
+			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+				<div className={cn("flex items-baseline gap-2")}>
+					<span
+						className={cn(
+							"min-w-0 flex-1 truncate text-body-sm leading-5",
+							TODO_INK[item.status],
+							settled && "line-through",
+						)}
+						title={item.text}
+					>
+						{item.text}
+					</span>
+					{HIDDEN_STATE[item.status] && (
+						<span className={cn("sr-only")}>{HIDDEN_STATE[item.status]}</span>
+					)}
+					{tag && (
+						/*
+						 * The tag is NOT struck, so it stays readable on a row that is
+						 * crossed out (`todo_panel.py:1763-1766`). Only `dropped` keeps
+						 * its tag inline: one fixed word, on a row that stays one line.
+						 */
+						<span className={cn("shrink-0 text-ink-dim text-meta")} title={tag}>
+							{tag}
+						</span>
+					)}
+				</div>
+				{reason && (
+					/*
+					 * The blocked reason gets its OWN line — the grammar the subagent
+					 * section already uses for the activity datum — because sharing the
+					 * item's line truncated both strings to fragments: the item (the
+					 * subject) lost its payload, and the reason was cut mid-word. Two
+					 * variable-length strings on one line means neither is ever
+					 * readable. The item takes the full row width; the reason takes the
+					 * line below, where it has that same width to itself.
+					 *
+					 * `ink-muted` rather than the mark's `ink-dim`: on a blocked row
+					 * this is the part that says what the work is waiting on, and `dim`
+					 * is the ink for settled work.
+					 */
+					<span
+						className={cn("truncate text-ink-muted text-meta leading-4")}
+						title={reason}
+					>
+						{reason}
+					</span>
+				)}
+			</div>
 		</li>
 	);
 };
 
 export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
-	const { phases, hidden } = visibleTodoPhases(details.todos);
+	const { phases } = visibleTodoPhases(details.todos);
 	return (
 		<section className={cn("flex flex-col pb-1.5")}>
 			<div
@@ -149,16 +187,18 @@ export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
 					 * Headerless for the flat, single-phase plan: an `init` with no
 					 * phases of its own does not grow a `Todos · 0/3` header it does not
 					 * need. The counts are the plan's own progress — closed over total,
-					 * where closed means done or dropped, the same notion the TUI's
-					 * auto-hide uses.
+					 * where closed means done or dropped — and they are counted over the
+					 * WHOLE phase rather than over the visible slice, so a header cannot
+					 * shrink as rows overflow. `resolved` is that closure in words
+					 * (`§4.2`).
 					 */}
 					{phase.name && (
 						<div className={cn("flex items-baseline gap-1 px-3 pt-1 pb-0.5")}>
-							<span className={cn("truncate text-meta text-ink-muted")}>
+							<span className={cn("truncate text-ink-muted text-meta")}>
 								{phase.name}
 							</span>
-							<span className={cn("shrink-0 text-meta text-ink-dim")}>
-								{`· ${phase.closed}/${phase.total}`}
+							<span className={cn("shrink-0 text-ink-dim text-meta")}>
+								{`· ${phase.closed}/${phase.total} resolved`}
 							</span>
 						</div>
 					)}
@@ -166,17 +206,25 @@ export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
 						{phase.items.map((item, index) => (
 							<TodoRow key={`${index}-${item.text}`} item={item} />
 						))}
+						{/*
+						 * Disclosed INSIDE the phase that lost the rows (`§6.3`), so the
+						 * plan never appears to start mid-way and every phase header above
+						 * stays accountable to the rows beneath it. Every hidden row is a
+						 * CLOSED one — the model never hides an open or blocked item — so
+						 * the count can only ever be settled work.
+						 *
+						 * The phase keeps its header and this row even when every item of
+						 * it was shed, which is the one place a header has no item under
+						 * it: silence there would be the plan lying about its own size.
+						 */}
+						{phase.hidden > 0 && (
+							<li className={cn("px-3 pt-1 text-ink-dim text-meta")}>
+								{`+${phase.hidden} more`}
+							</li>
+						)}
 					</ul>
 				</div>
 			))}
-			{/* Disclosed rather than truncated. Every hidden row here is a CLOSED
-			 * one — the model never hides an open or blocked item — so the count can
-			 * only ever be settled work. */}
-			{hidden > 0 && (
-				<p className={cn("px-3 pt-1 text-meta text-ink-dim")}>
-					{`+${hidden} more`}
-				</p>
-			)}
 		</section>
 	);
 };

@@ -144,6 +144,24 @@ The trigger renders when, and only when:
 hasRunDetails(state) && !isCanvasOpen
 ```
 
+with one term that is not about visibility at all:
+
+```
+// already mounted and open — the reader is looking at the panel
+hasRunDetails(state) || open
+```
+
+- **An open panel is never unmounted by the data settling underneath it.**
+  `hasRunDetails` answers "is there anything to open FOR"; `open` answers "is
+  someone reading it right now". Gating on `hasRunDetails` alone unmounted the
+  portal the moment the last open child or to-do settled, so the panel vanished
+  mid-sentence under the reader. It also made the failure clause unreadable: with
+  the dot lit and nothing else open, opening the panel acknowledged the failure
+  in the same commit that displayed it, `hasRunDetails` went false, and the panel
+  went with it — the one state the dot exists for could never be read. And
+  because `open` outlived that gate, the panel then re-rendered open, and
+  re-focused, the next time work started. `§ 6.3` states the resulting state that
+  is now reachable.
 - `hasRunDetails` is true when **any child is open** (running, queued, starting,
   pausing, paused) **or any to-do is open** (pending, blocked) **or a child has
   failed and the popover has not been opened since**. Settled work alone does not
@@ -191,10 +209,26 @@ its own line rather than being the first thing shed:
   `agent_role` first (as the TUI orders it, `subagent_panel.py:1133-1146`),
   then elapsed, context, cost — in `ink-muted`, with the elapsed value in
   `tabular-nums` so a column of them aligns.
-- Line 2 activity: `latest_details.progress` verbatim, `ink-dim`, one line,
-  truncated with an ellipsis. Present only while the child is running or
-  queued. A settled child has no second line, matching the TUI's blanked
-  activity (`:653-660`) and keeping the settled tail of the list quiet.
+- Line 2 is **the activity while the child is running or queued, and the first
+  line of the error when it has FAILED.** A failure is settled, so "a settled
+  child has no second line" was never true of the one settled state that has
+  something to say. The two variants are different kinds of text and are set
+  differently:
+  - *Activity* is prose about the work: sans, `ink-muted`, one line,
+    head-truncated with an ellipsis, because there the head is the useful part
+    (the tool, then its arguments). `ink-muted` rather than `ink-dim`, because at
+    12px on this ground `dim` measures ≈4.7:1 — the tightest text on the surface
+    — and it is the ink the TUI moved away from for this same field
+    (`subagent_panel.py:1069-1071`, assignment at `:1153`).
+  - *A failure's line* is machine voice: `font-mono text-mono-sm`, the exception
+    **verbatim** (a fabricated translation is a claim nobody can check), allowed
+    to wrap to at most two lines (`line-clamp-2`). The wrapping is the
+    substantive half: head-truncated on one line,
+    `FileNotFoundError: [Errno 2] No such file or directory: 'ledger/q1.csv'`
+    rendered as `…'le…` — the exception's preamble survived and the identifier,
+    the only part that says WHAT failed, was cut.
+  - A settled child that did not fail has no second line, matching the TUI's
+    blanked activity (`:653-660`) and keeping the settled tail of the list quiet.
 - Every number is omitted rather than zeroed when unknown
   (`subagent_panel.py:429-450`); a child with no cost reported shows no cost
   segment, not `$0.00`.
@@ -203,29 +237,54 @@ its own line rather than being the first thing shed:
 
 ### 4.2 To-dos
 
-Section label `To-dos` with the plan's progress in the same quiet trailing
-form: `4 of 9 done`, plus ` · 1 dropped` when any exist. Plainer than the TUI's
-`n/total resolved`, which is a terminal's compression of the same fact.
+Section label `To-dos` with the plan's progress in the same quiet trailing form:
+`10 of 14 resolved`, plus ` · 1 dropped` when any exist.
+
+- **`resolved` is closure — done OR dropped — and it is one word for one fact,
+  used by the section tally and by every phase header beneath it.** They used to
+  disagree: the tally counted `done` only while a header counted closed
+  (= done + dropped), so `9 of 14 done` sat above a `Verify · 4/5` whose four had
+  included a dropped row, with nothing on screen saying the two were measuring
+  different things. The TUI's `n/total resolved` is the same notion in a
+  terminal's compression.
+- The `dropped` segment is the breakdown *of* that closure, not a second count:
+  it says how much of the finished work was abandoned rather than done, which is
+  a distinction a plan should not quietly lose — and it is why the word stays
+  beside the count that contains it.
 
 Then the plan, in the model's own order, because a plan should read in the
 order it was written:
 
 ```
-PhaseName · 2/4
+PhaseName · 2/4 resolved
   [ ] Verify the migration on a scratch database
   [x] Add the composite index
-  [~] Backfill rows older than 2024      — blocked: the writer is still running
+  [~] Backfill rows older than 2024
+      — blocked: the writer is still running
   [-] Drop the legacy column             — dropped
 ```
 
-- Phase header: name `ink-muted`, counts `ink-dim`.
+- Phase header: name `ink-muted`, counts `ink-dim`, and the counts say
+  `resolved` like the section tally does rather than leaving the reader to infer
+  which notion of closure they are.
+- The blocked row is the only one that wraps: item text on the first line,
+  `— blocked: <reason>` on the second, indented under the text (`§ 5`, one grid).
 - Items indent under the phase header, with the mark first in a fixed column so
-  the text of every item starts on the same x.
+  the text of every item starts on the same x — **and that column is the
+  roster's state-icon column** (`§ 5`): the two lists are one panel and they
+  share one grid. The indent that separates a plan from its phase header lives on
+  the second line, not in the first column.
 - Encoding is the TUI's, unchanged: **luminance says open or settled, a word
   says which settled state, and no item is coloured.** Pending text is
   `ink-muted`; done and dropped are `ink-dim` with a line-through; blocked is
-  full `ink` — the loudest row in the section — with `— blocked: <reason>` in
-  `ink-muted` beside it.
+  full `ink` — the loudest row in the section.
+- **A blocked item is the plan's one two-line row.** Its text takes the full row
+  width, and `— blocked: <reason>` goes on its own line beneath, indented under
+  the text, in `ink-muted`. Sharing one line truncated both strings to fragments
+  — the item, which is the subject, lost its payload and the reason was cut
+  mid-word — and a reason is the only variable-length string in the plan, so
+  there is no width at which sharing works. `dropped` keeps `— dropped` inline:
+  one fixed word, on a row that stays one line.
 - The marks are lucide icons rather than ASCII: a box for pending, a checked
   box for done, a slashed box for dropped, a dashed box for blocked. The `- [ ]`
   of the TUI is a terminal drawing a picture with the characters it has; what
@@ -237,7 +296,10 @@ PhaseName · 2/4
 
 ### 4.3 What a user can do here
 
-Nothing but read, in this iteration. Rows are not clickable. The TUI's row
+Nothing but read, in this iteration. Rows are not clickable — and, for the same
+reason, **no row has a hover ground**: a row that reacts to the pointer is an
+affordance the surface does not honour, and the two lists have to agree about
+it rather than one of them hinting at a click. The TUI's row
 opens the child's full-page transcript (`subagent_panel.py:1475-1476`), and the
 desktop has no child-reader surface to open — a subagent reader is a real
 feature and a real piece of scope, and inventing it here would double this
@@ -249,14 +311,15 @@ result once it lands.
 | | Value | Why |
 |---|---|---|
 | Panel width | 384px | The subagent row's fixed segments plus a label floor of roughly 20 characters. The popover primitive's default `w-72` cannot hold the numbers run and the activity line. |
-| Max height | `min(60vh, 480px)`, contents in a `ScrollArea` | A long plan scrolls inside the panel rather than growing past the viewport. |
+| Max height | `min(60vh, 480px)`, contents in a `ScrollArea` with `type="auto"` | A long plan scrolls inside the panel rather than growing past the viewport, and the thumb paints whenever the content actually overflows — so a still can show that more follows and a panel that fits gains no chrome. Radix's default `hover` cannot: it needs a pointer, which a capture never has, and the only cue left was a row sliced by the panel's bottom edge, which reads as damage. |
 | Anchor | `align="end"`, `side="bottom"`, `sideOffset={6}` | Anchored to the header cluster's right edge, opening away from the transcript's own content. |
-| Panel padding | `p-0`; sections own their padding | The primitive ships `p-4` for content-shaped popovers; this one is a list, and a list needs its rows to reach the panel edge so hover and rules can. |
+| Panel padding | `p-0`; sections own their padding | The primitive ships `p-4` for content-shaped popovers; this one is a list, and a list needs its rows to reach the panel edge so the section rules and the row grounds can. |
 | Radius | `rounded-md` (10px) | Panel tier, inherited from the primitive. |
-| Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. |
+| Ground and edge | `bg-elevated`, `border-hairline`, `shadow-overlay` | Inherited. It leaves the flow, so it takes the one shadow and does not take a second boundary. The shadow is what paints the edge in the frames: the ground outside the hairline runs from the darkest pixel at the panel's edge back to the canvas ground ≈20px out (the token's `32px` blur less its `-12px` spread), in both brand themes. |
 | Between sections | one `hairline` rule | Two stacked lists need a boundary; nothing else in the panel does. |
-| Row height | 32px single line, 44px with an activity line | On the 4px ramp, and enough for a 16px icon to sit on the label's baseline. |
-| Row hover | `bg-accent-wash` | A colour step. Nothing lifts, scales or translates. |
+| Row height | subagents: 32px single line, 48px with a second line, 64px for a failure whose exception takes both clamped lines. To-dos: 24px single line, 40px for a blocked row's reason line | Both pairs sit on the 4px ramp, and 32/48 is what a 16px icon on the label's baseline plus one 16px second line measures. The line heights are pinned (`leading-5` on the first line, `leading-4` on the second) rather than inherited: `body-sm`'s 1.5 and `meta`'s 1.45 land off the ramp at 19.5px and 17.4px, which measured as a 48-50px two-line row. |
+| Row hover | **none** | Nothing in this panel is clickable (`§ 4.3`), so nothing may react to a pointer: a row that lights up under the cursor is a promise the surface does not keep. The `accent-wash` step belongs to rows that do something, and the two lists agree — neither of them hovers. |
+| One grid | marks and state icons in the same 16px column at `px-3`; first-line text at the same x in both lists; second lines indented under the text | Two lists in one panel have to read as one panel. The plan used to sit 12px right of the roster's icons (marks at `pl-6`, text at `pl-6`+20px), which is what made the panel read as two lists rather than one. |
 
 ## 6. Trigger and states
 
@@ -300,8 +363,8 @@ both of which are the product's own nouns and both of which the TUI uses.
 | both sections | `Subagents` then `To-dos`, hairline between |
 | one section | the other is omitted entirely; no empty heading, no placeholder |
 | overflowing subagents | 6 rows, then `+3 more` as a quiet trailing row, ordered by the TUI's priority slice (running/queued, failed, paused, settled; ties newest-first) |
-| overflowing to-dos | cap the item rows at 10, never dropping an open or blocked item; closed rows go first, earliest phase first, disclosed as `+4 more` |
-| all settled | every row quiet, no activity lines; the trigger is already gone unless a failure is unseen |
+| overflowing to-dos | cap the item rows at 10, never dropping an open or blocked item. The **oldest** closed rows are the ones shed — earliest phase first, earliest item first — so a long plan keeps its recent end, and the hidden rows are disclosed as `+N more` **inside the phase that lost them**, under its surviving rows: the plan never appears to start mid-way, and every phase header stays accountable to the rows beneath it. A phase all of whose rows were shed keeps its header and its own `+N more` |
+| all settled | reachable, and now by two paths: the panel was opened while work was live and the work then settled, or the last open item settled under an open panel (`§ 3.3`). Every row quiet, no activity lines, and the trigger is gone unless a failure is unseen |
 | long label | label truncates with an ellipsis; role, elapsed, context and cost are fixed-width and never truncate mid-value |
 | reduced motion | the running icon stays put; shape already distinguishes it (§ 6.4) |
 | no content | unreachable: the trigger is not rendered, so the popover cannot open empty |
@@ -332,6 +395,24 @@ reader rather than as a column of unlabelled icons.
 - Opening moves focus to the panel container (rendered `tabIndex={-1}`), not to
   the first row — the rows are not interactive and focusing one would imply
   they are. Escape closes and returns focus to the trigger.
+- **That container carries `outline-none`, and this is the case the app's own
+  focus doctrine names as legitimate.** `styles/index.css:355-370` allows the
+  suppression when "focus is moved there programmatically and a ring would be
+  noise", and requires the decision to be "visible in the component" — which is
+  why the comment lives on the popover content rather than in a stylesheet.
+  Without it the app's unlayered `html :focus-visible` rule (`:345-352`) paints a
+  2px accent ring around the whole panel: at 7.24:1 against the panel's own
+  hairline at 1.19:1 it is the loudest line on the surface, and it nicks the
+  header's bottom rule. The trigger keeps its ring — the keyboard user still has
+  to see where they are, and the ring marks something actionable there.
+- **`shadow-overlay!` on the same element, for the same reason.** That rule also
+  sets `box-shadow: none !important` on any `:focus-visible` element — it exists
+  to neutralise MUI's shadow rings — so the panel, which IS focus-visible from
+  the moment it opens, had its one shadow suppressed and this section's own
+  elevation promise went unfulfilled: the ground 1px outside the hairline was the
+  canvas ground. The `!` is load-bearing rather than tidy, because a plain
+  utility cannot outrank an unlayered `!important`. Removing the ring is what puts
+  the boundary back, and `§ 5` records the measured falloff.
 - The panel is **not** an `aria-live` region. It updates live while open, and a
   region that announces every progress tick would be hostile; the opening
   announcement is the summary, and the panel is re-read on demand.
@@ -399,3 +480,9 @@ Rendered frames are the evidence for this design; a green test is not. The
 story states in § 6.3 are captured through `scripts/capture-evidence.mjs` and
 committed under `docs/evidence/`, so the same frames the design was judged on
 are the ones a reviewer can re-take.
+
+One of them exists for a defect rather than for a state: `failure-unseen` — a
+run whose ONLY reason for a trigger is a failure nobody has read — is the
+regression frame for the panel surviving its own acknowledgement (§ 3.3). Against
+a trigger gated on `hasRunDetails` alone it renders no panel at all, so the frame
+cannot quietly pass if that gate comes back.

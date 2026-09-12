@@ -139,18 +139,71 @@ const NumbersRun = ({ row }: { row: SubagentRow }) => {
 	);
 };
 
+/**
+ * The row's second line (`§4.1`), which is one of two different kinds of text.
+ *
+ * Both variants take `ink-muted`, where the activity line used to take
+ * `ink-dim`: at 12px on the panel ground `dim` measures ≈4.7:1 — the tightest
+ * text on the surface — and it is the ink the TUI deliberately moved AWAY from
+ * for this same field (`subagent_panel.py:1069-1071`, and the assignment at
+ * `:1153` that names `muted` for it).
+ *
+ * `errorLine` is MACHINE VOICE: `font-mono`, matching every other exception the
+ * app prints (`trace/working-line.tsx:167`), kept VERBATIM — a fabricated
+ * translation of an exception is a claim nobody can check — and wrapped to at
+ * most two lines. Wrapping is the substantive half of that: head-truncated on
+ * one line, `FileNotFoundError: [Errno 2] No such file or directory:
+ * 'ledger/q1.csv'` rendered as `…'le…`, keeping the exception's preamble and
+ * cutting the identifier, which is the only part that says WHAT failed.
+ *
+ * `activity` is prose about the work: sans, one line, head-truncated, because
+ * there the head IS the useful part (the tool, then its arguments).
+ */
+const DetailLine = ({ row }: { row: SubagentRow }) => {
+	if (row.errorLine) {
+		return (
+			<span
+				className={cn("line-clamp-2 font-mono text-ink-muted text-mono-sm")}
+				title={row.errorLine}
+			>
+				{row.errorLine}
+			</span>
+		);
+	}
+	if (row.activity) {
+		return (
+			<span
+				className={cn("truncate text-ink-muted text-meta leading-4")}
+				title={row.activity}
+			>
+				{row.activity}
+			</span>
+		);
+	}
+	return null;
+};
+
 const SubagentRowView = ({ row }: { row: SubagentRow }) => {
-	// Line 2 is the live datum while the child works and the outcome's first line
-	// once it has failed; a settled child has neither, matching the TUI's blanked
-	// activity (`:653-660`) and keeping the settled tail of the list quiet.
-	const detail = row.activity ?? row.errorLine;
+	/*
+	 * Line 2 is the live datum while the child works and the outcome's first line
+	 * once it has failed; a settled child that is not a failure has neither,
+	 * matching the TUI's blanked activity (`:653-660`) and keeping the settled
+	 * tail of the list quiet.
+	 */
 	return (
 		<li
 			className={cn(
-				// A colour step and nothing else: nothing lifts, scales or translates
-				// on hover (`branding.md` § 5). The ground is full-bleed so the rows
-				// read as one list rather than as text floating in the panel.
-				"flex gap-2 px-3 py-1.5 hover:bg-accent-wash",
+				// No hover ground: nothing in this panel is clickable (`§4.3`), so
+				// nothing may react to a pointer. A row that lights up under the
+				// cursor is a promise the surface does not keep.
+				//
+				// `py-1.5` with the two pinned line-heights below is what makes the
+				// row heights exact (`§5`): 12 + 20 = 32px single-line, 12 + 20 + 16
+				// = 48px with a second line. The line-heights are pinned rather than
+				// inherited because `body-sm`'s 1.5 and `meta`'s 1.45 both land off
+				// the 4px ramp (19.5px and 17.4px), which measured as a 48-50px
+				// two-line row instead of the 48 the contract claims.
+				"flex gap-2 px-3 py-1.5",
 			)}
 		>
 			<span className={cn("pt-0.5")}>
@@ -159,7 +212,9 @@ const SubagentRowView = ({ row }: { row: SubagentRow }) => {
 			<div className={cn("flex min-w-0 flex-1 flex-col")}>
 				<div className={cn("flex items-baseline gap-2")}>
 					<span
-						className={cn("min-w-0 flex-1 truncate text-body-sm text-ink")}
+						className={cn(
+							"min-w-0 flex-1 truncate text-body-sm text-ink leading-5",
+						)}
 						title={row.label}
 					>
 						{row.label}
@@ -175,14 +230,7 @@ const SubagentRowView = ({ row }: { row: SubagentRow }) => {
 					<span className={cn("sr-only")}>{childStateLabel(row.status)}</span>
 					<NumbersRun row={row} />
 				</div>
-				{detail && (
-					<span
-						className={cn("truncate text-meta text-ink-dim")}
-						title={detail}
-					>
-						{detail}
-					</span>
-				)}
+				<DetailLine row={row} />
 			</div>
 		</li>
 	);

@@ -215,6 +215,27 @@ export const Failure: Story = {
 };
 
 /**
+ * The unseen failure and nothing else — every child settled, every to-do closed
+ * — photographed OPEN.
+ *
+ * The only reason the trigger is on screen here is a failure nobody has read
+ * (`§3.3`), which makes this the frame for the acknowledgement path: opening the
+ * panel records the failure as seen in the same commit that shows it, and the
+ * panel has to survive that (`§6.3`). It is the regression frame for D1 — against
+ * a trigger gated on `hasRunDetails` alone, this story renders no panel at all.
+ *
+ * The failure carries the full exception line, so the frame also shows D4's
+ * second line: monospace, `ink-muted`, wrapped to two lines so the identifier
+ * `'ledger/q1.csv'` survives instead of being truncated away.
+ */
+export const FailureUnseen: Story = {
+	render: () => (
+		<OpenPanel details={deriveRunDetails(fixtures.failureUnseen())} />
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * Nine children over a fourteen-item plan: both overflow disclosures, and the
  * panel's own `min(60vh, 480px)` ceiling doing its job — the list scrolls inside
  * the panel rather than growing past the viewport.
