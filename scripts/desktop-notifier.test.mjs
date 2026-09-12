@@ -457,6 +457,54 @@ test("the status leads a snippet body and never a house body", async () => {
 	assert.equal(globalThis.__toasts.at(-1).body, "Stopped with an error");
 });
 
+// T-U15 — Q-1. The third kind of body, which the two-way split above missed.
+test("the status leads the session's own failure text", async () => {
+	const { notifier } = harness();
+
+	// The backend's real shape for a classified failure: NOT a snippet (the
+	// last assistant line would assert success beside a failed state), but not
+	// a house constant either, so nothing in it names the outcome. This is the
+	// default path — the same privacy flag that yields a session name yields
+	// this text — and without the status it reads as routine log noise.
+	notifier.observe(
+		SESSION,
+		completionFrame({
+			kind: "error",
+			status: "Needs attention",
+			body: "anthropic: 429 rate_limit_error - credit balance too low",
+			body_is_snippet: false,
+			body_is_failure: true,
+			dedupe_key: "complete:failure:1",
+			completion_token: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+		}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"Needs attention — anthropic: 429 rate_limit_error - credit balance too low",
+	);
+
+	// The flag is additive and optional on the wire. A backend old enough to
+	// send a failure summary without it degrades to the bare body rather than
+	// throwing on the missing field.
+	notifier.observe(
+		SESSION,
+		completionFrame({
+			kind: "error",
+			status: "Needs attention",
+			body: "anthropic: 429 rate_limit_error - credit balance too low",
+			body_is_snippet: false,
+			dedupe_key: "complete:failure:2",
+			completion_token: "ffffffff-ffff-4fff-8fff-fffffffffff0",
+		}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"anthropic: 429 rate_limit_error - credit balance too low",
+	);
+});
+
 // T-U6
 test("with notification_contract >= 1 an agent_end event raises nothing", async () => {
 	const { notifier, requests } = harness();

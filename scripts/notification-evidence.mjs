@@ -171,6 +171,35 @@ const FRAMES = [
 			focus_policy: "when_unfocused",
 		},
 	},
+	{
+		label: "error-with-failure-summary",
+		payload: {
+			contract: 1,
+			kind: "error",
+			title: "Nightly ETL backfill",
+			status: "Needs attention",
+			// The DEFAULT error shape, not an exotic one: the privacy flag that
+			// yields a session name is the same one that yields this text, so a
+			// classified failure renders here rather than the house sentence
+			// above. Copied from a real provider envelope as the backend's
+			// `_compose_body` returns it (`session_incident.raw`, bounded to
+			// BACKGROUND_SNIPPET_MAX_CHARS) — never the last assistant line,
+			// which predates the failure.
+			//
+			// This fixture exists because its absence is how Q-1 survived two
+			// review and two design rounds: every frame anyone rendered happened
+			// to take the status-bearing path, so the one banner that loses its
+			// status was the one nobody ever looked at.
+			body: "anthropic: 429 rate_limit_error - your credit balance is too low to access the Claude API",
+			body_is_snippet: false,
+			body_is_failure: true,
+			title_is_session_name: true,
+			dedupe_key: "complete:123456abcdef:44444444-4444-4444-8444-444444444444",
+			completion_token: "44444444-4444-4444-8444-444444444444",
+			session_name: "Nightly ETL backfill",
+			focus_policy: "when_unfocused",
+		},
+	},
 ];
 
 /**

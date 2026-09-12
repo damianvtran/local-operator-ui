@@ -115,6 +115,24 @@ export type DesktopNotification = {
 	body: string;
 	/** True when `body` is model-written text rather than a house constant. */
 	body_is_snippet: boolean;
+	/**
+	 * True when `body` is the session's own recorded failure text rather than a
+	 * house constant — a provider envelope such as
+	 * `anthropic: 429 rate_limit_error - credit balance too low`.
+	 *
+	 * A separate flag from `body_is_snippet` because the two are never both
+	 * true and a surface has to tell them apart: both carry untrusted,
+	 * non-house text, but only the failure text is the reason the user has to
+	 * act. The backend is the only side that can read it, so a surface that
+	 * ignores it renders the state-naming status for a snippet and drops it for
+	 * the one banner that demands action.
+	 *
+	 * OPTIONAL because it is additive: the backend added it after the first
+	 * contract-1 payloads shipped and additive fields do not bump `contract`. A
+	 * backend old enough to emit a failure summary without the flag degrades to
+	 * the bare body, which is exactly what it rendered before the flag existed.
+	 */
+	body_is_failure?: boolean;
 	/** False when the privacy flag is off or the session has no stored name. */
 	title_is_session_name: boolean;
 	/**

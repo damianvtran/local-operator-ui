@@ -486,7 +486,17 @@ export class DesktopNotifier {
 				return;
 			}
 		}
-		this.show(sessionId, n.title, n.status, n.body, n.body_is_snippet);
+		// `body_is_failure` is additive and optional on the wire (see the type):
+		// absent from a backend that predates the flag, which falls through to the
+		// bare body it rendered before the flag existed rather than throwing.
+		this.show(
+			sessionId,
+			n.title,
+			n.status,
+			n.body,
+			n.body_is_snippet,
+			n.body_is_failure ?? false,
+		);
 	}
 
 	/**
@@ -643,15 +653,28 @@ export class DesktopNotifier {
 	 * which macOS truncates the BODY with its own ellipsis. That is why the join
 	 * is spent sparingly below.
 	 *
-	 * `isSnippet` decides whether the status earns its place. A model-written
-	 * snippet does not say the outcome, so the category in front of it is the
-	 * only thing that does. The house bodies ("Task complete", "Stopped with an
-	 * error") already name the state, so prefixing them renders "Complete — Task
-	 * complete": one fact asserted twice in the two lines a banner gets, which is
-	 * what every user with the session-name privacy flag off would have received.
-	 * `body_is_snippet` is the backend's own flag for exactly this difference, so
-	 * this app still re-words nothing (design 8.4). Gates pass `status = ""` and
-	 * are unaffected either way.
+	 * WHETHER THE BODY NAMES THE OUTCOME ITSELF decides whether the status earns
+	 * its place, and the backend sends two flags for the two kinds of body that
+	 * do not. A model-written snippet describes the work, and the session's own
+	 * recorded failure text describes the cause ("anthropic: 429
+	 * rate_limit_error - credit balance too low"); neither says whether the turn
+	 * succeeded, so the category in front of it is the only thing that does. The
+	 * house bodies ("Task complete", "Stopped with an error") already name the
+	 * state, so prefixing them renders "Complete — Task complete": one fact
+	 * asserted twice in the two lines a banner gets, which is what every user
+	 * with the session-name privacy flag off would have received.
+	 *
+	 * Reading only `body_is_snippet` split the world in two where the backend
+	 * made it three, and it inverted the intent of the failure text (design
+	 * round 1, D4): a raw 429 envelope under a session name reads as routine log
+	 * noise, so the ONE banner that demands action was the one that never said
+	 * anything had gone wrong — and it was worse with the privacy flag ON (the
+	 * default, which is what produces the failure text) than off, where the user
+	 * at least got "Stopped with an error" (QA round 1, Q-1).
+	 *
+	 * These are the backend's own flags for exactly this difference, so this app
+	 * still re-words nothing (design 8.4). Gates pass `status = ""` and are
+	 * unaffected either way.
 	 */
 	private show(
 		sessionId: string,
@@ -659,8 +682,9 @@ export class DesktopNotifier {
 		status: string,
 		body: string,
 		isSnippet = false,
+		isFailure = false,
 	): void {
-		const lead = isSnippet && status ? `${status} — ` : "";
+		const lead = (isSnippet || isFailure) && status ? `${status} — ` : "";
 		const notification = new Notification({
 			title,
 			body: `${lead}${body}`.slice(0, MAX_BODY_CHARS),
