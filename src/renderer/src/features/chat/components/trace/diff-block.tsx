@@ -148,9 +148,13 @@ export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
 				 * rows, where the marker sits inside it by construction; a wrapped
 				 * body is the shape that actually reaches the cap, and at a 560px
 				 * column the 40 shown long lines are 80 rows — 1415px of content in a
-				 * 738px clip, measured — so the marker's own row would begin 677px
-				 * BELOW the fold. A body that claims completeness while lines are
-				 * hidden is the same defect the 720px ceiling had.
+				 * 738px client box, measured — so in the flow the marker's own row
+				 * begins 648.6px BELOW the clip, and the pin has to lift it by 677px
+				 * (also this body's maxScroll, `scrollHeight - clientHeight`) to land
+				 * it flush at the foot, its box top 709.61px inside the well. The two
+				 * distances coincide only because the well's 12px bottom padding is
+				 * the pin's own `bottom: -12px` offset. A body that claims completeness
+				 * while lines are hidden is the same defect the 720px ceiling had.
 				 *
 				 * Three classes, each for a measured reason:
 				 *

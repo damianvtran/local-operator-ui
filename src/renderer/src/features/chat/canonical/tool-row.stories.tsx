@@ -678,9 +678,17 @@ const CAPPED_DIFF = [
  * derived for UNWRAPPED rows (41 x 17.4px plus padding = 740px) and holds there
  * exactly; at 560px each of these lines takes two rows, so the body is roughly
  * twice the clip and the marker row would sit far below the scroll edge if it
- * were left in the flow. Its arithmetic: ~80 content rows at 17.4px is ~1392px
- * inside a 740px clip, so the marker begins ~650px below the fold. `sticky
- * bottom-0` is what keeps the well honest at every scroll position.
+ * were left in the flow. Measured in the live DOM at that width: 1415px of
+ * content (`scrollHeight`) in a 738px client box, so `maxScroll` is 677px, and
+ * in the flow the marker's own row starts 648.6px BELOW the clip. 677px is a
+ * different quantity — the distance the pin lifts that row, and it equals this
+ * body's `maxScroll` only because the well's 12px bottom padding is the pin's
+ * own `bottom: -12px` offset; pinned, the row's box top lands 709.61px inside
+ * the well. `sticky -bottom-3 pb-3 -mb-3` is what keeps the well honest at
+ * every scroll position. Plain `bottom-0` is the version `diff-block.tsx`
+ * rejects: it pins 13px higher, at the content-box edge, and the next diff row
+ * shows through the band underneath the marker, so the pin stops reading as the
+ * well's foot.
  */
 const WRAPPED_CAPPED_DIFF = [
 	"--- ",
@@ -856,12 +864,15 @@ export const DiffBodyNarrow: Story = {
  * The cap at a WRAPPING width, which is the shape that actually reaches it.
  *
  * The ceiling above is derived for unwrapped rows and is exactly right there;
- * a 560px column turns 40 long lines into ~80 rows, so the marker's row would
- * begin ~650px BELOW the 740px clip — a body that says "40 lines" while 40 rows
- * are hidden, which is the defect class the 720px ceiling was fixed for. Here
- * the frame is at rest, scrolled to the top, and the marker is pinned to the
- * well's foot: if it ever stops being visible, this frame shows the well
- * claiming completeness with lines missing, which is the whole point of it.
+ * a 560px column turns 40 long lines into ~80 rows — 1415px of content in a
+ * 738px client box, measured — so the marker's own row begins 648.6px BELOW the
+ * clip, and the body would say "40 lines" while 40 rows stayed hidden. (677px is
+ * the distance the pin lifts that row, not the below-the-fold gap; the
+ * WRAPPED_CAPPED_DIFF fixture above carries both quantities and why they
+ * differ.) That is the defect class the 720px ceiling was fixed for. Here the
+ * frame is at rest, scrolled to the top, and the marker is pinned to the well's
+ * foot: if it ever stops being visible, this frame shows the well claiming
+ * completeness with lines missing, which is the whole point of it.
  */
 export const DiffBodyNarrowWrappedCap: Story = {
 	render: () => (

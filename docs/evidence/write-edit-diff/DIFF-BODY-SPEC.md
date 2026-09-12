@@ -47,9 +47,12 @@ details = { path, added, removed, diff? }
 
 Nothing on this side recomputes a diff. The payload is the producer's bytes.
 
-The field is a LIST of strings, and every real one measured is: 8,850
-`details.diff` values across 1,102 stored transcripts on this machine are lists
-of strings — no strings, no non-string members, no empty lists. A durable row
+The field is a LIST of strings, and every real one measured is: 9,501
+`details.diff` values across the 1,166 stored transcripts this machine held on
+2026-09-12 are lists of strings — no strings, no non-string members, no empty
+lists, and none on an `is_error` row. Those totals are a DATED SNAPSHOT of a live
+store rather than a fixed property: the store grows as sessions run, so the shape
+is the claim and the counts are only its provenance. A durable row
 round-trips through pydantic, so a list stays a list; the mobile fold copies each
 key through untouched (`mobile/projection.py:284-288`), so it stays a list there
 too. `diffFromDetails` (`tool-row-model.ts`) also TOLERATES a pre-joined string,
@@ -77,7 +80,8 @@ not decoration: on a failure the arguments are the only account of what was
 attempted and the error only makes sense beside them, so a row carrying both a
 diff and an error paints the arguments AND the error rather than a diff alone. No
 producer does that today — every error exit returns before `_diff_details`, and
-all 8,850 real `details.diff` rows are successful `write`/`edit` results — so the
+all 9,501 real `details.diff` rows measured are successful `write`/`edit` results
+— so the
 guard is pinned by assertion (`scripts/tool-row.test.mjs`, which fails if
 `!row.isError` is dropped) rather than by a frame that would have to depict a
 payload the wire does not produce.
@@ -202,9 +206,13 @@ content in a 737px clip, no scroll, marker inside.
 
 **And the marker is PINNED to the well's foot, because that derivation only holds
 for UNWRAPPED rows.** A wrapped body is the shape that actually reaches the cap:
-40 long lines at a 560px column are 80 rows — 1415px of content in a 738px clip,
-measured in the live DOM — so a marker left in the flow began 677px BELOW the
-fold, and the reader saw a well that looked complete while rows were hidden. That
+40 long lines at a 560px column are 80 rows — 1415px of content in a 738px client
+box, measured in the live DOM — so a marker left in the flow begins 648.6px BELOW
+the clip at rest, and the reader saw a well that looked complete while rows were
+hidden. The pin lifts that row by a different quantity, 677px, which is also this
+body's `maxScroll` (`scrollHeight - clientHeight`, 1415 - 738); the two coincide
+only because the well's 12px bottom padding is the pin's own `bottom: -12px`
+offset, and the pinned box top lands 709.61px inside the well. That
 is the same defect class as the 720px ceiling. `sticky -bottom-3 pb-3 -mb-3` in
 `diff-block.tsx` holds it at the foot at every scroll position; the `pb-3` gives
 the pinned row the well's own bottom padding as background so nothing shows
@@ -233,8 +241,8 @@ there is supposed to be none.
   the line carries; a browser has the room to wrap.
 - **Tab width.** Three different answers, measured, and none of them two. The
   terminal's own arithmetic counts a tab as ZERO cells (`rich.cells.cell_len("\t")
-  == 0`) while it paints an 8-column stop; this browser advances a tab by 21.61px
-  against a 7.22px space — 3 columns at the fixture's tab positions — because
+  == 0`) while it paints an 8-column stop; this browser advances a tab by
+  21.6094px against a 7.2031px space — exactly 3.0000 columns — because
   Tailwind v4's preflight sets `tab-size: 4` on `html, :host`, not the `<pre>`
   default of 8; and the app's other machine-voice blocks (`output-block`, the args
   block) inherit that same 4. No `tab-size` is invented here; if the app ever

@@ -339,8 +339,10 @@ export function isDiffBodyTool(toolName: string): boolean {
  * attempted and the error only makes sense beside them, so a row that shipped
  * both a diff and an error must paint the arguments and the error, not a diff
  * alone. The producer agrees today — every error exit goes through `_error`
- * (tools/builtin.py:1041) or `_invalid_arguments` (`:1058`), neither of which
- * sets `details`, and all 8,850 real rows carrying `details.diff` are successful
+ * (tools/builtin.py:1041) or `_invalid_arguments` (`:1051`, which does set
+ * `details`, but only its `FAULT_KEY` fault marker at `:1066`; it is
+ * `details.diff` that no error path sets), and all 9,501 real rows carrying
+ * `details.diff` measured on 2026-09-12 are successful
  * `write`/`edit` results — so the guard has no live case; it is here because the
  * reference keeps it and "no producer does this yet" is not a rule a renderer
  * can rely on. `scripts/tool-row.test.mjs` pins it.
@@ -371,8 +373,10 @@ export function isDiffBodyRow<
  *
  * A string payload is tolerated, and it is DEFENSIVE TOLERANCE rather than a
  * shape any producer emits. Measured over every transcript on this machine:
- * 8,850 `details.diff` values across 1,102 stored sessions are lists of strings
- * — no strings, no non-string members, no empty lists — and the fold this file
+ * 9,501 `details.diff` values across the 1,166 stored transcripts it held on
+ * 2026-09-12 are lists of strings
+ * — no strings, no non-string members, no empty lists, none on an `is_error` row
+ * (a dated snapshot of a live store, not a fixed property) — and the fold this file
  * used to blame for the string shape does not produce one either:
  * `mobile/projection.py:284-288` copies each key through untouched, so a list
  * stays a list. (The phone's `diff?: string | string[]` type is its own

@@ -8,7 +8,7 @@ what a reader can and cannot read out of these pixels.
 | --- | --- | --- |
 | [`diff-body`](diff-body/) | 1280 × 2110 | Seven rows in one frame: a two-hunk `edit` whose diff has additions, removals, context and two `@@` headers (including a REMOVED line whose content begins `--`, which a pattern-based header filter would silently delete); a new-file `write` (all additions, the nameless `---`/`+++` pair present in the payload); a `write` at the display cap with `… 4 more diff lines` under the 40th line; a `write` whose content did not change, keeping its ARGUMENTS because the producer omitted `diff` entirely; a FAILED `write` on the danger ground with the error in full; a composing `write` with no result; and a `bash` neighbour, so a regression in the ordinary args/output path is visible here rather than only in `states`. Each line carries its kind's ink END TO END here — a `+` line green, a `-` line red, `@@` muted, context dim — which is what the terminal's own loop paints and what this frame exists to show. |
 | [`diff-body-narrow`](diff-body-narrow/) | 560 × 1380 | The same body in a narrow column: the wrap rule rather than the layout. Two cases — the two-hunk `edit` and the body at the cap — because under wrapping each body grows, and a picture of the rule cropped at the frame edge is not a picture of it. No horizontal scrollbar anywhere. |
-| [`diff-body-narrow-wrapped-cap`](diff-body-narrow-wrapped-cap/) | 560 × 830 | The case the other two cannot show: a body AT THE CAP whose 40 lines are long enough to wrap, which is the shape that actually reaches the cap. The well clips 1415px of content into 738px, and the `… 4 more diff lines` marker is pinned to the well's foot so it is visible at rest — in the flow it would begin 677px below the fold, and the body would claim to be complete while 40 rows were hidden. If this marker stops being visible, this frame is where that shows. |
+| [`diff-body-narrow-wrapped-cap`](diff-body-narrow-wrapped-cap/) | 560 × 830 | The case the other two cannot show: a body AT THE CAP whose 40 lines are long enough to wrap, which is the shape that actually reaches the cap. The well clips 1415px of content into 738px, and the `… 4 more diff lines` marker is pinned to the well's foot so it is visible at rest — in the flow it would begin 648.6px below the clip (677px is the lift the pin applies, and this body's `maxScroll`; both quantities are labelled under "Measured, not eyeballed"), and the body would claim to be complete while 40 rows were hidden. If this marker stops being visible, this frame is where that shows. |
 | [`real-durable-diff-rows`](real-durable-diff-rows/) | 1280 × 2734 | The same body over a REAL durable transcript: nine real rows of one of the operator's conversations around three consecutive `edit` results, folded by the SHIPPED `applyHistoryPage` and painted by the SHIPPED `CanonicalTranscript`. Two of the three diffs are longer than the display cap (197 and 58 lines) and one is shown whole (14 lines). |
 
 Both brand palettes for each. The `write`/`edit` rows are opened the way a
@@ -70,11 +70,12 @@ DOM in each surface:
 diff-body @1280        bodies 356, 148, 739px      boxes 838/838, 838/838, 838/838  (scroll/client)
 diff-body-narrow @560  bodies 476, 737px           boxes 418/418, 418/418
 diff-body-narrow-wrapped-cap @560
-                       1 row, 1 body: scrollHeight 1415 / clientHeight 738,
-                       scrollWidth === clientWidth === 418, line spans 41
-                       (40 shown + the marker), marker top 709.61px in the well,
-                       its box flush with the well's inner edge; in the flow it
-                       would start 677px BELOW the 738px clip
+                       1 row, 1 body: scrollHeight 1415 / clientHeight 738
+                       (maxScroll 677), scrollWidth === clientWidth === 418,
+                       line spans 41 (40 shown + the marker), marker top
+                       709.61px in the well, its box flush with the well's inner
+                       edge; in the flow that row would start 648.6px BELOW the
+                       738px clip, and 677px is the lift the pin applies to it
 real-durable @1280     5 rows, 3 bodies, 2734px    markers "… 155 more diff lines", "… 16 more diff lines"
                        first painted line "@@ -1120,2 +1120,194 @@"
 ```
@@ -133,8 +134,8 @@ second ground inside a well whose point is being `sunken`. `DIFF-BODY-SPEC.md`
 - **The tabs inside a real diff.** Real payloads contain tab-indented lines and
   there are THREE answers, not two. `rich.cells.cell_len("\t")` returns 0, so the
   terminal's own arithmetic counts a tab as zero cells while it paints an
-  8-column stop; this browser advances a tab by 21.61px against a 7.22px space —
-  3 columns at the fixture's tab positions — because Tailwind v4's preflight sets
+  8-column stop; this browser advances a tab by 21.6094px against a 7.2031px
+  space — exactly 3.0000 columns — because Tailwind v4's preflight sets
   `tab-size: 4` on `html, :host`, not the `<pre>` default of 8; and the app's
   other machine-voice blocks (`output-block`, the args block) inherit that same
   4. No `tab-size` is invented here. The frames show the resulting alignment;
@@ -146,6 +147,22 @@ second ground inside a well whose point is being `sunken`. `DIFF-BODY-SPEC.md`
   something this body introduced, so it is an app-wide focus-model question, not a
   claim of these frames. (The wrapped-cap frame is at rest, scrolled to the top,
   which is the state the pinned marker is claimed for.)
+- **An overlay cue on the pinned cap marker.** The marker's band is the well's own
+  `bg-sunken` ground with the well's own bottom padding, so the wrapped
+  continuation of the last visible line can sit under it with nothing on screen
+  saying "this is an overlay": the reader's only signal that the body continues
+  *there* is the marker's own `… N more diff lines` text, which is about the cap
+  rather than the wrap. A cue would cost one line — a 1px
+  `border-t border-hairline` on the pinned span, or a short `bg-gradient` fade
+  above it. DEFERRED on purpose, not overlooked: `docs/branding.md` § 5 is
+  explicit about defaulting to "more air and less chrome", which is the same
+  principle that keeps a well on the `sunken` ground with a hairline rather than
+  a shadow (§ 2, "elevation is a lightness step, not a shadow"); the band's
+  ground already matches the well, so it reads as a band and not as a seam; the
+  D2 verification measured no sliced or half-covered row; and the truncated line
+  visibly ends on a comma, so it is not read as complete. The designer raised the
+  cue as D6 in round 2 and its suggested forms are named here so it can be asked
+  for: this frame is where such a change would be visible.
 - **The neighbour `tool-rows/*` frames.** They are from an August head
   (`manifest.json`: `capturedAt` 2026-08-06) and do NOT reproduce pixel-exactly on
   this head: a fresh capture of `states`, `narrow` and `names-and-fallbacks` puts

@@ -1249,9 +1249,10 @@ test("a malformed diff payload degrades to no diff, never to a broken row", () =
 	});
 	const shapes = [
 		// A string payload is TOLERATED at an untyped boundary, and it is not a
-		// shape any producer emits: all 8,850 real `details.diff` values across
-		// 1,102 stored sessions are lists of strings, and the fold this used to
-		// credit with joining them copies each key through untouched
+		// shape any producer emits: all 9,501 real `details.diff` values found
+		// across the 1,166 stored transcripts this machine held on 2026-09-12 (a
+		// dated snapshot of a live store) are lists of strings, and the fold this
+		// used to credit with joining them copies each key through untouched
 		// (mobile/projection.py:284-288).
 		[{ added: 1, removed: 1, diff: "+a\n-b" }, ["+a", "-b"], [1, 1]],
 		// Members that are not strings are DROPPED, not stringified: `String({})`
