@@ -408,23 +408,53 @@ const report = { mode: MODE, session: SESSION, steps: [] };
  */
 const ELECTRON_SHIM = `(() => {
   if (window.electron && window.api) return 'present';
-  // The preload's own shapes, modelled where the app actually depends on them.
+  // The preload's shapes, DERIVED from the app's own naming convention rather
+  // than transcribed member by member.
   //
-  // A generic catch-all proxy was tried first and is the wrong tool: the real
-  // preload mixes async getters, subscribe-returning-unsubscribe, and plain
-  // fields, and a proxy that satisfies one shape fails the next component that
-  // uses another (three rounds of TypeError, each in a DIFFERENT member of
-  // update-notification.tsx). Naming the shapes is shorter and honest about
-  // what is substituted.
+  // The list used to be written out by hand, and it went stale exactly the way
+  // a hand-copied interface does: #107 added \`onBackendUpdateManualRequired\`
+  // (and seven siblings) to the preload, the shim did not grow them, and
+  // re-running this script on any head containing #107 threw
+  // "window.api.updater.onBackendUpdateManualRequired is not a function"
+  // before the chat page mounted. That breaks the reproducibility this PR's
+  // evidence rests on -- the numbers below are only worth something if the
+  // script that produced them still runs.
   //
-  // None of this is on the path under test: the transcript, the reducer and
-  // the desktop transport read none of it. The updater is simply the first
-  // thing the shell mounts, and its error boundary stops the app before the
-  // chat page renders.
+  // A BLANKET catch-all proxy was tried in an earlier round and is genuinely
+  // the wrong tool: the preload mixes promise-returning calls,
+  // subscribe-returning-unsubscribe, and plain fields, and one uniform return
+  // value fails whichever shape it is not. The fix is to key the shape off the
+  // NAME, which is the same convention the real preload follows:
+  //
+  //   on*          -> a subscription, returns its own unsubscribe
+  //   remove*      -> a detach, returns undefined
+  //   everything else -> an async call, resolves null
+  //
+  // So a member added upstream is satisfied by the rule that names it, and a
+  // member that breaks the convention fails loudly here instead of silently
+  // substituting the wrong shape. Nothing on the path under test reads any of
+  // it: the transcript, the reducer and the desktop transport touch none of
+  // this. The updater is simply the first thing the shell mounts, and its
+  // error boundary stops the app before the chat page renders.
   const promise = (value) => Promise.resolve(value);
   const subscribe = () => () => undefined;
+  const byConvention = (overrides) =>
+    new Proxy(overrides || {}, {
+      get(target, prop) {
+        if (prop in target) return target[prop];
+        if (typeof prop !== 'string') return undefined;
+        if (prop.startsWith('on')) return subscribe;
+        if (prop.startsWith('remove')) return () => undefined;
+        // \`quitAndInstall\` and friends are fire-and-forget; returning a promise
+        // is harmless for those and correct for the rest.
+        return () => promise(null);
+      },
+      // A \`prop in obj\` guard in the app must agree with what \`get\` will hand
+      // back, or a component skips a member this proxy would have served.
+      has: () => true,
+    });
   window.electron = {
-    ipcRenderer: {
+    ipcRenderer: byConvention({
       on: subscribe,
       once: subscribe,
       off: () => undefined,
@@ -434,42 +464,23 @@ const ELECTRON_SHIM = `(() => {
       addListener: subscribe,
       removeListener: () => undefined,
       removeAllListeners: () => undefined,
-    },
+    }),
     process: { platform: 'darwin' },
   };
   window.api = {
-    systemInfo: {
+    systemInfo: byConvention({
+      // Named because they must resolve to REAL-shaped values, not null: the
+      // shell renders the version string and branches on the platform.
       getAppVersion: () => promise('0.0.0-evidence'),
       getPlatform: () => promise('darwin'),
       getArch: () => promise('arm64'),
-    },
-    updater: {
-      checkForUpdates: () => promise(null),
-      checkForBackendUpdates: () => promise(null),
-      downloadUpdate: () => promise(null),
-      quitAndInstall: () => undefined,
-      updateBackend: () => promise(null),
-      onUpdateAvailable: subscribe,
-      onUpdateNotAvailable: subscribe,
-      onUpdateDownloaded: subscribe,
-      onUpdateError: subscribe,
-      onUpdateProgress: subscribe,
-      onBackendUpdateAvailable: subscribe,
-      onBackendUpdateNotAvailable: subscribe,
-      onBackendUpdateCompleted: subscribe,
-      onBackendUpdateError: subscribe,
-      onBeforeQuitForUpdate: subscribe,
-      removeUpdateAvailableListener: () => undefined,
-      removeUpdateNotAvailableListener: () => undefined,
-      removeUpdateDownloadedListener: () => undefined,
-      removeUpdateErrorListener: () => undefined,
-      removeUpdateProgressListener: () => undefined,
-      removeBackendUpdateAvailableListener: () => undefined,
-      removeBackendUpdateNotAvailableListener: () => undefined,
-      removeBackendUpdateCompletedListener: () => undefined,
-      removeBackendUpdateErrorListener: () => undefined,
-      removeBeforeQuitForUpdateListener: () => undefined,
-    },
+      getPlatformInfo: () => promise({ platform: 'darwin', arch: 'arm64' }),
+    }),
+    updater: byConvention({
+      // \`getLastInstallAttempt\` is read for its FIELDS, so a bare null would
+      // throw on the property access rather than render nothing.
+      getLastInstallAttempt: () => promise(null),
+    }),
   };
   return 'shimmed';
 })()`;

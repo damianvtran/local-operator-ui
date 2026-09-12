@@ -26,7 +26,6 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { STORIES, THEMES } from "./capture-evidence.mjs";
 import { deltaE, r2 } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
@@ -318,6 +317,24 @@ export const provenanceFailures = (manifest, git = gitOut) => {
 			);
 	}
 
+	/*
+	 * `themes` must equal the theme list it names, for the same reason
+	 * `surfaces` must: only a full sweep writes it, so a narrowed run carries
+	 * the previous value forward and nothing reads it. Parsed the same way as
+	 * the story count above rather than imported, so both halves of the
+	 * manifest's self-description are falsifiable by one mechanism.
+	 */
+	if (capture !== null && typeof manifest.themes === "number") {
+		const block = capture.slice(capture.indexOf("const THEMES = ["));
+		const declared = (
+			block.slice(0, block.indexOf("\n];")).match(/^\t"/gm) ?? []
+		).length;
+		if (declared > 0 && declared !== manifest.themes)
+			out.push(
+				`manifest.json: \`themes\` is ${manifest.themes} but capture-evidence.mjs declares ${declared} themes - a narrowed run carried the old value forward`,
+			);
+	}
+
 	for (const set of manifest.supplementary ?? []) {
 		const sha = set.capturedAtHead;
 		if (typeof sha !== "string" || sha.length < 7) continue;
@@ -400,32 +417,6 @@ const main = () => {
 		 * sweep's own count is checked against the frames left OUTSIDE every
 		 * declared set, so neither term can absorb the other's error.
 		 */
-		/*
-		 * `surfaces` and `themes` are DERIVED, not transcribed.
-		 *
-		 * They are the sweep's own `STORIES.length` and `THEMES.length`, and
-		 * nothing read them until now - which is how `surfaces` went a round
-		 * stale, and how an explanatory sentence beside it came to say "the two
-		 * `chat-tool-rows--diff-body*` entries" when the tree had three. A
-		 * number a human retypes after editing a list is a number that is wrong
-		 * the moment someone forgets, and prose about that number is wrong
-		 * twice.
-		 *
-		 * Importing the lists is safe: `capture-evidence.mjs` only runs its
-		 * sweep under an `import.meta.url === process.argv[1]` guard, so this
-		 * import costs nothing but the module's own constants.
-		 */
-		if (manifest.surfaces !== STORIES.length) {
-			failures.push(
-				`manifest.json: surfaces says ${manifest.surfaces}; capture-evidence.mjs declares ${STORIES.length} stories`,
-			);
-		}
-		if (manifest.themes !== THEMES.length) {
-			failures.push(
-				`manifest.json: themes says ${manifest.themes}; capture-evidence.mjs declares ${THEMES.length} themes`,
-			);
-		}
-
 		const extra = manifest.supplementary ?? [];
 
 		/*
