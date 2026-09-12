@@ -3,23 +3,36 @@ import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot, FileText } from "lucide-react";
 import type { FC } from "react";
+import { type RunDetails, RunDetailsTrigger } from "./run-details";
 
 /**
  * ChatHeaderProps
  * @property agentName - The name of the agent to display.
  * @property description - The description of the agent.
  * @property onOpenOptions - Optional callback for opening options/canvas.
+ * @property runDetails - The session's derived subagent and to-do view model, or
+ * `null`/absent when the session has none.
+ *
+ * `runDetails` is OPTIONAL and, deliberately, unwired: nothing in the app passes
+ * it, so application behaviour is unchanged by its presence. It exists so the
+ * design frames for the run-details surface can render the REAL header rather
+ * than a reproduction of it, and so the seam the wiring will use is the one the
+ * frames were judged on. The trigger's own visibility rule (has work, and the
+ * canvas closed) lives inside `RunDetailsTrigger`, because both halves are facts
+ * about that surface rather than about where the header puts it.
  */
 type ChatHeaderProps = {
 	agentName?: string;
 	description?: string;
 	onOpenOptions?: () => void;
+	runDetails?: RunDetails | null;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	description = "Your on-device AI assistant",
 	onOpenOptions,
+	runDetails = null,
 }) => {
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
@@ -89,22 +102,37 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				</span>
 			</div>
 
-			{onOpenOptions && !isCanvasOpen && (
-				<Tooltip content={`Open canvas (${shortcut})`} side="top">
-					<Button
-						variant="ghost"
-						/* 32px `icon`, the size every other header action in the app
-						 * uses. `icon-lg` (36px) made this one button the outlier. */
-						size="icon"
-						className={cn("ml-auto")}
-						onClick={() => setCanvasOpen(true)}
-						aria-label={`Open canvas (${shortcut})`}
-						data-tour-tag="open-canvas-button"
-					>
-						<FileText aria-hidden={true} />
-					</Button>
-				</Tooltip>
-			)}
+			{/*
+			 * The header's action cluster: the run-details trigger, then the canvas
+			 * button, as one group at the end of the bar. The cluster carries the
+			 * `ml-auto` the canvas button used to carry, so the two actions sit 8px
+			 * apart instead of being pinned to opposite ends of whatever else the bar
+			 * happens to hold.
+			 *
+			 * The canvas button keeps its own gate exactly as it was
+			 * (`onOpenOptions && !isCanvasOpen`). The trigger's gate is inside
+			 * `RunDetailsTrigger`, and it returns `null` when it has nothing to show —
+			 * so with an idle session this cluster is 8px of nothing and the header is
+			 * pixel-for-pixel what it is today.
+			 */}
+			<div className={cn("ml-auto flex items-center gap-2")}>
+				<RunDetailsTrigger details={runDetails} />
+				{onOpenOptions && !isCanvasOpen && (
+					<Tooltip content={`Open canvas (${shortcut})`} side="top">
+						<Button
+							variant="ghost"
+							/* 32px `icon`, the size every other header action in the app
+							 * uses. `icon-lg` (36px) made this one button the outlier. */
+							size="icon"
+							onClick={() => setCanvasOpen(true)}
+							aria-label={`Open canvas (${shortcut})`}
+							data-tour-tag="open-canvas-button"
+						>
+							<FileText aria-hidden={true} />
+						</Button>
+					</Tooltip>
+				)}
+			</div>
 		</div>
 	);
 };
