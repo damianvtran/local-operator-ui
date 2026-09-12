@@ -218,26 +218,36 @@ guard is the contract pin at the call site plus `pnpm check-themes`.
 
 ## Rebase onto `main`: which frames came from which head
 
-This branch was cut from `2217ea59a` and rebased twice — first onto
+This branch was cut from `2217ea59a` and rebased three times — first onto
 [#114](https://github.com/damianvtran/local-operator-ui/pull/114)'s head
 (`104b0321a`, the write/edit diff body), then onto `1f241ba87` after `main`
 moved again mid-gate-run with
 [#111](https://github.com/damianvtran/local-operator-ui/pull/111) (backend-composed
-toasts) and the 0.17.1 release bump.
+toasts) and the 0.17.1 release bump, and finally onto `4455c5705` with
+[#107](https://github.com/damianvtran/local-operator-ui/pull/107) (the update
+installer's safety refusals) and the 0.17.2 release bump.
 
-Two of the files this branch touches are shared with those PRs, and one of them
+Three of the files this branch touches are shared with those PRs, and one of them
 is `scripts/capture-evidence.mjs` — the script that takes these frames. #111
-also changed `src/main`. A frame is only a function of the tree when the tree
-that took it is the tree under review, so the thirteen `chat-usage` story
-surfaces were re-captured at the final rebased head rather than carried across
-on the strength of the diffs looking harmless:
+changed `src/main`, and #107 changed `src/main` and `src/preload`. A frame is
+only a function of the tree when the tree that took it is the tree under review,
+so the thirteen `chat-usage` story surfaces were re-captured at each rebased head
+rather than carried across on the strength of the diffs looking harmless:
 
 ```
 npx storybook build -o /tmp/usage-view-sb-static   # outside the repo, so the
-npx http-server /tmp/usage-view-sb-static -p 6061  # capture's own dirtiness
-node scripts/capture-evidence.mjs http://localhost:6061 \
-  --only=chat-usage --themes=localOperatorDark,localOperatorLight
+npx http-server /tmp/usage-view-sb-static -p 6071  # capture's own dirtiness
+node scripts/capture-evidence.mjs http://localhost:6071 \
+  --only=chat-usage --themes=localOperatorDark,localOperatorLight --allow-backend
 ```
+
+`--allow-backend` was needed on the third hop only because an unrelated local
+backend was listening on the configured port. It is sound for this set and no
+other: every `chat-usage` story renders `UsageDialog`, which does no fetching by
+construction (the query lives in `UsageView`, which no story renders), so no
+reply from that server can reach a frame — and the byte-identical result below
+is the measurement that confirms none did. Drop the flag whenever the port is
+free.
 
 Build Storybook **outside** the working tree. The capture records
 `dirtyWorkingTree` from `git status` excluding `docs/evidence`, so a
@@ -246,12 +256,13 @@ record itself as dirty — and a tree hash from a dirty run names something the
 frames did not come from.
 
 **All 26 re-captured frames are byte-identical to the pre-rebase set** the
-review, QA, design and UX rounds signed off — same SHA-256 for every file. That
-is the point of recording it: #114 changed the `write`/`edit` tool row and the
-transcript reducer and #111 changed the main-process notifier, none of which
-this view renders, and byte-identity turns that expectation into a measured
-fact. It also means the design sign-off still describes the pixels on the
-current head.
+review, QA, design and UX rounds signed off — same SHA-256 for every file, on
+every hop including the third. That is the point of recording it: #114 changed
+the `write`/`edit` tool row and the transcript reducer, #111 changed the
+main-process notifier, and #107 changed the update installer and its preload
+surface, none of which this view renders, and byte-identity turns that
+expectation into a measured fact. It also means the design sign-off still
+describes the pixels on the current head.
 
 ### One frame, and why it is noise rather than a change
 
@@ -286,24 +297,29 @@ reached.
   reason in "Round 2" above — this machine's backend still returns zero provider
   reports, so neither the live path nor the replay path can re-derive it. A
   rebase does not make a frame fresher and this section does not claim it does.
-- #114's frames under `write-edit-diff/` and the older `tui-parity/` set are
-  byte-identical to `main`: the `--only=chat-usage` runs wrote nothing outside
-  `chat-usage/`.
+- #114's frames under `write-edit-diff/`, #107's under
+  `common-updatenotification/` and `update-robustness/`, and the older
+  `tui-parity/` set are byte-identical to `main`: the `--only=chat-usage` runs
+  wrote nothing outside `chat-usage/`.
 
 ### Evidence accounting after the merge
 
-`frames` and `surfaces` are the merged set, not either branch's:
+`frames` and `surfaces` are the merged set, not any one branch's:
 
-- `surfaces` **58 → 61**: the union of both `STORIES` arrays — this branch's 58
-  plus #114's three `chat-tool-rows--diff-body*` entries. Both sides only
-  appended, and neither changed the capture machinery.
-- `frames` **500 → 506**: recomputed from the tree rather than carried from
-  either side, which is what `check-evidence` asserts. 532 frame files are
-  committed; 506 of them fall outside the three declared `supplementary` sets
-  (22 `sidebar-new-chat` + 2 `write-edit-diff/real-durable-diff-rows` + 2
-  `chat-usage/real-data`).
-- `supplementary` carries **both** branches' declarations;
+- `surfaces` **61 → 66**: the union of every `STORIES` array — this branch's 61
+  (which already included #114's three `chat-tool-rows--diff-body*` entries)
+  plus #107's five new `common-updatenotification` entries. Every side only
+  appended; #107 also changed the capture machinery (partial runs now move the
+  totals when they add a surface), and that change was taken from `main`
+  untouched because this branch never edited those lines.
+- `frames` **506 → 518**: recomputed from the tree rather than carried from any
+  side, which is what `check-evidence` asserts. 544 frame files are committed;
+  518 of them fall outside the three declared `supplementary` sets (22
+  `sidebar-new-chat` + 2 `write-edit-diff/real-durable-diff-rows` + 2
+  `chat-usage/real-data`). The +12 over the previous hop is #107's twelve
+  `common-updatenotification` frames.
+- `supplementary` carries **every** branch's declarations;
   `write-edit-diff/real-durable-diff-rows` came in with #114 and keeps its own
   provenance.
 
-`node scripts/check-evidence.mjs` passes over all 532 frames on disk.
+`node scripts/check-evidence.mjs` passes over all 544 frames on disk.
