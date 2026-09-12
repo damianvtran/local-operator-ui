@@ -31,6 +31,10 @@ import type {
 	CanonicalFrontendState,
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	diffFromDetails,
+	preferDiff,
+} from "../components/trace/tool-row-model";
 
 /**
  * One image on a transcript row.
@@ -118,6 +122,25 @@ export type TranscriptRecord =
 			added: number;
 			/** Lines removed, from the call's own `details`. Zero means unknown. */
 			removed: number;
+			/**
+			 * The unified diff the call reported, one element per line, or `null`
+			 * when it reported none.
+			 *
+			 * `write`/`edit` results carry `details = {path, added, removed, diff}`
+			 * (`_diff_details`, tools/builtin.py:4863-4896) and the expanded row
+			 * paints THIS rather than the arguments, because a `write`'s arguments
+			 * are the whole new file content — the same change stated a second way,
+			 * at full payload length. The backend omits `diff` entirely when nothing
+			 * changed (`_diff_details` returns counts alone), so `null` here is a
+			 * real statement: this call reported no change, and the row falls back
+			 * to its arguments.
+			 *
+			 * Normalised by `diffFromDetails` rather than read inline, because both
+			 * wire shapes arrive at this field (a list from a durable row, a
+			 * pre-joined string from a fold) and the rule for what to do with a
+			 * malformed one is the ported arithmetic's, not the reducer's.
+			 */
+			diff: string[] | null;
 			/**
 			 * The call was still running when the turn was aborted, so it never
 			 * reported an outcome of its own.
@@ -574,6 +597,15 @@ function durableRecord(
 				previous?.kind === "tool" ? previous.images : undefined,
 			),
 			...diffCounts(providerPayload.details),
+			// The durable half of the diff body, and the same identity rule the
+			// images beside it follow: a replayed page that carries no `details`
+			// must not blank a row the live event already filled in (the live
+			// event budget drops `details` from the frame when the row exceeds its
+			// share — `_bound_live_result_in_place` in frontend_state.py).
+			diff: preferDiff(
+				diffFromDetails(providerPayload.details),
+				previous?.kind === "tool" ? previous.diff : null,
+			),
 			// A durable row is the authoritative record of how the call ended, and
 			// it ended normally: an interrupt is a live-only fact the transcript
 			// does not encode separately from `is_error`.
@@ -924,6 +956,10 @@ export function applyEvent(
 				images: EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
+				// Composing is the model dictating arguments: there is no RESULT
+				// yet, so there is no diff. The guard above returns early for any
+				// row that already settled, so this cannot blank one.
+				diff: null,
 				stopped: false,
 			});
 		}
@@ -972,10 +1008,12 @@ export function applyEvent(
 						: now,
 				// A running row has no outcome to report yet. It keeps whatever the
 				// composing row held so a rebuild here cannot drop an array the gate
-				// is comparing.
+				// is comparing — and the same for a diff, which a replayed `_start`
+				// must not be able to erase either.
 				images: current?.kind === "tool" ? current.images : EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
+				diff: current?.kind === "tool" ? current.diff : null,
 				stopped: false,
 			});
 		}
@@ -1005,6 +1043,7 @@ export function applyEvent(
 							images: EMPTY_IMAGES,
 							added: 0,
 							removed: 0,
+							diff: null,
 							stopped: false,
 						};
 			return upsert(state, {
@@ -1039,6 +1078,12 @@ export function applyEvent(
 					base.images,
 				),
 				...diffCounts(result.details),
+				// THE live diff path: `tool_execution_end` carries the tool RESULT, so
+				// `result.details.diff` is the producer's own line list. Guarded the
+				// way the images above are, and for the same measured reason — a
+				// reconnect seed whose `details` were stripped by the live-event
+				// budget must not blank a body the row already showed.
+				diff: preferDiff(diffFromDetails(result.details), base.diff),
 				// It reported an end, so whatever happened it was not interrupted.
 				stopped: false,
 			});
