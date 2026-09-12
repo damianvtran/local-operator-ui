@@ -758,7 +758,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					{perf}
 				</span>
 			)}
-			<div className={cn("flex flex-col", CHAT_MEASURE)}>
+			<div
+				data-lo-transcript-content
+				className={cn("flex flex-col", CHAT_MEASURE)}
+			>
 				{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
 				    row can never shift the conversation under the reader. */}

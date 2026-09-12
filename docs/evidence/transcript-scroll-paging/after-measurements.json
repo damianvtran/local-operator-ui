@@ -1,0 +1,44 @@
+{
+  "mounted": {
+    "rows": 60,
+    "slotText": "40 earlier rows above",
+    "slotH": 28,
+    "anchor": {
+      "id": "bbb0647cca101ffdee7605a3cb4bfc96",
+      "off": -9.55
+    },
+    "sh": 6482,
+    "ch": 489,
+    "scrollTop": 0
+  },
+  "topOfContent": {
+    "rows": 60,
+    "slotText": "40 earlier rows above",
+    "slotH": 28,
+    "anchor": {
+      "id": "6e7bdb140805e98232b130ab3c0384f9",
+      "off": 83.27
+    },
+    "sh": 6482,
+    "ch": 489,
+    "scrollTop": -5992
+  },
+  "afterActivation": {
+    "rows": 60,
+    "slotText": "40 earlier rows above",
+    "slotH": 28,
+    "anchor": {
+      "id": "6e7bdb140805e98232b130ab3c0384f9",
+      "off": 83.27
+    },
+    "sh": 6482,
+    "ch": 489,
+    "scrollTop": -5992
+  },
+  "anchorBefore": {
+    "id": "6e7bdb140805e98232b130ab3c0384f9",
+    "off": 83.27
+  },
+  "anchorOffsetAfter": 83.27,
+  "requestsDuringProgrammaticScroll": 2
+}

@@ -255,13 +255,35 @@ export function useScrollPaging({
 			}
 			holdAnchor();
 			if (action === "widen") {
+				const before = live.current.hiddenRows;
 				live.current.onWiden();
-				// The reveal is a React commit away. One frame is enough to let it
-				// land; the anchor hold covers the settling that follows.
-				requestAnimationFrame(() => {
-					state.current = noteSettled(state.current);
-					schedule();
-				});
+				// Settle on the OBSERVED reveal, not on a frame count.
+				//
+				// `onWiden` is a `setState`, so the rows it reveals exist after a
+				// React commit - and one `requestAnimationFrame` is not a commit.
+				// Settling after a fixed frame handed the next decision the same
+				// `hiddenRows` it had just acted on, so the continuation spent
+				// another widen on rows already revealed, three times, and retired
+				// `chainWiden` before the window had finished opening. Measured in
+				// the running app: 100 rows mounted, 160 durable rows still behind
+				// them, and zero `sessions.history` requests - the reader sat at the
+				// top of a conversation the app had decided was fully revealed.
+				//
+				// Polling the value the decision actually reads is the fix that does
+				// not depend on knowing how many frames React needs. The cap is a
+				// guard against a widen that legitimately reveals nothing (the
+				// window already held every row), which must still settle.
+				let waited = 0;
+				const awaitCommit = () => {
+					if (live.current.hiddenRows !== before || waited >= 8) {
+						state.current = noteSettled(state.current);
+						schedule();
+						return;
+					}
+					waited += 1;
+					requestAnimationFrame(awaitCommit);
+				};
+				requestAnimationFrame(awaitCommit);
 				return;
 			}
 			void live.current.onLoadOlder().then((ok) => {
@@ -404,8 +426,18 @@ export function useScrollPaging({
 			el.removeEventListener("scroll", onScroll);
 			el.removeEventListener("pointerdown", onPointerDown);
 			window.removeEventListener("pointerup", onPointerUp);
+			// Reset the handles, do not merely cancel them. `schedule` uses
+			// `pump.current` as a "already queued this frame" latch, so a handle
+			// left non-zero after its frame was cancelled makes every later
+			// `schedule()` return early and the hook goes permanently deaf. This
+			// effect re-runs whenever its deps change, which happens on the first
+			// commit after mount - so the wedge was not a rare race, it was the
+			// steady state: measured in the running app, wheel events reached the
+			// listener (6 of 6) and the pump never evaluated a single decision.
 			if (pump.current) cancelAnimationFrame(pump.current);
+			pump.current = 0;
 			if (settleTimer.current) clearTimeout(settleTimer.current);
+			settleTimer.current = 0;
 		};
 	}, [containerRef, input, schedule]);
 
@@ -422,7 +454,15 @@ export function useScrollPaging({
 	 */
 	useEffect(() => {
 		const el = containerRef.current;
-		const content = el?.firstElementChild;
+		// By its own marker, never by position. `firstElementChild` was the
+		// content wrapper only in a production build: in development the
+		// transcript renders a `sr-only` performance readout ahead of it, so the
+		// observer watched a zero-height span that never changes size and the
+		// anchor was never re-asserted. A structural assumption that holds in one
+		// build mode and not the other is not an assumption worth keeping.
+		const content = el?.querySelector<HTMLElement>(
+			"[data-lo-transcript-content]",
+		);
 		if (!el || !content) return;
 		const observer = new ResizeObserver(() => {
 			correctAnchor();

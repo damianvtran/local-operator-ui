@@ -143,18 +143,33 @@ test("a wheel notch clamped at the top does not re-arm the latch", () => {
 	assert.equal(result.action, "fetch");
 	assert.ok(result.state.clampLatched);
 	state = noteSettled(result.state);
-	state = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 2).state;
 
 	// 200 further notches, all clamped: a finger resting on the trackpad at the
-	// top, or a scrollbar thumb held against its rail.
+	// top, or a scrollbar thumb held against its rail. Each reveal is settled,
+	// because a state machine left permanently `busy` would pass this assertion
+	// for the wrong reason.
+	//
+	// Zero is NOT the expectation here. The reader is still pinned against the
+	// top edge with history behind them, so the continuation legitimately keeps
+	// offering pages - that is the clause that stops the reveal being a
+	// one-page-per-gesture stutter. What the latch guarantees is that those
+	// pages come from the BOUND and not from the 200 notches: the count is
+	// `MAX_CHAIN_FETCH`, and it stays there however long the finger rests.
 	let spent = 0;
 	for (let i = 0; i < 200; i++) {
 		state = wheelUp(state, 1000 + i * 10, { atHardTop: true });
 		const frame = decide(state, geo({ distanceFromTopPx: 0 }), 1000 + i * 10 + 8);
 		state = frame.state;
-		if (frame.action !== "none") spent++;
+		if (frame.action !== "none") {
+			spent++;
+			state = noteSettled(state);
+		}
 	}
-	assert.equal(spent, 0, "a held gesture at the top is one act, not 200");
+	assert.equal(
+		spent,
+		MAX_CHAIN_FETCH - 1,
+		`a held gesture at the top is bounded by the chain, not by its event count (got ${spent})`,
+	);
 
 	// A deliberate act does re-arm it: clause D's other half and clause K's
 	// keyboard path.

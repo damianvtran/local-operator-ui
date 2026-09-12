@@ -283,8 +283,18 @@ export const noteInput = (
 	}
 	if (input.atHardTop && input.continuous && state.clampLatched) {
 		// Rule 4. The gesture is still running but the content is not; this is the
-		// same act that already spent its demand. Only the input clock moves.
-		return base;
+		// same act that already spent its demand.
+		//
+		// Only the input clock moves - NOT the chain budgets, which is the whole
+		// difference between a bound and a formality. `base` resets them on the
+		// theory that a fresh gesture deserves a fresh budget, and a clamped notch
+		// is precisely the input that is not fresh: 200 of them against the top
+		// edge would hand out 200 new budgets of four pages each, and the counters
+		// that bound the continuation (now the only thing bounding it, since the
+		// chain no longer consults the latch) would never reach their limit.
+		// The test that caught this drives 200 clamped notches and asserts zero
+		// pages.
+		return { ...state, lastInputAt: input.at };
 	}
 	if (state.busy) return { ...base, retained: true };
 	return { ...base, armed: true };
@@ -411,16 +421,24 @@ export const decide = (
 		} else if (
 			(inZone || !geo.scrollable) &&
 			state.chainFetch < MAX_CHAIN_FETCH &&
-			state.failures < MAX_AUTO_ATTEMPTS &&
-			// The latch binds the chain too, and this is the clause that makes it a
-			// real bound rather than a counter. A latched demand means "this act has
-			// been answered"; if the content is STILL against its top edge after the
-			// answer, the answer did not move anything and a chain from it is the
-			// held-scrollbar case wearing a different hat. Only a deliberate act
-			// asks again. Rule L's unscrollable transcript is unaffected: it reaches
-			// here with no input behind it at all, so nothing is latched.
-			!(state.clampLatched && geo.distanceFromTopPx <= HARD_TOP_PX)
+			state.failures < MAX_AUTO_ATTEMPTS
 		) {
+			// Deliberately NOT gated on the clamp latch, and this is the one place
+			// where saying so matters. Measured in the running app: one fling
+			// revealed the 40 locally-held rows and left the reader pinned against
+			// the content's top edge with 160 durable rows still behind it. A latch
+			// test here refused the page, so the slot sat saying "Load earlier
+			// messages" to a reader who had just asked for exactly that by
+			// scrolling - the click-to-load defect this change exists to remove,
+			// reintroduced one reveal later.
+			//
+			// The division of labour: the latch bounds a GESTURE that keeps
+			// reporting itself without the reader acting (rule 4), and `noteInput`
+			// enforces it at the source by refusing to arm on a clamped notch. A
+			// continuation has no input behind it at all - it is the reveal saying
+			// "that did not move you", and it is bounded by `chainFetch` and
+			// `chainWiden`, which only a fresh gesture resets. Counters bound a
+			// chain; the latch bounds a gesture.
 			return spend(state, growth, geo);
 		}
 		return { action: "none", state: { ...state, continuation: false } };
