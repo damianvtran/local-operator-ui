@@ -37,6 +37,29 @@ const sessionImage = z
 export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
 
 /**
+ * Longest chat-search query the desktop search op accepts, in CHARACTERS.
+ *
+ * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
+ * and the renderer's input cannot exceed it by typing — but a paste can, and a
+ * query is a sentence a user typed rather than data to be stored, so the bound
+ * belongs at both ends: here so the refusal names the field, there so a
+ * hand-rolled request cannot project an unbounded string into every digest
+ * comparison in the store.
+ */
+export const SESSION_SEARCH_MAX_CHARS = 256;
+
+/**
+ * How many search hits one query may return.
+ *
+ * A page-sized cap, not the scan's: the search still looks at every session
+ * (`session_search.search_store` documents why a scan cap makes a session
+ * unfindable), and this only bounds the ANSWER. A sidebar renders a screenful,
+ * and a ranked list whose tail nobody can see is the same list as a shorter
+ * one.
+ */
+export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
+
+/**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
  *
  * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
@@ -180,6 +203,17 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.list"),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			// Content search over the store: name, id, exact conversation body, and
+			// a bounded soft tier. `q` is capped at the backend's own 256-character
+			// bound so an over-long query is refused here, by name, rather than by
+			// the backend's generic "invalid fields" 422.
+			op: z.literal("sessions.search"),
+			q: z.string().max(SESSION_SEARCH_MAX_CHARS),
 			limit: z.number().int().min(1).max(500).optional(),
 		})
 		.strict(),
@@ -1090,6 +1124,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}`,
 				method: "GET",
 			};
+		case "sessions.search": {
+			// `encodeURIComponent` rather than interpolation: a query is whatever
+			// the user typed, and `&`, `#` or a space in it would otherwise change
+			// the request's meaning (or truncate it) instead of being searched for.
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? SESSION_SEARCH_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/sessions/search?${query}`,
+				method: "GET",
+			};
+		}
 		case "sessions.create":
 			return {
 				path: "/v1/desktop/sessions",

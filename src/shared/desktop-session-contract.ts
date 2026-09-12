@@ -18,6 +18,36 @@ export type SessionCatalogueRow = {
 	binding: SessionBinding;
 	attention?: CompletionAttention;
 };
+/**
+ * One hit from `sessions.search`, returned by the `session_search` capability
+ * version 1.
+ *
+ * A hit rather than a `SessionCatalogueRow`: it carries the two facts only the
+ * search can know. `rank` is the relevance tier the row matched in (0 name,
+ * 1 id, 2 body, 3 soft — see the backend's `session.session_search`), and
+ * `body_match` says the CONVERSATION is why the row surfaced, so the sidebar
+ * can mark it instead of showing a highlighted row with no visible reason for
+ * being there. `name`/`mtime`/`forked` ride along so a hit for a session the
+ * client has never listed can still be rendered and opened.
+ */
+export type SessionSearchHit = {
+	id: CanonicalSessionId;
+	name: string;
+	mtime: number;
+	forked: boolean;
+	rank: number;
+	body_match: boolean;
+};
+/**
+ * The search answer. `query` is ECHOED rather than assumed: keystrokes are
+ * debounced and their requests can complete out of order, so the only thing
+ * that says which question a set of hits answers is the response itself.
+ */
+export type SessionSearchResult = {
+	sessions: SessionSearchHit[];
+	query: string;
+	limit: number;
+};
 export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;

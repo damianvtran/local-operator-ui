@@ -59,6 +59,12 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	// Content search over past conversations. Its own feature rather than part
+	// of `session_catalogue`: a client renders the catalogue perfectly well
+	// against a backend without the search route, so gating the list on the
+	// search version would hide a working surface because a newer one is
+	// missing. A caller that cannot negotiate it searches names only.
+	| "session_search"
 	| "lifecycle"
 	| "mcp"
 	| "radient";
