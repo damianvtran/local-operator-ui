@@ -606,7 +606,10 @@ export const WorkingLabels: Story = {
      entirely when nothing changed, and a row that reports no change is not the
      same claim as a row whose diff was dropped.
    - The body is a sunken well with a hairline, the app's one machine-voice
-     idiom (`output-block.tsx`), NOT a new panel, card or border treatment. */
+     idiom (`output-block.tsx`), NOT a new panel, card or border treatment.
+   - At `DIFF_EXPAND_MAX_LINES`, the marker under the 40th line says how many
+     were not shown. The body's height ceiling is derived from that cap, so the
+     marker is inside the well rather than below a scroll edge. */
 
 /** A two-hunk edit: context, removals, additions, both hunk headers. */
 const MULTI_HUNK_EDIT = [
@@ -664,109 +667,147 @@ const CAPPED_DIFF = [
 	),
 ];
 
-/** The diff body across its states, at a width where the lines do not wrap. */
+/* One record per case, as constants so the narrow story below reuses the same
+   rows rather than a second copy of them that can drift. */
+
+const EDIT_ROW = tool({
+	id: "tool:1",
+	toolName: "edit",
+	args: {
+		path: "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+		hunks: [{ find: "const count", replace: "const count2" }],
+	},
+	durationS: 0.12,
+	added: 6,
+	removed: 3,
+	output:
+		"Edited src/renderer/src/features/chat/components/trace/tool-row-model.ts: 2 hunk(s), 2 replacement(s) applied.",
+	diff: MULTI_HUNK_EDIT,
+});
+
+const NEW_FILE_ROW = tool({
+	id: "tool:2",
+	toolName: "write",
+	args: {
+		path: "notes/release-window.md",
+		content:
+			"# Release window notes\n\nA window is the PRs merged since the last tag.",
+	},
+	durationS: 0.03,
+	added: 6,
+	removed: 0,
+	output: "Created notes/release-window.md (124 chars).",
+	diff: NEW_FILE_WRITE,
+});
+
+/** At the cap: 40 lines shown, the rest announced. The count is the number of
+    lines actually hidden rather than a rounded-off "more". */
+const CAPPED_WRITE_ROW = tool({
+	id: "tool:3",
+	toolName: "write",
+	args: { path: "scripts/generated-table.mjs", content: "…" },
+	durationS: 0.4,
+	added: 43,
+	removed: 0,
+	output: "Overwrote scripts/generated-table.mjs (1204 chars).",
+	diff: CAPPED_DIFF,
+});
+
+/** Unchanged content: the backend omits `diff` entirely, so the row falls back
+    to its arguments. Not the same statement as a row whose diff was dropped —
+    this call reported that nothing changed. */
+const UNCHANGED_WRITE_ROW = tool({
+	id: "tool:4",
+	toolName: "write",
+	args: {
+		path: "notes/release-window.md",
+		content:
+			"# Release window notes\n\nA window is the PRs merged since the last tag.",
+	},
+	durationS: 0.02,
+	added: 0,
+	removed: 0,
+	output: "Overwrote notes/release-window.md (124 chars).",
+	diff: null,
+});
+
+/** A failure: danger ground, cross glyph, and the error in full. No diff exists
+    on this path — `execute_write` returns before it has one — so the row keeps
+    both the arguments that were rejected and the reason. */
+const FAILED_WRITE_ROW = tool({
+	id: "tool:5",
+	toolName: "write",
+	args: { path: "", content: "x" },
+	durationS: 0.01,
+	isError: true,
+	output: "path must be a non-empty string",
+	diff: null,
+});
+
+/** Composing: the model is still dictating the arguments, so there is nothing
+    to summarise and no result to render. The byte count is the only honest
+    progress signal at this point. */
+const COMPOSING_WRITE_ROW = tool({
+	id: "tool:6",
+	toolName: "write",
+	phase: "composing",
+	argumentBytes: 1204,
+	args: null,
+	output: null,
+	durationS: null,
+	diff: null,
+});
+
+/** A neighbour that is not a diff row, in the same frame, so a regression in
+    the args/output path is visible here rather than only in `states`. */
+const BASH_ROW = tool({
+	id: "tool:7",
+	toolName: "bash",
+	args: { command: "git status --short" },
+	durationS: 0.07,
+	output: " M src/renderer/src/features/chat/canonical/tool-row.stories.tsx",
+	diff: null,
+});
+
+/**
+ * The diff body across its states, at a width where no line wraps.
+ *
+ * The frame height is the height this content MEASURES at 1280px wide — the
+ * `scrollHeight` of the frame's own scroll box, read out of the story in a real
+ * browser — because the frame IS the body: a shorter one photographs a scrolled
+ * corner of it and cuts the last three cases off the bottom.
+ */
 export const DiffBody: Story = {
 	render: () => (
 		<Frame
-			height={1180}
+			height={2110}
 			openRows
 			records={[
-				tool({
-					id: "tool:1",
-					toolName: "edit",
-					args: {
-						path: "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
-						hunks: [{ find: "const count", replace: "const count2" }],
-					},
-					durationS: 0.12,
-					added: 6,
-					removed: 3,
-					output:
-						"Edited src/renderer/src/features/chat/components/trace/tool-row-model.ts: 2 hunk(s), 2 replacement(s) applied.",
-					diff: MULTI_HUNK_EDIT,
-				}),
-				tool({
-					id: "tool:2",
-					toolName: "write",
-					args: {
-						path: "notes/release-window.md",
-						content:
-							"# Release window notes\n\nA window is the PRs merged since the last tag.",
-					},
-					durationS: 0.03,
-					added: 6,
-					removed: 0,
-					output: "Created notes/release-window.md (124 chars).",
-					diff: NEW_FILE_WRITE,
-				}),
-				// At the cap: 40 lines shown, the rest announced. The count is the
-				// number of lines actually hidden rather than a rounded-off "more".
-				tool({
-					id: "tool:3",
-					toolName: "write",
-					args: { path: "scripts/generated-table.mjs", content: "…" },
-					durationS: 0.4,
-					added: 43,
-					removed: 0,
-					output: "Overwrote scripts/generated-table.mjs (1204 chars).",
-					diff: CAPPED_DIFF,
-				}),
-				// Unchanged content: the backend omits `diff` entirely, so the row
-				// falls back to its arguments. Not the same statement as a row whose
-				// diff was dropped — this call reported that nothing changed.
-				tool({
-					id: "tool:4",
-					toolName: "write",
-					args: {
-						path: "notes/release-window.md",
-						content:
-							"# Release window notes\n\nA window is the PRs merged since the last tag.",
-					},
-					durationS: 0.02,
-					added: 0,
-					removed: 0,
-					output: "Overwrote notes/release-window.md (124 chars).",
-					diff: null,
-				}),
-				// A failure: danger ground, cross glyph, and the error in full. No
-				// diff exists on this path — `execute_write` returns before it has
-				// one — so the row keeps both the arguments that were rejected and
-				// the reason.
-				tool({
-					id: "tool:5",
-					toolName: "write",
-					args: { path: "", content: "x" },
-					durationS: 0.01,
-					isError: true,
-					output: "path must be a non-empty string",
-					diff: null,
-				}),
-				// Composing: the model is still dictating the arguments, so there is
-				// nothing to summarise and no result to render. The byte count is the
-				// only honest progress signal at this point.
-				tool({
-					id: "tool:6",
-					toolName: "write",
-					phase: "composing",
-					argumentBytes: 1204,
-					args: null,
-					output: null,
-					durationS: null,
-					diff: null,
-				}),
-				// A neighbour that is not a diff row, in the same frame, so a
-				// regression in the args/output path would be visible here rather
-				// than only in the `states` story.
-				tool({
-					id: "tool:7",
-					toolName: "bash",
-					args: { command: "git status --short" },
-					durationS: 0.07,
-					output:
-						" M src/renderer/src/features/chat/canonical/tool-row.stories.tsx",
-					diff: null,
-				}),
+				EDIT_ROW,
+				NEW_FILE_ROW,
+				CAPPED_WRITE_ROW,
+				UNCHANGED_WRITE_ROW,
+				FAILED_WRITE_ROW,
+				COMPOSING_WRITE_ROW,
+				BASH_ROW,
 			]}
 		/>
+	),
+};
+
+/**
+ * The same body in a 560px column: the wrap rule, not the layout.
+ *
+ * A diff line is long by nature, and the claim this frame exists for is that
+ * the body WRAPS rather than growing a horizontal scrollbar inside a
+ * disclosure — a scroll region the reader has to discover, at the width where
+ * the transcript is most likely to be narrow. Two cases rather than seven,
+ * because under wrapping each body grows and the honest picture of the rule is
+ * one you can see whole: the multi-hunk edit, and the capped body whose
+ * remaining scroll is now vertical only.
+ */
+export const DiffBodyNarrow: Story = {
+	render: () => (
+		<Frame height={1380} openRows records={[EDIT_ROW, CAPPED_WRITE_ROW]} />
 	),
 };
