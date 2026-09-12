@@ -5,11 +5,11 @@
   "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 492,
-  "surfaces": 53,
+  "surfaces": 54,
   "themes": 12,
   "countsMean": {
     "frames": "The full sweep's OWN frame count - 492 at this head (474 at the August head, +6 for the write-edit-diff round and +12 for the update-robustness one) - carried over by every narrowed run since, because a narrowed run preserves the previous manifest's counts by construction. It is not a total: 516 frame files are committed, which is these 492 plus the declared `supplementary` sets (22 `sidebar-new-chat` + 2 `write-edit-diff/real-durable-diff-rows`). `check-evidence.mjs` asserts this field against the frames on disk that fall outside any declared set.",
-    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 53: the 45 counted at the August head, the two `chat-tool-rows--diff-body*` entries, and the six `common-updatenotification` update surfaces this round added. Written by a full sweep only, so a narrowed run carries it over; `check-evidence.mjs` does not read it, which is how it went one round stale.",
+    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 54: the 45 counted at the August head, the three `chat-tool-rows--diff-body*` entries, and the six `common-updatenotification` update surfaces this round added. The three diff-body entries are upstream's, and they came in with #114 (the chat diff body) at its own head `104b0321a` - whose manifest already declared 48 = 45 + 3 - not with this branch; the seventh `common-updatenotification` story (`backend-update-non-managed`) is one of the August 45, so this branch's own addition is the six. Written by a full sweep only, so a narrowed run carries it over; `check-evidence.mjs` does not read it, which is how it went one round stale.",
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
   },
   "partialCapture": {

@@ -2315,7 +2315,11 @@ test("a Windows install and an XDG data home are searched by their own rules", (
  * pinned here. The shell half is driven from the generated script, so the text
  * under test is the text the app writes. The single input the two still answer
  * differently - an absent operand - is asserted as itself at the end of the
- * test, and the script says in place why that one stays.
+ * test, and the script says in place why that one stays. The sweep below is 12
+ * versions x 12 targets = 144 ordered pairs, plus the seven named pairs and
+ * the two empty-operand cases; the rule is what gets fixed here, and 144 is
+ * the whole of what this test compares - the commit that added it quoted a
+ * wider figure, which the sweep never had.
  */
 test("the script's version rule agrees with the renderer's, absent operands aside", () => {
 	const script = buildWatchdogPlan({

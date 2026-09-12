@@ -1479,11 +1479,13 @@ function commandSearchDirs(env: NodeJS.ProcessEnv, home: string): string[] {
  * `uv-receipt.toml` that names the install as a uv tool - and that is the one
  * place `readInstallIdentity` can still see the layout markers from.
  *
- * Three platform rules live here, all of them measured against uv's own answers
- * rather than assumed (review round 4, M1/M2): the tool root is `UV_TOOL_DIR`,
- * then `$XDG_DATA_HOME/uv/tools`, then `~/.local/share/uv/tools`; and the
- * scripts sit in `Scripts` on Windows and `bin` everywhere else - the same
- * split `updateBackend` writes for a bundled venv.
+ * Three platform rules live here, and they are not all measured: the tool root
+ * (`UV_TOOL_DIR`, then `$XDG_DATA_HOME/uv/tools`, then
+ * `~/.local/share/uv/tools`) and the POSIX `bin` script dir are measured
+ * against uv's own answers on this host (review round 4, M2). The Windows
+ * `Scripts` half is DERIVED rather than measured - there is no Windows host to
+ * ask - from the split `updateBackend` already writes for a bundled venv,
+ * which is the layout uv's own tool environments use (review round 4, M1).
  *
  * Known and deliberate: uv's own default root on Windows is under the user's
  * app data (`%LOCALAPPDATA%\uv\tools`, uv's storage reference), which this
