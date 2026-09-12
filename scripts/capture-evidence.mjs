@@ -190,7 +190,12 @@ const STORIES = [
 	["chat-usage--multi-provider", 1100, 760],
 	["chat-usage--percent-only", 900, 420],
 	["chat-usage--remaining-balance", 900, 400],
-	["chat-usage--loading", 900, 360],
+	/* Tall enough for all three skeleton blocks: the loading body is now
+	   skeleton rows shaped like the blocks that replace them, and at 360 the
+	   third one was sliced through its own card border — which is the very
+	   reading ("a rendering defect, not more content below") the scroll edge
+	   treatment exists to prevent, reproduced in the frame meant to show it. */
+	["chat-usage--loading", 900, 470],
 	["chat-usage--empty", 900, 380],
 	["chat-usage--query-error", 900, 400],
 	["chat-usage--fetching", 1000, 560],

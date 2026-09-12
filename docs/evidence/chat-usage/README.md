@@ -18,16 +18,36 @@ has to actually run out. `real-data/` answers the question fixtures cannot.
 | `multi-provider` | The main case: 4 providers, 8 windows, every status. The amount and countdown columns form ONE right edge across all four blocks (SPEC rule 9), tier rows are indented and dimmer (rule 8), and Anthropic's binding window is the account-wide 7-day at 88% even though its Opus tier row is at 100% — the binding rule (rule 7) working. |
 | `percent-only` | A provider whose report carries no currency anywhere. The binding window is the account-wide `Weekly 37%`, not the 91% reasoning tier. |
 | `remaining-balance` | A remaining-only balance (what both balance fetchers report). It prints `519.86 USD left` and draws a DOTTED rule, not a bar at zero (rule 4). Tally reads `1 window`, singular. |
-| `loading` | First paint, before the cached report returns. The tally renders nothing rather than an empty strip; the action stays right-aligned. |
+| `loading` | First paint, before the cached report returns. Skeleton rows shaped like the blocks that replace them, so the state reads as deliberate rather than as a bare word in an empty body. The action reads `Asking providers` and is DISABLED, because react-query reports `isLoading` and `isFetching` together on a first load — this frame previously showed it enabled, which the shipped container cannot produce (see "What these frames are not"). |
 | `empty` | No provider publishes quota, or none is signed in. |
 | `query-error` | The backend refused. The message shown is the backend's own, never synthesised. |
-| `fetching` | Live numbers asked for, request still out: the action reads `Asking providers` and is disabled, with the cached numbers still on screen. No spinner — there is nothing to watch. |
-| `stale-report` | A block 40 minutes behind the response stamp, beside a fresh one. The stale block says `Last known 40m ago` and its dots drop to the dim ramp while its bars keep their quota tint; the fresh block is unmarked (rule 10). |
+| `fetching` | Live numbers asked for, request still out: the action reads `Asking providers` and is disabled, with the cached numbers still on screen. No spinner — there is nothing to watch. The retained numbers are real behaviour rather than a story prop: `live` is part of the query key, and `placeholderData: keepPreviousData` is what keeps the previous payload rendering while the new key loads. |
+| `stale-report` | A block 40 minutes behind THE SET'S NEWEST CONFIRMATION, beside a fresh one. The stale block says `Last known 40m ago` and its dots drop to the dim ramp while its bars keep their quota tint; the fresh block is unmarked (rule 10). The baseline is the newest confirmed `fetched_at` across the reports, not the response's own stamp — measuring against the response stamp marked every block in `real-data`, which is the mark distinguishing nothing. |
 | `unavailable-with-last-known` | A failing probe whose last-known meters keep rendering under the note (`Usage unavailable — last known 2h ago`). |
-| `reauth-required` | A dead OAuth grant naming its remedy — `Sign-in expired — run /login xai` — with last-known numbers still under it (rule 11). |
-| `not-reported` | Windows carrying no measurable number: outlined dots, dotted rules, `not reported`, no binding window claimed, and `2 not reported` in the tally (rules 4 and 12). |
+| `reauth-required` | A dead OAuth grant naming its remedy — `Sign-in expired — run /login xai. Last known 2d ago.` — with last-known numbers still under it (rule 11). The vintage is a sentence in the vocabulary its sibling states teach, not a telegraphic `· numbers 2d ago`. |
+| `not-reported` | Windows carrying no measurable number: outlined dots, dotted rules, `not reported`, no binding window claimed, and `2 not reported` in the tally (rules 4 and 12). The dotted rule is drawn on the `ink-dim` ramp: it is the entire distinction between "reports nothing" and "at zero", which makes it structural and puts it on the 3:1 floor rather than on floor-exempt `ink-disabled`. |
 | `narrow` | The dialog at a 720px viewport. The bar surrenders space first; labels, amounts and countdowns hold. |
-| `real-data` | **Not a fixture.** The shipped view against a real `/v1/desktop/usage` response from the local backend: 11 provider reports, 28 windows, 8 exhausted. See below. |
+| `real-data` | **Not a fixture.** The shipped view against a real `/v1/desktop/usage` response from the local backend: 11 provider reports, 28 windows. See below. |
+
+## What these frames are not
+
+A frame is only evidence if the app can actually reach the state in it, and two
+of these could not. Both were caught in review and both are fixed rather than
+re-labelled:
+
+- `loading` showed `Ask providers now` **enabled**. react-query sets
+  `isLoading` and `isFetching` together on a first load, so the shipped
+  container always passes both and the action is always disabled at first
+  paint. The story had left `fetching` at its default.
+- `fetching` showed cached numbers retained during a live ask, which the
+  container could not do: `live` is part of the query key, so the ask started a
+  query with no data and the body replaced the table with the word `Loading`.
+
+The states are now reachable, and the agreement is pinned by a test rather than
+by this paragraph: `scripts/usage-container.test.mjs` renders the real container
+through the live-ask lifecycle and asserts the stories' own args against the
+props the container hands over at that moment. A story that drifts back into
+depicting an unreachable toolbar fails there.
 
 ## Re-capturing the story frames
 
@@ -95,3 +115,14 @@ What the real data surfaced that fixtures had not: **one provider can hold
 several signed-in accounts.** The live report carries five `anthropic` reports,
 which collided in the view's React `key` and collapsed them into one block. The
 key is now `provider:identity`, and the frame shows all five rendering.
+
+It surfaced two more in review, which is the strongest argument for keeping this
+frame in the set. The committed pair read `Cached report, just now.` above blocks
+the same frame dated `1h ago`, and marked **all eleven** blocks stale — a mark
+that fires on everything distinguishes nothing. Both came from measuring against
+the response's own `fetched_at`, which the route stamps with the server clock at
+response time. The baseline is now the newest confirmed `fetched_at` across the
+set, and the re-captured frame reads `Cached report, 34m ago.` and marks 10 of
+11: `openrouter`, the one account actually confirmed at that newest stamp, is
+unmarked. A fixture would not have caught either, because a fixture's stamps are
+whatever the fixture says they are.

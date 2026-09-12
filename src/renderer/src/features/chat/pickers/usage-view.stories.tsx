@@ -243,7 +243,7 @@ const base = {
 };
 
 /**
- * The main case: four providers, nine windows, every status present.
+ * The main case: four providers, eight windows, every status present.
  *
  * This is the frame the column alignment and the shared/tier hierarchy are
  * judged on. Anthropic's Opus cap is at 100% while its binding window — the
@@ -267,9 +267,19 @@ export const RemainingBalance: Story = {
 	args: { ...base, payload: payload([deepseek]) },
 };
 
-/** The first paint, before the cached report has come back. */
+/**
+ * The first paint, before the cached report has come back.
+ *
+ * `fetching` is TRUE here, and that is not a detail. On a first load react-query
+ * reports `isLoading` and `isFetching` together, so the shipped container always
+ * passes both — an earlier version of this story left `fetching` at its `false`
+ * default and photographed `Ask providers now`, ENABLED, which is a toolbar
+ * state the container cannot produce at first paint. An unreachable frame is
+ * worse than no frame, because loading is precisely the state a reviewer cannot
+ * check any other way.
+ */
 export const Loading: Story = {
-	args: { ...base, payload: null, loading: true },
+	args: { ...base, payload: null, loading: true, fetching: true },
 };
 
 /** No provider publishes quota, or none is signed in. */
@@ -287,7 +297,19 @@ export const QueryError: Story = {
 	},
 };
 
-/** Live numbers have been asked for and the request is still out. */
+/**
+ * Live numbers have been asked for and the request is still out.
+ *
+ * The cached numbers stay on screen throughout, which the container now really
+ * produces: `live` is part of the query key, so asking starts a query with no
+ * cached entry, and `placeholderData: keepPreviousData` is what keeps the
+ * previous payload rendering while it loads. Before that this frame was a
+ * picture of a state the shipped wiring could not reach — the real behaviour
+ * replaced the whole table with the word `Loading` for the duration of the
+ * probe. `loading` is left at `false` deliberately: with placeholder data in
+ * hand react-query reports `isLoading: false`, which is the combination the
+ * container passes here.
+ */
 export const Fetching: Story = {
 	args: {
 		...base,
@@ -399,10 +421,12 @@ export const ReauthRequired: Story = {
 /**
  * A provider that answered with no numbers at all, beside one that has some.
  *
- * The unmeasurable rows draw an outlined dot and an EMPTY track — not a bar at
+ * The unmeasurable rows draw an outlined dot and a DOTTED rule — not a track at
  * zero, which would be a claim that nothing has been spent — and the toolbar
  * tally counts them as "not reported" rather than folding them into a healthy
- * count.
+ * count. The rule is on the `ink-dim` ramp: it is the entire distinction
+ * between "reports nothing" and "at zero", which makes it structural and puts
+ * it on the 3:1 floor that `ink-disabled` is exempt from.
  */
 export const NotReported: Story = {
 	args: {

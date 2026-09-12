@@ -105,6 +105,14 @@ export type PickerHostProps = {
 	toolbar?: ReactNode;
 	/** Rendered instead of the list when set (data views). */
 	body?: ReactNode;
+	/**
+	 * The body is a long list that routinely overflows, so mark where it ends.
+	 *
+	 * Opt-in rather than always-on: most `body` pickers render a short form that
+	 * never scrolls, and a rule under content that stops well above the footer
+	 * draws a boundary around nothing. Set it for the dense data views.
+	 */
+	bodyScrolls?: boolean;
 };
 
 const TONE_CLASS: Record<PickerResult["tone"], string> = {
@@ -135,6 +143,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	wide = false,
 	toolbar,
 	body,
+	bodyScrolls = false,
 }) => {
 	const listId = useId();
 	const [query, setQuery] = useState("");
@@ -396,7 +405,31 @@ export const PickerHost: FC<PickerHostProps> = ({
 				)}
 
 				{body && (
-					<div className="max-h-[min(60vh,520px)] overflow-y-auto px-5 pt-3">
+					/*
+					 * A scrolling body announces its own overflow.
+					 *
+					 * Without the bottom rule, content clipped mid-glyph at the fold read
+					 * as a rendering defect rather than as "there is more below" — in the
+					 * densest usage frame the cut ran horizontally through a `41%` and
+					 * through the card's border mid-stroke, with nothing separating the
+					 * body from the footer.
+					 *
+					 * `scrollbar-gutter: stable` reserves the scrollbar column in EVERY
+					 * state, which is the same call the TUI makes (`SCROLLBAR_GUTTER_CELLS`)
+					 * and for the same reason: reserving it only when the bar appears
+					 * slides every right-aligned number sideways the moment content
+					 * overflows. `canonical-transcript.tsx` already uses this idiom.
+					 *
+					 * The rule is `hairline` — decorative, marking where the body ends,
+					 * not the boundary of a control.
+					 */
+					<div
+						className={cn(
+							"max-h-[min(60vh,520px)] overflow-y-auto px-5 pt-3",
+							bodyScrolls &&
+								"border-hairline border-b [scrollbar-gutter:stable]",
+						)}
+					>
 						{body}
 					</div>
 				)}

@@ -228,6 +228,57 @@ const CONTROLS = [
 ];
 
 /**
+ * Graphic objects: a fill that carries meaning and holds no text.
+ *
+ * `CONTROLS` is the wrong table for these and listing them there asserted two
+ * things that are not true of them. A control's row demands its INK clear 4.5:1
+ * on its own fill — a quota bar paints no text on itself, so that assertion is
+ * about a pairing that never renders — and it demands the control's EDGE clear
+ * 3:1, which is the floor for something the user operates. A status dot and a
+ * meter fill are read, not operated, and WCAG's 3:1 non-text floor applies to
+ * the object against what is behind it, which is exactly what this table says.
+ *
+ * They are listed because `AGENTS.md` is explicit that green output about an
+ * unlisted component is not evidence about that component, and the `/usage`
+ * view introduced two graphic objects the file had no row for: the bar fill
+ * (`h-1`) and the status dot (`size-1.5`). Both are below the size at which the
+ * ink floors apply and neither was measured by anything before this.
+ *
+ * The three semantics are listed SEPARATELY rather than as one row, because a
+ * set of semantics that passes on average is not a set of semantics.
+ */
+const GRAPHICS = [
+	...["success", "warning", "danger"].map((role) => ({
+		name: `usage bar fill (${role})`,
+		/* Drawn inside the track, which is `sunken`. */
+		on: ["sunken"],
+		fg: role,
+	})),
+	...["success", "warning", "danger"].map((role) => ({
+		name: `usage status dot (${role})`,
+		/* The dot sits on the provider block's own card. */
+		on: ["surface"],
+		fg: role,
+	})),
+	{
+		/*
+		 * The dot for an unmeasurable window, and the dotted rule beside it.
+		 *
+		 * Both are `inkDim`, and both are information-bearing rather than
+		 * decorative: the rule is the WHOLE distinction between "this window
+		 * reports nothing" and "this window is at zero", which by § 2's own test
+		 * ("would removing it lose information?") makes it structural and puts it
+		 * on the 3:1 floor. It shipped in `inkDisabled` — the one role exempt
+		 * from any floor — measuring 2.00:1 on card in `localOperatorLight`,
+		 * i.e. two thirds of the floor it needed.
+		 */
+		name: "usage unmeasured mark",
+		on: ["surface"],
+		fg: "inkDim",
+	},
+];
+
+/**
  * Boundaries whose ROLE IN THE SOURCE is part of the contract, not just the
  * colour behind it.
  *
@@ -255,6 +306,42 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/chat-header.tsx",
 		must: "border-control border-b",
 		why: "in a packaged build this rule is the only thing separating the header from the transcript",
+	},
+	{
+		/*
+		 * The palette rows above prove `inkDim` clears 3:1 on every ground. They
+		 * cannot see which class the dotted rule actually renders, and the whole
+		 * defect here was the class: `border-ink-disabled`, a role deliberately
+		 * exempt from every floor, on the one mark that distinguishes "reports
+		 * nothing" from "at zero". Reverting that one word would keep every
+		 * palette assertion green.
+		 */
+		what: "usage unmeasured window rule",
+		file: "src/renderer/src/features/chat/pickers/usage-view.tsx",
+		must: "border-ink-dim border-t border-dotted",
+		why: "the dotted rule is the whole distinction between a window that reports nothing and one at zero, so it is structural and cannot ride the floor-exempt disabled role",
+	},
+	{
+		/*
+		 * The quota bar's track.
+		 *
+		 * `sunken` on `surface` is 1.11:1 in the dark brand palette, so the fill
+		 * has no perceivable container: at 0% the row reads as blank card and at
+		 * 100% as a coloured rule rather than a full meter. The track is the
+		 * reference the fill is measured against, so removing it loses
+		 * information — structural by § 2's own test, and therefore on the 3:1
+		 * floor that only `border-control` carries.
+		 *
+		 * Pinned at the call site because `hairline` is the tempting weight here
+		 * and it CANNOT work: the contract caps a hairline below 2:1 by design.
+		 * Measured on a rendered frame, a hairline moved the track from 1.11:1 to
+		 * 1.15:1 — a change that looks like a fix in the diff and is not one on
+		 * screen.
+		 */
+		what: "usage bar track boundary",
+		file: "src/renderer/src/features/chat/pickers/usage-view.tsx",
+		must: "border border-control bg-sunken",
+		why: "the track is the reference the fill is read against, so at 0% and 100% it is the only thing distinguishing a meter from blank card or a coloured rule",
 	},
 ];
 
@@ -549,6 +636,13 @@ for (const { id, palette: p } of palettes) {
 					`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
 				);
 			}
+		}
+	}
+
+	/* Graphic objects against the ground they are drawn on. */
+	for (const g of GRAPHICS) {
+		for (const ground of g.on) {
+			assertPair(id, p, g.fg, ground, FLOOR.nonText, g.name);
 		}
 	}
 
