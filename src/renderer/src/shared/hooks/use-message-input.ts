@@ -168,14 +168,36 @@ export const useMessageInput = ({
 	const handleSubmit = useCallback(async () => {
 		if (!inputValue.trim() || !conversationId || submittingRef.current) return;
 		submittingRef.current = true;
+		/*
+		 * The submitted payload is captured ONCE and threaded through every
+		 * consumer below, and the box is cleared BEFORE the await.
+		 *
+		 * The clear is early because `admitChatDraft` paints the optimistic echo
+		 * synchronously under the same request id, so the text moves from box to
+		 * transcript in one frame instead of sitting in the composer for the
+		 * ~1.15 s a cold engage costs.
+		 *
+		 * Threading the captured value is what makes that safe. Re-reading
+		 * `inputValue` after the clear yields "", which would submit an empty
+		 * message and, worse, make the store's unchanged-payload guard compare
+		 * every retry against "" and refuse it. One value, one meaning.
+		 */
+		const submitted = inputValue;
+		if (initializedRef.current === conversationId) setInputValue("");
 		try {
-			if ((await onSubmit?.(inputValue)) === false) return;
+			if ((await onSubmit?.(submitted)) === false) {
+				// A refusal is the ONE outcome that returns the text to the user's
+				// editing: nothing was admitted, so the composer is where it belongs.
+				// Every other failure is covered by the store's retained draft and
+				// its Restore control, which is why this does not restore on throw.
+				if (initializedRef.current === conversationId) setInputValue(submitted);
+				return;
+			}
 		} finally {
 			submittingRef.current = false;
 		}
 
-		addSubmittedMessage(conversationId, inputValue);
-		if (initializedRef.current === conversationId) setInputValue("");
+		addSubmittedMessage(conversationId, submitted);
 		// Cleared BEFORE the store write so a synchronous restore inside
 		// `onSubmit` is not immediately overwritten by this submit's own clear.
 		lastPushedRef.current = "";
