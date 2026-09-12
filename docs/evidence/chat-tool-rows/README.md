@@ -8,14 +8,14 @@ Two capture surfaces, and the difference matters when reading them:
 
 - **Storybook frames** (`states`, `names-and-fallbacks`, `narrow`, `working`,
   `working-labels`, `operator-spacing-cases`, `turn-boundary-and-working-line`,
-  `joined-mid-turn`,
-  `working`, `working-labels`) render the **production `CanonicalTranscript`**
+  `joined-mid-turn`) render the **production `CanonicalTranscript`**
   from fixture `TranscriptRecord`s. They cover the states that are slow or
   awkward to produce live: an interrupted call needs a turn stopped at exactly
   the right moment, an `mcp__*` row needs a server connected, a narrow row needs
   a resize. Captured over CDP with `scripts/check-evidence.mjs`'s own
   `assertFramePaints` guard.
-- **`real-conversation-tool-rows`** (and, in `transcript-images/`, its image-side sibling) renders the **shipped `applyHistoryPage`
+- **`real-conversation-tool-rows`** (and, in `transcript-images/`, its image-side
+  sibling) render the **shipped `applyHistoryPage`
   reducer and the shipped `CanonicalTranscript`** over real `/history` pages
   from one of the operator's actual conversations, served by a real
   `local-operator serve` backend. Electron is not required to render this

@@ -201,7 +201,7 @@
     "appId": "com.local-operator",
     "electronVersion": "35.5.1",
     "productName": "Local Operator",
-    "copyright": "Copyright \u00a9 2025 Radient Inc.",
+    "copyright": "Copyright © 2025 Radient Inc.",
     "asar": true,
     "files": [
       "out/**/*",
