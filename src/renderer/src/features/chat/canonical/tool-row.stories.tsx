@@ -127,7 +127,7 @@ const Frame = ({
 				gate={null}
 				waiting={waiting}
 				loadingOlder={false}
-				onLoadOlder={() => undefined}
+				onLoadOlder={async () => true}
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"
