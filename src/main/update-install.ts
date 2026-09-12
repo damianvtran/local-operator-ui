@@ -1,7 +1,9 @@
 import {
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	readFileSync,
+	readdirSync,
 	renameSync,
 	rmSync,
 	writeFileSync,
@@ -35,8 +37,18 @@ import { basename, join } from "node:path";
 /** Marker file name, written under the app's userData directory. */
 export const PENDING_INSTALL_MARKER_FILE = "pending-update-install.json";
 
-/** How many times the artifact size the installer needs free (it stages a copy). */
-export const INSTALL_DISK_MULTIPLIER = 3;
+/**
+ * Free-space headroom over the two copies an install materializes at its peak.
+ *
+ * `requiredDiskBytes` computes the footprint from the artifact plus the app
+ * being replaced; this margin covers the extraction working set and the swap's
+ * own bookkeeping. See that function for why the artifact alone is the wrong
+ * number.
+ */
+export const INSTALL_DISK_SLACK_BYTES = 256 * 1024 * 1024;
+
+/** Where a user gets a fresh copy when the app can no longer update itself. */
+export const DOWNLOAD_PAGE_URL = "https://local-operator.com/download";
 
 /** Default bound on the relaunch watchdog, in seconds. */
 export const WATCHDOG_TIMEOUT_SECONDS = 900;
@@ -74,12 +86,36 @@ export type InstallBlock = {
 // Installed bundle seal check
 // ---------------------------------------------------------------------------
 
-/** Result of running `codesign --verify --deep --strict` on a bundle. */
+/** Result of running `codesign --verify --deep` on a bundle. */
 export type SealProbe = {
 	exitCode: number;
 	stdout: string;
 	stderr: string;
+	/**
+	 * Whether the probe ran to a verdict at all.
+	 *
+	 * `false` means the process timed out, failed to exec, or died without
+	 * saying anything - "the probe could not run", which is a different claim
+	 * from "codesign rejected this bundle", and the two must not be collapsed:
+	 * a timed-out probe used to become a permanent "this app can't be updated in
+	 * place" with a reinstall remedy (review R5). Defaults to `true` so a caller
+	 * holding only a status code keeps the old meaning.
+	 */
+	ran?: boolean;
 };
+
+/**
+ * What a seal probe proved.
+ *
+ * Three states rather than a boolean because "could not run" has to be
+ * handled differently from "ran and said no": the first is retried and then
+ * allowed to proceed, the second refuses the install (see
+ * `probeInstalledBundleSeal` in the update service).
+ */
+export type SealVerdict =
+	| { kind: "sealed" }
+	| { kind: "unavailable"; detail: string }
+	| { kind: "unsealed"; detail: string };
 
 /**
  * Markers ShipIt reports for a path it cannot treat as a code object.
@@ -110,36 +146,51 @@ export function appBundleFromExecutable(execPath: string): string | null {
 /**
  * Decide whether the installed bundle is a sealed code object.
  *
- * A non-zero `codesign --verify` is a hard failure: ShipIt validates the
- * installed bundle the same way and refuses the install on anything here.
+ * A non-zero `codesign --verify` that printed a reason is a hard failure:
+ * ShipIt validates the installed bundle the same way and refuses the install on
+ * anything here. A probe that never produced a verdict is a third outcome and
+ * is reported as such - see `SealVerdict`.
  */
-export function evaluateBundleSeal(
-	probe: SealProbe,
-): { ok: true } | { ok: false; detail: string } {
+export function evaluateBundleSeal(probe: SealProbe): SealVerdict {
 	const output = `${probe.stdout}\n${probe.stderr}`.trim();
-	if (probe.exitCode === 0) return { ok: true };
+	if (probe.ran === false) {
+		return {
+			kind: "unavailable",
+			detail: `codesign --verify did not complete: ${output || "no output"}`,
+		};
+	}
+	if (probe.exitCode === 0) return { kind: "sealed" };
 	const marker = BAD_BUNDLE_MARKERS.find((candidate) =>
 		output.includes(candidate),
 	);
 	return {
-		ok: false,
+		kind: "unsealed",
 		detail: marker
 			? `${marker}: ${output || "no output"}`
 			: `codesign --verify exited ${probe.exitCode}: ${output || "no output"}`,
 	};
 }
 
+/**
+ * The refusal shown when the installed bundle cannot be replaced in place.
+ *
+ * The remedy names the first step the user has to take themselves - quitting
+ * the app - because a user who drags a fresh copy over a running app ends up
+ * looking at the old instance with no idea whether it worked (review U9).
+ */
 export function installedBundleSealBlock(
 	appBundlePath: string,
 	detail: string,
+	version?: string | null,
 ): InstallBlock {
 	return {
 		code: "installed-bundle-not-sealed",
-		message:
-			"This install of Local Operator can't be updated in place, so the update was stopped before the app quit.",
+		message: version
+			? `This install of Local Operator can't be updated in place, so the update to version ${version} was stopped before the app quit.`
+			: "This install of Local Operator can't be updated in place, so the update was stopped before the app quit.",
 		remedy: {
-			text: "Download a fresh copy and replace the app in Applications.",
-			url: "https://local-operator.com/download",
+			text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
+			url: DOWNLOAD_PAGE_URL,
 		},
 		detail: `${appBundlePath}: ${detail}`,
 	};
@@ -196,8 +247,29 @@ export type ArtifactVerdict =
 	| { ok: true; sha512: string; size: number }
 	| { ok: false; block: InstallBlock };
 
-export function requiredDiskBytes(artifactSize: number): number {
-	return artifactSize * INSTALL_DISK_MULTIPLIER;
+/**
+ * Free space the install needs on the volume that holds the app.
+ *
+ * The peak is not the download: Squirrel unpacks the new app into a staging
+ * directory on the app's own volume and then swaps it in, so the artifact, the
+ * staged copy of the new app and the app being replaced are all on that volume
+ * at once. Hence artifact + two app copies + slack.
+ *
+ * The guard this replaces multiplied the ARTIFACT by three and labelled the
+ * result the install's footprint - about 0.98 GiB for 0.18.0's 336 MiB zip,
+ * below the roughly 1.3 GiB the swap actually needs, while the comment above it
+ * claimed the 1 GiB app copy it never measured (review R4). The app's own size
+ * is measured now, and the detail line shows the arithmetic that was used.
+ */
+export function requiredDiskBytes(input: {
+	artifactSize: number;
+	installedBundleSize: number;
+}): number {
+	return (
+		input.artifactSize +
+		input.installedBundleSize * 2 +
+		INSTALL_DISK_SLACK_BYTES
+	);
 }
 
 function formatGiB(bytes: number): string {
@@ -205,12 +277,55 @@ function formatGiB(bytes: number): string {
 }
 
 /**
+ * Bytes an installed bundle occupies, or null when it cannot be measured.
+ *
+ * Symlinks are counted as the links they are rather than followed: an app
+ * bundle is full of them (`Versions/Current`, framework aliases) and following
+ * them would both double-count and risk a cycle. The figure is therefore a
+ * floor, which is the right direction for a free-space guard.
+ */
+export function measureDirectoryBytes(root: string): number | null {
+	try {
+		const stats = lstatSync(root);
+		if (!stats.isDirectory()) return stats.size;
+		let total = 0;
+		for (const entry of readdirSync(root)) {
+			const child = join(root, entry);
+			let childStats: ReturnType<typeof lstatSync>;
+			try {
+				childStats = lstatSync(child);
+			} catch {
+				// A file that vanished mid-walk (a running app rotating a log) is not
+				// a measurement failure; it is simply not part of the footprint.
+				continue;
+			}
+			if (childStats.isDirectory()) {
+				const nested = measureDirectoryBytes(child);
+				if (nested != null) total += nested;
+			} else {
+				total += childStats.size;
+			}
+		}
+		return total;
+	} catch {
+		return null;
+	}
+}
+
+/** The version clause every refusal carries, so the user can quote it. */
+function versionClause(version: string | null | undefined): string {
+	return version ? ` to version ${version}` : "";
+}
+
+/**
  * Check a staged artifact against the metadata the updater already parsed.
  *
- * The disk requirement is the install's own footprint, not the download's:
- * Squirrel copies the whole 1 GB app into a temp directory before swapping it
- * in, so a check that only covers the artifact size would pass and then fail
- * deep inside the install with nothing to show the user.
+ * The disk requirement is the install's own footprint, not the download's (see
+ * `requiredDiskBytes`), and the sample is honestly sized either way: when the
+ * installed app cannot be measured the artifact plus slack is what the guard
+ * can defend, and the detail line says so rather than implying the bigger
+ * number. `version` names the release the user is being refused, which is what
+ * makes a refusal quotable in a support report (review U10).
  */
 export function verifyStagedArtifact(input: {
 	filePath: string;
@@ -219,16 +334,20 @@ export function verifyStagedArtifact(input: {
 	metadata: UpdateFileMetadata | null;
 	freeBytes: number;
 	updatePath?: string | null;
+	/** Size of the app this update would replace, when it could be measured. */
+	installedBundleSize?: number | null;
+	/** The release being verified, for the refusal copy. */
+	version?: string | null;
 }): ArtifactVerdict {
 	const name = basename(input.filePath);
+	const version = input.version ?? null;
 
 	if (input.metadata == null) {
 		return {
 			ok: false,
 			block: {
 				code: "artifact-metadata-missing",
-				message:
-					"The downloaded update isn't listed in the release metadata, so it wasn't installed.",
+				message: `The downloaded update${versionClause(version)} isn't listed in the release metadata, so it wasn't installed.`,
 				remedy: {
 					text: "Check for updates again to re-download the release.",
 				},
@@ -243,8 +362,7 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "download-verification-failed",
-				message:
-					"The downloaded update doesn't match the published release, so it wasn't installed.",
+				message: `The downloaded update${versionClause(version)} doesn't match the published release, so it wasn't installed.`,
 				remedy: {
 					text: "Check for updates again to re-download the release.",
 				},
@@ -259,8 +377,7 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "download-verification-failed",
-				message:
-					"The downloaded update doesn't match the published release, so it wasn't installed.",
+				message: `The downloaded update${versionClause(version)} doesn't match the published release, so it wasn't installed.`,
 				remedy: {
 					text: "Check for updates again to re-download the release.",
 				},
@@ -269,20 +386,24 @@ export function verifyStagedArtifact(input: {
 		};
 	}
 
-	const needed = requiredDiskBytes(expectedSize ?? input.actualSize);
+	const artifactSize = expectedSize ?? input.actualSize;
+	const installedBundleSize = input.installedBundleSize ?? 0;
+	const needed = requiredDiskBytes({ artifactSize, installedBundleSize });
 	if (input.freeBytes < needed) {
+		const footprint = installedBundleSize
+			? `${formatGiB(artifactSize)} artifact + two ${formatGiB(
+					installedBundleSize,
+				)} app copies + ${formatGiB(INSTALL_DISK_SLACK_BYTES)} slack`
+			: `${formatGiB(artifactSize)} artifact + ${formatGiB(INSTALL_DISK_SLACK_BYTES)} slack (the installed app could not be measured)`;
 		return {
 			ok: false,
 			block: {
 				code: "insufficient-disk-space",
-				message:
-					"There isn't enough free disk space to install this update, so it wasn't installed.",
+				message: `There isn't enough free disk space to install the update${versionClause(version)}, so it wasn't installed.`,
 				remedy: {
 					text: `Free up about ${formatGiB(needed - input.freeBytes)}, then check for updates again.`,
 				},
-				detail: `Install needs ${formatGiB(needed)} (${INSTALL_DISK_MULTIPLIER}x the ${formatGiB(
-					expectedSize ?? input.actualSize,
-				)} artifact); ${formatGiB(input.freeBytes)} free.`,
+				detail: `Install needs ${formatGiB(needed)} (${footprint}); ${formatGiB(input.freeBytes)} free.`,
 			},
 		};
 	}
@@ -395,10 +516,138 @@ export function clearPendingInstallMarker(dir: string): boolean {
 	return true;
 }
 
+/**
+ * The last failed install, kept on disk rather than in memory.
+ *
+ * Why a second file: the marker is consumed at start-up - it is read, reported
+ * and cleared - and the notice is delivered once per process, so dismissing the
+ * panel used to be the end of the record. A user who clicked the panel's only
+ * control (Dismiss) had lost which version failed, when, and how many times;
+ * reviews U1 and D3 asked for the record to outlive the notification. This file
+ * is that record, and Settings -> App updates reads it back.
+ */
+export const LAST_INSTALL_ATTEMPT_FILE = "last-update-install.json";
+
+export type LastInstallAttempt = {
+	targetVersion: string;
+	runningVersion: string;
+	/** When the install that failed was started, as the marker recorded it. */
+	startedAt: string | null;
+	/** When the failure was detected (the next start). */
+	detectedAt: string;
+	detail: string;
+	/** How many times this same target has failed here, so "again" is a fact. */
+	attempts: number;
+};
+
+export function lastInstallAttemptPath(dir: string): string {
+	return join(dir, LAST_INSTALL_ATTEMPT_FILE);
+}
+
+/** Read the recorded last failure, or null when there is none to report. */
+export function readLastInstallAttempt(dir: string): LastInstallAttempt | null {
+	const path = lastInstallAttemptPath(dir);
+	if (!existsSync(path)) return null;
+	try {
+		const parsed = JSON.parse(
+			readFileSync(path, "utf8"),
+		) as Partial<LastInstallAttempt>;
+		if (
+			typeof parsed?.targetVersion !== "string" ||
+			parsed.targetVersion.length === 0
+		) {
+			return null;
+		}
+		return {
+			targetVersion: parsed.targetVersion,
+			runningVersion:
+				typeof parsed.runningVersion === "string"
+					? parsed.runningVersion
+					: "unknown",
+			startedAt: typeof parsed.startedAt === "string" ? parsed.startedAt : null,
+			detectedAt:
+				typeof parsed.detectedAt === "string" ? parsed.detectedAt : "",
+			detail: typeof parsed.detail === "string" ? parsed.detail : "",
+			attempts:
+				typeof parsed.attempts === "number" && parsed.attempts > 0
+					? parsed.attempts
+					: 1,
+		};
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Record a failed install, counting repeats of the same target.
+ *
+ * The count is what turns "try again" into evidence for the user: the install
+ * that keeps failing is the one that has to be replaced by hand, and the panel
+ * can only say so once somebody has counted (review U1). Written temp-then-
+ * rename for the same reason the marker is.
+ */
+export function recordInstallFailure(
+	dir: string,
+	input: {
+		payload: InstallFailurePayload;
+		/** The marker's own start time, when it recorded one. */
+		startedAt: string | null;
+		detectedAt: string;
+	},
+): LastInstallAttempt {
+	const previous = readLastInstallAttempt(dir);
+	const record: LastInstallAttempt = {
+		targetVersion: input.payload.targetVersion,
+		runningVersion: previous?.runningVersion ?? "unknown",
+		startedAt: input.startedAt,
+		detectedAt: input.detectedAt,
+		detail: input.payload.detail,
+		attempts:
+			previous && previous.targetVersion === input.payload.targetVersion
+				? previous.attempts + 1
+				: 1,
+	};
+	mkdirSync(dir, { recursive: true });
+	const target = lastInstallAttemptPath(dir);
+	const temp = `${target}.tmp`;
+	writeFileSync(temp, `${JSON.stringify(record, null, 2)}\n`, "utf8");
+	renameSync(temp, target);
+	return record;
+}
+
 export type PendingInstallOutcome =
 	| { kind: "none" }
 	| { kind: "succeeded"; marker: PendingInstallMarker }
+	/** A marker from an install that a later one superseded: not a failure. */
+	| { kind: "stale"; marker: PendingInstallMarker }
 	| { kind: "failed"; marker: PendingInstallMarker };
+
+/** `x.y.z` at the start of a version string, with an optional leading `v`. */
+const VERSION_TRIPLE_REGEX = /^v?(\d+)\.(\d+)\.(\d+)/;
+
+/**
+ * Compare dotted numeric versions: -1, 0, 1, or null when either is not
+ * parseable as `x.y.z`.
+ *
+ * Null is the honest answer for a version this cannot order - "unknown" from
+ * the backend, a dev build stamp - and every caller has to decide what to do
+ * with it rather than being handed a made-up ordering.
+ */
+export function compareVersions(a: string, b: string): number | null {
+	const parse = (value: string): [number, number, number] | null => {
+		const match = VERSION_TRIPLE_REGEX.exec(value.trim());
+		if (!match) return null;
+		return [Number(match[1]), Number(match[2]), Number(match[3])];
+	};
+	const left = parse(a);
+	const right = parse(b);
+	if (!left || !right) return null;
+	for (let index = 0; index < 3; index++) {
+		if (left[index] !== right[index])
+			return left[index] < right[index] ? -1 : 1;
+	}
+	return 0;
+}
 
 /**
  * Interpret the marker on the next start.
@@ -406,6 +655,13 @@ export type PendingInstallOutcome =
  * The running version is the only evidence available: Squirrel leaves no exit
  * status behind and `launchAfterInstallation` never ran, so "still on the old
  * version" is the whole signal that the install failed.
+ *
+ * That reading has one exception, and it produced a false alarm: a marker whose
+ * target is OLDER than the running version describes an install that was
+ * superseded (the user is on something newer), not an install that failed. It
+ * used to make the app say "the update to version 0.9.0 didn't finish, so
+ * version 0.17.0 is still running" (review Q2). The marker is cleared either
+ * way; only the message the user sees differs.
  */
 export function evaluatePendingInstall(input: {
 	marker: PendingInstallMarker | null;
@@ -416,6 +672,8 @@ export function evaluatePendingInstall(input: {
 	if (marker.targetVersion === input.runningVersion) {
 		return { kind: "succeeded", marker };
 	}
+	const order = compareVersions(marker.targetVersion, input.runningVersion);
+	if (order !== null && order < 0) return { kind: "stale", marker };
 	return { kind: "failed", marker };
 }
 
@@ -424,19 +682,39 @@ export type InstallFailurePayload = {
 	message: string;
 	remedy: UpdateRemedy;
 	detail: string;
+	/** How many times this target has failed on this machine. */
+	attempts: number;
 };
 
+/**
+ * What the user is told after an install that did not complete.
+ *
+ * Two things here are deliberate. The remedy carries the download page URL so
+ * the panel has a control that reaches it - the copy used to name "the update
+ * prompt" while the panel's only button was Dismiss, and the user whose install
+ * kept failing had no way out of the cycle (reviews U1, D3). And the timestamp
+ * is rendered in the user's own locale rather than as a raw ISO-8601 UTC stamp:
+ * it is read by a person, and the machine-readable form stays in the log.
+ */
 export function installFailurePayload(
 	marker: PendingInstallMarker,
 	runningVersion: string,
+	options: { attempts?: number } = {},
 ): InstallFailurePayload {
+	const started = marker.startedAt ? new Date(marker.startedAt) : null;
+	const startedText =
+		started && !Number.isNaN(started.getTime())
+			? started.toLocaleString()
+			: "at an unknown time";
 	return {
 		message: `The update to version ${marker.targetVersion} didn't finish, so version ${runningVersion} is still running.`,
 		remedy: {
-			text: "Try installing the update again from the update prompt.",
+			text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app.",
+			url: DOWNLOAD_PAGE_URL,
 		},
-		detail: `Install started ${marker.startedAt || "unknown"} from ${marker.artifactPath || "an unknown artifact"}.`,
+		detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}.`,
 		targetVersion: marker.targetVersion,
+		attempts: options.attempts ?? 1,
 	};
 }
 
@@ -444,9 +722,30 @@ export function installFailurePayload(
 // Relaunch watchdog
 // ---------------------------------------------------------------------------
 
-/** Escape a plain string for use as a `pgrep -f` extended-regex pattern. */
-export function escapePgrepPattern(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/**
+ * The launchd job Squirrel's ShipIt runs an install under.
+ *
+ * Squirrel builds this label as `<bundle id>.ShipIt` (`shipItJobLabel` in
+ * SQRLShipItLauncher) and the job is submitted as part of the app's quit and
+ * unloaded when the install is over. Its presence in the user's launchd domain
+ * is therefore the machine's own answer to "is an install still in flight" -
+ * and the answer for a *hung* install, which is the case that left the operator
+ * with no app. The watchdog used to ask `pgrep -f ShipIt` instead, which matched
+ * any process whose command line merely contains that word (a reviewer's
+ * sampling loop held it open past the deadline; review R7).
+ */
+export function shipItJobLabel(bundleId: string): string {
+	return `${bundleId}.ShipIt`;
+}
+
+/**
+ * Squirrel's own cache directory for an app: its logs and its staged update.
+ *
+ * `reapFailedInstall` uses this to find the staging tree a failed install
+ * leaves behind; the logs inside it are deliberately kept.
+ */
+export function shipItCacheDir(cacheRoot: string, bundleId: string): string {
+	return join(cacheRoot, shipItJobLabel(bundleId));
 }
 
 export type WatchdogPlan = {
@@ -460,56 +759,99 @@ export type WatchdogPlan = {
 /**
  * Build the detached relaunch watchdog.
  *
- * The paths travel in the environment rather than in the script text: `sh -c`
- * puts the script in its own command line, `pgrep -f` matches command lines,
- * and a script carrying `/Applications/Local Operator.app/...` would therefore
- * find *itself* through the very check that waits for the app to exit.
+ * Why the two signals are what they are (both were wrong, and each in a way
+ * that produced the operator's outcome - see the docstring in the script):
+ *
+ * - "has the app exited" is asked of the APP'S OWN PID with `kill -0`. The pid
+ *   is captured here, by the app, before the quit. A name probe cannot answer
+ *   this question: macOS `pgrep -f` does not report its own ancestors, and this
+ *   script is spawned BY the app, so `pgrep -f <app path>` returned "not
+ *   running" while the app was very much running (review R1, reproduced).
+ * - "is the install over" is asked of the ShipIt launchd job by label, not by
+ *   process name.
+ *
+ * The paths travel in the environment rather than in the script text, as
+ * before: `sh -c` puts the script in its own command line, and a script
+ * carrying `/Applications/Local Operator.app/...` would show up in any process
+ * listing of it.
  */
 export function buildWatchdogPlan(input: {
-	appExecutablePath: string;
 	appBundlePath: string;
 	executableName: string;
+	/** The app's own pid, captured before the quit. */
+	appPid: number;
+	/** The launchd job label ShipIt's install runs under. */
+	shipItJob: string | null;
 	timeoutSeconds?: number;
 	intervalSeconds?: number;
 	settleSeconds?: number;
+	/** How long to wait for ShipIt's job to be submitted after the app exits. */
+	appearSeconds?: number;
 }): WatchdogPlan {
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
 	const intervalSeconds = input.intervalSeconds ?? 3;
 	const settleSeconds = input.settleSeconds ?? 5;
-	const appPattern = escapePgrepPattern(input.appExecutablePath);
+	const appearSeconds = input.appearSeconds ?? 30;
 
 	const script = `#!/bin/sh
 # ${WATCHDOG_TOKEN}
-# Why this exists: a failed Squirrel.Mac install quits the app and never brings it
-# back - ShipIt logs an installation error, leaves no exit status and does not run
-# the relaunch - so the user is left with no app and no message (operator report,
-# 2026-09-11, errSecCSBadBundleFormat -67028). This watchdog waits for the install
-# to settle and then starts the app again if nothing else did. It is a no-op when
-# the install succeeded, and it is bounded: it exits at the deadline whatever
-# happens, so a stuck install cannot leave an orphan process behind.
+#
+# Why this exists: a failed Squirrel.Mac install quits the app and never brings
+# it back - ShipIt logs an installation error, leaves no exit status and does not
+# run the relaunch - so the user is left with no app and no message (operator
+# report, 2026-09-11, errSecCSBadBundleFormat -67028).
+#
+# How it decides, and why each signal is the one it is:
+#   - "the app has exited" is asked of the app's own pid (kill -0), captured by
+#     the app before it quit. A name probe cannot answer it on macOS: pgrep -f
+#     does not report its own ancestors, and this script is the app's child.
+#   - "the install is over" is asked of the ShipIt launchd job, by label. The job
+#     is submitted as part of the quit and unloaded when the install settles, so
+#     it is also the only signal that separates a hung install from an unrelated
+#     process that merely has the word in its command line.
+#
+# It starts the app in exactly one situation - the app is not running - and it
+# reaches that point on two paths: the install is decided (ShipIt's job is gone),
+# which is the conservative case, or the deadline arrived with no decision, where
+# trying is still better than leaving the user with nothing. The deadline path is
+# what makes the previous version's silent exit 0 impossible: there is no exit
+# from this script that skips the relaunch attempt.
 set -u
-APP="$LO_UPDATE_WATCHDOG_APP_EXEC"
-BUNDLE="$LO_UPDATE_WATCHDOG_APP_BUNDLE"
-NAME="$LO_UPDATE_WATCHDOG_APP_NAME"
-if [ -z "$APP" ] || [ -z "$BUNDLE" ]; then
+APP_PID="\${LO_UPDATE_WATCHDOG_APP_PID:-}"
+BUNDLE="\${LO_UPDATE_WATCHDOG_APP_BUNDLE:-}"
+NAME="\${LO_UPDATE_WATCHDOG_APP_NAME:-}"
+SHIPIT_JOB="\${LO_UPDATE_WATCHDOG_SHIPIT_JOB:-}"
+if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 	exit 1
 fi
-is_running() { pgrep -f "$1" >/dev/null 2>&1; }
-deadline=$(( $(date +%s) + ${timeoutSeconds} ))
+now() { date +%s; }
+app_running() { kill -0 "$APP_PID" 2>/dev/null; }
+# launchctl list <label> exits 113 when the job is not loaded, 0 when it is.
+shipit_loaded() { [ -n "$SHIPIT_JOB" ] && launchctl list "$SHIPIT_JOB" >/dev/null 2>&1; }
+deadline=$(( $(now) + ${timeoutSeconds} ))
 # 1. The install only starts once the old app has exited.
-while is_running "$APP"; do
-	if [ "$(date +%s)" -ge "$deadline" ]; then exit 0; fi
+while app_running; do
+	if [ "$(now)" -ge "$deadline" ]; then break; fi
 	sleep ${intervalSeconds}
 done
-# 2. ShipIt then does the install; wait for it to finish. It may not be running
-#    yet in the moment after the app exits, so we wait for it to appear as well.
-while is_running 'ShipIt'; do
-	if [ "$(date +%s)" -ge "$deadline" ]; then exit 0; fi
+# 2. ShipIt's job is submitted as part of the quit, so it may not be loaded the
+#    instant the app is gone: give it a bounded window to appear before treating
+#    "no job" as "the install is over".
+appear_deadline=$(( $(now) + ${appearSeconds} ))
+while ! shipit_loaded; do
+	if [ "$(now)" -ge "$appear_deadline" ] || [ "$(now)" -ge "$deadline" ]; then break; fi
 	sleep ${intervalSeconds}
 done
+while shipit_loaded; do
+	if [ "$(now)" -ge "$deadline" ]; then break; fi
+	sleep ${intervalSeconds}
+done
+# Let Squirrel's own relaunch (which happens as the job finishes) land first.
 sleep ${settleSeconds}
-# 3. Nothing to do if Squirrel relaunched the app or the user started it.
-if is_running "$APP"; then exit 0; fi
+# 3. Nothing to do if Squirrel relaunched the app or the user started it. This is
+#    what makes the script a no-op when the install succeeded, by construction
+#    rather than by claim.
+if app_running; then exit 0; fi
 if [ -n "$NAME" ] && [ -x "$BUNDLE/Contents/MacOS/$NAME" ]; then
 	open -a "$BUNDLE" >/dev/null 2>&1 || "$BUNDLE/Contents/MacOS/$NAME" >/dev/null 2>&1 &
 fi
@@ -519,12 +861,109 @@ exit 0
 	return {
 		script,
 		env: {
-			LO_UPDATE_WATCHDOG_APP_EXEC: appPattern,
+			LO_UPDATE_WATCHDOG_APP_PID: String(input.appPid),
 			LO_UPDATE_WATCHDOG_APP_BUNDLE: input.appBundlePath,
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,
+			LO_UPDATE_WATCHDOG_SHIPIT_JOB: input.shipItJob ?? "",
 		},
 		timeoutSeconds,
 	};
+}
+
+export type FailedInstallReap = {
+	jobLabel: string | null;
+	jobRemoved: boolean;
+	removedStaging: string[];
+	errors: string[];
+};
+
+/**
+ * Clean up what a failed Squirrel install leaves running on the user's machine.
+ *
+ * Why the product has to do this: on the operator's machine the 0.17.0 failure
+ * left the ShipIt launchd job loaded in their user domain, respawning every
+ * ~2.5 s (`runs=3114`, `LastExitStatus=256`) and appending `Could not read
+ * update request` to `ShipIt_stderr.log` until it was 3.4 MB - with the staged
+ * update tree still beside it. Squirrel retires that job when an install
+ * finishes; when an install fails it simply stays, and a job in a respawn loop
+ * is not something to leave on someone's machine because an updater fell over.
+ * It was removed by hand during round 1 of the review; the app does it now.
+ *
+ * Deliberately narrow, and deliberately not silent: this app's own ShipIt job
+ * by label, and the `update.*` staging directories under that same app's ShipIt
+ * cache directory. The ShipIt logs are NOT touched - they are the only record of
+ * why the install failed, and the failure detail points at them.
+ *
+ * Every step takes its collaborator as an argument so the contract tests can
+ * drive it against a temporary tree instead of the developer's launchd domain.
+ */
+export function reapFailedInstall(input: {
+	bundleId: string | null;
+	cacheRoot: string | null;
+	removeJob: (label: string) => { notFound: boolean; output: string };
+	exists: (path: string) => boolean;
+	listDir: (dir: string) => string[];
+	removeDir: (path: string) => void;
+	log: (message: string) => void;
+}): FailedInstallReap {
+	const result: FailedInstallReap = {
+		jobLabel: null,
+		jobRemoved: false,
+		removedStaging: [],
+		errors: [],
+	};
+	if (!input.bundleId) {
+		// Without the bundle id there is no label to remove and no cache directory
+		// to look in. Guessing one (or removing by process name) is exactly the
+		// over-reach this whole change is undoing.
+		input.log(
+			"Skipped cleaning up the failed install: the app's bundle id could not be read.",
+		);
+		return result;
+	}
+
+	const label = shipItJobLabel(input.bundleId);
+	result.jobLabel = label;
+	try {
+		const removal = input.removeJob(label);
+		result.jobRemoved = !removal.notFound;
+		input.log(
+			removal.notFound
+				? `Leftover install job ${label} was not loaded.`
+				: `Removed the leftover install job ${label}.`,
+		);
+	} catch (error) {
+		// A launchd domain that refuses to answer is not a reason to fail the
+		// start-up path; it is a reason to say so in the log.
+		result.errors.push(`launchctl remove ${label}: ${String(error)}`);
+		input.log(
+			`Could not remove the leftover install job ${label}: ${String(error)}`,
+		);
+	}
+
+	const cacheDir = input.cacheRoot
+		? shipItCacheDir(input.cacheRoot, input.bundleId)
+		: null;
+	if (!cacheDir) return result;
+	try {
+		if (!input.exists(cacheDir)) return result;
+		for (const entry of input.listDir(cacheDir)) {
+			if (!entry.startsWith("update.")) continue;
+			const staging = join(cacheDir, entry);
+			try {
+				input.removeDir(staging);
+				result.removedStaging.push(staging);
+				input.log(`Removed the staged update left behind at ${staging}.`);
+			} catch (error) {
+				result.errors.push(`${staging}: ${String(error)}`);
+				input.log(`Could not remove ${staging}: ${String(error)}`);
+			}
+		}
+	} catch (error) {
+		result.errors.push(`${cacheDir}: ${String(error)}`);
+		input.log(`Could not inspect ${cacheDir}: ${String(error)}`);
+	}
+	return result;
 }
 
 /**
@@ -551,7 +990,20 @@ export type BackendRemedyKind =
 	| "external"
 	| "uv-tool"
 	| "pipx"
+	| "pip"
 	| "global-unknown";
+
+/**
+ * What a global `local-operator` install actually is.
+ *
+ * Mirrors `local_operator/update.py`'s `install_kind()` on the Python side - same
+ * five outcomes for the same reasons - because the app and the server have to
+ * agree about who owns the environment before either names a command for it.
+ */
+export type GlobalInstallKind = Exclude<
+	BackendRemedyKind,
+	"managed" | "external"
+>;
 
 export type BackendPlan = {
 	canManageUpdate: boolean;
@@ -561,18 +1013,91 @@ export type BackendPlan = {
 };
 
 /**
- * Classify a global `local-operator` install from the path `which` resolved.
+ * The evidence a global install's kind is decided from.
  *
- * This is the fact the old code never looked at: a uv tool install and a plain
- * pip install both answer `which local-operator`, but only one of them is a
- * Python environment we can pip into, and pip is the wrong tool for the other.
+ * Why the path alone is not enough: both `uv tool` and `pipx` install a console
+ * SCRIPT into `~/.local/bin`, so the string `which local-operator` prints
+ * contains neither `/uv/tools/` nor `/pipx/venvs/`. On the operator's machine it
+ * is `/Users/<user>/.local/bin/local-operator`, a symlink into the uv tool
+ * environment - and matching markers against that string classified their own uv
+ * tool install as unknown and told them to run pip, which is the command from
+ * the incident report (review R2).
+ *
+ * The `uv`/`pipx` outputs are consulted last and only when the cheaper signals
+ * have declined, matching the Python implementation's order.
+ */
+export type InstallIdentity = {
+	/** The path `which local-operator` returned, shim and all. */
+	path: string | null;
+	/** `realpathSync` of that path, when it resolves somewhere else. */
+	realPath?: string | null;
+	/** First line of the file at `path`: a console script's own shebang. */
+	shebang?: string | null;
+	/** A `uv-receipt.toml` beside the resolved install, when one exists. */
+	uvReceipt?: string | null;
+	/** A `pyvenv.cfg` in the prefix the script lives in, when one exists. */
+	venvPrefix?: string | null;
+	/** `uv tool list` output, when the uv CLI could be run. */
+	uvToolList?: string | null;
+	/** `pipx list` output, when the pipx CLI could be run. */
+	pipxList?: string | null;
+};
+
+/** `uv tool list` names each tool as `local-operator v0.54.20` on its own line. */
+const UV_TOOL_LIST_ENTRY_REGEX = /(^|\n)local-operator v\d/i;
+
+/** `pipx list` names its environment as `package local-operator 0.54.20, ...`. */
+const PIPX_LIST_ENTRY_REGEX = /(^|\n)\s*package local-operator\b/i;
+
+/**
+ * `uv tool list` names each tool as `local-operator v0.54.20` on its own line;
+ * anchored there so a version string that merely mentions the name cannot match.
+ */
+function uvToolListNamesLocalOperator(
+	output: string | null | undefined,
+): boolean {
+	return UV_TOOL_LIST_ENTRY_REGEX.test(output ?? "");
+}
+
+/** `pipx list` names its environment as `package local-operator 0.54.20, ...`. */
+function pipxListNamesLocalOperator(
+	output: string | null | undefined,
+): boolean {
+	return PIPX_LIST_ENTRY_REGEX.test(output ?? "");
+}
+
+/**
+ * Classify a global `local-operator` install from what the install IS.
+ *
+ * Order matters and follows the Python side: a uv tool install is recognised by
+ * its receipt before any layout guess, pipx next, an ordinary pip venv last -
+ * and "unknown" is a real answer, never a fallback to pip.
  */
 export function classifyGlobalInstall(
-	localOperatorPath: string | null,
-): Exclude<BackendRemedyKind, "managed" | "external"> {
-	if (!localOperatorPath) return "global-unknown";
-	if (localOperatorPath.includes("/uv/tools/")) return "uv-tool";
-	if (localOperatorPath.includes("/pipx/venvs/")) return "pipx";
+	identity: InstallIdentity,
+): GlobalInstallKind {
+	if (!identity.path) return "global-unknown";
+	// The resolved path and the script's own shebang both name the interpreter
+	// that owns the install, which is where the layout markers actually live.
+	const haystack = [
+		identity.path,
+		identity.realPath ?? "",
+		identity.shebang ?? "",
+	]
+		.join("\n")
+		.toLowerCase();
+	if (haystack.includes("/uv/tools/")) return "uv-tool";
+	if (identity.uvReceipt) return "uv-tool";
+	if (uvToolListNamesLocalOperator(identity.uvToolList)) return "uv-tool";
+	if (
+		haystack.includes("/pipx/venvs/") ||
+		(haystack.includes("/pipx/") && haystack.includes("venvs"))
+	)
+		return "pipx";
+	if (pipxListNamesLocalOperator(identity.pipxList)) return "pipx";
+	// A `local-operator` script inside a virtualenv prefix: the README's
+	// `pip install` path, and the one case where pip is the right command.
+	if (identity.venvPrefix) return "pip";
 	return "global-unknown";
 }
 
@@ -585,12 +1110,26 @@ export function classifyGlobalInstall(
  * or corrupts it. A `lop-update` command on PATH takes precedence for a uv tool
  * install because that install was built from source - upgrading it from the
  * registry would replace the user's own build.
+ *
+ * The unidentified case names NO command. Shipping `pip install --upgrade
+ * local-operator` as the answer for an install we could not identify is how the
+ * app told the operator to pip into a uv tool environment (reviews R2, U4, D4);
+ * "we could not tell" is a claim we can support, and pip is not.
  */
 export function resolveGlobalInstallPlan(input: {
-	localOperatorPath: string | null;
+	identity: InstallIdentity;
 	lopUpdatePath: string | null;
 }): BackendPlan {
-	const kind = classifyGlobalInstall(input.localOperatorPath);
+	const kind = classifyGlobalInstall(input.identity);
+	const detail = input.identity.path
+		? `local-operator resolves to ${input.identity.path}${
+				input.identity.realPath &&
+				input.identity.realPath !== input.identity.path
+					? ` (${input.identity.realPath})`
+					: ""
+			}, classified as ${kind}`
+		: "local-operator was not found on PATH";
+
 	if (kind === "uv-tool") {
 		const useLopUpdate = Boolean(input.lopUpdatePath);
 		return {
@@ -601,7 +1140,7 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: useLopUpdate
 				? "The server is a uv tool install built from source on this machine, so update it from your terminal:"
 				: "The server is a uv tool install, so update it from your terminal:",
-			detail: `local-operator resolves to ${input.localOperatorPath}`,
+			detail,
 		};
 	}
 	if (kind === "pipx") {
@@ -609,21 +1148,23 @@ export function resolveGlobalInstallPlan(input: {
 			canManageUpdate: false,
 			updateCommand: "pipx upgrade local-operator",
 			remedy: "The server is a pipx install, so update it from your terminal:",
-			detail: `local-operator resolves to ${input.localOperatorPath}`,
+			detail,
 		};
 	}
-	// Nothing identified the installer (no `local-operator` on the app's PATH, or
-	// a path that fits neither layout). pip stays the last-resort line because a
-	// plain pip install is what it would be right for; the detail records that
-	// the installer could not be identified, so a report can be diagnosed.
+	if (kind === "pip") {
+		return {
+			canManageUpdate: false,
+			updateCommand: "pip install --upgrade local-operator",
+			remedy: "The server is a pip install, so update it from your terminal:",
+			detail,
+		};
+	}
 	return {
 		canManageUpdate: false,
-		updateCommand: "pip install --upgrade local-operator",
+		updateCommand: "",
 		remedy:
-			"The server is installed outside the app, so update it from your terminal:",
-		detail: input.localOperatorPath
-			? `local-operator resolves to ${input.localOperatorPath}`
-			: "local-operator was not found on PATH",
+			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip:",
+		detail,
 	};
 }
 
@@ -672,12 +1213,22 @@ export function parsePipShowVersion(stdout: string): string | null {
  * already satisfied, and it can exit 0 having installed a wheel for a different
  * interpreter than the one the app started. The version read back afterwards is
  * the only thing that answers the question the user asked.
+ *
+ * The `before` reading deserves its own rule. It is null whenever `pip show`
+ * failed before the upgrade, and the old code read that as "changed" - an
+ * unreadable starting point cannot prove an upgrade landed, so the target
+ * version is what the after-reading is held to instead (review R6).
  */
-export function didVersionChange(
-	before: string | null,
-	after: string | null,
-): boolean {
+export function didUpgradeLand(input: {
+	before: string | null;
+	after: string | null;
+	/** The version this upgrade was asked for, when the caller knows it. */
+	target?: string | null;
+}): boolean {
+	const { before, after, target } = input;
 	if (after == null) return false;
-	if (before == null) return true;
+	if (before == null) {
+		return target != null && after.trim() === target.trim();
+	}
 	return before.trim() !== after.trim();
 }

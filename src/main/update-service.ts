@@ -1,13 +1,23 @@
-import { exec, execFile, execFileSync, spawn } from "node:child_process";
+import {
+	exec,
+	execFile,
+	execFileSync,
+	spawn,
+	spawnSync,
+} from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	createReadStream,
 	existsSync,
+	readFileSync,
 	readdirSync,
+	realpathSync,
+	rmSync,
 	statSync,
 	statfsSync,
 } from "node:fs";
 import * as https from "node:https";
+import { homedir } from "node:os";
 import * as path from "node:path";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
@@ -21,23 +31,31 @@ import { LogFileType, logger } from "./backend/logger";
 import {
 	type InstallBlock,
 	type InstallFailurePayload,
+	type InstallIdentity,
+	type LastInstallAttempt,
 	type PendingInstallMarker,
 	type UpdateFileMetadata,
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
 	buildWatchdogPlan,
+	classifyGlobalInstall,
 	clearPendingInstallMarker,
-	didVersionChange,
+	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
 	installFailurePayload,
 	installedBundleSealBlock,
 	matchArtifactMetadata,
+	measureDirectoryBytes,
 	parsePipShowVersion,
+	readLastInstallAttempt,
 	readPendingInstallMarker,
+	reapFailedInstall,
+	recordInstallFailure,
 	requiredDiskBytes,
 	resolveGlobalInstallPlan,
 	resolveStagedArtifactPath,
+	shipItJobLabel,
 	verifyStagedArtifact,
 	watchdogIsOurs,
 	writePendingInstallMarker,
@@ -48,29 +66,72 @@ const VERSION_LINE_REGEX = /Version:\s*([^\n]+)/;
 const VERSION_CLEAN_REGEX = /^v/i;
 const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
 
+/** A reverse-DNS bundle identifier, and nothing else. */
+const BUNDLE_ID_REGEX = /^[\w.-]+$/;
+
+/** What `launchctl remove` prints when the job is not loaded. */
+const LAUNCHCTL_NOT_LOADED_REGEX = /could not find|no such process/i;
+
+/**
+ * How long `codesign --verify` gets on the installed bundle.
+ *
+ * Measured at 6.1 s warm for a 1.0 GiB app, so the old 20 s was not
+ * comfortably clear on a cold cache or a slow volume - and a probe that timed
+ * out there used to refuse the install for good (review R5).
+ */
+const SEAL_PROBE_TIMEOUT_MS = 45_000;
+
+/** ` to version X`, or nothing when the version is unknown. */
+function versionSuffix(version: string | null | undefined): string {
+	return version ? ` to version ${version}` : "";
+}
+
 /**
  * Run a command and report its exit code rather than throwing on failure.
  *
  * The seal probes need the code and the raw output together: the -67028 that
  * ShipIt reports for a half-replaced bundle is only distinguishable from a
  * missing one by what `codesign` actually printed.
+ *
+ * `ran` is the second half of that answer, and it is the part that was missing:
+ * a timeout, a failure to exec and a probe that died silently all arrived as
+ * "exit code 1", which the pre-flight read as "codesign rejected this bundle"
+ * and turned into a permanent reinstall message (review R5).
  */
 function runCommand(
 	command: string,
 	args: string[],
 	options: { timeoutMs?: number } = {},
-): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+): Promise<{
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+	/** False when the process could not be run to a verdict. */
+	ran: boolean;
+}> {
 	return new Promise((resolve) => {
 		execFile(
 			command,
 			args,
 			{ timeout: options.timeoutMs ?? 20000, maxBuffer: 4 * 1024 * 1024 },
 			(error, stdout, stderr) => {
-				const code = (error as { code?: unknown } | null)?.code;
+				const code = (error as { code?: unknown; killed?: boolean } | null)
+					?.code;
+				const killed = (error as { killed?: boolean } | null)?.killed === true;
+				const out = stdout?.toString() ?? "";
+				const err = stderr?.toString() ?? "";
 				resolve({
 					exitCode: error ? (typeof code === "number" ? code : 1) : 0,
-					stdout: stdout?.toString() ?? "",
-					stderr: stderr?.toString() ?? "",
+					stdout: out,
+					stderr: err,
+					// A timeout (killed) or a process that failed to start (a string
+					// code such as ENOENT) produced no verdict about the bundle. A
+					// numeric exit with output did.
+					ran:
+						!error ||
+						(!killed &&
+							typeof code === "number" &&
+							`${out}${err}`.trim().length > 0),
 				});
 			},
 		);
@@ -167,6 +228,15 @@ export class UpdateService {
 	/** A failed install detected from the marker on this start, if any. */
 	private pendingInstallFailure: InstallFailurePayload | null = null;
 	private installFailureDelivered = false;
+
+	/**
+	 * True while `quit-and-install` is running its pre-flight.
+	 *
+	 * The pre-flight can take seconds over a large bundle and artifact, and the
+	 * whole point of it is that a second request must not run beside the first (see
+	 * the handler).
+	 */
+	private installPreflightInFlight = false;
 
 	/**
 	 * Initialize the update service
@@ -305,7 +375,9 @@ export class UpdateService {
 	 *
 	 * A failed Squirrel install leaves no exit status and never relaunches the
 	 * app, so the marker plus the running version is the only record that the
-	 * update did not happen.
+	 * update did not happen. Everything the user learns afterwards starts here:
+	 * the notice, the durable record it can be found in later, and the cleanup of
+	 * what Squirrel left running.
 	 */
 	private recoverPendingInstall(): void {
 		const marker = readPendingInstallMarker(this.markerDir());
@@ -325,17 +397,119 @@ export class UpdateService {
 				this.reapWatchdog(outcome.marker, true);
 				clearPendingInstallMarker(this.markerDir());
 				return;
+			case "stale":
+				// A marker from an install this machine has already moved past. It is
+				// not news, and reporting it as a failure told a user on 0.17.0 that
+				// an install of 0.9.0 had failed (review Q2).
+				logger.info(
+					`Update marker: ignored a marker for version ${outcome.marker.targetVersion}; version ${app.getVersion()} is running, so it was superseded.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.reapWatchdog(outcome.marker, true);
+				clearPendingInstallMarker(this.markerDir());
+				return;
 			case "failed": {
-				const payload = installFailurePayload(outcome.marker, app.getVersion());
+				const record = recordInstallFailure(this.markerDir(), {
+					payload: installFailurePayload(outcome.marker, app.getVersion()),
+					startedAt: outcome.marker.startedAt || null,
+					detectedAt: new Date().toISOString(),
+				});
+				const payload = installFailurePayload(
+					outcome.marker,
+					app.getVersion(),
+					{ attempts: record.attempts },
+				);
 				logger.error(
-					`Update marker: install of version ${outcome.marker.targetVersion} did not complete. ${payload.detail}`,
+					`Update marker: install of version ${outcome.marker.targetVersion} did not complete (attempt ${record.attempts}). ${payload.detail}`,
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.pendingInstallFailure = payload;
 				this.reapWatchdog(outcome.marker, false);
 				clearPendingInstallMarker(this.markerDir());
+				this.reapFailedInstallLeftovers();
 				this.schedulePendingInstallFailureDelivery();
 			}
+		}
+	}
+
+	/**
+	 * This app's bundle identifier, as macOS records it.
+	 *
+	 * Read from the running bundle rather than from `package.json`: the running
+	 * app is the only thing whose ShipIt job and cache directory this process may
+	 * touch, and a build whose `appId` drifted would otherwise have us cleaning up
+	 * some other app's leftovers.
+	 */
+	private bundleIdentifier(): string | null {
+		const bundlePath = appBundleFromExecutable(process.execPath);
+		if (!bundlePath) return null;
+		const value = readCommandOutput("/usr/bin/defaults", [
+			"read",
+			join(bundlePath, "Contents", "Info.plist"),
+			"CFBundleIdentifier",
+		]);
+		return value && BUNDLE_ID_REGEX.test(value) ? value : null;
+	}
+
+	/** The launchd job Squirrel's install runs under, by label. */
+	private shipItJob(): string | null {
+		const bundleId = this.bundleIdentifier();
+		return bundleId ? shipItJobLabel(bundleId) : null;
+	}
+
+	/**
+	 * Remove the launchd job and the staged update a failed install left behind.
+	 *
+	 * Why: the 0.17.0 failure left `com.local-operator.ShipIt` loaded in the
+	 * user's launchd domain, respawning every ~2.5 s (runs=3114,
+	 * LastExitStatus=256) and writing 3.4 MB of "Could not read update request" to
+	 * its stderr log, with the staged tree beside it. Squirrel only retires that
+	 * job when an install finishes, so a failed one leaves it running forever - it
+	 * was removed by hand during round 1 of the review, and the product must not
+	 * need that.
+	 */
+	private reapFailedInstallLeftovers(): void {
+		if (process.platform !== "darwin") return;
+		const log = (message: string) =>
+			logger.info(message, LogFileType.UPDATE_SERVICE);
+		try {
+			const result = reapFailedInstall({
+				bundleId: this.bundleIdentifier(),
+				cacheRoot: join(homedir(), "Library", "Caches"),
+				removeJob: (label) => {
+					const result = spawnSync("/bin/launchctl", ["remove", label], {
+						encoding: "utf8",
+						timeout: 5000,
+					});
+					const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+					// `launchctl remove` prints its complaint and exits non-zero when
+					// the job is not loaded; that is the common case and not an error,
+					// so it is reported as "not found". Anything else travels as a
+					// real failure, so the log says why the job is still there.
+					const notFound = LAUNCHCTL_NOT_LOADED_REGEX.test(output);
+					if (result.status !== 0 && !notFound) {
+						throw new Error(
+							output || `launchctl remove exited ${result.status}`,
+						);
+					}
+					return { notFound, output };
+				},
+				exists: (path) => existsSync(path),
+				listDir: (dir) => readdirSync(dir),
+				removeDir: (dir) => rmSync(dir, { recursive: true, force: true }),
+				log,
+			});
+			if (result.errors.length > 0) {
+				logger.warn(
+					`Failed to clean up the leftover install: ${result.errors.join("; ")}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+		} catch (error) {
+			logger.warn(
+				`Could not clean up the leftover install: ${String(error)}`,
+				LogFileType.UPDATE_SERVICE,
+			);
 		}
 	}
 
@@ -425,8 +599,22 @@ export class UpdateService {
 	 * answered -67028 errSecCSBadBundleFormat because a Finder copy was replacing
 	 * the app at that moment, ShipIt quit, and nothing relaunched the app.
 	 * Refusing the install here keeps the user with a working app instead.
+	 *
+	 * Three deliberate properties, all of them from round 1's findings:
+	 *
+	 * - `--strict` is gone. It does not test the seal - `--verify` does that, and
+	 *   it is what catches the mid-replacement -67028 - it additionally rejects
+	 *   bundles carrying FinderInfo/detritus xattrs that ShipIt itself tolerates,
+	 *   so it can only refuse installs Squirrel would have performed (R5).
+	 * - The timeout is generous because the bundle is ~1 GiB; measured warm at
+	 *   6.1 s, and a cold or slow volume is not a reason to refuse.
+	 * - A probe that could not run is retried once and then *allowed to proceed*.
+	 *   "We could not ask" is not "the bundle is bad", and treating it as one is
+	 *   how a transient hiccup became a permanent reinstall message (R5).
 	 */
-	private async probeInstalledBundleSeal(): Promise<InstallBlock | null> {
+	private async probeInstalledBundleSeal(
+		version?: string | null,
+	): Promise<InstallBlock | null> {
 		if (process.platform !== "darwin" || !app.isPackaged) return null;
 
 		const bundlePath = appBundleFromExecutable(process.execPath);
@@ -441,15 +629,32 @@ export class UpdateService {
 			return null;
 		}
 
-		const probe = await runCommand("/usr/bin/codesign", [
-			"--verify",
-			"--deep",
-			"--strict",
-			"--verbose=2",
-			bundlePath,
-		]);
-		const seal = evaluateBundleSeal(probe);
-		if (seal.ok) {
+		const probeBundle = () =>
+			runCommand(
+				"/usr/bin/codesign",
+				["--verify", "--deep", "--verbose=2", bundlePath],
+				{ timeoutMs: SEAL_PROBE_TIMEOUT_MS },
+			);
+
+		let seal = evaluateBundleSeal(await probeBundle());
+		if (seal.kind === "unavailable") {
+			logger.warn(
+				`Seal check did not complete, retrying once: ${seal.detail}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			seal = evaluateBundleSeal(await probeBundle());
+		}
+		if (seal.kind === "unavailable") {
+			// Proceeding is the conservative choice here: Squirrel validates the
+			// bundle itself, and the alternative is refusing an update for a
+			// reason we could not substantiate.
+			logger.warn(
+				`Seal check could not run twice, continuing with the install: ${seal.detail}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		if (seal.kind === "sealed") {
 			logger.info(
 				`Installed bundle passed its seal check: ${bundlePath}`,
 				LogFileType.UPDATE_SERVICE,
@@ -461,7 +666,7 @@ export class UpdateService {
 			`Installed bundle failed its seal check: ${seal.detail}`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		return installedBundleSealBlock(bundlePath, seal.detail);
+		return installedBundleSealBlock(bundlePath, seal.detail, version);
 	}
 
 	/** File names the updater's metadata knows this update by. */
@@ -550,8 +755,7 @@ export class UpdateService {
 		if (!artifactPath) {
 			return {
 				code: "download-verification-failed",
-				message:
-					"The downloaded update could not be found on disk, so it wasn't installed.",
+				message: `The downloaded update${versionSuffix(info?.version)} could not be found on disk, so it wasn't installed.`,
 				remedy: {
 					text: "Check for updates again to re-download the release.",
 				},
@@ -574,8 +778,7 @@ export class UpdateService {
 		} catch (error) {
 			return {
 				code: "download-verification-failed",
-				message:
-					"The downloaded update could not be read, so it wasn't installed.",
+				message: `The downloaded update${versionSuffix(info?.version)} could not be read, so it wasn't installed.`,
 				remedy: {
 					text: "Check for updates again to re-download the release.",
 				},
@@ -583,11 +786,27 @@ export class UpdateService {
 			};
 		}
 
-		// The install copies the whole app into a temp directory, so both the
-		// artifact's volume and the temp volume have to hold it.
+		/*
+		 * The volume that has to hold the install is the one the APP lives on: that
+		 * is where Squirrel unpacks the new bundle and swaps it in. The artifact's
+		 * own volume matters too, because the download is re-read from it, and the
+		 * old code's `app.getPath("temp")` probe did not answer either question
+		 * (temp is a different volume on any machine with a separate scratch disk).
+		 * The smaller of the two is the honest answer.
+		 */
+		const bundlePath = appBundleFromExecutable(process.execPath);
+		const installedBundleSize = bundlePath
+			? measureDirectoryBytes(bundlePath)
+			: null;
+		if (installedBundleSize == null) {
+			logger.warn(
+				`Could not measure the installed app at ${bundlePath ?? "(no bundle path)"}; the free-space guard falls back to the artifact's own size.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
 		const freeCandidates = [
+			bundlePath ? this.freeBytesAt(path.dirname(bundlePath)) : null,
 			this.freeBytesAt(path.dirname(artifactPath)),
-			this.freeBytesAt(app.getPath("temp")),
 		].filter((value): value is number => value != null);
 		const freeBytes =
 			freeCandidates.length > 0
@@ -600,10 +819,16 @@ export class UpdateService {
 			actualSha512,
 			metadata,
 			freeBytes,
+			installedBundleSize,
+			version: info?.version ?? null,
 		});
 		if (verdict.ok) {
+			const required = requiredDiskBytes({
+				artifactSize: verdict.size,
+				installedBundleSize: installedBundleSize ?? 0,
+			});
 			logger.info(
-				`Staged artifact verified: ${artifactPath} (${verdict.size} bytes, sha512 matches, ${requiredDiskBytes(verdict.size)} bytes required free).`,
+				`Staged artifact verified: ${artifactPath} (${verdict.size} bytes, sha512 matches, ${required} bytes required free, ${installedBundleSize ?? "unknown"} byte app).`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return null;
@@ -619,7 +844,9 @@ export class UpdateService {
 	private async runInstallPreflight(
 		info: UpdateInfo | null,
 	): Promise<InstallBlock | null> {
-		const sealBlock = await this.probeInstalledBundleSeal();
+		const sealBlock = await this.probeInstalledBundleSeal(
+			info?.version ?? null,
+		);
 		if (sealBlock) return sealBlock;
 		return this.ensureStagedArtifactVerified(info);
 	}
@@ -636,9 +863,12 @@ export class UpdateService {
 		if (!bundlePath) return null;
 
 		const plan = buildWatchdogPlan({
-			appExecutablePath: process.execPath,
 			appBundlePath: bundlePath,
 			executableName: basename(process.execPath),
+			// The app's own pid, captured here - before the quit - because the
+			// watchdog cannot ask a name about its own ancestor (review R1).
+			appPid: process.pid,
+			shipItJob: this.shipItJob(),
 		});
 
 		try {
@@ -682,6 +912,7 @@ export class UpdateService {
 		ipcMain.removeHandler("check-for-updates");
 		ipcMain.removeHandler("check-for-backend-updates");
 		ipcMain.removeHandler("check-for-all-updates");
+		ipcMain.removeHandler("get-last-install-attempt");
 		ipcMain.removeHandler("update-backend");
 		ipcMain.removeHandler("download-update");
 		ipcMain.removeHandler("quit-and-install");
@@ -805,8 +1036,11 @@ export class UpdateService {
 			this.lastUpdateInfo = info;
 
 			// An update whose artifact failed its size/sha512/disk check is not
-			// offered again: the 5-minute check would otherwise re-offer it
-			// forever, and every offer ends in the same refusal.
+			// re-offered by the routine checks: the 5-minute one would otherwise
+			// re-offer it forever, and every offer ends in the same refusal. A check
+			// the user asks for clears the record first (`onCheckRequested`), because
+			// two of the refusals tell the user to free space or re-download and then
+			// check again - a remedy that has to work when they follow it.
 			if (this.failedVerificationVersions.has(info.version)) {
 				logger.warn(
 					`Not offering version ${info.version} again: its artifact already failed verification in this session.`,
@@ -905,43 +1139,81 @@ export class UpdateService {
 	/**
 	 * Set up IPC handlers for update-related actions
 	 */
+	/**
+	 * The last install that did not complete, if any.
+	 *
+	 * Read from disk rather than from `this.pendingInstallFailure` so it survives
+	 * a dismiss: the panel that reports a failure is not the only place the user
+	 * can find out what happened, which is what made Dismiss an information loss
+	 * (reviews U1, D3).
+	 */
+	public lastInstallAttempt(): LastInstallAttempt | null {
+		return readLastInstallAttempt(this.markerDir());
+	}
+
+	/**
+	 * Note that a check was asked for, and let an explicit one re-offer a release
+	 * whose artifact failed verification.
+	 *
+	 * Why the distinction exists: every refusal records its version in
+	 * `failedVerificationVersions` so the 5-minute timer cannot re-offer an
+	 * artifact that will fail again. That record used to apply to user-initiated
+	 * checks too, which made two of the panels' own labelled remedies inert - the
+	 * user freed disk space or cleared the bad download, pressed "Check for
+	 * updates" as instructed, and got silence until the app restarted (reviews
+	 * R3, U3). A user who asks again gets a fresh answer; the timer does not.
+	 */
+	private onCheckRequested(options?: { manual?: boolean }): void {
+		if (!options?.manual) return;
+		if (this.failedVerificationVersions.size === 0) return;
+		logger.info(
+			`Explicit check requested; re-offering ${[...this.failedVerificationVersions].join(", ")} after a failed verification.`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.failedVerificationVersions.clear();
+	}
+
 	public setupIpcHandlers(): void {
 		// Check for UI updates
-		ipcMain.handle("check-for-updates", async () => {
-			logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
-			try {
-				return await autoUpdater.checkForUpdates();
-			} catch (error) {
-				logger.error(
-					"Error checking for UI updates:",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-
-				// Apply the same error filtering logic here as in the autoUpdater error event
-				const shouldFilter = this.shouldFilterUpdateError(error as Error);
-
-				if (shouldFilter) {
-					logger.info(
-						"Error filtering result in IPC handler: Reporting as no updates available",
+		ipcMain.handle(
+			"check-for-updates",
+			async (_event, options?: { manual?: boolean }) => {
+				logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
+				this.onCheckRequested(options);
+				try {
+					return await autoUpdater.checkForUpdates();
+				} catch (error) {
+					logger.error(
+						"Error checking for UI updates:",
 						LogFileType.UPDATE_SERVICE,
+						error,
 					);
-					// Return a "no update available" result instead of throwing the error
-					return {
-						updateInfo: {
-							version: app.getVersion(),
-						},
-						versionInfo: {
-							version: app.getVersion(),
-						},
-						cancellationToken: null,
-					};
-				}
 
-				// Only throw the error if it shouldn't be filtered
-				throw error;
-			}
-		});
+					// Apply the same error filtering logic here as in the autoUpdater error event
+					const shouldFilter = this.shouldFilterUpdateError(error as Error);
+
+					if (shouldFilter) {
+						logger.info(
+							"Error filtering result in IPC handler: Reporting as no updates available",
+							LogFileType.UPDATE_SERVICE,
+						);
+						// Return a "no update available" result instead of throwing the error
+						return {
+							updateInfo: {
+								version: app.getVersion(),
+							},
+							versionInfo: {
+								version: app.getVersion(),
+							},
+							cancellationToken: null,
+						};
+					}
+
+					// Only throw the error if it shouldn't be filtered
+					throw error;
+				}
+			},
+		);
 
 		// Check for backend updates
 		ipcMain.handle("check-for-backend-updates", async () => {
@@ -962,43 +1234,50 @@ export class UpdateService {
 		});
 
 		// Check for all updates (UI and backend)
-		ipcMain.handle("check-for-all-updates", async () => {
-			logger.info(
-				"Checking for all updates (UI and backend)...",
-				LogFileType.UPDATE_SERVICE,
-			);
-			try {
-				return await this.checkForAllUpdates();
-			} catch (error) {
-				logger.error(
-					"Error checking for all updates:",
+		ipcMain.handle(
+			"check-for-all-updates",
+			async (_event, options?: { manual?: boolean }) => {
+				logger.info(
+					"Checking for all updates (UI and backend)...",
 					LogFileType.UPDATE_SERVICE,
-					error,
 				);
-
-				// Apply the same error filtering logic here
-				const shouldFilter = this.shouldFilterUpdateError(error as Error);
-
-				if (shouldFilter) {
-					logger.info(
-						"Error filtering result in check-for-all-updates: Reporting as no updates available",
+				this.onCheckRequested(options);
+				try {
+					return await this.checkForAllUpdates();
+				} catch (error) {
+					logger.error(
+						"Error checking for all updates:",
 						LogFileType.UPDATE_SERVICE,
+						error,
 					);
-					// Return a "no update available" result instead of throwing the error
-					return {
-						updateInfo: {
-							version: app.getVersion(),
-						},
-						versionInfo: {
-							version: app.getVersion(),
-						},
-						cancellationToken: null,
-					};
-				}
 
-				throw error;
-			}
-		});
+					// Apply the same error filtering logic here
+					const shouldFilter = this.shouldFilterUpdateError(error as Error);
+
+					if (shouldFilter) {
+						logger.info(
+							"Error filtering result in check-for-all-updates: Reporting as no updates available",
+							LogFileType.UPDATE_SERVICE,
+						);
+						// Return a "no update available" result instead of throwing the error
+						return {
+							updateInfo: {
+								version: app.getVersion(),
+							},
+							versionInfo: {
+								version: app.getVersion(),
+							},
+							cancellationToken: null,
+						};
+					}
+
+					throw error;
+				}
+			},
+		);
+
+		// The last failed install, for Settings -> App updates.
+		ipcMain.handle("get-last-install-attempt", () => this.lastInstallAttempt());
 
 		// Update backend
 		ipcMain.handle(
@@ -1075,14 +1354,34 @@ export class UpdateService {
 		// Async, and deliberately capable of refusing: this is the only place an
 		// install starts, and it starts only after the installed bundle and the
 		// staged artifact have been checked (see runInstallPreflight).
+		//
+		// One install at a time. The pre-flight can run `codesign` over a 1 GiB
+		// bundle and hash a 350 MB artifact, and for those seconds the panel used to
+		// look untouched with its primary button still live - so a second click
+		// re-entered the whole thing, spawned a second watchdog and overwrote the
+		// first marker's pid (review U5). The renderer also shows a pending state;
+		// this is the half that has to hold when something else calls in.
 		ipcMain.handle("quit-and-install", async () => {
+			if (this.installPreflightInFlight) {
+				logger.info(
+					"Ignoring a second install request while the pre-flight is still running.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				return false;
+			}
 			logger.info(
 				"Preparing to quit and install the update...",
 				LogFileType.UPDATE_SERVICE,
 			);
 
+			this.installPreflightInFlight = true;
 			this.updateStage = "installing";
-			const block = await this.runInstallPreflight(this.lastUpdateInfo);
+			let block: InstallBlock | null = null;
+			try {
+				block = await this.runInstallPreflight(this.lastUpdateInfo);
+			} finally {
+				this.installPreflightInFlight = false;
+			}
 			if (block) {
 				this.updateStage = "idle";
 				this.sendInstallBlock(block, this.lastUpdateInfo?.version ?? undefined);
@@ -1518,6 +1817,11 @@ export class UpdateService {
 	 * tool install (0.54.17, read from /health) with `canManageUpdate: true`. pip
 	 * is the wrong installer for that environment - uv owns it, and the
 	 * environment lives outside anything the app may write to.
+	 *
+	 * EXISTING_SERVER takes the same classification as GLOBAL_INSTALL, because it
+	 * is the same question: a server the app attaches to but does not own was
+	 * still being told to run pip, three lines below the code that had already
+	 * learned better (reviews U4, D4).
 	 */
 	private async resolveBackendUpdatePlan(
 		startupMode: LocalOperatorStartupMode,
@@ -1525,31 +1829,25 @@ export class UpdateService {
 		canManageUpdate: boolean;
 		updateCommand: string;
 		remedy: string;
+		detail: string;
 	}> {
-		if (startupMode === LocalOperatorStartupMode.EXISTING_SERVER) {
-			return {
-				canManageUpdate: false,
-				updateCommand: "pip install --upgrade local-operator",
-				remedy:
-					"The server is running externally, so update it from your terminal:",
-			};
-		}
-
-		if (startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL) {
-			const localOperatorPath = this.resolveLocalOperatorPath();
-			const lopUpdatePath = readCommandOutput("which", ["lop-update"]);
+		if (
+			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
+			startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL
+		) {
 			const plan = resolveGlobalInstallPlan({
-				localOperatorPath,
-				lopUpdatePath: lopUpdatePath ?? null,
+				identity: this.resolveInstallIdentity(),
+				lopUpdatePath: readCommandOutput("which", ["lop-update"]) ?? null,
 			});
 			logger.info(
-				`Global backend install: ${plan.detail}; remedy is \`${plan.updateCommand}\``,
+				`External backend install (${startupMode}): ${plan.detail}; remedy is \`${plan.updateCommand || "nothing the app can name"}\``,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return {
 				canManageUpdate: plan.canManageUpdate,
 				updateCommand: plan.updateCommand,
 				remedy: plan.remedy,
+				detail: plan.detail,
 			};
 		}
 
@@ -1557,6 +1855,7 @@ export class UpdateService {
 			canManageUpdate: true,
 			updateCommand: "pip install --upgrade local-operator",
 			remedy: "Updating the server will improve AI functionality.",
+			detail: `The app started this server itself (${startupMode}).`,
 		};
 	}
 
@@ -1572,6 +1871,61 @@ export class UpdateService {
 		const output = readCommandOutput(command, ["local-operator"]);
 		const first = output?.split("\n")[0]?.trim();
 		return first && first.length > 0 ? first : null;
+	}
+
+	/**
+	 * Everything `classifyGlobalInstall` needs to tell a uv tool install from a
+	 * pipx one from an ordinary pip venv.
+	 *
+	 * The cheap signals are gathered first and the two CLI probes are skipped when
+	 * the path, the resolved target or the script's own shebang already answered -
+	 * spawning `uv` and `pipx` on every backend check for a question three string
+	 * tests settled is work nobody asked for. The markers are where they are: a uv
+	 * tool environment lives at `<...>/uv/tools/<name>`, and its console script in
+	 * `~/.local/bin` is a symlink into it, so the resolved path carries the marker
+	 * the printed path does not (review R2).
+	 */
+	private resolveInstallIdentity(): InstallIdentity {
+		const shimPath = this.resolveLocalOperatorPath();
+		if (!shimPath) return { path: null };
+
+		let realPath: string | null = null;
+		try {
+			realPath = realpathSync(shimPath);
+		} catch {
+			realPath = null;
+		}
+
+		let shebang: string | null = null;
+		try {
+			const firstLine = readFileSync(shimPath, "utf8").split("\n", 1)[0] ?? "";
+			shebang = firstLine.startsWith("#!") ? firstLine : null;
+		} catch {
+			shebang = null;
+		}
+
+		// The script lives in `<prefix>/bin/<name>`, and a Python install records
+		// its own kind next to that prefix: uv writes `uv-receipt.toml` beside the
+		// environment, and pip leaves `pyvenv.cfg` in it.
+		const executable = realPath ?? shimPath;
+		const prefix = path.dirname(path.dirname(executable));
+		const existing = (candidate: string) =>
+			existsSync(candidate) ? candidate : null;
+
+		const identity: InstallIdentity = {
+			path: shimPath,
+			realPath,
+			shebang,
+			uvReceipt: existing(join(prefix, "uv-receipt.toml")),
+			venvPrefix: existsSync(join(prefix, "pyvenv.cfg")) ? prefix : null,
+		};
+
+		if (classifyGlobalInstall(identity) !== "global-unknown") {
+			return identity;
+		}
+		identity.uvToolList = readCommandOutput("uv", ["tool", "list"]);
+		identity.pipxList = readCommandOutput("pipx", ["list"]);
+		return identity;
 	}
 
 	public async checkForBackendUpdates(
@@ -1753,25 +2107,35 @@ export class UpdateService {
 	}
 
 	/**
-	 * Bring the previous server back after a failed upgrade.
+	 * Bring the previous server back after a failed upgrade, and say whether it
+	 * actually came back.
 	 *
 	 * A failure here must not leave the user with no backend at all: whatever pip
-	 * did or did not do, the environment still holds a working install, so start
-	 * it again.
+	 * did or did not do, the environment usually still holds a working install, so
+	 * start it again and then ask /health rather than assuming. The answer is not
+	 * cosmetic: `pip install --upgrade` uninstalls before it installs, so a
+	 * mid-install failure can leave the package absent, and telling the user "the
+	 * previous server is still running" when it is not is a claim we had no
+	 * evidence for (review R6).
 	 */
-	private async restartBackendAfterFailedUpgrade(): Promise<void> {
+	private async restartBackendAfterFailedUpgrade(): Promise<boolean> {
 		try {
 			await this.backendService?.start();
+			const healthy = await this.checkBackendHealth();
 			logger.info(
-				"Restarted the previous backend after a failed update",
+				healthy
+					? "Restarted the previous backend after a failed update"
+					: "The backend did not answer its health check after a failed update",
 				LogFileType.UPDATE_SERVICE,
 			);
+			return healthy;
 		} catch (error) {
 			logger.error(
 				"Could not restart the backend after a failed update:",
 				LogFileType.UPDATE_SERVICE,
 				error,
 			);
+			return false;
 		}
 	}
 
@@ -1850,38 +2214,23 @@ export class UpdateService {
 					return false;
 
 				case LocalOperatorStartupMode.EXISTING_SERVER:
-					// For existing server, we can't manage the update
-					logger.info(
-						"Cannot manage update for existing server. User must update manually.",
-						LogFileType.UPDATE_SERVICE,
-					);
-					if (
-						this.mainWindow &&
-						!this.mainWindow.isDestroyed() &&
-						this.mainWindow.webContents &&
-						!this.mainWindow.webContents.isDestroyed()
-					) {
-						this.mainWindow.webContents.send("backend-update-manual-required", {
-							message:
-								"Please update the local-operator package manually using pip.",
-							command: "pip install --upgrade local-operator",
-						});
-					}
-					return false;
-
 				case LocalOperatorStartupMode.GLOBAL_INSTALL: {
-					// Same reasoning as EXISTING_SERVER, and the operator's own report:
-					// this environment belongs to whatever installed it (a uv tool or
-					// pipx), so the app may not pip into it. Say how to update it
-					// instead of running the wrong installer against it.
+					// Both are environments the app does not own, and the operator's own
+					// report is the one that mattered: a uv tool install told to run
+					// `pip install --upgrade`. The plan classifies the install from what
+					// it actually is (the shim's target, the script's shebang, uv's
+					// receipt, the installers' own listings) and names the command that
+					// owns it - or names none, rather than defaulting to pip
+					// (reviews R10, U4, D4).
 					const plan = await this.resolveBackendUpdatePlan(startupMode);
 					logger.info(
-						`Cannot manage the update for a global install: ${plan.updateCommand}`,
+						`Cannot manage the update for ${startupMode}: ${plan.detail}`,
 						LogFileType.UPDATE_SERVICE,
 					);
 					this.sendToRenderer("backend-update-manual-required", {
 						message: plan.remedy,
 						command: plan.updateCommand,
+						detail: plan.detail,
 					});
 					return false;
 				}
@@ -1970,18 +2319,28 @@ export class UpdateService {
 			}
 
 			const versionAfter = await this.readBundledBackendVersion(pythonPath);
+			// An unreadable "before" is not evidence that the upgrade landed: when
+			// `pip show` failed beforehand, the target version is what the reading
+			// afterwards is held to (review R6, `didUpgradeLand`).
 			const upgradeLanded =
-				pipRun.exitCode === 0 && didVersionChange(versionBefore, versionAfter);
+				pipRun.exitCode === 0 &&
+				didUpgradeLand({
+					before: versionBefore,
+					after: versionAfter,
+					target: targetVersion ?? null,
+				});
 			if (!upgradeLanded) {
 				logger.error(
 					`Backend upgrade did not land: pip exited ${pipRun.exitCode}; version ${versionBefore ?? "unknown"} -> ${versionAfter ?? "unknown"}`,
 					LogFileType.UPDATE_SERVICE,
 				);
-				await this.restartBackendAfterFailedUpgrade();
+				const serverIsBack = await this.restartBackendAfterFailedUpgrade();
 				this.sendToRenderer(
 					"backend-update-error",
 					pipRun.exitCode !== 0
-						? "The server update failed to install. The previous server is still installed and will keep running; see the update service log for pip's output."
+						? serverIsBack
+							? "The server update failed to install. The previously installed server is running again; see the update service log for pip's output."
+							: "The server update failed to install and the server did not come back up. Restart Local Operator, and see the update service log for pip's output."
 						: `The server update ran but the installed version did not change (still ${versionAfter ?? "unknown"}), so it is reported as failed.`,
 				);
 				return false;
