@@ -103,6 +103,17 @@ const SPACING_MS = 9000;
  * as title, CONTEXTS value as status, last assistant line as body for
  * `complete` only) so the captured banner is representative of production and
  * not of prose invented here.
+ *
+ * THE HOUSE BODIES ARE COPIED FROM THE BACKEND, VERBATIM. They are
+ * `local_operator/tui/notify.py`'s `BODY_*` constants — `BODY_COMPLETE`
+ * ("Task complete"), `BODY_ERROR` ("Stopped with an error"),
+ * `BODY_INTERRUPTED` ("Stopped before finishing") — reached through `BODIES`
+ * in `local_operator/notifications/compose.py`. This file is what a reviewer,
+ * a QA round and the next designer judge the shipped copy from, so prose
+ * invented here produces a review of copy that does not exist: an earlier
+ * revision rendered "Task complete." and "The turn ended with an error.",
+ * neither of which any user can receive. If these strings ever drift from the
+ * constants above, the banner is lying about production.
  */
 const FRAMES = [
 	{
@@ -131,7 +142,8 @@ const FRAMES = [
 			// generic title.
 			title: "Local Operator",
 			status: "Complete",
-			body: "Task complete.",
+			// notify.py BODY_COMPLETE. No trailing period: the constant has none.
+			body: "Task complete",
 			body_is_snippet: false,
 			title_is_session_name: false,
 			dedupe_key: "complete:123456abcdef:22222222-2222-4222-8222-222222222222",
@@ -149,7 +161,8 @@ const FRAMES = [
 			status: "Needs attention",
 			// No snippet on an error: the last assistant line predates the failure
 			// and would assert success under a "Needs attention" status.
-			body: "The turn ended with an error.",
+			// notify.py BODY_ERROR, verbatim.
+			body: "Stopped with an error",
 			body_is_snippet: false,
 			title_is_session_name: true,
 			dedupe_key: "complete:123456abcdef:33333333-3333-4333-8333-333333333333",
@@ -160,11 +173,20 @@ const FRAMES = [
 	},
 ];
 
-/** The two gate banners, which travel as `pending_gate`, not as a frame. */
+/**
+ * The gate banners, which travel as `pending_gate`, not as a frame.
+ *
+ * `session_name` is ADDITIVE and OPTIONAL on this payload: absent on a backend
+ * older than the notification contract, and empty when the backend's
+ * `session_names_in_notifications()` privacy flag is off. Both nameless cases
+ * are rendered here beside the named one, because a gate is the banner a user
+ * is BLOCKED on and all three shapes ship.
+ */
 const GATES = [
 	{
 		label: "gate-ask-untitled",
 		// The fixed bug: an untitled question used to announce "Approval needed".
+		// Nameless, so the shape is unchanged from before this PR.
 		gate: {
 			request_id: "gate-ask-1",
 			kind: "ask",
@@ -183,6 +205,51 @@ const GATES = [
 			kind: "approval",
 			title: "Run database migration",
 			detail: "This applies 00061_add_watchlist_release to the prod-2 cluster.",
+			options: [],
+			secret: false,
+			question_index: 0,
+			question_total: 1,
+		},
+	},
+	{
+		label: "gate-approval-named",
+		// With the name present the gate takes the completion banner's shape, so
+		// the banner holding a run hostage can be triaged without clicking it.
+		gate: {
+			request_id: "gate-approval-2",
+			kind: "approval",
+			title: "Run database migration",
+			detail: "This applies 00061_add_watchlist_release to the prod-2 cluster.",
+			options: [],
+			secret: false,
+			question_index: 0,
+			question_total: 1,
+			session_name: "Nightly ETL backfill",
+		},
+	},
+	{
+		label: "gate-ask-named",
+		gate: {
+			request_id: "gate-ask-2",
+			kind: "ask",
+			title: "",
+			detail: "Which environment should this deploy to?",
+			options: [],
+			secret: false,
+			question_index: 0,
+			question_total: 1,
+			session_name: "Quarterly revenue model",
+		},
+	},
+	{
+		label: "gate-ask-empty-detail",
+		// `PendingGateState.detail` defaults to "" and is untrimmed on the wire,
+		// which used to render a banner with a title and no body at all.
+		gate: {
+			request_id: "gate-ask-3",
+			kind: "ask",
+			title: "",
+			detail: "",
 			options: [],
 			secret: false,
 			question_index: 0,
@@ -227,11 +294,24 @@ async function main() {
 	// without the notifier under test knowing it is being observed. Installed
 	// BEFORE the bundle is imported: the bundle binds `Notification` at module
 	// evaluation, so a later reassignment would never be seen.
+	/**
+	 * Every set of constructor arguments that actually reached the OS.
+	 *
+	 * The log below is printed FROM THIS, never from the payload. An earlier
+	 * revision re-derived the expected title and body in the print loop, which
+	 * made the artifact incapable of showing a rendering change: it reported
+	 * `status — body` for every banner while the notifier had already stopped
+	 * joining them. An evidence script that composes its own copy is the D1
+	 * defect in a second place, so the only strings this file prints are the
+	 * ones the notifier passed to `new Notification()`.
+	 */
+	const constructed = [];
 	globalThis.__realElectron = {
 		Notification: new Proxy(Notification, {
 			construct(target, args) {
 				const instance = new target(...args);
 				const title = args[0]?.title;
+				constructed.push({ title, body: args[0]?.body });
 				instance.on("show", () =>
 					osEvents.push({ title, event: "show", at: Date.now() }),
 				);
@@ -289,15 +369,27 @@ async function main() {
 		},
 	);
 
-	for (const { label, payload } of FRAMES) {
+	/**
+	 * Report what the notifier really constructed for the frame just fed to it.
+	 *
+	 * Reads the tail of `constructed` rather than re-deriving the strings, so a
+	 * suppressed banner prints as `(no notification raised)` instead of copy
+	 * that was never sent.
+	 */
+	const report = (label) => {
+		const toast = constructed.at(-1);
 		console.log(`\n[${label}]`);
-		console.log(`  title : ${payload.title}`);
-		console.log(`  body  : ${payload.status} — ${payload.body}`);
-		sent.push({
-			label,
-			title: payload.title,
-			body: `${payload.status} — ${payload.body}`,
-		});
+		if (!toast || sent.some((s) => s.toast === toast)) {
+			console.log("  (no notification raised)");
+			sent.push({ label, raised: false });
+			return;
+		}
+		console.log(`  title : ${toast.title}`);
+		console.log(`  body  : ${toast.body}`);
+		sent.push({ label, raised: true, ...toast, toast });
+	};
+
+	for (const { label, payload } of FRAMES) {
 		notifier.observe("123456abcdef", {
 			session_id: "123456abcdef",
 			epoch: "abc123",
@@ -305,16 +397,14 @@ async function main() {
 			type: "notification",
 			payload,
 		});
+		// The composed path claims delivery over HTTP before it shows anything,
+		// so the toast does not exist yet on the turn of this loop.
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		report(label);
 		await new Promise((resolve) => setTimeout(resolve, SPACING_MS));
 	}
 
 	for (const { label, gate } of GATES) {
-		const expected =
-			gate.title || (gate.kind === "ask" ? "Question" : "Approval needed");
-		console.log(`\n[${label}]`);
-		console.log(`  title : ${expected}`);
-		console.log(`  body  : ${gate.detail}`);
-		sent.push({ label, title: expected, body: gate.detail });
 		notifier.observe("123456abcdef", {
 			session_id: "123456abcdef",
 			epoch: "abc123",
@@ -326,12 +416,13 @@ async function main() {
 				changes: { pending_gate: gate },
 			},
 		});
+		report(label);
 		await new Promise((resolve) => setTimeout(resolve, SPACING_MS));
 	}
 
 	writeFileSync(
 		join(OUTDIR, "payloads.json"),
-		`${JSON.stringify({ sent, claims, osEvents }, null, 2)}\n`,
+		`${JSON.stringify({ sent: sent.map(({ toast: _t, ...rest }) => rest), claims, osEvents }, null, 2)}\n`,
 	);
 	console.log(`\nclaims posted: ${claims.length} (one per completion frame)`);
 	console.log(

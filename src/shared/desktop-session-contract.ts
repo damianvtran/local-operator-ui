@@ -72,6 +72,18 @@ export type PendingDesktopGate = {
 	secret: boolean;
 	question_index: number;
 	question_total: number;
+	/**
+	 * The session's display name, for the notification banner only.
+	 *
+	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed
+	 * notification contract, and empty when the
+	 * `session_names_in_notifications()` privacy flag is off. The backend owns
+	 * that decision because it is the only side that can read the flag, so a
+	 * surface rendering this must use the field as sent and must never resolve
+	 * the name from a snapshot as a fallback — that would leak a name the user
+	 * opted out of. Absent and empty are the same case here: no name.
+	 */
+	session_name?: string | null;
 };
 /**
  * One composed notification, as the backend rendered it.

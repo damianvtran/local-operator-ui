@@ -75,6 +75,36 @@ export class BackendServiceManager {
 	private streamObserver: ((sessionId: string, data: string) => void) | null =
 		null;
 
+	/**
+	 * Called every time the backend becomes reachable and authenticated.
+	 *
+	 * The desktop token is minted inside `start()`, so anything that must query
+	 * the backend cannot be issued from `app.whenReady()` — at that point the
+	 * port is dead on the ordinary self-managed cold start and the request is
+	 * lost. This fires after the health check passes, which is the first moment
+	 * `requestDesktop` can succeed.
+	 *
+	 * It fires AGAIN on every restart and on external-backend discovery, on
+	 * purpose: the backend underneath a running app can be replaced by a
+	 * different version, and a capability read taken once at startup would
+	 * outlive the backend it described.
+	 */
+	private backendReadyObserver: (() => void) | null = null;
+
+	onBackendReady(observer: (() => void) | null): void {
+		this.backendReadyObserver = observer;
+	}
+
+	private notifyBackendReady(): void {
+		try {
+			this.backendReadyObserver?.();
+		} catch (error) {
+			// A consumer's failure must never take down backend startup: the
+			// backend is up either way, and this is a notification, not a step.
+			logger.error("Backend-ready observer threw:", LogFileType.BACKEND, error);
+		}
+	}
+
 	getStreamRelay(): DesktopStreamRelay {
 		if (!this.streamRelay || this.streamRelayUrl !== this.backendUrl) {
 			this.streamRelay?.dispose();
@@ -499,6 +529,7 @@ export class BackendServiceManager {
 					LogFileType.BACKEND,
 				);
 				this.isExternalBackend = true;
+				this.notifyBackendReady();
 				return true;
 			}
 		} catch (error) {
@@ -535,6 +566,9 @@ export class BackendServiceManager {
 							LogFileType.BACKEND,
 						);
 						this.isExternalBackend = true;
+						// Fired AFTER the URL rotates, so a consumer re-reading
+						// capabilities queries the address the app actually uses.
+						this.notifyBackendReady();
 						return true;
 					}
 				}
@@ -573,6 +607,7 @@ export class BackendServiceManager {
 				"Backend Service Manager is disabled. Skipping backend start.",
 				LogFileType.BACKEND,
 			);
+			this.notifyBackendReady();
 			return true;
 		}
 
@@ -581,6 +616,7 @@ export class BackendServiceManager {
 			this.isRunning = true;
 			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
 			this.startHealthCheck();
+			this.notifyBackendReady();
 			return true;
 		}
 
@@ -754,6 +790,7 @@ export class BackendServiceManager {
 				if (await this.checkHealth()) {
 					this.isRunning = true;
 					this.startHealthCheck();
+					this.notifyBackendReady();
 					return true;
 				}
 
