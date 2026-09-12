@@ -169,6 +169,15 @@
 			"why": "Live frames from the packaged Electron app over real IPC, which Storybook cannot produce: a cold snapshot, a reload, the backend-down error path, and round 3's aggregator route plus cold-owner effort states. One theme only (localOperatorDark) because these prove BEHAVIOUR, not colour; the theme matrix is the Storybook set's job.",
 			"capturedAt": "2026-09-12T09:53:17.005018Z",
 			"capturedAtHead": "af374b62531b0275c6c8e070e3e85d45cbf35a75"
+		},
+		{
+			"path": "transcript-scroll-paging",
+			"frames": 7,
+			"surfaces": 7,
+			"themes": 1,
+			"source": "live renderer over CDP, driven with real wheel events against a seeded backend",
+			"why": "The claims are about MOTION -- that a fling issues one page rather than one per event, and that the row under the reader holds its offset while a page lands. Neither is a property of a rendered tree, so Storybook cannot express them: they need real wheel events reaching the real scroller with a real backend answering sessions.history, and the artefact that carries the claim is the per-frame measurement JSON beside the frames rather than the frames themselves. Captured one theme deep because nothing under test is palette-dependent; the slot's own appearance is swept across all twelve by chat-older-history-slot. The before set was captured on origin/main (2217ea59a) by the QA pass and shows the click-only behaviour this change replaces. Regenerate with scripts/scroll-paging-evidence.mjs; docs/evidence/transcript-scroll-paging/README.md carries the exact seeding recipe and ports.",
+			"capturedAt": "2026-09-12T00:00:00.000Z"
 		}
 	]
 }

@@ -1,44 +1,194 @@
 {
-  "mounted": {
-    "rows": 60,
-    "slotText": "40 earlier rows above",
-    "slotH": 28,
-    "anchor": {
-      "id": "bbb0647cca101ffdee7605a3cb4bfc96",
-      "off": -9.55
+  "mode": "after",
+  "session": "d64ccf21f4b0",
+  "steps": [
+    {
+      "step": "opened",
+      "ok": true,
+      "anchor": {
+        "id": "43684ec214a9a5efce5b3fd30445a520",
+        "offset": -9.546875
+      },
+      "scrollTop": 0,
+      "scrollHeight": 6482,
+      "clientHeight": 489,
+      "distanceFromTop": 5993,
+      "rows": 60,
+      "slotText": "commits=22 rowRenders=120 rows=60 flushes=2 flushP50=1.00ms ",
+      "topText": "[row 0200] the the the has the page row ",
+      "aim": {
+        "x": 940,
+        "y": 349
+      }
     },
-    "sh": 6482,
-    "ch": 489,
-    "scrollTop": 0
-  },
-  "topOfContent": {
-    "rows": 60,
-    "slotText": "40 earlier rows above",
-    "slotH": 28,
-    "anchor": {
-      "id": "6e7bdb140805e98232b130ab3c0384f9",
-      "off": 83.27
+    {
+      "step": "at-top-after-first-fling",
+      "ok": true,
+      "anchor": {
+        "id": "7cbb97002ed51e03a419b43f329d0998",
+        "offset": 83.5625
+      },
+      "scrollTop": -10092,
+      "scrollHeight": 10582,
+      "clientHeight": 489,
+      "distanceFromTop": 1,
+      "rows": 100,
+      "slotText": "commits=44 rowRenders=202 rows=100 flushes=4 flushP50=0.90ms",
+      "topText": "[row 0160] ever they durable ever durabl"
     },
-    "sh": 6482,
-    "ch": 489,
-    "scrollTop": -5992
-  },
-  "afterActivation": {
-    "rows": 60,
-    "slotText": "40 earlier rows above",
-    "slotH": 28,
-    "anchor": {
-      "id": "6e7bdb140805e98232b130ab3c0384f9",
-      "off": 83.27
+    {
+      "step": "fling",
+      "anchorBefore": {
+        "id": "7cbb97002ed51e03a419b43f329d0998",
+        "offset": 83.5625
+      },
+      "anchorAfter": {
+        "id": "efaf05b93ce96e83707328b51cd0c986",
+        "offset": 59.609375
+      },
+      "anchorRowOffsetAfter": 11036.5625,
+      "rowsBefore": 100,
+      "rowsAfter": 200,
+      "historyRequestsDuringFling": 0,
+      "jitter": {
+        "frames": 151,
+        "maxFrameDelta": 400,
+        "first": 83.5625,
+        "last": 11036.5625
+      }
     },
-    "sh": 6482,
-    "ch": 489,
-    "scrollTop": -5992
-  },
-  "anchorBefore": {
-    "id": "6e7bdb140805e98232b130ab3c0384f9",
-    "off": 83.27
-  },
-  "anchorOffsetAfter": 83.27,
-  "requestsDuringProgrammaticScroll": 2
+    {
+      "step": "clamped-at-top",
+      "historyRequestsDuringClamp": 1,
+      "ok": true,
+      "anchor": {
+        "id": "efaf05b93ce96e83707328b51cd0c986",
+        "offset": 83.609375
+      },
+      "scrollTop": -21069,
+      "scrollHeight": 21559,
+      "clientHeight": 489,
+      "distanceFromTop": 1,
+      "rows": 200,
+      "slotText": "commits=59 rowRenders=404 rows=200 flushes=5 flushP50=0.30ms",
+      "topText": "[row 0060] the it one row the conversati"
+    },
+    {
+      "step": "isolated-reveals",
+      "trials": 5,
+      "revealsObserved": 4,
+      "worstMaxFrameDelta": 392,
+      "worstNetDrift": 392,
+      "totalDisplacedFrames": 5,
+      "totalFramesSampled": 724,
+      "detail": [
+        {
+          "trial": 1,
+          "rowsBefore": 60,
+          "rowsAfter": 100,
+          "extentGrewBy": 4076,
+          "historyRequests": 0,
+          "anchorId": "2ffd7ae4db16925aea6dfad2284b9fab",
+          "frames": 181,
+          "maxFrameDelta": 392,
+          "displacedFrames": 1,
+          "maxFrameDeltaAfterInput": 392,
+          "displacedFramesAfterInput": 1,
+          "framesAfterInput": 180,
+          "unmountedFrames": 0,
+          "first": -236.34,
+          "last": 155.66,
+          "netDrift": 392
+        },
+        {
+          "trial": 2,
+          "rowsBefore": 100,
+          "rowsAfter": 100,
+          "extentGrewBy": 24,
+          "historyRequests": 1,
+          "anchorId": "7cbb97002ed51e03a419b43f329d0998",
+          "frames": 181,
+          "maxFrameDelta": 76,
+          "displacedFrames": 3,
+          "maxFrameDeltaAfterInput": 24,
+          "displacedFramesAfterInput": 2,
+          "framesAfterInput": 178,
+          "unmountedFrames": 0,
+          "first": -16.44,
+          "last": 59.56,
+          "netDrift": 76
+        },
+        {
+          "trial": 3,
+          "rowsBefore": 100,
+          "rowsAfter": 160,
+          "extentGrewBy": 6608,
+          "historyRequests": 0,
+          "anchorId": "7cbb97002ed51e03a419b43f329d0998",
+          "frames": 181,
+          "maxFrameDelta": 0,
+          "displacedFrames": 0,
+          "maxFrameDeltaAfterInput": 0,
+          "displacedFramesAfterInput": 0,
+          "framesAfterInput": 181,
+          "unmountedFrames": 0,
+          "first": 83.56,
+          "last": 83.56,
+          "netDrift": 0
+        },
+        {
+          "trial": 4,
+          "rowsBefore": 160,
+          "rowsAfter": 200,
+          "extentGrewBy": 4345,
+          "historyRequests": 0,
+          "anchorId": "dc621dddf7e2479b7925ecffd9503fc5",
+          "frames": 181,
+          "maxFrameDelta": 209,
+          "displacedFrames": 1,
+          "maxFrameDeltaAfterInput": 209,
+          "displacedFramesAfterInput": 1,
+          "framesAfterInput": 180,
+          "unmountedFrames": 0,
+          "first": -52.61,
+          "last": 156.39,
+          "netDrift": 209
+        },
+        {
+          "trial": 5,
+          "rowsBefore": 200,
+          "rowsAfter": 200,
+          "extentGrewBy": 0,
+          "historyRequests": 0,
+          "anchorId": "1b9ccf17ea82d5274c2112da5025af58",
+          "frames": 181,
+          "maxFrameDelta": 344,
+          "displacedFrames": 1,
+          "maxFrameDeltaAfterInput": 344,
+          "displacedFramesAfterInput": 1,
+          "framesAfterInput": 180,
+          "unmountedFrames": 0,
+          "first": -189.61,
+          "last": 154.39,
+          "netDrift": 344
+        }
+      ]
+    }
+  ],
+  "historyRequestsTotal": 6,
+  "desktopOpsTotal": 87,
+  "desktopOpsByName": {
+    "config.get": 4,
+    "capabilities": 17,
+    "radient.request": 10,
+    "profiles.list": 5,
+    "teams.list": 5,
+    "sessions.list": 20,
+    "providers.list": 5,
+    "sessions.get": 1,
+    "commands.list": 3,
+    "<null>": 3,
+    "sessions.history": 6,
+    "sessions.watch": 8
+  }
 }

@@ -2,6 +2,7 @@ import {
 	type RefObject,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
@@ -126,6 +127,12 @@ export type ScrollPagingOptions = {
 	/** A page fetch is in flight, as the session hook sees it. */
 	loadingOlder: boolean;
 	/**
+	 * Rows currently mounted. Drives the pre-paint anchor correction: it changes
+	 * exactly when a reveal lands, which is when the reader would otherwise see
+	 * the content jump.
+	 */
+	rowCount: number;
+	/**
 	 * Changes when the observed content node appears or is replaced, so the
 	 * ResizeObserver re-attaches deterministically rather than incidentally.
 	 */
@@ -153,6 +160,7 @@ export function useScrollPaging({
 	onLoadOlder,
 	loadingOlder,
 	contentKey,
+	rowCount,
 }: ScrollPagingOptions): ScrollPagingHandle {
 	const state = useRef<PagingState>(initialPagingState());
 	// The slot's rendered state is the only thing this hook publishes, so it is
@@ -580,6 +588,27 @@ export function useScrollPaging({
 	useEffect(() => {
 		schedule();
 	}, [schedule, hiddenRows, hasMore]);
+
+	/*
+	 * Correct the anchor BEFORE the browser paints the rows that moved it.
+	 *
+	 * The ResizeObserver above is the general safety net — it catches growth
+	 * nobody enumerated, like a late image — but it is delivered AFTER layout,
+	 * so the frame that mounted the new rows is painted uncorrected and the
+	 * reader sees exactly one lurch before it snaps back. Measured: a 6338px
+	 * single-frame displacement with a net drift of 0.00px, which is the
+	 * signature of a correction arriving one frame late rather than not at all.
+	 * A net-zero jump is still a jump; it is the frame-to-frame number that
+	 * describes what the eye sees.
+	 *
+	 * `useLayoutEffect` runs after the DOM is updated and before paint, so the
+	 * correction lands in the same frame as the insertion that caused it. This
+	 * is why `rowCount` is a dependency rather than something read through the
+	 * ref: it must re-run when rows arrive, which is the whole point.
+	 */
+	useLayoutEffect(() => {
+		correctAnchor();
+	}, [correctAnchor, rowCount]);
 
 	const exhaustedRetries = isExhausted(state.current);
 	const slotState: OlderHistoryState = loadingOlder

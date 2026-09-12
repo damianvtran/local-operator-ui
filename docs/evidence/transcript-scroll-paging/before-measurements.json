@@ -1,0 +1,36 @@
+{
+  "open": {
+    "rows": 60,
+    "scrollHeight": 6471,
+    "clientHeight": 489,
+    "affordanceAtOpen": []
+  },
+  "afterScrollingToTop": {
+    "rows": 100,
+    "scrollTop": -10068,
+    "distanceFromTop": 1,
+    "historyOpsIssuedByScrolling": 0,
+    "affordance": [
+      {
+        "text": "Load earlier messages",
+        "disabled": false,
+        "tag": "BUTTON",
+        "visible": true
+      }
+    ],
+    "claim": "on main, scrolling to the top issues NO history request; the button is the only caller"
+  },
+  "afterClick": {
+    "clicked": "Load earlier messages",
+    "rowsAfter": 200,
+    "historyOpsFromClick": 1,
+    "affordance": [
+      {
+        "text": "Load earlier messages",
+        "disabled": false,
+        "tag": "BUTTON",
+        "visible": true
+      }
+    ]
+  }
+}

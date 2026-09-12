@@ -1,123 +1,268 @@
 # Scroll-driven history paging
 
 Older conversation used to require a click on `Load earlier messages`. It now
-loads when the reader scrolls to the top, coalesced, debounced, latched, and
-with the reader's place held. These frames and numbers are what was measured on
-the branch, and — as importantly — what was **not**.
+loads when the reader scrolls toward the top, coalesced, debounced, latched, and
+with the reader's place held.
+
+These are the numbers this branch actually measured, the gaps it did not close,
+and the recipe to reproduce both. Round 1 of this PR reported a measurement it
+could not justify; the correction is documented here rather than quietly
+replaced, because how the number went wrong is the useful part.
 
 ## What produced these frames
 
-**The real renderer, in a real browser, over the real desktop transport.** This
-is the repository's documented browser-development surface
-(`docs/desktop-controls.md`, "Browser development"): `electron-vite dev` serves
-the shipped renderer bundle, and `desktopProxyPlugin` exposes the same typed
-desktop vocabulary at same-origin `POST /__desktop`, with
-`LOCAL_OPERATOR_DESKTOP_TOKEN` and `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` given to
-the Vite **node** process. Behind it is a real `local-operator serve` backend
-(v0.54.14) reading a real transcript file off disk with its own
-`read_transcript_page`.
+**The real renderer, in a real browser, over the real desktop transport, driven
+by real wheel events.** This is the repository's documented browser-development
+surface (`docs/desktop-controls.md` § "Browser development"): the shipped
+renderer served by `electron-vite dev`, `desktopProxyPlugin` forwarding
+same-origin `POST /__desktop`, and behind it a real `local-operator serve`
+against an isolated config dir. Driven over raw CDP against a private headless
+Chromium, the way `scripts/capture-evidence.mjs` drives Storybook.
 
-So the transcript component, `transcript-reducer`, `use-canonical-session`, the
-desktop request/response contract and the backend's paging cursor are all the
-production ones. Frames were captured over raw CDP against a private headless
-Chromium (a fresh user-data-dir under `/tmp`, killed on exit), the same approach
-`scripts/capture-evidence.mjs` uses — no browser-automation dependency is added
-to the repo.
+Everything under test is the shipped code: the reducer, the paging policy, the
+hook, and the transcript component, with the scroller receiving
+`Input.dispatchMouseEvent` wheel events through the browser's own input
+pipeline. Nothing is prop-driven and no state is faked.
 
-**What these frames do not prove**, stated plainly:
+### What these frames do NOT prove
 
 - **The Electron main and preload processes.** The browser surface has no
-  preload, so `window.electron` / `window.api` were stubbed by the capture
-  script (a no-op IPC subscription and the updater's listener API — see
-  `ELECTRON_SHIM` in `scripts/scroll-paging-evidence.mjs`). Nothing on the path
-  under test reads either: the transcript, its reducer and the desktop
-  transport do not. But the Electron IPC transport itself is **not** exercised
-  here, and neither is the packaged or notarised build.
-- **Themes other than `localOperatorDark`**, and window sizes other than
-  1380x872.
-- **Screen-reader announcement.** The `output` live region is in the DOM, which
-  is not the same as hearing it.
+  preload, so the harness shims `window.electron` and `window.api`. Nothing on
+  the paging path reads either, but the IPC transport is genuinely untested
+  here.
+- **The packaged build.** Vite dev serves unminified modules; production
+  bundling and bytecode are not exercised.
+- **Palettes other than `localOperatorDark`.** Nothing under test is
+  palette-dependent — the slot's own appearance is swept across all twelve by
+  `docs/evidence/chat-older-history-slot/`.
+- **A screen reader.** The live region is in the DOM and its text is in the
+  measurements; that is not the same as hearing it.
+- **A real trackpad's momentum phase.** Synthesized wheel events have no
+  inertial tail, so `GESTURE_GAP_MS` is justified by argument rather than
+  measured against real hardware.
 
-## The gap, named
+## The correction to round 1
 
-**The wheel-driven measurements are missing.** The behaviour contract's fling
-clauses — one page per fling (B), settle-before-spend (C), the clamp latch not
-re-arming (D) — are proven **in memory** by `scripts/transcript-paging.test.mjs`
-(17 tests, all green) and **not** by a rendered capture.
+Round 1 reported that headless Chromium could not synthesize wheel events,
+because the scroller did not move and no request was issued. **That conclusion
+was wrong, and the zero had a cause.**
 
-`Input.dispatchMouseEvent` with `type: "mouseWheel"` did not move the scroller
-in headless Chromium in this harness: the listener was reached in an earlier
-Electron-hosted run (6 events observed) but the headless browser's
-`scrollTop` stayed at 0 across every parameter combination tried, including the
-`modifiers`/`clickCount` fields whose absence the CDP bindings reject outright.
-Rather than report a request count of 0 as if it were coalescing — it is
-indistinguishable from no input arriving — the number is withheld.
+The harness left the first-run "Connect a provider" modal open. It is a Radix
+dialog, and `react-remove-scroll` installs a document-level handler that calls
+`preventDefault()` on every wheel event before it reaches the transcript. The
+page was locked, not unresponsive. Two harness bugs put it there: the bypass
+wrote the legacy `isComplete` key while the store persists `isModalComplete`,
+and the app was reached by a hash-only navigation — a same-document navigation,
+so zustand never re-hydrated from what had just been written.
 
-`scripts/scroll-paging-evidence.mjs` is committed with the fling/clamp steps
-intact, so a QA pass on a surface where wheel synthesis works (a headed browser,
-or the Electron window) can produce those numbers without rebuilding anything.
+Both are fixed, and `scroll-paging-evidence.mjs` now **refuses to run** against
+a locked page rather than measuring through one: it asserts on
+`data-scroll-locked` and on any open dialog after load. A run that would have
+produced a plausible, meaningless zero now fails loudly.
 
-## What was measured, in the running app
+The request counter was independently dead. It matched `url.includes("/history")`
+on a surface where every op POSTs to `/__desktop` with the op name in the
+**body**, so it could never fire — it would have reported `0` for a fling that
+issued forty pages and read as proof of coalescing. It now parses the body, and
+reports `desktopOpsTotal` as a positive control: if that is zero the harness saw
+no traffic at all and every count beside it is meaningless rather than
+reassuring.
 
-Session `eb257fff18c9`, 260 durable rows (three backend pages), 1380x872,
-`localOperatorDark`.
+## Before, on `origin/main` (2217ea59a)
 
-| Claim | Measurement |
-| --- | --- |
-| **A — layout motion earns no page** | A programmatic scroll from the tail to the very top of the content (`scrollTop` 0 → -5992, the full extent) issued **0** `__desktop` requests in the 3s that followed. This is the motion the old `scroll` listener would have treated as demand. |
-| **E — apparent position preserved** | Anchor row `6e7bdb140805e98232b130ab3c0384f9` at viewport offset **83.27px** before the reveal and **83.27px** after: delta **0.00px**. |
-| **F — the status slot never changes height** | The slot measured **28px** in every state observed in the running app, and is fixed at `h-7` by construction. The four states are compared side by side against ruled edges in the `Chat/Older history slot` stories. |
-| **J — local growth before network growth** | With 40 rows held by the render window and 200 more on the backend, the slot reads `40 earlier rows above` and no request is made: the window is widened first. Visible in `after-02-top-of-content.png`. |
-
-Raw numbers: [`after-measurements.json`](after-measurements.json).
-
-## Frames
+Captured by the QA pass on a real build of `main`, not described.
 
 | Frame | What it shows |
 | --- | --- |
-| [after-01-idle-affordance.png](after-01-idle-affordance.png) | The conversation as opened, pinned to the newest row. |
-| [after-02-top-of-content.png](after-02-top-of-content.png) | The top of the rendered window. The fixed-height slot reads `40 earlier rows above` — rows are held locally, so no round trip is owed yet. |
-| [after-03-page-loaded.png](after-03-page-loaded.png) | After the reveal, with the anchor row still at 83.27px. |
+| `before-01-idle/` | The conversation on open, newest rows. |
+| `before-02-top-with-button/` | Scrolled to the very top. `Load earlier messages` is present and **nothing has loaded**. |
+| `before-03-after-click/` | After clicking it: rows 100 -> 200. |
 
-The `before` state on `origin/main` was **not** captured as a frame. It is not
-in dispute and is visible in the diff: on `main` the slot renders a `Button`
-whose `onClick` is the only caller of `onLoadOlder`, so scrolling to the top
-loads nothing by construction. A frame of a button is weaker evidence than the
-code, and the honest thing is to say so rather than photograph it for symmetry.
+```
+scrolling to the top:   0 sessions.history ops    (rows stay at 100)
+clicking the button:    1 sessions.history op     (rows 100 -> 200)
+```
 
-## Reproducing the fixture
+That is the defect this change removes: on `main` the scroll is not an input the
+app answers.
 
-The transcript is synthetic; the path that serves it is not. 260 rows of
-varying height (every twentieth assistant row is long, so a mis-measured anchor
-shows up as a number rather than hiding behind uniform rows), deterministic, so
-two runs produce byte-identical files.
+## After, on this branch
 
-```sh
-# 1. Seed an ISOLATED config dir. The script refuses to write to ~/.local-operator.
-node scripts/seed-paging-session.mjs /tmp/lop-paging-evidence 260
-# -> {"sessionId": "...", "rows": 260, "pages": 3}
+Fixture: 260 rows / 3 backend pages, viewport 489px, `WINDOW` 60 rows,
+`WINDOW_STEP` 60, durable page 100.
 
-# 2. A real backend over that store, on the port the renderer's CSP allows.
-LOCAL_OPERATOR_CONFIG_DIR=/tmp/lop-paging-evidence \
+| Frame | What it shows |
+| --- | --- |
+| `after-01-at-top/` | After a 60-notch run: history has loaded **without a click**. |
+| `after-02-after-fling/` | After the 40-notch fling under test. |
+| `after-03-clamped/` | After 50 further notches clamped against the top. |
+| `after-04-after-isolated-reveals/` | The end of the isolated-reveal trials. |
+
+`after-03` and `after-04` are byte-identical, and that is the honest result
+rather than an oversight: both show the top of a fully-mounted transcript, where
+the correct behaviour is that nothing further happens. (In round 1 `after-02`
+and `after-03` were identical, which was a real defect — no reveal had occurred
+anywhere in that capture. They differ now.)
+
+### Clause B — one gesture, one page
+
+```
+fling of 40 notches in ~400ms:   0 sessions.history ops, rows 100 -> 200
+   (the reveal was local window widening; the network was not needed)
+50 notches clamped at the top:   1 sessions.history op
+whole run:                       6 sessions.history ops
+                                87 desktop ops total   <- positive control
+```
+
+A fling produces one reveal, not one per event. The clamped run issues a single
+page across fifty notches, and only because the gesture ended and a new one
+began; the latch refuses the rest.
+
+### Clause E — the reader's place is held
+
+This is the measurement round 1 got wrong, so the method matters. A
+displacement measured *while the reader is scrolling* conflates "the app moved
+me" with "I scrolled" — and round 1's delta was measured across a pair of
+observations in which **no rows were inserted at all**, which measures nothing.
+
+Here the reveal is triggered by one notch delivered inside an already-open
+per-frame watch, the harness stamps the moment it stops sending input, and the
+reported numbers cover only the frames after that stamp. Every trial records the
+extent growth, so a trace that spans no reveal cannot be counted as a pass.
+
+```
+5 trials, 4 real reveals, 724 frames sampled
+  trial 1   rows  60 -> 100   extent +4076px   max frame delta after input: 392px
+  trial 2   rows 100 -> 100   extent   +24px   max frame delta after input:  24px
+  trial 3   rows 100 -> 160   extent +6608px   max frame delta after input:   0px
+  trial 4   rows 160 -> 200   extent +4345px   max frame delta after input: 209px
+  trial 5   rows 200 -> 200   extent    +0px   max frame delta after input: 344px
+
+worst single-frame displacement across every reveal:  392px
+displaced frames:                                     5 of 724
+```
+
+A 6608px reveal held the anchor at **0.00px**. For comparison, QA measured
+**6564px peak displacement, 9 of 9 insertions displaced, 0 recovered** on the
+previous head — so the worst case improved by roughly 17x and the typical case
+by far more.
+
+**The residual is named rather than rounded away.** 209-392px on three of the
+five trials is about half a wheel notch, and it is not yet proven to be the
+reader's own motion: the stamp bounds when the harness stopped sending, but
+Chromium delivers a synthesized wheel asynchronously, so a notch can still be
+in flight when the stamp is taken. Two of those trials (2 and 5) grew by 24px or
+nothing at all, which means there was no reveal to displace anything — those
+numbers are the reader scrolling, by construction. Trials 1 and 4 are genuinely
+ambiguous. What is certain is the direction and the scale: the largest real
+reveal in the set holds at zero, and nothing in the set approaches the
+multi-thousand-pixel drags measured before.
+
+### What the fix actually was
+
+Three defects, all found by driving the app and none by the unit suite:
+
+1. **The correction's sign was inverted.** `column-reverse` inverts the axis
+   twice and the two do not cancel. Measured directly on the real scroller:
+
+   ```
+   scrollTop  0 -> -100   (more negative)
+   row offset  -2604.45 -> -2504.45   (+100: content moved DOWN)
+   ```
+
+   So a row pushed down by insertions is restored by moving `scrollTop` *toward*
+   zero. Written `-=`, every correction doubled the error it was meant to remove.
+2. **The correction measured the wrong row.** It re-sampled whatever was topmost
+   instead of the row it was holding; insertions change which row that is, so
+   the id comparison failed and the correction stood down exactly when needed.
+3. **The correction ran after paint.** The `ResizeObserver` is delivered
+   post-layout, so the frame that mounted the rows was painted uncorrected — a
+   6338px single-frame lurch with a **net drift of 0.00px**, which is the
+   signature of a correction one frame late rather than absent. A net-zero jump
+   is still a jump. It is a `useLayoutEffect` on the *mounted* row count now
+   (the total does not change on a local widen, which is exactly the reveal that
+   displaces the reader furthest).
+
+### Clause L — a conversation that cannot scroll
+
+A transcript shorter than its viewport has no gesture to ask with. Measured on a
+130-row fixture in a 9000px-tall window, with **no input at all**:
+
+```
+t=0ms      rows 100   2 sessions.history ops   slot "Load earlier messages"
+t=11000ms  rows 100   2 sessions.history ops   (stable; no further requests)
+```
+
+It chained two pages on its own until the content became scrollable, then
+stopped and handed control back. On the previous head this case loaded nothing
+and had no button, because the tail guard returned before the branch that owns
+it — the transcript's history was unreachable by any means.
+
+### Clauses D, K — the other routes to history
+
+```
+keyboard:   Tab reaches the transcript at press #43; Home then reveals
+            rows 60 -> 100
+scrollbar:  a press-drag-release into the prefetch zone issues 1 op,
+            rows 100 -> 160
+```
+
+On the previous head both issued **0** ops: the scroller was not a tab stop, so
+no key could reach its handler, and the drag attribution computed a gutter band
+from `clientWidth`, which is empty wherever the platform draws overlay
+scrollbars.
+
+### Clause F — the slot never changes height
+
+Measured from the rendered stories, at every width the app supports:
+
+```
+width   idle  loading  failed  windowed  exhausted
+512px    28      28      28      28         28
+252px    28      28      28      28         28      <- app minimum content box
+220px     -      28      28       -          -      <- chat column floor
+overflow: 0.00px in every state at every width
+```
+
+`docs/evidence/chat-older-history-slot/app-minimum-width/` is the frame; the
+failure state measured 34.78px inside a 28px box before this round.
+
+## Reproducing it
+
+Ports here are the ones this pass was assigned; any free pair works.
+
+```bash
+# 1. A seeded backend on an isolated config dir.
+node scripts/seed-paging-session.mjs /tmp/lop-paging 260      # -> prints a session id
+LOCAL_OPERATOR_CONFIG_DIR=/tmp/lop-paging \
 LOCAL_OPERATOR_DESKTOP_TOKEN=<token> \
-  local-operator serve --host 127.0.0.1 --port 1111
+  local-operator serve --host 127.0.0.1 --port 1141
 
-# 3. The renderer, with the desktop proxy pointed at that backend.
+# 2. The renderer, pointed at it. The token must be in the VITE node process.
 LOCAL_OPERATOR_DESKTOP_TOKEN=<token> \
-LOCAL_OPERATOR_DESKTOP_BACKEND_URL=http://127.0.0.1:1111 \
-  pnpm dev
+LOCAL_OPERATOR_DESKTOP_BACKEND_URL=http://127.0.0.1:1141 \
+  npx electron-vite dev            # renderer on :5173 unless pinned
 
-# 4. Capture.
-node scripts/scroll-paging-evidence.mjs http://localhost:5199 <sessionId> \
+# 3. The capture.
+node scripts/scroll-paging-evidence.mjs http://localhost:5173 <session-id> \
   docs/evidence/transcript-scroll-paging after
 ```
 
-Two notes for whoever runs this next, both of which cost time here:
+`seed-paging-session.mjs` writes whole durable pages, so 260 rows is three
+backend pages and needs at least two of them to reach the start. The script
+fails loudly if the onboarding modal is up, if the transcript does not mount, or
+if the aim point falls outside the scroller.
 
-- **Pin the dev port.** Vite takes the first free port, so a second worktree of
-  this repo silently serves the **first** one's tree — measurements were taken
-  against another worktree's renderer before this was noticed. Check
-  `lsof -nP -iTCP:<port> -sTCP:LISTEN` and confirm the owning process's cwd.
-- **Electron holds a single-instance lock.** A stale instance makes every new
-  one quit immediately, which takes `electron-vite dev` (and the Vite server)
-  down with it a few seconds after it reports being ready.
+For the short-content case (clause L), seed ~130 rows and drive a window taller
+than the resulting content — the transcript must have no overflow at all for the
+chain to be the only route.
+
+## Still open
+
+- **`GESTURE_GAP_MS = 400` is unmeasured against real hardware.** It is reasoned
+  from a trackpad's momentum tail, not observed on one.
+- **The 209-392px residual** described above.
+- **Q7, the backend degrading under sustained paging** (rows mounting as 0 and a
+  persistent "Reconnecting" after ~130 history requests across many browser
+  sessions), reproduced once here. Restarting the backend clears it. Not on this
+  diff and recorded rather than charged against it.

@@ -169,10 +169,22 @@ async function evaluate(expression) {
 	return res.result.value;
 }
 
+/*
+ * WebP, because `check-evidence.mjs` only sweeps `.webp`.
+ *
+ * Round 1 committed PNGs here, which meant the guard never enumerated them:
+ * they were never ΔE-tested and never uniformity-tested, while the PR quoted
+ * the guard's frame count as though they had cleared it. A frame outside the
+ * guard is a frame nobody checks, so the format is the guard's, and Chromium
+ * encodes it directly rather than needing a conversion step.
+ */
 async function shot(name) {
 	mkdirSync(OUT, { recursive: true });
-	const { data } = await send("Page.captureScreenshot", { format: "png" });
-	const path = join(OUT, `${name}.png`);
+	const { data } = await send("Page.captureScreenshot", {
+		format: "webp",
+		quality: 90,
+	});
+	const path = join(OUT, `${name}.webp`);
 	writeFileSync(path, Buffer.from(data, "base64"));
 	return path;
 }
@@ -240,6 +252,76 @@ const watchJitter = (id, ms) =>
   let max = 0;
   for (let i = 1; i < samples.length; i++) max = Math.max(max, Math.abs(samples[i] - samples[i - 1]));
   return { frames: samples.length, maxFrameDelta: max, first: samples[0] ?? null, last: samples.at(-1) ?? null };
+})()`);
+
+/**
+ * Sample ONE identified row per frame, with the extent alongside it.
+ *
+ * Distinct from `watchJitter` in what it reports rather than how it samples:
+ * this keeps the null frames (a row that unmounted is a fact, not a gap to
+ * skip), counts how many frames actually displaced rather than only the worst,
+ * and records the extent so a trace with no growth can be told apart from one
+ * that held its anchor across real growth. A clause E number is only worth
+ * anything if the reveal it spans provably happened.
+ */
+const watchHeldRow = (id, ms) =>
+	evaluate(`(async () => {
+  const el = document.querySelector('[data-lo-canonical-transcript]');
+  const top = () => el.getBoundingClientRect().top;
+  const read = () => {
+    const row = el.querySelector('[data-record-id="' + CSS.escape(${JSON.stringify(id)}) + '"]');
+    return row ? Number((row.getBoundingClientRect().top - top()).toFixed(2)) : null;
+  };
+  const samples = [];
+  const extents = [];
+  const times = [];
+  const until = performance.now() + ${ms};
+  await new Promise((done) => {
+    const tick = () => {
+      samples.push(read());
+      extents.push(el.scrollHeight);
+      times.push(performance.now());
+      if (performance.now() < until) requestAnimationFrame(tick); else done();
+    };
+    requestAnimationFrame(tick);
+  });
+  let max = 0;
+  let displaced = 0;
+  for (let i = 1; i < samples.length; i++) {
+    if (samples[i] === null || samples[i - 1] === null) continue;
+    const delta = Math.abs(samples[i] - samples[i - 1]);
+    if (delta > max) max = delta;
+    // 1px, not 0: sub-pixel layout noise is not the reader being moved.
+    if (delta > 1) displaced++;
+  }
+  // The reader's own notch lands in the first frames of this window, and a row
+  // moving because the READER scrolled is not the defect clause E describes.
+  // window.__loPagingInputEndedAt is stamped by the harness the moment it
+  // stops sending input; everything after it is the app acting alone.
+  const stopAt = window.__loPagingInputEndedAt ?? 0;
+  let maxQuiet = 0;
+  let displacedQuiet = 0;
+  for (let i = 1; i < samples.length; i++) {
+    if (times[i] < stopAt) continue;
+    if (samples[i] === null || samples[i - 1] === null) continue;
+    const delta = Math.abs(samples[i] - samples[i - 1]);
+    if (delta > maxQuiet) maxQuiet = delta;
+    if (delta > 1) displacedQuiet++;
+  }
+  return {
+    frames: samples.length,
+    maxFrameDelta: Number(max.toFixed(2)),
+    displacedFrames: displaced,
+    /* The clause E numbers: input provably stopped. */
+    maxFrameDeltaAfterInput: Number(maxQuiet.toFixed(2)),
+    displacedFramesAfterInput: displacedQuiet,
+    framesAfterInput: times.filter((t) => t >= stopAt).length,
+    unmountedFrames: samples.filter((v) => v === null).length,
+    first: samples[0] ?? null,
+    last: samples.at(-1) ?? null,
+    netDrift: Number((((samples.at(-1) ?? 0) - (samples[0] ?? 0))).toFixed(2)),
+    extentGrewBy: extents.at(-1) - extents[0],
+  };
 })()`);
 
 /*
@@ -516,7 +598,91 @@ report.steps.push({
 });
 await shot(`${MODE}-03-clamped`);
 
+/*
+ * Clause E, isolated — the only window in which it is falsifiable.
+ *
+ * The fling steps above cannot settle it: the reader's own notches move rows
+ * legitimately, so a displacement measured across them conflates "the app moved
+ * me" with "I scrolled". Here the reveal is triggered by ONE notch delivered
+ * inside an already-open watch window, and everything after the first frames is
+ * the app acting alone. Any displacement of the held row in that stretch is the
+ * reader being dragged, which is what the clause forbids.
+ */
+// Reload first: the fling and clamp steps above deliberately drive the
+// transcript to the end of its history, and a fully-mounted transcript has no
+// reveal left to isolate. A fresh document restores the arrival state a reader
+// actually starts from, which is the state this measurement is about.
+await send("Page.reload", { ignoreCache: false });
+for (let i = 0; i < 45; i++) {
+	await sleep(1000);
+	const mounted = await evaluate(
+		`Boolean(document.querySelector('[data-record-id]'))`,
+	);
+	if (mounted === true) break;
+}
+await sleep(3000);
+// Re-aim: a reload rebuilds the layout, and a wheel at a stale coordinate is a
+// silent no-op.
+await aim();
+
+const isolated = [];
+for (let trial = 0; trial < 5; trial++) {
+	// Approach from OUTSIDE the prefetch zone so the demand is armed but unspent.
+	let here = await probe();
+	let guard = 0;
+	while (here.distanceFromTop > 420 && guard++ < 600) {
+		await wheel(-400);
+		await sleep(12);
+		here = await probe();
+	}
+	const before = await probe();
+	if (!before.anchor) break;
+	const historyBefore = historyRequests.length;
+	const trace = watchHeldRow(before.anchor.id, 3000);
+	// The notch that carries them into the zone, inside the watch window. The
+	// stamp afterwards is what lets the trace separate the reader's own motion
+	// from the app's.
+	await wheel(-400);
+	await evaluate(
+		`(() => { window.__loPagingInputEndedAt = performance.now(); return true; })()`,
+	);
+	const result = await trace;
+	const after = await probe();
+	isolated.push({
+		trial: trial + 1,
+		rowsBefore: before.rows,
+		rowsAfter: after.rows,
+		extentGrewBy: result.extentGrewBy,
+		historyRequests: historyRequests.length - historyBefore,
+		anchorId: before.anchor.id,
+		...result,
+	});
+	// The slot's own words are the end-of-history signal a reader gets, and the
+	// one this harness can observe without reaching into React state.
+	if (/Start of conversation/i.test(after.slotText ?? "")) break;
+}
+const reveals = isolated.filter((entry) => entry.extentGrewBy > 0);
+report.steps.push({
+	step: "isolated-reveals",
+	trials: isolated.length,
+	revealsObserved: reveals.length,
+	// The headline numbers for clause E.
+	worstMaxFrameDelta: Math.max(0, ...reveals.map((r) => r.maxFrameDelta)),
+	worstNetDrift: Math.max(0, ...reveals.map((r) => Math.abs(r.netDrift))),
+	totalDisplacedFrames: reveals.reduce((a, r) => a + r.displacedFrames, 0),
+	totalFramesSampled: reveals.reduce((a, r) => a + r.frames, 0),
+	detail: isolated,
+});
+await shot(`${MODE}-04-after-isolated-reveals`);
+
 report.historyRequestsTotal = historyRequests.length;
+// The positive control: if this is 0 the harness saw no traffic at all and
+// every history count above is meaningless rather than reassuring.
+report.desktopOpsTotal = desktopOps.length;
+report.desktopOpsByName = desktopOps.reduce((acc, entry) => {
+	acc[entry.op ?? "<null>"] = (acc[entry.op ?? "<null>"] ?? 0) + 1;
+	return acc;
+}, {});
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, `${MODE}-measurements.json`), JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report, null, 2));

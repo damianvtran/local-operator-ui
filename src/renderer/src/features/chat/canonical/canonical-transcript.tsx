@@ -630,6 +630,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// The content node exists only once the transcript is non-empty; this is
 		// what re-runs the observer effect at that moment.
 		contentKey: collapsed ? "empty" : "filled",
+		// The MOUNTED count, not the total: a local widen reveals rows the
+		// transcript already had, so `rows.length` does not change and the
+		// pre-paint correction would skip exactly the reveal that displaces the
+		// reader furthest. `visible.length` changes on both growth paths.
+		rowCount: visible.length,
 	});
 
 	// Measurement hook: one mark per commit of this list. Read with
