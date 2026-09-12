@@ -878,12 +878,16 @@ harness with the synthetic pointer parked at 4,4 and nothing focused, so the
 transient UI state a first pass left in them is gone: the earlier light pair had
 the composer's accent focus ring in one half only, and a hover highlight on a
 sidebar row (`+ Create agent`) in its before half - **8082** differing pixels
-against the after half in that superseded frame, 7624 of them the tint
-`#FFFEFB` (exact comparison; a per-channel `>2/255` tolerance counts 7942, which
-is where an earlier draft's "7942 pixels" came from). The figure is quoted from
-the frame this commit replaces, so it is not reproducible from the committed
-set - the direction of the claim is what matters, and the frame that carried the
-highlight is gone. In the committed
+**within the sidebar region x=220..499** (the whole-frame difference of that
+same comparison is 29687, so this is a region count and not a frame count),
+**7624** of them the tint `#FFFEFB` by exact comparison; a per-channel
+`>2/255` tolerance counts 7942 in the same region, which is where an earlier
+draft's unqualified "7942 pixels" came from. The superseded frame is not lost -
+`git show 95d019dcc:docs/evidence/chat-shell/before-ground-empty-loLight.png`
+fetches it, and a design round reproduced all three figures from exactly there -
+but what the committed pair no longer carries is the highlight itself: the
+committed before half differs from its after half by **0** pixels in that
+region. In the committed
 pair the sidebar is **byte-identical** (0 differing pixels across x=220-499, the
 whole list panel) and the composer carries its resting `border-control` edge in
 both halves.

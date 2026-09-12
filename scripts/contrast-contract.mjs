@@ -253,7 +253,7 @@ const CONTROLS = [
  * script has no parser and does not need one to answer "does this component
  * still declare a structural edge".
  *
- * Three entries are not edges at all. The chat list panel's ground and the
+ * Two entries are not edges at all. The chat list panel's ground and the
  * working surface's ground are a palette-only fact on the other half of this
  * file (`surface` against `canvas` is asserted there as an adjacent pair, and
  * either colour clears every floor wherever it is used), so the one place the
@@ -261,8 +261,25 @@ const CONTROLS = [
  * EITHER side. Repaint the column `surface`, or the panel `canvas`, and the two
  * merge into one slab with no rule between them (the divider is `w-0` and draws
  * nothing) while every palette assertion stays green. Both panes are pinned to
- * their own composed class string rather than to a bare ground token, so a
- * `bg-canvas` mentioned in a comment cannot re-arm the column's row.
+ * their own composed class string rather than to a bare ground token, so a bare
+ * `bg-canvas` in a comment cannot satisfy the column's row (mutation-tested).
+ *
+ * HOW THESE PINS MATCH, AND WHAT THAT COSTS. Every `must` is a plain
+ * `source.includes(...)` over the whole file, comments included: there is no
+ * parser here, deliberately (see the section above on why a substring is enough
+ * to answer "does this component still declare the role"). Two consequences are
+ * known, accepted, and should not be changed without their own verification
+ * round:
+ *
+ *   - A comment that quotes the pinned string EXACTLY re-arms that row, so
+ *     documenting a pin in prose inside the file it pins can silently disable
+ *     it. Keep the pinned string out of comments in that file, or pin something
+ *     narrower than the prose contains.
+ *   - The pins are class-order-sensitive: a behaviour-identical reorder
+ *     (`bg-canvas rounded-none` for `rounded-none bg-canvas`) fails the gate.
+ *     That direction fails CLOSED - it costs a reviewer a minute, it does not
+ *     let a merged slab through - which is why it is acceptable rather than
+ *     worth a parser.
  */
 const STRUCTURAL_CALL_SITES = [
 	{
