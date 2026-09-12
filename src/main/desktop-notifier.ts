@@ -80,6 +80,69 @@ const CONTRACT_PROBE_RETRY_MS = 250;
  */
 const MAX_BODY_CHARS = 240;
 
+/** `rstrip(":")` from the backend's `gate_body`, hoisted per `useTopLevelRegex`. */
+const TRAILING_COLONS = /:+$/;
+
+/**
+ * The house body for a gate with nothing to say, COPIED FROM THE BACKEND.
+ *
+ * These are `local_operator/tui/notify.py`'s `BODY_APPROVAL` and `BODY_ASK`,
+ * reached through `BODIES` in `local_operator/notifications/compose.py`. They
+ * are duplicated here rather than fetched because a gate banner must render
+ * with no extra round trip, and the backend does not put them on the
+ * `pending_gate` payload (unlike a completion, which arrives pre-composed).
+ *
+ * IF THESE DRIFT FROM THE BACKEND CONSTANTS THE TWO SURFACES SAY DIFFERENT
+ * WORDS FOR THE SAME STATE. `gateBody` below mirrors `compose.py::gate_body`
+ * and is pinned against that function's own test vectors in
+ * `scripts/desktop-notifier.test.mjs` (T-U17), which is the only drift check
+ * available across two repositories.
+ */
+const GATE_BODIES: Record<string, string> = {
+	ask: "Waiting for your answer",
+	approval: "Waiting for approval",
+};
+
+/**
+ * The body for a parked `ask`/`approval`: the action, or the sentence.
+ *
+ * A DIRECT MIRROR of `local_operator/notifications/compose.py::gate_body`,
+ * down to the trailing-colon trim, so the desktop banner and the backend's own
+ * OS fallback cannot word the same gate differently.
+ *
+ * NOT `${gateTitle}: ${gateDetail}`. A tool's `describe_approval` already
+ * leads with its own action word (`_describe_path_approval` emits `"write:
+ * /path"`) and the gate's title IS the tool name, so the naive form rendered
+ * every file and shell approval as `"write: write: /path"` — on the banner the
+ * user is actually blocked on (design review round 2, D3-1). The prefix is
+ * applied only when the detail does not already carry it.
+ *
+ * An empty detail falls back to the house vocabulary rather than to the bare
+ * tool name: `write` alone says less than `Waiting for approval`, and it is
+ * reachable without a malformed payload — `_describe_path_approval` returns
+ * `""` for a blank path argument (D3-2).
+ *
+ * `gateTitle` is passed EMPTY when the caller already shows it on the title
+ * line, which is the one input shape the backend never has: there the title
+ * slot is the session name, so the gate title has nowhere else to go.
+ */
+function gateBody(kind: string, gateTitle: string, gateDetail: string): string {
+	let subject = (gateDetail ?? "").trim();
+	if (
+		subject &&
+		gateTitle &&
+		!subject.toLowerCase().startsWith(gateTitle.toLowerCase())
+	) {
+		// `rstrip(":")` in the original: a detail that itself ends in a colon
+		// would otherwise render a dangling separator.
+		subject = `${gateTitle}: ${subject}`
+			.trim()
+			.replace(TRAILING_COLONS, "")
+			.trim();
+	}
+	return subject || GATE_BODIES[kind] || GATE_BODIES.approval;
+}
+
 type WatchState = {
 	visible: boolean;
 	focused: boolean;
@@ -108,6 +171,24 @@ export class DesktopNotifier {
 	 */
 	private contractProbe: Promise<void> | null = null;
 	/**
+	 * Generation of the newest capability read, so the LAST-STARTED one wins.
+	 *
+	 * Probes are not idempotent and they overlap: the backend-ready hook can
+	 * fire twice in a tick (external-backend discovery and `start()` both
+	 * reported ready), a health-check restart can fire it while an earlier probe
+	 * is still retrying, and `awaitContract` starts one of its own. Without this
+	 * the shared fields are written by whichever probe SETTLES last, which on a
+	 * transient blip is the older read — a successful answer clobbered by a
+	 * stale failure, decided by timing rather than by recency (review round 2,
+	 * R2-2).
+	 *
+	 * A superseded probe therefore writes nothing at all and returns. It is not
+	 * cancelled — its in-flight `fetch` is left to settle on its own, because
+	 * the only cost is one wasted response and the alternative is threading an
+	 * `AbortSignal` through the desktop transport for no user-visible gain.
+	 */
+	private contractGeneration = 0;
+	/**
 	 * Whether a capability read has ever come back with a real HTTP answer.
 	 *
 	 * This is the distinction that closes the double-banner window BY
@@ -123,6 +204,12 @@ export class DesktopNotifier {
 	 * reading an unanswered 0 as "no contract". Failing toward the legacy path
 	 * rather than toward silence (design 4.3) is preserved: once a bounded probe
 	 * really has failed at the moment the toast is due, the toast is raised.
+	 *
+	 * ONCE TRUE THIS AND `notificationContract` MOVE ONLY TOGETHER. A failed
+	 * probe that reset the value while leaving this true produced a pair meaning
+	 * "we were told there is no contract" when in fact we were told nothing, and
+	 * `awaitContract` then declined to re-ask — the double banner returned and
+	 * STAYED, every turn, until the next backend bounce (review round 2, R2-1).
 	 */
 	private contractAnswered = false;
 
@@ -154,45 +241,66 @@ export class DesktopNotifier {
 	 * is the legacy path rather than silence: see `notificationContract`.
 	 */
 	refreshNotificationContract(): Promise<void> {
-		const probe = this.probeNotificationContract();
+		const generation = ++this.contractGeneration;
+		const probe = this.probeNotificationContract(generation);
 		this.contractProbe = probe;
 		return probe;
 	}
 
-	private async probeNotificationContract(): Promise<void> {
+	private async probeNotificationContract(generation: number): Promise<void> {
 		for (let attempt = 0; attempt < CONTRACT_PROBE_ATTEMPTS; attempt++) {
+			let response: DesktopResponse | null = null;
 			try {
-				const response = await this.request({ op: "capabilities" });
-				if (response.status === 200) {
-					const body = response.body as {
-						result?: { features?: Record<string, unknown> };
-					} | null;
-					// A 200 is an ANSWER even when the key is absent: that is an old
-					// backend, and retrying would only delay the legacy path it wants.
-					this.applyNotificationContract(
-						body?.result?.features?.notification_contract,
-					);
-					this.contractAnswered = true;
-					return;
-				}
+				response = await this.request({ op: "capabilities" });
 			} catch {
-				// Unfetchable is retried, then treated as absent. A missing capability
-				// response is a transient HTTP failure far more often than it is an
-				// old backend, and going silent on a transient failure loses
+				// Unfetchable is retried, then treated as nothing learned. A missing
+				// capability response is a transient HTTP failure far more often than
+				// it is an old backend, and going silent on a transient failure loses
 				// completions.
+			}
+			// Checked AFTER the await and before any write: a newer read has been
+			// started against a backend this one may no longer describe, and the
+			// newest read is the only one entitled to decide.
+			if (generation !== this.contractGeneration) return;
+			if (response?.status === 200) {
+				const body = response.body as {
+					result?: { features?: Record<string, unknown> };
+				} | null;
+				// A 200 is an ANSWER even when the key is absent: that is an old
+				// backend, and retrying would only delay the legacy path it wants.
+				this.applyNotificationContract(
+					body?.result?.features?.notification_contract,
+				);
+				this.contractAnswered = true;
+				return;
 			}
 			if (attempt + 1 < CONTRACT_PROBE_ATTEMPTS) {
 				await new Promise((resolve) =>
 					setTimeout(resolve, CONTRACT_PROBE_RETRY_MS),
 				);
+				if (generation !== this.contractGeneration) return;
 			}
 		}
-		// Every attempt failed, so nothing was learned. Reset rather than keep a
-		// stale claim (holding `1` against a backend that emits no frames is the
-		// one way this gate goes silent on completions altogether) and leave
-		// `contractAnswered` alone, so the legacy path re-asks rather than reading
-		// this 0 as an old backend's answer.
-		this.applyNotificationContract(undefined);
+		// EVERY ATTEMPT FAILED, SO NOTHING IS WRITTEN. A failure teaches nothing
+		// about the backend, and the two fields this could touch mean different
+		// things together than apart:
+		//
+		// - Never answered: `notificationContract` is already 0 (the only writers
+		//   are the 200 path and `setNotificationContract`, both of which set
+		//   `contractAnswered`), so a reset here was always a no-op. The legacy
+		//   path re-asks on the next `awaitContract`, which is the cold-start fix.
+		// - Already answered: resetting the value while leaving `contractAnswered`
+		//   true asserted "the backend told us it has no contract" on the strength
+		//   of a read that reached no backend at all. A health-check restart whose
+		//   `/health` recovers before `/v1/capabilities` finishes warming hit this
+		//   on an ordinary run, and the legacy toast then fired against a still
+		//   composing backend on EVERY subsequent turn (R2-1).
+		//
+		// Holding a stale `1` cannot go silent on completions in exchange: the
+		// legacy toast is raised by `agent_end`, which arrives on the same backend
+		// stream, so a backend too unreachable to answer this read emits no turn
+		// to announce either. The downgrade direction (design 4.3) is carried by a
+		// SUCCESSFUL re-read returning no key, which is unaffected here.
 	}
 
 	/**
@@ -224,15 +332,24 @@ export class DesktopNotifier {
 	 * Record the contract version a backend reported.
 	 *
 	 * Being told the value directly IS an answer, so this also stops the legacy
-	 * path issuing a probe of its own and overwriting it. The probe's own
-	 * failure path uses `applyNotificationContract` instead, which resets the
-	 * value WITHOUT claiming anything was learned.
+	 * path issuing a probe of its own and overwriting it.
+	 *
+	 * Bumps the generation for the same reason a probe does: this is the newest
+	 * reading of the backend, so an older probe still in flight must not settle
+	 * on top of it.
 	 */
 	setNotificationContract(version: unknown): void {
+		this.contractGeneration++;
 		this.applyNotificationContract(version);
 		this.contractAnswered = true;
 	}
 
+	/**
+	 * Normalise a reported contract value. Both callers are ANSWERS and both
+	 * set `contractAnswered` themselves; nothing else may write this field.
+	 * That invariant is the fix for R2-1, so a third caller that resets the
+	 * value without answering re-opens it.
+	 */
 	private applyNotificationContract(version: unknown): void {
 		this.notificationContract =
 			typeof version === "number" && Number.isFinite(version) && version > 0
@@ -444,29 +561,41 @@ export class DesktopNotifier {
 		const fallback = kind === "ask" ? "Question" : "Approval needed";
 		const sessionName = gate.session_name?.trim() || "";
 		if (!sessionName) {
-			// No name to lead with, so the shape is unchanged from today: category
-			// or gate title up top, detail below. An empty detail would otherwise
-			// render a bodiless banner — `PendingGateState.detail` defaults to ""
-			// and is untrimmed on the wire — so the title falls back into the body
-			// and the category takes the title, which is the only pair of strings
-			// available here that says anything.
-			if (!detail.trim()) {
-				this.show(sessionId, fallback, "", title.trim() || fallback);
-				return;
-			}
-			this.show(sessionId, title || fallback, "", detail);
+			// No name to lead with, so the shape is unchanged: the gate's own title
+			// up top, the detail below. `title.trim()` because a whitespace-only
+			// title is truthy and would render a banner with no title at all, which
+			// macOS fills with the posting app's name (D3-3).
+			//
+			// The gate title is passed to `gateBody` as EMPTY: it is already on the
+			// title line here, so prefixing the body with it would say the same word
+			// twice. What `gateBody` still supplies is the empty-detail case —
+			// `PendingGateState.detail` defaults to "" and is untrimmed on the wire,
+			// and it is reachable from a real tool (`_describe_path_approval`
+			// returns "" for a blank path) — where the house vocabulary says what the
+			// banner wants, rather than a bare verb or no body at all (D3-2).
+			this.show(
+				sessionId,
+				title.trim() || fallback,
+				"",
+				gateBody(kind, "", detail),
+			);
 			return;
 		}
-		// Named: the gate's own title leads the detail, so the banner says which
-		// session AND what it is asking. `fallback` stands in when the gate is
-		// untitled, keeping "Question" for an ask that has none.
-		const gateTitle = title.trim() || fallback;
-		const gateDetail = detail.trim();
+		// Named: the session takes the title line, so the gate's own title has to
+		// lead the body or the banner never says what is being asked. `fallback`
+		// stands in when the gate is untitled, keeping "Question" for an ask that
+		// has none.
+		//
+		// Through `gateBody` rather than a join of its own: for a tool approval the
+		// title IS the tool name and the detail already leads with it, so the naive
+		// form rendered "write: write: /Users/damian/notes.md" — a worse banner with
+		// the privacy flag ON than off, the inverse of what this change is for
+		// (D3-1).
 		this.show(
 			sessionId,
 			sessionName,
 			"",
-			gateDetail ? `${gateTitle}: ${gateDetail}` : gateTitle,
+			gateBody(kind, title.trim() || fallback, detail),
 		);
 	}
 

@@ -616,7 +616,16 @@ export class BackendServiceManager {
 			this.isRunning = true;
 			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
 			this.startHealthCheck();
-			this.notifyBackendReady();
+			// NO `notifyBackendReady()` here. `checkExistingBackend()` already
+			// fired it on both paths that can return true from HERE — its
+			// `isDisabled` early return is unreachable at this point, because the
+			// disabled branch above returns first — and it fires it AFTER the
+			// alternative-URL rotation, which is the ordering a consumer re-reading
+			// capabilities needs. Firing again raised two concurrent capability
+			// probes on the ordinary external-backend start, doubling that traffic
+			// and letting the OLDER read decide the result by settling last
+			// (review round 2, R2-2). The notifier is also generation-guarded now,
+			// so a duplicate is no longer incorrect — it is merely wasted.
 			return true;
 		}
 

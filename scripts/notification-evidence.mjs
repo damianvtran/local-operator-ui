@@ -242,6 +242,61 @@ const GATES = [
 		},
 	},
 	{
+		label: "gate-approval-tool-named",
+		// THE SHAPE THE TOOLS ACTUALLY EMIT, which the hand-written fixtures above
+		// do not: `build_write_tool` has `name="write"` and
+		// `_approval_description` returns `f"{action}: {target}"`, so the title IS
+		// the tool name and the detail already leads with it. The naive
+		// `${title}: ${detail}` join rendered this as
+		// "write: write: /Users/damian/notes.md" and every hand-written fixture
+		// here chose a non-overlapping pair that hid it (design round 2, D3-1).
+		// A fixture that mirrors the real emitter is what stops the next one.
+		gate: {
+			request_id: "gate-approval-3",
+			kind: "approval",
+			title: "write",
+			detail: "write: /Users/damian/notes.md",
+			options: [],
+			secret: false,
+			question_index: 0,
+			question_total: 1,
+			session_name: "Nightly ETL backfill",
+		},
+	},
+	{
+		label: "gate-approval-tool-nameless",
+		// The same approval with the privacy flag off. The named banner above must
+		// not be WORSE than this one, which was the finding's whole point.
+		gate: {
+			request_id: "gate-approval-4",
+			kind: "approval",
+			title: "write",
+			detail: "write: /Users/damian/notes.md",
+			options: [],
+			secret: false,
+			question_index: 0,
+			question_total: 1,
+		},
+	},
+	{
+		label: "gate-approval-empty-detail",
+		// Reachable without a malformed payload: `_describe_path_approval` returns
+		// "" for a blank path argument. Used to render the bare verb `write` as
+		// the entire body; the backend refuses that in favour of the house
+		// vocabulary (D3-2).
+		gate: {
+			request_id: "gate-approval-5",
+			kind: "approval",
+			title: "write",
+			detail: "",
+			options: [],
+			secret: false,
+			question_index: 0,
+			question_total: 1,
+			session_name: "Nightly ETL backfill",
+		},
+	},
+	{
 		label: "gate-ask-empty-detail",
 		// `PendingGateState.detail` defaults to "" and is untrimmed on the wire,
 		// which used to render a banner with a title and no body at all.

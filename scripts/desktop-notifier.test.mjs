@@ -146,19 +146,77 @@ function coldBackend({ contract = 1 } = {}) {
 	const requests = [];
 	const attempts = [];
 	let live = false;
-	const notifier = new DesktopNotifier(() => null, async (input) => {
-		attempts.push(input);
-		if (!live) throw new Error("connect ECONNREFUSED 127.0.0.1:1111");
-		requests.push(input);
-		if (input?.op === "capabilities") {
-			return {
-				status: 200,
-				body: { result: { features: { notification_contract: contract } } },
-			};
-		}
-		return { status: 200, body: { result: { claimed: true } } };
-	});
-	return { notifier, requests, attempts, up: () => { live = true; } };
+	const notifier = new DesktopNotifier(
+		() => null,
+		async (input) => {
+			attempts.push(input);
+			if (!live) throw new Error("connect ECONNREFUSED 127.0.0.1:1111");
+			requests.push(input);
+			if (input?.op === "capabilities") {
+				return {
+					status: 200,
+					body: { result: { features: { notification_contract: contract } } },
+				};
+			}
+			return { status: 200, body: { result: { claimed: true } } };
+		},
+	);
+	return {
+		notifier,
+		requests,
+		attempts,
+		up: () => {
+			live = true;
+		},
+	};
+}
+
+/**
+ * A backend whose capability endpoint can be taken DOWN AFTER it has answered.
+ *
+ * `coldBackend` only goes dead -> live, which is the cold start. R2-1 is the
+ * other direction and it is the one that reaches an ordinary run: a
+ * health-check restart brings `/health` back (which is what gates the ready
+ * hook) while `/v1/capabilities` is still warming, so the re-probe issued by
+ * that hook fails on a backend that never stopped composing.
+ *
+ * The failure is returned as a 503 rather than thrown because that is what the
+ * real transport does with it: `requestDesktop` catches the fetch error and
+ * answers `{status: 503}` (`src/main/desktop-transport.ts`). A test that threw
+ * here would exercise a path production cannot take.
+ */
+function restartableBackend({ contract = 1 } = {}) {
+	const attempts = [];
+	let capabilitiesUp = true;
+	const notifier = new DesktopNotifier(
+		() => null,
+		async (input) => {
+			attempts.push(input);
+			if (input?.op === "capabilities") {
+				if (!capabilitiesUp) {
+					return {
+						status: 503,
+						body: { detail: "The backend could not complete this request." },
+					};
+				}
+				return {
+					status: 200,
+					body: { result: { features: { notification_contract: contract } } },
+				};
+			}
+			return { status: 200, body: { result: { claimed: true } } };
+		},
+	);
+	return {
+		notifier,
+		attempts,
+		capabilitiesDown: () => {
+			capabilitiesUp = false;
+		},
+		capabilitiesUpAgain: () => {
+			capabilitiesUp = true;
+		},
+	};
 }
 
 /** Let every queued microtask and the probe's retry timers drain. */
@@ -307,18 +365,25 @@ test("a transport-failed claim leaves the completion retryable", async () => {
 		// the SAME `dedupe_key`, which is the natural retry.
 		let broken = true;
 		const requests = [];
-		const notifier = new DesktopNotifier(() => null, async (input) => {
-			requests.push(input);
-			if (broken) {
-				if (failure.reject) throw new Error("backend unreachable");
-				return { status: failure.status, body: null };
-			}
-			return { status: 200, body: { result: { claimed: true } } };
-		});
+		const notifier = new DesktopNotifier(
+			() => null,
+			async (input) => {
+				requests.push(input);
+				if (broken) {
+					if (failure.reject) throw new Error("backend unreachable");
+					return { status: failure.status, body: null };
+				}
+				return { status: 200, body: { result: { claimed: true } } };
+			},
+		);
 
 		notifier.observe(SESSION, completionFrame());
 		await new Promise((resolve) => setImmediate(resolve));
-		assert.equal(globalThis.__toasts.length, 0, "still fails closed on the toast");
+		assert.equal(
+			globalThis.__toasts.length,
+			0,
+			"still fails closed on the toast",
+		);
 
 		broken = false;
 		notifier.observe(SESSION, completionFrame());
@@ -504,10 +569,12 @@ test("a downgrade to an older backend restores the legacy completion signal", as
 	// shape of the case: a health-check restart or external-backend discovery
 	// replaces the process, the app does not.
 	let features = { notification_contract: 1 };
-	const notifier = new DesktopNotifier(() => null, async (input) =>
-		input?.op === "capabilities"
-			? { status: 200, body: { result: { features } } }
-			: { status: 200, body: { result: { claimed: true } } },
+	const notifier = new DesktopNotifier(
+		() => null,
+		async (input) =>
+			input?.op === "capabilities"
+				? { status: 200, body: { result: { features } } }
+				: { status: 200, body: { result: { claimed: true } } },
 	);
 
 	await notifier.refreshNotificationContract();
@@ -534,6 +601,183 @@ test("a downgrade to an older backend restores the legacy completion signal", as
 		"an old backend emits no composed frames, so its legacy signal must return",
 	);
 	assert.equal(globalThis.__toasts.at(-1).title, "Turn complete");
+});
+
+// T-U18 — R2-1. The restart that put the double banner back, and kept it back.
+test("a failed re-probe never invalidates a contract the backend already answered", async () => {
+	const { notifier, attempts, capabilitiesDown, capabilitiesUpAgain } =
+		restartableBackend();
+
+	// t0 — the ready hook fires on a healthy backend and the read answers.
+	await notifier.refreshNotificationContract();
+	notifier.observe(SESSION, completionFrame());
+	await settle(50);
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"the composed frame is delivered",
+	);
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(50);
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"the composed backend owns the toast",
+	);
+
+	// t1 — a health-check restart. `/health` is what gates the ready hook, and
+	// it recovers first; `/v1/capabilities` is still warming, so all three probe
+	// attempts take the failure tail. The backend never stopped composing.
+	capabilitiesDown();
+	await notifier.refreshNotificationContract();
+	const afterProbe = attempts.length;
+
+	// t2 — the next turn on that same still-composing backend. Under the old
+	// state machine the failed probe had reset the contract to 0 while leaving
+	// `contractAnswered` true, so `awaitContract` declined to re-ask and the
+	// legacy toast fired beside the composed frame — two banners for one turn,
+	// and STICKY, because nothing cleared that pair until the next bounce.
+	capabilitiesUpAgain();
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(1200);
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"a failed probe taught nothing, so the answered contract still holds",
+	);
+	assert.equal(
+		attempts.length,
+		afterProbe,
+		"and no re-ask was needed: the contract was never invalidated",
+	);
+
+	// The stickiness is the reason this is a blocker rather than a major, so it
+	// is asserted rather than assumed: a second turn must not double either.
+	notifier.observe(SESSION, completionFrame({ dedupe_key: "c2" }));
+	await settle(50);
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(1200);
+	assert.deepEqual(
+		globalThis.__toasts.map((t) => t.title),
+		["Quarterly revenue model", "Quarterly revenue model"],
+		"one banner per turn, on every subsequent turn",
+	);
+});
+
+// T-U18b — R2-1's converse. Not writing on failure must not cost the downgrade
+// path, which is the reason the reset existed at all (design 4.3).
+test("a successful re-read still restores the legacy path on a downgrade", async () => {
+	// A SUCCESSFUL read returning no key is what an old backend looks like, and
+	// it is the only thing entitled to move the contract back to 0. T-U12 covers
+	// the delivery side; this pins that the R2-1 fix did not break the mechanism
+	// by making the failure tail inert.
+	let features = { notification_contract: 1 };
+	let fail = false;
+	const notifier = new DesktopNotifier(
+		() => null,
+		async (input) =>
+			input?.op === "capabilities"
+				? fail
+					? { status: 503, body: null }
+					: { status: 200, body: { result: { features } } }
+				: { status: 200, body: { result: { claimed: true } } },
+	);
+
+	await notifier.refreshNotificationContract();
+	// A failing probe in between changes nothing, in either direction.
+	fail = true;
+	await notifier.refreshNotificationContract();
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(1200);
+	assert.equal(globalThis.__toasts.length, 0, "still on the composed backend");
+
+	fail = false;
+	features = {};
+	await notifier.refreshNotificationContract();
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(50);
+	assert.equal(globalThis.__toasts.at(-1)?.title, "Turn complete");
+});
+
+// T-U19 — R2-2. Two ready hooks in one tick raced, and the loser won.
+test("the newest capability read wins even when an older one settles last", async () => {
+	// Probe #1 answers `contract = 1` but is SLOW; probe #2 is started after it
+	// and fails fast against a blip. Ordering by settlement puts the failure
+	// last; ordering by recency — which is what a generation guard buys — puts
+	// probe #2 last and keeps it from being overruled by a read taken earlier.
+	const order = [];
+	let call = 0;
+	const notifier = new DesktopNotifier(
+		() => null,
+		async (input) => {
+			if (input?.op !== "capabilities")
+				return { status: 200, body: { result: { claimed: true } } };
+			call++;
+			if (call === 1) {
+				// Settles AFTER probe #2 has already finished all three attempts.
+				await new Promise((resolve) => setTimeout(resolve, 900));
+				order.push("slow-200");
+				return {
+					status: 200,
+					body: { result: { features: { notification_contract: 1 } } },
+				};
+			}
+			order.push(`fast-503-${call}`);
+			return { status: 503, body: null };
+		},
+	);
+
+	const first = notifier.refreshNotificationContract();
+	const second = notifier.refreshNotificationContract();
+	await Promise.all([first, second]);
+	await settle(1200);
+
+	assert.equal(
+		order.at(-1),
+		"slow-200",
+		"the stale probe really did settle last, which is the race being pinned",
+	);
+	// Probe #2 is the newest read and it learned nothing, so the contract is
+	// whatever it was before — 0, never answered — and the legacy path re-asks
+	// rather than being handed a stale probe's answer.
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(1200);
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"a never-answered contract falls back to the legacy toast, not to a stale 1",
+	);
+});
+
+// T-U19b — the same guard from the other side: a directly SET contract is the
+// newest reading, so an older in-flight probe must not settle on top of it.
+test("a directly set contract is not overwritten by an older in-flight probe", async () => {
+	const notifier = new DesktopNotifier(
+		() => null,
+		async (input) =>
+			input?.op === "capabilities"
+				? await new Promise((resolve) =>
+						setTimeout(
+							() =>
+								resolve({ status: 200, body: { result: { features: {} } } }),
+							300,
+						),
+					)
+				: { status: 200, body: { result: { claimed: true } } },
+	);
+
+	const stale = notifier.refreshNotificationContract();
+	notifier.setNotificationContract(1);
+	await stale;
+	await settle(50);
+
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(1200);
+	assert.equal(
+		globalThis.__toasts.length,
+		0,
+		"the newer direct answer stands; the older probe's 200 does not overrule it",
+	);
 });
 
 // T-U8
@@ -649,7 +893,11 @@ test("a gate with no session_name renders unchanged", () => {
 		const { notifier } = harness();
 		notifier.observe(
 			SESSION,
-			gateFrame({ kind: "approval", title: "Run database migration", ...nameless }),
+			gateFrame({
+				kind: "approval",
+				title: "Run database migration",
+				...nameless,
+			}),
 		);
 		assert.equal(
 			globalThis.__toasts.at(-1).title,
@@ -663,30 +911,155 @@ test("a gate with no session_name renders unchanged", () => {
 	}
 });
 
-// T-U16 — D6. An empty detail used to render a banner with a title and no body.
+// T-U16 — D6/D3-2. An empty detail used to render a banner with a title and no
+// body, and then a bare tool name. Both fall back to the house vocabulary now,
+// which is what `compose.py::gate_body` does with the same input.
 test("a gate with an empty detail still renders a body", () => {
 	const { notifier } = harness();
 
 	notifier.observe(SESSION, gateFrame({ detail: "" }));
 	assert.equal(globalThis.__toasts.at(-1).title, "Question");
-	assert.equal(globalThis.__toasts.at(-1).body, "Question");
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"Waiting for your answer",
+		"not 'Question' twice: the body says what is being waited on",
+	);
 
-	// A titled gate with no detail puts the title where the body is, so the
-	// banner says what it is asking about rather than only its category.
+	// D3-2, the case that reaches a real tool: `_describe_path_approval` returns
+	// "" for a blank path argument, so a detail-less `write` approval is not a
+	// malformed payload. It used to render the bare verb `write` as the entire
+	// body — a word, where the backend deliberately shows a sentence.
 	notifier.observe(
 		SESSION,
-		gateFrame({ kind: "approval", title: "Run database migration", detail: "  " }),
+		gateFrame({ kind: "approval", title: "write", detail: "" }),
 	);
-	assert.equal(globalThis.__toasts.at(-1).title, "Approval needed");
-	assert.equal(globalThis.__toasts.at(-1).body, "Run database migration");
+	assert.equal(globalThis.__toasts.at(-1).title, "write");
+	assert.equal(globalThis.__toasts.at(-1).body, "Waiting for approval");
 
-	// Named, with nothing else: the session leads and the category is the body.
+	notifier.observe(
+		SESSION,
+		gateFrame({
+			kind: "approval",
+			title: "Run database migration",
+			detail: "  ",
+		}),
+	);
+	assert.equal(globalThis.__toasts.at(-1).title, "Run database migration");
+	assert.equal(globalThis.__toasts.at(-1).body, "Waiting for approval");
+
+	// Named, with nothing else: the session leads and the house body follows.
 	notifier.observe(
 		SESSION,
 		gateFrame({ detail: "", session_name: "Nightly ETL backfill" }),
 	);
 	assert.equal(globalThis.__toasts.at(-1).title, "Nightly ETL backfill");
-	assert.equal(globalThis.__toasts.at(-1).body, "Question");
+	assert.equal(globalThis.__toasts.at(-1).body, "Waiting for your answer");
+});
+
+// T-U16b — D3-3. A whitespace-only title is truthy, so the fallback never fired
+// and macOS filled the empty title line with the posting app's name.
+test("a whitespace-only gate title falls back to the category", () => {
+	const { notifier } = harness();
+
+	notifier.observe(SESSION, gateFrame({ title: "   " }));
+	assert.equal(globalThis.__toasts.at(-1).title, "Question");
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"Which environment should this deploy to?",
+	);
+
+	notifier.observe(
+		SESSION,
+		gateFrame({
+			kind: "approval",
+			title: "\t\n",
+			detail: "Delete the staging bucket.",
+		}),
+	);
+	assert.equal(globalThis.__toasts.at(-1).title, "Approval needed");
+	assert.equal(globalThis.__toasts.at(-1).body, "Delete the staging bucket.");
+});
+
+// T-U17 — D3-1. THE input the tools actually emit, which the round-2 fixture
+// did not: for a tool approval the title IS the tool name and the detail
+// already leads with it, so the naive join said the word twice.
+//
+// These vectors are `compose.py::gate_body`'s own, from
+// `tests/unit/notifications/test_compose.py::test_a_gate_body_does_not_repeat_the_tool_name`.
+// Duplicating them here is the only drift check available across the two
+// repositories: if the backend's rule changes, this file is where the UI's copy
+// of it is pinned.
+test("a named tool approval does not repeat the tool name", () => {
+	const { notifier } = harness();
+
+	// `build_write_tool` has name="write" and `_approval_description` returns
+	// `f"{action}: {target}"`, so this exact pair is what arrives.
+	notifier.observe(
+		SESSION,
+		gateFrame({
+			kind: "approval",
+			title: "write",
+			detail: "write: /Users/damian/notes.md",
+			session_name: "Nightly ETL backfill",
+		}),
+	);
+	assert.equal(globalThis.__toasts.at(-1).title, "Nightly ETL backfill");
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"write: /Users/damian/notes.md",
+		"not 'write: write: /Users/damian/notes.md'",
+	);
+	assert.equal(
+		globalThis.__toasts.at(-1).body.match(/write:/g).length,
+		1,
+		"the action word appears once",
+	);
+
+	// `_describe_shell_approval` emits "run: <command>" under the title `bash`,
+	// which does NOT overlap — so the prefix must still be applied. This is the
+	// case the rule must not over-correct into dropping the tool name.
+	notifier.observe(
+		SESSION,
+		gateFrame({
+			kind: "approval",
+			title: "bash",
+			detail: "run: rm -rf build/",
+			session_name: "Nightly ETL backfill",
+		}),
+	);
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"bash: run: rm -rf build/",
+		"a non-overlapping detail still gets the tool name",
+	);
+
+	// Case-insensitive, as the backend's `.lower()` comparison is.
+	notifier.observe(
+		SESSION,
+		gateFrame({
+			kind: "approval",
+			title: "Edit",
+			detail: "edit: /Users/d/src/app.ts",
+			session_name: "Quarterly revenue model",
+		}),
+	);
+	assert.equal(globalThis.__toasts.at(-1).body, "edit: /Users/d/src/app.ts");
+
+	// The NAMELESS branch renders the same approval with the tool name on the
+	// title line, so the body must not carry it a second time either.
+	notifier.observe(
+		SESSION,
+		gateFrame({
+			kind: "approval",
+			title: "write",
+			detail: "write: /Users/damian/notes.md",
+		}),
+	);
+	assert.equal(globalThis.__toasts.at(-1).title, "write");
+	assert.equal(
+		globalThis.__toasts.at(-1).body,
+		"write: /Users/damian/notes.md",
+	);
 });
 
 // T-U9
