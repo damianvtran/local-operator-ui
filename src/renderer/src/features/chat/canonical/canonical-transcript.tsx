@@ -25,13 +25,22 @@
  * - `performance.mark("lop:transcript:render")` per commit lets the numbers
  *   be read from the browser rather than asserted.
  *
+ * Both kinds of growth — widening the local window and fetching the next
+ * durable page — are driven by `use-scroll-paging`, which owns the one rule
+ * this file previously got wrong in two different ways. The window widened
+ * from a raw `scroll` listener, once per EVENT, so a fling widened it dozens
+ * of times; the durable page did not happen at all without a click. Both are
+ * now one coalesced demand with a settle debounce, a latch, and a held anchor.
+ * The policy is pure and tested in `scripts/transcript-paging.test.mjs`; the
+ * reasoning lives in `scroll-paging.ts`.
+ *
  * Autoscroll is never taken from the reader: `column-reverse` plus the
  * overflow anchor keeps the newest content pinned only when they are already
  * at the bottom; the composer's "New activity" affordance covers the rest.
+ * Scroll paging inherits that rule rather than restating it — a reader
+ * following the tail neither loads a page nor has their offset corrected.
  */
 
-import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui/button";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import {
@@ -44,6 +53,7 @@ import {
 	type FC,
 	type RefObject,
 	memo,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -76,12 +86,14 @@ import {
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
+import { OlderHistorySlot } from "./older-history-slot";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import { useScrollPaging } from "./use-scroll-paging";
 
 /**
  * Opts the USER bubble into the reading measure defined in `markdown.css`.
@@ -103,7 +115,13 @@ export type CanonicalTranscriptProps = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
 	loadingOlder: boolean;
-	onLoadOlder: () => void;
+	/**
+	 * Fetch the next durable page. Resolving `false` rather than rejecting is
+	 * what lets the paging policy count failures and stop retrying on its own
+	 * (clause G); a caller that cannot report failure gets an unbounded retry
+	 * loop or no retry at all, and neither is the contract.
+	 */
+	onLoadOlder: () => Promise<boolean>;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -525,11 +543,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);
-	useCompletionView(
-		frontend,
-		status === "live" && !waiting && !loadingOlder,
-		containerRef,
-	);
+	// `loadingOlder` is deliberately NOT part of this gate any more.
+	//
+	// The acknowledgement asks one question: can the reader actually see the
+	// completed anchor row? `useCompletionView` answers it by hit-testing that
+	// row, which is a direct measurement and is honest on any frame, including
+	// one where history is mounting above. Loading older rows is at the far end
+	// of the transcript from the anchor and was only ever a proxy for "layout is
+	// in flux".
+	//
+	// Under click-driven paging that proxy was harmless because it flipped twice
+	// per reader decision. Under scroll-driven paging it flips per revealed page,
+	// and every flip re-runs this effect: the poll interval is torn down and
+	// rebuilt and the `acknowledged` latch inside it is lost, so a reader
+	// scrolling back through history would leave a completion unacknowledged that
+	// they had been looking at the whole time.
+	useCompletionView(frontend, status === "live" && !waiting, containerRef);
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
 		const next = buildRows(painted.records, previousRows.current);
@@ -539,6 +568,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	const [windowSize, setWindowSize] = useState(WINDOW);
+	// Clause H: a different conversation starts at the default window. Without
+	// this, opening a long conversation and then a short one leaves the short
+	// one mounting every row it has, and the paging state reset below would be
+	// reasoning about a window that belongs to the previous transcript.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
+	useEffect(() => {
+		setWindowSize(WINDOW);
+	}, [sessionId]);
 	const total = rows.length;
 	const visible = useMemo(
 		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
@@ -566,21 +603,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const collapsed = transcript.records.length === 0;
 
-	useEffect(() => {
-		const container = containerRef.current;
-		if (!container || hidden <= 0) return;
-		const onScroll = () => {
-			const { scrollTop, scrollHeight, clientHeight } = container;
-			// column-reverse: scrollTop is negative going up; distance to the top
-			// edge of the content is what remains.
-			const distanceFromTop = scrollHeight - clientHeight - Math.abs(scrollTop);
-			if (distanceFromTop < 320) {
-				setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
-			}
-		};
-		container.addEventListener("scroll", onScroll, { passive: true });
-		return () => container.removeEventListener("scroll", onScroll);
-	}, [containerRef, hidden, total]);
+	// Both growth paths now go through one policy. The local window used to
+	// widen from its own raw `scroll` listener, once per EVENT below 320px from
+	// the top, which meant a single fling widened it by dozens of steps and
+	// mounted hundreds of rows for one gesture. It is the same jitter family as
+	// the missing durable paging and it gets the same discipline.
+	const widen = useCallback(() => {
+		setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
+	}, [total]);
+
+	// The session identity the paging state belongs to. `hasMore` is folded in
+	// because `/clear` replaces the transcript without changing the session, and
+	// a latch held against rows that are gone would refuse the first gesture in
+	// the transcript that replaced them.
+	const { slotState, requestOlder } = useScrollPaging({
+		containerRef,
+		sessionKey: sessionId,
+		hiddenRows: hidden,
+		hasMore: Boolean(transcript.hasMore),
+		onWiden: widen,
+		onLoadOlder,
+		loadingOlder,
+	});
 
 	// Measurement hook: one mark per commit of this list. Read with
 	// performance.getEntriesByName("lop:transcript:render").
@@ -715,31 +759,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				</span>
 			)}
 			<div className={cn("flex flex-col", CHAT_MEASURE)}>
-				{/* Older rows: durable pages, then the local window. */}
-				{(transcript.hasMore || hidden > 0) && (
-					<div className="mb-4 flex justify-center">
-						{hidden > 0 ? (
-							<span className="text-ink-dim text-meta">
-								{hidden} earlier {hidden === 1 ? "row" : "rows"} above
-							</span>
-						) : (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={onLoadOlder}
-								disabled={loadingOlder}
-							>
-								{loadingOlder ? (
-									<>
-										<Spinner size="sm" />
-										Loading earlier messages
-									</>
-								) : (
-									"Load earlier messages"
-								)}
-							</Button>
-						)}
-					</div>
+				{/* Older rows: durable pages, then the local window. One fixed-height
+				    slot for every state of both, so a state change above the oldest
+				    row can never shift the conversation under the reader. */}
+				{(transcript.hasMore || hidden > 0 || slotState === "loading") && (
+					<OlderHistorySlot
+						state={slotState}
+						hiddenRows={hidden}
+						onLoadOlder={requestOlder}
+					/>
 				)}
 
 				{status === "unavailable" && error && (
