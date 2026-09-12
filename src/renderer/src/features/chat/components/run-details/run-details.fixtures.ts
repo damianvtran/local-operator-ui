@@ -10,8 +10,9 @@
  * The whole set is covered by one test in `scripts/run-detail-model.test.mjs`
  * that derives all of it and asserts the coverage this file claims: every state
  * present, an unknown cost and context reported as absent, a default-role child
- * suppressed, a label long enough to truncate, both plans (flat and phased), and
- * enough rows to trigger both overflow disclosures.
+ * suppressed, a label long enough to truncate, both plans (flat and phased),
+ * enough rows to trigger both overflow disclosures, and a phase all of whose rows
+ * the cap sheds.
  */
 
 import type { RunDetailsInput } from "./run-detail-model";
@@ -125,14 +126,22 @@ const flat = (): Array<Record<string, unknown>> => [
 ];
 
 /**
- * A long plan: 14 items over three phases, 10 of them closed.
+ * A long plan: fifteen items over three phases, eleven of them closed.
  *
- * Fourteen against a cap of ten, with four open items, leaves exactly four rows
- * to disclose — the `+4 more` the design's own example names. Ten closed against
- * a budget of six means the four disclosed rows are the OLDEST ones (`§6.3`),
- * which is what makes this fixture the one that pins the shed direction: the
- * `Reconcile` phase loses all four of its closed rows and keeps only its open
- * item, while `Verify` and `Publish` keep theirs.
+ * Fifteen against a cap of ten, with four open items, leaves exactly five rows
+ * to disclose — and those five are the OLDEST closed rows (`§6.3`), which is what
+ * makes this fixture the one that pins the shed direction. That direction is only
+ * legible if a phase can lose everything: `Reconcile` is the earliest phase and
+ * is now ENTIRELY closed, so all five of its rows fall off the front and it is
+ * photographed as the state `§6.3` names but no earlier fixture reached — a phase
+ * header with its own `+5 more` and no rows under it. While any of its rows was
+ * open, the cap kept one of them (`open rows are never shed`) and every
+ * photographed phase still had a row.
+ *
+ * The extra pending row in `Publish` is what keeps the count honest: the plan is
+ * one row longer than the fourteen-item one it replaced so the shed budget
+ * reaches all five of `Reconcile`'s rows rather than four of them, and it keeps
+ * the four open items the other states are measured against.
  */
 const longPlan = (): Array<Record<string, unknown>> => [
 	phase("Reconcile", [
@@ -140,7 +149,7 @@ const longPlan = (): Array<Record<string, unknown>> => [
 		item("Read invoices/april.csv", "done"),
 		item("Normalise the customer names", "done"),
 		item("Group the unpaid rows by customer", "done"),
-		item("Compare against ledger/q1.csv", "pending"),
+		item("Compare against ledger/q1.csv", "done"),
 	]),
 	phase("Verify", [
 		item("Spot-check ten rows by hand", "done"),
@@ -158,6 +167,7 @@ const longPlan = (): Array<Record<string, unknown>> => [
 		item("Write the covering note", "done"),
 		item("Attach the report to the reply", "pending"),
 		item("Send the summary", "pending"),
+		item("File the reconciliation notes", "pending"),
 	]),
 ];
 
@@ -242,12 +252,12 @@ export const subagentsOnly = (): RunDetailsInput => ({
 /**
  * One section: the plan alone, and long enough to overflow it.
  *
- * The same fourteen-item plan the crowded state carries, with no children at all —
- * so this is the frame in which the item cap and its `+4 more` are actually
- * visible. In the crowded state the to-do section starts below a six-row roster
- * and the panel's own 480px ceiling puts the disclosure past the fold, which is a
- * real property of that state rather than something a taller viewport fixes: the
- * section's position in the panel is the design's.
+ * The same fifteen-item plan the crowded state carries, with no children at all —
+ * so this is the frame in which the item cap, its `+5 more` and the all-shed phase
+ * are actually visible. In the crowded state the to-do section starts below a
+ * six-row roster and the panel's own 480px ceiling puts the disclosure past the
+ * fold, which is a real property of that state rather than something a taller
+ * viewport fixes: the section's position in the panel is the design's.
  */
 export const todosOnly = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
@@ -292,7 +302,7 @@ export const failure = (): RunDetailsInput => ({
 	todos: flat(),
 });
 
-/** Nine children over a 14-item plan: both overflow disclosures at once. */
+/** Nine children over a 15-item plan: both overflow disclosures at once. */
 export const crowded = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
 	jobs: [

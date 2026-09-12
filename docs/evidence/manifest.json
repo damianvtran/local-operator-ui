@@ -1,7 +1,7 @@
 {
-  "head": "f33cf1a539c46c10fd81cb2e6374308a2534e508",
-  "srcTree": "24b8b259db1bc5f434ea38148c6dcc9052bead3a",
-  "scriptsTree": "52b734935fd9bedb887c1eec720017354224d42c",
+  "head": "469f2aa9fb99bb69b0e0ab50becbf341ea0dd531",
+  "srcTree": "f286a1ba1e16398e0fc61e8ae7ec9af184c68ed5",
+  "scriptsTree": "60da30cfea068fadd1f607ea68eb31ab753f9f01",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 492,
@@ -32,8 +32,8 @@
       "chat-run-details/header-trigger-failed",
       "chat-run-details/failure-unseen"
     ],
-    "refreshedAt": "2026-09-12T05:24:33.356Z",
-    "refreshedAtHead": "f33cf1a539c46c10fd81cb2e6374308a2534e508",
+    "refreshedAt": "2026-09-12T06:44:32.824Z",
+    "refreshedAtHead": "469f2aa9fb99bb69b0e0ab50becbf341ea0dd531",
     "refreshedFrames": 18,
     "refreshedStories": [
       "chat-run-details--both-in-flight",

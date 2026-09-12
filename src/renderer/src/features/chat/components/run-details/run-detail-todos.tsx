@@ -218,7 +218,16 @@ export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
 						 * it: silence there would be the plan lying about its own size.
 						 */}
 						{phase.hidden > 0 && (
-							<li className={cn("px-3 pt-1 text-ink-dim text-meta")}>
+							/*
+							 * `pl-9` puts the disclosure in the ITEM-TEXT column, not the mark
+							 * column: 12px of row padding + the 16px mark + the 8px gap. In the
+							 * first column it read as the NEXT phase's header rather than as
+							 * this phase's footer — same 12px type, same x, one ink step from
+							 * the header below it — and there is no rule between phases to say
+							 * where one ends. The indent lives under the rows it counts, which
+							 * is the same rule the blocked reason follows (`§4.2`, `§5`).
+							 */
+							<li className={cn("pt-1 pr-3 pl-9 text-ink-dim text-meta")}>
 								{`+${phase.hidden} more`}
 							</li>
 						)}

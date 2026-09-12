@@ -382,26 +382,26 @@ test("ten item rows are shown, the OLDEST closed rows go first, open ones never 
 
 test("a phase whose rows were all shed keeps its header and discloses them itself", () => {
 	// The oldest closed rows fall off the FRONT, so the earliest phase can lose
-	// every row it has. It keeps its header and its own `+N more` rather than
-	// silently vanishing: a plan that appears to start at phase two is a plan
-	// lying about its own size, and the header above the gap is then accountable
-	// to nothing.
+	// every row it has — and the fixture makes that happen rather than asserting
+	// the shape in the abstract: `Reconcile` is wholly closed, so all five of its
+	// rows are shed and nothing of the phase is left but its header and its own
+	// `+N more`. It keeps them rather than silently vanishing: a plan that appears
+	// to start at phase two is a plan lying about its own size, and the header
+	// above the gap is then accountable to nothing. This is the state `§6.3`
+	// describes and no earlier fixture reached.
 	const visible = visibleTodoPhases(deriveRunDetails(fixtures.todosOnly()).todos);
 	assert.deepEqual(
 		visible.phases.map((phase) => [phase.name, phase.hidden]),
 		[
-			["Reconcile", 4],
+			["Reconcile", 5],
 			["Verify", 0],
 			["Publish", 0],
 		],
 	);
-	// Four closed rows out, four rows of disclosure in — and the phase that lost
-	// them is still rendered, with only its open item under its header.
-	assert.deepEqual(
-		visible.phases[0].items.map((item) => item.text),
-		["Compare against ledger/q1.csv"],
-	);
-	assert.equal(visible.hidden, 4);
+	// Five closed rows out, five rows of disclosure in — and the phase that lost
+	// them is still rendered, with NO rows under its header at all.
+	assert.deepEqual(visible.phases[0].items, []);
+	assert.equal(visible.hidden, 5);
 });
 
 test("more open items than the cap shows every one of them", () => {
@@ -630,10 +630,10 @@ test("the fixtures cover the flat plan, the failure line and both overflows", ()
 	// own ceiling.
 	const crowded = deriveRunDetails(fixtures.crowded());
 	assert.equal(visibleSubagents(crowded.subagents).hidden, 3);
-	assert.equal(visibleTodoPhases(crowded.todos).hidden, 4);
+	assert.equal(visibleTodoPhases(crowded.todos).hidden, 5);
 	assert.equal(
 		visibleTodoPhases(deriveRunDetails(fixtures.todosOnly()).todos).hidden,
-		4,
+		5,
 	);
 
 	// And the stories that photograph the trigger rather than the panel.

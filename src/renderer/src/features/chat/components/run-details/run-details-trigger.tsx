@@ -249,6 +249,25 @@ export const RunDetailsTrigger = ({
 						"max-h-[min(60vh,480px)]",
 						"[&>[data-radix-scroll-area-viewport]]:max-h-[inherit]",
 						/*
+						 * The scrollbar's lane, reserved in the content rather than spent out
+						 * of the padding (`§5`).
+						 *
+						 * Radix paints the bar as an OVERLAY pinned to the viewport's right
+						 * edge, so while it is up it lands inside the panel's 12px right
+						 * padding: the header's tally — and a truncated row's ellipsis with
+						 * it — then sat 3px from the thumb where the panel's own gutter is
+						 * 12, and a tally budgeted on that 12px would reach under the thumb.
+						 * The bar cannot move out of the padding (the panel IS the edge) and
+						 * a narrower thumb would be a control you cannot grab, so the lane
+						 * comes out of the content instead: 10px off the viewport's width
+						 * for exactly as long as the bar is painted. `:has()` keys on
+						 * Radix's own live scrollbar, so a panel that fits gains no gutter
+						 * and every other frame is untouched. The section rule ends where
+						 * the lane does, one pixel short of the thumb, and the track is
+						 * transparent, so it still reads as reaching the boundary.
+						 */
+						"[&:has(>[data-orientation=vertical][data-state=visible])>[data-radix-scroll-area-viewport]]:pr-2.5",
+						/*
 						 * The viewport's own content wrapper is `display: table; min-width:
 						 * 100%` — it is how Radix measures the scroll range — which sizes to
 						 * MAX-CONTENT, so every `truncate` inside it silently stops

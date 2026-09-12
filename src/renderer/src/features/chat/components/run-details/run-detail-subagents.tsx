@@ -163,7 +163,16 @@ const DetailLine = ({ row }: { row: SubagentRow }) => {
 	if (row.errorLine) {
 		return (
 			<span
-				className={cn("line-clamp-2 font-mono text-ink-muted text-mono-sm")}
+				/*
+				 * `leading-4` is pinned here for the same reason the activity line
+				 * pins it: `text-mono-sm`'s inherited 1.45 lands the two clamped
+				 * lines 3px off the 4px ramp, so the worst row in the list measured
+				 * 67px against `§5`'s 64. Both variants of the second line are one
+				 * 16px line height, and the failure row is exactly 12 + 20 + 2×16.
+				 */
+				className={cn(
+					"line-clamp-2 font-mono text-ink-muted text-mono-sm leading-4",
+				)}
 				title={row.errorLine}
 			>
 				{row.errorLine}
