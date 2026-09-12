@@ -595,6 +595,27 @@ function SessionPanel({
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
 					sendError={composerSendError}
+					/*
+					 * The session's readings, straight off the canonical stream, and
+					 * the SAME dispatcher the composer submits through. Routing the
+					 * chips' clicks here rather than mounting a picker directly is
+					 * what keeps `/model` typed and `/model` clicked on one path:
+					 * there is no second way to open a picker in this app.
+					 *
+					 * A draft has no session yet, so it has no readings and no owner
+					 * to ask - `dispatch` itself answers "/model needs an open
+					 * conversation" in that state, which is a worse way to learn it
+					 * than not offering the control, so the strip is withheld until
+					 * the session exists.
+					 */
+					sessionStatus={
+						sessionId
+							? {
+									frontend: canonical.frontend,
+									onCommand: (line: string) => void dispatch(line),
+								}
+							: undefined
+					}
 					currentJobId={null}
 					onCancelJob={stop}
 					messageInputRef={input}

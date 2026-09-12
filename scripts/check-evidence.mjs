@@ -87,8 +87,15 @@ const overCeiling = (fraction) => {
 
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
-/** Every `.webp` under the evidence root, with the theme its filename names. */
-const frames = (dir) => {
+/**
+ * Every `.webp` under the evidence root, with the theme its filename names.
+ *
+ * Exported because `capture-evidence.mjs` has to count frames the SAME way
+ * this guard counts them when a narrowed run adds a surface: two walkers that
+ * disagreed about what a frame is would produce a manifest that fails the
+ * gate it was written to satisfy.
+ */
+export const frames = (dir) => {
 	const out = [];
 	for (const entry of readdirSync(dir)) {
 		const path = join(dir, entry);
