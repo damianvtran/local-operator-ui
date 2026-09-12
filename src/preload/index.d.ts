@@ -30,7 +30,8 @@ declare global {
 				}>;
 			};
 			updater: {
-				checkForUpdates: () => Promise<{
+				/** `manual` marks a check the user asked for (see the preload note). */
+				checkForUpdates: (options?: { manual?: boolean }) => Promise<{
 					updateInfo: UpdateInfo;
 					// biome-ignore lint/suspicious/noExplicitAny: Complex type from electron-updater
 					cancellationToken: any;
@@ -39,12 +40,23 @@ declare global {
 					currentVersion: string;
 					latestVersion: string;
 					updateCommand: string;
+					canManageUpdate?: boolean;
+					remedy?: string;
 				} | null>;
-				checkForAllUpdates: () => Promise<void>;
-				updateBackend: () => Promise<boolean>;
+				checkForAllUpdates: (options?: { manual?: boolean }) => Promise<void>;
+				/** The last install that did not complete, if the app recorded one. */
+				getLastInstallAttempt: () => Promise<{
+					targetVersion: string;
+					runningVersion: string;
+					startedAt: string | null;
+					detectedAt: string;
+					detail: string;
+					attempts: number;
+				} | null>;
+				updateBackend: (targetVersion?: string) => Promise<boolean>;
 				// biome-ignore lint/suspicious/noExplicitAny: Return type from electron-updater is complex
 				downloadUpdate: () => Promise<any[]>;
-				quitAndInstall: () => void;
+				quitAndInstall: () => Promise<boolean>;
 				onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
 				onUpdateNotAvailable: (
 					callback: (info: UpdateInfo) => void,
@@ -62,6 +74,19 @@ declare global {
 						currentVersion: string;
 						latestVersion: string;
 						updateCommand: string;
+						canManageUpdate?: boolean;
+						remedy?: string;
+						startupMode?: string;
+						/** How the install was classified, for the details line. */
+						detail?: string;
+						/** True when the install follows a source tree, not the release. */
+						sourceBuild?: boolean;
+						/**
+						 * True when this event answers a check the user asked for, as
+						 * opposed to the periodic or start-up check. The by-hand panel
+						 * is only dismissed by the user's own check (review U12).
+						 */
+						manual?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (
@@ -71,10 +96,42 @@ declare global {
 					callback: (info: { version: string }) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (callback: () => void) => () => void;
+				onBackendUpdateManualRequired: (
+					callback: (info: {
+						message: string;
+						command: string;
+						detail?: string;
+						/** The version the panel is waiting for, and what is running. */
+						latestVersion?: string | null;
+						currentVersion?: string | null;
+						sourceBuild?: boolean;
+					}) => void,
+				) => () => void;
 				onUpdateDownloaded: (
 					callback: (info: UpdateInfo) => void,
 				) => () => void;
 				onUpdateError: (callback: (error: string) => void) => () => void;
+				/** Reasons the app refused to start an install, with the remedy. */
+				onUpdateInstallBlocked: (
+					callback: (info: {
+						code: string;
+						version: string | null;
+						message: string;
+						remedy: { text: string; url?: string; command?: string };
+						detail?: string;
+					}) => void,
+				) => () => void;
+				/** A previous install that never completed, reported on the next start. */
+				onUpdateInstallFailed: (
+					callback: (info: {
+						targetVersion: string;
+						message: string;
+						remedy: { text: string; url?: string; command?: string };
+						detail: string;
+						/** How many times this target has failed here. */
+						attempts?: number;
+					}) => void,
+				) => () => void;
 				onUpdateProgress: (
 					callback: (progressObj: ProgressInfo) => void,
 				) => () => void;

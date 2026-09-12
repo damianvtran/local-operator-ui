@@ -65,7 +65,7 @@
     "check-types:main": "tsc --noEmit -p tsconfig.node.json",
     "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
     "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
-    "test:desktop": "node --test scripts/linux-sandbox.test.mjs scripts/desktop-contract.test.mjs scripts/desktop-notifier.test.mjs scripts/transcript-reducer.test.mjs scripts/provider-state.test.mjs scripts/stale-agent.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/settings-time-to-error.test.mjs scripts/backend-error-surfaces.test.mjs scripts/canonical-chat.test.mjs scripts/tool-row.test.mjs scripts/attachment-url.test.mjs",
+    "test:desktop": "node --test scripts/linux-sandbox.test.mjs scripts/desktop-contract.test.mjs scripts/desktop-notifier.test.mjs scripts/transcript-reducer.test.mjs scripts/provider-state.test.mjs scripts/stale-agent.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/settings-time-to-error.test.mjs scripts/backend-error-surfaces.test.mjs scripts/canonical-chat.test.mjs scripts/tool-row.test.mjs scripts/attachment-url.test.mjs scripts/update-robustness.test.mjs",
     "check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs",
     "check-evidence": "node scripts/check-evidence.mjs",
     "check-edit-diffs": "node scripts/check-edit-diffs.mjs",
@@ -80,6 +80,8 @@
     "dist:all": "pnpm run build && electron-builder -mwl --publish never",
     "release": "pnpm run build && electron-builder --publish always",
     "generate-icons": "node scripts/generate-icons.js",
+    "notarize-dmg": "node scripts/notarize-artifacts.mjs",
+    "verify-macos-artifacts": "node scripts/verify-macos-artifacts.mjs",
     "setup-python": "./scripts/setup-python-resource.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -256,7 +258,7 @@
       "artifactName": "${name}-${version}-${arch}.${ext}"
     },
     "dmg": {
-      "sign": false,
+      "sign": true,
       "contents": [
         {
           "x": 130,

@@ -15,6 +15,8 @@ import { useEffect, useRef, useState } from "react";
  * It also displays confirmation and error notifications for manual update checks.
  */
 export const CheckForUpdatesButton = () => {
+	/** Where a user gets a copy that installs by hand. */
+	const DOWNLOAD_PAGE = "https://local-operator.com/download";
 	const [checking, setChecking] = useState(false);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
@@ -24,6 +26,23 @@ export const CheckForUpdatesButton = () => {
 	const [manualUpdateInfo, setManualUpdateInfo] = useState<{
 		message: string;
 		command: string;
+	} | null>(null);
+	/**
+	 * The last install that did not complete, read from disk.
+	 *
+	 * This is the home of the record the failure panel points at: the panel is
+	 * delivered once per process and its dismissal used to be the end of it, so a
+	 * user who clicked it away - the only control it offered - had lost which
+	 * version failed and when (reviews U1, D3). Reading it here means the fact
+	 * survives a dismiss, a restart, and the panel never being seen at all.
+	 */
+	const [lastAttempt, setLastAttempt] = useState<{
+		targetVersion: string;
+		runningVersion: string;
+		startedAt: string | null;
+		detectedAt: string;
+		detail: string;
+		attempts: number;
 	} | null>(null);
 
 	// Used to track if the last check was manual (to avoid showing notifications for background checks)
@@ -48,10 +67,14 @@ export const CheckForUpdatesButton = () => {
 				);
 
 				if (message.includes("manually")) {
+					// Legacy wording from a main process that named pip for every
+					// unmanaged server. No command is offered: the app cannot tell which
+					// installer owns an environment from a string it was handed, and
+					// naming the wrong one is the defect this change exists to fix.
 					setManualUpdateInfo({
 						message:
-							"Please update the local-operator package manually using pip.",
-						command: "pip install --upgrade local-operator",
+							"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
+						command: "",
 					});
 					setSnackbarSeverity("warning");
 					setSnackbarOpen(true);
@@ -94,6 +117,28 @@ export const CheckForUpdatesButton = () => {
 		};
 	}, []);
 
+	// The durable record of the last failed install: read on mount, and re-read
+	// when this start turns out to have one.
+	useEffect(() => {
+		let cancelled = false;
+		const load = () => {
+			window.api.updater
+				.getLastInstallAttempt()
+				.then((record) => {
+					if (!cancelled) setLastAttempt(record);
+				})
+				.catch(() => undefined);
+		};
+		load();
+		const removeInstallFailed = window.api.updater.onUpdateInstallFailed(() =>
+			load(),
+		);
+		return () => {
+			cancelled = true;
+			removeInstallFailed();
+		};
+	}, []);
+
 	// Check for updates
 	const checkForUpdates = async () => {
 		if (isDevelopmentMode()) {
@@ -112,8 +157,10 @@ export const CheckForUpdatesButton = () => {
 			clearDeferredUpdate(UpdateType.UI);
 			clearDeferredUpdate(UpdateType.BACKEND);
 
-			// Check for all updates (UI and backend)
-			await window.api.updater.checkForAllUpdates();
+			// Check for all updates (UI and backend). `manual` lets the main process
+			// re-offer a release whose artifact failed verification: this is the check
+			// the refusal panels send the user here to make.
+			await window.api.updater.checkForAllUpdates({ manual: true });
 
 			// The UpdateNotification component will handle displaying the results,
 			// but we show confirmation/error for manual checks here.
@@ -142,7 +189,43 @@ export const CheckForUpdatesButton = () => {
 
 	return (
 		<>
-			<Button variant="outline" onClick={checkForUpdates} disabled={checking}>
+			{lastAttempt && (
+				/*
+				 * The record the failure panel points at, in the place a user would look
+				 * for it. It states the version, how many attempts have failed, and when
+				 * the last one was detected, with the machine detail in the app's own
+				 * second voice - and the action that actually resolves a failing install.
+				 */
+				<div className="mb-3 rounded-sm bg-sunken p-3">
+					<p className="text-body-sm text-ink">
+						The last update to version {lastAttempt.targetVersion} didn't finish
+						{lastAttempt.attempts > 1
+							? ` (${lastAttempt.attempts} attempts)`
+							: ""}
+						. Version {lastAttempt.runningVersion} is running.
+					</p>
+					<p className="mt-1 text-meta text-ink-dim">
+						Detected{" "}
+						{lastAttempt.detectedAt
+							? new Date(lastAttempt.detectedAt).toLocaleString()
+							: "at an unknown time"}
+						. {lastAttempt.detail}
+					</p>
+					<Button
+						variant="outline"
+						size="sm"
+						className="mt-2"
+						onClick={() => void window.api.openExternal(DOWNLOAD_PAGE)}
+					>
+						Download a fresh copy
+					</Button>
+				</div>
+			)}
+			<Button
+				variant="outline"
+				onClick={() => void checkForUpdates()}
+				disabled={checking}
+			>
 				{/* Unlabelled: the button's own caption already says what is busy. */}
 				{checking ? <Spinner size="sm" /> : null}
 				{checking ? "Checking..." : "Check for updates"}
@@ -157,9 +240,11 @@ export const CheckForUpdatesButton = () => {
 					variant="warning"
 				>
 					<p className="text-body-sm">{manualUpdateInfo.message}</p>
-					<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
-						{manualUpdateInfo.command}
-					</code>
+					{manualUpdateInfo.command && (
+						<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
+							{manualUpdateInfo.command}
+						</code>
+					)}
 				</FloatingAlert>
 			)}
 

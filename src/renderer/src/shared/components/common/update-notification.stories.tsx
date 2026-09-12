@@ -44,9 +44,10 @@ const createEmptyUpdaterMethods = () => {
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
 			checkForBackendUpdates: async () => Promise.resolve(null),
 			checkForAllUpdates: async () => Promise.resolve(),
+			getLastInstallAttempt: async () => null,
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
-			quitAndInstall: () => {},
+			quitAndInstall: async () => true,
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
@@ -59,6 +60,9 @@ const createEmptyUpdaterMethods = () => {
 			onUpdateError: noop,
 			onUpdateProgress: noop,
 			onBeforeQuitForUpdate: noop,
+			onBackendUpdateManualRequired: noop,
+			onUpdateInstallBlocked: noop,
+			onUpdateInstallFailed: noop,
 		};
 	}
 };
@@ -79,9 +83,10 @@ const mockUpdaterApi = () => {
 			}),
 		checkForBackendUpdates: async () => Promise.resolve(null),
 		checkForAllUpdates: async () => Promise.resolve(),
+		getLastInstallAttempt: async () => null,
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
-		quitAndInstall: () => {},
+		quitAndInstall: async () => true,
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {
@@ -113,6 +118,11 @@ const mockUpdaterApi = () => {
 				currentVersion: string;
 				latestVersion: string;
 				updateCommand: string;
+				canManageUpdate?: boolean;
+				startupMode?: string;
+				remedy?: string;
+				detail?: string;
+				sourceBuild?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -122,6 +132,26 @@ const mockUpdaterApi = () => {
 					currentVersion: "1.0.0",
 					latestVersion: "2.0.0",
 					updateCommand: "pip install --upgrade local-operator",
+				});
+			}
+			// The operator's own case: a server installed as a uv tool, which the
+			// app must not pip into, with the remedy named for that install.
+			if (window.triggerBackendUpdateNonManaged) {
+				callback({
+					currentVersion: "0.54.17",
+					latestVersion: "0.55.0",
+					updateCommand: "uv tool upgrade local-operator",
+					canManageUpdate: false,
+					startupMode: "GLOBAL_INSTALL",
+					remedy:
+						"The server is a uv tool install, so update it from your terminal:",
+					// Both producers of this state render the same details line and the
+					// same closing sentence now, so the fixture carries what the main
+					// process sends rather than the thinner payload this path used to
+					// have (review U15).
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+					sourceBuild: false,
 				});
 			}
 			return () => {};
@@ -201,6 +231,108 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
+		onBackendUpdateManualRequired: (
+			callback: (info: {
+				message: string;
+				command: string;
+				detail?: string;
+				latestVersion?: string | null;
+				currentVersion?: string | null;
+				sourceBuild?: boolean;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateManualRequired) {
+				// The operator's own machine: a uv tool whose `lop-update` is on PATH,
+				// so the remedy is the source build's and the panel says its ceiling.
+				// It is the case that could never clear itself on an exact version
+				// match, because `lop-update` reports the checkout's version rather
+				// than the published one (review U12).
+				callback({
+					message:
+						"The server is a uv tool install built from source on this machine, so update it from your terminal:",
+					command: "lop-update",
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool, built from source on this machine, so it follows the checkout rather than the published release",
+					latestVersion: "0.54.20",
+					currentVersion: "0.54.14",
+					sourceBuild: true,
+				});
+			}
+			// The same state reached the other way: the app attached to a server
+			// started in a terminal (`EXISTING_SERVER`) rather than one it installed
+			// itself. That path used to send a hardcoded `pip install --upgrade
+			// local-operator` three lines below the code that had already learned
+			// better, and this release promoted the notice from a toast into a
+			// standing panel - so the wrong command would have stayed on screen
+			// (review D4). This payload is a pipx-owned server, which is what that
+			// path has to name now.
+			if (window.triggerBackendUpdateManualRequiredExistingServer) {
+				callback({
+					message:
+						"The server is a pipx install, so update it from your terminal:",
+					command: "pipx upgrade local-operator",
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/pipx/venvs/local-operator/bin/local-operator), classified as pipx",
+					latestVersion: "0.54.20",
+					currentVersion: "0.54.17",
+					sourceBuild: false,
+				});
+			}
+			return () => {};
+		},
+		onUpdateInstallBlocked: (
+			callback: (info: {
+				code: string;
+				version: string | null;
+				message: string;
+				remedy: { text: string; url?: string; command?: string };
+				detail?: string;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerUpdateInstallBlocked) {
+				callback({
+					code: "installed-bundle-not-sealed",
+					version: "0.18.0",
+					message:
+						"This install of Local Operator can't be updated in place, so the update to version 0.18.0 was stopped before the app quit.",
+					remedy: {
+						text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
+						url: "https://local-operator.com/download",
+					},
+					detail:
+						"/Applications/Local Operator.app: errSecCSBadBundleFormat: a sealed resource is missing or invalid",
+				});
+			}
+			return () => {};
+		},
+		onUpdateInstallFailed: (
+			callback: (info: {
+				targetVersion: string;
+				message: string;
+				remedy: { text: string; url?: string; command?: string };
+				detail: string;
+				attempts?: number;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerUpdateInstallFailed) {
+				callback({
+					targetVersion: "0.18.0",
+					message:
+						"The update to version 0.18.0 didn't finish, so version 0.17.0 is still running.",
+					remedy: {
+						text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app.",
+						url: "https://local-operator.com/download",
+					},
+					detail:
+						"Install started 11/09/2026, 22:36:48 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip. Squirrel's own log is at /Users/operator/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log.",
+					attempts: 2,
+				});
+			}
+			return () => {};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -229,6 +361,11 @@ declare global {
 		triggerBackendUpdateNotAvailable?: boolean;
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateDevMode?: boolean;
+		triggerBackendUpdateManualRequired?: boolean;
+		triggerBackendUpdateManualRequiredExistingServer?: boolean;
+		triggerBackendUpdateNonManaged?: boolean;
+		triggerUpdateInstallBlocked?: boolean;
+		triggerUpdateInstallFailed?: boolean;
 		triggerNpxUpdate?: boolean;
 		triggerDevMode?: boolean;
 	}
@@ -263,12 +400,27 @@ const meta = {
 					context.parameters.triggerUpdateDownloaded;
 				window.triggerUpdateError = context.parameters.triggerUpdateError;
 				window.triggerUpdateProgress = context.parameters.triggerUpdateProgress;
+				window.triggerUpdateInstallBlocked =
+					context.parameters.triggerUpdateInstallBlocked;
+				window.triggerUpdateInstallFailed =
+					context.parameters.triggerUpdateInstallFailed;
+				window.triggerBackendUpdateManualRequired =
+					context.parameters.triggerBackendUpdateManualRequired;
+				window.triggerBackendUpdateManualRequiredExistingServer =
+					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
+				window.triggerBackendUpdateNonManaged =
+					context.parameters.triggerBackendUpdateNonManaged;
 			}, [
 				context.parameters.triggerUpdateAvailable,
 				context.parameters.triggerUpdateNotAvailable,
 				context.parameters.triggerUpdateDownloaded,
 				context.parameters.triggerUpdateError,
 				context.parameters.triggerUpdateProgress,
+				context.parameters.triggerUpdateInstallBlocked,
+				context.parameters.triggerUpdateInstallFailed,
+				context.parameters.triggerBackendUpdateManualRequired,
+				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
+				context.parameters.triggerBackendUpdateNonManaged,
 			]);
 
 			return (
@@ -542,70 +694,20 @@ export const Downloading: Story = {
 };
 
 /**
- * Shows the notification when an update has been downloaded and is ready to install.
+ * The state on screen once the bundle has been downloaded and is waiting for the
+ * user to commit to the restart.
+ *
+ * It renders the component's own markup rather than a copy of it, the way the
+ * install outcomes below do: this frame is what a reviewer looks at to see the
+ * footer that the install fix changed (`Install now`, and the disabled
+ * `Update later` while the pre-flight runs), and a hand-copied fixture drifted
+ * from the component the moment the footer changed - so the pending state had no
+ * frame at all and the fix could not be seen in the set (review U16).
  */
 export const Downloaded: Story = {
-	args: {
-		autoCheck: false,
-	},
-	parameters: {
-		triggerUpdateDownloaded: true,
-	},
-	render: () => {
-		// Create a component that directly renders the downloaded state
-		const DownloadedComponent = () => {
-			// Use state to force the component to render with downloaded state
-			const [downloaded, setDownloaded] = useState(true);
-			const [info, setInfo] = useState(mockUpdateInfo);
-
-			useEffect(() => {
-				// Set the state immediately
-				setDownloaded(true);
-				setInfo(mockUpdateInfo);
-
-				// Set the trigger flag
-				window.triggerUpdateDownloaded = true;
-			}, []);
-
-			// If update is downloaded, render the UI directly
-			if (downloaded && info) {
-				return (
-					<UpdateContainer>
-						<h2 className="mb-3 text-heading text-ink">
-							Update ready to install
-						</h2>
-						<p className="mb-2 text-body text-ink-muted">
-							{/* The component's sentence. "ready to install" repeated the
-							    heading directly above and dropped the version the user
-							    is on, which is the one comparison the heading cannot
-							    make. */}
-							Version {info.version} has been downloaded. You are currently
-							using version 1.0.0.
-						</p>
-						<p className="mt-2 text-body-sm text-ink-muted">
-							The application will restart to apply the update.
-						</p>
-
-						<UpdateActions>
-							{/* Dismiss first, commit last - the component's order,
-							    same as the UpdateAvailable story above. */}
-							<Button variant="outline" size="sm" onClick={() => {}}>
-								Update later
-							</Button>
-							<Button variant="primary" size="sm" onClick={() => {}}>
-								Install now
-							</Button>
-						</UpdateActions>
-					</UpdateContainer>
-				);
-			}
-
-			// Fallback to the actual component
-			return <UpdateNotification autoCheck={false} />;
-		};
-
-		return <DownloadedComponent />;
-	},
+	args: { autoCheck: false },
+	parameters: { triggerUpdateDownloaded: true },
+	render: () => <Triggered flag="triggerUpdateDownloaded" />,
 };
 
 /**
@@ -656,4 +758,90 @@ export const ErrorState: Story = {
 
 		return <ErrorComponent />;
 	},
+};
+
+type UpdaterTriggerFlag =
+	| "triggerUpdateDownloaded"
+	| "triggerUpdateInstallBlocked"
+	| "triggerUpdateInstallFailed"
+	| "triggerBackendUpdateManualRequired"
+	| "triggerBackendUpdateManualRequiredExistingServer"
+	| "triggerBackendUpdateNonManaged";
+
+/**
+ * Mount the real component with one of its event triggers already set.
+ *
+ * The mock updater delivers each event synchronously at subscribe time, so the
+ * flag has to be in place before the component mounts: a `parameters` flag set
+ * by the decorator arrives too late, which is why the older stories here draw
+ * their own copy of the panel. These stories render the component's own markup
+ * instead - a fixture that has drifted from the component is how a defect stays
+ * invisible in a set of hundreds of pictures.
+ */
+const Triggered = ({ flag }: { flag: UpdaterTriggerFlag }) => {
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		window[flag] = true;
+		setReady(true);
+	}, [flag]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+/**
+ * The app refused to install the update because the installed bundle's code
+ * seal does not verify - the state behind the operator's "damaged" report,
+ * caught before the app quits and with a way out on screen.
+ */
+export const InstallBlocked: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlocked: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlocked" />,
+};
+
+/**
+ * The next start after a ShipIt install that never completed: the app came back
+ * on the old version and now says so, instead of silently re-offering.
+ */
+export const InstallFailed: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallFailed: true },
+	render: () => <Triggered flag="triggerUpdateInstallFailed" />,
+};
+
+/**
+ * A server the app cannot update itself (a uv tool install), with the command
+ * that can - named for how that server is installed, not the bare pip guess.
+ */
+export const BackendManualRequired: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateManualRequired: true },
+	render: () => <Triggered flag="triggerBackendUpdateManualRequired" />,
+};
+
+/**
+ * The same by-hand state, reached through the other producer: the app attached
+ * to a server the user started in a terminal, rather than one it installed
+ * itself. That path used to hardcode `pip install --upgrade local-operator` in
+ * the main process whatever owned the environment - and this release is what
+ * promoted the notice from a toast into a standing panel, so a wrong command
+ * would now stay on screen until dismissed (review D4). Here the server is a
+ * pipx install, so the command the panel names is pipx's.
+ */
+export const BackendManualRequiredExistingServer: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateManualRequiredExistingServer: true },
+	render: () => (
+		<Triggered flag="triggerBackendUpdateManualRequiredExistingServer" />
+	),
+};
+
+/**
+ * A server installed as a uv tool: the app cannot update it, and the command it
+ * names is the one that installer owns - not the pip line the operator was
+ * shown for a uv tool install.
+ */
+export const BackendUpdateNonManaged: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateNonManaged: true },
+	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
 };
