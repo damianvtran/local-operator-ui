@@ -287,8 +287,24 @@ const StatusCluster = ({
 					// and giving it danger ink would report the user's own interrupt as
 					// something that went wrong.
 					"text-ink-dim";
+	/*
+	 * The status column of a RUNNING row, which is either its own clock or
+	 * NOTHING AT ALL.
+	 *
+	 * A composing row passes `startedAt: null` because nothing has run yet — the
+	 * model is still dictating the arguments — and this used to fall through to
+	 * `?? 0`, painting `0s` on the one row that is demonstrably doing something.
+	 * The TUI refuses to paint an execution time for that state at all
+	 * (`tool_card.py:2503-2507`: "Nothing has RUN, so there is no execution time
+	 * to report") and keeps the dictation clock in the summary beside the byte
+	 * count. The app keeps the phase age on the working line instead, so the slot
+	 * here stays RESERVED and empty: the column still holds, and the row no longer
+	 * claims a call took no time to compose itself.
+	 */
 	const text = running
-		? formatDuration(elapsed ?? durationS ?? 0)
+		? startedAt == null
+			? ""
+			: formatDuration(elapsed ?? 0)
 		: formatSettledDuration(durationS);
 	return (
 		<span className={cn("flex shrink-0 items-center gap-1.5")}>

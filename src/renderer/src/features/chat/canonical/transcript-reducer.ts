@@ -225,6 +225,59 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	argsByCall: new Map(),
 };
 
+/**
+ * One frame's `args`, when it has any, as a plain object.
+ *
+ * The wire is untyped at this boundary, so anything that is not a non-array
+ * object (absent, `null`, a string a provider sent in place of the object) is
+ * treated as "this frame says nothing" rather than reaching `summaryFromArgs`
+ * as a value whose `Object.entries` would enumerate something meaningless.
+ */
+function frameArgs(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+	return value as Record<string, unknown>;
+}
+
+/**
+ * The arguments a call was made with, from whichever source still carries them.
+ *
+ * Three producers know them and not one of them is reliable alone:
+ *
+ *   1. `tool_execution_start` — the only LIVE frame that carries `args`.
+ *   2. the durable assistant row's `tool_calls` — accumulated into
+ *      `TranscriptState.argsByCall`, which is the only source that survives a
+ *      page boundary or an evicted start.
+ *   3. the settling frame itself, which carries none today but may in future
+ *      (a runtime that echoes `args` on `tool_execution_end`).
+ *
+ * WHY A SETTLING ROW NEEDS THIS AT ALL. `tool_execution_end` is
+ * `{tool_call_id, tool_name, result, duration_s, is_error}` — no `args` — and
+ * it is the frame a viewer joining a turn ALREADY IN FLIGHT is handed for every
+ * call that finished before it arrived: `frontend_state._fold_live_event` keeps
+ * the end and drops the start it replaces (`live = [item for item in live if
+ * item.get("tool_call_id") != call_id]`), and the same file caps the seed at
+ * `LIVE_EVENT_END_ROWS_MAX = 100` ends. So the seed is a list of argument-less
+ * ends, and a row painted from one had no object column at all: it fell through
+ * to the output's first line, which for `bash` is the literal string
+ * `exit code: 0`. A whole turn of rows then said nothing about what ran.
+ *
+ * Precedence is frame, then row, then session map. The frame wins because it is
+ * the newest statement about THIS call; the map loses because it is the oldest
+ * and can be stale about a re-issued id.
+ */
+function knownArgs(
+	state: TranscriptState,
+	callId: string,
+	event: Record<string, unknown>,
+	current: TranscriptRecord | undefined,
+): Record<string, unknown> | null {
+	return (
+		frameArgs(event.args) ??
+		(current?.kind === "tool" ? current.args : null) ??
+		frameArgs(state.argsByCall.get(callId)?.arguments)
+	);
+}
+
 type ContentBlock = {
 	/** Absent on durable rows: the encoder drops pydantic defaults. */
 	type?: string;
@@ -971,7 +1024,7 @@ export function applyEvent(
 			const current = state.records[state.index.get(id) ?? -1];
 			if (current && current.kind === "tool" && current.phase === "done")
 				return state;
-			const args = (event.args ?? null) as Record<string, unknown> | null;
+			const args = knownArgs(state, callId, event, current);
 			// Remember them for the DURABLE row that will replace this one. The
 			// history entry carries the result without the arguments, so without
 			// this the row loses its object column the moment it settles onto a
@@ -1024,6 +1077,13 @@ export function applyEvent(
 			const id = `tool:${callId}`;
 			const current = state.records[state.index.get(id) ?? -1];
 			const result = (event.result ?? {}) as Record<string, unknown>;
+			// See `knownArgs`: the settling frame carries no arguments, and for a
+			// viewer that joined a turn in flight it is the ONLY frame it has for
+			// every call that finished before it arrived — so the arguments are
+			// recovered from whatever does still hold them (the painted row, or the
+			// session-wide map the durable assistant rows fill) rather than settling
+			// the row with an empty object column.
+			const args = knownArgs(state, callId, event, current);
 			const base =
 				current && current.kind === "tool"
 					? current
@@ -1047,8 +1107,23 @@ export function applyEvent(
 							diff: null,
 							stopped: false,
 						};
-			return upsert(state, {
+			// The row is settled, so this is also the last chance to LEARN the call's
+			// arguments: a durable row for the same call id replaces this one when its
+			// page arrives, and `applyHistoryPage` backfills that replacement from
+			// this map. Guarded exactly like `tool_execution_start`, so a frame that
+			// teaches nothing new leaves the map — and therefore the state —
+			// identical, which is what the view's memoisation depends on.
+			const learned =
+				args && !state.argsByCall.has(callId)
+					? new Map(state.argsByCall).set(callId, { arguments: args })
+					: state.argsByCall;
+			const seeded =
+				learned === state.argsByCall
+					? state
+					: { ...state, argsByCall: learned };
+			return upsert(seeded, {
 				...base,
+				args,
 				phase: "done",
 				output: messageText(result) || null,
 				isError: Boolean(event.is_error ?? result.is_error),
@@ -1174,6 +1249,119 @@ export function applyLiveSeed(
 		next = applyEvent(next, data as LiveEvent, now);
 	}
 	return next;
+}
+
+/**
+ * Seed-settled calls whose painted row cannot say what ran.
+ *
+ * WHAT IT TAKES TO LABEL ONE: the arguments live on the paired assistant row's
+ * `tool_calls`, in the durable transcript. `knownArgs` recovers them from
+ * whatever the transcript already holds; this names the calls it cannot, which
+ * is the set a caller can still close by reading further back into history —
+ * and the set it should pay a page for, since an unlabelled row renders nothing
+ * but its output.
+ *
+ * `labelled` is every call id the transcript IN HAND can already answer for:
+ * the session-wide `argsByCall` map (filled by live starts and by every durable
+ * assistant row seen so far) plus whatever page is arriving with the seed. It
+ * is passed in rather than read off a `TranscriptState` because the caller
+ * decides the page and the seed together, and the state it must measure against
+ * is the one BEFORE that page is applied — not one this module can see.
+ *
+ * WHY THE CALLER SIZES ITS PAGE FROM THIS rather than using a constant: the
+ * seed retains at most `LIVE_EVENT_END_ROWS_MAX` (100) settled calls, each of
+ * which costs about two durable entries (its assistant row and its result), so
+ * `reconcileLimit` below turns this list into the smallest tail that reaches
+ * every one of them — paying for the ACTUAL gap beats both a fixed deeper page
+ * on every join and leaving the rows labelled with nothing but their output.
+ *
+ * Oldest first, deduplicated, and only ids the seed actually settled: a call
+ * still running has its start, which carries its own arguments.
+ */
+export function seedCallsMissingLabels(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+	labelled: ReadonlySet<string>,
+): string[] {
+	const missing: string[] = [];
+	for (const event of liveEvents ?? []) {
+		if (!event || event.type !== "tool_execution_end") continue;
+		const callId = String(event.tool_call_id ?? "");
+		if (!callId || missing.includes(callId) || labelled.has(callId)) continue;
+		missing.push(callId);
+	}
+	return missing;
+}
+
+/**
+ * Which calls are still worth a read-back, and the rule that bounds them.
+ *
+ * ONE rule for both callers, because they answer the same question about
+ * different candidate sets: the snapshot's seed names its unlabelled calls once
+ * (`seedCallsMissingLabels`), and a round end re-asks about the ones that read
+ * could not answer. Half of a seed is labelled by that first read; the rest
+ * belong to the round still running, which only becomes durable at its own turn
+ * end — so the retry is driven by those rounds and capped, or it becomes an
+ * unbounded poll of the history endpoint.
+ *
+ * Capped PER CALL rather than per session: `maxAttempts` reads is what ONE
+ * unlabelable call may cost, and the budget is spent across snapshots. Past it
+ * the call has no arguments anywhere to find — a plan the harness rejected emits
+ * no start and leaves no assistant row — and re-admitting it through a later
+ * snapshot's seed would spend a history page per turn for the rest of the
+ * conversation to learn nothing. That is why the caller keeps exhausted ids in
+ * `outstanding` instead of forgetting them.
+ */
+export function labelGapCandidates(
+	outstanding: ReadonlyMap<string, number>,
+	candidateIds: Iterable<string>,
+	labelled: ReadonlySet<string>,
+	maxAttempts: number,
+): string[] {
+	const retries: string[] = [];
+	const seen = new Set<string>();
+	for (const callId of candidateIds) {
+		if (seen.has(callId)) continue;
+		seen.add(callId);
+		if (labelled.has(callId)) continue;
+		if ((outstanding.get(callId) ?? 0) >= maxAttempts) continue;
+		retries.push(callId);
+	}
+	return retries;
+}
+
+/**
+ * Durable entries one settled call occupies: its assistant row and its result.
+ *
+ * The ratio is the seed's own shape, not an estimate: `_fold_live_event` keeps
+ * one end per call and the durable transcript writes the assistant row holding
+ * that call's `tool_calls` plus the tool row holding its result.
+ */
+export const RECONCILE_ENTRIES_PER_CALL = 2;
+
+/** The tail every reconcile asks for, and the app's ordinary history page. */
+export const RECONCILE_TAIL_ENTRIES = 100;
+
+/**
+ * The backend's own ceiling for this page.
+ *
+ * `Query(default=100, ge=1, le=500)` on
+ * `/v1/desktop/sessions/{id}/history`. Asking for more is a 422, not a bigger
+ * page, so the arithmetic is clamped here rather than relying on the caller.
+ */
+export const RECONCILE_TAIL_MAX_ENTRIES = 500;
+
+/**
+ * The tail to read for a seed that named `missingCalls` unlabelled calls.
+ *
+ * Zero to fix means the ordinary tail, so the no-op case costs exactly what it
+ * cost before this existed.
+ */
+export function reconcileLimit(missingCalls: number): number {
+	if (missingCalls <= 0) return RECONCILE_TAIL_ENTRIES;
+	return Math.min(
+		RECONCILE_TAIL_MAX_ENTRIES,
+		RECONCILE_TAIL_ENTRIES + RECONCILE_ENTRIES_PER_CALL * missingCalls,
+	);
 }
 
 /** View-only clear: the painted rows go, the backend history is untouched. */
