@@ -163,14 +163,7 @@ second ground inside a well whose point is being `sunken`. `DIFF-BODY-SPEC.md`
   visibly ends on a comma, so it is not read as complete. The designer raised the
   cue as D6 in round 2 and its suggested forms are named here so it can be asked
   for: this frame is where such a change would be visible.
-- **The neighbour `tool-rows/*` frames.** They are from an August head
-  (`manifest.json`: `capturedAt` 2026-08-06) and do NOT reproduce pixel-exactly on
-  this head: a fresh capture of `states`, `narrow` and `names-and-fallbacks` puts
-  the whole transcript block 11px lower with identical internal geometry
-  (uniform across three stories of different content, and this change's story edits
-  are purely additive), so it is not attributable to the diff body. They were NOT
-  re-captured here. Flagged so nobody diffs them against a fresh capture and
-  reads it as a regression.
+- **The neighbour frames, now `chat-tool-rows/*`.** This README was written when they lived under `tool-rows/`, which is the directory name the capturer derived before the story titles gained a `Chat/` prefix. The earlier note here - that a fresh capture put the transcript block 11px lower than the August frames - applied to THAT head: those surfaces were re-captured when this branch merged (they now come from the same head as these frames, and a fresh capture reproduces them byte-for-byte), so diffing them is now a fair test rather than a known offset.
 - **That the operator's own machine renders it this way.** These are fixed
   viewport and device-scale captures; they cannot speak to his display, his zoom
   level, or a route nobody captured.
