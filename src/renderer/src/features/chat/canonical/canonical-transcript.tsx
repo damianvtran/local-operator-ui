@@ -19,19 +19,28 @@
  *   reducer returns the SAME record object when nothing changed, so a delta
  *   to one assistant record re-renders exactly that row.
  * - Long transcripts are windowed: only the newest `WINDOW` rows mount, and
- *   scrolling up widens the window in batches — the same shape the legacy
- *   view uses, so the scroll container's `column-reverse` overflow anchor
- *   keeps the reader pinned.
+ *   scrolling up widens the window one step per deliberate act under the
+ *   paging policy below, so the scroll container's `column-reverse` overflow
+ *   anchor keeps the reader pinned.
  * - `performance.mark("lop:transcript:render")` per commit lets the numbers
  *   be read from the browser rather than asserted.
+ *
+ * Both kinds of growth — widening the local window and fetching the next
+ * durable page — are driven by `use-scroll-paging`, which owns the one rule
+ * this file previously got wrong in two different ways. The window widened
+ * from a raw `scroll` listener, once per EVENT, so a fling widened it dozens
+ * of times; the durable page did not happen at all without a click. Both are
+ * now one coalesced demand with a settle debounce, a latch, and a held anchor.
+ * The policy is pure and tested in `scripts/transcript-paging.test.mjs`; the
+ * reasoning lives in `scroll-paging.ts`.
  *
  * Autoscroll is never taken from the reader: `column-reverse` plus the
  * overflow anchor keeps the newest content pinned only when they are already
  * at the bottom; the composer's "New activity" affordance covers the rest.
+ * Scroll paging inherits that rule rather than restating it — a reader
+ * following the tail neither loads a page nor has their offset corrected.
  */
 
-import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui/button";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import {
@@ -44,6 +53,7 @@ import {
 	type FC,
 	type RefObject,
 	memo,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -76,12 +86,14 @@ import {
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
+import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import { useScrollPaging } from "./use-scroll-paging";
 
 /**
  * Opts the USER bubble into the reading measure defined in `markdown.css`.
@@ -103,7 +115,13 @@ export type CanonicalTranscriptProps = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
 	loadingOlder: boolean;
-	onLoadOlder: () => void;
+	/**
+	 * Fetch the next durable page. Resolving `false` rather than rejecting is
+	 * what lets the paging policy count failures and stop retrying on its own
+	 * (clause G); a caller that cannot report failure gets an unbounded retry
+	 * loop or no retry at all, and neither is the contract.
+	 */
+	onLoadOlder: () => Promise<boolean>;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -525,11 +543,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);
-	useCompletionView(
-		frontend,
-		status === "live" && !waiting && !loadingOlder,
-		containerRef,
-	);
+	// `loadingOlder` is deliberately NOT part of this gate any more.
+	//
+	// The acknowledgement asks one question: can the reader actually see the
+	// completed anchor row? `useCompletionView` answers it by hit-testing that
+	// row, which is a direct measurement and is honest on any frame, including
+	// one where history is mounting above. Loading older rows is at the far end
+	// of the transcript from the anchor and was only ever a proxy for "layout is
+	// in flux".
+	//
+	// Under click-driven paging that proxy was harmless because it flipped twice
+	// per reader decision. Under scroll-driven paging it flips per revealed page,
+	// and every flip re-runs this effect: the poll interval is torn down and
+	// rebuilt and the `acknowledged` latch inside it is lost, so a reader
+	// scrolling back through history would leave a completion unacknowledged that
+	// they had been looking at the whole time.
+	useCompletionView(frontend, status === "live" && !waiting, containerRef);
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
 		const next = buildRows(painted.records, previousRows.current);
@@ -539,6 +568,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	const [windowSize, setWindowSize] = useState(WINDOW);
+	// Clause H: a different conversation starts at the default window. Without
+	// this, opening a long conversation and then a short one leaves the short
+	// one mounting every row it has, and the paging state reset below would be
+	// reasoning about a window that belongs to the previous transcript.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
+	useEffect(() => {
+		setWindowSize(WINDOW);
+	}, [sessionId]);
 	const total = rows.length;
 	const visible = useMemo(
 		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
@@ -566,21 +603,36 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const collapsed = transcript.records.length === 0;
 
-	useEffect(() => {
-		const container = containerRef.current;
-		if (!container || hidden <= 0) return;
-		const onScroll = () => {
-			const { scrollTop, scrollHeight, clientHeight } = container;
-			// column-reverse: scrollTop is negative going up; distance to the top
-			// edge of the content is what remains.
-			const distanceFromTop = scrollHeight - clientHeight - Math.abs(scrollTop);
-			if (distanceFromTop < 320) {
-				setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
-			}
-		};
-		container.addEventListener("scroll", onScroll, { passive: true });
-		return () => container.removeEventListener("scroll", onScroll);
-	}, [containerRef, hidden, total]);
+	// Both growth paths now go through one policy. The local window used to
+	// widen from its own raw `scroll` listener, once per EVENT below 320px from
+	// the top, which meant a single fling widened it by dozens of steps and
+	// mounted hundreds of rows for one gesture. It is the same jitter family as
+	// the missing durable paging and it gets the same discipline.
+	const widen = useCallback(() => {
+		setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
+	}, [total]);
+
+	// The session identity the paging state belongs to. `hasMore` is folded in
+	// because `/clear` replaces the transcript without changing the session, and
+	// a latch held against rows that are gone would refuse the first gesture in
+	// the transcript that replaced them.
+	const { slotState, requestOlder } = useScrollPaging({
+		containerRef,
+		sessionKey: sessionId,
+		hiddenRows: hidden,
+		hasMore: Boolean(transcript.hasMore),
+		onWiden: widen,
+		onLoadOlder,
+		loadingOlder,
+		// The content node exists only once the transcript is non-empty; this is
+		// what re-runs the observer effect at that moment.
+		contentKey: collapsed ? "empty" : "filled",
+		// The MOUNTED count, not the total: a local widen reveals rows the
+		// transcript already had, so `rows.length` does not change and the
+		// pre-paint correction would skip exactly the reveal that displaces the
+		// reader furthest. `visible.length` changes on both growth paths.
+		rowCount: visible.length,
+	});
 
 	// Measurement hook: one mark per commit of this list. Read with
 	// performance.getEntriesByName("lop:transcript:render").
@@ -686,6 +738,35 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		<div
 			ref={containerRef}
 			data-lo-canonical-transcript={true}
+			/*
+			 * The transcript is a tab stop, and that is an accessibility fix rather
+			 * than a nicety.
+			 *
+			 * Paging responds to Home/PageUp/ArrowUp through a `keydown` listener on
+			 * THIS element, but a plain scrolling div is not in the tab order, so
+			 * nothing a keyboard reader could do would deliver those keys. Measured
+			 * on the previous head: 40 Tab presses never entered the transcript, and
+			 * in the state a reader arrives in it contained zero focusable elements
+			 * — so with the click-only button gone, older history was unreachable
+			 * without a pointer. A scrollable region is independently required to be
+			 * keyboard-operable (WCAG 2.1.1); this satisfies both at once.
+			 *
+			 * `role="log"` with a name is what makes the stop explicable when it is
+			 * announced, instead of an unlabelled group the reader has to probe.
+			 */
+			tabIndex={collapsed ? -1 : 0}
+			role="log"
+			aria-label="Conversation transcript"
+			// Only the `windowed` branch renders that id, so the description has to
+			// track the branch rather than the looser "history exists" condition it
+			// was derived from: `hasMore` with no hidden rows yields `idle`, whose
+			// button carries its own label, and pointing at an absent element makes
+			// the scroller's accessible description resolve to nothing at all — a
+			// worse outcome than omitting it, and invisible unless someone reads the
+			// tree while the slot happens to be idle.
+			aria-describedby={
+				slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
+			}
 			className={cn(
 				// `min-h-0`, not `h-full`: this is the flex child that must absorb
 				// the column's leftover height. `h-full` resolves its flex base to
@@ -714,32 +795,34 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					{perf}
 				</span>
 			)}
-			<div className={cn("flex flex-col", CHAT_MEASURE)}>
-				{/* Older rows: durable pages, then the local window. */}
-				{(transcript.hasMore || hidden > 0) && (
-					<div className="mb-4 flex justify-center">
-						{hidden > 0 ? (
-							<span className="text-ink-dim text-meta">
-								{hidden} earlier {hidden === 1 ? "row" : "rows"} above
-							</span>
-						) : (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={onLoadOlder}
-								disabled={loadingOlder}
-							>
-								{loadingOlder ? (
-									<>
-										<Spinner size="sm" />
-										Loading earlier messages
-									</>
-								) : (
-									"Load earlier messages"
-								)}
-							</Button>
-						)}
-					</div>
+			<div
+				data-lo-transcript-content
+				className={cn("flex flex-col", CHAT_MEASURE)}
+			>
+				{/* Older rows: durable pages, then the local window. One fixed-height
+				    slot for every state of both, so a state change above the oldest
+				    row can never shift the conversation under the reader.
+				
+				    Rendered whenever the transcript has any rows at all, rather than
+				    only while history remains. The previous guard
+				    (`hasMore || hidden > 0 || loading`) was the exact inverse of the
+				    condition that yields `exhausted`, so "Start of conversation" was
+				    copy the product could never show — and reaching the oldest
+				    message unmounted the slot, moving every row below it up by 44px
+				    at that moment. Keeping it mounted is what makes the end of
+				    history a statement instead of an absence, and costs nothing: the
+				    slot is one fixed-height row either way. */}
+				{transcript.records.length > 0 && (
+					<OlderHistorySlot
+						state={slotState}
+						hiddenRows={hidden}
+						// A retry cannot succeed while the transport is down, and the
+						// transcript's own notice below already explains why. The slot
+						// drops its gesture hint rather than stacking a second claim on
+						// top of that one.
+						transportDown={status !== "live"}
+						onLoadOlder={requestOlder}
+					/>
 				)}
 
 				{status === "unavailable" && error && (

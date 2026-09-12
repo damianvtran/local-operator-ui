@@ -91,7 +91,7 @@ const BACKEND_ORIGIN = (() => {
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
-const THEMES = [
+export const THEMES = [
 	"localOperatorDark",
 	"localOperatorLight",
 	"dracula",
@@ -126,7 +126,7 @@ const THEMES = [
  * 28.5% of the window before any content, and a single wide capture hides
  * exactly that class of defect.
  */
-const STORIES = [
+export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
@@ -343,6 +343,19 @@ const STORIES = [
 
 	/* 1380x800 is what the story declares and what the app window ships. */
 	["installer-installercontent--default", 1380, 800],
+	/* The transcript's top slot. Its whole claim is that it does not change
+	   height, which is a COMPARISON between states — so the boards stack the
+	   states between rules rather than showing one per frame. `app-minimum-width`
+	   is captured because the wide board is what let a wrapping failure state
+	   ship: the failure copy fits at 512px and wraps at the 252px the content box
+	   measures at the app's own 800px minimum window. Sized to the boards. */
+	["chat-older-history-slot--every-state", 900, 460],
+	["chat-older-history-slot--app-minimum-width", 900, 720],
+	["chat-older-history-slot--one-hidden-row", 900, 260],
+	/* The transport-down branch: a failure the reader cannot answer is not
+	   painted as one. Paired rows at both widths, so the comparison is in the
+	   frame rather than across two of them. */
+	["chat-older-history-slot--transport-down", 900, 800],
 ];
 
 /**

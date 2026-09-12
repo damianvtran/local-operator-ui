@@ -317,6 +317,24 @@ export const provenanceFailures = (manifest, git = gitOut) => {
 			);
 	}
 
+	/*
+	 * `themes` must equal the theme list it names, for the same reason
+	 * `surfaces` must: only a full sweep writes it, so a narrowed run carries
+	 * the previous value forward and nothing reads it. Parsed the same way as
+	 * the story count above rather than imported, so both halves of the
+	 * manifest's self-description are falsifiable by one mechanism.
+	 */
+	if (capture !== null && typeof manifest.themes === "number") {
+		const block = capture.slice(capture.indexOf("const THEMES = ["));
+		const declared = (
+			block.slice(0, block.indexOf("\n];")).match(/^\t"/gm) ?? []
+		).length;
+		if (declared > 0 && declared !== manifest.themes)
+			out.push(
+				`manifest.json: \`themes\` is ${manifest.themes} but capture-evidence.mjs declares ${declared} themes - a narrowed run carried the old value forward`,
+			);
+	}
+
 	for (const set of manifest.supplementary ?? []) {
 		const sha = set.capturedAtHead;
 		if (typeof sha !== "string" || sha.length < 7) continue;
