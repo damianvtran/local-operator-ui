@@ -1,0 +1,29 @@
+<!doctype html>
+<!--
+  Evidence harness for the write/edit diff body over a REAL durable payload.
+
+  Mounts the SHIPPED `applyHistoryPage` reducer and the SHIPPED
+  `CanonicalTranscript` over a real `HistoryPage` — the same entries
+  `/v1/desktop/sessions/{id}/history` serves, read out of
+  `<store>/<session>/transcript.jsonl` by `scripts/diff-body-evidence.mjs`,
+  which is also what `read_transcript_page` serialises onto the wire.
+
+  Why not a story. A story renders a `TranscriptRecord` this repository built,
+  which proves the COMPONENT and not the wire: `details.diff` has to survive
+  the durable row's own encoding (`exclude_defaults`, so a list stays a list),
+  the reducer's extraction and the identity gate before a single pixel of it is
+  drawn. This page starts one layer earlier, from the bytes on disk.
+
+  Not part of the app or the test suite: a capture surface, started by
+  `node scripts/diff-body-evidence.mjs`.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Write/edit diff body — real durable rows</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./diff-body-evidence.tsx"></script>
+	</body>
+</html>
