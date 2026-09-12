@@ -417,6 +417,15 @@ app
 			(input) => backendService.requestDesktop(input),
 		);
 		const desktopNotifier = new DesktopNotifier(() => mainWindow, sendDesktop);
+		// Settle the notification gate before any window can subscribe to a
+		// stream. Until the backend confirms `features.notification_contract`,
+		// the notifier stays on its legacy path, which is the safe default: a
+		// missing capability is far more often a transient HTTP failure than an
+		// old backend, and failing toward silence loses completions outright.
+		// Not awaited: a slow or unreachable backend must not delay first paint,
+		// and the notifier latches the gate shut on its own the moment a composed
+		// frame arrives. See docs/design/descriptive-notifications.md 4.3.
+		void desktopNotifier.refreshNotificationContract();
 		backendService.observeStream((sessionId, data) => {
 			try {
 				desktopNotifier.observe(sessionId, JSON.parse(data));

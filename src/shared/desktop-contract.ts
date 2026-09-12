@@ -241,6 +241,19 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			completionToken: z.string().uuid(),
 		})
 		.strict(),
+	// Cross-surface delivery claim, NOT a read receipt. `claim_delivery`
+	// serialises the observers that can see one completion (a TUI, this app) so
+	// exactly one of them toasts it. It deliberately never advances the read
+	// watermark: routing a notification must not clear the sidebar's unseen mark
+	// for a session the user never opened, which is why this is its own op and
+	// not a reuse of `sessions.seen`.
+	z
+		.object({
+			op: z.literal("sessions.notified"),
+			sessionId,
+			completionToken: z.string().uuid(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.watch"),
@@ -1139,6 +1152,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "sessions.seen":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/seen`,
+				method: "POST",
+				body: { completion_token: request.completionToken },
+			};
+		case "sessions.notified":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/notified`,
 				method: "POST",
 				body: { completion_token: request.completionToken },
 			};

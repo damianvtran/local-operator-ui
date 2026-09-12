@@ -73,6 +73,51 @@ export type PendingDesktopGate = {
 	question_index: number;
 	question_total: number;
 };
+/**
+ * One composed notification, as the backend rendered it.
+ *
+ * The strings are authoritative: the backend owns wording parity across the
+ * TUI, the detached-runtime fallback and this app, and it is the only place
+ * that can read the `display.notification_session_name` privacy flag. A UI
+ * that composed locally would either re-read that config over HTTP on every
+ * toast or ship a banner the user opted out of — and an old signed binary
+ * would keep leaking the name forever, because the opt-out is a backend
+ * setting it has never heard of.
+ *
+ * The structured fields travel BESIDE the strings so a future surface can
+ * re-render (localisation, a narrower budget) without this app re-deriving a
+ * rule it cannot see. Missing fields degrade honestly rather than throwing:
+ * `contract` versions the payload SHAPE, additive fields do not bump it, and
+ * an unknown future `kind` must render as text rather than crash a toast.
+ *
+ * See docs/design/descriptive-notifications.md 4.1 and 8.1 — these names are
+ * the wire contract, not a local convenience.
+ */
+export type DesktopNotification = {
+	/** Payload shape version. 1 today; additive fields do not bump it. */
+	contract: number;
+	kind: "complete" | "error" | "interrupted" | "ask" | "approval";
+	title: string;
+	/** Short state category ("Complete", "Needs attention"). */
+	status: string;
+	body: string;
+	/** True when `body` is model-written text rather than a house constant. */
+	body_is_snippet: boolean;
+	/** False when the privacy flag is off or the session has no stored name. */
+	title_is_session_name: boolean;
+	/**
+	 * Opaque; key the dedupe map on this and NOTHING else. In particular not on
+	 * `session:epoch:seq`: `acquire()` mints a new bridge epoch and resets the
+	 * sequence to 0, so the same completion re-delivered after a detached
+	 * interval would get a different key and toast twice.
+	 */
+	dedupe_key: string;
+	/** Durable completion identity; the argument to `sessions.notified`. */
+	completion_token: string | null;
+	session_name: string | null;
+	/** `when_unfocused` for completions; `always` for a gate. */
+	focus_policy: "when_unfocused" | "always";
+};
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -193,6 +238,12 @@ export type DesktopSessionFrame =
 			}
 	  >
 	| Receipt<"event", { type: string; [key: string]: unknown }>
+	// Additive and replay-exempt: an older renderer falls through every branch
+	// of the frame loop, advances its receipt cursor on `seq`, and paints
+	// nothing. Deliberately NOT an `event`, which is a typed canonical
+	// AgentEvent the transcript reducer paints, nor a `frontend.update`, which
+	// is a field delta of persistent state — a notification is a one-shot edge.
+	| Receipt<"notification", DesktopNotification>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
 export type DesktopAdmission = {
 	status: "admitted";
