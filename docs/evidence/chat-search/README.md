@@ -11,7 +11,7 @@ These frames are the change, captured on two trees against the same store:
 
 | Tree | Version | What it is |
 | --- | --- | --- |
-| `before` | `origin/main` (0.17.3) | the shipped sidebar search: name and label only |
+| `before` | `origin/main` (0.17.3) | the shipped sidebar search: name and label only. These frames are still pictures of main's panel rather than of a superseded one: `chat-sidebar.tsx` and the components it draws the list with are the SAME blob (`350012054012402e1ac84b2b076f8f80e75e22a8`) at 0.17.3 and at 0.19.6, so the shipped path they show has not moved between the two |
 | `after` | `feat/chat-search-content` | the same sidebar asking `GET /v1/desktop/sessions/search` |
 
 | State | Before | After |
@@ -112,16 +112,22 @@ claims that described it have been **removed rather than relabelled**, and this
 set's `capturedAtHead` in the manifest names the head the remaining frames are
 from.
 
-It could not be re-shot: the browser bridge lost its pairing mid-session — the
-daemon's pairing file was deleted *and* the extension's own token was removed
-from `chrome.storage.local`, so neither side can reconstruct it, and the operator
-has to enter a code in the extension popup. Until then **no browser-driven
-capture is possible on this machine**, including for the states in the table
-above: they were taken at `cf0db490e`, and the two commits after it changed the
-marker row's slot classes. The current row is verified by
-`scripts/chat-search.test.mjs` (the trailing-statement rule, exhaustively over
-its inputs) and by the arithmetic in the commits, not by pixels, and the PR says
-so.
+It was not re-shot in that session, and the obstacle recorded at the time is no
+longer this machine's state — corrected here rather than left standing, because
+a provenance note that names a cause the reader can check and find gone is worse
+than one that says plainly what happened. **The pairing is intact**:
+`lop browser status` reports `paired: yes` with the daemon healthy and the
+extension present in Chrome's default profile. What stops a capture is the
+extension's service worker, which attaches and then stops answering: every
+action through the bridge exhausts its budget, and the log records
+`dropped an unresponsive extension: no frame for 50s`. The measured cure is the
+operator toggling the extension OFF then ON in `chrome://extensions`, which needs
+a person at the screen — so a capture was not possible in the sessions that ran
+with the worker wedged, and the states above are still the `cf0db490e` frames,
+the two commits after it having changed the marker row's slot classes. The
+current row is verified by `scripts/chat-search.test.mjs` (the trailing-statement
+rule, exhaustively over its inputs) and by the arithmetic in the commits, not by
+pixels, and the PR says so.
 
 ## Re-capturing this set
 
