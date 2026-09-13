@@ -1,0 +1,15 @@
+draft-220/localOperatorDark
+draft-900/localOperatorDark
+draft-900/localOperatorLight
+hover-focus-900/localOperatorDark
+longname-750/localOperatorDark
+longname-900/localOperatorDark
+no-receipts-900/localOperatorLight
+populated-220/localOperatorDark
+populated-220/localOperatorLight
+populated-550/localOperatorLight
+populated-749/localOperatorLight
+populated-750/localOperatorDark
+populated-900/localOperatorDark
+populated-900/localOperatorLight
+saturated-900/localOperatorLight
