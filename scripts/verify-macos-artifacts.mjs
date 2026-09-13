@@ -104,6 +104,72 @@ export function artifactChecks({ appPath, dmgPath }) {
 	return checks;
 }
 
+/**
+ * Bytecode the bundled interpreters must not ship, as a check of its own.
+ *
+ * Why this exists: this is the check that would have caught 0.17.0/0.18.0
+ * before upload. The app bundles a standalone CPython as an `extraResource`,
+ * and CPython rewrites a `.pyc` whose recorded source mtime does not match the
+ * source - which packaging and installing guarantee, since both reset `.py`
+ * mtimes. So any `.pyc` that ships is stale by construction and is rewritten
+ * on the user's first launch, inside the code-sealed `.app`. Measured on the
+ * shipped 0.17.0 image: exactly 3 `.pyc`, all under
+ * `python_aarch64/lib/python3.12/encodings/__pycache__`, recording source mtime
+ * 1748584453 against sources carrying 1789072763. The rewrite of one of those is
+ * a `file modified:` violation, which no update-time heal can undo, so the
+ * bundle is stuck on the reinstall remedy - while a bundle that shipped nothing
+ * would only ever have `file added:` violations, which the pre-flight does heal.
+ *
+ * A filesystem walk rather than `codesign` output on purpose: this has to fail
+ * on the artifact as built, before it is signed, and it has to name the paths.
+ */
+export function findBundledBytecode(
+	appPath,
+	{ walk = defaultWalk } = {},
+) {
+	const found = [];
+	for (const name of ["python", "python_aarch64"]) {
+		const root = join(appPath, "Contents", "Resources", name);
+		if (!existsSync(root)) continue;
+		for (const relative of walk(root)) {
+			const base = relative.split(/[\\/]/).pop() ?? relative;
+			if (base.endsWith(".pyc") || base.endsWith(".pyo")) {
+				found.push(join(root, relative));
+			}
+		}
+	}
+	return found;
+}
+
+/** Every file under `root`, relative to it. */
+function defaultWalk(root, relative = "") {
+	const files = [];
+	for (const entry of readdirSync(join(root, relative), {
+		withFileTypes: true,
+	})) {
+		const child = relative ? join(relative, entry.name) : entry.name;
+		if (entry.isDirectory()) files.push(...defaultWalk(root, child));
+		else files.push(child);
+	}
+	return files;
+}
+
+/** A failure entry shaped like the other checks, so the CLI reports it alike. */
+export function bundledBytecodeCheck(appPath, options = {}) {
+	const found = findBundledBytecode(appPath, options);
+	return {
+		id: "app-no-bundled-bytecode",
+		scope: "app",
+		target: appPath,
+		description: "no .pyc/.pyo in the bundled python trees",
+		passed: found.length === 0,
+		output:
+			found.length === 0
+				? "no bytecode under Contents/Resources/python[/_aarch64]"
+				: `${found.length} stale bytecode file(s): ${found.slice(0, 4).join(", ")}${found.length > 4 ? ` (and ${found.length - 4} more)` : ""}`,
+	};
+}
+
 /** Run each check with the given runner and judge it. */
 export function runChecks({ appPath, dmgPath, run }) {
 	return artifactChecks({ appPath, dmgPath }).map((check) => {
@@ -248,6 +314,9 @@ export function verifyArtifacts({
 		}
 		log(`Checking app: ${appPath}`);
 		results.push(...runChecks({ appPath, dmgPath: null, run }));
+		// Not a `codesign` question: this one is about what the build assembled,
+		// and it fails with the offending paths so the fix is obvious.
+		results.push(bundledBytecodeCheck(appPath));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -266,8 +335,19 @@ export function verifyArtifacts({
 	const { ok, failures } = summarize(results);
 	if (!ok) {
 		log(
-			`\n${failures.length} of ${results.length} artifact checks failed. The release must not be published until the disk image is signed, notarized and stapled.`,
+			`\n${failures.length} of ${results.length} artifact checks failed. The release must not be published until every check above passes.`,
 		);
+		// The bytecode check is the one whose remedy is in the build rather than in
+		// the signing step, so its remedy is named here - a message that says only
+		// "signing failed" would send the reader looking in the wrong place.
+		const bytecode = failures.find(
+			(result) => result.id === "app-no-bundled-bytecode",
+		);
+		if (bytecode) {
+			log(
+				`The app ships the bundled interpreter's stale bytecode: ${bytecode.output}. Run scripts/setup-python-resource.sh, or delete the __pycache__ directories under Contents/Resources/python[_aarch64], before building.`,
+			);
+		}
 	}
 	return { ok, results };
 }

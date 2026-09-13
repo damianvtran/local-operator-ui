@@ -227,6 +227,248 @@ export function installedBundleSealBlock(
 }
 
 // ---------------------------------------------------------------------------
+// Self-healing the bytecode-cache seal break
+
+/**
+ * One thing `codesign --verify` reported about a bundle it refused.
+ *
+ * The kinds are `codesign`'s own vocabulary, and they are not interchangeable:
+ * measured on an ad-hoc-signed fixture (`/tmp/sealfmt2`), a path it reports as
+ * `file added:` can be deleted and `codesign --verify --deep` answers
+ * `valid on disk` (exit 0), while a path reported as `file modified:` cannot -
+ * deleting that one turns it into `file missing:`, which still fails. Only the
+ * `added` class is recoverable, which is what makes the heal below narrow
+ * rather than general.
+ */
+export type SealViolation = {
+	kind: "added" | "modified" | "missing" | "other";
+	path: string;
+};
+
+/**
+ * `file added: <path>` and its siblings, as `codesign` prints them.
+ *
+ * Present tense, one space, a colon and the path - the same line at `--verbose`
+ * 2, 3 and 4, which is why the pre-flight's own verbosity is enough to heal
+ * from. Cases are matched as printed rather than lowercased, so a hypothetical
+ * future `File Added:` cannot be silently misread as a different class.
+ */
+const VIOLATION_LINE = /^file (added|modified|missing):\s*(.+)$/;
+
+/**
+ * Classify `codesign --verify`'s output into the violations it reported.
+ *
+ * Anything that is not one of the three `file <kind>:` lines is kept as
+ * `other`: `codesign` says `In subcomponent: <path>` and `resource envelope is
+ * obsolete` rather than a `file` line, and a bundle carrying one of those is
+ * not a bundle we should be deleting files out of. Unrecognised output is a
+ * reason to refuse, never a reason to proceed.
+ *
+ * Pass stdout. `codesign` prints its violations on stdout and its one-line
+ * verdict (`<app>: a sealed resource is missing or invalid`) on stderr, and the
+ * verdict is about the bundle rather than a violation of it - classifying it as
+ * `other` would make every healable bundle unhealable.
+ */
+export function parseSealViolations(output: string): SealViolation[] {
+	const violations: SealViolation[] = [];
+	for (const rawLine of output.split("\n")) {
+		const line = rawLine.trim();
+		if (line.length === 0) continue;
+		const match = VIOLATION_LINE.exec(line);
+		if (match) {
+			violations.push({
+				kind: match[1] as SealViolation["kind"],
+				path: match[2].trim(),
+			});
+			continue;
+		}
+		violations.push({ kind: "other", path: line });
+	}
+	return violations;
+}
+
+/**
+ * Canonicalise a path the way `codesign` prints it, tolerating a missing file.
+ *
+ * `codesign` reports canonical paths, so a bundle at `/tmp/x/App.app` is
+ * reported as `/private/tmp/x/App.app/...` and a plain string comparison
+ * against the bundle path we were given would never match - which would make
+ * every heal refuse. The fallback chain exists because the caller may hold a
+ * path that no longer resolves: try the whole path, then its directory, then
+ * give up and compare what we were given.
+ */
+function canonicalPath(path: string): string {
+	try {
+		return realpathSync(path);
+	} catch {
+		try {
+			return join(realpathSync(dirname(path)), basename(path));
+		} catch {
+			return path;
+		}
+	}
+}
+
+/** Directory names of the bundled interpreters, under `Contents/Resources`. */
+const BUNDLED_PYTHON_DIRS = ["python", "python_aarch64"];
+
+/**
+ * Whether a path is bytecode this application itself wrote into its own bundle.
+ *
+ * All four conditions are required, and the narrowness is the point: the heal
+ * runs against an installed app that is about to be handed to ShipIt, and the
+ * only thing it is entitled to delete is a `.pyc` CPython wrote into the
+ * interpreter we ship. Anything else - a sealed file, an asset, a file in
+ * another application's bundle - must refuse instead.
+ *
+ * The path separator is hardcoded because the caller is macOS-only: the probe
+ * it heals from is `codesign`, which does not exist anywhere else.
+ */
+export function isPythonBytecodePath(
+	bundlePath: string,
+	candidate: string,
+): boolean {
+	const bundle = canonicalPath(bundlePath);
+	const path = canonicalPath(candidate);
+	const dirs = BUNDLED_PYTHON_DIRS.map((name) =>
+		join(bundle, "Contents", "Resources", name),
+	);
+	const separator = "/";
+	if (!path.endsWith(".pyc")) return false;
+	const segments = path.split(separator);
+	if (!segments.includes("__pycache__")) return false;
+	return dirs.some((dir) => path.startsWith(`${dir}${separator}`));
+}
+
+/** What the heal decided, and why - `reason` is what goes in the log. */
+export type BytecodeHealPlan = {
+	healable: boolean;
+	reason: string;
+	/** The files to remove, in the order they were reported. Empty when refused. */
+	paths: string[];
+};
+
+/**
+ * Decide whether an unsealed bundle can be healed by removing bytecode.
+ *
+ * Healable only when there is at least one `added` violation, no `modified`,
+ * `missing` or `other` violation at all, and every added path is a `.pyc` under
+ * our own bundled interpreter trees. Each of those is load-bearing:
+ *
+ * - a `modified` violation is unhealable by deletion (measured; it becomes
+ *   `file missing:`), so a bundle carrying one needs the reinstall the refusal
+ *   already asks for;
+ * - `missing` means something was removed after signing, which is not what
+ *   bytecode writes do, and deleting more cannot restore it;
+ * - `other` is `codesign` output we did not recognise - refusing is the whole
+ *   reason that class exists;
+ * - and at least one `added` is what makes this a bytecode break rather than
+ *   something else that happens to leave an added file behind.
+ *
+ * The result is checked again afterwards by re-running the probe: this decides
+ * only whether removing these files is allowed, never whether the bundle is
+ * sealed.
+ */
+export function planPythonBytecodeHeal(
+	bundlePath: string,
+	violations: SealViolation[],
+): BytecodeHealPlan {
+	const added = violations.filter((violation) => violation.kind === "added");
+	const elsewhere = violations.filter(
+		(violation) => violation.kind !== "added",
+	);
+	if (added.length === 0) {
+		return {
+			healable: false,
+			reason: `no added-resource violation to heal (${violations.length} violation(s))`,
+			paths: [],
+		};
+	}
+	if (elsewhere.length > 0) {
+		const kinds = [...new Set(elsewhere.map((violation) => violation.kind))];
+		return {
+			healable: false,
+			reason: `unhealable violation class(es) present: ${kinds.join(", ")}`,
+			paths: [],
+		};
+	}
+	const outside = added.filter(
+		(violation) => !isPythonBytecodePath(bundlePath, violation.path),
+	);
+	if (outside.length > 0) {
+		return {
+			healable: false,
+			reason: `added resource outside the bundled python trees: ${outside[0].path}`,
+			paths: [],
+		};
+	}
+	return {
+		healable: true,
+		reason: `${added.length} bytecode file(s) added after signing`,
+		paths: [...new Set(added.map((violation) => violation.path))],
+	};
+}
+
+/** What a heal attempt did. `removed` is what it deleted, in report order. */
+export type BytecodeHealResult = BytecodeHealPlan & { removed: string[] };
+
+/**
+ * Remove the bytecode a bundle's own interpreter wrote into it.
+ *
+ * Removal is per FILE, never per `__pycache__` directory, and that is a
+ * measured constraint rather than a preference: `encodings/__pycache__` is one
+ * of the directories that exists in the shipped bundle, and the three `.pyc`
+ * it holds are sealed files. Deleting the directory takes a sealed file with
+ * it and turns a recoverable bundle into an unhealable one - codesign then
+ * reports `file missing:` and the seal does not come back. Deleting exactly the
+ * reported added files heals it (`valid on disk`, exit 0).
+ *
+ * The directories the writes created are deliberately left behind: an added
+ * *directory* is not a violation of a bundle's resource envelope (measured -
+ * an empty `__pycache__` added after signing still verifies), so removing them
+ * would be extra deletion with nothing to gain.
+ *
+ * `remove` is injectable so the tests can drive every branch without a signed
+ * bundle on disk; the default is the real thing. A path is re-checked against
+ * `isPythonBytecodePath` immediately before it is removed, so a caller holding
+ * a stale plan cannot widen what gets deleted. A removal that throws is
+ * reported as not healed with the path, because the caller's next step is a
+ * re-probe and a refusal rather than a half-healed bundle it believes in.
+ */
+export function healPythonBytecode(
+	bundlePath: string,
+	violations: SealViolation[],
+	remove: (path: string) => void = (path) => rmSync(path, { force: true }),
+): BytecodeHealResult {
+	const plan = planPythonBytecodeHeal(bundlePath, violations);
+	if (!plan.healable) return { ...plan, removed: [] };
+
+	const removed: string[] = [];
+	for (const path of plan.paths) {
+		if (!isPythonBytecodePath(bundlePath, path)) {
+			return {
+				healable: false,
+				reason: `refused to remove ${path}: not bytecode under the bundled python trees`,
+				paths: plan.paths,
+				removed,
+			};
+		}
+		try {
+			remove(path);
+			removed.push(path);
+		} catch (error) {
+			return {
+				healable: false,
+				reason: `could not remove ${path}: ${error instanceof Error ? error.message : String(error)}`,
+				paths: plan.paths,
+				removed,
+			};
+		}
+	}
+	return { ...plan, removed };
+}
+
+// ---------------------------------------------------------------------------
 // Staged artifact verification
 // ---------------------------------------------------------------------------
 

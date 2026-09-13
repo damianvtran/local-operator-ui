@@ -33,6 +33,7 @@ import {
 } from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop } from "../desktop-transport";
+import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
 
@@ -242,6 +243,16 @@ export class BackendServiceManager {
 				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
 				LogFileType.BACKEND,
 			);
+
+			// Half of a deliberate belt-and-braces pair (the other half is
+			// `backendSpawnEnv()`, which every spawn calls): this line corrects a
+			// value the platform loaders above can inject from the operator's shell
+			// rc, and it is what every OTHER reader of `shellEnv` inherits. It alone
+			// is not enough, because this method is started un-awaited from the
+			// constructor and nothing sequences it against `start()` - see
+			// `backendSpawnEnv()` for the ordering hole and why the guarantee lives
+			// there.
+			this.shellEnv = withPythonBytecodeCache(this.shellEnv, this.appDataPath);
 		} catch (error) {
 			logger.error(
 				"Error loading shell environment variables:",
@@ -249,6 +260,35 @@ export class BackendServiceManager {
 				error,
 			);
 		}
+	}
+
+	/**
+	 * The environment the backend process is spawned with.
+	 *
+	 * The prefix is applied HERE, at the point the environment is handed to the
+	 * spawn, rather than only inside `loadShellEnvironment()`. That load is
+	 * started from the constructor without `await` (a constructor cannot wait)
+	 * and `start()` has nothing sequencing it, so a shell rc that takes seconds
+	 * to source - nvm, pyenv, conda init all do - leaves `shellEnv` at its
+	 * `{ ...process.env }` seed when the first spawn happens: no prefix, and the
+	 * exact pre-fix configuration, on the machines whose rc is slowest. Applying
+	 * it here makes the guarantee structural instead of ordering-dependent, so
+	 * no spawn path can miss it.
+	 *
+	 * These spawns are the ones whose `python` is the interpreter we ship:
+	 * CPython writes `__pycache__/*.pyc` beside the sources it imports, those
+	 * sources are inside the code-sealed `.app`, and every such write breaks the
+	 * signature ShipIt validates before an in-place update.
+	 */
+	private backendSpawnEnv(): Record<string, string | undefined> {
+		return {
+			...withPythonBytecodeCache(this.shellEnv, this.appDataPath),
+			// Managed starts rotate the token; set after the spread so the spawn
+			// can never inherit a stale one from the shell environment. `start()`
+			// mints it before it can reach a spawn site, so the `??` only satisfies
+			// the field's nullable seed from `process.env`.
+			LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken ?? undefined,
+		};
 	}
 
 	/**
@@ -658,10 +698,7 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
-					env: {
-						...this.shellEnv,
-						LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken,
-					},
+					env: this.backendSpawnEnv(),
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
@@ -736,10 +773,7 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
-					env: {
-						...this.shellEnv,
-						LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken,
-					},
+					env: this.backendSpawnEnv(),
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
