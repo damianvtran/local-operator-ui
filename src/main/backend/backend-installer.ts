@@ -66,25 +66,35 @@ export class BackendInstaller {
 				? join(process.cwd(), "resources")
 				: join(process.resourcesPath);
 
-		// Take the write bits off the bundled interpreter trees, so CPython cannot
-		// cache bytecode inside the code-sealed bundle.
+		// Make the bundled interpreter trees refuse bytecode writes, so CPython
+		// cannot cache inside the code-sealed bundle.
 		//
 		// The environment this class hands the install script is only half the
 		// guarantee: an interpreter started with `-E`/`-I` ignores every `PYTHON*`
-		// variable by design, and CPython's own pip bootstrap goes through an
-		// isolated child. Sealing the tree is the half no child can evade - see
-		// `sealPythonInterpreterTrees`, which carries the measurements.
+		// variable by design, and - more common than either - a python the app did
+		// not start carries no prefix at all, which is where the operator's own 163
+		// in-bundle `.pyc` came from. Sealing the tree is the half no spawner can
+		// evade - see `sealPythonInterpreterTrees`, which carries the measurements.
 		//
-		// Packaged only: a dev run resolves `resourcesPath` at an Electron install,
-		// and clearing write bits there would change a tree this app does not own.
-		// Best-effort: a bundle on a read-only volume, or owned by another user,
-		// stays exactly as it is and the environment half still applies.
+		// The trees are the ones under `process.resourcesPath`, which is deliberately
+		// NOT `this.resourcesPath`: a packaged build launched with
+		// NODE_ENV=development resolves that field at the checkout's gitignored
+		// `resources/`, and the seal must never touch a tree this app does not ship -
+		// the interpreter such a run uses is not inside a code seal either, so there
+		// is nothing there to protect. `app.isPackaged` is the same decision stated
+		// from the other side: in a dev run nothing is sealed at all.
+		//
+		// Best-effort: a bundle on a volume without access-control support, or owned
+		// by another user, stays exactly as it is and the environment half still
+		// applies.
 		if (app.isPackaged) {
 			const seal = sealPythonInterpreterTrees(
-				bundledPythonTreePaths(this.resourcesPath),
+				bundledPythonTreePaths(process.resourcesPath),
 			);
 			logger.info(
-				`Bundled interpreter trees sealed against bytecode writes: ${seal.sealed.join(", ") || "(none present)"}; ${seal.cleared} path(s) made read-only, ${seal.alreadyReadOnly} already were, ${seal.failures.length} refused`,
+				seal.supported
+					? `Bundled interpreter trees sealed against bytecode writes: ${seal.sealed.join(", ") || "(none present)"}; ${seal.directories} path(s) now refuse new entries, ${seal.bytecodeFiles} refuse rewrites, ${seal.failures.length} refused`
+					: "Bundled interpreter bytecode seal is macOS-only (there is no code seal to protect elsewhere); the bytecode cache prefix still applies",
 				LogFileType.INSTALLER,
 			);
 		}
@@ -403,12 +413,18 @@ export class BackendInstaller {
 					//
 					// The install script creates the venv with our bundled interpreter,
 					// which makes that interpreter - and its stdlib, inside the sealed
-					// `.app` - the venv's own. Every python the script or the venv then
-					// runs would write `__pycache__/*.pyc` into the bundle and break its
-					// code signature, so the prefix is set here as well as in the shell
-					// environment the backend inherits: this spawn is the one path that
-					// runs before any of that exists. The scripts default the same
-					// variable themselves, for a standalone run of one of them.
+					// `.app` - the venv's own, so every python the script or the venv then
+					// runs can write `__pycache__/*.pyc` into the bundle and break its code
+					// signature.
+					//
+					// This prefix does not answer that on its own, and the reason is
+					// structural: the app does not spawn every python that runs this
+					// interpreter, and the ones it does not spawn (the operator's shell, a CLI
+					// script, an agent) carry no prefix at all - measured, a venv over this
+					// tree wrote 25 `.pyc` into it that way. It is set all the same, for the
+					// children that do inherit this environment, and because this spawn runs
+					// before the backend's own shell environment exists to inherit one from.
+					// The half no spawner can evade is the seal on the tree itself, above.
 					const env: Record<string, string | undefined> =
 						withPythonBytecodeCache({ ...process.env }, this.appDataPath);
 

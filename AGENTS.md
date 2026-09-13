@@ -208,6 +208,47 @@ harnesses — `pnpm dev`, `npx electron .`, `npx local-operator-ui` — which is
 the mode belongs in the harness's own spawn call and not in whatever the shell
 happened to export.
 
+## The code-sealed bundle, and what may write in it
+
+Two mechanisms keep CPython's bytecode cache out of
+`Contents/Resources/python*`, and they are a pair: change one without reading the
+other's docstring (`src/main/python-bytecode-cache.ts`,
+`sealPythonInterpreterTrees` carries the measurements) and the bug they exist for
+comes back.
+
+1. Every spawn that can run the bundled interpreter is handed
+   `PYTHONPYCACHEPREFIX` pointing under the app's userData
+   (`withPythonBytecodeCache`, and the same default in the three shipped install
+   scripts). This is the half that keeps the cache *working*.
+2. On macOS the app also seals the trees themselves at launch, with an
+   access-control entry that denies `add_file`/`add_subdirectory` on every
+   directory and `write`/`append` on existing `.pyc`. That is the half no spawner
+   can evade, and it is needed because the app does not spawn every python that
+   runs this interpreter: the venv's own `python` resolves its stdlib to the
+   bundled tree, and a python started by anything else - a shell, a CLI script,
+   launchd, an agent - carries no `PYTHONPYCACHEPREFIX` at all (measured: a venv
+   over the bundled tree wrote 25 `.pyc` into it that way, which is the class the
+   operator's own 163 in-bundle `.pyc` belong to). A child can also ignore the
+   environment by design: `-E`/`-I` mean "do not read `PYTHON*`", and the
+   backend's evaluation supervisor spawns workers with `-I -s -E -B`.
+
+**Do not "simplify" the seal back to `chmod`/mode bits.** One write bit on a
+directory covers both creating an entry and unlinking one, so clearing it refuses
+the write but also makes the app undeletable (`rm -rf` exits 1 with `Directory
+not empty`, and emptying the Trash cannot reclaim the tree) and stops the app
+healing its own bundle, because `healPythonBytecode` (`update-install.ts`)
+repairs an unsealed one by *unlinking* the `.pyc` CPython added. Measured on a
+mode-sealed copy: `healable=false removed=0`. Withholding the two rights
+separately is what lets a tree refuse new files and stay deletable and healable
+at once; the symptom of a regression here is a `file added:` violation the heal
+can no longer remove.
+
+Load-bearing, and enforced at build time: nothing may ship a `.pyc` at all
+(`scripts/setup-python-resource.sh`, with the release gate in
+`scripts/verify-macos-artifacts.mjs`), because a *shipped* `.pyc` that gets
+rewritten is `file modified:` - the one class codesign cannot accept again and
+the heal cannot repair.
+
 ## Release Bump Runbook (Major/Minor/Patch)
 
 Use this process whenever asked to cut a release.

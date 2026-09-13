@@ -1,10 +1,5 @@
-import {
-	type Dirent,
-	type Stats,
-	chmodSync,
-	lstatSync,
-	readdirSync,
-} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { type Stats, lstatSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -55,8 +50,8 @@ import { join } from "node:path";
  *
  * The environment variable is only half the guarantee, and the smaller half:
  * an interpreter started with `-E`/`-I` ignores every `PYTHON*` variable by
- * design, so `sealPythonInterpreterTrees()` below removes the write bits from
- * the shipped tree itself. Read its docstring before changing either half - it
+ * design, so `sealPythonInterpreterTrees()` below makes the shipped tree itself
+ * refuse the writes. Read its docstring before changing either half - it
  * carries the measurements, and the two exist as a pair.
  *
  * Deliberately free of Electron imports so the contract tests bundle this
@@ -144,42 +139,131 @@ export function bundledPythonTreePaths(resourcesPath: string): string[] {
 export type PythonTreeSeal = {
 	/** Trees that exist and were walked. */
 	sealed: string[];
-	/** Paths whose write bits were cleared by this call. */
-	cleared: number;
-	/** Paths that were already read-only, so this call left them alone. */
-	alreadyReadOnly: number;
-	/** Paths the walk refused to change, with the reason. Never thrown. */
-	failures: { path: string; error: string }[];
+	/** Directories that now refuse a new entry, as `find` selected them. */
+	directories: number;
+	/** Existing `.pyc` that now refuse a rewrite, as `find` selected them. */
+	bytecodeFiles: number;
+	/** Paths the tool refused, with its own message. Never thrown. */
+	failures: string[];
+	/**
+	 * Whether this platform has the mechanism at all. False everywhere but
+	 * macOS, where the harm and the access-control entries both exist; the
+	 * caller must not read `sealed: []` as "no tree was there" without it.
+	 */
+	supported: boolean;
 };
 
 /**
- * Take the write bit off every file and directory under each tree.
+ * The `find` and `chmod` the seal runs, by absolute path.
+ *
+ * Addressed absolutely because this runs before any window exists, on a
+ * `PATH` that may have been inherited from the operator's own shell: which
+ * `find` or `chmod` the app runs is not a decision that environment gets to
+ * make. macOS ships both, and the seal is macOS-only.
+ */
+const FIND = "/usr/bin/find";
+const CHMOD = "/bin/chmod";
+
+/**
+ * The access-control entries the seal applies, one per kind of path.
+ *
+ * These two rights sets are the entire mechanism and they are deliberately
+ * different, because a directory and a file need opposite halves of the write
+ * permission withheld:
+ *
+ * - a **directory** denies `add_file`/`add_subdirectory` - nothing new can be
+ *   created inside it, which is the `__pycache__` directory and the `.pyc` both
+ *   - while `delete_child` stays granted, so unlink and rmdir still work;
+ * - an existing **`.pyc`** denies `write`/`append`, so a stale one cannot be
+ *   rewritten (`file modified:`, the class the heal cannot repair) - and
+ *   unlinking it is a directory operation, not a file one, so the heal still
+ *   can.
+ *
+ * A mode cannot express this split: one write bit on a directory covers both
+ * creating and unlinking its entries, which is why sealing by mode costs the
+ * app its own deletion and its own repair (see the docstring below).
+ */
+const DIRECTORY_ACE = "everyone deny add_file,add_subdirectory";
+const BYTECODE_ACE = "everyone deny write,append";
+
+/**
+ * Ceiling on the path list `find` prints back, which is only ever counted.
+ *
+ * The shipped trees are ~150 directories and ~1,800 files, so the real figure
+ * is tens of kilobytes; a ceiling exists so a tree that has grown something
+ * pathological cannot turn a spawn into an ENOBUFS that leaves the seal
+ * half-applied and unattributed.
+ */
+const MAX_FIND_OUTPUT_BYTES = 16 * 1024 * 1024;
+
+/**
+ * Make the bundled interpreter trees refuse new files, without making the app
+ * undeletable.
  *
  * Why this exists beside `withPythonBytecodeCache` (measured on 2026-09-13,
- * macOS 25.6.0, against the shipped 0.19.2 interpreter tree):
+ * macOS 25.6.0, against real copies of the shipped 0.19.2 interpreter tree):
  *
  * `PYTHONPYCACHEPREFIX` is an *environment variable*, so it protects only a
- * process that reads the environment. A child started with `-E` or `-I` ignores
- * every `PYTHON*` variable by design - that is what the flags mean - and
- * CPython's own tooling uses them: `venv` bootstraps pip through `ensurepip`,
- * which inserts `-I` when it is already isolated, and this repository spawns its
- * own evaluation workers with `-I -s -E` (with `-B` precisely because of this).
- * Measured from the bundled tree, with the prefix pointing at userData:
- * `-I -c "import json, subprocess, uuid"` wrote **41** `.pyc` into the sealed
- * tree, `-E -c "import json, csv, argparse"` wrote **24**, and an environment
- * carrying `PYTHONDONTWRITEBYTECODE=1` was ignored the same way (30). So an
- * isolated or environment-stripped grandchild can still unseal the bundle, and
- * nothing the app sets in an environment can reach it.
+ * process that reads the environment - and the app does not spawn every process
+ * that runs this interpreter. The backend virtual environment is created with
+ * the bundled interpreter, which makes the venv's own `python` resolve its
+ * stdlib to the tree inside the code-sealed `.app` (`pyvenv.cfg` carries
+ * `home = <bundle>/Contents/Resources/python_aarch64/bin`), so *anything* that
+ * starts that python itself - the operator's shell, a CLI script, launchd, an
+ * agent - carries no `PYTHONPYCACHEPREFIX` at all. Measured: `python -c "import
+ * json, uuid, argparse, csv"` from a venv over the bundled tree wrote 25 `.pyc`
+ * into the tree. That is the class the operator's own install is in - 163
+ * `.pyc` under `Contents/Resources/python_aarch64`, every one of them written
+ * by a python the app's environment never reached.
  *
- * Making the *target* refuse the write is the one form of this guarantee that
- * does not depend on the child at all, and CPython already treats it as normal:
- * a `__pycache__` it cannot write is simply not cached, silently, with no error
- * and no behavioural change. Measured on a copy of the shipped tree: with the
- * tree read-only, a bare run and an isolated (`-I`) run wrote **0** files, the
- * tree's contents were unchanged, `python -m venv` still produced a working
- * environment with pip, and `codesign --verify --deep --strict` still exited 0 -
- * a mode change is not a sealed resource, so this does not invalidate the
- * signature it is protecting.
+ * A child can also ignore the environment by design: `-E` and `-I` mean "do not
+ * read `PYTHON*` variables", and the backend's evaluation supervisor spawns its
+ * workers with `-I -s -E -B` (the `-B` is why those workers are safe today).
+ * Measured against an unsealed control clone of the same bytes, with the prefix
+ * set: `-I -c "import json, subprocess, uuid"` wrote 30 `.pyc` into the tree,
+ * `-E -c "import json, csv, argparse"` 24, `-I -S` 25, a
+ * `PYTHONDONTWRITEBYTECODE=1` environment 21, `-I -m ensurepip --root` 166, and
+ * `-I -m compileall` over the tree 1,097.
+ *
+ * The install path is *not* in that class, and it is worth saying so because it
+ * is easy to assume it is: 3.12's `venv` bootstraps pip by calling `ensurepip`
+ * with `-m` and a copy of the environment, deliberately not `-I` - CPython's
+ * gh-98251, "we do not want to just use -I because that masks legitimate user
+ * preferences (such as not writing bytecode)" - so measured, `-m venv` with the
+ * prefix set writes 0 `.pyc` into the tree. What the environment half cannot
+ * reach is the child that never receives it, and no environment the app can set
+ * changes that, so the refusal has to live at the *target*.
+ *
+ * Why access-control entries and not the obvious `chmod`: one write bit on a
+ * directory covers both creating an entry and unlinking one, so clearing it
+ * refuses the write at the cost of the two things the app still has to be able
+ * to do. Measured on a mode-sealed copy of the same tree: `rm -rf` exits 1 with
+ * `Permission denied` per entry and `Directory not empty`, so the tree survives
+ * its own uninstall - emptying the Trash cannot reclaim it - and the app's own
+ * repair comes back `healable=false removed=0`, because `healPythonBytecode`
+ * (`update-install.ts`) heals an unsealed bundle by unlinking the `.pyc` CPython
+ * added. A bundle the user cannot delete and the app cannot heal is a worse bug
+ * than the one being fixed, so the seal withholds the two rights separately, as
+ * {@link DIRECTORY_ACE} and {@link BYTECODE_ACE} state.
+ *
+ * Measured on those same copies, every class run from fresh clones of the same
+ * bytes with the sealed column carrying the entries: the sealed column wrote
+ * **0** `.pyc` in every class above and gained **0** entries of any kind - so
+ * there is no legacy `foo.pyc` fallback beside the source either - while the
+ * control column wrote the numbers above. `-I -m compileall` over the whole
+ * `lib/python3.12` (which tries to compile all ~1,800 sources) wrote 0 files and
+ * exited 1, and that exit is the shape of the mechanism rather than a fault:
+ * `py_compile` and `compileall` are explicit compilers that raise on a refused
+ * write, where an *import* through `SourceFileLoader.set_data` swallows it and
+ * simply does not cache. Nothing on the app's paths calls either.
+ *
+ * The rest of the pair's properties, measured the same way: the interpreter in a
+ * sealed tree still runs and still produces a working venv (`-I -m venv` exits 0
+ * with pip 25.0.1 in it), every file's contents are unchanged (sha256 over every
+ * path, before and after), and `codesign --verify --deep --strict` still exits 0
+ * with 0 violations - an access-control entry is not a sealed resource, so this
+ * cannot invalidate the signature it exists to protect. `rm -rf` of the sealed
+ * tree exits 0, which is the property the mode seal could not have.
  *
  * `-B`/`PYTHONDONTWRITEBYTECODE` was the alternative belt and is deliberately
  * NOT used: it stops bytecode caching rather than redirecting it (every backend
@@ -187,21 +271,39 @@ export type PythonTreeSeal = {
  * environment form it is ignored by exactly the isolated children it would need
  * to stop.
  *
- * Read-only rather than deleted: the tree is the interpreter's own stdlib, and
- * the app must never remove a sealed resource. Directories keep read+execute, so
- * the tree stays fully usable; only writes are refused. Best-effort by design -
- * a bundle on a read-only volume, or one owned by another user, must leave the
- * app exactly as it was, because the environment half of the pair still applies.
+ * macOS only, and deliberately: what this protects is a *code signature*, and
+ * only macOS seals an `.app`'s resources, so on Linux and Windows there is
+ * nothing to protect and nothing to do - the environment half is the whole
+ * guarantee there. The mechanism is macOS's too: POSIX ACLs as Linux implements
+ * them have no deny entries (the same "one right for both halves" problem), and
+ * on Windows Node's `chmod` only sets a file's read-only attribute, which does
+ * nothing to a directory's ability to gain entries. The previous revision ran
+ * the mode seal on every platform, which chmod'ed ~2,000 real paths on Linux for
+ * no benefit at all.
+ *
+ * Best-effort by design, and reported rather than hidden: a bundle on a volume
+ * without access-control support, or one owned by another user, leaves the app
+ * exactly as it was - the failures are named in the result and the environment
+ * half of the pair still applies.
+ *
+ * Scope of the file half, stated so it is not mistaken for an oversight: only
+ * `.pyc` is denied a rewrite. The sources themselves are not, because a write
+ * to one is not something any spawn class performs - and a *new* file beside a
+ * source, which is the one legacy form a write could take, is refused by the
+ * directory it would land in (`-I -m compileall`, which tries to emit bytecode
+ * for every source in the tree, created 0 files).
  */
 export function sealPythonInterpreterTrees(
 	trees: readonly string[],
 ): PythonTreeSeal {
 	const result: PythonTreeSeal = {
 		sealed: [],
-		cleared: 0,
-		alreadyReadOnly: 0,
+		directories: 0,
+		bytecodeFiles: 0,
 		failures: [],
+		supported: process.platform === "darwin",
 	};
+	if (!result.supported) return result;
 	for (const tree of trees) {
 		let root: Stats;
 		try {
@@ -214,46 +316,62 @@ export function sealPythonInterpreterTrees(
 		}
 		if (!root.isDirectory()) continue;
 		result.sealed.push(tree);
-		clearWriteBits(tree, result);
+		result.directories += applyAce(
+			tree,
+			["-type", "d"],
+			DIRECTORY_ACE,
+			result.failures,
+		);
+		result.bytecodeFiles += applyAce(
+			tree,
+			["-type", "f", "-name", "*.pyc"],
+			BYTECODE_ACE,
+			result.failures,
+		);
 	}
 	return result;
 }
 
-/** Depth-first walk clearing write bits, tolerant of a tree that changes size. */
-function clearWriteBits(path: string, result: PythonTreeSeal): void {
-	let entries: Dirent[];
-	try {
-		entries = readdirSync(path, { withFileTypes: true });
-	} catch (error) {
-		result.failures.push({ path, error: String(error) });
-		return;
+/**
+ * Apply `ace` to every path `selector` matches under `tree`, and return how
+ * many `find` selected.
+ *
+ * `-exec ... {} +` batches the tool over as many paths as one argument list
+ * holds instead of spawning once per path, which is what keeps this off the
+ * second it would otherwise cost; `-print0` after it is what makes a count
+ * possible at all, since the tool itself prints nothing on success. The count
+ * is therefore *paths selected*, and {@link PythonTreeSeal.failures} is the
+ * exceptions - a non-empty `failures` is a partial seal and reads as one.
+ *
+ * `find` does not follow symlinks, so `-type d`/`-type f` skip the tree's own
+ * in-tree links (`bin/python3 -> python3.12`, `lib/pkgconfig/*.pc`, the man
+ * pages) by construction, and a broken one is not an error here.
+ */
+function applyAce(
+	tree: string,
+	selector: readonly string[],
+	ace: string,
+	failures: string[],
+): number {
+	const run = spawnSync(
+		FIND,
+		[tree, ...selector, "-exec", CHMOD, "+a", ace, "{}", "+", "-print0"],
+		{ encoding: "buffer", maxBuffer: MAX_FIND_OUTPUT_BYTES },
+	);
+	if (run.error) {
+		failures.push(`${tree}: ${String(run.error)}`);
+		return 0;
 	}
-	for (const entry of entries) {
-		const child = join(path, entry.name);
-		// A symlink is not followed: the shipped tree links to itself and to
-		// nothing outside it, and chmod through a link would reach a file this
-		// tree does not own.
-		if (entry.isDirectory()) clearWriteBits(child, result);
-		if (entry.isSymbolicLink()) continue;
-		clearWriteBit(child, result);
+	// A refused path comes back on stderr in the tool's own words, which name the
+	// path; anything at all on stderr is a failure, including a selector this
+	// `find` did not understand.
+	for (const line of String(run.stderr).split("\n")) {
+		if (line.trim().length > 0) failures.push(line.trim());
 	}
-	// The directory itself last, so the walk could still create nothing it
-	// needed to: without its own write bit, new cache directories are refused.
-	clearWriteBit(path, result);
-}
-
-/** Clear one path's write bits, recording rather than raising a failure. */
-function clearWriteBit(path: string, result: PythonTreeSeal): void {
-	try {
-		const mode = lstatSync(path).mode & 0o777;
-		const readOnly = mode & ~0o222;
-		if (mode === readOnly) {
-			result.alreadyReadOnly += 1;
-			return;
-		}
-		chmodSync(path, readOnly);
-		result.cleared += 1;
-	} catch (error) {
-		result.failures.push({ path, error: String(error) });
+	if (run.status !== 0 && String(run.stderr).trim().length === 0) {
+		failures.push(`${tree}: ${FIND} exited ${run.status} with no explanation`);
 	}
+	let selected = 0;
+	for (const byte of run.stdout) if (byte === 0) selected += 1;
+	return selected;
 }

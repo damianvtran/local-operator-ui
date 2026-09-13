@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+	appendFileSync,
 	chmodSync,
 	existsSync,
 	mkdirSync,
@@ -260,7 +261,12 @@ async function loadMainProcess() {
 			const electronFixture = `
 				const paths = globalThis.__loTestPaths;
 				export const app = {
-					isPackaged: true,
+					// A getter rather than a literal, so a test can put the app on the
+					// other side of the seal's packaged/dev decision: the installer reads
+					// this at construction, and the seal is gated on it.
+					get isPackaged() {
+						return globalThis.__loTestAppIsPackaged ?? true;
+					},
 					getPath: (name) => paths[name] ?? paths.userData,
 					getVersion: () => "0.0.0-test",
 					getName: () => "Local Operator",
@@ -823,47 +829,79 @@ function writeCacheEntry(tree, relative) {
 	writeFileSync(join(target, "mod.cpython-312.pyc"), "bytecode");
 }
 
-test("a sealed interpreter tree refuses the write a CPython cache write performs", () => {
-	const root = mkdtempSync(join(tmpdir(), "lo-seal-"));
-	const tree = join(root, "python_aarch64");
-	const untouched = join(root, "elsewhere");
-	mkdirSync(join(tree, "lib", "python3.12"), { recursive: true });
-	mkdirSync(untouched, { recursive: true });
-	writeFileSync(join(tree, "lib", "python3.12", "os.py"), "# stdlib\n");
-	writeFileSync(join(untouched, "keep.py"), "# not ours\n");
-	const before = hashTree(tree);
-
-	try {
-		// What an isolated child would do: `-E`/`-I` ignore the environment, so
-		// this write is the only thing standing between it and the sealed bundle.
-		assert.doesNotThrow(
-			() => writeCacheEntry(tree, join("lib", "python3.12", "__pycache__")),
-			"the fixture must be writable first, or the seal proves nothing",
-		);
-		rmSync(join(tree, "lib", "python3.12", "__pycache__"), {
-			recursive: true,
-			force: true,
-		});
+test(
+	"a sealed interpreter tree refuses the write a CPython cache write performs, and stays deletable",
+	{ skip: process.platform !== "darwin" },
+	() => {
+		const root = mkdtempSync(join(tmpdir(), "lo-seal-"));
+		const tree = join(root, "python_aarch64");
+		const untouched = join(root, "elsewhere");
+		mkdirSync(join(tree, "lib", "python3.12", "json"), { recursive: true });
+		mkdirSync(untouched, { recursive: true });
+		writeFileSync(join(tree, "lib", "python3.12", "os.py"), "# stdlib\n");
+		writeFileSync(join(untouched, "keep.py"), "# not ours\n");
+		// Bytecode an earlier version of the app wrote before the seal existed - the
+		// operator's real shape, and the file the heal exists to remove. It is also
+		// why the seal withholds `write` from a `.pyc`: rewriting one of these is
+		// `file modified:`, the class codesign cannot accept a deletion for.
+		const cache = join(tree, "lib", "python3.12", "__pycache__");
+		mkdirSync(cache, { recursive: true });
+		writeFileSync(join(cache, "os.cpython-312.pyc"), "old bytecode");
+		const before = hashTree(tree);
 
 		const seal = sealPythonInterpreterTrees([tree, join(root, "python")]);
-		assert.deepEqual(seal.sealed, [tree], "only the tree that exists is sealed");
-		assert.ok(seal.cleared > 0, "the seal clears write bits");
+		assert.deepEqual(
+			seal.sealed,
+			[tree],
+			"only the tree that exists is sealed",
+		);
+		// Exact figures, not `> 0`: the previous revision counted every directory
+		// twice and reported the ones it had just sealed as "already read-only"
+		// (285 on the shipped tree, where the true fresh-tree value is 0), and
+		// `> 0` is what let that pass.
+		assert.equal(
+			seal.directories,
+			5,
+			"the tree root and all four directories below it are sealed",
+		);
+		assert.equal(
+			seal.bytecodeFiles,
+			1,
+			"the .pyc already there is covered too",
+		);
 		assert.deepEqual(seal.failures, []);
 
-		// The contents are intact - a mode change is not a resource change, which
-		// is what keeps the code signature this exists to protect valid.
+		// The contents are intact - an access-control entry is not a resource
+		// change, which is what keeps the code signature this exists to protect
+		// valid - and the interpreter that owns the tree still runs.
 		assert.equal(hashTree(tree), before, "a seal must not change a byte");
-		// Readable and traversable, so the interpreter that owns it still runs.
-		assert.equal(readFileSync(join(tree, "lib", "python3.12", "os.py"), "utf8"), "# stdlib\n");
+		assert.equal(
+			readFileSync(join(tree, "lib", "python3.12", "os.py"), "utf8"),
+			"# stdlib\n",
+		);
 
+		// What an isolated child does: `-E`/`-I` ignore the environment, so this
+		// write is the only thing standing between it and the sealed bundle. Both
+		// halves of what CPython performs - the `.pyc` in an existing cache
+		// directory, and the cache directory itself on a fresh tree.
 		assert.throws(
 			() => writeCacheEntry(tree, join("lib", "python3.12", "__pycache__")),
 			{ code: "EACCES" },
 			"a sealed tree must refuse the write an unredirected interpreter makes",
 		);
 		assert.throws(
+			() => mkdirSync(join(tree, "lib", "python3.12", "json", "__pycache__")),
+			{ code: "EACCES" },
+			"and must refuse to be given the cache directory itself",
+		);
+		assert.throws(
 			() => writeFileSync(join(tree, "lib", "python3.12", "new.py"), "# new\n"),
 			{ code: "EACCES" },
+		);
+		assert.throws(
+			() => appendFileSync(join(cache, "os.cpython-312.pyc"), "more"),
+			{ code: "EACCES" },
+			"rewriting the bytecode already there is the class the heal cannot repair",
 		);
 
 		// Nothing outside the named trees is touched.
@@ -871,27 +909,30 @@ test("a sealed interpreter tree refuses the write a CPython cache write performs
 			writeFileSync(join(untouched, "kept.py"), "# still writable\n"),
 		);
 
-		// Idempotent: the second pass reports what it found and changes nothing.
+		// Idempotent: the second pass reports the same set and changes nothing.
 		const again = sealPythonInterpreterTrees([tree]);
-		assert.equal(again.cleared, 0, "an already-sealed tree is left alone");
-		assert.ok(again.alreadyReadOnly > 0);
+		assert.deepEqual(again.sealed, [tree]);
+		assert.equal(again.directories, 5);
+		assert.equal(again.bytecodeFiles, 1);
+		assert.deepEqual(again.failures, []);
 		assert.equal(hashTree(tree), before);
-	} finally {
-		// The fixture must be made writable again before it can be removed.
-		chmodRecursiveWritable(tree);
-		rmSync(root, { recursive: true, force: true });
-	}
-});
 
-/** Give every path under `dir` its write bits back, so rm can reclaim the tree. */
-function chmodRecursiveWritable(dir) {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		const child = join(dir, entry.name);
-		if (entry.isDirectory()) chmodRecursiveWritable(child);
-		chmodSync(child, 0o755);
-	}
-	chmodSync(dir, 0o755);
-}
+		// The two properties a mode seal could not have, and the reason this one
+		// withholds the rights separately: the app can still heal the bundle it is
+		// about to hand to ShipIt (unlinking is a directory right, which the seal
+		// leaves granted), and the user can still delete the app (same).
+		assert.doesNotThrow(
+			() => rmSync(join(cache, "os.cpython-312.pyc")),
+			"the heal must still be able to unlink bytecode in a sealed tree",
+		);
+		assert.equal(existsSync(join(cache, "os.cpython-312.pyc")), false);
+		assert.doesNotThrow(
+			() => rmSync(root, { recursive: true, force: true }),
+			"emptying the Trash must still be able to reclaim a sealed tree",
+		);
+		assert.equal(existsSync(root), false);
+	},
+);
 
 test("constructing the installer seals the bundled trees of a packaged app", async () => {
 	const { BackendInstaller } = await loadMainProcess();
@@ -912,10 +953,7 @@ test("constructing the installer seals the bundled trees of a packaged app", asy
 		new BackendInstaller();
 		assert.throws(
 			() =>
-				writeCacheEntry(
-					tree,
-					join("lib", "python3.12", "json", "__pycache__"),
-				),
+				writeCacheEntry(tree, join("lib", "python3.12", "json", "__pycache__")),
 			{ code: "EACCES" },
 			"a packaged app must seal its bundled interpreter before any python runs",
 		);
@@ -924,9 +962,78 @@ test("constructing the installer seals the bundled trees of a packaged app", asy
 		assert.equal(existsSync(join(resources, "python")), false);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		// `delete` rather than `= undefined`: the point of this branch is to restore
+		// the property's *absence*, and assigning undefined would leave it present.
 		else delete process.resourcesPath;
-		chmodRecursiveWritable(resources);
+		// No mode surgery before this one: a sealed tree is deletable, which is the
+		// property the mechanism was chosen for (the mode seal needed
+		// `chmod -R u+w` here, and only because a test may do what a user may not).
 		rmSync(resources, { recursive: true, force: true });
+	}
+});
+
+test("the seal follows the code-sealed bundle, never the checkout's resources tree", async () => {
+	// `BackendInstaller` resolves its own `resourcesPath` at
+	// `join(process.cwd(), "resources")` whenever NODE_ENV is development, and
+	// `resources/python*` is a gitignored build input
+	// (`scripts/setup-python-resource.sh`) that this app does not own. Sealing by
+	// `app.isPackaged` alone took the write bits off that tree; the seal is
+	// aimed at `process.resourcesPath` instead, and an unpackaged run seals
+	// nothing at all.
+	const { BackendInstaller } = await loadMainProcess();
+	const scratch = mkdtempSync(join(tmpdir(), "lo-resources-dev-"));
+	const checkout = join(scratch, "resources", "python_aarch64");
+	const bundle = join(scratch, "bundle", "python_aarch64");
+	const unpackaged = join(scratch, "unpackaged", "python_aarch64");
+	for (const tree of [checkout, bundle, unpackaged]) {
+		mkdirSync(join(tree, "lib", "python3.12"), { recursive: true });
+		writeFileSync(join(tree, "lib", "python3.12", "json.py"), "# stdlib\n");
+	}
+	const cacheWrite = (tree) => () =>
+		writeCacheEntry(tree, join("lib", "python3.12", "__pycache__"));
+
+	const originalCwd = process.cwd();
+	const originalNodeEnv = process.env.NODE_ENV;
+	const hadResourcesPath = "resourcesPath" in process;
+	const originalResourcesPath = process.resourcesPath;
+	const originalPackaged = globalThis.__loTestAppIsPackaged;
+	// `join(process.cwd(), "resources")` is what the constructor resolves in a
+	// development run, so the cwd is the scratch directory rather than the
+	// checkout - this test must not create one in the repository it runs from.
+	process.chdir(scratch);
+	process.env.NODE_ENV = "development";
+	process.resourcesPath = join(scratch, "bundle");
+	try {
+		new BackendInstaller();
+		assert.doesNotThrow(
+			cacheWrite(checkout),
+			"a packaged dev run must not seal the checkout's own resources tree",
+		);
+		assert.throws(
+			cacheWrite(bundle),
+			{ code: "EACCES" },
+			"but it must seal the bundle it actually ships",
+		);
+
+		globalThis.__loTestAppIsPackaged = false;
+		process.resourcesPath = join(scratch, "unpackaged");
+		new BackendInstaller();
+		assert.doesNotThrow(
+			cacheWrite(unpackaged),
+			"an unpackaged run is not the shipped artifact and must seal nothing",
+		);
+	} finally {
+		process.chdir(originalCwd);
+		if (originalNodeEnv === undefined) {
+			// `delete` rather than `= undefined`: the latter would leave NODE_ENV set
+			// to the string "undefined", which is not a state any test started from.
+			delete process.env.NODE_ENV;
+		} else process.env.NODE_ENV = originalNodeEnv;
+		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		// Same reason as the branch in the test above: restore the absence.
+		else delete process.resourcesPath;
+		globalThis.__loTestAppIsPackaged = originalPackaged;
+		rmSync(scratch, { recursive: true, force: true });
 	}
 });
 
