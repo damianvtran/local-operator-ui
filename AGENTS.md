@@ -93,6 +93,79 @@ uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
 proof. Broader verification remains typecheck, lint, the theme gates, a real
 build, and rendered evidence from the live app or Storybook as appropriate.
 
+**The desktop suite caps its own concurrency.** It runs through
+`scripts/run-desktop-tests.mjs` rather than `node --test` directly, so node's
+default of one file worker per core (minus one) — 13 on a 14-core box — never
+applies here. The cap is the smaller of half the cores and a memory budget,
+resolved by `scripts/desktop-test-concurrency.mjs`, and the runner prints the
+number it chose, the term that bound and the inputs behind it before the first
+test, because that line is what a reviewer reads to know what actually ran.
+
+It exists because this repo is worked through many concurrent git worktrees and
+several agent sessions run this suite at once on one laptop. **What reproduces is
+the concurrency it removes**, not one RSS figure: 13 file workers by default
+against 5-7 under the cap, and with them the peak process count (this branch's
+rounds: 25-28 processes uncapped against 15-19 capped; QA's pass: 32 against 24)
+in two independent passes — this branch's own, run before the rebases onto main
+(23 files then, base `79d0dc889`), and QA's at a cap of 7. Peak tree RSS is round-
+and pressure-dependent and a single band should not be quoted as the property of
+the change: this branch measured 666-892 MB at caps of 5-7 against 1,187-1,291 MB
+uncapped, while QA's pass at cap 7 measured a 998 MB / 24-process peak against a
+1,253 MB / 32-process baseline with median and p95 RSS essentially unchanged. A
+suite's peak is dominated by whichever heavy file is in flight, not by how many
+run at once. Wall time overlaps in the unpressured case: 91.5-93.3 s uncapped
+against 93.1-95.7 s capped.
+
+**Know the pressure mode's cost before judging the cap.** The memory arm has a
+floor: at or below **3,648 MB available** on this host — the 3,072 MB reserve
+plus three workers' worth, where the arm returns 3 and one byte less returns 2 —
+it can return nothing above `_MIN_WORKERS`. Wall time then grows by roughly half
+to double, because two workers serialise the whole suite: **+47% to +98%** across
+QA's two A/B passes (+46.7%: 133.4 s against 91.0 s, both arms in one window on
+the head QA tested; +98%: 180.6 s against 91.4 s, on a busier box in round 1).
+The direction is the point and the multiple follows what else the host is doing.
+That is the deliberate trade rather than a regression to tune away: the condition
+is a host already swapping, and the point of the floor is that this suite is not
+what pushes it over. A `test:desktop` run that looks slow should be read as its
+concurrency line first and its timer second.
+
+**Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
+exports it into every test-file process, and a nested `node --test` that inherits
+it does not run the files at all: it warns (`node:test run() is being called
+recursively within a test file. skipping running files.`), writes **0 bytes** to
+stdout and **exits 0**. Measured on node 26.5.0. So an inherited copy turns a red
+suite green — `env NODE_TEST_CONTEXT=child-v8 pnpm test:desktop` reported success
+in 0.41 s on a deliberately failing tree, which is the false-green class this
+whole change exists to remove. `scripts/run-desktop-tests.mjs` filters that one
+key out of the environment it hands its child (`_TEST_CONTEXT_ENV`), and
+`run-desktop-tests.test.mjs` pins it by running a failing suite through the
+runner with the variable genuinely ambient.
+
+Several files here also spawn real children — the esbuild binary that most of
+them bundle through, a real `/usr/bin/codesign` run in
+`update-robustness.test.mjs`, node subprocesses in `linux-sandbox.test.mjs` —
+which is why the memory budget divides by a 192 MB per-worker envelope the
+measurements do not themselves justify; the constant's own comment in
+`scripts/desktop-test-concurrency.mjs` says exactly what those measurements do
+and do not bound.
+
+Override the number, or bypass the governor entirely:
+
+```sh
+LOCAL_OPERATOR_UI_TEST_CONCURRENCY=12 pnpm test:desktop        # honoured unclamped
+node scripts/run-desktop-tests.mjs --test-concurrency=12 <files...>  # bypasses it
+```
+
+An explicit `--test-concurrency=N` is forwarded untouched; whoever passed it
+knows how wide they want to run. **CI keeps every core:** `CI` set without
+`LOCAL_OPERATOR_AGENT_SHELL` takes node's own default untouched, because a
+hosted runner is dedicated and taking parallelism away from it is a regression
+paid on every run. Our own bash tool sets `CI=1` on agent-run commands, so it
+also sets `LOCAL_OPERATOR_AGENT_SHELL=1`; the governor denies that marker and
+takes the developer path, which is the only reason agent-run suites on a laptop
+are capped at all. A probe failure degrades to a CPU-only cap, and the governor
+never raises a machine's parallelism above what node itself would have used.
+
 ## Running the app without taking the operator's focus
 
 Agents run this app on the operator's own desktop, several at a time. Until the
