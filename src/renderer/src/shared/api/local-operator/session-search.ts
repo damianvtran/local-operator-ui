@@ -63,13 +63,18 @@ export function useChatSearch(query: string, enabled: boolean) {
 		// name is typed without waiting for a refetch.
 		staleTime: 30_000,
 		// Keeps the previous answer visible while the next request runs, so the
-		// list does not flash empty between keystrokes. It is only USED when the
-		// echoed query is the box's or a prefix of it (`hitsAnswerQuery`), so what
-		// survives a keystroke is the answer to the word being extended -- never an
-		// answer to some unrelated earlier query (select-all and retype). The cost
-		// is that conversation matches lag the box by at most one debounce plus a
-		// round trip, which is the trade this makes against a list that collapses
-		// and re-expands on every character.
+		// list does not flash empty between keystrokes. It is USED only when the
+		// echoed query is EXACTLY the box's (`hitsAnswerQuery`), which is the rule
+		// round 2 (R10) settled on after a prefix rule was tried and withdrawn: a
+		// prefix is not a smaller question but a LARGER one, so `retention`'s
+		// answer shown under `retentionx` puts rows in the list that the box's own
+		// search would not return, every one of them marked as a conversation
+		// match. What a stale answer therefore buys is only that the list holds
+		// its name matches while the new answer is in flight, and the panel says
+		// as much in words (`awaiting`). The cost is that conversation matches lag
+		// the box by at most one debounce plus a round trip, which is the trade
+		// this makes against a list that collapses and re-expands on every
+		// character.
 		placeholderData: keepPreviousData,
 		retry: false,
 	});

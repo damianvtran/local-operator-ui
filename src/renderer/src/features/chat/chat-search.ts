@@ -16,6 +16,7 @@
  * and can be tested without a browser.
  */
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { SESSION_SEARCH_MAX_CHARS } from "../../../../shared/desktop-contract";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
 
 /**
@@ -280,4 +281,50 @@ export function hitsAnswerQuery(
 	const asked = query.trim();
 	if (!result || !asked) return false;
 	return result.query === asked;
+}
+
+/**
+ * Whether the box holds a query the search op cannot carry.
+ *
+ * The contract bounds `q` at `SESSION_SEARCH_MAX_CHARS`, and a request past it
+ * is refused before the socket — but the refusal a surface can SEE is the
+ * transport's generic 422, which names neither the field nor the length, so the
+ * only branch that renders it is the "conversation search is unavailable"
+ * notice, whose Retry re-sends the same characters and is refused identically
+ * forever (QA round 1, Q1). The surface therefore has to decide this itself,
+ * before it asks, and say what is actually wrong.
+ *
+ * Measured on the TRIMMED box, because the trimmed box is what is sent
+ * (`useChatSearch` debounces `query.trim()`) and what the schema validates: a
+ * rule counting the untrimmed string would refuse a query the request would
+ * have carried. Deliberately NOT a `maxLength` on the input, which would be the
+ * same lie in the other direction — silently dropping the tail of a pasted
+ * query searches for something the user did not type, and says nothing about
+ * having done it.
+ */
+export function searchQueryExceedsLimit(
+	query: string,
+	limit: number = SESSION_SEARCH_MAX_CHARS,
+): boolean {
+	return query.trim().length > limit;
+}
+
+/**
+ * Whether the answer in hand may be missing rows it could not carry.
+ *
+ * The answer does not report truncation — it holds `limit`, `query` and
+ * `sessions`, where the sibling LIST route returns a `truncated` flag — so a
+ * client cannot tell a complete answer from a clipped one directly. What it can
+ * see is that the answer came back holding exactly as many hits as it asked
+ * for, which is the only observable a full page leaves; and the truthful
+ * reading of that observable is "at least this many", which holds whether or
+ * not there were more. Hence `>=` and not `>`: a store with exactly `limit`
+ * matches is reported as a floor, which it also is, and the panel never asserts
+ * a total it cannot see (QA round 1, Q3).
+ */
+export function searchAnswerIsClipped(
+	hitCount: number,
+	limit: number | undefined,
+): boolean {
+	return typeof limit === "number" && limit > 0 && hitCount >= limit;
 }

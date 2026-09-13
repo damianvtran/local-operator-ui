@@ -45,6 +45,14 @@ export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
  * belongs at both ends: here so the refusal names the field, there so a
  * hand-rolled request cannot project an unbounded string into every digest
  * comparison in the store.
+ *
+ * The sidebar is the consumer that makes "refused by name" true of a USER's
+ * surface rather than only of the schema: the schema's refusal is the
+ * transport's generic 422, which names neither field nor length, and the one
+ * branch that rendered it offered a Retry that re-sent the same characters
+ * forever (QA round 1, Q1). `searchQueryExceedsLimit` reads this constant, and
+ * the notice it drives names the number — so the bound is stated in one place
+ * and the copy cannot drift from it.
  */
 export const SESSION_SEARCH_MAX_CHARS = 256;
 
