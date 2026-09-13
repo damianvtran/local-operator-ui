@@ -7,6 +7,14 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+// The echo seam, not the hook itself: these are module-level functions over a
+// registry of mounted transcripts, so the store never touches React state and
+// the dependency stays one-way (the hook does not import this store).
+import {
+	discardPendingEchoes,
+	echoPendingUser,
+	retractPendingUser,
+} from "@shared/hooks/use-canonical-session";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
@@ -163,6 +171,32 @@ export function draftIdentityFor(
 	return draftKey ?? (sessionId ? `send:${sessionId}` : null);
 }
 
+/**
+ * What React keys the chat panel on, and therefore what makes it remount.
+ *
+ * The precedence is `id ?? draftKey` and NOT the reverse. A draft learns its
+ * session id mid-send (the store patches it before the message POST), so
+ * keying on the draft made admission a REMOUNT: the subscription opened during
+ * the engage wait was discarded, a second SSE handshake was paid, and the
+ * backend recomputed a full snapshot before the stream's first frame — all
+ * landing exactly where the user expects to see the message they just sent.
+ * The draft key and the session id name the same conversation from either side
+ * of admission, so keying on the session makes the flip a no-op.
+ *
+ * The reverse direction still remounts, correctly: "New chat" stages a draft
+ * with no session id, so `id` is undefined and the new draft key wins. That IS
+ * a different conversation and must not inherit the previous transcript.
+ *
+ * Extracted rather than inlined in the component for the same reason
+ * `draftIdentityFor` was: the rule is then exercised by the store tests.
+ */
+export function panelIdentityFor(
+	draftKey: string | null,
+	sessionId: string | null | undefined,
+): string | undefined {
+	return sessionId ?? draftKey ?? undefined;
+}
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -242,8 +276,11 @@ export async function admitChatDraft(
 		submittedMode: mode,
 		error: undefined,
 	});
+	// Declared outside the try because the catch needs it to address the echo:
+	// `draft` is the pre-send snapshot, so reading `draft.sessionId` there would
+	// miss a session this very call created and leave its echo unretractable.
+	let id = sessionId ?? draft.sessionId;
 	try {
-		let id = sessionId ?? draft.sessionId;
 		if (!id) {
 			id =
 				(await store.createSession(
@@ -260,6 +297,32 @@ export async function admitChatDraft(
 		// From here the outcome is unknowable on failure: the owner may have
 		// admitted the command before the response was lost.
 		store.updateDraft(key, { admissionAttempted: true });
+		/*
+		 * Paint the message BEFORE the await, not after it.
+		 *
+		 * This is the whole felt-latency fix: the message request spends ~1.15 s
+		 * engaging a cold runtime on a session nobody warmed, and until now the
+		 * user's text sat in the composer for all of it with nothing on screen.
+		 * The echo is synchronous, so the text moves from box to transcript in
+		 * one frame regardless of what the backend costs.
+		 *
+		 * Keyed by `admissionRequestId` — the id the owner gives the durable row
+		 * — so this coalesces with `message_start` instead of duplicating it.
+		 * See `appendPendingUser`.
+		 */
+		echoPendingUser(
+			id,
+			draft.admissionRequestId,
+			text,
+			images.map((image, index) => ({
+				// Same id shape `extractImages` gives the owner's row, so the
+				// coalesced record keeps its image keys across the swap.
+				id: `${draft.admissionRequestId}:${index}`,
+				data: image.data_b64,
+				attachment: null,
+				mimeType: image.mime_type,
+			})),
+		);
 		await desktopResult({
 			op: "sessions.message",
 			sessionId: id,
@@ -276,6 +339,29 @@ export async function admitChatDraft(
 		useCanonicalSessionsStore.setState({ error: null });
 		return id;
 	} catch (error) {
+		/*
+		 * ONE definition of "nothing was admitted", read by both consumers below.
+		 *
+		 * A second copy is how the retraction and the `admissionAttempted`
+		 * un-latch drift apart, and they must not: they are answers to the same
+		 * question. 413 and 422 are raised before the prompt reaches the session
+		 * (the reasoning is spelled out on the un-latch below), so the message
+		 * provably does not exist on the owner and the echo must go.
+		 *
+		 * Every OTHER failure keeps the echo painted, which looks wrong and is
+		 * not: the outcome is unknowable, the owner may have admitted the command
+		 * before the response was lost, and retracting would make a message the
+		 * agent is about to answer vanish from the transcript. An echo that
+		 * outlives a genuinely failed send is harmless — the SSE snapshot is
+		 * authoritative and repaints from `applyHistoryPage`, while
+		 * `dropLiveRecords` deliberately does not remove user rows.
+		 */
+		const refusedBeforeAdmission =
+			error instanceof DesktopControlError &&
+			(error.status === 413 || error.status === 422);
+		if (refusedBeforeAdmission && id) {
+			retractPendingUser(id, draft.admissionRequestId);
+		}
 		// One owner for one failure. `createSession` sets the page-level `error`
 		// AND rethrows, so the same sentence rendered twice - once at the top of
 		// the chat column and once at the composer. The composer's copy is the
@@ -317,10 +403,7 @@ export async function admitChatDraft(
 			// of that identity check - so the one action that would make the message
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
-			...(error instanceof DesktopControlError &&
-			(error.status === 413 || error.status === 422)
-				? { admissionAttempted: false }
-				: {}),
+			...(refusedBeforeAdmission ? { admissionAttempted: false } : {}),
 			errorCode:
 				error instanceof Error &&
 				"code" in error &&
@@ -586,6 +669,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			discardDraft: (key) =>
 				set((state) => {
 					const drafts = { ...state.drafts };
+					/*
+					 * Abandoning the message also drops any echo buffered for its
+					 * session. The buffer holds the text and its images as base64
+					 * until a panel mounts, and a discarded draft is the case where
+					 * one may never do - so this is the user's deletion being
+					 * honoured in memory, not just in the store.
+					 *
+					 * THE SESSION ID LIVES IN TWO PLACES DEPENDING ON HOW THE DRAFT
+					 * WAS MADE, and reading only one of them made this a no-op for
+					 * the commonest send. A draft staged from "New chat" is keyed
+					 * `draft:<uuid>` and LEARNS its session id mid-send, so the row
+					 * carries it. A send from an existing conversation is keyed
+					 * `send:<sessionId>` by `draftIdentityFor` and the id is passed
+					 * to `admitChatDraft` as an argument - it is never written to
+					 * the row, so `drafts[key].sessionId` is undefined there and the
+					 * abandoned echo survived with its text and attachments.
+					 *
+					 * Both shapes are read, row first: the row is authoritative when
+					 * present, and the key is the fallback that covers the send path.
+					 */
+					const abandoned =
+						drafts[key]?.sessionId ??
+						(key.startsWith("send:") ? key.slice("send:".length) : undefined);
+					if (abandoned) discardPendingEchoes(abandoned);
 					delete drafts[key];
 					/*
 					 * Clear the pointer as well as the draft, the way

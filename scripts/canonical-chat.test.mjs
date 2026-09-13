@@ -15,6 +15,16 @@ globalThis.__canonicalRequest = async (request) => {
 	calls.push(request);
 	return {};
 };
+// The optimistic echo's effects, recorded in order. The real seam is a
+// registry of mounted transcripts in `use-canonical-session`; the store only
+// ever calls the two functions, so recording them here is the same evidence
+// without mounting React. Each entry also snapshots how many transport calls
+// had been made when it happened, which is what pins the ORDERING claim: the
+// echo must precede the `sessions.message` request, not merely accompany it.
+const echoes = [];
+globalThis.__canonicalEcho = (event) => {
+	echoes.push({ ...event, callsAtTime: calls.length });
+};
 const bundle = await build({
 	stdin: {
 		contents:
@@ -33,6 +43,26 @@ const bundle = await build({
 					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
 					() => ({ path: "transport", namespace: "fixture" }),
 				);
+				// The echo seam is stubbed rather than aliased to the real hook:
+				// that module is React and a live EventSource, and the store's
+				// contract with it is exactly these two calls.
+				builder.onResolve(
+					{ filter: /@shared\/hooks\/use-canonical-session/ },
+					() => ({ path: "echo", namespace: "echo-fixture" }),
+				);
+				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
+					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
+	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
+export const retractPendingUser = (sessionId, id) =>
+	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
+// Recorded like the other two so a store change that stops evicting an
+// abandoned draft's buffered echo is visible here as well; the buffer's own
+// bounds are asserted against the real registry in echo-delivery.test.mjs.
+export const discardPendingEchoes = (sessionId) =>
+	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
+					loader: "js",
+					resolveDir: process.cwd(),
+				}));
 				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
 					// Only `desktopResult` is faked - it is the network. The error
 					// classes and `userFacingMessage` are re-exported from the real
@@ -60,6 +90,7 @@ const {
 	replaceSessionRows,
 	admitChatDraft,
 	draftIdentityFor,
+	panelIdentityFor,
 	buildSendPayload,
 	desktopRequestSchema,
 	DesktopControlError,
@@ -67,6 +98,7 @@ const {
 } = module;
 function reset() {
 	calls.length = 0;
+	echoes.length = 0;
 	store.setState({
 		sessions: [],
 		activeSessionId: "111111111111",
@@ -416,7 +448,9 @@ test("discarding a draft clears the pointer to it, not just the entry", async ()
 	assert.equal(store.getState().activeDraftKey, null);
 	// The row's own predicate, evaluated the way the sidebar evaluates it.
 	const state = store.getState();
-	const draft = state.activeDraftKey ? state.drafts[state.activeDraftKey] : undefined;
+	const draft = state.activeDraftKey
+		? state.drafts[state.activeDraftKey]
+		: undefined;
 	assert.equal(Boolean(state.activeDraftKey) && !draft?.target, false);
 });
 
@@ -425,7 +459,9 @@ test("discarding a draft that is not the active one leaves the pointer alone", a
 	// The clear is conditional for the same reason `finishDraft`'s is: a stale
 	// or background draft being cleaned up must not cancel the draft the user
 	// is actually composing.
-	const first = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const first = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
 	const second = store.getState().stageDraft({ kind: "team", name: "lopdev" });
 	assert.equal(store.getState().activeDraftKey, second);
 
@@ -947,10 +983,7 @@ test("a pre-admission size refusal does not latch, so the user can drop an image
 	assert.deepEqual(sent.images, light, "the EDITED attachments are what ship");
 	// The session allocated on the refused attempt is reused: only the admission
 	// was refused, so re-creating would orphan a real session.
-	assert.equal(
-		calls.filter((call) => call.op === "sessions.create").length,
-		1,
-	);
+	assert.equal(calls.filter((call) => call.op === "sessions.create").length, 1);
 });
 
 test("a schema refusal of our own does not latch either, so a long paste can be shortened", async () => {
@@ -966,7 +999,8 @@ test("a schema refusal of our own does not latch either, so a long paste can be 
 		calls.push(request);
 		if (request.op === "sessions.create")
 			return { session_id: "222222222222", binding: null };
-		if (refuse) throw new DesktopControlError(422, "Invalid desktop operation.");
+		if (refuse)
+			throw new DesktopControlError(422, "Invalid desktop operation.");
 		return { status: "admitted" };
 	};
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
@@ -1633,5 +1667,324 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	assert.ok(
 		popupAt !== -1 && boundAt > popupAt,
 		"the previews' bound now wraps the slash popup rather than sitting beside it, which clips it the same way the band did (R1)",
+	);
+});
+
+test("the echo is painted before the message request, under the admission request id", async () => {
+	reset();
+	// M4, asserted STRUCTURALLY rather than with a clock. The felt-latency claim
+	// is "the text is in the transcript by the time the request leaves", which is
+	// a fact about ORDERING - so it is pinned by observing what had happened at
+	// the moment the transport fixture was entered, not by timing anything. A
+	// duration assertion here could only flake; this one cannot.
+	let sawEchoAtRequest = null;
+	globalThis.__canonicalRequest = async (request) => {
+		if (request.op === "sessions.message")
+			sawEchoAtRequest = echoes.filter((e) => e.kind === "echo").at(-1);
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const requestId = store.getState().drafts[key].admissionRequestId;
+	await admitChatDraft(key, input);
+
+	assert.ok(
+		sawEchoAtRequest,
+		"the echo must already be painted when admitChatDraft enters the transport, not after it resolves",
+	);
+	assert.equal(
+		sawEchoAtRequest.id,
+		requestId,
+		"the echo id MUST be the admission request UUID - the owner gives the durable row that same id, so any other key paints the message twice forever",
+	);
+	assert.equal(sawEchoAtRequest.sessionId, "222222222222");
+	assert.equal(sawEchoAtRequest.text, "Review this");
+	// The id that went to the wire is the id that was echoed: one value.
+	const sent = calls.filter((c) => c.op === "sessions.message").at(-1);
+	assert.equal(sent.requestId, requestId);
+	assert.equal(
+		echoes.filter((e) => e.kind === "retract").length,
+		0,
+		"a successful send retracts nothing",
+	);
+});
+
+test("an ambiguous failure keeps the echo, and only a pre-admission refusal retracts it", async () => {
+	// INV-C1, and the case a naive implementation gets wrong by retracting on
+	// every failure. A 503 (or a dropped connection) means the outcome is
+	// UNKNOWABLE: the owner may have admitted the command before the response
+	// was lost, so pulling the row would make a message the agent is about to
+	// answer vanish from the transcript while it answers it. 413 and 422 are
+	// decided before admission - the same predicate that un-latches
+	// `admissionAttempted` - so there the message provably does not exist.
+	const send = async (status) => {
+		reset();
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "222222222222", binding: null };
+			throw status === "network"
+				? new Error("connection reset")
+				: new DesktopControlError(status, `refused ${status}`);
+		};
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		const requestId = store.getState().drafts[key].admissionRequestId;
+		await assert.rejects(admitChatDraft(key, input));
+		return { key, requestId };
+	};
+
+	for (const status of [503, 409, 500, "network"]) {
+		const { key, requestId } = await send(status);
+		assert.equal(
+			echoes.filter((e) => e.kind === "retract").length,
+			0,
+			`a ${status} failure is unknowable, so the echo must STAY painted`,
+		);
+		assert.equal(
+			store.getState().drafts[key].admissionAttempted,
+			true,
+			"the same predicate governs both, so the latch must agree with the echo",
+		);
+		assert.equal(echoes.filter((e) => e.kind === "echo").at(-1).id, requestId);
+	}
+
+	for (const status of [413, 422]) {
+		const { key, requestId } = await send(status);
+		const retracted = echoes.filter((e) => e.kind === "retract");
+		assert.equal(
+			retracted.length,
+			1,
+			`a ${status} is refused before admission, so the echo must be retracted`,
+		);
+		assert.equal(retracted[0].id, requestId, "it retracts the id it painted");
+		assert.equal(
+			retracted[0].sessionId,
+			"222222222222",
+			"addressed by the session this call CREATED - reading the pre-send draft snapshot would leave it unretractable",
+		);
+		assert.equal(
+			store.getState().drafts[key].admissionAttempted,
+			false,
+			"one predicate, two consumers: the un-latch and the retraction cannot disagree",
+		);
+	}
+});
+
+test("clearing the composer before admission leaves the guard's basis the typed text", async () => {
+	reset();
+	// INV-C2, the highest-risk line in this change. The composer now clears
+	// synchronously BEFORE awaiting the send, so `handleSubmit` must thread the
+	// CAPTURED value. Re-reading the box after the clear would hand "" to the
+	// store, and the unchanged-payload guard would then compare every retry
+	// against "" and refuse it. This drives the store the way the fixed
+	// composer does: the value is captured once and passed in.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		throw new Error("connection reset");
+	};
+	const typed = "  Review this  ";
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, { ...input, text: typed }));
+	assert.equal(
+		store.getState().drafts[key].submittedText,
+		"Review this",
+		"the stored claim is the NORMALIZED typed text, not the emptied box",
+	);
+	assert.equal(
+		echoes.filter((e) => e.kind === "echo").at(-1).text,
+		"Review this",
+		"and the echo paints that same one value, so the bubble is never empty",
+	);
+	// The retry the user reaches by Restore: same payload, admitted rather than
+	// refused as a different message. Against "" this throws.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return { status: "admitted" };
+	};
+	await admitChatDraft(key, { ...input, text: "Review this" }, "222222222222");
+	assert.equal(store.getState().drafts[key], undefined, "the retry landed");
+});
+
+test("a refused send with an emptied composer still has a payload to Restore", async () => {
+	reset();
+	// R9: the early clear makes "box empty, text held" the COMMON state rather
+	// than an edge case, so the escape has to hold there. `heldText` is what the
+	// composer's Restore writes back; with an empty box `heldInBox` is false and
+	// the alert must offer Restore rather than "Send it again", which would name
+	// an action the user cannot perform blind.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		throw new DesktopControlError(413, "This message is too large to send.");
+	};
+	const key = draftIdentityFor(null, "222222222222");
+	const replies = [{ id: "r1", text: "the failing line" }];
+	const payload = buildSendPayload("Please look at this", replies);
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: payload }, "222222222222"),
+	);
+	const held = store.getState().drafts[key].submittedText;
+	assert.equal(held, payload, "the held claim survives for Restore to offer");
+	// The composer's own basis with an EMPTY box, which is the post-clear state.
+	const boxPayload = buildSendPayload("", replies);
+	assert.notEqual(
+		boxPayload,
+		held,
+		"an empty box is not the held payload, so heldInBox is false and Restore stays offered",
+	);
+	// And Restore is still not a loop: the restored payload re-assembled with
+	// its chips consumed is byte-identical, so the guard admits it.
+	assert.equal(buildSendPayload(held, []), held);
+	// The echo was retracted (413 is pre-admission), so the transcript does not
+	// keep a bubble for a message that is back in the user's hands.
+	assert.equal(echoes.filter((e) => e.kind === "retract").length, 1);
+});
+
+test("the draft send remounts the panel exactly once, before the message POST", () => {
+	/*
+	 * R10 / M5 / M6, SCOPED HONESTLY after review round 1 (MAJOR-2).
+	 *
+	 * The earlier version of this test concluded "zero remounts per draft send"
+	 * from two assertions taken on the FAR side of the flip - it compared
+	 * `panelIdentityFor(draftKey, id)` with `panelIdentityFor(null, id)` and
+	 * never against `panelIdentityFor(draftKey, undefined)`, which is the state
+	 * the panel is actually in when the user presses Enter. That is a vacuous
+	 * pass: it asserted the transition it did not make.
+	 *
+	 * The truth is one remount per draft send, under the old rule and the new
+	 * one alike. What the swap changed is WHEN: from `finishDraft` (after the
+	 * message POST, which discarded a subscription mid-flight and re-paid the
+	 * handshake plus the backend's pre-`open` snapshot) to `createSession`
+	 * (before the POST is issued). The panel that receives the admission row is
+	 * therefore the subscribed one, and the echo survives the transition because
+	 * it is buffered by session id rather than delivered to whatever happened to
+	 * be mounted - see the pending-echo queue in `use-canonical-session`.
+	 *
+	 * So this test pins the transition as a SEQUENCE, including the at-Enter
+	 * state, and fails if the count regresses in either direction.
+	 */
+	const draftKey = "draft:9f1c";
+	const sessionId = "222222222222";
+	// The three states chat-page.tsx computes across one New-chat send, in order.
+	const sequence = [
+		panelIdentityFor(draftKey, undefined), // at Enter: no session exists yet
+		panelIdentityFor(draftKey, sessionId), // createSession patched the draft
+		panelIdentityFor(null, sessionId), // finishDraft cleared the draft key
+	];
+	assert.deepEqual(
+		sequence,
+		[draftKey, sessionId, sessionId],
+		"the identity sequence across a draft send is pinned, at-Enter state included",
+	);
+	const remounts = new Set(sequence).size - 1;
+	assert.equal(
+		remounts,
+		1,
+		"exactly one remount per draft send - not zero, and a second would mean the flip moved back after the POST",
+	);
+	// The one remount must land BEFORE the message POST. That is the whole
+	// improvement: the key settles on `createSession`, so the panel holding the
+	// subscription when the admission resolves is the one that keeps it.
+	assert.equal(
+		sequence[1],
+		sequence[2],
+		"the identity must not change again once the session id is known - a change at finishDraft is the mid-flight remount this swap removed",
+	);
+	assert.notEqual(
+		sequence[0],
+		sequence[1],
+		"and the change that does happen is the create, which is before the POST",
+	);
+	/*
+	 * An EXISTING-session send has no transition at all - the case M5/M6 hold
+	 * unscoped for.
+	 *
+	 * Driven through the PAGE'S OWN derivation rather than by calling
+	 * `panelIdentityFor` repeatedly with the same arguments. Two earlier
+	 * versions of this assertion were tautologies - first comparing one call
+	 * with itself, then taking three identical calls to a pure function and
+	 * asserting they agreed - and neither could fail whatever the code did.
+	 *
+	 * What actually varies across a send is the STORE, so that is what moves
+	 * here. `chat-page.tsx:822-825` computes
+	 *     id       = draftKey ? draft?.sessionId : (active ?? undefined)
+	 *     identity = panelIdentityFor(draftKey, id)
+	 * and this reproduces that expression against the three store states an
+	 * existing-session send passes through. The claim is that a changing store
+	 * yields an unchanging key; a rule that followed the draft, or that dropped
+	 * to `undefined` while the admission was in flight, fails here.
+	 */
+	const identityFromStore = (state) =>
+		panelIdentityFor(
+			state.activeDraftKey,
+			state.activeDraftKey
+				? state.drafts[state.activeDraftKey]?.sessionId
+				: (state.activeSessionId ?? undefined),
+		);
+	// The store states an existing-session send moves through: no draft key at
+	// any point, the session already active, and a `send:<id>` draft row
+	// carrying the retained payload while the admission is in flight.
+	const existingSequence = [
+		identityFromStore({
+			activeDraftKey: null,
+			activeSessionId: sessionId,
+			drafts: {},
+		}),
+		identityFromStore({
+			activeDraftKey: null,
+			activeSessionId: sessionId,
+			drafts: { [`send:${sessionId}`]: { submittedText: "Review this" } },
+		}),
+		identityFromStore({
+			activeDraftKey: null,
+			activeSessionId: sessionId,
+			drafts: {},
+		}),
+	];
+	assert.deepEqual(
+		existingSequence,
+		[sessionId, sessionId, sessionId],
+		"an existing-session send must key on the session at every step - no remount, no reconnect",
+	);
+	assert.equal(
+		new Set(existingSequence).size,
+		1,
+		"and therefore exactly one distinct key across the whole send",
+	);
+	// The same derivation on a DRAFT send does change key, which is what proves
+	// the assertion above is capable of failing rather than true by shape.
+	const draftSequence = [
+		identityFromStore({
+			activeDraftKey: draftKey,
+			activeSessionId: null,
+			drafts: { [draftKey]: {} },
+		}),
+		identityFromStore({
+			activeDraftKey: draftKey,
+			activeSessionId: null,
+			drafts: { [draftKey]: { sessionId } },
+		}),
+	];
+	assert.notDeepEqual(
+		draftSequence[0],
+		draftSequence[1],
+		"the draft path DOES change key once the session exists - if this ever stops being true the existing-session assertion above has stopped meaning anything",
+	);
+	// The reverse direction still remounts, and must: "New chat" stages a fresh
+	// draft with no session, so it cannot inherit the previous transcript.
+	assert.equal(panelIdentityFor("draft:new", undefined), "draft:new");
+	assert.notEqual(
+		panelIdentityFor("draft:new", undefined),
+		panelIdentityFor(null, "222222222222"),
+	);
+	assert.equal(
+		panelIdentityFor(null, undefined),
+		undefined,
+		"no session and no draft is no panel",
 	);
 });
