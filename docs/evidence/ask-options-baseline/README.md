@@ -3,8 +3,20 @@
 Ninety-six frames — eight stories across all twelve themes — of the story file
 `Chat/Ask options`, captured with the same tooling
 (`scripts/capture-evidence.mjs`), the same fixtures and the same viewports from
-**unmodified `origin/main` at `a09f2e6f4`**, which is byte-identical to this
-branch's base `1771b0053` apart from a version bump in `package.json`.
+**unmodified `origin/main` at `54bf411e0`** — the commit this branch is rebased
+on, so the pair compares two cards on one tree rather than across a moved base.
+
+RE-CAPTURED at `54bf411e0` after the rebase. The previous set was taken against
+`a09f2e6f4`, and `main` has since landed scroll paging (#112) and the
+run-details trigger (#115), both of which touch the transcript these frames are
+drawn inside — so the old set could no longer be relied on to depict main's
+current card. Measured rather than assumed: of the 96, **90 came back
+byte-identical** and the 6 that changed (`options/synth`,
+`answer-in-flight/synth`, `wrapping-labels/{dune,localOperatorLight,synth,tokyoNight}`)
+differ by **0 pixels beyond a 5% tolerance** — webp re-encoding noise, not a
+visual change. So main's transcript work did not in fact move this card; the
+set is refreshed anyway, because a baseline whose provenance is a stale commit
+is a claim the reader cannot check.
 
 They exist because the fixed frames cannot show what was wrong. The defect is
 an ABSENCE — nothing on the card was pressable — and an absence does not
@@ -14,7 +26,7 @@ photograph. Read the pair:
 | --- | --- | --- |
 | the options | inert muted text, one line each | a bordered, focusable control each |
 | label and consequence | run together on one line, joined by an em dash | label on its own line, consequence beneath it |
-| the recommended option | not marked at all — `recommended` was not in the TS type | marked `RECOMMENDED` in accent beside the label |
+| the recommended option | not marked at all — `recommended` is not in main's TS type | marked `RECOMMENDED` in accent beside the label |
 | the hint below | "Type your answer below." | "Choose an option, or type your own answer below." |
 | answering | retype a label, or type `1` and have the agent receive the string `"1"` | press the option, or type `1` and have it resolve to that option's label |
 | an answer in flight | no such state — there was nothing to press | every option disabled by colour, never opacity |
@@ -28,11 +40,19 @@ proves they were not disturbed.
 ## Reproduction
 
 ```sh
-git worktree add /tmp/ask-baseline --detach origin/main   # a09f2e6f4
+git worktree add /tmp/ask-baseline --detach origin/main   # 54bf411e0
 cd /tmp/ask-baseline && pnpm install --frozen-lockfile
-# Copy this branch's story file in, then delete the two props main's
-# CanonicalTranscript does not have (`onAnswer`, `answering`) — the fixtures,
-# the viewports and the component under them are otherwise untouched.
+# Copy this branch's story file in and port its `chat-ask-options` block into
+# main's own STORIES list (leaving main's run-details entries intact), then
+# remove the three things main's tree does not have:
+#   - the `onAnswer` and `answering` props, which its CanonicalTranscript
+#     does not accept;
+#   - the `recommended: 0` fixture key, which is NOT on main's
+#     `PendingDesktopGate` — with it the story fails to typecheck and Storybook
+#     serves a blank document, which the capturer reports as
+#     `document carries theme "" after 10s` rather than as a compile error.
+# The fixtures, the viewports and the component under them are otherwise
+# untouched, which is what makes the pair a fair comparison.
 pnpm storybook --port 6018 --no-open --quiet &
 node scripts/capture-evidence.mjs http://localhost:6018 \
   --only=chat-ask-options --allow-backend
