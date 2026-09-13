@@ -1,7 +1,7 @@
 {
-  "head": "e64c50d34c34865fe7826202f0be676440bc603c",
+  "head": "77786065ab6732967758486a64e05c96c0c331a0",
   "srcTree": "e1e27b3536c02413ccfcd0eaa98907881317aca2",
-  "scriptsTree": "dfc0197081c39432b0af0e4ccd337c8090d73040",
+  "scriptsTree": "f1afd1ab5ffc6c0feaf2072e477ffd1fa2db542b",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 752,
@@ -15,11 +15,11 @@
   "partialCapture": {
     "note": "One narrowed run on this head: `--only=common-updatenotification--install-in-flight --themes=localOperatorDark,localOperatorLight,dracula`, 3 frames refreshed and none added. What it moves is the in-flight panel's Details line, which interpolated the marker's raw ISO-8601 stamp (`Install started 2026-09-13T07:39:00.991Z ...`, wrapped mid-token in the panel's narrow details block) and now carries the locale form the failure payload already used (review R1); the story fixture moved with it, because it stands in for the payload the main process sends. Narrowed rather than swept because the change is one line of one state: the two new states' frames (`install-in-flight` and `install-failed-cancelled-by-relaunch`) were written by the earlier 27-frame narrowed run this branch carried through its rebase, and the branch's totals against `main`'s 740 are unchanged - six `dracula` frames for panels that carried two themes, plus the two new states across the three refreshed themes. The tool's guard REFUSED a normal run - a Local Operator backend owns 127.0.0.1:1111 on this machine, and it is the operator's live app instance, so it was neither stopped nor captured against - and `--allow-backend` is the tool's documented opt-in for a narrowed run whose surfaces never call out: every panel here renders from a fixture payload against a mocked `window.api`. The live-app halves of the same incident (the app coming back mid-install with the marker and the install job left alone, and the cancelled-by-relaunch failure that follows) are driven and quoted in the PR body rather than committed as frames, because every surface they show has a story here.",
     "addedFrames": 0,
-    "addedAt": "2026-09-13T18:21:17.193Z",
-    "addedAtHead": "e64c50d34c34865fe7826202f0be676440bc603c",
+    "addedAt": "2026-09-13T18:43:02.885Z",
+    "addedAtHead": "77786065ab6732967758486a64e05c96c0c331a0",
     "addedSurfaces": [],
-    "refreshedAt": "2026-09-13T18:21:17.134Z",
-    "refreshedAtHead": "e64c50d34c34865fe7826202f0be676440bc603c",
+    "refreshedAt": "2026-09-13T18:43:02.780Z",
+    "refreshedAtHead": "77786065ab6732967758486a64e05c96c0c331a0",
     "refreshedFrames": 3,
     "refreshedStories": [
       "common-updatenotification--install-in-flight"
@@ -29,7 +29,7 @@
       "localOperatorLight",
       "dracula"
     ],
-    "refreshedFromHead": "e64c50d34c34865fe7826202f0be676440bc603c"
+    "refreshedFromHead": "77786065ab6732967758486a64e05c96c0c331a0"
   },
   "supplementary": [
     {
