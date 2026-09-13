@@ -1935,10 +1935,24 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 			activeSessionId: sessionId,
 			drafts: {},
 		}),
+		/*
+		 * The in-flight state, and the `send:` row is NOT decoration: it is the
+		 * state a rule that consulted the draft map would trip on. An earlier
+		 * version put the row here while leaving `activeDraftKey` null, which
+		 * made it inert - `identityFromStore` never reads `drafts` without a
+		 * key, so nothing was being exercised. Naming the row as the active
+		 * draft is what makes this state able to produce a different answer, and
+		 * the assertion below says it must not.
+		 */
 		identityFromStore({
-			activeDraftKey: null,
+			activeDraftKey: `send:${sessionId}`,
 			activeSessionId: sessionId,
-			drafts: { [`send:${sessionId}`]: { submittedText: "Review this" } },
+			drafts: {
+				[`send:${sessionId}`]: {
+					submittedText: "Review this",
+					sessionId,
+				},
+			},
 		}),
 		identityFromStore({
 			activeDraftKey: null,

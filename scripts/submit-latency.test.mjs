@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -102,9 +102,16 @@ const M2_COLD_SEND_FLOOR_MS = 500;
  * survives a slower box, because both numbers inflate together: 4.3-5.9x here
  * and 4.5x on the reviewer's much slower host, where the absolute bound failed.
  *
- * 3x leaves real headroom under the slowest observed ratio while remaining
- * impossible to pass if the warm stops working: a warm cancelled by the bridge
- * detaching measured 1634 ms against a 1240 ms control, a ratio below 1.
+ * 3x leaves real headroom under the slowest observed ratio while staying far
+ * above a run where the warm contributes nothing.
+ *
+ * WHAT THIS GATE DOES NOT CATCH, since an earlier version of this comment
+ * claimed otherwise: a warm that never lands at all does not produce a low
+ * ratio here, because those rounds never reach the send and are dropped from
+ * both populations. That case is caught by the UNVERIFIED rule below - zero
+ * landed rounds on a backend that HAS the route is a failure, not a pass - and
+ * a decoy backend that reports `warming` forever is what proves it. The ratio
+ * covers the other shape: a warm that lands but does not help.
  */
 const M1_MINIMUM_SPEEDUP = 3;
 /*
@@ -239,63 +246,192 @@ function freePort() {
 const started = [];
 
 /**
- * Wait for a killed child to be REAPED, rather than guessing at how long that
- * takes.
+ * Every live pid whose ENVIRONMENT names this throwaway config dir.
  *
- * `kill()` only delivers the signal. Returning before the process is gone is
- * what left the config dir behind: the old teardown slept a flat 1000 ms and
- * then removed the tree, so on a loaded box the `rm` succeeded while a runtime
- * grandchild was still alive and immediately RE-CREATED `run/mobile` under it.
- * Review caught that by the inode changing across the removal, and QA measured
- * one leftover on 5/5 runs that engaged a runtime and 0/2 that did not - the
- * signature of a surviving child, not of a failed unlink.
+ * WHY THE ENVIRONMENT AND NOT THE PROCESS TREE. The backend spawns its session
+ * runtimes with `start_new_session=True` (`session/runtime/launch.py:361`), so
+ * each one leads its OWN session and process group and is reparented away from
+ * the server. Killing `serve` therefore does not kill them, `pgrep -P` does not
+ * find them, and they rename their argv to `Local Operator [session] id=...`,
+ * so there is no command string tying them to this run either. What they DO
+ * carry, unforgeably, is the `LOCAL_OPERATOR_CONFIG_DIR` they were started
+ * with - which is unique per run because it is an mkdtemp path.
+ *
+ * That is the whole mechanism behind the leak both review and QA measured: the
+ * `rm` succeeded, and a surviving runtime that nobody had killed re-created its
+ * tree underneath, which is why the inode CHANGED across the removal and why a
+ * single immediate existence check saw nothing wrong.
+ *
+ * POSIX-only by nature, like the leak. `ps eww` is the portable way to read
+ * another process's environment here; a failure to read one is treated as "not
+ * ours" rather than aborting the sweep, because teardown must never be the
+ * thing that fails a run.
  */
-function reaped(child) {
-	if (!child || child.exitCode !== null || child.signalCode !== null)
-		return Promise.resolve();
-	return new Promise((resolve) => {
-		// `close` rather than `exit`: it fires once the child is gone AND its
-		// stdio has been drained, which is the point after which nothing of the
-		// process tree can still be writing.
-		child.once("close", resolve);
-		// A child that will not die must not hang the suite; the sweep below
-		// still removes the tree, and a re-created dir is reported rather than
-		// silently left.
-		setTimeout(resolve, 5000);
-	});
+function pidsHoldingConfigDir(root) {
+	const marker = `LOCAL_OPERATOR_CONFIG_DIR=${root}`;
+	let listing;
+	try {
+		listing = execFileSync("ps", ["-eo", "pid="], { encoding: "utf8" });
+	} catch {
+		return [];
+	}
+	const held = [];
+	for (const line of listing.split("\n")) {
+		const pid = line.trim();
+		if (!pid) continue;
+		try {
+			// `eww` prints the environment; an exact token match avoids a prefix
+			// of this path (another run's dir) counting as ours.
+			const env = execFileSync("ps", ["eww", "-p", pid], {
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			});
+			if (env.split(/\s+/).includes(marker)) held.push(Number(pid));
+		} catch {
+			// Exited between the listing and the read, or not readable. Either way
+			// it is not something we can or need to kill.
+		}
+	}
+	return held;
 }
 
-after(async () => {
-	// `child` is null when the failure happened between creating the config dir
-	// and spawning into it; the dir still has to go.
-	for (const { child } of started) child?.kill("SIGKILL");
-	await Promise.all(started.map(({ child }) => reaped(child)));
-	/*
-	 * The grandchildren are the runtime processes the backend spawned. They are
-	 * not ours to wait on individually - we never held their handles - but they
-	 * die with their parent's session, so a short settle AFTER the parent is
-	 * confirmed gone covers the window in which one could still write. This is a
-	 * bounded settle on a known-dead parent, not the old blind sleep.
-	 */
-	await new Promise((resolve) => setTimeout(resolve, 250));
-	for (const { root } of started)
-		await rm(root, { recursive: true, force: true, maxRetries: 5 });
-	/*
-	 * VERIFY, because the failure mode this exists for is a removal that
-	 * SUCCEEDS and is then undone. Anything still present is re-removed once and
-	 * reported - a silent leftover is how this survived two rounds of review.
-	 */
-	const survivors = [];
-	for (const { root } of started) {
-		if (!existsSync(root)) continue;
-		await rm(root, { recursive: true, force: true, maxRetries: 5 });
-		survivors.push(root);
+/**
+ * Signal a backend's whole process GROUP, not just its leader.
+ *
+ * The supervisor is killed first; its reap thread then `killpg`s the backend's
+ * own session, which is where the server and anything still in its group live.
+ * This is the half of teardown that works without reading anyone's environment;
+ * `reapConfigDir` covers the runtimes that deliberately leave that group via
+ * `start_new_session=True`.
+ */
+function killGroup(child, signal) {
+	if (!child?.pid) return;
+	// Killing the SUPERVISOR closes its end of nothing, so kill it directly and
+	// let its own reap thread take the backend's group down with it; the census
+	// sweep is what confirms the result either way.
+	try {
+		child.kill(signal);
+	} catch {
+		/* already dead */
 	}
-	if (survivors.length)
+	try {
+		process.kill(-child.pid, signal);
+	} catch {
+		// Not a group leader (the supervisor shares our group by design), or
+		// already gone. The census below is what decides whether anything
+		// survived.
+	}
+}
+
+/** Signal every process still carrying `root`, and report how many were hit. */
+function reapConfigDir(root, signal) {
+	const pids = pidsHoldingConfigDir(root);
+	for (const pid of pids) {
+		try {
+			process.kill(pid, signal);
+		} catch {
+			// Already gone; the census below is what decides success.
+		}
+	}
+	return pids.length;
+}
+
+const SWEEP_SETTLE_MS = 250;
+const SWEEP_ATTEMPTS = 20;
+
+/**
+ * Remove one run's tree, and do not claim success until it STAYS removed.
+ *
+ * Ordering is the point: reap first, confirm the census is empty, and only then
+ * unlink. Removing while a runtime is alive is what produced a leftover that
+ * looked like a failed `rm` but was actually a successful one followed by a
+ * re-creation.
+ *
+ * The retry LOOP replaces the single immediate check, which is what let this
+ * survive two rounds: a tree re-created 300 ms after the check passed was
+ * reported as clean.
+ */
+async function sweepRoot(root) {
+	if (!existsSync(root) && pidsHoldingConfigDir(root).length === 0) return true;
+	reapConfigDir(root, "SIGTERM");
+	for (let attempt = 0; attempt < SWEEP_ATTEMPTS; attempt++) {
+		const remaining = pidsHoldingConfigDir(root);
+		if (remaining.length === 0) break;
+		// Escalate once the polite signal has had a fair chance; a runtime in its
+		// own session will not die from our process group going away.
+		if (attempt >= 4) reapConfigDir(root, "SIGKILL");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+	for (let attempt = 0; attempt < SWEEP_ATTEMPTS; attempt++) {
+		await rm(root, { recursive: true, force: true, maxRetries: 5 });
+		await new Promise((resolve) => setTimeout(resolve, SWEEP_SETTLE_MS));
+		// Gone AND nothing left that could re-create it. Checking both is what
+		// makes this a real post-condition rather than a snapshot.
+		if (!existsSync(root) && pidsHoldingConfigDir(root).length === 0)
+			return true;
+	}
+	return false;
+}
+
+/**
+ * Teardown that survives cancellation, and runs at most once.
+ *
+ * `after()` alone was not enough: QA cancelled a run mid-flight and found two
+ * complete config trees AND two live `serve` processes, because node never runs
+ * `after` hooks when the process is signalled. Ctrl-C and a CI timeout are
+ * ordinary ways for this benchmark to end - it takes minutes - so the cleanup
+ * has to be reachable from a signal handler too.
+ *
+ * Idempotent by latch, because it is now reachable from four places (the normal
+ * `after`, SIGINT, SIGTERM, `exit`) and a second pass must not double-kill a
+ * pid that has since been reused by an unrelated process.
+ */
+let cleanedUp = false;
+async function cleanup() {
+	if (cleanedUp) return;
+	cleanedUp = true;
+	for (const { child } of started) killGroup(child, "SIGKILL");
+	const stubborn = [];
+	for (const { root } of started)
+		if (!(await sweepRoot(root))) stubborn.push(root);
+	if (stubborn.length)
 		console.log(
-			`  NOTE: ${survivors.length} config dir(s) were re-created after removal and have been swept again: ${survivors.join(", ")}`,
+			`  WARNING: ${stubborn.length} config dir(s) could not be removed and are being left behind: ${stubborn.join(", ")}`,
 		);
-});
+}
+
+/**
+ * The synchronous last resort, for paths where nothing may await.
+ *
+ * `process.on("exit")` cannot run async work, so this is deliberately a
+ * best-effort SIGKILL plus a blocking unlink: worse than `cleanup()`, and still
+ * far better than the orphaned trees and live servers a cancelled run left
+ * before. It runs only if the async path never got there.
+ */
+function cleanupSync() {
+	if (cleanedUp) return;
+	cleanedUp = true;
+	for (const { child, root } of started) {
+		killGroup(child, "SIGKILL");
+		reapConfigDir(root, "SIGKILL");
+		try {
+			rmSync(root, { recursive: true, force: true, maxRetries: 5 });
+		} catch {
+			/* best effort: the process is on its way out */
+		}
+	}
+}
+
+after(cleanup);
+process.on("exit", cleanupSync);
+for (const signal of ["SIGINT", "SIGTERM"]) {
+	process.on(signal, () => {
+		cleanupSync();
+		// Re-raise with the default handler so the exit status still says
+		// "cancelled" rather than "finished successfully".
+		process.exit(signal === "SIGINT" ? 130 : 143);
+	});
+}
 
 /**
  * Stand up an isolated backend and return its base URL and bearer.
@@ -334,10 +470,140 @@ async function startBackend() {
 		"version: 0.0.0\nvalues:\n  hosting: test\n  model_name: mock\n",
 	);
 	const port = await freePort();
-	const child = spawn(BACKEND_BIN, ["serve", "--port", String(port)], {
-		env: isolatedEnv(root, token),
-		stdio: ["ignore", "pipe", "pipe"],
-	});
+	/*
+	 * The backend runs under a SUPERVISOR that dies with this process, and the
+	 * supervisor is what makes cancellation safe.
+	 *
+	 * `node --test` runs this file in a CHILD of the test runner, and that child
+	 * is killed outright when the runner is cancelled - verified directly: with
+	 * `after`, `process.on("exit")` and a `SIGINT` handler all installed, NONE
+	 * of them ran when the runner received SIGINT. So no in-file teardown can be
+	 * relied on here, which is why QA's cancelled run left two live `serve`
+	 * processes and two complete config trees.
+	 *
+	 * What the OS does guarantee is that our stdio pipes close when we die. The
+	 * supervisor holds its stdin open, kills the backend's process group the
+	 * moment that pipe ends, and exits - so the backend cannot outlive its
+	 * spawner no matter how the spawner dies. `python` is used rather than a
+	 * shell because the group kill must be a real `killpg`.
+	 *
+	 * The in-file handlers below are still installed: they are the fast, tidy
+	 * path for a normal finish or a direct Ctrl-C. This is the backstop for the
+	 * case where none of them get to run.
+	 */
+	const supervisor = `
+import os, signal, subprocess, sys, threading, time
+# The backend gets its OWN session, so the server and anything still in its
+# group are reachable as one unit from here.
+child = subprocess.Popen(sys.argv[1:], start_new_session=True)
+
+def kill_child(*_):
+    try:
+        os.killpg(os.getpgid(child.pid), signal.SIGKILL)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+    # Hard exit: the main thread is blocked in child.wait() and must not get a
+    # chance to outlive the kill.
+    os._exit(0)
+
+# BOTH triggers are needed, and each covers a case the other misses:
+#  - the signals fire when the test runner tears this file's process down,
+#    which is what actually happens on Ctrl-C (verified: the file process is
+#    orphaned rather than killed, so its stdin pipe stays OPEN and EOF alone
+#    never arrives);
+#  - the pipe EOF fires when the spawner dies without signalling us, e.g. a
+#    SIGKILL, where no handler of ours can run at all.
+for _sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+    signal.signal(_sig, kill_child)
+
+def reap():
+    try:
+        sys.stdin.buffer.read()
+    except Exception:
+        pass
+    kill_child()
+
+
+def guardian():
+    # THE CASE NEITHER OTHER TRIGGER COVERS: this supervisor being SIGKILLed.
+    # No handler runs, no EOF is produced, and the parent-poll below dies with
+    # the thread - so the backend is reparented to init and keeps serving.
+    # Measured: one surviving server per cancelled run, which is exactly what
+    # QA found.
+    #
+    # The guardian is forked into its OWN session, so it outlives this
+    # supervisor by construction, and it polls for the supervisor's
+    # disappearance rather than relying on being signalled. It holds no
+    # resources; if it is ever itself killed, the census sweep in the harness
+    # is still the backstop.
+    sup = os.getpid()
+    if os.fork() != 0:
+        return
+    os.setsid()
+    while True:
+        time.sleep(0.5)
+        try:
+            os.kill(sup, 0)
+        except OSError:
+            try:
+                os.killpg(os.getpgid(child.pid), signal.SIGKILL)
+            except Exception:
+                pass
+            os._exit(0)
+
+
+def watch_parent():
+    # THE BACKSTOP FOR SIGKILL, which no handler can catch and which leaves no
+    # EOF behind either: if this supervisor is killed outright, the backend is
+    # reparented to init and keeps serving. Polling our own parent is the only
+    # signal that survives that, so a supervisor orphaned by any means takes the
+    # backend down within a second. Measured leak without this: one live
+    # serve process per cancelled run.
+    start_ppid = os.getppid()
+    while True:
+        time.sleep(0.5)
+        if os.getppid() != start_ppid:
+            kill_child()
+
+
+guardian()
+threading.Thread(target=reap, daemon=True).start()
+threading.Thread(target=watch_parent, daemon=True).start()
+sys.exit(child.wait())
+`;
+	const child = spawn(
+		"python3",
+		["-c", supervisor, BACKEND_BIN, "serve", "--port", String(port)],
+		{
+			env: isolatedEnv(root, token),
+			// stdin is a PIPE and deliberately left open: it is the liveness
+			// channel the supervisor waits on.
+			//
+			// NOT `detached`, and that is load-bearing rather than incidental: a
+			// detached child's stdin pipe was observed staying open after this
+			// process exited, so the supervisor's read never returned and the
+			// backend survived anyway. Verified both ways in isolation before
+			// settling here. The supervisor gives the BACKEND its own session, so
+			// group-killing still works from the supervisor's side.
+			stdio: ["pipe", "pipe", "pipe"],
+			/*
+			 * Its OWN process group, so teardown can signal the backend and anything
+			 * it started as one unit via `process.kill(-pid)`.
+			 *
+			 * Needed because `node --test` runs this file in a CHILD of the test
+			 * runner: a Ctrl-C or a CI timeout kills the runner, this file's
+			 * handlers may never run, and the backend - which does not watch its
+			 * parent - was simply inherited by init and kept serving. QA cancelled a
+			 * run and found two live `serve` processes and two complete config trees;
+			 * reproduced here before fixing.
+			 *
+			 * The group is what makes the sweep reliable rather than best-effort: the
+			 * runtimes are `start_new_session=True` and leave this group, which is
+			 * exactly why the environment census below exists as well. The two
+			 * mechanisms cover different escapes and are both needed.
+			 */
+		},
+	);
 	const log = [];
 	child.stdout.on("data", (chunk) => log.push(String(chunk)));
 	child.stderr.on("data", (chunk) => log.push(String(chunk)));
@@ -712,56 +978,83 @@ test("M1/M2/M3: the warm removes the engage from the send, and the control prove
 		// --- M3 + M1: subscribe, warm, let the engage land, then send.
 		const sessionId = await createSession(url, token);
 		const panel = await subscribe(url, token, sessionId);
-		const warm = await timed({ op: "sessions.warm", sessionId }, url, token);
-		assert.equal(warm.response.status, 200, JSON.stringify(warm.response.body));
-		assert.equal(
-			warm.response.body.result.state,
-			"warming",
-			"a cold session's first warm must START one rather than report it already warm",
-		);
-		warmOp.push(warm.ms);
 		/*
-		 * WAIT FOR THE PRECONDITION, AND SKIP THE ROUND IF IT NEVER ARRIVES.
-		 *
-		 * M1's claim is "a send on a session whose warm HAS LANDED is fast". A
-		 * round whose warm is still `warming` when the send goes out has not
-		 * tested that claim - it measures a partial engage - so feeding it into
-		 * the population reports an untested hypothesis as a refuted one. Both
-		 * review and QA hit exactly this: the suite went red at 2.0x and 1.3x on
-		 * runs where the warm simply had not landed, which is indistinguishable
-		 * from the warm being broken.
-		 *
-		 * So the state is POLLED to a bounded deadline rather than sampled once
-		 * after a fixed settle, and a round that never reaches "warm" is dropped
-		 * from both populations and counted as skipped. Skipping is not a pass:
-		 * the reason is printed and the round contributes to neither M1 nor its
-		 * control, so the ratio stays a comparison of like with like.
-		 *
-		 * The poll is what a real user's think-time provides for free; the
-		 * deadline only bounds a host slow enough that nobody could type that
-		 * fast anyway.
+		 * try/finally, because `subscribe` leaves TWO live handles: an open SSE
+		 * socket and a 5s heartbeat interval keeping the watch lease alive. An
+		 * assertion thrown anywhere in this region used to skip `panel.close()`,
+		 * and the interval then held the event loop open forever - the file never
+		 * exited, so the failure that caused it was never printed (review
+		 * reproduced `timeout 300` -> exit 124 with no diagnostics). A benchmark
+		 * that hangs instead of failing is worse than one that fails.
 		 */
-		const landed = await waitForWarm(url, token, sessionId);
-		settled.push(landed.state);
-		if (!landed.ok) {
-			skipped.push({ round, state: landed.state, waitedMs: landed.waitedMs });
+		try {
+			const warm = await timed({ op: "sessions.warm", sessionId }, url, token);
+			assert.equal(
+				warm.response.status,
+				200,
+				JSON.stringify(warm.response.body),
+			);
+			assert.equal(
+				warm.response.body.result.state,
+				"warming",
+				"a cold session's first warm must START one rather than report it already warm",
+			);
+			warmOp.push(warm.ms);
+			/*
+			 * WAIT FOR THE PRECONDITION, AND SKIP THE ROUND IF IT NEVER ARRIVES.
+			 *
+			 * M1's claim is "a send on a session whose warm HAS LANDED is fast". A
+			 * round whose warm is still `warming` when the send goes out has not
+			 * tested that claim - it measures a partial engage - so feeding it into
+			 * the population reports an untested hypothesis as a refuted one. Both
+			 * review and QA hit exactly this: the suite went red at 2.0x and 1.3x on
+			 * runs where the warm simply had not landed, which is indistinguishable
+			 * from the warm being broken.
+			 *
+			 * So the state is POLLED to a bounded deadline rather than sampled once
+			 * after a fixed settle, and a round that never reaches "warm" is dropped
+			 * from both populations and counted as skipped. Skipping is not a pass:
+			 * the reason is printed and the round contributes to neither M1 nor its
+			 * control, so the ratio stays a comparison of like with like.
+			 *
+			 * The poll is what a real user's think-time provides for free; the
+			 * deadline only bounds a host slow enough that nobody could type that
+			 * fast anyway.
+			 */
+			const landed = await waitForWarm(url, token, sessionId);
+			settled.push(landed.state);
+			if (!landed.ok) {
+				skipped.push({ round, state: landed.state, waitedMs: landed.waitedMs });
+				continue;
+			}
+			const sent = await timed(send(sessionId, `warmed ${round}`), url, token);
+			assert.equal(
+				sent.response.status,
+				200,
+				JSON.stringify(sent.response.body),
+			);
+			warmed.push(sent.ms);
+		} finally {
 			panel.close();
-			continue;
 		}
-		const sent = await timed(send(sessionId, `warmed ${round}`), url, token);
-		assert.equal(sent.response.status, 200, JSON.stringify(sent.response.body));
-		warmed.push(sent.ms);
-		panel.close();
 
 		// --- M2: the CONTROL. Same server, same subscription shape, same round,
 		// no warm. Holding a subscription here too keeps the only difference
 		// between the two populations the warm itself.
 		const coldId = await createSession(url, token);
 		const coldPanel = await subscribe(url, token, coldId);
-		const cold = await timed(send(coldId, `control ${round}`), url, token);
-		assert.equal(cold.response.status, 200, JSON.stringify(cold.response.body));
-		control.push(cold.ms);
-		coldPanel.close();
+		// Same reason as the warmed panel above: this one holds a heartbeat too.
+		try {
+			const cold = await timed(send(coldId, `control ${round}`), url, token);
+			assert.equal(
+				cold.response.status,
+				200,
+				JSON.stringify(cold.response.body),
+			);
+			control.push(cold.ms);
+		} finally {
+			coldPanel.close();
+		}
 	}
 
 	/*
@@ -891,12 +1184,13 @@ test("M1/M2/M3: the warm removes the engage from the send, and the control prove
 			`  NOTE: M1 p50 ${m1.p50}ms is above the ${M1_REPORTED_CEILING_MS}ms catastrophe bound; the ratio gate below still decides this run.`,
 		);
 	/*
-	 * The gate that actually carries the claim, and the one that survives a
-	 * slower box: a cold engage inside the send makes the two populations the
-	 * same, so the ratio collapses toward 1. A cancelled warm - the failure
-	 * mode where the bridge is not held across the engage - measured 1634 ms
-	 * against a 1240 ms control, i.e. a ratio BELOW 1, and this is what catches
-	 * that without depending on any absolute millisecond figure.
+	 * The gate that carries the claim for rounds that DID land, and the one that
+	 * survives a slower box: a cold engage still inside the send makes the two
+	 * populations the same kind of thing, so the ratio collapses toward 1
+	 * without depending on any absolute millisecond figure.
+	 *
+	 * A warm that never lands is not this assertion's job - those rounds are
+	 * skipped and the UNVERIFIED rule above fails the run instead.
 	 */
 	assert.ok(
 		speedup > M1_MINIMUM_SPEEDUP,
