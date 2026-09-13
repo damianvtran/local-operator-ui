@@ -6,6 +6,7 @@ import type {
 	DesktopMediaRequest,
 	DesktopRequest,
 } from "../shared/desktop-contract";
+import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 
 // Custom APIs for renderer
 const api = {
@@ -68,7 +69,7 @@ const api = {
 						onEvent({
 							streamId: "",
 							kind: "error",
-							detail: "The event stream could not be opened.",
+							detail: DESKTOP_STREAM_DETAIL.openFailed,
 						});
 						return null;
 					});

@@ -32,6 +32,15 @@ const EPOCH = "b".repeat(16);
 const MODE = process.env.SESSION_LOAD_MODE ?? "flaky";
 /** How many `events` attempts are refused before the stream is served. */
 const REFUSALS = Number(process.env.SESSION_LOAD_REFUSALS ?? 2);
+/**
+ * `SESSION_LOAD_ROWS=0` serves the conversation with NO durable rows.
+ *
+ * That is the counter-case the fix has to keep working (design round 1, D5(b)):
+ * a genuinely empty conversation must still END UP saying it is empty, rather
+ * than being indistinguishable from one the app could not read and therefore
+ * loading forever.
+ */
+const EMPTY = process.env.SESSION_LOAD_ROWS === "0";
 
 let attempts = 0;
 
@@ -101,8 +110,11 @@ const sessionRow = {
 	// recent window, so a canned timestamp from months ago renders an EMPTY
 	// sidebar and the capture has nothing to open.
 	mtime: Date.now() / 1000,
-	preview: "Three deploys failed in the last hour",
+	preview: EMPTY ? "" : "Three deploys failed in the last hour",
 };
+
+/** The durable rows this run serves: the conversation's history, or none. */
+const rows = () => (EMPTY ? [] : ROWS);
 
 const frontendSnapshot = () => ({
 	state_version: 1,
@@ -183,12 +195,12 @@ createServer(async (req, res) => {
 				seq: 1,
 				payload: {
 					cold: false,
-					history: { entries: ROWS, has_more: false, cursor_missing: false },
+					history: { entries: rows(), has_more: false, cursor_missing: false },
 					frontend: { epoch: EPOCH, snapshot: frontendSnapshot() },
 				},
 			}),
 		);
-		// A real stream stays open; the heartbeat keeps it alive without
+	// A real stream stays open; the heartbeat keeps it alive without
 		// touching anything the renderer paints.
 		const beat = setInterval(() => res.write(": heartbeat\n\n"), 5_000);
 		req.on("close", () => clearInterval(beat));
@@ -208,7 +220,7 @@ createServer(async (req, res) => {
 		return json({ result: { session_id: SESSION, binding: null } });
 	if (path.endsWith("/history"))
 		return json({
-			result: { entries: ROWS, has_more: false, cursor_missing: false },
+			result: { entries: rows(), has_more: false, cursor_missing: false },
 		});
 	if (path.endsWith("/watch"))
 		return json({ result: { lease_seconds: 45 } });

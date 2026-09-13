@@ -57,6 +57,11 @@ import type {
 } from "../../../../shared/desktop-session-contract";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
+import {
+	HISTORY_UNREADABLE,
+	type SessionFailureNotice,
+	streamFailureNotice,
+} from "../../../../shared/desktop-stream-notice";
 
 export type CanonicalSessionStatus =
 	| "connecting"
@@ -102,8 +107,13 @@ export type CanonicalSessionView = {
 	receipt: { epoch: string; seq: number } | null;
 	/** Terminal event observed for the current turn; clears the wait latch. */
 	terminal: string | null;
-	/** Set on an unrecoverable stream failure. */
-	error: string | null;
+	/**
+	 * Set on an unrecoverable stream failure: the ONE sentence the reader sees,
+	 * and the one action that helps. A structured notice rather than a transport
+	 * `detail` string, because the two transports name the same failure in
+	 * different words and neither belongs on screen (design round 1, D1).
+	 */
+	failure: SessionFailureNotice | null;
 	/** The painted conversation, durable and live, oldest first. */
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
@@ -543,7 +553,7 @@ export function useCanonicalSessionStream(
 		ownerEpoch: null,
 		receipt: null,
 		terminal: null,
-		error: null,
+		failure: null,
 		/*
 		 * SEEDED, and only here. A panel mounted while its own echo is already
 		 * buffered must paint that echo in its FIRST frame: on the New-chat path
@@ -747,7 +757,7 @@ export function useCanonicalSessionStream(
 					setView((state) => ({
 						...state,
 						status: "unavailable",
-						error: "This conversation's history could not be loaded.",
+						failure: HISTORY_UNREADABLE,
 					}));
 					return;
 				}
@@ -1011,7 +1021,7 @@ export function useCanonicalSessionStream(
 								history: snapshot.history,
 								cold: snapshot.cold,
 								ownerEpoch: snapshot.frontend.epoch,
-								error: null,
+								failure: null,
 								// A page that was APPLIED is proof, and its absence is not: with
 								// `cursor_missing` the snapshot deliberately carries no usable
 								// page, so the answer is still owed to the `/history` reconcile
@@ -1147,6 +1157,26 @@ export function useCanonicalSessionStream(
 			}
 		};
 
+		/**
+		 * Tear the current subscription down, marking it as OUR decision so the
+		 * browser transport's `end` is not mistaken for a dead stream.
+		 */
+		const closeStream = () => {
+			const closing = dispose;
+			dispose = null;
+			if (!closing) return;
+			closingIntentionally = true;
+			// Cleared in `finally`, not left standing: the browser transport emits its
+			// `end` SYNCHRONOUSLY from inside this call, while Electron's says nothing
+			// at all - so a flag that outlived the call would swallow the NEXT real
+			// failure's retry on the native path.
+			try {
+				closing();
+			} finally {
+				closingIntentionally = false;
+			}
+		};
+
 		const connect = () => {
 			dispose = subscribeDesktopStream(
 				{
@@ -1182,7 +1212,10 @@ export function useCanonicalSessionStream(
 							setView((current) => ({
 								...current,
 								status: "unavailable",
-								error: detail,
+								// The transport's detail is machine register and differs per
+								// transport; the reader gets the product sentence for that
+								// condition instead (D1).
+								failure: streamFailureNotice(detail),
 							}));
 							return;
 						}
@@ -1217,7 +1250,7 @@ export function useCanonicalSessionStream(
 						setView((current) =>
 							current.status === "unavailable" && attempt > 1
 								? current
-								: { ...current, status: "reconnecting", error: null },
+								: { ...current, status: "reconnecting", failure: null },
 						);
 						retryTimer = window.setTimeout(() => {
 							retryTimer = 0;
@@ -1260,9 +1293,32 @@ export function useCanonicalSessionStream(
 		 */
 		const reopen = () => {
 			attempt = 0;
+			/*
+			 * Cancel the pending retries BEFORE re-arming both halves.
+			 *
+			 * A timer armed before this press fires AFTER it and calls `connect()` a
+			 * second time, overwriting the single `dispose` closure - so the
+			 * subscription this press opens can never be disposed and keeps delivering
+			 * frames until the panel unmounts (R1-1). The effect owns exactly one
+			 * subscription and one outstanding read, and this is where that is
+			 * enforced; the backoff's own timer clears before it re-arms for the same
+			 * reason.
+			 */
+			if (retryTimer) {
+				// `window.clearTimeout`, symmetric with the `window.setTimeout` that
+				// armed it: the two have to name the same timer host, and the harness
+				// that drives this hook substitutes `window` to prove a queued retry
+				// was really cancelled.
+				window.clearTimeout(retryTimer);
+				retryTimer = 0;
+			}
+			if (reconcileTimer) {
+				window.clearTimeout(reconcileTimer);
+				reconcileTimer = 0;
+			}
 			setView((current) => ({
 				...current,
-				error: null,
+				failure: null,
 				status:
 					current.status === "unavailable" ? "connecting" : current.status,
 			}));

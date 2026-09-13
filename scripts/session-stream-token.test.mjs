@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -68,6 +69,10 @@ const state = {
 	execs: [],
 	eventsAuth: [],
 	eventsStatus: [],
+	/** The bearer this fixture's desktop vocabulary accepts, or null for none. */
+	pairedToken: null,
+	/** Every authenticated read it served, for the adoption assertions. */
+	sessionsAuth: [],
 };
 
 /** The bundled module's view of that state. */
@@ -76,7 +81,7 @@ globalThis.__backendTestState = state;
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts";',
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL, streamFailureNotice } from "./src/shared/desktop-stream-notice.ts";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -168,6 +173,18 @@ const bundle = await build({
 												fire(persistent);
 												return true;
 											},
+											/**
+											 * The child DIED on its own, without anyone calling kill().
+											 *
+											 * This is Q-2's repro from the manager's side: a SIGKILL in the real
+											 * app, whose exit handler is the PERSISTENT listener start()
+											 * registered. Fired with a null code, which is what a SIGKILL
+											 * reports and the one code that shows no error dialog.
+											 */
+											exitNow(code = null) {
+												const cbs = persistent.get("exit") ?? [];
+												for (const cb of cbs) cb(code, null);
+											},
 										};
 									}
 									export function spawn(command, args, options) {
@@ -221,9 +238,18 @@ const bundle = await build({
 									};
 								`,
 							"backend-config-fixture": `
+									/*
+										* The URL is a GETTER, not a snapshot: the adoption tests have to point
+										* a fresh manager at a different origin than a previous one used, and
+									* backendUrl is derived from this value in the constructor. A frozen
+									* property would silently reuse the first test's port and every
+									* assertion after it would be made against the wrong server.
+									*/
 									export const backendConfig = {
-										VITE_LOCAL_OPERATOR_API_URL: globalThis.__backendTestUrl,
-										VITE_DISABLE_BACKEND_MANAGER: "false",
+									get VITE_LOCAL_OPERATOR_API_URL() {
+										return globalThis.__backendTestUrl;
+									},
+									VITE_DISABLE_BACKEND_MANAGER: "false",
 									};
 								`,
 						};
@@ -246,6 +272,27 @@ server = createServer(async (req, res) => {
 			"Content-Type": "application/json",
 		});
 		res.end("{}");
+		return;
+	}
+	/*
+	 * The desktop vocabulary's authenticated read, in the shape
+	 * `requestDesktop({ op: "sessions.list" })` asks for. It answers 200 only for
+	 * the bearer this fixture was told to accept, which is what makes it able to
+	 * separate "a process is healthy" from "this app may use it" - the
+	 * distinction the adoption gate now rests on (QA round 1, Q-1).
+	 */
+	if (path === "/v1/desktop/sessions") {
+		const presented = (req.headers.authorization ?? "").replace("Bearer ", "");
+		state.sessionsAuth.push(presented);
+		const ok = state.pairedToken !== null && presented === state.pairedToken;
+		res.writeHead(ok ? 200 : 401, { "Content-Type": "application/json" });
+		res.end(
+			JSON.stringify(
+				ok
+					? { result: { sessions: [], truncated: false, limit: 1 } }
+					: { detail: "Unauthorized" },
+			),
+		);
 		return;
 	}
 	if (path.endsWith("/events")) {
@@ -292,9 +339,10 @@ globalThis.__backendTestUrl = url;
  * The `backendUrl` assertion in the first test exists so that failure can only
  * ever be loud.
  */
-const { BackendServiceManager } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { BackendServiceManager, DesktopStreamRelay, DESKTOP_STREAM_DETAIL, streamFailureNotice } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 after(async () => {
 	await new Promise((resolve, reject) =>
@@ -398,7 +446,18 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 		};
 		// One unhealthy sample, the condition the watchdog acts on, without
 		// waiting out the 30s interval that samples it.
-		manager.checkHealth = async () => false;
+		//
+		// Bounded to that ONE sample deliberately. `checkHealth` is the same method
+		// the replacement `start()` polls while it waits for its new process, so a
+		// blanket `false` here made the restart spend its whole retry budget (30s)
+		// before the test could finish - a property of the stub, not of the
+		// manager. The assertions below are unchanged.
+		const realCheckHealth = manager.checkHealth.bind(manager);
+		let samples = 0;
+		manager.checkHealth = async () => {
+			samples += 1;
+			return samples === 1 ? false : realCheckHealth();
+		};
 
 		const execsBefore = state.execs.length;
 		await manager.checkUnhealthyBackend();
@@ -421,5 +480,239 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 	} finally {
 		state.healthy = true;
 		await manager.stop(true);
+	}
+});
+
+/*
+ * Q-1: adoption is a PAIRING decision, not a liveness probe.
+ *
+ * The old `checkExistingBackend()` adopted any healthy server on the configured
+ * origin even with no desktop token, and on a failed first probe it fell back to
+ * a hardcoded `http://localhost:1111` and rotated `backendUrl` onto it. Both
+ * outcomes attach the app to a backend it cannot authenticate to - every session
+ * list and every stream then 401s, which is the empty-conversation outcome this
+ * PR exists to remove - and the fallback additionally let a rig configured for
+ * an isolated port silently become a client of the operator's live server.
+ *
+ * These three cases pin the three arms of the replacement rule: an unpaired app
+ * adopts nothing; a paired app adopts only after the server ACCEPTS its bearer;
+ * a paired app whose bearer is refused adopts nothing and spawns its own
+ * backend. The hardcoded origin itself cannot be exercised here - binding port
+ * 1111 on this machine would take the operator's own backend - so the last
+ * assertion pins its ABSENCE in the source instead of pretending to hit it.
+ */
+test("an unpaired app does not adopt a healthy backend it can never authenticate to (Q-1)", async () => {
+	const saved = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	try {
+		// Healthy, answering on the CONFIGURED origin: under the old rule this is
+		// exactly the state that was adopted with no credential at all.
+		state.healthy = true;
+		state.pairedToken = "a".repeat(64);
+		const manager = new BackendServiceManager();
+		assert.equal(manager.backendUrl, url);
+		assert.equal(
+			await manager.checkExistingBackend(),
+			false,
+			"a healthy server with no token for it is not adoptable: the app would attach to a backend that refuses every session and stream",
+		);
+		assert.equal(
+			manager.isUsingExternalBackend(),
+			false,
+			"nothing was adopted, so the app starts its own backend as before",
+		);
+		// And it can: `start()` reaches a real spawn even though the configured
+		// origin answers health, because adoption is what was declined.
+		const spawnsBefore = state.spawns.length;
+		assert.equal(await manager.start(), true);
+		assert.equal(
+			state.spawns.length,
+			spawnsBefore + 1,
+			"declining to adopt must fall through to a managed start",
+		);
+		assert.match(state.spawns.at(-1)?.token ?? "", /^[a-f0-9]{64}$/);
+		await manager.stop(true);
+	} finally {
+		state.healthy = false;
+		if (saved === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+		else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = saved;
+	}
+});
+
+test("a paired app adopts the configured backend, and only once it accepts the token (Q-1)", async () => {
+	const saved = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	const pairingToken = "b".repeat(64);
+	process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = pairingToken;
+	try {
+		state.healthy = true;
+		// The server accepts the WRONG bearer first: a health 200 alone must not
+		// be enough, which is the half the old code never checked.
+		state.pairedToken = "c".repeat(64);
+		state.sessionsAuth.length = 0;
+		const refused = new BackendServiceManager();
+		assert.equal(await refused.checkExistingBackend(), false);
+		assert.equal(refused.isUsingExternalBackend(), false);
+		assert.equal(
+			state.sessionsAuth.at(-1),
+			pairingToken,
+			"the app has to actually present its bearer before it can claim the backend",
+		);
+
+		// Now the server holds the token the app was paired with.
+		state.pairedToken = pairingToken;
+		const manager = new BackendServiceManager();
+		assert.equal(await manager.checkExistingBackend(), true);
+		assert.equal(
+			manager.isUsingExternalBackend(),
+			true,
+			"a paired, authenticated backend is adopted - the legitimate external-backend path still works",
+		);
+		assert.equal(
+			state.sessionsAuth.at(-1),
+			pairingToken,
+			"adoption follows a successful authenticated read",
+		);
+	} finally {
+		state.healthy = false;
+		state.pairedToken = null;
+		if (saved === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+		else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = saved;
+	}
+});
+
+test("adoption never probes an origin other than the one the app was configured with (Q-1)", async () => {
+	// The fallback is deleted, and it cannot be exercised by binding the port it
+	// used (1111 is the operator's live backend on this machine). Pinned in the
+	// source instead, so a future edit that reintroduces a second origin fails
+	// here rather than on a rig that silently adopts a stranger.
+	const source = await readFile(
+		new URL("../src/main/backend/backend-service.ts", import.meta.url),
+		"utf8",
+	);
+	assert.doesNotMatch(
+		source,
+		/localhost:1111|altUrl/,
+		"no hardcoded fallback origin: a configured rig must never adopt a server on a different port",
+	);
+	// The configured origin is the only one the adoption path names.
+	const adoption = source.slice(
+		source.indexOf("async checkExistingBackend"),
+		source.indexOf("async start("),
+	);
+	assert.match(adoption, /\$\{this\.backendUrl\}\/health/);
+	assert.doesNotMatch(adoption, /https?:\/\/[a-z0-9.:]+/i);
+});
+
+/*
+ * Q-2: a backend child that EXITS is restored by the watchdog.
+ *
+ * `checkUnhealthyBackend()` used to return early once `this.process` was null,
+ * and the `exit` handler nulls it - so a SIGKILLed backend was terminal: the
+ * renderer's Retry could re-arm the stream and could never succeed. The
+ * watchdog is the only thing in the app that owns the process lifecycle, so the
+ * recovery belongs there; this drives the REAL manager through an exit and one
+ * unhealthy sample, and asserts a replacement was spawned.
+ */
+test("a backend child that exited is restored by the watchdog (Q-2)", async () => {
+	const manager = new BackendServiceManager();
+	try {
+		state.healthy = false;
+		assert.equal(await manager.start(), true);
+		const firstSpawn = state.spawns.at(-1);
+		assert.ok(manager.process, "the managed start leaves a live process");
+
+		// The child dies on its own: no kill() call, just the exit event a SIGKILL
+		// reports. This is what `kill -9` looked like while the operator's app sat
+		// on the failure and the Retry could not succeed.
+		state.healthy = false;
+		firstSpawn.child.exitNow(null);
+		assert.equal(
+			manager.process,
+			null,
+			"the exit handler nulls this.process - the state that used to be terminal",
+		);
+
+		const spawnsBefore = state.spawns.length;
+		await manager.checkUnhealthyBackend();
+
+		assert.equal(
+			state.spawns.length,
+			spawnsBefore + 1,
+			"an exited backend must be replaced, or every window onto it is permanently dead",
+		);
+		assert.ok(
+			manager.process,
+			"the manager holds the replacement, so a stream re-armed by the Retry can now succeed",
+		);
+		assert.notEqual(
+			state.spawns.at(-1)?.token,
+			firstSpawn.token,
+			"the replacement mints its own token, which is why the relay is keyed on it",
+		);
+	} finally {
+		state.healthy = true;
+		await manager.stop(true);
+	}
+});
+
+/*
+ * D1, pinned to the relay's OWN detail.
+ *
+ * The round-1 frame showed "The event stream ended." because the browser dev
+ * proxy emits no status code, while the shipping Electron relay emits
+ * "The event stream was refused (401)." for the same failure - so the reviewed
+ * sentence and the shipped sentence were two different sentences, and the
+ * shipped one was a bare HTTP status. These two cases take the detail the REAL
+ * relay emits over a REAL socket and assert the sentence the reader gets, which
+ * is the only form of that claim that is not an assertion about copy.
+ */
+test("the relay's own refusal detail is the shared vocabulary and maps to the shipped sentence (D1)", async () => {
+	const relay = new DesktopStreamRelay(url, "d".repeat(64));
+	try {
+		const frames = subscribeOnce(relay);
+		await waitFor(() => frames.length > 0, "the refusal frame");
+		assert.equal(frames[0].kind, "error");
+		assert.equal(
+			frames[0].detail,
+			DESKTOP_STREAM_DETAIL.refused(401),
+			"the relay emits the module's constant, so a test can pin the copy to it instead of restating it",
+		);
+		const notice = streamFailureNotice(frames[0].detail);
+		assert.equal(
+			notice.statement,
+			streamFailureNotice(DESKTOP_STREAM_DETAIL.ended).statement,
+			"the packaged 401 and the browser proxy's ended must reach the reader as the same sentence",
+		);
+		assert.doesNotMatch(notice.statement, /401|refused|event stream/i);
+	} finally {
+		relay.dispose();
+	}
+});
+
+test("a stream against a backend that is not listening reports the server, not the stream (Q-2)", async () => {
+	// A port with nothing behind it: bound to learn the number, then released.
+	const probe = createServer(() => {});
+	await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
+	const deadPort = probe.address().port;
+	await new Promise((resolve) => probe.close(resolve));
+
+	const relay = new DesktopStreamRelay(
+		`http://127.0.0.1:${deadPort}`,
+		"e".repeat(64),
+	);
+	try {
+		const frames = subscribeOnce(relay);
+		await waitFor(() => frames.length > 0, "the failure frame");
+		assert.equal(
+			frames[0].detail,
+			DESKTOP_STREAM_DETAIL.serverDown,
+			"nothing answering on the origin is the server being gone, which is what the reader is told (Q-2)",
+		);
+		assert.match(
+			streamFailureNotice(frames[0].detail).statement,
+			/server is not running/i,
+		);
+	} finally {
+		relay.dispose();
 	}
 });

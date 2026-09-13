@@ -23,7 +23,10 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import {
+	CanonicalTranscript,
+	canonicalTranscriptSpeaks,
+} from "../canonical/canonical-transcript";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -195,17 +198,26 @@ const EMPTY_PULSES: Readonly<Record<string, number>> = {};
 /**
  * The composer band's only question is whether anything is painted ABOVE it,
  * and a readable failure notice counts: while the transcript is saying why it
- * cannot be read (and offering the Retry), letting the band grow would take the
+ * cannot be read (and offering a way back), letting the band grow would take the
  * free height for a greeting the app has no business showing, and would put the
  * notice and the composer in competition for the same space.
+ *
+ * The SAME predicate drives the transcript's own collapse stand-down, so the
+ * pane and the band cannot disagree about whether the pane has something to
+ * say (design round 1, D3 added the reconnecting window to it: during the whole
+ * retry budget the pane was 0px tall and the "Reconnecting" line was clipped,
+ * while the band was free to paint the greeting over a conversation nobody had
+ * read).
  */
 const canonicalSpeaking = (
 	canonical?: ChatContentProps["canonical"],
 ): boolean =>
 	Boolean(
 		canonical &&
-			canonical.view.status === "unavailable" &&
-			canonical.view.error,
+			canonicalTranscriptSpeaks({
+				status: canonical.view.status,
+				failure: canonical.view.failure,
+			}),
 	);
 
 const defaultCanvasState = {
@@ -547,8 +559,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											containerRef={messagesContainerRef}
 											isSmallView={isSmallView}
 											status={canonical.view.status}
-											error={canonical.view.error}
-											onRetry={canonical.view.retry}
+											failure={canonical.view.failure}
+											onReconnect={canonical.view.retry}
 										/>
 									) : (
 										<MessagesView
