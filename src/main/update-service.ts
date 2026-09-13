@@ -561,6 +561,11 @@ export class UpdateService {
 						shipItLogPath,
 						cancelledByRelaunch: this.installWasInFlight,
 					}),
+					// The record names the version that is running now, which is the same
+					// answer the payload above was built from: Settings renders it as
+					// "Version X is running", and it used to carry the previous failure's
+					// version forward instead (QA Q1).
+					runningVersion: app.getVersion(),
 					startedAt: outcome.marker.startedAt || null,
 					detectedAt: new Date().toISOString(),
 				});
