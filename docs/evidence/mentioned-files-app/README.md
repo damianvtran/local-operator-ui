@@ -111,8 +111,10 @@ the sweep's own, so a set that belongs to another producer has to say so:
 - **The panel frame's tiles are transcript-inferred.** They are paths a
   transcript mentioned and its thumbnails come from the backend's static route;
   Storybook has neither. The sweep's `canvas-workspace--files` frame shows the
-  same grid from a fixture and says so, with the PNG tile's thumbnail missing —
-  which is exactly why the panel's real reading comes from here.
+  same grid from a fixture and says so — and the PNG tile's thumbnail is missing
+  in BOTH frames, for the CSP reason in artifact 2 below rather than because one
+  of them is Storybook: this set's own live frame paints the same broken box, so
+  neither image is evidence about the thumbnail route.
 - **The video frame cannot come from the sweep at all.** It needs a backend
   answering the media route's Range requests, and `canvas-workspace--video-viewer`
   is only able to render the viewer's failure state under the story's stub — which
@@ -147,13 +149,16 @@ review. They are listed so a reader does not have to reverse-engineer them:
    goes through the main process, which is not subject to that CSP. The same
    strip is present in the `chat-title` frames under the same setup, and it is
    unrelated to this change.
-2. **The PNG tile has no thumbnail.** Same cause, one directive along: `img-src`
-   names only the `:1111` hosts, so the tile's thumbnail — which the grid builds
-   from the renderer's REST client — cannot be fetched from the isolated
-   backend, and the tile paints its name over an empty box. The tile's own claim
-   (a `.png` is classified as an image and gets a tile) is unaffected; the
-   thumbnail route against the app's configured backend is exercised by
-   `scripts/mentioned-files-app-proof.mjs` on the live backend.
+2. **The PNG tile has no thumbnail, in this set's frames as well as the
+   sweep's.** Same cause, one directive along: `img-src` names only the `:1111`
+   hosts, so the tile's thumbnail — which the grid builds from the renderer's
+   REST client — cannot be fetched from the isolated backend, and the tile paints
+   its name over an empty box. The live panel frame in this directory carries
+   that same box (the alt text sits over it), so this is a property of the
+   isolated origin and NOT of Storybook: neither frame can show a real thumbnail.
+   The tile's own claim (a `.png` is classified as an image and gets a tile) is
+   unaffected; the thumbnail route against the app's configured backend is
+   exercised by `scripts/mentioned-files-app-proof.mjs` on the live backend.
 3. **`media-src`, for the video frame, is widened in the BUILD OUTPUT and
    nowhere else.** The same CSP names only the `:1111` hosts there too, so the
    video would not load at all from the isolated backend — which would leave the
@@ -163,12 +168,15 @@ review. They are listed so a reader does not have to reverse-engineer them:
    `src/renderer/` is untouched: the shipped CSP still refuses every origin that
    is not the app's own backend, and script two is why the video tile in the
    panel frame plays while the PNG tile beside it does not need to.
-4. **Chromium's PDF toolbar is dark in the light-brand frame**, and that is not
-   a theming miss: the platform's viewer draws its own chrome, is not
-   addressable from our DOM, and is therefore an accepted platform object. What
-   we own is the strip above it, which is themed: `surface` under our hairline
-   rule, carrying the open-in-OS action. The first risk the pull request's design
-   decisions name, measured here rather than argued.
+4. **No frame shows a platform PDF toolbar, and `#toolbar=0` is why.** An
+   earlier version of this note described a dark platform toolbar in the
+   light-brand frame as an accepted platform object; no committed frame shows
+   one, because the viewer opens the document with `#toolbar=0` and the platform's
+   own chrome is suppressed — the white page fills the panel under the strip we
+   DO own, which is themed (`surface` under the hairline rule, carrying the
+   open-in-OS action). What the platform still paints for itself is the field
+   around the page at other zoom levels (point 5), which is the boundary this
+   pull request does not close; the PR's "Not addressed" section names it.
 5. **The platform's PDF field is a fixed colour in every theme, and
    `color-scheme` does not reach it.** The field around the page — the majority
    of the surface under the bar in the swept `canvas-workspace/pdf-viewer`
