@@ -1840,30 +1840,67 @@ test("a refused send with an emptied composer still has a payload to Restore", a
 	assert.equal(echoes.filter((e) => e.kind === "retract").length, 1);
 });
 
-test("the panel keys on the session once one exists, so admitting a draft is not a remount", () => {
-	// R10/M5/M6. The precedence is `id ?? draftKey`, and the direction matters in
-	// both senses, so both are asserted here rather than trusted to review.
+test("the draft send remounts the panel exactly once, before the message POST", () => {
+	/*
+	 * R10 / M5 / M6, SCOPED HONESTLY after review round 1 (MAJOR-2).
+	 *
+	 * The earlier version of this test concluded "zero remounts per draft send"
+	 * from two assertions taken on the FAR side of the flip - it compared
+	 * `panelIdentityFor(draftKey, id)` with `panelIdentityFor(null, id)` and
+	 * never against `panelIdentityFor(draftKey, undefined)`, which is the state
+	 * the panel is actually in when the user presses Enter. That is a vacuous
+	 * pass: it asserted the transition it did not make.
+	 *
+	 * The truth is one remount per draft send, under the old rule and the new
+	 * one alike. What the swap changed is WHEN: from `finishDraft` (after the
+	 * message POST, which discarded a subscription mid-flight and re-paid the
+	 * handshake plus the backend's pre-`open` snapshot) to `createSession`
+	 * (before the POST is issued). The panel that receives the admission row is
+	 * therefore the subscribed one, and the echo survives the transition because
+	 * it is buffered by session id rather than delivered to whatever happened to
+	 * be mounted - see the pending-echo queue in `use-canonical-session`.
+	 *
+	 * So this test pins the transition as a SEQUENCE, including the at-Enter
+	 * state, and fails if the count regresses in either direction.
+	 */
 	const draftKey = "draft:9f1c";
-	assert.equal(
-		panelIdentityFor(draftKey, undefined),
-		draftKey,
-		"a staged draft has no session yet, so it keys on itself",
+	const sessionId = "222222222222";
+	// The three states chat-page.tsx computes across one New-chat send, in order.
+	const sequence = [
+		panelIdentityFor(draftKey, undefined), // at Enter: no session exists yet
+		panelIdentityFor(draftKey, sessionId), // createSession patched the draft
+		panelIdentityFor(null, sessionId), // finishDraft cleared the draft key
+	];
+	assert.deepEqual(
+		sequence,
+		[draftKey, sessionId, sessionId],
+		"the identity sequence across a draft send is pinned, at-Enter state included",
 	);
+	const remounts = new Set(sequence).size - 1;
 	assert.equal(
-		panelIdentityFor(draftKey, "222222222222"),
-		"222222222222",
-		"once the store patches the draft's session id mid-send the key must NOT change to follow the draft - that flip was the remount",
+		remounts,
+		1,
+		"exactly one remount per draft send - not zero, and a second would mean the flip moved back after the POST",
 	);
+	// The one remount must land BEFORE the message POST. That is the whole
+	// improvement: the key settles on `createSession`, so the panel holding the
+	// subscription when the admission resolves is the one that keeps it.
 	assert.equal(
-		panelIdentityFor(null, "222222222222"),
-		"222222222222",
-		"after finishDraft clears the draft key the identity is unchanged, which is what makes the flip invisible",
+		sequence[1],
+		sequence[2],
+		"the identity must not change again once the session id is known - a change at finishDraft is the mid-flight remount this swap removed",
 	);
-	// The whole point: the identity before admission and after it are one value.
+	assert.notEqual(
+		sequence[0],
+		sequence[1],
+		"and the change that does happen is the create, which is before the POST",
+	);
+	// An EXISTING-session send has no transition at all, which is the case M5/M6
+	// hold unscoped for.
 	assert.equal(
-		panelIdentityFor(draftKey, "222222222222"),
-		panelIdentityFor(null, "222222222222"),
-		"zero SessionPanel remounts and zero connecting transitions per draft send",
+		panelIdentityFor(null, sessionId),
+		panelIdentityFor(null, sessionId),
+		"an existing-session send never changes key",
 	);
 	// The reverse direction still remounts, and must: "New chat" stages a fresh
 	// draft with no session, so it cannot inherit the previous transcript.
