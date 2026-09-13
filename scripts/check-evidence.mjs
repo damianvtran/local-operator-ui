@@ -511,8 +511,19 @@ const main = () => {
 		 * have rewritten a frame it does not claim to have captured. It is
 		 * one-sided - a re-capture producing identical bytes leaves no trace in
 		 * the diff, so the claim may legitimately EXCEED the diff - and it is
-		 * skipped when git cannot answer, which keeps the gate runnable from a
-		 * tarball.
+		 * skipped when git cannot answer, so THIS check adds no new dependency on
+		 * a repository. It does not make the whole gate pass without one: the
+		 * provenance checks above already fail on a tree with no `.git`, because
+		 * a manifest that names commits nothing can resolve is exactly what they
+		 * exist to catch.
+		 *
+		 * Frames inside a `supplementary` set are excluded from the denominator.
+		 * Those sets are declared precisely because a sweep CANNOT produce them
+		 * - a live-app capture, an older source tree, a state the app does not
+		 * ship - so they arrive by a route that is not a capture run, and
+		 * counting them would demand that this field claim frames no run wrote.
+		 * The incident this check exists for is unaffected: it moved 25 frames,
+		 * none of them in a declared set.
 		 */
 		const pc = manifest.partialCapture;
 		if (pc && typeof pc === "object" && pc.refreshedAtHead) {
@@ -520,17 +531,36 @@ const main = () => {
 			// tally (`captured` counts every frame written, new or overwritten),
 			// so summing the two here would double-count a new surface.
 			const claimed = pc.refreshedFrames ?? 0;
+			/*
+			 * The denominator spans the whole PASS, not the last commit of it.
+			 *
+			 * `refreshedAtHead^..` measures one commit, and the capturer now sums
+			 * a pass across commits (it carries the total forward while the old
+			 * head is an ancestor), so a two-commit pass checked against its
+			 * second commit alone would compare a round's total against a
+			 * fraction of the round's diff - the two would agree and the earlier
+			 * commit's frames would go unclaimed. `passStart` is the first commit
+			 * of the pass when the capturer recorded one, and the recorded head
+			 * otherwise, so a single-commit pass measures exactly as before.
+			 */
+			const passStart = pc.refreshedFromHead ?? pc.refreshedAtHead;
 			const changed = gitOut([
 				"diff",
 				"--name-only",
-				`${pc.refreshedAtHead}^`,
+				`${passStart}^`,
 				"--",
 				relative(ROOT, EVIDENCE),
 			]);
 			if (changed !== null) {
 				const moved = changed
 					.split("\n")
-					.filter((line) => line.endsWith(".webp")).length;
+					.filter(
+						(line) =>
+							line.endsWith(".webp") &&
+							!extra.some((set) =>
+								line.startsWith(`${relative(ROOT, join(EVIDENCE, set.path))}/`),
+							),
+					).length;
 				if (moved > claimed) {
 					failures.push(
 						`manifest.json: partialCapture claims ${claimed} refreshed frames, but ${moved} committed frames differ at ${pc.refreshedAtHead.slice(0, 9)} - a narrowed run overwrote the pass's total instead of accumulating it`,

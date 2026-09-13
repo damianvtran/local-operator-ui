@@ -1288,12 +1288,41 @@ const main = async () => {
 					 * twelve, `2 frames, 1 story`. `check-evidence.mjs` asserts
 					 * nothing here, so the understatement passed the gate green.
 					 *
-					 * Keyed on the head: successive runs at one commit are one pass
-					 * and sum, while the first run at a NEW head starts the count
-					 * again rather than inheriting the previous commit's totals.
+					 * Keyed on the head, but by ANCESTRY rather than by equality.
+					 *
+					 * Equality alone closed only half the hole: a pass whose runs
+					 * land either side of a commit - capture some surfaces, commit,
+					 * capture the rest - reset the claim at the second commit, so
+					 * the field described the last commit's runs while the round had
+					 * moved more. Worse, `check-evidence.mjs` derives its denominator
+					 * from the same recorded head, so the two agreed with each other
+					 * and the understatement was invisible again, one level up.
+					 *
+					 * Carrying the total forward while the previously recorded head
+					 * is an ANCESTOR of the current one keeps a multi-commit pass
+					 * summing, and a head on another branch - or a rewritten history
+					 * where the old commit is unreachable - is not an ancestor, so it
+					 * still starts fresh instead of inheriting a stranger's totals.
 					 */
 					...(() => {
-						const sameHead = previous.partialCapture?.refreshedAtHead === head;
+						const priorHead = previous.partialCapture?.refreshedAtHead;
+						const sameHead =
+							priorHead === head ||
+							(Boolean(priorHead) &&
+								(() => {
+									try {
+										execFileSync(
+											"git",
+											["merge-base", "--is-ancestor", priorHead, head],
+											{ cwd: ROOT, stdio: "ignore" },
+										);
+										return true;
+									} catch {
+										// Non-zero (not an ancestor) or git cannot answer at all:
+										// both mean "do not inherit", which is the safe direction.
+										return false;
+									}
+								})());
 						const priorStories = sameHead
 							? (previous.partialCapture?.refreshedStories ?? [])
 							: [];
@@ -1304,6 +1333,17 @@ const main = async () => {
 							? (previous.partialCapture?.addedSurfaces ?? [])
 							: [];
 						return {
+							/*
+							 * Where the pass STARTED, so the gate can measure the whole
+							 * round rather than its last commit. Held across runs while
+							 * the total accumulates, and re-anchored to the current head
+							 * when a fresh pass begins.
+							 */
+							refreshedFromHead: sameHead
+								? (previous.partialCapture?.refreshedFromHead ??
+									previous.partialCapture?.refreshedAtHead ??
+									head)
+								: head,
 							refreshedFrames:
 								(sameHead ? (previous.partialCapture?.refreshedFrames ?? 0) : 0) +
 								captured,
