@@ -723,7 +723,12 @@ test("a draft renders four fewer claims than a running session: no cost, no dura
 			activity_started_at: null,
 		},
 	});
-	assert.match(ran, /aria-label="Active time: 41m1s\./);
+	// D17 spells the label and the tooltip differently on purpose: the label is
+	// spoken in one breath on every focus, the tooltip is read at leisure.
+	assert.match(
+		ran,
+		/aria-label="Active time: 41m1s\. Time spent working; waiting is not counted\."/,
+	);
 	// Inert, and a readout rather than a disabled button: it opens nothing, so
 	// there is no control for `aria-disabled` to describe as unavailable.
 	assert.doesNotMatch(ran, /aria-label="Active time[^"]*"[^>]*aria-disabled/);
