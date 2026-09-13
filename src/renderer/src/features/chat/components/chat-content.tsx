@@ -192,6 +192,21 @@ const CANONICAL_NONEMPTY: Message[] = [
 ];
 /** One shared empty map, so an absent pulse prop costs no render churn. */
 const EMPTY_PULSES: Readonly<Record<string, number>> = {};
+/**
+ * The composer band's only question is whether anything is painted ABOVE it,
+ * and a readable failure notice counts: while the transcript is saying why it
+ * cannot be read (and offering the Retry), letting the band grow would take the
+ * free height for a greeting the app has no business showing, and would put the
+ * notice and the composer in competition for the same space.
+ */
+const canonicalSpeaking = (
+	canonical?: ChatContentProps["canonical"],
+): boolean =>
+	Boolean(
+		canonical &&
+			canonical.view.status === "unavailable" &&
+			canonical.view.error,
+	);
 
 const defaultCanvasState = {
 	isOpen: false,
@@ -533,6 +548,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											isSmallView={isSmallView}
 											status={canonical.view.status}
 											error={canonical.view.error}
+											onRetry={canonical.view.retry}
 										/>
 									) : (
 										<MessagesView
@@ -568,7 +584,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								conversationId={agentId}
 								messages={
 									canonical
-										? canonical.view.transcript.records.length > 0
+										? canonical.view.transcript.records.length > 0 ||
+											canonicalSpeaking(canonical)
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
 												? messages
@@ -582,9 +599,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// before it knew, then repainted when history arrived
 								// (design D7's hydration note). Passing the real state
 								// lets the composer wait instead of guessing.
-								isHydrating={
-									canonical ? canonical.view.status === "connecting" : false
-								}
+								// The rule is NOT "the stream is connecting" any more. That
+								// asked the transport a question the reader was asking about
+								// the CONVERSATION: a stream that failed, or one whose
+								// history read did, is not "connecting", so the composer
+								// asserted the empty-conversation greeting over rows that
+								// had existed the whole time. `hydrated` answers the reader's
+								// actual question instead - has an authoritative page been
+								// applied for this session - so the loading state holds
+								// until the app genuinely knows, whether that takes a retry
+								// or not.
+								isHydrating={canonical ? !canonical.view.hydrated : false}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={

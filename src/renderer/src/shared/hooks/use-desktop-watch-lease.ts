@@ -17,6 +17,7 @@
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useEffect } from "react";
+import { SUBSCRIPTION_ID_PATTERN } from "../../../../shared/desktop-contract";
 
 const HEARTBEAT_MS = 15_000;
 
@@ -26,6 +27,13 @@ export function useDesktopWatchLease(
 ): void {
 	useEffect(() => {
 		if (!sessionId || !subscriptionId) return;
+		// Truthiness is not the contract. A lease names a subscription the backend
+		// is holding RIGHT NOW, and the backend validates the id as
+		// `[a-f0-9]{32}`: anything else - an empty string, a session id, the tail
+		// of a torn frame - earns a 422 from `POST .../{id}/watch` while the
+		// heartbeat keeps firing every 15s. The renderer has the same regex the
+		// request schema has, so it can simply not send the lease.
+		if (!SUBSCRIPTION_ID_PATTERN.test(subscriptionId)) return;
 		let cancelled = false;
 
 		const send = () => {
