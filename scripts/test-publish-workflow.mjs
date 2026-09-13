@@ -111,6 +111,7 @@ for (const [event, prerelease] of [
 		"validate-release",
 		"preflight-macos",
 		"npm-publish",
+		"open-release-window",
 		"build-macos",
 		"build-windows",
 		"build-linux",
@@ -134,6 +135,121 @@ test("upload requires all platform jobs; no status-function bypass", () => {
 	]);
 	for (const job of Object.values(jobs))
 		assert.doesNotMatch(job.if || "", /always\(|failure\(|cancelled\(/);
+});
+// The pre-release window. A release is published and then built for 25-35
+// minutes; for that whole window /releases/latest answers with it while no
+// latest*.yml exists, so every running app filters the 404 into "no updates
+// available" (v0.17.2, v0.19.1, v0.19.2). The window has to open before the
+// first build and close only once the assets are attached and verified.
+const windowJobs = [
+	["open-release-window", "open"],
+	["finalize-release", "finalize"],
+];
+const WINDOW_PINS = {
+	RELEASE_TAG: "${{ needs.validate-release.outputs.release_tag }}",
+	EXPECTED_SOURCE_SHA: "${{ needs.validate-release.outputs.source_sha }}",
+	EXPECTED_RELEASE_ID: "${{ needs.validate-release.outputs.release_id }}",
+	IS_MANUAL_DISPATCH: "${{ github.event_name == 'workflow_dispatch' }}",
+};
+function localImports(file) {
+	// The sparse checkout lists modules by hand, so a module the script imports
+	// but the checkout omits fails the job at runtime, after the release is
+	// already published. Derive the list from the script instead of trusting it.
+	return [...readFileSync(new URL(`../${file}`, import.meta.url), "utf8")
+		.matchAll(/from "\.\/([\w.-]+)"/g)].map((match) => `scripts/${match[1]}`);
+}
+for (const [job, mode] of windowJobs) {
+	test(`${job} runs ${mode} with both pins and its imports checked out`, () => {
+		const run = steps(job).find((step) => step.run);
+		assert.equal(run.run, `node workflow/scripts/release-state.mjs ${mode}`);
+		assert.deepEqual(run.env, {
+			...WINDOW_PINS,
+			GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
+		});
+		const checkout = step(job, "Checkout workflow scripts");
+		assert.equal(checkout.with.ref, "${{ github.workflow_sha }}");
+		assert.equal(checkout.with.path, "workflow");
+		for (const module of localImports("scripts/release-state.mjs"))
+			assert.match(
+				checkout.with["sparse-checkout"],
+				new RegExp(`^\\s*${module.replace(/\./g, "\\.")}\\s*$`, "m"),
+				`${module} missing from ${job}'s checkout`,
+			);
+		// Both mutations need contents: write. A read-only override here would
+		// fail the PATCH, which is the whole point of the job.
+		assert.ok(!("permissions" in jobs[job]));
+	});
+}
+for (const [label, forced] of [
+	["cannot be held", { "open-release-window": "failure" }],
+]) {
+	test(`a release that ${label} stops every build instead of shipping assets`, () => {
+		const result = graph("release", false, forced);
+		for (const job of [
+			"build-macos",
+			"build-windows",
+			"build-linux",
+			"attach-to-release",
+			"finalize-release",
+		])
+			assert.equal(result[job], "skipped", job);
+	});
+}
+test("the window opens before every build and closes only after attach", () => {
+	assert.deepEqual(needsOf("open-release-window"), ["validate-release"]);
+	for (const job of ["build-macos", "build-windows", "build-linux"]) {
+		assert.ok(needsOf(job).includes("open-release-window"), job);
+		assert.match(
+			jobs[job].if,
+			/needs\.open-release-window\.result == 'success'/,
+			job,
+		);
+	}
+	assert.deepEqual(needsOf("finalize-release").sort(), [
+		"attach-to-release",
+		"validate-release",
+	]);
+	assert.match(
+		jobs["finalize-release"].if,
+		/needs\.attach-to-release\.result == 'success'/,
+	);
+});
+test("window scoping is the event variable, never a job that a repair skips", () => {
+	// A repair has to keep running the builds and the attach, so scoping the
+	// mutation with `if: github.event_name == 'release'` would either skip the
+	// repair or hold a build behind a job that never ran. The scoping is the
+	// script's IS_MANUAL_DISPATCH refusal, and both jobs stay reachable.
+	const dispatch = graph("workflow_dispatch", false);
+	for (const [job] of windowJobs) {
+		assert.doesNotMatch(jobs[job].if || "", /event_name/);
+		assert.equal(dispatch[job], "success", job);
+	}
+	for (const event of ["release", "workflow_dispatch"])
+		assert.equal(graph(event, event === "release")["finalize-release"], "success");
+});
+test("a failed promotion is terminal and cannot cascade", () => {
+	// The promotion is the last job and nothing needs it, so a failed PATCH (the
+	// script exits non-zero; its refusal paths are covered in
+	// test-release-safety.mjs) fails the run after the assets are attached rather
+	// than leaving a release promoted by a later job's success.
+	assert.ok(
+		!Object.values(jobs).some((definition) =>
+			(definition.needs || []).includes("finalize-release"),
+		),
+	);
+	assert.equal(Object.keys(jobs).at(-1), "finalize-release");
+});
+test("every job is declared after the jobs it needs", () => {
+	// This harness resolves each job's needs from the results already computed,
+	// in file order, so a job declared above one of its needs would be simulated
+	// as skipped and the graph tests above would quietly stop covering it.
+	const order = Object.keys(jobs);
+	for (const job of order)
+		for (const need of needsOf(job))
+			assert.ok(
+				order.indexOf(need) < order.indexOf(job),
+				`${job} needs ${need}, which is declared later`,
+			);
 });
 test("payload checkouts use validated source, helper checkouts use workflow SHA", () => {
 	for (const job of [
