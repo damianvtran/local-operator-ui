@@ -295,6 +295,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	argumentList: { rows: [], loading: false, error: null, needsSession: false },
 	close: noop,
 	setActive: noopIndex,
+	setActiveHover: noopIndex,
 	chosenByHand: false,
 	isLoading: false,
 	available: true,
