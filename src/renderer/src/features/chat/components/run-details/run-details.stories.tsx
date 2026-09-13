@@ -321,6 +321,96 @@ const useClickAndWait = (selector: string, settleSelector: string) => {
 	}, [selector, settleSelector]);
 };
 
+/*
+ * A real, tiny PNG (72x44, 425 bytes) for the child-scoped attachment story.
+ *
+ * Deliberately NOT a `data:` URI in the fixture page: the claim this frame has to
+ * carry is that the READER resolves a durable digest through the child-scoped
+ * relay, and an inline image would bypass the relay entirely and prove nothing
+ * about it. Real bytes also mean the picture is a picture rather than a solid
+ * swatch, so a reader can tell "the image rendered" from "the box rendered".
+ */
+const CHILD_IMAGE_PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAEgAAAAsCAIAAABJ6mlcAAABcElEQVR42sWZwW3DMBRD3zwdoFNljJ47VYcpkEtHaAoHQlDb0rdlksC/RSD0HIjgB/m+/wzn7fNjma/b++Y8fqrotMPraVJ1nc1rtKFOtQc2T9WUi195SPU4xiTV0W8sonpVXk5SpNpTnKdalOsvokLVA7ucqvN3TVI15dfzVKg2FS+hKr7P4SNf6+Ch2gPTeTJDqrVihOqoJ2Og2gS7hKpzH/pU/xRTVCfci3YbEdVa2UD1BBsGgizVOffCmd9sVE8wW347QXXavXDmNxvVH5gzvx2lmnEvnPmtc5vLPRlnfjtENeleOPObc6fGmd+cOzXO/ObcqTEnHdtOTZBKulNjTjq2nZoUlXqnxpx0bDs1ESrDTo0zvzl3apz5zblT48xvzp2abCei82SynYjOk8l2IjpPJtuJ6DyZbCei82SynYjOk8l2IjpPJtuJ6DyZbCei82SynYjOk8l2IjpPJtuJ6DyZbCei82SynYjOk38Bx1I58CGSeMgAAAAASUVORK5CYII=";
+
+const CHILD_IMAGE_PNG_BYTES = Uint8Array.from(
+	atob(CHILD_IMAGE_PNG_BASE64),
+	(character) => character.charCodeAt(0),
+);
+
+/**
+ * Answer the reader's child-scoped attachment fetch with real bytes.
+ *
+ * WHY A STUB IS THE HONEST INSTRUMENT HERE. A Storybook frame has no backend, so
+ * a durable digest can only ever render the unavailable note — which is exactly
+ * what the set used to show and what R2-1 was about. The relay is the seam the
+ * renderer owns: `useAttachmentUrl` builds the op and main owns the URL, so
+ * answering that op with bytes proves the RENDERER's half (the scope reaches
+ * `desktopMedia`, the op is the child-scoped one, the bytes paint) and says
+ * nothing about the backend route, whose mapping is pinned in
+ * `scripts/desktop-contract.test.mjs` and exercised against a running server by
+ * the QA round.
+ *
+ * It answers ONLY the fixture's digest and op; anything else gets a 404, so a
+ * scope regression shows up as the unavailable note in the frame rather than as
+ * a picture borrowed from a stub that answered everything.
+ *
+ * Installed during the decorator's RENDER rather than in an effect, and that is
+ * load-bearing: React runs a child's effects before its parent's, so an effect
+ * here would land after the reader's own fetch had already gone out. Each
+ * captured frame is a fresh document, so the stub does not outlive it.
+ */
+const installChildImageRelay = () => {
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	const api = (window as any).api ?? {};
+	api.desktop = {
+		...api.desktop,
+		media: async (request: { op?: string; digest?: string }) =>
+			request.op === "subagents.attachment" &&
+			request.digest === "0f1e2d3c4b5a69788796a5b4c3d2e1f0"
+				? {
+						status: 200,
+						kind: "bytes",
+						mimeType: "image/png",
+						data: CHILD_IMAGE_PNG_BYTES,
+					}
+				: { status: 404, kind: "error", detail: "Not in this story." },
+	};
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	(window as any).api = api;
+};
+
+/**
+ * Hold the shutter until the story's picture has DECODED.
+ *
+ * `ImageAttachment` keeps the frame reserved and `opacity-0` until the image
+ * decodes, so a frame taken between mount and decode is an empty box — the same
+ * failure mode as Storybook's own spinner, and just as indistinguishable from a
+ * real frame in a directory listing. On exhaustion nothing is released, which
+ * makes the rig throw on this story rather than photograph the wrong state
+ * (`useClickAndWait`'s rule).
+ */
+const useWaitForPaintedImage = () => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		const poll = window.setInterval(() => {
+			/* The attachment's own blob URL, not "any image on the page": the header
+			   carries glyphs too, and waiting on the first `img` would release the
+			   shutter without the attachment having decoded at all. */
+			const image = [
+				...document.querySelectorAll<HTMLImageElement>("img"),
+			].find((element) => element.src.startsWith("blob:"));
+			if (!image || !image.complete || image.naturalWidth === 0) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+};
+
 /**
  * Poll the DOM for the state the previous step was supposed to produce, then run
  * the next step.
@@ -502,6 +592,32 @@ export const TriggerIdle: Story = {
 };
 
 /**
+ * The trigger's two HOVER grounds (design review round 2, D2-1).
+ *
+ * A pointer cannot be photographed from a story, so the rig dispatches a real
+ * `Input.dispatchMouseEvent` at `[data-run-panel-trigger]` before the shutter
+ * (`capture-evidence.mjs`'s tuple option, the same CDP the scroll-paging
+ * harness uses). The pair either side of these two is `trigger-idle` (closed at
+ * rest) and `panel-empty` (open at rest), so the four states are four frames:
+ * `canvas` / `elevated` / `accent-wash` / `accent-wash`.
+ *
+ * The OPEN one is the frame the round was about: before the fix, hovering the
+ * already-open trigger replaced its pressed ground with the hover ground, and
+ * this frame is the proof that the wash survives the pointer.
+ */
+export const TriggerHover: Story = {
+	render: () => <ChatColumn details={deriveRunDetails(fixtures.idle())} />,
+	decorators: [withCanvasClosed],
+};
+
+export const TriggerOpenHover: Story = {
+	render: () => (
+		<ChatColumn details={deriveRunDetails(fixtures.idle())} openPanel={true} />
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * The panel open with nothing to show: one quiet line, no skeleton and no
  * placeholder rows. Unreachable through the retired popover, whose trigger did
  * not exist on a session with no work.
@@ -642,11 +758,7 @@ export const TodosImplicitPhase: Story = {
  */
 export const SwapCanvasOpen: Story = {
 	render: () => (
-		<SwapGround
-			canvasOpen={true}
-			input={fixtures.bothInFlight()}
-			runOpen={false}
-		/>
+		<SwapGround canvasOpen={true} input={fixtures.swapSlot()} runOpen={false} />
 	),
 	decorators: [withCanvasClosed],
 };
@@ -657,11 +769,7 @@ export const SwapCanvasOpen: Story = {
  */
 export const SwapRunOpen: Story = {
 	render: () => (
-		<SwapGround
-			canvasOpen={false}
-			input={fixtures.bothInFlight()}
-			runOpen={true}
-		/>
+		<SwapGround canvasOpen={false} input={fixtures.swapSlot()} runOpen={true} />
 	),
 	decorators: [withCanvasClosed],
 };
@@ -828,14 +936,31 @@ export const ReaderGone: Story = {
  * sentence twice (`reader-resumed` is that frame). Here the launch row is absent —
  * a record that predates `launch_message_id`, which is the case
  * `reconcileLaunchTurns` documents — so the brief is the only copy, folded to six
- * of its nine lines with the remaining three stated on the control.
+ * of its eight lines with the remaining two stated on the control.
  */
 export const ReaderBrief: Story = {
 	render: () => (
 		<ChatColumn
 			details={deriveRunDetails({
 				nowMs: fixtures.FIXTURE_NOW_MS,
-				jobs: [fixtures.readerChild()],
+				jobs: [
+					{
+						...fixtures.readerChild(),
+						/*
+						 * The launch map is EMPTY and `launch_message_id` is blank, which is
+						 * the record that predates the field — so the brief falls back to the
+						 * child's own `prompt`, and that prompt is the multi-line one. Both
+						 * halves matter: with the map carrying the concise prompt (what
+						 * `readerChild()` sets) `row.brief` is a single line, `foldBrief`
+						 * withholds nothing, and `BriefBlock`'s expander — gated on
+						 * `folded.hidden > 0` — never renders. The frame the design record
+						 * cites as "the folded brief and its expander" then photographed a
+						 * brief with neither (review round 2, R2-4).
+						 */
+						launch_message_id: "",
+						launch_prompts: {},
+					},
+				],
 				todos: [],
 			})}
 			openPanel={true}
@@ -850,18 +975,31 @@ export const ReaderBrief: Story = {
  * The row the wire left unaddressable: `session_id` is null, so there is no
  * conversation to address.
  *
- * This is the reader's own terminal state for that case — the roster does not
- * offer the row as a control at all (`childOpenable`), but the breadcrumb and the
- * sibling stepper walk the wire's lineage and can land on it, so the page says
- * what is true instead of sitting on a load that was never issued. Before the fix
- * it sat on `Loading…` for as long as it was open.
+ * The fixture is the shape that actually produces it — a COLD conversation's
+ * restored row (`§ 10.1`): the durable graph's own status word and no session
+ * id at all, because `restored_job_row` copies neither `session_id` nor
+ * `session_dir` (`session/restored_rows.py:136-190`). The first cut of this
+ * story paired the null id with a RUNNING child, a combination the wire is not
+ * documented to produce (review round 2, R2-2), which made the copy's wrong
+ * cause look plausible.
+ *
+ * The copy states the fact rather than a cause for the same reason: on this
+ * shape the child usually DOES have a conversation on disk, so "the run has not
+ * given it a session yet" was wrong in the ordinary case.
  */
 export const ReaderUnaddressed: Story = {
 	render: () => (
 		<ChatColumn
 			details={deriveRunDetails({
 				nowMs: fixtures.FIXTURE_NOW_MS,
-				jobs: [fixtures.readerChild({ sessionId: null })],
+				jobs: [
+					fixtures.readerChild({
+						sessionId: null,
+						status: "paused",
+						progress: undefined,
+						startedSecondsAgo: undefined,
+					}),
+				],
 				todos: [],
 			})}
 			openPanel={true}
@@ -883,6 +1021,94 @@ export const ReaderResumed: Story = {
 			openPanel={true}
 			readerChildId="job-reader"
 			previewPage={fixtures.childPage({ launchTurn: true })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A child whose transcript carries a PICTURE.
+ *
+ * The frame R2-1 asked for: before the attachment wiring, every image in a
+ * child's page rendered the unavailable note, because the only route the renderer
+ * knew was the parent's and it refuses a child's digests. Here the reader hands
+ * `CanonicalTranscript` an `attachmentScope` naming the child, the row's digest is
+ * fetched over `subagents.attachment`, and the picture paints.
+ *
+ * The relay is stubbed in-story (see `installChildImageRelay`) because Storybook
+ * has no backend: what this frame proves is the renderer's half — the op, the
+ * scope, and the painted result — while the route's own mapping is pinned in
+ * `scripts/desktop-contract.test.mjs`. The README says which is which rather than
+ * letting the picture imply the whole path.
+ */
+export const ReaderImage: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild()],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ includeImage: true })}
+		/>
+	),
+	decorators: [
+		withCanvasClosed,
+		(Story) => {
+			installChildImageRelay();
+			useWaitForPaintedImage();
+			return <Story />;
+		},
+	],
+};
+
+/**
+ * A lineage of DEPTH 3 at the pane's 320px floor.
+ *
+ * Review round 2 left this open: the ancestors are capped at `max-w-32` each
+ * (`§5.2`), so a lineage deep enough can consume the whole 40px chrome bar and
+ * leave the current node — the reader's title — at no width at all, and
+ * `reader-nested` only proves depth 2. The fix (ancestors allowed to shrink, a
+ * width floor on the current node) needs a picture at the depth it is for, not a
+ * claim about flex: this is the frame.
+ */
+export const ReaderDeepFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild(),
+					{
+						...fixtures.readerChild({
+							id: "job-grandchild",
+							label: "Verify the totals",
+						}),
+						parent_job_id: "job-reader",
+						session_id: "fedcba987654",
+						launch_message_id: "",
+						launch_prompts: {},
+					},
+					{
+						...fixtures.readerChild({
+							id: "job-great-grandchild",
+							label: "Check the March totals against the ledger",
+						}),
+						parent_job_id: "job-grandchild",
+						session_id: "0123456789ab",
+						launch_message_id: "",
+						launch_prompts: {},
+					},
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-great-grandchild"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			/* The pane's own floor, which is the width the risk is about. */
+			width={320}
 		/>
 	),
 	decorators: [withCanvasClosed],

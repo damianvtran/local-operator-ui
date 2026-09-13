@@ -213,6 +213,14 @@ export const STORIES = [
 	 * transcript under a trigger is mostly ground.
 	 */
 	["chat-run-panel--trigger-idle", 460, 220],
+	/* The trigger's HOVER grounds (design review round 2, D2-1). A pointer cannot
+	   be produced by a story, so the rig dispatches a real mouse move at the
+	   trigger before the shutter — the same CDP input the scroll-paging harness
+	   uses. The rest states are `trigger-idle` (closed, at rest) and `panel-empty`
+	   (open, at rest), so the four grounds are `canvas` / `elevated` /
+	   `accent-wash` / `accent-wash`, and the last one is the fix. */
+	["chat-run-panel--trigger-hover", 460, 220, { hover: "[data-run-panel-trigger]" }],
+	["chat-run-panel--trigger-open-hover", 1280, 700, { hover: "[data-run-panel-trigger]" }],
 	["chat-run-panel--panel-empty", 1280, 700],
 	["chat-run-panel--settled-history", 1280, 700],
 	["chat-run-panel--roster-only", 1280, 700],
@@ -251,6 +259,14 @@ export const STORIES = [
 	   terminal line, reached through the breadcrumb or the sibling stepper
 	   because the roster does not offer the row at all. */
 	["chat-run-panel--reader-unaddressed", 1280, 900],
+	/* A child's own image: its row carries a digest and the reader resolves it
+	   through the child-scoped attachment op (`subagents.attachment`), which the
+	   story's relay stub answers with real bytes. The renderer's half of the
+	   path, in a picture. */
+	["chat-run-panel--reader-image", 1280, 900],
+	/* A lineage of depth 3 with the pane at its 320px floor: the width the
+	   breadcrumb's cap has to survive (round 2's open residual risk). */
+	["chat-run-panel--reader-deep-floor", 800, 700],
 	/* The MCP section, whose states a live session cannot produce on demand: an
 	   expired grant, a dead process, a word from a runtime this build has not been
 	   taught, and the cold payload of a session with no runtime. */
@@ -540,13 +556,17 @@ export const STORIES = [
  * and hand back their declarations for the manifest this run will write.
  *
  * Why this is not a plain `rmSync(OUT)`: not every frame in the tree comes
- * from this script. A surface whose claim is a pointer hover or a click that
- * changes state cannot be photographed from Storybook, and some of them - the
- * chat sidebar among them - have no story at all, so a blanket wipe destroys
- * frames this script cannot re-derive. It used to destroy their manifest entry
- * in the same pass, which was the dangerous part: the frames and the count
- * that accounted for them vanished together, the arithmetic still balanced,
- * and `check-evidence` stayed green over evidence that no longer existed.
+ * from this script. A surface whose claim is a click that changes STORE state,
+ * or a flow against a live backend, cannot be photographed from Storybook, and
+ * some of them - the chat sidebar among them - have no story at all, so a
+ * blanket wipe destroys frames this script cannot re-derive. (A pointer HOVER
+ * used to belong on that list and no longer does: the tuple's `hover` option
+ * moves a real pointer through the input pipeline, so the trigger's hover
+ * grounds are swept frames now rather than a bolted-on set.) It used to destroy
+ * their manifest entry in the same pass, which was the dangerous part: the
+ * frames and the count that accounted for them vanished together, the
+ * arithmetic still balanced, and `check-evidence` stayed green over evidence
+ * that no longer existed.
  *
  * Returning the declarations rather than re-reading them at the write site
  * keeps one definition of what "preserved" means, so the directories kept on
@@ -1135,7 +1155,7 @@ const main = async () => {
 						   stubbed query, then an interaction on the element it
 						   produced - sets this on mount and clears it when the
 						   frame is worth taking. Stories that never set it are
-						   unaffected, so this costs nothing for the other 33
+						   unaffected, so this costs nothing for the other 37
 						   surfaces. */
 						if (document.documentElement.dataset.capturePending) return false;
 						/* Webfonts must have resolved before the shutter.
@@ -1249,6 +1269,52 @@ const main = async () => {
 				deviceScaleFactor: 1,
 				mobile: false,
 			});
+			/*
+			 * A POINTER HOVER, for the frames whose claim is a hover ground.
+			 *
+			 * `:hover` is browser state, not story state: no story can force it, and a
+			 * story that faked the class would be evidence about the fake. So the rig
+			 * moves the real pointer through the input pipeline
+			 * (`Input.dispatchMouseEvent`), which is what a trackpad does, and then
+			 * takes the frame with the pointer still there.
+			 *
+			 * Dispatched AFTER the content-height resize, because the coordinates are
+			 * viewport pixels read from the element itself and a resize moves the
+			 * element; and BEFORE the two paint frames, so the shutter opens on the
+			 * hovered state. A selector that matches nothing THROWS rather than
+			 * photographing the resting state, because the two are indistinguishable
+			 * in a directory listing.
+			 *
+			 * `modifiers`/`clickCount`/`buttons` are not optional in every Chromium
+			 * build: omitting them makes the bindings layer reject the call, which a
+			 * rig that ignored rejections would read as "no hover happened".
+			 */
+			if (options?.hover) {
+				const { result: target } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const el = document.querySelector(${JSON.stringify(options.hover)});
+						if (!el) return null;
+						const r = el.getBoundingClientRect();
+						return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+					})()`,
+				});
+				if (!target.value) {
+					throw new Error(
+						`${story} @ ${theme}: the hover selector \`${options.hover}\` matched nothing`,
+					);
+				}
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,

@@ -93,6 +93,7 @@ import {
 	withRecoveredOutcome,
 } from "./transcript-reducer";
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
 
 /**
@@ -127,6 +128,20 @@ export type CanonicalTranscriptProps = {
 
 	status: "connecting" | "live" | "reconnecting" | "unavailable";
 	error: string | null;
+
+	/**
+	 * Which conversation's rows this is, for attachment resolution — defaulting
+	 * to the live session's own.
+	 *
+	 * Supplied by the run panel's child reader, whose rows belong to a CHILD
+	 * conversation inside the same session: a child's images are digests in the
+	 * shared store and are served by the child-scoped route, which the parent's
+	 * route refuses. Left undefined here, the scope is derived from `frontend`,
+	 * which is the live session and the right answer for the main transcript.
+	 * The reader passes its own because it deliberately hands `frontend={null}`
+	 * to switch the rest of the live-session machinery off.
+	 */
+	attachmentScope?: AttachmentScope | null;
 };
 
 // ---------------------------------------------------------------- rows
@@ -134,11 +149,11 @@ export type CanonicalTranscriptProps = {
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
-	sessionId,
+	scope,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
-	sessionId: string | null;
+	scope: AttachmentScope | null;
 }) {
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
@@ -167,7 +182,7 @@ const UserRow = memo(function UserRow({
 									<CanonicalImage
 										key={image.id}
 										image={image}
-										sessionId={sessionId}
+										scope={scope}
 										label={
 											record.images.length === 1
 												? "Attached image"
@@ -257,13 +272,13 @@ const ToolRow = memo(function ToolRow({
 	isSmallView,
 	showAvatar,
 	nameColumn,
-	sessionId,
+	scope,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	nameColumn: number;
-	sessionId: string | null;
+	scope: AttachmentScope | null;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -327,7 +342,7 @@ const ToolRow = memo(function ToolRow({
 					<CanonicalImage
 						key={image.id}
 						image={image}
-						sessionId={sessionId}
+						scope={scope}
 						label={
 							record.images.length === 1
 								? "Screenshot"
@@ -440,12 +455,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
 	nameColumn,
-	sessionId,
+	scope,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
-	sessionId: string | null;
+	scope: AttachmentScope | null;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -453,11 +468,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	switch (record.kind) {
 		case "user":
 			body = (
-				<UserRow
-					record={record}
-					isSmallView={isSmallView}
-					sessionId={sessionId}
-				/>
+				<UserRow record={record} isSmallView={isSmallView} scope={scope} />
 			);
 			break;
 		case "assistant":
@@ -476,7 +487,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
-					sessionId={sessionId}
+					scope={scope}
 				/>
 			);
 			break;
@@ -516,6 +527,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	isSmallView,
 	status,
 	error,
+	attachmentScope,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -530,6 +542,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * The attachment scope: the caller's when it supplied one (the child
+	 * reader), otherwise the live session with no child. One value, computed
+	 * once, so no row can disagree with another about where its bytes come
+	 * from.
+	 */
+	const mediaScope: AttachmentScope | null =
+		attachmentScope ?? (sessionId ? { sessionId, childId: null } : null);
 	if (recovered.current.session !== sessionId) {
 		recovered.current = { session: sessionId, anchors: new Set() };
 	}
@@ -838,7 +858,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						row={row}
 						isSmallView={isSmallView}
 						nameColumn={nameColumn}
-						sessionId={sessionId}
+						scope={mediaScope}
 					/>
 				))}
 

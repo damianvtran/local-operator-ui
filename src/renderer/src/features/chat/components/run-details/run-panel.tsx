@@ -336,7 +336,9 @@ export const RunPanel = ({
 							 */}
 							<nav
 								aria-label="Subagent path"
-								className={cn("flex min-w-0 items-center gap-1")}
+								className={cn(
+									"flex min-w-0 items-center gap-1 overflow-hidden",
+								)}
 							>
 								<button
 									type="button"
@@ -359,6 +361,20 @@ export const RunPanel = ({
 								 * the leading words that distinguish them. `max-w-32` is the same
 								 * cap the roster gives its model segment, for the same reason: a
 								 * qualifier shortens before the subject does.
+								 *
+								 * A CAP is not a guarantee, which is what the shrink terms are for
+								 * (review round 2's open residual risk). Capped-but-unshrinkable
+								 * ancestors — the first cut of the cap left them `shrink-0` — are
+								 * `max-w-32` each, so a lineage of depth 3 costs 3 × 136px before the
+								 * current node or the root crumb draws anything: more than the whole
+								 * 40px bar at the pane's 320px floor, with the ancestors unable to
+								 * give any of it back. Allowing them to shrink (`min-w-0`, no
+								 * `shrink-0`) and giving the current node a floor (`min-w-24`, about
+								 * fourteen characters at `text-meta`) makes the depth-3 case degrade the way the depth-2 case was designed to:
+								 * the ancestors shorten toward their leading words and the title
+								 * keeps a legible share at every depth. `reader-deep-floor` is the
+								 * frame that proves it at the floor, since no amount of reasoning
+								 * about flex is a picture.
 								 */}
 								{path.map((crumb, crumbIndex) => {
 									const current = crumbIndex === path.length - 1;
@@ -367,7 +383,7 @@ export const RunPanel = ({
 											key={crumb.id}
 											className={cn(
 												"flex items-baseline gap-1",
-												current ? "min-w-0 flex-1" : "max-w-32 shrink-0",
+												current ? "min-w-24 flex-1" : "max-w-32 min-w-0",
 											)}
 										>
 											<span aria-hidden="true" className={cn("text-ink-dim")}>
@@ -476,6 +492,20 @@ export const RunPanel = ({
 					key={row.id}
 					row={row}
 					sessionId={sessionId}
+					/*
+					 * The child-scoped attachment scope, gated on the SAME capability the
+					 * transcript route negotiated under: this reader's page is read over
+					 * `subagents.transcript`, its images come from that route family's
+					 * attachment twin, and a backend that advertises one and not the other
+					 * does not exist. `childrenOpenable` is false without the capability, and
+					 * a null scope leaves a digest row on the honest unavailable note rather
+					 * than issuing a request on faith.
+					 */
+					attachmentScope={
+						childrenOpenable && sessionId && row.childSessionId
+							? { sessionId, childId: row.childSessionId }
+							: null
+					}
 					pulse={pulses[row.id] ?? 0}
 					live={OPEN_CHILD_STATUSES.includes(row.status)}
 					previewPage={previewPage}

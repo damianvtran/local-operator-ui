@@ -55,11 +55,7 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
-import {
-	SUBAGENT_PULSE_EVENTS,
-	bumpSubagentPulse,
-	seedSubagentPulses,
-} from "./subagent-pulse";
+import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
 export type CanonicalSessionStatus =
 	| "connecting"
@@ -934,22 +930,24 @@ export function useCanonicalSessionStream(
 						 * second consumer of the same stream, and the two could disagree
 						 * about which events happened.
 						 *
+						 * The event set, the id rule and the bump all live in
+						 * `applySubagentPulse`, and this call site holds none of them: the
+						 * member and the filter cannot drift from the module's because there
+						 * is no second copy to drift. The step returns the SAME map for an
+						 * event that is not a beat, which is what keeps an unrelated frame
+						 * from looking like a change to the reader.
+						 *
 						 * It rides the same `next` object as everything else, so a beat that
 						 * arrives in a coalesced frame does not cost an extra render: the
 						 * reader that watches this counter is re-rendered because the frame
 						 * arrived, not because the pulse is a separate piece of state.
 						 */
-						if (SUBAGENT_PULSE_EVENTS.has(eventType)) {
-							const jobId =
-								typeof frame.payload.job_id === "string"
-									? frame.payload.job_id
-									: "";
-							if (jobId) {
-								next = {
-									...next,
-									subagentPulses: bumpSubagentPulse(next.subagentPulses, jobId),
-								};
-							}
+						const pulsed = applySubagentPulse(
+							next.subagentPulses,
+							frame.payload,
+						);
+						if (pulsed !== next.subagentPulses) {
+							next = { ...next, subagentPulses: pulsed };
 						}
 					}
 				}

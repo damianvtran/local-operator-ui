@@ -15,13 +15,17 @@
  * transcript component is driven by three live-session concepts a child cannot
  * supply:
  *
- * - `frontend` is `null`. That is not cosmetic: it is also what makes
- *   `sessionId` resolve to `null` inside `CanonicalTranscript`, which is what
- *   stops attachment resolution from asking for the PARENT's session's images.
- *   A child page's images are digests, and the child-scoped attachment path is
- *   not part of this change (§ 5.1), so the honest outcome is
- *   `BrokenAttachment`'s "not available" rather than a broken <img> or — worse —
- *   the parent's picture.
+ * - `frontend` is `null`. That is not cosmetic: it is also what stops the
+ *   reader borrowing the PARENT's live-session machinery, which is the whole
+ *   reason the rest of this reader is a static port rather than a second
+ *   session view. It no longer means a child's images cannot resolve: the
+ *   child-scoped attachment route ships in the same window as the transcript
+ *   route (§ 10.3's media-relay row), so the reader hands `CanonicalTranscript`
+ *   an `attachmentScope` naming THIS child, and a page's digest rows paint
+ *   their pictures through `subagents.attachment`. Before that wiring the
+ *   parent's route was the only one the renderer knew and it refuses a child's
+ *   digests, so every child image rendered as unavailable — the deferral § 5.1
+ *   licensed only "if that path ships late".
  * - `gate` is `null` and `waiting` is `false`: a child has no pending question,
  *   and this reader deliberately carries no way to answer one anyway (§ 5.6).
  * - `status` is a static `"live"`, `error` is `null`. The reader's own state is
@@ -41,6 +45,7 @@ import {
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
 } from "../../canonical/transcript-reducer";
+import type { AttachmentScope } from "../../canonical/use-attachment-url";
 import type { SubagentRow } from "./run-detail-model";
 import {
 	briefIsInTranscript,
@@ -76,6 +81,18 @@ export type RunChildReaderProps = {
 	 */
 	previewPage?: DesktopChildTranscriptPage | null;
 	/**
+	 * Where this page's images resolve from: the parent session plus THIS child.
+	 *
+	 * `null` when the `subagent_transcript` capability did not negotiate (or when
+	 * there is no session id, or no child id): in that state the reader is not
+	 * reachable at all, and a row that resolved digest images through a route the
+	 * backend does not serve would be a request made on faith. The panel owns the
+	 * gate (`run-panel.tsx` mounts the reader only within it) and passes the scope
+	 * only when it holds, so the capability check lives in one place rather than
+	 * being re-derived here.
+	 */
+	attachmentScope: AttachmentScope | null;
+	/**
 	 * Called when the child's page cannot be opened at all.
 	 *
 	 * The panel keeps the ROSTER and says so in one line rather than leaving a
@@ -101,7 +118,7 @@ const OutcomeBlock = ({ row }: { row: SubagentRow }) => {
 			 */
 			<pre
 				className={cn(
-					"mt-1 max-h-40 overflow-auto rounded-sm border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+					"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
 				)}
 			>
 				{row.errorText}
@@ -112,7 +129,7 @@ const OutcomeBlock = ({ row }: { row: SubagentRow }) => {
 		return (
 			<p
 				className={cn(
-					"mt-1 rounded-sm border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
+					"mt-1 rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
 				)}
 			>
 				{row.resultText}
@@ -224,6 +241,7 @@ export const RunChildReader = ({
 	pulse,
 	live,
 	previewPage = null,
+	attachmentScope,
 	onUnopenable,
 }: RunChildReaderProps) => {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -369,8 +387,8 @@ export const RunChildReader = ({
 					 * forever.
 					 */
 					<QuietLine>
-						This subagent has no conversation to open — the run has not given it
-						a session yet.
+						This subagent's row carries no session id, so there is no
+						conversation to open from here.
 					</QuietLine>
 				) : state === "pending" ? (
 					/*
@@ -424,6 +442,7 @@ export const RunChildReader = ({
 						isSmallView={false}
 						status="live"
 						error={null}
+						attachmentScope={attachmentScope}
 					/>
 				)}
 				{/*

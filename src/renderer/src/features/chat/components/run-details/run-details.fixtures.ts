@@ -282,6 +282,41 @@ export const todosOnly = (): RunDetailsInput => ({
 });
 
 /**
+ * The swap pair's own subject — deliberately NOT `bothInFlight()`.
+ *
+ * The pair's claim is about the SLOT: the canvas in it, then the run pane in it
+ * (`swap-canvas-open` -> `swap-run-open`). Both frames used to be rendered from
+ * `bothInFlight()`, which made `swap-run-open` byte-identical to
+ * `both-in-flight`. Those two exist to prove different things — the two sections
+ * coexisting, versus which pane owns the slot — and a frame that is a
+ * byte-for-byte copy of another proves nothing about the state it is named for
+ * (design review round 2, D2-3). One child and one open item is all the slot
+ * claim needs; the both-sections frame keeps its own subject.
+ */
+export const swapSlot = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		child({
+			id: "job-slot",
+			label: "Re-check the pending rows against the ledger",
+			role: "reviewer",
+			status: "running",
+			startedSecondsAgo: 96,
+			progress: "Running pytest tests/unit/server -q",
+			tokens: 23_100,
+			window: 200_000,
+			cost: 0.08,
+		}),
+	],
+	todos: [
+		phase("Reconcile", [
+			item("Compare the March export with ledger/q1.csv", "running"),
+			item("List every row where the two disagree", "pending"),
+		]),
+	],
+});
+
+/**
  * ONE section, and the plan that arrived with no phases of its own.
  *
  * The `todos-only` half of `§ 11.3`'s `roster-only / todos-only` row is "one
@@ -865,19 +900,28 @@ export const childPage = ({
 		...(includeImage
 			? [
 					entry("c-u2", 320, "user", "", {
-						images: [
+						/*
+						 * An IMAGE CONTENT BLOCK, which is where a message keeps its
+						 * pictures — not a top-level `images` key. The encoder dumps with
+						 * `exclude_defaults=True`, so `type` is absent on durable rows
+						 * and the reducer identifies an image by the `attachment` key
+						 * (`isImageBlock`, `transcript-reducer.ts:305-318`). The first
+						 * cut of this block had both of those wrong (a `kind`/`digest`
+						 * object on an `images` key), which renders as a text-less user
+						 * row with NO image at all — unnoticed because no story used the
+						 * fixture until `reader-image` did.
+						 *
+						 * The digest is what the row carries and the bytes come back over
+						 * the media relay, scoped to THIS child (`subagents.attachment`,
+						 * `§ 10.3`): the reader hands `CanonicalTranscript` an attachment
+						 * scope naming the child, so this row resolves through the
+						 * child-scoped route rather than the parent's, which refuses it
+						 * because a child session is not a user session.
+						 */
+						content: [
 							{
-								// A digest with no bytes. The child-scoped attachment route
-								// SHIPS (`server/routes/desktop_sessions.py`'s
-								// `.../children/{child_id}/attachments/{digest}`) and this
-								// renderer does not fetch it: the reader is handed no child
-								// scope, so the row must render the honest "not available"
-								// note rather than a broken image, the parent's picture, or
-								// a cause it cannot know (`§ 5.1`, and `CanonicalImage`
-								// carries the copy's own argument).
-								kind: "digest",
-								digest: "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
-								media_type: "image/png",
+								attachment: "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+								mime_type: "image/png",
 							},
 						],
 					}),

@@ -1010,7 +1010,29 @@ export type DesktopMediaRequest =
 	// payload stripped, and the JSON transport's envelope has nowhere to put
 	// bytes — which is what puts a screenshot fetch on this relay rather than
 	// beside the other session operations.
-	| { op: "sessions.attachment"; sessionId: string; digest: string };
+	| { op: "sessions.attachment"; sessionId: string; digest: string }
+	/*
+	 * The same fetch, scoped to a CHILD of the named session.
+	 *
+	 * The parent's op above cannot serve a child's rows: its route resolves the
+	 * digest against the session whose transcript holds the reference, and a
+	 * child session is not a user session, so the parent's path refuses it. The
+	 * backend ships the child-scoped twin
+	 * (`/v1/desktop/sessions/{id}/children/{child}/attachments/{digest}`) in the
+	 * same window as its `transcript` sibling, so the reader that already reads
+	 * a child's page from that route family resolves that page's images through
+	 * this one.
+	 *
+	 * Both ids are the same `^[a-f0-9]{12}$` the rest of the desktop surface
+	 * validates on and neither is a path: main owns the URL, as it does for
+	 * every op here.
+	 */
+	| {
+			op: "subagents.attachment";
+			sessionId: string;
+			childId: string;
+			digest: string;
+	  };
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }

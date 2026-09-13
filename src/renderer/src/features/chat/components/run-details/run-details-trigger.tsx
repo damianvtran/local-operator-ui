@@ -191,11 +191,22 @@ export const RunDetailsTrigger = ({
 				 *
 				 * `hover:text-accent` is overridden in the pressed branch so that a
 				 * pointer resting on the OPEN button keeps the pressed ink rather than
-				 * stepping to `ink`.
+				 * stepping to `ink` — and `hover:bg-accent-wash` is overridden beside it
+				 * for the same reason, which is the half that was missing first time
+				 * (design review round 2, D2-1). Overriding only the ink left the
+				 * PRESSED GROUND to `hover:bg-elevated`: the wash meant "open" at rest
+				 * and "a pointer is here" under hover, so the ordinary gesture of
+				 * opening the pane replaced the state's own ground the moment the
+				 * pointer stayed where it was. Both halves of the pressed appearance
+				 * now survive hover, so the four states are four grounds — `canvas`
+				 * closed at rest, `elevated` closed hovered, `accent-wash` open, and
+				 * `accent-wash` open hovered, which is the point rather than a
+				 * collision.
 				 */
 				className={cn(
 					"relative hover:bg-elevated hover:text-ink",
-					isRunPanelOpen && "bg-accent-wash text-accent hover:text-accent",
+					isRunPanelOpen &&
+						"bg-accent-wash text-accent hover:bg-accent-wash hover:text-accent",
 				)}
 				aria-pressed={isRunPanelOpen}
 				aria-label={label}
