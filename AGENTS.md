@@ -322,131 +322,407 @@ Load-bearing, and enforced at build time: nothing may ship a `.pyc` at all
 rewritten is `file modified:` - the one class codesign cannot accept again and
 the heal cannot repair.
 
-## Release Bump Runbook (Major/Minor/Patch)
+## Releasing: one owner per window, and no version bumps inside feature PRs
 
-Use this process whenever asked to cut a release.
+A release here is a **combined release**: one version bump, one tag and one
+GitHub Release covering every PR merged since the previous tag, cut by one
+**release owner**. PRs do not carry their own bump, and merging is decoupled from
+releasing: a merged PR that has not been released yet is the normal state of
+`main`, not a problem to fix. The sections below say why, then how.
 
-1. Preflight
-- Confirm you are on `main`: `git branch --show-current`
-- Check working tree: `git status --short --branch`
-- Sync refs/tags: `git fetch --tags origin`
+### PRs do not bump the version; merging is not releasing
 
-2. Determine new semver
-- Current version: `node -p "require('./package.json').version"`
-- Bump rule:
-  - Patch: `X.Y.Z -> X.Y.(Z+1)`
-  - Minor: `X.Y.Z -> X.(Y+1).0`
-  - Major: `X.Y.Z -> (X+1).0.0`
+`package.json` stays at the **last released version** on every feature and fix
+branch. A PR never touches it, and the reviewer round treats a version change
+inside a feature PR as a finding.
 
-3. Update version
-- Edit `package.json` version to the target release version.
-- Verify: `node -p "require('./package.json').version"`
+**CI checks this**, in the `Version Bump Guard` workflow
+(`.github/workflows/version-bump-guard.yml`, `scripts/version-bump-guard.mjs`). A
+pull request whose diff changes the `version` line fails unless its title starts
+with `chore(release):`. Dependency and metadata edits to `package.json` are
+unaffected — the guard reads the version line, not the file.
 
-4. Commit and push branch
-- Commit message format:
-  - `chore(release): bump version to <version>`
-- Commands:
-  - `git add package.json`
-  - `git commit -m "chore(release): bump version to <version>"`
-  - `git push origin main`
+It makes the violation loud; it does not make it impossible. This repository's
+`main` configures **no required status checks**, so an `--admin` merge lands over
+a red guard. Treat a failing `version-bump-guard` as a stop signal rather than an
+obstacle to route around: the job is the reviewer's missing memory, not a lock.
 
-5. Create and push tag
-- Annotated tag:
-  - `git tag -a v<version> -m "v<version>"`
-  - `git push origin v<version>`
+The guard fails the **mirror-image** case too: a PR titled
+`chore(release): bump version to X.Y.Z` whose diff does not change the version.
+That one is the more dangerous direction, because it ships the *previous*
+release's code under a new number — the tag, the Release and the installers all
+agree with each other about the wrong tree, so nothing looks wrong. It has
+already happened: an owner amended the bump onto a detached HEAD, the branch ref
+never followed the amend, `push --force-with-lease` reported success honestly
+(nothing needed overwriting, so the lease was never violated), the retitle and
+un-draft applied because PR metadata is independent of the ref, CI went green,
+and the guard passed through its early exit. Four green signals on a broken
+state, because each answered a question about a different object than the one
+being released.
 
-6. Review diff vs previous tag
-- Previous tag: `git describe --tags --abbrev=0 v<version>^`
-- Commit range: `git log --oneline <prev_tag>..v<version>`
-- File/stat summary: `git diff --stat <prev_tag>..v<version>`
+The job exists because prose was not enough. In the backend repository
+(`local-operator`) the rule was already written and already told reviewers to
+treat a bump as a finding, when two feature PRs each landed one and both review
+rounds passed anyway: `main` then advertised a version that no tag, GitHub
+Release or artifact had ever been built from, two numbers were consumed without
+ever being published, and the next window had to skip them because a published
+version cannot be reused. A rule that depends on every reviewer remembering to
+look is a rule that fails on the day someone does not.
 
-7. Review prior release style
-- Inspect recent releases:
-  - `gh release list --limit 5`
-  - `gh release view <prev_tag> --json name,tagName,body,publishedAt`
+### The PR owner merges; nobody queues for a number
 
-8. Draft release notes (match existing template)
-- Use this structure:
+**The owner of a PR merges it the moment its review rounds are clean and fresh
+and CI is green** — no release queue, no waiting for a predecessor, no handing
+the "next number" to whoever is behind you.
 
-```md
-## What's New
+The failure this prevents is measured, not theoretical. The backend repository
+used to have each PR bump its own patch. On 2026-09-05, with ten agent sessions
+each holding a reserved patch number, `0.47.1` → `0.48.0` took close to five
+hours of agents serialising behind one another — the tags land at 05:24, 05:58,
+06:16, 06:50, 07:38, 08:27 and 10:08 UTC, each one a PR that could not merge
+until its predecessor had released. Every rebase across another session's bump
+was a version-file conflict, several were resolved into **dirty merge states**,
+and two out-of-queue releases consumed numbers other sessions had been told were
+theirs. None of that work needed a distinct version; it needed to land.
 
-<1-2 sentence summary>
+### One release owner per window
 
-- **<Change Area>**: <description>
-- **<Change Area>**: <description>
+Releases are cut by a single **release owner** for a **window**: the set of PRs
+merged since the last tag that are ready around the same time — about an hour.
+Nobody holds a merge to make a window.
 
-## Impact
+**The lock on a window is an open PR, not a message.** A `send` is not observable
+to a session that was not listening, so it cannot be the lock: two sessions that
+both look and both announce themselves in the same minute each see "nobody owns
+it" and both proceed, which is precisely how two releases ran out of queue. An
+open PR whose title starts `chore(release):` is observable to everyone through
+the forge, so it is the lock:
 
-- **No Breaking Changes**: <or explicitly call out breaking changes>
-- **<User/Developer Impact>**: <description>
-
-## PRs
-- Direct commits included in this release range:
-  - `<short_sha>` <commit subject>
-  - `<short_sha>` <commit subject>
-
-**Full Changelog**: https://github.com/damianvtran/local-operator-ui/compare/<prev_tag>...v<version>
+```sh
+# Quote the phrase. `gh` passes it to GitHub's search, which treats bare
+# parentheses as syntax and returns nothing at all.
+gh pr list --state open --search '"chore(release)" in:title'
 ```
 
-9. Create GitHub release with gh CLI
-- `gh release create v<version> --prerelease --title "<release title>" --notes-file <notes_file>`
-- **Always publish the release as a pre-release.** `electron-updater` resolves
-  its feed from GitHub's `/releases/latest`, which answers with the newest
-  non-pre-release release whether or not that release has assets. A release
-  published as a full release before its installers are built therefore points
-  the feed at a release with no `latest*.yml` for the whole 25-35 minute build,
-  the metadata request 404s, and every running app filters that into "no updates
-  available" -- users are told they are current while a newer version is already
-  published (v0.17.2, v0.19.1 and v0.19.2 all shipped that way). The publish
-  workflow does the rest:
-  - `--prerelease` **is** the hold: a pre-release is out of `latest` by
-    definition, so the previous, complete release keeps answering until this one
-    can. The workflow's hold job therefore finds nothing to do on this path; it
-    only acts when a release was published as a full release by mistake, which is
-    the case it exists to catch.
-  - The release is promoted once the attach has succeeded and *this* release's
-    installers and `latest*.yml` metadata are verified, platform by platform.
-  - Only the newest published release is ever promoted. Re-running an older
-    release's workflow (`gh run rerun <run-id>`) attaches its assets but leaves
-    it a pre-release, so `latest` cannot be moved backwards onto an old tag; the
-    job prints which release it found newer. Only the run for the release that is
-    still newest closes its own window.
-  - A `workflow_dispatch` repair attaches assets but never promotes, because a
-    repair must not mutate release metadata. That includes re-running a repair:
-    it keeps the dispatch event, so it stays a repair and will not promote.
-    Close the window by hand instead:
-    `gh release edit v<version> --prerelease=false --latest`.
-  - A build that fails leaves the release a pre-release, so an incomplete
-    release is never offered. Fix the build and re-run rather than promoting it.
-  - A tag with a pre-release suffix (`v1.2.3-rc.1`) is never promoted: it stays a
-    pre-release, which is what its name asks for.
-- **If the window cannot be opened or closed, the run fails and prints the one
-  command that finishes the flip by hand** (`gh release edit <tag>
-  --prerelease=false --latest`, or the hold's `--prerelease=true`). The state
-  PATCH is retried on transient failures first; reaching that line means it
-  failed three times, and nothing is protecting the feed until it is dealt with,
-  so treat it as the incident it is: fix the cause and re-run the workflow
-  (`gh run rerun <run-id>`), or run the printed line. A failed hold also stops
-  the builds, so on that path re-running is what produces the assets.
+An open bump PR means the window is owned. Its body names the owning session's
+pid, so `send` that session your PR's number, merge SHA and `Release:` line and
+let it aggregate. Do not start a second release.
 
-10. Post-release verification
-- Confirm release exists: `gh release view v<version> --json url,name,tagName,publishedAt`
-- Confirm branch/tag pushed:
-  - `git ls-remote --heads origin main`
-  - `git ls-remote --tags origin v<version>`
+**Take the lock by opening the claim PR, before announcing anything.** The
+release owner's first act is one empty commit on branch `release-next`, opened as
+a draft PR titled `chore(release): claim release window`, whose body names the
+owner's session pid from `lop sessions` and starts an empty checklist of the
+window. Only then announce it with the `send` tool. The number is not known yet —
+the bump is decided from the window's contents, which do not exist when the lock
+is taken — so the lock starts life as a claim and *becomes* the bump: the same
+single commit is amended into the version change and the same PR retitled
+`chore(release): bump version to X.Y.Z`. The PR number, and so the lock, never
+changes; that is also why the search above keys on the `chore(release):` prefix
+and not on the full title.
+
+**Tie-break by `createdAt`.** If two bump PRs are open, the earlier one owns the
+window; the author of the later one closes it, deletes its branch, and hands its
+window contents to the earlier PR's owner.
+
+**Adopt a dead owner.** An agent arriving cold cannot know how long a pid has
+been gone, so the clock is anchored on what the forge shows: if the owner pid is
+absent from `lop sessions` *now* **and** the lock PR's `updatedAt` and its last
+owner comment are both more than 15 minutes old, any agent may adopt the window —
+comment on the PR that it is taking over, put its own pid in the body, and
+continue from wherever the checklist stopped. Nothing is reset. An owner still
+working therefore keeps the PR's checklist current; silence is what makes a
+window adoptable.
+
+**If you merge while a window is open, tell the owner at merge time** — the PR
+number and the merge SHA, not "when you next happen to talk to them". The bump
+commit is not a barrier: the tag names a SHA and everything reachable from it
+ships, so a PR merged after the owner starts cutting may ride *this* window
+unlisted. In the backend's v0.51.4 the bump landed at 07:16 on its own release
+branch and a PR merged to `main` at 07:18; the two sat on divergent branches and
+both were reachable from the tagged merge, so that PR shipped while being absent
+from the notes. The owner cannot poll continuously, and a peer who confirms a
+window list and then quietly merges into it has broken the protocol even though
+every individual step looked correct.
+
+The owner is a role for one window, not a standing job. Whoever cuts the release
+is also responsible for telling every contributor in the window where it landed.
+
+### What the release owner does
+
+1. **Collect** from each merger in the window: PR number, merge SHA, and the PR
+   body's `Release:` line. Every PR carries one, in this exact shape, under its
+   summary:
+
+   ```
+   Release: <patch|minor> — <one-line user impact>
+   ```
+
+   The bump is the merger's argument, the impact is the sentence the release
+   notes will use, and it lives in the body precisely so a merger who is no
+   longer running still contributes both. If a merged PR is missing the line, the
+   manager coordinating that PR adds it to the body before the window closes; the
+   release owner does not guess an impact from commit subjects.
+
+2. **Pick ONE bump for the whole window** by the materiality rule at the end of
+   this section: a minor only if some *single* PR in the window clears the
+   step-function bar on its own; otherwise a patch. Several patches in a window
+   are still one patch. The chosen version is `<last tag> + that bump`, never a
+   number someone was "promised" earlier.
+
+3. **Land the bump PR** — the claim PR, now carrying the bump: one commit,
+   `chore(release): bump version to X.Y.Z`, touching `package.json` only. It is
+   still an agent-authored PR, so the standing review gate applies: an
+   **independent reviewer subagent** — not the owner, who is the author — posts
+   `### Agent review — round 1` confirming the diff is exactly one line in one
+   file, that the version is `<last tag> + the chosen bump`, and that no other PR
+   in the window touched `package.json`. The owner replies with the remediation
+   comment and merges. **A bump commit that also carries code is a defect** — the
+   code belongs in a reviewed PR of its own.
+
+4. **Tag and publish** from the bump's merge commit SHA — the commit
+   `origin/main` points at, and the exact object the mechanics step below passes
+   as `--target`. `gh release create` with `--target` creates the tag on that
+   exact SHA, and *publishing the Release* is what triggers `publish.yml`;
+   `scripts/validate-release.mjs` then validates that the tag still points at
+   that SHA, so the tag and the tree cannot drift apart between the two steps.
+   (If a PR merges after the bump, `origin/main` is a superset of that commit and
+   the tag covers that landing too — which is why step 3 re-derives the window
+   immediately before tagging.) Publish it as a **pre-release** (see the warnings
+   below) so the empty first minutes of the build stay out of `/releases/latest`.
+   The notes cover **every PR in the window**, the window's own bump PR
+   included. The `## PRs` row shape below is what the owner should produce, not
+   a description of any past release: one row per PR, the number followed by
+   the PR title in backticks, with GitHub's trailing `(#n)` dropped from that
+   title. For the surrounding structure, copy the shape of the previous
+   release's body — `gh release view <prev_tag> --json body` — since recent
+   releases are not uniform, one older release is a shape to follow, not a
+   rule. The `Release:` impact lines a merger contributes are what the summary
+   and the `## Impact` bullets are written from, not the `## PRs` rows:
+
+   ```md
+   ## What's New
+
+   <1-2 sentence summary naming the version's theme>
+
+   - **<Change Area>**: <description>
+
+   ## Impact
+
+   - **No Breaking Changes**: <or explicitly call out breaking changes>
+   - **<User/Developer Impact>**: <description>
+
+   ## PRs
+   - #<n> `<the PR title, minus GitHub's trailing (#n)>`
+   - #<bump-PR-number> `chore(release): bump version to <version>`
+
+   **Full Changelog**: https://github.com/damianvtran/local-operator-ui/compare/<prev_tag>...v<version>
+   ```
+
+5. **Post the refs** — tag, Release URL, the notes, and the promoted state once
+   the workflow has closed its window — as a comment on every PR in the window,
+   and `send` them to each contributor still running.
+
+### Mechanics, in order
+
+`<repo>` below is your checkout of this repository. The bump branch lives in a
+throwaway worktree so the root checkout's branch is untouched. The claim and the
+bump are ONE commit on ONE branch: amend and force-push with `--force-with-lease`
+rather than stacking a second commit, so the scope check stays "one line in one
+file".
+
+```sh
+# 1. Confirm the window: everything on origin/main since the last tag.
+#    Plain `git log`, never `git log --merges` (see the warnings below).
+git -C <repo> fetch origin --tags
+git -C <repo> log --oneline "$(git -C <repo> describe --tags --abbrev=0 origin/main)..origin/main"
+
+# 2. Take the lock: an empty claim commit in a throwaway worktree, opened as a
+#    draft PR. (No open chore(release) PR was found in the search above.)
+git -C <repo> worktree add /tmp/loui-release-next origin/main
+git -C /tmp/loui-release-next checkout -b release-next
+git -C /tmp/loui-release-next commit --allow-empty -m 'chore(release): claim release window'
+git -C /tmp/loui-release-next push -u origin release-next
+gh pr create --draft --base main --head release-next \
+  --title 'chore(release): claim release window' --assignee damianvtran \
+  --body 'Release window claimed. Owner session pid: <pid from lop sessions>.
+Window (tick as each merges):
+- [ ] #<n> — <Release: line>'
+# ... collect the window, write the notes, wait for the last PR in the window to
+#     merge; then, with the bump decided:
+
+# 2b. Turn the claim into the bump: amend the SAME commit, retitle the SAME PR.
+#     Edit the "version" value in /tmp/loui-release-next/package.json to X.Y.Z.
+git -C /tmp/loui-release-next commit --amend -am 'chore(release): bump version to X.Y.Z'
+git -C /tmp/loui-release-next push --force-with-lease origin release-next
+gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
+gh pr ready <claim-pr-number>
+# ... independent scope-check round, merge; then confirm the FORGE's head sha is
+#     the amended commit, not your local clone's:
+#     gh pr view <claim-pr-number> --json headRefOid --jq .headRefOid
+
+# 3. Re-derive the window IMMEDIATELY before tagging, and check that no merged
+#    PR carried its own bump.
+git -C <repo> fetch origin --tags
+git -C <repo> log --oneline "$(git -C <repo> describe --tags --abbrev=0 origin/main)..origin/main"
+git -C <repo> diff "$(git -C <repo> describe --tags --abbrev=0 origin/main)..origin/main" -- package.json   # must print nothing
+
+# 4. Tag and Release in one step, on the bump's merge commit — the same SHA the
+#    runbook names: `rev-parse origin/main` is that commit while nothing has
+#    merged past it, and a superset of it (also covered by the tag) if something
+#    has. --target creates the tag; the Release being published is what triggers
+#    publish.yml, which validates that exact SHA in scripts/validate-release.mjs.
+#    --prerelease is the hold that keeps an asset-less Release out of `latest`.
+$EDITOR /tmp/loui-release-X.Y.Z-notes.md   # the house-style template above
+gh release create vX.Y.Z --target "$(git -C <repo> rev-parse origin/main)" \
+  --prerelease --title 'X.Y.Z: <theme>' --notes-file /tmp/loui-release-X.Y.Z-notes.md
+
+# 5. Watch publish.yml attach the installers and promote the Release, then verify.
+gh run list --workflow publish.yml --limit 1
+gh release view vX.Y.Z --json url,name,tagName,isPrerelease,publishedAt
+
+# 6. Reclaim the worktree and delete the release-next branch.
+git -C <repo> worktree remove /tmp/loui-release-next
+```
+
+### Warnings that still hold, each of which has already cost a release
+
+- **Never pre-create a bare tag** (`git tag vX.Y.Z && git push --tags`) and then
+  make a Release from it. `publish.yml` triggers on the *Release* being
+  published, so a bare tag publishes nothing, and `gh release create` against an
+  existing tag will happily attach notes to whatever SHA that tag already points
+  at — which is how a release once shipped the previous version's code under the
+  new number. Let `gh release create --target` create the tag.
+- **Always publish the Release as a pre-release, and let the workflow promote
+  it.** `electron-updater` resolves its feed from GitHub's `/releases/latest`,
+  which answers with the newest non-pre-release Release whether or not that
+  Release has assets. A Release published as a full release before its
+  installers are built therefore points the feed at a Release with no
+  `latest*.yml` for the whole 25-35 minute build, the metadata request 404s, and
+  every running app filters that into "no updates available" — users are told
+  they are current while a newer version is already published (v0.17.2, v0.19.1
+  and v0.19.2 all shipped that way). `--prerelease` **is** the hold: a pre-release
+  is out of `latest` by definition, so the previous, complete Release keeps
+  answering until this one can. `finalize-release` is the only step that may put
+  a Release back into `latest`; it runs only on the release event, it verifies
+  this Release's assets first, and a `workflow_dispatch` repair never promotes —
+  a repair must not mutate release metadata. Close the window by hand instead
+  with `gh release edit v<version> --prerelease=false --latest`. Only the newest
+  published Release is ever promoted, so re-running an older Release's workflow
+  attaches its assets but cannot move `latest` backwards onto an old tag.
+- **If the window cannot be opened or closed, the run fails and prints the one
+  command that finishes the flip by hand.** The state PATCH is retried on
+  transient failures first; reaching that line means it failed three times, and
+  nothing is protecting the feed until it is dealt with, so treat it as the
+  incident it is: fix the cause and re-run the workflow (`gh run rerun
+  <run-id>`), or run the printed line. A failed hold also stops the builds, so on
+  that path re-running is what produces the assets. A build that fails leaves the
+  Release a pre-release, so an incomplete release is never offered — fix the
+  build and re-run rather than promoting it.
+- **Derive the window from the commits, not from the commit shape.** Use a plain
+  `git log <last-tag>..origin/main` and read the PR references out of it. **Never
+  `git log --merges`**: GitHub's *merge* button produces a merge commit that
+  `--merges` sees, while its *squash* button produces a single-parent commit that
+  `--merges` silently drops. The trap therefore fires **per PR, according to
+  which button someone happened to press**, so a wrong window is not empty — it
+  is **partially listed**, and a partially correct window looks right and
+  survives review. Check it rather than trusting this paragraph:
+
+  ```sh
+  git log --oneline --merges       <last-tag>..origin/main
+  git log --oneline --first-parent <last-tag>..origin/main
+  ```
+
+  `--first-parent` is safe for *counting* the window because both button shapes
+  land on that chain, but do not adopt it as a general "show me every PR" idiom:
+  for a PR landed with the merge button it shows only `Merge pull request #999
+  from feat` and never the substantive commit on the second parent, so when a
+  merge subject is uninformative the plain log carries the real description and
+  the first-parent walk does not.
+- **Re-derive the window immediately before `gh release create`, not once when
+  you claim it.** A PR merged after the bump commit and before the tag still
+  rides the release, because the tag names a SHA and everything reachable from it
+  ships — which is how the backend's v0.51.4 shipped a PR that was absent from
+  its notes even though the owner had derived the window correctly when they
+  started. Deriving it right once does not help if the derivation is stale by the
+  time you tag.
+- **Check `git diff <last-tag>..origin/main -- package.json` is empty before
+  tagging.** A non-empty diff means a merged PR carried its own version bump and
+  has silently consumed the number you are about to use. That is exactly how two
+  numbers were burned in the backend — each consumed by a PR's own bump, neither
+  ever built, tagged or published, and the next owner had to skip both. The
+  `version-bump-guard` now catches this on the PR, but it does **not** block an
+  `--admin` merge, because this repository configures no required status checks,
+  so the pre-tag check is the backstop.
+- **The tag names the commit `origin/main` pointed at when the window was cut,
+  and validate-release enforces it.**
+  `scripts/validate-release.mjs` refuses a tag that does not match its Release,
+  or whose SHA has moved since the event fired, so a Release created without
+  `--target` — or against a tag re-pointed afterwards — fails `validate-release`
+  rather than shipping the wrong tree.
+- **A release note that omits a merged PR is a defect in the release.** It is the
+  only record of what changed under a user who is about to update.
+
+### Versioning: choose the bump by materiality, not commit type
+
+The version in `package.json` and the `vX.Y.Z` tag are chosen by the
+**user-facing materiality** of the change, **not** by its conventional-commit
+type. A `feat:` commit is *not* automatically a minor. Using the commit type as
+the version signal is how a run of bug-fix and reliability releases inflates the
+minor number and drains its meaning — a minor should mark a step-function
+improvement a user would notice and adopt, so that going from `0.N.x` to
+`0.(N+1).0` still tells them something.
+
+The bump is chosen **once per release window** by the release owner, for the
+window as a whole. A PR argues for a bump through its body's
+`Release: <patch|minor> — <impact>` line; it does not apply one.
+
+- **Patch (`0.N.x` → `0.N.(x+1)`) — the default; most releases are patches.** Bug
+  fixes, performance and reliability improvements, refactors, internal cleanups,
+  docs, and small self-contained features that do not change what the app can
+  fundamentally do. A single small `feat:` commit is a patch. **When in doubt,
+  patch.**
+- **Minor (`0.N.x` → `0.(N+1).0`) — a material, step-function capability.**
+  Reserve it for a new surface or subsystem a user would notice and adopt. The
+  test is simple — if you cannot name the step-function capability in the release
+  title (`X.Y.0: <the new thing>`), it is a patch, not a minor. Several small
+  features bundled together are still patches unless one of them clears this bar
+  on its own — and that holds for a whole window: ten patches merged in the same
+  hour are one patch release, not a minor.
+- **Major (`X.y.z` → `(X+1).0.0`) — only on explicit request.** Bump the major
+  version *only* when the developer explicitly asks for it, in the rare case
+  where the new version is considered a distinct product from its predecessor.
+  Never decide a major bump on your own judgement.
+
+Because releases run frequently here, err toward patch: an under-called bump is
+trivially corrected by the next release, while an over-called minor permanently
+misreports how much changed.
 
 ## Notes for Future Agents
 
-- If the user asks for a release bump, execute the full workflow end-to-end unless told otherwise.
-- If there are unrelated uncommitted changes, do not discard them; proceed carefully and scope your commit.
-- Keep release notes aligned with prior repository style and include a compare-link changelog.
+- **Merging is not releasing.** Land the PR as soon as its review rounds are
+  clean and fresh and CI is green; do not bump the version on your branch and do
+  not cut a Release for one PR. If a window is already open — an open PR titled
+  `chore(release): ...`, found with the `gh pr list` search above — `send` its
+  owner your PR number and merge SHA at merge time.
+- **If the developer explicitly asks for a release**, act as the release owner
+  and run the runbook above end-to-end unless told otherwise. A request to
+  *implement* something is not a request to release it: implement, land, and let
+  the window's owner cut the release.
+- If there are unrelated uncommitted changes, do not discard them; proceed
+  carefully and scope your commit.
+- Keep release notes aligned with prior repository style, cover **every** PR in
+  the window, and include a compare-link changelog.
 
 ## Who may merge: agent review is sufficient for a code owner
 
 Code owners are listed in `.github/CODEOWNERS`. **This repository has no
 ruleset requiring an approving review**, so there is no approval gate to clear
-here — `CODEOWNERS` routes review requests, it does not block merges. The rule
+here — `CODEOWNERS` routes review requests, it does not block merges. Confirm
+that with `gh api repos/damianvtran/local-operator-ui/rules/branches/main` (`[]`
+means nothing is enforced), never with the legacy
+`branches/main/protection` endpoint: that one answers `404 Branch not protected`
+even for a branch a modern ruleset *is* enforcing, so it is the wrong question.
+The rule
 below is therefore about what makes a merge *legitimate*, not about what the
 forge will let through.
 

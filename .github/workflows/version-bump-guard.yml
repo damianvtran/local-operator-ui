@@ -1,0 +1,41 @@
+name: Version Bump Guard
+
+# Any pull request, on any base branch: the rule is about what a PR introduces,
+# not about where it is aimed, and a `dev-*` branch feeding `main` is one of the
+# places a stray bump hides best.
+on:
+  pull_request:
+
+jobs:
+  version-bump-guard:
+    name: Version Bump Guard
+    runs-on: ubuntu-latest
+    # Generous against the ~30 s this takes. It exists so a wedged step cannot
+    # hold a runner for the 360-minute default.
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Two commits is all the diff below needs, but the checkout is the
+          # `refs/pull/N/merge` commit, so HEAD^1 (the base side) and HEAD^2
+          # (the PR side) must both be present. `fetch-tags` stays off on
+          # purpose — the tag list comes from `git ls-remote`, and tags this
+          # shallow are unreachable anyway (see scripts/version-bump-guard.mjs).
+          fetch-depth: 2
+
+      # No `pnpm install`: the guard imports node builtins only, so this job is
+      # a checkout and one node process. A guard that needs a dependency
+      # install is a guard that goes red for reasons unrelated to versions.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Reject a version bump outside a release PR
+        env:
+          # Read through the environment rather than interpolated into the
+          # script: a PR title is attacker-controlled text, and inlining it
+          # directly would let a crafted title inject shell.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/version-bump-guard.mjs

@@ -60,10 +60,15 @@ jobs:
       - name: Check CodeMirror insertion previews
         run: pnpm check-edit-diffs
 
-      - name: Check immutable release recovery contracts
+      # The release-contract scripts: the immutable-recovery pair, the publish
+      # workflow's graph and inline gates, and the version-bump guard that keeps
+      # a feature PR from consuming a version number nobody released. A guard
+      # nothing runs is indistinguishable from no guard, which is why the last of
+      # those is executed here as well as in its own PR-triggered workflow.
+      - name: Check release contracts
         run: |
           node scripts/test-validate-release.mjs
-          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,
