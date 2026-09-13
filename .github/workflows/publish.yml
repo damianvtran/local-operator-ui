@@ -148,10 +148,16 @@ jobs:
         with:
           ref: ${{ needs.validate-release.outputs.source_sha }}
 
+      # pnpm is pinned to the same version as every other workflow: this is the
+      # file that builds the installers, and pnpm 10.29.3+ makes electron-builder
+      # copy an incomplete runtime closure into app.asar (`Cannot find module
+      # 'ms'` at launch). See the pnpm note in .github/workflows/ci.yml and the
+      # pnpm section in AGENTS.md before changing it.
       - name: Install pnpm
+        # pinned: see the pnpm note above this step
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -255,7 +261,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -312,6 +318,13 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
 
+      # The packaged app is the only artefact whose contents no other gate looks
+      # at: `check-runtime-deps.mjs` guards what may be declared, and this guards
+      # that the declared closure actually reached app.asar. Nothing here needs a
+      # display or a signature - it reads the archive.
+      - name: Assert the packaged app carries its whole runtime closure
+        run: node scripts/check-packaged-closure.mjs --dist dist
+
       # The app inside the image is signed and notarized by electron-builder
       # and afterSign, but the image itself was not: `dmg.sign` defaults to
       # false, and only the app was submitted. A freshly downloaded 0.17.0 DMG
@@ -363,7 +376,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -389,6 +402,9 @@ jobs:
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+
+      - name: Assert the packaged app carries its whole runtime closure
+        run: node scripts/check-packaged-closure.mjs --dist dist
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -416,7 +432,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -435,6 +451,9 @@ jobs:
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+
+      - name: Assert the packaged app carries its whole runtime closure
+        run: node scripts/check-packaged-closure.mjs --dist dist
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
