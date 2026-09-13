@@ -47,7 +47,6 @@ import {
 	rowTrailingStatement,
 	searchAnswerIsClipped,
 	searchChats,
-	searchQueryExceedsLimit,
 } from "../chat-search";
 
 type Props = {
@@ -186,20 +185,28 @@ export function ChatSidebar({
 		"session_search",
 	);
 	/*
-	 * An over-long box never reaches the wire. The op's `q` is capped at
+	 * An over-long query never reaches the wire. The op's `q` is capped at
 	 * `SESSION_SEARCH_MAX_CHARS`, and asking anyway buys a generic 422 that the
 	 * panel then renders as a backend outage with a Retry that cannot succeed —
 	 * the same characters are refused identically every time (QA round 1, Q1).
-	 * So the sidebar refuses it first and says the true cause; importing the
+	 * So the surface refuses it first and says the true cause; importing the
 	 * constant for that sentence is what makes it load-bearing here rather than
 	 * decorative in the contract.
+	 *
+	 * The refusal is READ from the hook rather than re-derived from the box (review
+	 * round 7, R37): the hook is the only thing that knows which string it would
+	 * send, and a caller measuring the box gets a different answer for one debounce
+	 * — which is how a 257-character `q` went out while the box read 256 and this
+	 * notice stayed silent. So the flag is about the query IN FORCE, which is why
+	 * the notice beside it and `awaiting` can both be trusted to describe the same
+	 * search the list below is showing.
 	 *
 	 * The local name and label narrowing still runs — `searchChats` applies it
 	 * whether or not there are hits — so what the notice describes is what the
 	 * user is still getting, not a replacement for it.
 	 */
-	const overLong = searchQueryExceedsLimit(query);
-	const search = useChatSearch(query, ready && searchSupported && !overLong);
+	const search = useChatSearch(query, ready && searchSupported);
+	const overLong = search.refused;
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
 	 * them and the counts below read their honesty off the same array, so the two

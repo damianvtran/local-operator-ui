@@ -284,7 +284,7 @@ export function hitsAnswerQuery(
 }
 
 /**
- * Whether the box holds a query the search op cannot carry.
+ * Whether a query is one the search op cannot carry.
  *
  * The contract bounds `q` at `SESSION_SEARCH_MAX_CHARS`, and a request past it
  * is refused before the socket — but the refusal a surface can SEE is the
@@ -294,19 +294,61 @@ export function hitsAnswerQuery(
  * forever (QA round 1, Q1). The surface therefore has to decide this itself,
  * before it asks, and say what is actually wrong.
  *
- * Measured on the TRIMMED box, because the trimmed box is what is sent
- * (`useChatSearch` debounces `query.trim()`) and what the schema validates: a
- * rule counting the untrimmed string would refuse a query the request would
- * have carried. Deliberately NOT a `maxLength` on the input, which would be the
- * same lie in the other direction — silently dropping the tail of a pasted
- * query searches for something the user did not type, and says nothing about
- * having done it.
+ * Measured on the TRIMMED string, because a trimmed string is what is sent and
+ * what the schema validates: a rule counting the untrimmed one would refuse a
+ * query the request would have carried. Deliberately NOT a `maxLength` on the
+ * input, which would be the same lie in the other direction — silently dropping
+ * the tail of a pasted query searches for something the user did not type, and
+ * says nothing about having done it.
+ *
+ * It must be applied to the string that would be SENT, never to the box: the
+ * two are the same string only once the debounce has landed, and reading the
+ * box is what let an over-limit `q` reach the wire (review round 7, R37).
+ * `effectiveSearchQuery` is what resolves the two, and `useChatSearch` is the
+ * only caller — it is the only place that knows what goes out.
  */
 export function searchQueryExceedsLimit(
 	query: string,
 	limit: number = SESSION_SEARCH_MAX_CHARS,
 ): boolean {
 	return query.trim().length > limit;
+}
+
+/**
+ * The string the sidebar acts on: what it asks the store about, what keys the
+ * cache, and the only string its own gate consults.
+ *
+ * The box and the debounced box disagree for up to `CHAT_SEARCH_DEBOUNCE_MS`,
+ * and that window is where an over-limit query reached the wire. The gate read
+ * the box while the request carried the debounced value, so deleting one
+ * character from a 257-character query to make the box read 256 opened the gate
+ * while the request still carried the 257 the gate existed to stop — a local
+ * 422 rendered as "conversation search is unavailable" with a Retry that cannot
+ * succeed, since the same characters are refused identically every time (review
+ * round 7, R37).
+ *
+ * So the disagreement is RESOLVED rather than tolerated: a debounced value the
+ * box has already left BEHIND, because the box is inside the limit again, is
+ * abandoned at once instead of for the rest of the debounce. Two things follow,
+ * and both are the point of the rule. Whatever is asked for is exactly what the
+ * gate approved, so no request can carry an over-limit `q`. And a user who has
+ * just shortened their query stops being told about a limit they no longer
+ * exceed — the notice goes when the box does, not one debounce later.
+ *
+ * The box wins ONLY in that direction. While the box is still over the limit the
+ * debounced value stands, so typing past the bound keeps coalescing into one
+ * request per debounce rather than one per keystroke; the debounce, not this
+ * rule, remains what keeps a fast typist from queueing a scan per character.
+ */
+export function effectiveSearchQuery(
+	boxQuery: string,
+	settledQuery: string,
+	limit: number = SESSION_SEARCH_MAX_CHARS,
+): string {
+	const box = boxQuery.trim();
+	const settled = settledQuery.trim();
+	if (!searchQueryExceedsLimit(settled, limit)) return settled;
+	return searchQueryExceedsLimit(box, limit) ? settled : box;
 }
 
 /**
