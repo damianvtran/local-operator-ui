@@ -50,6 +50,7 @@ const createEmptyUpdaterMethods = () => {
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
+			quitForUpdateInstall: async () => true,
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
@@ -59,6 +60,7 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateManualRequired: () => () => {},
 			onUpdateInstallBlocked: () => () => {},
 			onUpdateInstallFailed: () => () => {},
+			onUpdateInstallInFlight: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -89,6 +91,7 @@ const mockUpdaterApi = () => {
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
+		quitForUpdateInstall: async () => true,
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {
@@ -215,6 +218,9 @@ const mockUpdaterApi = () => {
 			return () => {};
 		},
 		onUpdateInstallFailed: () => {
+			return () => {};
+		},
+		onUpdateInstallInFlight: () => {
 			return () => {};
 		},
 		onBeforeQuitForUpdate: () => {

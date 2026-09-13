@@ -72,6 +72,41 @@ export const DOWNLOAD_PAGE_URL = "https://local-operator.com/download";
 export const WATCHDOG_TIMEOUT_SECONDS = 600;
 
 /**
+ * The watchdog's last-resort bound, in seconds.
+ *
+ * `WATCHDOG_TIMEOUT_SECONDS` is a promise to try at that point, not a verdict on
+ * the install: the script may be looking at a job that is still loaded because
+ * the install is genuinely still running. On 2026-09-13 it was - the host was at
+ * load ~95 and ShipIt spent 09:39:22 to 09:44:07 moving and code-verifying the
+ * ~1 GiB bundle, while our own watchdog fired at the 600 s bound and started the
+ * app straight into Squirrel's final validation. A running instance is what
+ * aborts that validation (`App Still Running Error`, SQRLInstallerErrorDomain
+ * -9), so the watchdog was killing any install slower than itself and then
+ * reporting it as a failed update.
+ *
+ * Waiting past 600 s is only safe while the job is still loaded, because a
+ * loaded job is the machine's own statement that an install is alive. This
+ * bound is where that ends and the accepted risk (start the app even though a
+ * swap may still be in flight, rather than leave the user with nothing) begins:
+ * an order of magnitude over the 285 s the 2026-09-13 install took, and still
+ * short enough to give the user their app back in the same sitting.
+ */
+export const WATCHDOG_HARD_TIMEOUT_SECONDS = 1800;
+
+/**
+ * How recent a pending-install marker must be to describe a live install.
+ *
+ * The marker alone cannot say "an install is running": a failed install leaves
+ * its marker AND its launchd job behind (the 0.17.0 failure respawned for hours,
+ * runs=3114), and start-up recovery must not treat that leftover as an install
+ * it is forbidden to touch. Recency is what separates the two, and the line is
+ * the watchdog's own hard bound: an install this app would still be waiting on
+ * is live, while anything older is a job Squirrel left behind - a failure to
+ * clean up rather than an install to keep hands off.
+ */
+export const PENDING_INSTALL_RECENCY_SECONDS = WATCHDOG_HARD_TIMEOUT_SECONDS;
+
+/**
  * How long the watchdog's on-disk version read may take before it is killed.
  *
  * The read is the plan's plist reader (`plutil`) on the target bundle's own
@@ -905,6 +940,15 @@ export type PendingInstallOutcome =
 	| { kind: "succeeded"; marker: PendingInstallMarker }
 	/** A marker from an install that a later one superseded: not a failure. */
 	| { kind: "stale"; marker: PendingInstallMarker }
+	/**
+	 * An install whose ShipIt job is still loaded and whose marker is current:
+	 * it is running, not failed. While this is the answer nothing may be cleared,
+	 * reaped, relaunched or reported as a failure - each of those is a way to
+	 * kill a live install (2026-09-13: the app was opened 4:40 in, recovery
+	 * cleared the marker, removed the job and told the user the install had
+	 * failed, two seconds before ShipIt aborted it).
+	 */
+	| { kind: "in-flight"; marker: PendingInstallMarker }
 	| { kind: "failed"; marker: PendingInstallMarker };
 
 /** `x.y.z` at the start of a version string, with an optional leading `v`. */
@@ -947,10 +991,27 @@ export function compareVersions(a: string, b: string): number | null {
  * used to make the app say "the update to version 0.9.0 didn't finish, so
  * version 0.17.0 is still running" (review Q2). The marker is cleared either
  * way; only the message the user sees differs.
+ *
+ * The second exception is `installInFlight`, and it is the 2026-09-13 incident:
+ * the app that comes back WHILE ShipIt is still installing is on the old
+ * version and looks exactly like a failed install from here, so "still on the
+ * old version" was read as failure and recovery threw away the marker, removed
+ * the live install's job and told the user it had failed. The caller supplies
+ * that fact (see `isInstallInFlight`) because it is the one thing this function
+ * cannot see, and the order matters: a running version that has reached the
+ * target IS the install landing, however loaded the job still is, and a marker
+ * the running version has moved past is superseded regardless of any job.
  */
 export function evaluatePendingInstall(input: {
 	marker: PendingInstallMarker | null;
 	runningVersion: string;
+	/**
+	 * True when the caller has established that this target's install is still
+	 * running (`isInstallInFlight`). Absent means "no install in flight", which
+	 * is the reading for every caller that cannot probe: Windows and Linux have
+	 * no launchd to ask, so there the marker can only be judged by version.
+	 */
+	installInFlight?: boolean;
 }): PendingInstallOutcome {
 	const { marker } = input;
 	if (marker == null) return { kind: "none" };
@@ -959,7 +1020,79 @@ export function evaluatePendingInstall(input: {
 	}
 	const order = compareVersions(marker.targetVersion, input.runningVersion);
 	if (order !== null && order < 0) return { kind: "stale", marker };
+	if (input.installInFlight === true) return { kind: "in-flight", marker };
 	return { kind: "failed", marker };
+}
+
+/**
+ * How old a pending-install marker is, in seconds, or null when it is undated.
+ *
+ * The same rule the installer itself is judged by, so the two cannot disagree:
+ * an unparseable or absent `startedAt` answers null rather than a made-up age,
+ * and a caller that needs "is this current" has to decide what to do with it.
+ */
+export function pendingInstallAgeSeconds(
+	marker: PendingInstallMarker,
+	now: number = Date.now(),
+): number | null {
+	if (!marker.startedAt) return null;
+	const started = Date.parse(marker.startedAt);
+	if (Number.isNaN(started)) return null;
+	return (now - started) / 1000;
+}
+
+/**
+ * Whether a loaded ShipIt job plus this marker describe a live install.
+ *
+ * All three facts are needed and each one alone is wrong. The job alone is not
+ * an answer: a failed install never unloads it (0.17.0: `runs=3114`, still
+ * loaded until it was removed by hand), so treating a loaded job as an install
+ * would leave the app forbidden to clean up a failure forever. The marker alone
+ * is what produced the false failure on 2026-09-13. Recency is what separates a
+ * live install from a leftover job, and it is deliberately generous: the
+ * watchdog itself holds an install for `WATCHDOG_HARD_TIMEOUT_SECONDS`.
+ *
+ * A marker with no readable `startedAt` is NOT current: the honest reading of
+ * an undated marker is that nothing can say it is live, and the failure path -
+ * which reports rather than hides, and still carries the remedy - is the safe
+ * direction to be wrong in.
+ */
+export function isInstallInFlight(input: {
+	marker: PendingInstallMarker | null;
+	/** The answer the caller got from the launchd job probe. */
+	jobLoaded: boolean;
+	now?: number;
+}): boolean {
+	if (!input.marker || !input.jobLoaded) return false;
+	const age = pendingInstallAgeSeconds(input.marker, input.now);
+	if (age === null) return false;
+	return age >= 0 && age <= PENDING_INSTALL_RECENCY_SECONDS;
+}
+
+/**
+ * Whether a launchd job is loaded, from a probe the caller supplies.
+ *
+ * `launchctl list <label>` exits 0 while the job is loaded and 113 when it is
+ * not, and that is the whole question - so the probe reports the command's exit
+ * status and nothing else. It is an argument rather than a `spawnSync` here for
+ * the same reason `reapFailedInstall` takes its collaborators: the contract
+ * tests drive this without a launchd domain, and the only caller in production
+ * is the app's own.
+ *
+ * A probe that could not run at all (`null`) is not an answer, and it must not
+ * read as one: "cannot ask" is reported as not loaded, which is the direction
+ * that lets recovery proceed, because the alternative - refusing to act on a
+ * machine whose launchd is unreachable - would strand the user with a marker
+ * and a job nobody ever clears.
+ */
+export type LaunchdJobProbe = (label: string) => number | null;
+
+export function launchdJobLoaded(
+	jobLabel: string | null,
+	probe: LaunchdJobProbe,
+): boolean {
+	if (!jobLabel) return false;
+	return probe(jobLabel) === 0;
 }
 
 export type InstallFailurePayload = {
@@ -969,6 +1102,12 @@ export type InstallFailurePayload = {
 	detail: string;
 	/** How many times this target has failed on this machine. */
 	attempts: number;
+	/**
+	 * True when this process watched the install run (`in-flight`) and then found
+	 * it did not finish. The app being opened is the one cause this process can
+	 * attest to, so the copy for it names that rather than the generic sentence.
+	 */
+	cancelledByRelaunch?: boolean;
 };
 
 /**
@@ -987,11 +1126,27 @@ export type InstallFailurePayload = {
  * because the app was alive to read one, and this one cannot (review U14). The
  * detail is the line the panel's copy button hands to a support thread, so it
  * has to carry the reason rather than only the artifact that was staged.
+ *
+ * `cancelledByRelaunch` is the one cause the app can name from its own
+ * observation rather than infer from a version mismatch, and it is the incident
+ * of 2026-09-13. Squirrel asks its final question - is any instance of the
+ * target app running? - after moving and code-verifying the whole bundle, and
+ * the operator reopening the app from Spotlight 4:40 into that window is what
+ * aborted the install (`App Still Running Error`, SQRLInstallerErrorDomain -9).
+ * Saying only "the update didn't finish" there hands the user a retry that will
+ * fail the same way for the same reason until they are told to leave the app
+ * closed. The remedy does not change: the download page is still where someone
+ * whose install will not settle gets a working app.
  */
 export function installFailurePayload(
 	marker: PendingInstallMarker,
 	runningVersion: string,
-	options: { attempts?: number; shipItLogPath?: string | null } = {},
+	options: {
+		attempts?: number;
+		shipItLogPath?: string | null;
+		/** Watch this install run and then not finish, rather than guess at why. */
+		cancelledByRelaunch?: boolean;
+	} = {},
 ): InstallFailurePayload {
 	const started = marker.startedAt ? new Date(marker.startedAt) : null;
 	const startedText =
@@ -1001,6 +1156,19 @@ export function installFailurePayload(
 	const logText = options.shipItLogPath
 		? ` Squirrel's own log is at ${options.shipItLogPath}.`
 		: "";
+	if (options.cancelledByRelaunch === true) {
+		return {
+			message: `The update to version ${marker.targetVersion} was cancelled because Local Operator was opened while the update was installing. Version ${runningVersion} is still running.`,
+			remedy: {
+				text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app - and leave it closed until the update finishes.",
+				url: DOWNLOAD_PAGE_URL,
+			},
+			detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}. Squirrel cancels an install when an instance of the app is running.${logText}`,
+			targetVersion: marker.targetVersion,
+			attempts: options.attempts ?? 1,
+			cancelledByRelaunch: true,
+		};
+	}
 	return {
 		message: `The update to version ${marker.targetVersion} didn't finish, so version ${runningVersion} is still running.`,
 		remedy: {
@@ -1010,6 +1178,32 @@ export function installFailurePayload(
 		detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}.${logText}`,
 		targetVersion: marker.targetVersion,
 		attempts: options.attempts ?? 1,
+	};
+}
+
+/**
+ * What the user is told when the app comes back while its install is running.
+ *
+ * Its own state rather than a failure, because nothing has failed: this is the
+ * app that was opened mid-install, and the install is still there to be saved -
+ * Squirrel only asks whether the app is running once, so quitting now can still
+ * let the swap through. The message says why the app's presence matters, since
+ * "quit again" without a reason is what a user reads as the app being broken.
+ */
+export type InstallInFlightPayload = {
+	targetVersion: string;
+	message: string;
+	detail: string;
+};
+
+export function installInFlightPayload(
+	marker: PendingInstallMarker,
+	runningVersion: string,
+): InstallInFlightPayload {
+	return {
+		targetVersion: marker.targetVersion,
+		message: `Version ${marker.targetVersion} is still being installed. The update can't finish while Local Operator is open, so quit and leave it closed until it opens again by itself.`,
+		detail: `Install started ${marker.startedAt || "at an unknown time"} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
 	};
 }
 
@@ -1048,7 +1242,17 @@ export type WatchdogPlan = {
 	script: string;
 	/** Environment carrying the paths, so the script's argv holds none of them. */
 	env: Record<string, string>;
+	/**
+	 * The soft bound: the point the script stops waiting when it has no loaded
+	 * job telling it an install is alive.
+	 */
 	timeoutSeconds: number;
+	/**
+	 * The hard bound: the point it stops waiting even then, so a user is never
+	 * left without an app. Carried in the plan so the caller's log can state both
+	 * promises rather than only the earlier one.
+	 */
+	hardTimeoutSeconds: number;
 };
 
 /**
@@ -1165,6 +1369,20 @@ export function buildWatchdogPlan(input: {
 	settleSeconds?: number;
 	/** How long to wait for ShipIt's job to be submitted after the app exits. */
 	appearSeconds?: number;
+	/**
+	 * How long the script waits before it tells the user the install is under
+	 * way. A few seconds, because the notification has to arrive while the user
+	 * is still looking at where the window was - that gap is when reopening the
+	 * app feels like the right move, and reopening is what aborts the install.
+	 */
+	announceSeconds?: number;
+	/**
+	 * The last-resort bound, used only once the soft bound has arrived with the
+	 * install's job still loaded. Defaults to `WATCHDOG_HARD_TIMEOUT_SECONDS`;
+	 * an argument because a test cannot wait half an hour to see the difference
+	 * between holding and launching.
+	 */
+	hardTimeoutSeconds?: number;
 	/** How long the on-disk version read may take before it is killed. */
 	plistReadTimeoutSeconds?: number;
 	/**
@@ -1187,9 +1405,12 @@ export function buildWatchdogPlan(input: {
 }): WatchdogPlan {
 	const signals = input.signals ?? watchdogSignals(input.platform ?? "darwin");
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
+	const hardTimeoutSeconds =
+		input.hardTimeoutSeconds ?? WATCHDOG_HARD_TIMEOUT_SECONDS;
 	const intervalSeconds = input.intervalSeconds ?? 3;
 	const settleSeconds = input.settleSeconds ?? 5;
 	const appearSeconds = input.appearSeconds ?? 30;
+	const announceSeconds = input.announceSeconds ?? 5;
 	const plistTimeoutSeconds =
 		input.plistReadTimeoutSeconds ?? PLIST_READ_TIMEOUT_SECONDS;
 
@@ -1222,12 +1443,30 @@ export function buildWatchdogPlan(input: {
 #       one beyond it: the new app is in place and ShipIt has nothing left to do.
 #       This is what makes an early exit safe rather than a guess, and it is the
 #       path a failed-but-swapped install takes.
-#   (c) the bound arrived with no decision. Trying is still better than leaving
-#       the user with nothing, and the bound is what makes the previous
-#       version's silent exit 0 impossible. It is ~2.4x the slowest ShipIt
-#       attempt measured on this machine (255s from request to verdict for a
-#       1 GiB app), and it is the ONE path that can start the app while a swap
-#       is still in flight - an accepted risk, not an oversight.
+#   (c) a bound arrived with no decision. Trying is still better than leaving the
+#       user with nothing, and the bound is what makes the previous version's
+#       silent exit 0 impossible.
+#
+# (c) has a HOLD in front of it whenever the job is known and still loaded, and
+# that hold is the 2026-09-13 incident written into the script. At the soft bound
+# the install can be perfectly alive - that day it was, and it needed another
+# four minutes to move and code-verify a 1 GiB bundle on a host at load ~95 - and
+# Squirrel asks "is any instance of the target app running?" one last time before
+# it swaps. A launch there is not a rescue, it is the kill: the install aborts
+# (App Still Running, SQRLInstallerErrorDomain -9) and this script's own relaunch
+# is the whole cause of the failure the user is then told about. So while the job
+# is still loaded the script holds, says the update is still installing, and
+# starts the app only at the hard bound - where a job that old is better assumed
+# hung than live. (c) is therefore the ONE path that can start the app while a
+# swap is still in flight - an accepted risk, now taken at the hard bound rather
+# than at the soft one.
+#
+# It also says what is happening while it waits, because the silence is what cost
+# the operator the install: the window vanishes, nothing says the install takes
+# minutes, and reopening the app is the natural thing to do - which is exactly
+# what aborts it. Notifying is best-effort in every sense (notifications muted,
+# osascript blocked, no notifier at all), so no notification failure may change
+# what this script decides or what it exits with.
 #
 # With no job label to ask about, the job cannot be consulted at all, so the swap
 # state is the whole signal: the script waits for (b) rather than spending an
@@ -1250,6 +1489,17 @@ if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 fi
 now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
+# Tell the user what is going on, in the only way available: the app is dead
+# while this runs, so this is osascript and nothing else - no app process, no
+# updater. Backgrounded and status-dropped, because a notification is best-effort
+# in every sense: muted Notification Center, osascript blocked by policy, or no
+# notifier at all must never change what this script decides, when it retries, or
+# what it exits with. The text travels as its own argument rather than inside the
+# AppleScript, so no word of it needs escaping.
+notify() {
+	[ -n "$1" ] || return 0
+	osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' "$1" "Local Operator" >/dev/null 2>&1 &
+}
 # launchctl list <label> exits 113 when the job is not loaded, 0 when it is.
 # With no probe there is no launchd to ask, and this answers "cannot ask" rather
 # than "not loaded": job_known below requires the probe for the same reason.
@@ -1378,11 +1628,22 @@ decided() {
 	return 1
 }
 deadline=$(( $(now) + ${timeoutSeconds} ))
+hard_deadline=$(( $(now) + ${hardTimeoutSeconds} ))
 # 1. The install only starts once the old app has exited.
 while app_running; do
 	if [ "$(now)" -ge "$deadline" ]; then break; fi
 	sleep ${intervalSeconds}
 done
+# 1b. The app is gone, so an install is at work: say so a few seconds in, so the
+#     window that just vanished comes with an explanation. This is the moment the
+#     operator of 2026-09-13 was left guessing, and reopening the app four
+#     minutes later is what aborted their install. Skipped when the app is still
+#     running - a quit the user cancelled, where nothing is being installed and
+#     nothing should be claimed.
+if ! app_running; then
+	sleep ${announceSeconds}
+	notify "Installing the update. Keep Local Operator closed until it opens again by itself - this can take a few minutes."
+fi
 # 2. ShipIt's job is submitted as part of the quit, so it may not be loaded the
 #    instant the app is gone: give it a bounded window to appear before treating
 #    "no job" as "the install is over". Skipped when there is no label to ask
@@ -1396,12 +1657,37 @@ if [ "$job_known" -eq 1 ]; then
 	done
 fi
 # 3. Wait for the install to be decided - by the job going, or by the swap
-#    landing - and never past the bound.
+#    landing. The soft bound ends this wait only when there is no loaded job
+#    answering for the install: see the hold below.
+holding=0
 while :; do
 	if decided; then break; fi
-	if [ "$(now)" -ge "$deadline" ]; then break; fi
+	if [ "$(now)" -ge "$deadline" ]; then
+		if [ "$job_known" -eq 1 ] && shipit_loaded; then
+			holding=1
+			notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+		fi
+		break
+	fi
 	sleep ${intervalSeconds}
 done
+# 3b. The hold. The soft bound arrived with the install's job still loaded, so
+#     the install is alive and a launch here is what aborts it: Squirrel's last
+#     question before it swaps is whether any instance of the app is running,
+#     and on 2026-09-13 our own relaunch was the instance that answered yes. The
+#     job going or the swap landing still ends this at once - both are decisions
+#     the install made - and otherwise the hard bound does, which is where
+#     "better a live swap than no app at all" takes over.
+if [ "$holding" -eq 1 ]; then
+	while :; do
+		if decided; then break; fi
+		if [ "$(now)" -ge "$hard_deadline" ]; then
+			notify "The update is taking longer than expected. Opening Local Operator again now - check for updates when it is back."
+			break
+		fi
+		sleep ${intervalSeconds}
+	done
+fi
 # Let Squirrel's own relaunch (which happens as the job finishes) land first.
 sleep ${settleSeconds}
 # 4. Nothing to do if Squirrel relaunched the app or the user started it. This is
@@ -1428,6 +1714,7 @@ exit 0
 			LO_UPDATE_WATCHDOG_PLIST_READER: signals.plistReader ?? "",
 		},
 		timeoutSeconds,
+		hardTimeoutSeconds,
 	};
 }
 
@@ -1437,6 +1724,107 @@ export type FailedInstallReap = {
 	removedStaging: string[];
 	errors: string[];
 };
+
+/**
+ * The outcome of removing one staged update tree.
+ *
+ * `removed` is about the filesystem, not about the call: a tree that is gone
+ * after a failed attempt HAS been removed, whatever the error said.
+ */
+export type StagedTreeRemoval = {
+	removed: boolean;
+	attempts: number;
+	error: string | null;
+};
+
+/**
+ * Remove a staged update tree, retrying the race that beat `rmSync`.
+ *
+ * Why this is not one `rmSync` call: on 2026-09-13 the reap logged
+ * `ENOTDIR: not a directory, rmdir '.../update.tsRsfCm/Local Operator.app/Contents/Resources/app.asar'`
+ * and left ~1 GiB of staged update in the cache.
+ * That is a race, not a permission problem - ShipIt was moving that same tree
+ * into place at that instant (the reap ran at 09:44:05, two seconds before the
+ * install aborted), so an entry readdir had just reported as a directory was a
+ * regular file by the time rmdir reached it. Node's own `rmSync` retries
+ * EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM and not ENOTDIR, and its `force: true`
+ * suppresses ENOENT rather than a type change, so the retry has to live here.
+ *
+ * Both halves of the pair are checked, because either can be the truth after a
+ * failed call: the removal may have succeeded despite the error (the tree was
+ * already consumed by the install it belonged to), and the retry may succeed
+ * once the rename has settled. A failure that survives every attempt is
+ * returned as `removed: false` with the real error text - the caller still
+ * reports it, because a staged tree that cannot be removed is the thing the
+ * user's disk is quietly paying for.
+ */
+export function removeStagedTree(input: {
+	path: string;
+	/** The removal itself, as the app really does it (`rmSync(..., {recursive})`). */
+	remove: (path: string) => void;
+	exists: (path: string) => boolean;
+	/** Attempts in total, including the first. */
+	attempts?: number;
+	delayMs?: number;
+	/** The wait between attempts, injectable so a test does not spend it. */
+	sleep?: (ms: number) => void;
+}): StagedTreeRemoval {
+	const attempts = input.attempts ?? 3;
+	const delayMs = input.delayMs ?? 250;
+	const sleep = input.sleep ?? defaultSleep;
+	let error: string | null = null;
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		try {
+			input.remove(input.path);
+		} catch (thrown) {
+			error = String(thrown);
+		}
+		// Checked after a call that threw as well as after one that did not: the
+		// tree being gone is the answer this function exists to report, and a
+		// second removal attempt on a path that no longer exists is noise.
+		if (!input.exists(input.path)) {
+			return { removed: true, attempts: attempt, error: null };
+		}
+		if (attempt < attempts) sleep(delayMs);
+	}
+	return {
+		removed: false,
+		attempts,
+		error: error ?? `the staged tree at ${input.path} is still there`,
+	};
+}
+
+/**
+ * A synchronous wait, for the retry above.
+ *
+ * Synchronous on purpose: `removeStagedTree` is called from the start-up reap,
+ * which is synchronous, and the alternative - spawning `/bin/sleep` - pays a
+ * process to do nothing. `Atomics.wait` on a scratch buffer is the one sleep
+ * available to a single-threaded caller, and it never actually waits on a value
+ * that could be notified: the buffer is private and uncontended, so it expires.
+ */
+function defaultSleep(ms: number): void {
+	if (ms <= 0) return;
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * The removal the reap really performs, with the retry above and the real fs.
+ *
+ * A function of its own so the production call site is one line and the tests
+ * drive the same code rather than a copy of it - the copy is how a fix for this
+ * can pass its own test and still leave the staged tree on the machine.
+ */
+export function reapStagedTree(path: string): void {
+	const removal = removeStagedTree({
+		path,
+		remove: (target) => rmSync(target, { recursive: true, force: true }),
+		exists: (target) => existsSync(target),
+	});
+	if (!removal.removed) {
+		throw new Error(removal.error ?? `could not remove ${path}`);
+	}
+}
 
 /**
  * Clean up what a failed Squirrel install leaves running on the user's machine.

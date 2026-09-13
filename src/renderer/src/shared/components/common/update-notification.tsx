@@ -79,6 +79,28 @@ type InstallFailedInfo = {
 	detail?: string;
 	/** How many times this target has failed on this machine. */
 	attempts?: number;
+	/**
+	 * True when opening the app while the install was running is what cancelled
+	 * it. It is the one cause the main process can attest to rather than infer,
+	 * and it changes the heading because "the last update didn't finish" reads as
+	 * a mystery while "it was cancelled because you opened the app" is a thing the
+	 * user can act on.
+	 */
+	cancelledByRelaunch?: boolean;
+};
+
+/**
+ * An install that is running right now, found when the app started.
+ *
+ * Its own state rather than a failure: nothing has failed, and the install can
+ * still finish - but only while the app is closed, so the panel's purpose is to
+ * say that and offer the quit. The sentence comes from the main process, which
+ * knows which version is installing.
+ */
+type InstallInFlightInfo = {
+	targetVersion: string;
+	message: string;
+	detail?: string;
 };
 
 /** The by-hand server state: what to run, and what installation it was read from. */
@@ -420,13 +442,16 @@ export const UpdateNotification = ({
 	/** True while `Install now` has been pressed and the pre-flight is running. */
 	const [installing, setInstalling] = useState(false);
 
-	// Install refusals and a failed install detected on this start. Kept apart
-	// from each other because only one of them has an installed app to talk about.
+	// Install refusals, an install that never completed, and an install that is
+	// still running. Kept apart from each other because only one of them is a
+	// failure, and only one of them has an install still to save.
 	const [installBlocked, setInstallBlocked] =
 		useState<InstallBlockedInfo | null>(null);
 	const [installFailed, setInstallFailed] = useState<InstallFailedInfo | null>(
 		null,
 	);
+	const [installInFlight, setInstallInFlight] =
+		useState<InstallInFlightInfo | null>(null);
 
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
@@ -539,6 +564,26 @@ export const UpdateNotification = ({
 			setInstalling(false);
 			setError(
 				`Error starting the update: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setSnackbarOpen(true);
+		}
+	}, []);
+
+	/**
+	 * Quit so an install that is already running can finish.
+	 *
+	 * What the in-flight panel's primary action calls, and it is a plain quit
+	 * rather than `Install now`: the install is already under way, and Squirrel
+	 * abandons it while an instance of the app is running. Nothing is set here
+	 * first, because the app is on its way out and a state update for a window
+	 * that is closing is a lie about what the user will see.
+	 */
+	const quitForInFlightInstall = useCallback(async () => {
+		try {
+			await window.api.updater.quitForUpdateInstall();
+		} catch (err) {
+			setError(
+				`Error quitting for the update: ${err instanceof Error ? err.message : String(err)}`,
 			);
 			setSnackbarOpen(true);
 		}
@@ -685,6 +730,11 @@ export const UpdateNotification = ({
 		const removeInstallFailedListener =
 			window.api.updater.onUpdateInstallFailed((info) => {
 				setInstallFailed(info);
+				// The two are alternatives, never both: an install that was still
+				// running when the panel went up and has now been decided is no longer
+				// in flight, and leaving that panel above the failure would hide the
+				// outcome the user is waiting for.
+				setInstallInFlight(null);
 				/*
 				 * The notice explains why the app came back on the old version, and it used
 				 * to be queued behind this component's own start-up check: a user watching
@@ -692,6 +742,16 @@ export const UpdateNotification = ({
 				 * nothing at all if the check never settled (review U8). The failure is not
 				 * a function of the check, so it takes the panel and the check steps aside.
 				 */
+				setChecking(false);
+			});
+
+		// An install that is running right now: the app came back mid-install, and
+		// nothing has failed yet. Same reason as the failure notice for taking the
+		// panel ahead of the start-up check - the user's next move depends on it.
+		const removeInstallInFlightListener =
+			window.api.updater.onUpdateInstallInFlight((info) => {
+				setInstallInFlight(info);
+				setInstallFailed(null);
 				setChecking(false);
 			});
 
@@ -827,6 +887,7 @@ export const UpdateNotification = ({
 			removeBackendManualRequiredListener();
 			removeInstallBlockedListener();
 			removeInstallFailedListener();
+			removeInstallInFlightListener();
 		};
 	}, [autoCheck, checkForUpdates, shouldShowUpdate]);
 
@@ -848,7 +909,9 @@ export const UpdateNotification = ({
 		return (
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
-					The last update didn't finish
+					{installFailed.cancelledByRelaunch
+						? "The update was cancelled"
+						: "The last update didn't finish"}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">{installFailed.message}</p>
 				{/* The actionable sentence at the panel's reading weight: it was set one
@@ -897,6 +960,47 @@ export const UpdateNotification = ({
 					</Button>
 				</UpdateActions>
 				{installFailed.detail && <PanelDetails detail={installFailed.detail} />}
+			</UpdateContainer>
+		);
+	}
+
+	/*
+	 * An install that is still running, found because this app was opened while
+	 * the update was installing.
+	 *
+	 * Ahead of the start-up check for the same reason the failure notice is: it is
+	 * the thing the user has to act on, and the action is time-sensitive - quitting
+	 * is what lets Squirrel's install finish, and every second the app stays open
+	 * is another second it may be cancelled. The secondary action is a real
+	 * choice and not a fob-off: someone who needs the app now can keep it, at the
+	 * cost of this install.
+	 */
+	if (installInFlight) {
+		return (
+			<UpdateContainer>
+				<UpdateHeading>The update is still installing</UpdateHeading>
+				<p className="mb-2 text-body text-ink-muted">
+					{installInFlight.message}
+				</p>
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setInstallInFlight(null)}
+					>
+						Keep using Local Operator
+					</Button>
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => void quitForInFlightInstall()}
+					>
+						Quit and let the update finish
+					</Button>
+				</UpdateActions>
+				{installInFlight.detail && (
+					<PanelDetails detail={installInFlight.detail} />
+				)}
 			</UpdateContainer>
 		);
 	}
@@ -1195,7 +1299,9 @@ export const UpdateNotification = ({
 						using version {appVersion}.
 					</p>
 					<p className="mt-2 text-body-sm text-ink-muted">
-						The application will restart to apply the update.
+						Installing closes the app for a few minutes while the update is
+						verified and put in place. Don't reopen it until it starts by itself
+						- opening it while the update is installing cancels the install.
 					</p>
 
 					<UpdateActions>
