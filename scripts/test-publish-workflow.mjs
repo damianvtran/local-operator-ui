@@ -151,13 +151,30 @@ const WINDOW_PINS = {
 	EXPECTED_RELEASE_ID: "${{ needs.validate-release.outputs.release_id }}",
 	IS_MANUAL_DISPATCH: "${{ github.event_name == 'workflow_dispatch' }}",
 };
-function localImports(file) {
-	// The sparse checkout lists modules by hand, so a module the script imports
-	// but the checkout omits fails the job at runtime, after the release is
-	// already published. Derive the list from the script instead of trusting it.
-	return [...readFileSync(new URL(`../${file}`, import.meta.url), "utf8")
-		.matchAll(/from "\.\/([\w.-]+)"/g)].map((match) => `scripts/${match[1]}`);
+function localImports(file, seen = new Set()) {
+	// The sparse checkout lists modules by hand, so a module the script imports --
+	// directly, or through another module that it imports -- but the checkout omits
+	// fails the job at runtime, after the release is already published. Derive the
+	// whole transitive set from the script instead of trusting the handwritten list.
+	if (seen.has(file)) return [];
+	seen.add(file);
+	const found = [
+		...readFileSync(new URL(`../${file}`, import.meta.url), "utf8").matchAll(
+			/from "\.\/([\w.-]+)"/g,
+		),
+	].map((match) => `scripts/${match[1]}`);
+	return [...found, ...found.flatMap((module) => localImports(module, seen))];
 }
+test("the checkout guard walks imports transitively, not just the direct ones", () => {
+	// validate-release.mjs is imported by upload-release.mjs rather than by the
+	// window script itself: a direct-import-only walk would leave it out of the
+	// sparse checkout and fail the job only after the release was published.
+	assert.ok(
+		localImports("scripts/release-state.mjs").includes(
+			"scripts/validate-release.mjs",
+		),
+	);
+});
 for (const [job, mode] of windowJobs) {
 	test(`${job} runs ${mode} with both pins and its imports checked out`, () => {
 		const run = steps(job).find((step) => step.run);

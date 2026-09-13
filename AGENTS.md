@@ -286,18 +286,35 @@ Use this process whenever asked to cut a release.
   available" -- users are told they are current while a newer version is already
   published (v0.17.2, v0.19.1 and v0.19.2 all shipped that way). The publish
   workflow does the rest:
-  - It holds the release out of `latest` for the duration of the build, and
-    promotes it once the attach has succeeded and the assets are verified, so
-    the previous, complete release keeps answering until this one can.
-  - Re-running the workflow for a published tag (`gh run rerun <run-id>`) closes
-    the window when the attach succeeds.
+  - `--prerelease` **is** the hold: a pre-release is out of `latest` by
+    definition, so the previous, complete release keeps answering until this one
+    can. The workflow's hold job therefore finds nothing to do on this path; it
+    only acts when a release was published as a full release by mistake, which is
+    the case it exists to catch.
+  - The release is promoted once the attach has succeeded and *this* release's
+    installers and `latest*.yml` metadata are verified, platform by platform.
+  - Only the newest published release is ever promoted. Re-running an older
+    release's workflow (`gh run rerun <run-id>`) attaches its assets but leaves
+    it a pre-release, so `latest` cannot be moved backwards onto an old tag; the
+    job prints which release it found newer. Only the run for the release that is
+    still newest closes its own window.
   - A `workflow_dispatch` repair attaches assets but never promotes, because a
-    repair must not mutate release metadata. After one, close the window by
-    hand: `gh release edit v<version> --prerelease=false`.
+    repair must not mutate release metadata. That includes re-running a repair:
+    it keeps the dispatch event, so it stays a repair and will not promote.
+    Close the window by hand instead:
+    `gh release edit v<version> --prerelease=false --latest`.
   - A build that fails leaves the release a pre-release, so an incomplete
     release is never offered. Fix the build and re-run rather than promoting it.
   - A tag with a pre-release suffix (`v1.2.3-rc.1`) is never promoted: it stays a
     pre-release, which is what its name asks for.
+- **If the window cannot be opened or closed, the run fails and prints the one
+  command that finishes the flip by hand** (`gh release edit <tag>
+  --prerelease=false --latest`, or the hold's `--prerelease=true`). The state
+  PATCH is retried on transient failures first; reaching that line means it
+  failed three times, and nothing is protecting the feed until it is dealt with,
+  so treat it as the incident it is: fix the cause and re-run the workflow
+  (`gh run rerun <run-id>`), or run the printed line. A failed hold also stops
+  the builds, so on that path re-running is what produces the assets.
 
 10. Post-release verification
 - Confirm release exists: `gh release view v<version> --json url,name,tagName,publishedAt`

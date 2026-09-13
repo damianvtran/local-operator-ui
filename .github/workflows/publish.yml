@@ -61,6 +61,23 @@ jobs:
   # /releases/latest fails the run here, in seconds, instead of after 40 minutes
   # of macOS runner time spent telling every user they are up to date.
   #
+  # A failed hold deliberately stops the builds rather than letting them run so
+  # that the assets can heal the feed by themselves. The trade, stated: if a
+  # release was published as a full release against the runbook, a hold that
+  # cannot be applied leaves it at the head of /releases/latest with no assets
+  # until an operator acts on the failure line (which names the hand-repair),
+  # where building on would have healed the feed once the assets landed. Running
+  # on is not available here without weakening a gate this file depends on: a job
+  # cannot run past a failed dependency without a status-function `if:`
+  # (test-publish-workflow.mjs asserts none exist, because such a bypass skips
+  # every other skip gate too), and dropping the dependency edge instead would
+  # let this hold land after the promote and take a complete, advertised release
+  # back out of the feed. The residual case is kept narrow three ways: the
+  # documented path issues no PATCH at all (step 9 publishes a pre-release, so
+  # the script returns at its already-a-pre-release branch), the PATCH is retried
+  # on transient failures, and a persistent PATCH failure is the same
+  # contents:write authority that attach-to-release needs 26 minutes later.
+  #
   # Scoped to the release event by IS_MANUAL_DISPATCH in the script, not by a
   # job `if`: a repair has to keep running the builds and the attach, so this job
   # has to be reachable for a dispatch, and only its mutation stands down.
@@ -218,7 +235,9 @@ jobs:
     runs-on: macos-latest
     # open-release-window is a dependency rather than a concurrent job so a
     # release that cannot be held out of /releases/latest stops the build
-    # instead of shipping assets to a feed the app cannot read.
+    # instead of shipping assets to a feed the app cannot read. That stop is the
+    # intended behaviour for a persistent hold failure; see the trade spelled out
+    # on that job above.
     needs: [validate-release, open-release-window, preflight-macos, npm-publish]
     if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' && needs.preflight-macos.result == 'success' && needs.npm-publish.result == 'success' }}
     # A hung codesign (run 33948569170 sat at "signing file=...app" for 5h50m

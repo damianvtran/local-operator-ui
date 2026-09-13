@@ -3,10 +3,14 @@
  * Metadata tests use explicit fixtures, not live-release evidence. No network.
  * Covers the immutable-recovery contracts (validate + upload) and the
  * pre-release window that keeps an asset-less build out of /releases/latest.
+ * The window tests drive the real CLI with a fixture `gh` as the only one on
+ * PATH as well, so the env wiring, the exit code and the emitted argv are real
+ * output rather than a restatement of what the script is assumed to send.
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -17,6 +21,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
 	finalizeRelease,
 	missingAssets,
@@ -45,20 +50,25 @@ function fixture({
 	pkg = {},
 	missing = "",
 	assets = [],
+	others = [],
+	releases = null,
 } = {}) {
+	// This release as GitHub reports it. created_at is the attribute
+	// /releases/latest sorts by, so every entry the recency check reads carries one.
+	const published = {
+		id: ID,
+		tag_name: tag,
+		draft: false,
+		prerelease: false,
+		created_at: "2026-09-05T00:00:00Z",
+		published_at: "2026-09-05T00:00:00Z",
+		...release,
+	};
 	return (path) => {
 		if (path === missing) throw new Error("GitHub HTTP 404");
 		if (path === `/git/ref/tags/${tag}`)
 			return { ref, object: { type: "commit", sha } };
-		if (path === `/releases/tags/${tag}`)
-			return {
-				id: ID,
-				tag_name: tag,
-				draft: false,
-				prerelease: false,
-				published_at: "2026-09-05T00:00:00Z",
-				...release,
-			};
+		if (path === `/releases/tags/${tag}`) return published;
 		if (path === `/contents/package.json?ref=${sha}`)
 			return {
 				content: Buffer.from(
@@ -70,6 +80,10 @@ function fixture({
 				).toString("base64"),
 			};
 		if (path.startsWith(`/releases/${ID}/assets?`)) return assets;
+		// The release list: this release is always in it, and `others` stands for
+		// the rest of what the repository has published.
+		if (path.startsWith("/releases?"))
+			return releases ? releases(path) : [published, ...others];
 		throw new Error(`Unexpected API path: ${path}`);
 	};
 }
@@ -309,11 +323,12 @@ function windowRun(
 		expectedSha = SHA,
 		expectedReleaseId = ID,
 		release = {},
+		others = [],
 	} = {},
 ) {
 	const writes = [];
 	const result = mode({
-		api: fixture({ assets, release: { prerelease, ...release } }),
+		api: fixture({ assets, release: { prerelease, ...release }, others }),
 		tag,
 		expectedSha,
 		expectedReleaseId,
@@ -380,18 +395,22 @@ for (const [label, options, writes, action] of [
 test("open: a held release names what is still missing", () => {
 	const run = windowRun(openReleaseWindow, { assets: uploaded(["app.dmg"]) });
 	assert.deepEqual(run.result.missing, [
+		"macos update metadata",
 		"windows installer",
+		"windows update metadata",
 		"linux installer",
-		"latest*.yml update metadata",
+		"linux update metadata",
 	]);
 });
 
 test("missing assets are named, so a refusal says what was absent", () => {
 	assert.deepEqual(missingAssets([]), [
 		"macos installer",
+		"macos update metadata",
 		"windows installer",
+		"windows update metadata",
 		"linux installer",
-		"latest*.yml update metadata",
+		"linux update metadata",
 	]);
 	assert.deepEqual(missingAssets(COMPLETE), []);
 });
@@ -441,9 +460,22 @@ for (const [label, assets, error] of [
 		/missing macos installer/,
 	],
 	[
-		"the metadata the updater fetches",
+		"any update metadata at all",
 		uploaded(INSTALLERS),
-		/missing latest\*\.yml update metadata/,
+		/missing macos update metadata/,
+	],
+	[
+		// Metadata is asserted per platform. One platform's channel file used to
+		// stand in for the whole release, which would promote a release whose
+		// other platforms 404 -- the failure this gate exists to prevent.
+		"one platform's channel file while the others are complete",
+		uploaded([...INSTALLERS, "latest-mac.yml", "latest.yml"]),
+		/missing linux update metadata/,
+	],
+	[
+		"the macOS channel file while the others are complete",
+		uploaded([...INSTALLERS, "latest.yml", "latest-linux.yml"]),
+		/missing macos update metadata/,
 	],
 ]) {
 	test(`finalize refuses to promote with ${label}, writing nothing`, () => {
@@ -463,6 +495,138 @@ for (const [label, assets, error] of [
 		assert.deepEqual(writes, []);
 	});
 }
+
+// A re-run of an older release event replays that run's original payload: it
+// validates the old tag, attaches its assets, and would then promote it -- moving
+// /releases/latest backwards and silently denying users the newer release that
+// was already published. `gh run rerun <run-id>` is a documented operator action,
+// so the promote has to ask whether it is still the newest.
+const NEWER = {
+	id: ID + 1,
+	tag_name: "v0.19.2",
+	draft: false,
+	prerelease: false,
+	created_at: "2026-09-06T00:00:00Z",
+	published_at: "2026-09-06T00:00:00Z",
+};
+for (const [label, others, writes, reason] of [
+	[
+		"leaves an older release a pre-release when a newer one is published",
+		[NEWER],
+		[],
+		"not the newest release",
+	],
+	[
+		"ignores a newer draft, which latest cannot answer with",
+		[{ ...NEWER, draft: true }],
+		[PROMOTE],
+		undefined,
+	],
+	[
+		"ignores a newer pre-release, which latest cannot answer with",
+		[{ ...NEWER, prerelease: true }],
+		[PROMOTE],
+		undefined,
+	],
+	[
+		"promotes when every other release is older",
+		[{ ...NEWER, created_at: "2026-09-04T00:00:00Z" }],
+		[PROMOTE],
+		undefined,
+	],
+]) {
+	test(`finalize: ${label}`, () => {
+		const run = windowRun(finalizeRelease, {
+			assets: COMPLETE,
+			prerelease: true,
+			others,
+		});
+		assert.deepEqual(run.writes, writes);
+		assert.equal(run.result.reason, reason);
+	});
+}
+
+test("finalize reads past the first page, so a newer release cannot hide there", () => {
+	const writes = [];
+	const result = finalizeRelease({
+		api: fixture({
+			assets: COMPLETE,
+			release: { prerelease: true },
+			releases: (path) =>
+				path.endsWith("page=1")
+					? Array.from({ length: 100 }, (_, index) => ({
+							...NEWER,
+							id: 9000 + index,
+							created_at: "2026-09-04T00:00:00Z",
+						}))
+					: [
+							{
+								id: ID,
+								tag_name: TAG,
+								draft: false,
+								prerelease: true,
+								created_at: "2026-09-05T00:00:00Z",
+							},
+							NEWER,
+						],
+		}),
+		tag: TAG,
+		expectedSha: SHA,
+		expectedReleaseId: ID,
+		isManual: false,
+		setFlag: (id, state) => writes.push([id, state]),
+	});
+	assert.deepEqual(writes, []);
+	assert.equal(result.reason, "not the newest release");
+});
+
+test("finalize refuses to promote when a release's creation time cannot be read", () => {
+	// "We could not find out where this release sits" is answered as "we cannot
+	// promote", the same way an interrupted upload is answered as absent.
+	const writes = [];
+	assert.throws(
+		() =>
+			finalizeRelease({
+				api: fixture({
+					assets: COMPLETE,
+					release: { prerelease: true },
+					others: [
+						{ ...NEWER, created_at: undefined, published_at: undefined },
+					],
+				}),
+				tag: TAG,
+				expectedSha: SHA,
+				expectedReleaseId: ID,
+				isManual: false,
+				setFlag: (id, state) => writes.push([id, state]),
+			}),
+		/has no readable creation time/,
+	);
+	assert.deepEqual(writes, []);
+});
+
+test("finalize refuses to promote a release the release list does not contain", () => {
+	// The list is the same snapshot the recency check reads, so a release missing
+	// from it is one whose position in the feed cannot be established at all.
+	const writes = [];
+	assert.throws(
+		() =>
+			finalizeRelease({
+				api: fixture({
+					assets: COMPLETE,
+					release: { prerelease: true },
+					releases: () => [],
+				}),
+				tag: TAG,
+				expectedSha: SHA,
+				expectedReleaseId: ID,
+				isManual: false,
+				setFlag: (id, state) => writes.push([id, state]),
+			}),
+		/not in the release list/,
+	);
+	assert.deepEqual(writes, []);
+});
 
 for (const mode of ["open", "finalize"]) {
 	const run = mode === "open" ? openReleaseWindow : finalizeRelease;
@@ -507,11 +671,16 @@ for (const mode of ["open", "finalize"]) {
 }
 
 test("the state PATCH is a typed boolean addressed by release ID", () => {
-	// `gh api -f` would serialize the string "false", which the API does not
-	// read as a boolean; the address must be the pinned ID, never `/tags/<tag>`,
-	// which would resolve to whatever the tag points at now. The stub is the
-	// only `gh` on the child's PATH, so a silent fallback to the real CLI -- and
-	// a live PATCH against the operator's repository -- cannot happen.
+	// Each field goes out in the form its REST schema declares: `prerelease` is a
+	// boolean, so it is sent as a typed boolean (`-F`); `make_latest` is a *string*
+	// enum (`true`/`false`/`legacy`), so it is sent as the documented string (`-f`)
+	// -- a typed boolean is a body shape the schema does not declare, and a 422 on
+	// it fails the hold before any build starts. The hold sends `prerelease` alone,
+	// because a pre-release cannot be latest. The address must be the pinned ID,
+	// never `/tags/<tag>`, which would resolve to whatever the tag points at now.
+	// The stub is the only `gh` on the child's PATH, so a silent fallback to the
+	// real CLI -- and a live PATCH against the operator's repository -- cannot
+	// happen.
 	const dir = mkdtempSync(join(tmpdir(), "release-state-patch-"));
 	try {
 		writeFileSync(
@@ -519,6 +688,7 @@ test("the state PATCH is a typed boolean addressed by release ID", () => {
 			`#!/usr/bin/env node
 const { appendFileSync } = require('node:fs');
 if (process.env.FAIL_PATCH === 'true') {
+  appendFileSync(process.env.ATTEMPTS_FILE, 'attempt\\n');
   process.stderr.write('token abc123 rejected\\n');
   process.exit(1);
 }
@@ -527,6 +697,7 @@ appendFileSync(process.env.CALLS_FILE, JSON.stringify(process.argv.slice(2)) + '
 			{ mode: 0o755 },
 		);
 		const calls = join(dir, "calls");
+		const attempts = join(dir, "attempts");
 		const child = `
 import { setReleaseState } from ${JSON.stringify(new URL("../scripts/release-state.mjs", import.meta.url).href)};
 const repo = "damianvtran/local-operator-ui";
@@ -546,49 +717,206 @@ try {
 			env: {
 				PATH: `${dir}:${dirname(process.execPath)}:/usr/bin:/bin`,
 				CALLS_FILE: calls,
+				ATTEMPTS_FILE: attempts,
 				FAIL_PATCH: "false",
 			},
 		});
 		assert.equal(result.status, 0, result.stderr);
 		// A window that cannot be flipped is closed by hand, and this line is the
-		// only place the run can say so.
+		// only place the run can say so: it names the state that was asked for, and
+		// the `--latest` a close needs, because `gh release edit` only sends
+		// make_latest when that flag is passed.
 		assert.match(
 			result.stdout,
-			/CAUGHT:Release state PATCH failed for release \d+ \(v0\.14\.1\); close the window by hand with: gh release edit v0\.14\.1 --prerelease=false/,
+			/CAUGHT:Release state PATCH failed for release \d+ \(v0\.14\.1\) after 3 attempts; close the window by hand with: gh release edit v0\.14\.1 --prerelease=false --latest/,
 		);
 		assert.doesNotMatch(
 			result.stdout + result.stderr,
 			/abc123|NO_ERROR_RAISED/,
 		);
+		// The retry is bounded: a persistent failure is attempted three times and
+		// then fails the run, rather than hammering the API or hanging.
+		assert.equal(readFileSync(attempts, "utf8").trim().split("\n").length, 3);
 		assert.deepEqual(
 			readFileSync(calls, "utf8")
 				.trim()
 				.split("\n")
 				.map((line) => JSON.parse(line)),
-			[
-				[
-					"api",
-					"--method",
-					"PATCH",
-					`repos/damianvtran/local-operator-ui/releases/${ID}`,
-					"-F",
-					"prerelease=false",
-					"-F",
-					"make_latest=true",
-				],
-				[
-					"api",
-					"--method",
-					"PATCH",
-					`repos/damianvtran/local-operator-ui/releases/${ID}`,
-					"-F",
-					"prerelease=true",
-					"-F",
-					"make_latest=false",
-				],
-			],
+			[PROMOTE_ARGV, HOLD_ARGV],
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+// The wire form of each direction, built once so the schema-in-the-comment claims
+// are the same values the assertions use.
+const CLI_REPO = "damianvtran/local-operator-ui";
+const PATCH = (...fields) => [
+	"api",
+	"--method",
+	"PATCH",
+	`repos/${CLI_REPO}/releases/${ID}`,
+	...fields,
+];
+// The hold sends `prerelease` alone: a pre-release cannot be latest, so
+// `make_latest=false` would only record a value the server already derives.
+const HOLD_ARGV = PATCH("-F", "prerelease=true");
+const PROMOTE_ARGV = PATCH("-F", "prerelease=false", "-f", "make_latest=true");
+
+// The CLI is where the workflow's environment meets the mutation, and
+// IS_MANUAL_DISPATCH is rendered by Actions as the literal string "false"; the
+// default has to be fail-closed where the mutation is decided, so anything unset
+// or misspelled may only ever hold a mutation back. Driven as a subprocess with a
+// fixture `gh` as the only one on PATH, so the exit code and the argv are real.
+const STATE_SCRIPT = fileURLToPath(
+	new URL("../scripts/release-state.mjs", import.meta.url),
+);
+
+function withCliFixture(run) {
+	const dir = mkdtempSync(join(tmpdir(), "release-state-cli-"));
+	try {
+		return run(dir);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+function runStateCli(dir, { mode = "finalize", isManual, others = [] } = {}) {
+	writeFileSync(
+		join(dir, "gh"),
+		`#!/usr/bin/env node
+const { appendFileSync, readFileSync } = require('node:fs');
+const args = process.argv.slice(2);
+appendFileSync(process.env.CALLS_FILE, JSON.stringify(args) + '\\n');
+if (args.includes('--method')) process.exit(0);
+const fixtures = JSON.parse(readFileSync(process.env.FIXTURES_FILE, 'utf8'));
+const key = args[1].slice(('repos/' + process.env.GITHUB_REPOSITORY).length);
+if (!(key in fixtures)) {
+  process.stderr.write('unexpected path ' + key + '\\n');
+  process.exit(1);
+}
+process.stdout.write(JSON.stringify(fixtures[key]));
+`,
+		{ mode: 0o755 },
+	);
+	const fixtures = {
+		[`/git/ref/tags/${TAG}`]: {
+			ref: `refs/tags/${TAG}`,
+			object: { type: "commit", sha: SHA },
+		},
+		[`/releases/tags/${TAG}`]: {
+			id: ID,
+			tag_name: TAG,
+			draft: false,
+			prerelease: true,
+			created_at: "2026-09-05T00:00:00Z",
+			published_at: "2026-09-05T00:00:00Z",
+		},
+		[`/contents/package.json?ref=${SHA}`]: {
+			content: Buffer.from(
+				JSON.stringify({ name: "local-operator-ui", version: TAG.slice(1) }),
+			).toString("base64"),
+		},
+		[`/releases/${ID}/assets?per_page=100&page=1`]: COMPLETE,
+		"/releases?per_page=100&page=1": [
+			{
+				id: ID,
+				tag_name: TAG,
+				draft: false,
+				prerelease: true,
+				created_at: "2026-09-05T00:00:00Z",
+			},
+			...others,
+		],
+	};
+	const fixturesFile = join(dir, "fixtures.json");
+	const calls = join(dir, "calls");
+	writeFileSync(fixturesFile, JSON.stringify(fixtures));
+	const result = spawnSync(process.execPath, [STATE_SCRIPT, mode], {
+		encoding: "utf8",
+		cwd: dir,
+		env: {
+			PATH: `${dir}:${dirname(process.execPath)}:/usr/bin:/bin`,
+			CALLS_FILE: calls,
+			FIXTURES_FILE: fixturesFile,
+			RELEASE_TAG: TAG,
+			EXPECTED_SOURCE_SHA: SHA,
+			EXPECTED_RELEASE_ID: String(ID),
+			GITHUB_REPOSITORY: CLI_REPO,
+			GH_TOKEN: "fixture-token",
+			...(isManual === undefined ? {} : { IS_MANUAL_DISPATCH: isManual }),
+		},
+	});
+	const patch = existsSync(calls)
+		? readFileSync(calls, "utf8")
+				.trim()
+				.split("\n")
+				.filter(Boolean)
+				.map((line) => JSON.parse(line))
+				.filter((argv) => argv.includes("--method"))
+		: [];
+	return { result, patch };
+}
+
+for (const [label, isManual, expected] of [
+	["unset", undefined, 0],
+	["true", "true", 0],
+	["False (wrong case)", "False", 0],
+	["0 (wrong value)", "0", 0],
+	["false", "false", 1],
+]) {
+	test(`CLI: IS_MANUAL_DISPATCH ${label} ${expected ? "authorizes" : "refuses"} the flip`, () =>
+		withCliFixture((dir) => {
+			const { result, patch } = runStateCli(dir, { isManual });
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(patch.length, expected);
+			if (expected) assert.deepEqual(patch[0], PROMOTE_ARGV);
+			else
+				assert.match(
+					result.stdout,
+					/Manual dispatch: release state is not mutated by a repair/,
+				);
+		}));
+}
+
+test("CLI: an older release's re-run attaches assets but does not promote", () =>
+	withCliFixture((dir) => {
+		const { result, patch } = runStateCli(dir, {
+			isManual: "false",
+			others: [NEWER],
+		});
+		assert.equal(result.status, 0, result.stderr);
+		assert.deepEqual(patch, []);
+		assert.match(
+			result.stdout,
+			/is not the newest release eligible for \/releases\/latest; v0\.19\.2 \(id \d+\) is\. Leaving v0\.14\.1 a pre-release\./,
+		);
+	}));
+
+test("CLI: a release list larger than the default buffer is read, not called a failed lookup", () => {
+	// 40 releases with release-note-sized bodies is ~1.7 MB, over Node's 1 MiB
+	// execFileSync default. The real repository already returns 1.75 MB for a page
+	// of its 92 releases, and exceeding the buffer surfaces as ENOBUFS -- which the
+	// reader would report as a failed lookup, failing the promote on a read that
+	// actually succeeded.
+	const bulky = Array.from({ length: 40 }, (_, index) => ({
+		...NEWER,
+		id: 7000 + index,
+		tag_name: `v0.9.${index}`,
+		created_at: "2026-09-04T00:00:00Z",
+		body: "release notes ".repeat(3000),
+	}));
+	withCliFixture((dir) => {
+		const { result, patch } = runStateCli(dir, {
+			isManual: "false",
+			others: [...bulky, NEWER],
+		});
+		assert.equal(result.status, 0, result.stderr);
+		assert.deepEqual(patch, []);
+		assert.match(
+			result.stdout,
+			/is not the newest release eligible for \/releases\/latest; v0\.19\.2/,
+		);
+	});
 });

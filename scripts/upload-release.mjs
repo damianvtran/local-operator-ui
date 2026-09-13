@@ -26,6 +26,21 @@ const PLATFORM_INSTALLERS = {
 	linux: /\.(deb|AppImage|rpm)$/,
 };
 
+// The channel file electron-builder writes beside each platform's installer, and
+// the file electron-updater fetches before it can offer anything: latest-mac.yml,
+// latest.yml and latest-linux.yml, each promised to its own build job by that
+// job's `dist/latest*.yml` artifact glob. Named per platform and declared beside
+// PLATFORM_INSTALLERS for the same reason: a platform that ships an installer
+// without its channel file leaves that platform's users with a 404 the moment the
+// release is advertised, so the release-window checks in release-state.mjs must be
+// able to name the platform that is short instead of accepting one platform's
+// metadata as proof for all three.
+const PLATFORM_UPDATE_METADATA = {
+	macos: "latest-mac.yml",
+	windows: "latest.yml",
+	linux: "latest-linux.yml",
+};
+
 function artifactFiles(root) {
 	return Object.entries(PLATFORM_INSTALLERS).flatMap(
 		([platform, installer]) => {
@@ -155,6 +170,7 @@ if (
 
 export {
 	PLATFORM_INSTALLERS,
+	PLATFORM_UPDATE_METADATA,
 	artifactFiles,
 	checkAssetCollisions,
 	listAssets,
