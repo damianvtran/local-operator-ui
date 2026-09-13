@@ -148,7 +148,7 @@ export type SessionStatusStripProps = {
  * text until you reach for one.
  */
 const READING_BOX =
-	"inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta";
+	"inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta";
 
 /**
  * The interactive form. Hover is a colour step and nothing else — no lift, no
@@ -547,6 +547,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// user can see that the value on screen is the one they chose and
 					// not yet the one the session runs.
 					className={cn(
+						// `shrink` overrides READING_BOX's `shrink-0`: the value readings
+						// hold their width (a clipped `≥$2.4` or `66.0%/40` is a false
+						// number, and at 750 with a 139-character id they were shrinking
+						// into each other), and this is the one item allowed to yield.
 						"min-w-14 max-w-full shrink",
 						pending && "text-ink-dim",
 					)}

@@ -1360,8 +1360,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							 * and the chip's 260px cap alone drove the row 97px past the
 							 * column's right edge (design round 2, D11); the chip carries the
 							 * shrink, but only these two ancestors can let it happen.
+							 *
+							 * ABOVE the threshold this group does not shrink at all, and that is
+							 * not a preference: the chip's own root is `shrink-0` there so a long
+							 * model name truncates before the path yields (D9). With the chip
+							 * refusing to shrink while its parent still could, the group shrank to
+							 * 145.6px around a 260px chip and the path painted straight over the
+							 * readings - visible in the 750px long-name frame, and invisible to
+							 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
+							 * order needs both halves stated.
+							 *
+							 * ABOVE the threshold this group does not shrink at all, and that
+							 * is not a preference: the chip's own root is `shrink-0` there so
+							 * a long model name truncates before the path yields (D9). With
+							 * the chip refusing to shrink while its parent still could, the
+							 * group shrank to 145.6px around a 260px chip and the path painted
+							 * straight over the readings - visible in the 750px long-name
+							 * frame, and invisible to `row.overflowX`, which is 0 because the
+							 * GROUP fits. The yield order needs both halves stated.
 							 */}
-							<div className="flex min-w-0 items-center gap-1">
+							<div className="flex min-w-0 items-center gap-1 @min-[750px]/chatcol:shrink-0">
 								<Tooltip content="Attach file">
 									<span>
 										<Button
