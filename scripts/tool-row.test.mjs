@@ -463,8 +463,33 @@ test("an invisible record does not break trace adjacency", () => {
  * this resolves them through the ramp and compares the pixels.
  */
 test("the gap tiers are strictly ordered, trace tightest", () => {
-	// Tailwind v4's `--spacing: 0.25rem` (styles/index.css) at a 16px root.
-	const px = (cls) => (cls === "" ? 0 : Number(cls.replace("mt-", "")) * 4);
+	/*
+	 * The ramp is READ from the stylesheet rather than transcribed as `* 4`.
+	 * A literal would let this file keep asserting 2px after someone changed
+	 * `--spacing`, which is the one number the whole comparison rests on - and
+	 * the assertion would still pass while every distance on screen had moved.
+	 */
+	const css = readFileSync(
+		resolve("src/renderer/src/styles/index.css"),
+		"utf8",
+	);
+	const ramp = css.match(/^\s*--spacing:\s*([\d.]+)rem;/m);
+	assert.ok(ramp, "styles/index.css must declare the --spacing ramp");
+	// No `html` font-size override in this app; only `body` sets a type step,
+	// and `rem` resolves against the root regardless.
+	const step = Number(ramp[1]) * 16;
+	assert.equal(step, 4, "the 4px ramp this ladder is spelled on");
+	const px = (cls) => {
+		if (cls === "") return 0;
+		const n = Number(cls.replace("mt-", ""));
+		// `mt-px` and any other non-numeric step would otherwise yield NaN, which
+		// compares false against everything and quietly passes the ordering below.
+		assert.ok(
+			Number.isFinite(n),
+			`${cls} is not a step on the ramp; this ladder is spelled in ramp units`,
+		);
+		return n * step;
+	};
 	for (const view of [0, 1]) {
 		const trace = px(GAP.trace[view]);
 		const item = px(GAP.item[view]);

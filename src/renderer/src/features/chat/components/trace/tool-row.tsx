@@ -88,9 +88,17 @@ export type ToolRowOutcome = "running" | "success" | "error" | "interrupted";
  * one without reading the other is how the two drift.
  *
  * The TUI reference the operator sent measures ~20.4px per line, and the
- * designer rendered the same four rows at both pitches: at 28px they float as
- * separate items, at 20px they cohere into a block the eye runs down. Density
- * is the substance of "more tightly packed", not a finish detail.
+ * designer rendered the same four rows at 28px and at this height: at 28 they
+ * float as separate items, here they cohere into a block the eye runs down.
+ * Density is the substance of "more tightly packed", not a finish detail.
+ *
+ * Read that comparison as 28 against the shipped 22 — this 20px box plus the
+ * hairline — NOT as an endorsement of a 20px pitch. A 20px pitch is the
+ * gap-at-zero state the tier has since moved off, because a run with no gap at
+ * all fused into one column; a designer who reads this paragraph as "20 is the
+ * cohering pitch" would be reading the argument for the row's HEIGHT as an
+ * argument about the distance between rows, which is the confusion the
+ * paragraph above exists to prevent.
  *
  * 20px with no padding: `min-h-5` clears the 17.4px text box by 2.6px, so the
  * line still has air around it and nothing clips at any of the twelve themes'

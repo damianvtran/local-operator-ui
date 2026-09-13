@@ -494,6 +494,50 @@ const main = () => {
 				`manifest.json accounts for ${manifest.frames + accounted} frames (${parts.join(", ")}); ${files.length} are on disk, ${swept} of them outside any declared set`,
 			);
 		}
+
+		/*
+		 * `partialCapture` must not UNDERSTATE the pass it describes.
+		 *
+		 * Until this check existed, nothing here asserted anything about that
+		 * block, and the field understated a round twice: the capturer wrote the
+		 * current run's totals rather than accumulating, so a pass narrowed into
+		 * twelve per-story runs recorded `2 frames, 1 story` while 26 frames
+		 * moved. The gate stayed green both times, because the counts above are
+		 * about what is ON DISK and this field is about what a RUN did.
+		 *
+		 * The check is against the frames that actually MOVED at this head, read
+		 * from git rather than from the block itself: `refreshedFrames` must
+		 * account for at least the changed `.webp` files, because a pass cannot
+		 * have rewritten a frame it does not claim to have captured. It is
+		 * one-sided - a re-capture producing identical bytes leaves no trace in
+		 * the diff, so the claim may legitimately EXCEED the diff - and it is
+		 * skipped when git cannot answer, which keeps the gate runnable from a
+		 * tarball.
+		 */
+		const pc = manifest.partialCapture;
+		if (pc && typeof pc === "object" && pc.refreshedAtHead) {
+			// `addedFrames` is a SUBSET of `refreshedFrames` in the capturer's own
+			// tally (`captured` counts every frame written, new or overwritten),
+			// so summing the two here would double-count a new surface.
+			const claimed = pc.refreshedFrames ?? 0;
+			const changed = gitOut([
+				"diff",
+				"--name-only",
+				`${pc.refreshedAtHead}^`,
+				"--",
+				relative(ROOT, EVIDENCE),
+			]);
+			if (changed !== null) {
+				const moved = changed
+					.split("\n")
+					.filter((line) => line.endsWith(".webp")).length;
+				if (moved > claimed) {
+					failures.push(
+						`manifest.json: partialCapture claims ${claimed} refreshed frames, but ${moved} committed frames differ at ${pc.refreshedAtHead.slice(0, 9)} - a narrowed run overwrote the pass's total instead of accumulating it`,
+					);
+				}
+			}
+		}
 	}
 
 	for (const line of failures) console.log(`FAIL  ${line}`);

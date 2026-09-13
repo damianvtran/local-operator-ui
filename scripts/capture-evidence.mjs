@@ -156,7 +156,7 @@ export const STORIES = [
 	   reducer from wire-shaped frames, so the frame shows what the object column
 	   is actually given rather than what a hand-written row can be made to say.
 	   Sized to the four rows it holds, for the reason `working-labels` is. */
-	["chat-tool-rows--joined-mid-turn", 1024, 300],
+	["chat-tool-rows--joined-mid-turn", 1024, 340],
 	/* `narrow` is a 420px column and `working-labels` is six short lines, so
 	   both are captured in a viewport SIZED TO THEM rather than in the 1280x900
 	   default. At the default they are mostly empty ground — and once the rows
@@ -164,7 +164,7 @@ export const STORIES = [
 	   uniformity ceiling, which is that guard working as designed: a frame that
 	   is 99% one colour is not a picture of the app, however correct the few
 	   pixels in the middle are. */
-	["chat-tool-rows--narrow", 560, 260],
+	["chat-tool-rows--narrow", 560, 276],
 	["chat-tool-rows--working", 1280, 900],
 	["chat-tool-rows--working-labels", 760, 300],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
@@ -189,13 +189,13 @@ export const STORIES = [
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
 	   where the hierarchy that must SURVIVE the tightening is judged. */
-	["chat-tool-rows--operator-spacing-cases", 1024, 620],
-	["chat-tool-rows--turn-boundary-and-working-line", 1024, 620],
+	["chat-tool-rows--operator-spacing-cases", 1024, 860],
+	["chat-tool-rows--turn-boundary-and-working-line", 1024, 700],
 	/* Where the 2px `trace` hairline applies and where it does not: a lone call,
 	   a notice inside a run, and a run that opens a turn. `operator-spacing-cases`
 	   above shows the pitch INSIDE a run, which a per-row margin would reproduce
 	   exactly; only these three boundaries tell the two apart. */
-	["chat-tool-rows--trace-gap-boundaries", 1024, 620],
+	["chat-tool-rows--trace-gap-boundaries", 1024, 860],
 
 	/* The run-details popover, in the REAL ChatHeader inside a chat-column ground.
 	   Sized to the panel rather than to a window: 384px of popover plus the 12px
@@ -309,7 +309,7 @@ export const STORIES = [
 	   the defect as absent. `streaming-before-first-token` is the state that
 	   used to paint a "Writing" row above the working line; its claim is an
 	   ABSENCE, so it needs a frame of its own to be checkable. */
-	["chat-tool-rows--prose-tool-alignment", 1024, 620],
+	["chat-tool-rows--prose-tool-alignment", 1024, 700],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
 	/* The COMMON case, which had no standing frame until design review round 1
@@ -324,7 +324,7 @@ export const STORIES = [
 	   probe below floors the capture at the declared viewport, so declaring 900
 	   against a 700px story padded the frame with 257px of empty ground that
 	   no reviewer is meant to read (design review round 2, D9). */
-	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 700],
+	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 800],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
@@ -1273,11 +1273,50 @@ const main = async () => {
 					...(previous.partialCapture ?? {}),
 					refreshedAt: new Date().toISOString(),
 					refreshedAtHead: head,
-					refreshedFrames: captured,
-					refreshedStories: [...new Set(stories.map(([id]) => id))],
-					refreshedThemes: themes,
-					addedFrames: addedFrames.length,
-					addedSurfaces,
+					/*
+					 * ACCUMULATED while the head does not move, not overwritten.
+					 *
+					 * A reader consults this field to find which frames moved under
+					 * them, and it is the only place a narrowed set is told apart
+					 * from a swept one (see the comment above). Writing the CURRENT
+					 * run's totals made it describe the last command instead of the
+					 * pass: a review round refreshed 26 frames over twelve surfaces
+					 * as twelve per-story runs - which is the sanctioned way to
+					 * narrow, because a `--only=` prefix broad enough to cover them
+					 * in one run also matches stories whose frames the manifest
+					 * declares elsewhere - and the field recorded the last of the
+					 * twelve, `2 frames, 1 story`. `check-evidence.mjs` asserts
+					 * nothing here, so the understatement passed the gate green.
+					 *
+					 * Keyed on the head: successive runs at one commit are one pass
+					 * and sum, while the first run at a NEW head starts the count
+					 * again rather than inheriting the previous commit's totals.
+					 */
+					...(() => {
+						const sameHead = previous.partialCapture?.refreshedAtHead === head;
+						const priorStories = sameHead
+							? (previous.partialCapture?.refreshedStories ?? [])
+							: [];
+						const priorThemes = sameHead
+							? (previous.partialCapture?.refreshedThemes ?? [])
+							: [];
+						const priorSurfaces = sameHead
+							? (previous.partialCapture?.addedSurfaces ?? [])
+							: [];
+						return {
+							refreshedFrames:
+								(sameHead ? (previous.partialCapture?.refreshedFrames ?? 0) : 0) +
+								captured,
+							refreshedStories: [
+								...new Set([...priorStories, ...stories.map(([id]) => id)]),
+							],
+							refreshedThemes: [...new Set([...priorThemes, ...themes])],
+							addedFrames:
+								(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
+								addedFrames.length,
+							addedSurfaces: [...new Set([...priorSurfaces, ...addedSurfaces])],
+						};
+					})(),
 					addedAt: new Date().toISOString(),
 					addedAtHead: head,
 				},

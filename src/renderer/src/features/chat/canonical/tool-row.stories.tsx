@@ -150,7 +150,7 @@ type Story = StoryObj;
 export const States: Story = {
 	render: () => (
 		<Frame
-			height={232}
+			height={300}
 			records={[
 				tool({
 					id: "tool:1",
@@ -232,7 +232,7 @@ export const States: Story = {
 export const NamesAndFallbacks: Story = {
 	render: () => (
 		<Frame
-			height={230}
+			height={300}
 			records={[
 				// The column grows to the longest visible name, so these all share
 				// one edge and every summary starts on one rail.
@@ -305,7 +305,7 @@ export const Narrow: Story = {
 	render: () => (
 		<Frame
 			width="420px"
-			height={150}
+			height={212}
 			records={[
 				tool({
 					id: "tool:1",
@@ -350,7 +350,7 @@ export const Working: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={150}
+			height={216}
 			records={[
 				tool({
 					id: "tool:1",
@@ -396,17 +396,23 @@ export const OperatorSpacingCases: Story = {
 	render: () => (
 		<div className="flex flex-col gap-8 p-6">
 			{/* (a) Four consecutive settled rows: one pitch, repeated.
-			    Heights here and below are the block's own content plus the Frame's
-			    48px of padding, measured against a captured frame rather than
-			    guessed. The transcript pins its content to the BOTTOM, so a frame
-			    too short does not letterbox - it drops the OLDEST rows off the top,
-			    which on a spacing surface silently becomes a picture of a shorter
-			    run. At the declared 130/150/210 these three now lose two rows each:
-			    `Start of conversation` (#112) took a line of the slack, and the 2px
-			    hairline takes 2px per gap on top. Verified by capturing at both
-			    heights - at the old ones block (a) photographs 2 of its 4 rows. */}
+			    Heights here and below are `scrollHeight` measured in the rendered
+			    story plus the Frame's 48px of padding, rounded up to the 4px ramp -
+			    not guessed, and not "whatever looked right". The transcript is
+			    `flex-col-reverse` and pins its content to the BOTTOM, so a Frame
+			    that is too short does not letterbox: it pushes the OLDEST rows out
+			    of the picture and paints `Start of conversation` where they were.
+			    On a spacing surface that silently becomes a photograph of a SHORTER
+			    RUN, which is the failure design and QA both caught on
+			    `joined-mid-turn` - six rows in the frame it replaced, five here,
+			    against a README that says six. Two things ate the slack: the
+			    divider itself (#112) and 2px per gap from the hairline. The
+			    capture viewport in `capture-evidence.mjs` has to clear these too,
+			    because the harness takes `max(scrollHeight, declared)` and a
+			    viewport shorter than the Frame re-crops what the Frame just made
+			    room for. */}
 			<Frame
-				height={190}
+				height={232}
 				records={[
 					tool({
 						id: "a1",
@@ -438,7 +444,7 @@ export const OperatorSpacingCases: Story = {
 			    assistant record, then a `send` row. All four rows must sit on one
 			    pitch: the invisible record between them is not a spacer. */}
 			<Frame
-				height={200}
+				height={240}
 				records={[
 					{
 						kind: "assistant",
@@ -483,7 +489,7 @@ export const OperatorSpacingCases: Story = {
 			{/* (c) The long ragged run: two more invisible records seeded mid-run,
 			    which is what made some adjacent pairs tight and others wide. */}
 			<Frame
-				height={215}
+				height={256}
 				records={[
 					tool({
 						id: "c1",
@@ -557,9 +563,15 @@ export const OperatorSpacingCases: Story = {
  * - (a) a LONE call, with prose either side. Nothing is adjacent to it on the
  *   ledger tier, so it takes no hairline at all — `item` above and below.
  * - (b) a mixed run: calls, a NOTICE between them, then more calls. The notice
- *   is `trace`-like and opts into the same dense height, so the hairline is
- *   uniform across the whole block; a run whose pitch changed wherever a notice
- *   appeared is the raggedness this tier was built to prevent.
+ *   is `trace`-like, so every adjacent pair in the block takes the same 2px
+ *   GAP — which is the claim this block makes, and all it claims. The PITCH is
+ *   not uniform and is not supposed to read as though it were: measured, the
+ *   block is `22, 23.7, 22`, because a tool row is a 20px box while the notice
+ *   renders its own line box a little taller. That difference is the notice's,
+ *   it predates this tier, and it is what the `dense` opt-in already minimises
+ *   (`trace-line.tsx`: a row's pitch should follow the COLUMN it is in). What
+ *   this tier owns is the distance BETWEEN rows, and a run whose gap changed
+ *   wherever a notice appeared is the raggedness it was built to prevent.
  * - (c) a run that OPENS a turn. Its first row takes the turn boundary and the
  *   rest take the hairline, which is the ordering the gap must not disturb.
  */
@@ -568,7 +580,7 @@ export const TraceGapBoundaries: Story = {
 		<div className="flex flex-col gap-8 p-6">
 			{/* (a) A lone call between two paragraphs: no neighbour, no hairline. */}
 			<Frame
-				height={185}
+				height={228}
 				records={[
 					{
 						kind: "assistant",
@@ -600,7 +612,7 @@ export const TraceGapBoundaries: Story = {
 			/>
 			{/* (b) A notice inside a run: one tier, one pitch, all the way down. */}
 			<Frame
-				height={195}
+				height={236}
 				records={[
 					tool({
 						id: "m1",
@@ -632,7 +644,7 @@ export const TraceGapBoundaries: Story = {
 			{/* (c) The first row of a run takes the TURN boundary, not the
 			    hairline: the gap is between rows, never above the first one. */}
 			<Frame
-				height={240}
+				height={284}
 				records={[
 					{
 						kind: "user",
@@ -677,7 +689,7 @@ export const TurnBoundaryAndWorkingLine: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={260}
+			height={360}
 			records={[
 				tool({
 					id: "t1",
@@ -741,7 +753,7 @@ export const TurnBoundaryAndWorkingLine: Story = {
 export const ProseToolAlignment: Story = {
 	render: () => (
 		<Frame
-			height={320}
+			height={396}
 			records={[
 				{
 					kind: "user",
@@ -821,7 +833,7 @@ export const StreamingBeforeFirstToken: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={150}
+			height={192}
 			records={[
 				tool({
 					id: "s1",
@@ -878,7 +890,7 @@ export const MixedProseCodeAndTables: Story = {
 			// Sized to the content it holds: the four registers this frame exists
 			// to show run 688px at 1440, and a shorter frame scrolls the list off
 			// its own evidence.
-			height={700}
+			height={732}
 			records={[
 				{
 					kind: "user",
@@ -991,7 +1003,7 @@ export const WorkingLabels: Story = {
  *    here as the control: it is what the rows above must look like.
  */
 export const JoinedMidTurn: Story = {
-	render: () => <Frame height={190} records={joinedMidTurn()} />,
+	render: () => <Frame height={276} records={joinedMidTurn()} />,
 };
 
 /**

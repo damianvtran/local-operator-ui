@@ -192,12 +192,19 @@ export function buildRows(
  *   on a monospace row reads as one wrapped paragraph.
  * - `turn` is deliberately left wide. Tightening a run is only correct if the
  *   turn boundary survives it, and the contrast is what carries the hierarchy —
- *   24px against 2px inside a run, where it used to be 24px against 4px.
+ *   24px against 2px inside a run in the comfortable view, where it used to be
+ *   24px against 4px. In the SMALL view that contrast is 16px against the same
+ *   2px (`turn` is `mt-4` there), which is a smaller ratio but still an order of
+ *   magnitude, and it is the narrower column's own doing rather than this tier's.
  *
- * The hairline does NOT shrink in the small view, unlike every other tier. The
- * tiers above shrink because they are made of several pixels to spend; 2px is
- * already the floor at which a gap is still a gap, and 1px on a hairline reads
- * as an antialiasing artifact rather than as a boundary.
+ * The hairline does NOT shrink in the small view, unlike every other tier — it
+ * is the one pair of identical entries in the table below. The tiers above
+ * shrink because they are made of several pixels to spend; 2px is already the
+ * floor at which a gap is still a gap, and 1px on a hairline reads as an
+ * antialiasing artifact rather than as a boundary. Note that this is therefore
+ * not photographable: with one value in both views no frame can distinguish
+ * them, and the property is pinned by the test over `GAP.trace`'s two indices
+ * instead (`scripts/tool-row.test.mjs`).
  */
 export const GAP: Record<Row["gap"], [string, string]> = {
 	first: ["", ""],
