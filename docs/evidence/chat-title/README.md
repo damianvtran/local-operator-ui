@@ -10,6 +10,15 @@ the two trees, at the same viewport, through the same script.
 | click the row with a journalled title | **`Untitled chat`** over a row reading `Retention sweep notes` | `Retention sweep notes` |
 | click the session with no nameable opening message | `Untitled chat` | `Untitled chat` (unchanged) |
 
+A note on what the second row demonstrates. `Retention sweep notes` is a
+JOURNALLED title, but its session carries no turn-end checkpoint, so its live
+`conversation_title` is empty on the wire (verified by QA's independent pass
+against this same seeded backend). That pair is therefore the **catalogue
+fallback** at work — the fix reading the row's name where the live field is
+blank — and not the "live title wins" path, which the live-first branch covers
+and which the unit suite pins (`a live title wins, so a rename still shows where
+it landed`). The two are deliberately separate claims here rather than one.
+
 ## What produced these frames
 
 **The real built Electron app, not Storybook and not a browser.** Each tree was
@@ -82,8 +91,8 @@ at a device pixel ratio of 2, so the band is generous around it):
 | `open-charlie` | localOperatorLight | 544136 | 2158 |
 | `rest` | localOperatorDark | 33725 | 0 |
 
-`open-alpha` is the claim: a third of the header band changes, and it changes to
-the row's own name. `open-charlie` is the control that must NOT change with it —
+`open-alpha` is the claim: a sixth of the header band changes (36148 of
+211,200 px, the crop's own 0.171155), and it changes to the row's own name. `open-charlie` is the control that must NOT change with it —
 both trees read `Untitled chat`, and its small non-zero delta is elsewhere in the
 frame (the sidebar's own selected-row treatment after a different sequence of
 clicks), not in the title text.
@@ -130,9 +139,12 @@ chat header or the sidebar — so the set is declared `supplementary` in
    `BASELINE=…` points it at the before tree; it refuses to capture if a port is
    held by a process it did not start.
 3. Assert before committing: no two frames in the set share a SHA-256 (sixteen
-   frames, sixteen hashes), and every `before-*` frame differs from its
-   `after-*` counterpart in the header band — `magick compare -metric AE` over
-   the crop above.
+   frames, sixteen hashes), and every CLICKED state's `before-*` frame differs
+   from its `after-*` counterpart in the header band — `magick compare -metric AE`
+   over the crop above. The `rest` pair is the exception and must stay one: it is
+   the control, the header is absent before a conversation is open, and its band
+   delta is 0 by design in both palettes (and 0 it must remain — a non-zero delta
+   there means something moved that no finding claims).
 
 The harness and the driver are gitignored because they exist to take evidence,
 not to run in CI; the numbers above are what a reviewer checks them against.

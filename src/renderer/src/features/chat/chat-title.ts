@@ -99,16 +99,18 @@ export function resolveChatTitle(input: {
  * empty-object case is the load-bearing one and why it is tested as a property
  * of the real store rather than of this function alone.
  *
- * A non-blank live title always wins, so `/rename` still propagates; a blank or
- * whitespace-only one falls back to the row's own name, and only a row that has
- * no name at all is left untouched.
+ * There is deliberately no read of the row's own title here. The only caller
+ * passes the row it is updating, so writing that value back is a no-op by
+ * construction - it can never change the merged row - and a branch that cannot
+ * change an answer is one the suite cannot defend (agent review round 1, F1).
+ * The rule is therefore stated as what it is: a non-blank live title is written
+ * so `/rename` propagates, and a blank or whitespace-only one writes nothing at
+ * all, leaving whatever the catalogue already knows in place.
  */
 export function catalogueTitleUpdate(input: {
 	liveTitle?: string | null;
-	catalogueTitle?: string | null;
 }): { title?: string } {
-	const { liveTitle, catalogueTitle } = input;
+	const { liveTitle } = input;
 	if (!isBlankTitle(liveTitle)) return { title: liveTitle as string };
-	if (!isBlankTitle(catalogueTitle)) return { title: catalogueTitle as string };
 	return {};
 }
