@@ -105,7 +105,7 @@ function missingAssets(assets) {
  *   published* releases and would otherwise leave the outcome of an edit to an
  *   already-published release to be confirmed on the first real run.
  */
-function setReleaseState(repo, token, releaseId, { prerelease }) {
+function setReleaseState(repo, token, releaseId, { prerelease, tag }) {
 	try {
 		execFileSync(
 			"gh",
@@ -126,9 +126,13 @@ function setReleaseState(repo, token, releaseId, { prerelease }) {
 			},
 		);
 	} catch {
-		// No subprocess output: it can carry authentication details.
+		// No subprocess output: it can carry authentication details. The manual
+		// repair names the state this call asked for, so the line tells the
+		// operator how to finish the flip the pipeline could not make -- a window
+		// that cannot be flipped leaves the release unoffered until somebody
+		// closes it.
 		throw new ValidationError(
-			`Release state PATCH failed for release ${releaseId}`,
+			`Release state PATCH failed for release ${releaseId} (${tag}); close the window by hand with: gh release edit ${tag} --prerelease=${prerelease}`,
 		);
 	}
 }
@@ -288,7 +292,7 @@ if (
 			// mutation back, never authorize one.
 			isManual: process.env.IS_MANUAL_DISPATCH !== "false",
 			setFlag: (releaseId, { prerelease }) =>
-				setReleaseState(repo, token, releaseId, { prerelease }),
+				setReleaseState(repo, token, releaseId, { prerelease, tag }),
 		});
 	} catch (error) {
 		console.error(

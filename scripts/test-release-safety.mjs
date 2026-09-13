@@ -529,12 +529,12 @@ appendFileSync(process.env.CALLS_FILE, JSON.stringify(process.argv.slice(2)) + '
 		const calls = join(dir, "calls");
 		const child = `
 import { setReleaseState } from ${JSON.stringify(new URL("../scripts/release-state.mjs", import.meta.url).href)};
-const args = { prerelease: false };
-setReleaseState("damianvtran/local-operator-ui", "fixture-token", ${ID}, args);
-setReleaseState("damianvtran/local-operator-ui", "fixture-token", ${ID}, { prerelease: true });
+const repo = "damianvtran/local-operator-ui";
+setReleaseState(repo, "fixture-token", ${ID}, { prerelease: false, tag: "v0.14.1" });
+setReleaseState(repo, "fixture-token", ${ID}, { prerelease: true, tag: "v0.14.1" });
 process.env.FAIL_PATCH = "true";
 try {
-	setReleaseState("damianvtran/local-operator-ui", "fixture-token", ${ID}, { prerelease: true });
+	setReleaseState(repo, "fixture-token", ${ID}, { prerelease: false, tag: "v0.14.1" });
 	console.log("NO_ERROR_RAISED");
 } catch (error) {
 	console.log("CAUGHT:" + error.message);
@@ -550,7 +550,12 @@ try {
 			},
 		});
 		assert.equal(result.status, 0, result.stderr);
-		assert.match(result.stdout, /CAUGHT:Release state PATCH failed/);
+		// A window that cannot be flipped is closed by hand, and this line is the
+		// only place the run can say so.
+		assert.match(
+			result.stdout,
+			/CAUGHT:Release state PATCH failed for release \d+ \(v0\.14\.1\); close the window by hand with: gh release edit v0\.14\.1 --prerelease=false/,
+		);
 		assert.doesNotMatch(
 			result.stdout + result.stderr,
 			/abc123|NO_ERROR_RAISED/,
