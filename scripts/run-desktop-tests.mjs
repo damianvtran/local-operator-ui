@@ -24,7 +24,11 @@
  *
  * The child's exit code is forwarded unchanged and its death by signal is
  * re-raised on this process, because a wrapper that reports success for a suite
- * that was killed is worse than no wrapper.
+ * that was killed is worse than no wrapper. For the same reason the child does
+ * not inherit `NODE_TEST_CONTEXT`: node exports that variable into every
+ * test-file process, and a nested `node --test` that sees it skips running the
+ * files entirely and exits 0, so passing it through would make this runner
+ * report success for a suite that never ran. See `_TEST_CONTEXT_ENV`.
  */
 
 import { spawn } from "node:child_process";
@@ -33,6 +37,23 @@ import {
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+
+/**
+ * Node's test runner exports this into every test-file process. An inherited
+ * copy makes a nested `node --test` treat itself as recursive: it warns
+ * (`node:test run() is being called recursively within a test file. skipping
+ * running files.`), runs NO files — 0 bytes on stdout — and **exits 0**.
+ * Measured on node 26.5.0, and it is why this filter is not cosmetic: a caller
+ * who exports the variable into `pnpm test:desktop` would get a green status
+ * for a suite that nothing ran, which is the exact false-green this runner
+ * exists not to propagate.
+ *
+ * ONLY this key is filtered. It is node's own marker for "this process is
+ * already inside a test run", not a knob a test could legitimately read, and
+ * filtering anything else would make a test file behave differently under this
+ * runner than when node runs it directly.
+ */
+const _TEST_CONTEXT_ENV = "NODE_TEST_CONTEXT";
 
 /** A positive whole number of workers, which is all node's flag accepts. */
 const WORKER_COUNT_PATTERN = /^\d+$/;
@@ -71,11 +92,14 @@ if (explicitFlag === undefined) {
 		: args[args.indexOf(explicitFlag) + 1];
 	// A valueless or malformed flag is a usage error and must not be reported as
 	// a cap. It used to print `concurrency undefined` / `0 files` and then hand
-	// the malformed argv to node, which exited 9 — the caller was told something
-	// nonsensical before being told, by a stack trace, that nothing had run.
-	// Same exit code (9 is node's own invalid-argument status, so a caller
-	// keying off it sees the same class of failure), but the message is ours and
-	// names the flag and the alternative.
+	// the malformed argv to node, which for the `=abc` and `=0` forms ACCEPTED
+	// it, ran the suite at node's default width and exited with the suite's own
+	// status — a silent, uncapped run behind a line that claimed a cap. That is
+	// what this check replaces. Exit 9 is deliberate: it matches node only for
+	// the absent and empty values (`node --test --test-concurrency` exits 9 with
+	// "requires an argument"), and for a non-numeric or zero value we are
+	// STRICTER than node on purpose, while the message names the governor's own
+	// override as the way to get an uncapped run.
 	if (
 		value === undefined ||
 		!WORKER_COUNT_PATTERN.test(value) ||
@@ -94,7 +118,13 @@ if (explicitFlag === undefined) {
 }
 nodeArgs.push(...args);
 
-const child = spawn(process.execPath, nodeArgs, { stdio: "inherit" });
+const childEnv = Object.fromEntries(
+	Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+);
+const child = spawn(process.execPath, nodeArgs, {
+	stdio: "inherit",
+	env: childEnv,
+});
 
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
 // suite rather than leaving it orphaned behind a killed wrapper.

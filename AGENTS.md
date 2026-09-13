@@ -106,32 +106,40 @@ several agent sessions run this suite at once on one laptop. **What reproduces i
 the concurrency it removes**, not one RSS figure: 13 file workers by default
 against 5-7 under the cap, and with them the peak process count (this branch's
 rounds: 25-28 processes uncapped against 15-19 capped; QA's pass: 32 against 24)
-in two independent passes — this branch's at head `a0174da2f` and QA's at a cap
-of 7. Peak tree RSS is round- and pressure-dependent and a single band should not
-be quoted as the property of the change: this branch measured 666-892 MB at caps
-of 5-7 against 1,187-1,291 MB uncapped, while QA's pass at cap 7 measured a
-998 MB / 24-process peak against a 1,253 MB / 32-process baseline with median
-and p95 RSS essentially unchanged. A suite's peak is dominated by whichever
-heavy file is in flight, not by how many run at once. Wall time overlaps in the
-unpressured case: 91.5-93.3 s uncapped against 93.1-95.7 s capped.
+in two independent passes — this branch's own, run before the rebases onto main
+(23 files then, base `79d0dc889`), and QA's at a cap of 7. Peak tree RSS is round-
+and pressure-dependent and a single band should not be quoted as the property of
+the change: this branch measured 666-892 MB at caps of 5-7 against 1,187-1,291 MB
+uncapped, while QA's pass at cap 7 measured a 998 MB / 24-process peak against a
+1,253 MB / 32-process baseline with median and p95 RSS essentially unchanged. A
+suite's peak is dominated by whichever heavy file is in flight, not by how many
+run at once. Wall time overlaps in the unpressured case: 91.5-93.3 s uncapped
+against 93.1-95.7 s capped.
 
 **Know the pressure mode's cost before judging the cap.** The memory arm has a
-floor, and below roughly 3.4 GB available on this host (the reserve plus two
-workers' worth) it can return nothing but `_MIN_WORKERS`. Wall time then roughly
-doubles — **180.6 s against 91.4 s, +98%, measured** — because two workers
-serialise the whole suite. That is the deliberate trade rather than a regression
-to tune away: the condition is a host already swapping, and the point of the
-floor is that this suite is not what pushes it over. A `test:desktop` run that
-looks slow should be read as its concurrency line first and its timer second.
+floor: at or below **3,648 MB available** on this host — the 3,072 MB reserve
+plus three workers' worth, where the arm returns 3 and one byte less returns 2 —
+it can return nothing above `_MIN_WORKERS`. Wall time then grows by roughly half
+to double, because two workers serialise the whole suite: **+47% to +98%** across
+QA's two A/B passes (+46.7%: 133.4 s against 91.0 s, both arms in one window on
+the head QA tested; +98%: 180.6 s against 91.4 s, on a busier box in round 1).
+The direction is the point and the multiple follows what else the host is doing.
+That is the deliberate trade rather than a regression to tune away: the condition
+is a host already swapping, and the point of the floor is that this suite is not
+what pushes it over. A `test:desktop` run that looks slow should be read as its
+concurrency line first and its timer second.
 
-**A test that spawns `node --test` must scrub `NODE_TEST_CONTEXT`.** Node exports
-it into every test-file process, and an inherited copy makes a NESTED run report
-its results to the grandparent's reporter instead of setting its own exit status
-— measured on node 26.5.0: `node --test fails.test.mjs` exits 1, and the same
-command with `NODE_TEST_CONTEXT=child-v8` set exits **0**. `run-desktop-tests.test.mjs`
-filters it out of the environment it hands the runner for exactly this reason;
-without that, its exit-code assertions pass in a plain shell and fail inside this
-suite.
+**Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
+exports it into every test-file process, and a nested `node --test` that inherits
+it does not run the files at all: it warns (`node:test run() is being called
+recursively within a test file. skipping running files.`), writes **0 bytes** to
+stdout and **exits 0**. Measured on node 26.5.0. So an inherited copy turns a red
+suite green — `env NODE_TEST_CONTEXT=child-v8 pnpm test:desktop` reported success
+in 0.41 s on a deliberately failing tree, which is the false-green class this
+whole change exists to remove. `scripts/run-desktop-tests.mjs` filters that one
+key out of the environment it hands its child (`_TEST_CONTEXT_ENV`), and
+`run-desktop-tests.test.mjs` pins it by running a failing suite through the
+runner with the variable genuinely ambient.
 
 Several files here also spawn real children — the esbuild binary that most of
 them bundle through, a real `/usr/bin/codesign` run in
