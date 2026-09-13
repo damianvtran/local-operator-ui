@@ -37,7 +37,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget, seedPendingEchoes } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useMessageInput, SEND_HELD, clearSubmittedText, restoreSubmittedText } from "./src/renderer/src/shared/hooks/use-message-input";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
@@ -116,6 +116,7 @@ const module = await import(
 const {
 	admitChatDraft,
 	draftIdentityFor,
+	isRefusedBeforeAdmission,
 	useCanonicalSessionsStore: store,
 	echoPendingUser,
 	retractPendingUser,
@@ -672,6 +673,47 @@ test("U3: a panel mounted over a buffered echo paints it in its first state", as
 	const transcript = await mountTranscript(SESSION_ID);
 	assert.deepEqual(transcript.rows(), ["seeded message"]);
 	transcript.unregister();
+});
+
+test("a send threads its paint callback through `admitChatDraft`", async () => {
+	reset();
+	// The glue between the composer and the seam, and the only part of U1 that is
+	// neither the seam's nor the composer's: `send` hands the callback to
+	// `admitChatDraft`, which hands it to `echoPendingUser`. Verified with a
+	// transcript already mounted, i.e. the path where the echo is applied
+	// synchronously and so the caller can clear in the same commit.
+	const transcript = await mountTranscript(SESSION_ID);
+	globalThis.__echoRequest = async () => ({ status: "admitted" });
+	let painted = 0;
+	await admitChatDraft(
+		`send:${SESSION_ID}`,
+		input,
+		SESSION_ID,
+		() => {
+			painted += 1;
+		},
+	);
+	assert.deepEqual(transcript.rows(), [input.text]);
+	assert.equal(painted, 1, "the composer is told exactly once, at the paint");
+	transcript.unregister();
+
+	// And the predicate that decides whether a failed send's text belongs back in
+	// the box (false) or stays out of it (true, `SEND_HELD` at the call site).
+	// One definition, read by the retraction, the un-latch and the composer.
+	assert.equal(
+		isRefusedBeforeAdmission(new DesktopControlError(413, "too large")),
+		true,
+	);
+	assert.equal(
+		isRefusedBeforeAdmission(new DesktopControlError(422, "invalid")),
+		true,
+	);
+	assert.equal(
+		isRefusedBeforeAdmission(new DesktopControlError(503, "unknown")),
+		false,
+		"503 is the ambiguous failure whose echo is deliberately kept",
+	);
+	assert.equal(isRefusedBeforeAdmission(new Error("fetch failed")), false);
 });
 
 test("the echo's paint callback fires with the paint, on both delivery paths", async () => {
