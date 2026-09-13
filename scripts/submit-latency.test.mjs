@@ -325,6 +325,31 @@ const started = [];
 const PID_AND_COMMAND = /^\s*(\d+)\s(.*)$/;
 const WHITESPACE_RUN = /\s+/;
 
+/*
+ * Report the FIRST refusal of the census, once per process, with `ps`'s reason.
+ *
+ * That reason used to be discarded (`stdio[2] = "ignore"`, no stderr in the
+ * result), and the cost was concrete rather than theoretical: `ps eww -ax` is a
+ * procps ERROR on Linux - "must set personality to get -x option", exit 1, empty
+ * stdout - so this census answered `null` ("could not ask") for every root, and
+ * the sweep could therefore never authorise a removal on the only platform whose
+ * CI runs the suite. The log said `1 whose census could not be read`, which is
+ * exactly what a transient failure prints, so nothing named the cause; finding it
+ * took running the file in a Linux container.
+ *
+ * One latched line, not one per call: this runs inside a per-pid loop and inside
+ * per-root loops, so an unlatched report would flood the run it is describing.
+ */
+let censusRefusalReported = false;
+function reportCensusRefusal(args, why, stderr) {
+	if (censusRefusalReported) return;
+	censusRefusalReported = true;
+	const reason = (stderr ?? "").split("\n").find((line) => line.trim()) ?? "";
+	console.log(
+		`  census: ps ${args.join(" ")} refused (${why})${reason ? `: ${reason.trim().slice(0, 200)}` : ""}`,
+	);
+}
+
 function pidsHoldingConfigDir(root) {
 	const marker = `LOCAL_OPERATOR_CONFIG_DIR=${root}`;
 	/*
@@ -349,7 +374,10 @@ function pidsHoldingConfigDir(root) {
 			// 1 MB pipe buffer would truncate it and turn a real census into a
 			// partial one without any error.
 			maxBuffer: 64 << 20,
-			stdio: ["ignore", "pipe", "ignore"],
+			// stderr is CAPTURED, not ignored: a refusal has to be able to name
+			// itself (see reportCensusRefusal) - the reason is the only thing that
+			// distinguishes "this box is busy" from "this invocation is wrong".
+			stdio: ["ignore", "pipe", "pipe"],
 		});
 		/*
 		 * ONE rule for both reads: `ps` either answers with text, or this census
@@ -364,14 +392,44 @@ function pidsHoldingConfigDir(root) {
 		 * swept once the process is genuinely gone, and a removal is the one
 		 * outcome with no undo.
 		 */
-		if (result.error) return null;
-		if (result.status !== 0) return null;
+		if (result.error) {
+			reportCensusRefusal(
+				args,
+				`spawn failed: ${result.error.code ?? result.error}`,
+				"",
+			);
+			return null;
+		}
+		if (result.status !== 0) {
+			reportCensusRefusal(args, `exit ${result.status}`, result.stderr);
+			return null;
+		}
 		return typeof result.stdout === "string" && result.stdout
 			? result.stdout
 			: null;
 	};
 
-	const table = ps(["eww", "-ax", "-o", "pid=,command="]);
+	/*
+	 * `-A`, NOT `-ax` - and the difference cost this file every sweep on Linux.
+	 *
+	 * Both spellings mean "every process" in BSD `ps`, which is why `-ax` reads
+	 * as the portable one, and it is not: GNU procps REFUSES `-x` unless a
+	 * personality is set, exiting 1 with an empty stdout and
+	 * "error: must set personality to get -x option" on stderr (measured on the
+	 * Ubuntu runner AND in a node:22 container: `rc=1, bytes=0`). Under the rule
+	 * above that is "could not ask", so on Linux this census returned `null` for
+	 * EVERY root: the sweep could never authorise a removal, and R6-1's positive
+	 * control - an aged, unheld root the sweep MUST reap - could never pass. It
+	 * was green on macOS, which is how a file that had only ever been run on a
+	 * laptop shipped red to the only platform that runs it.
+	 *
+	 * `-A` selects the same set on both: verified `rc=0` on macOS (814990 bytes,
+	 * environment present) and on procps 4.0.2 (669 bytes, environment present),
+	 * with `-eo`/`-e` NOT a substitute - on BSD `-e` is "show the environment"
+	 * rather than "every process", and it silently narrows the selection to the
+	 * current terminal (measured: 2124 bytes, one process's environment).
+	 */
+	const table = ps(["eww", "-A", "-o", "pid=,command="]);
 	if (table === null) return null;
 
 	const held = [];
@@ -859,13 +917,17 @@ def holders_of(root):
         except Exception:
             return ""
 
+    # -A, not -ax: the same rule the JS census above states, spelled so it works
+    # on both ps flavours. procps refuses -x without a personality, and a refusal
+    # here is silent (ps() returns an empty string), which read as "no holders" -
+    # so on Linux this census could not see a holder even when one held the root.
     argv = {}
-    for line in ps(["-ax", "-o", "pid=,command="]).split("\\n"):
+    for line in ps(["-A", "-o", "pid=,command="]).split("\\n"):
         parts = line.split(None, 1)
         if len(parts) == 2 and parts[0].isdigit():
             argv[parts[0]] = parts[1]
     found = []
-    for line in ps(["eww", "-ax", "-o", "pid=,command="]).split("\\n"):
+    for line in ps(["eww", "-A", "-o", "pid=,command="]).split("\\n"):
         parts = line.split(None, 1)
         if len(parts) != 2 or not parts[0].isdigit() or marker not in parts[1]:
             continue
