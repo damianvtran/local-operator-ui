@@ -652,6 +652,19 @@ export const STORIES = [
 	["chat-slash-completion--name-list-completed", 768, 260],
 	/* A long list: the popup keeps its own scroll at its row cap. */
 	["chat-slash-completion--command-phase-scrolled", 768, 460],
+	/* The SIXTH inline source and the only renderer-local one: `/theme` lists the
+	   `@shared/themes` table its dialog reads. Added with the round-1 disclosure
+	   (R4) so the inline set has evidence for every source it claims. */
+	["chat-slash-completion--argument-phase-themes", 768, 340],
+	/* A query that matches nothing while the list HAS rows — its own sentence,
+	   not "not reported yet". */
+	["chat-slash-completion--argument-phase-no-match", 768, 200],
+	/* Loading and failure, the two transient states that had no frame (D5). */
+	["chat-slash-completion--argument-phase-loading-and-error", 768, 300],
+	/* The truncation HALF of the shed order at ~520px: numbers shown, name
+	   giving. The 330px frame shows numbers dropped and the 908px frame shows
+	   nothing squeezed, so this is the width where the question lives (D5). */
+	["chat-slash-completion--argument-phase-truncating-name", 568, 340],
 ];
 
 /**

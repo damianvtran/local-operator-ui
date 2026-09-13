@@ -43,6 +43,23 @@ export const SCORE_PREFIX = 900;
 export const SCORE_FUZZY_MAX = 40;
 
 /**
+ * Below this many typed characters the fuzzy tail is suppressed, keeping only
+ * the prefix matches (when any exist).
+ *
+ * A port of `command_picker.py:997` (`FUZZY_MIN_QUERY_CHARS = 3`), and the WHY
+ * is measured there rather than cosmetic: a one- or two-letter query matched an
+ * arbitrary-looking set by subsequence — `/m` offered `move, model, mcp, mobile`
+ * in the TUI and additionally `resume, rename, theme, compact` here. The correct
+ * command ranked first every time, but rows 2+ taught the user that the list is
+ * unreliable, and the extra rows also changed Enter's meaning: with more than
+ * one survivor the single-survivor arm of the ambiguity gate stops firing, so a
+ * command that runs on one Enter in the TUI needed two in the composer (round 1
+ * R3). Typo tolerance lives at three characters and up, so nothing the feature
+ * exists for is affected.
+ */
+export const FUZZY_MIN_QUERY_CHARS = 3;
+
+/**
  * Score `prefix` as an in-order subsequence of `target`, 1..40 or 0.
  * Consecutive matched characters and early matches push the score toward 40.
  */
@@ -120,6 +137,38 @@ export function matchCommands<T extends { name: string; aliases: string[] }>(
 	});
 	scored.sort((a, b) => b.score - a.score || a.index - b.index);
 	return scored.map((entry) => ({ name: entry.name, command: entry.command }));
+}
+
+/**
+ * The command list for a typed word: the TUI's `command_suggestions`.
+ *
+ * The bare `/` case is here rather than in the caller because the empty query
+ * has ONE answer for both hosts — the whole registry, in registration order —
+ * and because it is the reason `scoreCommandTextMatch` scores an empty prefix
+ * at 0 rather than 1000.
+ *
+ * The short-query rule is a PREFERENCE, not a filter, and that is load-bearing:
+ * an empty return closes the picker, and a closed picker takes its Tab and
+ * Enter guards down with it, so Tab would indent the user's message and Enter
+ * would submit the raw text. The queries with no prefix match at all are exactly
+ * the natural abbreviations the fuzzy matcher exists for (`/lg`, `/ls`, `/md`).
+ *
+ * The prefix test runs on the DISPLAY name — the name or alias the row shows —
+ * exactly as `command_suggestions` tests `pair[0]`, so a row kept by the
+ * preference is the row the user is looking at.
+ */
+export function commandSuggestions<
+	T extends { name: string; aliases: string[] },
+>(query: string, commands: readonly T[]): { name: string; command: T }[] {
+	if (!query)
+		return commands.map((command) => ({ name: command.name, command }));
+	const matches = matchCommands(`/${query}`, commands);
+	if (query.length >= FUZZY_MIN_QUERY_CHARS) return matches;
+	const lowered = query.toLowerCase();
+	const prefixed = matches.filter(({ name }) =>
+		name.toLowerCase().startsWith(lowered),
+	);
+	return prefixed.length > 0 ? prefixed : matches;
 }
 
 /**

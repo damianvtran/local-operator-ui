@@ -31,21 +31,44 @@ export type ArgumentRow = {
 /**
  * Where an argument list's rows come from.
  *
- * Five of these name a backend `commands.entities` command id and are pinned
- * against `desktop_catalogues.py:262-305` by `scripts/slash-row-format.test.mjs`
- * — the route answers exactly `model`, `effort`, `approvals`, `team` and
- * `agent`, and a stale id would silently render an empty list rather than fail.
- * `theme` is the one renderer-local source: it is filled from the same
- * `@shared/themes` table `/theme`'s dialog reads, so there is no second theme
- * vocabulary.
+ * The two halves are named separately because they are two KINDS of source and
+ * one name for both is how a reader comes to believe every id is a backend
+ * route (round 1 NIT-2).
+ *
+ * `BackendArgumentSource` is a `commands.entities` command id, pinned against
+ * `desktop_catalogues.py:262-305` by `scripts/slash-row-format.test.mjs` — the
+ * route answers exactly `model`, `effort`, `approvals`, `team` and `agent`, and
+ * a stale id would silently render an empty list rather than fail.
+ * `RendererArgumentSource` is the one source with no backend route: `theme` is
+ * filled from the same `@shared/themes` table `/theme`'s dialog reads, so there
+ * is no second theme vocabulary.
  */
-export type ArgumentSource =
+export type BackendArgumentSource =
 	| "model"
 	| "effort"
 	| "approvals"
 	| "team"
-	| "agent"
-	| "theme";
+	| "agent";
+export type RendererArgumentSource = "theme";
+export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
+
+/**
+ * The popup's one-word name for each argument list, and for the command list.
+ *
+ * Lives beside the source union so a new source cannot be added without the
+ * label being decided: the record is exhaustive over `ArgumentSource`, so a
+ * seventh source is a type error here rather than a list that renders under the
+ * previous subject's name (round 1 D3 / UX U3). Sentence case, like every other
+ * label in the app.
+ */
+export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
+	model: "Models",
+	effort: "Effort",
+	approvals: "Approvals",
+	team: "Teams",
+	agent: "Agents",
+	theme: "Themes",
+};
 
 /**
  * `400k` / `1.0m` / `""` when unknown.
