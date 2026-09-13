@@ -9,7 +9,8 @@ identical while the pointer crossed four rows.
 
 This directory holds the in-app before/after pairs for the eight states that
 carry those findings, plus the ninth that is the pick's own outcome, plus the
-four states the remediation round added (below). The all-twelve-themes set lives
+seven states the remediation round added (below) — twenty-five frames, nine of
+them the audit's `before-*` halves. The all-twelve-themes set lives
 in `docs/evidence/chat-model-picker/` and
 `docs/evidence/chat-session-status-strip/model-switch-pending/`.
 
@@ -70,7 +71,7 @@ into its default theme.
 | `picker-open` | selected row computed `rgb(40,35,24)` = the dialog's own `rgb(40,35,24)`: **1.000:1, ΔE00 0.00** — the row that is about to be picked is invisible | selected row `rgb(15,12,8)` (`sunken`) against the dialog's `rgb(40,35,24)` (`elevated`): **ΔE00 8.32**, the adjacent-ground pair `check-themes` asserts in every theme |
 | `row-hovered` | the pointer *moved the selection*, so hovering gave no separate mark | the pointer marks its own row: the `accent-wash` tint **and** a 1px `outline-control` edge, while the selection stays put. The edge is the mark that survives every palette — the wash alone is ΔE00 0.77 on this ground in obsidian (design D12) |
 | `keyboard-highlight` | selection on row 8, ground `rgb(40,35,24)` — a highlight the user cannot see | selection on row 4, ground `rgb(15,12,8)` — visible, and the footer names it (`Enter picks …`) |
-| `pointer-left-list` | **byte-identical to `keyboard-highlight`**: AE 0 of 4,813,440 px, same md5 — the highlight never cleared | the pointer's tint clears and the selection stays. **The demonstrating pair is `row-hovered` → `pointer-left-list`**: design D18 caught this row claiming `keyboard-highlight` → `pointer-left-list` demonstrates it, when the arrow keys had already landed the selection on the row the pointer was over — `isHovered && !isActive` suppresses the tint there, so frame 04 has no tint to clear and the 04→05 difference is text antialiasing plus a fading scrollbar. Measured after the re-capture: 03→05 removes the tint pixels inside the hovered row's band; 04→05 does not. |
+| `pointer-left-list` | **byte-identical to `keyboard-highlight`**: AE 0 of 4,813,440 px, same md5 — the highlight never cleared | the pointer's tint AND edge clear and the selection stays. **The demonstrating pair is `row-hovered` → `pointer-left-list`**: design D18 caught this row claiming `keyboard-highlight` → `pointer-left-list`, and the re-capture measures why that pair cannot demonstrate it — the arrow keys had already landed the selection on the row the pointer was over, `isHovered && !isActive` suppresses the mark there, so **04→05 is AE 0 of 4,813,440 px again** (md5-equal). 03→05 differs by **AE 268,767 px (5.6% of the frame)**, all of them the hovered row's tint and edge. |
 | `persist-checked` | the label is `Also make it the default for new sessions`, **identical to unchecked** — nothing says what the tick did to *this* pick | `This pick also sets the default for new sessions` |
 | `refresh-clicked-immediate` | the button still reads `Refresh from providers` (disabled) and the listing is **gone** — the listbox is not in the DOM | the button reads `Refreshing…`, and the 1005 rows it already had are still painted (`keepPreviousData`) |
 | `refresh-settled` | still **no rows**, the body reading `Listing unavailable for:` followed by 21 provider names, while the footer went on advertising the arrow keys; the description reads `This session runs /.` | rows present (1505 after the live re-list), the same provider names reduced to a count above the list (the ids are in the note's tooltip), and a description that names the session's model |
@@ -82,7 +83,7 @@ the two runs' catalogues came from the live backend registry (1450 rows before,
 1005 then 1505 after), so the absolute counts are not comparable — what is
 comparable is 0 rows after the click versus the rows it already had.
 
-### The four states this remediation added
+### The seven states this remediation added
 
 These have **no `before-*` half**, and the reason is the finding rather than an
 omission: each is a state the old code could not produce or could not report, so
@@ -90,36 +91,44 @@ there is no frame of it on the base tree to pair with.
 
 | State | What it shows |
 | --- | --- |
-| `footer-names-the-pick` | UX U1. The list is scrolled 1500px away from the keyboard's row and the pointer rests on a different one, so the only thing that says which model Enter will switch to is the footer: `Arrows move · Enter picks <the keyboard's row> · Esc closes`, beside the row mark that now moves WITH a click. Measured in the run's `picker-metrics.json` (`activeInList`, `footerText`, `hoveredLabel`). |
-| `closed-while-in-flight` | UX U2. Escape 80ms after the click: the dialog is gone and the band carries the paint at `ink-dim` with its spinner — the band is the only surface left saying a switch is in flight. |
-| `refusal-after-close` | UX U2 again, at the moment it matters: the refusal lands with nothing on screen, and the transcript now carries `The model was not changed. /model did not run: …` — written when the answer arrived rather than on the close edge, which is why this case used to leave nothing behind. |
-| `needs-sign-in-*` | QA Q1, three frames: the row the dialog labels `no credential`, the settled strip (`The model was changed (this session)` **plus** the renderer's own caveat and a `warning` tone), and the note that same fact leaves in the transcript. This is the one state here captured under a **credentialed** seed, because the distinction only exists once the owner accepts the switch — see below. |
+| `pick-pending-band` | UX U3 and design D12 together, 60 ms after the click: the picked row carries its structural edge and the spinner, the footer reads `Switching the model…`, and the band below the dialog shows the chosen model at `ink-dim` **with its own spinner** (measured: `bandSpinners: 2`) — so "waiting" is not a colour step and a hover-only tooltip. |
+| `footer-names-the-pick` | UX U1. The list is scrolled 1500 px away from the keyboard's row and the pointer rests on a different one, so the only thing that says which model Enter will switch to is the footer: `Arrows move · Enter picks <the keyboard's row> · Esc closes`. Measured in the run's `picker-metrics.json`: `activeIndex: 0`, `activeInList: false`, `footerText: "Arrows move · Enter picks GPT-5.6 Sol · Esc closes"`. |
+| `closed-while-in-flight` | UX U2. Escape 80 ms after the click, dialog gone, and the band carries the paint with its spinner (`bandText: "GPT-4.1Switching the model"`, `bandSpinners: 2`) while the transcript still holds **1** note — the answer has not landed yet. |
+| `refusal-after-close` | UX U2 at the moment it matters: the refusal landed with nothing on screen. The same run measures the transcript note count going **1 → 2** across this pair, which is the falsifiable form of the claim — the refusal sentence is identical for every refused pick, so only a count can show that THIS pick's outcome was written with the dialog already gone. Before the fix nothing was written at all. |
+| `needs-sign-in-row` | QA Q1, part 1: the row the dialog itself labels `no credential`, which is the case the strip used to report as an ordinary success. |
+| `needs-sign-in-pick-settled` | QA Q1, part 2: the settled strip quotes the owner's receipt (`model: openai/gpt-4.1 → anthropic/claude-opus-5 (this session)`) **and** appends the renderer's own sentence, on `border-warning-border`/`bg-warning-wash` instead of the success pair. The picked row's ✓ has moved to it in the same frame, which is QA Q2's fix. |
+| `needs-sign-in-after-close` | QA Q1, part 3: the same fact in the transcript (`The model was changed. This model has no credential yet…`) for the case where the dialog is gone by the time it lands. |
 
-`needs-sign-in-*` was captured in a second run of the same harness with QA's
-credentialed seed (`/tmp/qa130/seed-qa.mjs`, which writes a synthetic provider
-credential through the backend's own `AuthStore`): without a credential the owner
-refuses every switch, so the "switched but cannot run yet" state does not exist.
-The nine paired states above keep the branch's own seed, so their before/after
-comparison is unchanged.
+The four `needs-sign-in-*`/credentialed frames came from a **second run of the same
+harness with QA's credentialed seed** (`/tmp/qa130/seed-qa.mjs`, which writes a
+synthetic `openai` credential through the backend's own `AuthStore`, and caches an
+aggregator listing): without a credential the owner refuses every switch, so
+"switched but cannot run yet" does not exist there. The driver prefixes that run's
+frames with `cred-` so a frame cannot be mistaken for the other seed's, and the
+nine paired states above keep the branch's own seed — which is what makes their
+before/after comparison a comparison of the change rather than of the setup.
 
 ## What these frames do not prove
 
-- **No successful switch.** The sandbox has no provider credentials, so the
-  owner never resolves a switch: the result strip's success state, its `Done`
-  label and the in-force checkmark on the newly chosen row were NOT reached —
-  before or after. The refusal path is reached, which is why `after-close` is
-  here; the success path is covered by the Storybook `result` story and by the
-  component tests, and by nothing in the live app.
+- **The success path is reached only in the second run, and only for the states
+  that needed it.** The branch's own seed has no provider credential, so in the
+  nine paired states the owner refuses every switch: the refusal path is what
+  those frames show (`after-close`). The credentialed run reached an ordinary
+  successful switch too, but its two success frames (`cred-12`/`cred-13`) are not
+  committed — they show no state the Storybook `result` story does not, and
+  committing them under the same names as the refusal frames would misrepresent
+  which seed produced which pair. What IS committed from that run is
+  `needs-sign-in-*`, whose whole subject is the success path.
+- **The result strip's success wording** quotes the owner's own text, which in
+  these runs came from a real `local-operator serve` deciding a real switch — not
+  from a fixture — but with a synthetic credential, so nothing here proves that
+  the model ANSWERED.
 - **One theme** (`localOperatorDark`, the app's own default). The other eleven
   are the Storybook set.
 - **Still frames.** Paint timing, the profiler numbers behind the row
   memoization and the 1.1-4.2 s cold bind are asserted in the PR's own
   measurements and in `scripts/picker-feedback.test.mjs`, not read off these
   images.
-- **The band's optimistic paint** is not visible in the in-app frames: the dialog
-  covers the composer while a pick is in flight, so the band is evidenced by
-  `chat-session-status-strip--model-switch-pending` (all twelve themes) and by the
-  handle's reconciliation test.
 - **No screen-reader announcement** was verified. The pending band now carries a
   labelled spinner (`Switching the model`) and the footer names the row Enter
   would pick, which ARE the accessibility-tree changes this round made — but
