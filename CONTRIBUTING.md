@@ -171,19 +171,58 @@ Please follow the following steps to contribute:
 
 ## Release Process
 
-Once approved and merged, maintainers will package changes into releases with the following procedure:
+**Contributors do not bump the version.** `package.json` stays at the last
+released version on every feature and fix branch. A pull request that changes the
+`version` line fails the `Version Bump Guard` workflow unless its title starts
+with `chore(release):`, and a reviewer treats such a change inside a feature PR
+as a finding. A PR argues for its bump with a `Release: <patch|minor> — <one-line
+user impact>` line in its body; it never applies one.
 
-1. Update the version in `package.json`
-2. Create a git tag with prefix `v` (for example `v0.2.0`)
-3. Push the tag to the upstream repository on the commit to release on `main`
-4. Create a release from the tag on GitHub with a concise release name and a description of the changes
-5. CD will trigger on release creation and build the application for distribution on `npm`
+Releases here are **combined releases**: one version bump, one tag and one GitHub
+Release covering every PR merged since the previous tag, cut by a single
+**release owner** for that window. Merging is therefore decoupled from releasing —
+a merged PR that has not been released yet is the normal state of `main`, not a
+problem to fix — and whoever owns a PR merges it as soon as its review rounds are
+clean and fresh and CI is green. There is no release queue and no reserved
+version number. The full doctrine, including how a window is claimed and locked
+and how the bump is chosen by materiality rather than by commit type, is in
+`AGENTS.md` § "Releasing: one owner per window, and no version bumps inside
+feature PRs".
 
-**For pre-release versions**:
+The release owner's procedure, in short:
 
-- Use the `alpha` or `beta` suffix (for example `v0.2.0-alpha.1`)
-- Update the version in `package.json` on the `dev-` branch
-- Releases can be created by maintainers from the `dev-` branch if they are not ready to be merged to main
+1. Collect the window: every PR merged since the last tag, with its merge SHA and
+   its `Release:` line.
+2. Pick **one** bump for the whole window by materiality — patch unless a single
+   PR in the window is a step-function capability in its own right.
+3. Land a one-commit PR titled `chore(release): bump version to X.Y.Z`, touching
+   `package.json` only. It is still an agent-authored PR, so it still needs an
+   independent review round; a bump commit that also carries code is a defect.
+4. Tag and publish in one step, on that bump's merge commit:
+
+   ```bash
+   gh release create vX.Y.Z --target <bump-merge-sha> \
+     --prerelease --title 'X.Y.Z: <theme>' --notes-file <notes-file>
+   ```
+
+   `--target` creates the tag on exactly that SHA, and it is *publishing the
+   Release* — not pushing a tag — that triggers CD
+   (`.github/workflows/publish.yml`), which builds and attaches the installers for
+   every platform and then promotes the Release out of pre-release once this
+   Release's assets are verified. `--prerelease` is deliberate and not a
+   formality: `electron-updater` reads `/releases/latest`, which ignores
+   pre-releases, so users keep being offered the last complete Release until this
+   one's installers exist. Publishing the Release as a full release first is what
+   once told every running app it was up to date while a newer version was
+   already out.
+5. Post the tag and the Release URL on every PR in the window.
+
+**For pre-release versions**: use an `alpha` or `beta` suffix (for example
+`v0.2.0-alpha.1`), which the publish workflow builds and never promotes into
+`latest` — its name says it is not the stable channel. The suffix is the release
+owner's choice at tag time and the same combined-release rules apply to it; a
+pre-release is not a reason for any branch to carry its own `package.json`
+version.
 
 ## Pull Request Checklist
 
