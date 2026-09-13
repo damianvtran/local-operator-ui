@@ -51,11 +51,22 @@ the pair below comparable.
   two brand palettes, light included because that is where contrast defects
   hide. The twelve-theme sweep belongs to the Storybook pipeline and cannot be
   regenerated here.
-- **A still cannot show focus.** See "The caret comes back" below: that claim is
-  carried by the readback, not by the pixels.
-- **Two of the three states are unreachable in the `before` tree**, because the
-  control does not exist there. The `before` set reaches the cleared state the
-  only way it was reachable — Escape — which is the behaviour being replaced.
+- **A still shows the field's focus ring; it cannot show the caret.**
+  `after-cleared` differs from `after-rest` in the field's own row and nowhere
+  else in the frame, and the difference there is the input's 2px accent ring —
+  the strongest pixel evidence in this set, and cited as such below. What no
+  still can carry is the CARET: it is hidden in a capture, so which element
+  holds focus is read from `activeElement` rather than from an image. The ring
+  registers because the rig turns focus emulation on and drives the click
+  through CDP's own input pipeline, where the programmatic `focus()` matches
+  `html :focus-visible` (`src/renderer/src/styles/index.css`). A real pointer
+  user's Chrome may decline the programmatic focus there — the heuristic is
+  about how focus was arrived at — in which case the field shows no ring and the
+  readback is the only witness; the clear keeps the caret either way.
+- **Two states have no `before` counterpart** — `hover` and `focused` — because
+  the control does not exist in that tree. The `before` set reaches the cleared
+  state the only way it was reachable, with Escape, which is the behaviour being
+  replaced.
 
 ## Before / after
 
@@ -70,10 +81,12 @@ part of this change.
 | A filter applied | [`before-query`](before-query/localOperatorDark.webp) — `cod` in the field, and no way to clear it but Escape | [`after-query`](after-query/localOperatorDark.webp) — the `×` control sits inside the field's right edge |
 | Cleared | [`before-escape-cleared`](before-escape-cleared/localOperatorDark.webp) — Escape cleared the query and **blurred**; the frame is byte-identical to rest, because nothing is left to see | [`after-cleared`](after-cleared/localOperatorDark.webp) — the control is gone with the query, and the caret is back in the field |
 | Pointer over the control | *(no before — the control did not exist)* | [`after-hover`](after-hover/localOperatorDark.webp) — a fill step, nothing moves |
+| Control reached by keyboard | *(no before — the control did not exist)* | [`after-focused`](after-focused/localOperatorDark.webp) — the ring hugs the control, inside the field (design round 1, D1) |
 
 Light theme: [`before-query`](before-query/localOperatorLight.webp),
 [`after-query`](after-query/localOperatorLight.webp),
 [`after-hover`](after-hover/localOperatorLight.webp),
+[`after-focused`](after-focused/localOperatorLight.webp),
 [`after-cleared`](after-cleared/localOperatorLight.webp).
 
 Three frames in this set are byte-identical **by construction**: `before-rest`,
@@ -92,7 +105,7 @@ e7eb7999c1e5  before-escape-cleared/localOperatorLight.webp
 e7eb7999c1e5  after-rest/localOperatorLight.webp
 ```
 
-## The caret comes back — and a still cannot show it
+## The caret comes back — and the ring says so
 
 Both `before-escape-cleared` and `after-cleared` are pictures of an empty field.
 What separates them is in `before-readback.json` / `after-readback.json`, read
@@ -105,7 +118,8 @@ before  escape-cleared   value=""     activeElement=BODY                        
 after   rest             value=""     activeElement=BODY
 after   query            value="cod"  activeElement=INPUT[Search chats and agents]
 after   hover            value="cod"  activeElement=INPUT[Search chats and agents]
-after   cleared          value=""     activeElement=INPUT[Search chats and agents]   <- cleared, caret kept
+after   focused          value="cod"  activeElement=BUTTON[Clear search]
+after   cleared          value=""     activeElement=INPUT[Search chats and agents] <- cleared, caret kept
 ```
 
 `before-escape-cleared` is the state the operator was stuck in: filtered, then
@@ -118,9 +132,17 @@ so the click unmounts it in the same commit as the state update, and the
 question the change had to answer was where the browser puts focus when the
 focused element leaves the DOM. It puts it on `<body>` — so the focus is
 restored explicitly (`clearSearch` in
-`src/renderer/src/features/chat/clear-search.ts`), and the readback above is
-what proves it, because the caret is hidden and a programmatic focus after a
-mouse gesture paints no focus ring.
+`src/renderer/src/features/chat/clear-search.ts`), and **two independent
+artifacts then record that it worked**:
+
+- the readback above, which names the focused element directly;
+- the frame itself. `after-cleared` and `after-rest` are identical above and
+  below the field's row (0 differing pixels at a 20% difference floor) and
+  differ inside it by 4,784 device pixels, whose difference map is the input's
+  rounded 2px accent ring — the ring is in `after-cleared`, and absent from
+  `before-rest`, `after-rest` and `before-escape-cleared`, which are all
+  byte-identical to each other. So the pixel record of "the caret came back" is
+  a ring the reader can see, not only a number in a JSON file.
 
 ## Geometry: the control is inside the field, and nothing moves under the pointer
 
@@ -134,7 +156,9 @@ text     clips at x:456               -> 4px clear of the control's own edge
 
 The control is a 28×28 hit target (`icon-sm`, above the 24×24 minimum) on the
 `size-7` step of the shared button. Box position and size are identical in the
-rest, hover and cleared samples:
+`query` and `hover` samples (there is no control box in `rest` or `cleared` — it
+is not rendered when the query is empty, which is `controlBox: null` in the
+readback):
 
 ```
 theme             state    control box              fill                    ink
@@ -152,6 +176,33 @@ browser's own event loop, and this rig does not attempt it. The pressed step is
 `active:bg-accent-wash active:text-accent`, asserted as a class in
 `scripts/clear-search.test.mjs`, and its contrast is the `ghost` variant's
 existing pairing — see the note on the contrast contract below.
+
+### The keyboard ring sits inside the field (design round 1, D1)
+
+The control is 28px inside a 32px field, so it has 2px of clearance, while the
+shared `icon-sm` step draws a 2px outline at a **1px** offset — which needs 3px.
+At the step's own offset the ring's top and bottom arcs crossed the field's
+`border-control` line and read as a control bulging out of its field. This
+instance pulls the ring inside its own box (`focus-visible:outline-offset:
+-2px`), and the `focused` state is in the set to hold that:
+
+```
+theme             outline              offset   ring outer edge          field
+localOperatorDark  2px solid rgb(56,201,106)   -2px   {x:460,y:50,w:28,h:28}   {x:228,y:48,w:264,h:32}
+localOperatorLight 2px solid rgb(20,120,66)    -2px   {x:460,y:50,w:28,h:28}   {x:228,y:48,w:264,h:32}
+```
+
+An outline is drawn on the outside of the border box *inflated by the offset*,
+so an offset of −2px with a 2px ring puts the ring's outer edge exactly on the
+control's own box — 2px clear of the field's boundary vertically and 4px clear
+of it horizontally, in both palettes. The ring is never clipped by the field and
+never leaves it; `outline`, never `box-shadow`, so the contract's rule holds.
+Both properties are asserted against this readback by the last test in
+`scripts/clear-search.test.mjs`. What the frame still does **not** fix is the
+design round's second half — while the control holds focus the field shows no
+ring of its own, so the emphasis moves inside the field rather than staying
+around it; that is the `:focus-within` alternative, which the round recorded as
+a bigger change than this PR and did not take.
 
 ## Why no `CONTROLS` row was added
 
@@ -192,9 +243,23 @@ lost, it has to be re-taken by hand:
    in `desktopProxyPlugin`, whose own import of `../../src/main/desktop-media`
    carries no file extension, which Vite resolves and Node's ESM loader refuses
    with `ERR_MODULE_NOT_FOUND`.
-4. `node out/evidence-harness/capture.mjs http://localhost:5231 docs/evidence/clear-search after`
-   (and `before`, from a tree without the change — stash
-   `chat-sidebar.tsx` for the comparison half).
+4. Point the app at this rig in a **scratch** `.env`:
+   `VITE_LOCAL_OPERATOR_API_URL=http://localhost:5231` — the harness's own origin
+   — and `VITE_DISABLE_BACKEND_MANAGER=true`. That plugin (`rigHealthPlugin` in
+   the harness config) answers `/health` and `/v1/*` by forwarding to the
+   isolated backend, and it exists because of the app's CSP: `index.html`'s
+   `connect-src` names only `'self'` plus the shipped backend origins, so a fetch
+   to any other port is refused by POLICY with no request sent at all, which is
+   what painted the red offline banner across every frame of an earlier pass of
+   this set. `capture.mjs` now fails the run if that banner is present.
+5. `node out/evidence-harness/capture.mjs http://localhost:5231 docs/evidence/clear-search after`
+   (and `before`, from a tree without the change — `git show origin/main:<path>`
+   over `chat-sidebar.tsx` for the comparison half, restored afterwards). The
+   `after` run takes five states (rest, query, hover, focused, cleared) and the
+   `before` run three (rest, query, escape-cleared): `hover` and `focused` have
+   no counterpart without the control. Both runs are deterministic — re-running
+   one reproduces its frames byte for byte (the `after` frames in this commit
+   are byte-identical to the first pass's, which is the same claim).
 
 Three pieces of persisted state are seeded on every load, or the frames lie:
 
