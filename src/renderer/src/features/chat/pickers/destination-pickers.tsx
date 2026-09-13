@@ -19,6 +19,7 @@ import {
 	desktopKeys,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
+import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
@@ -26,7 +27,11 @@ import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	keepPreviousData,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -35,11 +40,15 @@ import type {
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
-import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalModel,
+	DesktopHistoryPage,
+} from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import type { SlashCommandMeta } from "../components/slash-commands";
-import { specUnresolved } from "../session-status/session-model";
+import { modelSelector, specUnresolved } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
+import { catalogueListing } from "./model-catalogue-listing";
 import {
 	PickerCheck,
 	PickerField,
@@ -109,6 +118,7 @@ export const ModelPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
+	note,
 }) => {
 	const [live, setLive] = useState(false);
 	const catalogue = useQuery({
@@ -116,14 +126,32 @@ export const ModelPicker: FC<PickerContext> = ({
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({ op: "models.catalogue", live }),
 		staleTime: live ? 0 : 60_000,
+		/*
+		 * A live re-list costs a measured 2.33 s, and `live` is a new query key —
+		 * so without this the list is blanked to the loading spinner for the whole
+		 * fetch, which reads as "the catalogue disappeared" right after the user
+		 * asked for it to be refreshed (latency U4). `keepPreviousData` keeps the
+		 * rows the picker already has painted under the new `isFetching` state.
+		 */
+		placeholderData: keepPreviousData,
 	});
+	// Only a PENDING live fetch says "Refreshing…": the initial (non-live) load is
+	// also `isFetching`, and labelling that "Refreshing…" would describe a fetch
+	// the user never asked for (design D8).
+	const refreshing = live && catalogue.isFetching;
 	const command = useSessionCommand(sessionId);
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
 	const selected = canonical.frontend?.selected_model;
-	const currentSelector = selected
-		? `${selected.provider}/${selected.model_id}`
-		: null;
+	/*
+	 * Both halves must be non-empty to name a model, and the guard is the shared
+	 * selector rather than a local expression: a session frame can carry a spec
+	 * whose provider or model_id is an empty string, and interpolating that
+	 * produced the description "This session runs /." (design D9). The hook's
+	 * pending-model reconciliation uses the same function, so "the same model"
+	 * means one string in both places.
+	 */
+	const currentSelector = modelSelector(selected);
 
 	const options = useMemo<PickerOption[]>(() => {
 		const rows = (catalogue.data?.models ?? []) as CatalogueRow[];
@@ -152,20 +180,40 @@ export const ModelPicker: FC<PickerContext> = ({
 		}));
 	}, [catalogue.data, currentSelector]);
 
-	const errors = catalogue.data?.errors ?? {};
-	const errorNote = Object.keys(errors).length
-		? `Listing unavailable for: ${Object.keys(errors).join(", ")}`
-		: null;
+	const listing = catalogueListing(catalogue.data, catalogue, errorText);
 
 	const onPick = useCallback(
-		async (value: string) => {
+		async (value: string, option: PickerOption) => {
+			/*
+			 * U1: paint the chosen model in the session status band BEFORE awaiting
+			 * the owner. A switch that pays a cold runtime bind measures 1.1-4.2 s, and
+			 * the authoritative `frontend.update` frame lands 3-6 ms before the HTTP
+			 * receipt when the owner is warm — but a delayed or lost frame must not
+			 * leave the user with no acknowledgement at all. The paint is a PENDING
+			 * value, not a claimed one: the hook drops it the moment an authoritative
+			 * frame names this model, and the picker drops it on a refusal below.
+			 *
+			 * The model is assembled from the selector the row carried, so the paint
+			 * cannot name a model the catalogue did not offer.
+			 */
+			const [provider, ...rest] = value.split("/");
+			const modelId = rest.join("/");
+			const model: CanonicalModel = {
+				provider,
+				model_id: modelId,
+				display_name: option.label,
+			};
+			canonical.paintPendingModel(model);
 			const outcome = await command.run("model", value);
-			if (!outcome || isNativeAction(outcome) || outcome.kind === "error")
+			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
+				// The owner refused (or the call itself failed): the band goes back to
+				// the authoritative model rather than keeping a paint that never landed.
+				canonical.clearPendingModel();
 				return;
+			}
 			if (persistDefault) {
 				// Explicit default scope: the session change above is the owner's;
 				// the default is the typed settings key, written only on request.
-				const [provider, ...rest] = value.split("/");
 				await persist.perform(
 					async () => {
 						await desktopResult({
@@ -176,19 +224,19 @@ export const ModelPicker: FC<PickerContext> = ({
 						await desktopResult({
 							op: "settings.edit",
 							key: "model_name",
-							value: rest.join("/"),
+							value: modelId,
 						});
 						return value;
 					},
-					(model) => ({
+					(selector) => ({
 						tone: "success",
-						text: `Default for new sessions: ${model}`,
+						text: `Default for new sessions: ${selector}`,
 					}),
 					"The default was not saved",
 				);
 			}
 		},
-		[command, persistDefault, persist],
+		[canonical, command, persistDefault, persist],
 	);
 
 	const combined: PickerResult | null = persist.result
@@ -200,10 +248,33 @@ export const ModelPicker: FC<PickerContext> = ({
 			}
 		: command.result;
 
+	/*
+	 * The strip lives INSIDE the dialog, so a refused pick left the user with
+	 * nothing the moment they closed it — the transcript showed no sign that
+	 * anything had been attempted (design D5). The repo already has this
+	 * outcome's home: the composer's own note path (`slash-dispatch.ts`'s `note`,
+	 * which is what a non-picker slash line uses), so a failed pick is written
+	 * there on close. Only a FAILURE is written: a success is already visible in
+	 * the strip, and the owner repaints the band.
+	 */
+	const closeWithOutcome = useCallback(() => {
+		const failure = command.result;
+		if (failure?.tone === "error") {
+			note(`The model was not changed. ${failure.text}`, true);
+		}
+		onClose();
+	}, [command.result, note, onClose]);
+
 	return (
 		<PickerHost
 			open
-			onClose={onClose}
+			onClose={closeWithOutcome}
+			/*
+			 * The scope this pick applies to, and it has to be visible: the checkbox
+			 * changes what the pick DOES, and a label identical in both states only
+			 * told the user that after the fact (design D7). Ticked, the label states
+			 * the consequence for THIS pick rather than describing a general option.
+			 */
 			title="Model"
 			description={
 				currentSelector
@@ -212,7 +283,8 @@ export const ModelPicker: FC<PickerContext> = ({
 			}
 			options={options}
 			loading={catalogue.isLoading}
-			loadError={catalogue.isError ? errorText(catalogue.error) : errorNote}
+			loadError={listing.loadError}
+			notice={listing.notice}
 			searchPlaceholder="Search models"
 			onPick={onPick}
 			busy={command.busy || persist.busy}
@@ -224,7 +296,9 @@ export const ModelPicker: FC<PickerContext> = ({
 						onCheckedChange={setPersistDefault}
 						tone="muted"
 					>
-						Also make it the default for new sessions
+						{persistDefault
+							? "This pick also sets the default for new sessions"
+							: "Also make it the default for new sessions"}
 					</PickerCheck>
 					<Button
 						variant="ghost"
@@ -233,9 +307,16 @@ export const ModelPicker: FC<PickerContext> = ({
 						onClick={() => setLive(true)}
 						disabled={live && catalogue.isFetching}
 					>
-						{catalogue.data?.source === "live"
-							? "Live list"
-							: "Refresh from providers"}
+						{refreshing ? (
+							<span className="flex items-center gap-2">
+								<Spinner size="xs" />
+								Refreshing…
+							</span>
+						) : catalogue.data?.source === "live" ? (
+							"Live list"
+						) : (
+							"Refresh from providers"
+						)}
 					</Button>
 				</div>
 			}

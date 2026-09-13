@@ -36,6 +36,11 @@ for name in $(env | sed -n 's/^\(CMUX_[A-Z_]*\)=.*/\1/p'); do unset "$name"; don
 unset LOCAL_OPERATOR_CONFIG_DIR LOCAL_OPERATOR_HOME LOCAL_OPERATOR_DESKTOP_TOKEN 2>/dev/null || true
 
 node "$HARNESS/seed.mjs" "$SCRATCH" >/dev/null
+# Optional second seeding pass, for a specialised driver that needs a different
+# STARTING STATE (a configured model, a credential, a longer transcript) rather
+# than a different measurement. Runs with the same scratch root, after the
+# standard seed, and is a separate script so this harness keeps one seed shape.
+if [ -n "${EXTRA_SEED:-}" ]; then node "$EXTRA_SEED" "$SCRATCH" >/dev/null; fi
 TOKEN=$(openssl rand -hex 32)
 
 echo "== $LABEL: tree=$TREE mode=$MODE window=$SIZE scratch=$SCRATCH"
@@ -104,7 +109,7 @@ LOG="$SCRATCH/frontmost.log"; : > "$LOG"
   done ) &
 SAMPLER=$!
 
-node "$HARNESS/drive.mjs" "$CDP_PORT" "$SCRATCH" "$ROUTE" | tee "$SCRATCH/drive.out"
+node "${DRIVE_SCRIPT:-$HARNESS/drive.mjs}" "$CDP_PORT" "$SCRATCH" "$ROUTE" | tee "$SCRATCH/drive.out"
 
 # A second launch, while the sampler is still running. The single-instance lock
 # hands it to this process as `second-instance`, which is the other path that can

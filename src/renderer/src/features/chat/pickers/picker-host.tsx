@@ -38,10 +38,12 @@ import {
 	type FormEvent,
 	type KeyboardEvent,
 	type ReactNode,
+	memo,
 	useCallback,
 	useEffect,
 	useId,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from "react";
@@ -82,6 +84,17 @@ export type PickerHostProps = {
 	loading?: boolean;
 	/** Options failed to load; shown in place of the list. */
 	loadError?: string | null;
+	/**
+	 * A PARTIAL failure: the list is usable, and this note sits above it.
+	 *
+	 * Distinct from `loadError` because the two answer different questions. A
+	 * `models.catalogue` answer can carry per-provider listing errors while still
+	 * holding rows, and putting that note in `loadError` replaced the whole list
+	 * with 21 provider names — 1450 usable rows gone (design D4). The list is the
+	 * answer the user came for; a note about what is missing belongs beside it,
+	 * not instead of it.
+	 */
+	notice?: string | null;
 	/** Text shown when the (filtered) list is empty. */
 	emptyText?: string;
 	searchPlaceholder?: string;
@@ -132,6 +145,234 @@ const TONE_CLASS: Record<PickerResult["tone"], string> = {
 	error: "border-danger-border bg-danger-wash text-ink",
 };
 
+type PickerRowProps = {
+	id: string;
+	option: PickerOption;
+	index: number;
+	/** This is the row Enter picks, and the row `aria-activedescendant` names. */
+	isActive: boolean;
+	/** The pointer is over this row. Independent of `isActive` on purpose. */
+	isHovered: boolean;
+	/** This row's value is the one an in-flight operation is answering about. */
+	isPicked: boolean;
+	onHover: (index: number | null) => void;
+	onPick: (option: PickerOption) => void;
+};
+
+/*
+ * The list's pointer state and the decisions the footer makes, as pure exports.
+ *
+ * `scripts/picker-feedback.test.mjs` drives these directly, which is the same
+ * discipline `usage-view-model.ts` and `session-model.ts` follow: the behaviour
+ * a frame can only show today is asserted on the functions the component
+ * actually runs, so a later edit cannot keep the frame and lose the rule. The
+ * transitions are real — `hover` marks the pointer's row, `leave` clears it and
+ * KEEPS the picked mark, `settle` clears the mark and keeps the pointer —
+ * because the two lifetimes are the design (D2/D3).
+ */
+export type PickerListState = {
+	/** The row the pointer is over, or null. */
+	hovered: number | null;
+	/** The value of the row an in-flight operation is answering about. */
+	picked: string | null;
+};
+
+export const PICKER_LIST_INITIAL: PickerListState = {
+	hovered: null,
+	picked: null,
+};
+
+export type PickerListAction =
+	| { type: "hover"; index: number }
+	| { type: "leave" }
+	| { type: "pick"; value: string }
+	| { type: "settle" }
+	| { type: "reset" };
+
+export function pickerListReducer(
+	state: PickerListState,
+	action: PickerListAction,
+): PickerListState {
+	switch (action.type) {
+		case "hover":
+			return state.hovered === action.index
+				? state
+				: { ...state, hovered: action.index };
+		case "leave":
+			return state.hovered === null ? state : { ...state, hovered: null };
+		case "pick":
+			return { ...state, picked: action.value };
+		case "settle":
+			return state.picked === null ? state : { ...state, picked: null };
+		case "reset":
+			return PICKER_LIST_INITIAL;
+	}
+}
+
+/**
+ * What the body shows, given the load state and how many rows survived it.
+ *
+ * A separate `notice` never reaches this decision: the note is drawn ABOVE the
+ * body, and a partial listing failure that still holds rows must show those
+ * rows (design D4 — the whole defect was 1450 usable rows replaced by 21
+ * provider names).
+ */
+export type PickerBodyKind = "loading" | "error" | "empty" | "list";
+
+export function pickerBodyKind(state: {
+	loading: boolean;
+	loadError: string | null;
+	rowCount: number;
+}): PickerBodyKind {
+	if (state.loading) return "loading";
+	if (state.loadError) return "error";
+	return state.rowCount === 0 ? "empty" : "list";
+}
+
+/**
+ * The footer's left slot.
+ *
+ * The arrow/Enter hint is advertised only when there IS something to move
+ * through and nothing else is happening: with no rows it described controls
+ * that do nothing (design D6), and while busy the useful fact is that the owner
+ * is still being waited on (design D3, latency U2).
+ */
+export function pickerFooterHint(state: {
+	busy: boolean;
+	hasList: boolean;
+	rowCount: number;
+}): string {
+	if (state.busy) return "Waiting for the backend…";
+	if (state.hasList && state.rowCount > 0)
+		return "Arrows move, Enter picks, Esc closes";
+	return "Esc closes";
+}
+
+/**
+ * The footer's right-hand control.
+ *
+ * `Close` while busy rather than `Cancel`: closing the dialog does not cancel
+ * the operation the owner is already performing (design D3). `Done` once a
+ * non-refused result is on screen, `Cancel` when a pick has not succeeded —
+ * the two words the host already used.
+ */
+export function pickerPrimaryLabel(state: {
+	busy: boolean;
+	result: PickerResult | null;
+}): string {
+	if (state.busy) return "Close";
+	return state.result && state.result.tone !== "error" ? "Done" : "Cancel";
+}
+
+/**
+ * One option row, memoized.
+ *
+ * WHY IT IS ITS OWN COMPONENT. The host re-renders on every pointer move and
+ * every keystroke, and with the rows inline each of those repainted the whole
+ * catalogue — measured at 2-4 ms for 600 rows and 24.6 ms p50 under a 6x CPU
+ * throttle, against a real listing that held 1450. The row's props are
+ * primitives plus the option object (whose identity is stable: adapters derive
+ * the list once per catalogue answer) and two callbacks the host keeps stable,
+ * so a hover now re-renders the row being left and the row being entered, and
+ * nothing else. Virtualizing the list was the alternative and was rejected on
+ * the profiler's own numbers — the full mount measures ~19 ms — and on the a11y
+ * risk, since windowing has to preserve `aria-activedescendant`, the arrow walk
+ * and the current-row start.
+ *
+ * WHY TWO GROUNDS, AND WHICH GROUND EACH ONE TAKES.
+ *
+ * `isActive` is the keyboard's selection — what Enter picks. It takes
+ * `bg-sunken`, because that is the only ground role that steps perceptibly away
+ * from the dialog's own `bg-elevated` in ALL twelve themes (measured ΔE00
+ * 5.85-16.70). The sibling composer popup's `bg-accent-wash` tint was the first
+ * choice and is a real step in the brand pair, but `accent-wash` collapses onto
+ * `elevated` in obsidian (ΔE00 0.77, ratio 1.01) and in dune and tokyoNight it
+ * is under ΔE00 4 — i.e. it would reproduce the original defect for whichever
+ * theme the user happens to run. The wash keeps the pointer's role instead.
+ *
+ * `isHovered` is the pointer's own position and nothing else. It takes
+ * `bg-accent-wash` — the tint the composer popup uses for pointer feedback —
+ * and it is cleared by `onMouseLeave` on the listbox, so a highlight left
+ * behind by the pointer can never be mistaken for the keyboard's. Note what
+ * this semantics means: the pointer no longer steers `active`. Hovering a row
+ * and pressing Enter picks the keyboard's row, not the hovered one; the
+ * pointer's own action is the click (`onMouseDown` below, which picks the row
+ * under it), and Enter belongs to the keyboard. The alternative — hover sets
+ * `active` too, as the popup does — is why the two states were byte-identical
+ * before (design D2).
+ */
+export const PickerRow: FC<PickerRowProps> = memo(
+	({ id, option, index, isActive, isHovered, isPicked, onHover, onPick }) => (
+		/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant. */
+		<div
+			id={id}
+			// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant.
+			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
+			role="option"
+			aria-selected={isActive}
+			aria-disabled={option.disabled || undefined}
+			// `data-current` is a HOOK, not a style: it marks the row the owner
+			// reports as the model in force, for the a11y tree and for the harness's
+			// assertions. It is deliberately unstyled — the visible mark is the
+			// accent check beside the label, which does not depend on the attribute
+			// existing (design D11).
+			data-current={option.current || undefined}
+			data-hovered={isHovered || undefined}
+			data-picked={isPicked || undefined}
+			onMouseEnter={() => onHover(index)}
+			onMouseDown={(event) => {
+				// mousedown, not click: keeps focus in the search input, the same
+				// reason the composer popup does it.
+				event.preventDefault();
+				onPick(option);
+			}}
+			className={cn(
+				"flex cursor-default items-start gap-3 rounded-sm px-2 py-1.5",
+				isActive && "bg-sunken",
+				isHovered && !isActive && "bg-accent-wash",
+				option.disabled && "text-ink-disabled",
+			)}
+		>
+			<span className="flex min-w-0 flex-1 flex-col">
+				<span className="flex items-center gap-2">
+					<span
+						className={cn(
+							"truncate text-body-sm",
+							option.disabled ? "text-ink-disabled" : "text-ink",
+						)}
+					>
+						{option.label}
+					</span>
+					{option.current && (
+						<Check
+							className="size-3.5 shrink-0 text-accent"
+							aria-label="Current"
+						/>
+					)}
+				</span>
+				{option.description && (
+					<span className="truncate text-ink-muted text-meta">
+						{option.description}
+					</span>
+				)}
+			</span>
+			{isPicked ? (
+				/* The picked row's mark, held until the operation settles (design D3).
+				   It replaces the meta slot rather than adding a second element, so the
+				   row does not change height while the answer is pending. */
+				<span className="shrink-0">
+					<Spinner size="sm" label="Waiting for the backend" />
+				</span>
+			) : option.meta ? (
+				<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
+					{option.meta}
+				</span>
+			) : null}
+		</div>
+	),
+);
+PickerRow.displayName = "PickerRow";
+
 export const PickerHost: FC<PickerHostProps> = ({
 	open,
 	onClose,
@@ -140,6 +381,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	options,
 	loading = false,
 	loadError = null,
+	notice = null,
 	emptyText = "Nothing matches.",
 	searchPlaceholder = "Search",
 	onPick,
@@ -157,7 +399,16 @@ export const PickerHost: FC<PickerHostProps> = ({
 }) => {
 	const listId = useId();
 	const [query, setQuery] = useState("");
+	// The keyboard's selection: the row Enter picks, and the row
+	// `aria-activedescendant` names. Moved by the arrow keys only — see
+	// `hovered` for why the pointer does not steer it.
 	const [active, setActive] = useState(0);
+	// The pointer's position and the picked row's mark, one reducer (see
+	// `pickerListReducer`): both are the LIST's interaction state, they expire on
+	// different edges, and keeping them together is what makes "the pointer left"
+	// and "the operation settled" two separate transitions rather than two
+	// effects racing over the same state.
+	const [list, dispatch] = useReducer(pickerListReducer, PICKER_LIST_INITIAL);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
@@ -250,7 +501,14 @@ export const PickerHost: FC<PickerHostProps> = ({
 		if (!open) return;
 		setQuery("");
 		setActive(0);
+		dispatch({ type: "reset" });
 	}, [open]);
+	// The picked row's mark is held until the operation SETTLES, not until the
+	// next render: the point of it is to say which row the backend is answering
+	// about, so it must survive every frame the answer is pending.
+	useEffect(() => {
+		if (!busy) dispatch({ type: "settle" });
+	}, [busy]);
 	// Start on the current row so Enter alone confirms "no change"; clamp
 	// rather than reset when the filter shortens the list.
 	useEffect(() => {
@@ -273,10 +531,33 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const pick = useCallback(
 		async (option: PickerOption | undefined) => {
 			if (!option || option.disabled || busy) return;
+			dispatch({ type: "pick", value: option.value });
 			await onPick?.(option.value, option);
 		},
 		[onPick, busy],
 	);
+	/*
+	 * Handler identities the memoized rows depend on.
+	 *
+	 * `pick` moves when `busy` or the adapter's callback moves, and a new
+	 * identity for it would invalidate every row's props and re-render the whole
+	 * list on each pick — the cost memoization exists to remove. The ref keeps
+	 * the identity stable while still calling the current closure; row callbacks
+	 * are the only readers.
+	 */
+	const pickRef = useRef(pick);
+	useEffect(() => {
+		pickRef.current = pick;
+	}, [pick]);
+	const pickRow = useCallback((option: PickerOption) => {
+		void pickRef.current(option);
+	}, []);
+	const setHoveredIndex = useCallback(
+		(index: number | null) =>
+			dispatch(index === null ? { type: "leave" } : { type: "hover", index }),
+		[],
+	);
+	const clearHovered = useCallback(() => dispatch({ type: "leave" }), []);
 
 	const onKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
@@ -319,6 +600,15 @@ export const PickerHost: FC<PickerHostProps> = ({
 		}
 		return [...groups.entries()];
 	}, [filtered]);
+
+	// Which of the four body states this render is in. The decision is a pure
+	// export so its order (loading before error before empty) is asserted rather
+	// than re-derived from the JSX each time this component is touched.
+	const bodyKind = pickerBodyKind({
+		loading,
+		loadError,
+		rowCount: filtered.length,
+	});
 	// Flat index across groups, so arrow keys walk the visible order.
 	let flatIndex = -1;
 
@@ -390,13 +680,19 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 				{hasList && (
 					<div className="px-3 pt-3">
-						{loading ? (
+						{/* The partial-listing note, ABOVE the body rather than instead of
+						    it: `catalogue.data` still holds the rows the other providers
+						    answered with (design D4). */}
+						{notice && (
+							<p className="px-2 pb-2 text-body-sm text-warning">{notice}</p>
+						)}
+						{bodyKind === "loading" ? (
 							<div className="flex h-24 items-center justify-center">
 								<Spinner size="md" label="Loading" />
 							</div>
-						) : loadError ? (
+						) : bodyKind === "error" ? (
 							<p className="px-2 py-3 text-body-sm text-danger">{loadError}</p>
-						) : filtered.length === 0 ? (
+						) : bodyKind === "empty" ? (
 							<p className="px-2 py-3 text-body-sm text-ink-dim">{emptyText}</p>
 						) : (
 							/* biome-ignore lint/a11y/useFocusableInteractive: the search input keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -407,6 +703,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 								role="listbox"
 								aria-label={title}
+								// The pointer's highlight is cleared when it leaves the list, so a
+								// hover left over from somewhere else can never read as the
+								// keyboard's selection (design D2).
+								onMouseLeave={clearHovered}
 								className="max-h-[min(50vh,420px)] overflow-y-auto"
 							>
 								{grouped.map(([group, rows]) => (
@@ -419,62 +719,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 										{rows.map((option) => {
 											flatIndex += 1;
 											const index = flatIndex;
-											const isActive = index === active;
 											return (
-												/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant. */
-												<div
+												<PickerRow
 													key={option.value}
 													id={`${listId}-${index}`}
-													// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant.
-													// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
-													role="option"
-													aria-selected={isActive}
-													aria-disabled={option.disabled || undefined}
-													data-current={option.current || undefined}
-													onMouseMove={() => setActive(index)}
-													onMouseDown={(event) => {
-														// mousedown, not click: keeps focus in the search
-														// input, the same reason the composer popup does it.
-														event.preventDefault();
-														void pick(option);
-													}}
-													className={cn(
-														"flex cursor-default items-start gap-3 rounded-sm px-2 py-1.5",
-														isActive && "bg-elevated",
-														option.disabled && "text-ink-disabled",
-													)}
-												>
-													<span className="flex min-w-0 flex-1 flex-col">
-														<span className="flex items-center gap-2">
-															<span
-																className={cn(
-																	"truncate text-body-sm",
-																	option.disabled
-																		? "text-ink-disabled"
-																		: "text-ink",
-																)}
-															>
-																{option.label}
-															</span>
-															{option.current && (
-																<Check
-																	className="size-3.5 shrink-0 text-accent"
-																	aria-label="Current"
-																/>
-															)}
-														</span>
-														{option.description && (
-															<span className="truncate text-ink-muted text-meta">
-																{option.description}
-															</span>
-														)}
-													</span>
-													{option.meta && (
-														<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
-															{option.meta}
-														</span>
-													)}
-												</div>
+													option={option}
+													index={index}
+													isActive={index === active}
+													isHovered={index === list.hovered}
+													isPicked={list.picked === option.value}
+													onHover={setHoveredIndex}
+													onPick={pickRow}
+												/>
 											);
 										})}
 									</div>
@@ -578,20 +834,31 @@ export const PickerHost: FC<PickerHostProps> = ({
 				<div className="flex items-center justify-between gap-3 px-5 py-4">
 					<span className="text-ink-dim text-meta">
 						{busy ? (
-							<span className="flex items-center gap-2">
+							/*
+							 * `Working` was the whole of the feedback while a pick was in flight,
+							 * and a cold backend bind measures 1.1-4.2 s — long enough that the
+							 * word alone reads as a hang (design D3, latency U2). What the UI
+							 * actually knows is that it asked the owner and is waiting for the
+							 * answer, so that is what it says; the picked row's spinner says
+							 * which row the answer is about.
+							 */
+							<span className="flex items-center gap-2 text-ink-muted">
 								<Spinner size="sm" />
-								Working
+								{pickerFooterHint({ busy, hasList, rowCount: filtered.length })}
 							</span>
-						) : hasList ? (
-							"Arrows move, Enter picks, Esc closes"
 						) : (
-							"Esc closes"
+							pickerFooterHint({ busy, hasList, rowCount: filtered.length })
 						)}
 					</span>
 					<div className="flex items-center gap-2">
 						{actions}
+						{/*
+						 * `Cancel` while busy named the wrong action: the dialog closing does not
+						 * cancel the switch the owner is already performing — it only stops the
+						 * user watching it (design D3). `Close` says what the control does.
+						 */}
 						<Button variant="ghost" size="sm" type="button" onClick={onClose}>
-							{result && result.tone !== "error" ? "Done" : "Cancel"}
+							{pickerPrimaryLabel({ busy, result })}
 						</Button>
 						{onSubmit && (
 							<Button
