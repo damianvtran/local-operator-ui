@@ -108,7 +108,11 @@ function endpoint(request: DesktopMediaRequest): {
 
 export async function requestDesktopMedia(
 	input: unknown,
-	bytes: Uint8Array | null,
+	// ArrayBuffer-backed by contract: `Blob`, which this relay builds the
+	// multipart body from, accepts no other view. `desktop-ipc.ts` is where the
+	// value arriving over IPC is narrowed to this, so the requirement travels
+	// with the type instead of being asserted again here.
+	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
 ): Promise<DesktopMediaResponse> {

@@ -28,6 +28,22 @@ const emitBytecode = process.env.LOCAL_OPERATOR_UI_NO_BYTECODE !== "true";
 // passing an option) is what makes electron-vite emit ordinary .js.
 const bytecodePlugins = emitBytecode ? [bytecodePlugin()] : [];
 
+// The PRELOAD never gets bytecode, not even in the packaged desktop builds.
+//
+// electron-vite's bytecode loader requires Node's `vm` and `v8` modules and
+// rewrites the cached data's flag hash. A RENDERER process does not accept that
+// on Electron 44: it logs "The vm module of Node.js is unsupported in Electron's
+// renderer process ... avoiding the module is highly recommended", then fails
+// the load with `Error: Invalid or incompatible cached data
+// (cachedDataRejected)`. `out/preload/index.js` therefore never ran,
+// `window.electron` was undefined, and the renderer could not reach main at all
+// — measured in both the built app and the electron-builder `--dir` artifact.
+//
+// The same .jsc loads correctly in the main process, which is how we know the
+// bytecode matches the runtime and the renderer is the thing that changed: the
+// loader is fine where Node's `vm` still works, and unusable where it does not.
+// The preload is a few KB, so plain JS there costs nothing.
+
 export default defineConfig({
 	assetsInclude: ["**/*.sh", "**/*.ps1"],
 	main: {
@@ -38,7 +54,9 @@ export default defineConfig({
 		],
 	},
 	preload: {
-		plugins: [externalizeDepsPlugin(), ...bytecodePlugins],
+		// No bytecode plugin here on purpose -- see the note above. It is absent
+		// rather than an empty spread, so the decision reads as one.
+		plugins: [externalizeDepsPlugin()],
 	},
 	renderer: {
 		resolve: {

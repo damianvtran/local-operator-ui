@@ -3606,7 +3606,7 @@ test("the banner's remedy names the release the last check read", async () => {
  * REAL: `MacUpdater` itself, `ElectronHttpExecutor`, `Provider.resolveFiles`,
  * its block-map URL construction, `GenericDifferentialDownloader`, the
  * `sha512` verification of the downloaded file, and the block maps - generated
- * by electron-builder's own `app-builder blockmap` binary, the same call
+ * by electron-builder's own `buildBlockMap`, the same call
  * `differentialUpdateInfoBuilder.createBlockmap` makes - served over real
  * loopback HTTP with real `Range` requests.
  *
@@ -3753,30 +3753,60 @@ const { MacUpdater, ElectronHttpExecutor } = await import(
 const loUpdaterRequire = createRequire(import.meta.url);
 
 /**
- * electron-builder's own block-map binary, resolved through the package that
- * depends on it (`app-builder-bin` is not hoisted to the root by pnpm).
+ * electron-builder's own block-map implementation, resolved through the package
+ * that depends on it (neither `electron-builder` nor `app-builder-lib` is
+ * hoisted to the root by pnpm).
+ *
+ * This section used to shell out to `app-builder-bin`'s `blockmap` subcommand,
+ * which WAS the shipped path then: `app-builder-lib`'s
+ * `differentialUpdateInfoBuilder.createBlockmap` spawned that binary. 26.16
+ * replaced it with `buildBlockMap` in JS (Rabin fingerprinting, streaming), and
+ * `app-builder-bin` is no longer a dependency at all -- a clean install has no
+ * such binary. That is how this file came to fail with `MODULE_NOT_FOUND:
+ * app-builder-bin` on CI while passing on a working tree that still had one from
+ * an older install, so fixtures are now built by the function the builder itself
+ * calls, which is the whole point of the section.
+ *
+ * The path is app-builder-lib's internals, so the shape is asserted rather than
+ * trusted: a reorganization fails here with a name instead of quietly testing
+ * nothing.
  */
-function loAppBuilderPath() {
+function loBlockmapBuilder() {
 	const electronBuilder = loUpdaterRequire.resolve(
 		"electron-builder/package.json",
 	);
-	return loUpdaterRequire(
-		createRequire(electronBuilder).resolve("app-builder-bin"),
-	).appBuilderPath;
+	const appBuilderLib = createRequire(electronBuilder).resolve(
+		"app-builder-lib/package.json",
+	);
+	const modulePath = join(
+		dirname(appBuilderLib),
+		"out",
+		"targets",
+		"blockmap",
+		"blockmap.js",
+	);
+	const { buildBlockMap } = loUpdaterRequire(modulePath);
+	assert.equal(
+		typeof buildBlockMap,
+		"function",
+		`electron-builder's block-map implementation moved or changed shape: ${modulePath} does not export buildBlockMap`,
+	);
+	return buildBlockMap;
 }
 
 const LO_MB = 1024 * 1024;
 
 /**
- * The fixture artifact's size: 4 MB less 12345 bytes, and the odd number is
- * load-bearing rather than decorative. `app-builder blockmap` appends a
- * zero-length final block when the input is an exact multiple of its 32 KiB
- * block size, and electron-updater's plan builder turns that into a
- * zero-length COPY whose `createReadStream({start, end})` Node rejects
- * (`start` equals the file size, `end` is one less) - an upstream edge case a
- * real archive, whose length is never an exact multiple, does not reach. A file
- * that *is* an exact multiple fails here for a reason that has nothing to do
- * with what this section is asserting.
+ * The fixture artifact's size: 4 MB less 12345 bytes. The odd number keeps the
+ * fixture shaped like a real archive, whose length is never an exact multiple of
+ * the 32 KiB block size; it was originally load-bearing for a second reason, and
+ * that one no longer applies. `app-builder blockmap` (the binary this section
+ * used to shell out to) appended a zero-length final block for an exact multiple,
+ * which electron-updater's plan builder turned into a zero-length COPY that
+ * `createReadStream({start, end})` rejects - an upstream edge case. Measured on
+ * 26.16's JS implementation: a 4 MiB input yields blocks that sum to exactly
+ * 4 MiB with no trailing zero-length block, so the hazard is gone with the
+ * binary that produced it and the odd size is now only fixture realism.
  */
 const LO_ARTIFACT_SIZE = 4 * LO_MB - 12345;
 
@@ -3797,36 +3827,17 @@ function loSha512(filePath) {
 }
 
 /**
- * The block map for one artifact, written by the real binary.
+ * The block map for one artifact, written by electron-builder's own
+ * implementation -- `buildBlockMap(file, "gzip", ...)`, the same call
+ * `differentialUpdateInfoBuilder.createBlockmap` makes for a file artifact.
  *
  * It returns the same `{ size, sha512 }` the release metadata records, so the
  * fixture's channel file describes the bytes that were actually block-mapped
  * rather than a hash this test computed for itself.
  */
-function loWriteBlockmap(file) {
-	const result = spawnSync(
-		loAppBuilderPath(),
-		["blockmap", "--input", file, "--output", `${file}.blockmap`],
-		{
-			encoding: "utf8",
-			// This is the only native binary the update harness runs, and the
-			// binary is a different build on every platform. `timeout` bounds it so
-			// one that stops responding fails this case with the reason instead of
-			// wedging the file: node's test runner has no default per-test timeout,
-			// and `ci.yml` sets none, so an unbounded wait here is an unbounded job.
-			timeout: 120_000,
-			killSignal: "SIGKILL",
-			// A child that decides to read stdin must see EOF rather than block on
-			// a pipe nobody writes to; only stdout carries the block map back.
-			stdio: ["ignore", "pipe", "pipe"],
-		},
-	);
-	assert.equal(
-		result.status,
-		0,
-		`app-builder blockmap failed: ${result.error?.message ?? result.stderr}`,
-	);
-	return JSON.parse(result.stdout);
+async function loWriteBlockmap(file) {
+	const info = await loBlockmapBuilder()(file, "gzip", `${file}.blockmap`);
+	return { size: info.size, sha512: info.sha512 };
 }
 
 /**
@@ -3834,7 +3845,7 @@ function loWriteBlockmap(file) {
  * architecture, its `.blockmap`, and the `latest-mac.yml` the updater resolves
  * against (shape copied from the v0.19.5 release's own channel file).
  */
-function loMakeRelease(dir, { version, bytes, blockmaps = true }) {
+async function loMakeRelease(dir, { version, bytes, blockmaps = true }) {
 	const web = join(dir, version);
 	mkdirSync(web, { recursive: true });
 	const entries = [];
@@ -3842,7 +3853,7 @@ function loMakeRelease(dir, { version, bytes, blockmaps = true }) {
 		const name = `local-operator-ui-${version}-${arch}.zip`;
 		const file = join(web, name);
 		writeFileSync(file, bytes(arch));
-		const info = loWriteBlockmap(file);
+		const info = await loWriteBlockmap(file);
 		if (!blockmaps) rmSync(`${file}.blockmap`, { force: true });
 		entries.push({ url: name, sha512: info.sha512, size: info.size });
 	}
@@ -4001,7 +4012,7 @@ function loWriteUpdateConfig(cacheRoot, port) {
  * A whole update scenario: the previous release's zip in the updater's cache,
  * both releases' assets on a local feed, and an updater pointed at it.
  */
-function loUpdateScenario({ blockmaps = true, patchLength = 4096 } = {}) {
+async function loUpdateScenario({ blockmaps = true, patchLength = 4096 } = {}) {
 	const dir = tempDir("lo-update-");
 	// One seed per architecture, so that fetching the wrong architecture's build
 	// cannot pass a hash check by accident: the two blobs are unrelated except
@@ -4014,8 +4025,16 @@ function loUpdateScenario({ blockmaps = true, patchLength = 4096 } = {}) {
 			patchAt: 1 * LO_MB,
 			patchLength,
 		});
-	const old = loMakeRelease(dir, { version: "0.19.6", bytes: previous, blockmaps });
-	const next = loMakeRelease(dir, { version: "0.19.7", bytes: current, blockmaps });
+	const old = await loMakeRelease(dir, {
+		version: "0.19.6",
+		bytes: previous,
+		blockmaps,
+	});
+	const next = await loMakeRelease(dir, {
+		version: "0.19.7",
+		bytes: current,
+		blockmaps,
+	});
 	return { dir, old, next, previous, current };
 }
 
@@ -4078,7 +4097,7 @@ async function loRunUpdate({
 	cacheBase = null,
 	patchLength = 4096,
 }) {
-	const scenario = loUpdateScenario({ blockmaps, patchLength });
+	const scenario = await loUpdateScenario({ blockmaps, patchLength });
 	const state = loServe(scenario.next.web);
 	if (cachedOld && oldBlockmaps) {
 		// The previous release's block maps are theirs, not this release's: they
@@ -4129,7 +4148,7 @@ async function loRunUpdate({
 }
 
 test("the updater resolves the channel file, and both architectures are listed", async () => {
-	const scenario = loUpdateScenario();
+	const scenario = await loUpdateScenario();
 	const state = loServe(scenario.next.web);
 	const port = await state.listen();
 	const cacheRoot = join(scenario.dir, "cache");
