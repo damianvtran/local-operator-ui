@@ -33,7 +33,15 @@ SCRATCH=/tmp/modelswitch-after \
 ```
 
 And the credentialed run, which is the only way to reach a switch the owner
-accepts (and therefore the only way `needs-sign-in-*` exists):
+accepts (and therefore the only way `needs-sign-in-*` exists). The seed below is
+QA's scratch script from round 1 and is **not** in this repository, so that run is
+described rather than reproducible from the tree: it writes
+`values: {hosting: openai, model_name: gpt-4o-mini}` into the scratch config, one
+synthetic `openai` API-key row through the backend's own `AuthStore`, and a cached
+`openrouter` listing of 480 rows into the scratch `HOME` (the catalogue cache
+resolves from `HOME`, not `LOCAL_OPERATOR_CONFIG_DIR` — `model/catalogue.py`'s
+`default_cache_dir()`); the driver then prefixes every frame it takes with `cred-`
+(`PICKER_FRAME_PREFIX=cred-`) so no frame can be mistaken for the other run's.
 
 ```sh
 ELECTRON_BIN=$PWD/node_modules/.bin/electron \
