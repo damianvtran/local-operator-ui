@@ -325,10 +325,14 @@ test("the readings are inside the composer's button row, and the row has one liv
 		"the strip must render once; a second render is a second layout to keep in step",
 	);
 	// The row is the container, and `justify-between` is gone: with three children
-	// it centres the middle one, which is the opposite of right-justified.
+	// it centres the middle one, which is the opposite of right-justified. Above
+	// the threshold it must also not WRAP: line breaking happens on content sizes
+	// before any shrinking, so a long model name would push the microphone and send
+	// to a second line instead of truncating the name - the inverse of the yield
+	// order, and the live frame at a 750px box showed exactly that 24px drop.
 	assert.match(
 		composer,
-		/<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">/,
+		/<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-\[750px\]\/chatcol:flex-nowrap">/,
 	);
 	// The counterpart auto margin: live below 750px, handed over above it, so
 	// exactly one is live at any width.
