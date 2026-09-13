@@ -42,6 +42,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
+	chatCountAnnouncement,
 	hitsAnswerQuery,
 	lostRowsToStaleAnswer,
 	rowTrailingStatement,
@@ -593,15 +594,17 @@ export function ChatSidebar({
 				{count}
 				{clipped ? "+" : ""}
 			</span>
-			{/* A query turns these numbers from "what you have" into "what
-			    matched", with identical styling, so the count needs to say which
-			    claim it is making (design round 1, D5); a clipped answer adds the
-			    third claim, which is that the number is bounded below. */}
-			{query ? (
-				<span className="sr-only">
-					{clipped ? ` At least ${count} matching` : ` ${count} matching`}
-				</span>
-			) : null}
+			{/*
+			 * A query turns these numbers from "what you have" into "what matched",
+			 * with identical styling, so the count needs to say which claim it is
+			 * making (design round 1, D5); a clipped answer adds the third claim, and
+			 * the sentence is rendered in BOTH states rather than only under a query
+			 * (design round 7, D25). What each state announces, and why it is pure and
+			 * tested, is `chatCountAnnouncement` in `features/chat/chat-search.ts`.
+			 */}
+			<span className="sr-only">
+				{chatCountAnnouncement(count, Boolean(query), clipped)}
+			</span>
 		</span>
 	);
 	const heading = (

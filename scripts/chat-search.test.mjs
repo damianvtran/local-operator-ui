@@ -26,6 +26,7 @@ const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	chatCountAnnouncement,
 	lostRowsToStaleAnswer,
 	rowTrailingStatement,
 	effectiveSearchQuery,
@@ -499,4 +500,39 @@ test("a count is a floor only when the answer came back full", () => {
 	assert.equal(searchAnswerIsClipped(5, undefined), false);
 	assert.equal(searchAnswerIsClipped(5, 0), false);
 	assert.equal(searchAnswerIsClipped(0, 100), false);
+});
+
+test("the count badge announces its claim once, in every state", async () => {
+
+	// Rest: the number is "what you have". It must be SPOKEN, because the digits
+	// themselves are behind `aria-hidden` in the caller — the state that lost its
+	// totals entirely when the sentence was gated on a query (D25).
+	assert.equal(chatCountAnnouncement(6, false, false), " 6");
+	assert.equal(chatCountAnnouncement(1, false, false), " 1");
+	assert.equal(chatCountAnnouncement(0, false, false), " 0");
+
+	// Under a query the same number becomes "what matched", which is the only
+	// part the query changes (D5).
+	assert.equal(chatCountAnnouncement(3, true, false), " 3 matching");
+
+	// A clipped answer is the third claim: the number is a floor, not a total.
+	assert.equal(chatCountAnnouncement(100, true, true), " At least 100 matching");
+	// `clipped` can only come from a query, but the announcement must not depend
+	// on that: a clipped badge is never spoken as a plain total.
+	assert.equal(chatCountAnnouncement(100, false, true), " At least 100 matching");
+
+	// And the invariant the two a11y findings were both about: whichever state,
+	// the sentence carries the number exactly once, with no glyphs repeated as
+	// words. `100+` followed by "or more matching" is what a screen reader heard
+	// before D23.
+	for (const [count, query, clipped] of [
+		[6, false, false],
+		[1, true, false],
+		[100, true, true],
+	]) {
+		const spoken = chatCountAnnouncement(count, query, clipped);
+		assert.equal(spoken.split(String(count)).length - 1, 1, spoken);
+		assert.ok(!/\bor more\b/.test(spoken), spoken);
+		assert.ok(!/\+\s*or more/.test(spoken), spoken);
+	}
 });
