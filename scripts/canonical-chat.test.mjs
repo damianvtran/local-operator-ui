@@ -1904,27 +1904,76 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 	 * An EXISTING-session send has no transition at all - the case M5/M6 hold
 	 * unscoped for.
 	 *
-	 * Asserted as the SEQUENCE the page computes across such a send, because the
-	 * previous version of this compared `panelIdentityFor(null, sessionId)` with
-	 * itself and therefore could not fail whatever the function did. The states
-	 * that matter are the ones the send actually moves through: a send from an
-	 * existing session has no draft key at any point, so all three collapse to
-	 * one key and `new Set(...).size === 1` is the whole claim.
+	 * Driven through the PAGE'S OWN derivation rather than by calling
+	 * `panelIdentityFor` repeatedly with the same arguments. Two earlier
+	 * versions of this assertion were tautologies - first comparing one call
+	 * with itself, then taking three identical calls to a pure function and
+	 * asserting they agreed - and neither could fail whatever the code did.
+	 *
+	 * What actually varies across a send is the STORE, so that is what moves
+	 * here. `chat-page.tsx:822-825` computes
+	 *     id       = draftKey ? draft?.sessionId : (active ?? undefined)
+	 *     identity = panelIdentityFor(draftKey, id)
+	 * and this reproduces that expression against the three store states an
+	 * existing-session send passes through. The claim is that a changing store
+	 * yields an unchanging key; a rule that followed the draft, or that dropped
+	 * to `undefined` while the admission was in flight, fails here.
 	 */
+	const identityFromStore = (state) =>
+		panelIdentityFor(
+			state.activeDraftKey,
+			state.activeDraftKey
+				? state.drafts[state.activeDraftKey]?.sessionId
+				: (state.activeSessionId ?? undefined),
+		);
+	// The store states an existing-session send moves through: no draft key at
+	// any point, the session already active, and a `send:<id>` draft row
+	// carrying the retained payload while the admission is in flight.
 	const existingSequence = [
-		panelIdentityFor(null, sessionId), // at Enter
-		panelIdentityFor(null, sessionId), // admission in flight
-		panelIdentityFor(null, sessionId), // admitted
+		identityFromStore({
+			activeDraftKey: null,
+			activeSessionId: sessionId,
+			drafts: {},
+		}),
+		identityFromStore({
+			activeDraftKey: null,
+			activeSessionId: sessionId,
+			drafts: { [`send:${sessionId}`]: { submittedText: "Review this" } },
+		}),
+		identityFromStore({
+			activeDraftKey: null,
+			activeSessionId: sessionId,
+			drafts: {},
+		}),
 	];
+	assert.deepEqual(
+		existingSequence,
+		[sessionId, sessionId, sessionId],
+		"an existing-session send must key on the session at every step - no remount, no reconnect",
+	);
 	assert.equal(
 		new Set(existingSequence).size,
 		1,
-		"an existing-session send must never change key, so there is no remount and no reconnect",
+		"and therefore exactly one distinct key across the whole send",
 	);
-	assert.equal(
-		existingSequence[0],
-		sessionId,
-		"and that one key is the session itself, not a draft",
+	// The same derivation on a DRAFT send does change key, which is what proves
+	// the assertion above is capable of failing rather than true by shape.
+	const draftSequence = [
+		identityFromStore({
+			activeDraftKey: draftKey,
+			activeSessionId: null,
+			drafts: { [draftKey]: {} },
+		}),
+		identityFromStore({
+			activeDraftKey: draftKey,
+			activeSessionId: null,
+			drafts: { [draftKey]: { sessionId } },
+		}),
+	];
+	assert.notDeepEqual(
+		draftSequence[0],
+		draftSequence[1],
+		"the draft path DOES change key once the session exists - if this ever stops being true the existing-session assertion above has stopped meaning anything",
 	);
 	// The reverse direction still remounts, and must: "New chat" stages a fresh
 	// draft with no session, so it cannot inherit the previous transcript.

@@ -37,7 +37,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { admitChatDraft, useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -101,6 +101,7 @@ const module = await import(
 );
 const {
 	admitChatDraft,
+	draftIdentityFor,
 	useCanonicalSessionsStore: store,
 	echoPendingUser,
 	retractPendingUser,
@@ -342,6 +343,9 @@ test("abandoning a draft drops whatever was buffered for it", async () => {
 	 * draft is precisely the case where a panel may never mount, so without this
 	 * the abandoned text and its attachments would outlive the row the user
 	 * thinks they threw away.
+	 *
+	 * The DRAFT path: keyed `draft:<uuid>`, and the row learns its session id
+	 * mid-send, so the id is on the row.
 	 */
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	store.setState((state) => ({
@@ -358,6 +362,46 @@ test("abandoning a draft drops whatever was buffered for it", async () => {
 		transcript.rows(),
 		[],
 		"an abandoned draft's echo must not be retained until some later mount",
+	);
+	transcript.unregister();
+});
+
+test("abandoning a send from an existing conversation also drops its echo", async () => {
+	reset();
+	/*
+	 * THE COMMONEST SEND, and the one the first version of this eviction missed
+	 * entirely (review R3-5 / QA Q8).
+	 *
+	 * The key comes from the SHIPPED `draftIdentityFor` rather than a literal
+	 * written here, because the defect was precisely a disagreement between the
+	 * key's shape and where the code looked for the session id: a `send:<id>`
+	 * draft never stores `sessionId` on the row - it is passed to
+	 * `admitChatDraft` as an argument - so an eviction reading only the row was
+	 * a silent no-op and the abandoned message kept its text and base64 images
+	 * until that session next mounted.
+	 *
+	 * Driving the real rule means a future change to how send drafts are keyed
+	 * fails this test instead of quietly reopening the leak.
+	 */
+	const key = draftIdentityFor(null, SESSION_ID);
+	assert.equal(key, `send:${SESSION_ID}`, "the shipped key rule, not a guess");
+	store.setState((state) => ({
+		// The row as a real send creates it: a retained payload, and NO session id.
+		drafts: { ...state.drafts, [key]: { submittedText: "abandoned send" } },
+	}));
+	assert.equal(
+		store.getState().drafts[key].sessionId,
+		undefined,
+		"a send draft genuinely carries no session id - this is why reading the row alone failed",
+	);
+	echoPendingUser(SESSION_ID, "req-send-abandoned", "abandoned send", []);
+	store.getState().discardDraft(key);
+
+	const transcript = await mountTranscript(SESSION_ID);
+	assert.deepEqual(
+		transcript.rows(),
+		[],
+		"abandoning a send must evict its buffered echo, or the message the user discarded paints when the session is next opened",
 	);
 	transcript.unregister();
 });
