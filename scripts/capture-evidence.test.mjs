@@ -26,7 +26,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { clearSweptFrames } from "./capture-evidence.mjs";
+import { clearSweptFrames, storyDrew } from "./capture-evidence.mjs";
 
 const build = () => {
 	const out = mkdtempSync(join(tmpdir(), "lo-sweep-"));
@@ -99,4 +99,44 @@ test("a directory the sweep empties is removed, one that still holds prose is no
 		!existsSync(join(bare, "gone-story")),
 		"a surface whose frames all went does not stay behind empty",
 	);
+});
+
+/*
+ * The readiness floor, at both of its edges.
+ *
+ * Why this is a test rather than a paragraph in the capture script: the floor
+ * read 8, the smallest story in the set draws 7 of its own elements, and
+ * `chat-slash-completion--argument-phase-no-match` therefore timed out of the
+ * sweep as "Storybook never finished preparing the story (60s)" while it was
+ * rendering its sentence, its label and its row region the whole time. A
+ * threshold that no longer admits what the app draws looks exactly like a
+ * broken story from the outside, so the number has to be pinned where the next
+ * person to move it can see the measurement it came from.
+ */
+test("the drawn-story floor rejects the decorator's own furniture", () => {
+	assert.equal(storyDrew(0), false);
+	assert.equal(storyDrew(1), false);
+	// The preview decorator's theme wrapper and toast container, and nothing a
+	// story rendered: the failure the floor exists to catch.
+	assert.equal(storyDrew(2), false);
+});
+
+test("the drawn-story floor admits the smallest story in the set", () => {
+	// `chat-slash-completion--argument-phase-no-match`, measured from the
+	// rendered document: 7 content elements in a 9-element story root.
+	assert.equal(storyDrew(9), true);
+	// One element fewer than that story - a shape no story in the list has.
+	assert.equal(storyDrew(8), false);
+});
+
+/*
+ * The predicate is injected into the page through its own source text, so a
+ * body that named a module-level constant would throw inside the browser rather
+ * than here. Evaluating it in a bare scope is the same evaluation the page does.
+ */
+test("the predicate the page runs is the predicate this suite pins", () => {
+	const inPage = new Function(`return ${storyDrew}`)();
+	for (const counted of [0, 2, 8, 9, 40]) {
+		assert.equal(inPage(counted), storyDrew(counted));
+	}
 });

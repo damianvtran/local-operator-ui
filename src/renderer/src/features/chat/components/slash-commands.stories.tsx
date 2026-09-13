@@ -751,6 +751,13 @@ export const ArgumentPhaseLoadingAndError: Story = {
  * A query that matches nothing while the list HAS rows — the state round 1 UX U4
  * caught reporting "the roster was never reported" about a filter the user had
  * just typed. It is now its own sentence.
+ *
+ * It is also the SMALLEST story in the set: the popup draws 7 of its own
+ * elements inside a 9-element story root, once the preview decorator's two are
+ * subtracted. That measurement is the floor the capture's readiness poll applies
+ * (`storyDrew` in `scripts/capture-evidence.mjs`), which is why this frame is
+ * the one that proves the poll admits what the app actually draws — a floor set
+ * at 8 rejected it and reported a fully rendered story as a Storybook hang.
  */
 export const ArgumentPhaseNoMatch: Story = {
 	render: () => (
