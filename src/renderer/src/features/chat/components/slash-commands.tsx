@@ -172,6 +172,9 @@ export type SlashCompletionState = {
 	argumentList: SlashArgumentListState;
 	close(): void;
 	setActive(index: number): void;
+	/** Move the marker WITHOUT marking the choice as hand-made: a hover is not
+	 *  the explicit move the ambiguity gate is answered by. */
+	setActiveHover(index: number): void;
 	/** True once an arrow key has moved the marker in this list. */
 	chosenByHand: boolean;
 	isLoading: boolean;
@@ -465,6 +468,14 @@ export function useSlashCompletion({
 		setState((current) => ({ ...current, active: index }));
 	}, []);
 
+	// A pointer entering a row moves the marker but does NOT count as the
+	// explicit move the ambiguity gate is answered by: the pointer passes over
+	// rows on its way somewhere else, and treating that as a choice would let
+	// Enter run a fuzzy survivor on a hover the user never meant.
+	const setActiveHover = useCallback((index: number) => {
+		setState((current) => ({ ...current, active: index }));
+	}, []);
+
 	return {
 		phase,
 		open: state.open && visible,
@@ -481,6 +492,7 @@ export function useSlashCompletion({
 		argumentList,
 		close,
 		setActive,
+		setActiveHover,
 		chosenByHand,
 		isLoading: enabled && query.isLoading,
 		available: enabled,
@@ -577,7 +589,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								// pointer pick of a runnable row runs it (`editor.py:8040`).
 								onPick(row, { run: true });
 							}}
-							onMouseEnter={() => state.setActive(index)}
+							onMouseEnter={() => state.setActiveHover(index)}
 						>
 							{row.kind === "command"
 								? commandRowContent(row)
