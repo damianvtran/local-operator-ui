@@ -60,14 +60,18 @@ const {
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
+	healPythonBytecode,
 	installFailurePayload,
 	installedBundleSealBlock,
+	isPythonBytecodePath,
 	lastInstallAttemptPath,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
+	parseSealViolations,
 	pendingInstallMarkerPath,
+	planPythonBytecodeHeal,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
 	reapFailedInstall,
@@ -343,6 +347,313 @@ test("the seal pre-flight is judged from a real codesign run, on macOS", async (
 	const broken = evaluateBundleSeal(probe(app));
 	assert.equal(broken.kind, "unsealed");
 	assert.match(broken.detail, /a sealed resource is missing or invalid/);
+});
+
+// ---------------------------------------------------------------------------
+// Healing a bytecode-cache seal break
+// ---------------------------------------------------------------------------
+
+/**
+ * A real, signed bundle shaped like the shipped app: a bundled interpreter tree
+ * that ALREADY holds one sealed `.pyc` under `encodings/__pycache__`.
+ *
+ * That sealed file is the whole reason this fixture exists rather than reusing
+ * the one above. The shipped 0.17.0 bundle carries exactly three `.pyc`, all of
+ * them there, and `encodings/__pycache__` is where the interpreter's own startup
+ * imports land - so a heal that removes the *directory* takes a sealed file with
+ * it, and a removed sealed file is `file missing:` and unhealable, where an
+ * added one is recoverable.
+ */
+function makeBytecodeFixture(dir, { sealedBytecode = true } = {}) {
+	const app = join(dir, "Fixture.app");
+	const contents = join(app, "Contents");
+	const pythonRoot = join(contents, "Resources", "python_aarch64");
+	const encodings = join(pythonRoot, "lib", "python3.12", "encodings");
+	mkdirSync(join(contents, "MacOS"), { recursive: true });
+	mkdirSync(encodings, { recursive: true });
+	writeFileSync(
+		join(contents, "Info.plist"),
+		[
+			'<?xml version="1.0" encoding="UTF-8"?>',
+			'<plist version="1.0"><dict>',
+			"<key>CFBundleIdentifier</key><string>com.local-operator.fixture</string>",
+			"<key>CFBundleExecutable</key><string>Fixture</string>",
+			"<key>CFBundlePackageType</key><string>APPL</string>",
+			"<key>CFBundleVersion</key><string>1</string>",
+			"</dict></plist>",
+			"",
+		].join("\n"),
+		"utf8",
+	);
+	const executable = join(contents, "MacOS", "Fixture");
+	writeFileSync(executable, "#!/bin/sh\necho hi\n", "utf8");
+	spawnSync("/bin/chmod", ["+x", executable]);
+	writeFileSync(join(contents, "Resources", "asset.txt"), "payload\n", "utf8");
+
+	const sealedPyc = join(encodings, "__pycache__", "__init__.cpython-312.pyc");
+	if (sealedBytecode) {
+		mkdirSync(dirname(sealedPyc), { recursive: true });
+		writeFileSync(sealedPyc, "sealed bytecode\n", "utf8");
+	}
+
+	const sign = spawnSync("/usr/bin/codesign", [
+		"--force",
+		"--deep",
+		"--sign",
+		"-",
+		app,
+	]);
+	assert.equal(sign.status, 0, `codesign failed: ${sign.stderr}`);
+
+	/** The exact probe the pre-flight runs, kept in one place. */
+	const probe = () => {
+		const result = spawnSync(
+			"/usr/bin/codesign",
+			["--verify", "--deep", "--verbose=2", app],
+			{ encoding: "utf8" },
+		);
+		return {
+			exitCode: result.status ?? 1,
+			stdout: result.stdout ?? "",
+			stderr: result.stderr ?? "",
+			ran: result.error == null,
+		};
+	};
+	return { app, contents, pythonRoot, encodings, sealedPyc, probe };
+}
+
+/** Write a `.pyc` the way the bundled interpreter does: after signing. */
+function writeAddedPyc(directory, name) {
+	const cacheDir = join(directory, "__pycache__");
+	mkdirSync(cacheDir, { recursive: true });
+	const path = join(cacheDir, name);
+	writeFileSync(path, "added bytecode\n", "utf8");
+	return path;
+}
+
+test("codesign's violation lines are parsed as codesign prints them", () => {
+	// Real output, captured from `/usr/bin/codesign --verify --deep --verbose=2`
+	// on a broken ad-hoc-signed fixture, including the canonicalised path.
+	const output = [
+		"file added: /private/tmp/sealfmt2/Broken.app/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/__init__.cpython-312.pyc",
+		"file modified: /private/tmp/sealfmt2/Broken.app/Contents/Resources/asset.txt",
+		"file missing: /private/tmp/sealfmt2/Broken.app/Contents/Resources/gone.txt",
+	].join("\n");
+	assert.deepEqual(parseSealViolations(output), [
+		{
+			kind: "added",
+			path: "/private/tmp/sealfmt2/Broken.app/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/__init__.cpython-312.pyc",
+		},
+		{
+			kind: "modified",
+			path: "/private/tmp/sealfmt2/Broken.app/Contents/Resources/asset.txt",
+		},
+		{
+			kind: "missing",
+			path: "/private/tmp/sealfmt2/Broken.app/Contents/Resources/gone.txt",
+		},
+	]);
+
+	// Blank lines are not violations, and anything codesign says that is not a
+	// `file <kind>:` line is kept as `other` rather than dropped: unrecognised
+	// output is a reason to refuse, never a reason to delete something.
+	assert.deepEqual(
+		parseSealViolations("\nfile added: /a/b.pyc\n\nIn subcomponent: /a/b\n"),
+		[
+			{ kind: "added", path: "/a/b.pyc" },
+			{ kind: "other", path: "In subcomponent: /a/b" },
+		],
+	);
+	assert.deepEqual(parseSealViolations("Fixture.app: valid on disk"), [
+		{ kind: "other", path: "Fixture.app: valid on disk" },
+	]);
+});
+
+test("the heal's decision table refuses everything but added bytecode", () => {
+	const bundle = "/Applications/Local Operator.app";
+	const pycUnder = (name) =>
+		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/${name}`;
+	const added = (path) => ({ kind: "added", path });
+
+	// Healable: added bytecode inside our own bundled interpreter tree.
+	const healable = planPythonBytecodeHeal(bundle, [
+		added(pycUnder("__init__.cpython-312.pyc")),
+		added(
+			`${bundle}/Contents/Resources/python/lib/python3.12/json/__pycache__/decoder.cpython-312.pyc`,
+		),
+	]);
+	assert.equal(healable.healable, true);
+	assert.deepEqual(healable.paths, [
+		pycUnder("__init__.cpython-312.pyc"),
+		`${bundle}/Contents/Resources/python/lib/python3.12/json/__pycache__/decoder.cpython-312.pyc`,
+	]);
+
+	// A `file modified:` violation is unhealable by definition: deleting the
+	// sealed file turns it into `file missing:` and the seal does not come back.
+	const modified = planPythonBytecodeHeal(bundle, [
+		added(pycUnder("__init__.cpython-312.pyc")),
+		{ kind: "modified", path: `${bundle}/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc` },
+	]);
+	assert.equal(modified.healable, false);
+	assert.match(modified.reason, /modified/);
+
+	// So is anything else codesign reported, and a bundle with nothing added.
+	for (const violation of [
+		{ kind: "missing", path: pycUnder("gone.cpython-312.pyc") },
+		{ kind: "other", path: "resource envelope is obsolete" },
+	]) {
+		const refused = planPythonBytecodeHeal(bundle, [added(pycUnder("a.pyc")), violation]);
+		assert.equal(refused.healable, false);
+	}
+	assert.equal(planPythonBytecodeHeal(bundle, []).healable, false);
+
+	// The path test is what keeps the heal to our own bytecode: an added file
+	// outside the interpreter trees, a non-bytecode file inside them, and a `.pyc`
+	// outside a `__pycache__` directory are each refused.
+	for (const path of [
+		`${bundle}/Contents/Resources/extra.txt`,
+		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/decoder.py`,
+		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/handwritten.pyc`,
+		"/Applications/Other.app/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/x.cpython-312.pyc",
+	]) {
+		assert.equal(isPythonBytecodePath(bundle, path), false, path);
+		const refused = planPythonBytecodeHeal(bundle, [added(path)]);
+		assert.equal(refused.healable, false, path);
+		assert.match(refused.reason, /outside the bundled python trees/);
+	}
+});
+
+test("the heal removes exactly what was reported, through an injectable remover", () => {
+	const bundle = "/Applications/Local Operator.app";
+	const path =
+		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/__init__.cpython-312.pyc`;
+	const removed = [];
+	const result = healPythonBytecode(
+		bundle,
+		[{ kind: "added", path }],
+		(target) => removed.push(target),
+	);
+	assert.equal(result.healable, true);
+	assert.deepEqual(removed, [path]);
+	assert.deepEqual(result.removed, [path]);
+
+	// A remover that throws is reported as not healed and says which path: the
+	// caller's next step is a re-probe and a refusal, so a half-healed bundle it
+	// believes in is the one outcome that must not happen.
+	const failed = healPythonBytecode(bundle, [{ kind: "added", path }], () => {
+		throw new Error("EROFS");
+	});
+	assert.equal(failed.healable, false);
+	assert.match(failed.reason, /could not remove .*EROFS/);
+	assert.deepEqual(failed.removed, []);
+
+	// Nothing is removed when the plan refuses.
+	const untouched = [];
+	healPythonBytecode(
+		bundle,
+		[
+			{ kind: "added", path },
+			{ kind: "modified", path: `${bundle}/Contents/Resources/asset.txt` },
+		],
+		(target) => untouched.push(target),
+	);
+	assert.deepEqual(untouched, []);
+
+	// Duplicates in codesign's output are one removal, not two.
+	const deduped = [];
+	healPythonBytecode(
+		bundle,
+		[
+			{ kind: "added", path },
+			{ kind: "added", path },
+		],
+		(target) => deduped.push(target),
+	);
+	assert.deepEqual(deduped, [path]);
+});
+
+test("a bytecode-broken bundle really heals, and a tampered one really does not", async (t) => {
+	if (process.platform !== "darwin") {
+		t.skip("macOS only");
+		return;
+	}
+
+	// This is the round trip against the real tool, because the heal's whole
+	// claim is about what `/usr/bin/codesign` says next: sign clean, let an
+	// interpreter write bytecode into the bundle, watch the real probe fail with
+	// `file added:`, remove exactly those files, and watch the real probe pass.
+	const fixture = makeBytecodeFixture(tempDir("lo-bytecode-"));
+	assert.deepEqual(evaluateBundleSeal(fixture.probe()), { kind: "sealed" });
+
+	const first = writeAddedPyc(
+		join(fixture.pythonRoot, "lib", "python3.12", "json"),
+		"__init__.cpython-312.pyc",
+	);
+	// Added inside the directory that already holds a SEALED `.pyc` - the case a
+	// directory-level `rm -rf` gets wrong.
+	const second = writeAddedPyc(
+		join(fixture.pythonRoot, "lib", "python3.12", "encodings"),
+		"aliases.cpython-312.pyc",
+	);
+
+	const brokenProbe = fixture.probe();
+	const broken = evaluateBundleSeal(brokenProbe);
+	assert.equal(broken.kind, "unsealed");
+	assert.match(broken.detail, /a sealed resource is missing or invalid/);
+
+	const violations = parseSealViolations(brokenProbe.stdout);
+	// Both added files, and nothing but them: the verdict on stderr is not a
+	// violation, which is why the parse is over stdout.
+	assert.deepEqual(
+		violations.map((violation) => violation.kind),
+		["added", "added"],
+	);
+	// codesign reports canonical paths (`/private/var/...` for a `/var/...`
+	// temporary directory), so a plain string comparison against the path we
+	// created would not match. The heal's path test has to survive exactly that,
+	// and this is the real tool saying so rather than a hand-written string.
+	for (const violation of violations) {
+		assert.ok(
+			isPythonBytecodePath(fixture.app, violation.path),
+			`the path test refused ${violation.path}`,
+		);
+	}
+	assert.deepEqual(
+		[...violations.map((violation) => violation.path)].sort(),
+		[realpathSync(first), realpathSync(second)].sort(),
+	);
+
+	const heal = healPythonBytecode(fixture.app, violations);
+	assert.equal(heal.healable, true, heal.reason);
+	assert.equal(heal.removed.length, 2);
+
+	// The seal is back, measured rather than inferred.
+	assert.deepEqual(evaluateBundleSeal(fixture.probe()), { kind: "sealed" });
+	// And the file that was SEALED is still there: the heal removed reported
+	// files, not the directories that held them.
+	assert.ok(existsSync(fixture.sealedPyc));
+
+	// The negative case, on the same bundle: once a sealed resource is modified,
+	// the heal refuses and the bundle stays refused. A heal that "fixed" this by
+	// deleting the modified file would leave `file missing:` and a bundle that
+	// still fails - and would have deleted a file the user's install needs.
+	const tampered = makeBytecodeFixture(tempDir("lo-bytecode-tamper-"));
+	writeAddedPyc(
+		join(tampered.pythonRoot, "lib", "python3.12", "json"),
+		"__init__.cpython-312.pyc",
+	);
+	writeFileSync(join(tampered.contents, "Resources", "asset.txt"), "tampered\n", "utf8");
+	const tamperedProbe = tampered.probe();
+	const tamperedViolations = parseSealViolations(tamperedProbe.stdout);
+	assert.ok(
+		tamperedViolations.some((violation) => violation.kind === "modified"),
+		"the fixture must really produce a modified violation",
+	);
+	const refused = healPythonBytecode(tampered.app, tamperedViolations);
+	assert.equal(refused.healable, false);
+	assert.match(refused.reason, /unhealable violation class/);
+	assert.deepEqual(refused.removed, []);
+	assert.equal(evaluateBundleSeal(tampered.probe()).kind, "unsealed");
 });
 
 // ---------------------------------------------------------------------------
@@ -1857,9 +2168,17 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		log: (line) => lines.push(line),
 	});
 	assert.equal(result.ok, true);
-	// 3 app checks and 2 image checks per artifact: nothing is left unaudited.
-	assert.equal(result.results.length, 2 * 3 + 2 * 2);
-	assert.equal(checked.length, result.results.length);
+	// 3 signer checks plus the bundled-bytecode walk per app, and 2 image checks:
+	// nothing is left unaudited.
+	const bytecodeChecks = result.results.filter(
+		(check) => check.id === "app-no-bundled-bytecode",
+	);
+	assert.equal(bytecodeChecks.length, 2);
+	assert.equal(result.results.length, 2 * 3 + 2 * 2 + bytecodeChecks.length);
+	// Every check that shells out went through the injected runner; the bytecode
+	// check walks the bundle itself because its subject is what the build put
+	// there, before anything was signed.
+	assert.equal(checked.length, result.results.length - bytecodeChecks.length);
 	for (const target of [...discovered.apps, ...discovered.dmgs]) {
 		assert.ok(checked.includes(target), `${target} was never checked`);
 	}

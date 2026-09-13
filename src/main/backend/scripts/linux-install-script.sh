@@ -16,6 +16,17 @@ VENV_PATH="${APP_DATA_DIR}/${VENV_NAME}"
 LOG_FILE="${APP_DATA_DIR}/backend-install.log"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 
+# Keep CPython's bytecode cache out of the application directory.
+#
+# Same reason as the macOS script: an interpreter writing __pycache__/*.pyc
+# beside its own stdlib sources writes into the installed tree. Linux does not
+# code-seal the app the way macOS does, so this is uniformity and hygiene here
+# rather than the load-bearing fix it is on macOS - but it is also the value a
+# standalone run of this script has to agree with, because the app and the
+# script must not disagree about where bytecode goes.
+: "${PYTHONPYCACHEPREFIX:=${APP_DATA_DIR}/python-bytecode-cache}"
+export PYTHONPYCACHEPREFIX
+
 # Create app data directory if it doesn't exist
 if ! mkdir -p "${APP_DATA_DIR}"; then
   echo "ERROR: Unable to create app data directory at ${APP_DATA_DIR}"
