@@ -88,6 +88,16 @@ type MentionedFilesOptions = {
 		hasMore: boolean;
 		oldestId: string | null;
 		loadOlder: () => Promise<boolean>;
+		/**
+		 * The reader's OWN older-history page is in flight.
+		 *
+		 * `loadOlder` stands down with `false` while one is, and a `false` from it is
+		 * otherwise indistinguishable from "no more history", so the scan has to be
+		 * told which of the two it is looking at. Without this, a Files view opened
+		 * while the chat column is scrolling spent the whole budget on the reader's
+		 * request (round 2, R2-5).
+		 */
+		blocked: boolean;
 	} | null;
 };
 
@@ -211,6 +221,8 @@ export function useMentionedFiles({
 	const session = useRef<ProbeBook | null>(null);
 	const pageBook = useRef<PageBook | null>(null);
 	const inFlight = useRef(false);
+	/** The reader's own older-history request, as of the latest render. */
+	const blocked = useRef(false);
 	const addMentionedFilesBatch = useCanvasStore(
 		(s) => s.addMentionedFilesBatch,
 	);
@@ -334,10 +346,26 @@ export function useMentionedFiles({
 	 * would issue the same `beforeId` page dozens of times. `oldestId` is the
 	 * cursor `loadOlder` uses, so it is the honest key for "is there a page I have
 	 * not asked for yet".
+	 *
+	 * Why the reader's own page is a WAIT rather than a failure: `loadOlder`
+	 * stands down with `false` while it has a request of its own in flight, and
+	 * that `false` says nothing about this scan. Spending the budget on it ended
+	 * the scan on someone else's scroll - the Files view opened while the chat
+	 * column is paging lit "earlier messages are not searched yet" before this
+	 * effect had asked for anything (round 2, R2-5). The page that lands moves the
+	 * cursor and re-runs this effect on its own; a page that fails clears the flag
+	 * and re-runs it too, which is when a stale cursor really does mean "not
+	 * searched".
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `scanTick` is the re-run trigger this effect is built around - it is bumped by `resume` and after every page request, and the cursor/budget bookkeeping it re-reads lives in refs so that neither can cause a render on its own.
 	useEffect(() => {
 		const scanned = records?.length ?? 0;
+		/*
+		 * The latest reader-paging state, for the async continuation below: an
+		 * effect that started while the chat column was idle can still find the
+		 * reader paging when its answer comes back.
+		 */
+		blocked.current = Boolean(scan?.blocked);
 		if (!enabled || !conversationId || !scan) {
 			publish(IDLE_SCAN);
 			return;
@@ -361,6 +389,15 @@ export function useMentionedFiles({
 		};
 		publish(mentionScanState(step));
 		if (!shouldRequestPage(step)) return;
+		/*
+		 * The reader's own page owns the cursor right now.
+		 *
+		 * Asking here would be answered with the stand-down `false` and, on this
+		 * code path, would spend the budget for it. Waiting is the honest answer:
+		 * the page that lands moves the cursor, and that re-runs this effect with
+		 * `blocked` false.
+		 */
+		if (blocked.current) return;
 		// A cursor already asked for. A live delta re-runs this effect without
 		// moving it, and re-asking would fetch the same page twice; a page that
 		// landed moves it, and a request still in flight will move it or spend the
@@ -370,7 +407,9 @@ export function useMentionedFiles({
 			// Nothing is in flight and the cursor has not moved since the last
 			// request: no page arrived. Stop asking and let the head say so — a cue
 			// that keeps promising more is worse than an honest "not searched",
-			// whose own action is the retry.
+			// whose own action is the retry. A request refused by the reader's own
+			// page cannot reach this line: `blocked` was false above, and a refusal
+			// with the cursor still here means the history itself did not answer.
 			book.pages = book.budget;
 			publish(mentionScanState({ ...step, pagesFetched: book.pages }));
 			return;
@@ -387,8 +426,10 @@ export function useMentionedFiles({
 				// Nothing arrived: either there is no older page or the request
 				// failed, and neither is a state to keep spinning in. Spending the
 				// budget is what turns it into the honest "earlier messages not
-				// searched" line, whose own action is the retry.
-				else book.pages = book.budget;
+				// searched" line, whose own action is the retry - except when the
+				// reader's own page was what stood this request down, which is a fact
+				// about their scroll and not about the history (round 2, R2-5).
+				else if (!blocked.current) book.pages = book.budget;
 			} finally {
 				book.inFlight = false;
 				inFlight.current = false;

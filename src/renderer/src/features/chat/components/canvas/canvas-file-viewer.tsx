@@ -363,7 +363,19 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		],
 	);
 
-	if (files.length === 0 && !scan?.paging) {
+	/*
+	 * The static empty state, and the one state that must not wear it.
+	 *
+	 * `stopped` is not "nothing here": the scan ran out of budget with earlier
+	 * messages still unread. The head below is the only thing that says so - it
+	 * carries the count of what was searched and the only `Search earlier
+	 * messages` action in the app - so a stopped scan has to reach it even with
+	 * nothing found. Left out of this guard, that state read "No files yet" over a
+	 * conversation whose earlier messages were never searched, which is the same
+	 * silent omission the head exists to remove, in the one branch where the
+	 * escape hatch lives (round 2, R2-1).
+	 */
+	if (files.length === 0 && !scan?.paging && !scan?.stopped) {
 		return (
 			<div
 				className={cn(
@@ -380,6 +392,25 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	}
 
 	const countLabel = `${tiles.length} ${tiles.length === 1 ? "file" : "files"}`;
+	/*
+	 * The two things an empty grid can be, in the panel's own words.
+	 *
+	 * An empty grid under a STOPPED scan is not a scan in progress, so it cannot
+	 * borrow the line that says one is: the head above already states which
+	 * messages were searched, and this body states the finding instead of a search
+	 * that is no longer running.
+	 */
+	const emptyGrid = scan?.stopped
+		? {
+				title: "No files in the messages searched",
+				detail:
+					"Files named earlier in the conversation appear here once those messages are read.",
+			}
+		: {
+				title: "Searching earlier messages…",
+				detail:
+					"Files named before the part of the conversation already loaded appear here as they are read.",
+			};
 	/*
 	 * The panel head, and why it is not optional chrome.
 	 *
@@ -429,12 +460,10 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						"flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center",
 					)}
 				>
-					<h2 className={cn("text-heading text-ink")}>
-						Searching earlier messages…
-					</h2>
+					{/* The finding, per `emptyGrid` above: this is an empty grid, not a scan in flight. */}
+					<h2 className={cn("text-heading text-ink")}>{emptyGrid.title}</h2>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						Files named before the part of the conversation already loaded
-						appear here as they are read.
+						{emptyGrid.detail}
 					</p>
 				</div>
 			) : (

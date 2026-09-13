@@ -425,15 +425,25 @@ const CanvasFrame = ({
 	activeId,
 	width = 720,
 	scan = null,
+	mentionedFiles = DOCUMENTS,
 }: {
 	view: "documents" | "files" | "variables";
 	activeId: string;
 	width?: number;
 	/**
-	 * The completeness state of the Files scan, for the two stories that exist to
-	 * show what the panel head says while it is paging and when it stops short.
+	 * The completeness state of the Files scan, for the stories that exist to show
+	 * what the panel head says while it is paging, when it stops short, and when it
+	 * stops short having found nothing.
 	 */
 	scan?: MentionScanHandle | null;
+	/**
+	 * What the Files grid holds, for the one state it holds nothing in: a scan that
+	 * stopped short with no file mention inside the messages it read. The panel
+	 * must still render its head there - the count of what was searched and the one
+	 * action that reads the rest - so the story has to be able to seed an empty grid
+	 * (`canvas-file-viewer`'s empty-state guard, round 2 R2-1).
+	 */
+	mentionedFiles?: CanvasDocument[];
 }) => {
 	// Seeded before first paint so the panel never renders an empty frame.
 	useMemo(() => {
@@ -443,7 +453,7 @@ const CanvasFrame = ({
 				[CONVERSATION_ID]: {
 					isOpen: true,
 					files: DOCUMENTS,
-					mentionedFiles: DOCUMENTS,
+					mentionedFiles,
 					openTabs: DOCUMENTS.map((doc) => ({ id: doc.id, title: doc.title })),
 					selectedTabId: activeId,
 					viewMode: view,
@@ -451,7 +461,7 @@ const CanvasFrame = ({
 				},
 			},
 		}));
-	}, [view, activeId]);
+	}, [view, activeId, mentionedFiles]);
 
 	return (
 		<SplitFrame>
@@ -1001,6 +1011,35 @@ export const FilesScanStopped: Story = {
 		<CanvasFrame
 			view="files"
 			activeId={DOCUMENTS[0].id}
+			scan={{
+				active: true,
+				scanned: 2400,
+				hasMore: true,
+				paging: false,
+				stopped: true,
+				resume: () => {},
+			}}
+		/>
+	),
+};
+
+/**
+ * The Files panel stopped at its scan budget with nothing to show.
+ *
+ * The state the panel used to lie about: no file mention inside the messages the
+ * scan read, and earlier messages it never reached. The grid is empty and the
+ * head is the whole surface - which is the point, because the head is where the
+ * count of what was searched and the only `Search earlier messages` action live.
+ * An empty grid here is NOT "no files yet": that line belongs to a conversation
+ * whose transcript has been read, and it carries no route to the rest of it
+ * (round 2, R2-1).
+ */
+export const FilesScanStoppedEmpty: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			mentionedFiles={[]}
 			scan={{
 				active: true,
 				scanned: 2400,

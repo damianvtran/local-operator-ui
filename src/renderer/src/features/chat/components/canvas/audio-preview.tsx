@@ -17,10 +17,10 @@ import {
  * the backend stopped.
  *
  * The name bar carries `Open in default app` like its three siblings
- * (`ViewerChrome`). It used to carry the name and nothing else, so this was the
- * one media viewer with no way out to another application — a wave file's
- * natural home is often a player, and the viewer knew that only in its error
- * state.
+ * (`ViewerChrome`). Before this bar, the strip carried the name and nothing else,
+ * so this was the one media viewer with no way out to another application while it
+ * worked - a wave file's natural home is often a player, and the only route there
+ * lived in the error state.
  */
 const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,

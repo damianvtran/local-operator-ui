@@ -34,10 +34,16 @@ import {
  * in the OS viewer, one click away in the bar above, and a UUID printed as a
  * filename is worse than a missing zoom control.
  *
- * The honest limitation, which is why the PDF frames in the evidence set come
- * from the real app rather than the storybook sweep: the probe proves the viewer
- * DOCUMENT loads (frame URL, the injected `<embed>`, no CSP violations, no
- * download) — it does not prove pixels. Frames decide that.
+ * What the probe proves, and what the frames prove. The probe measures the viewer
+ * DOCUMENT: frame URL, the injected `<embed>`, no CSP violations, no download.
+ * Whether it PAINTS is a question for pixels, and the committed
+ * `canvas-workspace--pdf-viewer` frames answer it - this harness's headless
+ * Chrome draws the fixture document under our own name bar (`#toolbar=0`) in all
+ * twelve themes. An earlier probe of the same wiring measured
+ * `childBodyKids: 0`, so that was a difference between browser builds rather than
+ * a law about this surface. The live `mentioned-files-app` frame stays the
+ * evidence for the REAL read path, since that is the one production takes, over
+ * the main process's bytes rather than a story fixture.
  *
  * No `pdf.js`, deliberately: it is a real dependency (a ~1.5 MB build plus a
  * worker asset, which is its own CSP decision), it re-implements a canvas

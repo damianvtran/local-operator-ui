@@ -34,10 +34,12 @@
 /**
  * Pages fetched before the scan pauses and asks.
  *
- * One page is 100 durable records, so this is ~2,400 messages — deeper than any
- * conversation in the store this machine has (the largest measured session is
- * 15,674 records, and a reader who wants the whole of it is two clicks away).
- * The number is a pause, not a limit: `resume` extends it by the same step.
+ * One page is 100 durable records, so this is ~2,400 messages: wider than the
+ * median conversation, though not the deepest one - the largest session in this
+ * machine's store is 15,674 records, about 6.5 windows of this size, and reading
+ * all of it takes six `resume` clicks (each one raises the budget by this same
+ * step). The number is a pause, not a limit: the head states which messages were
+ * searched and which were not, and `resume` reads the rest.
  */
 export const SCAN_PAGE_BUDGET = 24;
 

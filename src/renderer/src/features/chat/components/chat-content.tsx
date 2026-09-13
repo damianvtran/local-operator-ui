@@ -282,6 +282,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							hasMore: canonical.view.transcript.hasMore,
 							oldestId: canonical.view.transcript.oldestId,
 							loadOlder: canonical.view.loadOlder,
+							/*
+							 * The reader's own paging state, passed through so the scan can tell
+							 * its own page request apart from theirs: `loadOlder` answers both
+							 * with the same `false`, and only one of them means the history is
+							 * exhausted (round 2, R2-5).
+							 */
+							blocked: canonical.view.loadingOlder,
 						}
 					: null,
 			[filesViewOpen, canonical],

@@ -23,10 +23,11 @@ import {
  * media surface", which is exactly what is behind it.
  *
  * The name bar is not decoration and not optional: without it the picture began
- * directly under the tab strip, so this was the one viewer with no in-app route
- * to hand the file to another app (the finding that produced `ViewerChrome`).
- * The bar states the zero-size and unreadable cases the same way every other
- * viewer does, so the four read as one surface with four contents.
+ * directly under the tab strip, and `Open in default app` - the action the other
+ * three media viewers carry in their working state - was reachable here only from
+ * the error state. That gap is the finding that produced `ViewerChrome`. The bar
+ * now states the zero-size and unreadable cases the same way every other viewer
+ * does, so the four read as one surface with four contents.
  */
 const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
