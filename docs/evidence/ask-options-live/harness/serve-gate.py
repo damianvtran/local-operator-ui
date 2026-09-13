@@ -194,26 +194,26 @@ async def main() -> None:
     # at the same one before the page can watch.
     chosen = listener.getsockname()[1]
     (scratch / "port").write_text(f"{chosen}\n")
-    print(
-        f"SERVING port={chosen} session={session_id} "
-        "(waiting for /rig-arm before arming the card)",
-        flush=True,
-    )
-    await asyncio.wait_for(armed.wait(), timeout=600.0)
-    print(
-        f"ARMED watching={sorted(runtime.watching_surfaces())}",
-        flush=True,
-    )
 
-    # A user turn in the transcript, before the question it provokes.
+    # The turn that provoked the question, written BEFORE the driver is allowed
+    # to arm and therefore before the page has ever asked for its history.
     #
-    # Not decoration. `CanonicalTranscript` collapses itself to
-    # `h-0 overflow-hidden` when it holds no records — the stories record the
-    # same trap — so a gate fixtured against an empty transcript has nothing to
-    # paint into: measured on the running app, the option buttons existed in the
-    # DOM with a rect at `top: -30` inside a zero-height scroller, which is a
-    # card nobody can hit-test or see. This is also how the app always reaches
-    # the state: a question follows the turn that provoked it.
+    # Not decoration, and the ordering is the whole point. `CanonicalTranscript`
+    # collapses itself to `h-0 overflow-hidden` when it holds no records — the
+    # stories record the same trap — so a gate fixtured against an empty
+    # transcript has nothing to paint into: measured on the running app the
+    # option buttons existed with a rect at `top: -30` inside a zero-height
+    # scroller, which is a card nobody can see or hit-test.
+    #
+    # This used to run after `/rig-arm` (i.e. after `watching_surfaces()` went
+    # non-empty), which is one page-load too late: the durable row was appended
+    # after the app's history request had already been answered, and the row
+    # never reached the transcript — the app rendered `rows=0` and the driver
+    # failed with `no fieldset`. That is the real reason the committed pair could
+    # not be re-derived (QA round 2's Q1 read it as the driver being unable to
+    # aim; the driver was fine, the fixture was unarmed). Written here, the
+    # history request sees it and the gate follows it, which is also how the app
+    # always reaches this state: a question follows the turn that provoked it.
     await session.transcript.append_message(
         Message(
             role="user",
@@ -225,6 +225,17 @@ async def main() -> None:
         )
     )
     session.transcript.flush()
+
+    print(
+        f"SERVING port={chosen} session={session_id} "
+        "(waiting for /rig-arm before arming the card)",
+        flush=True,
+    )
+    await asyncio.wait_for(armed.wait(), timeout=600.0)
+    print(
+        f"ARMED watching={sorted(runtime.watching_surfaces())}",
+        flush=True,
+    )
 
     question = AskQuestion(
         id="PAIRING",

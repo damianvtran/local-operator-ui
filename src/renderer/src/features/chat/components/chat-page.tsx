@@ -25,7 +25,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import type { CanonicalFrontendSync } from "../../../../../shared/desktop-session-contract";
@@ -33,9 +33,10 @@ import {
 	type AnswerOutcome,
 	type SendLock,
 	answerGateOption,
+	answerValue,
 	createSendLock,
 	errorCodeOf,
-	resolveNumericAnswer,
+	lostAnswerMessage,
 } from "../ask-answer";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
@@ -576,12 +577,13 @@ function SessionPanel({
 						requestId: gate.request_id,
 						// A bare `1`-`9` typed against an options list is a pick, not a
 						// literal answer: the card shows those numerals, so typing one is
-						// the answer it invites. Resolved against the TYPED text, never
-						// `content` — with a staged reply `content` is already wrapped in
-						// `<reply-to>`, which is not a bare ordinal, so resolving there sent
-						// the model the wrapped numeral as its answer. See
-						// `resolveNumericAnswer`.
-						value: resolveNumericAnswer(gate, typed ?? content),
+						// the answer it invites. `answerValue` resolves it against the
+						// TYPED text, never `content` — with a staged reply `content` is
+						// already wrapped in `<reply-to>`, which is not a bare ordinal, so
+						// resolving there sent the model the wrapped numeral as its answer.
+						// It lives in `ask-answer.ts` so the decision is assertable in
+						// every one of its three states (code review round 2, F1).
+						value: answerValue(gate, typed, content),
 						questionIndex: gate.question_index,
 					});
 				return true;
@@ -732,6 +734,33 @@ function SessionPanel({
 		 */
 		const currentGate = canonical.frontend?.pending_gate;
 		const stillThisGate = currentGate != null && gateKeyOf(currentGate) === key;
+		const cardOnScreen =
+			document.querySelector('[aria-label="Answer options"]') !== null;
+		/*
+		 * Whether the press could still be the answer the ask took.
+		 *
+		 * Two halves, because neither alone is the user's situation:
+		 *
+		 * - **The card this press was made on is still on screen.** This is the
+		 *   condition the report is about, and it has to be read from the DOM rather
+		 *   than from `pending_gate`: on the wire that field is written by the
+		 *   notifier and survives the round trip after the owner has taken an answer
+		 *   (which is exactly why the card holds itself with `answerState`), so a
+		 *   store-only test says "still pending" while the user is looking at a
+		 *   transcript with no card on it. Measured on the committed rig: with the
+		 *   store test alone the losing-answer race stayed silent, because the
+		 *   `failed` branch wrote its refusal into a card that was no longer
+		 *   rendered.
+		 * - **The ask is still this ask.** A gate that has advanced to its next
+		 *   question carries the same `request_id`, and that is what our own answer to
+		 *   question N looks like, so it counts as the press having landed. Only a
+		 *   gate that is gone, or one belonging to a different ask, means the press
+		 *   lost.
+		 */
+		const pressStillStands =
+			cardOnScreen &&
+			currentGate != null &&
+			(stillThisGate || currentGate.request_id === gate.request_id);
 		if (outcome.status === "refused") {
 			// Nothing was sent and nothing is wrong: either the lock was already
 			// held by a typed send, or this answer lost a race to another front
@@ -740,33 +769,42 @@ function SessionPanel({
 			setAnswerState(null);
 			return;
 		}
-		if (outcome.status === "failed") {
-			if (stillThisGate) {
-				setAnswerState({
-					key,
-					sending: false,
-					// Outcome first, cause second: the user's press did not take
-					// effect, and that is the sentence they need before the reason.
-					refused: `Your answer was not sent. ${userFacingMessage(
-						outcome.error,
-						"The request could not be completed.",
-					)}`,
-				});
-				return;
-			}
-			/*
-			 * The gate went away under the press. In another window, the terminal or
-			 * on a phone someone else answered it first — the app refuses cleanly
-			 * rather than double-answering, but it used to say so in the backend's
-			 * own vocabulary ("this question is no longer pending") from the
-			 * composer, after the card it referred to had gone. Report the outcome,
-			 * not the state (UX round 1, U4).
-			 */
+		/*
+		 * The card owns the outcome only while the card is still ON SCREEN. Holding
+		 * it disabled is what stops a repeat press, and the refusal belongs on the
+		 * surface the press was made on — but a card that has already gone cannot
+		 * show anything, and writing the refusal into `answerState` for it is how
+		 * the losing-answer race lost its sentence: the state was set on a gate the
+		 * panel no longer rendered, and nothing said so (QA round 2, F-A).
+		 */
+		if (outcome.status === "failed" && stillThisGate && cardOnScreen) {
+			setAnswerState({
+				key,
+				sending: false,
+				// Outcome first, cause second: the user's press did not take
+				// effect, and that is the sentence they need before the reason.
+				refused: `Your answer was not sent. ${userFacingMessage(
+					outcome.error,
+					"The request could not be completed.",
+				)}`,
+			});
+			return;
+		}
+		/*
+		 * Everything still open is an answer this press did not get to make, on a
+		 * gate that had already moved: a rejection for a question no longer pending,
+		 * or — the case that used to say nothing at all — a 200 for an answer
+		 * another front end had already given. The card it referred to is gone, so
+		 * the report goes to the composer, in the outcome's language rather than the
+		 * backend's (UX round 1, U4; UX round 2, U9; QA round 2, F-A).
+		 */
+		const lost = lostAnswerMessage(outcome, pressStillStands);
+		if (lost) {
 			setAnswerState(null);
-			setSendError(
-				"That question was already answered somewhere else, so your answer was not sent.",
+			setSendError(lost);
+			setSendErrorCode(
+				outcome.status === "failed" ? errorCodeOf(outcome.error) : undefined,
 			);
-			setSendErrorCode(errorCodeOf(outcome.error));
 			return;
 		}
 		setAnswerState({ key, sending: false, refused: null });
@@ -784,11 +822,21 @@ function SessionPanel({
 	 * the next question takes focus, and a gate that cleared hands it back to the
 	 * composer.
 	 *
+	 * A LAYOUT effect, not a passive one. Measured on the rig (UX round 2, U8;
+	 * re-measured for this round): the disabled option loses focus at the press,
+	 * and a passive effect leaves a window — up to a quarter of a second, and a
+	 * whole painted frame — in which the card has gone and `document.activeElement`
+	 * is the BODY. That window is what the reviewer sampled. Layout effects run
+	 * in the commit that removes the card, before the browser paints, so no frame
+	 * ever shows focus on the body.
+	 *
 	 * Guarded on the body being active so a keyboard user's focus is restored and
-	 * nobody else's is moved.
+	 * nobody else's is moved. The guard still passes after the press: the pressed
+	 * option is `disabled` the moment the press lands, which is what the browser
+	 * drops focus to the body for.
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the gate key is the trigger, not a value read in the body
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!restoreFocus.current) return;
 		restoreFocus.current = false;
 		if (document.activeElement !== document.body) return;

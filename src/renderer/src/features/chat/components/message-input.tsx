@@ -47,6 +47,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import { shouldTabIntoAnswerOptions } from "../ask-answer";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
@@ -248,35 +249,15 @@ const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
- * Move focus out of the composer and onto the pending question's first option.
+ * The pending gate's first option that a user could actually reach, or null.
  *
- * ## Why Tab is overridden here, and only here
- *
- * The gate renders inside the transcript, which is BEFORE the composer in DOM
- * order, so forward Tab out of the composer never reaches the question the user
- * was just shown — it walks the sidebar instead, and the sidebar grows by three
- * buttons per agent and per chat the user has. Measured with real key events: 24
- * consecutive forward Tabs from the composer never reached the option group,
- * while Shift+Tab reached it in one press and nothing on screen said so (UX
- * round 1, U1).
- *
- * Overriding the forward direction only — and only while a live option exists —
- * makes the two things a pending question has to offer one closed cycle: the
- * composer, and the options. Shift+Tab is untouched (it still leaves the
- * composer onto the last option), a disabled card matches nothing so Tab behaves
- * as it always did, and with no gate pending this never fires at all.
- *
- * Returns whether it moved focus, so the caller can leave the event alone when
- * it did not.
+ * A held card (an answer in flight, or one already answered) renders every option
+ * `disabled`, so this matches nothing and the caller leaves the key event alone.
  */
-const focusFirstAnswerOption = (): boolean => {
-	const first = document.querySelector<HTMLElement>(
+const firstLiveAnswerOption = (): HTMLElement | null =>
+	document.querySelector<HTMLElement>(
 		'[aria-label="Answer options"] button:not([disabled])',
 	);
-	if (!first) return false;
-	first.focus();
-	return true;
-};
 
 /**
  * Type for the imperative handle to expose focusInput method
@@ -538,20 +519,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				// Forward Tab leaves the conversation for the sidebar; while a
-				// question is waiting, the option group is the thing the user was
-				// just shown and is one press away in this direction. See
-				// `focusFirstAnswerOption`.
-				if (
-					event.key === "Tab" &&
-					!event.shiftKey &&
-					focusFirstAnswerOption()
+				// question is waiting and the user is DONE with the box, the option
+				// group is the thing they were just shown and is one press away in
+				// this direction. The rule for "done with the box" is
+				// `shouldTabIntoAnswerOptions` — unmodified Tab, content in the
+					// composer, caret at the end, a live option to land on. Every other
+					// Tab, and every Tab with an empty box or a caret mid-draft, keeps
+					// its native meaning (UX round 2, U7; code review round 2, F2).
+				const textarea = textareaRef.current;
+					const target = firstLiveAnswerOption();
+					if (
+					target &&
+					shouldTabIntoAnswerOptions(
+						event,
+						{
+							value: newMessage,
+							selectionStart: textarea?.selectionStart ?? null,
+							selectionEnd: textarea?.selectionEnd ?? null,
+						},
+						true,
+					)
 				) {
+					target.focus();
 					event.preventDefault();
 					return;
 				}
 				handleKeyDown(event);
 			},
-			[slash, handleSlashPick, handleKeyDown],
+			[slash, handleSlashPick, handleKeyDown, newMessage],
 		);
 
 		useImperativeHandle(ref, () => ({

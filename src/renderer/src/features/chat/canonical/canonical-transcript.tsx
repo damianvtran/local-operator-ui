@@ -1010,7 +1010,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				{gate && (
 					<div className={cn("mt-6", !isSmallView && AGENT_GUTTER)}>
 						<AgentQuestion
-							busy={Boolean(answer?.sending)}
+							/*
+							 * The eyebrow says what is happening, and the options are disabled
+							 * for both halves of that: an answer on its way, and an answer this
+							 * gate already took (the hold). Binding the eyebrow to only the
+							 * second half of the options' own condition left the committed
+							 * in-flight story frame reading "Waiting for your answer" over a
+							 * card whose every option was disabled — two bindings, two
+							 * claims, one frame (design round 2, D7). The product switches
+							 * correctly on the live surface (UX round 2, U2, six samples over
+							 * a held window); the story drove `answering` and disagreed with
+							 * itself.
+							 */
+							busy={answering || Boolean(answer?.sending)}
 							content={
 								gate.detail ? `**${gate.title}**\n\n${gate.detail}` : gate.title
 							}
@@ -1050,8 +1062,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										gate.question_total > 1
 											? `Question ${gate.question_index + 1} of ${gate.question_total}.`
 											: null,
+										/*
+										 * "type 1-9 and send", not "press 1-9": a digit on its own does
+										 * nothing. It is typed into the composer and only sending resolves
+										 * it, so the hint describes the two presses the shortcut actually
+										 * takes (UX round 2, U10).
+										 */
 										gate.options.length > 0
-											? "Choose an option, press 1-9, or type your own answer below."
+											? "Choose an option, type 1-9 and send, or type your own answer below."
 											: "Type your answer below.",
 									]
 										.filter(Boolean)
