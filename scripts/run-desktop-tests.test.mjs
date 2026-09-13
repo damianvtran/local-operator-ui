@@ -39,10 +39,16 @@ const BYPASS_LINE =
 	/^desktop tests: 2 files, concurrency 3 \(explicit --test-concurrency=3 in argv; governor bypassed\)$/;
 const ONE_FILE_LINE = /^desktop tests: 1 file, /;
 const USAGE_ERROR = /needs a positive whole number/;
-// The child's own reporter footer. A run that was skipped prints nothing at all
-// (0 bytes of stdout), so matching this is how a case proves the suite RAN
-// rather than that a status happened to land the right way.
-const TESTS_SUMMARY = /^ℹ tests \d+/m;
+/*
+ * "The child ran and reported its own result", in either reporter's spelling.
+ * Not the summary line, and this took a CI failure to learn: node's default
+ * reporter is the spec one on this machine (`✖ fails`, `ℹ tests 1`) and TAP
+ * under CI (`not ok 1 - fails`, `# tests 549` — which is what the Desktop Tests
+ * job greps for), so asserting on `ℹ tests` passed locally and reddened the
+ * runner. A skipped run writes 0 bytes to stdout and matches neither form.
+ */
+const FAIL_REPORTED = /^(?:✖|not ok \d+ -) fails/m;
+const PASS_REPORTED = /^(?:✔|ok \d+ -) passes/m;
 
 /*
  * Two throwaway test files: one that passes and one that fails. They live in the
@@ -162,13 +168,13 @@ test("an ambient NODE_TEST_CONTEXT cannot make a failing suite report success", 
 	 */
 	const failing = runRunner([FAILS], { NODE_TEST_CONTEXT: "child-v8" });
 	assert.equal(failing.status, 1, failing.stdout);
-	// The failing file really ran: its own summary is on stdout, which a skipped
-	// run does not print. Without this the status assertion alone could be
-	// satisfied by some other route to a non-zero exit.
-	assert.match(failing.stdout, TESTS_SUMMARY);
+	// The failing file really ran: the child reported the failure itself, which a
+	// skipped run (0 bytes of stdout) cannot do. Without this the status
+	// assertion alone could be satisfied by some other route to a non-zero exit.
+	assert.match(failing.stdout, FAIL_REPORTED);
 
 	// And the same variable must not disturb a passing suite.
 	const passing = runRunner([PASSES], { NODE_TEST_CONTEXT: "child-v8" });
 	assert.equal(passing.status, 0, passing.stdout);
-	assert.match(passing.stdout, TESTS_SUMMARY);
+	assert.match(passing.stdout, PASS_REPORTED);
 });
