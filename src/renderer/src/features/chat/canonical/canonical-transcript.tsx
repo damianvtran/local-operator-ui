@@ -175,6 +175,19 @@ export type CanonicalTranscriptProps = {
 	 * believing they are the only answer.
 	 */
 	answering?: boolean;
+	/**
+	 * This panel's own record of the gate it is showing, from the press onwards.
+	 *
+	 * `null` means nothing has been pressed here and the card is live. Once an
+	 * answer has been attempted the card holds itself disabled until the gate
+	 * itself changes (`request_id` or `question_index`), because the renderer's
+	 * `pending_gate` is only cleared by the next stream frame — so between the
+	 * owner accepting the answer and that frame arriving, a live card would let a
+	 * second press post a second answer to a one-shot question (code review round
+	 * 1, R-MINOR). `sending` also drives the callout's eyebrow, and `refused`
+	 * carries the sentence when the owner would not take the answer.
+	 */
+	answer?: { sending: boolean; refused: string | null } | null;
 };
 
 /**
@@ -590,6 +603,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	onReconnect,
 	onAnswer,
 	answering = false,
+	answer = null,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -996,6 +1010,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				{gate && (
 					<div className={cn("mt-6", !isSmallView && AGENT_GUTTER)}>
 						<AgentQuestion
+							busy={Boolean(answer?.sending)}
 							content={
 								gate.detail ? `**${gate.title}**\n\n${gate.detail}` : gate.title
 							}
@@ -1005,10 +1020,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								options={gate.options}
 								recommended={gate.recommended}
 								requestId={gate.request_id}
-								// One answer in flight at a time. `admitting` is the same
-								// flag the composer disables on, so a click and a typed send
-								// cannot both post an answer for one question.
-								busy={answering}
+								// One answer in flight at a time, and the card holds itself
+								// disabled after a press until the gate itself moves: `admitting`
+								// is the composer's shared flag, and `answer` is this panel's own
+								// record that it already answered this gate.
+								busy={answering || answer !== null}
 								onAnswer={(label) => onAnswer?.(label)}
 							/>
 						)}
@@ -1022,18 +1038,44 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									 * card carries an explicit free-text row for exactly this
 									 * reason), and a `secret` ask renders no options at all,
 									 * where the composer is the only answer path.
+									 *
+									 * The digits are named because they work and nothing said
+									 * so: the card draws `1.` `2.` `3.` and typing one resolves
+									 * to that label, which is a shortcut a reader of the card
+									 * cannot otherwise discover. The TUI teaches its own
+									 * digits in a footer legend; this is the same sentence in
+									 * the one line this card has (UX round 1, U6).
 									 */
 									[
 										gate.question_total > 1
 											? `Question ${gate.question_index + 1} of ${gate.question_total}.`
 											: null,
 										gate.options.length > 0
-											? "Choose an option, or type your own answer below."
+											? "Choose an option, press 1-9, or type your own answer below."
 											: "Type your answer below.",
 									]
 										.filter(Boolean)
 										.join(" ")}
 						</p>
+						{/*
+						 * A refused answer, on the card the press was made on.
+						 *
+						 * The round-1 finding was that a rejected press reported itself in
+						 * the composer's alert, in backend vocabulary ("this question is no
+						 * longer pending"), after the card it referred to had gone; and that
+						 * a second press repeated it because the card was still enabled
+						 * (QA round 1, Q3; UX round 1, U4). The sentence is outcome-first
+						 * and the card stays held, so there is nothing to press twice.
+						 *
+						 * `output`, not a `p` with `role="status"`: the element carries that
+						 * role implicitly, so the announcement survives without an ARIA
+						 * attribute restating what the tag already says.
+						 */}
+						{answer?.refused && (
+							<output className="mt-2 block text-body-sm text-danger">
+								{answer.refused}
+							</output>
+						)}
 					</div>
 				)}
 
