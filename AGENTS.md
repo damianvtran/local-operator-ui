@@ -276,7 +276,28 @@ Use this process whenever asked to cut a release.
 ```
 
 9. Create GitHub release with gh CLI
-- `gh release create v<version> --title "<release title>" --notes-file <notes_file>`
+- `gh release create v<version> --prerelease --title "<release title>" --notes-file <notes_file>`
+- **Always publish the release as a pre-release.** `electron-updater` resolves
+  its feed from GitHub's `/releases/latest`, which answers with the newest
+  non-pre-release release whether or not that release has assets. A release
+  published as a full release before its installers are built therefore points
+  the feed at a release with no `latest*.yml` for the whole 25-35 minute build,
+  the metadata request 404s, and every running app filters that into "no updates
+  available" -- users are told they are current while a newer version is already
+  published (v0.17.2, v0.19.1 and v0.19.2 all shipped that way). The publish
+  workflow does the rest:
+  - It holds the release out of `latest` for the duration of the build, and
+    promotes it once the attach has succeeded and the assets are verified, so
+    the previous, complete release keeps answering until this one can.
+  - Re-running the workflow for a published tag (`gh run rerun <run-id>`) closes
+    the window when the attach succeeds.
+  - A `workflow_dispatch` repair attaches assets but never promotes, because a
+    repair must not mutate release metadata. After one, close the window by
+    hand: `gh release edit v<version> --prerelease=false`.
+  - A build that fails leaves the release a pre-release, so an incomplete
+    release is never offered. Fix the build and re-run rather than promoting it.
+  - A tag with a pre-release suffix (`v1.2.3-rc.1`) is never promoted: it stays a
+    pre-release, which is what its name asks for.
 
 10. Post-release verification
 - Confirm release exists: `gh release view v<version> --json url,name,tagName,publishedAt`
