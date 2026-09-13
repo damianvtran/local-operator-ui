@@ -489,14 +489,15 @@ is also responsible for telling every contributor in the window where it landed.
    the tag covers that landing too — which is why step 3 re-derives the window
    immediately before tagging.) Publish it as a **pre-release** (see the warnings
    below) so the empty first minutes of the build stay out of `/releases/latest`.
-   The notes cover **every PR in the window**. Their *structure* is the house
-   style of the existing releases; the `## PRs` list is one row per PR — the
-   number followed by the PR title (its merge commit subject) in backticks, as
-   the template below shows. That is the shape `v0.19.4` and `v0.19.5` actually
-   publish, the window's own bump PR
-   included; older releases prefix the same subject with the commit SHA instead
-   of the number. The `Release:` impact lines a merger contributes are what the
-   summary and the `## Impact` bullets are written from, not the `## PRs` rows:
+   The notes cover **every PR in the window**, the window's own bump PR
+   included. The `## PRs` row shape below is what the owner should produce, not
+   a description of any past release: one row per PR, the number followed by
+   the PR title in backticks, with GitHub's trailing `(#n)` dropped from that
+   title. For the surrounding structure, copy the shape of the previous
+   release's body — `gh release view <prev_tag> --json body` — since recent
+   releases are not uniform, one older release is a shape to follow, not a
+   rule. The `Release:` impact lines a merger contributes are what the summary
+   and the `## Impact` bullets are written from, not the `## PRs` rows:
 
    ```md
    ## What's New
@@ -511,7 +512,7 @@ is also responsible for telling every contributor in the window where it landed.
    - **<User/Developer Impact>**: <description>
 
    ## PRs
-   - #<n> `<the PR's title / merge commit subject>`
+   - #<n> `<the PR title, minus GitHub's trailing (#n)>`
    - #<bump-PR-number> `chore(release): bump version to <version>`
 
    **Full Changelog**: https://github.com/damianvtran/local-operator-ui/compare/<prev_tag>...v<version>
@@ -652,7 +653,8 @@ git -C <repo> worktree remove /tmp/loui-release-next
   `version-bump-guard` now catches this on the PR, but it does **not** block an
   `--admin` merge, because this repository configures no required status checks,
   so the pre-tag check is the backstop.
-- **The tag names the bump's merge commit, and validate-release enforces it.**
+- **The tag names the commit `origin/main` pointed at when the window was cut,
+  and validate-release enforces it.**
   `scripts/validate-release.mjs` refuses a tag that does not match its Release,
   or whose SHA has moved since the event fired, so a Release created without
   `--target` — or against a tag re-pointed afterwards — fails `validate-release`
