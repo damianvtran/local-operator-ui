@@ -479,15 +479,24 @@ is also responsible for telling every contributor in the window where it landed.
    comment and merges. **A bump commit that also carries code is a defect** — the
    code belongs in a reviewed PR of its own.
 
-4. **Tag and publish** from the merge commit of that bump. `gh release create`
-   with `--target` creates the tag on that exact SHA, and *publishing the
-   Release* is what triggers `publish.yml`; `scripts/validate-release.mjs` then
-   validates that the tag still points at that SHA, so the tag and the tree
-   cannot drift apart between the two steps. Publish it as a **pre-release** (see
-   the warnings below) so the empty first minutes of the build stay out of
-   `/releases/latest`. The notes cover **every PR in the window**, in the house
-   style of the existing releases, written from the collected impact lines and
-   not from commit subjects:
+4. **Tag and publish** from the bump's merge commit SHA — the commit
+   `origin/main` points at, and the exact object the mechanics step below passes
+   as `--target`. `gh release create` with `--target` creates the tag on that
+   exact SHA, and *publishing the Release* is what triggers `publish.yml`;
+   `scripts/validate-release.mjs` then validates that the tag still points at
+   that SHA, so the tag and the tree cannot drift apart between the two steps.
+   (If a PR merges after the bump, `origin/main` is a superset of that commit and
+   the tag covers that landing too — which is why step 3 re-derives the window
+   immediately before tagging.) Publish it as a **pre-release** (see the warnings
+   below) so the empty first minutes of the build stay out of `/releases/latest`.
+   The notes cover **every PR in the window**. Their *structure* is the house
+   style of the existing releases; the `## PRs` list is one row per PR — the
+   number followed by the PR title (its merge commit subject) in backticks, as
+   the template below shows. That is the shape `v0.19.4` and `v0.19.5` actually
+   publish, the window's own bump PR
+   included; older releases prefix the same subject with the commit SHA instead
+   of the number. The `Release:` impact lines a merger contributes are what the
+   summary and the `## Impact` bullets are written from, not the `## PRs` rows:
 
    ```md
    ## What's New
@@ -502,7 +511,8 @@ is also responsible for telling every contributor in the window where it landed.
    - **<User/Developer Impact>**: <description>
 
    ## PRs
-   - #<n> — <the PR's Release: impact line>
+   - #<n> `<the PR's title / merge commit subject>`
+   - #<bump-PR-number> `chore(release): bump version to <version>`
 
    **Full Changelog**: https://github.com/damianvtran/local-operator-ui/compare/<prev_tag>...v<version>
    ```
@@ -555,10 +565,12 @@ git -C <repo> fetch origin --tags
 git -C <repo> log --oneline "$(git -C <repo> describe --tags --abbrev=0 origin/main)..origin/main"
 git -C <repo> diff "$(git -C <repo> describe --tags --abbrev=0 origin/main)..origin/main" -- package.json   # must print nothing
 
-# 4. Tag and Release in one step, on the bump's merge commit. --target creates
-#    the tag; the Release being published is what triggers publish.yml, which
-#    validates that exact SHA in scripts/validate-release.mjs. --prerelease is
-#    the hold that keeps an asset-less Release out of `latest`.
+# 4. Tag and Release in one step, on the bump's merge commit — the same SHA the
+#    runbook names: `rev-parse origin/main` is that commit while nothing has
+#    merged past it, and a superset of it (also covered by the tag) if something
+#    has. --target creates the tag; the Release being published is what triggers
+#    publish.yml, which validates that exact SHA in scripts/validate-release.mjs.
+#    --prerelease is the hold that keeps an asset-less Release out of `latest`.
 $EDITOR /tmp/loui-release-X.Y.Z-notes.md   # the house-style template above
 gh release create vX.Y.Z --target "$(git -C <repo> rev-parse origin/main)" \
   --prerelease --title 'X.Y.Z: <theme>' --notes-file /tmp/loui-release-X.Y.Z-notes.md
@@ -703,7 +715,12 @@ misreports how much changed.
 
 Code owners are listed in `.github/CODEOWNERS`. **This repository has no
 ruleset requiring an approving review**, so there is no approval gate to clear
-here — `CODEOWNERS` routes review requests, it does not block merges. The rule
+here — `CODEOWNERS` routes review requests, it does not block merges. Confirm
+that with `gh api repos/damianvtran/local-operator-ui/rules/branches/main` (`[]`
+means nothing is enforced), never with the legacy
+`branches/main/protection` endpoint: that one answers `404 Branch not protected`
+even for a branch a modern ruleset *is* enforcing, so it is the wrong question.
+The rule
 below is therefore about what makes a merge *legitimate*, not about what the
 forge will let through.
 
