@@ -1387,6 +1387,49 @@ export function dropLiveRecords(state: TranscriptState): TranscriptState {
 	);
 }
 
+/**
+ * Paint the user's own message the instant it is admitted, before the owner
+ * echoes it back.
+ *
+ * Keyed by the ADMISSION REQUEST UUID, which is the id the owner will give the
+ * durable row: the request id becomes `command_id`, then `message_id`, then
+ * `Message.user(..., id=message_id)`, then the durable `TranscriptEntry` id.
+ * That is what makes this an ECHO rather than a duplicate — `upsert` replaces
+ * it in place the moment the real row lands, which is the property this
+ * module's own header describes ("user rows carry the request UUID, so an
+ * optimistic echo and the owner's `message_start` coalesce for free"). Any
+ * other key — a local uuid, a timestamp, an index — paints the message twice,
+ * permanently.
+ *
+ * The record is an ordinary `user` record with no pending flag: a distinct
+ * variant would break `shallowEqual`'s key-count comparison, so the durable
+ * row arriving would always count as changed and re-render.
+ */
+export function appendPendingUser(
+	state: TranscriptState,
+	id: string,
+	text: string,
+	images: TranscriptImage[],
+	now = Date.now(),
+): TranscriptState {
+	// The owner's row wins over a later echo for the same id: re-echoing would
+	// otherwise overwrite reconciled content with the composer's original text.
+	if (state.index.has(id)) return state;
+	return upsert(state, { kind: "user", id, ts: now, text, images });
+}
+
+/**
+ * Drop one record by id. Used to retract an echo whose send was refused
+ * BEFORE admission — the only case where the message provably does not exist
+ * on the owner (see `admitChatDraft`'s `refusedBeforeAdmission`).
+ */
+export function removeRecord(
+	state: TranscriptState,
+	id: string,
+): TranscriptState {
+	return removeMatching(state, (record) => record.id === id);
+}
+
 let localNoteCounter = 0;
 
 /** Append a renderer-local notice row (never durable, never replayed). */

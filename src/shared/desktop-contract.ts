@@ -263,6 +263,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			canNotify: z.boolean(),
 		})
 		.strict(),
+	// Speculative runtime engage. Carries no payload BY DESIGN: it admits no
+	// work, so it is not receipt-keyed and not a `MESSAGE_OPS` member - see
+	// `desktopRequestByteBudget`. Firing it costs the control budget and a
+	// 2-byte body, which is what lets the renderer issue it from a keystroke.
+	z
+		.object({ op: z.literal("sessions.warm"), sessionId })
+		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
 	// everything else. These routes are gated in managed mode (agent inventory,
 	// cwd paths, job history and conversation content are the same tenant's data
@@ -1170,6 +1177,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					visible: request.visible,
 					can_notify: request.canNotify,
 				},
+			};
+		case "sessions.warm":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/warm`,
+				method: "POST",
+				// `{}` rather than `undefined`: the transport only sets
+				// Content-Type when a body exists, and the route's pydantic input
+				// forbids extras but still wants a JSON OBJECT. An omitted body
+				// makes a legal call answer 422.
+				body: {},
 			};
 		case "legacy.models": {
 			// The query the renderer's own listModels() built. Dropping it would

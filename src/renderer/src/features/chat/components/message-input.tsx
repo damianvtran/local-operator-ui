@@ -4,7 +4,11 @@ import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { useMessageInput } from "@shared/hooks/use-message-input";
+import {
+	SEND_HELD,
+	type SendOutcome,
+	useMessageInput,
+} from "@shared/hooks/use-message-input";
 import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
@@ -102,13 +106,34 @@ type MessageInputProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
-	) => undefined | boolean | Promise<undefined | boolean>;
+		/**
+		 * Called when the send's optimistic echo reaches a transcript, i.e. when the
+		 * text is on screen. Threaded through to `admitChatDraft`; a host with no
+		 * echo to wait on (the legacy chat path) may ignore it.
+		 *
+		 * Read it as "the echo is in a transcript now", not as "your box was
+		 * cleared": on the New-chat path the drain delivers it to the composer the
+		 * identity flip has already unmounted, while the visible panel paints the
+		 * echo in its first state. See `use-message-input.ts` (round 7, F1).
+		 */
+		onEchoPainted?: () => void,
+	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
 	conversationId?: string;
 	messages: Message[];
 	currentJobId?: string | null;
 	onCancelJob?: (jobId: string) => void;
 	isFarFromBottom?: boolean;
+	/**
+	 * The user started composing into an empty box.
+	 *
+	 * Called from the textarea's own onChange because that is the only place a
+	 * keystroke is observable; the composer deliberately knows nothing about
+	 * what it triggers. Its consumer warms the session's runtime so the send
+	 * that follows does not pay a cold engage, and the latch that makes it fire
+	 * once per session lives there (`useWarmSession`).
+	 */
+	onComposerInput?: () => void;
 	/** New messages landed while the reader was scrolled up. */
 	hasNewActivity?: boolean;
 	scrollToBottom?: () => void;
@@ -250,6 +275,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			messages,
 			currentJobId,
 			onCancelJob,
+			onComposerInput,
 			isFarFromBottom = false,
 			hasNewActivity = false,
 			scrollToBottom = () => {},
@@ -368,7 +394,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [initialSuggestions]);
 
 		const onSubmit = useMemo(
-			() => async (message: string) => {
+			() => async (message: string, onEchoPainted?: () => void) => {
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
@@ -377,8 +403,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				const accepted = await onSendMessage(
 					buildSendPayload(message, replies),
 					attachments.map((a) => a.path),
+					onEchoPainted,
 				);
-				if (accepted === false) return false;
+				/*
+				 * Both failure answers leave the composer's own payload exactly as it is,
+				 * replies and attachments included.
+				 *
+				 * `false` because the text is going back in the box and Enter must be able
+				 * to resend it byte-identically. `SEND_HELD` because the store's claim
+				 * still holds that payload and its guard compares against it: clearing the
+				 * chips here would make the post-Restore resend a DIFFERENT payload, which
+				 * the guard refuses - the deadlock Restore exists to escape.
+				 */
+				if (accepted === false || accepted === SEND_HELD) return accepted;
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
@@ -917,10 +954,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							 * Rendered only when the box does NOT already hold the payload.
 							 * When it does, the message is on screen and Enter retries it -
 							 * saying so would be noise on the common path.
+							 *
+							 * The second half of the sentence states the UNCERTAINTY, which the
+							 * failure copy does not: that copy is the backend's own refusal string
+							 * (or the generic fallback) and reads as "nothing happened", while the
+							 * branch's design keeps the echo painted precisely because the outcome
+							 * is unknowable (design round 1's D1, UX round 1's U5). One register
+							 * says "this failed", the other shows the message still in the
+							 * transcript, so the held claim is the only place that can name the
+							 * third possibility - and it has to name the retry too, or the two
+							 * copies read as a duplicate rather than as one message with a
+							 * remedy.
 							 */
 							<p className={cn("text-ink-muted")}>
 								An unsent message is still being held, so a different message
-								cannot be sent yet.
+								cannot be sent yet. Whether it reached the agent is not knowable
+								- its copy is in the transcript above - so restore it and send
+								again only if no reply arrives.
 							</p>
 						)}
 						{!abandonNotice &&
@@ -1162,6 +1212,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							}
 							value={newMessage}
 							onChange={(e) => {
+								// Only the empty -> non-empty edge: the whole point is one
+								// statement of intent per composed message, and the
+								// consumer's latch should not be asked to absorb a
+								// per-character call it can only discard.
+								if (!newMessage && e.target.value) onComposerInput?.();
 								setNewMessage(e.target.value);
 								setCaret(e.target.selectionStart);
 								// Editing the text answers the alert. Leaving it up over a

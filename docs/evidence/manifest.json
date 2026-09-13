@@ -220,6 +220,15 @@
       "capturedAtHead": "d90ad6df7108e5e35eb7a18d336ebca244a9f5a2",
       "source": "scripts/capture-evidence.mjs against chat-tool-rows--operator-spacing-cases with GAP.trace temporarily set to mt-1, then reverted",
       "why": "The REJECTED alternative, photographed. Both the code comments and this directory's README rest the 'not 4px' half of the decision on 'at 4px the rows float as separate items again' - and no frame in the repository was at 4px, so the comparison that decides the tier is 2 rather than 4 could not be checked by looking, which is the standard this evidence set holds everything else to. A sweep cannot re-derive it: it is a picture of a tier the app does not ship, produced by editing GAP.trace to mt-1 for one capture and reverting. Compare against chat-tool-rows/operator-spacing-cases/localOperatorDark.webp, same story and viewport, which is the shipped 2px."
+    },
+    {
+      "path": "submit-latency",
+      "frames": 0,
+      "surfaces": 0,
+      "themes": 0,
+      "source": "PENDING - no frame has been captured, and this entry exists so that is a declared state rather than an absence. The procedure that will produce them (the shipped `ChatPage` served to the operator's own Chrome through the dev desktop proxy, driven by a browser tool, against an isolated `local-operator serve` at `hosting: test`) is written out as a hand capture in docs/evidence/submit-latency/README.md, together with the three measurements of the bridge state that blocked it on 2026-09-13 and the filenames this directory is expected to hold.",
+      "why": "Declared at zero frames rather than left out, because an undeclared directory is invisible to check-evidence while a declared one is a term the gate can fail on: the moment a `.webp` lands in this directory, `onDisk !== set.frames` and the gate names this set. That is the whole cost of declaring it - a green run here still says nothing about whether these frames are good, only that there are none. The `head`/`srcTree`/`scriptsTree` stamp above is deliberately NOT re-stamped for this entry: the stamp records a capture, and there has not been one (the same reason the two structural tree failures already on this branch stay visible instead of being papered over by a stamp that no capture justifies).",
+      "capturedAt": "PENDING (declaration written 2026-09-13; see docs/evidence/submit-latency/README.md)"
     }
   ]
 }
