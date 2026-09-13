@@ -4,6 +4,12 @@
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],
+    // TypeScript 7 removed `moduleResolution: "node"` (node10), which the
+    // @electron-toolkit base config still sets. `bundler` is the mode that
+    // matches how these files are actually consumed: electron-vite runs main
+    // and preload through rollup, so extensionless imports and package
+    // `exports` are both legitimate here.
+    "moduleResolution": "bundler",
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "strict": true,
     "noUnusedLocals": true,

@@ -47,10 +47,14 @@ const main = () => {
 		repairSandboxHelper,
 	} = require("./linux-sandbox.js");
 
-	// Do NOT resolve the helper through require("electron"). npm runs this script
-	// BEFORE electron's own postinstall downloads dist/, so at this point that
-	// call throws and the helper does not exist yet. ensureElectronDist() drives
-	// electron's installer first; see the long note on it for the measurements.
+	// Do NOT resolve the helper through require("electron"). Nothing has
+	// downloaded dist/ by this point -- and since Electron 42 nothing ever will:
+	// the `electron` package no longer runs a postinstall that fetches the
+	// binary, it downloads on demand the first time its bin script runs. So at
+	// this point that call would trigger a synchronous download inside the
+	// install, and the helper would still not exist yet.
+	// ensureElectronDist() drives electron's installer first; see the long note
+	// on it for the measurements.
 	const packageRoot = path.join(__dirname, "..");
 	if (!ensureElectronDist(packageRoot)) {
 		// No Electron to repair: optional install skipped, or the download failed.

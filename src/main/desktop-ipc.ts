@@ -65,6 +65,27 @@ export function guardForegroundReceipts(
 	};
 }
 
+/**
+ * Settle the byte channel of the media relay to a view `Blob` accepts.
+ *
+ * Preload sends a structured-clone `Uint8Array`, but `BlobPart` admits only
+ * views over a plain `ArrayBuffer` (`ArrayBufferView<ArrayBuffer>`), so the
+ * ArrayBufferLike-vs-ArrayBuffer distinction the newer lib typings model has to
+ * be resolved here -- at the untrusted boundary where the value arrives as
+ * `unknown` -- rather than silenced with a cast at the `Blob` call site deeper
+ * in, where nothing knows any more where the bytes came from. The renderer
+ * cannot produce a `SharedArrayBuffer`-backed view (this app is not
+ * cross-origin isolated), so one is refused as "no bytes" instead of being
+ * copied into an ArrayBuffer-backed view that would misreport what was sent.
+ */
+function relayedBytes(value: unknown): Uint8Array<ArrayBuffer> | null {
+	if (value instanceof ArrayBuffer) return new Uint8Array(value);
+	if (!(value instanceof Uint8Array)) return null;
+	const { buffer, byteOffset, byteLength } = value;
+	if (!(buffer instanceof ArrayBuffer)) return null;
+	return new Uint8Array(buffer, byteOffset, byteLength);
+}
+
 export function registerDesktopIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
@@ -72,7 +93,7 @@ export function registerDesktopIPC(
 	streams?: () => DesktopStreamRelay,
 	media?: (
 		input: unknown,
-		bytes: Uint8Array | null,
+		bytes: Uint8Array<ArrayBuffer> | null,
 	) => Promise<DesktopMediaResponse>,
 	notifier?: DesktopNotifier,
 ): void {
@@ -139,12 +160,7 @@ export function registerDesktopIPC(
 	if (media) {
 		ipcMain.handle("desktop-media", (event, input: unknown, bytes: unknown) => {
 			authorize(event);
-			const payload =
-				bytes instanceof Uint8Array
-					? bytes
-					: bytes instanceof ArrayBuffer
-						? new Uint8Array(bytes)
-						: null;
+			const payload = relayedBytes(bytes);
 			return media(input, payload);
 		});
 	}
