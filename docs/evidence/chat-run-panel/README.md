@@ -137,3 +137,13 @@ kind of fact, which is why it needs the live-app frame named above. And the
 ledger's re-arm rule (`seen' = seen ∩ problems`) is invisible by construction —
 a correctly quiet dot and a never-re-armed one are the same pixels — so it is
 pinned as a model test instead.
+
+**And one thing this set frames only for the TRIGGER.** The trigger's resting and
+hovered grounds are frames now (`trigger-idle`/`trigger-hover` and
+`panel-empty`/`trigger-open-hover`), but nothing here photographs a FOCUS ring:
+the rig moves a pointer, not a keyboard, and no story in the set focuses a control
+(`Emulation.setFocusEmulationEnabled` makes the page believe it has the window; it
+focuses nothing). The roster row's own hover ground is in the same position. Round
+1's remediation said "the set now covers hover and focus"; hover it now does for
+the trigger, focus it does not, and this paragraph is the plain statement `D2-4`
+asked for in place of the claim.
