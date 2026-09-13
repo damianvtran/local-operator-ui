@@ -51,6 +51,7 @@ const cache = await import(
 const {
 	BUNDLED_PYTHON_TREE_NAMES,
 	bundledPythonTreePaths,
+	describePythonTreeSeal,
 	PYTHON_BYTECODE_CACHE_DIR_NAME,
 	pythonBytecodeCacheDir,
 	sealPythonInterpreterTrees,
@@ -829,6 +830,21 @@ function writeCacheEntry(tree, relative) {
 	writeFileSync(join(target, "mod.cpython-312.pyc"), "bytecode");
 }
 
+/**
+ * The access-control entries `path` carries, one string per `ls -le` line.
+ *
+ * `ls` is the only tool here that can see an ACE - `stat` cannot - which is why
+ * the idempotence assertion goes through it rather than through a mode.
+ */
+function aceLines(path) {
+	const run = spawnSync("/bin/ls", ["-led", path], { encoding: "utf8" });
+	assert.equal(run.status, 0, `ls -le must report on ${path}: ${run.stderr}`);
+	return run.stdout
+		.split("\n")
+		.filter((line) => /^\s*\d+:\s/.test(line))
+		.map((line) => line.trim());
+}
+
 test(
 	"a sealed interpreter tree refuses the write a CPython cache write performs, and stays deletable",
 	{ skip: process.platform !== "darwin" },
@@ -917,6 +933,35 @@ test(
 		assert.deepEqual(again.failures, []);
 		assert.equal(hashTree(tree), before);
 
+		// Idempotent at the level the mechanism actually works at, which is the one
+		// the counts and the hash cannot see: both figures above are `find` counts
+		// and the hash is content, so a second pass that *appended* a duplicate
+		// entry every launch would satisfy them all. One ACE per path is the claim
+		// (macOS merges an identical entry - pinned here rather than assumed).
+		for (const path of [
+			tree,
+			join(tree, "lib"),
+			cache,
+			join(cache, "os.cpython-312.pyc"),
+		]) {
+			const aces = aceLines(path);
+			assert.equal(
+				aces.length,
+				1,
+				`${path} must carry exactly one access-control entry after a second seal, got ${JSON.stringify(aces)}`,
+			);
+		}
+		assert.match(
+			aceLines(tree)[0],
+			/deny add_file,add_subdirectory$/,
+			"a directory withholds creation and keeps delete_child",
+		);
+		assert.match(
+			aceLines(join(cache, "os.cpython-312.pyc"))[0],
+			/deny write,append$/,
+			"existing bytecode withholds the rewrite the heal cannot repair",
+		);
+
 		// The two properties a mode seal could not have, and the reason this one
 		// withholds the rights separately: the app can still heal the bundle it is
 		// about to hand to ShipIt (unlinking is a directory right, which the seal
@@ -934,6 +979,82 @@ test(
 	},
 );
 
+test("a seal is described by what was applied, never by what was selected", () => {
+	// The clean shape: every selected path took the entry, so the sentence may say
+	// so. Both figures are named as *selected* even here, because that is what
+	// they are - only `failures` decides whether they were applied.
+	const clean = describePythonTreeSeal({
+		sealed: ["/bundle/python_aarch64"],
+		directories: 287,
+		bytecodeFiles: 163,
+		failures: [],
+		supported: true,
+	});
+	assert.match(
+		clean,
+		/287 directory path\(s\) selected and now refusing new entries/,
+	);
+	assert.match(
+		clean,
+		/163 bytecode file\(s\) selected and now refusing rewrites/,
+	);
+
+	// The shape this exists for, copied from a read-only APFS volume: every path
+	// refused, so nothing was applied - the previous wording said "4 path(s) now
+	// refuse new entries ... 5 refused" about exactly this result (Q4).
+	const refused = describePythonTreeSeal({
+		sealed: ["/bundle/python_aarch64"],
+		directories: 4,
+		bytecodeFiles: 1,
+		failures: [
+			"chmod: Failed to set ACL on file '/bundle/python_aarch64': Read-only file system",
+			"chmod: Failed to set ACL on file '/bundle/python_aarch64/lib': Read-only file system",
+		],
+		supported: true,
+	});
+	assert.match(refused, /INCOMPLETE/);
+	assert.doesNotMatch(
+		refused,
+		/now refusing/,
+		"a partial seal must not borrow the wording of an applied one",
+	);
+	assert.match(refused, /2 refused and left with the access they had/);
+	// It names the refused path rather than only counting them.
+	assert.match(refused, /\/bundle\/python_aarch64\/lib/);
+	// A long failure list is truncated, and says so rather than looking complete.
+	assert.match(
+		describePythonTreeSeal({
+			sealed: ["/bundle/python"],
+			directories: 5,
+			bytecodeFiles: 0,
+			failures: ["a", "b", "c", "d"],
+			supported: true,
+		}),
+		/\(\+1 more\)/,
+	);
+
+	assert.match(
+		describePythonTreeSeal({
+			sealed: [],
+			directories: 0,
+			bytecodeFiles: 0,
+			failures: [],
+			supported: false,
+		}),
+		/macOS-only/,
+		"a platform without the mechanism says so instead of reporting zeroes",
+	);
+
+	// And the installer logs this message rather than composing its own, which is
+	// the only reason the wording is worth pinning here.
+	const installerSource = readFileSync(
+		join(process.cwd(), "src/main/backend/backend-installer.ts"),
+		"utf8",
+	);
+	assert.match(installerSource, /describePythonTreeSeal\(seal\)/);
+	assert.doesNotMatch(installerSource, /path\(s\) now refuse new entries/);
+});
+
 test("constructing the installer seals the bundled trees of a packaged app", async () => {
 	const { BackendInstaller } = await loadMainProcess();
 
@@ -949,14 +1070,42 @@ test("constructing the installer seals the bundled trees of a packaged app", asy
 	const hadResourcesPath = "resourcesPath" in process;
 	const originalResourcesPath = process.resourcesPath;
 	process.resourcesPath = resources;
+	// The cache write under the tree, named once: the darwin and non-darwin arms
+	// assert opposite outcomes about the *same* write.
+	const cacheWrite = () =>
+		writeCacheEntry(tree, join("lib", "python3.12", "json", "__pycache__"));
 	try {
 		new BackendInstaller();
-		assert.throws(
-			() =>
-				writeCacheEntry(tree, join("lib", "python3.12", "json", "__pycache__")),
-			{ code: "EACCES" },
-			"a packaged app must seal its bundled interpreter before any python runs",
-		);
+		if (process.platform === "darwin") {
+			assert.throws(
+				cacheWrite,
+				{ code: "EACCES" },
+				"a packaged app must seal its bundled interpreter before any python runs",
+			);
+		} else {
+			// The platform contract, asserted rather than skipped. The seal is a
+			// documented no-op everywhere but macOS - there is no code seal to
+			// protect elsewhere - and CI runs this suite on `ubuntu-latest`, so the
+			// no-op is the arm that must be *covered*, not one that may be assumed
+			// away: two unguarded `EACCES` assertions here are what made this file
+			// fail on the runner's platform while nothing on the PR could see it
+			// (round-2 R6).
+			assert.doesNotThrow(
+				cacheWrite,
+				"off darwin the seal is a no-op, so a packaged app's tree stays writable",
+			);
+			assert.deepEqual(
+				sealPythonInterpreterTrees([tree]),
+				{
+					sealed: [],
+					directories: 0,
+					bytecodeFiles: 0,
+					failures: [],
+					supported: false,
+				},
+				"and the module reports the platform contract rather than reporting zeroes",
+			);
+		}
 		// And the sibling tree this build does not ship stays absent rather than
 		// being created: the seal walks, it does not provision.
 		assert.equal(existsSync(join(resources, "python")), false);
@@ -1009,11 +1158,22 @@ test("the seal follows the code-sealed bundle, never the checkout's resources tr
 			cacheWrite(checkout),
 			"a packaged dev run must not seal the checkout's own resources tree",
 		);
-		assert.throws(
-			cacheWrite(bundle),
-			{ code: "EACCES" },
-			"but it must seal the bundle it actually ships",
-		);
+		if (process.platform === "darwin") {
+			assert.throws(
+				cacheWrite(bundle),
+				{ code: "EACCES" },
+				"but it must seal the bundle it actually ships",
+			);
+		} else {
+			// Nothing is sealed anywhere off darwin, so the arm that distinguishes
+			// the checkout tree from the shipped one cannot be exercised there - and
+			// the assertion says exactly that rather than asserting an `EACCES` this
+			// platform cannot produce (round-2 R6).
+			assert.doesNotThrow(
+				cacheWrite(bundle),
+				"off darwin no tree is sealed, so the shipped bundle is left as it is",
+			);
+		}
 
 		globalThis.__loTestAppIsPackaged = false;
 		process.resourcesPath = join(scratch, "unpackaged");

@@ -15,6 +15,7 @@ import { is } from "@electron-toolkit/utils";
 import { BrowserWindow, app, dialog as electronDialog } from "electron";
 import {
 	bundledPythonTreePaths,
+	describePythonTreeSeal,
 	sealPythonInterpreterTrees,
 	withPythonBytecodeCache,
 } from "../python-bytecode-cache";
@@ -91,12 +92,17 @@ export class BackendInstaller {
 			const seal = sealPythonInterpreterTrees(
 				bundledPythonTreePaths(process.resourcesPath),
 			);
-			logger.info(
-				seal.supported
-					? `Bundled interpreter trees sealed against bytecode writes: ${seal.sealed.join(", ") || "(none present)"}; ${seal.directories} path(s) now refuse new entries, ${seal.bytecodeFiles} refuse rewrites, ${seal.failures.length} refused`
-					: "Bundled interpreter bytecode seal is macOS-only (there is no code seal to protect elsewhere); the bytecode cache prefix still applies",
-				LogFileType.INSTALLER,
-			);
+			// The wording is `describePythonTreeSeal`'s, which is where the
+			// selected-versus-applied distinction lives. A seal that could not be
+			// applied on every path is a warning rather than an info line: those
+			// paths still accept bytecode, which is the class of write that unseals
+			// the bundle and stops the next update (Q4/R8).
+			const message = describePythonTreeSeal(seal);
+			if (seal.supported && seal.failures.length > 0) {
+				logger.warn(message, LogFileType.INSTALLER);
+			} else {
+				logger.info(message, LogFileType.INSTALLER);
+			}
 		}
 
 		// Find Python executable

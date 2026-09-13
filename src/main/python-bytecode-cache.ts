@@ -139,11 +139,22 @@ export function bundledPythonTreePaths(resourcesPath: string): string[] {
 export type PythonTreeSeal = {
 	/** Trees that exist and were walked. */
 	sealed: string[];
-	/** Directories that now refuse a new entry, as `find` selected them. */
+	/**
+	 * Directories `find` selected for the directory entry. A *selected* count,
+	 * not a sealed one: compare it against {@link failures} before saying any of
+	 * them now refuse a new entry - see {@link describePythonTreeSeal}, which is
+	 * the only place that reads this pair into words.
+	 */
 	directories: number;
-	/** Existing `.pyc` that now refuse a rewrite, as `find` selected them. */
+	/**
+	 * Existing `.pyc` `find` selected for the rewrite entry, with the same
+	 * selected-not-applied caveat as {@link directories}.
+	 */
 	bytecodeFiles: number;
-	/** Paths the tool refused, with its own message. Never thrown. */
+	/**
+	 * Paths the tool refused, with its own message (which names the path). Never
+	 * thrown; a non-empty list is a partial seal.
+	 */
 	failures: string[];
 	/**
 	 * Whether this platform has the mechanism at all. False everywhere but
@@ -195,6 +206,42 @@ const BYTECODE_ACE = "everyone deny write,append";
  * half-applied and unattributed.
  */
 const MAX_FIND_OUTPUT_BYTES = 16 * 1024 * 1024;
+
+/**
+ * How many refused paths {@link describePythonTreeSeal} names before counting
+ * the rest.
+ *
+ * A refusal is actionable because of *which* path it was, but the line goes to
+ * an operator's log next to everything else the installer says, so it names a
+ * few and counts the remainder rather than dumping hundreds of lines.
+ */
+const PARTIAL_SEAL_NAMED = 3;
+
+/**
+ * The one place a seal result is turned into operator-facing words, so a
+ * *selected* count can never read as an applied one.
+ *
+ * The distinction this exists for: `directories` and `bytecodeFiles` are what
+ * `find` selected, and only `failures` says whether the entry landed. The
+ * wording this replaced said both things in one sentence on a bundle where
+ * nothing was applied - "4 path(s) now refuse new entries, 1 refuse rewrites, 5
+ * refused", measured on a read-only APFS volume, where all five were refused
+ * and none of the four directories could have refused anything (Q4/R8). A
+ * partial seal therefore reads as partial and names what was not sealed, and a
+ * platform without the mechanism says that instead of reporting zeroes.
+ */
+export function describePythonTreeSeal(seal: PythonTreeSeal): string {
+	if (!seal.supported) {
+		return "Bundled interpreter bytecode seal is macOS-only (there is no code seal to protect elsewhere); the bytecode cache prefix still applies";
+	}
+	const trees = seal.sealed.join(", ") || "(none present)";
+	if (seal.failures.length === 0) {
+		return `Bundled interpreter trees sealed against bytecode writes: ${trees}; ${seal.directories} directory path(s) selected and now refusing new entries, ${seal.bytecodeFiles} bytecode file(s) selected and now refusing rewrites`;
+	}
+	const named = seal.failures.slice(0, PARTIAL_SEAL_NAMED).join("; ");
+	const rest = seal.failures.length - PARTIAL_SEAL_NAMED;
+	return `Bundled interpreter bytecode seal INCOMPLETE: ${trees}; ${seal.directories} directory path(s) and ${seal.bytecodeFiles} bytecode file(s) selected, ${seal.failures.length} refused and left with the access they had - bytecode writes into the bundle are not prevented on every path. First refusals: ${named}${rest > 0 ? ` (+${rest} more)` : ""}`;
+}
 
 /**
  * Make the bundled interpreter trees refuse new files, without making the app
@@ -250,12 +297,20 @@ const MAX_FIND_OUTPUT_BYTES = 16 * 1024 * 1024;
  * bytes with the sealed column carrying the entries: the sealed column wrote
  * **0** `.pyc` in every class above and gained **0** entries of any kind - so
  * there is no legacy `foo.pyc` fallback beside the source either - while the
- * control column wrote the numbers above. `-I -m compileall` over the whole
- * `lib/python3.12` (which tries to compile all ~1,800 sources) wrote 0 files and
- * exited 1, and that exit is the shape of the mechanism rather than a fault:
- * `py_compile` and `compileall` are explicit compilers that raise on a refused
- * write, where an *import* through `SourceFileLoader.set_data` swallows it and
- * simply does not cache. Nothing on the app's paths calls either.
+ * control column wrote the numbers above. The explicit compilers need their exit
+ * attributed, because it belongs to the *no-prefix* arm: `-I -m compileall` over
+ * the whole `lib/python3.12` (which tries to compile all ~1,800 sources) wrote 0
+ * files and exited 1, and `-I` is what puts it in that arm - the flag means it
+ * does not read `PYTHON*` variables, so the redirect the app sets is invisible to
+ * it even with `PYTHONPYCACHEPREFIX` set (Q5). Measured on a sealed fixture tree,
+ * with the cache directory outside the tree and the tree's entry count before
+ * and after: `py_compile` rc=0 and 80 entries into the prefix with the prefix
+ * visible, rc=1 with `-I`, rc=1 with no prefix; `compileall` rc=0 and 7 entries
+ * into the prefix visible, rc=1 with `-I`. All four arms wrote 0 entries into the
+ * tree. That exit is the shape of the mechanism rather than a fault: `py_compile`
+ * and `compileall` are explicit compilers that raise on a refused write, where an
+ * *import* through `SourceFileLoader.set_data` swallows it and simply does not
+ * cache. Nothing on the app's paths calls either.
  *
  * The rest of the pair's properties, measured the same way: the interpreter in a
  * sealed tree still runs and still produces a working venv (`-I -m venv` exits 0
