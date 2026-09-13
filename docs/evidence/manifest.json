@@ -1,6 +1,6 @@
 {
-  "head": "21ac7bed24a96e6629fd8523c5c9fe7c96c4f3c7",
-  "srcTree": "6195e2f496c3f8318cb831efcfac0da4ecea5d02",
+  "head": "c4b5f6b290846e5e2dbc7e225df59af09413884f",
+  "srcTree": "0218290b5115739902b9e356a2345324dcbaf684",
   "scriptsTree": "396a8394a566ac9521d96fe186740c32dce6838e",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
@@ -223,11 +223,11 @@
     },
     {
       "path": "chat-search",
-      "frames": 16,
-      "surfaces": 14,
+      "frames": 18,
+      "surfaces": 15,
       "themes": 2,
       "source": "live renderer in the operator's real browser (Local Operator extension) at device-pixel-ratio 2, served by Vite over this repository's own renderer config with the preload bridge stubbed to a no-op, against an isolated local-operator backend on its own port and config dir - plus a second backend holding a 120-session store, which is what the clipped-answer state needs",
-      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story and a debounced backend round trip is not something a fixture produces, so the frames come from the running app against an isolated seeded store. RE-SHOT at the head named below, which is the point of this revision: the set committed before it was taken at cf0db490e, before the marker row's slot classes changed, so it showed a layout the code could not produce (review round 6, R22/R26). This pass covers both palettes and both ends of the sidebar clamp for the two row cases it was for - a NESTED row at the default width (design round 5, D19) and a 64-character binding (review round 4, R21) - and docs/evidence/chat-search/README.md carries the DOM boxes beside them, which is where a clipping question is actually settled. WHAT IS STILL MISSING, named rather than implied: the nested row at the 240px clamp (boxes read and recorded, frame not taken), the clipped answer on a store with more matches than the op's page, the light half of the long-binding pair, and the two degrade-proxy notices - whose two committed frames are still stale cf0db490e pictures carrying a server-offline strip, and should be REPLACED rather than kept. The README's 'What this pass did not capture' is the list of record.",
+      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story and a debounced backend round trip is not something a fixture produces, so the frames come from the running app against an isolated seeded store. RE-SHOT at the head named below: the set before it was taken at cf0db490e, before the marker row's slot classes changed, so it showed a layout the code could not produce (review round 6, R22/R26). Both ends of the sidebar clamp and both palettes are covered for the two row cases this set was for - a NESTED row at the default width (design round 5's D19) and a 64-character binding (review round 4's R21) - and the nested-280 pair was re-shot as a matched pair after design round 6 (D21) found its halves at different viewports. docs/evidence/chat-search/README.md carries the DOM boxes beside every row claim, which is where a clipping question is actually settled. TWO FRAMES IN IT ARE NOT PICTURES OF THIS TREE and the README says so at length: after-namesonly and after-searchfail are cf0db490e frames carrying a server is offline strip from a run where the backend had died, kept only for the notice copy they show, and replacing them is an open follow-up. The clipped-answer state and the light half of the long-binding pair are still to be photographed.",
       "capturedAt": "2026-09-13T18:15:49Z",
       "capturedAtHead": "bed8de048b0d6270452f6b71e56a5d828433972d"
     }
