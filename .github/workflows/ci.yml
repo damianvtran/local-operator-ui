@@ -5,6 +5,14 @@ on:
     branches:
       - main
       - 'dev-*'
+  # Pull requests trigger this workflow too. That is a deliberate change from the
+  # push-only trigger it carried before, and the dependency guard below is the
+  # reason: GitHub cannot run a single job from a workflow whose trigger excludes
+  # the event, and a guard that only fires on `push` fires after the merge, too
+  # late to stop an unvetted package from shipping. Every job here is a pre-merge
+  # gate, so running the set on pull requests is the honest way to get that guard
+  # in front of the change it guards.
+  pull_request:
 
 jobs:
   lint:
@@ -31,6 +39,32 @@ jobs:
 
       - name: Run Biome lint
         run: pnpm lint
+
+  runtime-deps:
+    # What the packaged app ships as node_modules is decided entirely by
+    # package.json `dependencies`: electron-vite's externalizeDepsPlugin()
+    # externalises exactly that set and electron-builder copies it wholesale into
+    # Resources/app.asar, while Vite has already bundled the renderer into
+    # out/renderer. A renderer-only or build-only package that sits in that
+    # section therefore ships to every user - at v0.19.6 the 65 declared
+    # production dependencies put ~470 MB of never-loaded node_modules into a
+    # 1.0 GB install. This job fails on any production dependency the allowlist
+    # in scripts/check-runtime-deps.mjs has not vetted. It deliberately has no
+    # install step: the check reads package.json and nothing else.
+    name: Runtime Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check the runtime dependency allowlist
+        run: node scripts/check-runtime-deps.mjs
 
   check-types:
     name: Type Checking
