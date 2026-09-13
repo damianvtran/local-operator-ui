@@ -834,3 +834,68 @@ test("the update service's python probe runs with the prefix in the child's own 
 		rmSync(probeDir, { recursive: true, force: true });
 	}
 });
+
+test("every python-running runCommand call site in the update service passes the guarded environment", () => {
+	// The `pip install --upgrade` spawn reaches the same bundled interpreter as
+	// the probe above, but it sits behind the whole update flow - the seal
+	// pre-flight, the disk-space check and a backend stop - so this binds it at
+	// the source instead of driving that flow to reach it. A call site that runs
+	// python without `env: this.pythonSpawnEnv()` is the defect, and deleting the
+	// `env:` from the pip run is exactly what review M1 and QA Q2 measured: the
+	// probe's own spawned child is asserted above, so the two halves together
+	// cover every python this file can start.
+	const source = readFileSync(
+		join(process.cwd(), "src/main/update-service.ts"),
+		"utf8",
+	).replace(/\r\n/g, "\n");
+
+	// The declaration is a `runCommand(` too, and matching it would have this
+	// case reading its own signature rather than a call site.
+	const declaration = source.indexOf("function runCommand(");
+	const calls = [];
+	for (
+		let at = source.indexOf("runCommand(");
+		at !== -1;
+		at = source.indexOf("runCommand(", at + 1)
+	) {
+		if (at === declaration + "function ".length) continue;
+		let depth = 0;
+		let end = at + "runCommand".length;
+		for (; end < source.length; end++) {
+			if (source[end] === "(") depth++;
+			else if (source[end] === ")" && --depth === 0) break;
+		}
+		calls.push({
+			at,
+			line: source.slice(0, at).split("\n").length,
+			text: source.slice(at, end + 1),
+		});
+	}
+
+	// Which of them run python: the command handed in is the interpreter this app
+	// ships, either by path or through the pip command builder. `codesign` is the
+	// file's other call site and wants the inherited environment, not this one.
+	const pythonCalls = calls.filter(({ text }) =>
+		/pythonPath|pip\.command/.test(text),
+	);
+
+	// Asserted rather than assumed, so a reorganisation cannot make this pass by
+	// finding nothing: the probe and the pip upgrade are the two that exist.
+	assert.equal(
+		calls.length,
+		3,
+		`expected the file's three runCommand call sites, found ${calls.length}`,
+	);
+	assert.equal(
+		pythonCalls.length,
+		2,
+		`expected two python-running call sites, found ${pythonCalls.length}`,
+	);
+	for (const { line, text } of pythonCalls) {
+		assert.match(
+			text,
+			/env:\s*this\.pythonSpawnEnv\(\)/,
+			`the python spawn at src/main/update-service.ts:${line} must pass the guarded environment: ${text.replace(/\s+/g, " ")}`,
+		);
+	}
+});
