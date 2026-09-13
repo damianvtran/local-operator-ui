@@ -133,6 +133,16 @@ export function bundledPythonTrees(appPath, { listDir = readdirSync } = {}) {
 const LIPO = "/usr/bin/lipo";
 
 /**
+ * The interpreter directory each architecture resolves, from
+ * `backend-installer.ts` `findPython`. A directory *absent* from this map is a
+ * failure rather than a default: with a fallback the check would demand `python`
+ * of an architecture nobody has mapped, and a third architecture is exactly the
+ * case where the answer should be someone looking at this file rather than a
+ * guess that happens to pass.
+ */
+const INTERPRETER_BY_ARCH = { arm64: "python_aarch64", x86_64: "python" };
+
+/**
  * The architecture a packaged app runs as, read from the bundle itself.
  *
  * `lipo -archs` on the framework binary rather than on the launcher: the path is
@@ -190,7 +200,11 @@ export function bundledPythonCheck(appPath, options = {}) {
 		return fail(
 			`the app is ${archs.join(" + ")} (not a single architecture); a fat bundle needs both interpreters, and mac.target builds one per architecture`,
 		);
-	const expected = archs[0] === "arm64" ? "python_aarch64" : "python";
+	if (!Object.hasOwn(INTERPRETER_BY_ARCH, archs[0]))
+		return fail(
+			`the app is ${archs[0]}, which no bundled interpreter matches; mac.target builds arm64 and x64`,
+		);
+	const expected = INTERPRETER_BY_ARCH[archs[0]];
 	if (trees.length !== 1 || trees[0] !== expected)
 		return fail(
 			`the ${archs[0]} app ships ${describe}, but it resolves Contents/Resources/${expected}`,

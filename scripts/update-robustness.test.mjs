@@ -196,6 +196,7 @@ const { notarizeArtifacts } = await import(notarizeStepFile);
 rmSync(notarizeStepDir, { recursive: true, force: true });
 const {
 	artifactChecks,
+	bundledPythonCheck,
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
@@ -2026,6 +2027,88 @@ test("the bundled pip invocation is non-interactive and version-verified", () =>
 const APP = "/tmp/dist/mac-arm64/Local Operator.app";
 const DMG = "/tmp/dist/local-operator-ui-0.18.0-arm64.dmg";
 const X64_DMG = "/tmp/dist/local-operator-ui-0.18.0-x64.dmg";
+
+/**
+ * The verdict `bundledPythonCheck` reaches for a bundle of one architecture that
+ * carries the listed interpreter trees.
+ *
+ * The architecture comes from the injected runner rather than a real `lipo` call:
+ * the fixture would otherwise have to be a genuine Mach-O of each architecture,
+ * which is a copy of the check's own input rather than a test of its logic.
+ */
+function pythonTreeVerdict({ arch, trees }) {
+	const dir = tempDir("lo-python-gate-");
+	const app = join(dir, "Local Operator.app");
+	const framework = join(
+		app,
+		"Contents",
+		"Frameworks",
+		"Electron Framework.framework",
+		"Versions",
+		"A",
+		"Electron Framework",
+	);
+	mkdirSync(dirname(framework), { recursive: true });
+	writeFileSync(framework, "binary fixture", "utf8");
+	for (const tree of trees) {
+		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
+	}
+	return bundledPythonCheck(app, {
+		run: () => ({ status: 0, stdout: `${arch}\n`, stderr: "" }),
+	});
+}
+
+/**
+ * The decisive branch of the interpreter gate (review F5, round 2 F7).
+ *
+ * "Exactly one tree" alone passes for an arm64 bundle that kept the x86_64
+ * interpreter, and that bundle cannot start its backend at all - so the pairing
+ * is what is asserted, and each way it can be wrong is asserted here.
+ */
+test("the interpreter gate refuses the other architecture's tree", () => {
+	const wrongTree = pythonTreeVerdict({ arch: "arm64", trees: ["python"] });
+	assert.equal(wrongTree.passed, false);
+	assert.match(
+		wrongTree.output,
+		/the arm64 app ships Contents\/Resources\/python, but it resolves Contents\/Resources\/python_aarch64/,
+	);
+
+	const reversed = pythonTreeVerdict({ arch: "x86_64", trees: ["python_aarch64"] });
+	assert.equal(reversed.passed, false);
+	assert.match(
+		reversed.output,
+		/the x86_64 app ships Contents\/Resources\/python_aarch64, but it resolves Contents\/Resources\/python/,
+	);
+
+	// Two trees is the state `afterPack` exists to prevent: the app runs, and half
+	// the interpreter in the download is unrunnable.
+	const both = pythonTreeVerdict({
+		arch: "arm64",
+		trees: ["python", "python_aarch64"],
+	});
+	assert.equal(both.passed, false);
+	assert.match(
+		both.output,
+		/ships Contents\/Resources\/python, Contents\/Resources\/python_aarch64/,
+	);
+
+	// A fat bundle legitimately needs both, so it fails as its own case rather
+	// than being rounded to one architecture.
+	const fat = pythonTreeVerdict({ arch: "arm64 x86_64", trees: ["python_aarch64"] });
+	assert.equal(fat.passed, false);
+	assert.match(fat.output, /not a single architecture/);
+
+	// An architecture with no mapping is refused, not defaulted to `python`.
+	const unmapped = pythonTreeVerdict({ arch: "arm64e", trees: ["python_aarch64"] });
+	assert.equal(unmapped.passed, false);
+	assert.match(unmapped.output, /no bundled interpreter matches/);
+
+	// And the pairing holds the right way round, so the cases above are failures
+	// of the pairing rather than of the check.
+	const right = pythonTreeVerdict({ arch: "arm64", trees: ["python_aarch64"] });
+	assert.equal(right.passed, true);
+	assert.match(right.output, /arm64 app ships only Contents\/Resources\/python_aarch64/);
+});
 
 test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	const checks = artifactChecks({ appPath: APP, dmgPath: DMG });
