@@ -612,21 +612,79 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			openSession: async (sessionId) => {
 				const generation = ++navigationGeneration;
-				set({ pendingSessionId: sessionId, error: null });
+				/*
+				 * COMMIT FIRST, VALIDATE BEHIND THE COMMIT.
+				 *
+				 * This used to await the `sessions.get` guard read before touching
+				 * `activeSessionId`, which put a whole IPC-plus-HTTP round trip on the
+				 * critical path of every switch: the panel only mounted - and the
+				 * transcript subscription only opened - AFTER the read came back, and
+				 * until then the user kept looking at the conversation they were
+				 * leaving with an "Opening chat…" banner over it. Measured on
+				 * `scripts/session-switch-latency.mjs`, that serialisation is the whole
+				 * of `click → committed` (0.1 ms of it is the store write; the rest is
+				 * the read), and the hydration that follows is unchanged either way.
+				 *
+				 * So the intent is committed now and the read that used to gate it
+				 * becomes what it always was for the user - a check whose result is
+				 * never rendered. What it still owns is the FAILURE path, and that is
+				 * the reason it cannot simply be deleted: `sessions.get` is the only
+				 * thing that tells us the target exists. A read that fails puts the view
+				 * back exactly where it was - previous session AND previous draft - so a
+				 * switch to a session that is gone ends as an error with the outgoing
+				 * conversation still on screen, never as a chat index that does not
+				 * open.
+				 *
+				 * What is deliberately NOT dropped:
+				 *
+				 * - The generation guard, in both directions. A second click bumps
+				 *   `navigationGeneration`, so a slow first read neither clears the
+				 *   newer switch's state nor rolls it back when it fails.
+				 * - The pending flag is no longer needed for the wait it was invented
+				 *   for, and holding it would paint "Opening chat…" over a panel that has
+				 *   already switched, beside the hydration skeleton that says the same
+				 *   thing honestly. The sidebar row's own selected state is the immediate
+				 *   acknowledgement now, and it is a property of the commit rather than
+				 *   of a timer.
+				 *
+				 * The composer is enabled during hydration here, exactly as it already
+				 * was: clearing `pendingSessionId` at the commit used to happen one round
+				 * trip BEFORE the transcript arrived, so that window is not new, it just
+				 * starts earlier.
+				 */
+				const previous = {
+					activeSessionId: get().activeSessionId,
+					activeDraftKey: get().activeDraftKey,
+				};
+				set({
+					activeSessionId: sessionId,
+					activeDraftKey: null,
+					pendingSessionId: null,
+					error: null,
+				});
 				try {
-					// A candidate read does not acknowledge output or switch the current view.
-					// Only a successful latest intent commits; failed reads keep outgoing work.
 					await desktopResult({ op: "sessions.get", sessionId });
+					/*
+					 * A newer intent owns the view by the time this read answers, so this
+					 * call reports `false`.
+					 *
+					 * The return value is what routes: `select` navigates to
+					 * `/chat/<id>` only for a `true`, and without this guard a slow first
+					 * read would rewrite the URL back to the session the user has already
+					 * left. The commit above was latest-wins by construction - an older
+					 * read cannot re-commit an older target - so this is the URL half of
+					 * the same rule, not a second one.
+					 */
 					if (generation !== navigationGeneration) return false;
-					set({
-						activeSessionId: sessionId,
-						activeDraftKey: null,
-						pendingSessionId: null,
-					});
 					return true;
 				} catch (error) {
+					// Only the latest intent may roll back: a user who has already
+					// clicked elsewhere is not waiting on this read, and undoing their
+					// switch would be a worse lie than the one this path exists to
+					// avoid.
 					if (generation === navigationGeneration)
 						set({
+							...previous,
 							pendingSessionId: null,
 							error:
 								error instanceof Error
