@@ -55,6 +55,7 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
+/* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
 export type CanonicalSessionStatus =
@@ -487,8 +488,10 @@ export function useCanonicalSessionStream(
 				? seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT)
 				: EMPTY_TRANSCRIPT,
 		loadingOlder: false,
+		// No child has been heard from yet: the snapshot that follows seeds the
+		// counter from its own `live_events`.
 		subagentPulses: {},
-	});
+	}));
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);

@@ -945,6 +945,13 @@ function SessionPanel({
 					onCancelJob={stop}
 					messageInputRef={input}
 					runDetails={runDetails}
+					/*
+					 * The composer's first keystroke warms the runtime (main's rule,
+					 * `use-warm-session.ts`): this read is threaded from the panel rather
+					 * than taken inside the content component, so the branch's new props
+					 * sit BESIDE it rather than in its place.
+					 */
+					onComposerInput={warm}
 					mcpServers={mcpServers}
 					childrenOpenable={childrenOpenable}
 					pulses={canonical.subagentPulses}
