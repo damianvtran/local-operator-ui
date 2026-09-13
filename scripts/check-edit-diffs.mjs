@@ -2,27 +2,31 @@
 /**
  * Exercise the production diff plugin with real CodeMirror state/decorations.
  * No DOM imitation or browser engine: rendering and accept/reject are checked
- * in the live editor fixture. TypeScript transpilation keeps this runnable on
- * the repository's Node 22 baseline without a separate test-runner dependency.
+ * in the live editor fixture. esbuild transpiles the module in memory -- the
+ * same dependency the other script-side TS harnesses in this repository use,
+ * and no longer the TypeScript compiler: TypeScript 7's package exports only
+ * `version`/`versionMajorMinor` from its root, so the `ts.transpileModule` this
+ * script used to call does not exist there any more.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { EditorState } from "@codemirror/state";
-import ts from "typescript";
+import { transform } from "esbuild";
 
 const source = new URL(
 	"../src/renderer/src/features/chat/components/canvas/code-editor-diff.ts",
 	import.meta.url,
 );
 const filename = process.argv[2] || fileURLToPath(source);
-const compiled = ts.transpileModule(readFileSync(filename, "utf8"), {
-	compilerOptions: {
-		module: ts.ModuleKind.CommonJS,
-		target: ts.ScriptTarget.ES2022,
-	},
-}).outputText;
+const compiled = (
+	await transform(readFileSync(filename, "utf8"), {
+		loader: "ts",
+		format: "cjs",
+		target: "es2022",
+	})
+).code;
 const module = { exports: {} };
 // Execute exactly the checked-in implementation, not a reimplementation of its
 // ranges. createRequire resolves dependencies from this repository even when a

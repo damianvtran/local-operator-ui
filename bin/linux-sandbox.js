@@ -411,16 +411,31 @@ const exitCodeFor = (code, signal) => {
  * That is the failure mode this file's whole design is meant to avoid, so it is
  * recorded here rather than quietly corrected.
  *
+ * That ordering argument is history since Electron 42, and the function is
+ * MORE load-bearing for it, not less: the `electron` package no longer runs a
+ * postinstall at all, so nothing downloads dist/ during an install any more,
+ * while `electron-vite`'s bytecode step spawns the binary straight from
+ * `dist/` (never through `require("electron")`, which is the call that would
+ * fetch it on demand). See bin/postinstall.js and bin/ensure-electron.js --
+ * between them they are the only things that put the runtime on disk.
+ *
  * The fix is to drive Electron's own installer first. It is idempotent and
  * cache-backed: with a valid dist/ already present it returns in ~0.08s without
  * touching the network, and npm's later invocation of the same script is then
  * the no-op instead. It also preserves a setuid bit we have already set
  * (verified), so the ordering between the two runs does not matter.
  *
- * Returns true when a helper is present afterwards. Every failure degrades to
- * false: the install must still succeed (see bin/postinstall.js).
+ * Returns true when the Electron runtime itself is present afterwards (keyed on
+ * `dist/version`, the marker Electron's own installer uses). Every failure
+ * degrades to false: the install must still succeed (see bin/postinstall.js).
+ *
+ * `quiet` silences the installer, which is what the install path wants -- the
+ * download prints a progress bar that would otherwise appear twice in one
+ * `npm install`, once from us and once from npm's own run of the same script.
+ * The build path passes `quiet: false`, because there the download IS the
+ * visible work and a silent multi-minute wait reads as a hang.
  */
-const ensureElectronDist = (packageRoot) => {
+const ensureElectronDist = (packageRoot, { quiet = true } = {}) => {
 	const installer = path.join(
 		packageRoot,
 		"node_modules",
@@ -431,29 +446,23 @@ const ensureElectronDist = (packageRoot) => {
 		return false;
 	}
 	const distDir = path.join(packageRoot, "node_modules", "electron", "dist");
-	// Key the fast path on the SAME marker electron's own isInstalled() uses
-	// (dist/version) as well as the helper. Keying on chrome-sandbox alone let a
-	// partially-extracted dist/ that happens to contain the helper report a
-	// healthy install, so we would skip the installer that would have repaired it.
-	if (
-		fs.existsSync(path.join(distDir, "version")) &&
-		fs.existsSync(path.join(distDir, "chrome-sandbox"))
-	) {
+	// The fast path keys on `dist/version` ALONE. It used to also require
+	// `dist/chrome-sandbox`, which exists only on Linux, so on macOS and Windows
+	// every install re-ran the installer (idempotent, but a 10-minute-bounded
+	// spawn per install) and -- now that this function is also what fetches the
+	// runtime off Linux -- every build too. `dist/version` is the complete-extraction
+	// marker because electron's own isInstalled() reads the same file.
+	if (fs.existsSync(path.join(distDir, "version"))) {
 		return true;
 	}
-	// Inherit nothing on stdout: the download prints a progress bar that would
-	// otherwise appear twice in the install log, once here and once from npm's
-	// own run of the same script.
 	const result = spawnSync(process.execPath, [installer], {
 		cwd: path.dirname(installer),
-		stdio: "ignore",
+		stdio: quiet ? "ignore" : "inherit",
 		// A hung download must not hang the install. Ten minutes is generous for a
 		// ~100MB fetch on a slow link and still bounded.
 		timeout: 10 * 60 * 1000,
 	});
-	return (
-		result.status === 0 && fs.existsSync(path.join(distDir, "chrome-sandbox"))
-	);
+	return result.status === 0 && fs.existsSync(path.join(distDir, "version"));
 };
 
 module.exports = {
