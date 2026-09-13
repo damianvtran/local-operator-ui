@@ -608,10 +608,12 @@ export function ChatSidebar({
 						    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
 						    own `h-8` box and pushes the icon and the label in by 1px on
 						    each side, and no other row in this block has a boundary at all.
-						    The operator asked for the two rows to line up and for the pill
-						    to go; removing the edge is what does both, and the measurement
-						    is in docs/evidence/new-chat-row (the icon's left inset goes
-						    from 5px, the border plus `rowStyle`'s `px-1`, to 4px).
+						    The operator asked for the two rows to line up and for the BORDER
+						    to go - "the pill" is this file's description of what the border
+						    produced, not the operator's words. Removing the edge is what does
+						    both, and the measurement is in docs/evidence/new-chat-row (the
+						    icon's left inset goes from 5px, the border plus `rowStyle`'s
+						    `px-1`, to 4px).
 
 						    What still marks the row as the ACTION here is everything the
 						    rows around it do NOT have: the `MessageSquarePlus` glyph
