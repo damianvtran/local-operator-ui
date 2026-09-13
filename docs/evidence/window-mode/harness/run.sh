@@ -105,6 +105,16 @@ LOG="$SCRATCH/frontmost.log"; : > "$LOG"
 SAMPLER=$!
 
 node "$HARNESS/drive.mjs" "$CDP_PORT" "$SCRATCH" "$ROUTE" | tee "$SCRATCH/drive.out"
+
+# A second launch, while the sampler is still running. The single-instance lock
+# hands it to this process as `second-instance`, which is the other path that can
+# raise a window — the one a rig hits when it starts a run twice. The second
+# process quits on the lock.
+( cd "$TREE"
+  nohup "$ELECTRON_BIN" . "--user-data-dir=$SCRATCH/profile" \
+    >"$SCRATCH/electron-second.log" 2>&1 & )
+sleep 5
+
 sleep 1
 kill "$SAMPLER" 2>/dev/null || true
 
@@ -116,3 +126,36 @@ echo "== this app was the frontmost application in $STOLE of $TOTAL samples (pid
 echo "== window-mode log lines:"
 grep -h "\[window-mode\]" "$SCRATCH/electron.log" | sed 's/^/   /' || echo "   (none)"
 echo "== renderer errors in the run: $(grep -c '"level":3' "$SCRATCH/electron.log" 2>/dev/null || echo 0)"
+
+# A run that says it was launched in one mode at one size, but reports another,
+# would otherwise produce frames and a scratch log that both look like the
+# requested values. Assert what the app emitted against what was asked for, so
+# this harness cannot quietly measure something other than its arguments.
+STATE="$(grep -h "\[window-mode\] state:" "$SCRATCH/electron.log" | tail -1)"
+MODE_LINE="$(grep -h "\[window-mode\] window mode" "$SCRATCH/electron.log" | tail -1)"
+
+# The plan clamps the request to the verified 800x600 floor and the 16384
+# ceiling, and reports the clamp. Compute the size the app should have ended up
+# with from those same two numbers, so the clamped case is checked against the
+# contract rather than exempted from it.
+IFS=x read -r REQ_W REQ_H <<< "$SIZE"
+clamp() { if [ "$1" -lt "$2" ]; then echo "$2"; elif [ "$1" -gt "$3" ]; then echo "$3"; else echo "$1"; fi; }
+EXPECT_W="$(clamp "$REQ_W" 800 16384)"
+EXPECT_H="$(clamp "$REQ_H" 600 16384)"
+EXPECT_SIZE="${EXPECT_W}x${EXPECT_H}"
+
+grep -q "window mode $MODE: $EXPECT_SIZE," <<<"$MODE_LINE" \
+  || { echo "FAIL: asked for mode=$MODE size=$SIZE (expected $EXPECT_SIZE), the app reported ${MODE_LINE:-nothing}" >&2; exit 1; }
+if [ "$EXPECT_SIZE" != "$SIZE" ]; then
+  grep -q "window size $SIZE clamped to $EXPECT_SIZE" "$SCRATCH/electron.log" \
+    || { echo "FAIL: $SIZE was clamped to $EXPECT_SIZE without saying so" >&2; exit 1; }
+fi
+if [ "$MODE" = "normal" ]; then
+  [ -z "$STATE" ] || { echo "FAIL: normal must print no state line, got: $STATE" >&2; exit 1; }
+else
+  case "$MODE" in
+    headless) grep -q "state: visible=false" <<<"$STATE" || { echo "FAIL: headless must report visible=false, got: ${STATE:-nothing}" >&2; exit 1; } ;;
+    inactive) grep -q "state: visible=true" <<<"$STATE" || { echo "FAIL: inactive must report visible=true, got: ${STATE:-nothing}" >&2; exit 1; } ;;
+  esac
+fi
+echo "== the app reported the mode and size it was asked for"

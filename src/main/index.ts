@@ -31,6 +31,7 @@ import {
 	describeWindowLaunch,
 	resolveWindowLaunchPlan,
 } from "./window-mode";
+import { presentWindow, raiseWindow } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -215,9 +216,16 @@ function createWindow(): BrowserWindow {
 		minWidth: WINDOW_MIN_WIDTH,
 		minHeight: WINDOW_MIN_HEIGHT,
 		show: false,
-		// A headless window is never shown, so it cannot be focused in any
-		// case; saying so makes that a property of the window rather than an
-		// accident of the code path, so a stray `show()` cannot grab focus.
+		/*
+		 * `headless` is never shown, so no key window can be made out of it; this
+		 * keeps that true of the window object itself rather than of the code
+		 * path. It is NOT a safety net against a stray `show()`: on macOS
+		 * `NativeWindowMac::Show()` activates the app for any non-panel window
+		 * whatever `focusable` says (measured — a non-focusable window, shown,
+		 * made the app frontmost while `isFocused()` still read false). The guard
+		 * against a window being raised is that `window-raise.ts` is the only
+		 * module that raises one, and this flag is the second line of defence.
+		 */
 		focusable: windowLaunch.focusable,
 		autoHideMenuBar: true,
 		title: "Local Operator",
@@ -262,14 +270,11 @@ function createWindow(): BrowserWindow {
 		/*
 		 * `normal` raises and focuses the window: the ordinary launch, which is a
 		 * person starting the app. `inactive` orders the window without
-		 * activating the app (measured: `win.isFocused()` stays false and the
-		 * frontmost application keeps the menu bar), so an agent run can be
-		 * watched without interrupting anyone. `headless` does not show it at
-		 * all: the window still renders at its full size, so `capturePage` and
-		 * CDP see a complete frame.
+		 * activating the app, so an agent run can be watched without interrupting
+		 * anyone. `headless` does not show it at all: the window still renders at
+		 * its full size, so `capturePage` and CDP see a complete frame.
 		 */
-		if (windowLaunch.show === "focus") mainWindow.show();
-		else if (windowLaunch.show === "inactive") mainWindow.showInactive();
+		presentWindow(mainWindow, windowLaunch.show);
 
 		if (windowLaunch.mode === "normal") return;
 		/*
@@ -280,6 +285,11 @@ function createWindow(): BrowserWindow {
 		 * it, so "the app never showed anything" is otherwise unprovable from
 		 * outside. One line, greppable, is what makes the claim checkable by
 		 * whoever reads a QA run's log.
+		 *
+		 * Read `visible` and not `focused`: `focusable: false` forces
+		 * `isFocused()` false, so a headless run would print `focused=false`
+		 * even while it held the operator's focus. `visible=false` is the fact,
+		 * and no app is activated by a window it never shows.
 		 */
 		setTimeout(() => {
 			if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -394,6 +404,14 @@ const windowLaunch = resolveWindowLaunchPlan({
 });
 for (const problem of windowLaunch.problems) {
 	logger.warn(`[window-mode] ${problem}`, LogFileType.BACKEND);
+	/*
+	 * Also on stdout, because a rejected mode is a fact about the LAUNCH, not
+	 * about the backend: `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falling back
+	 * to `normal` is exactly what turns a typo into an interruption, and the
+	 * warning above only reaches a log file the rig does not read. A rig greps
+	 * stdout; a person reads the terminal.
+	 */
+	console.log(`[window-mode] ${problem}`);
 }
 // Quiet in `normal`, where there is nothing a reader needs to know and the
 // shipped app's stdout stays clean. The smoke-test path returns before this
@@ -445,12 +463,10 @@ if (!gotTheLock) {
 	app.on("second-instance", (_event, commandLine) => {
 		// Someone tried to run a second instance, we should focus our window.
 		if (mainWindow) {
-			if (mainWindow.isMinimized()) mainWindow.restore();
-			// Except when this process was started to be driven rather than
-			// looked at: a headless or inactive run exists precisely because
-			// the operator is doing something else, so a second launch must not
-			// be what finally pulls focus away from them.
-			if (windowLaunch.show === "focus") mainWindow.focus();
+			// A headless or inactive run exists precisely because the operator
+			// is doing something else, so a second launch must not be what
+			// finally pulls focus away from them; `raiseWindow` decides.
+			raiseWindow(mainWindow, windowLaunch.show);
 
 			// Backend-owned OAuth completes on the backend's loopback callback;
 			// the legacy radient:// deep link is no longer consumed here.
@@ -499,7 +515,11 @@ app
 			() => mainWindow,
 			(input) => backendService.requestDesktop(input),
 		);
-		const desktopNotifier = new DesktopNotifier(() => mainWindow, sendDesktop);
+		const desktopNotifier = new DesktopNotifier(
+			() => mainWindow,
+			sendDesktop,
+			windowLaunch.show,
+		);
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
 		// `backendService.start()` below, so a capability request issued now

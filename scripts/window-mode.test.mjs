@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -46,6 +47,24 @@ const {
 		bundle.outputFiles[0].text,
 	).toString("base64")}`
 );
+
+const raise = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/window-raise";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { presentWindow, raiseWindow } = raise;
 
 const plan = (input) => resolveWindowLaunchPlan(input);
 
@@ -166,23 +185,91 @@ test("the startup line cannot describe the wrong behaviour", () => {
 	assert.match(describeWindowLaunch(plan()), /shown and focused/);
 });
 
-test("every window raise in the main process is gated on the resolved mode", () => {
-	// The source-level guard, because the defect this whole change removes was
-	// one unconditional `mainWindow.show()`. A future call site that raises
-	// the window outside the plan re-breaks the operator's focus, and nothing
-	// else in the suite would notice. The notifier's own `target.show()` is
-	// deliberately not covered: that one runs when the operator clicks a
-	// notification, which is them asking for the window.
-	const source = readFileSync("src/main/index.ts", "utf8");
-	const raises = source
-		.split("\n")
-		.filter((line) => /\.show\(\)|\.showInactive\(\)/.test(line));
-	assert.ok(raises.length > 0, "expected the app to show its window at least once");
-	for (const line of raises) {
-		assert.match(
-			line,
-			/windowLaunch\.show === "(focus|inactive)"/,
-			`ungated window raise: ${line.trim()}`,
+test("the raise policy is the only thing that decides how a window comes forward", () => {
+	// Exhaustive over the three modes and both operations, with a fake window
+	// that records the calls, because these two functions are the whole of the
+	// policy: everything else in the app asks them.
+	const fakeWindow = ({ minimized = false } = {}) => {
+		const calls = [];
+		return {
+			calls,
+			show: () => calls.push("show"),
+			showInactive: () => calls.push("showInactive"),
+			focus: () => calls.push("focus"),
+			isMinimized: () => minimized,
+			restore: () => calls.push("restore"),
+		};
+	};
+
+	const presented = [];
+	for (const show of ["focus", "inactive", "never"]) {
+		const window = fakeWindow();
+		presentWindow(window, show);
+		presented.push([show, window.calls]);
+	}
+	assert.deepEqual(presented, [
+		// A person's launch: show() and nothing else, exactly what shipped.
+		["focus", ["show"]],
+		["inactive", ["showInactive"]],
+		["never", []],
+	]);
+
+	const raised = [];
+	for (const show of ["focus", "inactive", "never"]) {
+		const window = fakeWindow();
+		raiseWindow(window, show);
+		raised.push([show, window.calls]);
+	}
+	assert.deepEqual(raised, [
+		["focus", ["show", "focus"]],
+		["inactive", ["showInactive"]],
+		["never", []],
+	]);
+
+	// A minimized window is restored before it is ordered — but not in
+	// `headless`, where there is nothing to bring forward.
+	for (const show of ["focus", "inactive", "never"]) {
+		const window = fakeWindow({ minimized: true });
+		raiseWindow(window, show);
+		assert.equal(
+			window.calls.includes("restore"),
+			show !== "never",
+			`restore-before-raise in ${show}`,
 		);
 	}
+});
+
+test("no file but window-raise.ts raises or focuses a window", () => {
+	/*
+	 * The source-level guard, because the defect this change removes was one
+	 * unconditional `mainWindow.show()` and the guard has to be wider than the
+	 * file that had it. It scans every module under `src/main/`, and it
+	 * includes `focus()`: on macOS `show()` activates the app for any non-panel
+	 * window whatever `focusable` says (measured), so a stray `focus()` on a
+	 * window that is already up is a lesser version of the same mistake. A
+	 * mutation that deletes the mode gate from any of these call sites fails
+	 * here rather than in production.
+	 *
+	 * `notification.show()` is Electron's own banner API on a `Notification`,
+	 * not a window, so it is named here rather than skipped by a filename: the
+	 * allow-list is one line, and anything else that raises a window has to go
+	 * through `window-raise.ts`.
+	 */
+	const RAISE_PATTERN = /\.(show|showInactive|focus)\(\)/;
+	const ALLOWED = /notification\.show\(\)/;
+	const offSite = [];
+	for (const file of readdirSync("src/main").filter((name) => name.endsWith(".ts"))) {
+		if (file === "window-raise.ts") continue;
+		readFileSync(join("src/main", file), "utf8")
+			.split("\n")
+			.forEach((line, index) => {
+				if (!RAISE_PATTERN.test(line) || ALLOWED.test(line)) return;
+				offSite.push(`src/main/${file}:${index + 1}: ${line.trim()}`);
+			});
+	}
+	assert.deepEqual(
+		offSite,
+		[],
+		"these lines raise or focus a window outside window-raise.ts, where no mode gate can be checked",
+	);
 });

@@ -135,10 +135,11 @@ export function parseWindowMode(value: string | undefined): WindowMode | null {
 /**
  * `1380x900` (either case, `x` or `×`), or null. Values outside the floor and
  * ceiling are not rejected here — they are clamped in `resolveWindowLaunchPlan`
- * so the returned plan always describes the window that will exist. The pattern
- * is hoisted because Biome's `useTopLevelRegex` asks for it.
+ * so the returned plan always describes the window that will exist, and so the
+ * message names the clamp rather than pretending the value was not a size at
+ * all. The pattern is hoisted because Biome's `useTopLevelRegex` asks for it.
  */
-const WINDOW_SIZE_PATTERN = /^(\d{1,5})\s*[x×]\s*(\d{1,5})$/i;
+const WINDOW_SIZE_PATTERN = /^(\d+)\s*[x×]\s*(\d+)$/i;
 
 export function parseWindowSize(
 	value: string | undefined,

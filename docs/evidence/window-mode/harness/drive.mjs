@@ -68,8 +68,9 @@ const shot = async (name) => {
 	const res = await send("Page.captureScreenshot", {
 		format: "png",
 		fromSurface: true,
-		// Capture the layout viewport as laid out, not the window's visible
-		// slice, so a frame is the whole surface the app rendered.
+		// `captureBeyondViewport: false` clips the frame to the layout viewport
+		// rather than expanding it to the full scrollable document: a frame
+		// should be what the window shows, not the whole page.
 		captureBeyondViewport: false,
 	});
 	writeFileSync(join(OUT, name), Buffer.from(res.data, "base64"));

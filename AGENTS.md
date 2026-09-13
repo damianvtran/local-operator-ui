@@ -108,8 +108,8 @@ and takes `--window-size=WxH` or `LOCAL_OPERATOR_UI_WINDOW_SIZE` for the size:
 
 | Mode | The window | Use it for |
 | --- | --- | --- |
-| `headless` | created at the requested size, **never shown**, unfocusable, page unthrottled | every test, QA, harness and evidence run — the default choice |
-| `inactive` | shown with `showInactive()`: visible, but the app is never activated and the window never takes focus | a run somebody wants to watch or click into |
+| `headless` | created at the requested size, **never shown**, unfocusable, page unthrottled, no native banners | every test, QA, harness and evidence run — the default choice |
+| `inactive` | shown with `showInactive()`: visible, but the app is never activated and the window never takes focus | a run somebody wants to watch or click into, and anything focus-dependent |
 | `normal` | `show()` — raises and focuses the window | a human starting the app. Never an agent run |
 
 ```bash
@@ -128,33 +128,63 @@ LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=94
 same switch covers a check of the published launcher. Any mode but `normal`
 prints a `[window-mode] ...` line to the process's own output, so a run says out
 loud that it was headless instead of looking identical to one that popped a
-window.
+window. A mode or size the app could not honour is printed there too, not only
+to the backend log: a typo like `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls
+back to `normal`, which is the difference between a headless run and an
+interruption, and it must be visible to whoever launched it.
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
 That is what makes it usable as evidence rather than only as a way to stay out
-of the way. Measured on Electron 35 / macOS 25.6, with a 1380x900 window:
+of the way. Measured on Electron 35.5.1 / macOS 25.6, with a 1380x900 window:
 
 - `document.visibilityState` stays `"visible"` and `requestAnimationFrame`
-  keeps ticking, so a run is not measuring a paused page;
-- `webContents.capturePage()` and CDP `Page.captureScreenshot` both return a
-  complete frame — 2760x1744 pixels at devicePixelRatio 2, the same size a
-  shown window gives;
-- the frontmost application keeps the focus and the menu bar for the whole run:
-  `win.isFocused()` stays false and no `activate` event fires.
+  keeps ticking (124-132 frames/s in the runs below), so a run is not measuring
+  a paused page;
+- CDP `Page.captureScreenshot` — and `webContents.capturePage()` on a
+  `show: false` window in a platform probe — return a complete frame: 2760x1744
+  pixels at devicePixelRatio 2, the same size a shown window gives. The settled
+  chat frame is pixel-identical to the one captured from a shown (`inactive`)
+  window: 0 of 14,440,320 channels differ;
+- the app is never the frontmost application while it runs. Sampled from
+  outside, by pid, in a headless run: **0 of 5** samples. The control is the
+  same harness in `normal`: the app was frontmost in 5 of 8, 2 of 4 and 1 of 3
+  samples across runs, and never in a `headless` or `inactive` one.
 
-Two consequences for how you take evidence:
+Do not reach for `win.isFocused()` as the proof of that, and do not trust
+`focusable: false` to save you: on macOS `NativeWindowMac::Show()` calls
+`activateIgnoringOtherApps:YES` for every non-panel window whatever `focusable`
+says, so a `show()` on a non-focusable window makes the app frontmost while
+`isFocused()` keeps reading false (measured). What makes a headless run safe is
+that nothing raises the window at all — `src/main/window-raise.ts` is the only
+module in the main process that calls `show`, `showInactive` or `focus` on a
+window, and `scripts/window-mode.test.mjs` asserts that.
+
+Four consequences for how you take evidence:
 
 - **Read the viewport from the page and label frames with it.** A
   `BrowserWindow` size includes the platform's window chrome, so 1380x900 is a
   1380x872 CSS viewport on macOS. A `--window-size` under the verified 800x600
   floor is clamped to it and reported in the log, so a frame cannot be labelled
   with a size the window never had.
-- **Focus-dependent rendering is the one thing that differs**, because a window
-  that is never shown cannot be focused: text carets, `:focus`/`:focus-visible`
-  rings, and anything gated on `document.hasFocus()`. For a change about those,
-  drive it in `inactive` mode, or force focus with CDP
-  `Emulation.setFocusEmulationEnabled(true)` — and say which you did.
+- **Focus-dependent rendering differs.** A window that is never shown cannot be
+  focused: text carets, `:focus`/`:focus-visible` rings, and anything gated on
+  `document.hasFocus()`. For a change about those, drive it in `inactive` mode,
+  or force focus with CDP `Emulation.setFocusEmulationEnabled(true)` — and say
+  which you did.
+- **Focus-dependent behaviour differs too**, which is easy to miss because it
+  is silent: the watch lease reports `visible && focused`, so a headless run
+  reads as "nobody is watching", and the `sessions.seen` ack is gated on
+  `document.hasFocus()`. `headless` is therefore the wrong mode for anything
+  about read receipts, leases, or the notifier's own focus gate.
+- **Native dialogs have no parent window** in `headless` (`dialog.showOpenDialog`
+  is called with the window). A change that opens a file picker needs
+  `inactive`.
+
+Native banners are suppressed entirely in `headless` (the notifier's delivery
+gate), because the run has nobody at the screen and a toast would interrupt
+whoever is really at the machine — and because a banner's own click handler is
+a path that raises a window.
 
 ### Capturing the frame
 

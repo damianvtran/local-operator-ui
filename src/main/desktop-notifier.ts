@@ -55,6 +55,8 @@ import type {
 	DesktopSessionFrame,
 	PendingDesktopGate,
 } from "../shared/desktop-session-contract";
+import type { WindowShow } from "./window-mode";
+import { raiseWindow } from "./window-raise";
 
 const NOTIFY_TTL_MS = 10 * 60 * 1000;
 const MAX_DEDUPE_KEYS = 2048;
@@ -216,6 +218,17 @@ export class DesktopNotifier {
 	constructor(
 		private readonly window: () => BrowserWindow | null,
 		private readonly request: (input: unknown) => Promise<DesktopResponse>,
+		/**
+		 * How this process is allowed to raise its window, from the resolved
+		 * launch plan. In `headless` no banner is delivered at all: the run has
+		 * nobody at the screen, so a toast would interrupt whoever IS at the
+		 * screen, and the banner's own click handler is a path that would raise a
+		 * window that mode promises never to show.
+		 *
+		 * Defaults to `focus`, which is the shipped behaviour, so a caller that
+		 * says nothing keeps the app it has today.
+		 */
+		private readonly windowRaise: WindowShow = "focus",
 	) {}
 
 	get canNotify(): boolean {
@@ -392,6 +405,16 @@ export class DesktopNotifier {
 	/** Called by the stream relay for every parsed frame it forwards. */
 	observe(sessionId: string, frame: DesktopSessionFrame): void {
 		if (!this.canNotify) return;
+		/*
+		 * The single delivery gate for every banner, ahead of every claim. A
+		 * `headless` run is an agent looking at the app, not a person watching
+		 * it: delivering there interrupts whoever is really at the machine, and
+		 * the cross-surface claims below are taken "immediately before delivery"
+		 * (design 7.3), so they must not be taken for a banner that is never
+		 * shown. `inactive` still delivers — its window is visible, so the
+		 * ordinary "only news when nobody is looking" rule applies unchanged.
+		 */
+		if (this.windowRaise === "never") return;
 		if (frame.type === "snapshot") {
 			this.epochs.set(sessionId, frame.payload.frontend.epoch);
 			const gate = frame.payload.frontend.snapshot.pending_gate;
@@ -693,11 +716,14 @@ export class DesktopNotifier {
 		notification.on("click", () => {
 			const target = this.window();
 			if (!target) return;
-			if (target.isMinimized()) target.restore();
-			target.show();
-			target.focus();
-			// The renderer decides how to open the conversation; main only
-			// names it. Nothing here touches the gate.
+			/*
+			 * A click is the operator asking for the window, but only `normal` may
+			 * answer by activating the app: `raiseWindow` orders an `inactive`
+			 * window without taking focus and leaves a `headless` one off screen.
+			 * The conversation is delivered either way — the renderer decides how
+			 * to open it, and this line only names it.
+			 */
+			raiseWindow(target, this.windowRaise);
 			target.webContents.send("desktop-open-conversation", { sessionId });
 		});
 		notification.show();
