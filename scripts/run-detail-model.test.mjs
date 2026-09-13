@@ -54,8 +54,11 @@ const {
 	hasUnseenMcpProblem,
 	mcpServersAreCold,
 	onScreenFailures,
+	briefIsInTranscript,
+	childOpenable,
 	reconcileLaunchTurns,
 	retimeRunDetails,
+	tallyBudget,
 	runDetailTriggerLabel,
 	subagentTally,
 	todoTally,
@@ -687,7 +690,7 @@ test("the subagents tally sheds whole segments", () => {
 	assert.equal(subagentTally(rows, 1), "2 running");
 });
 
-test("the to-dos tally says resolved, and names dropped work inside it", () => {
+test("the to-dos tally says closed, and names dropped work inside it", () => {
 	const details = derive(
 		[],
 		[
@@ -702,11 +705,168 @@ test("the to-dos tally says resolved, and names dropped work inside it", () => {
 			},
 		],
 	);
-	// `resolved` is closure — done OR dropped — and it is the same notion the
-	// phase headers count. `2 of 4 done` above a header reading `3/4` was two
-	// notions of closure under two spellings, with nothing saying which was which.
-	assert.equal(todoTally(details), "3 of 4 resolved · 1 dropped");
-	assert.equal(todoTally(details, 14), "3 of 4 resolved");
+	// `closed` is closure — done OR dropped — and it is the word the phase model
+	// already uses (`TodoPhaseView.closed`). It replaced `resolved`, which was
+	// not merely a second spelling: `3 of 3 resolved · 1 dropped` cannot be
+	// checked against the three rows under it when one of them is the dropped one
+	// (3 + 1 > 3), which breaks the "every claim checkable" rule the tally exists
+	// to serve.
+	assert.equal(todoTally(details), "3 of 4 closed · 1 dropped");
+	assert.equal(todoTally(details, 14), "3 of 4 closed");
+});
+
+/*
+ * The tally's budget is derived from the PANE's width, and the case that made it
+ * a derivation rather than a constant is the PANE'S FLOOR.
+ *
+ * `TALLY_BUDGET = 48` was pinned to the 420px default. At `§ 8`'s 320px floor the
+ * pane gives the tally ~222px, and the 47-character string below fitted the
+ * constant while not fitting the pane — so the model shed nothing and the CSS
+ * `truncate` cut the last segment mid-word (`… 1 interr…`), which is the failure
+ * clause shedding exists to prevent.
+ */
+test("the tally budget tracks the pane, and sheds the last segment whole at the floor", () => {
+	// Monotonic in the pane's width, and the default is wider than the floor.
+	assert.ok(tallyBudget(420) > tallyBudget(320));
+	assert.ok(tallyBudget(640) > tallyBudget(420));
+	// A sane value at every width the pane can take, and a width that is not a
+	// usable number falls back to the design's default rather than poisoning the
+	// shed comparison with `NaN` (which would silently disable shedding).
+	for (const width of [320, 420, 640, 0, -1000, Number.NaN, Number.POSITIVE_INFINITY]) {
+		assert.ok(tallyBudget(width) >= 1, String(width));
+	}
+	assert.equal(tallyBudget(Number.NaN), tallyBudget(420));
+	assert.equal(tallyBudget(0), tallyBudget(420));
+
+	const rows = derive([
+		job({ id: "a", status: "running" }),
+		job({ id: "b", status: "running" }),
+		job({ id: "c", status: "queued" }),
+		job({ id: "d", status: "failed" }),
+		job({ id: "e", status: "interrupted" }),
+	]).subagents;
+	const full = subagentTally(rows);
+	assert.equal(full, "2 running · 1 queued · 1 failed · 1 interrupted");
+
+	// At the floor the budget is short of that string, and what it returns is a
+	// prefix of WHOLE segments — never a fragment of one.
+	const narrow = subagentTally(rows, tallyBudget(320));
+	assert.ok(narrow.length < full.length);
+	assert.ok(full.startsWith(narrow), `${narrow} is a whole-segment prefix of ${full}`);
+	assert.equal(narrow, "2 running · 1 queued · 1 failed");
+	// The measured failure was the word `interrupted` cut at `interr`; assert the
+	// property rather than the string, so a future segment change cannot quietly
+	// reintroduce it.
+	assert.ok(!narrow.endsWith("interr"));
+});
+
+/* ------------------------------------------------------------------ */
+/* The child reader's two row rules                                    */
+/* ------------------------------------------------------------------ */
+
+test("a child with no session id is not an openable row", () => {
+	// `session_id` is what the roster row reads into `childSessionId`; the wire
+	// omits it for a job the runtime has not given a durable directory.
+	const withId = derive([
+		job({ id: "a", status: "running", session_id: "a1b2c3d4e5f6" }),
+	]).subagents[0];
+	assert.equal(childOpenable(withId), true);
+	const withoutId = derive([
+		job({ id: "b", status: "queued", sessionId: null }),
+	]).subagents[0];
+	// The reader is addressed by `(session_id, child_id)`; with no session id
+	// there is nothing to address, so the row must not be a control — and the
+	// reader has its own terminal line for the paths that can still reach it
+	// (the breadcrumb and the sibling stepper).
+	assert.equal(withoutId.childSessionId, null);
+	assert.equal(childOpenable(withoutId), false);
+});
+
+test("the brief is suppressed when the transcript already carries it", () => {
+	const brief = "Re-check the pending rows against the ledger.";
+	const userRecord = (text) => ({
+		kind: "user",
+		id: "subagent-launch:job-a",
+		ts: 1,
+		text,
+		images: [],
+	});
+	// A record whose launch row was NOT reconciled: it still carries the wrapper
+	// preamble, so the brief says something the transcript does not, and the
+	// fallback § 5.1 chooses is to render it.
+	assert.equal(
+		briefIsInTranscript(
+			[userRecord(`ROLE: reviewer\nTEAM: core\nSYSTEM: preamble…\n\n${brief}`)],
+			brief,
+		),
+		false,
+	);
+	// The reconciled list — which is what the reader paints — carries the concise
+	// prompt as its own user turn, so the block would be the same sentence twice
+	// in one pane (`reader-resumed` before the fix).
+	const reconciled = reconcileLaunchTurns(
+		[userRecord(`ROLE: reviewer\nTEAM: core\n\n${brief}`)],
+		{ "subagent-launch:job-a": brief },
+	);
+	assert.equal(briefIsInTranscript(reconciled, brief), true);
+	// A child whose record predates `launch_message_id` matches nothing and keeps
+	// the brief: the fallback direction, not a silenced block.
+	assert.equal(briefIsInTranscript(reconciled, "Some other instruction"), false);
+	// Non-user rows are not the brief, however they read: only a user turn can be
+	// the launch.
+	assert.equal(
+		briefIsInTranscript(
+			[{ kind: "assistant", id: "c-a1", ts: 1, text: brief, streaming: false, stopReason: null, error: false }],
+			brief,
+		),
+		false,
+	);
+	// Nothing to say, or nothing to compare against.
+	assert.equal(briefIsInTranscript(reconciled, null), false);
+	assert.equal(briefIsInTranscript(reconciled, "   "), false);
+	// Whitespace is not a difference a reader can see.
+	assert.equal(briefIsInTranscript(reconciled, `  ${brief}\n`), true);
+	const wrapped = reconcileLaunchTurns(
+		[userRecord(`ROLE: reviewer\nTEAM: core\n\n${brief.replace(" ", "\n")}`)],
+		{ "subagent-launch:job-a": brief.replace(" ", "\n") },
+	);
+	assert.equal(briefIsInTranscript(wrapped, brief), true);
+});
+
+/*
+ * The wire ABBREVIATES `launch_prompts`, and this is the measured case rather
+ * than a hypothetical: the live pairing captured for
+ * `docs/evidence/chat-run-panel-live/README.md` delivered a 201-character entry
+ * ending `…` while the row's own `prompt` carried all 264, so the reader was
+ * painted a truncated launch row under a brief holding the instruction in full
+ * and showed both — the duplication the design round objected to, through the
+ * one path equality does not cover.
+ */
+test("a truncated launch row is still the brief", () => {
+	const brief =
+		"Carry out these four steps IN ORDER, one bash tool call each, then give a one-line summary: (1) bash: sleep 150; (2) bash: wc -l /tmp/lo-live/work/notes.txt; (3) bash: sleep 150; (4) bash: tail -2 /tmp/lo-live/work/notes.txt. Never combine two steps into one call.";
+	const truncated = `${brief.slice(0, 200)}…`;
+	const records = [
+		{ kind: "user", id: "subagent-launch:job-a", ts: 1, text: truncated, images: [] },
+	];
+	assert.equal(briefIsInTranscript(records, brief), true);
+	// A record that is a DIFFERENT instruction still leaves the brief standing,
+	// even when it shares an opening phrase.
+	assert.equal(
+		briefIsInTranscript(
+			[{ kind: "user", id: "c-u1", ts: 2, text: "Carry out these three steps", images: [] }],
+			brief,
+		),
+		false,
+	);
+	// And a two-word record is a coincidence, not a copy: the floor.
+	assert.equal(
+		briefIsInTranscript(
+			[{ kind: "user", id: "c-u2", ts: 3, text: "Carry out", images: [] }],
+			brief,
+		),
+		false,
+	);
 });
 
 /* ------------------------------------------------------------------ */
@@ -1845,9 +2005,9 @@ test("the unseen-failure fixture is a run whose only open fact is a failure", ()
 	// The failure's identifier is the datum the mono second line exists to keep,
 	// so the fixture must carry one long enough to need the second line.
 	assert.ok(details.subagents[0].errorLine.length > 60);
-	// A flat, closed plan on top: headerless, and `resolved` reaching the tally.
+	// A flat, closed plan on top: headerless, and `closed` reaching the tally.
 	assert.equal(details.todos[0].name, null);
-	assert.equal(todoTally(details), "3 of 3 resolved · 1 dropped");
+	assert.equal(todoTally(details), "3 of 3 closed · 1 dropped");
 });
 
 /* ------------------------------------------------------------------ */

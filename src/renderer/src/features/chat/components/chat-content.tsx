@@ -167,7 +167,7 @@ type ChatContentProps = {
 	mcpServers?: readonly McpServerRow[];
 	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
-	 * (`§ 9.5`). False leaves the roster visible and quiet rather than lit and
+	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
 	 */
 	childrenOpenable?: boolean;
@@ -689,6 +689,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
+								/*
+								 * The pane's own width, in pixels, and the SAME value the
+								 * wrapper's `width`/`minWidth` take above — not a second
+								 * reading of the preference. The pane owns its width; the
+								 * sections whose tallies are budgeted against it (`§ 8`)
+								 * receive it rather than measuring themselves, so a section
+								 * can never disagree with the pane it is drawn in at the
+								 * window floor.
+								 */
+								paneWidth={effectiveRunPanelWidth}
 								readerChildId={readerChildId}
 								onReaderChildChange={setReaderChildId}
 								onClose={() => setRunPanelOpen(false)}

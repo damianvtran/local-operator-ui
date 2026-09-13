@@ -231,14 +231,26 @@ export const STORIES = [
 	["chat-run-panel--swap-canvas-open", 1280, 700],
 	["chat-run-panel--swap-run-open", 1280, 700],
 	/* The reader. `reader-live` here is the FIXTURE-backed rendering of a running
-	   child's page; the live-app frames under `live-app/` are what prove the
-	   pulse-to-transcript path (`§ 11.3`), and the manifest declares them as a
-	   supplementary set this sweep must not take with it. */
+	   child's page; the LIVE pair is a supplementary set the manifest declares
+	   (`chat-run-panel-live/`), because the drill-in is a flow against a real
+	   backend and no story can produce it (`§ 11.3`). */
 	["chat-run-panel--reader-live", 1280, 900],
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
 	["chat-run-panel--reader-resumed", 1280, 900],
+	/* The brief, in the one state that renders it: a child whose transcript does
+	   NOT already carry the instruction, so the block is the only copy rather
+	   than the same sentence twice. */
+	["chat-run-panel--reader-brief", 1280, 900],
+	/* `§ 10.1`'s two absences, with their separate copy — the states that break,
+	   and the cheapest pair in the set to take. */
+	["chat-run-panel--reader-pending", 1280, 900],
+	["chat-run-panel--reader-gone", 1280, 900],
+	/* A row the wire left unaddressable (`session_id` null): the reader's own
+	   terminal line, reached through the breadcrumb or the sibling stepper
+	   because the roster does not offer the row at all. */
+	["chat-run-panel--reader-unaddressed", 1280, 900],
 	/* The MCP section, whose states a live session cannot produce on demand: an
 	   expired grant, a dead process, a word from a runtime this build has not been
 	   taught, and the cold payload of a session with no runtime. */
@@ -249,6 +261,13 @@ export const STORIES = [
 	["chat-run-panel--mcp-unknown-status", 1280, 700],
 	["chat-run-panel--mcp-cold", 1280, 700],
 	["chat-run-panel--mcp-connecting", 1280, 700],
+	/* The dot's whole discipline for the MCP ledger, driven through the real
+	   trigger: the two frames below are the halves a single state cannot show —
+	   the acknowledgement HOLDING once the pane closes, and the re-arm after the
+	   server healed and broke again. Header-only, because both end with the pane
+	   shut; the story holds the shutter until the sequence has arrived. */
+	["chat-run-panel--mcp-dot-ack-acknowledged", 460, 220],
+	["chat-run-panel--mcp-dot-ack", 460, 220],
 	/* The window floor, and the two gated surfaces in one frame pair. */
 	["chat-run-panel--narrow-800", 800, 700],
 	["chat-run-panel--capability-absent", 1280, 700],

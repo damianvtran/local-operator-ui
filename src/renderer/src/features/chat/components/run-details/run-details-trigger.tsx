@@ -176,17 +176,25 @@ export const RunDetailsTrigger = ({
 				 * `relative` for the attention dot only; the cluster's geometry is
 				 * unchanged.
 				 *
-				 * `aria-pressed` with an explicit pressed GROUND, because the ghost
-				 * variant's hover is already `bg-accent-wash` (`button.tsx`): without
-				 * an override the pressed state would be indistinguishable from a
-				 * pointer resting on the button, and the accent is exactly what this
-				 * system spends on an active state. `text-accent` rides with the wash
-				 * because the wash alone is a tint at 4.5:1-ish over the header's
+				 * `aria-pressed` with an explicit pressed GROUND, and its own HOVER
+				 * ground beside it. The ghost variant's hover is already
+				 * `bg-accent-wash`, which made "a pointer resting on this button" and
+				 * "this pane is open" the same pixels — the press was legible only
+				 * from the glyph's ink, so the wash could not mean "open" and nothing
+				 * else. Hover therefore takes the NEUTRAL ground step the roster rows
+				 * already use (`bg-elevated`), and `accent-wash` + `text-accent` is
+				 * left to mean the pressed state alone. `text-accent` rides with the
+				 * wash because the wash alone is a tint at 4.5:1-ish over the header's
 				 * ground, where the accent ink is the pair the token set is authored
-				 * for.
+				 * for; the hover steps the ink to full `ink` for the same reason on the
+				 * neutral ground.
+				 *
+				 * `hover:text-accent` is overridden in the pressed branch so that a
+				 * pointer resting on the OPEN button keeps the pressed ink rather than
+				 * stepping to `ink`.
 				 */
 				className={cn(
-					"relative",
+					"relative hover:bg-elevated hover:text-ink",
 					isRunPanelOpen && "bg-accent-wash text-accent hover:text-accent",
 				)}
 				aria-pressed={isRunPanelOpen}
@@ -211,6 +219,7 @@ export const RunDetailsTrigger = ({
 					 */
 					<span
 						aria-hidden={true}
+						data-run-panel-dot=""
 						className={cn(
 							"absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger",
 						)}

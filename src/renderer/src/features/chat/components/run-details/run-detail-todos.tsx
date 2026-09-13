@@ -12,6 +12,7 @@
  * checked box, a slashed box, a dashed box.
  */
 
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import {
 	type LucideIcon,
@@ -24,18 +25,10 @@ import {
 	type RunDetails,
 	type TodoItemStatus,
 	type TodoItemView,
+	tallyBudget,
 	todoTally,
 	visibleTodoPhases,
 } from "./run-detail-model";
-
-/**
- * Characters the trailing tally may occupy.
- *
- * Same constant and same reasoning as the Subagents section's: the panel's width
- * is fixed (`§5`), so the budget is a fact about this component and the shed rule
- * is the model's.
- */
-const TALLY_BUDGET = 46;
 
 const TODO_MARK: Record<TodoItemStatus, LucideIcon> = {
 	pending: Square,
@@ -163,7 +156,14 @@ const TodoRow = ({ item }: { item: TodoItemView }) => {
 	);
 };
 
-export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
+export const RunDetailTodos = ({
+	details,
+	paneWidth,
+}: {
+	details: RunDetails;
+	/** The pane's own width, which is what the tally's budget is measured against. */
+	paneWidth: number;
+}) => {
 	const { phases } = visibleTodoPhases(details.todos);
 	return (
 		<section className={cn("flex flex-col pb-1.5")}>
@@ -178,77 +178,115 @@ export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 					)}
 				>
-					{todoTally(details, TALLY_BUDGET)}
+					{todoTally(details, tallyBudget(paneWidth))}
 				</span>
 			</div>
-			{phases.map((phase) => (
-				<div key={phase.name ?? "__flat"} className={cn("flex flex-col")}>
-					{/*
-					 * Headerless for the flat, single-phase plan: an `init` with no
-					 * phases of its own does not grow a `Todos · 0/3` header it does not
-					 * need. The counts are the plan's own progress — closed over total,
-					 * where closed means done or dropped — and they are counted over the
-					 * WHOLE phase rather than over the visible slice, so a header cannot
-					 * shrink as rows overflow. `resolved` is that closure in words
-					 * (`§4.2`).
-					 */}
-					{phase.name && (
-						/*
-						 * The phase header is the phase's NAME ALONE (`§6.2`). It used to
-						 * carry `· {closed}/{total} resolved`, which was a partition of the
-						 * section tally's own number stated one line above it in the same
-						 * weight — `resolved` spelled three or four times in four lines, and the
-						 * plan's closure measured at two levels.
-						 *
-						 * The departure is from the TUI and the reason is citable: the TUI's
-						 * `PhaseName · done/total` (`todo_panel.py:1256-1267`) exists because
-						 * its dock HIDES a fully settled phase after 60s, so the count is the
-						 * only evidence a hidden phase was complete. This panel hides no
-						 * phase — a list that reflows under its reader is the defect the old
-						 * design refused for the auto-hide — so the count had no job.
-						 *
-						 * The cost, stated rather than hidden: a phase all of whose rows the cap
-						 * shed now reads as its name and its own `+N more`, and its completion
-						 * is legible from the section tally rather than from the header.
-						 */
-						<div className={cn("flex items-baseline gap-1 px-3 pt-1 pb-0.5")}>
-							<span className={cn("truncate text-ink-muted text-meta")}>
-								{phase.name}
-							</span>
-						</div>
-					)}
-					<ul className={cn("flex flex-col")}>
-						{phase.items.map((item, index) => (
-							<TodoRow key={`${index}-${item.text}`} item={item} />
-						))}
-						{/*
-						 * Disclosed INSIDE the phase that lost the rows (`§6.3`), so the
-						 * plan never appears to start mid-way and every phase header above
-						 * stays accountable to the rows beneath it. Every hidden row is a
-						 * CLOSED one — the model never hides an open or blocked item — so
-						 * the count can only ever be settled work.
-						 *
-						 * The phase keeps its header and this row even when every item of
-						 * it was shed, which is the one place a header has no item under
-						 * it: silence there would be the plan lying about its own size.
-						 */}
-						{phase.hidden > 0 && (
+			{/*
+			 * Keyed by POSITION as well as by name, and the position is load-bearing:
+			 * the model folds the implicit `Todos` phase per phase (`§ 6.1`), so a plan
+			 * the backend lazily grew can hold more than one UNNAMED phase and
+			 * `phase.name ?? "__flat"` then collides on every one of them — React
+			 * re-uses one subtree for two phases, which is how a list renders rows from
+			 * the wrong phase. The order is the model's own, so an index is stable for
+			 * a given plan and does not churn on a re-render.
+			 */}
+			{phases.map((phase, phaseIndex) => {
+				/*
+				 * A phase whose rows were ALL shed renders its header and its count on
+				 * ONE line (`Reconcile · 5 hidden`). § 6.2 prices the header over a
+				 * fully-shed phase deliberately — nothing here is hidden, so the
+				 * accountability rule is what the header still carries — but stacked as
+				 * two lines it read as a phase with nothing in it and an orphaned count
+				 * below. One line keeps the rule and removes the empty column.
+				 */
+				const fullyShed = phase.items.length === 0 && phase.hidden > 0;
+				return (
+					<div
+						key={`${phaseIndex}-${phase.name ?? "__flat"}`}
+						className={cn("flex flex-col")}
+					>
+						{phase.name && (
 							/*
-							 * `pl-9` puts the disclosure in the ITEM-TEXT column, not the mark
+							 * The phase header is the phase's NAME ALONE (`§6.2`), plus the shed
+							 * count in the fully-shed case above.
+							 *
+							 * It used to carry `· {closed}/{total} resolved`, which was a
+							 * partition of the section tally's own number stated one line above
+							 * it in the same weight — `closed` spelled three or four times in
+							 * four lines, and the plan's closure measured at two levels.
+							 *
+							 * The departure is from the TUI and the reason is citable: the TUI's
+							 * `PhaseName · done/total` (`todo_panel.py:1256-1267`) exists because
+							 * its dock HIDES a fully settled phase after 60s, so the count is the
+							 * only evidence a hidden phase was complete. This panel hides no
+							 * phase — a list that reflows under its reader is the defect the old
+							 * design refused for the auto-hide — so the count had no job.
+							 *
+							 * The cost, stated rather than hidden: a phase all of whose rows the
+							 * cap shed reads as its name and its own count, and its completion is
+							 * legible from the section tally rather than from the header.
+							 */
+							<div className={cn("flex items-baseline gap-1 px-3 pt-1 pb-0.5")}>
+								<span className={cn("truncate text-ink-muted text-meta")}>
+									{phase.name}
+								</span>
+								{fullyShed && (
+									/*
+									 * `· 5 hidden` on the header line, in the header's own ink and
+									 * weight: it is the phase's own statement about its own rows,
+									 * not a control and not a second count.
+									 */
+									<span className={cn("shrink-0 text-ink-dim text-meta")}>
+										· {phase.hidden} hidden
+									</span>
+								)}
+							</div>
+						)}
+						<ul className={cn("flex flex-col")}>
+							{phase.items.map((item, index) => (
+								<TodoRow key={`${index}-${item.text}`} item={item} />
+							))}
+							{/*
+							 * Disclosed INSIDE the phase that lost the rows (`§6.3`), so the
+							 * plan never appears to start mid-way and every phase header above
+							 * stays accountable to the rows beneath it. Every hidden row is a
+							 * CLOSED one — the model never hides an open or blocked item — so
+							 * the count can only ever be settled work.
+							 *
+							 * A STATEMENT, not a control, and the difference is deliberate:
+							 * the model sheds these rows and nothing in this pane can put them
+							 * back, so the count carries no affordance — no hover ground, no
+							 * pointer, no button role — and it does NOT wear the roster's
+							 * `Show N more`, which IS a control. The shared `Disclosure`
+							 * primitive's `disabled` branch is exactly that row: it keeps the
+							 * chevron gutter and the row height of every other disclosure in
+							 * the app while dressing this one as what it is. An inert
+							 * `+N more` that read like a button was the defect.
+							 *
+							 * Suppressed when the header already carries the count, so a
+							 * fully-shed phase says it once.
+							 *
+							 * `pl-9` puts the count in the ITEM-TEXT column, not the mark
 							 * column: 12px of row padding + the 16px mark + the 8px gap. In the
 							 * first column it read as the NEXT phase's header rather than as
 							 * this phase's footer — same 12px type, same x, one ink step from
 							 * the header below it — and there is no rule between phases to say
 							 * where one ends. The indent lives under the rows it counts, which
 							 * is the same rule the blocked reason follows (`§4.2`, `§5`).
-							 */
-							<li className={cn("pt-1 pr-3 pl-9 text-ink-dim text-meta")}>
-								{`+${phase.hidden} more`}
-							</li>
-						)}
-					</ul>
-				</div>
-			))}
+							 */}
+							{phase.hidden > 0 && !fullyShed && (
+								<li className={cn("pr-3")}>
+									<Disclosure
+										disabled={true}
+										summary={`${phase.hidden} hidden`}
+										className={cn("pl-9 text-meta")}
+									/>
+								</li>
+							)}
+						</ul>
+					</div>
+				);
+			})}
 		</section>
 	);
 };

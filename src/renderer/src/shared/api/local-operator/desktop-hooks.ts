@@ -76,12 +76,12 @@ export type DesktopFeature =
 	| "lifecycle"
 	| "mcp"
 	/**
-	 * The run panel's child reader (`docs/run-sidebar.md` § 9.2).
+	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
 	 * The reader is the ONE part of that panel that needs a route older backends
 	 * do not have, so it is the part that negotiates: the roster, the plan, the
 	 * swap and the attention dot all ship with the renderer and work against any
-	 * backend the app can talk to. Absent here means `§ 9.5`'s honest degraded
+	 * backend the app can talk to. Absent here means `§ 10.2`'s honest degraded
 	 * state — rows that are visible and deliberately not openable — rather than a
 	 * reader that fails silently when a row is clicked.
 	 */

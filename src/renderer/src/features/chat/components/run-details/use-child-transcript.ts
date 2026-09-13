@@ -194,14 +194,20 @@ export function useChildTranscript({
 		return clearTimer;
 	}, [childId, clearTimer, readTail, sessionId]);
 
-	// The pulse: one read per beat, capped. The FIRST render for a child runs this
-	// too, which is harmless — `scheduleTail` will not schedule inside the second
-	// the open read already spent.
+	// The pulse: one read per beat, capped — and only while the child is LIVE.
+	//
+	// `live` is in the gate rather than only in the settle effect below for the
+	// reason the settle effect exists: a settled child's file cannot grow, so a
+	// pulse arriving after it settled (a late `subagent_end`, or any `subagent_*`
+	// event for a child the roster now reports as settled) must not cost a
+	// whole-file re-scan of a transcript that has stopped changing. The first
+	// render for a child runs this too, which is harmless — `scheduleTail` will not
+	// schedule inside the second the open read already spent.
 	useEffect(() => {
-		if (!sessionId || !childId) return;
+		if (!sessionId || !childId || !live) return;
 		if (pulse === 0) return;
 		scheduleTail();
-	}, [childId, pulse, scheduleTail, sessionId]);
+	}, [childId, live, pulse, scheduleTail, sessionId]);
 
 	// The settle read, and the end of the timers. `live` false means the child has
 	// settled: one more read picks up whatever the last batch wrote, and then

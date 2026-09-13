@@ -29,12 +29,22 @@ import { useRunDetailsClock } from "./run-details-clock";
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
-	/** Whether a child's row can be opened (`§ 9.5`). */
+	/** Whether a child's row can be opened (`§ 10.2`). */
 	childrenOpenable: boolean;
 	onOpenChild: (id: string) => void;
 	/** Hoisted to the pane so a drill-in and back keeps the roster expanded. */
 	rosterExpanded: boolean;
 	onToggleRosterExpanded: () => void;
+	/**
+	 * The pane's own width, in pixels.
+	 *
+	 * Threaded down rather than read from the preference store by whichever
+	 * section needs it: the pane's width is a fact about where these sections are
+	 * SHOWN (`chat-content.tsx` sets both `width` and `minWidth` from the same
+	 * value), and the tally's char budget is derived from it — see
+	 * `tallyBudget`. One source, one reading.
+	 */
+	paneWidth: number;
 };
 
 export const RunDetailsPanel = ({
@@ -44,6 +54,7 @@ export const RunDetailsPanel = ({
 	onOpenChild,
 	rosterExpanded,
 	onToggleRosterExpanded,
+	paneWidth,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -78,6 +89,7 @@ export const RunDetailsPanel = ({
 					onToggleExpanded={onToggleRosterExpanded}
 					onOpenChild={onOpenChild}
 					interactive={childrenOpenable}
+					paneWidth={paneWidth}
 				/>
 			),
 		});
@@ -85,7 +97,7 @@ export const RunDetailsPanel = ({
 	if (details.todos.length > 0) {
 		sections.push({
 			key: "todos",
-			body: <RunDetailTodos details={details} />,
+			body: <RunDetailTodos details={details} paneWidth={paneWidth} />,
 		});
 	}
 	if (mcpServers.length > 0) {

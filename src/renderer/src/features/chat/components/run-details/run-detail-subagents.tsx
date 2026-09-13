@@ -30,27 +30,17 @@ import { cn } from "@shared/lib/utils";
 import {
 	type RunDetails,
 	type SubagentRow,
+	childOpenable,
 	childStateLabel,
 	panelSlice,
 	subagentTally,
+	tallyBudget,
 } from "./run-detail-model";
 import { NumberRun, SubagentStateIcon } from "./run-detail-row-parts";
 
 /**
- * Characters the trailing tally may occupy.
- *
- * The panel's default width is a constant (`§7`: 420px) so its budget is one too
- * — the measurement this would otherwise need is `420 - 24px padding - the
- * label's own width`. The RULE lives in the model
- * (`subagentTally(rows, maxChars)`), because "which fact survives pressure" is
- * arithmetic and belongs where it can be asserted; only the width is a fact
- * about this component.
- */
-const TALLY_BUDGET = 48;
-
-/**
  * The row's second line (`§4.1`), which is one of two different kinds of text.
- *
+ * *
  * Both variants take `ink-muted`, where the activity line used to take
  * `ink-dim`: at 12px on the panel ground `dim` measures ≈4.7:1 — the tightest
  * text on the surface — and it is the ink the TUI deliberately moved AWAY from
@@ -94,13 +84,18 @@ const SubagentRowView = ({
 }: {
 	row: SubagentRow;
 	/**
-	 * Whether this child can be opened at all.
+	 * Whether the SECTION's children can be opened at all.
 	 *
 	 * FALSE against a backend that does not advertise `subagent_transcript`
-	 * (`§ 9.5`): the roster still renders — it is `frontend.jobs`, which predates
+	 * (`§ 10.2`): the roster still renders — it is `frontend.jobs`, which predates
 	 * this change — and the row renders without an open affordance: no hover
 	 * ground, no pointer cursor, no button role. A lit row that opens nothing is
 	 * worse than a quiet one, and the panel's chrome says why in one line.
+	 *
+	 * The capability is not the whole question: `childOpenable(row)` is the ROW's
+	 * own half, because a job the wire gives no `session_id` has no conversation
+	 * to address and a control that opens a reader on nothing is the same lie one
+	 * level down.
 	 */
 	interactive: boolean;
 	onOpen: (id: string) => void;
@@ -145,8 +140,15 @@ const SubagentRowView = ({
 	 * `py-1.5` with the two pinned line-heights below is what makes the row
 	 * heights exact (`§5`): 12 + 20 = 32px single-line, 12 + 20 + 16 = 48px with a
 	 * second line, 12 + 20 + 32 = 64px on a wrapped failure.
+	 *
+	 * `py-1.5` is 6px, off `§5`'s 4px ramp, and that is deliberate rather than
+	 * drift: the 32/48/64 ladder above needs 6px of vertical padding to land on
+	 * whole pixels (4px would give 28/44/60, and 8px would give 36/52/68 — two
+	 * heights the record does not have). Recorded in `docs/run-sidebar.md` §8 as a
+	 * named exception so the next reader does not "fix" the ramp by breaking the
+	 * row height.
 	 */
-	if (!interactive) {
+	if (!interactive || !childOpenable(row)) {
 		return (
 			<li
 				data-run-panel-row={row.id}
@@ -187,6 +189,7 @@ export const RunDetailSubagents = ({
 	onToggleExpanded,
 	onOpenChild,
 	interactive,
+	paneWidth,
 }: {
 	details: RunDetails;
 	/** Whether the disclosure has been opened, hoisted to the pane (§ 4). */
@@ -194,6 +197,16 @@ export const RunDetailSubagents = ({
 	onToggleExpanded: () => void;
 	onOpenChild: (id: string) => void;
 	interactive: boolean;
+	/**
+	 * The pane's own width, which is what the tally's budget is measured against.
+	 *
+	 * Past the pane rather than read from the preference store HERE, for the
+	 * reason the panel's whole geometry is (`chat-content.tsx`): the width the
+	 * pane is actually drawn at is the caller's (`minWidth` + `width` on the pane
+	 * wrapper), and a component that read the store itself could disagree with
+	 * the pane it sits in at the window floor.
+	 */
+	paneWidth: number;
 }) => {
 	/*
 	 * The rows come from the model's `panelSlice`, never from a local narrowing:
@@ -231,7 +244,7 @@ export const RunDetailSubagents = ({
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 					)}
 				>
-					{subagentTally(details.subagents, TALLY_BUDGET)}
+					{subagentTally(details.subagents, tallyBudget(paneWidth))}
 				</span>
 			</div>
 			<ul className={cn("flex flex-col")}>
@@ -250,6 +263,11 @@ export const RunDetailSubagents = ({
 			 * reach them, which is what makes it a button rather than a footnote.
 			 * `w-full` and left-aligned: it is a row of the list it extends, and a
 			 * centred chip would read as a footer of the section instead.
+			 *
+			 * "Show 3 more" is the phrasing every OTHER expander in this pane uses
+			 * for the same job (`N more lines` in the reader's brief). The plan's
+			 * shed count is phrased `N hidden` instead, because it is a statement
+			 * rather than a control — see `run-detail-todos.tsx`.
 			 */}
 			{hidden > 0 && (
 				<Button

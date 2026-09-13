@@ -211,7 +211,7 @@ function SessionPanel({
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
-	 * backend does not have (`docs/run-sidebar.md` § 9.5), so it is the part that
+	 * backend does not have (`docs/run-sidebar.md` § 10.2), so it is the part that
 	 * negotiates. Everything else in the pane ships with the renderer.
 	 */
 	const childrenOpenable = desktopFeatureEnabled(

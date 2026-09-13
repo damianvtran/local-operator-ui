@@ -34,7 +34,7 @@
 
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import "../../../../styles/index.css";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
@@ -153,6 +153,7 @@ const RunPane = ({
 				}
 				pulses={pulses}
 				childrenOpenable={childrenOpenable}
+				paneWidth={width}
 				readerChildId={readerChildId}
 				previewPage={previewPage}
 				onReaderChildChange={() => undefined}
@@ -320,6 +321,163 @@ const useClickAndWait = (selector: string, settleSelector: string) => {
 	}, [selector, settleSelector]);
 };
 
+/**
+ * Poll the DOM for the state the previous step was supposed to produce, then run
+ * the next step.
+ *
+ * A frame budget rather than a clock: the state arrives one paint after the step
+ * that causes it, and a fixed sleep would be a race that only ever gets won by
+ * luck. On exhaustion nothing is released, which leaves `data-capture-pending`
+ * set and makes the rig THROW on this story rather than photograph whatever
+ * happened to be on screen — a frame of the wrong state is indistinguishable
+ * from one of the right state in a directory listing.
+ */
+/**
+ * The trigger's attention dot. It carries a `data-` hook for the same reason the
+ * trigger does: a rig that cannot find an element photographs the wrong state,
+ * and a frame of a state with no dot is indistinguishable from a frame of the
+ * state where the dot rule broke.
+ */
+const DOT = "[data-run-panel-dot]";
+
+const whenState = (
+	present: boolean,
+	selector: string,
+	done: () => void,
+): (() => void) => {
+	let frame = 0;
+	let cancelled = false;
+	const tick = () => {
+		if (cancelled) return;
+		const found = document.querySelector(selector) !== null;
+		if (found === present) {
+			done();
+			return;
+		}
+		if (frame++ > 600) return;
+		requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
+	return () => {
+		cancelled = true;
+	};
+};
+
+/**
+ * The MCP ledger's whole discipline, against the REAL trigger (§ 3.4, § 7.3).
+ *
+ * The rule this frame set exists for is `seen' = seen ∩ problems`: a server
+ * acknowledged while broken and later repaired must be able to announce itself
+ * AGAIN, because the set prunes before it unions. That is a sequence rather than
+ * a state, and the ORDER matters more than it looks:
+ *
+ *   0. closed, one server broken              → dot ON  (unseen problem)
+ *   1. the list on screen                     → dot OFF (acknowledged while shown)
+ *   2. the same server HEALS while the list is shown → the ledger PRUNES it
+ *   3. the panel closes                       → dot OFF (nothing outstanding)
+ *   4. it breaks again, panel shut            → dot ON AGAIN (the re-arm)
+ *
+ * The heal has to happen while the list is ON SCREEN, because that is when the
+ * trigger evaluates the ledger — pruning is part of "showing the list", not an
+ * event of its own. A sequence that healed while the panel was shut would leave
+ * the server in `seen` forever and the re-arm could never be photographed, which
+ * is exactly what the first cut of this story did (it timed out, loudly, because
+ * the shutter is held until the final state arrives).
+ *
+ * `stop` chooses which end of it is photographed. Nothing here is simulated: it
+ * is the production `ChatHeader` (and therefore the production trigger and its
+ * two ledgers) with the same props `chat-page.tsx` passes, and the rows and their
+ * words come from the same fixtures the single-state frames use.
+ */
+const DotAckGround = ({ stop }: { stop: "acknowledged" | "rearmed" }) => {
+	const details = useMemo(() => deriveRunDetails(fixtures.bothInFlight()), []);
+	const [raw, setRaw] = useState(() => fixtures.mcpAuthRequired());
+	const [open, setOpen] = useState(false);
+	const [step, setStep] = useState(0);
+	// One source for both the header's ledger and the pane's rows, so the panel
+	// cannot be showing one state while the dot answers another.
+	const rows = useMemo(() => deriveMcpServers(raw), [raw]);
+
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		return () => {
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+
+	useEffect(() => {
+		const release = () =>
+			document.documentElement.removeAttribute("data-capture-pending");
+		switch (step) {
+			case 0:
+				// Closed on a broken server: an unseen problem, so the dot is up.
+				// The step only advances once the dot is actually on screen.
+				return whenState(true, DOT, () => {
+					setOpen(true);
+					setStep(1);
+				});
+			case 1:
+				// The list is on screen now, so the ledger acknowledges the problem
+				// while it is shown. `acknowledged` stops here (with the pane shut
+				// again); `rearmed` heals the server WITH the list still shown,
+				// which is the only moment the prune can run.
+				return whenState(false, DOT, () => {
+					if (stop === "acknowledged") {
+						setOpen(false);
+						setStep(2);
+						return;
+					}
+					setRaw(fixtures.mcpAllConnected());
+					setStep(3);
+				});
+			case 2:
+				// Closed, still broken, dot off: the acknowledgement HOLDS.
+				return whenState(false, DOT, release);
+			case 3:
+				// Every row reads `connected` with the list shown, so the ledger
+				// prunes the server it had acknowledged.
+				return whenState(false, DOT, () => {
+					setOpen(false);
+					setStep(4);
+				});
+			case 4:
+				return whenState(false, DOT, () => {
+					setRaw(fixtures.mcpAuthRequired());
+					setStep(5);
+				});
+			default:
+				// Broken again with the panel shut: the dot is BACK, because the
+				// ledger no longer holds this server. This is the re-arm.
+				return whenState(true, DOT, release);
+		}
+	}, [step, stop]);
+
+	useEffect(() => {
+		useUiPreferencesStore.setState({
+			isRunPanelOpen: open,
+			isCanvasOpen: false,
+		});
+	}, [open]);
+
+	return (
+		<div className="flex h-screen overflow-hidden bg-canvas">
+			<div className="flex min-w-0 flex-1 flex-col">
+				<ChatHeader
+					agentName="Core"
+					description="Invoices workspace · on this machine"
+					onOpenOptions={() => undefined}
+					runDetails={details}
+					mcpServers={rows}
+					listOnScreen={open}
+					readerChildId={null}
+				/>
+				<TranscriptGround />
+			</div>
+			{open && <RunPane details={details} mcpServers={raw} />}
+		</div>
+	);
+};
+
 const meta: Meta = {
 	title: "Chat/Run panel",
 	parameters: { layout: "fullscreen" },
@@ -383,7 +541,7 @@ export const RosterOnly: Story = {
 export const TodosOnly: Story = {
 	render: () => (
 		<ChatColumn
-			details={deriveRunDetails(fixtures.todosOnly())}
+			details={deriveRunDetails(fixtures.todosFlat())}
 			openPanel={true}
 		/>
 	),
@@ -472,8 +630,15 @@ export const TodosImplicitPhase: Story = {
 /* ------------------------------------------------------------------ */
 
 /**
- * The slot with the CANVAS in it: the canvas button pressed, the run trigger
- * unpressed and present, and no run pane anywhere.
+ * The slot with the CANVAS in it: the canvas button present and UNPRESSED, the run
+ * trigger unpressed beside it, and no run pane anywhere.
+ *
+ * The claim is deliberately narrower than "the canvas button pressed": that
+ * button has no pressed rendering at all (`chat-header.tsx` hides it whenever
+ * the canvas is open), so no frame could contain one. What this PR changed about
+ * the canvas is the run TRIGGER's rule — the retired `!isCanvasOpen` gate is gone
+ * — and that is what the pair shows: the trigger present with the canvas open,
+ * then the run pane holding the slot alone.
  */
 export const SwapCanvasOpen: Story = {
 	render: () => (
@@ -523,7 +688,10 @@ export const ReaderLive: Story = {
 	decorators: [withCanvasClosed],
 };
 
-/** The same child settled: outcome block, settled clock, no pulse. */
+/**
+ * The same child settled: the outcome block carries the final text, the settled
+ * clock, and no pulse.
+ */
 export const ReaderSettled: Story = {
 	render: () => (
 		<ChatColumn
@@ -534,6 +702,8 @@ export const ReaderSettled: Story = {
 						status: "done",
 						settledSecondsAgo: 12,
 						progress: undefined,
+						result:
+							"Four of 412 March invoices are unpaid: Northwind (2), Contoso (1) and Fabrikam (1). Totals: $18,420 outstanding across the four, against $1,204,880 invoiced.",
 					}),
 				],
 				todos: [],
@@ -604,6 +774,103 @@ export const ReaderNested: Story = {
 	decorators: [withCanvasClosed],
 };
 
+/**
+ * § 10.1's `pending`: the child has a directory and no transcript yet.
+ *
+ * The copy that document fixes, and the state that breaks nothing else: the body
+ * states the fact in one quiet line and the reader re-probes on the next pulse
+ * rather than treating it as final.
+ */
+export const ReaderPending: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild()],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "pending" })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * § 10.1's `gone`: the child's transcript is no longer on disk.
+ *
+ * The other absence, and the terminal one — the line says so rather than offering
+ * a retry that cannot succeed.
+ */
+export const ReaderGone: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild()],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "gone" })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The brief, and the case that makes it render: a child whose transcript does NOT
+ * already carry its instruction.
+ *
+ * The ordinary reader reconciles the durable launch row to the concise prompt, so
+ * the instruction is on the page already and the brief block would be the same
+ * sentence twice (`reader-resumed` is that frame). Here the launch row is absent —
+ * a record that predates `launch_message_id`, which is the case
+ * `reconcileLaunchTurns` documents — so the brief is the only copy, folded to six
+ * of its nine lines with the remaining three stated on the control.
+ */
+export const ReaderBrief: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild()],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage()}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The row the wire left unaddressable: `session_id` is null, so there is no
+ * conversation to address.
+ *
+ * This is the reader's own terminal state for that case — the roster does not
+ * offer the row as a control at all (`childOpenable`), but the breadcrumb and the
+ * sibling stepper walk the wire's lineage and can land on it, so the page says
+ * what is true instead of sitting on a load that was never issued. Before the fix
+ * it sat on `Loading…` for as long as it was open.
+ */
+export const ReaderUnaddressed: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild({ sessionId: null })],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
 /** A RESUMED child: the durable launch turn reconciled to its concise prompt. */
 export const ReaderResumed: Story = {
 	render: () => (
@@ -659,6 +926,32 @@ export const McpAuthRequired: Story = {
 	decorators: [withCanvasClosed],
 };
 
+/**
+ * The ledger's step 2: the panel SHUT again with the server still broken and the
+ * dot OFF.
+ *
+ * This is the frame a still can carry for "acknowledged": `mcp-auth-required`
+ * proves the dot clears while the list is on screen, and this proves it STAYS
+ * clear once the pane closes — which is the half a careless implementation gets
+ * wrong by re-deriving "unseen" from the rows on every render.
+ */
+export const McpDotAckAcknowledged: Story = {
+	render: () => <DotAckGround stop="acknowledged" />,
+};
+
+/**
+ * The ledger's steps 3-4: the same server heals, is pruned from the ledger, and
+ * breaks again while the panel is shut — and the dot is ON again.
+ *
+ * `seen' = seen ∩ problems` is the rule; without the prune this event would be
+ * permanently silent, which is the failure it was written to prevent (a server
+ * that broke, was seen, recovered and broke again would never announce itself).
+ * See `DotAckGround` for the sequence it runs to get here.
+ */
+export const McpDotAck: Story = {
+	render: () => <DotAckGround stop="rearmed" />,
+};
+
 /** The transport state beside the auth state: two words, two remedies. */
 export const McpDisconnected: Story = {
 	render: () => (
@@ -677,6 +970,7 @@ export const McpUnknownStatus: Story = {
 		<ChatColumn
 			details={deriveRunDetails(fixtures.bothInFlight())}
 			mcpServers={fixtures.mcpUnknownStatus()}
+			openPanel={true}
 		/>
 	),
 	decorators: [withCanvasClosed],

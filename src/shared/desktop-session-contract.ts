@@ -362,7 +362,7 @@ export type DesktopHistoryPage = {
 	cursor_missing: boolean;
 };
 /**
- * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 9.1).
+ * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 10.1).
  *
  * The parent's envelope plus one field, and the field is derived rather than
  * carried: the two ABSENCES are different facts and only the filesystem can tell
