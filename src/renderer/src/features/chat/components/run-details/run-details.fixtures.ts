@@ -745,26 +745,35 @@ export const idle = (): RunDetailsInput => ({
 export const settledHistory = settled;
 
 /**
- * The plan that produced § 6.1's finding (2): an implicit phase beside a named
- * one.
+ * The plan that produced § 6.1's finding (2) AND round 1's U1-5: an implicit
+ * phase beside a named one, in the order an unphased `add` produces after a
+ * phase was already named.
  *
  * The backend lazily creates `Todos` when `add` is called before any phase was
  * named, and the wire cannot distinguish that from a phase an agent genuinely
  * named `Todos` — so a plan holding both rendered a `To-dos` section directly
  * above a phase headed `Todos`, one plan named twice. The fold is per PHASE now,
  * and this is the fixture the frame exists for.
+ *
+ * The NAMED phase comes FIRST and the untitled group second, deliberately: that
+ * is the shape the fold got wrong, because it assumed the untitled group leads.
+ * Its rows landed at the named phase's indent under that phase's header, with
+ * nothing between them and the phase above (round 1, Q9/U1-5, measured live at
+ * 420px and at the 320px floor), and the per-phase counts this change removed
+ * were the only other signal. The LEADING fold is `todosFlat()`'s single
+ * unnamed phase, and its frame is `todos-only`.
  */
 export const mixedImplicitPhase = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
 	jobs: [],
 	todos: [
-		phase("Todos", [
-			item("Read invoices/march.csv", "done"),
-			item("Total the unpaid rows", "pending"),
-		]),
 		phase("Publish", [
 			item("Write reports/unpaid-march.md", "done"),
 			item("Send the summary", "blocked", "waiting on the totals"),
+		]),
+		phase("Todos", [
+			item("Read invoices/march.csv", "done"),
+			item("Total the unpaid rows", "pending"),
 		]),
 	],
 });
