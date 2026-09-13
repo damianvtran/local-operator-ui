@@ -38,9 +38,10 @@ Two capture surfaces, and the difference matters when reading them:
 | [`narrow`](narrow/) | The same rows at 420px. The shed ladder is visible: the `edit` row's `+42 -11` counters are **gone**, the summaries truncate with an ellipsis, and the outcome glyph and duration survive — they are the last thing to go, not the first. |
 | [`working`](working/) | The working line under a running tool row. The row states the ARGUMENTS and that call's own execution time; the line states the KIND of work and the phase age. They do not restate each other. |
 | [`working-labels`](working-labels/) | Every label the line can carry — `thinking`, `responding`, `composing a call`, the model's own sanitised intent, and `running 3 tools` for a batch. No trailing ellipsis anywhere: the clock is what says it is ongoing. |
-| [`real-conversation-tool-rows`](real-conversation-tool-rows/) *(declared, not swept)* | The shipped reducer and transcript over a real backend and a real conversation, paged oldest-first in 20-entry pages: **38 real tool rows, 0 blank object columns**, every row on a 20px pitch, 38 `sr-only` outcome labels. Every row carries its own arguments — the defect this replaced showed a run of unlabelled `bash`/`wait`/`task` rows. |
+| [`real-conversation-tool-rows`](real-conversation-tool-rows/) *(declared, not swept)* | The shipped reducer and transcript over a real backend and a real conversation, paged oldest-first in 20-entry pages: **38 real tool rows, 0 blank object columns**, every row on one pitch, 38 `sr-only` outcome labels. These frames predate the 2px hairline and so show the run at the 20px pitch; what they evidence is the arguments and the outcome labels, not the current spacing — for that, see `operator-spacing-cases` and `trace-gap-boundaries`, which a sweep retakes. Every row carries its own arguments — the defect this replaced showed a run of unlabelled `bash`/`wait`/`task` rows. |
 | [`joined-mid-turn`](joined-mid-turn/) | The reported defect, at the only moment it is visible: a viewer that joins a turn already in flight. The owner's seed keeps the settling frame of every call that finished before the viewer attached and drops the start it replaces, and the settling frame carries no `args` — so a run of rows used to read `exit code: 0`, the file's first line, or `result: None` instead of the call. Six rows: one whose row is recreated by that settling frame after a receipt gap (it must still say the command), one whose arguments are genuinely unknown with a result opening on the harness's own `exit code: 0` wiring, a `read` in the same state, a call that printed NOTHING (so the object column is deliberately EMPTY rather than quoting the producer's `(empty)` section body), a stand-in line long enough that the column truncates it, and a control row whose arguments arrived normally. Records are built by the PRODUCTION reducer in the order the session hook applies them. Where a row shows a line of its RESULT rather than its own object, the line is marked with a leading `…` — the design round's D1 — so a column that is normally a command cannot be misread as one. The same story captured from UNMODIFIED `origin/main` (`2217ea59a`) lives in [`../tool-rows-baseline/`](../tool-rows-baseline/), with the row-by-row pair and the one-line reproduction: rows 1 and 2 read `exit code: 0` there, which is the reported defect. |
-| [`operator-spacing-cases`](operator-spacing-cases/) | The same three runs as a STORY, so they are re-captured by every sweep: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch. |
+| [`operator-spacing-cases`](operator-spacing-cases/) | The same three runs as a STORY, so they are re-captured by every sweep: four consecutive settled rows, an assistant line followed by `hub`/`send` rows, and a long run mixing tool rows with prose-free tool turns. Every adjacent like pair sits on ONE pitch — 20px of row plus the 2px hairline. |
+| [`trace-gap-boundaries`](trace-gap-boundaries/) | Where that hairline applies and where it does NOT, which a run of identical rows cannot show on its own: a margin carried by every row would photograph the same. Three blocks — a LONE call between two paragraphs (no ledger neighbour, so no hairline, `item` either side); a NOTICE inside a run (`trace`-like and dense, so the whole block keeps one pitch — a run whose pitch changed wherever a notice appeared is the raggedness this tier exists to prevent); and a run OPENING a turn (the 24px boundary sits above its first row, the hairline only from the second). |
 | [`spacing-uniformity`](spacing-uniformity/) *(declared, not swept)* | The three runs as they were captured by hand for the spacing round: a short run of settled rows, a `hub`/`send` run, and a longer mixed run. Every inked band in these frames is a ledger row or its trailing timestamp — there is no prose in shot, so the assistant line that sets the middle block's pitch in the story above is NOT part of what this pair evidences. Its sibling above is the same claim as a story; this is the pair the operator's own screenshot was compared against, and what it holds is what those frames show, not the story's fuller set. |
 | [`turn-boundary-and-working-line`](turn-boundary-and-working-line/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. (The older `turn-boundary/` frames were removed: they came from a story title that no longer exists, so no sweep could refresh them.) |
 | [`prose-tool-alignment@1024`](prose-tool-alignment@1024/), [`@1440`](prose-tool-alignment@1440/) | Agent prose and the ledger sharing ONE left rail and ONE right edge, with prose both BETWEEN tool rows and as a final answer. The operator reported the answer as inset and narrower than the tool calls; it was capped at a reading measure and then centred inside the row it owns. Measured here, the answer and the tool row now span the same 102..962 at 1024 and 310..1170 at 1440 — left and right deltas both 0, where they were 156.6px each before. Two widths because a max-width cap only binds on a wide column, so one narrow capture would photograph the defect as absent. The user bubble is in frame as the control: it keeps its own narrower measure. |
@@ -115,18 +116,34 @@ consecutive rows, read out of the live DOM with `getBoundingClientRect()`. A
 uniform run shows a CONSTANT delta. The reference in
 `../tui-parity/OPERATOR-TUI-REFERENCE.md` measures ~20.4px per line.
 
-| Case | Before | After |
-| --- | --- | --- |
-| (a) four consecutive settled rows | `28, 28, 28` | `20, 20, 20` |
-| (b) prose, two `hub` rows, a `send` row | `34.4, 36, 12, 28` | `30.4, 20, 20` |
-| (c) long run mixing rows and prose-free turns | `36, 12, 28, 36, 12, 28` | `20, 20, 20, 20` |
-| turn boundary + working line | `28, 48, 72.4, 34.4` | `20, 44, 72.4, 30.4` |
+| Case | Before | Tightened | Now (2px hairline) |
+| --- | --- | --- | --- |
+| (a) four consecutive settled rows | `28, 28, 28` | `20, 20, 20` | `22, 22, 22` |
+| (b) prose, two `hub` rows, a `send` row | `34.4, 36, 12, 28` | `30.4, 20, 20` | `30.4, 22, 22` |
+| (c) long run mixing rows and prose-free turns | `36, 12, 28, 36, 12, 28` | `20, 20, 20, 20` | `22, 22, 22, 22` |
+| turn boundary + working line | `28, 48, 72.4, 34.4` | `20, 44, 72.4, 30.4` | `22, 44, 72.4, 30.4` |
 
-Two things to read out of the table. The AFTER column is constant inside every
-run, which is what "uniform" means here — and it is structural rather than
-lucky, because the `trace` tier carries no margin at all, so the row's own
-height IS the pitch. And the turn boundary is still the widest gap in the last
-row of the table: the hierarchy did not get flattened to buy the density.
+Three columns because the pitch was set twice. `Tightened` is the correction
+from the operator's "much too wide", which took the `trace` tier to zero; `Now`
+is the hairline that followed it, because at zero a run fused into one unbroken
+column with no boundary between consecutive calls. 2px is the smallest step
+that reinstates one, and deliberately not the 4px it came down from.
+
+Three things to read out of the table. Every run is CONSTANT inside itself,
+which is what "uniform" means here — and it is structural rather than lucky,
+because every adjacent like pair takes the same tier and therefore the same
+distance. The pitch is the row's own 20px height plus that 2px, so a run of N
+rows measures `N × 20 + (N-1) × 2`. And the turn boundary is still the widest
+gap in the last row: the hierarchy was not flattened to buy the density, and it
+is unchanged by the hairline (2 against 24, where the tightening had 0
+against 24).
+
+The hairline applies only BETWEEN adjacent ledger rows, which the runs above
+cannot show on their own — a margin on every row would reproduce them exactly.
+`trace-gap-boundaries` is the surface that separates the two: a lone call takes
+no hairline, a notice inside a run takes the same one as its neighbours, and a
+run opening a turn keeps its 24px boundary above the first row and takes the
+hairline only from the second.
 
 The BEFORE column is also the diagnosis. In (b) and (c) the alternating
 `36, 12` pairs are a record that RENDERS NOTHING sitting between two visible
@@ -140,6 +157,13 @@ code rather than merely passing against the fixed one.
 Measured under CDP focus emulation. An unfocused window throttles `setInterval`,
 which makes the working line's clock and spinner read as frozen — a real
 measurement artifact on this surface, not a hypothetical one.
+
+One thing the `Now` column also cost: at the tighter pitch the three frames in
+`operator-spacing-cases` were ALREADY clipping their trailing rule (51, 42 and
+9px under their declared heights), and 2px per gap pushed them further under. A
+clipped frame is not evidence about a pitch, so those heights — and the new
+story's — are now sized to the content they photograph, measured rather than
+guessed.
 
 ## The name/summary gutter
 
