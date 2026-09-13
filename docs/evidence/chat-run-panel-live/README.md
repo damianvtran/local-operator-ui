@@ -20,8 +20,14 @@ which proves the row pipeline and says nothing about the wire.
 - the pane's chrome: breadcrumb (`Run details / Re-check the pending rows against
   the le…`), back and sibling stepper, then the reader's facts row — state mark,
   label, `running`, role, elapsed, context, cost and `openrouter/openai/g…`;
-- the child's own conversation: its launch row, its `bash` tool rows
-  (`sleep 150`), its assistant text — real rows, delivered by the backend;
+- the child's own conversation as the wire delivered it at this moment: exactly
+  ONE row — the launch turn, painted as the wire's abbreviated copy of the
+  instruction (it ends `(4) bash: tail -2 /tm…`, the `launch_prompts` truncation
+  this branch measured) — then that row's own timestamp and the `§ 5.6` foot.
+  No `bash` tool row and no assistant text are in these two frames: the child had
+  written only that first row when the shutter opened. An earlier revision of
+  this bullet described rows the frames do not contain (review round 2, R2-3);
+  the `sleep 150` on screen is the instruction's own text INSIDE that row;
 - the pane's foot: § 5.6's read-only statement, which is the whole reason a
   running child is legible in this state;
 - and the ABSENCE of a `Delegated with` block: the transcript already carries the
@@ -92,7 +98,7 @@ child session `e571dc19fa5a`):
 | reading | value |
 |---|---|
 | `GET …/children/e571dc19fa5a/transcript?limit=100` | **4** requests while the reader was open |
-| first frame | 8 transcript rows on open |
+| first frame | 1 transcript row on open — the launch turn above, its timestamp and the foot |
 | the pair | one capture run: both frames show the child `running`, seconds apart |
 
 The four requests are the point: one is the read the pane issues when it opens,
