@@ -6,7 +6,12 @@
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],
 		"module": "esnext",
 		"skipLibCheck": true,
-		"moduleResolution": "node",
+		// TypeScript 7 removed `moduleResolution: "node"` (node10) and `baseUrl`.
+		// `bundler` is what this renderer actually is: vite/rollup resolves
+		// extensionless imports and honours package `exports`. Every `paths`
+		// value below is `./`-relative because the tsconfig's own directory is
+		// now the only base there is.
+		"moduleResolution": "bundler",
 		"resolveJsonModule": true,
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
@@ -18,12 +23,25 @@
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitAny": true,
-		"baseUrl": ".",
 		"paths": {
-			"@assets/*": ["src/renderer/src/assets/*"],
-			"@features/*": ["src/renderer/src/features/*"],
-			"@shared/*": ["src/renderer/src/shared/*"],
-			"*": ["node_modules/*", "src/types/*"]
+			"@assets/*": ["./src/renderer/src/assets/*"],
+			"@features/*": ["./src/renderer/src/features/*"],
+			"@shared/*": ["./src/renderer/src/shared/*"],
+			// The `"*"` catch-all that used to sit here mapped every bare
+			// specifier into node_modules, which is how the deep
+			// `react-syntax-highlighter/dist/esm/...` imports in
+			// message-item/code-block.tsx used to typecheck: node10 resolution
+			// never looked at a `.js`, so the import fell through to the ambient
+			// `declare module` blocks DefinitelyTyped ships for each subpath.
+			// TypeScript 7 rejects a catch-all mapping, and `bundler` resolution
+			// *does* resolve the `.js`, which turns each of those imports into
+			// TS7016 (reproduced: 40 of them in code-block.tsx). Pointing the same
+			// wildcard at the declaration file instead of the JS restores exactly
+			// the old, honest resolution: the subpath is declared, so the import
+			// is typed; a subpath that is not declared fails loudly.
+			"react-syntax-highlighter/dist/esm/*": [
+				"./node_modules/@types/react-syntax-highlighter/index.d.ts"
+			]
 		}
 	},
 	"include": [

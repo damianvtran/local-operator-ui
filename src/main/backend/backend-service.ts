@@ -132,7 +132,7 @@ export class BackendServiceManager {
 
 	requestDesktopMedia(
 		input: unknown,
-		bytes: Uint8Array | null,
+		bytes: Uint8Array<ArrayBuffer> | null,
 	): Promise<DesktopMediaResponse> {
 		return requestDesktopMedia(
 			input,
