@@ -443,8 +443,67 @@ test("an invisible record does not break trace adjacency", () => {
 		run.map((row) => row.gap),
 		["first", "trace", "trace", "trace", "trace"],
 	);
-	// `trace` carries no margin at all, so the row's own height IS the pitch.
-	assert.deepEqual(GAP.trace, ["", ""]);
+	// `trace` is the 2px hairline, and the SAME 2px in the small view: every
+	// other tier shrinks there, but 2px is already the floor at which a gap is
+	// still a gap. `mt-0.5` on the 4px ramp, the step `TraceGroup` composes with.
+	assert.deepEqual(GAP.trace, ["mt-0.5", "mt-0.5"]);
+	// The gap applies only BETWEEN rows of a run: the row that OPENS one takes
+	// `first` or `turn`, never `trace`, so nothing is pushed off the top.
+	assert.equal(run[0].gap, "first");
+	assert.equal(GAP.first[0], "", "the opening row carries no margin");
+});
+
+/*
+ * The ladder, as numbers rather than as class names.
+ *
+ * The tiers only carry information if they are DISTINGUISHABLE and ordered:
+ * `transcript-rows.ts` says the distance between tiers is what tells "still the
+ * same run" from "a new turn started". Two tiers that happen to compile to the
+ * same margin would still pass a deepEqual on their own spellings, which is why
+ * this resolves them through the ramp and compares the pixels.
+ */
+test("the gap tiers are strictly ordered, trace tightest", () => {
+	/*
+	 * The ramp is READ from the stylesheet rather than transcribed as `* 4`.
+	 * A literal would let this file keep asserting 2px after someone changed
+	 * `--spacing`, which is the one number the whole comparison rests on - and
+	 * the assertion would still pass while every distance on screen had moved.
+	 */
+	const css = readFileSync(
+		resolve("src/renderer/src/styles/index.css"),
+		"utf8",
+	);
+	const ramp = css.match(/^\s*--spacing:\s*([\d.]+)rem;/m);
+	assert.ok(ramp, "styles/index.css must declare the --spacing ramp");
+	// No `html` font-size override in this app; only `body` sets a type step,
+	// and `rem` resolves against the root regardless.
+	const step = Number(ramp[1]) * 16;
+	assert.equal(step, 4, "the 4px ramp this ladder is spelled on");
+	const px = (cls) => {
+		if (cls === "") return 0;
+		const n = Number(cls.replace("mt-", ""));
+		// `mt-px` and any other non-numeric step would otherwise yield NaN, which
+		// compares false against everything and quietly passes the ordering below.
+		assert.ok(
+			Number.isFinite(n),
+			`${cls} is not a step on the ramp; this ladder is spelled in ramp units`,
+		);
+		return n * step;
+	};
+	for (const view of [0, 1]) {
+		const trace = px(GAP.trace[view]);
+		const item = px(GAP.item[view]);
+		const turn = px(GAP.turn[view]);
+		assert.equal(trace, 2, "a run's rows sit a hairline apart");
+		assert.ok(
+			trace < item && item < turn,
+			`tiers must widen: trace ${trace} < item ${item} < turn ${turn}`,
+		);
+		// The hierarchy the tightening had to preserve: a turn boundary is an
+		// order of magnitude airier than an adjacent pair inside a run, so the
+		// density buys nothing at the boundary's expense.
+		assert.ok(turn >= trace * 8, "a turn boundary still reads as a boundary");
+	}
 });
 
 test("an invisible record does not consume the avatar or a turn boundary", () => {
