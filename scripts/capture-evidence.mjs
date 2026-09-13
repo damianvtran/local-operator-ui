@@ -322,6 +322,39 @@ export const STORIES = [
 	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 700],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
+	/* `/model`: the desktop model picker's FEEDBACK states, which is the
+	   operator's report ("insufficient feedback on hover, click ... that the
+	   model selection change has happened"). These are the states a live session
+	   cannot be asked for on demand: a catalogue that never answers, a command
+	   that is in flight while you look at the row you clicked, a per-provider
+	   listing failure. The viewport is the dialog (max-w-xl = 576px) plus scrim
+	   at the shipped window scale, and the shorter states are captured in a
+	   viewport sized to them for the reason the usage states are — at 900 tall a
+	   three-line spinner is mostly ground, which crosses `check-evidence`'s
+	   uniformity ceiling.
+
+	   `hovered` and `keyboard-highlight` are captured as a PAIR on purpose:
+	   both reach the same row state, one by pointer and one by arrow key, so the
+	   frames can be differenced to answer "can the user tell them apart?".
+	   `narrow` is 560 because that is where the toolbar's persist checkbox and
+	   refresh button stop fitting on one line. */
+	["chat-model-picker--populated", 900, 760],
+	["chat-model-picker--hovered", 900, 760],
+	["chat-model-picker--keyboard-highlight", 900, 760],
+	["chat-model-picker--busy", 900, 780],
+	["chat-model-picker--result", 900, 820],
+	["chat-model-picker--persist-checked", 900, 760],
+	["chat-model-picker--refresh-pending", 900, 620],
+	["chat-model-picker--loading", 900, 560],
+	["chat-model-picker--empty", 900, 560],
+	["chat-model-picker--partial-error", 900, 560],
+	["chat-model-picker--narrow", 560, 820],
+
+	/* The band's own half of U1: the model reading painted from the user's pick
+	   before the owner's frame confirms it. Two frames in one story, so the
+	   pending mark is judged against the same reading at full weight. */
+	["chat-session-status-strip--model-switch-pending", 860, 480],
+
 	/* App shell, swept for the rail-width finding. */
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],

@@ -15,6 +15,9 @@ This file defines project-specific operating guidelines for AI coding agents wor
 
 - Keep changes scoped to the requested task; do not refactor unrelated areas.
 - Do not revert or overwrite user changes that are outside your task.
+- Never launch the app in a way that takes the operator's window focus. Every
+  agent-driven run names a window mode; see *Running the app without taking the
+  operator's focus* below.
 - Prefer small, explicit commits with clear conventional-style messages.
 - Before finalizing, run the narrowest relevant checks for touched code.
 - Follow existing code style and project conventions (Biomes/TS settings already configured).
@@ -73,6 +76,8 @@ ground where it does not.
 
 - Install deps: `pnpm install`
 - Dev app: `pnpm dev` (needs `.env`; copy from `.env.template`)
+- Dev app, no window: `pnpm dev:headless`
+- Built app, no window: `pnpm app:headless -- <extra electron args>`
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
 - Typecheck: `pnpm check-types`
@@ -87,6 +92,235 @@ Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
 proof. Broader verification remains typecheck, lint, the theme gates, a real
 build, and rendered evidence from the live app or Storybook as appropriate.
+
+**The desktop suite caps its own concurrency.** It runs through
+`scripts/run-desktop-tests.mjs` rather than `node --test` directly, so node's
+default of one file worker per core (minus one) — 13 on a 14-core box — never
+applies here. The cap is the smaller of half the cores and a memory budget,
+resolved by `scripts/desktop-test-concurrency.mjs`, and the runner prints the
+number it chose, the term that bound and the inputs behind it before the first
+test, because that line is what a reviewer reads to know what actually ran.
+
+It exists because this repo is worked through many concurrent git worktrees and
+several agent sessions run this suite at once on one laptop. **What reproduces is
+the concurrency it removes**, not one RSS figure: 13 file workers by default
+against 5-7 under the cap, and with them the peak process count (this branch's
+rounds: 25-28 processes uncapped against 15-19 capped; QA's pass: 32 against 24)
+in two independent passes — this branch's own, run before the rebases onto main
+(23 files then, base `79d0dc889`), and QA's at a cap of 7. Peak tree RSS is round-
+and pressure-dependent and a single band should not be quoted as the property of
+the change: this branch measured 666-892 MB at caps of 5-7 against 1,187-1,291 MB
+uncapped, while QA's pass at cap 7 measured a 998 MB / 24-process peak against a
+1,253 MB / 32-process baseline with median and p95 RSS essentially unchanged. A
+suite's peak is dominated by whichever heavy file is in flight, not by how many
+run at once. Wall time overlaps in the unpressured case: 91.5-93.3 s uncapped
+against 93.1-95.7 s capped.
+
+**Know the pressure mode's cost before judging the cap.** The memory arm has a
+floor: at or below **3,648 MB available** on this host — the 3,072 MB reserve
+plus three workers' worth, where the arm returns 3 and one byte less returns 2 —
+it can return nothing above `_MIN_WORKERS`. Wall time then grows by roughly half
+to double, because two workers serialise the whole suite: **+47% to +98%** across
+QA's two A/B passes (+46.7%: 133.4 s against 91.0 s, both arms in one window on
+the head QA tested; +98%: 180.6 s against 91.4 s, on a busier box in round 1).
+The direction is the point and the multiple follows what else the host is doing.
+That is the deliberate trade rather than a regression to tune away: the condition
+is a host already swapping, and the point of the floor is that this suite is not
+what pushes it over. A `test:desktop` run that looks slow should be read as its
+concurrency line first and its timer second.
+
+**Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
+exports it into every test-file process, and a nested `node --test` that inherits
+it does not run the files at all: it warns (`node:test run() is being called
+recursively within a test file. skipping running files.`), writes **0 bytes** to
+stdout and **exits 0**. Measured on node 26.5.0. So an inherited copy turns a red
+suite green — `env NODE_TEST_CONTEXT=child-v8 pnpm test:desktop` reported success
+in 0.41 s on a deliberately failing tree, which is the false-green class this
+whole change exists to remove. `scripts/run-desktop-tests.mjs` filters that one
+key out of the environment it hands its child (`_TEST_CONTEXT_ENV`), and
+`run-desktop-tests.test.mjs` pins it by running a failing suite through the
+runner with the variable genuinely ambient.
+
+Several files here also spawn real children — the esbuild binary that most of
+them bundle through, a real `/usr/bin/codesign` run in
+`update-robustness.test.mjs`, node subprocesses in `linux-sandbox.test.mjs` —
+which is why the memory budget divides by a 192 MB per-worker envelope the
+measurements do not themselves justify; the constant's own comment in
+`scripts/desktop-test-concurrency.mjs` says exactly what those measurements do
+and do not bound.
+
+Override the number, or bypass the governor entirely:
+
+```sh
+LOCAL_OPERATOR_UI_TEST_CONCURRENCY=12 pnpm test:desktop        # honoured unclamped
+node scripts/run-desktop-tests.mjs --test-concurrency=12 <files...>  # bypasses it
+```
+
+An explicit `--test-concurrency=N` is forwarded untouched; whoever passed it
+knows how wide they want to run. **CI keeps every core:** `CI` set without
+`LOCAL_OPERATOR_AGENT_SHELL` takes node's own default untouched, because a
+hosted runner is dedicated and taking parallelism away from it is a regression
+paid on every run. Our own bash tool sets `CI=1` on agent-run commands, so it
+also sets `LOCAL_OPERATOR_AGENT_SHELL=1`; the governor denies that marker and
+takes the developer path, which is the only reason agent-run suites on a laptop
+are capped at all. A probe failure degrades to a CPU-only cap, and the governor
+never raises a machine's parallelism above what node itself would have used.
+
+## Running the app without taking the operator's focus
+
+Agents run this app on the operator's own desktop, several at a time. Until the
+window mode existed, every one of those runs ended at `ready-to-show` with
+`show()`, which activates the app and takes the keyboard focus away from
+whatever the operator was doing — a seven-cycle QA matrix is seven
+interruptions, and it is the most disruptive thing an agent can do in this
+repository.
+
+**Every agent-driven launch must name a window mode.** The app resolves it from
+`--window-mode=<mode>` or `LOCAL_OPERATOR_UI_WINDOW_MODE` (the argument wins),
+and takes `--window-size=WxH` or `LOCAL_OPERATOR_UI_WINDOW_SIZE` for the size:
+
+| Mode | The window | Use it for |
+| --- | --- | --- |
+| `headless` | created at the requested size, **never shown**, unfocusable, page unthrottled, no native banners | every test, QA, harness and evidence run — the default choice |
+| `inactive` | shown with `showInactive()`: visible, but the app is never activated and the window never takes focus | a run somebody wants to watch or click into, and anything focus-dependent |
+| `normal` | `show()` — raises and focuses the window | a human starting the app. Never an agent run |
+
+```bash
+# The built app, driven over CDP at an exact size, with no window at all.
+pnpm app:headless -- --remote-debugging-port=9451 --user-data-dir="$SCRATCH/profile" \
+  --window-size=1380x900
+
+# The dev app, same rule.
+pnpm dev:headless
+
+# A harness that already spawns Electron itself: the switch rides the environment.
+LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=9451
+```
+
+`npx local-operator-ui` spawns Electron with this process's environment, so the
+same switch covers a check of the published launcher. Any mode but `normal`
+prints a `[window-mode] ...` line to the process's own output, so a run says out
+loud that it was headless instead of looking identical to one that popped a
+window. A mode or size the app could not honour is printed there too, not only
+to the backend log: a typo like `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls
+back to `normal`, which is the difference between a headless run and an
+interruption, and it must be visible to whoever launched it.
+
+### `headless` is a full-fidelity rendering path, not a degraded one
+
+That is what makes it usable as evidence rather than only as a way to stay out
+of the way. Measured on Electron 35.5.1 / macOS 25.6, with a 1380x900 window:
+
+- `document.visibilityState` stays `"visible"` and `requestAnimationFrame`
+  keeps ticking (124-132 frames/s in the runs below), so a run is not measuring
+  a paused page;
+- CDP `Page.captureScreenshot` — and `webContents.capturePage()` on a
+  `show: false` window in a platform probe — return a complete frame: 2760x1744
+  pixels at devicePixelRatio 2, the same size a shown window gives. The settled
+  chat frame differs from the one captured from a shown (`inactive`) window in
+  one `62x19` box and nowhere else: the seeded transcript's message time, which
+  the seeder stamps with `Date.now()`. Two `headless` runs differ in that same
+  box, so the residual is the wall clock rather than the mode, and apart from it
+  the frames reproduce pixel-for-pixel;
+- the app is never the frontmost application while it runs. Sampled from
+  outside, by pid, in a headless run: **0 of 8** samples, and that run includes
+  a second launch on the same profile (the `second-instance` path, which raises
+  a window in the other modes). The control is the same harness in `normal`: the
+  app was frontmost in 5 of 8, 4 of 7, 3 of 3, 2 of 4 and 1 of 3 samples across
+  runs, and never in a `headless` or `inactive` one.
+
+Do not reach for `win.isFocused()` as the proof of that, and do not trust
+`focusable: false` to save you: on macOS `NativeWindowMac::Show()` calls
+`activateIgnoringOtherApps:YES` for every non-panel window whatever `focusable`
+says, so a `show()` on a non-focusable window makes the app frontmost while
+`isFocused()` keeps reading false (measured). What makes a headless run safe is
+that nothing raises the window at all — `src/main/window-raise.ts` is the only
+module in the main process that calls `show`, `showInactive` or `focus` on a
+window, and `scripts/window-mode.test.mjs` asserts that.
+
+Four consequences for how you take evidence:
+
+- **Read the viewport from the page and label frames with it.** A
+  `BrowserWindow` size includes the platform's window chrome, so 1380x900 is a
+  1380x872 CSS viewport on macOS. A `--window-size` under the verified 800x600
+  floor is clamped to it and reported in the log, so a frame cannot be labelled
+  with a size the window never had.
+- **Focus-dependent rendering differs.** A window that is never shown cannot be
+  focused: text carets, `:focus`/`:focus-visible` rings, and anything gated on
+  `document.hasFocus()`. For a change about those, drive it in `inactive` mode,
+  or force focus with CDP `Emulation.setFocusEmulationEnabled(true)` — and say
+  which you did.
+- **Focus-dependent behaviour differs too**, which is easy to miss because it
+  is silent: the watch lease reports `visible && focused`, so a headless run
+  reads as "nobody is watching", and the `sessions.seen` ack is gated on
+  `document.hasFocus()`. `headless` is therefore the wrong mode for anything
+  about read receipts, leases, or the notifier's own focus gate.
+- **Native dialogs have no parent window** in `headless` (`dialog.showOpenDialog`
+  is called with the window). A change that opens a file picker needs
+  `inactive`.
+
+Native banners are suppressed entirely in `headless` (the notifier's delivery
+gate), because the run has nobody at the screen and a toast would interrupt
+whoever is really at the machine — and because a banner's own click handler is
+a path that raises a window.
+
+### Capturing the frame
+
+Capture from inside the app — `webContents.capturePage()` or CDP — never with
+macOS `screencapture`, which works only on the frontmost window and so requires
+exactly the focus theft this section exists to remove. Storybook evidence is
+unaffected: `pnpm capture:evidence` already drives a private `--headless=new`
+Chrome.
+
+### What already opens no window, so a rebase does not re-introduce one
+
+`pnpm test:desktop` bundles modules in process; the CI npx smoke test prints its
+marker from `whenReady()` and exits before a window exists; the Storybook and
+CDP capture scripts run headless Chrome. The windows come from live-app
+harnesses — `pnpm dev`, `npx electron .`, `npx local-operator-ui` — which is why
+the mode belongs in the harness's own spawn call and not in whatever the shell
+happened to export.
+
+## The code-sealed bundle, and what may write in it
+
+Two mechanisms keep CPython's bytecode cache out of
+`Contents/Resources/python*`, and they are a pair: change one without reading the
+other's docstring (`src/main/python-bytecode-cache.ts`,
+`sealPythonInterpreterTrees` carries the measurements) and the bug they exist for
+comes back.
+
+1. Every spawn that can run the bundled interpreter is handed
+   `PYTHONPYCACHEPREFIX` pointing under the app's userData
+   (`withPythonBytecodeCache`, and the same default in the three shipped install
+   scripts). This is the half that keeps the cache *working*.
+2. On macOS the app also seals the trees themselves at launch, with an
+   access-control entry that denies `add_file`/`add_subdirectory` on every
+   directory and `write`/`append` on existing `.pyc`. That is the half no spawner
+   can evade, and it is needed because the app does not spawn every python that
+   runs this interpreter: the venv's own `python` resolves its stdlib to the
+   bundled tree, and a python started by anything else - a shell, a CLI script,
+   launchd, an agent - carries no `PYTHONPYCACHEPREFIX` at all (measured: a venv
+   over the bundled tree wrote 25 `.pyc` into it that way, which is the class the
+   operator's own 163 in-bundle `.pyc` belong to). A child can also ignore the
+   environment by design: `-E`/`-I` mean "do not read `PYTHON*`", and the
+   backend's evaluation supervisor spawns workers with `-I -s -E -B`.
+
+**Do not "simplify" the seal back to `chmod`/mode bits.** One write bit on a
+directory covers both creating an entry and unlinking one, so clearing it refuses
+the write but also makes the app undeletable (`rm -rf` exits 1 with `Directory
+not empty`, and emptying the Trash cannot reclaim the tree) and stops the app
+healing its own bundle, because `healPythonBytecode` (`update-install.ts`)
+repairs an unsealed one by *unlinking* the `.pyc` CPython added. Measured on a
+mode-sealed copy: `healable=false removed=0`. Withholding the two rights
+separately is what lets a tree refuse new files and stay deletable and healable
+at once; the symptom of a regression here is a `file added:` violation the heal
+can no longer remove.
+
+Load-bearing, and enforced at build time: nothing may ship a `.pyc` at all
+(`scripts/setup-python-resource.sh`, with the release gate in
+`scripts/verify-macos-artifacts.mjs`), because a *shipped* `.pyc` that gets
+rewritten is `file modified:` - the one class codesign cannot accept again and
+the heal cannot repair.
 
 ## Release Bump Runbook (Major/Minor/Patch)
 
@@ -156,7 +390,45 @@ Use this process whenever asked to cut a release.
 ```
 
 9. Create GitHub release with gh CLI
-- `gh release create v<version> --title "<release title>" --notes-file <notes_file>`
+- `gh release create v<version> --prerelease --title "<release title>" --notes-file <notes_file>`
+- **Always publish the release as a pre-release.** `electron-updater` resolves
+  its feed from GitHub's `/releases/latest`, which answers with the newest
+  non-pre-release release whether or not that release has assets. A release
+  published as a full release before its installers are built therefore points
+  the feed at a release with no `latest*.yml` for the whole 25-35 minute build,
+  the metadata request 404s, and every running app filters that into "no updates
+  available" -- users are told they are current while a newer version is already
+  published (v0.17.2, v0.19.1 and v0.19.2 all shipped that way). The publish
+  workflow does the rest:
+  - `--prerelease` **is** the hold: a pre-release is out of `latest` by
+    definition, so the previous, complete release keeps answering until this one
+    can. The workflow's hold job therefore finds nothing to do on this path; it
+    only acts when a release was published as a full release by mistake, which is
+    the case it exists to catch.
+  - The release is promoted once the attach has succeeded and *this* release's
+    installers and `latest*.yml` metadata are verified, platform by platform.
+  - Only the newest published release is ever promoted. Re-running an older
+    release's workflow (`gh run rerun <run-id>`) attaches its assets but leaves
+    it a pre-release, so `latest` cannot be moved backwards onto an old tag; the
+    job prints which release it found newer. Only the run for the release that is
+    still newest closes its own window.
+  - A `workflow_dispatch` repair attaches assets but never promotes, because a
+    repair must not mutate release metadata. That includes re-running a repair:
+    it keeps the dispatch event, so it stays a repair and will not promote.
+    Close the window by hand instead:
+    `gh release edit v<version> --prerelease=false --latest`.
+  - A build that fails leaves the release a pre-release, so an incomplete
+    release is never offered. Fix the build and re-run rather than promoting it.
+  - A tag with a pre-release suffix (`v1.2.3-rc.1`) is never promoted: it stays a
+    pre-release, which is what its name asks for.
+- **If the window cannot be opened or closed, the run fails and prints the one
+  command that finishes the flip by hand** (`gh release edit <tag>
+  --prerelease=false --latest`, or the hold's `--prerelease=true`). The state
+  PATCH is retried on transient failures first; reaching that line means it
+  failed three times, and nothing is protecting the feed until it is dealt with,
+  so treat it as the incident it is: fix the cause and re-run the workflow
+  (`gh run rerun <run-id>`), or run the printed line. A failed hold also stops
+  the builds, so on that path re-running is what produces the assets.
 
 10. Post-release verification
 - Confirm release exists: `gh release view v<version> --json url,name,tagName,publishedAt`

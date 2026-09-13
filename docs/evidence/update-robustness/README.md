@@ -85,6 +85,36 @@ outcome, not a rejection: the pre-flight retries it once and then proceeds,
 logging why. Treating "we could not ask" as "the bundle is bad" is how a
 transient failure became a permanent reinstall message.
 
+## The bundle that unsealed itself, and the heal
+
+The pre-flight above is what refused the 0.18.0 update on the operator's
+installed 0.17.3 — correctly, because the bundle had already broken its own
+seal before the update was offered. The cause was ours: the standalone CPython
+the app bundles as an `extraResource` ships without bytecode for its stdlib, so
+every process that runs it writes `__pycache__/*.pyc` beside sources that live
+inside the code-sealed `.app`. Measured on this machine: 308 `file added:` and 3
+`file modified:` violations, all `.pyc`, within seconds of the first backend
+run — and `spctl -a -vvv -t exec` now rejects the installed app too.
+
+[bytecode-seal.txt](bytecode-seal.txt) is the full measurement set: the shipped
+bundle's three `.pyc` and why they are stale by construction (recorded source
+mtime 1748584453 against packaged sources at 1789072763, so CPython rewrites
+them and one rewrite is a `file modified:` violation); `.pyc` going from 3 to 55
+in a copy of the real tree, against 1821 files byte-for-byte unchanged and 582
+`.pyc` still cached when `PYTHONPYCACHEPREFIX` is set; which violation classes
+can be healed and which cannot; and the two-bundle round trip through the real
+`codesign` — a bundle that shipped no bytecode takes `file added:` damage,
+heals, and installs, while a bundle built the way 0.17.0 shipped is refused and
+stays refused.
+
+Three consequences are visible in the shipped tree: the interpreter runs under
+`PYTHONPYCACHEPREFIX` in a userData cache directory (never inside the bundle),
+the build ships no bytecode at all, and the release gate fails on any `.pyc`
+under the bundled interpreter trees — the check that would have stopped 0.17.0
+before upload. An install that is already broken in this way needs one manual
+reinstall; the three rewritten sealed `.pyc` in it cannot be restored by
+deleting anything, and the measurements say so rather than the prose.
+
 ## How the relaunch watchdog decides
 
 The watchdog exists for one outcome: a failed Squirrel.Mac install quits the app

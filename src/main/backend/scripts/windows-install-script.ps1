@@ -10,6 +10,19 @@ $VenvPath = "$AppDataDir\\$VenvName"
 $LogFile = "$AppDataDir\\backend-install-shell.log"
 $PyenvDir = "$env:USERPROFILE\\.pyenv"
 
+# Keep CPython's bytecode cache out of the application directory.
+#
+# Same rule as the macOS script, and stated here for the same reason: an
+# interpreter writes __pycache__/*.pyc beside the stdlib sources it imports. On
+# Windows those sources are the bundled python directory rather than a
+# code-signed bundle, so this is hygiene rather than the load-bearing fix it is
+# on macOS - but the app and the script must not disagree about where bytecode
+# goes. $AppDataDir is used for the same reason the venv is: it is never inside
+# the installed application tree.
+if (-not $env:PYTHONPYCACHEPREFIX) {
+    $env:PYTHONPYCACHEPREFIX = "$AppDataDir\\python-bytecode-cache"
+}
+
 # Create app data directory if it doesn't exist
 if (-not (Test-Path $AppDataDir)) {
     New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
