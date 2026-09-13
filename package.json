@@ -100,6 +100,7 @@
     "zod": "^3.24.2"
   },
 "//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
+  "//packaged-node-modules-exclusions": "The list above excludes Electron's own dependency tree from the packaged app, which electron-builder copies because `electron` is in optionalDependencies (the npm/npx channel needs it at install time). `@electron/get`, `@electron-internal/extract-zip` and their deps exist to download and unpack the Electron runtime during an INSTALL; a packaged app never runs them. Measured on a --dir artifact of 0.19.7: 8 packages outside the production closure, 7.0 MB of them unpacked into app.asar.unpacked and the rest inside a 26 MB app.asar (@types/node alone 2.4 MB). None is a module request anywhere in out/**, and the closure scripts/check-packaged-closure.mjs computes over the six declared runtime dependencies contains none of them. They are named rather than pattern-matched because electron-builder has no 'skip this dependency's tree' switch: a future Electron bump that adds a dependency needs this list re-derived from the same diff.",
   "//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails. dmg-builder and electron-builder-squirrel-windows are app-builder-lib's peers and the builder refuses to resolve when they disagree with it, so all three move as one version.",
   "optionalDependencies": {
     "electron": "44.3.0"
@@ -212,7 +213,15 @@
       "bin/**/*",
       "LICENSE",
       "README.md",
-      "!node_modules/electron/**/*"
+      "!node_modules/electron/**/*",
+      "!node_modules/@electron/get/**/*",
+      "!node_modules/@electron-internal/**/*",
+      "!node_modules/env-paths/**/*",
+      "!node_modules/progress/**/*",
+      "!node_modules/sumchecker/**/*",
+      "!node_modules/undici/**/*",
+      "!node_modules/undici-types/**/*",
+      "!node_modules/@types/node/**/*"
     ],
     "directories": {
       "output": "dist",
