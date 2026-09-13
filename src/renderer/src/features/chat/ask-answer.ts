@@ -173,13 +173,16 @@ export const shouldTabIntoAnswerOptions = (
 ): boolean => {
 	if (!hasLiveOption) return false;
 	if (event.key !== "Tab") return false;
-	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return false;
+	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey)
+		return false;
 	if (composer.value.trim().length === 0) return false;
 	const { selectionStart, selectionEnd } = composer;
 	if (selectionStart === null || selectionEnd === null) return false;
 	// No selection, and the caret hard against the last character: anything else
 	// is a user mid-edit asking to move on.
-	return selectionStart === selectionEnd && selectionEnd === composer.value.length;
+	return (
+		selectionStart === selectionEnd && selectionEnd === composer.value.length
+	);
 };
 
 /**

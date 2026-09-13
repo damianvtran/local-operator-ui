@@ -512,6 +512,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[newMessage, slash, setNewMessage],
 		);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
 				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
@@ -523,12 +524,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// group is the thing they were just shown and is one press away in
 				// this direction. The rule for "done with the box" is
 				// `shouldTabIntoAnswerOptions` — unmodified Tab, content in the
-					// composer, caret at the end, a live option to land on. Every other
-					// Tab, and every Tab with an empty box or a caret mid-draft, keeps
-					// its native meaning (UX round 2, U7; code review round 2, F2).
+				// composer, caret at the end, a live option to land on. Every other
+				// Tab, and every Tab with an empty box or a caret mid-draft, keeps
+				// its native meaning (UX round 2, U7; code review round 2, F2).
 				const textarea = textareaRef.current;
-					const target = firstLiveAnswerOption();
-					if (
+				const target = firstLiveAnswerOption();
+				if (
 					target &&
 					shouldTabIntoAnswerOptions(
 						event,
