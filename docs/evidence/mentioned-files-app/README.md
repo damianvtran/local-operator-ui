@@ -95,6 +95,20 @@ the sweep's own, so a set that belongs to another producer has to say so:
   same grid from a fixture and says so, with the PNG tile's thumbnail missing —
   which is exactly why the panel's real reading comes from here.
 
+**Correction, 2026-09-13 (round-2 evidence pass).** The first bullet above is
+falsified, and the frames that falsify it are in this tree: the six committed
+`canvas-workspace/pdf-viewer` frames — added when `cb804bc44` declared that story
+in `STORIES` — show Chromium painting the fixture document (heading, subheading,
+accent rule) under our own name bar in all twelve themes. The same capture wiring
+that measured `childBodyKids: 0` therefore has a PDFium attached here, which
+makes this a difference between the browser build the probe ran and the one
+`capture-evidence.mjs` spawns rather than a property of the harness. The bullets
+above are left standing as what was measured at the time. The set stays declared
+for the reasons that do not depend on that measurement: the panel frame's tiles
+are transcript-inferred and its thumbnails come from the backend, and the PDF
+frame here is the only one that exercises the real read path — main-process
+`readFileBytes` over IPC on real bytes — which a fixture cannot.
+
 ## Known artifacts, all of them about the harness
 
 Each of these is visible in the frames and none is a defect in the code under
