@@ -12,8 +12,10 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { after, before, test } from "node:test";
+import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { build } from "esbuild";
 
 /**
@@ -194,6 +196,7 @@ const { notarizeArtifacts } = await import(notarizeStepFile);
 rmSync(notarizeStepDir, { recursive: true, force: true });
 const {
 	artifactChecks,
+	bundledPythonCheck,
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
@@ -668,7 +671,7 @@ test("pending marker survives a write, detects failure or success, and clears", 
 
 	const marker = writePendingInstallMarker(dir, {
 		targetVersion: "0.18.0",
-		artifactPath: "/tmp/local-operator-ui-0.18.0-universal.zip",
+		artifactPath: "/tmp/local-operator-ui-0.18.0-arm64.zip",
 		startedAt: "2026-09-11T22:36:48.000Z",
 		watchdogPid: 4242,
 	});
@@ -705,7 +708,7 @@ test("pending marker survives a write, detects failure or success, and clears", 
 test("a superseded marker is stale, not a failed update", () => {
 	const marker = {
 		targetVersion: "0.9.0",
-		artifactPath: "/tmp/local-operator-ui-0.9.0-universal.zip",
+		artifactPath: "/tmp/local-operator-ui-0.9.0-arm64.zip",
 		startedAt: "2026-08-01T10:00:00.000Z",
 		watchdogPid: null,
 	};
@@ -746,7 +749,7 @@ test("the failed install is recorded so a dismiss is not the end of the record",
 
 	const marker = {
 		targetVersion: "0.18.0",
-		artifactPath: "/tmp/local-operator-ui-0.18.0-universal.zip",
+		artifactPath: "/tmp/local-operator-ui-0.18.0-arm64.zip",
 		startedAt: "2026-09-11T22:36:48.000Z",
 		watchdogPid: 4242,
 	};
@@ -789,7 +792,7 @@ test("the install-failure payload names the manual download page", () => {
 	const payload = installFailurePayload(
 		{
 			targetVersion: "0.18.0",
-			artifactPath: "/tmp/local-operator-ui-0.18.0-universal.zip",
+			artifactPath: "/tmp/local-operator-ui-0.18.0-arm64.zip",
 			startedAt: "2026-09-11T22:36:48.000Z",
 			watchdogPid: null,
 		},
@@ -800,7 +803,7 @@ test("the install-failure payload names the manual download page", () => {
 	assert.match(payload.remedy.text, /replace it in Applications/);
 	assert.equal(payload.attempts, 3);
 	assert.doesNotMatch(payload.detail, /\d{4}-\d{2}-\d{2}T/);
-	assert.match(payload.detail, /local-operator-ui-0\.18\.0-universal\.zip/);
+	assert.match(payload.detail, /local-operator-ui-0\.18\.0-arm64\.zip/);
 });
 
 // ---------------------------------------------------------------------------
@@ -1540,7 +1543,7 @@ test("a recorded watchdog is only reaped when it is really ours and the install 
 // ---------------------------------------------------------------------------
 
 const ARTIFACT = {
-	url: "local-operator-ui-0.18.0-universal.zip",
+	url: "local-operator-ui-0.18.0-arm64.zip",
 	sha512: "c2hhNTEyLWZpeHR1cmU=",
 	size: 352792235,
 };
@@ -1548,9 +1551,9 @@ const ARTIFACT = {
 test("artifact metadata is matched by file name, not by position", () => {
 	assert.deepEqual(
 		matchArtifactMetadata(
-			"/tmp/pending/local-operator-ui-0.18.0-universal.zip",
+			"/tmp/pending/local-operator-ui-0.18.0-arm64.zip",
 			[
-				{ url: "local-operator-ui-0.18.0-universal.dmg", size: 1 },
+				{ url: "local-operator-ui-0.18.0-arm64.dmg", size: 1 },
 				ARTIFACT,
 			],
 		),
@@ -1647,7 +1650,7 @@ test("the installed app's size is measured from the real tree", () => {
 
 test("a staged artifact is resolved from the helper, then the pending cache", () => {
 	const dir = tempDir("lo-pending-");
-	const file = join(dir, "local-operator-ui-0.18.0-universal.zip");
+	const file = join(dir, "local-operator-ui-0.18.0-arm64.zip");
 	writeFileSync(file, "fixture");
 
 	assert.equal(
@@ -2021,8 +2024,91 @@ test("the bundled pip invocation is non-interactive and version-verified", () =>
 // macOS artifact assertions
 // ---------------------------------------------------------------------------
 
-const APP = "/tmp/dist/mac-universal/Local Operator.app";
-const DMG = "/tmp/dist/local-operator-ui-0.18.0-universal.dmg";
+const APP = "/tmp/dist/mac-arm64/Local Operator.app";
+const DMG = "/tmp/dist/local-operator-ui-0.18.0-arm64.dmg";
+const X64_DMG = "/tmp/dist/local-operator-ui-0.18.0-x64.dmg";
+
+/**
+ * The verdict `bundledPythonCheck` reaches for a bundle of one architecture that
+ * carries the listed interpreter trees.
+ *
+ * The architecture comes from the injected runner rather than a real `lipo` call:
+ * the fixture would otherwise have to be a genuine Mach-O of each architecture,
+ * which is a copy of the check's own input rather than a test of its logic.
+ */
+function pythonTreeVerdict({ arch, trees }) {
+	const dir = tempDir("lo-python-gate-");
+	const app = join(dir, "Local Operator.app");
+	const framework = join(
+		app,
+		"Contents",
+		"Frameworks",
+		"Electron Framework.framework",
+		"Versions",
+		"A",
+		"Electron Framework",
+	);
+	mkdirSync(dirname(framework), { recursive: true });
+	writeFileSync(framework, "binary fixture", "utf8");
+	for (const tree of trees) {
+		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
+	}
+	return bundledPythonCheck(app, {
+		run: () => ({ status: 0, stdout: `${arch}\n`, stderr: "" }),
+	});
+}
+
+/**
+ * The decisive branch of the interpreter gate (review F5, round 2 F7).
+ *
+ * "Exactly one tree" alone passes for an arm64 bundle that kept the x86_64
+ * interpreter, and that bundle cannot start its backend at all - so the pairing
+ * is what is asserted, and each way it can be wrong is asserted here.
+ */
+test("the interpreter gate refuses the other architecture's tree", () => {
+	const wrongTree = pythonTreeVerdict({ arch: "arm64", trees: ["python"] });
+	assert.equal(wrongTree.passed, false);
+	assert.match(
+		wrongTree.output,
+		/the arm64 app ships Contents\/Resources\/python, but it resolves Contents\/Resources\/python_aarch64/,
+	);
+
+	const reversed = pythonTreeVerdict({ arch: "x86_64", trees: ["python_aarch64"] });
+	assert.equal(reversed.passed, false);
+	assert.match(
+		reversed.output,
+		/the x86_64 app ships Contents\/Resources\/python_aarch64, but it resolves Contents\/Resources\/python/,
+	);
+
+	// Two trees is the state `afterPack` exists to prevent: the app runs, and half
+	// the interpreter in the download is unrunnable.
+	const both = pythonTreeVerdict({
+		arch: "arm64",
+		trees: ["python", "python_aarch64"],
+	});
+	assert.equal(both.passed, false);
+	assert.match(
+		both.output,
+		/ships Contents\/Resources\/python, Contents\/Resources\/python_aarch64/,
+	);
+
+	// A fat bundle legitimately needs both, so it fails as its own case rather
+	// than being rounded to one architecture.
+	const fat = pythonTreeVerdict({ arch: "arm64 x86_64", trees: ["python_aarch64"] });
+	assert.equal(fat.passed, false);
+	assert.match(fat.output, /not a single architecture/);
+
+	// An architecture with no mapping is refused, not defaulted to `python`.
+	const unmapped = pythonTreeVerdict({ arch: "arm64e", trees: ["python_aarch64"] });
+	assert.equal(unmapped.passed, false);
+	assert.match(unmapped.output, /no bundled interpreter matches/);
+
+	// And the pairing holds the right way round, so the cases above are failures
+	// of the pairing rather than of the check.
+	const right = pythonTreeVerdict({ arch: "arm64", trees: ["python_aarch64"] });
+	assert.equal(right.passed, true);
+	assert.match(right.output, /arm64 app ships only Contents\/Resources\/python_aarch64/);
+});
 
 test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	const checks = artifactChecks({ appPath: APP, dmgPath: DMG });
@@ -2117,8 +2203,8 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 
 test("missing artifacts fail rather than passing vacuously", () => {
 	const dir = tempDir("lo-dist-");
-	mkdirSync(join(dir, "mac-universal"), { recursive: true });
-	const app = join(dir, "mac-universal", "Local Operator.app");
+	mkdirSync(join(dir, "mac-arm64"), { recursive: true });
+	const app = join(dir, "mac-arm64", "Local Operator.app");
 	mkdirSync(app, { recursive: true });
 
 	assert.equal(discoverApp(dir), app);
@@ -2139,17 +2225,42 @@ test("missing artifacts fail rather than passing vacuously", () => {
 /**
  * Every image the build produced is asserted, not the first one found.
  *
- * `package.json` builds one universal dmg today, so checking only the first was
- * complete by accident rather than by construction - and `mac.target` already
- * lists both a dmg and a zip, so a per-arch matrix would leave images
+ * `mac.target` builds a dmg and a zip for each architecture, so checking only
+ * the first of each was complete by accident rather than by construction, and a
+ * malformed bundle or image for the second architecture would have shipped
  * unaudited (review R9).
  */
 test("every discovered image is checked, and an unreadable entry fails cleanly", () => {
 	const dir = tempDir("lo-dist-multi-");
+	/** The `lipo -archs` answer per bundle, because the check reads the answer. */
+	const lipoGroups = new Map();
+	// `mac` is where an x64 build lands and `mac-arm64` where an arm64 one does:
+	// electron-builder suffixes the app directory for every architecture except
+	// the default one, so neither is `mac-x64`.
 	mkdirSync(join(dir, "mac-arm64"), { recursive: true });
-	mkdirSync(join(dir, "mac-x64"), { recursive: true });
-	mkdirSync(join(dir, "mac-arm64", "Local Operator.app"), { recursive: true });
-	mkdirSync(join(dir, "mac-x64", "Local Operator.app"), { recursive: true });
+	mkdirSync(join(dir, "mac"), { recursive: true });
+	for (const [archDir, tree, arch] of [
+		["mac-arm64", "python_aarch64", "arm64"],
+		["mac", "python", "x86_64"],
+	]) {
+		const app = join(dir, archDir, "Local Operator.app");
+		mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+		// The framework binary the interpreter check reads the bundle's
+		// architecture from, and the one interpreter `afterPack` leaves for it.
+		const framework = join(
+			app,
+			"Contents",
+			"Frameworks",
+			"Electron Framework.framework",
+			"Versions",
+			"A",
+			"Electron Framework",
+		);
+		mkdirSync(dirname(framework), { recursive: true });
+		writeFileSync(framework, `binary for ${arch}`, "utf8");
+		lipoGroups.set(framework, arch);
+		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
+	}
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-arm64.dmg"), "x");
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-x64.dmg"), "x");
 
@@ -2163,21 +2274,34 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		dist: dir,
 		run: (command, args) => {
 			checked.push(args[args.length - 1]);
+			// `lipo -archs` is the one command whose answer the check reads rather
+			// than its status, and the answer is per bundle.
+			if (command.endsWith("lipo")) {
+				const group = lipoGroups.get(args[args.length - 1]);
+				return { status: 0, stdout: `${group}\n`, stderr: "" };
+			}
 			return { status: 0, stdout: "accepted", stderr: "" };
 		},
 		log: (line) => lines.push(line),
 	});
 	assert.equal(result.ok, true);
-	// 3 signer checks plus the bundled-bytecode walk per app, and 2 image checks:
-	// nothing is left unaudited.
+	// 3 signer checks per app plus the bundled-bytecode walk and the interpreter
+	// check, and 2 image checks per image: nothing is left unaudited.
 	const bytecodeChecks = result.results.filter(
 		(check) => check.id === "app-no-bundled-bytecode",
 	);
+	const interpreterChecks = result.results.filter(
+		(check) => check.id === "app-one-bundled-python",
+	);
 	assert.equal(bytecodeChecks.length, 2);
-	assert.equal(result.results.length, 2 * 3 + 2 * 2 + bytecodeChecks.length);
-	// Every check that shells out went through the injected runner; the bytecode
-	// check walks the bundle itself because its subject is what the build put
-	// there, before anything was signed.
+	assert.equal(interpreterChecks.length, 2);
+	assert.equal(
+		result.results.length,
+		2 * 3 + 2 * 2 + bytecodeChecks.length + interpreterChecks.length,
+	);
+	// Every check that shells out went through the injected runner. The bytecode
+	// walk is the exception: its subject is what the build put in the bundle,
+	// before anything was signed, so it reads the tree directly.
 	assert.equal(checked.length, result.results.length - bytecodeChecks.length);
 	for (const target of [...discovered.apps, ...discovered.dmgs]) {
 		assert.ok(checked.includes(target), `${target} was never checked`);
@@ -2189,8 +2313,8 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 	// A broken symlink where an image should be fails the check rather than
 	// throwing out of discovery.
 	const brokenDir = tempDir("lo-dist-broken-");
-	mkdirSync(join(brokenDir, "mac-universal"), { recursive: true });
-	spawnSync("/bin/ln", ["-s", "/nonexistent/dist", join(brokenDir, "mac-universal", "Ghost.app")]);
+	mkdirSync(join(brokenDir, "mac-arm64"), { recursive: true });
+	spawnSync("/bin/ln", ["-s", "/nonexistent/dist", join(brokenDir, "mac-arm64", "Ghost.app")]);
 	const brokenChecks = [];
 	const brokenResult = verifyArtifacts({
 		dist: brokenDir,
@@ -2212,7 +2336,7 @@ test("the real macOS tools reject an unsigned image, on macOS", async (t) => {
 	mkdirSync(source, { recursive: true });
 	writeFileSync(join(source, "README.txt"), "fixture\n", "utf8");
 
-	const dmg = join(dir, "local-operator-ui-0.0.0-universal.dmg");
+	const dmg = join(dir, "local-operator-ui-0.0.0-arm64.dmg");
 	const created = spawnSync(
 		"/usr/bin/hdiutil",
 		["create", "-quiet", "-volname", "Local Operator Fixture", "-srcfolder", source, "-ov", "-format", "UDZO", dmg],
@@ -2278,14 +2402,19 @@ test("the real macOS tools reject an unsigned image, on macOS", async (t) => {
 // Disk image notarization step
 // ---------------------------------------------------------------------------
 
-test("the disk image step targets images and leaves the app archive alone", () => {
+test("the disk image step targets every image and leaves the app archives alone", () => {
 	const artifacts = [
-		"/dist/local-operator-ui-0.18.0-universal.dmg",
-		"/dist/local-operator-ui-0.18.0-universal.zip",
+		"/dist/local-operator-ui-0.18.0-arm64.dmg",
+		"/dist/local-operator-ui-0.18.0-arm64.zip",
+		"/dist/local-operator-ui-0.18.0-x64.dmg",
+		"/dist/local-operator-ui-0.18.0-x64.zip",
 		"/dist/latest-mac.yml",
 	];
+	// Both architectures: `mac.target` builds one image per arch, and an image
+	// nobody notarizes is the 0.17.0 Gatekeeper failure for that arch's users.
 	assert.deepEqual(dmgArtifacts(artifacts), [
-		"/dist/local-operator-ui-0.18.0-universal.dmg",
+		"/dist/local-operator-ui-0.18.0-arm64.dmg",
+		"/dist/local-operator-ui-0.18.0-x64.dmg",
 	]);
 
 	const dir = tempDir("lo-zip-");
@@ -2303,13 +2432,13 @@ test("stapling rewrites the image hash in the update metadata, and nothing else"
 	const yml = [
 		"version: 0.18.0",
 		"files:",
-		"  - url: local-operator-ui-0.18.0-universal.zip",
+		"  - url: local-operator-ui-0.18.0-arm64.zip",
 		"    sha512: ZIPHASH",
 		"    size: 352792235",
-		"  - url: local-operator-ui-0.18.0-universal.dmg",
+		"  - url: local-operator-ui-0.18.0-arm64.dmg",
 		"    sha512: PRE_STAPLE",
 		"    size: 366211328",
-		"path: local-operator-ui-0.18.0-universal.zip",
+		"path: local-operator-ui-0.18.0-arm64.zip",
 		"sha512: ZIPHASH",
 		"releaseDate: '2026-09-10T20:51:00.143Z'",
 		"",
@@ -2317,7 +2446,7 @@ test("stapling rewrites the image hash in the update metadata, and nothing else"
 
 	const updated = updateUpdateYmlEntry(
 		yml,
-		"local-operator-ui-0.18.0-universal.dmg",
+		"local-operator-ui-0.18.0-arm64.dmg",
 		{ sha512: "POST_STAPLE", size: 366211329 },
 	);
 	assert.equal(updated.matched, true);
@@ -2359,7 +2488,7 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 		[
 			"version: 0.18.0",
 			"files:",
-			"  - url: local-operator-ui-0.18.0-universal.dmg",
+			"  - url: local-operator-ui-0.18.0-arm64.dmg",
 			`    ${shaKey}: ${hash}`,
 			`    ${sizeKey}: 366211328`,
 			"",
@@ -2372,7 +2501,7 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 	const logs = [];
 	rewriteUpdateMetadata({
 		ymlPaths: [good],
-		name: "local-operator-ui-0.18.0-universal.dmg",
+		name: "local-operator-ui-0.18.0-arm64.dmg",
 		sha512: "POST_STAPLE",
 		size: 366211329,
 		log: (line) => logs.push(line),
@@ -2386,7 +2515,7 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 		() =>
 			rewriteUpdateMetadata({
 				ymlPaths: [drifted],
-				name: "local-operator-ui-0.18.0-universal.dmg",
+				name: "local-operator-ui-0.18.0-arm64.dmg",
 				sha512: "POST_STAPLE",
 				size: 366211329,
 			}),
@@ -2400,7 +2529,7 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 		() =>
 			rewriteUpdateMetadata({
 				ymlPaths: [unrelated],
-				name: "local-operator-ui-0.18.0-universal.dmg",
+				name: "local-operator-ui-0.18.0-arm64.dmg",
 				sha512: "POST_STAPLE",
 				size: 366211329,
 			}),
@@ -2410,7 +2539,7 @@ test("stapling fails when the entry is listed but nothing was rewritten", () => 
 		() =>
 			rewriteUpdateMetadata({
 				ymlPaths: [],
-				name: "local-operator-ui-0.18.0-universal.dmg",
+				name: "local-operator-ui-0.18.0-arm64.dmg",
 				sha512: "POST_STAPLE",
 				size: 366211329,
 			}),
@@ -2439,7 +2568,7 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 	const root = tempDir("lo-notarize-");
 	const dist = join(root, "dist");
 	mkdirSync(dist, { recursive: true });
-	const imageName = "local-operator-ui-0.18.0-universal.dmg";
+	const imageName = "local-operator-ui-0.18.0-arm64.dmg";
 	const imagePath = join(dist, imageName);
 	writeFileSync(imagePath, "disk image");
 	const ymlPath = join(dist, "latest-mac.yml");
@@ -2537,7 +2666,7 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 	const root = tempDir("lo-notarize-fail-");
 	const dist = join(root, "dist");
 	mkdirSync(dist, { recursive: true });
-	const imageName = "local-operator-ui-0.18.0-universal.dmg";
+	const imageName = "local-operator-ui-0.18.0-arm64.dmg";
 	writeFileSync(join(dist, imageName), "disk image");
 	const ymlPath = join(dist, "latest-mac.yml");
 	const preStapleYml = [
@@ -2788,7 +2917,7 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 test("the failure detail points at Squirrel's log when the caller has one", () => {
 	const marker = {
 		targetVersion: "0.18.0",
-		artifactPath: "/tmp/local-operator-ui-0.18.0-universal.zip",
+		artifactPath: "/tmp/local-operator-ui-0.18.0-arm64.zip",
 		startedAt: "2026-09-11T22:36:48.000Z",
 		watchdogPid: 4242,
 	};
@@ -3450,5 +3579,728 @@ test("the banner's remedy names the release the last check read", async () => {
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Channel-file resolution and differential (delta) updates
+// ---------------------------------------------------------------------------
+
+/**
+ * Why this section exists: differential updates have never worked in a
+ * published release, and nothing in the repository could have said so. The
+ * channel file `latest-mac.yml` resolved, the download succeeded, and the user
+ * silently received the whole 353 MB zip every time - because the `.blockmap`
+ * electron-updater needs to compute a delta was built by electron-builder and
+ * then dropped at upload (publish.yml's artifact path lists carried
+ * `dist/*.dmg`, `dist/*.zip` and `dist/latest*.yml`, and no release has ever
+ * had a `.blockmap` asset). `differentialDownloadInstaller` therefore threw on
+ * the first block-map fetch and fell back to the full download in a `catch`
+ * whose only trace is a log line.
+ *
+ * The two properties asserted here are the ones a user feels: which artifact
+ * the updater selects for this architecture, and how many bytes reach them.
+ *
+ * What is real, and what is substituted - the bound on the claim:
+ *
+ * REAL: `MacUpdater` itself, `ElectronHttpExecutor`, `Provider.resolveFiles`,
+ * its block-map URL construction, `GenericDifferentialDownloader`, the
+ * `sha512` verification of the downloaded file, and the block maps - generated
+ * by electron-builder's own `app-builder blockmap` binary, the same call
+ * `differentialUpdateInfoBuilder.createBlockmap` makes - served over real
+ * loopback HTTP with real `Range` requests.
+ *
+ * SUBSTITUTED: `require("electron")`, because this process is not Electron. The
+ * stub supplies `net` (mapped onto `node:http`, whose request/response API
+ * electron's mirrors), `autoUpdater` (an EventEmitter) and `session`;
+ * `ElectronAppAdapter` is replaced by an adapter that reports version 0.19.6
+ * and points the cache at a temp directory. `src/main/update-service.ts` is not
+ * in the loop: what is covered here is the library the app drives, not the
+ * app's own wiring of it.
+ *
+ * The feed is a generic provider with `useMultipleRangeRequest: false`, which
+ * is not a convenience: `GitHubProvider` pins exactly that (`// because GitHib
+ * uses S3`) because release assets are served from S3, so the single-range path
+ * exercised here is the one every user's update takes.
+ */
+const loUpdaterBundle = await build({
+	stdin: {
+		contents: `export { MacUpdater } from "electron-updater/out/MacUpdater.js";
+			export { ElectronHttpExecutor } from "electron-updater/out/electronHttpExecutor.js";`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	banner: {
+		js: [
+			'import { createRequire as __loUpdaterCreateRequire } from "node:module";',
+			// From an absolute path rather than `import.meta.url`: this bundle is
+			// imported through a `data:` URL, which `createRequire` refuses.
+			'const __loUpdaterRequire = __loUpdaterCreateRequire(process.cwd() + "/package.json");',
+			"const require = (id) => __loUpdaterRequire(id);",
+			"const __dirname = process.cwd();",
+			'const __filename = "";',
+		].join(" "),
+	},
+	plugins: [
+		{
+			/**
+			 * `MacUpdater.doDownloadUpdate` decides which artifact is "its own" from
+			 * two host probes, not from the channel file: `uname -a` (looking for
+			 * "ARM") and `sysctl sysctl.proc_translated`, with `process.arch` as a
+			 * fallback. Both branches have to be reachable on the machine running
+			 * this suite - CI is Linux, where neither probe reports a Mac - so the
+			 * probes are substituted here rather than the selection logic being
+			 * copied into the test. The real `node:child_process` is reached through
+			 * the unprefixed specifier, which is deliberately not redirected.
+			 */
+			name: "lo-updater-process-probe",
+			setup(builder) {
+				builder.onResolve({ filter: /^(node:)?child_process$/ }, (args) => ({
+					path: args.path,
+					namespace: "probe",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "probe" }, () => ({
+					loader: "js",
+					contents: `
+						import * as __loReal from "child_process";
+						export const execFileSync = (command, args, options) => {
+							const stubbed = globalThis.__loUpdaterProbe?.(command, args);
+							if (stubbed != null) return stubbed;
+							return __loReal.execFileSync(command, args, options);
+						};
+						export const exec = __loReal.exec;
+						export const execSync = __loReal.execSync;
+						export const execFile = __loReal.execFile;
+						export const spawn = __loReal.spawn;
+						export const spawnSync = __loReal.spawnSync;
+						export const fork = __loReal.fork;
+						export default { ...__loReal, execFileSync };
+					`,
+				}));
+			},
+		},
+		{
+			/**
+			 * The Electron module contract this process cannot provide. `net` is
+			 * the load-bearing one: `ElectronHttpExecutor` builds every request
+			 * through it, so mapping it onto `node:http` is what keeps the byte
+			 * counting in this section honest.
+			 */
+			name: "lo-updater-electron-fixture",
+			setup(builder) {
+				builder.onResolve({ filter: /^electron$/ }, (args) => ({
+					path: args.path,
+					namespace: "fixture",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+					loader: "js",
+					contents: `
+						import { EventEmitter } from "node:events";
+						import * as __loHttp from "node:http";
+						export const app = {
+							getVersion: () => "0.0.0",
+							getName: () => "Local Operator",
+							getPath: () => process.cwd(),
+							getAppPath: () => process.cwd(),
+							isPackaged: true,
+							whenReady: async () => {},
+							on: () => {}, once: () => {}, quit: () => {}, relaunch: () => {},
+						};
+						export const autoUpdater = Object.assign(new EventEmitter(), {
+							setFeedURL: () => {}, checkForUpdates: () => {}, quitAndInstall: () => {},
+							logger: null, autoDownload: false, autoInstallOnAppQuit: false,
+						});
+						export const session = { fromPartition: () => ({}) };
+						export const dialog = { showErrorBox: () => {}, showMessageBox: async () => ({ response: 0 }) };
+						export class BrowserWindow {
+							constructor() { this.webContents = { send: () => {}, on: () => {} }; }
+							on() { return this; }
+							once() { return this; }
+							loadURL() {}
+							show() {}
+							close() {}
+							isDestroyed() { return false; }
+							static getAllWindows() { return []; }
+						}
+						export const net = {
+							request(options) {
+								return __loHttp.request({
+									protocol: options.protocol,
+									hostname: options.hostname,
+									port: options.port,
+									path: options.path,
+									method: options.method ?? "GET",
+									headers: options.headers,
+								});
+							},
+						};
+					`,
+				}));
+			},
+		},
+	],
+});
+
+const { MacUpdater, ElectronHttpExecutor } = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		loUpdaterBundle.outputFiles[0].text,
+	).toString("base64")}`
+);
+
+const loUpdaterRequire = createRequire(import.meta.url);
+
+/**
+ * electron-builder's own block-map binary, resolved through the package that
+ * depends on it (`app-builder-bin` is not hoisted to the root by pnpm).
+ */
+function loAppBuilderPath() {
+	const electronBuilder = loUpdaterRequire.resolve(
+		"electron-builder/package.json",
+	);
+	return loUpdaterRequire(
+		createRequire(electronBuilder).resolve("app-builder-bin"),
+	).appBuilderPath;
+}
+
+const LO_MB = 1024 * 1024;
+
+/**
+ * The fixture artifact's size: 4 MB less 12345 bytes, and the odd number is
+ * load-bearing rather than decorative. `app-builder blockmap` appends a
+ * zero-length final block when the input is an exact multiple of its 32 KiB
+ * block size, and electron-updater's plan builder turns that into a
+ * zero-length COPY whose `createReadStream({start, end})` Node rejects
+ * (`start` equals the file size, `end` is one less) - an upstream edge case a
+ * real archive, whose length is never an exact multiple, does not reach. A file
+ * that *is* an exact multiple fails here for a reason that has nothing to do
+ * with what this section is asserting.
+ */
+const LO_ARTIFACT_SIZE = 4 * LO_MB - 12345;
+
+/** A deterministic blob, optionally with one small region altered. */
+function loBlob(size, { patchAt = null, patchLength = 0, seed = 7 } = {}) {
+	const buffer = Buffer.alloc(size);
+	for (let index = 0; index < size; index++) {
+		buffer[index] = (index * 31 + seed) & 0xff;
+	}
+	for (let index = 0; index < patchLength; index++) {
+		buffer[patchAt + index] = (index * 17 + 3) & 0xff;
+	}
+	return buffer;
+}
+
+function loSha512(filePath) {
+	return createHash("sha512").update(readFileSync(filePath)).digest("base64");
+}
+
+/**
+ * The block map for one artifact, written by the real binary.
+ *
+ * It returns the same `{ size, sha512 }` the release metadata records, so the
+ * fixture's channel file describes the bytes that were actually block-mapped
+ * rather than a hash this test computed for itself.
+ */
+function loWriteBlockmap(file) {
+	const result = spawnSync(
+		loAppBuilderPath(),
+		["blockmap", "--input", file, "--output", `${file}.blockmap`],
+		{
+			encoding: "utf8",
+			// This is the only native binary the update harness runs, and the
+			// binary is a different build on every platform. `timeout` bounds it so
+			// one that stops responding fails this case with the reason instead of
+			// wedging the file: node's test runner has no default per-test timeout,
+			// and `ci.yml` sets none, so an unbounded wait here is an unbounded job.
+			timeout: 120_000,
+			killSignal: "SIGKILL",
+			// A child that decides to read stdin must see EOF rather than block on
+			// a pipe nobody writes to; only stdout carries the block map back.
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	assert.equal(
+		result.status,
+		0,
+		`app-builder blockmap failed: ${result.error?.message ?? result.stderr}`,
+	);
+	return JSON.parse(result.stdout);
+}
+
+/**
+ * One release's macOS assets, as a release carries them: a zip per
+ * architecture, its `.blockmap`, and the `latest-mac.yml` the updater resolves
+ * against (shape copied from the v0.19.5 release's own channel file).
+ */
+function loMakeRelease(dir, { version, bytes, blockmaps = true }) {
+	const web = join(dir, version);
+	mkdirSync(web, { recursive: true });
+	const entries = [];
+	for (const arch of ["arm64", "x64"]) {
+		const name = `local-operator-ui-${version}-${arch}.zip`;
+		const file = join(web, name);
+		writeFileSync(file, bytes(arch));
+		const info = loWriteBlockmap(file);
+		if (!blockmaps) rmSync(`${file}.blockmap`, { force: true });
+		entries.push({ url: name, sha512: info.sha512, size: info.size });
+	}
+	writeFileSync(
+		join(web, "latest-mac.yml"),
+		[
+			`version: ${version}`,
+			"files:",
+			...entries.flatMap((entry) => [
+				`  - url: ${entry.url}`,
+				`    sha512: ${entry.sha512}`,
+				`    size: ${entry.size}`,
+			]),
+			`path: ${entries[0].url}`,
+			`sha512: ${entries[0].sha512}`,
+			`releaseDate: '2026-09-13T00:00:00.000Z'`,
+			"",
+		].join("\n"),
+		"utf8",
+	);
+	return { web, entries };
+}
+
+/**
+ * A static file server with single-range support, over real loopback HTTP.
+ *
+ * Every request is recorded and every byte counted, which is the only way to
+ * tell a delta from a full download: both produce a correct file, and only the
+ * transfer differs.
+ */
+function loServe(dir) {
+	const requests = [];
+	const bytes = new Map();
+	const server = createServer((request, response) => {
+		const name = basename(new URL(request.url, "http://local").pathname);
+		const range = request.headers.range ?? null;
+		requests.push({ name, range });
+		const file = join(dir, name);
+		if (!existsSync(file)) {
+			response.writeHead(404);
+			response.end();
+			return;
+		}
+		const body = readFileSync(file);
+		if (range == null) {
+			response.writeHead(200, { "Content-Length": body.length });
+			response.end(body);
+			bytes.set(name, (bytes.get(name) ?? 0) + body.length);
+			return;
+		}
+		const [start, end] = String(range)
+			.replace(/^bytes=/, "")
+			.split("-")
+			.map((value) => Number.parseInt(value, 10));
+		const last = Number.isNaN(end) ? body.length - 1 : end;
+		const slice = body.subarray(start, last + 1);
+		response.writeHead(206, {
+			"Content-Length": slice.length,
+			"Content-Range": `bytes ${start}-${last}/${body.length}`,
+		});
+		response.end(slice);
+		bytes.set(name, (bytes.get(name) ?? 0) + slice.length);
+	});
+	return {
+		server,
+		requests,
+		bytes,
+		bytesFor: (name) => bytes.get(name) ?? 0,
+		// `close()` alone waits for keep-alive sockets, and an updater's
+		// connections would hold the test process open after its last assertion.
+		close: () => {
+			server.closeAllConnections();
+			server.close();
+		},
+		listen: () =>
+			new Promise((resolve) => {
+				server.listen(0, "127.0.0.1", () => resolve(server.address().port));
+			}),
+	};
+}
+
+/**
+ * The updater, wired the way the app wires it: a version to update from, the
+ * on-disk update config that names the cache directory, and a real executor.
+ */
+function loMakeUpdater({ cacheRoot, version, feedUrl }) {
+	const adapter = {
+		get version() {
+			return version;
+		},
+		get name() {
+			return "Local Operator";
+		},
+		get isPackaged() {
+			return true;
+		},
+		get appUpdateConfigPath() {
+			return join(cacheRoot, "app-update.yml");
+		},
+		get userDataPath() {
+			return cacheRoot;
+		},
+		get baseCachePath() {
+			return cacheRoot;
+		},
+		whenReady: async () => {},
+		quit: () => {},
+		relaunch: () => {},
+		onQuit: () => {},
+	};
+	// `null` options rather than `{}`: the constructor calls `setFeedURL` on any
+	// non-null options object, and `{}` names no provider.
+	const updater = new MacUpdater(null, adapter);
+	updater.httpExecutor = new ElectronHttpExecutor(() => {});
+	updater.autoDownload = false;
+	// Resolves the download without handing a zip to Squirrel.Mac: there is no
+	// native updater here, and the transfer is what this section measures.
+	updater.autoInstallOnAppQuit = false;
+	const lines = [];
+	updater.logger = {
+		info: (message) => lines.push(String(message)),
+		warn: (message) => lines.push(String(message)),
+		error: (message) => lines.push(String(message)),
+		debug: () => {},
+	};
+	updater.setFeedURL({
+		provider: "generic",
+		url: feedUrl,
+		// GitHubProvider pins this off for its S3-backed assets; the delta then
+		// arrives as one `Range` per changed block instead of a multipart reply.
+		useMultipleRangeRequest: false,
+	});
+	return { updater, lines };
+}
+
+/** The update config electron-builder ships beside the app. */
+function loWriteUpdateConfig(cacheRoot, port) {
+	mkdirSync(cacheRoot, { recursive: true });
+	writeFileSync(
+		join(cacheRoot, "app-update.yml"),
+		[
+			"provider: generic",
+			`url: http://127.0.0.1:${port}/`,
+			// The directory the app's own cache lives in, so the cached
+			// `update.zip` a delta is computed against is placed where the real
+			// updater looks for it.
+			"updaterCacheDirName: local-operator-ui-updater",
+			"",
+		].join("\n"),
+		"utf8",
+	);
+	return join(cacheRoot, "local-operator-ui-updater");
+}
+
+/**
+ * A whole update scenario: the previous release's zip in the updater's cache,
+ * both releases' assets on a local feed, and an updater pointed at it.
+ */
+function loUpdateScenario({ blockmaps = true, patchLength = 4096 } = {}) {
+	const dir = tempDir("lo-update-");
+	// One seed per architecture, so that fetching the wrong architecture's build
+	// cannot pass a hash check by accident: the two blobs are unrelated except
+	// for their length.
+	const seedFor = (arch) => (arch === "arm64" ? 1 : 2);
+	const previous = (arch) => loBlob(LO_ARTIFACT_SIZE, { seed: seedFor(arch) });
+	const current = (arch) =>
+		loBlob(LO_ARTIFACT_SIZE, {
+			seed: seedFor(arch),
+			patchAt: 1 * LO_MB,
+			patchLength,
+		});
+	const old = loMakeRelease(dir, { version: "0.19.6", bytes: previous, blockmaps });
+	const next = loMakeRelease(dir, { version: "0.19.7", bytes: current, blockmaps });
+	return { dir, old, next, previous, current };
+}
+
+
+/**
+ * The host probes MacUpdater reads, spelled the way the real ones answer.
+ *
+ * The arm64 string is a real Apple Silicon `uname -a`, whose kernel release
+ * string carries an uppercase "ARM" - that, not `process.arch`, is what makes
+ * the library treat a machine as Apple Silicon.
+ */
+const LO_UNAME = {
+	arm64:
+		"Darwin fixture.local 25.6.0 Darwin Kernel Version 25.6.0: Thu Aug  7 22:06:29 PDT 2025; root:xnu-12377.1.9~1/RELEASE_ARM64_T6000 arm64",
+	x64: "Darwin fixture.local 25.6.0 Darwin Kernel Version 25.6.0: Thu Aug  7 22:06:29 PDT 2025; root:xnu-12377.1.9~1/RELEASE_X86_64 x86_64",
+};
+
+/**
+ * Run one update as the given architecture would experience it, with the probes
+ * and `process.arch` restored afterwards whether it passed or threw.
+ */
+async function loAsArch(arch, run) {
+	const originalArch = process.arch;
+	const originalProbe = globalThis.__loUpdaterProbe;
+	globalThis.__loUpdaterProbe = (command) => {
+		if (command === "uname") return LO_UNAME[arch];
+		if (command === "sysctl") return "sysctl.proc_translated: 0\n";
+		return null;
+	};
+	Object.defineProperty(process, "arch", { value: arch, configurable: true });
+	try {
+		return await run();
+	} finally {
+		Object.defineProperty(process, "arch", {
+			value: originalArch,
+			configurable: true,
+		});
+		if (originalProbe === undefined) delete globalThis.__loUpdaterProbe;
+		else globalThis.__loUpdaterProbe = originalProbe;
+	}
+}
+
+/**
+ * A whole update run against the fixture feed.
+ *
+ * `blockmaps: false` removes every block map from the served release, which is
+ * what a published release has looked like so far; `cachedOld` puts the
+ * previous release's zip where the updater keeps the copy a delta is computed
+ * against.
+ */
+async function loRunUpdate({
+	arch,
+	blockmaps = true,
+	cachedOld = true,
+	// `false` is the transition off the universal build: the release a user is
+	// updating from published no block map at all.
+	oldBlockmaps = true,
+	// Overrides the cached diff base, for the universal-to-per-arch case where
+	// the base is an artifact shape this release no longer produces.
+	cacheBase = null,
+	patchLength = 4096,
+}) {
+	const scenario = loUpdateScenario({ blockmaps, patchLength });
+	const state = loServe(scenario.next.web);
+	if (cachedOld && oldBlockmaps) {
+		// The previous release's block maps are theirs, not this release's: they
+		// live on the older release, and the updater derives their URL from the
+		// version it is running (`0.19.6`) rather than from the one it fetches.
+		for (const name of readdirSync(scenario.old.web)) {
+			if (!name.endsWith(".blockmap")) continue;
+			writeFileSync(
+				join(scenario.next.web, name),
+				readFileSync(join(scenario.old.web, name)),
+			);
+		}
+	}
+	const port = await state.listen();
+	const cacheRoot = join(scenario.dir, "cache");
+	const updateCache = loWriteUpdateConfig(cacheRoot, port);
+	if (cachedOld) {
+		mkdirSync(updateCache, { recursive: true });
+		writeFileSync(
+			join(updateCache, "update.zip"),
+			cacheBase ?? scenario.previous(arch),
+		);
+	}
+
+	const result = await loAsArch(arch, async () => {
+		const { updater, lines } = loMakeUpdater({
+			cacheRoot,
+			version: "0.19.6",
+			feedUrl: `http://127.0.0.1:${port}/`,
+		});
+		await updater.checkForUpdates();
+		const files = await updater.downloadUpdate();
+		// Not cleanup for its own sake: `updateDownloaded` starts the proxy server
+		// it would hand a zip to Squirrel.Mac with, and that listener would
+		// otherwise hold this process open after the last assertion.
+		updater.closeServerIfExists();
+		return { updater, lines, files };
+	});
+
+	return {
+		scenario,
+		state,
+		updateCache,
+		...result,
+		close: () => state.close(),
+		downloadedPath: (name) => join(updateCache, "pending", name),
+	};
+}
+
+test("the updater resolves the channel file, and both architectures are listed", async () => {
+	const scenario = loUpdateScenario();
+	const state = loServe(scenario.next.web);
+	const port = await state.listen();
+	const cacheRoot = join(scenario.dir, "cache");
+	loWriteUpdateConfig(cacheRoot, port);
+	try {
+		const { updater } = loMakeUpdater({
+			cacheRoot,
+			version: "0.19.6",
+			feedUrl: `http://127.0.0.1:${port}/`,
+		});
+		const result = await updater.checkForUpdates();
+		assert.equal(result.isUpdateAvailable, true);
+		assert.equal(result.updateInfo.version, "0.19.7");
+		// The file list is what MacUpdater filters by architecture, so a release
+		// that ships one universal zip can only ever serve one of the two.
+		assert.deepEqual(
+			result.updateInfo.files.map((file) => file.url),
+			scenario.next.entries.map((entry) => entry.url),
+		);
+		assert.ok(
+			scenario.next.entries.some((entry) => entry.url.includes("-arm64.")) &&
+				scenario.next.entries.some((entry) => entry.url.includes("-x64.")),
+			"the channel file must describe both architectures",
+		);
+	} finally {
+		state.close();
+	}
+});
+
+for (const [arch, own, other] of [
+	[
+		"arm64",
+		"local-operator-ui-0.19.7-arm64.zip",
+		"local-operator-ui-0.19.7-x64.zip",
+	],
+	["x64", "local-operator-ui-0.19.7-x64.zip", "local-operator-ui-0.19.7-arm64.zip"],
+]) {
+	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async () => {
+		const run = await loRunUpdate({ arch });
+		try {
+			const entry = run.scenario.next.entries.find((it) => it.url === own);
+			const downloaded = run.downloadedPath(own);
+			assert.ok(existsSync(downloaded), `no download at ${downloaded}`);
+			// The hash the channel file promises: the bytes the user ends up with
+			// are the release's, not merely "something of the right size".
+			assert.equal(loSha512(downloaded), entry.sha512);
+			assert.equal(
+				run.state.requests.some((request) => request.name === other),
+				false,
+				`the ${arch} updater fetched the other architecture's build`,
+			);
+
+			const transferred = run.state.bytesFor(own);
+			assert.ok(
+				run.lines.some((line) => line.includes("Download block maps")),
+				`no block-map fetch was attempted: ${run.lines.join(" | ")}`,
+			);
+			assert.ok(
+				transferred < entry.size * 0.2,
+				`expected a delta, transferred ${transferred} of ${entry.size}`,
+			);
+			// A delta fetches ranges of the new archive; a fallback fetches all of
+			// it, which is the distinction the transfer size alone cannot make.
+			assert.ok(
+				run.state.requests
+					.filter((request) => request.name === own)
+					.every((request) => request.range != null),
+				"a delta must fetch ranges, not the whole file",
+			);
+			// The older release's block map, by URL, is what the delta is computed
+			// against - the asset no release has ever carried.
+			assert.ok(
+				run.state.requests.some((request) =>
+					request.name.startsWith("local-operator-ui-0.19.6-"),
+				),
+				`the previous release's block map was never fetched: ${run.state.requests.map((request) => request.name).join(", ")}`,
+			);
+			console.log(
+				`${arch}: ${transferred} of ${entry.size} bytes transferred (${((transferred / entry.size) * 100).toFixed(2)}%)`,
+			);
+		} finally {
+			run.close();
+		}
+	});
+}
+
+test("a build that changed across most of the file transfers most of it", async () => {
+	// The honest counterpart to the delta above, and the reason the PR body does
+	// not claim routine updates are small: the mechanism transfers the blocks
+	// that changed, so a Chromium bump - which changes most of an archive - still
+	// costs most of an archive. What it no longer costs is "all of it, always".
+	const run = await loRunUpdate({
+		arch: "arm64",
+		patchLength: Math.round(LO_ARTIFACT_SIZE * 0.6),
+	});
+	try {
+		const own = "local-operator-ui-0.19.7-arm64.zip";
+		const entry = run.scenario.next.entries.find((it) => it.url === own);
+		assert.equal(loSha512(run.downloadedPath(own)), entry.sha512);
+		const transferred = run.state.bytesFor(own);
+		assert.ok(
+			transferred > entry.size * 0.4 && transferred < entry.size,
+			`expected a large but partial transfer, got ${transferred} of ${entry.size}`,
+		);
+		console.log(
+			`60% of the file changed: ${transferred} of ${entry.size} bytes transferred (${((transferred / entry.size) * 100).toFixed(2)}%)`,
+		);
+	} finally {
+		run.close();
+	}
+});
+
+test("the first update off a universal build falls back to a full download", async () => {
+	// The state every existing macOS user is in for exactly one release: they run
+	// a universal 0.19.6 whose zip sits in the cache as the diff base, and this
+	// release ships per-arch zips. The old block-map URL the updater derives is
+	// the *per-arch* name at the version it is running, which 0.19.6 never
+	// published - so the fetch 404s and the update has to degrade safely rather
+	// than diff a per-arch artifact against a universal base.
+	const run = await loRunUpdate({
+		arch: "arm64",
+		oldBlockmaps: false,
+		// Deliberately a different length from the release's own zip, so a diff
+		// against the wrong base could not pass a size or hash check by accident.
+		cacheBase: loBlob(LO_ARTIFACT_SIZE + 4096, { seed: 11 }),
+	});
+	try {
+		const own = "local-operator-ui-0.19.7-arm64.zip";
+		const entry = run.scenario.next.entries.find((it) => it.url === own);
+		const oldBlockMap = "local-operator-ui-0.19.6-arm64.zip.blockmap";
+		assert.ok(
+			run.state.requests.some((request) => request.name === oldBlockMap),
+			`the previous release's block map was not even attempted: ${run.state.requests.map((request) => request.name).join(", ")}`,
+		);
+		assert.ok(
+			run.lines.some((line) =>
+				line.includes("Cannot download differentially"),
+			),
+			`the fallback was not taken: ${run.lines.join(" | ")}`,
+		);
+		assert.equal(run.state.bytesFor(own), entry.size);
+		// The property that makes the fallback the *safe* outcome: what lands is
+		// this release's artifact, whole, verified against the channel file's
+		// hash - not a per-arch zip with a universal diff base spliced into it.
+		assert.equal(loSha512(run.downloadedPath(own)), entry.sha512);
+	} finally {
+		run.close();
+	}
+});
+
+test("without the block maps a release offers, the updater transfers the whole file", async () => {
+	// The world every release up to now lived in: electron-builder built a block
+	// map for each archive and the publish job dropped it, so the first block-map
+	// fetch 404s, the catch turns the update into the full download, and the only
+	// trace is a log line. Asserted rather than described, so the difference
+	// above is measured against the behaviour it replaces.
+	const run = await loRunUpdate({ arch: "arm64", blockmaps: false });
+	try {
+		const own = "local-operator-ui-0.19.7-arm64.zip";
+		const entry = run.scenario.next.entries.find((it) => it.url === own);
+		const downloaded = run.downloadedPath(own);
+		assert.equal(loSha512(downloaded), entry.sha512);
+		assert.ok(
+			run.lines.some((line) => line.includes("Cannot download differentially")),
+			`the fallback was not taken: ${run.lines.join(" | ")}`,
+		);
+		assert.equal(run.state.bytesFor(own), entry.size);
+		console.log(
+			`no block maps: ${run.state.bytesFor(own)} of ${entry.size} bytes transferred (100.00%)`,
+		);
+	} finally {
+		run.close();
 	}
 });

@@ -106,7 +106,7 @@ The GitHub Actions workflow is configured to:
 
 ### The macOS artifact assertions
 
-`scripts/verify-macos-artifacts.mjs` runs five checks against the artifacts the
+`scripts/verify-macos-artifacts.mjs` runs seven checks against the artifacts the
 build actually produced, and any failure fails the release before upload:
 
 | Check | Command |
@@ -116,10 +116,17 @@ build actually produced, and any failure fails the release before upload:
 | App ticket is stapled | `xcrun stapler validate` on the `.app` |
 | Image is accepted | `spctl -a -vvv -t open --context context:primary-signature` on the `.dmg` |
 | Image ticket is stapled | `xcrun stapler validate` on the `.dmg` |
+| No bytecode ships | Walks `Contents/Resources/python[_aarch64]` for `.pyc`/`.pyo` |
+| One interpreter ships | Asserts the single tree present is the one `lipo -archs` says this bundle's architecture resolves |
+
+The last two ask nothing of `codesign`: they are about what the build
+assembled. A shipped `.pyc` is a seal break the app cannot heal, and two
+interpreter trees mean half of it is an interpreter the machine cannot run
+(`afterPack` in `scripts/prune-python-resource.mjs` removes the other one).
 
 Every app bundle and every disk image the build produced is asserted, not the
-first of each: `mac.target` already lists more than one artifact kind, so a
-per-architecture matrix would otherwise leave images unaudited by construction.
+first of each: `mac.target` builds a dmg and a zip for each architecture, so a
+malformed second bundle or image would otherwise ship unaudited by construction.
 A `dist` entry that cannot be read (a dangling symlink where a bundle should be)
 fails the step with a reason rather than throwing out of discovery. Each image
 also has to appear in the update metadata, or the step fails: a stapled image
