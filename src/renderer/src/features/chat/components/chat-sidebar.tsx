@@ -580,15 +580,26 @@ export function ChatSidebar({
 					: undefined
 			}
 		>
-			{count}
-			{clipped ? "+" : ""}
+			{/*
+			 * The glyphs and the sentence are ONE claim, so only one of them is spoken.
+			 * A clipped badge renders `100+` and the `sr-only` span adds ` or more
+			 * matching`, which gave the group the accessible name `All chats 100+ or
+			 * more matching` — "or more" twice, once as the `+` and once in words
+			 * (design round 6, D23). `aria-hidden` on the glyphs is the same shape the
+			 * row's own mark uses: what a sighted reader sees, and a sentence carrying
+			 * it for everyone else, rather than a sum of the two.
+			 */}
+			<span aria-hidden="true">
+				{count}
+				{clipped ? "+" : ""}
+			</span>
 			{/* A query turns these numbers from "what you have" into "what
 			    matched", with identical styling, so the count needs to say which
 			    claim it is making (design round 1, D5); a clipped answer adds the
 			    third claim, which is that the number is bounded below. */}
 			{query ? (
 				<span className="sr-only">
-					{clipped ? " or more matching" : " matching"}
+					{clipped ? ` At least ${count} matching` : ` ${count} matching`}
 				</span>
 			) : null}
 		</span>
