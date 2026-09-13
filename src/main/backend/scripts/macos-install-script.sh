@@ -21,9 +21,15 @@ LOG_FILE="$APP_DATA_DIR/backend-install.log"
 # in-place update with -67028 errSecCSBadBundleFormat. A file codesign reports
 # as *added* can be deleted and the seal comes back; a *modified* one cannot,
 # which is why nothing may ship a .pyc at all. The app sets this variable when
-# it spawns us; defaulting it here means a standalone run of this script cannot
-# pollute the bundle either. $HOME is the right place for the same reason the
-# venv lives there: it is never inside the thing that gets signed and swapped.
+# it spawns us; defaulting it here keeps a standalone run of this script in
+# agreement with the app about where bytecode goes. It is not a complete answer:
+# the app does not spawn every python that runs this interpreter, and a python
+# started by something else - a shell, a CLI script, an agent - has no prefix at
+# all (measured: a venv over this tree wrote 25 .pyc into it that way). The half
+# that covers those is the app's seal on the tree itself
+# (src/main/python-bytecode-cache.ts), which a standalone run of this script does
+# not apply. $HOME is the right place for the cache for the same reason the venv
+# lives there: it is never inside the thing that gets signed and swapped.
 : "${PYTHONPYCACHEPREFIX:=$APP_DATA_DIR/python-bytecode-cache}"
 export PYTHONPYCACHEPREFIX
 
