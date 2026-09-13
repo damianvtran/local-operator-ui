@@ -38,7 +38,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { admitChatDraft, useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { echoPendingUser, retractPendingUser, __registerEchoTarget } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
@@ -104,12 +104,15 @@ const {
 	useCanonicalSessionsStore: store,
 	echoPendingUser,
 	retractPendingUser,
+	discardPendingEchoes,
 	__registerEchoTarget,
 	EMPTY_TRANSCRIPT,
 	DesktopControlError,
 } = module;
 
 const SESSION_ID = "222222222222";
+// The ids the cross-session bound test buffers; named so `reset` can clear them.
+const SCRATCH_SESSIONS = Array.from({ length: 40 }, (_, i) => `session-${i}`);
 const input = {
 	text: "Review this",
 	attachments: [],
@@ -138,6 +141,14 @@ function mountTranscript(sessionId) {
 }
 
 function reset() {
+	/*
+	 * The echo buffer is MODULE state, so it outlives a store reset. Clearing it
+	 * here keeps each test independent: without this, the bound tests below
+	 * leave up to 16 buffered sessions behind and the next test's session can be
+	 * evicted before it ever runs, which makes results depend on file order.
+	 */
+	for (const id of [SESSION_ID, "999999999999", ...SCRATCH_SESSIONS])
+		discardPendingEchoes(id);
 	store.setState({
 		sessions: [],
 		activeSessionId: null,
@@ -275,4 +286,88 @@ test("an echo for a session nobody ever mounts does not leak into another", asyn
 	assert.deepEqual(transcript.rows(), []);
 	transcript.unregister();
 	retractPendingUser("999999999999", "req-orphan");
+});
+
+test("the buffer bounds what it retains per session", async () => {
+	reset();
+	/*
+	 * A RETENTION bound, not tidiness: each queued mutation closes over the
+	 * message text and its images as base64, so an unbounded buffer keeps a
+	 * user's content in renderer memory for the window's lifetime when a session
+	 * never mounts. Oldest-first, because the newest paint is the one the user
+	 * is waiting to see.
+	 */
+	for (let i = 0; i < 10; i++)
+		echoPendingUser(SESSION_ID, `req-${i}`, `message ${i}`, []);
+	const transcript = await mountTranscript(SESSION_ID);
+	const rows = transcript.rows();
+	assert.ok(
+		rows.length <= 4,
+		`the per-session buffer must be bounded, got ${rows.length} rows`,
+	);
+	assert.deepEqual(
+		rows,
+		["message 6", "message 7", "message 8", "message 9"],
+		"the newest echoes survive - the oldest are the ones the user has stopped waiting for",
+	);
+	transcript.unregister();
+});
+
+test("the buffer bounds how many un-mounted sessions it holds", async () => {
+	reset();
+	// The other unbounded dimension: a user can stage drafts faster than panels
+	// mount. Eviction is by insertion order, so the oldest un-mounted session -
+	// the one least likely to ever be looked at - goes first.
+	for (let i = 0; i < 40; i++)
+		echoPendingUser(`session-${i}`, `req-${i}`, `text ${i}`, []);
+	// The first session buffered must have been evicted by now.
+	const evicted = await mountTranscript("session-0");
+	assert.deepEqual(
+		evicted.rows(),
+		[],
+		"the oldest un-mounted session must not still be retained after 40 others",
+	);
+	evicted.unregister();
+	// The most recent one is still there, which is what keeps the bound useful
+	// rather than merely safe.
+	const kept = await mountTranscript("session-39");
+	assert.deepEqual(kept.rows(), ["text 39"]);
+	kept.unregister();
+});
+
+test("abandoning a draft drops whatever was buffered for it", async () => {
+	reset();
+	/*
+	 * The user's deletion honoured in memory, not just in the store. A discarded
+	 * draft is precisely the case where a panel may never mount, so without this
+	 * the abandoned text and its attachments would outlive the row the user
+	 * thinks they threw away.
+	 */
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	store.setState((state) => ({
+		drafts: {
+			...state.drafts,
+			[key]: { ...state.drafts[key], sessionId: SESSION_ID },
+		},
+	}));
+	echoPendingUser(SESSION_ID, "req-abandoned", "abandoned text", []);
+	store.getState().discardDraft(key);
+
+	const transcript = await mountTranscript(SESSION_ID);
+	assert.deepEqual(
+		transcript.rows(),
+		[],
+		"an abandoned draft's echo must not be retained until some later mount",
+	);
+	transcript.unregister();
+});
+
+test("discarding echoes for one session leaves another untouched", async () => {
+	reset();
+	// The eviction is addressed, like the delivery it undoes.
+	echoPendingUser(SESSION_ID, "req-keep", "keep me", []);
+	discardPendingEchoes("999999999999");
+	const transcript = await mountTranscript(SESSION_ID);
+	assert.deepEqual(transcript.rows(), ["keep me"]);
+	transcript.unregister();
 });

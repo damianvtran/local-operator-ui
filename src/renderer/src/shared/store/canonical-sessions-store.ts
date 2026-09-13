@@ -11,6 +11,7 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
 import {
+	discardPendingEchoes,
 	echoPendingUser,
 	retractPendingUser,
 } from "@shared/hooks/use-canonical-session";
@@ -668,6 +669,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			discardDraft: (key) =>
 				set((state) => {
 					const drafts = { ...state.drafts };
+					/*
+					 * Abandoning the message also drops any echo buffered for its
+					 * session. The buffer holds the text and its images as base64
+					 * until a panel mounts, and a discarded draft is the case where
+					 * one may never do - so this is the user's deletion being
+					 * honoured in memory, not just in the store.
+					 */
+					const abandoned = drafts[key]?.sessionId;
+					if (abandoned) discardPendingEchoes(abandoned);
 					delete drafts[key];
 					/*
 					 * Clear the pointer as well as the draft, the way
