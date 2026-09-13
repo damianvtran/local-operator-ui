@@ -179,9 +179,23 @@ const Reading: FC<{
 	tooltip: ReactNode;
 	label: string;
 	onOpen?: () => void;
+	/**
+	 * A reading that has no action in ANY state, on any backend, in any session.
+	 *
+	 * The label form is still a `button` with `aria-disabled`, because a control
+	 * that cannot be used right now is exactly that - it takes the pointer and it
+	 * takes focus, and its tooltip explains why it cannot open. The spend reading
+	 * is not that: it has no picker to lose, so calling it an unavailable button
+	 * invents an action that never exists and a screen reader relays the spend
+	 * figure as "button, dimmed" (UX round 1, U5). A focusable `span` says the
+	 * same thing without the false affordance, and keeps the tooltip reachable
+	 * from the keyboard, which is the property `aria-disabled` exists to protect
+	 * here (§ 6).
+	 */
+	readout?: boolean;
 	children: ReactNode;
 	className?: string;
-}> = ({ tooltip, label, onOpen, children, className }) =>
+}> = ({ tooltip, label, onOpen, readout = false, children, className }) =>
 	onOpen ? (
 		<Tooltip content={tooltip}>
 			<button
@@ -192,6 +206,21 @@ const Reading: FC<{
 			>
 				{children}
 			</button>
+		</Tooltip>
+	) : readout ? (
+		<Tooltip content={tooltip}>
+			<span
+				/* The tab stop is deliberate: it keeps the tooltip reachable from the
+				   keyboard (see the prop's own note). The rule's remedy - dropping it -
+				   is what this reading had before: a `button` announced as an
+				   unavailable action. */
+				/* biome-ignore lint/a11y/noNoninteractiveTabindex: a focusable readout is the honest form for a reading that can never open */
+				tabIndex={0}
+				aria-label={label}
+				className={cn(READING_LABEL, className)}
+			>
+				{children}
+			</span>
 		</Tooltip>
 	) : (
 		<Tooltip content={tooltip}>
@@ -326,14 +355,21 @@ function modelReason(
  *
  * `null` is the model whose SPEC says it has no ladder: there the level IS the
  * reading, and a closing sentence would imply an action that does not exist.
+ *
+ * That test comes FIRST, before the draft's, because "Set once the conversation
+ * starts" is itself a claim about a choice: on a spec with an empty (or
+ * unreported) ladder the first turn will not be able to set one either, so the
+ * sentence would be the D3 lie in a draft's clothes. Found by looking at the
+ * draft frames: the no-ladder box was labelled "the effort reading is ABSENT"
+ * and showed the reading with that sentence under it.
  */
 function effortReason(
 	draft: boolean,
 	adjustable: boolean,
 	dispatch?: (line: string) => void,
 ): string | null {
-	if (draft) return DRAFT_EFFORT_LINE;
 	if (!adjustable) return null;
+	if (draft) return DRAFT_EFFORT_LINE;
 	if (dispatch) return "Change it.";
 	return COMMANDS_OFF;
 }
@@ -441,12 +477,31 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * a 1380px window the column is at its 220px floor while `md:` is still
 				 * comfortably active (see `chat-measure.ts`).
 				 *
-				 * `ml-auto` here is the row's ONE live auto margin at this width; below
-				 * 750 it is the right-hand group's (see the row in `message-input.tsx`).
-				 * Two live auto margins would share the free space evenly and float
-				 * this cluster mid-row, which is the layout `justify-between` produced.
+				 * `ml-auto` is NOT here, and that is the round-1 blocker fixed by construction.
+				 * It used to be the row's ONE live auto margin at this width; but this
+				 * cluster renders `null` in three ordinary states (no `frontend`, nothing
+				 * known at all, and the error boundary's empty fallback), and in those
+				 * states a row whose only auto margin lived here had NO live auto margin -
+				 * so the controls sat flush against the working-directory chip, mid-row.
+				 * The margin now belongs to the controls group, which is always rendered
+				 * (`message-input.tsx`): the free space falls between this cluster and the
+				 * controls, the cluster sits immediately after the chip, and the row's
+				 * right-justification no longer depends on a sibling that can vanish
+				 * (design round 1.5, D7). Two live auto margins would share the free space
+				 * evenly and float this cluster mid-row, which is the layout
+				 * `justify-between` produced.
+				 *
+				 * The DOM position is first (the row renders this before the left group)
+				 * so that the wrapped order and the tab order agree; `order-2` above the
+				 * threshold restores the visual order [attach][chip] [readings]
+				 * [mic][send] without a second render tree (UX round 1, U4).
+				 *
+				 * `flex-nowrap` above the threshold is the other half of the yield order
+				 * (design round 1.5, D9): the row already refuses to wrap, and a
+				 * still-wrapping cluster would spend the name's 56px floor's worth of
+				 * slack on a second internal line instead of letting the name truncate.
 				 */
-				"order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+				"basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
 				className,
 			)}
 			data-lo-session-strip={true}
@@ -509,7 +564,32 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					{pending && <Spinner size="xs" label="Switching the model" />}
 				</Reading>
 			)}
-			{effort && (
+			{/*
+			 * R19: a draft shows the effort reading only where the spec carries a
+			 * ladder.
+			 *
+			 * The preview resolves without the account-metadata step a cold open runs
+			 * (`desktop_sessions.py`, the `sessions.preview` route), so its spec
+			 * arrives with an EMPTY ladder; `effortState` then takes its
+			 * `metadataAbsent` branch and labels the chip `unknown` - a value-shaped
+			 * word that branch scopes to a session with a live owner, whose escape
+			 * hatch (`/effort <level>`) a session-less draft does not have. The first
+			 * turn then publishes the resolved ladder and the reading becomes `auto`,
+			 * moving the model chip and the ring beside it 21.6px as the turn starts
+			 * (UX round 1, U1). Absence is this strip's own honest rule for "no level
+			 * to show here", and it is why the check is on the DRAFT flag rather than
+			 * on the label: the same empty ladder on a live session is a fact about
+			 * the model and stays.
+			 *
+			 * `knownLadder`, not `adjustable`: the `unknown` branch is deliberately
+			 * ADJUSTABLE (a live session can open its picker and find out, which is why
+			 * that branch is not inert), so an adjustability test would let the very
+			 * state this rule exists to hide straight through. What a draft must not do
+			 * is print a level-shaped word for a ladder nobody knows yet; when the spec
+			 * did carry the rungs - empty or not - the reading is a fact and stays, on a
+			 * draft exactly as on a session.
+			 */}
+			{effort && (!draft || effort.knownLadder) && (
 				<Reading
 					label={[
 						`Reasoning effort: ${effort.label}.`,
@@ -521,7 +601,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						<TooltipLines
 							lines={[
 								effort.label,
-								...(draft ? [DRAFT_EFFORT_LINE] : [effort.detail]),
+								...(draft && effort.adjustable
+									? [DRAFT_EFFORT_LINE]
+									: [effort.detail]),
 							]}
 						/>
 					}
@@ -605,6 +687,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={costTooltip(cost)}
 					tooltip={<TooltipLines lines={[cost.text, costTooltip(cost)]} />}
+					// Never a control, in any state: `/usage` is a different question
+					// (this account's billing), so there is no picker this reading could
+					// ever open and nothing for a disabled button to be disabled FOR.
+					// Announced as a button, it told a screen-reader user the spend
+					// figure was an unavailable action (UX round 1, U5).
+					readout
 				>
 					{/* A cost has no picker of its own: `/usage` is a different
 					    question (this account's billing) and opening it from a session
