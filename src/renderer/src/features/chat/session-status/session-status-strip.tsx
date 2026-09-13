@@ -1,12 +1,21 @@
+import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
-import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
 import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import { costTooltip, sessionCost } from "./session-cost";
-import { effortState, modelIdentity, reconcileEffort } from "./session-model";
+import {
+	bandReadings,
+	effortState,
+	modelIdentity,
+	reconcileEffort,
+} from "./session-model";
 
 /**
  * The session status strip: model, reasoning effort, context and spend.
@@ -86,6 +95,17 @@ export type SessionStatusStripProps = {
 	 * stream's on adjustability, and why pending is not the same as empty.
 	 */
 	effortEntities?: readonly unknown[];
+	/**
+	 * A model the user just chose, not yet confirmed by the owner.
+	 *
+	 * Passed in, not read off `frontend`: the paint is the session handle's, and
+	 * this component must not be the thing that decides what "confirmed" means
+	 * (the handle drops the paint when an authoritative frame names the model).
+	 * While it is set the model reading is drawn as PENDING — dim, with the
+	 * spinner the dialog shows for the same state, because a colour step plus a
+	 * hover-only tooltip is a cue the user has to have been taught (UX U3).
+	 */
+	pendingModel?: CanonicalModel | null;
 	className?: string;
 };
 
@@ -241,6 +261,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	frontend,
 	onCommand,
 	effortEntities,
+	pendingModel = null,
 	className,
 }) => {
 	if (!frontend) return null;
@@ -249,9 +270,23 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	// this differs from the pickers, which read the selected one on purpose.
 	// `selected_model` is the fallback for an owner that reports no effective
 	// spec (nothing has run yet), which is the state a fresh session is in.
-	const model = frontend.effective_model ?? frontend.selected_model;
+	//
+	// The user's own unconfirmed paint OUTRANKS both: a pick that pays a cold
+	// runtime bind takes 1.1-4.2 s, and the one thing the user asked is whether
+	// their choice registered. The paint is not a claim that it landed — the
+	// reading is drawn as pending and reverts the moment the owner's frame names
+	// a model of its own (latency U1).
+	const pending = pendingModel !== null;
+	/*
+	 * The identity reading and the effort reading come from different specs on
+	 * purpose — see `bandReadings` for why the paint must not outrank the effort
+	 * chip (reviewer round 1, major 1: `effortState` answers `null` for a row's
+	 * spec, so the chip vanished for the whole 1.1-4.2 s pending window).
+	 */
+	const readings = bandReadings(frontend, pendingModel);
+	const model = readings.identity;
 	const identity = modelIdentity(model);
-	const effort = reconcileEffort(effortState(model), effortEntities);
+	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
 	const reading = contextReading({
 		context_tokens: frontend.context_tokens,
 		context_window: frontend.context_window,
@@ -278,19 +313,45 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		>
 			{identity && (
 				<Reading
-					label={`Model: ${identity.selector}. Choose a different model.`}
+					label={
+						pending
+							? `Model: ${identity.selector}. Switching; waiting for the session to confirm it.`
+							: `Model: ${identity.selector}. Choose a different model.`
+					}
 					tooltip={
 						<TooltipLines
-							lines={[identity.selector, "Click to choose a different model"]}
+							lines={
+								pending
+									? [
+											identity.selector,
+											"Switching the model; waiting for the session to confirm it",
+										]
+									: [identity.selector, "Click to choose a different model"]
+							}
 						/>
 					}
 					onOpen={onCommand ? () => onCommand("/model") : undefined}
 					// The one item with unbounded length, so it is the one that
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
-					className="max-w-full shrink"
+					//
+					// `text-ink-dim` while pending: a colour step, never opacity (the
+					// branding contract's rule for a control that is not yet live), so a
+					// user can see that the value on screen is the one they chose and
+					// not yet the one the session runs.
+					className={cn("max-w-full shrink", pending && "text-ink-dim")}
 				>
 					<span className="truncate">{identity.name}</span>
+					{/*
+					 * The pending state's non-hover cue (UX U3).
+					 *
+					 * The colour step alone is seen only by a user who already knows to
+					 * look for it, and the sentence that explains it lived in the tooltip —
+					 * i.e. behind a hover. The dialog says the same thing with the same
+					 * spinner while the same operation is in flight, so the band does too;
+					 * the label is what carries it into the accessibility tree.
+					 */}
+					{pending && <Spinner size="xs" label="Switching the model" />}
 				</Reading>
 			)}
 			{effort && (
