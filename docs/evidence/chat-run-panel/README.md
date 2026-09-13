@@ -27,7 +27,7 @@ node scripts/capture-evidence.mjs http://localhost:6041 \
 pnpm check-evidence
 ```
 
-Thirty-seven stories over the two brand themes is seventy-four frames. One story
+Thirty-nine stories over the two brand themes is seventy-eight frames. One story
 (`reduced-motion`) carries the rig's fourth tuple field, `{ reducedMotion: true }`,
 which sets the CDP `prefers-reduced-motion` feature for that frame only and resets
 it for the next one — the app's cap is a `@media` block in `styles/index.css`, so
@@ -59,12 +59,14 @@ named as such everywhere they are cited.
 | [`panel-empty`](panel-empty/) | The same session with the pane open: one quiet line, no skeleton and no placeholder rows. Unreachable through the retired popover, whose trigger did not exist on a session with no work. |
 | [`settled-history`](settled-history/) | A finished run: the roster is history, the plan contributes no open work, and the panel's quiet state says so over a roster that is still readable. |
 | [`roster-only`](roster-only/) | One section, no empty heading. Three children in priority order with the two-line row: label and activity, then the numbers run (`researcher · 3m34s · 21% · $0.19`) ending 12px inside the pane's right edge. |
+| [`roster-members`](roster-members/) | The roster's MEMBERSHIP (`§ 4`), on a payload carrying four rows that are not top-level children: the running child's own `bash` job, the session's own `read` job, and a nested `task` row whose `parent_job_id` is a child on the same list. The frame shows exactly the two members — `Summarise the findings` and `Audit the March invoices ag…`, the latter carrying `bash: sleep 150 ; echo child-done` as its own ACTIVITY line — under a tally of `2 running`. Before round 1's fix the same list painted four rows and counted them all. |
+| [`reader-child-controls`](reader-child-controls/) | A member's page whose child count is ONE: the chrome bar carries `1 child` beside both peer steppers, and that control's accessible name is `Open 1 child subagent` (measured in the DOM, not in the still — a frame cannot carry a name). This is the only frame in the set that can show the control at all: every other reader frames a child with no children, where it is absent, which is why the singular was reachable live and nowhere on disk until now. |
 | [`todos-only`](todos-only/) | One section: the FLAT plan — three rows under a `To-dos` heading with no phase names at all, because this fixture's plan arrived as a single unnamed phase (`§ 6.3`'s back-compat shape). One tally, `1 of 3 closed`, and no per-phase counts because there are no phases. (An earlier revision of this row described the fifteen-item phased plan, which is `todos-phased`'s frame — the two stories were byte-identical before the review round, and the row was not updated with the fixture that separated them.) |
 | [`both-in-flight`](both-in-flight/) | Both sections and the hairline between them. |
 | [`roster-capped`](roster-capped/) | Nine children at the roster's cap: seven rows and the disclosure, `Show 3 more`. |
 | [`roster-capped-expanded`](roster-capped-expanded/) | The same roster **after the disclosure is clicked** — all ten rows, no disclosure. The click is real (`useClickAndWait` drives the button and holds the shutter until it leaves the DOM), which is what makes this the frame that proves every child is reachable rather than one that proves a cap exists. |
 | [`todos-phased`](todos-phased/) | The fifteen-item plan, phased: `Reconcile` has lost all five of its rows to the cap and states so on its own header line — `Reconcile · 5 hidden`, which is the disclosure `D1-7` fixed rather than a per-phase count; `Verify` and `Publish` keep their rows and are names alone. Every item state is here (done struck, dropped tagged, blocked with its reason line) over one tally, `11 of 15 closed · 1 dropped`. Distinct from `todos-only` on disk. |
-| [`todos-implicit-phase`](todos-implicit-phase/) | `§ 6.2`'s finding (2): the lazily-created implicit phase beside a named one. The implicit half renders headerless and its items join the list, so the plan is named once. **Read this against `todos-phased`**: that is the control (every phase named), this is the fold. The frame pair cannot show the retired rendering, because the whole-plan fold this one replaces is deleted; what it proves is the state that fold produced. |
+| [`todos-implicit-phase`](todos-implicit-phase/) | `§ 6.2`'s finding (2) and round 1's Q9/U1-5, in the shape that broke the fold: the plan is `Publish` (a named phase) followed by the untitled group, so the group's two rows need a boundary the group's own name cannot give them. The frame shows the `hairline` rule above them, which is the only rule the plan draws — a named phase is bounded by its header line instead. `todos-only` is the other side of the fold (the untitled group LEADING, where no rule is drawn) and `todos-phased` is the control (every phase named). The retired rendering cannot be re-photographed: the fold that produced it is deleted. |
 | [`swap-canvas-open`](swap-canvas-open/) | The chat column with `isCanvasOpen` set: the run trigger is **present and unpressed**, which is the gate this change removed (`!isCanvasOpen`). The canvas button is deliberately not rendered as "pressed" — the frame is captured in the state where the preference is set and the trigger must still be there, which is the claim; a pressed canvas control is `canvas-workspace`'s frame, not this one. The canvas pane itself is not drawn — `ChatContent`'s canvas branch mounts the real editor against a document set, and a story that leaves it unseeded hangs before it paints; the canvas's own frames are `canvas-workspace`'s set. |
 | [`swap-run-open`](swap-run-open/) | The mirror: the trigger pressed and the run pane open in the same slot. One pane in each frame is the claim, and the exclusivity is the store's (`§ 3.2`). |
 | [`reader-live`](reader-live/) | A running child's reader, **fixture page** (the LIVE pair is `../chat-run-panel-live/`): chrome bar with the back control and the breadcrumb, the facts row (state, label, elapsed, context, cost, `model_label`), the `Delegated with` brief as ONE line (this fixture's launch map carries the concise prompt, so the block renders unfolded), then the child's transcript rendered through the parent's own path — durable rows, a `bash` tool row, the outcome text. |
@@ -75,15 +77,15 @@ named as such everywhere they are cited.
 | [`reader-resumed`](reader-resumed/) | A resumed child: the durable `subagent-launch:<job_id>` turn reconciled to its concise authored prompt, with **no role/team/system preamble above it**. `§ 12`'s risk 3 has no other frame. |
 | [`reader-brief`](reader-brief/) | The `Delegated with` brief in the ONE state that renders it: a child whose transcript does NOT already carry the instruction, so the block is the only copy. The brief is set in the PROSE role (`§ 4` — it is a paragraph, not machine output, and monospace was the review round's `D1-3`), and `reader-resumed` is its complement: the same block stands down when the transcript already says it. This story's record predates `launch_message_id`, so the brief falls back to the child's own multi-line prompt: the frame shows six of its eight lines with **`Show 2 more lines`** on the control — the fold and its expander `§ 11.3` cites it for, which the earlier fixture (a one-line launch prompt, `folded.hidden === 0`) could not render at all. |
 | [`reader-image`](reader-image/) | A child's OWN image, painted: the row carries a content-addressed digest and the reader resolves it through the child-scoped attachment op (`subagents.attachment`), so the digest is a picture rather than the unavailable note. The story stubs the renderer's media relay with real PNG bytes, because a Storybook frame has no backend — so this frame proves the RENDERER's half (the scope reaches `desktopMedia`, the op is the child-scoped one, the bytes paint), while the route's own mapping is pinned by `scripts/tool-row.test.mjs` and exercised against a running server by QA. |
-| [`reader-pending`](reader-pending/) | `§ 10.1`'s first absence: the child has a directory and no transcript yet. Its own copy, one quiet line, and no retry ladder — the state is not an error. |
-| [`reader-gone`](reader-gone/) | `§ 10.1`'s second absence: the directory is not there (swept, or removed by hand). A terminal statement, and the same way out as any other terminal reader state. |
+| [`reader-pending`](reader-pending/) | `§ 10.1`'s first absence: the child's directory exists and `transcript.jsonl` does not. One quiet line — `This subagent has no transcript on disk yet.`, which states the FILESYSTEM rather than the child's history (round 1, Q10: a file moved aside leaves the same two facts as a child that never appended, so "has not written anything yet" was a claim this route cannot make) — and no retry ladder, because the state is not an error. |
+| [`reader-gone`](reader-gone/) | `§ 10.1`'s second absence, and the one the route derives from the filesystem rather than from a row: the child's session DIRECTORY is missing (`desktop_sessions.child_transcript`'s containment proof runs first). The copy says so — `This subagent's session directory is no longer on disk.` — because the transcript FILE missing is the `pending` line above, not this one. A terminal statement, and the same way out as any other terminal reader state. |
 | [`reader-unaddressed`](reader-unaddressed/) | A reader whose row carries no `childSessionId` — the cold-conversation shape (`§ 10.1`, review round 1 R1-6). The roster does not offer such a row as openable; this is what the reader says if it is reached another way (the breadcrumb, the sibling stepper), instead of sitting on `Loading…` forever. The fixture is the shape that produces it — the durable graph's own status word (`paused`) with no session id and no launch time — and the line states the FACT ("this subagent's row carries no session id") rather than the cause the earlier copy named, which was wrong in the ordinary case (round 2, R2-2). |
 | [`mcp-dot-ack`](mcp-dot-ack/) | The last step of the same sequence, and the one a single state cannot show: the server healed while the list was on screen (so the ledger PRUNED it, `seen' = seen ∩ problems`), the panel was closed, and the server broke again with the pane shut — **the dot is back**. Without this frame the re-arm rule has no picture. |
 | [`mcp-dot-ack-acknowledged`](mcp-dot-ack-acknowledged/) | The ledger's step 2: the list was shown while a server was broken, so the dot is OFF with the panel shut again — the acknowledgement HOLDS. The dot's re-arm is the frame beside it. |
 | [`mcp-all-connected`](mcp-all-connected/) | Three servers up: the word, the tool count and the scope qualifier per row (`connected 12 tools global`), the `3 of 3 connected` tally, and no dot anywhere. Measured: the healthy rows sit on a **32px pitch** (consecutive mark clusters at y432, y464, y496 in the dark frame), which is `§ 8`'s pinned row height. |
 | [`mcp-auth-required-closed`](mcp-auth-required-closed/) | The dot with the pane SHUT: measured **21 danger-bound pixels in the dark theme and 52 in the light** inside an 8px box at the trigger's top-right (x398-405, y12-15), and nothing else red in the header band. |
-| [`mcp-auth-required`](mcp-auth-required/) | The same session with the pane open **on the list**: the same measurement returns **zero** danger-bound pixels, the `notion` row carries the wire's own word `auth-required` and its remedy line, and the tally reads `1 of 2 connected · 1 need attention`. That pair is `§ 3.4`'s whole rule in two frames. |
-| [`mcp-disconnected`](mcp-disconnected/) | The transport state beside the auth state, with its own remedy — the two words the operator reported being unable to tell apart, side by side and distinguishable. |
+| [`mcp-auth-required`](mcp-auth-required/) | The same session with the pane open **on the list**: the same measurement returns **zero** danger-bound pixels, the `notion` row carries the wire's own word `auth-required` and its remedy line, and the tally reads `1 of 2 connected · 1 needs attention` — the singular, which is round 1's Q7/U1-7 fix (`1 need attention` agreed with neither grammar nor the trigger's own `1 MCP server needs attention`). That pair is `§ 3.4`'s whole rule in two frames. |
+| [`mcp-disconnected`](mcp-disconnected/) | The transport state beside the auth state — the two words the operator reported being unable to tell apart, side by side and distinguishable — with the DIAGNOSIS on the row instead of a remedy: `[Errno 2] No such file or directory: '/nonexistent/definitely-not-a-binary'`, the runtime's own text for a server whose command does not exist, which `mcp.list` does not carry at all and which the canonical projection does (round 1's U1-8; `§ 7.2`). The reconnect hint is framed on `mcp-auth-required`, where the remedy is the right one. |
 | [`mcp-unknown-status`](mcp-unknown-status/) | A word this build was not taught (`reticulating`): rendered verbatim in the quiet ink with the unknown mark and **no** remedy line — the refusal is never to claim the good state, and never to paint a `danger` failure the renderer cannot name. The pane is OPEN on the list, so the dot is off while it is shown, which is `§ 3.4` and not a refusal; the dot's own half of `§ 7.3` in a shut pane is `mcp-auth-required-closed`. (The row used to end by naming "the same frame's sibling `mcp-unknown-status`", i.e. itself — there is exactly one such story.) |
 | [`mcp-cold`](mcp-cold/) | The cold payload (no runtime attached): the section's one line in place of the tally, rows with name and qualifier only — no per-row `cold` word, no tool count, no dot. |
 | [`mcp-connecting`](mcp-connecting/) | A server coming up: not a problem, no dot, its own quiet word. |
@@ -95,8 +97,10 @@ named as such everywhere they are cited.
 
 A frame that is a byte-for-byte copy of another proves **nothing** about the
 state it is named for, so the set does not claim distinctness it does not have.
-`md5` over the 74 committed frames gives **69 byte-distinct pictures**; the five
-identities, and which of them is a defect and which is the point:
+`md5` over the 78 committed frames gives **73 byte-distinct pictures**; the five
+identities, and which of them is a defect and which is the point (re-computed
+with `md5` over the re-taken set — the identities are the same five and the same
+hashes, and only the frame count moved):
 
 | frames | md5 | what it means |
 | --- | --- | --- |
@@ -118,9 +122,9 @@ named so it can be re-run.
 
 | Claim | Measurement |
 | --- | --- |
-| The panel is 420px by default and takes its 320px floor at the window floor. | The pane's own edge, from the modal colour of each column: **x860 of 1280** in `mcp-auth-required` (1280 − 860 = **420px**) and **x480 of 800** in `narrow-800` (**320px**) — the design's own constants, both themes. Measured as a column scan across y = 30-98% of each committed file; the divider's shadow gutter lies OUTSIDE the pane, which is why counting from the hairline's darkest pixel over-reads by the 4px and 2px an earlier pass reported. |
+| The panel is 420px by default and takes its 320px floor at the window floor. | The pane's own edge, from the modal colour of each column (re-measured on round 1's re-taken `mcp-auth-required`: the hairline is at x860, the pane's own ground starts at x861 and runs to 1279): **x860 of 1280** in `mcp-auth-required` (1280 − 860 = **420px**) and **x480 of 800** in `narrow-800` (**320px**) — the design's own constants, both themes. Measured as a column scan across y = 30-98% of each committed file; the divider's shadow gutter lies OUTSIDE the pane, which is why counting from the hairline's darkest pixel over-reads by the 4px and 2px an earlier pass reported. |
 | The pane is a `surface` step above the column's `canvas`. | Modal colour of a panel-interior box against a column box, same frame: dark **(30,26,21)** vs **(23,19,14)**, light **(250,248,242)** vs **(246,241,231)**. A lightness step in both palettes, no hue shift — `branding.md`'s elevation rule. |
-| The dot is on with the panel shut and cleared when the list is shown. | Count of pixels with `r>150, g<130, b<130` in the header band: **21** (dark) / **52** (light) in `mcp-auth-required-closed`, confined to x398-405, y12-15 — an 8px dot at the button's top-right; **0** in `mcp-auth-required`, `trigger-idle` and `capability-absent`. |
+| The dot is on with the panel shut and cleared when the list is shown. | Count of pixels with `r>150, g<130, b<130` in the header band, re-measured on the re-taken pair: **21** (dark) / **52** (light) in `mcp-auth-required-closed`, confined to x398-405, y10-17 — an 8px dot at the button's top-right; **0** in `mcp-auth-required`, `trigger-idle` and `capability-absent`. (`mcp-auth-required` was re-taken for round 1's tally copy; `mcp-auth-required-closed` is byte-identical to the frame the earlier pass measured, and the count is unchanged.) |
 | A healthy MCP row is 32px; a problem row is 48px and carries a second line. | Mark-column clusters in `mcp-all-connected`: y432-440, y464-472, y496-504 → two consecutive **32px** pitches. In `mcp-auth-required` the problem row's cluster is 16px tall against the others' 8 and the next row's mark centre sits 29px below it rather than 32 — the mark is centred in a taller box, which is the pin plus the extra line. |
 | The roster's disclosure is a real expander. | `roster-capped` renders seven rows and `Show 3 more` for nine children at a cap of seven; `roster-capped-expanded` renders all ten with no disclosure, driven by a real click on `[data-run-panel-disclosure]` and held until the button leaves the DOM. The cap and the priority order are pinned in `scripts/run-detail-model.test.mjs`. |
 | The plan carries one tally, and its per-phase lines are disclosures rather than counts. | `todos-only` shows the flat plan's single tally (`1 of 3 closed`) and no phases at all; `todos-phased` shows `11 of 15 closed · 1 dropped` over three phase headers, and the only per-phase line is `Reconcile · 5 hidden` — the fully-shed phase stating what it lost (`D1-7`), not a second count of closed work. The word is `closed`, not `resolved`: dropped is not resolved, and `3 + 1` cannot be checked against three rows. Pinned in the model test. |
@@ -138,12 +142,30 @@ ledger's re-arm rule (`seen' = seen ∩ problems`) is invisible by construction 
 a correctly quiet dot and a never-re-armed one are the same pixels — so it is
 pinned as a model test instead.
 
-**And one thing this set frames only for the TRIGGER.** The trigger's resting and
-hovered grounds are frames now (`trigger-idle`/`trigger-hover` and
-`panel-empty`/`trigger-open-hover`), but nothing here photographs a FOCUS ring:
-the rig moves a pointer, not a keyboard, and no story in the set focuses a control
-(`Emulation.setFocusEmulationEnabled` makes the page believe it has the window; it
-focuses nothing). The roster row's own hover ground is in the same position. Round
-1's remediation said "the set now covers hover and focus"; hover it now does for
-the trigger, focus it does not, and this paragraph is the plain statement `D2-4`
-asked for in place of the claim.
+**The reader's clock is the same kind of fact, and round 1's Q3 fix is a claim
+about time rather than about pixels.** `reader-live` shows a running child's
+header, and its elapsed value is whatever the fixture's pinned instant plus the
+capture's own seconds produce — the frame is byte-identical to the one taken
+before the fix, because a still cannot show a number moving. The claim was
+measured instead, in the same renderer the rig drives: the reader's `2m30s`
+became `2m35s` and then `2m40s` at t=0/5s/10s, and the one-row rule behind it is
+pinned in `scripts/run-detail-model.test.mjs`.
+
+**What this set does not frame, plainly: every keyboard state round 1 fixed.**
+`Escape` fired from the trigger (which lives outside the pane's subtree), the
+focus that enters the reader as it opens, the focus that returns to the trigger
+when the pane closes, and Back popping one level rather than leaving the reader —
+none of those is a picture. The rig moves a pointer and cannot press a key, and a
+frame of any of them would be byte-identical to a frame of the state before the
+fix. They were measured in the real renderer instead, over CDP, against the
+interaction harness in `run-details.stories.tsx` (`chat-run-panel--interactive-pane`,
+deliberately not part of the sweep): focus lands in `Conversation transcript` when
+a reader opens, `Escape` on the trigger closes the pane, the ✕ leaves focus on the
+trigger rather than `<body>`, and Back from a grandchild lands on its parent's
+page. It is also why no frame in the set shows a FOCUS RING: the rig moves a
+pointer and cannot press a key, and `Emulation.setFocusEmulationEnabled` only
+makes the page believe it has the window — it focuses nothing. Round 1's
+remediation claimed the set covered hover and focus; hover it does for the
+trigger's four grounds (`trigger-idle`/`trigger-hover` and
+`panel-empty`/`trigger-open-hover`), focus it does not, and this paragraph is the
+plain statement `D2-4` asked for in place of that claim.
