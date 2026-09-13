@@ -7,6 +7,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -29,6 +30,7 @@ import {
 	Pause,
 	Plus,
 	Users,
+	X,
 } from "lucide-react";
 import {
 	type KeyboardEvent,
@@ -38,6 +40,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearSearch } from "../clear-search";
 
 type Props = {
 	selectedConversation?: string;
@@ -449,14 +452,35 @@ export function ChatSidebar({
 			<div className="flex h-8 items-center px-1">
 				<h2 className="text-body-sm font-medium">Chats</h2>
 			</div>
-			<input
-				ref={searchRef}
-				aria-label="Search chats and agents"
-				placeholder="Search chats and agents"
-				className="my-2 h-8 w-full rounded-md border border-control bg-surface px-2 text-body-sm"
-				value={query}
-				onChange={(event) => setQuery(event.target.value)}
-			/>
+			{/* The field carries its own clear control rather than relying on
+			    Escape, which also blurs: a pointer user who wants to widen the filter
+			    back out had to select the text and delete it, and there was nothing on
+			    screen saying the field could be emptied at all. `pr-9` keeps the query
+			    clear of the control — the same reserved-column idiom the settings
+			    search uses on the left for its leading glyph. */}
+			<div className="relative my-2">
+				<input
+					ref={searchRef}
+					aria-label="Search chats and agents"
+					placeholder="Search chats and agents"
+					className="h-8 w-full rounded-md border border-control bg-surface pr-9 pl-2 text-body-sm"
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+				/>
+				{/* Rendered only while a filter is applied: a clear control beside an
+				    empty field is a control that does nothing. */}
+				{query && (
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						className="absolute top-1/2 right-1 -translate-y-1/2"
+						onClick={() => clearSearch(searchRef.current, setQuery)}
+						aria-label="Clear search"
+					>
+						<X aria-hidden="true" />
+					</Button>
+				)}
+			</div>
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-muted">
