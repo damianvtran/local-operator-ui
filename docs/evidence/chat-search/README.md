@@ -23,8 +23,9 @@ harness against the same seeded store.
 | Query `retention` | [`before-retention`](before-retention/localOperatorDark.webp) — **1 row**: the one whose TITLE contains the word. The sessions about the retention sweep are absent, and nothing in the panel says anything is missing | [`after-retention`](after-retention/localOperatorDark.webp) (dark, [light](after-retention/localOperatorLight.webp)) — **3 rows**: `Retention sweep notes` first, then `Migrate the billing reconciliation pipeline to the new ledger` and `Refactor the loader`, each carrying `· in conversation` because its CONVERSATION is why it is there |
 | Query `classifer` (a typo) | [`before-typo`](before-typo/localOperatorDark.webp) — **nothing at all**: an empty panel, no count, no explanation | [`after-typo`](after-typo/localOperatorDark.webp) — **1 row**: `Investigate throughput`, surfaced by the word `classifier` inside it and marked as such |
 | Query `kubernetes` (no match) | [`before-nomatch`](before-nomatch/localOperatorDark.webp) — an empty panel | [`after-nomatch`](after-nomatch/localOperatorDark.webp) — the same rows, plus `Nothing in your chats matches “kubernetes”.` |
+| **A clipped answer** — more matches than one page | not reachable: no conversation search at all | [`after-clipped`](after-clipped/localOperatorDark.webp) — the second store answering `invoices` with exactly `limit` rows: `All chats 100+` / `Previous chats 100+`, spoken as `At least 100 matching`, every visible row marked `· in conversation`. The badge's `+` is the app's own reading of the answer — the op carries no truncation flag — and `searchAnswerIsClipped` is the rule that decides it (`scripts/chat-search.test.mjs`). `2880x1746`, `1440x873@2`, settled before the shutter: 100 rows, badge at `100+`, nothing in flight |
 | A row carrying its own STATE (`· Not sent yet`) | not reachable without a failed first send | [`after-unstarted`](after-unstarted/localOperatorDark.webp) — `Watchlist dossiers · Not sent yet`; the binding is withheld to the tooltip, because a row draws ONE statement and the row's own state outranks it |
-| **A NESTED row at the DEFAULT width** (design round 5's D19 — the case this set was re-shot for) | not covered before this pass | [`after-nested-280`](after-nested-280/localOperatorDark.webp) (dark, [light](after-nested-280/localOperatorLight.webp)) — under `coder 3`, a nested row carrying `· Not sent yet` and another carrying `· in conversation`, both drawn whole at the default 280px. Both halves are a MATCHED pair: `2880x1746`, read at `1440x873@2`, each with its own report |
+| **A NESTED row at the DEFAULT width** (design round 5's D19 — the case this set was re-shot for) | not covered before this pass | [`after-nested-280`](after-nested-280/localOperatorDark.webp) (dark, [light](after-nested-280/localOperatorLight.webp)) — under `coder 3`, a nested row carrying `· Not sent yet` and another carrying `· in conversation`, both drawn whole at the default 280px. Both halves are a MATCHED pair: `2880x1746`, read at `1440x873@2`, each with its own reading under [`readings/`](readings), and both taken through a SETTLE GATE — the panel had to show `coder 3`, the statements and no search in flight before the shutter. That gate is not ceremony: the first attempt at this pair photographed the pre-answer fallback (`coder 1`, one row) while looking settled, because `Searching conversations…` appears only once rows are LOST (design round 7, D26) |
 | **The same at the narrowest width the sidebar drags to** | not covered before this pass | [`after-nested-240`](after-nested-240/localOperatorDark.webp) (dark, [light](after-nested-240/localOperatorLight.webp)) — the nested rows at the 240px clamp, both palettes, both with their readings |
 | **A 64-character binding** (review round 4's R21) | not covered before this pass | [`after-longbinding-280`](after-longbinding-280/localOperatorDark.webp) — `Ship the search endpoint · release-pod-ob…`: the slot truncates INSIDE its 45% cap and the row stays whole; the light half of this pair is still to come, see below |
 | The same binding at the narrowest width | not covered before this pass | [`after-longbinding-240`](after-longbinding-240/localOperatorDark.webp) — the same at the 240px clamp |
@@ -182,13 +183,21 @@ reads as a state that passed.
   that moved; what they are evidence of is the NOTICE COPY, and that alone.
   **Replacing them is an open follow-up**, not an omission: two windows against the
   two degrade proxies (`:7344` names-only, `:7346` search-failed) is the whole job.
-- **The clipped-answer frame is still missing.** The state itself is verified two
-  other ways — the op's own answer on the second store returns exactly `limit` hits
-  with the catalogue route reporting `truncated: true`, and `searchAnswerIsClipped`
-  is exercised over its inputs in `scripts/chat-search.test.mjs` — and design round
-  6 drove it and read the DOM. What does not exist is a committed picture. Two
-  attempts this pass caught the panel mid-load (`Loading agents…`, no rows yet),
-  which is not a picture of the state, so neither was committed.
+- **The clipped answer is in the set now** ([`after-clipped`](after-clipped/localOperatorDark.webp),
+  `2880x1746`, `1440x873@2`): the second store answering `invoices` with exactly
+  `limit` hits, the badge reading `100+` and the heading's spoken claim
+  `At least 100 matching`. It took three attempts — the first two caught the panel
+  mid-load (`Loading agents…`, no rows), which is not a picture of the state — so
+  this one was gated the same way the row pair is: no shutter until the report
+  showed 100 rows, the badge at `100+` and nothing in flight.
+- **The readings are committed, not just cited.** [`readings/`](readings) holds one
+  JSON per frame this branch re-shot, plus the two accessibility probes below, in
+  the shape the other sets use. Each file is what the harness POSTed from the page
+  it names — and for the row pair it is the AT-SHOT snapshot, because the live file
+  keeps being rewritten every 600ms after the screenshot and a reading copied later
+  can describe a state nobody photographed (which is exactly how D26 happened). The
+  two stale frames below have no reading: they came from the older run, off the
+  older harness.
 - **The light half of `after-longbinding-280`.** The dark half is here and a light
   reading with identical numbers exists; the light frame is the outstanding half of
   that pair.
@@ -204,6 +213,31 @@ runs. The last pass's frames are `2880x1634` (817 CSS) and this pass's are
 `2880x1746` (873 CSS), because the window the capture ran in changed height between
 the two sessions; a pair is matched within itself, which is the property the pairs
 are read for.
+
+### The counts' accessible names — the one claim a frame cannot carry
+
+The badge draws its digits and hides them from the accessibility tree, so that the
+number is spoken ONCE and not as glyphs plus words (design round 6, D23). That only
+works if something else carries the number in every state, and the first version
+of the fix carried it only when a query was present, which left the default state
+of the primary navigation announcing `All chats` where the panel draws
+`All chats 6` (design round 7, D25). Both states are in
+[`readings/a11y-rest.json`](readings/a11y-rest.json) and
+[`readings/after-nested-280-dark.json`](readings/after-nested-280-dark.json), whose
+`badges` field is the accessible name computed the way the a11y tree computes it —
+the element's contents with `aria-hidden` subtrees excluded — beside the text the
+panel draws:
+
+| state | drawn | spoken |
+| --- | --- | --- |
+| rest, no query | `All chats 6` / `Previous chats 6` | `All chats 6` / `Previous chats 6` |
+| query `retention`, 3 matches | `All chats 3 3 matching` | `All chats 3 matching` |
+| clipped answer | `All chats 100+ At least 100 matching` | `All chats At least 100 matching` |
+
+Read live in the app the frames were taken in, in one session, through the
+operator's own browser — the rest row's names were also read straight off the
+accessibility tree (`button "All chats 6"`, `button "Previous chats 6"`), which is
+the same answer by construction.
 
 ## Re-capturing this set
 

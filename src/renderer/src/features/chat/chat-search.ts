@@ -370,3 +370,39 @@ export function searchAnswerIsClipped(
 ): boolean {
 	return typeof limit === "number" && limit > 0 && hitCount >= limit;
 }
+
+/**
+ * What a section's count badge ANNOUNCES, which is not what it draws.
+ *
+ * Three states make three different claims, and the badge's own style cannot
+ * tell them apart (D5): no query means "what you have", a query means "what
+ * matched", and an answer clipped at the limit means "this much at least". So
+ * the number is spoken, exactly once, in every state — and the word that
+ * distinguishes them is the only part the query changes.
+ *
+ * Two defects this shape exists to prevent, both found by the design stream on
+ * the same three lines:
+ *
+ * - D23: the digits are drawn for a sighted reader and hidden from the
+ *   accessibility tree (the caller puts them behind `aria-hidden`), so the count
+ *   must NOT also be spoken as glyphs. `100+` plus the words "or more" gave a
+ *   screen reader "or more" twice.
+ * - D25: the sentence was rendered only when a query was present, which left the
+ *   default state of the primary navigation announcing `All chats` where the
+ *   panel draws `All chats 6` — the totals missing from the accessible name
+ *   precisely where nothing else carries them.
+ *
+ * Pure and total so `scripts/chat-search.test.mjs` can hold every state, which
+ * is the only way an accessibility string stays fixed: the pixels cannot show a
+ * regression here, and a green screenshot cannot either.
+ */
+export function chatCountAnnouncement(
+	count: number,
+	query: boolean,
+	clipped: boolean,
+): string {
+	// `clipped` wins over `query`: a clipped answer can only come from a query,
+	// and "at least" is a strictly stronger claim than "matching".
+	if (clipped) return ` At least ${count} matching`;
+	return query ? ` ${count} matching` : ` ${count}`;
+}

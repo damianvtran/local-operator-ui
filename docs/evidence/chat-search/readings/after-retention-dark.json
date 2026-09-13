@@ -1,0 +1,212 @@
+{
+ "badges": null,
+ "panel": {
+  "right": 500,
+  "styleWidth": "280px",
+  "w": 280,
+  "x": 220
+ },
+ "rows": [
+  {
+   "content": 192,
+   "drawn": "coder 3",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "coder",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with coder"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Retention sweep notes",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [],
+   "title": {
+    "client": 204,
+    "clipped": false,
+    "right": 484,
+    "scroll": 204,
+    "text": "Retention sweep notes",
+    "w": 204,
+    "x": 280
+   },
+   "tooltip": "Retention sweep notes (coder): Recent"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conver",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 484,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 391.25
+    }
+   ],
+   "title": {
+    "client": 103,
+    "clipped": true,
+    "right": 383.25,
+    "scroll": 354,
+    "text": "Migrate the billing reconciliation pipeline to the new ledger",
+    "w": 103.25,
+    "x": 280
+   },
+   "tooltip": "Migrate the billing reconciliation pipeline to the new ledger (coder): Recent"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 484,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 391.25
+    }
+   ],
+   "title": {
+    "client": 103,
+    "clipped": true,
+    "right": 383.25,
+    "scroll": 116,
+    "text": "Refactor the loader",
+    "w": 103.25,
+    "x": 280
+   },
+   "tooltip": "Refactor the loader (coder): Recent"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Retention sweep notes \u00b7 coder",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 40,
+     "clipped": false,
+     "right": 488,
+     "scroll": 40,
+     "text": "\u00b7 coder",
+     "w": 39.54,
+     "x": 448.46
+    }
+   ],
+   "title": {
+    "client": 188,
+    "clipped": false,
+    "right": 440.46,
+    "scroll": 188,
+    "text": "Retention sweep notes",
+    "w": 188.46,
+    "x": 252
+   },
+   "tooltip": "Retention sweep notes (coder): Recent"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conver",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 488,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 395.25
+    }
+   ],
+   "title": {
+    "client": 135,
+    "clipped": true,
+    "right": 387.25,
+    "scroll": 354,
+    "text": "Migrate the billing reconciliation pipeline to the new ledger",
+    "w": 135.25,
+    "x": 252
+   },
+   "tooltip": "Migrate the billing reconciliation pipeline to the new ledger (coder): Recent"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 488,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 395.25
+    }
+   ],
+   "title": {
+    "client": 135,
+    "clipped": false,
+    "right": 387.25,
+    "scroll": 135,
+    "text": "Refactor the loader",
+    "w": 135.25,
+    "x": 252
+   },
+   "tooltip": "Refactor the loader (coder): Recent"
+  }
+ ],
+ "searchInFlight": false,
+ "sidebarText": "Chats Agents coder 3 Recent Retention sweep notes Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 3 matching New chat Active chats Nothing running right now. Previous chats 3 matching Recent Retention sweep notes \u00b7 coder Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+ "url": "/?measure=1&q=retention&shot=after-retention-dark",
+ "viewport": "1440x817@2"
+}

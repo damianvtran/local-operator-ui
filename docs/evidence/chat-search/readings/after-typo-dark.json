@@ -1,0 +1,98 @@
+{
+ "badges": null,
+ "panel": {
+  "right": 500,
+  "styleWidth": "280px",
+  "w": 280,
+  "x": 220
+ },
+ "rows": [
+  {
+   "content": 192,
+   "drawn": "architect 1",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "architect",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with architect"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Investigate throughput \u00b7 in conversation , matched in conversation",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 484,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 391.25
+    }
+   ],
+   "title": {
+    "client": 103,
+    "clipped": true,
+    "right": 383.25,
+    "scroll": 137,
+    "text": "Investigate throughput",
+    "w": 103.25,
+    "x": 280
+   },
+   "tooltip": "Investigate throughput (architect): Recent"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Investigate throughput \u00b7 in conversation , matched in conversation",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 488,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 395.25
+    }
+   ],
+   "title": {
+    "client": 135,
+    "clipped": true,
+    "right": 387.25,
+    "scroll": 137,
+    "text": "Investigate throughput",
+    "w": 135.25,
+    "x": 252
+   },
+   "tooltip": "Investigate throughput (architect): Recent"
+  }
+ ],
+ "searchInFlight": false,
+ "sidebarText": "Chats Agents architect 1 Recent Investigate throughput \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 1 matching New chat Active chats Nothing running right now. Previous chats 1 matching Recent Investigate throughput \u00b7 in conversation , matched in conversation",
+ "url": "/?measure=1&q=classifer&shot=after-typo-dark",
+ "viewport": "1440x817@2"
+}

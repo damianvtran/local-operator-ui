@@ -1,0 +1,141 @@
+{
+ "badges": null,
+ "panel": {
+  "right": 500,
+  "styleWidth": "280px",
+  "w": 280,
+  "x": 220
+ },
+ "rows": [
+  {
+   "content": 192,
+   "drawn": "architect 1",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "architect",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with architect"
+  },
+  {
+   "content": 192,
+   "drawn": "coder 3",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "coder",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with coder"
+  },
+  {
+   "content": 192,
+   "drawn": "designer",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "designer",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with designer"
+  },
+  {
+   "content": 192,
+   "drawn": "manager",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "manager",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with manager"
+  },
+  {
+   "content": 192,
+   "drawn": "reviewer",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "reviewer",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with reviewer"
+  },
+  {
+   "content": 192,
+   "drawn": "scout",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "scout",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with scout"
+  }
+ ],
+ "searchInFlight": false,
+ "sidebarText": "Chats Agents architect 1 coder 3 designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6",
+ "url": "/?measure=1&shot=after-rest-dark",
+ "viewport": "1440x817@2"
+}
