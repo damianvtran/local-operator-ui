@@ -11,6 +11,22 @@ APP_DATA_DIR="$HOME/Library/Application Support/$APP_NAME"
 VENV_PATH="$APP_DATA_DIR/$VENV_NAME"
 LOG_FILE="$APP_DATA_DIR/backend-install.log"
 
+# Keep CPython's bytecode cache out of the application bundle.
+#
+# The bundled interpreter writes __pycache__/*.pyc beside the stdlib sources it
+# imports, and those sources live inside the code-signed .app - which is the
+# build's own extraResource. Every such write is a change to a sealed resource:
+# measured on an installed 0.17.3, `codesign --verify --deep` reported 308
+# `file added:` violations, all of them .pyc, and ShipIt then refuses the
+# in-place update with -67028 errSecCSBadBundleFormat. A file codesign reports
+# as *added* can be deleted and the seal comes back; a *modified* one cannot,
+# which is why nothing may ship a .pyc at all. The app sets this variable when
+# it spawns us; defaulting it here means a standalone run of this script cannot
+# pollute the bundle either. $HOME is the right place for the same reason the
+# venv lives there: it is never inside the thing that gets signed and swapped.
+: "${PYTHONPYCACHEPREFIX:=$APP_DATA_DIR/python-bytecode-cache}"
+export PYTHONPYCACHEPREFIX
+
 # Determine CPU Architecture and Python Directory Name
 ARCH=$(uname -m)
 PYTHON_DIR_NAME="python" # Default for x86_64

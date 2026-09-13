@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { is } from "@electron-toolkit/utils";
 import { BrowserWindow, app, dialog as electronDialog } from "electron";
+import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { LogFileType, logger } from "./logger";
 import {
 	linuxInstallScript,
@@ -371,8 +372,18 @@ export class BackendInstaller {
 			// Run installation script
 			const result = await new Promise<boolean>((resolve) => {
 				try {
-					// Set environment variables for the installation script
-					const env = { ...process.env };
+					// Set environment variables for the installation script.
+					//
+					// The install script creates the venv with our bundled interpreter,
+					// which makes that interpreter - and its stdlib, inside the sealed
+					// `.app` - the venv's own. Every python the script or the venv then
+					// runs would write `__pycache__/*.pyc` into the bundle and break its
+					// code signature, so the prefix is set here as well as in the shell
+					// environment the backend inherits: this spawn is the one path that
+					// runs before any of that exists. The scripts default the same
+					// variable themselves, for a standalone run of one of them.
+					const env: Record<string, string | undefined> =
+						withPythonBytecodeCache({ ...process.env }, this.appDataPath);
 
 					// Pass the resources path to the script for finding bundled Python
 					env.ELECTRON_RESOURCE_PATH = this.resourcesPath;
