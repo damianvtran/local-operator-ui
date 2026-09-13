@@ -152,15 +152,99 @@ const LABEL_GAP_ATTEMPTS = 2;
  * knows the session id and the admission request id at the same moment, and it
  * must do so before its first `await`), while this hook owns `setView`. A
  * direct import the other way would make the store depend on React state.
- *
- * A call for a session with nothing mounted is a silent no-op, which is the
- * correct behaviour rather than an error: the transcript that would have shown
- * the echo does not exist, and the owner's own row will paint when it does.
  */
 const echoTargets = new Map<
 	string,
 	(mutate: (state: TranscriptState) => TranscriptState) => void
 >();
+
+/**
+ * Echoes for a session whose transcript had not registered yet, replayed the
+ * moment one does.
+ *
+ * WHY THIS QUEUE EXISTS, AND WHY DELIVERY MUST NOT DEPEND ON MOUNT ORDER. On
+ * the New-chat path the session id does not exist until `createSession`
+ * returns, and the panel keyed on it has not mounted — let alone flushed the
+ * passive effect that registers it — at the moment the store paints the echo,
+ * because the store patches the id and fires the echo in ONE synchronous
+ * block. An unqueued `echoTargets.get(id)?.(...)` therefore dropped the echo
+ * silently on exactly the path the echo exists for: review round 1 measured
+ * the draft send at 0 landed / 1 dropped / 0 painted, while the
+ * existing-session send was 1/0/1.
+ *
+ * That silent drop was worse than the bug it replaced. With the composer now
+ * clearing before the await, a dropped echo means the box empties and the
+ * transcript stays blank for the whole engage — where previously the text at
+ * least stayed visible while the user waited.
+ *
+ * A queue rather than a second key: keying the registry on the panel identity
+ * would make delivery depend on the renderer and the store agreeing about what
+ * names a conversation before admission, which is the disagreement that caused
+ * this. Buffering makes the echo addressable by session id BEFORE any panel for
+ * that session exists, so the store keeps one vocabulary and the mount race
+ * stops being load-bearing.
+ */
+const pendingEchoes = new Map<
+	string,
+	((state: TranscriptState) => TranscriptState)[]
+>();
+
+/**
+ * Apply now if a transcript is listening, otherwise hold it for the one that
+ * is about to mount.
+ *
+ * Bounded by construction: entries are drained on registration and dropped
+ * when the mutation is applied, and a send admits at most one echo plus at
+ * most one retraction per request id.
+ */
+function deliverEcho(
+	sessionId: string,
+	mutate: (state: TranscriptState) => TranscriptState,
+): void {
+	const target = echoTargets.get(sessionId);
+	if (target) {
+		target(mutate);
+		return;
+	}
+	const queued = pendingEchoes.get(sessionId);
+	if (queued) queued.push(mutate);
+	else pendingEchoes.set(sessionId, [mutate]);
+}
+
+/**
+ * Register a transcript as the echo target for a session, draining whatever
+ * was painted before it existed, and return the matching unregister.
+ *
+ * Extracted from the effect below so the delivery rule is exercised against the
+ * REAL registry rather than a recorder standing in for it. That distinction is
+ * not academic: review round 1's blocker — the draft-path echo being dropped
+ * because nothing was listening yet — was invisible to every existing test
+ * precisely because they aliased this seam to a stub that always recorded.
+ */
+export function __registerEchoTarget(
+	sessionId: string,
+	apply: (mutate: (state: TranscriptState) => TranscriptState) => void,
+): () => void {
+	echoTargets.set(sessionId, apply);
+	/*
+	 * Taken and deleted BEFORE applying, so a mutation that throws cannot be
+	 * replayed onto the next mount and a remount cannot paint the same echo
+	 * twice. Re-painting would be harmless alone — `appendPendingUser` no-ops
+	 * for an id already present — but a retraction replayed after its own paint
+	 * had coalesced with the owner's row would delete a durable message.
+	 */
+	const queued = pendingEchoes.get(sessionId);
+	if (queued) {
+		pendingEchoes.delete(sessionId);
+		for (const mutate of queued) apply(mutate);
+	}
+	return () => {
+		// Only if still ours: a remount for the same session registers before the
+		// old effect cleans up, and an unconditional delete would drop the live
+		// registration.
+		if (echoTargets.get(sessionId) === apply) echoTargets.delete(sessionId);
+	};
+}
 
 /**
  * Paint the user's message optimistically, keyed by the admission request id
@@ -172,17 +256,20 @@ export function echoPendingUser(
 	text: string,
 	images: TranscriptImage[],
 ): void {
-	echoTargets.get(sessionId)?.((state) =>
-		appendPendingUser(state, id, text, images),
-	);
+	deliverEcho(sessionId, (state) => appendPendingUser(state, id, text, images));
 }
 
 /**
  * Remove an echo whose send was refused before anything was admitted. Never
  * call this for an ambiguous failure: see `admitChatDraft`.
+ *
+ * Queued like the paint it undoes, and for the same reason: a refusal can
+ * resolve before the panel mounts, and a retraction that was dropped while the
+ * paint it cancels was queued would leave the echo painted for a message that
+ * was provably never admitted.
  */
 export function retractPendingUser(sessionId: string, id: string): void {
-	echoTargets.get(sessionId)?.((state) => removeRecord(state, id));
+	deliverEcho(sessionId, (state) => removeRecord(state, id));
 }
 
 export function useCanonicalSessionStream(
@@ -710,13 +797,14 @@ export function useCanonicalSessionStream(
 					: { ...current, transcript };
 			});
 		};
-		echoTargets.set(sessionId, apply);
-		return () => {
-			// Only if still ours: a remount for the same session registers before
-			// the old effect cleans up, and an unconditional delete would drop the
-			// live registration.
-			if (echoTargets.get(sessionId) === apply) echoTargets.delete(sessionId);
-		};
+		/*
+		 * The same function the delivery test drives, so the registration and
+		 * drain the app performs are the ones under test. Draining here is what
+		 * makes the New-chat path work: the store fires the echo in the same
+		 * synchronous block that patches the session id, so the buffer is where it
+		 * lands and this is the first moment a transcript can receive it.
+		 */
+		return __registerEchoTarget(sessionId, apply);
 	}, [sessionId]);
 
 	const clearView = useCallback(() => {

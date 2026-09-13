@@ -43,49 +43,68 @@ import { build } from "esbuild";
 // --------------------------------------------------------------- thresholds
 
 /*
- * M1's ceiling, and WHY IT IS NOT THE SPEC'S 150 ms.
+ * M1's reported ceiling, and WHY IT IS NOT A PRECISION BOUND.
  *
- * The design specified < 150 ms, derived from the measured "same endpoint
- * immediately after: 12-42 ms". That figure is a SECOND send on a bridge that
- * has already admitted one - and M1 is a FIRST send on a freshly warmed
- * session, which is not the same operation. Measured on this host against the
- * warm-op branch, with the subscription and watch lease a real panel holds and
- * the warm confirmed to have reached state "warm" before sending:
+ * Two corrections live here, both from measurement rather than argument.
+ *
+ * FIRST: the design specified < 150 ms, derived from FINDINGS.md's "same
+ * endpoint immediately after: 12-42 ms". That figure is a SECOND send on a
+ * bridge that has already admitted one; M1 times a FIRST send on a freshly
+ * warmed session, which is a different operation - the first admit does work
+ * the second does not repeat. On this host, warm confirmed landed before each
+ * send:
  *
  *   first send after a completed warm   p50 293 ms   (138-350 over 10 rounds)
  *   second send on that same session    p50  44 ms
  *   third send on that same session     p50  53 ms
- *   control, no warm                    p50 1259 ms  (643-1711)
  *
- * So the warm genuinely removes the ~1.15 s engage - a 4.3x improvement - and
- * the ~250 ms that remains is first-admit work the second send does not repeat,
- * not a partially completed warm. A 150 ms gate here would fail a working
- * feature for measuring the wrong operation.
+ * ~6x apart, so gating a first send on a second send's figure fails a working
+ * feature.
  *
- * 500 ms is therefore a CATASTROPHE ceiling rather than a precision bound: ~1.4x
- * above the worst observed p95 and still far below the cold path, so the two
- * populations cannot overlap. The RATIO assertion below is the real gate,
- * because it is the only one that holds on a slower CI box - an absolute bound
- * calibrated on a laptop is the mistake `~/local-operator/AGENTS.md` documents
- * costing three PRs. Do not tighten this toward the observed number.
+ * SECOND, and the reason this is now a REPORTED number rather than an
+ * assertion: 500 ms was calibrated on one laptop and did not survive a second.
+ * Review round 1 ran this same harness against the same backend branch:
+ *
+ *   host          M1 warmed p50   M2 control p50   ratio   500 ms gate
+ *   author        225-293 ms      1259-1333 ms     4.3-5.9x   passed
+ *   reviewer      595 ms          2701 ms          4.5x       FAILED
+ *
+ * The feature was working on both - warm landed, control properly slow, ratio
+ * comfortably above 3x - and the absolute bound failed anyway on the slower
+ * box, because a slower machine inflates M1 and M2 together while a millisecond
+ * ceiling only tracks one of them. That is precisely the failure
+ * `~/local-operator/AGENTS.md` documents under "Calibrate ceilings from CI,
+ * never from your laptop" as having cost three PRs, and the previous version of
+ * this comment cited that rule and then broke it.
+ *
+ * So there is NO absolute M1 assertion. The number is measured, recorded and
+ * printed; the RATIO below is the gate. A catastrophe bound is kept only to
+ * report an outlier, set with deliberate headroom over the slowest observation
+ * (595 ms) rather than near it, and it is not asserted.
  */
-const M1_WARMED_SEND_CEILING_MS = 500;
+const M1_REPORTED_CEILING_MS = 1500;
 /*
- * The control's FLOOR. The cold engage measured 1134/1146/1220 ms originally and
- * 643-1711 ms here; 500 ms sits beneath all of it and far above any warmed send,
- * so this asserts "the cold path is still slow" without pinning a host-specific
- * number. It meets M1's ceiling at 500 deliberately: if both ever landed there
- * the ratio gate below would refuse the run, which is the correct outcome.
+ * The control's FLOOR, and this one IS asserted.
+ *
+ * It is what makes M1 mean anything: if the cold path stops being slow on a
+ * host, a fast M1 is indistinguishable from a fast machine. Both observed
+ * controls (1259 ms here, 2701 ms on the reviewer's box) and the original
+ * 1134/1146/1220 ms sit far above 500 ms, while every warmed send sits far
+ * below it, so this separates the populations without pinning a host-specific
+ * number.
  */
 const M2_COLD_SEND_FLOOR_MS = 500;
 /*
- * THE REAL GATE. The claim is "the engage is no longer inside the send", which
- * is a statement about the two populations being different in kind - and a
- * ratio survives a slow CI box where an absolute millisecond bound does not,
- * because a slower machine inflates both numbers together. Observed 4.3-6.2x;
- * 3x leaves real headroom while still being impossible to pass if the warm
- * stops working (a cancelled warm measured 1634 ms against a 1240 ms control,
- * i.e. a ratio below 1).
+ * THE REAL GATE.
+ *
+ * The claim is "the engage is no longer inside the send" - a statement that the
+ * two populations differ in KIND. A ratio is the only form of that claim which
+ * survives a slower box, because both numbers inflate together: 4.3-5.9x here
+ * and 4.5x on the reviewer's much slower host, where the absolute bound failed.
+ *
+ * 3x leaves real headroom under the slowest observed ratio while remaining
+ * impossible to pass if the warm stops working: a warm cancelled by the bridge
+ * detaching measured 1634 ms against a 1240 ms control, a ratio below 1.
  */
 const M1_MINIMUM_SPEEDUP = 3;
 /*
@@ -327,13 +346,43 @@ test("the backend under test is reachable and isolated", async (t) => {
 	const response = await requestDesktop({ op: "capabilities" }, url, token);
 	assert.equal(response.status, 200);
 	assert.equal(response.body.result.desktop_available, true);
-	// The scrub is asserted, not assumed: a CMUX_* variable reaching the child
-	// is the failure mode that renamed real workspaces, so it is checked
-	// directly rather than trusted to the spawn code above.
-	const leaked = Object.keys(isolatedEnv("/tmp/x", "t")).filter((key) =>
-		key.startsWith("CMUX_"),
+	/*
+	 * The scrub is proven against a POISONED parent and read back from the
+	 * CHILD's own environment.
+	 *
+	 * The previous version of this check filtered the dict `isolatedEnv` returns
+	 * while the parent happened to carry no `CMUX_*` at all, so it passed
+	 * whether or not the scrub worked (QA round 1, Q3). A guard that cannot
+	 * fail is not a guard, and this one stands in front of the failure mode that
+	 * renamed the operator's real cmux workspaces — so it is worth the synthetic
+	 * variables.
+	 *
+	 * Poison is set and removed around the call rather than left in
+	 * `process.env`, so a later test in this file cannot inherit it.
+	 */
+	const poison = {
+		CMUX_WORKSPACE_ID: "synthetic-workspace-must-not-escape",
+		CMUX_SESSION_ID: "synthetic-session-must-not-escape",
+	};
+	Object.assign(process.env, poison);
+	let childEnv;
+	try {
+		childEnv = isolatedEnv("/tmp/x", "t");
+	} finally {
+		for (const key of Object.keys(poison)) delete process.env[key];
+	}
+	assert.ok(
+		Object.keys(poison).every((key) => process.env[key] === undefined),
+		"the poison must not outlive this assertion",
 	);
-	assert.deepEqual(leaked, [], "no CMUX_* variable may reach the backend");
+	assert.deepEqual(
+		Object.keys(childEnv).filter((key) => key.startsWith("CMUX_")),
+		[],
+		"no CMUX_* variable may reach the backend, even when the parent carries one",
+	);
+	// And the rest of the environment still crosses, or the child would not run.
+	assert.equal(childEnv.LOCAL_OPERATOR_DESKTOP_TOKEN, "t");
+	assert.equal(childEnv.LOCAL_OPERATOR_CONFIG_DIR, "/tmp/x");
 	record(
 		"--",
 		"capabilities.session_catalogue",
@@ -555,7 +604,7 @@ test("M1/M2/M3: the warm removes the engage from the send, and the control prove
 		"M1",
 		"send after warm (subscribed)",
 		`${m1.p50} / ${m1.p95} ms`,
-		`<${M1_WARMED_SEND_CEILING_MS} ms`,
+		m1.p50 < M1_REPORTED_CEILING_MS ? "reported" : "reported (outlier)",
 	);
 	record(
 		"M2",
@@ -595,10 +644,17 @@ test("M1/M2/M3: the warm removes the engage from the send, and the control prove
 		m3.p50 < M3_WARM_CEILING_MS,
 		`M3 warm op p50 ${m3.p50}ms >= ${M3_WARM_CEILING_MS}ms - a warm that awaited its engage would move the cost to the keystroke`,
 	);
-	assert.ok(
-		m1.p50 < M1_WARMED_SEND_CEILING_MS,
-		`M1 warmed send p50 ${m1.p50}ms >= ${M1_WARMED_SEND_CEILING_MS}ms`,
-	);
+	/*
+	 * M1 is REPORTED, NOT ASSERTED - see the constant's comment. An absolute
+	 * millisecond bound on this number failed on a slower host while the feature
+	 * was demonstrably working (595 ms against a 2701 ms control, 4.5x), so the
+	 * ratio below carries the claim instead. An outlier is surfaced in the table
+	 * and in this line rather than failing the run.
+	 */
+	if (m1.p50 >= M1_REPORTED_CEILING_MS)
+		console.log(
+			`  NOTE: M1 p50 ${m1.p50}ms is above the ${M1_REPORTED_CEILING_MS}ms catastrophe bound; the ratio gate below still decides this run.`,
+		);
 	/*
 	 * The gate that actually carries the claim, and the one that survives a
 	 * slower box: a cold engage inside the send makes the two populations the
@@ -618,20 +674,26 @@ test("M4/M5/M6: the felt claims are pinned structurally, not by this clock", () 
 	 * Stated here so the benchmark reads as one table, and asserted where the
 	 * code lives. These are deliberately NOT timed:
 	 *
-	 *   M4 echo-to-paint      canonical-chat.test.mjs
-	 *                         "the echo is painted before the message request,
-	 *                          under the admission request id"
-	 *                         - captures the transcript effect at the moment the
-	 *                           transport fixture is ENTERED, so it is a fact
-	 *                           about ordering that cannot flake.
-	 *   M5 panel remounts     canonical-chat.test.mjs
-	 *                         "the panel keys on the session once one exists"
-	 *                         - the identity before and after admission is one
-	 *                           value, so there is no remount to count.
-	 *   M6 connecting states  same test: no remount means the stream hook is
-	 *                         never re-created, and `status: "connecting"` is
-	 *                         only ever re-entered by a fresh mount or a
-	 *                         sessionId change.
+	 *   M4 echo-to-paint      canonical-chat.test.mjs asserts the ORDERING (the
+	 *                         echo is painted before the transport is entered,
+	 *                         under the admission request id);
+	 *                         echo-delivery.test.mjs asserts the DELIVERY - that
+	 *                         it actually reaches a transcript, including on the
+	 *                         New-chat path where the panel has not mounted yet.
+	 *                         Both are needed: review round 1 found the ordering
+	 *                         correct and the delivery silently dropped.
+	 *   M5 panel remounts     canonical-chat.test.mjs, "the draft send remounts
+	 *                         the panel exactly once, before the message POST".
+	 *                         SCOPED: an existing-session send has no remount; a
+	 *                         draft send has exactly ONE, at `createSession`.
+	 *                         The swap moved it off the message POST rather than
+	 *                         removing it, and the echo survives it because the
+	 *                         pending-echo queue buffers by session id.
+	 *   M6 connecting states  follows M5 with the same scope: no remount on an
+	 *                         existing-session send, and the draft path's single
+	 *                         remount lands before the POST resolves, so the
+	 *                         panel that receives the admission row is the
+	 *                         subscribed one.
 	 *
 	 * The reducer half - that the echo COALESCES with the owner's row instead of
 	 * duplicating it - is transcript-reducer.test.mjs.
@@ -651,6 +713,17 @@ test("M4/M5/M6: the felt claims are pinned structurally, not by this clock", () 
 		"structural",
 		"canonical-chat",
 	);
-	record("M5", "SessionPanel remounts per send", "0", "canonical-chat");
-	record("M6", "connecting transitions per send", "0", "canonical-chat");
+	record("M4", "echo delivered to a transcript", "structural", "echo-delivery");
+	record(
+		"M5",
+		"remounts: existing-session / draft",
+		"0 / 1 (pre-POST)",
+		"canonical-chat",
+	);
+	record(
+		"M6",
+		"connecting: existing-session / draft",
+		"0 / 1 (pre-POST)",
+		"canonical-chat",
+	);
 });
