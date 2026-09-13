@@ -21,8 +21,13 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
+			/* The matcher and the row shaper, because the no-match state below is
+			   DERIVED the way the component derives it rather than asserted. */
+			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -31,9 +36,12 @@ const bundle = await build({
 	write: false,
 });
 const {
+	argumentEmptyCopy,
+	argumentRows,
 	candidateKey,
 	chosenByHandSurvives,
 	enterFooter,
+	matchChoices,
 	phaseLabel,
 	slashKeyIntent,
 } = await import(
@@ -273,4 +281,56 @@ test("the footer says what Enter will do, in each state", () => {
 	assert.equal(enterFooter({ ...base, runs: false }), "Enter completes the value.");
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
+});
+
+test("the empty copy names which of the four causes it is", () => {
+	const list = { rows: [], loading: false, error: null, needsSession: false };
+	// An `effort` cold owner reports nothing rather than "this model has none"
+	// (`destination-pickers.tsx` carries the same rule for its dialog).
+	assert.equal(
+		argumentEmptyCopy(list),
+		"Not reported yet. Enter opens the full picker.",
+	);
+	assert.equal(
+		argumentEmptyCopy({ ...list, needsSession: true }),
+		"Needs an open conversation. Start one first.",
+	);
+	assert.equal(
+		argumentEmptyCopy({ ...list, error: "Could not read the model catalogue." }),
+		"Could not read the model catalogue.",
+	);
+	assert.equal(argumentEmptyCopy({ ...list, loading: true }), "Loading…");
+	// Rows behind the list and none of them matching is a fact about the FILTER,
+	// which is the sentence UX round 1 U4 asked for.
+	assert.equal(
+		argumentEmptyCopy({ ...list, rows: [{ value: "delivery" }] }),
+		"No matches. Enter opens the full picker.",
+	);
+});
+
+/*
+ * The state the `argument-phase-no-match` frame photographs has to be one a user
+ * reaches by typing, so it is DERIVED here the way the component derives it - a
+ * non-empty roster the matcher answers nothing for - rather than trusted from a
+ * story fixture. That is also the property the capture's readiness poll needs:
+ * with the fixture honest, the only thing that could keep the frame out of the
+ * set was the poll itself.
+ */
+test("the no-match state is what typing a missing team produces", () => {
+	const teams = [
+		{ value: "delivery", name: "delivery", description: "Ships the release" },
+		{ value: "reviewers", name: "reviewers", description: "Reviews every diff" },
+	];
+	const rows = argumentRows("team", teams, null);
+	assert.ok(rows.length > 0, "the roster is reported");
+	assert.equal(matchChoices("zzz", rows).length, 0, "the query excludes it");
+	assert.equal(
+		argumentEmptyCopy({
+			rows,
+			loading: false,
+			error: null,
+			needsSession: false,
+		}),
+		"No matches. Enter opens the full picker.",
+	);
 });

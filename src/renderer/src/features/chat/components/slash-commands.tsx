@@ -63,6 +63,7 @@ import {
 	argumentRows,
 } from "./slash-argument-rows";
 import {
+	argumentEmptyCopy,
 	enterFooter,
 	phaseLabel,
 	slashDestructive,
@@ -686,7 +687,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			>
 				{state.matches.length === 0 ? (
 					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						{argument ? argumentEmptyCopy(state) : "No commands match."}
+						{argument
+							? argumentEmptyCopy(state.argumentList)
+							: "No commands match."}
 					</div>
 				) : (
 					<ul>
@@ -828,39 +831,6 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 			)}
 		</>
 	);
-}
-
-/**
- * The honest empty state for an argument list.
- *
- * An empty list has FOUR causes and they are different facts. "Not reported
- * yet" is the `effort` cold-owner case: the route reads the owner's live spec,
- * which is unresolved before the first turn, so a model with a full ladder
- * answers `[]` (`destination-pickers.tsx` already carries this rule for the
- * dialog). Reading it as "this model has none" was a defect once. A failure, a
- * missing session and — new here — a query that matched nothing are the others.
- *
- * The no-match case used to fall into the cold-owner sentence, so typing a team
- * the roster does not have reported "the roster was never reported": a false
- * statement in the primary `/team` flow, in the voice of the one surface the
- * design made honest about the three empty causes (round 1 UX U4).
- *
- * The route is named because that is the promise §C16 makes and because the
- * user is otherwise at a dead end holding the command. "Enter opens the full
- * picker" is TRUE in every empty state here: the token is the whole line, so
- * Enter falls through to the composer's planner, which runs the command the
- * user typed and opens its picker (round 1 D2).
- */
-function argumentEmptyCopy(state: SlashCompletionState): string {
-	if (state.argumentList.needsSession)
-		return "Needs an open conversation. Start one first.";
-	if (state.argumentList.error) return state.argumentList.error;
-	if (state.argumentList.loading) return "Loading…";
-	// Rows exist, the query excluded all of them: "not reported yet" would be a
-	// lie about the source rather than a fact about the filter.
-	if (state.argumentList.rows.length > 0)
-		return "No matches. Enter opens the full picker.";
-	return "Not reported yet. Enter opens the full picker.";
 }
 
 /**
