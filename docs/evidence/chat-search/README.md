@@ -9,13 +9,29 @@ something forgettable, could not be found from the app at all. The CLI's
 
 These frames are the change, captured on two trees against the same store. The
 `before` halves are `origin/main`'s shipped sidebar search; the `after` halves are
-this branch at `bed8de048`, the head the capture ran against, driven by the same
-harness against the same seeded store.
+this branch, driven by the same harness against the same seeded store.
+
+**BOTH HALVES ARE OLDER THAN EITHER TREE NOW, and the reason is not this branch.**
+While this set was being re-shot, `main` went 0.17.3 → 0.20.1 and **started moving
+the same sidebar**: #136 put a clear control INSIDE the search field and #139
+realigned the New chat row. Both are visible in every frame of this set, and the
+search field is in all of them, so no frame here is a picture of what either tree
+draws today. The argument this table used to make — that `chat-sidebar.tsx` was
+byte-identical between the `before` tree and then-current main, so the shipped
+halves had not moved — is true up to 0.19.7 and false from 0.20.0, where main's own
+claim to that file begins. Re-shooting the whole set on both sides of the 0.20.1
+sync is the OPEN FOLLOW-UP; the attempt made in this round got no browser window at
+all (the capture bridge's daemon was up with no browser attached to it, and
+`browser tabs` reports exactly that), so nothing was re-shot and nothing is
+claimed to have been. What survives the staleness, and why, is stated with each
+claim below: the ROW-level readings are unaffected, because the code that draws
+the rows is this branch's and the sync did not touch it — it is the FIELD in the
+frame, and only the field, that is behind.
 
 | Tree | Version | What it is |
 | --- | --- | --- |
-| `before` | `origin/main` (0.17.3) | the shipped sidebar search: name and label only. These frames are still pictures of main's panel rather than of a superseded one: `chat-sidebar.tsx` and the components it draws the list with are the SAME blob (`350012054012402e1ac84b2b076f8f80e75e22a8`) at 0.17.3 and at 0.19.6, so the shipped path they show has not moved between the two |
-| `after` | `feat/chat-search-content` at `bed8de048` | the same sidebar asking `GET /v1/desktop/sessions/search`. Every `after-*` frame was captured in one session against that head, except the two marked **stale** in the table below |
+| `before` | `origin/main` at **0.17.3** | the shipped sidebar search: name and label only — captured when main's sidebar was the blob below. Main's sidebar has moved since (#136, #139), so read these as the shipped search path of that session, and not as today's panel |
+| `after` | `feat/chat-search-content` at `bed8de048` (plus the accessibility round's frames, whose pixels are identical — see below) | the same sidebar asking `GET /v1/desktop/sessions/search`, and it is this branch's own panel: the merge that brought main's field, its clear control and the row alignment in is **after** these frames were taken, which is the other half of the staleness above |
 
 | State | Before | After |
 | --- | --- | --- |
