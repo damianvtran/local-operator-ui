@@ -43,7 +43,7 @@
       "chrome": "152.0.7977.78"
     }
   },
-  "rafFrames": 116,
-  "backendIpc": "\"0.19.6\"",
+  "rafFrames": 122,
+  "backendIpc": "\"0.19.7\"",
   "updateCheck": "rejected: Error invoking remote method 'check-for-updates': Error: ENOENT: no such file or directory, open '/Users/damian/local-operator-ui-worktrees/pr-toolchain/dist/mac-arm64/Local Operator.app/Contents/Resources/app-update.yml'"
 }

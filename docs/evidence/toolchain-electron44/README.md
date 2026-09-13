@@ -26,9 +26,13 @@ rendered at 122 rAF/s. The preload now ships as plain JS
 over CDP. The shell renders at `#/chat` with its real navigation; the banner and
 the retry panel are the app correctly reporting that no backend is running in
 this run. `packaged-headless-metrics.json` is the same run's measurements: the
-bridge reports `electron 44.3.0 / chromium 152.0.7977.78 / node 24.20.0`, 116
-rAF frames in one second, viewport 1380x868, and `get-app-version` round-tripping
-to `"0.19.6"`.
+bridge reports `electron 44.3.0 / chromium 152.0.7977.78 / node 24.20.0`
+(`modules 149`), 122 rAF frames in one second, viewport 1380x868, and
+`get-app-version` round-tripping to `"0.19.7"`.
+
+Captured at `bb6904c69` (the branch head after its rebase onto `fb9c0942e`), and
+the artifact here is 357 MB: #137 moved build tooling and renderer-only packages
+out of `app.asar` in that same base.
 
 ## How to re-derive
 
@@ -73,15 +77,15 @@ updaterCacheDirName: local-operator-updater
 ```
 
 With the app running, `window.electron.ipcRenderer.invoke("check-for-updates")`
-returned `isUpdateAvailable: true` for `0.19.7` and `invoke("download-update")`
+returned `isUpdateAvailable: true` for `0.19.8` and `invoke("download-update")`
 changed the app's own log to:
 
 ```
-Downloading update from Local-Operator-0.19.7-arm64-mac.zip
-Unable to locate previous update.zip for differential download (is this first install?), falling back to full download
-Download progress: { percent: 86.27… }  →  { percent: 100 }
-New version 0.19.7 has been downloaded to …/Caches/local-operator-updater/pending/Local-Operator-0.19.7-arm64-mac.zip
-Staged artifact verified: … (226061745 bytes, sha512 matches, 1888449771 bytes required free, 696976285 byte app).
+Found version 0.19.8 (url: Local-Operator-0.19.8-arm64-mac.zip)
+Downloading update from Local-Operator-0.19.8-arm64-mac.zip
+Download progress: … → { percent: 100 }
+New version 0.19.8 has been downloaded to …/Caches/local-operator-updater/pending/Local-Operator-0.19.8-arm64-mac.zip
+Staged artifact verified: … (146903631 bytes, sha512 matches, 1140359163 bytes required free, 362510038 byte app).
 ```
 
 and returned the staged path. Installing it is out of reach locally: the artifact
