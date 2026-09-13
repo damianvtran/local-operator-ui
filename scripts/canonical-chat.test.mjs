@@ -1470,13 +1470,15 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// The premise: the popup positions itself outside its parent's content
 	// box. If this ever stops being true the rest of this test is measuring
 	// nothing, so it is asserted rather than assumed.
-	// The two tokens, in one class list, with a closing quote after them. The
-	// leading-quote anchor this once carried was dropped when the popup gained a
-	// `@container/slash` prefix for the numbers-shed rule; the PREMISE is
-	// unchanged, and it is still asserted rather than assumed.
+	//
+	// Anchored on the popup's own leading tokens — `@container/slash` then
+	// `absolute bottom-full`, inside ONE quoted class list — because a bare
+	// `/absolute bottom-full[^"]*"/` can be satisfied by those two tokens
+	// anywhere in any quoted string in the file, which is the check weakened
+	// rather than moved (round 1 R5).
 	assert.ok(
-		/absolute bottom-full[^"]*"/.test(slash),
-		"the slash popup no longer renders `absolute bottom-full`, so this test's premise about escaping the parent box is stale",
+		/@container\/slash absolute bottom-full[^"]*"/.test(slash),
+		"the slash popup no longer renders `@container/slash absolute bottom-full`, so this test's premise about escaping the parent box is stale",
 	);
 
 	const scan = scanJsxTree(composer);
