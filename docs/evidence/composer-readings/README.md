@@ -120,3 +120,30 @@ width, i.e. whether the name truncated), `chipText`, `send` and
 that it measured the button-line wrapper instead of the controls inside it and
 reported the controls' auto margin as `0px`, which reads exactly like the
 blocker this round fixed.
+
+## Round 3: the fifth reading, photographed
+
+The `after/` set was re-captured again at the final head, because the round-2
+commit added a fifth reading and the previous frames showed four — a frame that
+depicts a replaced layout is the one thing this directory must not ship.
+
+What the new frames add:
+
+- **Five readings** at 900, ending in the session's active processing time
+  (`41m1s` from the seeded checkpoint), inert and last in the cluster.
+- **The drop rung, observed rather than asserted.** At a 750px box the duration
+  is `SHED` — present in the DOM, hidden by its container-range query — and at
+  749 and every wrapped width down to the 220 floor it is back, because below
+  the wrap threshold the cluster owns its own line and has room for it. That is
+  the ladder the band uses, and `numbers.json` records it per frame as
+  `durationReading.shed`.
+- **`estimate-800` / `estimate-900`**, the state that SET the 860 threshold: the
+  context reading carrying the word `estimate` on either side of the band.
+- **`chip-menu-220`**, the icon-only chip's menu open at the floor.
+
+`durationSource` is stated on every frame: the value is injected into the
+canonical snapshot, because `active_duration_s` is banked into the durable
+checkpoint but `_restore_cold_details` does not restore it on a cold open, so
+the wire answers `0.0` and the reading is correctly absent. Injecting and
+labelling it is the honest way to photograph the reading; captioning an absence
+as the feature is not. The backend gap is a separate PR.
