@@ -309,7 +309,10 @@ function SessionPanel({
 		/**
 		 * Passed to `admitChatDraft` so the composer can clear itself at the moment
 		 * the optimistic echo is painted rather than at the moment it submitted.
-		 * See `use-message-input.ts` for why that distinction is the whole point.
+		 * On the New-chat path nothing clears a live composer - the identity flip
+		 * replaces the one holding the text - so read `use-message-input.ts` for what
+		 * this callback does and does not do there; the distinction is the whole of
+		 * U1/U3.
 		 */
 		onEchoPainted?: () => void,
 	): Promise<SendOutcome> => {

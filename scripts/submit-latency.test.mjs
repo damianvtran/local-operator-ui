@@ -543,8 +543,17 @@ async function cleanup() {
 	cleanedUp = true;
 	for (const { child } of started) killGroup(child, "SIGKILL");
 	const stubborn = [];
-	for (const { root } of started)
-		if (!(await sweepRoot(root))) stubborn.push(root);
+	for (const { root } of started) {
+		/*
+		 * Only a root still ON DISK is "left behind". `sweepRoot` also answers
+		 * false when the census could not read the table (R6-1's fail-closed
+		 * rule), so a root that is already gone plus an unreadable census used to
+		 * print a tree that was never left behind (QA round 7, Q2). The verdict
+		 * stays fail-closed; only the sentence is narrowed to trees this run can
+		 * still point at.
+		 */
+		if (!(await sweepRoot(root)) && existsSync(root)) stubborn.push(root);
+	}
 	if (stubborn.length)
 		console.log(
 			`  WARNING: ${stubborn.length} config dir(s) could not be removed and are being left behind: ${stubborn.join(", ")}`,

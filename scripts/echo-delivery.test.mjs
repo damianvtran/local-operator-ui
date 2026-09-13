@@ -600,6 +600,28 @@ test("U1: the composer holds the text until the echo is painted, and empties wit
 	);
 });
 
+test("F1: a send whose echo never paints still retires the box (post-settle fallback)", async () => {
+	/*
+	 * Round 7, F1. The buffered path's callback is delivered to a composer the
+	 * identity flip has already unmounted, so no test that drives the callback
+	 * can tell whether the post-settle fallback after the await is still there:
+	 * deleting it kept this file green. This case drives the path that has no
+	 * echo at all - a slash command, a gate answer, the legacy model path - and
+	 * is the shipped test that fails when that fallback is removed.
+	 */
+	const settled = await driveComposer({ onSubmit: () => true });
+	assert.equal(
+		settled.after,
+		"",
+		"a send that never echoes must still clear the box once it settles",
+	);
+	assert.equal(
+		settled.storedDraft,
+		"",
+		"and retire the persisted draft, or a later mount adopts the text back",
+	);
+});
+
 test("U2: a refused send restores the text only into an empty composer", async () => {
 	const quiet = await driveComposer({
 		onSubmit: ({ onEchoPainted }) => {

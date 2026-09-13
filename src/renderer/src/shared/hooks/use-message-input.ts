@@ -233,12 +233,22 @@ export const useMessageInput = ({
 		 * app had already emptied and a transcript that had nothing in it - which
 		 * reads as the message having been thrown away.
 		 *
-		 * So the clear is no longer the submit's to time. `onEchoPainted` fires
-		 * when the echo has been applied to a mounted transcript, and that is the
-		 * only thing that clears the box: synchronously with the echo on the
-		 * existing-session path (still one frame), and at the remount on the draft
-		 * path, where the box the user is looking at is the new panel's - already
-		 * empty - and the message is in that panel's first painted frame.
+		 * So the clear is no longer the submit's to time. `onEchoPainted` fires when
+		 * the echo has been applied to a mounted transcript, and on THAT path it is
+		 * the only clear: synchronously with the echo, so the box empties in the same
+		 * commit the row appears (still one frame).
+		 *
+		 * It is NOT the only clear in this file, and on the New-chat path it is not
+		 * the one the user sees. There the drain delivers the callback into the
+		 * composer the identity flip has already unmounted - the store patches the
+		 * session id and fires the echo before this hook resumes - so the clear it
+		 * requests lands on a component that is gone. What ends the interval is that
+		 * the replacement panel never held the text and paints the echo in its first
+		 * state (U3). The `clearOnce()` after the await below is the fallback for
+		 * every send that never echoes at all - a slash command, a gate answer, the
+		 * legacy model path - and it is what a harness holding ONE mounted composer
+		 * observes on the buffered path (round 7, F1). Both triggers clear only the
+		 * text this submit is carrying, once per submit.
 		 *
 		 * The payload is still captured ONCE and threaded through every consumer
 		 * below. Re-reading `inputValue` after a clear yields "", which would

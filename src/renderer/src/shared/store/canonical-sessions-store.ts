@@ -341,7 +341,12 @@ export async function admitChatDraft(
 		 * this block is about to mint does not exist yet - so the echo buffers and
 		 * lands when that panel mounts, one create hop later. `onEchoPainted` is
 		 * what keeps the composer honest there: the box holds the text until the
-		 * echo is actually painted rather than until this line runs.
+		 * echo is actually painted rather than until this line runs. What that means
+		 * mechanically is worth spelling out, because the callback does NOT clear the
+		 * box the user is looking at: the drain delivers it into the composer this
+		 * `updateDraft` has already unmounted, and the interval ends because the panel
+		 * that replaces it never held the text and seeds its first state from the
+		 * buffer (U3, `seedPendingEchoes`).
 		 *
 		 * Keyed by `admissionRequestId` — the id the owner gives the durable row
 		 * — so this coalesces with `message_start` instead of duplicating it.

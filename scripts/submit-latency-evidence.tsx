@@ -2,9 +2,14 @@
  * Evidence harness: the shipped chat surface on the real submit path.
  *
  * See `submit-latency-evidence.html` for why this exists. The short version:
- * the claim under test is "the user's text reaches the transcript in one frame
- * and the composer is already empty", which is a claim about a rendered frame,
- * and the round trip it overlaps is the thing that used to cost ~1.15s. So
+ * the claim under test is "the user's text reaches the transcript without the
+ * user ever looking at an empty box and an empty transcript", which is a claim
+ * about a rendered frame, and the round trip it overlaps is the thing that used
+ * to cost ~1.15s. On an existing conversation that is one frame. On New chat it
+ * is two - the box holds the text for the create hop and the panel that mounts
+ * then paints the echo in its first state - so the frame to judge is the one
+ * after the flip, not the one at Enter (round 7, F1; the protocol and both
+ * acceptance criteria are in docs/evidence/submit-latency/README.md). So
  * nothing on that path may be stubbed — this mounts the real `ChatPage`, which
  * drives the real store, the real `admitChatDraft`, the real `desktopRequest`
  * and a real SSE subscription.

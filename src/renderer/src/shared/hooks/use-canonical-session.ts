@@ -241,6 +241,13 @@ const pendingEchoes = new Map<string, PendingEcho[]>();
  * Enter and the echo could not exist until `sessions.create` returned
  * (p50 142 ms / max 409 ms at load 433-445), so for the whole create hop the
  * user was looking at an empty box and an empty transcript.
+ *
+ * The drain's call reaches whichever composer registered, and on the New-chat
+ * path that is NOT the one which asked: the identity flip unmounts the draft
+ * composer before the panel exists to receive the echo, so the callback lands on
+ * a component that is gone while the visible panel paints the echo in its first
+ * state. A caller therefore reads the callback as "the echo is in a transcript
+ * now", never as "your box was cleared" (round 7, F1).
  */
 type PendingEcho = {
 	mutate: (state: TranscriptState) => TranscriptState;

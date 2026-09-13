@@ -110,6 +110,11 @@ type MessageInputProps = {
 		 * Called when the send's optimistic echo reaches a transcript, i.e. when the
 		 * text is on screen. Threaded through to `admitChatDraft`; a host with no
 		 * echo to wait on (the legacy chat path) may ignore it.
+		 *
+		 * Read it as "the echo is in a transcript now", not as "your box was
+		 * cleared": on the New-chat path the drain delivers it to the composer the
+		 * identity flip has already unmounted, while the visible panel paints the
+		 * echo in its first state. See `use-message-input.ts` (round 7, F1).
 		 */
 		onEchoPainted?: () => void,
 	) => SendOutcome | Promise<SendOutcome>;

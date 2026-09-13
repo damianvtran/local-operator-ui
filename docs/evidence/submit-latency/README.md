@@ -3,8 +3,22 @@
 Pressing Enter used to leave the user's text sitting in the composer for ~1.15s
 with nothing on screen, because the cold runtime engage was taken inline inside
 the message request. These frames are the before state, the after state, and the
-moment that separates them: the instant after Enter, when the text has to be out
-of the box and in the transcript.
+moment that separates them.
+
+**The fix is not the same shape on both paths, and the capture protocol below
+exercises the harder one.** In an existing conversation the text leaves the box
+in the same synchronous block that paints the echo — one frame after Enter — so
+there the instant after Enter is the whole claim. On **New chat** (step 2) there
+is no session to paint into yet: the box keeps the text for the create hop the
+send spends in `sessions.create` (p50 142 ms, max 409 ms at load 433-445, UX
+round 1), and the panel that mounts when that session exists paints the echo in
+its FIRST state. **Nothing clears the composer the user is looking at on that
+path** — the composer that held the text is unmounted by the identity flip, and
+the one that replaces it never had the text — so the after column needs TWO
+frames: the instant of Enter (text still in the box, transcript empty, the
+bounded create hop) and the first painted frame after the flip (box empty,
+message present). Neither still carries the claim alone; the pair, with the
+same-turn readings beside it, is the claim.
 
 ## What produced these frames
 
@@ -91,7 +105,8 @@ these frames are about.
 | [before-after-enter.png](before-after-enter.png) | The reported defect. Immediately after Enter the text is **still in the composer** and the transcript is **still empty**: for the whole engage the user has no evidence their message was accepted. |
 | [before-settled.png](before-settled.png) | The same send once the backend answers, roughly a second later. Only now does the message appear. |
 | [after-typed.png](after-typed.png) | This branch, same message, same backend. Identical starting state. |
-| [after-after-enter.png](after-after-enter.png) | The claim. Immediately after Enter the composer is **already empty** and the user's message is **already in the transcript**, painted optimistically under the admission request UUID while the engage is still running behind it. |
+| [after-after-enter.png](after-after-enter.png) | This branch, at the instant of Enter. On **New chat** this still shows the text in the composer and an empty transcript, and that is correct rather than the defect: it is the create hop (p50 142 ms), and the echo is admitted behind it, not withheld. Read it together with `after-flip.png`; it carries nothing on its own. In an existing conversation the same frame already shows the box empty and the message painted. |
+| [after-flip.png](after-flip.png) | The claim on the New-chat path: the first painted frame of the panel the store mounts once `sessions.create` returns — composer empty, the user's message already in the transcript, painted optimistically under the admission request UUID while the message request is still in flight. |
 | [after-settled.png](after-settled.png) | The owner's own row has replaced the echo in place — one row, not two, because the echo is keyed by the id the backend gives the durable row. The agent's reply follows. |
 
 ## Where this set is declared, and what that costs
@@ -105,7 +120,10 @@ the gate is not looking at this path at all (design round 1, D3).
 
 Declaring it flips that. The declared count and the files on disk must agree, so
 the moment a `.webp` lands in this directory the gate FAILS and names this set -
-which is the point. Two things it does not buy, stated so nobody reads the green
+which is the point. **The protocol below produces seven** (three per column plus
+the after column's extra `after-flip.png`), so the capture that lands them sets
+this entry's `frames` to `7` in the same commit. Two things it does not buy,
+stated so nobody reads the green
 as more than it is: a passing run still says nothing about whether these frames
 are good, only that there are none; and the manifest's own
 `head`/`srcTree`/`scriptsTree` stamp is deliberately left where it was. A stamp
@@ -198,27 +216,48 @@ each port. Use the same message text both times.
 4. **Capture `<col>-typed.png`** — before pressing anything.
 5. Press **Enter** and capture `<col>-after-enter.png` **in the same protocol
    turn as the keypress** - the key event and the screenshot issued as one pair
-   on one session, with no round trip in between. This is the frame that carries
-   the claim, and a hand-timed one measures the hand: two runs would produce two
-   different pictures, which is what stops it being re-derivable (design round
-   1, D2). Record the same turn's readings beside the still, in whatever notes
-   accompany the capture: the composer textarea's `value` (empty, or the message)
-   and whether the transcript holds a user row. Those two facts are the claim;
-   the still is what they look like. On the before column you have ~1.15 s for
-   both, on the after column the state is stable and you can take your time.
-6. Wait until the agent's reply finishes rendering. **Capture
+   on one session, with no round trip in between. A hand-timed one measures the
+   hand: two runs would produce two different pictures, which is what stops it
+   being re-derivable (design round 1, D2). Record the same turn's readings
+   beside the still, in whatever notes accompany the capture: the composer
+   textarea's `value` (empty, or the message) and whether the transcript holds a
+   user row. On the before column you have ~1.15 s for both. On the **after**
+   column this frame is expected to show the text still in the box and no user
+   row - the create hop, not a defect - so it is the control, not the evidence.
+6. **After column only.** Stay on the same session in the same protocol turn and
+   capture `after-flip.png` at the first painted frame of the panel that mounts
+   when the session exists. That panel is the harness's own `SessionPanel`
+   remount - the same chat surface, not a second page - so this frame needs no
+   apparatus step 5 did not already have. Wait on the DOM, not the clock: the
+   conditions are the textarea's `value` going empty and the transcript gaining
+   a user row, and screenshotting at that first observation keeps two runs
+   comparable the same way step 5's same-turn pair does. Record the same two
+   readings again at this instant. **This is the after column's evidence.**
+7. Wait until the agent's reply finishes rendering. **Capture
    `<col>-settled.png`.**
 
-Replace `<col>` with `before` or `after`. The six filenames are exactly those in
-the table above, and `scripts/check-evidence.mjs` expects that naming.
+Replace `<col>` with `before` or `after`. The seven filenames are exactly those
+in the table above, and they are what the declared frame count in
+`docs/evidence/manifest.json` is counted from (`scripts/check-evidence.mjs`
+counts the `.webp` files in this directory against `frames`).
 
 ### What each frame has to show
 
 - `*-typed.png` — identical on both columns. If they differ, something other
   than this PR is in the diff.
-- `before-after-enter.png` — **text still in the composer, transcript empty.**
-- `after-after-enter.png` — **composer already empty, message already in the
-  transcript.** This pair is the entire before/after argument.
+- `before-after-enter.png` — **text still in the composer, transcript empty**,
+  and still so at `before-settled.png` minus the settle: the defect is an empty
+  transcript for the whole ~1.15 s engage.
+- `after-after-enter.png` — **text still in the composer, transcript empty**:
+  the create hop on the New-chat path, bounded at p50 142 ms. It looks like the
+  before column's frame and is not the same thing; the same-turn reading beside
+  it is what distinguishes them (the before column holds that state for the
+  whole engage, the after column for the create hop).
+- `after-flip.png` — **composer empty, message in the transcript**, at the first
+  painted frame of the panel the store mounts when the session exists. This,
+  read with the keypress frame, is the after column's half of the argument: the
+  interval between the two states is the create hop, not a gap the user waits
+  out with nothing on screen.
 - `after-settled.png` — exactly **one** copy of the user's message. Two would
   mean the echo failed to coalesce with the durable row, which is the R6 defect.
 
