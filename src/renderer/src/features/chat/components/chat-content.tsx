@@ -42,7 +42,7 @@ import {
 } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
-import type { RunDetails } from "./run-details";
+import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -154,6 +154,28 @@ type ChatContentProps = {
 	 * so the legacy transcript grows no button and no reserved space.
 	 */
 	runDetails?: RunDetails | null;
+	/**
+	 * The session's configured MCP servers, for the panel's MCP section and the
+	 * trigger's attention dot.
+	 *
+	 * Read by the page (`useRunPanelMcpServers`) rather than by either consumer,
+	 * because the dot and the section must answer from ONE list: a trigger with
+	 * its own copy could acknowledge a row the panel never drew. Empty when the
+	 * capability is absent or nothing is configured, which is also what makes the
+	 * section render as absence.
+	 */
+	mcpServers?: readonly McpServerRow[];
+	/**
+	 * Whether a child's row can be opened: the `subagent_transcript` capability
+	 * (`§ 9.5`). False leaves the roster visible and quiet rather than lit and
+	 * inert.
+	 */
+	childrenOpenable?: boolean;
+	/**
+	 * Per-child `subagent_*` pulse counters, from the canonical stream, for the
+	 * reader's refresh cadence (`§ 5.3`).
+	 */
+	pulses?: Readonly<Record<string, number>>;
 };
 
 /**
@@ -168,6 +190,8 @@ const EMPTY_MESSAGES: Message[] = [];
 const CANONICAL_NONEMPTY: Message[] = [
 	{ id: "canonical", role: "system", timestamp: new Date(0) },
 ];
+/** One shared empty map, so an absent pulse prop costs no render churn. */
+const EMPTY_PULSES: Readonly<Record<string, number>> = {};
 
 const defaultCanvasState = {
 	isOpen: false,
@@ -214,6 +238,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		sessionStatus,
 		canonical,
 		runDetails,
+		mcpServers = [],
+		childrenOpenable = false,
+		pulses,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -307,6 +334,34 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 		const setFiles = useCanvasStore((s) => s.setFiles);
 
+		const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+		const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
+		const runPanelWidth = useUiPreferencesStore((s) => s.runPanelWidth);
+		const setRunPanelWidth = useUiPreferencesStore((s) => s.setRunPanelWidth);
+		const restoreDefaultRunPanelWidth = useUiPreferencesStore(
+			(s) => s.restoreDefaultRunPanelWidth,
+		);
+		const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
+		/*
+		 * The pane's VIEW state — which of its two views is showing — and the reason it
+		 * lives HERE rather than inside `RunPanel` (`§ 3.4`).
+		 *
+		 * The trigger's attention dot has to know whether the list is on screen, because
+		 * a reader replaces the panel's body wholesale: acknowledging on "the panel is
+		 * open" alone would mark a failure or a dropped MCP server as seen the moment it
+		 * landed behind a reader the user was reading. This component renders BOTH the
+		 * header (and therefore the trigger) and the pane, so it is the lowest point
+		 * that can answer the question once for both.
+		 */
+		const [readerChildId, setReaderChildId] = useState<string | null>(null);
+		const listOnScreen = isRunPanelOpen && readerChildId === null;
+		/*
+		 * Closing the pane drops the reader: the child belongs to one session's lineage,
+		 * and a reader left set would acknowledge its row while nothing is on screen.
+		 */
+		useEffect(() => {
+			if (!isRunPanelOpen) setReaderChildId(null);
+		}, [isRunPanelOpen]);
 		const openTabs = (canvasState ?? defaultCanvasState).openTabs;
 		const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
 		const files = (canvasState ?? defaultCanvasState).files;
@@ -318,6 +373,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// No effect needed: always use the value from the store, or fallback to default if 0
 		const effectiveCanvasPanelWidth =
 			canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
+		// The run panel's own zero-fallback is its default rather than the canvas's
+		// 450: the two panes are deliberately different widths, and an unset
+		// preference should land the run panel on the design's 420.
+		const effectiveRunPanelWidth = runPanelWidth === 0 ? 420 : runPanelWidth;
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -435,7 +494,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							description={description}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
-							fileCount={mentionedFileCount}
+							mcpServers={mcpServers}
+							listOnScreen={listOnScreen}
+							readerChildId={readerChildId}
 						/>
 						{/* Chat Options Sidebar */}
 						{!canonical && (
@@ -548,6 +609,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							maxWidth={1200}
 							side="left"
 							onDoubleClick={restoreDefaultCanvasPanelWidth}
+							label="Resize canvas"
 						/>
 						<div
 							ref={canvasContainerRef}
@@ -582,6 +644,54 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
+							/>
+						</div>
+					</>
+				)}
+
+				{/*
+				 * The run panel: the SAME slot, mutually exclusive with the canvas by
+				 * construction (`setRunPanelOpen`/`setCanvasOpen` each clear the other), so
+				 * only one of these two blocks can ever be mounted and neither needs a
+				 * guard against the other. It reuses the canvas's own three pieces — the
+				 * divider, the pinned-width wrapper with the `border-l` seam, and a root
+				 * element — because the pane mechanics are the slot's rather than either
+				 * occupant's. The divider takes its own label: two separators named
+				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
+				 *
+				 * The width range is the design's (320/420/640), narrower than the canvas's
+				 * because a roster and a prose transcript do not need a document pane's
+				 * room, and the pane does NOT auto-hide at narrow widths: the operator
+				 * asked for persistence, and a pane that disappears below a breakpoint is
+				 * the defect this replaces in a new costume.
+				 */}
+				{isRunPanelOpen && runDetails && (
+					<>
+						<ResizableDivider
+							sidebarWidth={effectiveRunPanelWidth}
+							onSidebarWidthChange={setRunPanelWidth}
+							minWidth={320}
+							maxWidth={640}
+							side="left"
+							onDoubleClick={restoreDefaultRunPanelWidth}
+							label="Resize run details"
+						/>
+						<div
+							style={{
+								minWidth: effectiveRunPanelWidth,
+								width: effectiveRunPanelWidth,
+							}}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+						>
+							<RunPanel
+								details={runDetails}
+								mcpServers={mcpServers}
+								sessionId={canonical?.view.frontend?.session_id ?? null}
+								pulses={pulses ?? EMPTY_PULSES}
+								childrenOpenable={childrenOpenable}
+								readerChildId={readerChildId}
+								onReaderChildChange={setReaderChildId}
+								onClose={() => setRunPanelOpen(false)}
 							/>
 						</div>
 					</>

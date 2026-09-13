@@ -15,6 +15,7 @@
  * the cap sheds.
  */
 
+import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import type { RunDetailsInput } from "./run-detail-model";
 
 /** The instant every fixture is measured against, so frames are reproducible. */
@@ -647,3 +648,256 @@ export const restoredAndUnrecognised = (): RunDetailsInput => ({
 	// push the third row toward the panel's floor.
 	todos: [],
 });
+
+/* ------------------------------------------------------------------ */
+/* The pane's own states                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A canonical session with nothing at all in flight.
+ *
+ * The state the OLD design could not photograph, because its trigger did not
+ * exist in it: the button was gated on `hasRunDetails`, so a session with no
+ * children, no plan and no failure had no button and therefore no panel. `§ 3.3`
+ * inverts that — the trigger is a data gate (`details !== null`), not a work gate
+ * — so `trigger-idle` photographs the icon that is on screen with nothing to
+ * report, and `panel-empty` photographs what it opens onto.
+ */
+export const idle = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+});
+
+/**
+ * Every child settled and the plan closed: `hasRunDetails` is false, so the
+ * panel's quiet state says "nothing in flight" over a roster of history.
+ *
+ * Distinct from `idle` in the one way that matters to the panel's copy: there IS
+ * a run here and it is finished, where `idle` has no run at all.
+ */
+export const settledHistory = settled;
+
+/**
+ * The plan that produced § 6.1's finding (2): an implicit phase beside a named
+ * one.
+ *
+ * The backend lazily creates `Todos` when `add` is called before any phase was
+ * named, and the wire cannot distinguish that from a phase an agent genuinely
+ * named `Todos` — so a plan holding both rendered a `To-dos` section directly
+ * above a phase headed `Todos`, one plan named twice. The fold is per PHASE now,
+ * and this is the fixture the frame exists for.
+ */
+export const mixedImplicitPhase = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [
+		phase("Todos", [
+			item("Read invoices/march.csv", "done"),
+			item("Total the unpaid rows", "pending"),
+		]),
+		phase("Publish", [
+			item("Write reports/unpaid-march.md", "done"),
+			item("Send the summary", "blocked", "waiting on the totals"),
+		]),
+	],
+});
+
+/** A brief long enough to fold: the reader's expander and its hidden count. */
+const LONG_BRIEF = [
+	"You are the reviewer for the March reconciliation.",
+	"",
+	"Read invoices/march.csv and group the unpaid rows by customer.",
+	"Treat anything not marked paid as outstanding, and say so explicitly",
+	"rather than inferring it. Then check the totals against ledger/q1.csv",
+	"and report every row where the two disagree, with both numbers.",
+	"",
+	"Do not write the report yourself; hand the findings back.",
+].join("\n");
+
+/**
+ * A child with a durable launch turn, a brief long enough to fold, and a name
+ * taken from the launch map.
+ *
+ * `launch_prompts` carries the CONCISE authored prompt against the launch
+ * turn's entry id, so the reader can replace the durable row — which holds the
+ * full role/team/system preamble — instead of opening on a wall of wrapper text
+ * (`§ 5.1`). `launch_message_id` is the launch turn in the REAL transcript file
+ * the reader fetches; a story's fixture page carries that id.
+ */
+export const readerChild = (
+	over: Partial<JobSpec> = {},
+): Record<string, unknown> => ({
+	...child({
+		id: "job-reader",
+		label: "Re-check the pending rows against the ledger",
+		role: "reviewer",
+		status: "running",
+		startedSecondsAgo: 96,
+		progress: "Running pytest tests/unit/server -q",
+		tokens: 23_100,
+		window: 200_000,
+		cost: 0.08,
+		...over,
+	}),
+	session_id: "a1b2c3d4e5f6",
+	prompt: LONG_BRIEF,
+	launch_message_id: "subagent-launch:job-reader",
+	launch_prompts: {
+		"subagent-launch:job-reader":
+			"Re-check the pending rows against the ledger.",
+	},
+});
+
+/** One durable transcript entry, in the wire's own shape. */
+const entry = (
+	id: string,
+	ts: number,
+	role: "user" | "assistant" | "tool",
+	text: string,
+	extra: Record<string, unknown> = {},
+): DesktopChildTranscriptPage["entries"][number] => ({
+	id,
+	ts: FIXTURE_NOW_MS / 1000 - ts,
+	type: "message",
+	payload: {
+		kind: "message",
+		role,
+		id,
+		content: text ? [{ type: "text", text }] : [],
+		tool_calls: [],
+		...extra,
+	},
+});
+
+/**
+ * A child's transcript page, as the reader's route answers one (`§ 10.1`).
+ *
+ * The story set needs these because a fixture cannot prove the PULSE, but it can
+ * and must prove every rendering of a page: the reader's own loader is exercised
+ * against a real backend in the live frame, and the STATES are photographed from
+ * here so they are reproducible without one.
+ */
+export const childPage = ({
+	state = "ready",
+	launchTurn = false,
+	includeTool = false,
+	includeImage = false,
+}: {
+	state?: "ready" | "pending" | "gone";
+	launchTurn?: boolean;
+	includeTool?: boolean;
+	includeImage?: boolean;
+} = {}): DesktopChildTranscriptPage => ({
+	state,
+	has_more: false,
+	cursor_missing: false,
+	entries: [
+		...(launchTurn
+			? [
+					entry(
+						"subagent-launch:job-reader",
+						400,
+						"user",
+						"ROLE: reviewer\nTEAM: core\nSYSTEM: You are a subagent of the Local Operator harness…\n\nRe-check the pending rows against the ledger.",
+					),
+				]
+			: []),
+		entry("c-u1", 380, "user", "Continue the reconciliation."),
+		entry(
+			"c-a1",
+			360,
+			"assistant",
+			"The March export has four rows whose status is not `paid`. I am checking them against the ledger before I total anything.",
+		),
+		...(includeTool
+			? [
+					entry("c-a2", 340, "assistant", "", {
+						tool_calls: [
+							{
+								id: "c-tool-1",
+								name: "bash",
+								arguments: { command: "wc -l invoices/march.csv" },
+							},
+						],
+					}),
+					entry("c-tool-1", 330, "tool", "412 invoices/march.csv", {
+						tool_name: "bash",
+						tool_call_id: "c-tool-1",
+					}),
+				]
+			: []),
+		...(includeImage
+			? [
+					entry("c-u2", 320, "user", "", {
+						images: [
+							{
+								// A digest with no bytes: the child-scoped attachment path is not
+								// part of this change, so the reader must render its honest
+								// "not available" row rather than a broken image or, worse, the
+								// PARENT's picture.
+								kind: "digest",
+								digest: "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+								media_type: "image/png",
+							},
+						],
+					}),
+				]
+			: []),
+		entry(
+			"c-a3",
+			300,
+			"assistant",
+			"Three of the four match the ledger. The fourth has no counterpart, so I cannot confirm it from this export alone.",
+		),
+	],
+});
+
+/**
+ * One row of an `mcp.list` payload, in the WIRE's own field names.
+ *
+ * `owned_scope` and `tool_count` rather than the model's `scope`/`toolCount`: the
+ * fixtures are payloads and the model folds them, which is what keeps the story
+ * set honest about the one part of this section that has a wire contract (`§ 9`).
+ */
+type McpWireRow = Record<string, unknown>;
+
+/** The MCP server sets `§ 11.3` asks for, in the wire's own field names. */
+export const mcpAllConnected = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{
+		name: "notion",
+		status: "connected",
+		tool_count: 24,
+		owned_scope: "project",
+	},
+	{ name: "linear", status: "connected", tool_count: 7, source: "~/mcp.json" },
+];
+
+export const mcpAuthRequired = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "notion", status: "auth-required", owned_scope: "project" },
+];
+
+export const mcpDisconnected = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "playwright", status: "disconnected", source: "~/.claude.json" },
+];
+
+/** A word this build has never been taught, beside one it has. */
+export const mcpUnknownStatus = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "homeassistant", status: "reticulating", owned_scope: "global" },
+];
+
+/** The cold facade's payload: `cold` on every row, no runtime attached. */
+export const mcpCold = (): McpWireRow[] => [
+	{ name: "files", status: "cold", owned_scope: "global" },
+	{ name: "notion", status: "cold", owned_scope: "project" },
+];
+
+/** One server coming up, which is not a problem and must not light the dot. */
+export const mcpConnecting = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "notion", status: "connecting", owned_scope: "project" },
+];

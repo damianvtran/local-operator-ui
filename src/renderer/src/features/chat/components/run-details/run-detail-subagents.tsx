@@ -1,160 +1,52 @@
 /**
- * The Subagents section of the run-details panel (`docs/run-details.md` § 4.1).
+ * The Subagents section of the run panel (`docs/run-sidebar.md` § 4).
  *
  * One row per child. The row is TWO lines, and that is the one place the port
  * departs from the TUI's single-line grammar: the TUI has a full dock band and a
- * fixed-cell terminal to lay a row out in, a 384px popover does not, and the
+ * fixed-cell terminal to lay a row out in, a 420px pane does not, and the
  * activity string is the single most useful live datum in the list. So it gets
  * its own line rather than being the first thing shed.
+ *
+ * Three things changed with the pane, and all three are § 4's:
+ *
+ * 1. **The row is a control.** Clicking it opens that child's reader; `Enter`/
+ *    `Space` on a focused row does the same, because the TUI's row is
+ *    `can_focus` with `Binding("enter", ...)` and a mouse-only affordance would
+ *    make one of the two a guess (`subagent_panel.py:1341-1343`).
+ * 2. **The row HAS a hover ground** — `bg-elevated`, the role `branding.md` names
+ *    for a hovered row. The old rule ("no row has a hover ground, because nothing
+ *    here is clickable") was right and is inverted by this change; the to-do rows
+ *    keep none, so the two lists no longer have to agree.
+ * 3. **`+N more` is a real disclosure control**, not an inert line: a child behind
+ *    the cap would otherwise be unreachable, and a roster where six rows are
+ *    reachable and the seventh silently is not is the defect, not the fix.
  *
  * Every rule that decides WHAT is on a row lives in `run-detail-model.ts`; this
  * file decides only how it is painted.
  */
 
+import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
-	Check,
-	CircleDashed,
-	CircleHelp,
-	CirclePause,
-	CircleSlash,
-	Clock,
-	LoaderCircle,
-	type LucideIcon,
-	RotateCcw,
-	X,
-} from "lucide-react";
-import {
-	type ChildStatus,
 	type RunDetails,
 	type SubagentRow,
 	childStateLabel,
 	panelSlice,
 	subagentTally,
 } from "./run-detail-model";
-
-/**
- * One mark per state, ported by meaning rather than by codepoint, exactly as
- * `trace/tool-glyphs.ts` ports the TUI's nerd-font table. `status_glyph` has a
- * mark for the pause circle and no branch at all for `gone` or an unrecognised
- * word — both fall through to its completed check — and all three have their
- * own mark here. `CirclePause` is the TUI's own `GLYPH_PAUSED`, reachable from
- * the restored path rather than from a live pause; the other two are the quiet
- * marks for "this state did not resolve into an outcome".
- *
- * Two properties are load-bearing and both are `§6.4`'s: **motion is a bonus,
- * never the contract** — running and interrupted are different SHAPES, so the
- * list survives `prefers-reduced-motion` and survives being looked at by someone
- * who cannot separate the two inks — and **failure is the only colour the
- * section spends**, which is the dock band's own ink law.
- */
-const CHILD_ICON: Record<ChildStatus, LucideIcon> = {
-	running: LoaderCircle,
-	queued: Clock,
-	paused: CirclePause,
-	interrupted: RotateCcw,
-	done: Check,
-	cancelled: CircleSlash,
-	gone: CircleDashed,
-	unknown: CircleHelp,
-	failed: X,
-};
-
-const CHILD_INK: Record<ChildStatus, string> = {
-	// `subagent_panel.py:371-391`. The running spinner stays neutral: the accent
-	// green is a scarce budget and a child at work has not done anything yet.
-	running: "text-ink-muted",
-	queued: "text-ink-dim",
-	// Muted like `interrupted`, and for the same reason: the child is not gone
-	// and did not fail — it is parked where the user left it, which is a state
-	// they may come back to (`subagent_panel.py` returns `muted` for both).
-	paused: "text-ink-muted",
-	// A run cut off by the process ending is not a failure — nothing went wrong —
-	// so it takes the muted ink and the rotate mark that says it may be resumable.
-	interrupted: "text-ink-muted",
-	done: "text-ink-dim",
-	cancelled: "text-ink-dim",
-	// Settled and quiet, and NOT `done`: both of these are states whose outcome
-	// is unknown, so they take the quietest ink without claiming a green check
-	// (`foldStatus`).
-	gone: "text-ink-dim",
-	unknown: "text-ink-dim",
-	failed: "text-danger",
-};
+import { NumberRun, SubagentStateIcon } from "./run-detail-row-parts";
 
 /**
  * Characters the trailing tally may occupy.
  *
- * The panel's width is a constant (`§5`: 384px) so its budget is one too — the
- * measurement this would otherwise need is `384 - 24px padding - the label's own
- * width`, which is what the number below is. The RULE lives in the model
+ * The panel's default width is a constant (`§7`: 420px) so its budget is one too
+ * — the measurement this would otherwise need is `420 - 24px padding - the
+ * label's own width`. The RULE lives in the model
  * (`subagentTally(rows, maxChars)`), because "which fact survives pressure" is
  * arithmetic and belongs where it can be asserted; only the width is a fact
  * about this component.
  */
-const TALLY_BUDGET = 44;
-
-const SubagentStateIcon = ({ status }: { status: ChildStatus }) => {
-	const Icon = CHILD_ICON[status];
-	return (
-		<span
-			aria-hidden={true}
-			className={cn(
-				"flex size-4 shrink-0 items-center justify-center",
-				CHILD_INK[status],
-			)}
-		>
-			<Icon
-				className={cn(
-					"size-4",
-					// Reduced motion: the glyph holds its frame. Shape already
-					// distinguishes it, which is why motion is a bonus and not the
-					// contract.
-					status === "running" && "motion-safe:animate-spin",
-				)}
-			/>
-		</span>
-	);
-};
-
-/**
- * The numbers run: role, elapsed, context, cost (`§4.1`).
- *
- * Each figure is omitted when unknown rather than zeroed — see the model — and
- * the segment disappears with it, which is why the seam is rendered BETWEEN
- * segments rather than after each one. Elapsed takes `tabular-nums` so a column
- * of them aligns without a fixed-width slot.
- */
-const NumbersRun = ({ row }: { row: SubagentRow }) => {
-	const figures: Array<{ key: string; text: string; tabular?: boolean }> = [];
-	if (row.role) figures.push({ key: "role", text: row.role });
-	if (row.elapsedLabel) {
-		figures.push({ key: "elapsed", text: row.elapsedLabel, tabular: true });
-	}
-	if (row.contextLabel) {
-		figures.push({ key: "context", text: row.contextLabel, tabular: true });
-	}
-	if (row.costLabel) {
-		figures.push({ key: "cost", text: row.costLabel, tabular: true });
-	}
-	if (figures.length === 0) return null;
-	return (
-		<span
-			className={cn(
-				"flex shrink-0 items-baseline gap-1 text-meta text-ink-muted",
-			)}
-		>
-			{figures.map((figure, index) => (
-				<span key={figure.key} className={cn("flex items-baseline gap-1")}>
-					{index > 0 && <span className={cn("text-ink-dim")}>·</span>}
-					<span className={cn(figure.tabular && "tabular-nums")}>
-						{figure.text}
-					</span>
-				</span>
-			))}
-		</span>
-	);
-};
+const TALLY_BUDGET = 48;
 
 /**
  * The row's second line (`§4.1`), which is one of two different kinds of text.
@@ -162,31 +54,17 @@ const NumbersRun = ({ row }: { row: SubagentRow }) => {
  * Both variants take `ink-muted`, where the activity line used to take
  * `ink-dim`: at 12px on the panel ground `dim` measures ≈4.7:1 — the tightest
  * text on the surface — and it is the ink the TUI deliberately moved AWAY from
- * for this same field (`subagent_panel.py:1069-1071`, and the assignment at
- * `:1153` that names `muted` for it).
+ * for this same field (`subagent_panel.py:1069-1071`).
  *
  * `errorLine` is MACHINE VOICE: `font-mono`, matching every other exception the
- * app prints (`trace/working-line.tsx:167`), kept VERBATIM — a fabricated
- * translation of an exception is a claim nobody can check — and wrapped to at
- * most two lines. Wrapping is the substantive half of that: head-truncated on
- * one line, `FileNotFoundError: [Errno 2] No such file or directory:
- * 'ledger/q1.csv'` rendered as `…'le…`, keeping the exception's preamble and
- * cutting the identifier, which is the only part that says WHAT failed.
- *
- * `activity` is prose about the work: sans, one line, head-truncated, because
- * there the head IS the useful part (the tool, then its arguments).
+ * app prints, kept VERBATIM — a fabricated translation of an exception is a
+ * claim nobody can check — and wrapped to at most two lines so the identifier
+ * survives.
  */
 const DetailLine = ({ row }: { row: SubagentRow }) => {
 	if (row.errorLine) {
 		return (
 			<span
-				/*
-				 * `leading-4` is pinned here for the same reason the activity line
-				 * pins it: `text-mono-sm`'s inherited 1.45 lands the two clamped
-				 * lines 3px off the 4px ramp, so the worst row in the list measured
-				 * 67px against `§5`'s 64. Both variants of the second line are one
-				 * 16px line height, and the failure row is exactly 12 + 20 + 2×16.
-				 */
 				className={cn(
 					"line-clamp-2 font-mono text-ink-muted text-mono-sm leading-4",
 				)}
@@ -209,39 +87,31 @@ const DetailLine = ({ row }: { row: SubagentRow }) => {
 	return null;
 };
 
-const SubagentRowView = ({ row }: { row: SubagentRow }) => {
-	/*
-	 * Line 2 is the live datum while the child works and the outcome's first line
-	 * once it has failed; a settled child that is neither has none.
+const SubagentRowView = ({
+	row,
+	interactive,
+	onOpen,
+}: {
+	row: SubagentRow;
+	/**
+	 * Whether this child can be opened at all.
 	 *
-	 * **That last part is this design's own choice, not a port, and the citation
-	 * it used to carry was wrong.** The TUI's roster does blank a settled row's
-	 * activity, but not for the reason claimed here: `row_facts` fills it from
-	 * `result_text` for every settled state (`subagent_panel.py:628-640`) and only
-	 * blanks it when the row's PAGE IS OPEN (`:653-660`, `if current and not
-	 * running`), which is the collapsed preview's `current=False` — so a settled
-	 * roster row there keeps its text. What this panel does instead is drop the
-	 * second line for a settled child that did not fail, because a 384px popover
-	 * two lines per row cannot hold a paragraph of `result_text` per settled child
-	 * and keep the live rows legible. The full record is the transcript, which is
-	 * where §3.1 sends it.
+	 * FALSE against a backend that does not advertise `subagent_transcript`
+	 * (`§ 9.5`): the roster still renders — it is `frontend.jobs`, which predates
+	 * this change — and the row renders without an open affordance: no hover
+	 * ground, no pointer cursor, no button role. A lit row that opens nothing is
+	 * worse than a quiet one, and the panel's chrome says why in one line.
 	 */
-	return (
-		<li
-			className={cn(
-				// No hover ground: nothing in this panel is clickable (`§4.3`), so
-				// nothing may react to a pointer. A row that lights up under the
-				// cursor is a promise the surface does not keep.
-				//
-				// `py-1.5` with the two pinned line-heights below is what makes the
-				// row heights exact (`§5`): 12 + 20 = 32px single-line, 12 + 20 + 16
-				// = 48px with a second line. The line-heights are pinned rather than
-				// inherited because `body-sm`'s 1.5 and `meta`'s 1.45 both land off
-				// the 4px ramp (19.5px and 17.4px), which measured as a 48-50px
-				// two-line row instead of the 48 the contract claims.
-				"flex gap-2 px-3 py-1.5",
-			)}
-		>
+	interactive: boolean;
+	onOpen: (id: string) => void;
+}) => {
+	/*
+	 * The row's content, shared verbatim by both branches so the interactive and
+	 * the degraded row cannot drift: the difference between them is the control
+	 * wrapper, not what a child's row says.
+	 */
+	const body = (
+		<>
 			<span className={cn("pt-0.5")}>
 				<SubagentStateIcon status={row.status} />
 			</span>
@@ -264,23 +134,82 @@ const SubagentRowView = ({ row }: { row: SubagentRow }) => {
 					 * the one fact the row exists to carry (`§6.4`).
 					 */}
 					<span className={cn("sr-only")}>{childStateLabel(row)}</span>
-					<NumbersRun row={row} />
+					<NumberRun row={row} />
 				</div>
 				<DetailLine row={row} />
 			</div>
+		</>
+	);
+
+	/*
+	 * `py-1.5` with the two pinned line-heights below is what makes the row
+	 * heights exact (`§5`): 12 + 20 = 32px single-line, 12 + 20 + 16 = 48px with a
+	 * second line, 12 + 20 + 32 = 64px on a wrapped failure.
+	 */
+	if (!interactive) {
+		return (
+			<li
+				data-run-panel-row={row.id}
+				className={cn("flex items-start gap-2 px-3 py-1.5")}
+			>
+				{body}
+			</li>
+		);
+	}
+	return (
+		<li data-run-panel-row={row.id} className={cn("flex flex-col")}>
+			{/*
+			 * A full-width BUTTON inside the `li`, not a clickable `li`: the row is
+			 * a control that must be a tab stop with an accessible name and the
+			 * app's `outline` focus ring, and hand-rolling that on a list item is
+			 * how a control ends up unreachable by keyboard. The button carries no
+			 * `aria-label`: its own text content is the name, which is the row's
+			 * label, state word and numbers — exactly what `§8` asks the accessible
+			 * name to be.
+			 */}
+			<button
+				type="button"
+				onClick={() => onOpen(row.id)}
+				className={cn(
+					"flex items-start gap-2 px-3 py-1.5 text-left",
+					"cursor-pointer transition-colors duration-fast hover:bg-elevated",
+				)}
+			>
+				{body}
+			</button>
 		</li>
 	);
 };
 
-export const RunDetailSubagents = ({ details }: { details: RunDetails }) => {
+export const RunDetailSubagents = ({
+	details,
+	expanded,
+	onToggleExpanded,
+	onOpenChild,
+	interactive,
+}: {
+	details: RunDetails;
+	/** Whether the disclosure has been opened, hoisted to the pane (§ 4). */
+	expanded: boolean;
+	onToggleExpanded: () => void;
+	onOpenChild: (id: string) => void;
+	interactive: boolean;
+}) => {
 	/*
 	 * The rows come from the model's `panelSlice`, never from a local narrowing:
 	 * the acknowledgement predicates count failures out of the SAME call, so a
 	 * filter or cap applied here would leave the `danger` dot answering a slice
-	 * this section does not render (`§3.3`). The pairing is pinned by source text
-	 * in `scripts/run-detail-model.test.mjs` from both ends.
+	 * this section does not render. The pairing is pinned by source text in
+	 * `scripts/run-detail-model.test.mjs` from both ends.
+	 *
+	 * The cap is the only thing the disclosure changes: the priority rule, the
+	 * failure reservation and the tie-break are untouched, and the expanded list
+	 * is rendered in the same order (`§ 4`, item 3).
 	 */
-	const { rows, hidden } = panelSlice(details.subagents);
+	const { rows, hidden } = panelSlice(
+		details.subagents,
+		expanded ? details.subagents.length : undefined,
+	);
 	return (
 		<section className={cn("flex flex-col pb-1.5")}>
 			{/*
@@ -307,16 +236,32 @@ export const RunDetailSubagents = ({ details }: { details: RunDetails }) => {
 			</div>
 			<ul className={cn("flex flex-col")}>
 				{rows.map((row) => (
-					<SubagentRowView key={row.id} row={row} />
+					<SubagentRowView
+						key={row.id}
+						row={row}
+						interactive={interactive}
+						onOpen={onOpenChild}
+					/>
 				))}
-				{/* Disclosed, never silently dropped (`§2.1`): the count is the only
-				 * thing that says the list is a slice. */}
-				{hidden > 0 && (
-					<li className={cn("px-3 pt-1 text-meta text-ink-dim")}>
-						{`+${hidden} more`}
-					</li>
-				)}
 			</ul>
+			{/*
+			 * The disclosure, and it is a CONTROL now. It states how many children
+			 * it holds — the old inert line's whole job — and it is the only way to
+			 * reach them, which is what makes it a button rather than a footnote.
+			 * `w-full` and left-aligned: it is a row of the list it extends, and a
+			 * centred chip would read as a footer of the section instead.
+			 */}
+			{hidden > 0 && (
+				<Button
+					variant="ghost"
+					size="sm"
+					className={cn("mx-3 mt-1 justify-start text-ink-dim")}
+					onClick={onToggleExpanded}
+					data-run-panel-disclosure={expanded ? "expanded" : "collapsed"}
+				>
+					{`Show ${hidden} more`}
+				</Button>
+			)}
 		</section>
 	);
 };

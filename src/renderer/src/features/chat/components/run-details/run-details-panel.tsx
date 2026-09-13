@@ -1,13 +1,14 @@
 /**
- * The run-details panel body (`docs/run-details.md` § 4).
+ * The run panel's body: the roster, the plan and the MCP server list
+ * (`docs/run-sidebar.md` § 4-§ 7).
  *
- * One panel, two sections, and a section appears only when it has content: a run
- * with only to-dos shows only `To-dos`, a run with only children shows only
- * `Subagents`. No empty heading and no placeholder — an empty section is not a
- * state anything renders, so it renders as absence.
+ * One panel, three sections, and a section appears only when it has content: a
+ * run with only to-dos shows only `To-dos`, a session with only MCP servers
+ * shows only those. No empty heading and no placeholder — an empty section is
+ * not a state anything renders, so it renders as absence.
  *
- * The panel is presentational and in-flow: the popover, the width, the scroll
- * region and the focus target are the TRIGGER's, because they are all facts about
+ * The body is presentational and in-flow: the pane (width, chrome bar, scroll
+ * region, escape ladder) is `RunPanel`'s, because all of those are facts about
  * where this body is shown rather than about what it says.
  *
  * Its one behaviour is its clock (`useRunDetailsClock`), which is here rather
@@ -18,17 +19,31 @@
 import { Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type HTMLAttributes, type ReactNode } from "react";
-import type { RunDetails } from "./run-detail-model";
+import { RunDetailMcp } from "./run-detail-mcp";
+import type { McpServerRow, RunDetails } from "./run-detail-model";
+import { hasRunDetails } from "./run-detail-model";
 import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
 import { useRunDetailsClock } from "./run-details-clock";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
+	mcpServers: readonly McpServerRow[];
+	/** Whether a child's row can be opened (`§ 9.5`). */
+	childrenOpenable: boolean;
+	onOpenChild: (id: string) => void;
+	/** Hoisted to the pane so a drill-in and back keeps the roster expanded. */
+	rosterExpanded: boolean;
+	onToggleRosterExpanded: () => void;
 };
 
 export const RunDetailsPanel = ({
 	details,
+	mcpServers,
+	childrenOpenable,
+	onOpenChild,
+	rosterExpanded,
+	onToggleRosterExpanded,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -42,23 +57,29 @@ export const RunDetailsPanel = ({
 	 * time-dependent field anywhere in the plan — an item is pending, done,
 	 * dropped or blocked, and every count is derived from those — so handing it
 	 * the re-measured object would re-render the whole plan once a second to
-	 * paint the same pixels, which is the reflow §6.3 exists to prevent, one
+	 * paint the same pixels, which is the reflow `§6.3` exists to prevent, one
 	 * component over. The re-measured object is a fresh object whenever anything
 	 * moved, so a memo would not save it either.
 	 */
 	const measured = useRunDetailsClock(details);
 	/*
 	 * Presence is judged on the DERIVED lists rather than on the visible slices:
-	 * a section whose rows are all over the cap still has content, and its `+N
-	 * more` row is the thing that says so. Both sections empty is unreachable
-	 * through the trigger (`§6.3`: the trigger is not rendered, so the popover
-	 * cannot open empty), so there is no empty-state copy here to get wrong.
+	 * a section whose rows are all over the cap still has content, and its
+	 * disclosure is the thing that says so.
 	 */
 	const sections: Array<{ key: string; body: ReactNode }> = [];
 	if (details.subagents.length > 0) {
 		sections.push({
 			key: "subagents",
-			body: <RunDetailSubagents details={measured} />,
+			body: (
+				<RunDetailSubagents
+					details={measured}
+					expanded={rosterExpanded}
+					onToggleExpanded={onToggleRosterExpanded}
+					onOpenChild={onOpenChild}
+					interactive={childrenOpenable}
+				/>
+			),
 		});
 	}
 	if (details.todos.length > 0) {
@@ -67,15 +88,49 @@ export const RunDetailsPanel = ({
 			body: <RunDetailTodos details={details} />,
 		});
 	}
+	if (mcpServers.length > 0) {
+		sections.push({ key: "mcp", body: <RunDetailMcp servers={mcpServers} /> });
+	}
+
+	if (sections.length === 0) {
+		/*
+		 * The QUIET STATE, and it is a state this surface did not have before.
+		 *
+		 * The old popover could not open empty: its trigger was gated on
+		 * `hasRunDetails`, so a session with nothing outstanding had no button and
+		 * therefore no empty panel to design. The pane's button is always there
+		 * (`§ 3.3`), so a canonical session with no children, no plan and no MCP
+		 * servers opens onto an empty pane — and the honest treatment of that is
+		 * one line saying so rather than a skeleton or a placeholder row.
+		 *
+		 * `hasRunDetails` decides which sentence, and this is the job it kept when
+		 * it lost its visibility gate: "nothing in flight" is a different fact from
+		 * "no run", and the settled case is the one a reader arrives in after work
+		 * they just watched finish. The second branch is DEFENSIVE: every clause of
+		 * `hasRunDetails` implies rows to render, so it is unreachable through the
+		 * panel today. It is written rather than asserted away because the copy
+		 * must never claim "nothing in flight" while something is outstanding, and
+		 * a silent fallthrough is exactly how it would.
+		 */
+		return (
+			<div className={cn("flex flex-col", className)} {...props}>
+				<p className={cn("px-3 py-3 text-body-sm text-ink-muted")}>
+					{hasRunDetails(details)
+						? "Nothing to show yet."
+						: "Nothing in flight."}
+				</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className={cn("flex flex-col", className)} {...props}>
 			{sections.map((section, index) => (
 				<Fragment key={section.key}>
 					{/*
-					 * One `hairline` rule between the two stacked lists, and nothing
-					 * else in the panel: it is the decorative role, and the boundary
-					 * between two lists carries no information a reader has to read.
+					 * One `hairline` rule between two stacked lists, and nothing else
+					 * in the panel: it is the decorative role, and the boundary between
+					 * two lists carries no information a reader has to read.
 					 */}
 					{index > 0 && <Separator />}
 					{section.body}

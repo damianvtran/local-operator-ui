@@ -94,6 +94,24 @@ export type CanonicalSessionView = {
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
 	loadingOlder: boolean;
+	/**
+	 * How many `subagent_start|subagent_progress|subagent_end` events this viewer
+	 * has seen for each child, keyed by job id (`docs/run-sidebar.md` § 5.3).
+	 *
+	 * A PULSE, not a transcript: the child's own transcript is a file on disk, and
+	 * this is the parent stream's signal that something about a child changed —
+	 * emitted at tool-batch boundaries and never per stream delta
+	 * (`harness/types.py:1580-1591`), which is exactly the boundary the file is
+	 * written at. A reader that wants the child's newest rows therefore needs a
+	 * counter it can watch, and the counter must be part of the view because the
+	 * renderer cannot observe an event the stream has already consumed.
+	 *
+	 * Seeded from the snapshot's own `live_events`, so a viewer that JOINS a turn
+	 * in flight starts with the beats already recorded rather than at zero — a
+	 * counter that began at zero for a child that had been working for a minute
+	 * would make the first refetch look like the first change.
+	 */
+	subagentPulses: Readonly<Record<string, number>>;
 };
 
 export type CanonicalSessionHandle = CanonicalSessionView & {
@@ -189,6 +207,7 @@ const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
 const LABEL_GAP_ATTEMPTS = 2;
 
 /**
+/**
  * How many durable rows one reconcile is allowed to read back in total.
  *
  * The read walks BACKWARDS in pages until a fetched page overlaps the row the
@@ -214,231 +233,51 @@ const echoTargets = new Map<
 	(mutate: (state: TranscriptState) => TranscriptState) => void
 >();
 
-/**
- * Echoes for a session whose transcript had not registered yet, replayed the
- * moment one does.
+ * The three events that mean "this child's durable transcript may have grown".
  *
- * WHY THIS QUEUE EXISTS, AND WHY DELIVERY MUST NOT DEPEND ON MOUNT ORDER. On
- * the New-chat path the session id does not exist until `createSession`
- * returns, and the panel keyed on it has not mounted — let alone flushed the
- * passive effect that registers it — at the moment the store paints the echo,
- * because the store patches the id and fires the echo in ONE synchronous
- * block. An unqueued `echoTargets.get(id)?.(...)` therefore dropped the echo
- * silently on exactly the path the echo exists for: review round 1 measured
- * the draft send at 0 landed / 1 dropped / 0 painted, while the
- * existing-session send was 1/0/1.
- *
- * That silent drop was worse than the bug it replaced. With the composer now
- * clearing on the echo's own paint, a dropped echo means the box empties and
- * the transcript stays blank for the whole engage — where previously the text
- * at least stayed visible while the user waited.
- *
- * A queue rather than a second key: keying the registry on the panel identity
- * would make delivery depend on the renderer and the store agreeing about what
- * names a conversation before admission, which is the disagreement that caused
- * this. Buffering makes the echo addressable by session id BEFORE any panel for
- * that session exists, so the store keeps one vocabulary and the mount race
- * stops being load-bearing.
+ * `subagent_start` and `subagent_end` bracket the child's life and
+ * `subagent_progress` fires on tool starts/ends and message ends — the same
+ * boundaries `harness/comms.py:1121-1145` writes the file at, which is why the
+ * pulse is the right signal and a stream delta would not be.
  */
-const pendingEchoes = new Map<string, PendingEcho[]>();
+const SUBAGENT_PULSE_EVENTS = new Set([
+	"subagent_start",
+	"subagent_progress",
+	"subagent_end",
+]);
+
+/** One more beat for a child, preserving the map's identity when nothing moved. */
+const bumpSubagentPulse = (
+	pulses: Readonly<Record<string, number>>,
+	jobId: string,
+): Record<string, number> => ({
+	...pulses,
+	[jobId]: (pulses[jobId] ?? 0) + 1,
+});
 
 /**
- * One buffered echo, and whoever asked to be told that it landed.
+ * Seed the per-child pulses from a snapshot's retained live events.
  *
- * `onPainted` is how the composer learns that the text it just handed to the
- * store is now IN a transcript. That moment is the only one at which taking the
- * text out of the box costs the user nothing, which is why the callback fires
- * AT THE APPLICATION SITE - synchronously with the mutation when a transcript is
- * mounted, and from the drain when one is not - and never on a timer. Firing it
- * anywhere else puts the composer and the transcript in different frames, which
- * is the defect UX round 1 measured on the New-chat path: the box emptied at
- * Enter and the echo could not exist until `sessions.create` returned
- * (p50 142 ms / max 409 ms at load 433-445), so for the whole create hop the
- * user was looking at an empty box and an empty transcript.
- *
- * The drain's call reaches whichever composer registered, and on the New-chat
- * path that is NOT the one which asked: the identity flip unmounts the draft
- * composer before the panel exists to receive the echo, so the callback lands on
- * a component that is gone while the visible panel paints the echo in its first
- * state. A caller therefore reads the callback as "the echo is in a transcript
- * now", never as "your box was cleared" (round 7, F1).
+ * A COUNT rather than a flag, because the reader's cadence is driven by change
+ * (`§ 5.3`): two beats that arrive inside one coalesced frame are one refetch, and
+ * a boolean could not say whether anything happened at all between two polls.
+ * Events without a `job_id` are skipped — the taxonomy gives every subagent event
+ * one (`harness/types.py:1557-1602`), and a pulse filed under `""` would be a key
+ * no reader can match to a child.
  */
-type PendingEcho = {
-	mutate: (state: TranscriptState) => TranscriptState;
-	onPainted?: () => void;
+const seedSubagentPulses = (liveEvents: unknown): Record<string, number> => {
+	const pulses: Record<string, number> = {};
+	if (!Array.isArray(liveEvents)) return pulses;
+	for (const event of liveEvents) {
+		if (!event || typeof event !== "object") continue;
+		const record = event as Record<string, unknown>;
+		if (!SUBAGENT_PULSE_EVENTS.has(String(record.type ?? ""))) continue;
+		const jobId = typeof record.job_id === "string" ? record.job_id : "";
+		if (!jobId) continue;
+		pulses[jobId] = (pulses[jobId] ?? 0) + 1;
+	}
+	return pulses;
 };
-
-/*
- * What the buffer may retain, and WHY THE LIMITS ARE WHAT THEY ARE.
- *
- * This is a retention bound, not housekeeping. A queued mutation closes over
- * the user's message text AND its images as base64 (`TranscriptImage`), so an
- * echo for a session that never mounts is that content held in renderer memory
- * for the lifetime of the window - after a failed send the user believes they
- * abandoned, and with no UI anywhere showing it. The drain is destructive, so
- * anything that MOUNTS costs nothing; these limits exist purely for the
- * sessions that never do.
- *
- * Per session: a send admits at most one echo plus at most one retraction for
- * the same request id, so 4 covers the legitimate case (a retry that re-echoes
- * before the first mount) with room to spare. Past that the OLDEST goes, since
- * the newest paint is the one the user is waiting to see.
- *
- * Across sessions: a user can stage drafts faster than panels mount, so the map
- * itself is capped and evicts by insertion order - `Map` preserves it, and the
- * oldest un-mounted session is the one least likely to ever be looked at.
- *
- * Both bounds only ever drop an OPTIMISTIC row. The durable message is the
- * backend's, and it paints from the owner's own `message_start` when the panel
- * mounts, so the worst case of an eviction is the pre-PR behaviour: the user
- * waits for the real row instead of seeing an echo.
- */
-const MAX_PENDING_ECHOES_PER_SESSION = 4;
-const MAX_PENDING_ECHO_SESSIONS = 16;
-
-/**
- * Apply now if a transcript is listening, otherwise hold it for the one that
- * is about to mount.
- */
-function deliverEcho(
-	sessionId: string,
-	mutate: (state: TranscriptState) => TranscriptState,
-	onPainted?: () => void,
-): void {
-	const target = echoTargets.get(sessionId);
-	if (target) {
-		target(mutate);
-		// AFTER the mutation, in the same synchronous block, so the two state
-		// updates a composer cares about (the row appearing, the box emptying)
-		// are batched into one commit. Cheaper to reason about than to schedule.
-		onPainted?.();
-		return;
-	}
-	const queued = pendingEchoes.get(sessionId);
-	if (queued) {
-		queued.push({ mutate, onPainted });
-		if (queued.length > MAX_PENDING_ECHOES_PER_SESSION) queued.shift();
-		return;
-	}
-	if (pendingEchoes.size >= MAX_PENDING_ECHO_SESSIONS) {
-		// Insertion order: the least recently buffered session is evicted whole.
-		const oldest = pendingEchoes.keys().next();
-		if (!oldest.done) pendingEchoes.delete(oldest.value);
-	}
-	pendingEchoes.set(sessionId, [{ mutate, onPainted }]);
-}
-
-/**
- * Drop anything buffered for a session that will not be coming back.
- *
- * Called when a draft is abandoned or its send fails terminally, so the text
- * and images do not sit in memory waiting for a panel that has no reason to
- * mount. Safe to call for a session with nothing buffered.
- */
-export function discardPendingEchoes(sessionId: string): void {
-	pendingEchoes.delete(sessionId);
-}
-
-/**
- * Register a transcript as the echo target for a session, draining whatever
- * was painted before it existed, and return the matching unregister.
- *
- * Extracted from the effect below so the delivery rule is exercised against the
- * REAL registry rather than a recorder standing in for it. That distinction is
- * not academic: review round 1's blocker — the draft-path echo being dropped
- * because nothing was listening yet — was invisible to every existing test
- * precisely because they aliased this seam to a stub that always recorded.
- */
-export function __registerEchoTarget(
-	sessionId: string,
-	apply: (mutate: (state: TranscriptState) => TranscriptState) => void,
-): () => void {
-	echoTargets.set(sessionId, apply);
-	/*
-	 * Taken and deleted BEFORE applying, so a mutation that throws cannot be
-	 * replayed onto the next mount and a remount cannot paint the same echo
-	 * twice. Re-painting would be harmless alone — `appendPendingUser` no-ops
-	 * for an id already present — but a retraction replayed after its own paint
-	 * had coalesced with the owner's row would delete a durable message.
-	 */
-	const queued = pendingEchoes.get(sessionId);
-	if (queued) {
-		pendingEchoes.delete(sessionId);
-		for (const { mutate, onPainted } of queued) {
-			apply(mutate);
-			onPainted?.();
-		}
-	}
-	return () => {
-		// Only if still ours: a remount for the same session registers before the
-		// old effect cleans up, and an unconditional delete would drop the live
-		// registration.
-		if (echoTargets.get(sessionId) === apply) echoTargets.delete(sessionId);
-	};
-}
-
-/**
- * Paint the user's message optimistically, keyed by the admission request id
- * so the owner's durable row coalesces with it instead of duplicating it.
- */
-export function echoPendingUser(
-	sessionId: string,
-	id: string,
-	text: string,
-	images: TranscriptImage[],
-	onPainted?: () => void,
-): void {
-	deliverEcho(
-		sessionId,
-		(state) => appendPendingUser(state, id, text, images),
-		onPainted,
-	);
-}
-
-/**
- * The transcript a panel starts from, with anything already buffered for its
- * session applied - so the FIRST frame it paints can hold the echo.
- *
- * Why this exists rather than letting the drain do it: on the New-chat path the
- * panel that receives the echo is a fresh mount (the identity flips from the
- * draft key to the session id, which is what makes it remount), and its echo
- * arrives through a PASSIVE effect - after the commit that painted its first
- * frames. Those frames therefore held an empty transcript and a `connecting`
- * status while the user's message was already in flight (UX round 1, U3: the
- * echo "can only reach the new panel in a mount effect, so that panel's first
- * frames cannot hold it"). Seeding the initial state closes that gap at its
- * source: the buffered echo is in the state React paints first, and the drain
- * that follows re-applies it to no effect (`appendPendingUser` is a no-op for an
- * id already present, and a retraction is idempotent).
- *
- * A PEEK, deliberately, not a take. Mutating the buffer from an initializer
- * would consume an echo in a render React is free to discard, and a render-phase
- * side effect on a shared map is exactly the kind of ownership this file keeps in
- * one place. The drain stays the only consumer.
- */
-export function seedPendingEchoes(
-	sessionId: string,
-	state: TranscriptState,
-): TranscriptState {
-	const queued = pendingEchoes.get(sessionId);
-	if (!queued) return state;
-	let seeded = state;
-	for (const { mutate } of queued) seeded = mutate(seeded);
-	return seeded;
-}
-
-/**
- * Remove an echo whose send was refused before anything was admitted. Never
- * call this for an ambiguous failure: see `admitChatDraft`.
- *
- * Queued like the paint it undoes, and for the same reason: a refusal can
- * resolve before the panel mounts, and a retraction that was dropped while the
- * paint it cancels was queued would leave the echo painted for a message that
- * was provably never admitted.
- */
-export function retractPendingUser(sessionId: string, id: string): void {
-	deliverEcho(sessionId, (state) => removeRecord(state, id));
-}
 
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
@@ -468,7 +307,8 @@ export function useCanonicalSessionStream(
 				? seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT)
 				: EMPTY_TRANSCRIPT,
 		loadingOlder: false,
-	}));
+		subagentPulses: {},
+	});
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
@@ -816,6 +656,14 @@ export function useCanonicalSessionStream(
 							);
 							next = {
 								...next,
+								// The pulse is SEEDED here rather than merged: a snapshot is the
+								// authoritative statement of what this viewer has seen, and it is
+								// the frame that follows a reconnect or a fresh subscription —
+								// exactly the moments a counter carried over from before would be
+								// counting events the new subscription never delivered.
+								subagentPulses: seedSubagentPulses(
+									snapshot.frontend.snapshot.live_events,
+								),
 								status: "live",
 								frontend: {
 									...snapshot.frontend.snapshot,
@@ -895,6 +743,29 @@ export function useCanonicalSessionStream(
 						const transcript = applyEvent(next.transcript, frame.payload, now);
 						if (transcript !== next.transcript) {
 							next = { ...next, transcript };
+						}
+						/*
+						 * The child pulse (§ 5.3), bumped in this branch because this is the
+						 * one place a live event is applied — a second listener would be a
+						 * second consumer of the same stream, and the two could disagree
+						 * about which events happened.
+						 *
+						 * It rides the same `next` object as everything else, so a beat that
+						 * arrives in a coalesced frame does not cost an extra render: the
+						 * reader that watches this counter is re-rendered because the frame
+						 * arrived, not because the pulse is a separate piece of state.
+						 */
+						if (SUBAGENT_PULSE_EVENTS.has(eventType)) {
+							const jobId =
+								typeof frame.payload.job_id === "string"
+									? frame.payload.job_id
+									: "";
+							if (jobId) {
+								next = {
+									...next,
+									subagentPulses: bumpSubagentPulse(next.subagentPulses, jobId),
+								};
+							}
 						}
 					}
 				}
@@ -999,6 +870,9 @@ export function useCanonicalSessionStream(
 			terminal: null,
 			transcript: EMPTY_TRANSCRIPT,
 			status: "connecting",
+			// A different session's children are different children, and a pulse
+			// carried across is a counter no reader can match to a job.
+			subagentPulses: {},
 			// Belt to the early return's braces: whatever a superseded page in
 			// flight does, a freshly opened session is not loading older rows.
 			loadingOlder: false,

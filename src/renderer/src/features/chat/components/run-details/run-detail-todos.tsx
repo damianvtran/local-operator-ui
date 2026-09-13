@@ -193,12 +193,27 @@ export const RunDetailTodos = ({ details }: { details: RunDetails }) => {
 					 * (`§4.2`).
 					 */}
 					{phase.name && (
+						/*
+						 * The phase header is the phase's NAME ALONE (`§6.2`). It used to
+						 * carry `· {closed}/{total} resolved`, which was a partition of the
+						 * section tally's own number stated one line above it in the same
+						 * weight — `resolved` spelled three or four times in four lines, and the
+						 * plan's closure measured at two levels.
+						 *
+						 * The departure is from the TUI and the reason is citable: the TUI's
+						 * `PhaseName · done/total` (`todo_panel.py:1256-1267`) exists because
+						 * its dock HIDES a fully settled phase after 60s, so the count is the
+						 * only evidence a hidden phase was complete. This panel hides no
+						 * phase — a list that reflows under its reader is the defect the old
+						 * design refused for the auto-hide — so the count had no job.
+						 *
+						 * The cost, stated rather than hidden: a phase all of whose rows the cap
+						 * shed now reads as its name and its own `+N more`, and its completion
+						 * is legible from the section tally rather than from the header.
+						 */
 						<div className={cn("flex items-baseline gap-1 px-3 pt-1 pb-0.5")}>
 							<span className={cn("truncate text-ink-muted text-meta")}>
 								{phase.name}
-							</span>
-							<span className={cn("shrink-0 text-ink-dim text-meta")}>
-								{`· ${phase.closed}/${phase.total} resolved`}
 							</span>
 						</div>
 					)}
