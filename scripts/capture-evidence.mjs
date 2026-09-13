@@ -1394,13 +1394,27 @@ const main = async () => {
 						 * additions: keying it on the accumulated total would let a later commit of
 						 * the same pass re-stamp the citation for an earlier commit's frames.
 						 */
-						const totals = {
-							addedFrames:
-								(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-								addedFrames.length,
-							addedSurfaces: [...new Set([...priorSurfaces, ...addedSurfaces])],
-						};
 						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						/*
+						 * A pass that added nothing leaves the WHOLE added-pass record
+						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
+						 * the last pass that ADDED frames, so a zero-add run that reset
+						 * them to 0/[] would contradict the citation written beside them -
+						 * the incoherence round 4 R4-1 named, one field along from the one
+						 * it fixed. `sameHead` decides whether this pass's own additions
+						 * accumulate onto the previous ones.
+						 */
+						const totals =
+							added.addedFrames === undefined
+								? {}
+								: {
+										addedFrames:
+											(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
+											addedFrames.length,
+										addedSurfaces: [
+											...new Set([...(sameHead ? priorSurfaces : []), ...addedSurfaces]),
+										],
+									};
 						const citationFields =
 							added.addedFrames === undefined
 								? {}
