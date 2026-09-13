@@ -873,6 +873,30 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/*
+	 * The picker's partial-listing note, on the dialog's own ground.
+	 *
+	 * It cannot join `AS_TEXT`: `elevated` is not one of that list's grounds, and
+	 * it cannot be, because two of the five tone inks do not clear the text floor
+	 * there (`accent` 4.22 on dracula, `danger` 3.76 on monokai) and asserting
+	 * them would report failures against pairs nothing renders.
+	 *
+	 * This note is nevertheless the one place a tone ink IS drawn on `elevated`:
+	 * `models.catalogue` can answer with rows AND per-provider errors, and the
+	 * note about what is missing belongs above the list rather than instead of it
+	 * (design D4). `warning` is the role it renders in, so that is the pair
+	 * asserted — the measured worst case is 5.02 (monokai). Green on the four
+	 * grounds above is not evidence about this one.
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"elevated",
+		FLOOR.text,
+		"the picker's partial-listing note",
+	);
+
 	/* Component triples. */
 	for (const c of CONTROLS) {
 		for (const g of c.on) {
