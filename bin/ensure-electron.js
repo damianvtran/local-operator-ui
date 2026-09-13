@@ -39,7 +39,7 @@ if (!ensureElectronDist(packageRoot, { quiet: false })) {
 		"local-operator-ui: the Electron runtime is missing from node_modules and could not be fetched.",
 	);
 	console.error(
-		"The build needs it: electron-vite compiles the main and preload bundles to V8 bytecode for that exact runtime.",
+		"The build needs it: electron-vite compiles the main bundle to V8 bytecode for that exact runtime (the preload ships as plain JS — bytecode cannot load in an Electron 44 renderer, see electron.vite.config.js).",
 	);
 	console.error("Fetch it explicitly, then build again:");
 	console.error("  npx install-electron --no && pnpm build");

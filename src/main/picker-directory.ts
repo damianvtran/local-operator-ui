@@ -20,24 +20,43 @@
  * cannot be restored, and persisting one here would invent a preference this
  * app does not otherwise keep.
  */
+import { existsSync } from "node:fs";
 import { dirname } from "node:path";
 
 const lastPickedDirectory = new Map<string, string>();
 
 /**
- * Add the remembered directory to `options` as `defaultPath`, unless the caller
- * already chose one — an explicit `defaultPath` from a caller always wins.
+ * Add `defaultPath` to `options`: the remembered directory for this picker, or
+ * `fallbackDirectory` when there is nothing usable to remember.
  *
- * Generic over the option shape so the untyped options the renderer supplies
- * for `show-open-dialog` pass through unchanged.
+ * Two cases where the fallback is what keeps the picker honest:
+ *
+ * - **The first use of each picker.** Electron 43's default is the user's
+ *   Downloads folder, which is not where a working directory or an attachment
+ *   lives. Nothing to remember yet therefore still means "name a directory",
+ *   and the caller passes the pre-43 default (the user's home) so the first
+ *   open lands somewhere the OS chose before 43 rather than in Downloads.
+ * - **A remembered directory that is gone** (renamed, unmounted, deleted since
+ *   the last pick). Handing it back opens the dialog wherever the OS falls back
+ *   to, which is the behaviour this module exists to avoid, so the entry is
+ *   dropped and the fallback is used instead.
+ *
+ * An explicit `defaultPath` from a caller always wins. Generic over the option
+ * shape so the untyped options the renderer supplies for `show-open-dialog`
+ * pass through unchanged.
  */
 export function withRememberedDirectory<T extends { defaultPath?: string }>(
 	kind: string,
 	options: T,
+	fallbackDirectory: string,
 ): T {
+	if (options.defaultPath) return options;
 	const remembered = lastPickedDirectory.get(kind);
-	if (!remembered || options.defaultPath) return options;
-	return { ...options, defaultPath: remembered };
+	if (remembered && existsSync(remembered)) {
+		return { ...options, defaultPath: remembered };
+	}
+	if (remembered) lastPickedDirectory.delete(kind);
+	return { ...options, defaultPath: fallbackDirectory };
 }
 
 /**

@@ -43,7 +43,6 @@ const bytecodePlugins = emitBytecode ? [bytecodePlugin()] : [];
 // bytecode matches the runtime and the renderer is the thing that changed: the
 // loader is fine where Node's `vm` still works, and unusable where it does not.
 // The preload is a few KB, so plain JS there costs nothing.
-const preloadBytecodePlugins = [];
 
 export default defineConfig({
 	assetsInclude: ["**/*.sh", "**/*.ps1"],
@@ -55,7 +54,9 @@ export default defineConfig({
 		],
 	},
 	preload: {
-		plugins: [externalizeDepsPlugin(), ...preloadBytecodePlugins],
+		// No bytecode plugin here on purpose -- see the note above. It is absent
+		// rather than an empty spread, so the decision reads as one.
+		plugins: [externalizeDepsPlugin()],
 	},
 	renderer: {
 		resolve: {

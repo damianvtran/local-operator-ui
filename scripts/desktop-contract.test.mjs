@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
@@ -816,30 +819,46 @@ test("a picker reopens where the last one of its kind landed", () => {
 	// Electron 43 stopped the OS remembering the last-used directory and made
 	// Downloads the default, so main remembers it instead. `kind` is per picker
 	// so the working-directory picker and the file picker do not share a
-	// directory, and a caller's own `defaultPath` is never overwritten.
-	const first = withRememberedDirectory("picker-test-directory", {});
-	assert.equal(first.defaultPath, undefined, "nothing remembered yet");
+	// directory; a caller's own `defaultPath` is never overwritten; and a
+	// remembered directory that is gone falls back rather than handing the OS a
+	// path it will silently ignore. Real directories on disk, because the module
+	// checks that the remembered path still exists.
+	const scratch = mkdtempSync(join(tmpdir(), "picker-test-"));
+	const picked = join(scratch, "project");
+	mkdirSync(picked, { recursive: true });
+	const file = join(picked, "notes.txt");
+	writeFileSync(file, "x");
+	const fallback = "/fallback";
+
+	// Nothing remembered yet: the FALLBACK, not undefined. An undefined
+	// defaultPath is exactly what Electron 43 turns into Downloads, which is the
+	// behaviour this module exists to avoid.
+	assert.equal(
+		withRememberedDirectory("picker-test-directory", {}, fallback).defaultPath,
+		fallback,
+		"the first use of a picker must not land on Downloads",
+	);
 
 	// A directory pick remembers the path itself; a file pick remembers its parent.
-	rememberPickedDirectory("picker-test-directory", ["/tmp/lo-picker/project"], true);
+	rememberPickedDirectory("picker-test-directory", [picked], true);
 	assert.equal(
-		withRememberedDirectory("picker-test-directory", {}).defaultPath,
-		"/tmp/lo-picker/project",
+		withRememberedDirectory("picker-test-directory", {}, fallback).defaultPath,
+		picked,
 	);
-	rememberPickedDirectory("picker-test-file", ["/tmp/lo-picker/project/notes.txt"]);
+	rememberPickedDirectory("picker-test-file", [file]);
 	assert.equal(
-		withRememberedDirectory("picker-test-file", {}).defaultPath,
-		"/tmp/lo-picker/project",
+		withRememberedDirectory("picker-test-file", {}, fallback).defaultPath,
+		picked,
 	);
 	assert.equal(
-		withRememberedDirectory("picker-test-other", {}).defaultPath,
-		undefined,
+		withRememberedDirectory("picker-test-other", {}, fallback).defaultPath,
+		fallback,
 		"one picker's directory must not leak into another's",
 	);
 
 	// An explicit defaultPath from the caller wins.
 	assert.equal(
-		withRememberedDirectory("picker-test-file", { defaultPath: "/elsewhere" })
+		withRememberedDirectory("picker-test-file", { defaultPath: "/elsewhere" }, fallback)
 			.defaultPath,
 		"/elsewhere",
 	);
@@ -848,17 +867,41 @@ test("a picker reopens where the last one of its kind landed", () => {
 	// reopening in the directory the user was last in is the point.
 	rememberPickedDirectory("picker-test-file", []);
 	assert.equal(
-		withRememberedDirectory("picker-test-file", {}).defaultPath,
-		"/tmp/lo-picker/project",
+		withRememberedDirectory("picker-test-file", {}, fallback).defaultPath,
+		picked,
+	);
+
+	// A remembered directory that is gone (unmounted, renamed, deleted) falls
+	// back, and is forgotten rather than offered again if the path reappears.
+	const gone = join(scratch, "unmounted");
+	mkdirSync(gone, { recursive: true });
+	rememberPickedDirectory("picker-test-gone", [gone], true);
+	assert.equal(
+		withRememberedDirectory("picker-test-gone", {}, fallback).defaultPath,
+		gone,
+	);
+	rmSync(gone, { recursive: true, force: true });
+	assert.equal(
+		withRememberedDirectory("picker-test-gone", {}, fallback).defaultPath,
+		fallback,
+		"a remembered directory that no longer exists must not be handed back",
+	);
+	mkdirSync(gone, { recursive: true });
+	assert.equal(
+		withRememberedDirectory("picker-test-gone", {}, fallback).defaultPath,
+		fallback,
+		"the stale entry is dropped, not merely skipped while it is missing",
 	);
 
 	// The options the caller passed are preserved, and the caller's object is not
 	// mutated -- the renderer's own options object crosses the IPC boundary.
 	const options = { properties: ["openFile"], title: "Select File" };
-	const returned = withRememberedDirectory("picker-test-file", options);
+	const returned = withRememberedDirectory("picker-test-file", options, fallback);
 	assert.deepEqual(returned.properties, ["openFile"]);
 	assert.equal(returned.title, "Select File");
 	assert.equal(options.defaultPath, undefined);
+
+	rmSync(scratch, { recursive: true, force: true });
 });
 
 test("a read receipt is admitted only by an actually foreground native window", async () => {

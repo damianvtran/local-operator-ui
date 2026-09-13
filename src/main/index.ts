@@ -58,6 +58,16 @@ const posthogClient = new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
 });
 
 // Create application menu without developer tools in production
+/**
+ * Where a picker opens when this session has nothing to remember yet: the
+ * directory Electron used before 43 made Downloads the default. Read at call
+ * time rather than cached at import, because these handlers only ever run after
+ * `app.whenReady()` and `app.getPath` is not safe before that.
+ */
+function pickerFallbackDirectory(): string {
+	return app.getPath("home");
+}
+
 function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
@@ -682,7 +692,11 @@ app
 			}
 			const result = await dialog.showOpenDialog(
 				mainWindow,
-				withRememberedDirectory("open-file", options),
+				withRememberedDirectory(
+					"open-file",
+					options,
+					pickerFallbackDirectory(),
+				),
 			);
 			rememberPickedDirectory("open-file", result.filePaths);
 			return result;
@@ -705,7 +719,11 @@ app
 			};
 			const result = await dialog.showOpenDialog(
 				mainWindow,
-				withRememberedDirectory("select-directory", directoryOptions),
+				withRememberedDirectory(
+					"select-directory",
+					directoryOptions,
+					pickerFallbackDirectory(),
+				),
 			);
 			rememberPickedDirectory("select-directory", result.filePaths, true);
 
@@ -730,7 +748,11 @@ app
 			};
 			const result = await dialog.showOpenDialog(
 				mainWindow,
-				withRememberedDirectory("select-file", fileOptions),
+				withRememberedDirectory(
+					"select-file",
+					fileOptions,
+					pickerFallbackDirectory(),
+				),
 			);
 			rememberPickedDirectory("select-file", result.filePaths);
 
