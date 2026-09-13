@@ -36,6 +36,7 @@ import {
 } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
+import type { RunDetails } from "./run-details";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -125,6 +126,15 @@ type ChatContentProps = {
 		admitting?: boolean;
 		onStop: () => void;
 	};
+	/**
+	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
+	 * derived by the page that owns the canonical stream and handed down here so
+	 * the header can place the trigger. OPTIONAL, and its absence is the whole
+	 * gate for every path that has no canonical session: `ChatHeader` renders with
+	 * no `runDetails` below, `RunDetailsTrigger` returns null for a null model, and
+	 * so the legacy transcript grows no button and no reserved space.
+	 */
+	runDetails?: RunDetails | null;
 };
 
 /**
@@ -180,6 +190,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		sendError,
 		sessionStatus,
 		canonical,
+		runDetails,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -344,6 +355,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							agentName={agentName}
 							description={description}
 							onOpenOptions={onOpenOptions}
+							runDetails={runDetails}
 						/>
 						{/* Chat Options Sidebar */}
 						{!canonical && (
