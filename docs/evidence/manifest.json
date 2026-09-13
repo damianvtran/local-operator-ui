@@ -238,6 +238,16 @@
       "source": "the live renderer over CDP - the app's own src/renderer/index.html served by Vite with the renderer aliases, Tailwind pipeline and desktopProxyPlugin, against an isolated local-operator serve backend on its own port with its own config dir, seeded with 7 agents, 2 teams and 7 sessions. Driven by `out/evidence-harness/capture.mjs` (gitignored, alongside the seeder and the Vite config): private headless Chrome, fresh user-data-dir, focus emulation on, and every wait on a condition rather than a duration. Re-running the `after` pass reproduced the committed frames byte for byte.",
       "why": "The claims are a real pointer click that changes React state and a caret that has to come back to a field, and Storybook can produce neither: the Chats sidebar has no story at all, so the sweep's STORIES list holds nothing that renders it, and a fixture could not produce the focus outcome of unmounting the button that was clicked - the thing this change had to get right. The `before` half also records the behaviour being replaced: Escape clears the query and BLURS, which is why three frames in the set are byte-identical by construction (rest on both trees, and the pre-change clear, which is indistinguishable from a field that was never filtered). A fifth state, `after-focused`, holds design round 1's D1: the control reached by keyboard, whose ring must sit inside the field rather than across its border (the shared `icon-sm` step's 1px offset needs 3px of clearance and a 28px control in a 32px field has 2px). docs/evidence/clear-search/README.md carries the readback that separates the states, the geometry in both palettes, and the re-capture procedure.",
       "capturedAt": "2026-09-13T16:35:00Z"
+    },
+    {
+      "path": "new-chat-row",
+      "frames": 16,
+      "surfaces": 8,
+      "themes": 2,
+      "source": "live renderer over CDP against an isolated `local-operator serve` on its own port and config dir, seeded by `out/evidence-harness/seed.mjs` (6 agents, 2 teams, 34 sessions, two carrying an unseen completion) and served by `out/evidence-harness/new-chat-row.vite.mjs`; four states (rest / hover / focus / current) captured on BOTH trees - before from e4d074c60 with the one source file stashed, after from this branch - through the same script, same viewport, same seeded backend.",
+      "why": "The claim is a fact about a box: two rows in one block land on the same left inset only once a 1px `border-control` edge is gone from a `box-sizing: border-box` row. The Chats sidebar has no story, so the sweep's STORIES list contains nothing that renders it and a story could not measure the box a class produces. The keyboard states are reached with real CDP key events rather than `.focus()`, because `:focus-visible` is a heuristic on HOW focus arrived. A sweep cannot re-derive these frames; docs/evidence/new-chat-row/README.md carries the geometry readback, the state checks and the re-capture procedure.",
+      "capturedAt": "2026-09-13T15:48:59.000Z",
+      "capturedAtHead": "0d873a57919ed7a8e68a4be2ca720930b645e610"
     }
   ]
 }
