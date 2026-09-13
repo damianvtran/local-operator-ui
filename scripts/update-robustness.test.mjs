@@ -3807,9 +3807,25 @@ function loWriteBlockmap(file) {
 	const result = spawnSync(
 		loAppBuilderPath(),
 		["blockmap", "--input", file, "--output", `${file}.blockmap`],
-		{ encoding: "utf8" },
+		{
+			encoding: "utf8",
+			// This is the only native binary the update harness runs, and the
+			// binary is a different build on every platform. `timeout` bounds it so
+			// one that stops responding fails this case with the reason instead of
+			// wedging the file: node's test runner has no default per-test timeout,
+			// and `ci.yml` sets none, so an unbounded wait here is an unbounded job.
+			timeout: 120_000,
+			killSignal: "SIGKILL",
+			// A child that decides to read stdin must see EOF rather than block on
+			// a pipe nobody writes to; only stdout carries the block map back.
+			stdio: ["ignore", "pipe", "pipe"],
+		},
 	);
-	assert.equal(result.status, 0, `app-builder blockmap failed: ${result.stderr}`);
+	assert.equal(
+		result.status,
+		0,
+		`app-builder blockmap failed: ${result.error?.message ?? result.stderr}`,
+	);
 	return JSON.parse(result.stdout);
 }
 
