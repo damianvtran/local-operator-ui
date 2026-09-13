@@ -52,6 +52,12 @@ export function presentWindow(window: RaisableWindow, show: WindowShow): void {
  * What a second launch or a clicked notification banner asks for: bring this
  * window to the operator.
  *
+ * In `normal` this is one `show()` more than the pre-change second-instance
+ * path made (that one restored and focused only). The extra call is a no-op
+ * there — a `normal` window is never hidden, since the app has no hide path —
+ * and the uniform sequence is the point: one function decides, so a mode cannot
+ * be half-applied at one call site and not the other.
+ *
  * It ends focused only in `normal`. `inactive` orders the window without
  * activating the app, and `headless` does nothing here at all — the caller
  * still delivers the conversation to the renderer, so the window holds the

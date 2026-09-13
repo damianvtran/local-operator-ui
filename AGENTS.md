@@ -144,12 +144,16 @@ of the way. Measured on Electron 35.5.1 / macOS 25.6, with a 1380x900 window:
 - CDP `Page.captureScreenshot` — and `webContents.capturePage()` on a
   `show: false` window in a platform probe — return a complete frame: 2760x1744
   pixels at devicePixelRatio 2, the same size a shown window gives. The settled
-  chat frame is pixel-identical to the one captured from a shown (`inactive`)
-  window: 0 of 14,440,320 channels differ;
+  chat frame differs from the one captured from a shown (`inactive`) window in
+  0.0111% of channels, against 0.0106% between two `headless` runs at that size
+  and 0 between two at 800x600: the residual is a blinking caret at the
+  composer, not the mode;
 - the app is never the frontmost application while it runs. Sampled from
-  outside, by pid, in a headless run: **0 of 5** samples. The control is the
-  same harness in `normal`: the app was frontmost in 5 of 8, 2 of 4 and 1 of 3
-  samples across runs, and never in a `headless` or `inactive` one.
+  outside, by pid, in a headless run: **0 of 8** samples, and that run includes
+  a second launch on the same profile (the `second-instance` path, which raises
+  a window in the other modes). The control is the same harness in `normal`: the
+  app was frontmost in 5 of 8, 4 of 7, 3 of 3, 2 of 4 and 1 of 3 samples across
+  runs, and never in a `headless` or `inactive` one.
 
 Do not reach for `win.isFocused()` as the proof of that, and do not trust
 `focusable: false` to save you: on macOS `NativeWindowMac::Show()` calls

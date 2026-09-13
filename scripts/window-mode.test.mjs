@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -105,15 +105,24 @@ test("inactive shows the window without activating the app", () => {
 
 test("the mode is read case- and whitespace-insensitively", () => {
 	assert.equal(parseWindowMode("  HEADLESS "), "headless");
-	assert.equal(plan({ env: { [WINDOW_MODE_ENV]: " Inactive\t" } }).mode, "inactive");
+	assert.equal(
+		plan({ env: { [WINDOW_MODE_ENV]: " Inactive\t" } }).mode,
+		"inactive",
+	);
 });
 
 test("the argument wins over the environment, in both spellings", () => {
 	// A rig's own spawn call is more specific than whatever the shell exported,
 	// and `--window-mode headless` is what someone types by hand.
 	const env = { [WINDOW_MODE_ENV]: "normal" };
-	assert.equal(plan({ env, argv: ["--window-mode=headless"] }).mode, "headless");
-	assert.equal(plan({ env, argv: ["--window-mode", "headless"] }).mode, "headless");
+	assert.equal(
+		plan({ env, argv: ["--window-mode=headless"] }).mode,
+		"headless",
+	);
+	assert.equal(
+		plan({ env, argv: ["--window-mode", "headless"] }).mode,
+		"headless",
+	);
 });
 
 test("an unrecognised mode falls back to normal and is reported", () => {
@@ -128,17 +137,16 @@ test("an unrecognised mode falls back to normal and is reported", () => {
 });
 
 test("a mode argument with no value is missing, not the next flag", () => {
-	const resolved = plan({ argv: ["--window-mode", "--remote-debugging-port=9451"] });
+	const resolved = plan({
+		argv: ["--window-mode", "--remote-debugging-port=9451"],
+	});
 	assert.equal(resolved.mode, "normal");
 	assert.equal(resolved.problems.length, 1);
 });
 
 test("the size comes from the environment, and the argument wins over it", () => {
 	const env = { [WINDOW_SIZE_ENV]: "1024x768" };
-	assert.deepEqual(
-		[plan({ env }).width, plan({ env }).height],
-		[1024, 768],
-	);
+	assert.deepEqual([plan({ env }).width, plan({ env }).height], [1024, 768]);
 	const overridden = plan({ env, argv: ["--window-size=800x600"] });
 	assert.deepEqual([overridden.width, overridden.height], [800, 600]);
 });
@@ -148,7 +156,10 @@ test("a size below the verified floor is clamped, and the plan says so", () => {
 	// clamp means an evidence frame cannot be labelled with a size the window
 	// never had, which is the whole reason the plan carries the clamp.
 	const resolved = plan({ env: { [WINDOW_SIZE_ENV]: "400x300" } });
-	assert.deepEqual([resolved.width, resolved.height], [WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT]);
+	assert.deepEqual(
+		[resolved.width, resolved.height],
+		[WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT],
+	);
 	assert.equal(resolved.problems.length, 1);
 	assert.match(resolved.problems[0], /400x300/);
 	assert.match(resolved.problems[0], /800x600/);
@@ -168,13 +179,18 @@ test("an unparsable size falls back to the default and is reported", () => {
 		assert.equal(resolved.height, DEFAULT_WINDOW_HEIGHT, bad);
 		assert.equal(resolved.problems.length, 1, bad);
 	}
-	assert.deepEqual(parseWindowSize(" 1600×1000 "), { width: 1600, height: 1000 });
+	assert.deepEqual(parseWindowSize(" 1600×1000 "), {
+		width: 1600,
+		height: 1000,
+	});
 });
 
 test("the startup line cannot describe the wrong behaviour", () => {
 	// Rigs read this line to prove a run was headless. A line that printed
 	// "focused" for a headless plan would be worse than no line at all.
-	const headless = describeWindowLaunch(plan({ env: { [WINDOW_MODE_ENV]: "headless" } }));
+	const headless = describeWindowLaunch(
+		plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+	);
 	assert.match(headless, /never shown/);
 	assert.match(headless, /1380x900/);
 	assert.match(headless, /throttling off/);
@@ -243,7 +259,10 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 	/*
 	 * The source-level guard, because the defect this change removes was one
 	 * unconditional `mainWindow.show()` and the guard has to be wider than the
-	 * file that had it. It scans every module under `src/main/`, and it
+	 * file that had it. It scans every module under `src/main/` RECURSIVELY
+	 * (`src/main/backend/` is where most of them live: a non-recursive readdir
+	 * left seven files unscanned, and a raise added to one of them passed this
+	 * test), and it
 	 * includes `focus()`: on macOS `show()` activates the app for any non-panel
 	 * window whatever `focusable` says (measured), so a stray `focus()` on a
 	 * window that is already up is a lesser version of the same mistake. A
@@ -258,7 +277,11 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 	const RAISE_PATTERN = /\.(show|showInactive|focus)\(\)/;
 	const ALLOWED = /notification\.show\(\)/;
 	const offSite = [];
-	for (const file of readdirSync("src/main").filter((name) => name.endsWith(".ts"))) {
+	const scanned = [];
+	for (const file of readdirSync("src/main", { recursive: true }).filter(
+		(name) => name.endsWith(".ts"),
+	)) {
+		scanned.push(file);
 		if (file === "window-raise.ts") continue;
 		readFileSync(join("src/main", file), "utf8")
 			.split("\n")
@@ -271,5 +294,11 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 		offSite,
 		[],
 		"these lines raise or focus a window outside window-raise.ts, where no mode gate can be checked",
+	);
+	// Pins the recursion itself: the guard is only as wide as its scan, and a
+	// flat readdir silently narrows it to the handful of files at the top.
+	assert.ok(
+		scanned.some((file) => file.includes(sep)),
+		`the scan reached subdirectories (scanned ${scanned.length} modules)`,
 	);
 });

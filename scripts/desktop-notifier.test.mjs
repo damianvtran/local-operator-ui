@@ -1268,7 +1268,11 @@ test("a headless run delivers no banner on any path, and burns no claim", async 
 
 	assert.equal(globalThis.__toasts.length, 0, "no toast on a headless run");
 	assert.equal(globalThis.__shown.length, 0, "no banner reached the OS");
-	assert.deepEqual(requests, [], "no capability read, no claim: nothing is burned");
+	assert.deepEqual(
+		requests,
+		[],
+		"no capability read, no claim: nothing is burned",
+	);
 });
 
 test("the same three paths do deliver in the ordinary mode", async () => {
