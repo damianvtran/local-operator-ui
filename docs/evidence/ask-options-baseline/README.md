@@ -6,18 +6,40 @@ Ninety-six frames — eight stories across all twelve themes — of the story fi
 **unmodified `origin/main` at `54bf411e0`** (`chore(release): bump version to
 0.19.0`), so the pair compares two cards rather than two trees.
 
-**That commit is NOT this branch's rebase target, and an earlier version of this
-sentence said it was.** `54bf411e0` is 16 commits *behind* the commit the branch
-was cut from and rebased onto, `f3eb589c1` (`0.19.1`); the branch now sits on
-`6950d0bf3` (`0.19.5`). What makes the comparison valid is not the commit but the
-measurement: from `54bf411e0` to `6950d0bf3`, `git diff --name-only --
-'src/renderer/src/features/chat/canonical/**'
-'src/renderer/src/features/chat/components/trace/**'
-'src/renderer/src/features/chat/components/message-item/**'` is **empty** — none
-of main's later work draws this card — and among the 16 commits between
-`54bf411e0` and `f3eb589c1` only `chat-page.tsx` and `chat-title.ts` move, neither
-of which draws it either. See `why[3]` of this set in `manifest.json`, which
-carries the same correction; it is the durable record.
+**That commit is NOT this branch's base, and an earlier version of this
+paragraph was wrong in a way worth recording.** `54bf411e0` is 64 commits behind
+the commit this branch is rebased onto. It used to claim the branch sat on
+`6950d0bf3` (`0.19.5`) and that the measurement below came back **empty**; both
+were stale, and the second was the load-bearing one, because emptiness was the
+whole proof. Measured against the base this branch actually has —
+`git merge-base HEAD origin/main`, `c0570ea60` at the time of writing — the
+command is **not** empty:
+
+```sh
+git diff --name-only 54bf411e0..c0570ea60 -- \
+  'src/renderer/src/features/chat/canonical/**' \
+  'src/renderer/src/features/chat/components/trace/**' \
+  'src/renderer/src/features/chat/components/message-item/**'
+# src/renderer/src/features/chat/canonical/tool-row.stories.tsx
+# src/renderer/src/features/chat/canonical/transcript-reducer.ts
+# src/renderer/src/features/chat/canonical/transcript-rows.ts
+# src/renderer/src/features/chat/components/trace/tool-row.tsx
+# src/renderer/src/features/chat/components/trace/trace-group.tsx
+```
+
+Every one of those is inside the path set that sentence named as its proof, and
+the work that added them is the trace tier (#127's 2px hairline and the
+clear-search reducer work). **Why the frames still hold anyway, stated as a
+reason rather than as a diff:** the story behind every frame in this set
+fixtures exactly one record, `{kind: "user"}`, and no trace tier at all — so the
+code #127 moved is not exercised by any of the 96 frames here, nor by any frame
+in the `chat-ask-options/` twin. The provenance is: baseline from `54bf411e0`,
+branch frames from the branch's head, and validity from the fixture rather than
+from a command that no longer returns empty. A reader should re-derive the base
+rather than trust the literal, because every rebase moves it: read
+`git merge-base HEAD origin/main` and run the command above against it. See
+`why[3]` of this set in `manifest.json`, which carries the same correction; it is
+the durable record.
 
 RE-CAPTURED at `54bf411e0` after the rebase. The previous set was taken against
 `a09f2e6f4`, and `main` had since landed scroll paging (#112) and the
@@ -40,7 +62,7 @@ photograph. Read the pair:
 | the options | inert muted text, one line each | a bordered, focusable control each |
 | label and consequence | run together on one line, joined by an em dash | label on its own line, consequence beneath it |
 | the recommended option | not marked at all — `recommended` is not in main's TS type | marked `Recommended` beside the label, in `ink` rather than the accent, in sentence case |
-| the hint below | "Type your answer below." | "Choose an option, press 1-9, or type your own answer below." |
+| the hint below | "Type your answer below." | "Choose an option, type 1-9 and send, or type your own answer below." |
 | answering | retype a label, or type `1` and have the agent receive the string `"1"` | press the option, or type `1` and have it resolve to that option's label |
 | an answer in flight | no such state — there was nothing to press | every option disabled by colour, never opacity, under an eyebrow reading "Sending your answer…" |
 | a secret ask | no options (unchanged) | no options (unchanged) |
@@ -66,10 +88,10 @@ cd /tmp/ask-baseline && pnpm install --frozen-lockfile
 #     `document carries theme "" after 10s` rather than as a compile error.
 # The fixtures, the viewports and the component under them are otherwise
 # untouched, which is what makes the pair a fair comparison. This set is
-# captured at ONE width per story: `chat-ask-options--wrapping-labels` is taken
-# at 1024 and 760 on this branch (`wrapping-labels@1024/`, `wrapping-labels@760/`),
-# so the comparable half of that one story is `wrapping-labels@1024/` — the
-# same column, and the frames the pair's pixel comparisons use.
+# captured at ONE width per story, so the comparable half of
+# `chat-ask-options--wrapping-labels` is `wrapping-labels@1024/` — the branch
+# takes that story at 1024 and 560 (where the label itself wraps), and 1024 is
+# the same column and the frames the pair's pixel comparisons use.
 pnpm storybook --port 6018 --no-open --quiet &
 node scripts/capture-evidence.mjs http://localhost:6018 \
   --only=chat-ask-options --allow-backend

@@ -194,6 +194,19 @@ browser.addEventListener("message", (event) => {
 	}
 });
 
+/*
+ * The output directory exists BEFORE anything can fail.
+ *
+ * The failure path below writes `click-result.diagnostic.json` into it, and with
+ * `mkdirSync` only inside `shoot()` a run that failed before its first frame —
+ * including the driver's own "the option never became hit-testable" path, which
+ * round 2 hit — could not write the diagnostic at all: the write threw ENOENT
+ * and REPLACED the real error with a filesystem one, so the report this file
+ * exists to produce was lost in exactly the failure it was written for (code
+ * review round 2, F5, reproduced).
+ */
+mkdirSync(OUT, { recursive: true });
+
 try {
 	await send("Page.enable");
 	await send("Runtime.enable");
@@ -354,6 +367,10 @@ try {
 	record.error = String(error?.stack ?? error);
 	record.pageProblems = pageProblems;
 	record.pageText = await evaluate("document.body.innerText").catch(() => null);
+	// `recursive` again rather than trusting the up-front one: this is the only
+	// branch whose whole purpose is to run when something unexpected happened,
+	// and it must not be able to fail on its own precondition.
+	mkdirSync(OUT, { recursive: true });
 	writeFileSync(
 		join(OUT, "click-result.diagnostic.json"),
 		`${JSON.stringify(record, null, 2)}\n`,

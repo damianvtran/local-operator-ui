@@ -131,8 +131,18 @@ export const AskOptions = ({
 		 * this reason.
 		 *
 		 * 380px is six two-line rows: past that the band stops growing and scrolls
-		 * itself, so the callout above it and the hint below it stay on screen at
-		 * every window size the app allows. The padding is not decorative either —
+		 * itself, so the callout above it and the hint below it stay on screen at the
+		 * app's default window and at every size above it (measured on the live surface
+		 * and on the eight-option story: panes 620 and 617 put the callout at 79.4 and
+		 * 76.4 with the hint at 541.2 and 538.2, both fully visible). The scope is
+		 * stated rather than implied because an earlier version of this comment claimed
+		 * "every window size the app allows", and at the 800x600 floor it does not: the
+		 * pane is 317px there and the callout still sits at -223.56, above the pane
+		 * entirely (design round 2, D11). No band cap can fix that — at 317 the scroller
+		 * is 269px against a gate of roughly 475 — the fix is pinning the pane to a
+		 * pending gate, which is a transcript-scroller change and is tracked as a
+		 * follow-up rather than smuggled into this one. The padding is not decorative
+		 * either —
 		 * a `2px` focus ring at `offset 2px` is clipped by an overflow container, so
 		 * the top and bottom rows need 4px of room inside it. The `mt-1` above
 		 * compensates so the callout→first-row distance the design round approved
@@ -169,16 +179,26 @@ export const AskOptions = ({
 					 * because a numbered list is how the model wrote the question —
 					 * and typing that numeral now resolves to this label rather than
 					 * sending "1", so the numeral is no longer a lie.
+					 *
+					 * Which is exactly why it stops at nine. `resolveNumericAnswer`
+					 * accepts 1-9, and the terminal's shortcut has no tenth rung
+					 * either, so a `10.` here would be a key that cannot be pressed —
+					 * the same class of lie as the numeral that used to reach the
+					 * wire verbatim. Rows past nine lose the ordinal column and stay
+					 * pressable, which is the honest drawing of what they are (UX
+					 * round 2, U11).
 					 */}
-					<span
-						aria-hidden={true}
-						className={cn(
-							"shrink-0 font-mono text-mono-sm",
-							busy ? "text-ink-disabled" : "text-ink-dim",
-						)}
-					>
-						{index + 1}.
-					</span>
+					{index < 9 && (
+						<span
+							aria-hidden={true}
+							className={cn(
+								"shrink-0 font-mono text-mono-sm",
+								busy ? "text-ink-disabled" : "text-ink-dim",
+							)}
+						>
+							{index + 1}.
+						</span>
+					)}
 					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
 							<span

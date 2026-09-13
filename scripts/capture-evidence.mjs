@@ -428,9 +428,15 @@ export const STORIES = [
 	["chat-ask-options--many-options", 1024, 620],
 	/* Two widths, because the label only wraps below ~900px: at 1024 the story
 	   photographed an unwrapped label while claiming to exercise wrapping (design
-	   round 1, D5). */
+	   round 1, D5). 760 was the second width and it did NOT wrap the label either —
+	   the label box there measures one 19.5px line (its single-line measure is
+	   ~581px against a 616px button interior) and the thing that dropped to a
+	   second line was the `Recommended` mark, so the committed pair showed the
+	   ordinal pinned to a wrapped MARK, not to a wrapped label (design round 2,
+	   D9). 560 puts the button interior under the label's own measure, which is
+	   where the property this story exists for actually happens. */
 	["chat-ask-options--wrapping-labels", 1024, 620],
-	["chat-ask-options--wrapping-labels", 760, 620],
+	["chat-ask-options--wrapping-labels", 560, 620],
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],

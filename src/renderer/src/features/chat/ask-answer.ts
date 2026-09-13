@@ -94,6 +94,95 @@ export function resolveNumericAnswer(
 }
 
 /**
+ * What `send` should put on the wire for a typed answer.
+ *
+ * The decision, in one place and as a function of all three inputs, so it can be
+ * asserted rather than read out of a component. It existed inline in
+ * `chat-page.tsx` as `resolveNumericAnswer(gate, typed ?? content)`, and the
+ * round-1 fix for it (passing the typed text instead of the composed payload)
+ * was correct but carried no regression guard: reverting `typed ?? content` to
+ * `content` re-opened the MAJOR and left the suite green, because nothing in it
+ * could reach the call site (code review round 2, F1).
+ *
+ * The three states it has to keep distinct, and which the tests pin:
+ *
+ * - **A staged reply with a bare ordinal.** `typed` is `"2"` while `payload` is
+ *   `"<reply-to>…</reply-to>\n2"`. The answer is the second option's LABEL. This
+ *   is the case the round-1 MAJOR was about, and the reason the typed text is
+ *   threaded down here at all.
+ * - **A bare ordinal the composer itself wrapped**, i.e. no separate typed text
+ *   (the suggestion grid, or any caller that composes no prefix). `typed` is
+ *   undefined, so the payload stands in — and a reply-wrapped payload is not a
+ *   bare ordinal, so it passes through UNRESOLVED rather than being rewritten
+ *   into an option the user did not pick.
+ * - **Anything else.** Prose, an out-of-range digit, a gate with no options: the
+ *   typed text reaches the wire exactly as typed.
+ */
+export const answerValue = (
+	gate: Pick<PendingDesktopGate, "kind" | "options">,
+	typed: string | undefined,
+	payload: string,
+): string => resolveNumericAnswer(gate, typed ?? payload);
+
+/**
+ * Whether a forward `Tab` in the composer should be diverted onto the pending
+ * gate's first option.
+ *
+ * ## Why the composer overrides forward Tab at all
+ *
+ * The gate renders in the transcript, which is BEFORE the composer in DOM order,
+ * so forward Tab out of the composer walks the sidebar and never reaches the
+ * question the user was just shown (UX round 1, U1: 24 real forward Tabs never
+ * found it). Diverting the forward key, while a live option exists, is what makes
+ * the composer and the options one closed cycle.
+ *
+ * ## Why it is GUARDED, and why the guard is here
+ *
+ * Shipped ungated, it was a one-way door: with any question pending, forward Tab
+ * out of the composer could not leave the composer forward at all — not from an
+ * empty box, not from a caret mid-word — so the chips, the sidebar and every
+ * other control after the composer became unreachable in that direction until
+ * the question was answered (UX round 2, U7; code review round 2, F2). Tab is how
+ * a keyboard user leaves a text field, and a question can stay pending for a long
+ * time. So the diversion asks for all four of:
+ *
+ * - **unmodified Tab.** `Shift+Tab` keeps its native meaning, and so does every
+ *   chord (`Ctrl+Tab` switches tabs at the OS/window level).
+ * - **the composer has content, and the caret is at the END of it.** A bare box
+ *   and a mid-draft caret are both "leave this field" — the user is moving on,
+ *   not asking to answer.
+ * - **a live, enabled option exists.** Checked by the caller, which owns the DOM;
+ *   the query is what makes a held or absent card behave natively.
+ *
+ * Lives here rather than inline in the handler for the same reason
+ * `answerGateOption` does: nothing in a test could reach a decision written
+ * inside a React component with no DOM, and the round-1 remediation's claim that
+ * this rule was asserted in `scripts/ask-options.test.mjs` was simply false.
+ */
+export const shouldTabIntoAnswerOptions = (
+	event: Pick<
+		KeyboardEvent,
+		"key" | "shiftKey" | "altKey" | "ctrlKey" | "metaKey"
+	>,
+	composer: {
+		value: string;
+		selectionStart: number | null;
+		selectionEnd: number | null;
+	},
+	hasLiveOption: boolean,
+): boolean => {
+	if (!hasLiveOption) return false;
+	if (event.key !== "Tab") return false;
+	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return false;
+	if (composer.value.trim().length === 0) return false;
+	const { selectionStart, selectionEnd } = composer;
+	if (selectionStart === null || selectionEnd === null) return false;
+	// No selection, and the caret hard against the last character: anything else
+	// is a user mid-edit asking to move on.
+	return selectionStart === selectionEnd && selectionEnd === composer.value.length;
+};
+
+/**
  * One send-or-answer in flight at a time.
  *
  * ## Why this is an object and not the bare `useRef<boolean>` it replaces
@@ -147,6 +236,42 @@ export const errorCodeOf = (error: unknown): string | undefined =>
 	error instanceof Error && "code" in error && typeof error.code === "string"
 		? error.code
 		: undefined;
+
+/**
+ * What the user is told when their press did not become the gate's answer.
+ *
+ * The gate can move out from under a press in two ways, and both end with the
+ * user's answer NOT being the one the owner took:
+ *
+ * - the transport refused it (`failed`) because the question was no longer
+ *   pending — the backend's own 409;
+ * - the transport ACCEPTED it (`sent`) with a 200 after another front end had
+ *   already answered — the case measured on the committed rig, where the app's
+ *   delayed POST came back `200`, the owner kept the other front end's answer,
+ *   and the user was told nothing at all (QA round 2, F-A; UX round 2, U9).
+ *
+ * The second is why this is a function of the gate's movement rather than of the
+ * status code: a 200 is not proof that OUR answer was the one taken, and the
+ * only thing the app can compare is whether the gate it pressed still stands.
+ * That comparison is sound because the two orderings differ — measured on the
+ * rig, a normal answer's POST response lands BEFORE its card clears (124ms
+ * against 200ms), so a press that won still sees its own gate. The caller
+ * therefore counts "the ask moved on to its next question" as the press still
+ * standing, because that is what our own answer to question N looks like: a
+ * surviving ask can only have advanced.
+ *
+ * `null` for a `refused` outcome: nothing was sent, and the holder of the lock
+ * is the one that reports. `null` while the gate still stands: the card owns the
+ * outcome then, which is where the press happened.
+ */
+export const lostAnswerMessage = (
+	outcome: AnswerOutcome,
+	pressStillStands: boolean,
+): string | null => {
+	if (pressStillStands) return null;
+	if (outcome.status === "refused") return null;
+	return "That question was already answered somewhere else, so your answer was not sent.";
+};
 
 /** The `sessions.answer` request, as the wire contract defines it. */
 export type GateAnswerRequest = Extract<

@@ -242,8 +242,15 @@ export const ManyOptions: Story = {
  * against a three-line block.
  *
  * Captured at two widths. At the 1024 column the label does not wrap at all, so
- * the property this story exists for was never in any committed frame; the 760
- * pair is where the wrap actually happens (design round 1, D5).
+ * the property this story exists for was never in any committed frame (design
+ * round 1, D5); at 760 it still did not — the label box measured one 19.5px line
+ * and the only thing that wrapped was the `Recommended` mark, so the frame this
+ * story was read for showed the ordinal pinned against a wrapped MARK (design
+ * round 2, D9). It is captured at 560 now, where the button's interior is
+ * narrower than the label's own ~581px single-line measure and the label itself
+ * has to wrap. Both widths ship because the difference between them is the point:
+ * 1024 is "the label fits, everything on one line", 560 is "the label wraps and
+ * the ordinal stays with its first line".
  */
 export const WrappingLabels: Story = {
 	render: () => (

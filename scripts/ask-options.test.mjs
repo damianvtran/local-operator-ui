@@ -51,7 +51,8 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, lostAnswerMessage, shouldTabIntoAnswerOptions, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { buildSendPayload } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
@@ -93,9 +94,13 @@ const { renderToStaticMarkup } = await import("react-dom/server");
 const {
 	AskOptions,
 	resolveNumericAnswer,
+	answerValue,
+	lostAnswerMessage,
+	shouldTabIntoAnswerOptions,
 	createSendLock,
 	answerGateOption,
 	errorCodeOf,
+	buildSendPayload,
 	desktopRequestSchema,
 	desktopEndpoint,
 	CanonicalTranscript,
@@ -135,6 +140,22 @@ function accessibleText(node, out = []) {
 	// what makes the ordinal assertion below meaningful.
 	if (node.props?.["aria-hidden"] === true) return out;
 	if (node.props?.children !== undefined) accessibleText(node.props.children, out);
+	return out;
+}
+
+/** Every text node in an element tree, `aria-hidden` decoration INCLUDED. */
+function visibleText(node, out = []) {
+	if (node === null || node === undefined || typeof node === "boolean")
+		return out;
+	if (typeof node === "string" || typeof node === "number") {
+		out.push(String(node));
+		return out;
+	}
+	if (Array.isArray(node)) {
+		for (const child of node) visibleText(child, out);
+		return out;
+	}
+	if (node.props?.children !== undefined) visibleText(node.props.children, out);
 	return out;
 }
 
@@ -346,6 +367,141 @@ test("only a bare, in-range numeral on an options ask is resolved", () => {
 	);
 });
 
+test("a staged reply's bare ordinal still resolves to the option's label", () => {
+	/*
+	 * The round-1 MAJOR, made assertable in round 2. The composer does not send
+	 * what the user typed: `message-input.tsx` wraps it in `buildSendPayload`, so
+	 * with a reply staged the box holds `2` while the wire would carry
+	 * `<reply-to>…</reply-to>\n2`. Resolving the PAYLOAD — which is what shipped
+	 * before the fix — leaves that wrapped numeral as the answer value of a
+	 * one-shot gate, and the model receives it as prose. `answerValue` resolves the
+	 * TYPED text; revert it to the payload and the middle assertion fails, which is
+	 * the guard the round-1 fix shipped without (code review round 2, F1).
+	 */
+	const g = gate();
+	const payload = buildSendPayload("2", [
+		{ text: "Is the extension popup open?" },
+	]);
+	assert.equal(
+		payload,
+		"<reply-to>Is the extension popup open?</reply-to>\n2",
+	);
+	assert.equal(answerValue(g, "2", payload), OPTIONS[1].label);
+	assert.equal(answerValue(g, " 1. ", payload), OPTIONS[0].label);
+});
+
+test("a reply-wrapped payload is not an ordinal, and is not rewritten", () => {
+	/*
+	 * The other half of the same decision. A caller with no separate typed text —
+	 * the `typed ?? payload` fallback the suggestion grid and any prefix-free
+	 * caller take — must not have a wrapped numeral rewritten into an option the
+	 * user never picked, and prose must reach the wire exactly as typed whichever
+	 * door it came through.
+	 */
+	const g = gate();
+	const payload = buildSendPayload("2", [
+		{ text: "Is the extension popup open?" },
+	]);
+	assert.equal(answerValue(g, undefined, payload), payload);
+	assert.equal(answerValue(g, payload, payload), payload);
+	for (const text of ["Something else", "1 of them", "option 2", "7", "01"]) {
+		assert.equal(answerValue(g, text, text), text, `must not rewrite ${text}`);
+	}
+	// A payload-only caller holding a genuinely bare ordinal still resolves: that
+	// is what the suggestion grid's two-argument call relies on.
+	assert.equal(answerValue(g, undefined, "1"), OPTIONS[0].label);
+});
+
+test("forward Tab moves into the options only when the composer is done with", () => {
+	const event = (over = {}) => ({
+		key: "Tab",
+		shiftKey: false,
+		altKey: false,
+		ctrlKey: false,
+		metaKey: false,
+		...over,
+	});
+	const composer = (over = {}) => ({
+		value: "hello",
+		selectionStart: 5,
+		selectionEnd: 5,
+		...over,
+	});
+	const tab = (e = {}, c = {}, live = true) =>
+		shouldTabIntoAnswerOptions(event(e), composer(c), live);
+	// The route the round asked for, and the only one: an unmodified Tab, content
+	// in the box, the caret at the end of it, and a live option to land on.
+	assert.equal(tab(), true);
+	// The guards the shipped handler did not have. Each was measured on the real
+	// surface as a one-way door out of the composer — 22 consecutive forward Tabs
+	// never left the composer/options cycle from an empty box or a mid-draft caret
+	// (UX round 2, U7; code review round 2, F2).
+	assert.equal(tab({}, { value: "" }), false);
+	assert.equal(tab({}, { value: "   " }), false);
+	assert.equal(tab({}, { selectionStart: 2, selectionEnd: 2 }), false);
+	// A selection is not a caret at the end: the user is editing, not leaving.
+	assert.equal(tab({}, { selectionStart: 1, selectionEnd: 4 }), false);
+	// Every other chord, and every other key, keeps its native meaning.
+	assert.equal(tab({ shiftKey: true }), false);
+	assert.equal(tab({ ctrlKey: true }), false);
+	assert.equal(tab({ altKey: true }), false);
+	assert.equal(tab({ metaKey: true }), false);
+	assert.equal(tab({ key: "Enter" }), false);
+	// A held or absent card offers no live option, so Tab behaves natively — the
+	// half of the old handler that was already right.
+	assert.equal(tab({}, {}, false), false);
+	// A selection the browser cannot report (no textarea) is not the end of the
+	// text either.
+	assert.equal(tab({}, { selectionStart: null, selectionEnd: null }), false);
+});
+
+test("the card prints no ordinal a user could not type against", () => {
+	const twelve = Array.from({ length: 12 }, (_, index) => ({
+		label: `Option ${String(index + 1)}`,
+	}));
+	const buttons = buttonsOf(render({ options: twelve }));
+	assert.equal(buttons.length, 12);
+	const textOf = (button) =>
+		visibleText(button).join("").replace(/\s+/g, " ").trim();
+	// 1-9 keep the ordinal, because typing one resolves to that label.
+	assert.match(textOf(buttons[8]), /^9\./);
+	// 10-12 do not, because `resolveNumericAnswer` is 1-9 and the terminal's
+	// shortcut has no tenth rung: a numeral there is a key that cannot be pressed,
+	// which is the class of lie this card exists to stop telling (UX round 2,
+	// U11). The rows stay pressable.
+	for (const index of [9, 10, 11]) {
+		assert.doesNotMatch(textOf(buttons[index]), /^1[0-2]\./);
+	}
+});
+
+test("an answer that lost the gate is reported, whichever status carried it", () => {
+	/*
+	 * The two shapes a press can lose in, and the two it must stay quiet in.
+	 *
+	 * The second of the losing shapes is the defect: the backend accepts an answer
+	 * for a gate another front end already answered and returns 200, so the
+	 * transport status cannot be the test — the gate having moved is. Revert the
+	 * `sent` half and the user is told nothing at all, which is what the round
+	 * measured (24 samples over 12s, all empty; QA round 2, F-A, UX round 2, U9).
+	 */
+	const refusal = lostAnswerMessage({ status: "sent" }, false);
+	assert.match(refusal ?? "", /already answered somewhere else/);
+	assert.match(
+		lostAnswerMessage({ status: "failed", error: new Error("409") }, false) ?? "",
+		/already answered somewhere else/,
+	);
+	// Quiet while the gate this press belonged to still stands: the card owns the
+	// outcome there — the refusal sentence on a failure, the held card on a send.
+	assert.equal(lostAnswerMessage({ status: "sent" }, true), null);
+	assert.equal(
+		lostAnswerMessage({ status: "failed", error: new Error("x") }, true),
+		null,
+	);
+	// And quiet for a refused press whatever the gate did: nothing was sent, and
+	// the holder of the lock is the surface that reports it.
+	assert.equal(lostAnswerMessage({ status: "refused" }, false), null);
+});
+
 test("recommended is optional, and marks only a real index", () => {
 	const marked = (props) =>
 		buttonsOf(render(props)).map((button) =>
@@ -439,10 +595,14 @@ test("the production transcript renders options as real controls", () => {
 	// The multi-question prefix survives, and the hint names the affordances
 	// while keeping the free-text path honest. The digits are named because they
 	// work and nothing else says so: the card draws `1.` `2.` `3.` and typing one
-	// resolves to that label (UX round 1, U6).
+	// resolves to that label (UX round 1, U6). "type ... and send", not "press",
+	// because a digit on its own does nothing — it is typed into the composer and
+	// only sending resolves it (UX round 2, U10).
 	assert.ok(markup.includes("Question 1 of 2."));
 	assert.ok(
-		markup.includes("Choose an option, press 1-9, or type your own answer below."),
+		markup.includes(
+			"Choose an option, type 1-9 and send, or type your own answer below.",
+		),
 	);
 	// The idles eyebrow, and no "sending" claim while nothing is in flight.
 	assert.ok(markup.includes("Waiting for your answer"));
