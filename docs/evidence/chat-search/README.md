@@ -53,16 +53,20 @@ round 2, D9).
 **Which trailing statement a row draws is a rule, not a flex negotiation.**
 `rowTrailingStatement` in `features/chat/chat-search.ts` answers at most one of
 `conversation` (the mark), `not_sent` (the row's own state) or `binding`, in that
-order; the title is the only element that truncates, and the binding slot — the
-one that carries a user-authored name — is capped at 45% of the row because a
-64-character agent name cannot be allowed to sit in a slot that neither shrinks
-nor truncates (review round 4, R21). Three earlier layouts fixed that number by
-asking CSS to rank the claims, and each failed in the opposite direction: one
-truncating span let the ellipsis land inside a qualifier and render an orphan `·`
-(design round 2, D10); every slot unbounded and `shrink-0` starved the title
-(design round 4, D18); a title floor with shrinkable qualifiers clipped a
-qualifier to a bare `·` and overflowed the container (design round 5, D19). The
-history lives on `rowTrailingStatement` now.
+order. Two elements truncate: the title, and the binding slot inside the cap it
+carries — 45% of the row — because that slot holds a user-authored name, and a
+64-character agent name has no natural width that leaves room for the chat's own
+name (review round 4, R21). Until review round 6 (R31) this paragraph said the
+title was the *only* element that truncates, which the binding slot's own
+`truncate` had made false.
+
+That cap is where a number earned its place. Three earlier layouts instead asked
+CSS to rank the claims, and each failed in the opposite direction: one truncating
+span let the ellipsis land inside a qualifier and render an orphan `·` (design
+round 2, D10); every slot unbounded and `shrink-0` starved the title (design
+round 4, D18); a title floor with shrinkable qualifiers clipped a qualifier to a
+bare `·` and overflowed the container (design round 5, D19). The history lives on
+`rowTrailingStatement` now.
 
 ## What these frames are evidence OF
 

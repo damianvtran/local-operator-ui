@@ -9,7 +9,12 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/chat-search";',
+			'export * from "./src/renderer/src/features/chat/chat-search";\n' +
+			// The contract's own bound, re-exported through the SAME bundle rather
+			// than a second import: the rule's default argument IS this constant, and
+			// a test that hard-coded 256 would keep passing while the constant it is
+			// supposed to follow moved.
+			'export { SESSION_SEARCH_MAX_CHARS } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -23,11 +28,14 @@ const module = await import(
 const {
 	lostRowsToStaleAnswer,
 	rowTrailingStatement,
+	searchAnswerIsClipped,
+	searchQueryExceedsLimit,
 	SESSION_RANK_NAME,
 	SESSION_RANK_ID,
 	SESSION_RANK_BODY,
 	SESSION_RANK_SOFT,
 	SESSION_RANK_LABEL,
+	SESSION_SEARCH_MAX_CHARS,
 	matchesLabel,
 	searchChats,
 	hitsAnswerQuery,
@@ -50,7 +58,9 @@ const hit = (id, rank, body_match = false, name = "name") => ({
 
 test("an empty query is not a search", () => {
 	const rows = [row("aaaaaaaaaaaa", "One"), row("bbbbbbbbbbbb", "Two")];
-	const outcome = searchChats(rows, "", [hit("aaaaaaaaaaaa", SESSION_RANK_BODY)]);
+	const outcome = searchChats(rows, "", [
+		hit("aaaaaaaaaaaa", SESSION_RANK_BODY),
+	]);
 
 	// Every row, in the order the catalogue had them: a blank box is a list, not
 	// a filter, and a leftover answer must not narrow it.
@@ -80,7 +90,9 @@ test("a conversation match is admitted, ordered by relevance, and says why", () 
 
 test("a row nothing matched is dropped", () => {
 	const rows = [row("aaaaaaaaaaaa", "One"), row("bbbbbbbbbbbb", "Two")];
-	const outcome = searchChats(rows, "zzz", [hit("aaaaaaaaaaaa", SESSION_RANK_SOFT, true)]);
+	const outcome = searchChats(rows, "zzz", [
+		hit("aaaaaaaaaaaa", SESSION_RANK_SOFT, true),
+	]);
 
 	assert.deepEqual(
 		outcome.rows.map((entry) => entry.session_id),
@@ -110,7 +122,10 @@ test("the conversation marker comes from the answer, never from a local label hi
 	const rows = [row("aaaaaaaaaaaa", "Some chat", { agent: "architect" })];
 
 	// A local label hit is a hit on something already visible: no marker.
-	assert.equal(searchChats(rows, "architect", null).conversationMatches.size, 0);
+	assert.equal(
+		searchChats(rows, "architect", null).conversationMatches.size,
+		0,
+	);
 
 	// The backend says the row came up on its conversation, and the query is not
 	// in anything the row shows: mark it, because nothing visible explains why it
@@ -173,7 +188,10 @@ test("a tie is broken by recency, including for a row the client cannot place", 
 		outcome.rows.map((entry) => entry.session_id),
 		["dddddddddddd", "bbbbbbbbbbbb", "aaaaaaaaaaaa"],
 	);
-	assert.deepEqual([...outcome.synthesized].sort(), ["bbbbbbbbbbbb", "dddddddddddd"]);
+	assert.deepEqual([...outcome.synthesized].sort(), [
+		"bbbbbbbbbbbb",
+		"dddddddddddd",
+	]);
 });
 
 test("a search is case-insensitive and ignores surrounding space", () => {
@@ -182,7 +200,10 @@ test("a search is case-insensitive and ignores surrounding space", () => {
 });
 
 test("only the answer to the query in the box is used", () => {
-	const answer = { query: "retention", sessions: [hit("aaaaaaaaaaaa", SESSION_RANK_NAME)] };
+	const answer = {
+		query: "retention",
+		sessions: [hit("aaaaaaaaaaaa", SESSION_RANK_NAME)],
+	};
 
 	assert.equal(hitsAnswerQuery(answer, "retention"), true);
 	assert.equal(hitsAnswerQuery(answer, "  retention  "), true);
@@ -235,8 +256,9 @@ test("a row the query visibly explains is not marked as a conversation match", (
 	const rows = [row("aaaaaaaaaaaa", "Retention notes", { agent: "coder" })];
 
 	assert.equal(
-		searchChats(rows, "retention", [hit("aaaaaaaaaaaa", SESSION_RANK_BODY, true)])
-			.conversationMatches.size,
+		searchChats(rows, "retention", [
+			hit("aaaaaaaaaaaa", SESSION_RANK_BODY, true),
+		]).conversationMatches.size,
 		0,
 	);
 	// Same row, a query its visible text does NOT contain: the conversation is
@@ -298,7 +320,12 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	// layouts in a row failed in opposite directions. The rule decides here, so
 	// the flex algorithm never has to.
 	const show = (input) => rowTrailingStatement(input);
-	const base = { marked: false, unstarted: false, nested: false, binding: "coder" };
+	const base = {
+		marked: false,
+		unstarted: false,
+		nested: false,
+		binding: "coder",
+	};
 
 	assert.equal(show(base), "binding");
 	// A nested row inherits its identity from the parent.
@@ -312,7 +339,10 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	);
 	// The search mark outranks both, and it is the ONLY case a marked row draws.
 	assert.equal(show({ ...base, marked: true }), "conversation");
-	assert.equal(show({ ...base, marked: true, unstarted: true }), "conversation");
+	assert.equal(
+		show({ ...base, marked: true, unstarted: true }),
+		"conversation",
+	);
 	assert.equal(show({ ...base, marked: true, nested: true }), "conversation");
 
 	// The property that matters: whatever the input, the answer is exactly one of
@@ -329,4 +359,69 @@ test("a row shows ONE trailing statement, in priority order", () => {
 						allowed.includes(show({ marked, unstarted, nested, binding })),
 						`${JSON.stringify({ marked, unstarted, nested, binding })} produced something outside the four literals`,
 					);
+});
+
+/*
+ * The two decisions the panel makes about a query and an answer BEFORE it draws
+ * anything, both added in QA round 1 and both pure for the same reason: they are
+ * claims about what the panel may say, and a claim is exactly the kind of thing
+ * that should be falsifiable without a browser.
+ */
+test("an over-long query is refused by the surface, on the number the contract bounds", () => {
+	// The bound ITSELF is accepted. A rule that refused it would be off by one
+	// against the schema it is standing in for, and 256 characters is a legal
+	// request (`scripts/desktop-contract.test.mjs` asserts the schema accepts it).
+	assert.equal(
+		searchQueryExceedsLimit("a".repeat(SESSION_SEARCH_MAX_CHARS)),
+		false,
+		"the contract's bound is legal, so the rule must be `>` and not `>=`",
+	);
+	assert.equal(
+		searchQueryExceedsLimit("a".repeat(SESSION_SEARCH_MAX_CHARS + 1)),
+		true,
+	);
+
+	// Measured on the TRIMMED box, because the trimmed box is what is sent
+	// (`useChatSearch` debounces `query.trim()`) and what the schema validates.
+	// 256 characters plus padding is a request the transport would have carried,
+	// so refusing it would be a refusal about a string nobody was going to send.
+	assert.equal(
+		searchQueryExceedsLimit(`${"a".repeat(SESSION_SEARCH_MAX_CHARS)}   `),
+		false,
+	);
+
+	// Nothing to refuse, and nothing to say about it.
+	assert.equal(searchQueryExceedsLimit(""), false);
+	assert.equal(searchQueryExceedsLimit("   "), false);
+	assert.equal(searchQueryExceedsLimit("retention"), false);
+
+	// The default argument must BE the contract's constant rather than a copy of
+	// its value: the number appears in the notice's copy, so a second literal
+	// here is a sentence that can state a bound the request does not have.
+	assert.equal(
+		searchQueryExceedsLimit(
+			"a".repeat(SESSION_SEARCH_MAX_CHARS + 1),
+			SESSION_SEARCH_MAX_CHARS,
+		),
+		true,
+	);
+});
+
+test("a count is a floor only when the answer came back full", () => {
+	assert.equal(searchAnswerIsClipped(3, 100), false);
+	assert.equal(searchAnswerIsClipped(99, 100), false);
+
+	// Exactly the cap is the case that matters: the answer carries no truncation
+	// flag, so a full page is indistinguishable from a clipped one and the
+	// honest reading of it is the floor. `>=` is the whole finding (QA round 1,
+	// Q3 — 100 on screen against 115 in the store).
+	assert.equal(searchAnswerIsClipped(100, 100), true);
+	assert.equal(searchAnswerIsClipped(115, 100), true);
+
+	// No limit in hand means no claim can be made from the answer, so the panel
+	// must not invent one: `limit` is optional on the wire even though this
+	// client always asks for it.
+	assert.equal(searchAnswerIsClipped(5, undefined), false);
+	assert.equal(searchAnswerIsClipped(5, 0), false);
+	assert.equal(searchAnswerIsClipped(0, 100), false);
 });

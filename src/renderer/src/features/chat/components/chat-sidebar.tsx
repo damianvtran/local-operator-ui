@@ -40,11 +40,14 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
 	hitsAnswerQuery,
 	lostRowsToStaleAnswer,
 	rowTrailingStatement,
+	searchAnswerIsClipped,
 	searchChats,
+	searchQueryExceedsLimit,
 } from "../chat-search";
 
 type Props = {
@@ -182,20 +185,47 @@ export function ChatSidebar({
 		capabilities.data,
 		"session_search",
 	);
-	const search = useChatSearch(query, ready && searchSupported);
+	/*
+	 * An over-long box never reaches the wire. The op's `q` is capped at
+	 * `SESSION_SEARCH_MAX_CHARS`, and asking anyway buys a generic 422 that the
+	 * panel then renders as a backend outage with a Retry that cannot succeed —
+	 * the same characters are refused identically every time (QA round 1, Q1).
+	 * So the sidebar refuses it first and says the true cause; importing the
+	 * constant for that sentence is what makes it load-bearing here rather than
+	 * decorative in the contract.
+	 *
+	 * The local name and label narrowing still runs — `searchChats` applies it
+	 * whether or not there are hits — so what the notice describes is what the
+	 * user is still getting, not a replacement for it.
+	 */
+	const overLong = searchQueryExceedsLimit(query);
+	const search = useChatSearch(query, ready && searchSupported && !overLong);
+	/*
+	 * The hits the answer actually contributes, held once: `searchChats` consumes
+	 * them and the counts below read their honesty off the same array, so the two
+	 * cannot disagree about which answer is in hand.
+	 */
+	const hits = hitsAnswerQuery(search.data, query)
+		? search.data.sessions
+		: null;
 	const {
 		rows: matching,
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() =>
-			searchChats(
-				sessions,
-				query,
-				hitsAnswerQuery(search.data, query) ? search.data.sessions : null,
-			),
-		[sessions, query, search.data],
+		() => searchChats(sessions, query, hits),
+		[sessions, query, hits],
 	);
+	/*
+	 * Whether that answer is a full page rather than the whole answer. The answer
+	 * carries no truncation flag (`limit`, `query`, `sessions` are all it holds,
+	 * where the sibling list route returns one), so "exactly as many hits as we
+	 * asked for" is the only evidence there is, and a number read off it is a
+	 * FLOOR. Asserting the exact count from it is the false total QA round 1 (Q3)
+	 * filed: 100 on screen against 115 in the store.
+	 */
+	const clipped =
+		hits !== null && searchAnswerIsClipped(hits.length, search.data?.limit);
 	const children = (kind: ChatTarget["kind"], name: string) =>
 		matching.filter((row) =>
 			kind === "team"
@@ -258,6 +288,10 @@ export function ChatSidebar({
 		Boolean(query.trim()) &&
 		ready &&
 		searchSupported &&
+		// An over-long query issues no request at all, so "searching…" would be a
+		// claim about work that is not happening; the notice beside it says what
+		// is.
+		!overLong &&
 		!search.isError &&
 		!answered;
 	/*
@@ -316,13 +350,16 @@ export function ChatSidebar({
 						? "page"
 						: undefined
 				}
-				/* The tooltip carries what the row does NOT draw: the binding, and the
-			   row's own state — the statements `rowTrailingStatement` withheld. It
-			   deliberately does NOT repeat the search mark's words, because those
-			   are announced by the row itself through the `sr-only` span beside it,
-			   and both channels saying "matched in conversation" would be one fact
-			   announced twice (review round 4, R23). Rule, stated: the row draws
-			   the top statement, the tooltip completes the set minus that one. */
+				/* The tooltip carries the row's binding and its own state — the facts the
+			   row may not be drawing — and deliberately NOT the search mark's words,
+			   which the row announces itself through the `sr-only` span beside it:
+			   both channels saying "matched in conversation" would be one fact
+			   announced twice (review round 4, R23). Stated as the rule the
+			   expression below implements: the tooltip completes the set minus the
+			   MARK'S words, which is the only statement it withholds. The binding
+			   and ", not sent yet" are appended in every case, so on a row that
+			   draws one of those the tooltip repeats it rather than omitting it
+			   (review round 6, R33). */
 				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
 				onClick={() => onSelectConversation(row.session_id)}
 			>
@@ -335,9 +372,12 @@ export function ChatSidebar({
 				    Read that docstring before changing anything here.
 
 				    What matters at this call site: the number of statements is capped
-				    rather than negotiated by the flex algorithm, the title is the only
-				    element that truncates, and no floor is needed because at most one
-				    statement can ever be drawn. */}
+				    rather than negotiated by the flex algorithm, no floor is needed
+				    because at most one statement can ever be drawn, and TWO elements
+				    truncate — the title, and the binding slot inside its own 45% cap,
+				    which is that cap doing the work a floor used to. The two literal
+				    statements below cannot truncate anything: they are fixed strings
+				    with no width to run out of. */}
 				<span className="min-w-0 flex-1 truncate">
 					{row.title || "Untitled chat"}
 				</span>
@@ -513,6 +553,39 @@ export function ChatSidebar({
 			</div>
 		);
 	};
+	/*
+	 * The one place a search count is worded, for both call sites: the group
+	 * headings and the All chats row. They held two copies of one expression,
+	 * which is how the same false total had to be found twice; a count stated in
+	 * two places is a count that can be stated two ways.
+	 *
+	 * While the answer is clipped the number is a floor, so it says so — a
+	 * trailing `+` on the badge and "or more" for a screen reader, and "At least"
+	 * in the tooltip that names the whole claim. The `+` is not decoration: the
+	 * badge is the only part of the sentence a sighted user reads at a glance.
+	 */
+	const countBadge = (count: number) => (
+		<span
+			className="text-meta tabular-nums"
+			title={
+				query
+					? `${clipped ? "At least " : ""}${count} ${count === 1 ? "chat matches" : "chats match"} this search${clipped ? "; the list stops there" : ""}`
+					: undefined
+			}
+		>
+			{count}
+			{clipped ? "+" : ""}
+			{/* A query turns these numbers from "what you have" into "what
+			    matched", with identical styling, so the count needs to say which
+			    claim it is making (design round 1, D5); a clipped answer adds the
+			    third claim, which is that the number is bounded below. */}
+			{query ? (
+				<span className="sr-only">
+					{clipped ? " or more matching" : " matching"}
+				</span>
+			) : null}
+		</span>
+	);
 	const heading = (
 		key: string,
 		label: string,
@@ -534,22 +607,7 @@ export function ChatSidebar({
 			<span className="flex-1 text-left">{label}</span>
 			{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
-			{Boolean(count) && (
-				<span
-					className="text-meta tabular-nums"
-					title={
-						query
-							? `${count} ${count === 1 ? "chat matches" : "chats match"} this search`
-							: undefined
-					}
-				>
-					{count}
-					{/* A query turns these numbers from "what you have" into "what
-					    matched", with identical styling, so the count needs to say
-					    which claim it is making (design round 1, D5). */}
-					{query ? <span className="sr-only"> matching</span> : null}
-				</span>
-			)}
+			{count !== undefined && count !== 0 && countBadge(count)}
 		</button>
 	);
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -632,7 +690,20 @@ export function ChatSidebar({
 			    still narrows, it just narrows by less than the box promises, and a
 			    search that quietly stops looking inside conversations is
 			    indistinguishable from one that found nothing there. */}
-			{query && ready && !searchSupported && (
+			{/* A box past the op's own bound is refused before the request is made, so
+			    it must not be rendered as a backend problem with a Retry: retrying
+			    re-sends the same characters and is refused identically (QA round 1,
+			    Q1). It takes precedence over the names-only notice below, which
+			    describes the same narrowing for a different cause and offers a remedy
+			    (update the app) that cannot help THIS box — shorten the query and that
+			    notice returns for the reason it was written for. */}
+			{overLong && ready && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
+					This one is longer, so only chat names are being searched.
+				</p>
+			)}
+			{query && ready && !searchSupported && !overLong && (
 				<p className="pb-2 text-meta text-ink-muted">
 					Searching chat names only. Update Local Operator to search inside
 					conversations.
@@ -794,19 +865,7 @@ export function ChatSidebar({
 							{/* The three global counts read as one set, so this must honour
 							    the active filter exactly as Active/Previous do. A zero badge
 							    beside the "No chats yet" sentence just repeats it. */}
-							{matching.length > 0 && (
-								<span
-									className="text-meta tabular-nums"
-									title={
-										query
-											? `${matching.length} ${matching.length === 1 ? "chat matches" : "chats match"} this search`
-											: undefined
-									}
-								>
-									{matching.length}
-									{query ? <span className="sr-only"> matching</span> : null}
-								</span>
-							)}
+							{matching.length > 0 && countBadge(matching.length)}
 						</button>
 						{/* Sits inside the All chats section so it holds the same place
 						    — under the toggle, above whatever the toggle reveals — in
