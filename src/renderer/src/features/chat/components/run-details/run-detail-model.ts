@@ -268,10 +268,13 @@ export type SubagentRow = {
 	/**
 	 * How many children this child launched.
 	 *
-	 * Derived in the renderer by grouping the roster on `parent_job_id` rather
-	 * than read from the wire, because the wire carries the lineage and not the
-	 * count: a `childCount` field would be a second statement of a fact the
-	 * parent/child edges already make, and two statements can disagree.
+	 * Derived in the renderer by grouping the session's `task` rows on
+	 * `parent_job_id` (`lineage`) rather than read from the wire, because the wire
+	 * carries the lineage and not the count: a `childCount` field would be a
+	 * second statement of a fact the parent/child edges already make, and two
+	 * statements can disagree. Counted over the whole LINEAGE rather than the
+	 * roster, so a parent's control counts the descendants the roster does not
+	 * list (`§ 4`'s membership rule).
 	 */
 	childCount: number;
 	/** `model_label` — the child's own model, read only by the reader's facts row. */
@@ -366,7 +369,25 @@ export type TodoPhaseSlice = TodoPhaseView & {
  * tally shrink as rows overflow, which reads as work disappearing.
  */
 export type RunDetails = {
+	/**
+	 * The ROSTER: one row per member (`§ 4`'s membership rule, `rosterMembers`).
+	 *
+	 * This is what the roster renders, what the tally counts and what the
+	 * `danger` dot's ledger is built from — one list, so the three cannot
+	 * disagree. It is NOT every `task` row on the wire: a grandchild is a
+	 * descendant reachable through its parent's control (`lineage`, below).
+	 */
 	subagents: SubagentRow[];
+	/**
+	 * Every `task` row on the wire, members and descendants alike.
+	 *
+	 * The reader navigates THIS list and never the roster: a path is walked over
+	 * `parent_job_id` (`§ 5.5`), and a walk that could only see members would
+	 * stop at the first level — taking the breadcrumb's ancestors, the peer
+	 * stepper and the `N children` control with it. So the roster is a VIEW of
+	 * the lineage (`subagents ⊆ lineage`) and the reader is a walk over it.
+	 */
+	lineage: SubagentRow[];
 	todos: TodoPhaseView[];
 	/** Children that have not settled: running or queued (`§3.3`). */
 	openChildren: number;
@@ -872,22 +893,56 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const nowMs = input?.nowMs ?? Date.now();
 	const nowSeconds = nowMs / 1000;
 
-	const subagents = jobs.map((job) => deriveChild(job, nowSeconds));
-	// `childCount` is the roster's own parent/child edges counted here, where the
-	// whole list is visible — see `SubagentRow.childCount` for why it is derived
-	// rather than read.
+	/*
+	 * The wire's rows are an execution snapshot, not a roster.
+	 *
+	 * `frontend.jobs` is `comms.job_rows()`, which walks the ROOT session's job
+	 * manager AND every live child's (`harness/comms.py:799-824`) — so the list
+	 * carries, beside the delegated children, the parent's own tool jobs and each
+	 * child's own tool calls, all minted by the same ledger as the task rows. A
+	 * roster that painted them answered "which sub-agents are running" with the
+	 * one child's `bash` call (round 1, Q1/U1-4: `2 running` over a single
+	 * delegation, with the bash row sorted above the child it belonged to), and
+	 * the same list inflated the tally.
+	 *
+	 * The discriminator is the row's own `type`, which the wire already stamps:
+	 * a delegated child is `task` (`frontend_state.py:4093`, and `JobState.type`
+	 * generally), while a tool job carries the tool's name (`bash`, `read`, ...),
+	 * a null `agent_role` and no `session_id`. Membership is therefore a filter on
+	 * `type` — NOT on `agent_role`, which is a display field whose default value
+	 * `task` is suppressed, and NOT on `session_id`, which a restored row can
+	 * lack while still being a real child.
+	 *
+	 * A row with NO `type` at all is kept. Every `JobState` this wire has shipped
+	 * carries one, so the case is a runtime this renderer has not met; keeping the
+	 * row shows a child that a stricter filter would hide, and the failure this
+	 * rule exists to stop is over-reporting work, not losing it.
+	 */
+	const taskRows = jobs
+		.filter((job) => {
+			const type = wireText(job.type);
+			return type === "" || type === "task";
+		})
+		.map((job) => deriveChild(job, nowSeconds));
+	/*
+	 * `childCount` is the parent/child edges counted over the WHOLE lineage — see
+	 * `SubagentRow.childCount` for why it is derived rather than read, and
+	 * `rosterMembers` below for why the count and the roster are two different
+	 * questions about the same edges.
+	 */
 	const childrenByParent = new Map<string, number>();
-	for (const row of subagents) {
+	for (const row of taskRows) {
 		if (!row.parentJobId) continue;
 		childrenByParent.set(
 			row.parentJobId,
 			(childrenByParent.get(row.parentJobId) ?? 0) + 1,
 		);
 	}
-	const roster = subagents.map((row) => ({
+	const lineage = taskRows.map((row) => ({
 		...row,
 		childCount: childrenByParent.get(row.id) ?? 0,
 	}));
+	const roster = rosterMembers(lineage);
 	// The implicit phase is folded per PHASE (`§6.2`), which is `deriveTodoPhase`'s
 	// own rule now: it needs no whole-plan flag.
 	const todos = rawTodos.map(deriveTodoPhase);
@@ -895,6 +950,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 
 	return {
 		subagents: roster,
+		lineage,
 		todos,
 		openChildren: roster.filter((row) => !isSettled(row.status)).length,
 		failedChildIds: roster
@@ -909,6 +965,33 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 		measuredAtRealMs: Date.now(),
 	};
 }
+
+/**
+ * Which of the session's `task` rows the ROSTER owns (`§ 4`'s membership rule).
+ *
+ * A roster member is a `task` row whose PARENT is not itself a task row on the
+ * wire: its parent is the session, so it launched from the top level. A row
+ * whose parent IS present launched from another child and is a DESCENDANT — a
+ * grandchild. Painting it as a top-level row double-reported the same work in
+ * the tally and beside its own parent (round 1, Q2), and `job-5`'s `N children`
+ * control is the documented way to reach it (`§ 5.5`).
+ *
+ * The absent-parent test rather than `parent_job_id == null`, and the difference
+ * is real rather than defensive: `comms.job_rows()` returns a child's raw
+ * `parent_job_id` when the record it names is no longer in the graph
+ * (`_record(...) is None`, `harness/comms.py:800-812`), and resumed attempts
+ * have their predecessor ids dropped from the snapshot entirely
+ * (`key not in self._aliases`). A row whose parent is not in the list has no
+ * control anywhere that could reach it, so it is a member by construction —
+ * which is also why this is expressed as a question about the LIST rather than
+ * about the row alone.
+ */
+const rosterMembers = (lineage: readonly SubagentRow[]): SubagentRow[] => {
+	const ids = new Set(lineage.map((row) => row.id));
+	return lineage.filter(
+		(row) => row.parentJobId === null || !ids.has(row.parentJobId),
+	);
+};
 
 /**
  * The same model re-measured against a later instant.
@@ -930,17 +1013,37 @@ export function retimeRunDetails(
 	details: RunDetails,
 	nowMs: number,
 ): RunDetails {
-	const nowSeconds = nowMs / 1000;
-	let moved = false;
-	const subagents = details.subagents.map((row) => {
-		if (row.startSeconds === null || row.settledSeconds !== null) return row;
-		const label = clockLabel(row, nowSeconds);
-		if (label === row.elapsedLabel) return row;
-		moved = true;
-		return { ...row, elapsedLabel: label };
-	});
-	return moved ? { ...details, subagents } : details;
+	const subagents = retimeRows(details.subagents, nowMs);
+	const lineage = retimeRows(details.lineage, nowMs);
+	return subagents === details.subagents && lineage === details.lineage
+		? details
+		: { ...details, subagents, lineage };
 }
+
+/** One row, re-measured at `nowMs`; returns the same row when nothing moved. */
+export function retimeChildRow(row: SubagentRow, nowMs: number): SubagentRow {
+	if (row.startSeconds === null || row.settledSeconds !== null) return row;
+	const label = clockLabel(row, nowMs / 1000);
+	return label === row.elapsedLabel ? row : { ...row, elapsedLabel: label };
+}
+
+/**
+ * A list of rows re-measured, identity-preserving in BOTH directions.
+ *
+ * It returns the same ARRAY when no row moved, which is what keeps
+ * `retimeRunDetails` on the no-re-render path, and the same ROW objects for the
+ * rows that did not move, which keeps a memoised row from repainting beside one
+ * that had to.
+ */
+const retimeRows = (rows: SubagentRow[], nowMs: number): SubagentRow[] => {
+	let moved = false;
+	const next = rows.map((row) => {
+		const retimed = retimeChildRow(row, nowMs);
+		if (retimed !== row) moved = true;
+		return retimed;
+	});
+	return moved ? next : rows;
+};
 
 /** Whether a phase carries a name of its own rather than the implicit default. */
 const isNamedPhase = (phase: unknown): boolean => {
@@ -1313,6 +1416,24 @@ export type McpServerRow = {
 	scope: string | null;
 	/** The one-line remedy on a problem row, `null` on every other state. */
 	hint: string | null;
+	/**
+	 * The wire's own failure text for this server, when the read carries one.
+	 *
+	 * `mcp.list` does NOT carry it — `MCPDesktop.snapshot()` publishes name,
+	 * status, tool count and config, and nothing else — so this comes from the
+	 * canonical projection's `frontend.mcp_servers[].error`
+	 * (`frontend_state._mcp_state`, fed from `mcp_startup.failures`), which is the
+	 * only place the runtime states WHY a server failed to come up: QA's dead
+	 * command produced `[Errno 2] No such file or directory: '/nonexistent/…'`
+	 * and the pane offered a reconnect hint instead (round 1, U1-8).
+	 *
+	 * That projection is otherwise a CHANGE SIGNAL and never a rendering source
+	 * (`use-mcp-servers.ts`: it can be minutes stale and cannot build this row).
+	 * The error is the one field it can state and this read cannot, so it is
+	 * rendered — but only on a row the RENDERED read already calls a problem, so
+	 * a startup failure cannot contradict a live `connected`.
+	 */
+	errorText: string | null;
 };
 
 /**
@@ -1329,7 +1450,17 @@ export type McpServerRow = {
  * order is config load order, which shifts as configuration is edited, and a
  * section that reorders itself every 15 s is a section nobody can read.
  */
-export function deriveMcpServers(rows: unknown): McpServerRow[] {
+export function deriveMcpServers(
+	rows: unknown,
+	/**
+	 * The canonical projection's per-server failure text, keyed by name.
+	 *
+	 * Optional, and absent from every caller that has no canonical session (the
+	 * story set, the legacy path): a row then falls back to its remedy line, which
+	 * is the behaviour this section shipped with.
+	 */
+	errors: Readonly<Record<string, string>> = {},
+): McpServerRow[] {
 	return toWireList(rows)
 		.map((row) => {
 			const name = wireText(row.name);
@@ -1355,6 +1486,9 @@ export function deriveMcpServers(rows: unknown): McpServerRow[] {
 				// and its tail is the only part that says which file it came from.
 				scope: wireText(row.owned_scope) || sourceBasename(row.source) || null,
 				hint: problem ? (MCP_HINT[status] ?? null) : null,
+				// Renderable only on a problem row: see the field's own note for why a
+				// stale startup failure must not sit under a healthy word.
+				errorText: problem ? wireText(errors[name]) || null : null,
 			};
 		})
 		.filter((row): row is McpServerRow => row !== null)
@@ -1396,6 +1530,72 @@ const sourceBasename = (value: unknown): string => {
 export function mcpServersAreCold(rows: readonly McpServerRow[]): boolean {
 	return rows.length > 0 && rows.every((row) => row.status === "cold");
 }
+
+/**
+ * The canonical projection's per-server failure text, keyed by name.
+ *
+ * The DIAGNOSIS half of an MCP problem row (`McpServerRow.errorText`), and the
+ * only field of `frontend.mcp_servers` this pane renders: `mcp.list` reports
+ * status, tool count and config and nothing about WHY a server is down, while
+ * the canonical state carries the runtime's own failure strings from
+ * `mcp_startup.failures` (`frontend_state._mcp_state`). Without it the section
+ * offered a remedy that cannot work for a server broken by its own command
+ * (round 1, U1-8).
+ *
+ * Names with no error are absent rather than empty, so a lookup miss and an
+ * empty failure are the same thing to the caller — there is nothing to print
+ * either way. The projection is otherwise a CHANGE SIGNAL and not a rendering
+ * source (it can be minutes stale), so nothing else from it is carried here.
+ */
+export function mcpErrorTexts(rows: unknown): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const row of toWireList(rows)) {
+		const name = wireText(row.name);
+		const error = wireText(row.error);
+		if (name && error) out[name] = error;
+	}
+	return out;
+}
+
+/**
+ * The MCP section's trailing tally, in the model because the TRIGGER already
+ * counts the same servers there and the two must not disagree.
+ *
+ * Same grammar as its two sibling sections (label left, quiet right-aligned
+ * tally) and its own rule: the connected count against the whole list, plus the
+ * problem count when there is one. Those are two different facts rather than one
+ * restated — `connecting` is neither connected nor a problem, so the healthy
+ * count does not imply the problem count — which is why `§ 6.2`'s
+ * de-duplication argument does not apply here.
+ *
+ * The problem clause AGREES with the trigger's own label, and the agreement is
+ * the point: `runDetailTriggerLabel` says `1 MCP server needs attention` while
+ * this section said `1 need attention` for the same server (round 1, U1-7/Q7) —
+ * one count, two spellings, one of them ungrammatical, on the two surfaces a
+ * single reader sees together.
+ */
+export function mcpTally(rows: readonly McpServerRow[]): string {
+	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
+	const connected = rows.filter((row) => row.status === "connected").length;
+	const problems = rows.filter((row) => row.problem).length;
+	const base = `${connected} of ${rows.length} connected`;
+	if (problems === 0) return base;
+	return `${base} · ${problems} ${problems === 1 ? "needs" : "need"} attention`;
+}
+
+/**
+ * The cold sentence, and why it replaces the tally rather than annotating it.
+ *
+ * With no runtime attached there IS no status to report, so the section shows
+ * which servers are CONFIGURED — worth having on its own — and says plainly that
+ * nothing was checked. It is one line for the whole section because the route's
+ * cold branch stamps `status: "cold"` on EVERY row, so a per-row word would
+ * print one jargon term N times and the tally would read `0 of N connected`,
+ * claiming three servers are down when none was asked to be up. It lights no
+ * dot, because nothing is wrong.
+ */
+export const MCP_COLD_LINE =
+	"No session is running — server status cannot be checked.";
 
 /** Every MCP name that is asking for something right now. */
 export function mcpProblemNames(rows: readonly McpServerRow[]): string[] {

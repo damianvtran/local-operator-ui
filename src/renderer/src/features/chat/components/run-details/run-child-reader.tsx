@@ -53,6 +53,7 @@ import {
 	reconcileLaunchTurns,
 } from "./run-detail-model";
 import { NumberRun, SubagentStateIcon } from "./run-detail-row-parts";
+import { useChildRowClock } from "./run-details-clock";
 import {
 	type ChildTranscriptState,
 	useChildTranscript,
@@ -100,6 +101,19 @@ export type RunChildReaderProps = {
 	 * the surface that can put the roster back.
 	 */
 	onUnopenable: () => void;
+	/**
+	 * The instants the panel's model was measured at, for the header's clock.
+	 *
+	 * The reader draws ONE time-dependent figure — the elapsed label — and it has
+	 * to move while the child is running (`§ 5.1`, `§ 5.3`). Threaded from the
+	 * pane rather than read here because the model's own instant is what makes a
+	 * story frame reproducible (see `RunDetails.measuredAtMs`): the wire's
+	 * `start_time` is real epoch seconds, but a fixture's `nowMs` is pinned, so a
+	 * label derived from the wall clock alone would be right live and wrong in
+	 * every frame of the set.
+	 */
+	measuredAtMs: number;
+	measuredAtRealMs: number;
 };
 
 /**
@@ -242,9 +256,16 @@ export const RunChildReader = ({
 	live,
 	previewPage = null,
 	attachmentScope,
+	measuredAtMs,
+	measuredAtRealMs,
 	onUnopenable,
 }: RunChildReaderProps) => {
 	const containerRef = useRef<HTMLDivElement>(null);
+	/**
+	 * The reader's own root, which holds focus for the states that have no
+	 * transcript yet — see the focus effect below.
+	 */
+	const readerRef = useRef<HTMLDivElement>(null);
 	/*
 	 * The preview seam, decided BEFORE the hook is called because it decides what
 	 * the hook is asked for. A supplied page means "paint this instead of reading
@@ -299,14 +320,55 @@ export const RunChildReader = ({
 	}, [row.launchPrompts, transcript]);
 
 	/*
-	 * Focus moves INTO the body when the reader opens (§ 8), so the scroll keys
-	 * and `Escape` land here rather than on the trigger the reader just left. The
-	 * transcript element is already a tab stop with a name, so focusing it is
-	 * both the accessibility fix and the behavioural one.
+	 * The header's clock (`§ 5.1`, `§ 5.3`; round 1, Q3).
+	 *
+	 * `frontend.update` is published only when the runtime has a field delta to
+	 * send, so a running child's elapsed label freezes the moment the wire goes
+	 * quiet — the roster's rows have ticked from their own start times since the
+	 * clock was written (`useRunDetailsClock`), and this header, which is not on
+	 * that path because the pane mounts it in place of the roster body, sat on the
+	 * last published label instead: six samples of `running 3s` over 20 s while the
+	 * wire's own age for the job was 109 s. Same rule, same interval, one row —
+	 * see `useChildRowClock`.
+	 *
+	 * Only the RETIMED row is used for the header's own facts; every other use of
+	 * `row` below is a fact about the launch (brief, outcome, attachment scope,
+	 * status) that no clock can move.
 	 */
+	const headerRow = useChildRowClock(row, { measuredAtMs, measuredAtRealMs });
+
+	/*
+	 * Focus moves INTO the body when the reader opens (`§ 8`), so the scroll keys
+	 * and `Escape` land here rather than on the row the reader just left.
+	 *
+	 * Driven from the STATE rather than from mount, and that is the whole fix
+	 * (round 1, U1-1/Q4): the transcript element only exists once the page is
+	 * readable, so a mount-time effect focused `null` while `state === "loading"`
+	 * painted a `QuietLine`, and an empty dependency list never retried — leaving
+	 * `document.activeElement` on `BODY`, with `Escape` and the reader's own
+	 * paging keys dead until the user pressed Tab.
+	 *
+	 * The root carries the focus for the states with no transcript (`loading`,
+	 * `pending`, `gone`, `error`, and an unaddressed child), because the way out
+	 * of a reader that has nothing to paint is the same way out as any other
+	 * (`Escape`/Back), and it hands the focus to the transcript — the element that
+	 * actually pages — the moment one mounts. The effect re-runs on `state`, so a
+	 * page that arrives late still takes focus; it does NOT re-run on a pulse or a
+	 * refetch that leaves the state alone, so the reader never steals focus back
+	 * from a user who moved it.
+	 */
+	const hasTranscript = state === "ready" && painted.records.length > 0;
 	useEffect(() => {
-		containerRef.current?.focus();
-	}, []);
+		/*
+		 * Which element holds focus for THIS state: the transcript when one is painted,
+		 * the reader's root otherwise. `hasTranscript` is read in the body rather than
+		 * used only as a dependency because it IS the transition this effect is about
+		 * — a page arriving is what moves focus from the root into the element that
+		 * pages.
+		 */
+		const target = hasTranscript ? containerRef.current : readerRef.current;
+		target?.focus();
+	}, [hasTranscript]);
 
 	// An unopenable child hands the pane back to the roster, once.
 	const reported = useRef(false);
@@ -326,7 +388,16 @@ export const RunChildReader = ({
 	const briefOnScreen =
 		Boolean(row.brief) && !briefIsInTranscript(painted.records, row.brief);
 	return (
-		<div className={cn("flex min-h-0 flex-1 flex-col")}>
+		/*
+		 * `tabIndex={-1}`: programmatic focus only. A reader opened on a state with
+		 * nothing painted yet still has to be leaveable by keyboard, and the effect
+		 * above needs a target for every one of them.
+		 */
+		<div
+			ref={readerRef}
+			tabIndex={-1}
+			className={cn("flex min-h-0 flex-1 flex-col")}
+		>
 			{/*
 			 * The facts row (`§5.2`): the roster row's grammar re-used as a page
 			 * header — state mark, label, then the numbers run. `model_label` is
@@ -340,20 +411,20 @@ export const RunChildReader = ({
 				)}
 			>
 				<span className={cn("pt-0.5")}>
-					<SubagentStateIcon status={row.status} />
+					<SubagentStateIcon status={headerRow.status} />
 				</span>
 				<div className={cn("flex min-w-0 flex-1 flex-col gap-0.5")}>
 					<span
 						className={cn("min-w-0 truncate text-body-sm text-ink")}
-						title={row.label}
+						title={headerRow.label}
 					>
-						{row.label}
+						{headerRow.label}
 					</span>
 					<div className={cn("flex min-w-0 items-baseline gap-2")}>
 						<span className={cn("shrink-0 text-meta text-ink-muted")}>
 							{stateWord}
 						</span>
-						<NumberRun row={row} includeModel={true} />
+						<NumberRun row={headerRow} includeModel={true} />
 					</div>
 				</div>
 			</div>
@@ -392,16 +463,26 @@ export const RunChildReader = ({
 					</QuietLine>
 				) : state === "pending" ? (
 					/*
-					 * § 10.1's first absence, in the copy that document fixes: the
-					 * directory exists and the file does not yet, which is a fact about
-					 * a child that has not reached its first append — and it is
-					 * re-probed on the next pulse rather than being final.
+					 * § 10.1's first absence: the child's directory exists and
+					 * `transcript.jsonl` does not (`desktop_sessions.child_transcript`,
+					 * which derives the state from the FILESYSTEM and not from a row's
+					 * status). The copy states exactly that and no more — it used to say the
+					 * child "has not written anything yet", which is a claim about its
+					 * history that this route cannot make: a file moved aside, or a store
+					 * that pruned it, leaves the same two facts on disk as a child that never
+					 * appended (round 1, Q10). It is re-probed on the next pulse rather than
+					 * being final.
 					 */
-					<QuietLine>This subagent has not written anything yet.</QuietLine>
+					<QuietLine>This subagent has no transcript on disk yet.</QuietLine>
 				) : state === "gone" ? (
-					/* § 10.1's second absence: the directory itself is missing. Final. */
+					/*
+					 * § 10.1's second absence: the child's SESSION DIRECTORY is missing —
+					 * swept, or removed by hand. That is the whole of what `gone` means, and
+					 * the copy says it rather than naming the transcript file, which is the
+					 * `pending` case one line above.
+					 */
 					<QuietLine>
-						This subagent's transcript is no longer on disk.
+						This subagent's session directory is no longer on disk.
 					</QuietLine>
 				) : state === "loading" ? (
 					<QuietLine>Loading this subagent's conversation…</QuietLine>

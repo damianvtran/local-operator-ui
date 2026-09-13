@@ -12,6 +12,7 @@
  * checked box, a slashed box, a dashed box.
  */
 
+import { Separator } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import {
@@ -200,11 +201,32 @@ export const RunDetailTodos = ({
 				 * below. One line keeps the rule and removes the empty column.
 				 */
 				const fullyShed = phase.items.length === 0 && phase.hidden > 0;
+				/*
+				 * THE UNNAMED GROUP'S BOUNDARY (`§ 6.2`; round 1, U1-5/Q9).
+				 *
+				 * A headerless phase is the implicit one the backend lazily creates, and
+				 * the fold assumes it LEADS the plan — which it does in the ordinary
+				 * case, because it is what the first `add` creates. When it does not lead
+				 * (a named phase written first, then an unphased `add`), it used to
+				 * render its items directly under the previous phase's rows at the same
+				 * indent, with no header and no rule: `sweep the build cache` read as a
+				 * `Ship it` item, and the per-phase counts this change removed were the
+				 * only other signal that said otherwise.
+				 *
+				 * The boundary is a `hairline` rule, and it is the ONLY rule in the plan:
+				 * a named phase is bounded by its own header line, so a rule appears
+				 * exactly where the name that would have carried the boundary is absent.
+				 * The alternative — heading the group with the backend's implicit name —
+				 * is what `§ 6.2` removed (a `Todos` phase under a `To-dos` section), and
+				 * inventing a word for it would be a claim the wire does not make.
+				 */
+				const leadsThePlan = phaseIndex === 0;
 				return (
 					<div
 						key={`${phaseIndex}-${phase.name ?? "__flat"}`}
 						className={cn("flex flex-col")}
 					>
+						{phase.name === null && !leadsThePlan && <Separator />}
 						{phase.name && (
 							/*
 							 * The phase header is the phase's NAME ALONE (`§6.2`), plus the shed

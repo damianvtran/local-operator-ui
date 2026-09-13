@@ -31,7 +31,11 @@ import {
 	LoaderCircle,
 	X,
 } from "lucide-react";
-import { type McpServerRow, mcpServersAreCold } from "./run-detail-model";
+import {
+	type McpServerRow,
+	mcpServersAreCold,
+	mcpTally,
+} from "./run-detail-model";
 
 /**
  * One mark per state, ported by MEANING rather than by codepoint, exactly as the
@@ -72,37 +76,6 @@ const iconFor = (status: string) =>
 	MCP_ICON[status as keyof typeof MCP_ICON] ?? MCP_UNKNOWN_ICON;
 
 const inkFor = (status: string) => MCP_INK[status] ?? "text-ink-dim";
-
-/**
- * The cold sentence, and why it replaces the tally rather than annotating it.
- *
- * With no runtime attached there IS no status to report, so the section shows
- * which servers are CONFIGURED — worth having on its own — and says plainly that
- * nothing was checked. It is one line for the whole section because the route's
- * cold branch stamps `status: "cold"` on EVERY row, so a per-row word would print
- * one jargon term N times and the tally would read `0 of N connected`, claiming
- * three servers are down when none was asked to be up. It lights no dot, because
- * nothing is wrong.
- */
-const COLD_LINE = "No session is running — server status cannot be checked.";
-
-/**
- * The section's trailing tally.
- *
- * Same grammar as its two neighbours (label left, quiet right-aligned tally) and
- * its own rule: the connected count against the whole list, plus the problem
- * count when there is one. Those are two different facts rather than one
- * restated — `connecting` is neither connected nor a problem, so the healthy
- * count does not imply the problem count — which is why `§ 6.2`'s
- * de-duplication argument does not apply here.
- */
-const mcpTally = (rows: readonly McpServerRow[]): string => {
-	if (mcpServersAreCold(rows)) return COLD_LINE;
-	const connected = rows.filter((row) => row.status === "connected").length;
-	const problems = rows.filter((row) => row.problem).length;
-	const base = `${connected} of ${rows.length} connected`;
-	return problems > 0 ? `${base} · ${problems} need attention` : base;
-};
 
 const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 	const Mark = iconFor(row.status);
@@ -204,20 +177,40 @@ const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 					)}
 				</div>
 				{/*
-				 * The second line exists ONLY for a remedy, and only on a problem row:
-				 * an indented, quiet line in the to-do section's blocked-row shape. An
-				 * unrecognised word gets none — a fix for a word this build cannot name
-				 * would be a guess, and a guess is worse than the quiet unknown row that
-				 * does still take attention.
+				 * The row's second line, and there are two kinds of it.
+				 *
+				 * The DIAGNOSIS wins when the read carries one (round 1, U1-8): the
+				 * wire's own failure text is the only thing that says WHY a server is
+				 * down, and for a server whose command does not exist — QA's
+				 * `/nonexistent/definitely-not-a-binary`, whose `[Errno 2] …` the
+				 * canonical projection already carries — a reconnect hint is a remedy
+				 * that cannot work. It is machine voice and VERBATIM, like every other
+				 * exception this app prints: a paraphrased diagnosis is a claim nobody
+				 * can check.
+				 *
+				 * The HINT is the fallback, on the states it is right for. It is an
+				 * indented, quiet line in the to-do section's blocked-row shape. An
+				 * unrecognised word gets neither — a fix for a word this build cannot
+				 * name would be a guess, and a guess is worse than the quiet unknown row
+				 * that does still take attention.
 				 */}
-				{row.hint && (
+				{row.errorText ? (
+					<span
+						className={cn(
+							"line-clamp-2 font-mono text-ink-muted text-mono-sm leading-4",
+						)}
+						title={row.errorText}
+					>
+						{row.errorText}
+					</span>
+				) : row.hint ? (
 					<span
 						className={cn("truncate text-ink-muted text-meta leading-4")}
 						title={row.hint}
 					>
 						{row.hint}
 					</span>
-				)}
+				) : null}
 			</div>
 		</li>
 	);

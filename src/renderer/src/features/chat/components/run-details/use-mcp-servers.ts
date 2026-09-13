@@ -131,9 +131,23 @@ export function useRunPanelMcpServers({
 	 * frontend", which disables the query outright.
 	 */
 	accelerator,
+	/**
+	 * The canonical projection's failure text per server (`mcpErrorTexts`).
+	 *
+	 * The ONE exception to "the projection is never painted", and it is a
+	 * deliberate one: `mcp.list` reports no reason for a server being down, so a
+	 * row broken by its own command got a reconnect hint that cannot work and no
+	 * diagnosis at all (round 1, U1-8). The projection is the only place the
+	 * runtime states why. This is threaded through the DERIVATION rather than
+	 * merged at the row, so a name the rendered read does not carry is not
+	 * invented and a name it calls healthy keeps no error line — see
+	 * `McpServerRow.errorText`.
+	 */
+	errors,
 }: {
 	sessionId: string | null | undefined;
 	accelerator: string | null;
+	errors?: Readonly<Record<string, string>>;
 }): McpServerRow[] {
 	const capabilities = useDesktopCapabilities();
 	const enabled =
@@ -195,5 +209,5 @@ export function useRunPanelMcpServers({
 
 	// A failed read is the LAST KNOWN rows rather than an empty list: the section
 	// must not render "no servers configured" for a read it could not complete.
-	return deriveMcpServers(query.data?.data?.servers);
+	return deriveMcpServers(query.data?.data?.servers, errors);
 }
