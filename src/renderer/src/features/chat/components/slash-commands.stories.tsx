@@ -219,6 +219,16 @@ const MODELS = [
 		output_price: 0,
 	}),
 	modelRow({
+		provider: "anthropic",
+		model_id: "claude-opus-4-5-2025-11-01",
+		selector: "anthropic/claude-opus-4-5-2025-11-01",
+		value: "anthropic/claude-opus-4-5-2025-11-01",
+		label: "Claude Opus 4.5 (2025-11-01)",
+		context_window: 200_000,
+		input_price: 18.75,
+		output_price: 15,
+	}),
+	modelRow({
 		provider: "openai",
 		model_id: "gpt-noprice",
 		selector: "openai/gpt-noprice",
@@ -587,7 +597,10 @@ export const CommandPhaseScrolled: Story = {
 		<Box width={720} draft="/">
 			<SlashSuggestionsPopup
 				state={state({
-					active: 5,
+					/* Mid-list, so the frame shows the popup's own scroll rather than
+					   its top: the effect scrolls the active row into view, which with
+					   `block: "nearest"` does nothing while it is already visible. */
+					active: 20,
 					matches: MANY_COMMANDS.map((command) => ({
 						kind: "command" as const,
 						command,

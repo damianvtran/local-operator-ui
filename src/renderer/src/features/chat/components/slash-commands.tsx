@@ -654,7 +654,7 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 					●
 				</span>
 			)}
-			<span className="shrink-0 font-mono text-body-sm text-ink">
+			<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
 				{value.name}
 			</span>
 			{value.description && (
