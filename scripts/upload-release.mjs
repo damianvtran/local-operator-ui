@@ -16,22 +16,46 @@ import {
 	validateRelease,
 } from "./validate-release.mjs";
 
+// One installer class per platform, and the only definition of "this platform
+// shipped something installable". The upload gate below and the release-window
+// finalizer in release-state.mjs both assert against it, so a platform added to
+// the build matrix cannot satisfy one check and silently miss the other.
+const PLATFORM_INSTALLERS = {
+	macos: /\.(dmg|zip)$/,
+	windows: /\.(exe|msi)$/,
+	linux: /\.(deb|AppImage|rpm)$/,
+};
+
 function artifactFiles(root) {
-	const platforms = {
-		macos: /\.(dmg|zip)$/,
-		windows: /\.(exe|msi)$/,
-		linux: /\.(deb|AppImage|rpm)$/,
-	};
-	return Object.entries(platforms).flatMap(([platform, installer]) => {
-		const dir = join(root, `${platform}-artifacts`);
-		const files = readdirSync(dir, { withFileTypes: true });
-		if (!files.some((f) => f.isFile() && installer.test(f.name))) {
-			throw new ValidationError(`Missing ${platform} installer artifacts`);
-		}
-		if (files.some((f) => !f.isFile()))
-			throw new ValidationError(`Unexpected non-file in ${platform} artifacts`);
-		return files.map((f) => join(dir, f.name));
-	});
+	return Object.entries(PLATFORM_INSTALLERS).flatMap(
+		([platform, installer]) => {
+			const dir = join(root, `${platform}-artifacts`);
+			const files = readdirSync(dir, { withFileTypes: true });
+			if (!files.some((f) => f.isFile() && installer.test(f.name))) {
+				throw new ValidationError(`Missing ${platform} installer artifacts`);
+			}
+			if (files.some((f) => !f.isFile()))
+				throw new ValidationError(
+					`Unexpected non-file in ${platform} artifacts`,
+				);
+			return files.map((f) => join(dir, f.name));
+		},
+	);
+}
+
+// The release summary can truncate its assets, so every reader pages the
+// ID-addressed list. Upload and the release-state checks must agree on what is
+// actually attached, otherwise one of them is reasoning about a partial view.
+function listAssets(api, releaseId) {
+	const assets = [];
+	for (let page = 1; ; page++) {
+		const batch = api(
+			`/releases/${releaseId}/assets?per_page=100&page=${page}`,
+		);
+		assets.push(...batch);
+		if (batch.length < 100) break;
+	}
+	return assets;
 }
 
 function checkAssetCollisions(api, releaseId, files) {
@@ -39,15 +63,7 @@ function checkAssetCollisions(api, releaseId, files) {
 	const names = files.map((file) => basename(file));
 	if (new Set(names).size !== names.length)
 		throw new ValidationError("Duplicate artifact filenames across platforms");
-	// The release summary can truncate its assets; page the ID-addressed list.
-	const existing = new Set();
-	for (let page = 1; ; page++) {
-		const assets = api(
-			`/releases/${releaseId}/assets?per_page=100&page=${page}`,
-		);
-		for (const asset of assets) existing.add(asset.name);
-		if (assets.length < 100) break;
-	}
+	const existing = new Set(listAssets(api, releaseId).map((a) => a.name));
 	const collisions = names.filter((name) => existing.has(name));
 	if (collisions.length)
 		throw new ValidationError(
@@ -137,4 +153,10 @@ if (
 	}
 }
 
-export { artifactFiles, checkAssetCollisions, uploadRelease };
+export {
+	PLATFORM_INSTALLERS,
+	artifactFiles,
+	checkAssetCollisions,
+	listAssets,
+	uploadRelease,
+};

@@ -56,6 +56,40 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/validate-release.mjs
 
+  # The window opens before anything is built, so it sits on the critical path
+  # rather than racing it: a release that cannot be taken out of
+  # /releases/latest fails the run here, in seconds, instead of after 40 minutes
+  # of macOS runner time spent telling every user they are up to date.
+  #
+  # Scoped to the release event by IS_MANUAL_DISPATCH in the script, not by a
+  # job `if`: a repair has to keep running the builds and the attach, so this job
+  # has to be reachable for a dispatch, and only its mutation stands down.
+  open-release-window:
+    name: Hold release out of latest
+    runs-on: ubuntu-latest
+    needs: validate-release
+    if: ${{ needs.validate-release.result == 'success' }}
+    steps:
+      - name: Checkout workflow scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow
+          sparse-checkout: |
+            scripts/release-state.mjs
+            scripts/upload-release.mjs
+            scripts/validate-release.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Hold the release as a pre-release while it is built
+        env:
+          RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
+          EXPECTED_SOURCE_SHA: ${{ needs.validate-release.outputs.source_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.validate-release.outputs.release_id }}
+          IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node workflow/scripts/release-state.mjs open
+
   preflight-macos:
     name: Preflight macOS signing
     runs-on: ubuntu-latest
@@ -182,8 +216,11 @@ jobs:
   build-macos:
     name: Build macOS App
     runs-on: macos-latest
-    needs: [validate-release, preflight-macos, npm-publish]
-    if: ${{ needs.validate-release.result == 'success' && needs.preflight-macos.result == 'success' && needs.npm-publish.result == 'success' }}
+    # open-release-window is a dependency rather than a concurrent job so a
+    # release that cannot be held out of /releases/latest stops the build
+    # instead of shipping assets to a feed the app cannot read.
+    needs: [validate-release, open-release-window, preflight-macos, npm-publish]
+    if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' && needs.preflight-macos.result == 'success' && needs.npm-publish.result == 'success' }}
     # A hung codesign (run 33948569170 sat at "signing file=...app" for 5h50m
     # until cancelled) must fail bounded rather than burn the 6h job default.
     # Windows takes ~13 min and Linux ~8 min; universal mac packaging, signing
@@ -295,8 +332,8 @@ jobs:
   build-windows:
     name: Build Windows App
     runs-on: windows-latest
-    needs: [validate-release, npm-publish]
-    if: ${{ needs.validate-release.result == 'success' && needs.npm-publish.result == 'success' }}
+    needs: [validate-release, open-release-window, npm-publish]
+    if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' && needs.npm-publish.result == 'success' }}
 
     steps:
       - name: Checkout code
@@ -348,8 +385,8 @@ jobs:
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
-    needs: [validate-release, npm-publish]
-    if: ${{ needs.validate-release.result == 'success' && needs.npm-publish.result == 'success' }}
+    needs: [validate-release, open-release-window, npm-publish]
+    if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' && needs.npm-publish.result == 'success' }}
 
     steps:
       - name: Checkout code
@@ -416,6 +453,9 @@ jobs:
 
       # POST only to the pinned ID: release actions may create releases, update
       # metadata, or replace assets. A repair must do none of those things.
+      # The one metadata mutation this pipeline makes -- the pre-release flip in
+      # scripts/release-state.mjs -- deliberately does not live here, so that
+      # this job's only effect stays the asset upload it is named for.
       - name: Revalidate and attach artifacts to existing release
         env:
           RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
@@ -423,3 +463,37 @@ jobs:
           EXPECTED_RELEASE_ID: ${{ needs.validate-release.outputs.release_id }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node workflow/scripts/upload-release.mjs
+
+  # Closes the window opened above, and is the only step that may put a release
+  # back into /releases/latest. It runs after the assets are attached and checks
+  # for them itself, so `latest` cannot come to mean "published but empty"
+  # again -- the state that made every app report "no updates available" for the
+  # length of a build. The mutation is scoped to the release event and pinned to
+  # this release's ID and source SHA by the script; see
+  # scripts/release-state.mjs for why a manual repair must not promote.
+  finalize-release:
+    name: Promote release to latest
+    runs-on: ubuntu-latest
+    needs: [validate-release, attach-to-release]
+    if: ${{ needs.validate-release.result == 'success' && needs.attach-to-release.result == 'success' }}
+
+    steps:
+      - name: Checkout workflow scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow
+          sparse-checkout: |
+            scripts/release-state.mjs
+            scripts/upload-release.mjs
+            scripts/validate-release.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Promote the release once its assets are attached
+        env:
+          RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
+          EXPECTED_SOURCE_SHA: ${{ needs.validate-release.outputs.source_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.validate-release.outputs.release_id }}
+          IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node workflow/scripts/release-state.mjs finalize
