@@ -1018,7 +1018,9 @@ test("a message just under the budget is sent and just over is refused before an
 		sessionId,
 		requestId,
 		text,
-		images: [{ data_b64: "A".repeat(bytes - envelope), mime_type: "image/png" }],
+		images: [
+			{ data_b64: "A".repeat(bytes - envelope), mime_type: "image/png" },
+		],
 	});
 
 	const count = seen.length;
@@ -1039,7 +1041,11 @@ test("a message just under the budget is sent and just over is refused before an
 	// The backstop cannot name a size, so it must at least name an action -
 	// "too large" with no remedy is an unfinished error (review round 1, Q-3).
 	assert.match(over.body.detail, /Remove an image, or split the text/);
-	assert.equal(seen.length, count + 1, "the refused body must never reach HTTP");
+	assert.equal(
+		seen.length,
+		count + 1,
+		"the refused body must never reach HTTP",
+	);
 });
 
 test("control ops stay far below their own budget, so the tight cap is a backstop not a limit", async () => {
@@ -1065,5 +1071,63 @@ test("control ops stay far below their own budget, so the tight cap is a backsto
 		token,
 	);
 	assert.equal(oversize.status, 422);
-	assert.equal(seen.length, count + 1, "the refused body must never reach HTTP");
+	assert.equal(
+		seen.length,
+		count + 1,
+		"the refused body must never reach HTTP",
+	);
+});
+
+test("sessions.warm reaches the warm route with an empty body on the control budget", async () => {
+	// R12. The op carries no text and no images, so it must NOT be in
+	// `MESSAGE_OPS`: a message-tier budget on a 2-byte body would widen what an
+	// untrusted renderer can push for nothing in return. This is the op the
+	// renderer fires from a KEYSTROKE, so it is also the one where a wrong
+	// budget is cheapest to miss and most often exercised.
+	const sessionId = "123456abcdef";
+	assert.equal(
+		desktopRequestByteBudget("sessions.warm"),
+		desktopRequestByteBudget("capabilities"),
+		"the warm op takes the control budget, so it must not be a MESSAGE_OPS member",
+	);
+	const count = seen.length;
+	const response = await requestDesktop(
+		{ op: "sessions.warm", sessionId },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(seen.length, count + 1, "exactly one request reached HTTP");
+	const last = seen.at(-1);
+	assert.equal(last.path, `/v1/desktop/sessions/${sessionId}/warm`);
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	// `{}` and not an omitted body: the transport only sets Content-Type when a
+	// body exists, and the route's input model forbids extras while still
+	// requiring a JSON object, so an absent body 422s a legal call.
+	assert.deepEqual(JSON.parse(last.body), {});
+	// The op literal is shorter than the longest one the envelope allowance was
+	// justified from ("sessions.command"), so that constant needs no change.
+	assert.ok("sessions.warm".length < "sessions.command".length);
+
+	// The closed vocabulary still refuses a warm that tries to carry payload or
+	// address something that is not a session id.
+	for (const bad of [
+		{ op: "sessions.warm" },
+		{ op: "sessions.warm", sessionId: "../config" },
+		{ op: "sessions.warm", sessionId, text: "smuggled" },
+		{
+			op: "sessions.warm",
+			sessionId,
+			requestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+		},
+	]) {
+		const refused = await requestDesktop(bad, url, token);
+		assert.equal(
+			refused.status,
+			422,
+			`${JSON.stringify(bad)} must not reach HTTP`,
+		);
+	}
+	assert.equal(seen.length, count + 1, "no malformed warm reached the network");
 });
