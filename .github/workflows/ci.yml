@@ -5,14 +5,19 @@ on:
     branches:
       - main
       - 'dev-*'
-  # Pull requests trigger this workflow too. That is a deliberate change from the
-  # push-only trigger it carried before, and the dependency guard below is the
-  # reason: GitHub cannot run a single job from a workflow whose trigger excludes
-  # the event, and a guard that only fires on `push` fires after the merge, too
-  # late to stop an unvetted package from shipping. Every job here is a pre-merge
-  # gate, so running the set on pull requests is the honest way to get that guard
-  # in front of the change it guards.
+  # Pull requests run this workflow so the runtime-dependency guard below fires
+  # before the merge: GitHub cannot run a single job from a workflow whose
+  # trigger excludes the event, and a guard that only fires on `push` fires
+  # after the merge, which is too late to stop an unvetted dependency shipping.
+  # The rest of the job set riding along is the cost of that, not the reason.
   pull_request:
+
+# Pull-request runs supersede each other, so the older one is cancelled rather
+# than queued; pushes to `main` are left alone so a merge is never interrupted
+# mid-flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -28,11 +33,12 @@ jobs:
       # `pnpm list --prod --json --depth Infinity` - the command electron-builder
       # runs to decide what to copy into app.asar - so the packaged app can ship
       # without a module it needs. Measured on this repo, same tree, only pnpm
-      # changed: 10.30.3 reports the `debug` node under electron-updater ->
-      # builder-util-runtime with `dependencies {}`, packs 43 packages / 5.2 MB,
-      # and the built app dies at launch with `Cannot find module 'ms'` from
-      # app.asar/node_modules/debug/src/common.js; 10.29.2 reports
-      # `dependencies ["ms"]`, packs 96 packages / 6.0 MB, and the app starts.
+      # changed: 10.30.3 reports the `debug` node reached through
+      # electron-updater -> builder-util-runtime without its `ms` dependency, so
+      # the packager copies 43 packages / 5.2 MB and the built app dies at
+      # launch with `Cannot find module 'ms'` from
+      # app.asar/node_modules/debug/src/common.js; 10.29.2 reports that edge,
+      # copies 96 packages / 6.0 MB, and the app starts.
       # Upstream: pnpm/pnpm#10601 (last known good 10.29.2). Do not raise this
       # pin without re-measuring that command; see the pnpm section in AGENTS.md.
       - name: Install pnpm
