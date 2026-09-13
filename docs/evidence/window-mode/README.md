@@ -65,12 +65,21 @@ meaningful by contrast, because that window is focusable and shown.
 ## Fidelity: headless frames are the same pixels
 
 `frame-chat.png` from a `headless` run and from the `inactive` run — the latter
-captured from a real, shown window — differ in **0.0111%** of channels (1,596 of
-14,440,320), both 2760x1744. The control says that is animation phase, not the
-mode: two `headless` runs at the same size differ by 0.0106% (1,526 channels),
-and two `headless` runs at 800x600 are byte-identical (0 channels). The
-remaining difference sits in 19 of 1,744 rows, at the composer, where a caret
-blinks.
+captured from a real, shown window — differ only in **one clock**: the seeded
+transcript's message time.
+
+- 800x600, committed frame against a fresh run: 390 pixels, all inside one
+  `62x19` box at the timestamp (round 3's independent run measured 649 there).
+- 1380x900, `headless` against `inactive`: 1,596 channels, the same box.
+- 1380x900, two `headless` runs: 1,526 channels, the same box.
+
+**Apart from that box the frames reproduce pixel-for-pixel**, which is the fact
+that matters. The box is not a mode difference and cannot be: `seed.mjs` stamps
+the transcript with `Date.now()`, the app renders that opener with
+`hour: "numeric"`, and two runs a minute apart therefore print different
+times. Two runs started in the same minute are byte-identical — which is why
+the first pair measured 0 differing channels and a later pair does not. The
+control is the wall clock, not the mode.
 
 Two caveats, measured rather than assumed:
 

@@ -145,9 +145,10 @@ of the way. Measured on Electron 35.5.1 / macOS 25.6, with a 1380x900 window:
   `show: false` window in a platform probe — return a complete frame: 2760x1744
   pixels at devicePixelRatio 2, the same size a shown window gives. The settled
   chat frame differs from the one captured from a shown (`inactive`) window in
-  0.0111% of channels, against 0.0106% between two `headless` runs at that size
-  and 0 between two at 800x600: the residual is a blinking caret at the
-  composer, not the mode;
+  one `62x19` box and nowhere else: the seeded transcript's message time, which
+  the seeder stamps with `Date.now()`. Two `headless` runs differ in that same
+  box, so the residual is the wall clock rather than the mode, and apart from it
+  the frames reproduce pixel-for-pixel;
 - the app is never the frontmost application while it runs. Sampled from
   outside, by pid, in a headless run: **0 of 8** samples, and that run includes
   a second launch on the same profile (the `second-instance` path, which raises
