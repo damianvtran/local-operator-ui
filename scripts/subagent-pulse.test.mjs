@@ -28,10 +28,15 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { SUBAGENT_PULSE_EVENTS, bumpSubagentPulse, seedSubagentPulses } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	SUBAGENT_PULSE_EVENTS,
+	bumpSubagentPulse,
+	seedSubagentPulses,
+	applySubagentPulse,
+	subagentPulseJobId,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 test("exactly the three subagent lifecycle events count as a beat", () => {
 	assert.deepEqual(
@@ -99,4 +104,82 @@ test("a beat increments one child and leaves every other count alone", () => {
 		"job-b": 1,
 		"job-c": 1,
 	});
+});
+
+/*
+ * The WIRING, not just the arithmetic.
+ *
+ * Review round 2's N-3: the value assertions above bind `bumpSubagentPulse` and
+ * `seedSubagentPulses`, but the hook used to do its own membership test and its
+ * own `job_id` read at the call site, so nothing failed if that filter drifted
+ * from the module's set — or if the snapshot stopped seeding altogether. These
+ * three tests pin the step the hook actually calls.
+ */
+test("the live step bumps on exactly the module's event set", () => {
+	const seeded = { "job-a": 3 };
+	for (const type of ["subagent_start", "subagent_progress", "subagent_end"]) {
+		const next = applySubagentPulse(seeded, { type, job_id: "job-a" });
+		assert.deepEqual(next, { "job-a": 4 }, type);
+	}
+	// Every other event type leaves the map IDENTICAL, which is what keeps an
+	// unrelated frame from looking like a change to the reader and scheduling a
+	// tail read for a file nothing wrote to.
+	for (const type of [
+		"subagent_roster",
+		"frontend.update",
+		"message_delta",
+		"",
+	]) {
+		const next = applySubagentPulse(seeded, { type, job_id: "job-a" });
+		assert.equal(next, seeded, type);
+	}
+	// And an event with no usable id is not a beat either, for the reason the
+	// seed skips it: `""` is a key no row can match.
+	for (const jobId of [undefined, "", 42, null]) {
+		const next = applySubagentPulse(seeded, {
+			type: "subagent_progress",
+			job_id: jobId,
+		});
+		assert.equal(next, seeded, String(jobId));
+	}
+	// Non-objects arrive on an untyped stream.
+	for (const notAnEvent of [null, undefined, "beat", 7]) {
+		assert.equal(applySubagentPulse(seeded, notAnEvent), seeded);
+	}
+});
+
+test("the id rule the seed and the live step share names the same children", () => {
+	// One function answers both callers, so a change to the membership or the id
+	// rule reaches the snapshot path and the delta path together rather than
+	// leaving one of them behind.
+	assert.equal(
+		subagentPulseJobId({ type: "subagent_end", job_id: "job-z" }),
+		"job-z",
+	);
+	assert.equal(subagentPulseJobId({ type: "subagent_end" }), null);
+	assert.equal(subagentPulseJobId({ type: "subagent_end", job_id: "" }), null);
+	assert.equal(subagentPulseJobId({ job_id: "job-z" }), null);
+	assert.deepEqual(
+		seedSubagentPulses([
+			{ type: "subagent_start", job_id: "job-a" },
+			{ type: "subagent_progress", job_id: "job-a" },
+			{ type: "frontend.update", job_id: "job-b" },
+		]),
+		applySubagentPulse(
+			applySubagentPulse({}, { type: "subagent_start", job_id: "job-a" }),
+			{ type: "subagent_progress", job_id: "job-a" },
+		),
+	);
+});
+
+test("a live step rides the map's identity, so a quiet frame costs nothing", () => {
+	// The hook assigns `next.subagentPulses` only when the step returned a
+	// different object, which is what keeps an unrelated frame from producing a
+	// new state tree and re-rendering the reader.
+	const seeded = { "job-a": 1 };
+	assert.equal(applySubagentPulse(seeded, { type: "frontend.update" }), seeded);
+	assert.notEqual(
+		applySubagentPulse(seeded, { type: "subagent_progress", job_id: "job-a" }),
+		seeded,
+	);
 });
