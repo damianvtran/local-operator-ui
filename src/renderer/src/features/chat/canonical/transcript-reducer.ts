@@ -173,8 +173,38 @@ export type TranscriptRecord =
 			id: string;
 			ts: number;
 			customType: string;
-			/** Human-readable body when the custom row carries one. */
+			/** The row's rendered body, as persisted. */
 			text: string;
+			/**
+			 * The § 7 tier this row paints at, decided here rather than in the view.
+			 *
+			 * A `session_incident` is the reason a turn DIED, so it is an error:
+			 * the danger glyph and the danger label ink. Every other custom row is
+			 * the harness telling the reader that something changed (a model switch,
+			 * a recovered MCP server, a stored credential) or relaying a message,
+			 * which is informational.
+			 */
+			level: "info" | "error";
+			/**
+			 * What the row paints where a tool row paints its action, and it is the
+			 * MESSAGE rather than the row's type name: an incident's own error text,
+			 * a statement's sentence, or a bulky relayed payload's first substantive
+			 * line. See `customRow` for which type says what, and why.
+			 */
+			headline: string;
+			/**
+			 * Supporting text behind the row's disclosure, or `null` when the row has
+			 * said everything it has to say — an incident's suggested action and tail
+			 * sentence, or a relayed payload's whole body. `null` is also what makes
+			 * the row a static line rather than a trigger revealing nothing.
+			 */
+			detail: string | null;
+			/**
+			 * An incident's classification (`mcp`, `rate-limit`, `cut-off`, …), which
+			 * is its label: a scanning reader gets what KIND of failure next to the
+			 * failure's own words. `null` on every other custom row.
+			 */
+			category: string | null;
 			attribution: "user" | "agent" | "system";
 	  }
 	| {
@@ -559,6 +589,149 @@ const SILENT_CUSTOM_TYPES = new Set([
  */
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
+/**
+ * Custom rows whose TEXT is the message, not a payload to disclose.
+ *
+ * A `session_incident` is why the last turn died; the other three are the
+ * harness telling the reader that something changed mid-session (a model
+ * switch, a recovered MCP server, a stored credential). All four are short
+ * statements a reader has to be able to read, and the TUI paints every one of
+ * them as a wrapping line for the same reason
+ * (`tui/widgets/transcript.py::NoticeBlock`).
+ *
+ * Any other custom type is a RELAYED payload — a `hub_message`, a
+ * `peer_message`, a wake prompt, a job result — whose body belongs behind the
+ * disclosure: measured over the operator's own store those run to 18,259
+ * characters, and a transcript that painted them inline would be unusable. They
+ * are not reduced to their type name either; the row states its first
+ * substantive line and keeps the body one click away.
+ */
+const INLINE_CUSTOM_TYPES = new Set([
+	"session_incident",
+	"session_mcp_recovery",
+	"session_model_switch",
+	"session_credential",
+]);
+
+/**
+ * The head of a rendered incident: `[session incident (provider/model)] mcp: `.
+ *
+ * The category is bounded because this is a label, not a paragraph, and a
+ * payload that happens to start with a bracket is not an incident.
+ *
+ * NO BACKTICKS IN THIS FILE'S COMMENTS: the module is handed to esbuild as a
+ * bundle input and one stray delimiter in a docblock has already cost this
+ * repository a build.
+ */
+const INCIDENT_HEAD =
+	/^\[session incident(?:\s*\([^)]*\))?\]\s*([^:\n]{1,40}):\s*/;
+
+/**
+ * A leading envelope tag line: `<parent-message>`, `<peer-session-message …>`.
+ *
+ * Both relays put the actual message on the NEXT line, so quoting the tag alone
+ * tells a reader nothing — which is what a first-line headline did for every
+ * `hub_message` in the store.
+ */
+const ENVELOPE_TAG = /^<[a-z][a-z0-9-]*(\s[^>]*)?>$/i;
+
+/** The bracket the harness prefixes its statement texts with (`[model switch]`). */
+const STATEMENT_TAG = /^\[[^\]]{1,32}\]\s*/;
+
+/**
+ * A headline is a summary of the row, not the row's payload — `detail` is the
+ * payload. Bounded so a single-paragraph relay cannot push the ledger out of
+ * its column, and cut on a word boundary so the truncation reads as one.
+ */
+const HEADLINE_MAX = 160;
+
+/**
+ * What a custom row paints, decided once here rather than per view.
+ *
+ * The defect this replaces: the view pinned every custom row to the info tier
+ * and hid any row longer than 400 characters or one line behind its chevron, so
+ * 946 persisted incidents rendered as the literal string `session incident` and
+ * the user had to click to learn why their turn died. Level, message and
+ * disclosure are properties of the RECORD, so they are set where the record is
+ * built — the same reason this module already decides the § 7 tier for every
+ * other kind.
+ */
+function customRow(
+	customType: string,
+	text: string,
+	details: Record<string, unknown>,
+): Pick<
+	Extract<TranscriptRecord, { kind: "custom" }>,
+	"level" | "headline" | "detail" | "category"
+> {
+	if (customType !== "session_incident") {
+		const inline = INLINE_CUSTOM_TYPES.has(customType);
+		return {
+			level: "info",
+			category: null,
+			// The statement's own bracket tag repeats the row's label
+			// ("session model switch: [model switch] …"), so the headline starts
+			// at the sentence.
+			headline: inline
+				? text.trim().replace(STATEMENT_TAG, "")
+				: headlineOf(text),
+			detail: inline ? null : text,
+		};
+	}
+	return { level: "error", ...incidentRow(text, details) };
+}
+
+/**
+ * The three facts a `session_incident` row paints.
+ *
+ * The MESSAGE is `details.raw` rather than the head line's remainder, and the
+ * two are deliberately not interchangeable: the producer truncates the head at
+ * 500 characters (`incidents.Incident.render`) and keeps the untruncated
+ * original in `raw` (bounded at 1000), so the head is a rendering of the error
+ * and `raw` is the error. The head's remainder is the fallback for a row
+ * persisted without one, which is why the head is parsed at all.
+ *
+ * The DISCLOSURE is everything after the head line: the harness's suggested
+ * action and its "this is why the previous turn ended" tail. Both are addressed
+ * to the model — they are the reason the incident exists — so the reader's
+ * message is the vendor's own words and the harness's advice is one click away.
+ * A `session_incident` with no tail (there is none today, but the classifier's
+ * hint is optional) discloses nothing and paints as a static line.
+ */
+function incidentRow(
+	text: string,
+	details: Record<string, unknown>,
+): Pick<
+	Extract<TranscriptRecord, { kind: "custom" }>,
+	"headline" | "detail" | "category"
+> {
+	const lines = text.split("\n");
+	const head = lines[0].match(INCIDENT_HEAD);
+	const raw = typeof details.raw === "string" ? details.raw.trim() : "";
+	const message =
+		raw ||
+		(head ? lines[0].slice(head[0].length) : lines[0]).trim() ||
+		text.trim();
+	const tail = lines.slice(1).join("\n").trim();
+	return {
+		category: head ? head[1].trim() : null,
+		headline: message,
+		detail: tail || null,
+	};
+}
+
+/** The first line of a relayed payload that is not only its envelope tag. */
+function headlineOf(text: string): string {
+	const line = text
+		.split("\n")
+		.map((candidate) => candidate.trim())
+		.find((candidate) => candidate && !ENVELOPE_TAG.test(candidate));
+	const headline = line ?? text.trim();
+	if (headline.length <= HEADLINE_MAX) return headline;
+	const cut = headline.slice(0, HEADLINE_MAX);
+	const lastSpace = cut.lastIndexOf(" ");
+	return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
 
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
@@ -646,6 +819,7 @@ function durableRecord(
 			text,
 			attribution:
 				(payload.attribution as "user" | "agent" | "system") ?? "system",
+			...customRow(customType, text, details),
 		};
 	}
 	const role = String(payload.role ?? "");
