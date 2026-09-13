@@ -1,5 +1,5 @@
 {
-  "head": "bf839f385148cd1db2d5263c0e7f2bbe274f5769",
+  "head": "c0faf41a4c3c6af1ec0cd8da5ec49f4d1f677236",
   "srcTree": "a5d472cf8430464d6c73097673c8d9aae8f01547",
   "scriptsTree": "3de3ac3fa6bd81e03d8f243834fc22c9cb5b07fb",
   "dirtyWorkingTree": false,
@@ -15,8 +15,8 @@
   "partialCapture": {
     "note": "Two narrowed runs rather than one: `--only=chat-model-picker` (132 frames) and `--only=chat-session-status-strip--model-switch-pending` (12), 144 in total, because the picker's twelve stories and the band's pending story are the two surfaces this remediation changed. Each run is written by the capture script and the second overwrote the first here, so this field is the merge of the two as the frames on disk stand: 144 refreshed, 0 added (every one of them replaced a frame the sweep had already committed). Rebased a second time, onto 0.19.5, and the provenance shas moved again for the same reason: the rewrite left `6f66f1a26` reachable from no ref, so they are repointed to its rebased analogue `d90ad6df7`. The justification is narrower this time and worth stating exactly, because upstream's model-picker work DID land in `src/renderer` - so unlike the previous rebase, the renderer subtree is no longer byte-identical to the capture head's. What these frames depend on is not the whole renderer but the import closure of the `chat-tool-rows` stories, and none of the fourteen files upstream touched under `src/` appears in it - thirteen under `src/renderer/` plus one main-process module under `src/shared/`, which is named precisely because 'renderer files' would have overstated it by one (checked against esbuild's metafile for `tool-row.stories.tsx`); no theme, palette or CSS source moved either. The frames are therefore still pictures of the source that paints them, and 0 `.webp` under `chat-tool-rows/` changed across the rebase. Counts here are re-derived for the MERGED tree - upstream added 170 frames and a `model-picker-feedback` supplementary set, so every figure carried from the previous head would have been wrong by construction.",
     "addedFrames": 132,
-    "addedAt": "2026-09-13T16:34:14.242Z",
-    "addedAtHead": "bf839f385148cd1db2d5263c0e7f2bbe274f5769",
+    "addedAt": "2026-09-13T16:40:13.881Z",
+    "addedAtHead": "c0faf41a4c3c6af1ec0cd8da5ec49f4d1f677236",
     "addedSurfaces": [
       "chat-slash-completion/command-phase",
       "chat-slash-completion/command-phase-narrowed",
@@ -30,9 +30,9 @@
       "chat-slash-completion/inline-mid-draft",
       "chat-slash-completion/name-list-completed"
     ],
-    "refreshedAt": "2026-09-13T16:34:14.213Z",
-    "refreshedAtHead": "bf839f385148cd1db2d5263c0e7f2bbe274f5769",
-    "refreshedFrames": 192,
+    "refreshedAt": "2026-09-13T16:40:13.833Z",
+    "refreshedAtHead": "c0faf41a4c3c6af1ec0cd8da5ec49f4d1f677236",
+    "refreshedFrames": 204,
     "refreshedStories": [
       "chat-slash-completion--command-phase",
       "chat-slash-completion--command-phase-narrowed",
