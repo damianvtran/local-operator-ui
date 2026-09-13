@@ -1,16 +1,48 @@
 {
-  "head": "0eeab7f01a78b183b97ea7a1a8849c4a05537665",
-  "srcTree": "d1b69b7e5ccd6b1486f9d599a9170cd9b3ccb3a6",
-  "scriptsTree": "1e427fa6001770d7101f6eaa1c350fa16bf99424",
-  "dirtyWorkingTree": true,
+  "head": "9f3549a2be85e31a2a9e804f2afa7ff6f98878b9",
+  "srcTree": "416c6a85c6f9a45ea7a0a8d4afe63ad9acf5089c",
+  "scriptsTree": "af2f08daa9f8fb49816339bdd7e320bad8903d87",
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 825,
+  "frames": 798,
   "surfaces": 137,
   "themes": 12,
   "countsMean": {
-    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 825 at this commit - because the terms moved in this round's rebase and NOT in the one before it: 934 `.webp` are committed and the sixteen `supplementary` sets below account for 109 of them, leaving 825. Re-derived for THIS head and stated once. The branch's previous stamps described the tree it was REVIEWED on (648 swept frames off 757 committed, which was self-consistent at that head); the rebase onto `main` brought main's later merges - and their frames - without re-deriving the remainder, and the review instruction for this round was to re-stamp rather than pick a side, which is what this is. `main` moved once more while this round was running (`#118`, `#137`, `0.19.7`), so the remainder was re-derived against that tip too: it adds no committed frame and no story, and the figures are identical, which is worth stating rather than leaving to a reader to guess. Both terms are read from the tree rather than transcribed (`find docs/evidence -name '*.webp' | wc -l` and the summed `frames` of the sets below) and `check-evidence.mjs` fails when they disagree with it.",
-    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 137 entries, of which 39 are this PR's run-panel surfaces. The branch's previous stamp said 122, which was that list's own length at the head it was reviewed on; the rebase onto `main` merged 13 further entries (the model-picker surfaces and the tool-row boundaries), and this round adds two more - `roster-members` for the roster's membership rule and `reader-child-controls` for the descend control's singular label. `main`'s later tip (`#118`, `#137`, `0.19.7`) adds none, so 137 stands at this head as well. `check-evidence.mjs` counts the list and fails a mismatch, so this field cannot lag its own source.",
+    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 798 at this commit. Re-derived from the TREE rather than carried forward, because both terms have moved since this set was last stamped: 950 `.webp` are committed and the twenty `supplementary` sets below account for 152 of them, leaving 798. Two things moved them, and neither is this PR's own doing. First, the branch's rebases onto `main` have twice brought `main`'s newer evidence with them - `main`'s own merges added frames and declared sets (`clear-search`, `model-picker-feedback`, `submit-latency`, `tool-rows-4px-rejected`) that this branch's copy of the manifest did not list, which is why the declared-list conflict in `docs/evidence/manifest.json` is resolved as the UNION of both lists rather than by picking a side: a dropped declaration silently moves every frame in it into the swept count. Second, this branch's own set is unchanged in size (39 run-panel stories, 78 frames). Re-derived for THIS head and stated once; `check-evidence.mjs` fails when the number and the tree disagree.",
+    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 137 entries, of which 39 are this PR's run-panel surfaces. `main`'s later merges added the rest (the model-picker surfaces, the tool-row boundaries and the clear-search set), and this branch adds two of its own - `roster-members` for the roster's membership rule and `reader-child-controls` for the descend control's singular label. `check-evidence.mjs` counts the list and fails a mismatch, so this field cannot lag its own source.",
     "themes": "`THEMES.length` - the twelve brand palettes; the live pair is the two brand themes only, because it proves behaviour rather than colour."
+  },
+  "partialCapture": {
+    "note": "This set is not a full sweep and does not claim to be. Ten stories were re-taken in the two brand themes through the rig at :6055, one `--only=` run per story, with a backend permitted on the configured port (no captured surface talks to it): the two new frames and the eight whose rendering this round's fixes move. SIX of those ten came back with different bytes - twelve frames: `todos-implicit-phase` (the unnamed group's boundary), `reader-pending` and `reader-gone` (the two absence lines), `mcp-auth-required` and `mcp-unknown-status` (the tally's singular) and `mcp-disconnected` (the canonical projection's failure text on a problem row). The two new stories add four more (`roster-members`, `reader-child-controls`), so this pass wrote 22 frames in total and sixteen frames are new or changed on disk. `reader-live` was re-taken and came back byte-identical, which is stated in the README rather than claimed as a change: a still cannot carry a ticking number, and that is the one claim in this round whose evidence is a measurement rather than a picture. Every other frame in the set is untouched by this pass, and the rest of the sweep describes surfaces this change does not touch. `dirtyWorkingTree: true` is the record that the capture ran against the working tree rather than against a commit. The two stamp fields answer two questions: `head` (and `refreshedAtHead`/`refreshedFromHead`) name the commit the frames were taken from, while `srcTree`/`scriptsTree` name the TIP's trees, because that is what `check-evidence.mjs` compares them against. The later commits between them are named here rather than left to be inferred, because `check-evidence.mjs`'s own D13 note calls an unexplained gap between these fields the origin of a provenance defect: this set's evidence re-stamp, the rebase repair that restored `main`'s echo and warm wiring beside this branch's streaming work, this round's source fixes (the reader's focus guard, the membership discriminator with its citation corrections, and the fixture row that discriminator was wrong about), and the `package.json` union that keeps `main`'s newest registered test. None of them changes what any captured frame paints, and the one that could have was measured rather than assumed: `roster-members` was re-captured from the current tree after the fixture correction, and its differences from the previous capture are the elapsed labels that tick plus 0.65% of the chat column's pixels - a difference two consecutive captures of the SAME story reproduce exactly, because the headless renderer's anti-aliasing is not bit-stable - so it is capture noise, not a stale frame. That re-captured frame is the committed one; `refreshedFrames` counts it with the round-1 writes. The SHAs the rig recorded for its own earlier heads died with the branch's rebases and are re-pointed here.",
+    "refreshedAt": "2026-09-13T20:24:51.825Z",
+    "refreshedAtHead": "9f3549a2be85e31a2a9e804f2afa7ff6f98878b9",
+    "refreshedFrames": 25,
+    "refreshedThemes": [
+      "localOperatorDark",
+      "localOperatorLight"
+    ],
+    "addedFrames": 4,
+    "addedSurfaces": [
+      "chat-run-panel/roster-members",
+      "chat-run-panel/reader-child-controls"
+    ],
+    "addedAt": "2026-09-13T20:24:51.826Z",
+    "addedAtHead": "0eeab7f01a78b183b97ea7a1a8849c4a05537665",
+    "branchAddition": "THIS PR added 27 run-panel surfaces and 54 frames as first drafted, six more surfaces and twelve frames in the review round, four more surfaces and eight frames in the design round, and two more surfaces and four frames in round 1's batched remediation (the roster's membership and the descend control) - 39 surfaces, 78 frames. The set is a NARROWED capture over a branch, not a sweep, so it does not move the swept total by itself; what moves the swept total is the tree: `main` now carries 934 committed `.webp` against the 757 this branch was reviewed on, and 825 of them are outside every declared supplementary set, which is the figure `countsMean.frames` states.",
+    "review": "Round 1's batched remediation, against a QA round and a UX round that agreed on this head: the roster's membership rule (`\u00a7 4`), the reader's ticking clock, focus into the reader as it opens, `Escape` bound where the trigger's focus can reach it, Back popping one level, the plan's unnamed group boundary, and the four copy minors (the MCP tally's singular, the descend control's name, the `pending`/`gone` absence lines, and the canonical diagnosis on a problem MCP row). The frames those fixes moved were re-taken in the runs above; the two keyboard states this round fixed are not frames at all and were measured over CDP in the real renderer instead (README).",
+    "refreshedStories": [
+      "chat-run-panel--roster-members",
+      "chat-run-panel--reader-child-controls",
+      "chat-run-panel--todos-implicit-phase",
+      "chat-run-panel--reader-pending",
+      "chat-run-panel--reader-gone",
+      "chat-run-panel--reader-live",
+      "chat-run-panel--mcp-auth-required-closed",
+      "chat-run-panel--mcp-auth-required",
+      "chat-run-panel--mcp-disconnected",
+      "chat-run-panel--mcp-unknown-status"
+    ],
+    "refreshedFromHead": "9f3549a2be85e31a2a9e804f2afa7ff6f98878b9"
   },
   "supplementary": [
     {
@@ -143,6 +175,42 @@
       "capturedAt": "2026-09-12T00:00:00.000Z"
     },
     {
+      "path": "model-picker-feedback",
+      "frames": 26,
+      "surfaces": 16,
+      "themes": 1,
+      "capturedAtHead": "dc0e0073b8be7236028afb27d1180dd250abf7d9",
+      "source": "the REAL built Electron app (`pnpm build`, then `docs/evidence/window-mode/harness/run.sh` with EXTRA_SEED=seed-model-picker.mjs and DRIVE_SCRIPT=drive-model-picker.mjs, headless, 1380x900) against an isolated `local-operator serve` on a port the script owns, 0 frontmost samples in every run and 0 renderer errors. Sixteen states, and they come from TWO runs because two starting states are needed: fifteen from the branch's own seed (no provider credential, i.e. the refusal path \u2014 the seed the `before-*` halves were taken under, so the pairs still differ by the change and not by the setup), and the three `needs-sign-in-*` frames from a second run on QA's credentialed seed (`/tmp/qa130/seed-qa.mjs`, a synthetic `openai` credential written through the backend's own AuthStore) \u2014 without a credential the owner refuses every switch, so a switch it ACCEPTS does not exist there. The second run's frames are prefixed `cred-` by the driver so no frame can be mistaken for the other seed's. `localOperatorDark` is the app's own default theme, which is the only theme the harness boots into. **U7 round.** The one frame UX U7 invalidated was re-captured on the fixed head and one `before-*` half was added beside it: `needs-sign-in-pick-settled` now shows `This session runs anthropic/claude-opus-5.` (the row the check is on) where the pre-fix frame showed `openai/gpt-4.1`, and that pre-fix frame is committed as `before-header-names-the-switch` \u2014 the only `before-*` half taken on this branch's own pre-fix head (`ccbeb0e2a`) rather than on the merge-base, because UX filed U7 against the branch rather than against the base. That run is also the first whose cache lives inside the scratch root: `run.sh` now sets `HOME=\"$SCRATCH/home\"` (QA round 2, Q3 \u2014 the catalogue cache resolves from `HOME`, not from the config dir), so the seed copies the same `*.listing.json` files the earlier run read into the scratch home, and nothing outside `/tmp` is written. Both runs' measurements are committed beside the frames (`picker-metrics.json`, `picker-metrics-credentialed.json`), so every number the README quotes is re-derivable from the tree.",
+      "why": "the claim is that a hover, a keyboard highlight, an in-flight pick and the OUTCOME of that pick are perceivable \u2014 properties of computed style and of timing that no palette assertion and no component test can see. The unit suite asserts the classes, the transitions and the reading rule (`scripts/picker-feedback.test.mjs`); only a frame of the running app shows the ground and the edge the row actually paints inside a dialog whose own ground is `elevated`, and what the user is left with when the answer arrives after the dialog is gone. The `before-*` halves carry the defect as a measurement: the active row's computed background is `rgb(40,35,24)`, identical to the dialog's, and `before-pointer-left-list` is byte-identical to `before-keyboard-highlight` (AE 0 of 4,813,440 px). Seven of the sixteen states are after-only, and that is the finding rather than an omission: each is a state the old code could not produce or could not report \u2014 the pointer's structural edge in a palette where the wash collapses (D12), the footer naming the row Enter acts on while that row is off screen (U1), the band holding a labelled spinner while the pick is unconfirmed (U3), the refusal landing with the dialog already closed (U2), and the three `needs-sign-in-*` frames (Q1). The transcript note count is measured either side of the U2 case \u2014 1 before the click, 2 after it, with the dialog closed 80 ms in \u2014 because the refusal sentence is identical for every refused pick and only a count can prove a second one was written. The U7 pair is measured rather than described: between the two frames AE is 85,307 px (1.77%) of 4,813,440, of which 13,230 px (2% fuzz) sit in one 952x64 band across the header sentence's own text line and 274 px are the clock.",
+      "capturedAt": "2026-09-13T11:16:00Z"
+    },
+    {
+      "path": "tool-rows-4px-rejected",
+      "frames": 1,
+      "capturedAt": "2026-09-13",
+      "capturedAtHead": "d90ad6df7108e5e35eb7a18d336ebca244a9f5a2",
+      "source": "scripts/capture-evidence.mjs against chat-tool-rows--operator-spacing-cases with GAP.trace temporarily set to mt-1, then reverted",
+      "why": "The REJECTED alternative, photographed. Both the code comments and this directory's README rest the 'not 4px' half of the decision on 'at 4px the rows float as separate items again' - and no frame in the repository was at 4px, so the comparison that decides the tier is 2 rather than 4 could not be checked by looking, which is the standard this evidence set holds everything else to. A sweep cannot re-derive it: it is a picture of a tier the app does not ship, produced by editing GAP.trace to mt-1 for one capture and reverting. Compare against chat-tool-rows/operator-spacing-cases/localOperatorDark.webp, same story and viewport, which is the shipped 2px."
+    },
+    {
+      "path": "submit-latency",
+      "frames": 0,
+      "surfaces": 0,
+      "themes": 0,
+      "source": "PENDING - no frame has been captured, and this entry exists so that is a declared state rather than an absence. The procedure that will produce them (the shipped `ChatPage` served to the operator's own Chrome through the dev desktop proxy, driven by a browser tool, against an isolated `local-operator serve` at `hosting: test`) is written out as a hand capture in docs/evidence/submit-latency/README.md, together with the three measurements of the bridge state that blocked it on 2026-09-13 and the filenames this directory is expected to hold.",
+      "why": "Declared at zero frames rather than left out, because an undeclared directory is invisible to check-evidence while a declared one is a term the gate can fail on: the moment a `.webp` lands in this directory, `onDisk !== set.frames` and the gate names this set. That is the whole cost of declaring it - a green run here still says nothing about whether these frames are good, only that there are none. The `head`/`srcTree`/`scriptsTree` stamp above is deliberately NOT re-stamped for this entry: the stamp records a capture, and there has not been one (the same reason the two structural tree failures already on this branch stay visible instead of being papered over by a stamp that no capture justifies).",
+      "capturedAt": "PENDING (declaration written 2026-09-13; see docs/evidence/submit-latency/README.md)"
+    },
+    {
+      "path": "clear-search",
+      "frames": 16,
+      "surfaces": 8,
+      "themes": 2,
+      "source": "the live renderer over CDP - the app's own src/renderer/index.html served by Vite with the renderer aliases, Tailwind pipeline and desktopProxyPlugin, against an isolated local-operator serve backend on its own port with its own config dir, seeded with 7 agents, 2 teams and 7 sessions. Driven by `out/evidence-harness/capture.mjs` (gitignored, alongside the seeder and the Vite config): private headless Chrome, fresh user-data-dir, focus emulation on, and every wait on a condition rather than a duration. Re-running the `after` pass reproduced the committed frames byte for byte.",
+      "why": "The claims are a real pointer click that changes React state and a caret that has to come back to a field, and Storybook can produce neither: the Chats sidebar has no story at all, so the sweep's STORIES list holds nothing that renders it, and a fixture could not produce the focus outcome of unmounting the button that was clicked - the thing this change had to get right. The `before` half also records the behaviour being replaced: Escape clears the query and BLURS, which is why three frames in the set are byte-identical by construction (rest on both trees, and the pre-change clear, which is indistinguishable from a field that was never filtered). A fifth state, `after-focused`, holds design round 1's D1: the control reached by keyboard, whose ring must sit inside the field rather than across its border (the shared `icon-sm` step's 1px offset needs 3px of clearance and a 28px control in a 32px field has 2px). docs/evidence/clear-search/README.md carries the readback that separates the states, the geometry in both palettes, and the re-capture procedure.",
+      "capturedAt": "2026-09-13T16:35:00Z"
+    },
+    {
       "path": "chat-run-details",
       "frames": 20,
       "surfaces": 10,
@@ -163,38 +231,6 @@
       "capturedAtHead": "9ad6a427455c79669772e5c2d7b25d03c1088227"
     }
   ],
-  "partialCapture": {
-    "note": "This set is not a full sweep and does not claim to be. Ten stories were re-taken in the two brand themes through the rig at :6055, one `--only=` run per story, with a backend permitted on the configured port (no captured surface talks to it): the two new frames and the eight whose rendering this round's fixes move. SIX of those ten came back with different bytes - twelve frames: `todos-implicit-phase` (the unnamed group's boundary), `reader-pending` and `reader-gone` (the two absence lines), `mcp-auth-required` and `mcp-unknown-status` (the tally's singular) and `mcp-disconnected` (the canonical projection's failure text on a problem row). The two new stories add four more (`roster-members`, `reader-child-controls`), so this pass wrote 22 frames in total and sixteen frames are new or changed on disk. `reader-live` was re-taken and came back byte-identical, which is stated in the README rather than claimed as a change: a still cannot carry a ticking number, and that is the one claim in this round whose evidence is a measurement rather than a picture. Every other frame in the set is untouched by this pass, and the rest of the sweep describes surfaces this change does not touch. `dirtyWorkingTree: true` is the record that the capture ran against the working tree rather than against a commit, and the two stamp fields answer two different questions. `head` (and `refreshedAtHead`) name the commit the rig RAN against; `srcTree`/`scriptsTree` name the TIP's trees, because that is what `check-evidence.mjs` compares them against. The gap between the two is exactly the commits made after the last capture, and it is named here rather than left to be inferred \u2014 `check-evidence.mjs`'s own D13 note calls an unexplained gap between these fields the origin of a provenance defect. Here the gap is this round's source commit (`bac39b339`: the reader's focus guard, the membership discriminator with its citation corrections, and the fixture row that discriminator was wrong about) and the commit this manifest rides in; the SHAs the rig recorded as its own head for the earlier runs died with the branch's rebase and were re-pointed here. None of those files changes what any captured frame paints, and the one that could have was measured rather than assumed: `roster-members` was re-captured from the current tree after the fixture correction, and its differences from the previous capture are the elapsed labels that tick plus 0.65% of the chat column's pixels \u2014 a difference two consecutive captures of the SAME story reproduce exactly, because the headless renderer's anti-aliasing is not bit-stable \u2014 so it is capture noise and not a stale frame. That re-captured frame is the committed one; `refreshedFrames` counts it with the round-1 writes. `refreshedFromHead` names the commit the round-1 pass started from.",
-    "refreshedAt": "2026-09-13T20:24:51.825Z",
-    "refreshedAtHead": "0eeab7f01a78b183b97ea7a1a8849c4a05537665",
-    "refreshedFrames": 25,
-    "refreshedThemes": [
-      "localOperatorDark",
-      "localOperatorLight"
-    ],
-    "addedFrames": 4,
-    "addedSurfaces": [
-      "chat-run-panel/roster-members",
-      "chat-run-panel/reader-child-controls"
-    ],
-    "addedAt": "2026-09-13T20:24:51.826Z",
-    "addedAtHead": "0eeab7f01a78b183b97ea7a1a8849c4a05537665",
-    "branchAddition": "THIS PR added 27 run-panel surfaces and 54 frames as first drafted, six more surfaces and twelve frames in the review round, four more surfaces and eight frames in the design round, and two more surfaces and four frames in round 1's batched remediation (the roster's membership and the descend control) - 39 surfaces, 78 frames. The set is a NARROWED capture over a branch, not a sweep, so it does not move the swept total by itself; what moves the swept total is the tree: `main` now carries 934 committed `.webp` against the 757 this branch was reviewed on, and 825 of them are outside every declared supplementary set, which is the figure `countsMean.frames` states.",
-    "review": "Round 1's batched remediation, against a QA round and a UX round that agreed on this head: the roster's membership rule (`\u00a7 4`), the reader's ticking clock, focus into the reader as it opens, `Escape` bound where the trigger's focus can reach it, Back popping one level, the plan's unnamed group boundary, and the four copy minors (the MCP tally's singular, the descend control's name, the `pending`/`gone` absence lines, and the canonical diagnosis on a problem MCP row). The frames those fixes moved were re-taken in the runs above; the two keyboard states this round fixed are not frames at all and were measured over CDP in the real renderer instead (README).",
-    "refreshedStories": [
-      "chat-run-panel--roster-members",
-      "chat-run-panel--reader-child-controls",
-      "chat-run-panel--todos-implicit-phase",
-      "chat-run-panel--reader-pending",
-      "chat-run-panel--reader-gone",
-      "chat-run-panel--reader-live",
-      "chat-run-panel--mcp-auth-required-closed",
-      "chat-run-panel--mcp-auth-required",
-      "chat-run-panel--mcp-disconnected",
-      "chat-run-panel--mcp-unknown-status"
-    ],
-    "refreshedFromHead": "7f8fc2547073a0e3e4af6833efdc1fbaa132ffe7"
-  },
-  "reconciledNote": "`frames` is the SWEEP's term and it is checked against the tree rather than asserted: `pnpm check-evidence` recomputes it from the `.webp` files on disk that fall outside every declared set, so this number cannot be right about a set that is wrong. A narrowed run writes `partialCapture` and leaves the totals alone except when it ADDS a surface; the two additions below are declared sets, not swept frames.",
-  "captureCommand": "node scripts/capture-evidence.mjs http://localhost:6055 --only=<story> --themes=localOperatorDark,localOperatorLight --allow-backend, once per story this round moved: chat-run-panel--roster-members, chat-run-panel--reader-child-controls, chat-run-panel--todos-implicit-phase (twice: once with the fixture as it stood, then again after the unnamed group's boundary was made visible by moving the named phase first), chat-run-panel--reader-pending, chat-run-panel--reader-gone, chat-run-panel--reader-live, chat-run-panel--mcp-auth-required, chat-run-panel--mcp-disconnected and chat-run-panel--mcp-unknown-status. Per-story runs rather than one --only=run-panel sweep, because a prefix broad enough to cover them also matches stories whose frames the manifest declares elsewhere."
+  "captureCommand": "node scripts/capture-evidence.mjs http://localhost:6055 --only=<story> --themes=localOperatorDark,localOperatorLight --allow-backend, once per story this round moved: chat-run-panel--roster-members, chat-run-panel--reader-child-controls, chat-run-panel--todos-implicit-phase (twice: once with the fixture as it stood, then again after the unnamed group's boundary was made visible by moving the named phase first), chat-run-panel--reader-pending, chat-run-panel--reader-gone, chat-run-panel--reader-live, chat-run-panel--mcp-auth-required, chat-run-panel--mcp-disconnected and chat-run-panel--mcp-unknown-status. Per-story runs rather than one --only=run-panel sweep, because a prefix broad enough to cover them also matches stories whose frames the manifest declares elsewhere.",
+  "reconciledNote": "`frames` is the SWEEP's term and it is checked against the tree rather than asserted: `pnpm check-evidence` recomputes it from the `.webp` files on disk that fall outside every declared set, so this number cannot be right about a set that is wrong. A narrowed run writes `partialCapture` and leaves the totals alone except when it ADDS a surface; the two additions below are declared sets, not swept frames."
 }
