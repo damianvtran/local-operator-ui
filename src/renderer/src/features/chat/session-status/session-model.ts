@@ -130,6 +130,38 @@ function echoesId(name: string, modelId: string): boolean {
  * `display_label` field beside `display_name` would let this function collapse
  * to one read. Proposed in the PR; not something the desktop can do alone.
  */
+/**
+ * `provider/model_id` for a spec, or null when EITHER half is missing.
+ *
+ * The one place the app decides what NAMES a model, because it is the string
+ * three surfaces compare:
+ *
+ *   - the status band's reading and the picker's description, where an empty
+ *     half must name NOTHING rather than interpolate — a spec whose model_id
+ *     was blank rendered "This session runs /." (design D9);
+ *   - the picker's `current` row, which compares it against each row's own
+ *     selector;
+ *   - the canonical session handle's pending-model reconciliation, which drops
+ *     an optimistic paint when the owner's own spec produces this string.
+ *
+ * `modelIdentity` is deliberately NOT built on this: its empty-provider case
+ * still labels the model by its bare id, which is the right thing to PRINT and
+ * the wrong thing to COMPARE. Same two fields, two questions.
+ *
+ * A non-string `model_id` (an older or damaged frame) is treated as absent,
+ * matching `modelIdentity`'s own type guard rather than stringifying it.
+ */
+export function modelSelector(
+	model: CanonicalModel | null | undefined,
+): string | null {
+	if (!model) return null;
+	const provider = typeof model.provider === "string" ? model.provider : "";
+	if (!provider) return null;
+	const id = typeof model.model_id === "string" ? model.model_id : "";
+	if (!id) return null;
+	return `${provider}/${id}`;
+}
+
 export function modelIdentity(
 	model: CanonicalModel | null | undefined,
 ): ModelIdentity | null {

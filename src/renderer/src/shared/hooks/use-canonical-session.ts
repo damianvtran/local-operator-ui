@@ -38,6 +38,7 @@ import {
 	reconcileLimit,
 	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
+import { modelSelector } from "@features/chat/session-status/session-model";
 import {
 	desktopResult,
 	subscribeDesktopStream,
@@ -46,6 +47,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mergeCompletionAttention } from "../../../../shared/desktop-session-contract";
 import type {
 	CanonicalFrontendState,
+	CanonicalModel,
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
@@ -59,6 +61,20 @@ export type CanonicalSessionStatus =
 export type CanonicalSessionView = {
 	status: CanonicalSessionStatus;
 	frontend: CanonicalFrontendState | null;
+	/**
+	 * A model the user just chose, painted before the owner confirms it.
+	 *
+	 * A PENDING value, never a claimed one: it is dropped as soon as an
+	 * authoritative frame names that model and rolled back by its own picker when
+	 * the owner refuses. It exists because the two clocks differ — a pick that
+	 * pays a cold runtime bind measures 1.1-4.2 s, and the owner's
+	 * `frontend.update` frame lands 3-6 ms BEFORE the HTTP receipt once it is warm,
+	 * so the band can usually be repainted from the stream alone (latency U1).
+	 * Held OUTSIDE `frontend` rather than patched into it: the published snapshot
+	 * stays the owner's, and a consumer that needs the unconfirmed value has to
+	 * ask for it (the status strip is the one that does).
+	 */
+	pendingModel: CanonicalModel | null;
 	history: DesktopHistoryPage | null;
 	cold: boolean;
 	subscriptionId: string | null;
@@ -91,6 +107,21 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	/** View-only clear (the `/clear` contract): nothing is deleted. */
 	clearView: () => void;
 	/**
+	 * Paint a model the user chose, before the owner's frame confirms it.
+	 *
+	 * Optimistic registration, the shape `feat/submit-latency` (#118) uses for a
+	 * sent message: the renderer paints its own intent immediately and reconciles
+	 * against the authoritative frame rather than waiting for it. Deliberately a
+	 * value the VIEW carries rather than a mutation of `frontend`, so a consumer
+	 * that ignores it keeps seeing the owner's truth.
+	 */
+	paintPendingModel: (model: CanonicalModel) => void;
+	/**
+	 * Drop that paint without confirming it — the owner refused, or the call
+	 * itself failed before any owner saw it.
+	 */
+	clearPendingModel: () => void;
+	/**
 	 * Paint a renderer-local line (a command receipt, a refusal, a hint). It
 	 * is not history and never reaches the backend; it exists so a slash
 	 * command's answer lands where the user typed it.
@@ -106,6 +137,17 @@ const TERMINAL_EVENTS = new Set([
 	"turn_end",
 	"turn_start",
 ]);
+
+/**
+ * How long an unconfirmed model paint is worth keeping.
+ *
+ * The cold path measures 1.1-4.2 s, so this is well past any real switch — its
+ * job is the case where the confirmation never arrives at all (a dropped frame
+ * on a stream that did not report a gap). Without it the band would keep a
+ * "not yet confirmed" mark for the rest of the session, which is a claim about
+ * the present that stops being true the moment the wait it describes is over.
+ */
+const PENDING_MODEL_TIMEOUT_MS = 15_000;
 
 /** Flush cadence when no animation frame arrives (hidden window). */
 const HIDDEN_FLUSH_MS = 250;
@@ -149,6 +191,7 @@ export function useCanonicalSessionStream(
 	const [view, setView] = useState<CanonicalSessionView>({
 		status: "connecting",
 		frontend: null,
+		pendingModel: null,
 		history: null,
 		cold: false,
 		subscriptionId: null,
@@ -580,6 +623,9 @@ export function useCanonicalSessionStream(
 		setView((current) => ({
 			...current,
 			frontend: null,
+			// A different session's unconfirmed paint describes the model of a
+			// conversation that is no longer on screen.
+			pendingModel: null,
 			history: null,
 			terminal: null,
 			transcript: EMPTY_TRANSCRIPT,
@@ -670,8 +716,62 @@ export function useCanonicalSessionStream(
 		[],
 	);
 
+	const paintPendingModel = useCallback((model: CanonicalModel) => {
+		setView((current) => ({ ...current, pendingModel: model }));
+	}, []);
+
+	const clearPendingModel = useCallback(() => {
+		setView((current) =>
+			current.pendingModel === null
+				? current
+				: { ...current, pendingModel: null },
+		);
+	}, []);
+
+	/*
+	 * Reconcile the paint against the authoritative frames.
+	 *
+	 * An effect over the published frontend rather than a clause inside the frame
+	 * reducer: the reducer is a pure fold of the stream with one job, and this is a
+	 * comparison of two fields with two different lifetimes. `sequence` changes on
+	 * every owner frame, so the comparison runs exactly when there is something new
+	 * to compare, and it clears only when the owner's own spec names the painted
+	 * model — a frame that merely arrives is not evidence the switch landed.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the frontend revision is the trigger; `pendingModel` is the comparison's other side.
+	useEffect(() => {
+		const pending = view.pendingModel;
+		if (!pending) return;
+		const painted = modelSelector(pending);
+		if (!painted) return;
+		const frontend = view.frontend;
+		if (
+			modelSelector(frontend?.selected_model) === painted ||
+			modelSelector(frontend?.effective_model) === painted
+		) {
+			setView((current) => ({ ...current, pendingModel: null }));
+		}
+	});
+
+	// The bounded backstop for a confirmation that never arrives; see the constant.
+	useEffect(() => {
+		if (!view.pendingModel) return;
+		const timer = window.setTimeout(
+			() => setView((current) => ({ ...current, pendingModel: null })),
+			PENDING_MODEL_TIMEOUT_MS,
+		);
+		return () => window.clearTimeout(timer);
+	}, [view.pendingModel]);
+
 	return useMemo(
-		() => ({ ...view, loadOlder, clearView, addNote }),
-		[view, loadOlder, clearView, addNote],
+		() => ({
+			...view,
+			loadOlder,
+			clearView,
+			addNote,
+			paintPendingModel,
+			clearPendingModel,
+		}),
+		[view, loadOlder, clearView, addNote, paintPendingModel, clearPendingModel],
 	);
 }

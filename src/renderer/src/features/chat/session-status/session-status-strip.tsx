@@ -1,7 +1,10 @@
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
-import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
 import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
@@ -86,6 +89,17 @@ export type SessionStatusStripProps = {
 	 * stream's on adjustability, and why pending is not the same as empty.
 	 */
 	effortEntities?: readonly unknown[];
+	/**
+	 * A model the user just chose, not yet confirmed by the owner.
+	 *
+	 * Passed in, not read off `frontend`: the paint is the session handle's, and
+	 * this component must not be the thing that decides what "confirmed" means
+	 * (the handle drops the paint when an authoritative frame names the model).
+	 * While it is set the model reading is drawn as PENDING — dim, and its tooltip
+	 * says what is actually known, which is that the backend is being waited on
+	 * (latency U1/U2).
+	 */
+	pendingModel?: CanonicalModel | null;
 	className?: string;
 };
 
@@ -241,6 +255,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	frontend,
 	onCommand,
 	effortEntities,
+	pendingModel = null,
 	className,
 }) => {
 	if (!frontend) return null;
@@ -249,7 +264,15 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	// this differs from the pickers, which read the selected one on purpose.
 	// `selected_model` is the fallback for an owner that reports no effective
 	// spec (nothing has run yet), which is the state a fresh session is in.
-	const model = frontend.effective_model ?? frontend.selected_model;
+	//
+	// The user's own unconfirmed paint OUTRANKS both: a pick that pays a cold
+	// runtime bind takes 1.1-4.2 s, and the one thing the user asked is whether
+	// their choice registered. The paint is not a claim that it landed — the
+	// reading is drawn as pending and reverts the moment the owner's frame names
+	// a model of its own (latency U1).
+	const pending = pendingModel !== null;
+	const model =
+		pendingModel ?? frontend.effective_model ?? frontend.selected_model;
 	const identity = modelIdentity(model);
 	const effort = reconcileEffort(effortState(model), effortEntities);
 	const reading = contextReading({
@@ -278,17 +301,33 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		>
 			{identity && (
 				<Reading
-					label={`Model: ${identity.selector}. Choose a different model.`}
+					label={
+						pending
+							? `Model: ${identity.selector}. Chosen; waiting for the backend to confirm.`
+							: `Model: ${identity.selector}. Choose a different model.`
+					}
 					tooltip={
 						<TooltipLines
-							lines={[identity.selector, "Click to choose a different model"]}
+							lines={
+								pending
+									? [
+											identity.selector,
+											"Waiting for the backend to confirm the change",
+										]
+									: [identity.selector, "Click to choose a different model"]
+							}
 						/>
 					}
 					onOpen={onCommand ? () => onCommand("/model") : undefined}
 					// The one item with unbounded length, so it is the one that
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
-					className="max-w-full shrink"
+					//
+					// `text-ink-dim` while pending: a colour step, never opacity (the
+					// branding contract's rule for a control that is not yet live), so a
+					// user can see that the value on screen is the one they chose and
+					// not yet the one the session runs.
+					className={cn("max-w-full shrink", pending && "text-ink-dim")}
 				>
 					<span className="truncate">{identity.name}</span>
 				</Reading>

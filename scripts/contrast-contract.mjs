@@ -577,6 +577,34 @@ const STRUCTURAL_CALL_SITES = [
 		why: "this rule is the whole signal that a scrolling body continues past the fold, so it cannot ride a decorative weight that is invisible against both neighbours",
 	},
 	{
+		/*
+		 * The picker's option-row grounds, pinned because no palette assertion can
+		 * see a class and every one of them stays green either way.
+		 *
+		 * The row shipped as `bg-elevated` inside a dialog whose own ground is
+		 * `bg-elevated` — measured 1.000:1, ΔE00 0.00, so hover, the keyboard
+		 * highlight and "which row will Enter pick" were all invisible (design D1,
+		 * the operator's own report). The selection ground is `sunken`, which the
+		 * adjacent-ground row above already asserts as a perceptible step from
+		 * `elevated` in all twelve themes. It is NOT `accent-wash`, the sibling
+		 * composer popup's tint and the first candidate: `accent-wash` collapses
+		 * onto `elevated` in obsidian (ΔE00 0.77, ratio 1.01) and is under ΔE00 4 in
+		 * dune and tokyoNight, so it would reproduce the original defect on
+		 * whichever palette the user happens to run. The wash keeps the pointer's
+		 * role instead.
+		 */
+		what: "picker option row selection ground",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: 'isActive && "bg-sunken"',
+		why: "the row is drawn inside a dialog on the same ground it used to paint, so the class is the whole fix; reverting it to `bg-elevated` restores a 0.00 ΔE00 selection and keeps every palette row in this file green",
+	},
+	{
+		what: "picker option row pointer tint",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: 'isHovered && !isActive && "bg-accent-wash"',
+		why: "the pointer's mark is deliberately a different ground from the selection's, so the two states are distinguishable and a highlight left by the pointer cannot read as the keyboard's; cleared by the listbox's own onMouseLeave (design D2)",
+	},
+	{
 		what: "context wheel empty track role",
 		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
