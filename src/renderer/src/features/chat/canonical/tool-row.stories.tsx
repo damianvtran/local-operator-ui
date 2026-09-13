@@ -150,7 +150,7 @@ type Story = StoryObj;
 export const States: Story = {
 	render: () => (
 		<Frame
-			height={232}
+			height={300}
 			records={[
 				tool({
 					id: "tool:1",
@@ -232,7 +232,7 @@ export const States: Story = {
 export const NamesAndFallbacks: Story = {
 	render: () => (
 		<Frame
-			height={230}
+			height={300}
 			records={[
 				// The column grows to the longest visible name, so these all share
 				// one edge and every summary starts on one rail.
@@ -305,7 +305,7 @@ export const Narrow: Story = {
 	render: () => (
 		<Frame
 			width="420px"
-			height={150}
+			height={212}
 			records={[
 				tool({
 					id: "tool:1",
@@ -350,7 +350,7 @@ export const Working: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={150}
+			height={216}
 			records={[
 				tool({
 					id: "tool:1",
@@ -395,9 +395,29 @@ export const Working: Story = {
 export const OperatorSpacingCases: Story = {
 	render: () => (
 		<div className="flex flex-col gap-8 p-6">
-			{/* (a) Four consecutive settled rows: one pitch, repeated. */}
+			{/* (a) Four consecutive settled rows: one pitch, repeated.
+			    Heights here and below are `scrollHeight` measured in the rendered
+			    story plus the Frame's 48px of padding, rounded up to the 4px ramp -
+			    not guessed, and not "whatever looked right". A Frame shorter than
+			    its transcript CLIPS it: the story's history is anchored at its top,
+			    so the rows that fall out of the picture are the NEWEST ones, off
+			    the bottom, while everything above them stays exactly where it was.
+			    Read that off the two frames rather than from the flex direction:
+			    across the short frame and its resized replacement the divider sits
+			    at the same y, rows 1-5 sit at the same y, and what the short one is
+			    missing is its sixth row and the trailing date band. On a spacing
+			    surface that silently becomes a photograph of a SHORTER RUN, which
+			    is the failure design and QA both caught on `joined-mid-turn` - six
+			    rows in the frame it replaced, five here, against a README that says
+			    six. Two things ate the slack: the `Start of conversation` divider
+			    (#112), which occupies real height at the top, and 2px per gap from
+			    the hairline. The
+			    capture viewport in `capture-evidence.mjs` has to clear these too,
+			    because the harness takes `max(scrollHeight, declared)` and a
+			    viewport shorter than the Frame re-crops what the Frame just made
+			    room for. */}
 			<Frame
-				height={130}
+				height={232}
 				records={[
 					tool({
 						id: "a1",
@@ -429,7 +449,7 @@ export const OperatorSpacingCases: Story = {
 			    assistant record, then a `send` row. All four rows must sit on one
 			    pitch: the invisible record between them is not a spacer. */}
 			<Frame
-				height={150}
+				height={240}
 				records={[
 					{
 						kind: "assistant",
@@ -474,7 +494,7 @@ export const OperatorSpacingCases: Story = {
 			{/* (c) The long ragged run: two more invisible records seeded mid-run,
 			    which is what made some adjacent pairs tight and others wide. */}
 			<Frame
-				height={210}
+				height={256}
 				records={[
 					tool({
 						id: "c1",
@@ -535,6 +555,134 @@ export const OperatorSpacingCases: Story = {
 };
 
 /**
+ * Where the `trace` hairline applies, and — just as much the point — where it
+ * does NOT.
+ *
+ * The gap between adjacent ledger rows is 2px, and the claim a run of identical
+ * rows cannot make on its own is that this is a gap BETWEEN rows rather than a
+ * margin every row carries. A per-row margin looks identical in a picture of a
+ * run and is wrong everywhere else: it would push the first row of a run down
+ * off its own turn boundary and re-space the prose/ledger tier that carries the
+ * "same run vs new turn" signal. So each block here isolates one boundary:
+ *
+ * - (a) a LONE call, with prose either side. Nothing is adjacent to it on the
+ *   ledger tier, so it takes no hairline at all — `item` above and below.
+ * - (b) a mixed run: calls, a NOTICE between them, then more calls. The notice
+ *   is `trace`-like, so every adjacent pair in the block takes the same 2px
+ *   GAP — which is the claim this block makes, and all it claims. The PITCH is
+ *   not uniform and is not supposed to read as though it were: measured, the
+ *   block is `22, 23.7, 22`, because a tool row is a 20px box while the notice
+ *   renders its own line box a little taller. That difference is the notice's,
+ *   it predates this tier, and it is what the `dense` opt-in already minimises
+ *   (`trace-line.tsx`: a row's pitch should follow the COLUMN it is in). What
+ *   this tier owns is the distance BETWEEN rows, and a run whose gap changed
+ *   wherever a notice appeared is the raggedness it was built to prevent.
+ * - (c) a run that OPENS a turn. Its first row takes the turn boundary and the
+ *   rest take the hairline, which is the ordering the gap must not disturb.
+ */
+export const TraceGapBoundaries: Story = {
+	render: () => (
+		<div className="flex flex-col gap-8 p-6">
+			{/* (a) A lone call between two paragraphs: no neighbour, no hairline. */}
+			<Frame
+				height={228}
+				records={[
+					{
+						kind: "assistant",
+						id: "l0",
+						ts: TS,
+						text: "Checking the lockfile before I touch anything.",
+						streaming: false,
+						complete: true,
+						stopReason: null,
+						error: false,
+					},
+					tool({
+						id: "l1",
+						toolName: "read",
+						args: { path: "pnpm-lock.yaml" },
+						durationS: 0.06,
+					}),
+					{
+						kind: "assistant",
+						id: "l2",
+						ts: TS,
+						text: "It is unchanged, so the install is not the cause.",
+						streaming: false,
+						complete: true,
+						stopReason: null,
+						error: false,
+					},
+				]}
+			/>
+			{/* (b) A notice inside a run: one tier, one pitch, all the way down. */}
+			<Frame
+				height={236}
+				records={[
+					tool({
+						id: "m1",
+						toolName: "bash",
+						args: { command: "pnpm check-types" },
+						durationS: 11.2,
+					}),
+					{
+						kind: "notice",
+						id: "m2",
+						ts: TS,
+						text: "Reconnected to the backend.",
+						level: "info",
+					},
+					tool({
+						id: "m3",
+						toolName: "bash",
+						args: { command: "pnpm lint" },
+						durationS: 2.8,
+					}),
+					tool({
+						id: "m4",
+						toolName: "grep",
+						args: { pattern: "GAP", path: "src" },
+						durationS: 0.11,
+					}),
+				]}
+			/>
+			{/* (c) The first row of a run takes the TURN boundary, not the
+			    hairline: the gap is between rows, never above the first one. */}
+			<Frame
+				height={284}
+				records={[
+					{
+						kind: "user",
+						id: "n0",
+						ts: TS,
+						text: "Run the gates.",
+						images: [],
+					},
+					tool({
+						id: "n1",
+						toolName: "bash",
+						args: { command: "pnpm lint" },
+						durationS: 3.1,
+					}),
+					tool({
+						id: "n2",
+						toolName: "bash",
+						args: { command: "pnpm check-themes" },
+						durationS: 6.4,
+					}),
+					tool({
+						id: "n3",
+						toolName: "bash",
+						args: { command: "pnpm build" },
+						durationS: 41,
+					}),
+				]}
+			/>
+		</div>
+	),
+};
+
+/**
  * The hierarchy that must SURVIVE the tightening: a turn boundary still gets
  * real air, and the working line sits on the run below it.
  *
@@ -546,7 +694,7 @@ export const TurnBoundaryAndWorkingLine: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={260}
+			height={360}
 			records={[
 				tool({
 					id: "t1",
@@ -610,7 +758,7 @@ export const TurnBoundaryAndWorkingLine: Story = {
 export const ProseToolAlignment: Story = {
 	render: () => (
 		<Frame
-			height={320}
+			height={396}
 			records={[
 				{
 					kind: "user",
@@ -690,7 +838,7 @@ export const StreamingBeforeFirstToken: Story = {
 	render: () => (
 		<Frame
 			waiting
-			height={150}
+			height={192}
 			records={[
 				tool({
 					id: "s1",
@@ -747,7 +895,7 @@ export const MixedProseCodeAndTables: Story = {
 			// Sized to the content it holds: the four registers this frame exists
 			// to show run 688px at 1440, and a shorter frame scrolls the list off
 			// its own evidence.
-			height={700}
+			height={732}
 			records={[
 				{
 					kind: "user",
@@ -860,7 +1008,7 @@ export const WorkingLabels: Story = {
  *    here as the control: it is what the rows above must look like.
  */
 export const JoinedMidTurn: Story = {
-	render: () => <Frame height={190} records={joinedMidTurn()} />,
+	render: () => <Frame height={276} records={joinedMidTurn()} />,
 };
 
 /**

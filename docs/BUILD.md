@@ -85,19 +85,41 @@ The build process will automatically use the credentials from your `.env.build` 
 
 ## Continuous Integration
 
-The project includes GitHub Actions workflows for automated building and publishing:
+The project includes GitHub Actions workflows for automated building, testing and publishing:
 
-- `.github/workflows/ci.yml`: Runs tests and checks on pull requests and pushes
-- `.github/workflows/publish.yml`: Builds and publishes distributables for all platforms
+- `.github/workflows/ci.yml`: Runs lint, type checks, the release-contract scripts and the desktop test suite on pushes to `main` and `dev-*`
+- `.github/workflows/version-bump-guard.yml`: Rejects a `package.json` version bump outside a `chore(release):` PR, on every pull request (any base branch)
+- `.github/workflows/publish.yml`: Builds and publishes distributables for all platforms when a Release is published
+
+`ci.yml` has no `pull_request` trigger: it runs when a commit lands on `main` or on
+a `dev-*` branch, not when a pull request is opened. A feature branch therefore
+gets no run from it, which is worth knowing before reading an empty checks list
+on a PR as a passing one.
 
 ### Publishing a Release
 
-To publish a new release:
+The version is bumped by the **release owner**, not by feature PRs: `package.json`
+stays at the last released version on every branch, and the `Version Bump Guard`
+workflow rejects a PR that changes the version line unless its title starts with
+`chore(release):`. See `AGENTS.md` § "Releasing: one owner per window, and no
+version bumps inside feature PRs" for the full doctrine, which supersedes the
+step-by-step list that used to live here.
 
-1. Update the version in `package.json`
-2. Create and push a new tag: `git tag v1.x.x && git push --tags`
-3. Create a new release on GitHub, which will trigger the publish workflow
-4. Alternatively, manually trigger the workflow from the GitHub Actions tab
+Once the window's PRs have merged, the owner tags and publishes with a single
+command:
+
+```bash
+gh release create vX.Y.Z --target <bump-merge-sha> \
+  --prerelease --title 'X.Y.Z: <theme>' --notes-file <notes-file>
+```
+
+Publishing the Release is what triggers `.github/workflows/publish.yml`, which
+builds and attaches the installers for every platform and then promotes the
+Release. Merely pushing a tag publishes nothing, and `--prerelease` is the hold
+that keeps an asset-less Release out of `/releases/latest` while the build runs.
+The workflow can also be started by hand from the Actions tab
+(`workflow_dispatch`), which repairs assets but deliberately never promotes a
+Release — a repair must not mutate release metadata.
 
 ## Configuration
 
