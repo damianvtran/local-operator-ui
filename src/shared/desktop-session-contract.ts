@@ -361,6 +361,22 @@ export type DesktopHistoryPage = {
 	has_more: boolean;
 	cursor_missing: boolean;
 };
+/**
+ * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 9.1).
+ *
+ * The parent's envelope plus one field, and the field is derived rather than
+ * carried: the two ABSENCES are different facts and only the filesystem can tell
+ * them apart. `pending` means the child's directory exists but
+ * `transcript.jsonl` does not yet — the child has not reached its first append —
+ * and it is re-probed; `gone` means the directory itself is missing, so the
+ * absence is final. `ready` with an empty `entries` is a legal state of its own.
+ *
+ * A reader that conflated them would either say "gone" about a child that has
+ * not written yet, or promise a transcript that will never appear.
+ */
+export type DesktopChildTranscriptPage = DesktopHistoryPage & {
+	state: "ready" | "pending" | "gone";
+};
 export type DesktopSnapshot = {
 	frontend: CanonicalFrontendSync;
 	history: DesktopHistoryPage;

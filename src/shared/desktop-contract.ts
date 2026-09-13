@@ -277,6 +277,29 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			limit: z.number().int().min(1).max(500).optional(),
 		})
 		.strict(),
+	/*
+	 * One child's durable transcript, for the run panel's reader
+	 * (`docs/run-sidebar.md` § 9.1, § 9.3).
+	 *
+	 * Both ids are the same `^[a-f0-9]{12}$` the whole desktop surface already
+	 * validates on, and NEITHER is a path: the child directory is resolved by the
+	 * route from the id and from the parent's own roster, so the renderer cannot
+	 * name a directory at all. That containment is the route's, not the caller's —
+	 * a schema that accepted a path here would be the whole boundary.
+	 *
+	 * `beforeId` is an entry id (max 128 chars, the `id` shape) rather than an
+	 * offset, matching `sessions.history`: file compaction replaces the JSONL
+	 * atomically, so offsets become lies while ids stay meaningful.
+	 */
+	z
+		.object({
+			op: z.literal("subagents.transcript"),
+			sessionId,
+			childId: sessionId,
+			beforeId: id.optional(),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.message"),
@@ -1219,6 +1242,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.beforeId) query.set("before_id", request.beforeId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
+				method: "GET",
+			};
+		}
+		case "subagents.transcript": {
+			const query = new URLSearchParams({
+				limit: String(request.limit ?? 100),
+			});
+			if (request.beforeId) query.set("before_id", request.beforeId);
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
 				method: "GET",
 			};
 		}

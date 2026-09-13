@@ -1,5 +1,6 @@
-/**
- * The run-details view model: the arithmetic behind the header popover.
+import type { TranscriptRecord } from "../../canonical/transcript-reducer";
+
+/**: the arithmetic behind the header popover.
  *
  * Ported from the TUI's dock panels, which are the reference implementation for
  * both data models. Source of truth: `local_operator/tui/widgets/subagent_panel.py`
@@ -175,8 +176,26 @@ const SEAM = " · ";
 /** The seam between two clauses of a sentence, which is not the counts seam. */
 const CLAUSE_SEAM = ", ";
 
-/** The tooltip's fixed lead-in. The clauses that follow are the variable half. */
-const LABEL_PREFIX = "Run details — ";
+/**
+ * The action each state of the toggle names.
+ *
+ * A toggle's accessible name has to say what a press WILL do, so it flips with
+ * the pane rather than naming the surface (`§3.3`). The canvas button beside it
+ * carries no pressed state and no flipping label because it is a one-way door;
+ * this one is not, and a control whose name did not flip would tell a reader
+ * that pressing it opens something they are already looking at.
+ */
+const LABEL_OPEN = "Open run details";
+const LABEL_CLOSE = "Close run details";
+/**
+ * The seam between the action and its first clause.
+ *
+ * An em dash rather than `CLAUSE_SEAM`'s comma: the clauses are the run's state
+ * and the verb is the control's, so this boundary is a different kind of join
+ * from the comma between two counts — the same distinction `SEAM` (the counts
+ * seam) draws for the tallies.
+ */
+const LABEL_SEAM = " — ";
 
 /** The TUI's name for a plan that arrived with no phases of its own. */
 const IMPLICIT_PHASE_NAME = "Todos";
@@ -217,6 +236,75 @@ export type SubagentRow = {
 	/** The first line of `error_text`, on a failed child. */
 	errorLine: string | null;
 	/**
+	 * `error_text`, the WHOLE thing, on a failed child.
+	 *
+	 * `errorLine` stays the ROSTER's field — a list row's summary is one line
+	 * (`§4.1`) — and this is the reader's, whose outcome block prints the
+	 * exception verbatim (`§5.1`). Two fields rather than one because the two
+	 * surfaces want different amounts of the same string, and a row that carried
+	 * only the full text would make the roster's shed rule a formatting decision
+	 * inside a list row.
+	 */
+	errorText: string | null;
+	/**
+	 * `result_text`, whole, on a settled child.
+	 *
+	 * The reader's outcome block renders this instead of reading the child's
+	 * transcript for it (`§5.1`): the roster row already carries the outcome, and
+	 * the TUI makes the same choice for the same reason.
+	 */
+	resultText: string | null;
+	/**
+	 * The child's own durable session directory name, from `session_id`.
+	 *
+	 * It is the READER's key: the transcript route is addressed by
+	 * `(session_id, child_id)` ids and never by a path, so this is what the
+	 * reader can hand it. `session_dir` also rides the wire and is deliberately
+	 * NOT read — the renderer must never be able to submit a path.
+	 */
+	childSessionId: string | null;
+	/** The job that launched this child, or `null` for a root child. */
+	parentJobId: string | null;
+	/**
+	 * How many children this child launched.
+	 *
+	 * Derived in the renderer by grouping the roster on `parent_job_id` rather
+	 * than read from the wire, because the wire carries the lineage and not the
+	 * count: a `childCount` field would be a second statement of a fact the
+	 * parent/child edges already make, and two statements can disagree.
+	 */
+	childCount: number;
+	/** `model_label` — the child's own model, read only by the reader's facts row. */
+	modelLabel: string | null;
+	/**
+	 * The child's authored brief (`§5.1`): `launch_prompts[launch_message_id]`
+	 * when the map carries the current launch, else `prompt`.
+	 *
+	 * `null` when the wire carries neither — a restored row from a runtime that
+	 * predates both fields.
+	 */
+	brief: string | null;
+	/**
+	 * The launch identity of the CURRENT launch turn, or `""`.
+	 *
+	 * The reader uses it for ONE decision: whether the durable transcript already
+	 * holds that turn. When it does, the row is reconciled in place and the
+	 * synthetic brief head is suppressed, because rendering both is what makes a
+	 * reader open on a duplicated full role/team/system preamble (`§5.1`).
+	 */
+	launchMessageId: string;
+	/**
+	 * Every launch identity in this lineage mapped to its concise authored
+	 * prompt — `launch_prompts`, which the runtime stamps with one entry per
+	 * collapsed ATTEMPT rather than only the newest.
+	 *
+	 * That is what makes "every attempt alias is reconciled the same way" need no
+	 * second mechanism: `attempt_aliases` names earlier JOBS, and each alias's
+	 * launch entry id (`subagent-launch:<job_id>`) is itself a key of this map,
+	 * so a row left alone here is a row no alias could have named either.
+	 */
+	launchPrompts: Readonly<Record<string, string>>;
+	/**
 	 * The state in words, for the reader who cannot see the mark (`§6.4`).
 	 *
 	 * The band's own word for a state this model knows, and the WIRE's own word
@@ -240,17 +328,22 @@ export type TodoItemView = {
 /**
  * One phase of a plan.
  *
- * `name` is `null` for the flat, single-phase case, where the TUI renders no
- * header at all (`todo_panel.py`, design §6.3: "an `init` with no phases renders
- * headerless … this is the back-compat guarantee"). `closed` counts done AND
- * dropped, matching the TUI's `RESOLVED_STATUSES` so a fully settled phase reads
- * `n/n` — the same notion its auto-hide uses.
+ * `name` is `null` for a phase that renders headerless: the flat single-phase
+ * case, and every phase of a mixed plan whose name IS the implicit one (`§6.2`
+ * applies the test per phase rather than to the whole plan, because a plan the
+ * backend lazily grew an implicit phase in beside a named one used to render a
+ * `To-dos` section over a `Todos` phase — the same plan named twice).
+ *
+ * There is no per-phase count here, and its absence is the fix rather than an
+ * omission: the phase header's `n/n resolved` was a partition of the section
+ * tally's own number, stated in the same weight one line below it, so the plan
+ * measured one closure twice ({@link todoTally}). The TUI's header count exists
+ * because its dock HIDES a settled phase after 60s and the count is the only
+ * evidence it was complete; this panel hides no phase, so the count had no job.
  */
 export type TodoPhaseView = {
 	name: string | null;
 	items: TodoItemView[];
-	closed: number;
-	total: number;
 };
 
 /**
@@ -258,9 +351,7 @@ export type TodoPhaseView = {
  *
  * `items` are the rows that survived the item cap and `hidden` is how many of
  * this phase's own closed rows it hid, so the disclosure can sit inside the
- * phase that lost them (`§6.3`). Two facts stay counted over the WHOLE phase
- * rather than over the slice: `closed`/`total` behind the header, because a
- * header that shrank as rows overflowed would read as work disappearing.
+ * phase that lost them (`§6.3`).
  */
 export type TodoPhaseSlice = TodoPhaseView & {
 	hidden: number;
@@ -309,15 +400,20 @@ export type RunDetails = {
 };
 
 /**
- * The failures a trigger has already acknowledged.
- *
- * "A child has failed and the popover has not been opened since" (`§3.3`) is the
- * one visibility clause that no wire field can answer, because it is about what
- * the user has seen rather than about what is true. So the acknowledgement is
- * passed IN — the trigger owns it, the model only compares it — and the default
- * is the honest one for a caller that has never opened anything: nothing seen.
+ * The failures a trigger has already acknowledged, and the same shape for the
+ * MCP ledger: two key spaces (failed child job ids, MCP server names) that the
+ * one seen-set TYPE serves, each with its own VALUE so the two ledgers cannot
+ * acknowledge each other's rows.
  */
 export type SeenFailures = ReadonlySet<string>;
+
+/** Acknowledged MCP server names. See `SeenFailures` for why it is a type.
+ *
+ * A separate value rather than one shared set: a job id and a server name are
+ * both strings, and folding them into one set would make "a server called
+ * `job-ledger`" able to acknowledge a failed child.
+ */
+export type SeenMcpProblems = ReadonlySet<string>;
 
 /** The empty acknowledgement set. Never mutated; `Set` is not frozen in place. */
 export const NOTHING_SEEN: SeenFailures = new Set<string>();
@@ -651,6 +747,11 @@ const deriveChild = (
 	// taking the line after it would return a "first line" that is the whole
 	// error stuffed onto one row.
 	const errorText = oneLine(firstLine(wireText(job.error_text)));
+	const fullErrorText = wireText(job.error_text).trim();
+	const fullResultText = wireText(job.result_text).trim();
+	const launchPrompts = toWireStringMap(job.launch_prompts);
+	const launchMessageId = wireText(job.launch_message_id);
+	const rawPrompt = wireText(job.prompt).trim();
 
 	return {
 		id,
@@ -679,6 +780,27 @@ const deriveChild = (
 		// `§8`: the first line of `error_text` is a failure's one-line summary —
 		// the row is the summary, the child's page is the detail.
 		errorLine: status === "failed" && errorText ? errorText : null,
+		// The failure's WHOLE text and the settled run's whole result: the reader's
+		// outcome block prints either verbatim (`§5.1`), which is why these are not
+		// derived from `errorLine`. `error_text` is NOT gated on the folded status:
+		// a runtime whose word this renderer does not recognise still failed, and
+		// the reader must be able to show why.
+		errorText: fullErrorText || null,
+		resultText: fullResultText || null,
+		childSessionId: wireText(job.session_id) || null,
+		parentJobId: wireText(job.parent_job_id) || null,
+		// Filled in by `deriveRunDetails`, which is the layer that can see the
+		// whole roster: a row cannot count its own children.
+		childCount: 0,
+		modelLabel: wireText(job.model_label) || null,
+		// `frontend_state.py:1413`, `:1461-1486`: the authoured prompt of the
+		// CURRENT launch when the map carries it, else the row's own `prompt`.
+		// The brief is ABSENT rather than empty when the wire reported neither: an
+		// empty string renders a folded block with one blank row, which claims the
+		// parent delegated nothing in as many words.
+		brief: launchPrompts[launchMessageId] ?? (rawPrompt || null),
+		launchMessageId,
+		launchPrompts,
 	};
 };
 
@@ -701,20 +823,36 @@ const deriveTodoItem = (item: unknown): TodoItemView => {
 	};
 };
 
-const deriveTodoPhase = (
-	phase: unknown,
-	headerless: boolean,
-): TodoPhaseView => {
+const deriveTodoPhase = (phase: unknown): TodoPhaseView => {
 	const record = isRecord(phase) ? phase : {};
 	const rawItems = Array.isArray(record.items) ? record.items : [];
-	const items = rawItems.map(deriveTodoItem);
 	return {
-		name: headerless ? null : wireText(record.name) || IMPLICIT_PHASE_NAME,
-		items,
-		closed: items.filter((item) => !OPEN_TODO_STATUSES.includes(item.status))
-			.length,
-		total: items.length,
+		// Headerless whenever the phase is not NAMED — the implicit phase the
+		// backend lazily creates is the one whose name would restate the section
+		// label immediately above it (`§6.2`). Applied per PHASE rather than to the
+		// whole plan: the single-phase case this used to cover is the same case, and
+		// a plan that mixes the implicit phase with a named one now folds only the
+		// implicit half instead of heading a `Todos` phase with `To-dos`.
+		name: isNamedPhase(phase) ? wireText(record.name) : null,
+		items: rawItems.map(deriveTodoItem),
 	};
+};
+
+/**
+ * A wire `Record<string, string>`, ignoring anything that is not a string.
+ *
+ * `launch_prompts` is `dict[str, str]` on this runtime and a plain object on a
+ * newer one; a value the renderer cannot use is dropped rather than coerced, so
+ * a malformed map degrades to "no reconciliation" — which the reader treats as
+ * "keep the brief and whatever the transcript holds", the safe direction.
+ */
+const toWireStringMap = (value: unknown): Record<string, string> => {
+	if (!isRecord(value)) return {};
+	const map: Record<string, string> = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (key && typeof entry === "string") map[key] = entry;
+	}
+	return map;
 };
 
 const toWireList = (value: unknown): Array<Record<string, unknown>> =>
@@ -735,23 +873,31 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const nowSeconds = nowMs / 1000;
 
 	const subagents = jobs.map((job) => deriveChild(job, nowSeconds));
-	// Headerless only for the flat case the TUI special-cases: ONE phase that
-	// carries no name of its own. Two phases where one is called "Todos" is a
-	// plan someone wrote, and it keeps its header.
-	const headerlessPhase = rawTodos.length === 1;
-	const todos = rawTodos.map((phase, index) =>
-		deriveTodoPhase(
-			phase,
-			headerlessPhase && index === 0 && !isNamedPhase(phase),
-		),
-	);
+	// `childCount` is the roster's own parent/child edges counted here, where the
+	// whole list is visible — see `SubagentRow.childCount` for why it is derived
+	// rather than read.
+	const childrenByParent = new Map<string, number>();
+	for (const row of subagents) {
+		if (!row.parentJobId) continue;
+		childrenByParent.set(
+			row.parentJobId,
+			(childrenByParent.get(row.parentJobId) ?? 0) + 1,
+		);
+	}
+	const roster = subagents.map((row) => ({
+		...row,
+		childCount: childrenByParent.get(row.id) ?? 0,
+	}));
+	// The implicit phase is folded per PHASE (`§6.2`), which is `deriveTodoPhase`'s
+	// own rule now: it needs no whole-plan flag.
+	const todos = rawTodos.map(deriveTodoPhase);
 	const items = todos.flatMap((phase) => phase.items);
 
 	return {
-		subagents,
+		subagents: roster,
 		todos,
-		openChildren: subagents.filter((row) => !isSettled(row.status)).length,
-		failedChildIds: subagents
+		openChildren: roster.filter((row) => !isSettled(row.status)).length,
+		failedChildIds: roster
 			.filter((row) => row.status === "failed")
 			.map((row) => row.id),
 		openTodos: items.filter((item) => OPEN_TODO_STATUSES.includes(item.status))
@@ -817,59 +963,68 @@ export function unseenFailures(
 }
 
 /**
- * The failure set an OPEN panel records as read (`§3.3`).
+ * The failure set a panel that is OPEN acknowledges, continuously (`§3.4`).
  *
- * `openedWith` is exactly the failures that were on screen at the instant the
- * panel opened, and the rule is that only those are acknowledged: a failure that
- * arrives WHILE the panel is open is not, because the reader may be scrolled
- * down in the plan and never see the row it belongs to — and the dot it keeps is
- * the only thing that will tell them, on the next view, that there is one.
+ * The rule, in one sentence: **while the panel is open, every failed child whose
+ * row is in the rendered slice is acknowledged; when it is closed, nothing is.**
  *
- * `alreadySeen` is carried forward rather than replaced by the snapshot, so a
- * failure whose row leaves the wire for a frame (a roster that sheds, a
- * reconnect that republishes) cannot re-light a dot the user has already read.
+ * `shown` is the rendered slice — `onScreenFailures` over `panelSlice` — and it
+ * is accumulated rather than replaced, so a failure whose row leaves the slice
+ * for a frame (a roster that sheds, a reconnect that republishes) cannot re-light
+ * a dot the reader has already read.
  *
- * It is a pure function rather than three lines inside an effect because the
- * claim being made is about a rule, and a rule that lives only in an effect's
- * dependency array cannot be asserted: the version this replaces re-recorded the
- * WHOLE failure set on every change while the panel was open, which marked
- * failures the reader had never been shown as read and cleared the dot when they
- * closed the panel.
+ * **What this replaces, and why the old pair is gone rather than ported.** The
+ * popover's rule was bound to two INSTANTS (`acknowledgedOnOpen` at the open,
+ * `acknowledgedOnClose` at the close) because opening a transient surface is an
+ * event. A persistent pane is not opened, so the transitions have no successor
+ * in that shape and both functions are deleted. What survives untouched is the
+ * question they were both asked — `onScreenFailures`, the slice the panel
+ * actually renders — and `accumulateSeen`, the union they both performed.
+ *
+ * The property the old design protected is preserved: a failure that arrives
+ * while the panel is open and IS in the slice is acknowledged because it is
+ * genuinely on screen, which is what the dot claims. The old objection ("the
+ * reader may be scrolled down in the plan") was an argument about a popover that
+ * could place a row outside the viewport; the roster is the panel's scroll owner
+ * and a row in its slice is a row in the list it scrolls.
+ *
+ * It is a pure function rather than three lines inside a component because the
+ * claim being made is about a RULE, and a rule that lives only in a render
+ * cannot be asserted — which is exactly how the version this replaces recorded
+ * the whole failure set on every change while the panel was open and marked
+ * failures the reader had never been shown as read.
  */
-export function acknowledgedOnOpen(
-	openedWith: readonly string[],
-	alreadySeen: SeenFailures = NOTHING_SEEN,
-): SeenFailures {
-	// Identity is preserved when the snapshot adds nothing, so an open panel that
-	// is re-rendered with the same failures does not churn its own state — and
-	// that guarantee lives in `accumulateSeen`, which this shares.
-	return accumulateSeen(alreadySeen, openedWith);
+export function acknowledgeWhileOpen(
+	shown: readonly string[],
+	alreadySeen: ReadonlySet<string> = NOTHING_SEEN,
+): ReadonlySet<string> {
+	return accumulateSeen(alreadySeen, shown);
 }
 
 /**
  * Add ids to a seen set, handing back the SAME set when nothing is new.
  *
- * The union every acknowledgement performs, named once because three call sites
- * need it and they have to agree: the two instants the model states as rules
- * (`acknowledgedOnOpen` / `acknowledgedOnClose`) and the trigger's own
- * accumulation of the slices its panel showed while it was open (`viewedRef`).
- * A second implementation beside this one is how the two instants drifted in the
- * first place — the open half was asking a different question from the close
- * half (`onScreenFailures`).
+ * The union every acknowledgement performs, named once because four call sites
+ * need it and they have to agree: the failure ledger's continuous
+ * acknowledgement, the MCP ledger's, and the tests that pin both. A second
+ * implementation beside this one is how the two instants drifted in the first
+ * place — the open half was asking a different question from the close half
+ * (`onScreenFailures`).
  *
- * The identity guarantee is load-bearing rather than tidy, and the mechanism is
- * `setSeen`: both instants funnel through it, and handing back the SAME set when
- * an open or close adds nothing is what lets React bail out of that state update
- * instead of re-rendering the trigger for a change that did not happen. (The
- * panel's 1Hz clock is not the caller — `useRunDetailsClock` is scoped to
- * `RunDetailsPanel` precisely so a tick repaints the rows and not the tree above
- * them, so it never re-renders the trigger that owns `viewedRef`, and that ref is
- * written during render because a ref assignment is not state.)
+ * It takes the bare `ReadonlySet<string>` rather than `SeenFailures` because the
+ * MCP ledger is the same TYPE over a different KEY SPACE: failed child job ids
+ * and MCP server names. Sharing the union is safe; sharing the VALUE would not
+ * be, which is why each ledger keeps its own set.
+ *
+ * The identity guarantee is load-bearing rather than tidy: handing back the SAME
+ * set when an acknowledgement adds nothing is what lets React bail out of the
+ * state update instead of re-rendering the header for a change that did not
+ * happen.
  */
 export function accumulateSeen(
-	previous: SeenFailures,
+	previous: ReadonlySet<string>,
 	added: readonly string[],
-): SeenFailures {
+): ReadonlySet<string> {
 	if (added.every((id) => previous.has(id))) return previous;
 	const next = new Set(previous);
 	for (const id of added) next.add(id);
@@ -877,31 +1032,7 @@ export function accumulateSeen(
 }
 
 /**
- * The failure set a CLOSING panel records as read (`§3.3`).
- *
- * The second half of the dot's promise, and the mirror of `acknowledgedOnOpen`:
- * opening acknowledges the failures that were on screen AT THE OPEN, and closing
- * acknowledges the failures whose ROWS THE PANEL SHOWED while it was open.
- * `shownWhileOpen` is `visibleFailures` accumulated across the open period
- * rather than a snapshot taken at the close, so a failure the reader watched
- * arrive and that a later arrival then displaced is still read.
- *
- * The rule is one sentence, and it is wrong in both directions if either half
- * is dropped: the dot must not claim "you have not looked" about a row the
- * reader has just read, and it must keep claiming it about a row they never saw.
- * A failure behind `+N more` is not in `visibleFailures`, so it keeps its dot
- * for the next view and the trigger's failure clause survives the close with it.
- *
- * It shares `acknowledgedOnOpen`'s union rather than re-implementing it — the
- * carry-forward and the identity-preservation guarantees are the same — so only
- * the set of ids is a rule of its own, and that rule is `visibleFailures`.
- */
-export function acknowledgedOnClose(
-	shownWhileOpen: readonly string[],
-	alreadySeen: SeenFailures = NOTHING_SEEN,
-): SeenFailures {
-	return acknowledgedOnOpen(shownWhileOpen, alreadySeen);
-}
+ * Whether any row's clock is still running, which is the ONE condition that
 
 /**
  * Whether any row's clock is still running, which is the ONE condition that
@@ -936,12 +1067,17 @@ export function hasUnseenFailure(
 }
 
 /**
- * Whether the trigger should exist at all (`§3.3`).
+ * Whether the session has anything OUTSTANDING at all.
  *
- * **Settled work alone does not raise the trigger.** A finished roster is
- * history, and history lives in the transcript; without this the button becomes
- * permanent furniture after the first `task` call. So: any open child, any open
- * to-do, or a failure nobody has seen.
+ * **No longer a visibility predicate.** The trigger is gated on `details !== null`
+ * alone (`§3.3`): a persistent pane's button is not raised by work, it is simply
+ * there in a canonical session, so this stopped deciding whether that button
+ * exists. What it still answers — "is anything asking for something right now?"
+ * — is a fact the PANEL states instead, and the panel's quiet state is the only
+ * place it is read (`run-details-panel.tsx`).
+ *
+ * Settled work alone does not make it true: a finished roster is history, and
+ * history lives in the transcript.
  */
 export function hasRunDetails(
 	details: RunDetails | null | undefined,
@@ -953,6 +1089,321 @@ export function hasRunDetails(
 		details.openTodos > 0 ||
 		hasUnseenFailure(details, seen)
 	);
+}
+
+/**
+ * Replace the child's durable launch turns with their concise authored prompts.
+ *
+ * The port of `SubagentView._chronological_entries` (`subagent_view.py:2520-2570`),
+ * and its reason is the one recorded there: the durable launch row carries the
+ * full role/team/system preamble, so a reader that does not reconcile it opens
+ * on a wall of wrapper text instead of on what the parent actually asked for.
+ *
+ * The match is a STRING IDENTITY: a durable user row's entry id is the launch's
+ * message id (`session/transcript.py:656-672`), and `launch_prompts` holds one
+ * entry per collapsed ATTEMPT — so "every attempt alias is reconciled" needs no
+ * second lookup here, because each alias's own `subagent-launch:<job_id>` id is
+ * already a key of this map.
+ *
+ * A child whose record predates `launch_message_id` matches nothing and keeps
+ * both its brief and whatever the transcript holds. That is the TUI's own chosen
+ * failure mode: duplicating wrapper text is safer than rewriting a user row the
+ * map cannot actually vouch for.
+ *
+ * Identity is preserved when nothing matched, because the reader hands the
+ * result to a memoised transcript renderer and a fresh array every render would
+ * repaint every row for no change.
+ */
+export function reconcileLaunchTurns(
+	records: TranscriptRecord[],
+	launchPrompts: Readonly<Record<string, string>>,
+): TranscriptRecord[] {
+	let changed = false;
+	const next = records.map((record) => {
+		if (record.kind !== "user") return record;
+		const concise = launchPrompts[record.id];
+		if (concise === undefined || concise === record.text) return record;
+		changed = true;
+		return { ...record, text: concise };
+	});
+	return changed ? next : records;
+}
+
+/**
+ * How many lines of the brief are shown before the expander offers the rest.
+ *
+ * A handful rather than a fixed height: the block is the child's authored
+ * instruction, and the design's requirement is only that it reads as a head
+ * block and states what expanding would cost (`§5.1`). The TUI states the count
+ * for the same reason — `⟨expand⟩` alone cannot tell two more lines from fifty.
+ */
+export const BRIEF_PREVIEW_LINES = 6;
+
+/** The brief, folded to a summary plus the number of lines withheld. */
+export function foldBrief(
+	text: string | null,
+	maxLines = BRIEF_PREVIEW_LINES,
+): { lines: string[]; hidden: number } {
+	const lines = (text ?? "").split("\n");
+	if (lines.length <= maxLines) return { lines, hidden: 0 };
+	return { lines: lines.slice(0, maxLines), hidden: lines.length - maxLines };
+}
+
+/* ------------------------------------------------------------------ */
+/* MCP servers                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The transport states `mcp/manager.py:1330-1341` can report, plus the cold
+ * facade's `cold`, which is not a transport state at all: it says no runtime is
+ * attached, so there is nothing to be connected TO rather than something wrong.
+ *
+ * `auth-required` is deliberately its own state on the wire because its fix
+ * differs from a dead process's, and a server the operator cannot authenticate
+ * is exactly the failure they reported as invisible.
+ */
+export type McpStatus =
+	| "connected"
+	| "connecting"
+	| "auth-required"
+	| "disconnected"
+	| "cold";
+
+/**
+ * The states that are NOT problems, stated as a negative (`§ 7.3`).
+ *
+ * The predicate is written as a negation rather than as a positive list of
+ * problems, and the reason is the TUI band's own recorded bug on this same data:
+ * its `== "failed"` test "only ever matched the projection's own placeholder …
+ * so an auth-blocked server projected as `auth-required` and this band stayed calm
+ * while the owner's went red" (`tui/app.py:8498-8504`), and `_mcp_status`'s
+ * docstring (`:14650`) states the rule the fix adopted: *"Every TERMINAL
+ * non-connected state is a failure, named as a negative rather than as equality
+ * with "disconnected": the status vocabulary grew `auth-required`, and an
+ * equality test on the old string silently stops counting a server whose grant
+ * expired."* A two-word positive list has that same defect one vocabulary change
+ * later, and the operator's complaint is a MISSED problem: a spurious dot costs
+ * one glance and self-clears when the panel is opened, while a missed one is
+ * invisible forever.
+ *
+ * `connecting` is not a problem: the startup gate leaves slow OAuth servers here
+ * on every launch, and lighting for it would make a red lamp the normal boot. A
+ * queued child is not a failed one, and the same ladder applies. `cold` is not
+ * either — no runtime is attached, which is a fact about the session rather than
+ * a fault of the server.
+ *
+ * An unrecognised word IS a problem, and stays QUIET while taking attention: the
+ * renderer must not claim a `danger` failure it cannot name (see `MCP_INK`'s
+ * fallback in `run-detail-mcp.tsx`), and the two refusals agree on the thing that
+ * matters, which is never to claim the GOOD state. `foldStatus` refuses to call
+ * an unrecognised child status `done` for the same reason.
+ */
+const MCP_NOT_A_PROBLEM: readonly string[] = [
+	"connected",
+	"connecting",
+	"cold",
+];
+
+/**
+ * The one-line remedy per KNOWN problem state, and why it is a hint rather than
+ * a control (`§ 7.2`).
+ *
+ * The panel is a live VIEW: it must not grow a reauth button, and the control
+ * stays where the configuration lives — `settings/components/mcp-management-section.tsx`,
+ * which is the only surface that can act on a server. The hints name that
+ * surface's own controls (`Grant account access`, `Reconnect`), because a fix a
+ * reader cannot find in the UI is not a hint.
+ *
+ * There is deliberately NO entry for an unrecognised word: a fix for a word this
+ * build cannot name would be a guess, and a guess is worse than the quiet
+ * unknown row that does still take attention.
+ */
+const MCP_HINT: Record<string, string> = {
+	"auth-required": "Grant this server account access in Settings",
+	disconnected: "Reconnect this server in Settings",
+};
+
+/** One configured MCP server, as the panel's MCP section renders it. */
+export type McpServerRow = {
+	name: string;
+	/**
+	 * The wire's own status word, VERBATIM.
+	 *
+	 * A word this renderer has not been taught is carried through rather than
+	 * folded, because folding it is how a broken server comes to read as a
+	 * working one — the failure the operator reported.
+	 */
+	status: string;
+	/** Whether this row is asking for something (see `MCP_PROBLEM_STATUSES`). */
+	problem: boolean;
+	/** `tool_count`, on a connected server only; `null` when nothing reported it. */
+	toolCount: number | null;
+	/**
+	 * The quiet qualifier: the config's owned scope, else the source it came from.
+	 *
+	 * One string rather than two because both answer the same reader question —
+	 * "where is this server configured?" — and a row that printed both would spend
+	 * its scarcest column on a distinction only the settings page acts on.
+	 */
+	scope: string | null;
+	/** The one-line remedy on a problem row, `null` on every other state. */
+	hint: string | null;
+};
+
+/**
+ * Fold the `mcp.list` payload's server rows (`mcp/desktop.py:127-152`).
+ *
+ * Deliberately tolerant, like `deriveRunDetails`: this is JSON off a backend
+ * that may be older or newer than the renderer, so a row missing every field
+ * still renders as a named server in an unknown state rather than throwing.
+ *
+ * A row with NO NAME is dropped instead: it cannot be pointed at, and a nameless
+ * "problem" would light a dot no surface could ever acknowledge.
+ *
+ * Sorted by name so the list is stable across refetches — the payload's own
+ * order is config load order, which shifts as configuration is edited, and a
+ * section that reorders itself every 15 s is a section nobody can read.
+ */
+export function deriveMcpServers(rows: unknown): McpServerRow[] {
+	return toWireList(rows)
+		.map((row) => {
+			const name = wireText(row.name);
+			if (!name) return null;
+			// `cold` is the documented default for a payload that does not say: it
+			// claims nothing about a server it knows nothing about, where a default of
+			// `connected` would be a lie and `disconnected` a false alarm.
+			const status = wireText(row.status) || "cold";
+			const problem = !MCP_NOT_A_PROBLEM.includes(status);
+			return {
+				name,
+				status,
+				problem,
+				// Only a connected server has a meaningful tool count: a disconnected
+				// one reports the tools its last session knew about, and printing that
+				// beside `disconnected` would claim tools that are not reachable.
+				toolCount: status === "connected" ? wireNumber(row.tool_count) : null,
+				// `owned_scope` is the field the route actually sends (`§ 7.1`: the
+				// Settings section reads a `scope` key that does not exist on this
+				// payload, and that bug is deliberately not copied here). The fallback is
+				// the source config's BASENAME: a full path in the qualifier column would
+				// spend the row's widest segment on something the reader cannot act on,
+				// and its tail is the only part that says which file it came from.
+				scope: wireText(row.owned_scope) || sourceBasename(row.source) || null,
+				hint: problem ? (MCP_HINT[status] ?? null) : null,
+			};
+		})
+		.filter((row): row is McpServerRow => row !== null)
+		.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Both separators, at module level: a regex literal inside the function would be
+ * rebuilt per call, which is the lint rule this satisfies (`useTopLevelRegex`). */
+const PATH_SEPARATORS = /[\\/]/;
+
+/** The last path segment of a config source, or `""` when there is none.
+ *
+ * The qualifier column wants `mcp.json`, not
+ * `/Users/someone/.local-operator/mcp.json`: a full path spends the row's widest
+ * segment on something the reader cannot act on, and its tail is the only part
+ * that says which file the server came from.
+ */
+const sourceBasename = (value: unknown): string => {
+	const source = wireText(value);
+	if (!source) return "";
+	const parts = source.split(PATH_SEPARATORS);
+	return parts[parts.length - 1] ?? "";
+};
+
+/**
+ * Whether the whole payload is the cold facade's.
+ *
+ * The route's cold branch stamps `"status": "cold"` on every configured server
+ * and `cold: true` on the envelope (`desktop_lifecycle.py:111-134`), so the rows
+ * already say it and the envelope's flag cannot disagree with them — both come
+ * from the same branch. Reading it off the rows avoids threading a second field
+ * through the hook, the page and the pane for a fact the rows carry.
+ *
+ * It matters because `cold` is the SECTION's state rather than the row's: a
+ * per-row status column would print one jargon word N times, and the tally would
+ * read `0 of N connected`, which claims three servers are down when in truth none
+ * was asked to be up.
+ */
+export function mcpServersAreCold(rows: readonly McpServerRow[]): boolean {
+	return rows.length > 0 && rows.every((row) => row.status === "cold");
+}
+
+/** Every MCP name that is asking for something right now. */
+export function mcpProblemNames(rows: readonly McpServerRow[]): string[] {
+	return rows.filter((row) => row.problem).map((row) => row.name);
+}
+
+/**
+ * The MCP ledger's whole rule, in one pure function: **prune, then union**.
+ *
+ * `seen' = seen ∩ problems(rows)`, and then the rows on screen are acknowledged.
+ *
+ * The prune is the RE-ARM rule (`§ 7.3`) and it exists because this ledger's key
+ * space is one that RECURS: a server NAME outlives the problem. A server
+ * acknowledged while `auth-required`, whose grant is later repaired and which
+ * then breaks again, would stay silent forever under `accumulateSeen`'s
+ * union-never-subtract rule — and that failure is invisible by construction,
+ * since no frame of a correctly-quiet dot can distinguish "acknowledged" from
+ * "never re-armed". `auth-required` is re-checked on the backend's own 60s clock
+ * (`AUTH_REVALIDATE_INTERVAL_S`), so a heal-and-break-again cycle is ordinary,
+ * not hypothetical.
+ *
+ * The CHILD ledger needs no such rule and the asymmetry is not an oversight: a
+ * job id names one EPISODE, so a set that never subtracts is exactly right for
+ * it.
+ *
+ * The caller evaluates this only while the list is on screen (`§ 3.4`), so a
+ * reader covering the section neither acknowledges nor prunes — the set is left
+ * exactly as the reader found it.
+ */
+export function acknowledgeMcpWhileShown(
+	rows: readonly McpServerRow[],
+	seen: ReadonlySet<string> = NOTHING_SEEN,
+): ReadonlySet<string> {
+	const problems = mcpProblemNames(rows);
+	const stillBroken = new Set(problems.filter((name) => seen.has(name)));
+	const next = accumulateSeen(stillBroken, problems);
+	/*
+	 * Hand back the CALLER's set when nothing changed — no new problem, nothing
+	 * pruned. The identity guarantee is the same one `accumulateSeen` makes and for
+	 * the same reason: the trigger updates state during its own render, so a fresh
+	 * set on the ordinary evaluation (the rows did not move) would re-render the
+	 * header on every frame for a status nobody learned.
+	 */
+	if (next.size === seen.size && [...next].every((name) => seen.has(name))) {
+		return seen;
+	}
+	return next;
+}
+
+/**
+ * The MCP rows that are asking for something and nobody has looked at yet.
+ *
+ * The failure dot's rule (`§ 3.4`) applies unchanged, over this key space. The
+ * rendered slice and the whole set are the same list here: the MCP section has NO
+ * CAP (`§ 7.2`), because a cap is an answer to an unbounded stream of children
+ * rather than to the finite servers a user configured — and a cap here would put
+ * a problem behind a control.
+ */
+export function unseenMcpProblems(
+	rows: readonly McpServerRow[],
+	seen: ReadonlySet<string> = NOTHING_SEEN,
+): string[] {
+	return rows
+		.filter((row) => row.problem && !seen.has(row.name))
+		.map((row) => row.name);
+}
+
+/** Whether the MCP section has a problem nobody has looked at. */
+export function hasUnseenMcpProblem(
+	rows: readonly McpServerRow[],
+	seen: ReadonlySet<string> = NOTHING_SEEN,
+): boolean {
+	return unseenMcpProblems(rows, seen).length > 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1134,15 +1585,23 @@ const byPriority = (a: SubagentRow, b: SubagentRow): number =>
  * promise, once the reader has closed the panel, is redeemed only for the
  * failures the slice showed (`visibleFailures`).
  */
-export function visibleSubagents(rows: SubagentRow[]): {
+export function visibleSubagents(
+	rows: SubagentRow[],
+	/**
+	 * How many rows fit. The collapsed roster's cap by default, and the `+N more`
+	 * disclosure's own bound when the reader expands it (`§ 4`, item 3) — a bound
+	 * the reader asked for rather than one the surface decided.
+	 */
+	cap: number = SUBAGENT_ROW_CAP,
+): {
 	rows: SubagentRow[];
 	hidden: number;
 } {
 	const ordered = [...rows].sort(byPriority);
-	if (ordered.length <= SUBAGENT_ROW_CAP) {
+	if (ordered.length <= cap) {
 		return { rows: ordered, hidden: 0 };
 	}
-	const kept = ordered.slice(0, SUBAGENT_ROW_CAP);
+	const kept = ordered.slice(0, cap);
 	/*
 	 * Every settled row keeps a slot only if nothing failed needs one. `kept` is
 	 * in rank order, so the LAST non-failed row is the quietest thing on screen
@@ -1150,7 +1609,7 @@ export function visibleSubagents(rows: SubagentRow[]): {
 	 * leaves the order above it untouched. Written as a backward walk rather than
 	 * `findLastIndex` because the renderer's `lib` predates it.
 	 */
-	for (const failed of ordered.slice(SUBAGENT_ROW_CAP)) {
+	for (const failed of ordered.slice(cap)) {
 		if (failed.status !== "failed") continue;
 		let victim = -1;
 		for (let index = kept.length - 1; index >= 0; index--) {
@@ -1184,11 +1643,22 @@ export function visibleSubagents(rows: SubagentRow[]): {
  * `visibleSubagents`, and nothing but the panel's own rendering may narrow them
  * further.
  */
-export function panelSlice(rows: readonly SubagentRow[]): {
+export function panelSlice(
+	rows: readonly SubagentRow[],
+	/**
+	 * The cap to slice by. Defaulted, and defaulted to the COLLAPSED one on
+	 * purpose: this function is what the `danger` dot's acknowledgement counts
+	 * out of, and `§ 3.4` fixes that slice as the collapsed roster's. An expanded
+	 * roster therefore renders more rows than the dot's slice holds — expanding
+	 * reveals a row without acknowledging it — which is the design's own
+	 * definition of "the rendered slice" rather than an oversight here.
+	 */
+	cap: number = SUBAGENT_ROW_CAP,
+): {
 	rows: SubagentRow[];
 	hidden: number;
 } {
-	return visibleSubagents([...rows]);
+	return visibleSubagents([...rows], cap);
 }
 
 /**
@@ -1317,15 +1787,34 @@ const todoClause = (count: number): string =>
 const failureClause = (count: number): string =>
 	`${plural(count, "subagent")} failed`;
 
+/** The MCP ledger's clause, with the protocol's own name left singular. */
+const mcpClause = (count: number): string =>
+	count === 1
+		? "1 MCP server needs attention"
+		: `${count} MCP servers need attention`;
+
 /**
- * The tooltip and `aria-label` copy (`§6.2`).
+ * The tooltip and `aria-label` copy (`§3.3`, `§6.2`).
  *
  * Built as ordered clauses rather than as a sentence so that pressure sheds a
  * whole clause instead of truncating one: the count is the first thing the
- * label exists to say, and `Run details — 2 subag…` says nothing at all. Order
- * is what needs attention first — an unseen failure, then children at work,
- * then open to-dos — and `maxChars` drops trailing clauses while keeping the
- * leading one.
+ * label exists to say, and `Open run details — 2 subag…` says nothing at all.
+ *
+ * **The two ATTENTION clauses — an unseen failure and an MCP problem — are the
+ * last the budget may shed** (`§ 3.4`): they are what explains the dot, and a lit
+ * dot whose accessible name lost its reason is the unreadable state this surface
+ * exists to prevent. They therefore LEAD the list and are kept before any count
+ * is added, while the counts (`n subagents running`, `n to-dos open`) queue
+ * behind them and shed first.
+ *
+ * `MCP` stays singular as the protocol's own name, and the clause is spent after
+ * the failure clause: `§ 3.4` fixes both, and a tooltip that reported a broken
+ * server before a failed child would rank two facts the design merges rather than
+ * ranks.
+ *
+ * The verb is the toggle's own state, and it is spent before everything: the
+ * action is the one clause that may never be shed, because a control whose name
+ * lost its verb names nothing.
  *
  * The "running" clause counts children that have not settled, not only those
  * whose status is literally `running`: `§6.2` fixes the product's word for a
@@ -1336,29 +1825,48 @@ const failureClause = (count: number): string =>
 export function runDetailTriggerLabel(
 	details: RunDetails | null | undefined,
 	seen: SeenFailures = NOTHING_SEEN,
-	maxChars?: number,
+	options: {
+		open?: boolean;
+		maxChars?: number;
+		/** Problem servers nobody has looked at, from the MCP ledger's own set. */
+		mcpProblems?: number;
+	} = {},
 ): string {
-	if (!details) return "Run details";
-	const clauses: string[] = [];
+	const prefix = options.open ? LABEL_CLOSE : LABEL_OPEN;
+	if (!details) return prefix;
+	const attention: string[] = [];
+	const counts: string[] = [];
 	const failures = unseenFailures(details, seen).length;
-	if (failures > 0) clauses.push(failureClause(failures));
-	if (details.openChildren > 0) clauses.push(childClause(details.openChildren));
-	if (details.openTodos > 0) clauses.push(todoClause(details.openTodos));
-	if (clauses.length === 0) return "Run details";
+	if (failures > 0) attention.push(failureClause(failures));
+	if ((options.mcpProblems ?? 0) > 0) {
+		attention.push(mcpClause(options.mcpProblems ?? 0));
+	}
+	if (details.openChildren > 0) counts.push(childClause(details.openChildren));
+	if (details.openTodos > 0) counts.push(todoClause(details.openTodos));
+	const clauses = [...attention, ...counts];
+	if (clauses.length === 0) return prefix;
 
-	if (maxChars !== undefined) {
-		let kept = clauses.slice(0, 1);
-		for (const clause of clauses.slice(1)) {
+	if (options.maxChars !== undefined) {
+		/*
+		 * What the dot needs is kept before anything is added, and the COUNTS queue
+		 * behind it. When there is no attention clause the first count takes the
+		 * leading slot, which is this budget's pre-existing behaviour.
+		 */
+		const leading = attention.length > 0 ? attention : counts.slice(0, 1);
+		const rest = attention.length > 0 ? counts : counts.slice(1);
+		let kept = [...leading];
+		for (const clause of rest) {
 			if (
-				(LABEL_PREFIX + [...kept, clause].join(CLAUSE_SEAM)).length > maxChars
+				(prefix + LABEL_SEAM + [...kept, clause].join(CLAUSE_SEAM)).length >
+				options.maxChars
 			) {
 				break;
 			}
 			kept = [...kept, clause];
 		}
-		return LABEL_PREFIX + kept.join(CLAUSE_SEAM);
+		return prefix + LABEL_SEAM + kept.join(CLAUSE_SEAM);
 	}
-	return LABEL_PREFIX + clauses.join(CLAUSE_SEAM);
+	return prefix + LABEL_SEAM + clauses.join(CLAUSE_SEAM);
 }
 
 /**
