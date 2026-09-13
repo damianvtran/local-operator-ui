@@ -1305,6 +1305,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * `order-2` puts it back between the chip and the controls, and the
 						 * controls' `order-3` keeps mic and send last.
 						 *
+						 * The two widths want OPPOSITE DOM orders and there is one DOM:
+						 * wrapped, the cluster paints first and must be tabbed first;
+						 * inline, it paints third and UX round 2 (U8) measured it still
+						 * being tabbed first. One node cannot satisfy both, and a second
+						 * render to fix the inline order would be a second layout to keep
+						 * in step - the thing this row is built to avoid, and what the
+						 * composer test pins. The wrapped width keeps the guarantee
+						 * because that is where the mismatch is a visible jump back UP
+						 * the row; inline the readings sit between the chip and the
+						 * controls, so the tab lands one stop early rather than out of
+						 * sequence. Recorded rather than silently chosen.
+						 *
 						 * A crash in the strip must not take the composer down with it — the
 						 * readings are metadata and the ability to type is not — so it renders
 						 * inside an error boundary with an empty fallback: a missing strip is a
