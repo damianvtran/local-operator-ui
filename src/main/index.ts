@@ -16,6 +16,12 @@ import {
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
+	MAX_FILE_READ_BYTES,
+	MAX_PROBE_PATHS,
+	type ProbedFile,
+	type ReadFileBytesResponse,
+} from "../shared/desktop-contract";
+import {
 	BackendInstaller,
 	BackendServiceManager,
 	LocalOperatorStartupMode,
@@ -38,6 +44,30 @@ import {
 import { presentWindow, raiseWindow } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
+
+/**
+ * The ONE path-resolution rule for every local-file IPC handler.
+ *
+ * Four handlers used to spell it themselves (`read-file`, `save-file`,
+ * `file-exists`, and `directory-exists` with a third variant that also accepted
+ * a bare `~`), and a fifth spelling is exactly how the panel would end up
+ * disagreeing with the editor about which file a path names. `~` is expanded
+ * here because this is the only process that has `app.getPath("home")`; the
+ * renderer deliberately never guesses a home directory.
+ *
+ * `cwd` is for the one caller that has one — `probe-files` — where a relative
+ * candidate from a tool argument is resolvable against the session's working
+ * directory. It is applied only to a relative path, so an absolute path is
+ * always taken literally.
+ */
+const resolveUserPath = (filePath: string, cwd?: string): string => {
+	if (filePath === "~") return app.getPath("home");
+	if (filePath.startsWith("~/"))
+		return join(app.getPath("home"), filePath.slice(2));
+	if (cwd && !filePath.startsWith("/"))
+		return join(cwd.startsWith("~/") ? resolveUserPath(cwd) : cwd, filePath);
+	return filePath;
+};
 
 export type ReadFileResponse =
 	| { success: true; data: string }
@@ -595,14 +625,137 @@ app
 				encoding: BufferEncoding = "utf-8",
 			): Promise<ReadFileResponse> => {
 				try {
-					const normalizedPath = filePath.startsWith("~/")
-						? join(app.getPath("home"), filePath.slice(2))
-						: filePath;
-					const data = readFileSync(normalizedPath, encoding);
+					const data = readFileSync(resolveUserPath(filePath), encoding);
 					return { success: true, data };
 				} catch (error) {
 					logger.error("Error reading file:", LogFileType.BACKEND, error);
 					return { success: false, error };
+				}
+			},
+		);
+
+		/*
+		 * Existence and identity for the Files panel, in one batched call.
+		 *
+		 * The renderer cannot stat (`nodeIntegration: false`,
+		 * `contextIsolation: true`), and per-tile calls would be a stat storm while
+		 * a turn is streaming: one probe per record delta, each carrying up to 64
+		 * paths, is the shape that stays cheap. The answer carries the RESOLVED
+		 * path, which is what makes it usable as the store's dedupe key —
+		 * `~/a.md` and `/Users/you/a.md` are one file, and the panel must not show
+		 * them as two.
+		 *
+		 * A path that resolves into nowhere is reported `exists: false` rather than
+		 * dropped: "the agent wrote this and it is gone" is a fact the tile states,
+		 * and silently filtering it would recreate the original complaint from the
+		 * other side.
+		 */
+		ipcMain.handle(
+			"probe-files",
+			async (_, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+				const asked = Array.isArray(paths)
+					? paths.filter((path): path is string => typeof path === "string")
+					: [];
+				return asked.slice(0, MAX_PROBE_PATHS).map((input) => {
+					let resolved = input;
+					try {
+						resolved = resolveUserPath(input, cwd);
+						const stat = statSync(resolved, { throwIfNoEntry: false });
+						return {
+							input,
+							resolved,
+							exists: stat !== undefined,
+							isFile: stat?.isFile() ?? false,
+							sizeBytes: stat?.isFile() ? stat.size : null,
+							mtimeMs: stat?.isFile() ? stat.mtimeMs : null,
+						};
+					} catch (error) {
+						// A genuine fault - permission, a stale network mount - is not the
+						// same answer as "no such file", and the difference is the whole
+						// diagnosis when a tile says the file is gone and it is there.
+						return {
+							input,
+							resolved,
+							exists: false,
+							isFile: false,
+							sizeBytes: null,
+							mtimeMs: null,
+							error: error instanceof Error ? error.message : String(error),
+						};
+					}
+				});
+			},
+		);
+
+		/*
+		 * Bytes for the in-app viewers, capped and named.
+		 *
+		 * Why not `read-file`: a PDF or a PNG has no text encoding, and the
+		 * alternative this replaces was base64 - a third again the size, decoded on
+		 * the far side, held as a string in the renderer and (for a document the
+		 * user then edited) written into `localStorage`. `Uint8Array` crosses IPC
+		 * by structured clone with no encoding step at all.
+		 *
+		 * The cap is checked BEFORE the read, against `stat`, so a 2 GB file is
+		 * refused without allocating anything. That is what makes the refusal
+		 * specific enough for the viewer to say "too large to preview" and offer
+		 * the OS instead of showing a spinner that never finishes.
+		 */
+		ipcMain.handle(
+			"read-file-bytes",
+			async (
+				_,
+				filePath: string,
+				maxBytes: number = MAX_FILE_READ_BYTES,
+			): Promise<ReadFileBytesResponse> => {
+				const cap =
+					Number.isFinite(maxBytes) && maxBytes > 0
+						? Math.min(maxBytes, MAX_FILE_READ_BYTES)
+						: MAX_FILE_READ_BYTES;
+				try {
+					const resolved = resolveUserPath(filePath);
+					const stat = statSync(resolved, { throwIfNoEntry: false });
+					if (!stat) {
+						return {
+							success: false,
+							code: "not-found",
+							error: `No file at ${resolved}`,
+						};
+					}
+					if (!stat.isFile()) {
+						return {
+							success: false,
+							code: "not-a-file",
+							error: `${resolved} is not a regular file`,
+						};
+					}
+					if (stat.size > cap) {
+						return {
+							success: false,
+							code: "too-large",
+							error: `${resolved} is ${stat.size} bytes, over the ${cap}-byte preview cap`,
+							sizeBytes: stat.size,
+						};
+					}
+					// A copy, not a view over `readFileSync`'s buffer. For a file under
+					// half of `Buffer.poolSize` the returned Buffer is a slice of a shared
+					// pool, so a view would describe the offset and length correctly and
+					// still keep the whole pooled allocation alive on the renderer's side
+					// of structured clone. The cost is one memcpy of a file the cap has
+					// already held to 64 MiB.
+					const buffer = readFileSync(resolved);
+					return {
+						success: true,
+						data: new Uint8Array(buffer),
+						sizeBytes: buffer.byteLength,
+					};
+				} catch (error) {
+					logger.error("Error reading file bytes:", LogFileType.BACKEND, error);
+					return {
+						success: false,
+						code: "unreadable",
+						error: error instanceof Error ? error.message : String(error),
+					};
 				}
 			},
 		);
@@ -632,10 +785,7 @@ app
 				encoding: BufferEncoding = "utf-8",
 			) => {
 				try {
-					const normalizedPath = filePath.startsWith("~/")
-						? join(app.getPath("home"), filePath.slice(2))
-						: filePath;
-					writeFileSync(normalizedPath, content, encoding);
+					writeFileSync(resolveUserPath(filePath), content, encoding);
 				} catch (error) {
 					logger.error("Error saving file:", LogFileType.BACKEND, error);
 					throw error; // Re-throw the error to be caught by the renderer
@@ -644,10 +794,7 @@ app
 		);
 
 		ipcMain.handle("file-exists", async (_, filePath: string) => {
-			const normalizedPath = filePath.startsWith("~/")
-				? join(app.getPath("home"), filePath.slice(2))
-				: filePath;
-			return existsSync(normalizedPath);
+			return existsSync(resolveUserPath(filePath));
 		});
 
 		/*
@@ -665,17 +812,11 @@ app
 		 * cannot stat is not one.
 		 */
 		ipcMain.handle("directory-exists", async (_, dirPath: string) => {
-			const home = app.getPath("home");
-			const normalizedPath =
-				dirPath === "~"
-					? home
-					: dirPath.startsWith("~/")
-						? join(home, dirPath.slice(2))
-						: dirPath;
 			try {
 				return (
-					statSync(normalizedPath, { throwIfNoEntry: false })?.isDirectory() ??
-					false
+					statSync(resolveUserPath(dirPath), {
+						throwIfNoEntry: false,
+					})?.isDirectory() ?? false
 				);
 			} catch {
 				return false;

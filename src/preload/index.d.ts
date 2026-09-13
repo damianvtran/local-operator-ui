@@ -1,6 +1,10 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
-import type { DesktopAPI } from "../shared/desktop-contract";
+import type {
+	DesktopAPI,
+	ProbedFile,
+	ReadFileBytesResponse,
+} from "../shared/desktop-contract";
 
 // Matching same type in `src/main/index.ts`
 type ReadFileResponse =
@@ -17,6 +21,20 @@ declare global {
 				filePath: string,
 				encoding?: BufferEncoding,
 			) => Promise<ReadFileResponse>;
+			/**
+			 * Bytes for the in-app viewers (PDF, image, audio). The failure case is a
+			 * discriminant rather than an `Error`, because structured clone strips a
+			 * custom Error's prototype and `instanceof` would never be true here.
+			 */
+			readFileBytes: (
+				filePath: string,
+				maxBytes?: number,
+			) => Promise<ReadFileBytesResponse>;
+			/**
+			 * Resolve and stat a batch of paths, returning the RESOLVED path each one
+			 * maps to. That resolved path is the Files panel's identity for a file.
+			 */
+			probeFiles: (paths: string[], cwd?: string) => Promise<ProbedFile[]>;
 			openExternal: (url: string) => Promise<void>;
 			showItemInFolder: (filePath: string) => Promise<void>;
 			systemInfo: {

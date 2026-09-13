@@ -225,14 +225,22 @@ const PALETTES = new Map(loadPalettes().map((p) => [p.id, p.palette]));
  *
  * Three things, all cheap and all local:
  *
- * 1. `head` must RESOLVE to a commit. An unreachable sha is the failure that
- *    cannot be recovered from later, because the object goes away.
+ * 1. `head` must RESOLVE to a commit, and be REACHABLE from a ref. An
+ *    unreachable sha is the failure that cannot be recovered from later,
+ *    because the object goes away.
  * 2. `srcTree` / `scriptsTree` must equal the CURRENT `HEAD:src` / `HEAD:scripts`.
  *    This is the real staleness question - a docs-only commit moves `head` but
  *    not the trees, and frames stay valid across it. Comparing trees rather
  *    than commits is what the capture script's own comment argues for.
- * 3. Every `supplementary[].capturedAtHead` must resolve too, for the same
- *    reason as (1).
+ * 3. Every OTHER head citation in the manifest is held to (1)'s bar:
+ *    `supplementary[].capturedAtHead`, and `partialCapture`'s `addedAtHead` and
+ *    `refreshedAtHead`. They name the commits a narrowed pass added or
+ *    refreshed frames at, a reader checks frames against them exactly as they
+ *    check `head`, and nothing checked them until round 4: `addedAtHead`
+ *    carried a pre-force-push sha that no ref reached while this gate reported
+ *    the manifest clean, and `refreshedAtHead` carried the same orphan in the
+ *    commit that shipped it. A citation nothing verifies is worse than no
+ *    citation, because it rots twice before anyone notices.
  *
  * It does NOT require `head` to equal the current HEAD. A tree-clean manifest
  * whose `head` is an older ancestor is honest and common: docs commits land
@@ -345,6 +353,33 @@ export const provenanceFailures = (manifest, git = gitOut) => {
 		} else if (!reachable(sha)) {
 			out.push(
 				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} is reachable from no ref - it dies at the next gc`,
+			);
+		}
+	}
+
+	/*
+	 * `partialCapture`'s head citations, on the same bar.
+	 *
+	 * These two name the commits a NARROWED pass took frames at - `addedAtHead`
+	 * the pass that added the story's frames, `refreshedAtHead` the pass that
+	 * re-took existing ones - and a reader chasing "which tree are these pixels
+	 * from" reads them exactly as they read `head`. They were unchecked, and
+	 * both rotted in exactly the way this gate exists to catch: after the
+	 * force-push `addedAtHead` held `45b6dd635`, reachable from no ref, while the
+	 * gate reported the manifest clean and the round's own note claimed every
+	 * citation was reachable (round 4, R4-1). Reachability is the bar for every
+	 * sha in this file; a field the checker skips is a field that rots alone.
+	 */
+	for (const field of ["addedAtHead", "refreshedAtHead"]) {
+		const sha = manifest.partialCapture?.[field];
+		if (typeof sha !== "string" || sha.length < 7) continue;
+		if (!resolves(sha)) {
+			out.push(
+				`manifest.json: partialCapture.${field} ${sha.slice(0, 9)} resolves to no commit in this repository`,
+			);
+		} else if (!reachable(sha)) {
+			out.push(
+				`manifest.json: partialCapture.${field} ${sha.slice(0, 9)} (${git(["log", "-1", "--format=%s", sha]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
 			);
 		}
 	}

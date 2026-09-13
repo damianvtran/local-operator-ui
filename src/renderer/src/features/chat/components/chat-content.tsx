@@ -15,6 +15,7 @@ import React, {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -23,6 +24,7 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -170,6 +172,9 @@ const defaultCanvasState = {
 	openTabs: [],
 	selectedTabId: null,
 	files: [],
+	// Read by the panel head, the view switcher and the canvas button, so the
+	// fallback has to carry the field rather than lean on `undefined`.
+	mentionedFiles: [],
 };
 
 export const ChatContent: FC<ChatContentProps> = React.memo(
@@ -242,15 +247,71 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 		// Get canvas state for the current conversation
 		const conversationId = agentId; // assuming agentId is the conversation ID
+
+		/*
+		 * The Files panel's producer, called exactly once and here because this is
+		 * the only component that holds BOTH halves it needs: the canonical
+		 * transcript (`records`, the full loaded list rather than the painted
+		 * window) and the canvas-store key (`conversationId`, which is `agentId`
+		 * for a live session and the draft key for a draft - they differ).
+		 *
+		 * `cwd` comes off the canonical frontend, read the same way the working
+		 * directory chip reads it, and is what lets a relative path in a tool
+		 * argument be resolved against the session rather than guessed at.
+		 */
 		const canvasState = useCanvasStore((s) => s.conversations[conversationId]);
+		const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+		// The Files view is the only thing that drives the completeness scan: paging
+		// the reader's own transcript is a visible side effect, and it happens
+		// because the user asked to see every file rather than because a
+		// conversation is mounted.
+		const filesViewOpen =
+			isCanvasOpen && (canvasState?.viewMode ?? "documents") === "files";
+
+		/*
+		 * The scan request, memoised on purpose. The hook's effect compares its
+		 * dependencies by identity, and a fresh object literal per render (this
+		 * component re-renders on every transcript delta) would re-run the scan
+		 * effect on each of them.
+		 */
+		const scanRequest = useMemo(
+			() =>
+				filesViewOpen && canonical
+					? {
+							active: true,
+							hasMore: canonical.view.transcript.hasMore,
+							oldestId: canonical.view.transcript.oldestId,
+							loadOlder: canonical.view.loadOlder,
+							/*
+							 * The reader's own paging state, passed through so the scan can tell
+							 * its own page request apart from theirs: `loadOlder` answers both
+							 * with the same `false`, and only one of them means the history is
+							 * exhausted (round 2, R2-5).
+							 */
+							blocked: canonical.view.loadingOlder,
+						}
+					: null,
+			[filesViewOpen, canonical],
+		);
+
+		const filesScan = useMentionedFiles({
+			conversationId,
+			records: canonical?.view.transcript.records ?? null,
+			cwd: canonical?.view.frontend?.cwd,
+			enabled: Boolean(canonical && agentId),
+			scan: scanRequest,
+		});
 		const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
 		const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 		const setFiles = useCanvasStore((s) => s.setFiles);
 
-		const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 		const openTabs = (canvasState ?? defaultCanvasState).openTabs;
 		const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
 		const files = (canvasState ?? defaultCanvasState).files;
+		// The one number the panel, the view switcher and the canvas button all
+		// state: how many files the agent has been seen to touch.
+		const mentionedFileCount = (canvasState ?? defaultCanvasState)
+			.mentionedFiles.length;
 
 		// No effect needed: always use the value from the store, or fallback to default if 0
 		const effectiveCanvasPanelWidth =
@@ -372,6 +433,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							description={description}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
+							fileCount={mentionedFileCount}
 						/>
 						{/* Chat Options Sidebar */}
 						{!canonical && (
@@ -487,11 +549,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						/>
 						<div
 							ref={canvasContainerRef}
+							/* Named for the geometry probe: the dock's measured width at
+							 * the default 1380x900 window is the U1 regression check. */
+							data-tour-tag="canvas-dock"
 							style={{
-								minWidth: effectiveCanvasPanelWidth,
 								width: effectiveCanvasPanelWidth,
 							}}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							/*
+							 * No `minWidth`. A floor pinned at the dock's preferred width is what
+							 * made the grid's fourth column unreachable at the app's own default
+							 * window: the chat column has a 220px floor of its own, so
+							 * 220 + 800 could not fit in an 880px row, the row's `overflow-hidden`
+							 * clipped the rest, and no scroll container in between could reach it
+							 * (measured at 1380x900: the dock ran to x=1520 in a 1380 window and 8 of
+							 * 32 tiles had their right edge past it). With the floor gone, flex
+							 * shrinks the dock into the space that is actually available and the
+							 * grid reflows to the width it really has — which is the same rule the
+							 * grid's own `auto-fill` tracks already follow.
+							 */
+							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -499,6 +575,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								conversationId={conversationId}
 								agentId={agentId}
 								currentWorkingDirectory={cwd}
+								fileCount={mentionedFileCount}
+								scan={filesScan}
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
