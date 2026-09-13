@@ -468,12 +468,23 @@ export function ChatSidebar({
 					onChange={(event) => setQuery(event.target.value)}
 				/>
 				{/* Rendered only while a filter is applied: a clear control beside an
-				    empty field is a control that does nothing. */}
+				    empty field is a control that does nothing.
+
+				    The ring is pulled INSIDE the control's own box, against the shared
+				    `icon-sm` step. That step draws a 2px outline at a 1px offset, which
+				    needs 3px of clearance around the control; this one is 28px inside a
+				    32px field, so 2px is all there is, and at the step's own offset the
+				    ring's top and bottom arcs crossed the field's `border-control` line
+				    and read as a control bulging out of the field it sits in (design
+				    round 1, D1). Inset, the ring hugs the control's own radius, stays
+				    clear of the 14px glyph, and cannot leave the field in any palette.
+				    `!` because the size step's offset is itself important and this is
+				    an override of it rather than a second convention. */}
 				{query && (
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						className="absolute top-1/2 right-1 -translate-y-1/2"
+						className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 						onClick={() => clearSearch(searchRef.current, setQuery)}
 						aria-label="Clear search"
 					>
