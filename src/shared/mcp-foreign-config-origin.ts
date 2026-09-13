@@ -18,9 +18,13 @@
  * needs) is a `local-operator` backend change that must ship and be released
  * before this repository can read it, while this panel's copy is already
  * broken. The duplication, and the fact that nothing here is asserted against
- * the backend's list, are the price of not blocking a shipped bug on a backend
- * release; both go away when the field does. A parity assertion is not
- * available to this repository — the authority is Python, in another repo.
+ * the backend's own table, are the price of not blocking a shipped bug on a
+ * backend release; both go away when the field does. Parity with that table
+ * cannot be asserted from here — the authority is Python, in another repo —
+ * but the matching BEHAVIOUR is, and is, in
+ * `scripts/mcp-foreign-config-origin.test.mjs`: every fragment pair, the
+ * `.claude.json` / `.claude/.mcp.json` disambiguation, the near misses that
+ * must NOT match, and the Windows-shaped path below.
  *
  * An unmatched source returns `null`, and the caller falls back to the honest
  * sentence rather than guessing a tool from a path this table does not know.
@@ -52,12 +56,21 @@ const FOREIGN_MCP_CONFIG_ORIGINS: readonly (readonly [
  * relative session cwd, and the trailing fragments are the only part that is
  * the same on every machine — the backend compares fragments for the same
  * reason.
+ *
+ * Separators are normalised before splitting. The backend's `Path(source).parts`
+ * handles a Windows path and the wire value is `str(Path)`, so the shipped
+ * Windows build would otherwise match nothing and silently stop naming the
+ * owner on exactly the platform where the backend still does — the
+ * two-surfaces-disagree class this table exists to remove.
  */
 export function foreignMcpConfigOrigin(
 	source: string | null | undefined,
 ): string | null {
 	if (!source) return null;
-	const parts = source.split("/").filter(Boolean);
+	// `split`/`join` rather than a regex: this module must stay ES2020-compatible
+	// for the renderer target, and an inline regex would trip the repo's own
+	// top-level-regex rule for no gain here.
+	const parts = source.split("\\").join("/").split("/").filter(Boolean);
 	for (const [fragment, origin] of FOREIGN_MCP_CONFIG_ORIGINS) {
 		if (parts.length < fragment.length) continue;
 		if (parts.slice(-fragment.length).join("/") === fragment.join("/"))
