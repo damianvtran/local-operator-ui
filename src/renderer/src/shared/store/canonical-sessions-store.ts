@@ -197,6 +197,29 @@ export function panelIdentityFor(
 	return sessionId ?? draftKey ?? undefined;
 }
 
+/**
+ * Whether a send failed BEFORE the owner could have admitted anything.
+ *
+ * ONE definition, read by everything that has to act on the answer. Inside this
+ * module it drives both the echo's retraction and the `admissionAttempted`
+ * un-latch, which must not drift apart - they are two answers to the same
+ * question. Outside it, the composer reads it to decide whether a failed send's
+ * text belongs BACK in the box (`false` here) or must stay out of it because the
+ * message may be on the owner and an echo of it is still painted in the
+ * transcript (`true`). A second copy of this predicate is how the two consumers
+ * come to disagree about one failure.
+ *
+ * 413 and 422 are raised before the prompt reaches the session (the reasoning is
+ * spelled out on the un-latch below), so the message provably does not exist on
+ * the owner. Every other failure is unknowable.
+ */
+export function isRefusedBeforeAdmission(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		(error.status === 413 || error.status === 422)
+	);
+}
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -210,6 +233,13 @@ export async function admitChatDraft(
 		cwd: string;
 	},
 	sessionId?: string,
+	/**
+	 * Called when the optimistic echo is applied to a mounted transcript, i.e.
+	 * when the message is actually on screen. Passed straight to
+	 * `echoPendingUser`; the composer is the only caller that has anything to do
+	 * with the answer (see `PendingEcho` in `use-canonical-session`).
+	 */
+	onEchoPainted?: () => void,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	const previous = store.drafts[key];
@@ -306,6 +336,13 @@ export async function admitChatDraft(
 		 * The echo is synchronous, so the text moves from box to transcript in
 		 * one frame regardless of what the backend costs.
 		 *
+		 * "Synchronous" is exact only when a transcript for this session is already
+		 * mounted. On the New-chat path there is none - the panel keyed on the id
+		 * this block is about to mint does not exist yet - so the echo buffers and
+		 * lands when that panel mounts, one create hop later. `onEchoPainted` is
+		 * what keeps the composer honest there: the box holds the text until the
+		 * echo is actually painted rather than until this line runs.
+		 *
 		 * Keyed by `admissionRequestId` — the id the owner gives the durable row
 		 * — so this coalesces with `message_start` instead of duplicating it.
 		 * See `appendPendingUser`.
@@ -322,6 +359,7 @@ export async function admitChatDraft(
 				attachment: null,
 				mimeType: image.mime_type,
 			})),
+			onEchoPainted,
 		);
 		await desktopResult({
 			op: "sessions.message",
@@ -356,9 +394,7 @@ export async function admitChatDraft(
 		 * authoritative and repaints from `applyHistoryPage`, while
 		 * `dropLiveRecords` deliberately does not remove user rows.
 		 */
-		const refusedBeforeAdmission =
-			error instanceof DesktopControlError &&
-			(error.status === 413 || error.status === 422);
+		const refusedBeforeAdmission = isRefusedBeforeAdmission(error);
 		if (refusedBeforeAdmission && id) {
 			retractPendingUser(id, draft.admissionRequestId);
 		}

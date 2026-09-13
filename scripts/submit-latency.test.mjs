@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -304,9 +304,22 @@ const started = [];
  * the start-of-run sweep exists as well: a root nobody can be proved to hold is
  * removed on the next run regardless.
  *
- * POSIX-only by nature, like the leak. A failure to read the table is treated as
- * "nothing found" rather than aborting the sweep, because teardown must never
- * be the thing that fails a run.
+ * POSIX-only by nature, like the leak.
+ *
+ * "COULD NOT READ THE TABLE" IS NOT "NOBODY HOLDS IT" - the distinction this
+ * used to collapse, and the reason the return type is `null`-able (R6-1). The
+ * two consumers ask opposite questions of the same answer:
+ *
+ *   - TEARDOWN of our own tree asks "is anyone still holding this?". A failed
+ *     read there only means our own tree may survive to the next run, so
+ *     degrading to "nothing found" was harmless and kept teardown from ever
+ *     failing a run.
+ *   - The SWEEP asks "may I delete this?", where "nothing found" IS the
+ *     deletion decision. Failing open there removes a tree whose live holder
+ *     this process could not see, and the log line could not even tell the two
+ *     apart: a failed census printed exactly what a genuine stale sweep prints.
+ *     The conservative direction for a destructive decision is "cannot prove it
+ *     is unheld, so leave it", which is what a `null` now means to every caller.
  */
 // Hoisted so the collector does not rebuild them once per process on the box.
 const PID_AND_COMMAND = /^\s*(\d+)\s(.*)$/;
@@ -314,23 +327,55 @@ const WHITESPACE_RUN = /\s+/;
 
 function pidsHoldingConfigDir(root) {
 	const marker = `LOCAL_OPERATOR_CONFIG_DIR=${root}`;
+	/*
+	 * `null` means "could not ask", which every caller must read as UNKNOWN.
+	 *
+	 * `spawnSync` rather than `execFileSync` for exactly this: `execFileSync`
+	 * throws on any non-zero status AND on a failed spawn, so the caller cannot
+	 * tell "ps refused the question" from "ps answered and there was no matching
+	 * process" - the two cases have opposite meanings here.
+	 *
+	 * The `error` arm is not hypothetical. `ps eww -ax` prints well over the 1 MB
+	 * default buffer on a loaded box: measured at this machine's load, the
+	 * default buffer produced `ENOBUFS` with a TRUNCATED table in `stdout`, which
+	 * is the worst possible answer - a partial census that reads as a complete
+	 * one and can only ever conclude "nobody holds it". It is reported as unknown
+	 * instead, so a truncated read can never authorise a removal.
+	 */
 	const ps = (args) => {
-		try {
-			return execFileSync("ps", args, {
-				encoding: "utf8",
-				// The `eww` table of a loaded box is a few hundred KB; the default
-				// 1 MB pipe buffer would truncate it and turn a real census into a
-				// partial one without any error.
-				maxBuffer: 64 << 20,
-				stdio: ["ignore", "pipe", "ignore"],
-			});
-		} catch {
-			return "";
-		}
+		const result = spawnSync("ps", args, {
+			encoding: "utf8",
+			// The `eww` table of a loaded box is a few hundred KB; the default
+			// 1 MB pipe buffer would truncate it and turn a real census into a
+			// partial one without any error.
+			maxBuffer: 64 << 20,
+			stdio: ["ignore", "pipe", "ignore"],
+		});
+		/*
+		 * ONE rule for both reads: `ps` either answers with text, or this census
+		 * could not read the table. Every other outcome - a spawn failure
+		 * (`error`), a refusal (`status !== 0`), or an empty answer - is the
+		 * same "could not ask" to a caller deciding whether it may delete.
+		 *
+		 * It costs the rare mid-loop race the benefit of the doubt: a process
+		 * that exited between the two reads is now "unknown" rather than "not a
+		 * holder", so its root is left for a later run instead of being removed
+		 * in the same pass. That is the direction to pay it in - the root is
+		 * swept once the process is genuinely gone, and a removal is the one
+		 * outcome with no undo.
+		 */
+		if (result.error) return null;
+		if (result.status !== 0) return null;
+		return typeof result.stdout === "string" && result.stdout
+			? result.stdout
+			: null;
 	};
 
+	const table = ps(["eww", "-ax", "-o", "pid=,command="]);
+	if (table === null) return null;
+
 	const held = [];
-	for (const line of ps(["eww", "-ax", "-o", "pid=,command="]).split("\n")) {
+	for (const line of table.split("\n")) {
 		const match = line.match(PID_AND_COMMAND);
 		if (!match) continue;
 		const [, pid, full] = match;
@@ -342,10 +387,12 @@ function pidsHoldingConfigDir(root) {
 		// newline, and (on some ps builds) leading width padding. Trimming both
 		// keeps the prefix subtraction below exact rather than falling through to
 		// the whole-line fallback for every process on the box.
-		const argv = ps(["-p", pid, "-o", "command="]).trim();
-		// Gone between the two reads. There is nothing to signal either way, and
-		// nothing that could be holding the tree, so it is not a holder.
-		if (!argv) continue;
+		const perPid = ps(["-p", pid, "-o", "command="]);
+		// One unreadable row poisons the answer for the whole root, deliberately:
+		// the callers act on "nobody holds this", and a partial census is not
+		// evidence for that.
+		if (perPid === null) return null;
+		const argv = perPid.trim();
 		const envRegion = full.startsWith(argv) ? full.slice(argv.length) : full;
 		// Exact token match: a prefix of this path (another run's dir) must not
 		// count as ours.
@@ -353,6 +400,17 @@ function pidsHoldingConfigDir(root) {
 			held.push(Number(pid));
 	}
 	return held;
+}
+
+/**
+ * True only when the census ANSWERED and found nobody.
+ *
+ * The one place the `null` distinction is turned into a verdict, so every
+ * caller that treats emptiness as permission is reading the same rule.
+ */
+function censusSaysUnheld(root) {
+	const pids = pidsHoldingConfigDir(root);
+	return pids !== null && pids.length === 0;
 }
 
 /**
@@ -385,7 +443,10 @@ function killGroup(child, signal) {
 
 /** Signal every process still carrying `root`, and report how many were hit. */
 function reapConfigDir(root, signal) {
-	const pids = pidsHoldingConfigDir(root);
+	// An unreadable census identifies nobody to signal. Signalling is best-effort
+	// here and the callers' post-conditions decide the outcome, so guess nobody
+	// rather than guess at pids: same rule as the sweep's, opposite cost.
+	const pids = pidsHoldingConfigDir(root) ?? [];
 	for (const pid of pids) {
 		try {
 			process.kill(pid, signal);
@@ -423,14 +484,26 @@ const SWEEP_ATTEMPTS = 20;
  * reported as clean.
  */
 async function sweepRoot(root) {
-	if (!existsSync(root) && pidsHoldingConfigDir(root).length === 0) return true;
+	/*
+	 * Read once, and fail CLOSED. A census that could not read the table proves
+	 * nothing, and this is the destructive consumer: "cannot prove it is unheld"
+	 * leaves the tree for a later run instead of removing one that a holder it
+	 * could not see can re-create (R6-1, which is precisely the round-5 leak's
+	 * precondition). Bailing here rather than after the reap loop is the same
+	 * decision made sooner and for free: with no census there is nobody this
+	 * process can identify to signal, so the loop could only spin out its
+	 * deadline and then reach the same answer.
+	 */
+	const census = pidsHoldingConfigDir(root);
+	if (census === null) return false;
+	if (!existsSync(root) && census.length === 0) return true;
 	reapConfigDir(root, "SIGTERM");
 	// Escalate on a wall-clock deadline; see SWEEP_ESCALATE_MS.
 	const escalateAt = Date.now() + SWEEP_ESCALATE_MS;
 	const deadline = Date.now() + SWEEP_REAP_BUDGET_MS;
 	let escalated = false;
 	while (Date.now() < deadline) {
-		if (pidsHoldingConfigDir(root).length === 0) break;
+		if (censusSaysUnheld(root)) break;
 		if (!escalated && Date.now() >= escalateAt) {
 			// A runtime in its own session will not die from our process group
 			// going away, so the polite signal is only ever given a moment.
@@ -443,9 +516,10 @@ async function sweepRoot(root) {
 		await rm(root, { recursive: true, force: true, maxRetries: 5 });
 		await new Promise((resolve) => setTimeout(resolve, SWEEP_SETTLE_MS));
 		// Gone AND nothing left that could re-create it. Checking both is what
-		// makes this a real post-condition rather than a snapshot.
-		if (!existsSync(root) && pidsHoldingConfigDir(root).length === 0)
-			return true;
+		// makes this a real post-condition rather than a snapshot. `censusSaysUnheld`
+		// and not an emptiness test: an unreadable census must make this post-condition
+		// FAIL, not pass.
+		if (!existsSync(root) && censusSaysUnheld(root)) return true;
 	}
 	return false;
 }
@@ -566,6 +640,7 @@ function sweepStaleRoots() {
 	const now = Date.now();
 	const removed = [];
 	let held = 0;
+	let unreadable = 0;
 	let recent = 0;
 	for (const name of names) {
 		const root = join(tmpdir(), name);
@@ -577,7 +652,16 @@ function sweepStaleRoots() {
 		}
 		if (age < STALE_ROOT_MIN_AGE_MS) {
 			recent += 1;
-		} else if (pidsHoldingConfigDir(root).length > 0) {
+			continue;
+		}
+		const pids = pidsHoldingConfigDir(root);
+		if (pids === null) {
+			// Not "held" and not "removed": the census could not read the table, so
+			// this root is not provably unheld and not this sweep's to delete. Counted
+			// separately because the log has to be able to tell that apart from a
+			// genuine stale sweep - it could not before (R6-1).
+			unreadable += 1;
+		} else if (pids.length > 0) {
 			held += 1;
 		} else {
 			try {
@@ -589,15 +673,66 @@ function sweepStaleRoots() {
 			}
 		}
 	}
-	if (removed.length || held)
+	if (removed.length || held || unreadable)
 		console.log(
-			`  stale config trees: removed ${removed.length}${removed.length ? ` (${removed.join(", ")})` : ""}, left ${held} held by a live process, ${recent} too recent to judge`,
+			`  stale config trees: removed ${removed.length}${removed.length ? ` (${removed.join(", ")})` : ""}, left ${held} held by a live process, ${unreadable} whose census could not be read, ${recent} too recent to judge`,
 		);
 }
 
 // Runs at import, before any test - and therefore before this run creates any
 // tree of its own, so it can only ever see a predecessor's.
 sweepStaleRoots();
+
+/**
+ * R6-1: the sweep deletes only on a census that ANSWERED.
+ *
+ * Driven through the real `sweepStaleRoots` and the real `pidsHoldingConfigDir`
+ * with a `ps` this process cannot get an answer out of, because the defect it
+ * pins is a read failure being read as a fact: `held == 0` was reached from
+ * "the table could not be read" exactly as from "nobody holds this", and the
+ * log line could not tell them apart either.
+ *
+ * The positive control is the load-bearing half. Without it, a sweep that
+ * silently stopped matching anything - a renamed prefix, a `readdir` that found
+ * none - would pass the first assertion for the wrong reason, which is the same
+ * class of vacuous green the finding is about.
+ */
+test("R6-1: an unreadable census cannot authorise a removal", async (t) => {
+	const stale = await mkdtemp(join(tmpdir(), CONFIG_DIR_PREFIX));
+	// Aged well past the floor, so the ONLY thing that can spare it is the census.
+	const old = new Date(Date.now() - STALE_ROOT_MIN_AGE_MS * 10);
+	await utimes(stale, old, old);
+
+	const shim = await mkdtemp(join(tmpdir(), "lo-census-shim-"));
+	const realPath = process.env.PATH;
+	await writeFile(join(shim, "ps"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+	t.after(async () => {
+		process.env.PATH = realPath;
+		await rm(shim, { recursive: true, force: true });
+		await rm(stale, { recursive: true, force: true });
+	});
+
+	process.env.PATH = `${shim}:${realPath}`;
+	assert.equal(
+		censusSaysUnheld(stale),
+		false,
+		"a failure to read the table is not a census that found nobody",
+	);
+	sweepStaleRoots();
+	assert.ok(
+		existsSync(stale),
+		"the sweep removed a root whose holders it could not read",
+	);
+
+	// Positive control: the same root, the same sweep, a `ps` that answers.
+	process.env.PATH = realPath;
+	sweepStaleRoots();
+	assert.equal(
+		existsSync(stale),
+		false,
+		"the sweep no longer reaps a stale unheld root at all",
+	);
+});
 
 /**
  * Stand up an isolated backend and return its base URL and bearer.

@@ -6,6 +6,7 @@ import type {
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -96,7 +97,9 @@ type ChatContentProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
-	) => undefined | boolean | Promise<undefined | boolean>;
+		/** See `MessageInputProps.onSendMessage` - the echo seam's paint callback. */
+		onEchoPainted?: () => void,
+	) => SendOutcome | Promise<SendOutcome>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;

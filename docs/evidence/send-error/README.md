@@ -44,10 +44,34 @@ it is present on `origin/main` too and is unrelated to this change.
 | Frame | Observed behaviour |
 | --- | --- |
 | [before-banner-at-top.png](before-banner-at-top.png) | The reported state, on `origin/main`. The error, a read-only echo of the message, and a "Discard unsent message" link are pinned above the header. The composer at the bottom already contains the same text. |
-| [after-error-at-composer.png](after-error-at-composer.png) | Same failure on this branch. The error sits directly on top of the composer, edge-aligned with it, and the message is in the input, editable. No echo. |
+| [after-error-at-composer.png](after-error-at-composer.png) | Same failure on this branch. The error sits directly on top of the composer, edge-aligned with it, and the message is in the input, editable. No echo. **Read this row against the note below the table: the send path now paints an optimistic echo, and for the failure this frame captured - an unreachable backend, which is unknowable rather than refused - the message stays in the transcript and the composer does NOT take the text back.** |
 | [after-edit-clears-error.png](after-edit-clears-error.png) | After typing one more clause into the composer. The alert is gone; the amended text remains. |
 | [after-retry-succeeded.png](after-retry-succeeded.png) | The backend restarted and the same draft re-sent with the send button's normal path. Session `1f0eb47ed29d` was created and the agent is answering. |
 | [after-unresolved-attachment-actions.png](after-unresolved-attachment-actions.png) | The `unresolved_attachment` 409. The backend's own message plus "Choose agent" and "Choose team" at the composer, with the text still editable. |
+
+### The failure state changed after this capture: the message may be in the transcript
+
+These frames were captured before `submit-latency` (#118) added the optimistic
+echo, and the failed-send state is one of the two states that change does touch,
+so `after-error-at-composer.png` is now a picture of the branch's BEFORE. What is
+different, and why the caption's `No echo` no longer describes the after:
+
+- An **unreachable or erroring backend** (503, a dropped response) is not a
+  refusal, so the outcome is unknowable: the owner may have admitted the command
+  before the response was lost. The echo stays painted - the user's message is
+  in the transcript - and the composer deliberately does NOT put the text back,
+  because the same message in both places, under copy that names only the
+  composer, reads as one message delivered twice. The retry is the composer's
+  own **Restore unsent message** control, whose resend replays the same request
+  id, and the held-claim sentence beside it now says the outcome is not knowable.
+- A **refusal before admission** (413/422) still retracts the echo and DOES put
+  the text back in the box - that half of the old behaviour survives, and this is
+  the case the frame's caption is still true for.
+
+No frame of the new after state exists: the capture is blocked on the browser
+bridge being unattached, which the `submit-latency` evidence README records with
+its three measurements. Reading this one is therefore a matter of knowing which
+of the two failures it depicts - and it depicts the unknowable one.
 
 ## The measurement
 

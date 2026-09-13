@@ -38,7 +38,9 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget, seedPendingEchoes } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useMessageInput, SEND_HELD, clearSubmittedText, restoreSubmittedText } from "./src/renderer/src/shared/hooks/use-message-input";
+			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
@@ -73,9 +75,14 @@ export const subscribeDesktopStream = () => () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
 				}));
-				// React is never imported: the hook module is pulled in for its
-				// module-level registry only, and a node bundle must not drag a
-				// renderer in behind it.
+				/*
+				 * React is never imported by the DELIVERY fixtures - the hook module is
+				 * pulled in for its module-level registry there, and a node bundle must
+				 * not drag a renderer in behind it. The COMPOSER cases at the foot of
+				 * this file do run the hook, through a cell-based stand-in installed
+				 * per case: one cell per hook call, a setter that re-renders, and the
+				 * value each closure sees. Read late, because a case installs its own.
+				 */
 				builder.onResolve({ filter: /^react$/ }, () => ({
 					path: "react",
 					namespace: "echo-fixture-react",
@@ -83,12 +90,19 @@ export const subscribeDesktopStream = () => () => {};`,
 				builder.onLoad(
 					{ filter: /.*/, namespace: "echo-fixture-react" },
 					() => ({
-						contents: `export const useState = () => [undefined, () => {}];
-export const useEffect = () => {};
-export const useRef = (v) => ({ current: v });
-export const useCallback = (f) => f;
-export const useMemo = (f) => f();
-export default {};`,
+						contents: `const R = () => globalThis.__reactRuntime;
+export const useState = (...a) => R().useState(...a);
+export const useEffect = (...a) => R().useEffect(...a);
+export const useLayoutEffect = (...a) => R().useLayoutEffect(...a);
+export const useInsertionEffect = () => {};
+export const useRef = (...a) => R().useRef(...a);
+export const useCallback = (...a) => R().useCallback(...a);
+export const useMemo = (...a) => R().useMemo(...a);
+export const useSyncExternalStore = (...a) => R().useSyncExternalStore(...a);
+export const useDebugValue = () => {};
+export const createElement = () => ({});
+export const Fragment = Symbol("fragment");
+export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRef, useCallback, useMemo, useSyncExternalStore, useDebugValue, createElement, Fragment };`,
 						loader: "js",
 					}),
 				);
@@ -107,6 +121,12 @@ const {
 	retractPendingUser,
 	discardPendingEchoes,
 	__registerEchoTarget,
+	seedPendingEchoes,
+	useMessageInput,
+	SEND_HELD,
+	clearSubmittedText,
+	restoreSubmittedText,
+	useConversationInputStore,
 	EMPTY_TRANSCRIPT,
 	DesktopControlError,
 } = module;
@@ -413,5 +433,274 @@ test("discarding echoes for one session leaves another untouched", async () => {
 	discardPendingEchoes("999999999999");
 	const transcript = await mountTranscript(SESSION_ID);
 	assert.deepEqual(transcript.rows(), ["keep me"]);
+	transcript.unregister();
+});
+
+/* ===================================================================== composer */
+
+/*
+ * UX round 1's U1/U2 and design round 1's D1 are claims about the COMPOSER's own
+ * state: when the box empties, and what it holds after a failed send. Nothing in
+ * this repository executed `useMessageInput` - the reviewer said so, and it is
+ * why the clobber pinned below survived five rounds - because these harnesses
+ * have no DOM and no renderer.
+ *
+ * So the composer is driven through the cell-based React stand-in above. What it
+ * models is what the claims rest on: one cell per hook call, a setter that
+ * re-renders (and BAILS OUT on an unchanged value, as React does - the hook's
+ * own effects depend on that), dep-gated effects, and the value each closure
+ * sees. What it does NOT model is React's scheduler, its batching or its commit
+ * timing, so nothing here may claim anything about a frame: the box's contents
+ * at a moment, never what was painted when.
+ */
+const COMPOSER_ID = `send:${SESSION_ID}`;
+
+/** One composer, driven through one submit. */
+function makeComposerRuntime() {
+	const cells = [];
+	let cursor = 0;
+	let effects = [];
+	const runtime = { render: () => null };
+	const rerender = () => {
+		cursor = 0;
+		effects = [];
+		const out = runtime.render();
+		const flushed = effects;
+		effects = [];
+		for (const fn of flushed) fn?.();
+		return out;
+	};
+	runtime.rerender = rerender;
+	const slot = () => {
+		const index = cursor++;
+		if (!cells[index]) cells[index] = {};
+		return cells[index];
+	};
+	const unchanged = (was, now) =>
+		was !== undefined &&
+		now !== undefined &&
+		was.length === now.length &&
+		was.every((value, index) => Object.is(value, now[index]));
+
+	globalThis.__reactRuntime = {
+		useState: (init) => {
+			const cell = slot();
+			if (!("state" in cell))
+				cell.state = typeof init === "function" ? init() : init;
+			return [
+				cell.state,
+				(value) => {
+					const next = typeof value === "function" ? value(cell.state) : value;
+					if (Object.is(next, cell.state)) return;
+					cell.state = next;
+					rerender();
+				},
+			];
+		},
+		useRef: (init) => {
+			const cell = slot();
+			if (!("ref" in cell)) cell.ref = { current: init };
+			return cell.ref;
+		},
+		useCallback: (fn, deps) => {
+			const cell = slot();
+			if (!cell.fn || !unchanged(cell.deps, deps)) {
+				cell.fn = fn;
+				cell.deps = deps;
+			}
+			return cell.fn;
+		},
+		useMemo: (fn, deps) => {
+			const cell = slot();
+			if (!("value" in cell) || !unchanged(cell.deps, deps)) {
+				cell.value = fn();
+				cell.deps = deps;
+			}
+			return cell.value;
+		},
+		useEffect: (fn, deps) => {
+			const cell = slot();
+			if (unchanged(cell.deps, deps)) return;
+			cell.cleanup?.();
+			cell.deps = deps;
+			effects.push(() => {
+				cell.cleanup = fn();
+			});
+		},
+		useLayoutEffect: (fn, deps) => {
+			const cell = slot();
+			if (unchanged(cell.deps, deps)) return;
+			cell.cleanup?.();
+			cell.deps = deps;
+			effects.push(() => {
+				cell.cleanup = fn();
+			});
+		},
+		useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
+	};
+	return runtime;
+}
+
+async function driveComposer({ onSubmit, initial = input.text }) {
+	// The composer's persisted draft is module state and outlives a case.
+	useConversationInputStore.setState({ inputByConversation: {} });
+	const runtime = makeComposerRuntime();
+	let composer;
+	runtime.render = () => {
+		composer = useMessageInput({
+			conversationId: COMPOSER_ID,
+			onSubmit: (message, onEchoPainted) =>
+				onSubmit({
+					message,
+					onEchoPainted,
+					type: (value) => composer.setInputValue(value),
+					box: () => composer.inputValue,
+				}),
+		});
+		return composer;
+	};
+	runtime.rerender();
+	// Typing goes through the hook's own change handler, so the box and the
+	// persisted draft move together the way they do under a real keypress.
+	composer.setInputValue(initial);
+	runtime.rerender();
+	const before = composer.inputValue;
+	await composer.handleSubmit();
+	return {
+		before,
+		after: composer.inputValue,
+		storedDraft:
+			useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
+				?.currentInput ?? "",
+	};
+}
+
+test("U1: the composer holds the text until the echo is painted, and empties with it", async () => {
+	const seen = {};
+	await driveComposer({
+		onSubmit: ({ onEchoPainted, box }) => {
+			seen.atSubmit = box();
+			// The old composer cleared here, one line before the await, which is
+			// what left the user looking at an empty box for the create hop.
+			onEchoPainted?.();
+			seen.atPaint = box();
+			return true;
+		},
+	});
+	assert.equal(
+		seen.atSubmit,
+		input.text,
+		"the box must still hold the message while the send is in flight",
+	);
+	assert.equal(
+		seen.atPaint,
+		"",
+		"the clear happens in the same call as the paint, so the text moves in one step",
+	);
+});
+
+test("U2: a refused send restores the text only into an empty composer", async () => {
+	const quiet = await driveComposer({
+		onSubmit: ({ onEchoPainted }) => {
+			onEchoPainted?.();
+			return false;
+		},
+	});
+	assert.equal(
+		quiet.after,
+		input.text,
+		"a refusal with an untouched box must hand the message back",
+	);
+
+	const typed = await driveComposer({
+		onSubmit: ({ onEchoPainted, type }) => {
+			onEchoPainted?.();
+			type("A second message");
+			return false;
+		},
+	});
+	assert.equal(
+		typed.after,
+		"A second message",
+		"the refusal must not restore over text the user typed while waiting",
+	);
+
+	// The rule itself, shipped and pure, so a future edit to either transition
+	// is read against the same rule rather than against the call site.
+	assert.equal(clearSubmittedText(input.text, input.text), "");
+	assert.equal(clearSubmittedText(`${input.text} and more`, input.text), `${input.text} and more`);
+	assert.equal(restoreSubmittedText("", input.text), input.text);
+	assert.equal(restoreSubmittedText("A second message", input.text), "A second message");
+});
+
+test("D1/U5: an unconfirmed send leaves its text to the claim, not to the box", async () => {
+	const held = await driveComposer({
+		onSubmit: ({ onEchoPainted }) => {
+			onEchoPainted?.();
+			return SEND_HELD;
+		},
+	});
+	assert.equal(
+		held.after,
+		"",
+		"putting the text back would show the one message twice while its echo stays painted",
+	);
+	assert.equal(
+		held.storedDraft,
+		"",
+		"and the persisted draft is retired, or a later mount would adopt it back into the box",
+	);
+});
+
+test("U3: a panel mounted over a buffered echo paints it in its first state", async () => {
+	reset();
+	echoPendingUser(SESSION_ID, "req-seed", "seeded message", []);
+	/*
+	 * What React reads for the panel's initial state. The remount on the New-chat
+	 * path is the only moment this is needed and the only one it can be checked
+	 * without a renderer: the drain below arrives one passive effect later, so a
+	 * transcript seeded only by the drain had a first frame with nothing in it.
+	 */
+	const seeded = seedPendingEchoes(SESSION_ID, EMPTY_TRANSCRIPT);
+	assert.deepEqual(
+		seeded.records.map((record) => record.text),
+		["seeded message"],
+	);
+	// The drain replays the same mutation over that state; it must land on the
+	// SAME transcript rather than painting the message a second time.
+	assert.equal(seedPendingEchoes(SESSION_ID, seeded).records.length, 1);
+	const transcript = await mountTranscript(SESSION_ID);
+	assert.deepEqual(transcript.rows(), ["seeded message"]);
+	transcript.unregister();
+});
+
+test("the echo's paint callback fires with the paint, on both delivery paths", async () => {
+	reset();
+	let drained = 0;
+	echoPendingUser(SESSION_ID, "req-queued", "queued", [], () => {
+		drained += 1;
+	});
+	assert.equal(
+		drained,
+		0,
+		"nothing is mounted yet, so nothing has been painted - and the composer must not be told otherwise",
+	);
+	const transcript = await mountTranscript(SESSION_ID);
+	assert.deepEqual(transcript.rows(), ["queued"]);
+	assert.equal(
+		drained,
+		1,
+		"the composer is told at the moment a transcript receives the echo, from the drain",
+	);
+
+	let direct = 0;
+	echoPendingUser(SESSION_ID, "req-direct", "immediate", [], () => {
+		direct += 1;
+	});
+	assert.equal(
+		direct,
+		1,
+		"and synchronously when a transcript is already mounted, so both updates share a commit",
+	);
 	transcript.unregister();
 });

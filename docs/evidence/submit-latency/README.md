@@ -94,6 +94,25 @@ these frames are about.
 | [after-after-enter.png](after-after-enter.png) | The claim. Immediately after Enter the composer is **already empty** and the user's message is **already in the transcript**, painted optimistically under the admission request UUID while the engage is still running behind it. |
 | [after-settled.png](after-settled.png) | The owner's own row has replaced the echo in place — one row, not two, because the echo is keyed by the id the backend gives the durable row. The agent's reply follows. |
 
+## Where this set is declared, and what that costs
+
+`submit-latency` is a declared `supplementary` set in
+`docs/evidence/manifest.json`, at **0 frames** - which is the state this
+directory is actually in. It is declared rather than omitted because an
+undeclared directory is invisible to `scripts/check-evidence.mjs`: the run
+reports `0 of 851 frames` and that sentence is vacuous for this feature, since
+the gate is not looking at this path at all (design round 1, D3).
+
+Declaring it flips that. The declared count and the files on disk must agree, so
+the moment a `.webp` lands in this directory the gate FAILS and names this set -
+which is the point. Two things it does not buy, stated so nobody reads the green
+as more than it is: a passing run still says nothing about whether these frames
+are good, only that there are none; and the manifest's own
+`head`/`srcTree`/`scriptsTree` stamp is deliberately left where it was. A stamp
+records a capture, and there has not been one - so the two structural tree-hash
+failures already reported on this branch stay visible rather than being
+re-stamped over a capture that never happened.
+
 ## Capturing the frames by hand
 
 The frames above are **pending**: the browser tool's extension bridge was
@@ -177,10 +196,16 @@ each port. Use the same message text both times.
    This is the case the whole PR is about: a draft with no session yet.
 3. Click into the composer and type: `Warm the runtime and echo this line`
 4. **Capture `<col>-typed.png`** — before pressing anything.
-5. Press **Enter**, and **immediately capture `<col>-after-enter.png`**. This is
-   the frame that carries the claim, so take it as fast as the screenshot tool
-   allows; on the before column you have ~1.15s, on the after column the state
-   is stable and you can take your time.
+5. Press **Enter** and capture `<col>-after-enter.png` **in the same protocol
+   turn as the keypress** - the key event and the screenshot issued as one pair
+   on one session, with no round trip in between. This is the frame that carries
+   the claim, and a hand-timed one measures the hand: two runs would produce two
+   different pictures, which is what stops it being re-derivable (design round
+   1, D2). Record the same turn's readings beside the still, in whatever notes
+   accompany the capture: the composer textarea's `value` (empty, or the message)
+   and whether the transcript holds a user row. Those two facts are the claim;
+   the still is what they look like. On the before column you have ~1.15 s for
+   both, on the after column the state is stable and you can take your time.
 6. Wait until the agent's reply finishes rendering. **Capture
    `<col>-settled.png`.**
 

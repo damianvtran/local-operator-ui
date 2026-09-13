@@ -215,9 +215,9 @@ const echoTargets = new Map<
  * existing-session send was 1/0/1.
  *
  * That silent drop was worse than the bug it replaced. With the composer now
- * clearing before the await, a dropped echo means the box empties and the
- * transcript stays blank for the whole engage — where previously the text at
- * least stayed visible while the user waited.
+ * clearing on the echo's own paint, a dropped echo means the box empties and
+ * the transcript stays blank for the whole engage — where previously the text
+ * at least stayed visible while the user waited.
  *
  * A queue rather than a second key: keying the registry on the panel identity
  * would make delivery depend on the renderer and the store agreeing about what
@@ -226,10 +226,26 @@ const echoTargets = new Map<
  * that session exists, so the store keeps one vocabulary and the mount race
  * stops being load-bearing.
  */
-const pendingEchoes = new Map<
-	string,
-	((state: TranscriptState) => TranscriptState)[]
->();
+const pendingEchoes = new Map<string, PendingEcho[]>();
+
+/**
+ * One buffered echo, and whoever asked to be told that it landed.
+ *
+ * `onPainted` is how the composer learns that the text it just handed to the
+ * store is now IN a transcript. That moment is the only one at which taking the
+ * text out of the box costs the user nothing, which is why the callback fires
+ * AT THE APPLICATION SITE - synchronously with the mutation when a transcript is
+ * mounted, and from the drain when one is not - and never on a timer. Firing it
+ * anywhere else puts the composer and the transcript in different frames, which
+ * is the defect UX round 1 measured on the New-chat path: the box emptied at
+ * Enter and the echo could not exist until `sessions.create` returned
+ * (p50 142 ms / max 409 ms at load 433-445), so for the whole create hop the
+ * user was looking at an empty box and an empty transcript.
+ */
+type PendingEcho = {
+	mutate: (state: TranscriptState) => TranscriptState;
+	onPainted?: () => void;
+};
 
 /*
  * What the buffer may retain, and WHY THE LIMITS ARE WHAT THEY ARE.
@@ -266,15 +282,20 @@ const MAX_PENDING_ECHO_SESSIONS = 16;
 function deliverEcho(
 	sessionId: string,
 	mutate: (state: TranscriptState) => TranscriptState,
+	onPainted?: () => void,
 ): void {
 	const target = echoTargets.get(sessionId);
 	if (target) {
 		target(mutate);
+		// AFTER the mutation, in the same synchronous block, so the two state
+		// updates a composer cares about (the row appearing, the box emptying)
+		// are batched into one commit. Cheaper to reason about than to schedule.
+		onPainted?.();
 		return;
 	}
 	const queued = pendingEchoes.get(sessionId);
 	if (queued) {
-		queued.push(mutate);
+		queued.push({ mutate, onPainted });
 		if (queued.length > MAX_PENDING_ECHOES_PER_SESSION) queued.shift();
 		return;
 	}
@@ -283,7 +304,7 @@ function deliverEcho(
 		const oldest = pendingEchoes.keys().next();
 		if (!oldest.done) pendingEchoes.delete(oldest.value);
 	}
-	pendingEchoes.set(sessionId, [mutate]);
+	pendingEchoes.set(sessionId, [{ mutate, onPainted }]);
 }
 
 /**
@@ -322,7 +343,10 @@ export function __registerEchoTarget(
 	const queued = pendingEchoes.get(sessionId);
 	if (queued) {
 		pendingEchoes.delete(sessionId);
-		for (const mutate of queued) apply(mutate);
+		for (const { mutate, onPainted } of queued) {
+			apply(mutate);
+			onPainted?.();
+		}
 	}
 	return () => {
 		// Only if still ours: a remount for the same session registers before the
@@ -341,8 +365,45 @@ export function echoPendingUser(
 	id: string,
 	text: string,
 	images: TranscriptImage[],
+	onPainted?: () => void,
 ): void {
-	deliverEcho(sessionId, (state) => appendPendingUser(state, id, text, images));
+	deliverEcho(
+		sessionId,
+		(state) => appendPendingUser(state, id, text, images),
+		onPainted,
+	);
+}
+
+/**
+ * The transcript a panel starts from, with anything already buffered for its
+ * session applied - so the FIRST frame it paints can hold the echo.
+ *
+ * Why this exists rather than letting the drain do it: on the New-chat path the
+ * panel that receives the echo is a fresh mount (the identity flips from the
+ * draft key to the session id, which is what makes it remount), and its echo
+ * arrives through a PASSIVE effect - after the commit that painted its first
+ * frames. Those frames therefore held an empty transcript and a `connecting`
+ * status while the user's message was already in flight (UX round 1, U3: the
+ * echo "can only reach the new panel in a mount effect, so that panel's first
+ * frames cannot hold it"). Seeding the initial state closes that gap at its
+ * source: the buffered echo is in the state React paints first, and the drain
+ * that follows re-applies it to no effect (`appendPendingUser` is a no-op for an
+ * id already present, and a retraction is idempotent).
+ *
+ * A PEEK, deliberately, not a take. Mutating the buffer from an initializer
+ * would consume an echo in a render React is free to discard, and a render-phase
+ * side effect on a shared map is exactly the kind of ownership this file keeps in
+ * one place. The drain stays the only consumer.
+ */
+export function seedPendingEchoes(
+	sessionId: string,
+	state: TranscriptState,
+): TranscriptState {
+	const queued = pendingEchoes.get(sessionId);
+	if (!queued) return state;
+	let seeded = state;
+	for (const { mutate } of queued) seeded = mutate(seeded);
+	return seeded;
 }
 
 /**
@@ -362,7 +423,7 @@ export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
 ): CanonicalSessionHandle {
-	const [view, setView] = useState<CanonicalSessionView>({
+	const [view, setView] = useState<CanonicalSessionView>(() => ({
 		status: "connecting",
 		frontend: null,
 		pendingModel: null,
@@ -373,9 +434,20 @@ export function useCanonicalSessionStream(
 		receipt: null,
 		terminal: null,
 		error: null,
-		transcript: EMPTY_TRANSCRIPT,
+		/*
+		 * SEEDED, and only here. A panel mounted while its own echo is already
+		 * buffered must paint that echo in its FIRST frame: on the New-chat path
+		 * this mount IS the identity flip the send triggers, and the echo reaches
+		 * the panel through a passive effect - one commit too late - unless the
+		 * initial state already holds it. See `seedPendingEchoes` for why this is
+		 * a peek rather than a take, and why the drain that follows is harmless.
+		 */
+		transcript:
+			enabled && sessionId
+				? seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT)
+				: EMPTY_TRANSCRIPT,
 		loadingOlder: false,
-	});
+	}));
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
