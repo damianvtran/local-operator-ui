@@ -789,8 +789,13 @@ export const TooltipHonesty: Story = {
  *
  * What to look for:
  *
- * - Three readings, never four: no cost chip, because nothing has been spent
- *   and both `$0.00` and `$—` are claims about a session that does not exist.
+ * - Three readings at most, never four: no cost chip, because nothing has been
+ *   spent and both `$0.00` and `$—` are claims about a session that does not
+ *   exist; and no effort reading where the spec carries no ladder, which is the
+ *   shape the preview route returns because it skips the account-metadata step
+ *   a cold open runs. The word that would otherwise sit there is `unknown` - a
+ *   value a session only shows while it has an owner - and the first turn would
+ *   replace it with `auto`, moving the readings beside it (UX round 1, U1).
  * - All three inert: `ink-dim`, no hover step, `aria-disabled`, and still
  *   focusable so the explanation stays reachable from the keyboard (§ 6).
  * - An EMPTY ring beside the word "Context" — no number and no percentage,
@@ -832,7 +837,7 @@ export const Draft: Story = {
 				</Frame>
 				<Frame
 					width={900}
-					label="Draft on a spec with no ladder: the effort reading is ABSENT, not empty"
+					label="Draft on a spec with no ladder, which is what the preview always returns: no effort reading at all"
 				>
 					<SessionStatusStrip
 						frontend={state({

@@ -156,20 +156,28 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 	assert.match(html, /data-lo-session-strip="true"/);
 	assert.match(html, /data-lo-session-strip-draft="true"/);
 
-	// Inline above 750px of column and first-on-its-own-line below it, with the
-	// one live auto margin the cluster owns at the wide end.
+	// Inline above 750px of column, where it sits immediately after the
+	// working-directory chip with the row's free space falling before the
+	// controls; first-on-its-own-line below it, by DOM position rather than by
+	// `order-first`, so the wrapped tab order matches the painted order.
 	const root = stripRootClasses(html);
 	assert.ok(root.includes("flex-wrap"), "the cluster must wrap internally");
 	assert.ok(root.includes("min-w-0"), "the cluster must be allowed to shrink");
-	assert.ok(root.includes("order-first"));
 	assert.ok(root.includes("basis-full"));
-	assert.ok(root.includes("@min-[750px]/chatcol:ml-auto"));
 	assert.ok(
-		!root.includes("ml-auto"),
-		"the cluster must not carry an unconditional auto margin: below 750 the right-hand group owns it",
+		!root.some((c) => c.startsWith("order-first")),
+		"the cluster must take the first line by DOM position, not by `order-first`",
 	);
-	assert.ok(root.includes("@min-[750px]/chatcol:order-none"));
+	assert.ok(
+		!root.some((c) => /(^|:)ml-auto$/.test(c)),
+		"the cluster carries NO auto margin at any width: the controls own the row's single one",
+	);
+	assert.ok(root.includes("@min-[750px]/chatcol:order-2"));
 	assert.ok(root.includes("@min-[750px]/chatcol:basis-auto"));
+	assert.ok(
+		root.includes("@min-[750px]/chatcol:flex-nowrap"),
+		"above the threshold the cluster must not wrap: the name truncates first",
+	);
 
 	// The model is a LABEL: a real button with `aria-disabled`, focusable so the
 	// tooltip stays reachable, no hover step that would advertise an action.
@@ -210,6 +218,61 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 		html,
 		/aria-label="Reasoning effort: high\. Set once the conversation starts\."/,
 	);
+});
+
+/* ---- 1b. a draft shows effort only where a ladder exists ---------------- */
+
+/**
+ * The spec `sessions.preview` actually returns, copied from the live frame.
+ *
+ * The preview route skips the account-metadata step a cold open runs, so the
+ * model arrives as a selector with NO metadata: an empty name, `reasoning:
+ * false`, an empty ladder. `specUnresolved` is the test for exactly that shape
+ * (an empty ladder NEXT TO an empty name is a snapshot nobody has told, not a
+ * model with nothing to tell), and it sends `effortState` down its
+ * `metadataAbsent` branch, whose label is the word `unknown`.
+ */
+const PREVIEW_SPEC = {
+	...GPT_5,
+	display_name: "",
+	reasoning: false,
+	reasoning_effort: null,
+	reasoning_efforts: [],
+};
+
+test("a draft with an unresolved spec renders no effort reading, so the first turn adds no chip that shifts one", () => {
+	// Measured live (UX round 1, U1): the draft showed `unknown` and the first
+	// turn replaced it with `auto`, sliding the model chip and the ring beside
+	// it 21.6px. R19 renders a draft's effort only where the spec carries a
+	// ladder, and this spec carries none - so the reading is ABSENT, which is
+	// this strip's own honest rule for "no level to show here".
+	const html = renderStrip({
+		frontend: { ...DRAFT, effective_model: PREVIEW_SPEC },
+		draft: true,
+	});
+
+	assert.doesNotMatch(html, /Reasoning effort:/);
+	assert.doesNotMatch(html, /unknown/);
+	assert.doesNotMatch(html, /Set once the conversation starts/);
+	// The other two readings are unaffected: the draft still shows the identity
+	// the first turn will use and an empty ring.
+	assert.match(html, /aria-label="Model: /);
+	assert.match(html, /aria-label="Context: /);
+});
+
+test("a session with the same unresolved spec keeps `unknown`, because there the ladder can still be found", () => {
+	// The same metadata-absent spec on a session with a live owner: `unknown` is
+	// the honest label there (the chip opens the picker, which asks the owner and
+	// resolves the ladder), and the draft rule must not leak into it.
+	const html = renderStrip({
+		frontend: {
+			...DRAFT,
+			effective_model: PREVIEW_SPEC,
+			context_tokens: 12_977,
+		},
+	});
+
+	assert.match(html, /aria-label="Reasoning effort: unknown\./);
 });
 
 test("a draft without a resolved model renders nothing, never a row of dashes", () => {
@@ -312,9 +375,59 @@ test("below 750px the value readings neither truncate nor collapse, and only the
 
 /* ---- 4. the composer row ------------------------------------------------- */
 
-test("the readings are inside the composer's button row, and the row has one live auto margin", () => {
+/**
+ * The row's three children, in DOM order, as `{ name, classes }`.
+ *
+ * Parsed out of the JSX rather than matched as literal strings because the
+ * properties that matter are structural: WHO carries the auto margin, WHICH
+ * slot the cluster occupies, and whether either depends on a sibling that can
+ * return `null`. The previous version of this test asserted two class strings
+ * and passed in exactly the broken state it was written to prevent - zero live
+ * margins once the cluster is absent (code review round 1, MINOR 5).
+ */
+function rowChildren(composer) {
+	const rowAt = composer.indexOf(
+		'className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2',
+	);
+	assert.ok(rowAt > 0, "the row container is not where this test expects it");
+	const row = composer.slice(rowAt);
+
+	const clusterAt = row.indexOf("<SessionStatusStrip");
+	const leftAt = row.indexOf("<DirectoryIndicator");
+	const controlsAt = row.indexOf("Right side: microphone, send or stop");
+	assert.ok(clusterAt > 0 && leftAt > 0 && controlsAt > 0);
+	assert.ok(
+		clusterAt < leftAt && leftAt < controlsAt,
+		"the cluster's DOM slot must be first, so the wrapped order and the tab order agree",
+	);
+
+	// The error boundary wraps the strip (a crash must not take the composer
+	// down), which is what makes the cluster the nullable child.
+	assert.match(
+		composer,
+		/<ErrorBoundary fallback=\{null\}>\s*<SessionStatusStrip/,
+	);
+
+	return {
+		rowClasses: composer
+			.slice(rowAt, composer.indexOf(">", rowAt))
+			.match(/className="([^"]*)"/)[1]
+			.split(/\s+/),
+		controlsClasses: row
+			.slice(row.indexOf("<div", controlsAt))
+			.match(/className="([^"]*)"/)[1]
+			.split(/\s+/),
+	};
+}
+
+test("the row right-justifies its controls whether or not the readings render", () => {
 	const composer = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const { rowClasses, controlsClasses } = rowChildren(composer);
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
 		"utf8",
 	);
 
@@ -324,41 +437,58 @@ test("the readings are inside the composer's button row, and the row has one liv
 		1,
 		"the strip must render once; a second render is a second layout to keep in step",
 	);
-	// The row is the container, and `justify-between` is gone: with three children
-	// it centres the middle one, which is the opposite of right-justified. Above
-	// the threshold it must also not WRAP: line breaking happens on content sizes
-	// before any shrinking, so a long model name would push the microphone and send
-	// to a second line instead of truncating the name - the inverse of the yield
-	// order, and the live frame at a 750px box showed exactly that 24px drop.
-	assert.match(
-		composer,
-		/<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-\[750px\]\/chatcol:flex-nowrap">/,
-	);
-	// The counterpart auto margin: live below 750px, handed over above it, so
-	// exactly one is live at any width.
-	assert.match(
-		composer,
-		/<div className="ml-auto flex items-center gap-1 @min-\[750px\]\/chatcol:ml-0">/,
-	);
 
-	// Placement: inside the row, after the working-directory chip and before the
-	// microphone/send group.
-	const stripAt = composer.indexOf("<SessionStatusStrip");
-	const chipAt = composer.indexOf("<DirectoryIndicator");
-	const controlsAt = composer.indexOf("Right side: microphone, send or stop");
-	assert.ok(chipAt > 0 && controlsAt > 0);
+	// THE BLOCKER: the auto margin is on the group that always renders. `ml-auto`
+	// alone - not `ml-auto` plus a threshold override that hands it to a child
+	// which can return `null`. Three ordinary states null the cluster (no
+	// `frontend` yet, nothing known, the error boundary's empty fallback), and in
+	// those states a margin owned by the cluster leaves the row with NONE: the
+	// controls sat flush against the directory chip (round 1, BLOCKER 1).
 	assert.ok(
-		chipAt < stripAt && stripAt < controlsAt,
-		"the strip must sit between the directory chip and the microphone/send group",
+		controlsClasses.includes("ml-auto"),
+		"the controls group must carry the row's auto margin",
+	);
+	assert.ok(
+		!controlsClasses.some((c) => c.includes("chatcol:ml-")),
+		"the controls' margin must not be conditional on the cluster's presence",
+	);
+	assert.ok(
+		!stripHasAutoMargin(strip),
+		"the cluster must carry NO auto margin: two live margins share the free space and float it mid-row",
 	);
 
-	// The row wraps its ERROR BOUNDARY too: a crash in the readings must not take
-	// the composer down, and a null fallback must not disturb the row's layout.
+	// The row itself: wrapping below the threshold is what gives the cluster its
+	// own line, and `flex-nowrap` above it is what stops a long name pushing the
+	// controls down instead of truncating.
+	assert.ok(rowClasses.includes("flex-wrap"));
+	assert.ok(rowClasses.includes("@min-[750px]/chatcol:flex-nowrap"));
+
+	// The cluster is the row's first line below the threshold, and the second
+	// child above it (`order-2`, with the controls last at `order-3`) - which is
+	// only coherent because the DOM slot is first.
 	assert.match(
-		composer,
-		/<ErrorBoundary fallback=\{null\}>\s*<SessionStatusStrip/,
+		strip,
+		/basis-full @min-\[750px\]\/chatcol:order-2/,
+		"the cluster must take the first line below 750 and follow the chip above it",
 	);
+	assert.ok(controlsClasses.includes("@min-[750px]/chatcol:order-3"));
 });
+
+/**
+ * Whether the strip's root carries an auto margin, at any width.
+ *
+ * The cluster's classes are one long string two thirds of the way down the
+ * file; the property is "no `ml-auto` and no `chatcol:ml-auto` anywhere in it",
+ * which is what this reads.
+ */
+function stripHasAutoMargin(strip) {
+	const root = strip.match(/"basis-full[^"]*"/);
+	assert.ok(
+		root,
+		"the strip's root class list is not where this test expects it",
+	);
+	return /(^|\s|:)ml-auto/.test(root[0]);
+}
 
 // The draft's payload reaches the STRIP and nothing else. Asserted on the
 // source because `SessionPanel` cannot be rendered in isolation (it needs the
