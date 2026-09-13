@@ -62,6 +62,12 @@ const SCENARIO = {
 	outgoingSteps: flag("outgoing-steps", null),
 };
 const AS_JSON = ARGS.includes("--json");
+/**
+ * Drive the ROLLBACK instead of the happy path: the guard read for the target
+ * is scripted to 404, so the switch must end with the error and the outgoing
+ * conversation still on screen.
+ */
+const FAIL_GET = ARGS.includes("--fail-get");
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 
@@ -129,6 +135,44 @@ const RUN = (count) => `(async () => {
 		await probe.settle(target);
 	}
 	return { meta, runs, latency: probe.bridge.log.latency };
+})()`;
+
+/**
+ * The rollback, driven in the real renderer.
+ *
+ * The target's guard read fails, so nothing about the happy-path timing
+ * applies here; what is read back is what the user is left with - the session
+ * they were in, the sentence explaining the failure, and no half-switched
+ * panel. `view()` reads the error out of the RENDERED text, because the
+ * promise being checked is about the screen and not about the store.
+ */
+const FAIL_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const before = probe.view();
+	const recorder = probe.record();
+	const run = await probe.switchTo(meta.incoming, "failing");
+	const started = performance.now();
+	while (
+		probe.view().activeSessionId !== meta.outgoing &&
+		performance.now() - started < 5000
+	)
+		await new Promise((r) => setTimeout(r, 25));
+	const atRollback = probe.view();
+	await new Promise((r) => setTimeout(r, 300));
+	const transitions = recorder.entries.slice();
+	recorder.stop();
+	return {
+		meta,
+		before,
+		run: { committedAt: run.committedAt, getSettledAt: run.getSettledAt, timedOut: run.timedOut },
+		atRollback,
+		after: probe.view(),
+		transitions,
+		requests: probe.bridge.log.requests.map(
+			(request) => request.op + ":" + (request.sessionId ?? ""),
+		),
+	};
 })()`;
 
 const median = (values) => {
@@ -204,6 +248,7 @@ const main = async () => {
 	const query = new URLSearchParams();
 	for (const [key, value] of Object.entries(SCENARIO))
 		if (value !== null && value !== undefined) query.set(key, value);
+	if (FAIL_GET) query.set("fail", "incoming");
 	const url = query.toString() ? `${PAGE}?${query}` : PAGE;
 
 	dataDir = join(tmpdir(), `lo-switch-${process.pid}`);
@@ -295,8 +340,7 @@ const main = async () => {
 	}
 	if (!ready) throw new Error(`the harness at ${url} never became ready`);
 
-	const runWithDeadline = (expression, ms) =>
-		Promise.race([
+	const runWithDeadline = (expression, ms) =>		Promise.race([
 			cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
 				returnByValue: true,
@@ -315,12 +359,53 @@ const main = async () => {
 			),
 		]);
 
-	const { result } = await runWithDeadline(RUN(SWITCHES), 60_000 + SWITCHES * 25_000);
+	const { result } = await runWithDeadline(
+		FAIL_GET ? FAIL_RUN : RUN(SWITCHES),
+		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
+	);
 	if (!result.value)
 		throw new Error(
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (FAIL_GET) {
+		const { before, run, atRollback, after, transitions, requests } = result.value;
+		const errorWasSet = transitions.some((entry) => entry.error !== null);
+			const errorWasSeen = transitions.some((entry) => entry.shown);
+				const verdict = {
+				"the switch committed the target first": run.committedAt !== null,
+			"the view came back to the outgoing session":
+				atRollback.activeSessionId === before.activeSessionId,
+				"the failure sentence was recorded": errorWasSet,
+			"the failure sentence reached the screen": errorWasSeen,
+			"the sidebar marks the outgoing session again":
+					atRollback.selectedRow === before.selectedRow,
+			};
+				const passed = Object.values(verdict).every(Boolean);
+			if (AS_JSON) {
+				console.log(
+				JSON.stringify(
+						{ verdict, before, run, atRollback, after, transitions, requests },
+					null,
+					2,
+				),
+				);
+			} else {
+			console.log("guard-read failure — the rollback, driven in the real renderer");
+			console.log(`  before:      ${JSON.stringify(before)}`);
+				console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
+			console.log(`  300 ms later: ${JSON.stringify(after)}`);
+			console.log(
+				`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
+			);
+			console.log(`  transitions: ${JSON.stringify(transitions)}`);
+			console.log(`  requests: ${requests.join(", ")}`);
+			for (const [claim, held] of Object.entries(verdict))
+				console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
+		}
+		if (!passed) process.exitCode = 1;
+		return;
+	}
 	const { meta, runs, latency } = result.value;
 	const steady = runs.filter((run) => run.label === "steady");
 	const cold = runs.filter((run) => run.label === "cold");
