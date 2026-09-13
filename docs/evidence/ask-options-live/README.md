@@ -3,36 +3,46 @@
 Two frames of the shipped renderer — served over Vite with `desktopProxyPlugin`
 — talking to an **isolated** `local-operator` backend on a scratch port that is
 holding a gate opened by the owner's own `_ask_gate([AskQuestion(...)])`: the
-same seam `tests/e2e/test_desktop_sessions.py` uses, so no model and no mock is
+same seam `tests/e2e/test_desktop_session.py` uses, so no model and no mock is
 involved. The operator's live backend on `127.0.0.1:1111` was never touched; the
 rig runs with its own config root, its own 32-byte token and an OS-assigned port.
 
-## Read this before the frames: what each one shows, and what it does NOT
+## What each frame shows
 
 | frame | what it is |
 | --- | --- |
-| `before-click/localOperatorDark.webp` | **The card, live.** A real pending gate in the shipped renderer: three `<BUTTON>` options with a fill and an edge, the `Recommended` mark beside the second option's label (the harness rotated `recommended: 1` to the front), and the hint. This is the only frame in the repository of the real card rather than a story fixture. |
-| `after-click-unresolved/localOperatorDark.webp` | **NOT the resolution, and it is named that way on purpose.** The frame after the click, taken from the same run — but the Vite dev server died between the two frames, so it shows the gate still on screen with three failure surfaces (`server is offline`, `The backend could not complete this request…`, `Desktop controls could not reach the backend process.`) rather than a gate that cleared. It is kept rather than deleted because deleting it would hide the failure it documents; it is renamed because the previous name — `after-click` — presented it as evidence of the clearing, which it is not. |
+| `before-click/localOperatorDark.webp` | **The card, live, on the remediated build.** A real pending gate in the shipped renderer: three `<BUTTON>` options with a fill and an edge, the `Recommended` mark beside the **first** option's label in sentence case and the row's own ink (the harness arms `recommended: 1` and `AskQuestion._shape` hoists it to the front), and the hint `Choose an option, type 1-9 and send, or type your own answer below.` This is the only frame in the repository of the real card rather than a story fixture. |
+| `after-click/localOperatorDark.webp` | **The resolution.** The same run, after a real `Input.dispatchMouseEvent` press and release at the option's hit-tested centre (`x 960, y 587`, `elementFromPoint` resolving to the option itself). The card is **gone** — the gate cleared rather than the page failing — and focus is on the composer. |
 
-**So the pair does NOT evidence that the click resolves the gate.** `owner-answer.json`
-does still record what the owner received (`{"PAIRING": ["Popup is not open"]}`),
-and `click-result.json` still records the pre-click DOM, the aim point and the
-post-click DOM — including the fact that its own `after` block reports
-`{"found": true, "count": 3}`, i.e. the DOM had not cleared. Those two files are
-consistent with a real click having reached the owner; they are not a picture of
-the gate resolving, and this file says so instead of implying otherwise.
+**The pair evidences the clearing, and the run's own record is what says so.**
+`click-result.json` carries `resolved: true` and `after: {"found": false,
+"count": 0}` (the pre-click DOM is in its `before` block), and
+`owner-answer.json` records the label the owner received
+(`{"PAIRING": ["Popup is open - generate the pairing code"]}`) — the option's
+**label**, never its index. Both files are the run's own outputs, written by the
+committed driver.
 
-The reason the dev server died is fixed in this round: `desktop-proxy.ts` set a
-status and ended a response the SSE relay had already started, which throws
-`ERR_HTTP_HEADERS_SENT` from inside a connect middleware and takes Vite down
-with it (QA round 1, Q1/Q2). The guard is now in the plugin —
-`res.headersSent` means the response is committed, so an aborted relay destroys
-the socket instead of writing a second status.
+This supersedes two earlier problems with this set, both now closed:
+
+- The previous pair's after frame showed three failure surfaces rather than a
+  resolution (the Vite dev server had died mid-run), and was renamed
+  `after-click-unresolved/` to stop it being read as evidence of the clearing.
+  The `ERR_HTTP_HEADERS_SENT` defect behind that death is fixed in
+  `desktop-proxy.ts`, and the re-captured pair resolves, so the frame is back at
+  `after-click/` — a name that now tells the truth about what it shows.
+- The previous pair could not be re-derived from the committed rig at all: the
+  harness seeded the provoking user turn **after** `/rig-arm`, which is one page
+  load too late — the app had already been answered its history request, so the
+  durable row never reached the transcript, `CanonicalTranscript` collapsed to
+  `h-0` as designed, and the driver failed with `no fieldset`. The turn is now
+  appended before the driver is allowed to arm (and therefore before the page
+  asks for its history). The record is regenerated by the committed driver, so
+  the record and the driver agree on their field names (`textContent`,
+  `accessibleName`, `pointerEvents`).
 
 ## Reproduction, from the repository
 
-The rig is committed, so these frames can be re-derived rather than taken on
-trust. Three pieces, all in the tree:
+Three pieces, all in the tree:
 
 - `harness/serve-gate.py` — the isolated backend. Real uvicorn, the app's own
   bearer/origin gate, the real `desktop_sessions` routes, a real `Session` over a
@@ -70,17 +80,10 @@ rig's own control route), waits until the option is genuinely **hit-testable**
 — `elementFromPoint` at its painted centre resolves to that button — then
 presses and releases there. It writes `click-result.json` and exits non-zero
 without overwriting it when a step fails, so a failed run cannot be mistaken for
-a successful one.
-
-**The healthy re-capture of this pair is deferred, not done.** The driver gets
-the card standing and hit-testable in a story, but not yet in the live app: with
-the onboarding store's completion flags seeded (without which the modal covers
-the transcript) the option's rect comes back at `top: -30` inside a pane whose
-scroller has already been measured empty, so the click cannot be aimed honestly.
-Committing frames of a card the layout had not placed would be a worse defect
-than the one being fixed, and a doctored screenshot is worth less than an
-honest gap. It is recorded as `deferred` on the PR with the exact blocker, and
-QA round 2 owns it.
+a successful one. When it does fail it writes `click-result.diagnostic.json`
+(every failure path, including the ones that happen before the first frame, for
+which the output directory is now created up front) so the reason survives
+instead of being replaced by an `ENOENT`.
 
 Two stand-ins were needed to boot the app in a browser at all. Both are
 pre-existing gaps in the browser-development surface that this change neither
@@ -96,11 +99,3 @@ hidden in a scratch directory:
   no close control. It is settled by seeding the onboarding store's own
   persisted completion flag (`onboarding-storage`), the way a returning user
   would have it.
-
-## What these frames also caught
-
-`before-click/localOperatorDark.webp` shows a `session incident / Stopped with
-an error` row above the gate. That is the RIG, not the app: its scripted provider
-stream holds one turn and the harness asked for a second. It is left in the frame
-rather than cropped out, because a doctored screenshot is worth less than an
-honest one, and it does not touch the gate below it.
