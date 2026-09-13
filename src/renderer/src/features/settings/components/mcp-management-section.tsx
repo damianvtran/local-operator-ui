@@ -13,6 +13,12 @@
  * "Transport connected" and "upstream account authorized" are different rows
  * of state: a healthy MCP connection does not prove the Google Workspace
  * account behind a server is authorized, and this panel never claims it does.
+ * The wire carries no per-row authorization state to render — the backend
+ * hard-codes `downstream_authorization: "unknown"` — so the fact is stated
+ * once, in this section's description, rather than reprinted on every row.
+ *
+ * The row is read with the field names the backend actually sends
+ * (`owned_scope`, `setup.text`, `status`); see `MCPServerRow`.
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
@@ -27,21 +33,31 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plug, PlugZap, RotateCw, Trash2 } from "lucide-react";
 import type { FC, RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
 import { SettingsSection } from "./settings-section";
 
-type MCPServerRow = {
-	name: string;
-	source?: string;
-	scope?: string;
-	transport?: string;
-	tool_count?: number | null;
-	status?: string;
-	error?: string | null;
-	downstream_authorization?: string;
-	setup_prompt?: string | null;
-	transport_oauth_supported?: boolean | null;
-	[key: string]: unknown;
-};
+/**
+ * One MCP server row, taken from the backend control DTO rather than restated
+ * here.
+ *
+ * This file used to declare the row itself, with `scope`, `setup_prompt` and
+ * `error`. None of the three has ever been on this wire, and nothing caught it:
+ * every access was optional, so the scope badge never rendered, the "Copy setup
+ * prompt" control was unreachable, an error line rendered a field that is never
+ * sent, and removal asked for `scope: "global"` for every server — which is how
+ * a project-owned server became unremovable, since the backend compares the
+ * requested scope against the source file's real one.
+ *
+ * Deriving the row from `DesktopMcpState` makes the next divergence a compile
+ * error instead of a silent no-op. The real names are worth knowing at the
+ * point of use: `owned_scope` is the writable scope owning the server's SOURCE
+ * FILE (`owned_scope_for_source` in `mcp/config.py`) and is `null` for the six
+ * foreign configs this app must not write, `setup` is
+ * `{kind: "session_prompt", text}` and is absent from the route's cold facade,
+ * and `status` is the vocabulary `connected | connecting | auth-required |
+ * disconnected` (plus `cold` on that facade).
+ */
+type MCPServerRow = DesktopMcpState["servers"][number];
 
 /** Lifecycle routes wrap their payload as `{data, replayed}`. */
 type MCPListResult = {
@@ -379,6 +395,10 @@ export const McpManagementSection: FC<{
 						{servers.map((server) => {
 							const connected = server.status === "connected";
 							const highlighted = server.name === highlightServer;
+							// Aliased so the removal handler below keeps the non-null
+							// narrowing: the scope of the write and the reason the Remove
+							// control exists are the same question.
+							const ownedScope = server.owned_scope;
 							return (
 								<li
 									key={server.name}
@@ -395,8 +415,8 @@ export const McpManagementSection: FC<{
 											<span className="truncate font-medium text-body text-ink">
 												{server.name}
 											</span>
-											{server.scope && (
-												<Badge variant="neutral">{server.scope}</Badge>
+											{ownedScope && (
+												<Badge variant="neutral">{ownedScope}</Badge>
 											)}
 											{server.transport && (
 												<Badge variant="outline">{server.transport}</Badge>
@@ -419,18 +439,9 @@ export const McpManagementSection: FC<{
 											{server.tool_count} tools available
 										</p>
 									)}
-									{server.error && (
-										<p className="text-body-sm text-danger">{server.error}</p>
-									)}
-									{/* Upstream account state is reported separately from the
-									    transport: connected does not imply authorized. */}
-									<p className="text-meta text-ink-dim">
-										Account authorization:{" "}
-										{server.downstream_authorization === "unknown" ||
-										!server.downstream_authorization
-											? "unknown"
-											: server.downstream_authorization}
-									</p>
+									{/* No error line: the wire never sends `error`, and `status` is the
+									    one signal for "this server has a problem" — `auth-required`
+									    names its own remedy rather than reading as a dead process. */}
 									<div className="flex flex-wrap items-center gap-2">
 										{connected ? (
 											<Button
@@ -476,7 +487,7 @@ export const McpManagementSection: FC<{
 											>
 												Grant account access
 											</Button>
-										) : server.setup_prompt ? (
+										) : server.setup?.text ? (
 											<Button
 												variant="ghost"
 												size="sm"
@@ -484,52 +495,67 @@ export const McpManagementSection: FC<{
 													// The setup action is a prompt the user reviews and
 													// submits normally; it is never auto-sent.
 													void navigator.clipboard
-														.writeText(server.setup_prompt ?? "")
+														.writeText(server.setup?.text ?? "")
 														.catch(() => undefined);
 												}}
 											>
 												Copy setup prompt
 											</Button>
 										) : null}
-										{confirmRemove === server.name ? (
-											<>
-												<span className="text-body-sm text-ink">
-													Remove {server.name}?
-												</span>
-												<Button
-													variant="danger"
-													size="sm"
-													onClick={() => {
-														setConfirmRemove(null);
-														void control("remove", server.name, {
-															confirmed: true,
-															scope:
-																server.scope === "project"
-																	? "project"
-																	: "global",
-														});
-													}}
-												>
-													Confirm removal
-												</Button>
+										{/* Removal is a scoped write into the file that owns the server,
+										    and only two of the eight config sources are this app's to
+										    write. A server imported from another tool's config has a
+										    null `owned_scope`, so a Remove button there could only
+										    ever produce the backend's refusal; the source file is
+										    shown instead, which is the call the TUI's `/mcp remove`
+										    rows already make with their detail column. */}
+										{ownedScope ? (
+											confirmRemove === server.name ? (
+												<>
+													<span className="text-body-sm text-ink">
+														Remove {server.name}?
+													</span>
+													<Button
+														variant="danger"
+														size="sm"
+														onClick={() => {
+															setConfirmRemove(null);
+															void control("remove", server.name, {
+																confirmed: true,
+																// The scope of the write, not a guess: the backend
+																// compares it against the server's source file and
+																// refuses a mismatch, so a hard-coded "global"
+																// made every project-owned server unremovable.
+																scope: ownedScope,
+															});
+														}}
+													>
+														Confirm removal
+													</Button>
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => setConfirmRemove(null)}
+													>
+														Keep
+													</Button>
+												</>
+											) : (
 												<Button
 													variant="ghost"
 													size="sm"
-													onClick={() => setConfirmRemove(null)}
+													className="text-danger"
+													onClick={() => setConfirmRemove(server.name)}
 												>
-													Keep
+													<Trash2 aria-hidden="true" />
+													Remove
 												</Button>
-											</>
+											)
 										) : (
-											<Button
-												variant="ghost"
-												size="sm"
-												className="text-danger"
-												onClick={() => setConfirmRemove(server.name)}
-											>
-												<Trash2 aria-hidden="true" />
-												Remove
-											</Button>
+											<span className="text-meta text-ink-dim">
+												Defined in {server.source ?? "another config file"}.
+												Remove it there.
+											</span>
 										)}
 									</div>
 								</li>
