@@ -58,19 +58,29 @@ import {
  *
  * ## Layout
  *
- * A dedicated row above the composer's button row rather than four more
- * controls inside it. That row already carries attach, the working-directory
- * chip, the microphone and send, and at the 220px column floor (canvas open)
- * it is over budget before anything is added — the working-directory chip's
- * own shrink notes record it hanging 97px past the column edge. The readings
- * also belong together: they describe the SESSION, where the button row
- * describes the message being composed.
+ * The readings sit INSIDE the composer's button row, between the working-directory
+ * chip and the microphone — in the row's own free space, immediately left of the
+ * controls whose session they describe. That row already carries attach, the
+ * directory chip, the microphone and send, and this cluster is its smallest
+ * element: `h-6 text-meta`, 12px glyphs against 32px (28px under 550px) buttons,
+ * so they read as facts one step below the controls rather than as four more
+ * buttons.
  *
- * The row wraps rather than truncating as a group. At 220px the model chip
- * takes the first line and the three small readings sit on the second, which
- * keeps every reading legible instead of shrinking all four toward
- * illegibility. Only the model name truncates, because it is the one item with
- * unbounded length and the one whose full value the tooltip already carries.
+ * WHICH LINE they occupy is a container query on `@container/chatcol`, not a
+ * viewport breakpoint: above 750px of column (`CHAT_MEASURE`'s own threshold)
+ * the cluster is inline and pushed right by its `ml-auto`; below it the cluster
+ * takes the row's first line in full and the controls keep the second, which is
+ * the shape these readings had when they had a row of their own. So the narrow
+ * case continues rather than being replaced, and no reading needs a compact
+ * spelling to survive it.
+ *
+ * The cluster wraps internally as well as the row: at the 220px column floor it
+ * folds onto two lines of its own while the button line stays intact and no
+ * reading leaves the composer box. Only the model name truncates, because it is
+ * the one item with unbounded length and the one whose full value the tooltip
+ * already carries — and it is floored, so a truncated name still names
+ * something. Truncating a value reading (`≥$0.0…`, `52.5%/40…`) would be a false
+ * or unverifiable claim, which § 8 forbids.
  */
 
 export type SessionStatusStripProps = {
@@ -106,6 +116,20 @@ export type SessionStatusStripProps = {
 	 * hover-only tooltip is a cue the user has to have been taught (UX U3).
 	 */
 	pendingModel?: CanonicalModel | null;
+	/**
+	 * Whether this is a NEW conversation's draft — a pane with no session yet.
+	 *
+	 * TOLD, never inferred. `onCommand === undefined` already means a backend
+	 * whose command surface is off, and the two states need different sentences
+	 * for different reasons; one missing prop cannot carry two meanings (R22).
+	 *
+	 * A draft renders the identity the FIRST turn will use — from the same
+	 * backend resolution a session gets (`sessions.preview`) — as three inert
+	 * readings: model, effort where the spec carries a ladder, and an empty
+	 * context ring. No spend: nothing has been sent, and both `$0.00` and `$—`
+	 * would be claims (R19).
+	 */
+	draft?: boolean;
 	className?: string;
 };
 
@@ -248,7 +272,13 @@ const TooltipLines: FC<{ lines: string[]; mono?: boolean }> = ({
  * invented-window lie in words - so the closing line follows the reading
  * rather than overriding it.
  */
-function contextBreakdownLine(status: ContextReading["status"]): string {
+function contextBreakdownLine(
+	status: ContextReading["status"],
+	openable: boolean,
+): string {
+	// Nothing to open says so FIRST: the three lines below all name a control, and
+	// naming one that cannot open is the D3 defect in the context reading.
+	if (!openable) return COMMANDS_OFF;
 	if (status === "measured")
 		return "Measured now; click for the full breakdown, which estimates your next request";
 	if (status === "estimate")
@@ -257,14 +287,102 @@ function contextBreakdownLine(status: ContextReading["status"]): string {
 	return "Click for the full breakdown";
 }
 
+/**
+ * What an inert reading says when the pane IS a live session but the backend
+ * has no command surface.
+ *
+ * `onCommand === undefined` on a session means exactly this: there is no
+ * dispatcher to send `/model`, `/effort` or `/context` through, so every
+ * reading renders as a label. `backend-error.ts` names the same state for the
+ * banner ("slash commands … are off"), and this sentence is deliberately about
+ * the ability, not about the reason, because the reason is the server's.
+ */
+const COMMANDS_OFF =
+	"Slash commands are off on this server, so this reading cannot be opened from here.";
+
+/**
+ * The model reading's closing line — the tooltip's second line and the tail of
+ * its `aria-label` — chosen from what the reading can DO, never from its value.
+ *
+ * D3: the line was the constant "Click to choose a different model", so a chip
+ * with nothing to click still advertised a control. There are two ways to have
+ * nothing to click and they need different sentences: a draft, where the model
+ * WILL be used and simply cannot be chosen yet, and a backend with commands
+ * off. `dispatch` is the affordance — present only when the chip can open.
+ */
+function modelReason(
+	draft: boolean,
+	dispatch?: (line: string) => void,
+): string {
+	if (dispatch) return "Click to choose a different model";
+	if (draft)
+		return "The first message will use it. Change it once the conversation starts.";
+	return COMMANDS_OFF;
+}
+
+/**
+ * The effort reading's trailing sentence, or `null` when the reading is whole
+ * without one.
+ *
+ * `null` is the model whose SPEC says it has no ladder: there the level IS the
+ * reading, and a closing sentence would imply an action that does not exist.
+ */
+function effortReason(
+	draft: boolean,
+	adjustable: boolean,
+	dispatch?: (line: string) => void,
+): string | null {
+	if (draft) return DRAFT_EFFORT_LINE;
+	if (!adjustable) return null;
+	if (dispatch) return "Change it.";
+	return COMMANDS_OFF;
+}
+
+/**
+ * The draft's context reading, in both of its forms.
+ *
+ * One sentence, spelled twice because the two places read differently: the
+ * tooltip leads with the word "Context" as a proportional heading (`mono =
+ * false`, § 4) over a sentence, and the `aria-label` is one utterance. A draft
+ * has no machine value to lead with, so the heading is a word.
+ *
+ * The sentence names the fact and the reason (R21). "No reading yet" would be
+ * TRUE of a draft too and is deliberately NOT used: that is the resumed
+ * session whose transcript carries no receipts, a state that fills in on its
+ * own, where a draft's fills in because the user sends the first message.
+ */
+const DRAFT_CONTEXT_LINE =
+	"Nothing measured yet. The window fills as the conversation runs.";
+const DRAFT_CONTEXT_TOOLTIP = ["Context", DRAFT_CONTEXT_LINE];
+// The same sentence as one utterance, which is why it starts lower-case.
+const DRAFT_CONTEXT_LABEL =
+	"Context: nothing measured yet. The window fills as the conversation runs.";
+
+/**
+ * The effort reading's sentence on a draft: the ladder is real, the choice is
+ * not available yet.
+ */
+const DRAFT_EFFORT_LINE = "Set once the conversation starts.";
+
 export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	frontend,
 	onCommand,
 	effortEntities,
 	pendingModel = null,
+	draft = false,
 	className,
 }) => {
 	if (!frontend) return null;
+
+	/*
+	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
+	 *
+	 * A draft has no session for a command to address — `slash-dispatch.ts`
+	 * refuses every picker destination without one — and a backend with the
+	 * command surface off supplies none at all. Both render as labels; the copy
+	 * says which of the two it is, because the remedies differ.
+	 */
+	const dispatch = draft ? undefined : onCommand;
 
 	// The EFFECTIVE spec is what is answering; see `session-model.ts` for why
 	// this differs from the pickers, which read the selected one on purpose.
@@ -307,16 +425,45 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				// The padding has to be on the readings themselves, because it is
 				// what gives their hover fill a body to be.
 				"-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5",
+				/*
+				 * Where the cluster sits in the composer's button row.
+				 *
+				 * The row is `flex-wrap`, so below 750px of COLUMN the cluster takes
+				 * the row's first line in full (`order-first basis-full`) and the
+				 * controls keep the second — the shape these readings had as a row of
+				 * their own, which is what keeps the narrow case carrying every reading
+				 * rather than a compacted spelling. A draft, a live session and a
+				 * restored one all take this rule; only the contents vary (R15).
+				 *
+				 * 750 is `CHAT_MEASURE`'s own number, so the app has one "wide column"
+				 * threshold rather than two that agree by accident, and it is keyed on
+				 * `@container/chatcol` rather than the viewport: with the canvas open at
+				 * a 1380px window the column is at its 220px floor while `md:` is still
+				 * comfortably active (see `chat-measure.ts`).
+				 *
+				 * `ml-auto` here is the row's ONE live auto margin at this width; below
+				 * 750 it is the right-hand group's (see the row in `message-input.tsx`).
+				 * Two live auto margins would share the free space evenly and float
+				 * this cluster mid-row, which is the layout `justify-between` produced.
+				 */
+				"order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
 				className,
 			)}
 			data-lo-session-strip={true}
+			// The QA/E2E hook for "this strip is a draft", so a frame or a probe can
+			// ask the question without reading the copy (R22).
+			data-lo-session-strip-draft={draft ? true : undefined}
 		>
 			{identity && (
 				<Reading
+					// Pending is a state of a chip that CAN open; `modelReason` answers
+					// whether it can open at all (a draft, or a backend with commands
+					// off). Both sentences are needed and they never apply at once: a
+					// draft has no session to confirm a switch against.
 					label={
 						pending
 							? `Model: ${identity.selector}. Switching; waiting for the session to confirm it.`
-							: `Model: ${identity.selector}. Choose a different model.`
+							: `Model: ${identity.selector}. ${modelReason(draft, dispatch)}`
 					}
 					tooltip={
 						<TooltipLines
@@ -326,20 +473,28 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 											identity.selector,
 											"Switching the model; waiting for the session to confirm it",
 										]
-									: [identity.selector, "Click to choose a different model"]
+									: [identity.selector, modelReason(draft, dispatch)]
 							}
 						/>
 					}
-					onOpen={onCommand ? () => onCommand("/model") : undefined}
+					onOpen={dispatch ? () => dispatch("/model") : undefined}
 					// The one item with unbounded length, so it is the one that
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
+					//
+					// `min-w-14` (56px) is the floor: about eight monospace glyphs, so a
+					// truncated name still names something rather than becoming an
+					// ellipsis with no subject. It cannot force a wrap at 750px, where
+					// the row's arithmetic leaves 56px of slack for exactly this item.
 					//
 					// `text-ink-dim` while pending: a colour step, never opacity (the
 					// branding contract's rule for a control that is not yet live), so a
 					// user can see that the value on screen is the one they chose and
 					// not yet the one the session runs.
-					className={cn("max-w-full shrink", pending && "text-ink-dim")}
+					className={cn(
+						"min-w-14 max-w-full shrink",
+						pending && "text-ink-dim",
+					)}
 				>
 					<span className="truncate">{identity.name}</span>
 					{/*
@@ -356,19 +511,27 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			)}
 			{effort && (
 				<Reading
-					label={
-						effort.adjustable
-							? `Reasoning effort: ${effort.label}. Change it.`
-							: `Reasoning effort: ${effort.label}.`
+					label={[
+						`Reasoning effort: ${effort.label}.`,
+						effortReason(draft, effort.adjustable, dispatch),
+					]
+						.filter(Boolean)
+						.join(" ")}
+					tooltip={
+						<TooltipLines
+							lines={[
+								effort.label,
+								...(draft ? [DRAFT_EFFORT_LINE] : [effort.detail]),
+							]}
+						/>
 					}
-					tooltip={<TooltipLines lines={[effort.label, effort.detail]} />}
 					// A model with no ladder gets the label form, not a dead button.
 					// Opening `/effort` there reaches a picker whose own empty text is
 					// "Effort is not adjustable on this model" -- true, but a worse way
 					// to learn it than never offering the control.
 					onOpen={
-						onCommand && effort.adjustable
-							? () => onCommand("/effort")
+						dispatch && effort.adjustable
+							? () => dispatch("/effort")
 							: undefined
 					}
 				>
@@ -381,11 +544,13 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			)}
 			<Reading
 				label={
-					reading.status === "no-reading"
-						? "Context: no reading yet. Open the context breakdown."
-						: `Context: ${reading.spelling}${
-								reading.status === "estimate" ? ", estimated" : ""
-							}. Open the context breakdown.`
+					draft
+						? DRAFT_CONTEXT_LABEL
+						: reading.status === "no-reading"
+							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(dispatch))}`
+							: `Context: ${reading.spelling}${
+									reading.status === "estimate" ? ", estimated" : ""
+								}. ${contextBreakdownLine(reading.status, Boolean(dispatch))}`
 				}
 				tooltip={
 					<TooltipLines
@@ -395,18 +560,22 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						 * (round 1, D2). Every other context state leads with a number.
 						 */
 						mono={reading.status !== "no-reading"}
-						lines={[
-							...contextTooltipLines(
-								reading,
-								typeof model?.max_context_window === "number"
-									? model.max_context_window
-									: null,
-							),
-							contextBreakdownLine(reading.status),
-						]}
+						lines={
+							draft
+								? DRAFT_CONTEXT_TOOLTIP
+								: [
+										...contextTooltipLines(
+											reading,
+											typeof model?.max_context_window === "number"
+												? model.max_context_window
+												: null,
+										),
+										contextBreakdownLine(reading.status, Boolean(dispatch)),
+									]
+						}
 					/>
 				}
-				onOpen={onCommand ? () => onCommand("/context") : undefined}
+				onOpen={dispatch ? () => dispatch("/context") : undefined}
 			>
 				<ContextWheel reading={reading} />
 				{/*
