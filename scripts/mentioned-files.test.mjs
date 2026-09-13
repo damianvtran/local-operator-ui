@@ -468,10 +468,12 @@ test("17. order is first mention, and a re-scan never re-sorts", () => {
 
 test("a square bracket in a file:// name survives, and a sentence's closing one does not", () => {
 	// QA round 3, Q3-2. The class stopped at `]` for the same reason it stopped
-	// at `(` — a markdown link's closing bracket — so a real transcript's
-	// `a[1].pdf` was recorded as `/tmp/x/a[1`, a path no file has, arriving
-	// through the OPPOSITE bracket of the case above and reaching the grid as a
-	// permanent `No longer on disk` tile.
+	// at `(` — a markdown link's closing bracket — so a name was recorded cut at
+	// the bracket: the fixture spelling below, and the store's own
+	// `…/run-details/[eval1` (node's eval frame) and `/tmp/x/notes[1`, all
+	// arriving through the OPPOSITE bracket of the case above. What they produced
+	// was `/tmp/x/a[1` — a path no file has, reaching the grid as a permanent
+	// `No longer on disk` tile.
 	assert.deepEqual(
 		paths([assistant(1, "wrote file:///tmp/x/a[1].pdf")]),
 		["/tmp/x/a[1].pdf"],

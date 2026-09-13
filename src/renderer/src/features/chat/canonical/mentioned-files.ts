@@ -127,10 +127,13 @@ const SHELL_METACHARACTERS = /[$*?{}<>]/;
  * is a URL only because `?` happens to be a legal query delimiter, while
  * `file:///…/popup.html?state=pending&pin=86` is a real cache-busted local file
  * the operator's transcripts name. The distinguishing property is the query's
- * SHAPE: a `key=value` parameter list, `&`-joined. That is what the store
- * contains (all 29 `?`-carrying `file://` tokens in 1,903 stored sessions are
- * either this shape or a V8 stack frame's `:line:col` tail), and every glob tail
- * is a filename fragment instead (`.log`).
+ * SHAPE — a `key=value` parameter list, `&`-joined — and that shape was counted
+ * rather than assumed, over this machine's own store (1,956 session
+ * directories, 91 distinct `?`-carrying `file://` tokens): 40 tails are that
+ * list, 15 are a V8 stack frame's `:line:col`, 18 have nothing after the `?` at
+ * all, 16 are neither — the glob and flag spellings the rule exists to reject
+ * (`.log`, `x`) — and 2 carry their `?` only inside a fragment. No tail in the
+ * store that reads as a query is anything but one.
  *
  * A flag with no `=` (`?debug`), and a `?` with nothing after it at all, are
  * therefore rejected along with the globs. That is the fail-safe direction this
@@ -183,9 +186,11 @@ const URL_TRUNCATION = new Set(["*", "}", ">"]);
  * `(`, `)`, `[`, `]`, `{` and `<` ARE allowed, and that is the difference
  * between a rule and a guess. macOS names screenshots
  * `Screenshot … (1).png`, so excluding `(` recorded a truncated
- * `/Users/x/Downloads/screen(1` for a file that plainly exists; `a[1].pdf` is
- * the same real-transcript case through the square bracket, and excluding `]`
- * recorded `/tmp/x/a[1` (round 4, Q3-2). A placeholder like
+ * `/Users/x/Downloads/screen(1` for a file that plainly exists; the square
+ * bracket is the same truncation through the other pair, and the store's own
+ * transcripts spell it their own way (`…/run-details/[eval1` — node's eval
+ * frame — and `/tmp/x/notes[1`), where excluding `]` recorded `…/a[1` instead of
+ * the token's own path (round 4, Q3-2). A placeholder like
  * `file:///tmp/out/<name>.` must be captured whole so the metacharacter rule
  * can REJECT it, rather than being cut short into a tile for the directory that
  * happens to precede it — and a bracket that CLOSES a sentence is trimmed by
