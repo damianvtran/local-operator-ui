@@ -7,38 +7,90 @@ emerged after its opening message, or one whose title was auto-generated from
 something forgettable, could not be found from the app at all. The CLI's
 `/resume` picker could already do it.
 
-These frames are the change, captured on two trees against the same store:
+These frames are the change, captured on two trees against the same store. The
+`before` halves are `origin/main`'s shipped sidebar search; the `after` halves are
+this branch at `bed8de048`, the head the capture ran against, driven by the same
+harness against the same seeded store.
 
 | Tree | Version | What it is |
 | --- | --- | --- |
 | `before` | `origin/main` (0.17.3) | the shipped sidebar search: name and label only. These frames are still pictures of main's panel rather than of a superseded one: `chat-sidebar.tsx` and the components it draws the list with are the SAME blob (`350012054012402e1ac84b2b076f8f80e75e22a8`) at 0.17.3 and at 0.19.6, so the shipped path they show has not moved between the two |
-| `after` | `feat/chat-search-content` | the same sidebar asking `GET /v1/desktop/sessions/search` |
+| `after` | `feat/chat-search-content` at `bed8de048` | the same sidebar asking `GET /v1/desktop/sessions/search`. Every `after-*` frame was captured in one session against that head, except the two marked **stale** in the table below |
 
 | State | Before | After |
 | --- | --- | --- |
-| Query `retention` | [`before-retention`](before-retention/localOperatorDark.webp) — **1 row**: the one whose TITLE contains the word. The sessions about the retention sweep are absent, and nothing in the panel says anything is missing | [`after-retention`](after-retention/localOperatorDark.webp) (dark, [light](after-retention/localOperatorLight.webp)) — **3 rows**: the name match first, then `Migrate the billing reconciliation pipeline …` and `Refactor the loader` below it, each marked `· in conversation` because its CONVERSATION is why it is there. Heading counts follow the filter |
+| Sidebar at rest | the query path is the only changed path, and the pair below shows the list it feeds | [`after-rest`](after-rest/localOperatorDark.webp) — 6 rows under `Agents`, `All chats 6`, `Previous chats 6`, an empty box: the shipped rest state |
+| Query `retention` | [`before-retention`](before-retention/localOperatorDark.webp) — **1 row**: the one whose TITLE contains the word. The sessions about the retention sweep are absent, and nothing in the panel says anything is missing | [`after-retention`](after-retention/localOperatorDark.webp) (dark, [light](after-retention/localOperatorLight.webp)) — **3 rows**: `Retention sweep notes` first, then `Migrate the billing reconciliation pipeline to the new ledger` and `Refactor the loader`, each carrying `· in conversation` because its CONVERSATION is why it is there |
 | Query `classifer` (a typo) | [`before-typo`](before-typo/localOperatorDark.webp) — **nothing at all**: an empty panel, no count, no explanation | [`after-typo`](after-typo/localOperatorDark.webp) — **1 row**: `Investigate throughput`, surfaced by the word `classifier` inside it and marked as such |
-| Query `classifer` against a backend that cannot search conversations | the same empty panel | [`after-namesonly`](after-namesonly/localOperatorDark.webp) — the panel says `Searching chat names only. Update Local Operator to search inside conversations.` and stops there. It does **not** add `Nothing in your chats matches "classifer"`: that row's conversation DOES match, the app has just said it cannot see inside conversations, and the sentence would be a falsehood the backend cannot check (design round 2, D11). Reached with a proxy that deletes the `session_search` capability from a real backend's answer |
-| Query `kubernetes` (no match) | [`before-nomatch`](before-nomatch/localOperatorDark.webp) — an empty panel | [`after-nomatch`](after-nomatch/localOperatorDark.webp) — the same rows, plus `Nothing in your chats matches “kubernetes”.` The box now searches conversation text, so a blank panel asserts a much stronger claim than it used to; the sentence is `aria-live` for the same reason |
-| Sidebar at rest | the query path is the only changed path, and the pair above shows the list it feeds | [`after-rest`](after-rest/localOperatorDark.webp) — unchanged from the shipped rest state: the same agents, teams, counts and groups, because search runs only when a query is present |
-| A row with a state worth reporting (`dossier`) | not reachable without a failed first send; the shipped layout rendered the same fixture as `Watchlist dossiers · release-pod · No…` | not re-captured — see "The one state that is not here" below |
+| Query `kubernetes` (no match) | [`before-nomatch`](before-nomatch/localOperatorDark.webp) — an empty panel | [`after-nomatch`](after-nomatch/localOperatorDark.webp) — the same rows, plus `Nothing in your chats matches “kubernetes”.` |
+| A row carrying its own STATE (`· Not sent yet`) | not reachable without a failed first send | [`after-unstarted`](after-unstarted/localOperatorDark.webp) — `Watchlist dossiers · Not sent yet`; the binding is withheld to the tooltip, because a row draws ONE statement and the row's own state outranks it |
+| **A NESTED row at the DEFAULT width** (design round 5's D19 — the case this set was re-shot for) | not covered before this pass | [`after-nested-280`](after-nested-280/localOperatorDark.webp) (dark, [light](after-nested-280/localOperatorLight.webp)) — under `coder 3`, a nested row carrying `· Not sent yet` and another carrying `· in conversation`, both drawn whole at the default 280px |
+| **A 64-character binding** (review round 4's R21) | not covered before this pass | [`after-longbinding-280`](after-longbinding-280/localOperatorDark.webp) — `Ship the search endpoint · release-pod-ob…`: the slot truncates INSIDE its 45% cap and the row stays whole |
+| Either case at the narrowest width the sidebar drags to | not covered before this pass | [`after-longbinding-240`](after-longbinding-240/localOperatorDark.webp) — the same binding at the 240px clamp |
+| A query past the op's own bound (review round 7's R37) | not reachable: the box had no bound to break | [`after-overlimit`](after-overlimit/localOperatorDark.webp) — `Search terms are limited to 256 characters. This one is longer, so only chat names are being searched.`, with no `Retry` offered and no `Searching conversations…` under it |
+| Query `classifer` against a backend that cannot search conversations | the same empty panel | [`after-namesonly`](after-namesonly/localOperatorDark.webp) — **STALE FRAME, kept deliberately**: see "What this pass did not capture" |
+| A search route that fails while the rest of the backend answers | — | [`after-searchfail`](after-searchfail/localOperatorDark.webp) — **STALE FRAME**, same reason |
 
-Read out of the live DOM in the same runs, not from the pixels. **These dumps are
-from `cf0db490e`**, and the marker row's slots have changed since: a row the
-conversation search found now draws the mark alone, so the
-`Refactor the loader · coder · in conversation` line below is a record of that
-run and not of what the row draws today (`rowTrailingStatement` decides, and its
-answer for that row is `conversation`). The frames have the same provenance —
-see "The one state that is not here".
+Read out of the live DOM in the same runs, not from the pixels — and from THIS
+run's head, so the dumps below are the rows as they draw now rather than as they
+drew before the marker row was relaid out.
 
+```text
+rest       "Chats Agents architect 1 coder 3 designer manager reviewer scout … All chats 6 … Previous chats 6"
+retention  "Chats Agents coder 3 Recent Retention sweep notes Recent Migrate the billing reconciliation pipeline to the new ledger · in conversation, matched in conversation Recent Refactor the loader · in conversation, matched in conversation … All chats 3 matching … Previous chats 3"
+classifer  "… Agents architect 1 Recent Investigate throughput · in conversation, matched in conversation … All chats 1 matching"
+kubernetes (no rows) — the panel holds the sentence and nothing else
+dossiers   "… Recent Watchlist dossiers · Not sent yet … All chats 1 matching … Previous chats 1 matching"
+endpoint   "… All chats 1 … Previous chats 1 Recent Ship the search endpoint · release-pod-observability-remediation-and-incident-response-lead"
 ```
-before  q=retention   "… Agents coder 1 … All chats 1 … Previous chats 1"
-after   q=retention   "… Agents coder 3 … Migrate the billing reconciliation pipeline to the new ledger · in conversation, matched in conversation
-                       … All chats 3 matching … Previous chats 3 … Refactor the loader · coder · in conversation, matched in conversation"
-before  q=classifer   "… All chats New chat Active chats Nothing running right now. Previous chats"   (empty)
-after   q=classifer   "… Agents architect 1 … Investigate throughput · in conversation, matched in conversation … All chats 1 matching"
-after   q=kubernetes  "Nothing in your chats matches “kubernetes”. … All chats New chat Active chats … Previous chats"
-```
+
+Read the row text in that dump against the one it replaces: a row the conversation
+search found draws the mark ALONE now — `Investigate throughput · in conversation` —
+where the `cf0db490e` frames showed `Investigate throughput · coder · in
+conversation`. At most one bounded statement per row, decided by
+`rowTrailingStatement`, which is what the re-shoot was for.
+
+**And the numbers behind the question a picture cannot settle.** A screenshot shows
+that a slot LOOKS truncated; only the boxes say whether anything was actually
+clipped, and whether the row overflowed. Read from the same runs, per row: the row's
+content box (`clientWidth` less its padding), the title span's client width, the
+trailing statement slot's client and scroll widths, whether each is clipped
+(`scrollWidth > clientWidth`), whether the row's own content overflows its
+container, and how far the row's right edge sits inside the panel's.
+
+| state | row | content box | title client | title clipped | statement slot | slot client / scroll | slot clipped | row overflows | row vs panel |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nested @280 | `Retention sweep notes` (nested, `not_sent`) | 224.0 | 120.0 | yes | `· Not sent yet` | 76 / 76 | no | no | 12px inside |
+| nested @280 | `Migrate the billing reconciliation pipeline…` (nested) | 224.0 | 103.3 | yes | `· in conversation` | 93 / 93 | no | no | 12px inside |
+| nested @240 | `Retention sweep notes` (nested, `not_sent`) | 184.0 | 80.0 | yes | `· Not sent yet` | 76 / 76 | no | no | 12px inside |
+| nested @240 | `Migrate the billing reconciliation pipeline…` (nested) | 184.0 | 63.3 | yes | `· in conversation` | 93 / 93 | no | no | 12px inside |
+| long binding @280 | `Ship the search endpoint` (flat) | 256.0 | 112.8 | yes | `· release-pod-…-lead` | 115 / 390 | yes | no | 8px inside |
+| long binding @240 | `Ship the search endpoint` (flat) | 216.0 | 91.0 | yes | `· release-pod-…-lead` | 97 / 390 | yes | no | 8px inside |
+| unstarted @280 | `Watchlist dossiers` (flat, `not_sent`) | 256.0 | 152.0 | no | `· Not sent yet` | 76 / 76 | no | no | 8px inside |
+
+Three readings in that table are the whole case, and none of them is visible in a
+frame:
+
+- **The statements are never clipped.** Every `· …` slot has `scrollWidth ==
+  clientWidth` — 76 for `· Not sent yet`, 93 for `· in conversation` — in every state
+  and at both widths. D19's defect was a bare `·`, which is what a statement slot
+  clipped away looks like.
+- **The binding slot is capped at exactly 45%, and the cap is what truncates it**:
+  115.2 of a 256.0 content box, and 97.2 of 216.0 — 45.0% both times. Its own
+  `scrollWidth` is 390, so a 64-character name really is cut, and `rowOverflowsItself`
+  is false, so the cut stays inside the row. Both halves of R21's fix are needed and
+  both are here: the cap without `truncate` would not truncate, and `truncate`
+  without the cap would have pushed the row wide.
+- **Nothing overflows anywhere, above or below the clamp.** Every row's right edge
+  sits inside its panel — 8 or 12px in, which is the row's own padding — and no row's
+  content scrolls, at 280 and at 240.
+
+The frames are the operator's own window at device-pixel-ratio 2, and the window's
+height moved between shots (1634 or 1746 device px, 817 or 873 CSS px), so the
+picture's height is a property of the window the capture ran in and not of the
+panel: the dimension every claim above is about is the sidebar's, which `?width`
+sets and the reports record (280px default, 240px at the clamp, both verified as
+`styleWidth` on the element).
 
 The mark is the same `· …` idiom and the same `text-meta text-ink-muted` roles
 as the `· coder` qualifier beside it, in words: the visible words are
@@ -82,6 +134,14 @@ bare `·` and overflowed the container (design round 5, D19). The history lives 
 - While the box has no answer yet (the debounce plus the round trip), the panel
   says `Searching conversations…` instead of either collapsing silently or
   filling the list with the previous question's hits.
+- A query past the op's bound is refused by the SURFACE, by name and before the
+  wire: `Search terms are limited to 256 characters. This one is longer, so only
+  chat names are being searched.`, with no `Retry` offered for a state a retry
+  cannot change (review round 7, R37).
+- The row's trailing statement is bounded: at most ONE per row, on nested rows as
+  well as flat ones, drawn whole at both ends of the sidebar's clamp, with a
+  64-character binding truncated inside its 45% cap rather than pushing the row
+  wide (design round 5's D19, review round 4's R21).
 - Nothing else about the panel moved: the rest state, the group structure and
   the row anatomy are the shipped ones.
 
@@ -101,33 +161,42 @@ bare `·` and overflowed the container (design round 5, D19). The history lives 
 - **The phone's search and the TUI picker**, which share the same backend
   mechanic, are covered by that repository's tests rather than by these frames.
 
-## The one state that is not here
+## What this pass did not capture
 
-`after-unstarted` was captured at `cf0db490e` to show the D18 fix (a title floor
-with shrinkable qualifiers). The layout it photographed **no longer exists**:
-the marker row has since moved to one bounded statement per row, so
-`rowTrailingStatement` answers `not_sent` for that fixture and the row draws a
-single qualifier rather than the two in that frame. The frame and the two prose
-claims that described it have been **removed rather than relabelled**, and this
-set's `capturedAtHead` in the manifest names the head the remaining frames are
-from.
+The set was re-shot at `bed8de048` in one session, through the operator's own
+browser, and the browser bridge dropped repeatedly under this machine's load — so
+this pass is a large part of the set rather than all of it. What is missing is
+listed here rather than left to be discovered, because a set that quietly omits a
+state reads as a state that passed.
 
-It was not re-shot in that session, and the obstacle recorded at the time is no
-longer this machine's state — corrected here rather than left standing, because
-a provenance note that names a cause the reader can check and find gone is worse
-than one that says plainly what happened. **The pairing is intact**:
-`lop browser status` reports `paired: yes` with the daemon healthy and the
-extension present in Chrome's default profile. What stops a capture is the
-extension's service worker, which attaches and then stops answering: every
-action through the bridge exhausts its budget, and the log records
-`dropped an unresponsive extension: no frame for 50s`. The measured cure is the
-operator toggling the extension OFF then ON in `chrome://extensions`, which needs
-a person at the screen — so a capture was not possible in the sessions that ran
-with the worker wedged, and the states above are still the `cf0db490e` frames,
-the two commits after it having changed the marker row's slot classes. The
-current row is verified by `scripts/chat-search.test.mjs` (the trailing-statement
-rule, exhaustively over its inputs) and by the arithmetic in the commits, not by
-pixels, and the PR says so.
+- **`after-nested-240` — the reading is in, the frame is not.** The boxes at 240px
+  are in the table above and they say what D19 needs said: at the narrowest width
+  the sidebar drags to, every statement is still drawn whole (76 and 93 client px,
+  nothing clipped), every title truncates rather than being starved, and no row
+  overflows. The screenshot did not land before the bridge stopped answering, so
+  there is no picture of it yet; it is the first frame of the next pass.
+- **A clipped answer** (a query with more matches than the op's page of 100), and its
+  `100+` / `At least 100 chats match this search; the list stops there` copy. Not
+  photographed. The store for it exists and was verified through the real route:
+  120 seeded sessions whose conversation mentions `invoices` and whose titles do not,
+  so `sessions.search?q=invoices` answers with exactly `limit` hits and the catalogue
+  route returns `truncated: true`. Vite was pointed at it for the shot and the bridge
+  dropped first. The decision itself is covered by `scripts/chat-search.test.mjs`
+  (`searchAnswerIsClipped`), which is not a picture.
+- **`after-namesonly` and `after-searchfail` are STALE, and they are kept only
+  because they are the only committed frames of those two states.** Both were taken
+  at `cf0db490e`, and in the run they came from the isolated backend had died — so
+  each carries the app's own `server is offline` strip across the top, a state this
+  README does not otherwise claim to be showing. Neither contains a session row
+  (both panels show the notice over an empty list), so they do not carry the row
+  layout that moved; what they are evidence of is the notice copy and nothing else.
+  The next pass re-shoots both, and they should be REPLACED rather than kept.
+- **The light palette for `after-longbinding-280`.** Its dark half is here; the light
+  half of that pair is the next pass's. `after-nested-280` has both.
+
+None of this is a disagreement about the code. The two states the last three design
+rounds were actually about — a nested row at the default width, and a binding that is
+a 64-character name — are both in this set now, with their boxes.
 
 ## Re-capturing this set
 
@@ -171,3 +240,14 @@ preserves.
 5. **Repeat on the `before` tree** — a worktree of `origin/main` served by the
    same harness on its own port, against the same seeded backend — and check that
    no two frames in a state share a SHA-256.
+
+### The states this pass still owes
+
+In the order a next pass should take them: `after-nested-240` (its boxes are already
+in the table above), the light half of `after-longbinding-280`, the clipped answer
+(Vite restarted against the second store — 120 sessions whose conversation mentions
+`invoices` and whose titles do not, so `sessions.search?q=invoices` answers with a
+full page of 100), and then `after-namesonly` and `after-searchfail` against the two
+degrade proxies, which should REPLACE the two stale frames rather than sit beside
+them. The over-limit state is `?q=` holding any 257-character query, and the state
+statement is `?drafts=<an unstarted session id>`.

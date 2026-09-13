@@ -223,13 +223,13 @@
     },
     {
       "path": "chat-search",
-      "frames": 10,
-      "surfaces": 9,
+      "frames": 16,
+      "surfaces": 14,
       "themes": 2,
-      "source": "live renderer in the operator's real browser (Local Operator extension), served by Vite over this repository's own renderer config with the preload bridge stubbed to a no-op, against an isolated local-operator backend on its own port and config dir",
-      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story, and a debounced backend round trip is not something a fixture can produce, so the frames come from the running app against an isolated seeded store. Both trees -- origin/main and this branch -- are driven by the same harness against the same store, which is what makes each pair comparable; docs/evidence/chat-search/README.md carries the re-capture procedure. Captured at the head named below, which is NOT the branch head: the marker row's slot classes changed afterwards (at most one bounded statement per row), and before those states could be re-shot the extension's service worker became wedged -- it attaches and then stops answering (the bridge logs 'no frame for 50s' and every action exhausts its budget) -- which no session on this machine can clear, the measured cure being the operator toggling the extension OFF then ON in chrome://extensions. The pairing itself is NOT the obstacle and is intact (lop browser status reports paired: yes); a reader should not be told otherwise. Read the frames as evidence of the QUERY PATH, which is what they were taken for, and not of the row's current slot widths.",
-      "capturedAt": "2026-09-12T21:05:00.000Z",
-      "capturedAtHead": "cf0db490e1190b621df962408d80555fcedff166"
+      "source": "live renderer in the operator's real browser (Local Operator extension) at device-pixel-ratio 2, served by Vite over this repository's own renderer config with the preload bridge stubbed to a no-op, against an isolated local-operator backend on its own port and config dir - plus a second backend holding a 120-session store, which is what the clipped-answer state needs",
+      "why": "The claim is what a typed query does to the list the app fetched: which rows survive, which one is ranked first, which ones say the CONVERSATION is why they are there, and what the panel says when nothing matched. The sidebar has no Storybook story and a debounced backend round trip is not something a fixture produces, so the frames come from the running app against an isolated seeded store. RE-SHOT at the head named below, which is the point of this revision: the set committed before it was taken at cf0db490e, before the marker row's slot classes changed, so it showed a layout the code could not produce (review round 6, R22/R26). This pass covers both palettes and both ends of the sidebar clamp for the two row cases it was for - a NESTED row at the default width (design round 5, D19) and a 64-character binding (review round 4, R21) - and docs/evidence/chat-search/README.md carries the DOM boxes beside them, which is where a clipping question is actually settled. WHAT IS STILL MISSING, named rather than implied: the nested row at the 240px clamp (boxes read and recorded, frame not taken), the clipped answer on a store with more matches than the op's page, the light half of the long-binding pair, and the two degrade-proxy notices - whose two committed frames are still stale cf0db490e pictures carrying a server-offline strip, and should be REPLACED rather than kept. The README's 'What this pass did not capture' is the list of record.",
+      "capturedAt": "2026-09-13T18:15:49Z",
+      "capturedAtHead": "bed8de048b0d6270452f6b71e56a5d828433972d"
     }
   ]
 }
