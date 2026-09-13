@@ -687,7 +687,10 @@ app
 				filePath: string,
 				maxBytes: number = MAX_FILE_READ_BYTES,
 			): Promise<ReadFileBytesResponse> => {
-				const cap = Math.min(maxBytes, MAX_FILE_READ_BYTES);
+				const cap =
+					Number.isFinite(maxBytes) && maxBytes > 0
+						? Math.min(maxBytes, MAX_FILE_READ_BYTES)
+						: MAX_FILE_READ_BYTES;
 				try {
 					const resolved = resolveUserPath(filePath);
 					const stat = statSync(resolved, { throwIfNoEntry: false });
@@ -713,17 +716,16 @@ app
 							sizeBytes: stat.size,
 						};
 					}
-					// A view over the buffer rather than a copy: `readFileSync` returns a
-					// Buffer that may be a slice of a pooled allocation, so the offset and
-					// length are what make the view correct rather than merely cheap.
+					// A copy, not a view over `readFileSync`'s buffer. For a file under
+					// half of `Buffer.poolSize` the returned Buffer is a slice of a shared
+					// pool, so a view would describe the offset and length correctly and
+					// still keep the whole pooled allocation alive on the renderer's side
+					// of structured clone. The cost is one memcpy of a file the cap has
+					// already held to 64 MiB.
 					const buffer = readFileSync(resolved);
 					return {
 						success: true,
-						data: new Uint8Array(
-							buffer.buffer,
-							buffer.byteOffset,
-							buffer.byteLength,
-						),
+						data: new Uint8Array(buffer),
 						sizeBytes: buffer.byteLength,
 					};
 				} catch (error) {

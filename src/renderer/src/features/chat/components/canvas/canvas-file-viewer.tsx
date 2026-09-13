@@ -17,7 +17,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
-import { Card, Tooltip } from "@shared/components/ui";
+import { Button, Card, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -36,12 +36,22 @@ import {
 } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
+import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import { buildFileTiles } from "./file-tiles";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
 	// Callback to switch view in parent component
 	onSwitchToDocumentView: (documentId: string) => void;
+	/**
+	 * The completeness state of the scan that produced this list, plus the action
+	 * that fetches the messages it has not read yet.
+	 *
+	 * Optional because the panel is also rendered from Storybook fixtures and from
+	 * a draft with no session, where there is no transcript to page and therefore
+	 * nothing to say.
+	 */
+	scan?: MentionScanHandle | null;
 };
 
 const defaultFiles: CanvasDocument[] = [];
@@ -141,6 +151,7 @@ const getIconForFileType = (type?: CanvasDocumentType) => {
 const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	conversationId,
 	onSwitchToDocumentView,
+	scan = null,
 }) => {
 	// Get files from the canvas store for this conversation
 	const files = useCanvasStore((state): CanvasDocument[] => {
@@ -254,27 +265,57 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				return;
 			}
 
-			const normalizedPath = stripFileUrl(fileDoc.path);
-			if (kind === null) return fallbackAction();
-
 			/*
-			 * A tile can already know its file is gone - the probe said so. It must
-			 * not be handed to the OS, which would either do nothing or open the
-			 * wrong thing: the honest answer is a message naming the path, and the
-			 * tile's own Copy path action stays available for it.
+			 * Availability BEFORE the kind test.
 			 *
-			 * One re-probe first, because the interval between the probe and the
-			 * click is exactly when an agent writes the file.
+			 * The two checks were in the other order, and that turned a click on a
+			 * missing file whose type has no viewer into nothing at all: `kind ===
+			 * null` handed it to the OS first, so a `Not found` tile that said `Open
+			 * in default app` to nobody swallowed the click. A click must always
+			 * produce something - a viewer, the OS, or a sentence.
+			 *
+			 * One re-probe first, because the interval between the probe and the click
+			 * is exactly when an agent writes the file. A tile can already know its
+			 * file is gone, and it must not be handed to the OS, which would either do
+			 * nothing or open the wrong thing.
 			 */
+			const normalizedPath = stripFileUrl(fileDoc.path);
 			if (fileDoc.availability === "missing") {
 				const [probe] = await window.api.probeFiles([normalizedPath]);
 				if (!probe || !probe.exists || !probe.isFile) {
 					showErrorToast(
 						`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
+						{
+							// What to do next, not only what happened: the path alone leaves
+							// the reader with a three-line wrap and nowhere to go.
+							description:
+								"Copy its path from the tile's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
+						},
 					);
 					return;
 				}
 			}
+
+			if (kind === null) return fallbackAction();
+
+			/*
+			 * `lastAgentModified` and `sizeBytes` are threaded through both branches
+			 * below, and each is the difference between a promise and a fact:
+			 *
+			 * - `lastAgentModified` is the blob cache's key (`file:<path>:<mtime>`).
+			 *   Both builders used to omit it, so every viewer key was
+			 *   `file:<path>:0` and a re-opened tile kept serving the bytes from before
+			 *   the agent rewrote the file.
+			 * - `sizeBytes` lets a viewer state "too large to preview" from the probe's
+			 *   own answer, before an IPC read the main process is going to refuse
+			 *   anyway.
+			 */
+			const carried = {
+				title,
+				type: getFileTypeFromPath(normalizedPath),
+				lastAgentModified: fileDoc.lastAgentModified,
+				sizeBytes: fileDoc.sizeBytes,
+			};
 
 			const encoding = READ_ENCODING[kind];
 			if (encoding === "bytes" || encoding === "range") {
@@ -284,12 +325,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				 * whole document into the store - which is persisted to
 				 * localStorage - for a file the user may close without ever seeing.
 				 */
-				openDocument(
-					canvasDocumentForPath(normalizedPath, {
-						title,
-						type: getFileTypeFromPath(normalizedPath),
-					}),
-				);
+				openDocument(canvasDocumentForPath(normalizedPath, carried));
 				return;
 			}
 
@@ -305,9 +341,8 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				}
 				openDocument(
 					canvasDocumentForPath(normalizedPath, {
-						title,
+						...carried,
 						content: result.data,
-						type: getFileTypeFromPath(normalizedPath),
 					}),
 				);
 			} catch (error: unknown) {
@@ -328,7 +363,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		],
 	);
 
-	if (files.length === 0) {
+	if (files.length === 0 && !scan?.paging) {
 		return (
 			<div
 				className={cn(
@@ -344,155 +379,233 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		);
 	}
 
+	const countLabel = `${tiles.length} ${tiles.length === 1 ? "file" : "files"}`;
+	/*
+	 * The panel head, and why it is not optional chrome.
+	 *
+	 * The grid is only as complete as the transcript the producer has read, and the
+	 * transcript is paged. A list without a count and without a word about what has
+	 * been searched is a list that cannot be trusted: a reader has no way to tell a
+	 * two-file conversation from a two-hundred-file one whose earlier messages have
+	 * not been loaded. So the head states the number, states that a scan is running
+	 * while one is, and - when the scan stopped short - states exactly which
+	 * messages were searched and offers the action that searches the rest. Nothing
+	 * here is ever a silent omission.
+	 */
 	return (
-		<div className={cn("h-full overflow-y-auto p-6")}>
-			{/*
-			 * `auto-fill` rather than `sm:grid-cols-3`. A viewport breakpoint is
-			 * meaningless inside a resizable dock: `sm:` was true at a 1440px
-			 * window while the panel itself was 400px wide, so the grid drew three
-			 * 120px columns. Tracks sized against the panel cannot lie.
-			 */}
-			<div
-				className={cn(
-					"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3",
-				)}
-			>
-				{tiles.map((tile) => {
-					const fileDoc = tile.document;
-					const IconComponent = getIconForFileType(fileDoc.type);
-					const isLocalFile =
-						!fileDoc.path.startsWith("data:") &&
-						!fileDoc.path.startsWith("http");
-					const normalizedPath = stripFileUrl(fileDoc.path);
-					return (
-						<Card
-							key={fileDoc.id}
-							variant="surface"
-							padding="none"
-							className={cn(
-								"group relative overflow-hidden",
-								"transition-colors duration-fast ease-out-quart hover:border-control",
-							)}
-						>
-							{isLocalFile && (
-								<div
+		<div className={cn("flex h-full flex-col")}>
+			{(tiles.length > 0 || scan?.paging || scan?.stopped) && (
+				<div
+					data-tour-tag="files-scanner-head"
+					className={cn(
+						"flex min-h-8 shrink-0 flex-wrap items-center gap-x-3 gap-y-1",
+						"border-hairline border-b bg-surface px-6 py-2",
+					)}
+				>
+					{tiles.length > 0 && (
+						<span className={cn("text-body-sm text-ink")}>{countLabel}</span>
+					)}
+					{scan?.paging && (
+						<span className={cn("text-meta text-ink-dim")}>
+							Searching earlier messages… {scan.scanned} messages scanned
+						</span>
+					)}
+					{scan?.stopped && (
+						<>
+							<span className={cn("text-meta text-ink-dim")}>
+								Searched the most recent {scan.scanned} messages; earlier
+								messages are not searched yet.
+							</span>
+							<Button variant="ghost" size="sm" onClick={scan.resume}>
+								Search earlier messages
+							</Button>
+						</>
+					)}
+				</div>
+			)}
+			{tiles.length === 0 ? (
+				<div
+					className={cn(
+						"flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center",
+					)}
+				>
+					<h2 className={cn("text-heading text-ink")}>
+						Searching earlier messages…
+					</h2>
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						Files named before the part of the conversation already loaded
+						appear here as they are read.
+					</p>
+				</div>
+			) : (
+				<div
+					className={cn("min-h-0 flex-1 overflow-y-auto p-6")}
+					data-tour-tag="files-scroller"
+				>
+					{/*
+					 * `auto-fill` rather than `sm:grid-cols-3`. A viewport breakpoint is
+					 * meaningless inside a resizable dock: `sm:` was true at a 1440px
+					 * window while the panel itself was 400px wide, so the grid drew three
+					 * 120px columns. Tracks sized against the panel cannot lie.
+					 *
+					 * `data-tour-tag` so the geometry probe
+					 * (`scripts/mentioned-files-app-proof.mjs --geometry`) measures this box
+					 * rather than guessing at `.grid`.
+					 */}
+					<div
+						data-tour-tag="files-grid"
+						className={cn(
+							"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3",
+						)}
+					>
+						{tiles.map((tile) => {
+							const fileDoc = tile.document;
+							const IconComponent = getIconForFileType(fileDoc.type);
+							const isLocalFile =
+								!fileDoc.path.startsWith("data:") &&
+								!fileDoc.path.startsWith("http");
+							const normalizedPath = stripFileUrl(fileDoc.path);
+							return (
+								<Card
+									key={fileDoc.id}
+									variant="surface"
+									padding="none"
 									className={cn(
-										"absolute top-1 right-1 z-10",
-										// Revealed on hover or keyboard focus, like every
-										// other row/tile action in the app. Nine permanent
-										// "…" glyphs over nine thumbnails was chrome
-										// competing with the content it sat on.
-										"pointer-events-none opacity-0",
-										"group-hover:pointer-events-auto group-hover:opacity-100",
-										"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+										"group relative overflow-hidden",
+										"transition-colors duration-fast ease-out-quart hover:border-control",
 									)}
 								>
-									<FileActionsMenu
-										filePath={normalizedPath}
-										tooltip="File actions"
-										aria-label="File actions"
-										onShowInCanvas={() => handleFileClick(fileDoc)}
-									/>
-								</div>
-							)}
-							<Tooltip content={fileDoc.title}>
-								<button
-									type="button"
-									onClick={() => handleFileClick(fileDoc)}
-									className={cn(
-										"flex w-full flex-1 flex-col text-left",
-										"transition-colors duration-fast ease-out-quart",
-										"hover:bg-elevated",
-									)}
-								>
-									{fileDoc.type === "image" ? (
-										<img
-											src={getUrl(fileDoc.path)}
-											alt={fileDoc.title}
-											className={cn(THUMBNAIL, "bg-sunken object-contain")}
-										/>
-									) : fileDoc.type === "video" ? (
-										// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
-										<video
-											src={getUrl(fileDoc.path)}
-											controls={true}
-											preload="metadata"
-											className={cn(THUMBNAIL, "bg-sunken object-contain")}
-										/>
-									) : (
-										<span
+									<Tooltip content={fileDoc.title}>
+										<button
+											type="button"
+											onClick={() => handleFileClick(fileDoc)}
 											className={cn(
-												THUMBNAIL,
-												"flex items-center justify-center text-ink-muted",
+												"flex w-full flex-1 flex-col text-left",
+												"transition-colors duration-fast ease-out-quart",
+												"hover:bg-elevated",
 											)}
 										>
-											<IconComponent size={26} />
-										</span>
-									)}
-									{/*
-									 * The file name is the content of the tile, so it is
-									 * `ink` at the body step, not a caption. The lines
-									 * beneath it exist only when they say something the name
-									 * does not: a directory that disambiguates a basename
-									 * two tiles share, or the receipt for a file that is
-									 * gone. A second line on every tile would be chrome
-									 * (branding.md: "a completed action is one line, not a
-									 * card").
-									 */}
-									<span
-										className={cn(
-											"block w-full border-hairline border-t px-2.5 pt-2",
-											tile.showParent || tile.missing ? "pb-1" : "pb-2",
-										)}
-									>
-										<span
-											className={cn(
-												"block w-full truncate text-body-sm text-ink",
+											{fileDoc.type === "image" ? (
+												<img
+													src={getUrl(fileDoc.path)}
+													alt={fileDoc.title}
+													className={cn(THUMBNAIL, "bg-sunken object-contain")}
+												/>
+											) : fileDoc.type === "video" ? (
+												// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
+												<video
+													src={getUrl(fileDoc.path)}
+													controls={true}
+													preload="metadata"
+													className={cn(THUMBNAIL, "bg-sunken object-contain")}
+												/>
+											) : (
+												<span
+													className={cn(
+														THUMBNAIL,
+														"flex items-center justify-center text-ink-muted",
+													)}
+												>
+													<IconComponent size={26} />
+												</span>
 											)}
-										>
-											{tile.name}
-										</span>
-										{/*
-										 * Monospace is machine voice, and a path is the one
-										 * thing this line is. The FULL directory rather than
-										 * the immediate parent's name: two clashing
-										 * `report.pdf` under `~/work/reports` and
-										 * `~/archive/reports` would be as indistinguishable
-										 * as they were before the line existed. It truncates
-										 * like the name does.
-										 */}
-										{tile.showParent && (
+											{/*
+											 * The file name is the content of the tile, so it is
+											 * `ink` at the body step, not a caption. The lines
+											 * beneath it exist only when they say something the name
+											 * does not: a directory that disambiguates a basename
+											 * two tiles share, or the receipt for a file that is
+											 * gone. A second line on every tile would be chrome
+											 * (branding.md: "a completed action is one line, not a
+											 * card").
+											 */}
 											<span
 												className={cn(
-													"block w-full truncate text-mono-sm text-ink-dim",
+													"block w-full border-hairline border-t px-2.5 pt-2",
+													tile.showParent || tile.missing ? "pb-1" : "pb-2",
 												)}
 											>
-												{tile.parent}
+												<span
+													className={cn(
+														"block w-full truncate text-body-sm text-ink",
+													)}
+												>
+													{tile.name}
+												</span>
+												{/*
+												 * Monospace is machine voice, and a path is the one
+												 * thing this line is. The FULL directory rather than
+												 * the immediate parent's name: two clashing
+												 * `report.pdf` under `~/work/reports` and
+												 * `~/archive/reports` would be as indistinguishable
+												 * as they were before the line existed. It truncates
+												 * like the name does.
+												 */}
+												{tile.showParent && (
+													<span
+														className={cn(
+															"block w-full truncate text-mono-sm text-ink-dim",
+														)}
+													>
+														{tile.parent}
+													</span>
+												)}
+												{/*
+												 * Missing files stay in the grid, in place, with a
+												 * muted receipt: the panel's job is to say what the
+												 * agent touched, and a file the user deleted after
+												 * the fact was still touched. Hiding it would
+												 * recreate the original complaint from the other
+												 * side. Copy path keeps working; the click explains
+												 * instead of opening nothing.
+												 */}
+												{tile.missing && (
+													<span
+														className={cn(
+															"block w-full text-meta text-ink-dim",
+														)}
+													>
+														Not found
+													</span>
+												)}
 											</span>
-										)}
-										{/*
-										 * Missing files stay in the grid, in place, with a
-										 * muted receipt: the panel's job is to say what the
-										 * agent touched, and a file the user deleted after
-										 * the fact was still touched. Hiding it would
-										 * recreate the original complaint from the other
-										 * side. Copy path keeps working; the click explains
-										 * instead of opening nothing.
-										 */}
-										{tile.missing && (
-											<span
-												className={cn("block w-full text-meta text-ink-dim")}
-											>
-												Not found
-											</span>
-										)}
-									</span>
-								</button>
-							</Tooltip>
-						</Card>
-					);
-				})}
-			</div>
+										</button>
+									</Tooltip>
+									{/*
+									 * The overflow menu comes AFTER the tile in DOM order, and that is
+									 * the whole of the keyboard fix: the card's first Tab stop used to be
+									 * this `⋯`, so a keyboard user who tabbed into the grid and pressed
+									 * Enter got a menu instead of the file. Absolute positioning means
+									 * the visual order is unchanged; only the focus order moves, and it
+									 * moves onto the control the tile is for.
+									 */}
+									{isLocalFile && (
+										<div
+											className={cn(
+												"absolute top-1 right-1 z-10",
+												// Revealed on hover or keyboard focus, like every
+												// other row/tile action in the app. Nine permanent
+												// "…" glyphs over nine thumbnails was chrome
+												// competing with the content it sat on.
+												"pointer-events-none opacity-0",
+												"group-hover:pointer-events-auto group-hover:opacity-100",
+												"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+											)}
+										>
+											<FileActionsMenu
+												filePath={normalizedPath}
+												tooltip="File actions"
+												aria-label="File actions"
+												onShowInCanvas={() => handleFileClick(fileDoc)}
+											/>
+										</div>
+									)}
+								</Card>
+							);
+						})}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

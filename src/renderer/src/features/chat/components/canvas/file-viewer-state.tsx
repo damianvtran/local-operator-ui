@@ -1,5 +1,6 @@
-import { Button } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { FileUp } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
 /**
@@ -75,3 +76,49 @@ export const OpenInOsButton: FC<{ path: string; label?: string }> = ({
 		{label}
 	</Button>
 );
+
+/**
+ * The one chrome bar the four media viewers share.
+ *
+ * They used to disagree — PDF and video carried a name bar with an action,
+ * audio carried a name bar without one, and the image viewer had no bar at all,
+ * so the picture began directly under the tab strip and there was no in-app way
+ * to hand it to another application. Four viewers with three shapes reads as
+ * unfinished, and branding.md asks for one idiom app-wide. So: a bar on
+ * `surface` closed by a `hairline` rule, the file's name in body type, and the
+ * same `Open in default app` action on all four.
+ *
+ * The path is optional because a `data:` document has no file to hand anywhere;
+ * the action renders only when there is something to open. A themed bar over a
+ * platform viewer is the boundary branding.md draws for content the app does not
+ * own: our chrome, then the document.
+ */
+export const ViewerChrome: FC<{ title: string; path?: string | null }> = ({
+	title,
+	path,
+}) => {
+	const openable =
+		typeof path === "string" && path.length > 0 && !path.startsWith("data:");
+	return (
+		<div
+			className={cn(
+				"flex min-h-8 shrink-0 items-center justify-between gap-2",
+				"border-hairline border-b bg-surface px-2 py-1.5",
+			)}
+		>
+			<span className={cn("truncate text-body-sm text-ink")}>{title}</span>
+			{openable && (
+				<Tooltip content="Open in default app">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Open in default app"
+						onClick={() => window.api.openFile(path)}
+					>
+						<FileUp aria-hidden="true" />
+					</Button>
+				</Tooltip>
+			)}
+		</div>
+	);
+};

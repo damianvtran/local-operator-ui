@@ -56,8 +56,23 @@ export function retain(key: string): string | null {
 	return entry.url;
 }
 
-/** Publish a freshly created URL under `key`, at zero references. */
+/**
+ * Publish a freshly created URL under `key`, at zero references.
+ *
+ * An entry that already exists is KEPT and the new URL is revoked. Two readers
+ * on one key can both miss `retain` and both fetch; overwriting would leave the
+ * first URL unreachable and never revoked, and the next `release` would then
+ * delete the entry the surviving holder is still rendering — a blank surface,
+ * from a cache whose whole point is that it cannot blank one. Keeping the
+ * incumbent makes `retain` immediately after `publish` the caller's way to
+ * join it, which is what `use-file-blob-url` does.
+ */
 export function publish(key: string, url: string): void {
+	const entry = cache.get(key);
+	if (entry) {
+		URL.revokeObjectURL(url);
+		return;
+	}
 	cache.set(key, { url, refs: 0 });
 }
 

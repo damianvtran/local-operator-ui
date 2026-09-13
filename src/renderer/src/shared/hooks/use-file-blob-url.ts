@@ -20,7 +20,11 @@
  * **The cache key is `path:mtime`.** A digest is immutable, a file is not: an
  * agent rewriting the file the user is looking at must not keep showing the
  * version that was on disk when the panel opened. `mtimeMs` comes from the
- * probe, which is why it is a parameter — a renderer cannot `stat`.
+ * probe, which is why it is a parameter — a renderer cannot `stat`. The scope is
+ * exactly that: the key changes when the CALLER supplies a different mtime, so
+ * the grid's click handler threads the probe's `lastAgentModified` through the
+ * document it opens, and a tab opened without one keeps serving the bytes it
+ * first read.
  *
  * Failure is STATE, not an exception, because the viewer must say something
  * specific: "too large to preview" offers the OS, "not found" says so, and
@@ -35,7 +39,10 @@ import {
 	retain,
 } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
-import type { ReadFileBytesFailure } from "../../../../shared/desktop-contract";
+import {
+	MAX_FILE_READ_BYTES,
+	type ReadFileBytesFailure,
+} from "../../../../shared/desktop-contract";
 
 export type FileBlobState =
 	| { status: "loading"; url: null }
@@ -53,8 +60,15 @@ type FileBlobOptions = {
 	mtimeMs?: number | null;
 	/** MIME type of the blob; a PDF renders only when the blob says it is one. */
 	mimeType: string;
-	/** False for a document with no local path (a data URI is already a URL). */
-	enabled?: boolean;
+	/**
+	 * The size the probe reported, when it reported one.
+	 *
+	 * This is what makes the "too large to preview" state honest BEFORE a read is
+	 * attempted: main refuses anything over `MAX_FILE_READ_BYTES`, and a viewer
+	 * that only learns that after the round trip has spent an IPC call to be told
+	 * something the tile already knew.
+	 */
+	sizeBytes?: number | null;
 };
 
 /** The cache key. Path plus modification, because a file is mutable. */
@@ -63,13 +77,37 @@ const cacheKey = (path: string, mtimeMs: number | null | undefined): string =>
 
 export function useFileBlobUrl(
 	path: string,
-	{ mtimeMs, mimeType, enabled = true }: FileBlobOptions,
+	{ mtimeMs, mimeType, sizeBytes }: FileBlobOptions,
 ): FileBlobState {
 	const key = cacheKey(path, mtimeMs);
+	/*
+	 * A `data:` document is already a URL, so there is nothing to fetch and
+	 * nothing to revoke. This is settled here rather than at the three call sites
+	 * that used to pass `enabled: !path.startsWith("data:")`: passing `enabled`
+	 * false made the effect return before touching state, so the hook answered
+	 * `loading` forever and the viewer said "Opening…" about a document it had
+	 * been handed in full.
+	 */
+	const isDataUri = path.startsWith("data:");
+	/*
+	 * The same argument one step earlier for size: a file the probe measured as
+	 * over the read cap is refused by main without being read, so the viewer
+	 * states it without asking.
+	 */
+	const overCap = !isDataUri && (sizeBytes ?? 0) > MAX_FILE_READ_BYTES;
 	// PEEK, never retain: a `useState` initializer is double-invoked under
 	// `StrictMode` (`main.tsx`), and a retain there adds a reference no unmount
 	// can pay back. The effect below owns every reference.
 	const [state, setState] = useState<FileBlobState>(() => {
+		if (isDataUri) return { status: "ready", url: path };
+		if (overCap)
+			return {
+				status: "unavailable",
+				url: null,
+				code: "too-large",
+				message: `${path} is ${sizeBytes} bytes, over the ${MAX_FILE_READ_BYTES}-byte preview cap`,
+				sizeBytes: sizeBytes ?? undefined,
+			};
 		const cached = peek(key);
 		return cached
 			? { status: "ready", url: cached }
@@ -77,7 +115,7 @@ export function useFileBlobUrl(
 	});
 
 	useEffect(() => {
-		if (!enabled) return;
+		if (isDataUri || overCap) return;
 		let live = true;
 		const cached = retain(key);
 		if (cached) {
@@ -144,7 +182,7 @@ export function useFileBlobUrl(
 			live = false;
 			release(key);
 		};
-	}, [enabled, key, mimeType, path]);
+	}, [isDataUri, overCap, key, mimeType, path]);
 
 	return state;
 }

@@ -38,22 +38,49 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { build } from "esbuild";
 
 const SESSION = process.argv[2] ?? "225326399eed";
 const OUT = process.argv[3] ?? "/tmp/lo-producer-proof";
+/* `--geometry` prints only the 1380x900 grid measurement and the tile count. */
+const GEOMETRY_ONLY = process.argv.includes("--geometry");
 const PORT = 9333;
 const DEADLINE_MS = 90_000;
 
 mkdirSync(OUT, { recursive: true });
 const log = [];
 
+/*
+ * The child environment, with the operator's own session variables REMOVED.
+ *
+ * Several agents run this harness at once, and an inherited `CMUX_*` variable
+ * names the operator's real workspace: a headless run that keeps it can rename
+ * or drive the windows somebody is using right now. Stripping them here is the
+ * same rule the QA matrix follows, and it belongs in the spawn rather than in
+ * whatever shell happened to launch this.
+ */
+const childEnv = { ...process.env };
+for (const key of Object.keys(childEnv)) {
+	if (key.startsWith("CMUX_")) delete childEnv[key];
+}
+
 const app = spawn(
 	"./node_modules/.bin/electron",
-	[".", `--remote-debugging-port=${PORT}`, `--user-data-dir=${OUT}/user-data`],
+	[
+		".",
+		`--remote-debugging-port=${PORT}`,
+		`--user-data-dir=${OUT}/user-data`,
+		// The app's own default, stated rather than inherited: the grid geometry
+		// this run measures is the U1 regression check, and it is only meaningful
+		// at the size the app opens at for a user who has never resized it.
+		"--window-size=1380x900",
+	],
 	{
 		env: {
-			...process.env,
+			...childEnv,
 			LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 			// The operator's backend is already live on :1111; this app must not
 			// try to manage or spawn one.
@@ -115,6 +142,68 @@ class Cdp {
 			);
 		return result.result.value;
 	}
+}
+
+/*
+ * What the panel OUGHT to hold, computed from the session's own durable
+ * transcript by the shipped extractor and the shipped reducer.
+ *
+ * This is the completeness check R1-1/U2 asked for: the panel used to list the
+ * loaded tail (14 tiles for a session whose transcript names 160 files) and to
+ * truncate the first 200 mentions of a long one. Comparing the panel's own store
+ * against this number is what makes "the complete set" a measurement rather than
+ * a claim.
+ */
+async function expectedPaths() {
+	const bundle = await build({
+		stdin: {
+			contents: `
+				export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+				export { extractMentionedPaths } from "./src/renderer/src/features/chat/canonical/mentioned-files";
+			`,
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		alias: {
+			"@features": "./src/renderer/src/features",
+			"@shared": "./src/renderer/src/shared",
+		},
+	});
+	const { EMPTY_TRANSCRIPT, applyHistoryPage, extractMentionedPaths } =
+		await import(
+			`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+		);
+	const file = join(homedir(), ".local-operator", "sessions", SESSION, "transcript.jsonl");
+	if (!existsSync(file)) return null;
+	const rows = [];
+	let cwd = null;
+	for (const line of readFileSync(file, "utf8").split("\n")) {
+		if (!line.trim()) continue;
+		try {
+			const row = JSON.parse(line);
+			if (!row?.id || !row?.payload) continue;
+			rows.push(row);
+			if (row.payload?.custom_type === "frontend_state_checkpoint_v1") {
+				const value = row.payload?.details?.state?.cwd;
+				if (typeof value === "string" && value.length > 0) cwd = value;
+			}
+		} catch {
+			// A truncated final line is a session still being written.
+		}
+	}
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: rows,
+		has_more: false,
+		cursor_missing: false,
+	});
+	return {
+		records: state.records.length,
+		cwd,
+		paths: extractMentionedPaths(state.records, cwd ?? undefined).map((m) => m.path),
+	};
 }
 
 const deadline = Date.now() + DEADLINE_MS;
@@ -212,24 +301,159 @@ report.openedCanvas = await cdp.evaluate(`(() => {
 })()`);
 await sleep(700);
 report.switchedToFiles = await cdp.evaluate(`(() => {
-	const button = document.querySelector('button[aria-label="Files view"]');
+	const button = document.querySelector('button[aria-label^="Files view"]');
 	if (!button) return false;
 	button.click();
 	return true;
 })()`);
-await sleep(2500);
 
-// 4. What the grid actually renders.
-report.filesGrid = await cdp.evaluate(`(() => {
-	const tiles = [...document.querySelectorAll("button")].filter((button) =>
-		button.querySelector("span span, span"),
-	);
-	const grid = document.querySelector(".grid");
-	const texts = grid
-		? [...grid.querySelectorAll("button")].map((b) => b.innerText.trim())
-		: [];
-	return { tileCount: texts.length, texts };
+/*
+ * 4. Wait for the scan to settle, sampling the store as it goes.
+ *
+ * The panel pages the conversation's own older history while it is open, so the
+ * count is expected to CLIMB and then stop. Sampling it turns "the panel lists
+ * the complete set" into two measurable claims: the final count matches the
+ * extractor's answer over the whole durable transcript, and the head stopped
+ * saying it was still searching.
+ */
+const samples = [];
+let previousCount = -1;
+let stableFor = 0;
+const scanDeadline = Date.now() + 60_000;
+while (Date.now() < scanDeadline) {
+	const sample = await cdp.evaluate(`(() => {
+		const raw = localStorage.getItem("canvas-store");
+		const conversation = raw
+			? JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]
+			: null;
+		const head = document.querySelector('[data-tour-tag="files-scanner-head"]');
+		return {
+			count: conversation?.mentionedFiles?.length ?? 0,
+			head: head ? head.innerText.trim() : null,
+		};
+	})()`);
+	if (samples.length === 0 || sample.count !== samples[samples.length - 1].count)
+		samples.push(sample);
+	if (sample.count === previousCount) stableFor += 1;
+	else stableFor = 0;
+	previousCount = sample.count;
+	// Three consecutive identical readings with no "Searching" line left: done.
+	if (stableFor >= 3 && !(sample.head ?? "").includes("Searching")) break;
+	await sleep(1000);
+}
+report.scanSamples = samples;
+report.panelCount = previousCount;
+report.panelHead = samples[samples.length - 1]?.head ?? null;
+
+/*
+ * The comparison is on RESOLVED paths, which is the panel's own identity.
+ *
+ * The extractor reports the spellings the transcript used (`~/x` and
+ * `/Users/you/x` are two), and the probe collapses them to one tile by the
+ * resolved path — so counting spellings would report a difference that is the
+ * feature working. Resolution here mirrors `resolveUserPath` in main: `~`
+ * expands against the home directory and a relative candidate resolves against
+ * the session's cwd.
+ */
+const resolve = (path, cwd) => {
+	if (path.startsWith("~/")) return join(homedir(), path.slice(2));
+	if (path.startsWith("/")) return path;
+	return cwd ? join(cwd, path) : path;
+};
+const expected = await expectedPaths();
+const expectedResolved = expected
+	? [...new Set(expected.paths.map((path) => resolve(path, expected.cwd)))]
+	: [];
+const panelPaths = await cdp.evaluate(`(() => {
+	const raw = localStorage.getItem("canvas-store");
+	const conversation = raw
+		? JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]
+		: null;
+	return (conversation?.mentionedFiles ?? []).map((document) => document.path);
 })()`);
+const expectedSet = new Set(expectedResolved);
+report.durable = expected
+	? {
+			records: expected.records,
+			cwd: expected.cwd,
+			distinctSpellings: expected.paths.length,
+			distinctResolvedPaths: expectedResolved.length,
+			panelTiles: panelPaths.length,
+			matchesPanel:
+				panelPaths.length === expectedResolved.length ? "exact" : "DIFFERENT",
+			panelPathsNotInTranscript: panelPaths.filter(
+				(path) => !expectedSet.has(path),
+			).length,
+			transcriptPathsNotInPanel: expectedResolved.filter(
+				(path) => !panelPaths.includes(path),
+			).length,
+		}
+	: null;
+
+// 5. What the grid actually renders, plus the 1380x900 geometry (U1's check).
+report.filesGrid = await cdp.evaluate(`(() => {
+	const grid = document.querySelector('[data-tour-tag="files-grid"]');
+	const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
+	const dock = document.querySelector('[data-tour-tag="canvas-dock"]');
+	const tiles = grid ? [...grid.querySelectorAll(":scope > *")] : [];
+	const rects = tiles
+		.map((tile) => tile.getBoundingClientRect())
+		.filter((rect) => rect.width > 0);
+	const inner = window.innerWidth;
+	const clipped = rects.filter((rect) => rect.right > inner + 0.5).length;
+	const columns = new Set(rects.map((rect) => Math.round(rect.left))).size;
+	return {
+		tileCount: tiles.length,
+		windowInnerWidth: inner,
+		windowInnerHeight: window.innerHeight,
+		dock: dock
+			? (({ x, width, right }) => ({
+					x: Math.round(x),
+					width: Math.round(width),
+					right: Math.round(right),
+				}))(dock.getBoundingClientRect())
+			: null,
+		grid: grid
+			? (({ x, width, right }) => ({
+					x: Math.round(x),
+					width: Math.round(width),
+					right: Math.round(right),
+				}))(grid.getBoundingClientRect())
+			: null,
+		scroller: scroller
+			? { clientWidth: scroller.clientWidth, scrollWidth: scroller.scrollWidth }
+			: null,
+		columns,
+		clippedTiles: clipped,
+		tileRightEdges: rects.map((rect) => Math.round(rect.right)),
+		documentScrollsHorizontally:
+			document.documentElement.scrollWidth > inner + 0.5,
+	};
+})()`);
+
+report.focusabilityOrder = await cdp.evaluate(`(() => {
+	const card = document.querySelector('[data-tour-tag="files-grid"] > *');
+	if (!card) return null;
+	return [...card.querySelectorAll("button, [tabindex]")].map(
+		(element) =>
+			element.getAttribute("aria-label") ??
+			element.innerText.trim().slice(0, 24),
+	);
+})()`);
+
+if (GEOMETRY_ONLY) {
+	report.tileTexts = await cdp.evaluate(`(() => {
+		const grid = document.querySelector('[data-tour-tag="files-grid"]');
+		return grid ? [...grid.querySelectorAll("button")].map((b) => b.innerText.trim()) : [];
+	})()`);
+	writeFileSync(`${OUT}/report-geometry.json`, JSON.stringify(report, null, 2));
+	console.log(JSON.stringify(report, null, 2));
+	ws.close();
+	app.kill("SIGTERM");
+	await sleep(1000);
+	app.kill("SIGKILL");
+	process.exit(0);
+}
 
 await cdp.evaluate(
 	`document.querySelector('[aria-label="Files view"]')?.scrollIntoView()`,
@@ -264,6 +488,62 @@ report.pdfFrame = await cdp.evaluate(`(() => {
 })()`);
 const shot2 = await cdp.send("Page.captureScreenshot", { format: "png" });
 writeFileSync(`${OUT}/pdf-viewer.png`, Buffer.from(shot2.data, "base64"));
+
+/*
+ * 6. The keyboard and announcement checks (U3, U4, U5).
+ *
+ * All three are about ORDER and FOCUS, which source cannot settle: the tile's
+ * Tab stop depends on the DOM order React actually produced, and the focus
+ * return depends on where the browser puts focus when the focused control
+ * unmounts. Driven with real key events, and read from the page.
+ */
+report.filesSegmentLabel = await cdp.evaluate(`(() => {
+	const segment = document.querySelector(
+		'button[aria-label^="Files view"]',
+	);
+	return segment ? segment.getAttribute("aria-label") : null;
+})()`);
+
+/** One real Escape key press, dispatched the way a keyboard sends one. */
+const pressEscape = async () => {
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+};
+await pressEscape();
+await sleep(500);
+report.escapeReturnsToFiles = await cdp.evaluate(`(() => {
+	const raw = localStorage.getItem("canvas-store");
+	return JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]?.viewMode ?? null;
+})()`);
+
+// Closing the canvas from inside it is what used to drop focus on `<body>`.
+report.closedCanvas = await cdp.evaluate(`(() => {
+	const button = document.querySelector('[aria-label="Close canvas"]');
+	if (!button) return false;
+	button.focus();
+	button.click();
+	return true;
+})()`);
+await sleep(500);
+report.focusAfterClose = await cdp.evaluate(`(() => {
+	const active = document.activeElement;
+	return {
+		tag: active ? active.tagName.toLowerCase() : null,
+		label: active ? active.getAttribute("aria-label") : null,
+		tourTag: active ? active.getAttribute("data-tour-tag") : null,
+	};
+})()`);
+report.canvasButtonLabel = await cdp.evaluate(`(() => {
+	const button = document.querySelector('[data-tour-tag="open-canvas-button"]');
+	return button ? button.getAttribute("aria-label") : null;
+})()`);
 
 report.appLogTail = log.slice(-8);
 writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));

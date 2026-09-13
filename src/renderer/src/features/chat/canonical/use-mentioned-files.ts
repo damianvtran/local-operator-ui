@@ -37,17 +37,31 @@
  *    one file two ways (`~/notes/plan.md` and `/Users/you/notes/plan.md`), and
  *    only the probe's resolved form makes them the same tile. Reconciling here
  *    is what keeps the panel from listing one file twice.
+ * 6. **The scan reaches the whole conversation, and says so when it cannot.**
+ *    This hook is fed the loaded transcript, and the loaded transcript is a
+ *    window: the panel showed 14 tiles for a session whose own durable history
+ *    holds 160 distinct paths. So while the Files view is open the hook drives
+ *    the reader's own older-history paging (`sessions.history`) until the
+ *    transcript is whole, publishing a progress state the panel head renders.
+ *    The bound that remains is a SCAN bound with a stated end — see
+ *    `mentioned-files-scan.ts` — never a silent truncation of the output.
  */
 
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	MAX_PROBE_PATHS,
 	type ProbedFile,
 } from "../../../../../shared/desktop-contract";
 import { type MentionedPath, extractMentionedPaths } from "./mentioned-files";
+import {
+	type MentionScanState,
+	SCAN_PAGE_BUDGET,
+	mentionScanState,
+	shouldRequestPage,
+} from "./mentioned-files-scan";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 type MentionedFilesOptions = {
@@ -59,6 +73,36 @@ type MentionedFilesOptions = {
 	cwd?: string | null;
 	/** False for a legacy backend, a draft with no session, or a still-loading view. */
 	enabled: boolean;
+	/**
+	 * The completeness driver, or `null` when nothing should be paged.
+	 *
+	 * `active` is "the Files view is open": paging splices rows into the
+	 * transcript the reader is looking at, which is a visible side effect and
+	 * happens because the user asked to see every file, not because a
+	 * conversation is mounted. `oldestId` keys the requests — it changes when a
+	 * page lands, and it does NOT change for a live delta, which is what keeps a
+	 * streaming turn from re-asking for the same page.
+	 */
+	scan?: {
+		active: boolean;
+		hasMore: boolean;
+		oldestId: string | null;
+		loadOlder: () => Promise<boolean>;
+	} | null;
+};
+
+/** What the panel head renders: the state plus the way to fetch the rest. */
+export type MentionScanHandle = MentionScanState & {
+	/** Raise the page budget and continue where the scan stopped. */
+	resume: () => void;
+};
+
+const IDLE_SCAN: MentionScanState = {
+	active: false,
+	scanned: 0,
+	hasMore: false,
+	paging: false,
+	stopped: false,
 };
 
 /** Per-conversation bookkeeping. A ref, because none of it may cause a render. */
@@ -70,6 +114,19 @@ type ProbeBook = {
 	missing: Set<string>;
 	/** Last observed record count; a growth is what re-arms a missing path. */
 	recordCount: number;
+};
+
+/** Per-conversation scan bookkeeping, separate from the probe book on purpose. */
+type PageBook = {
+	id: string;
+	/** Pages fetched since the budget was last raised. */
+	pages: number;
+	/** The current budget, in pages. `resume` raises it. */
+	budget: number;
+	/** A page request is in flight. */
+	inFlight: boolean;
+	/** The `oldestId` a request was last issued for. */
+	requestedFor: string | null;
 };
 
 /**
@@ -149,11 +206,47 @@ export function useMentionedFiles({
 	records,
 	cwd,
 	enabled,
-}: MentionedFilesOptions): void {
+	scan,
+}: MentionedFilesOptions): MentionScanHandle {
 	const session = useRef<ProbeBook | null>(null);
+	const pageBook = useRef<PageBook | null>(null);
+	const inFlight = useRef(false);
 	const addMentionedFilesBatch = useCanvasStore(
 		(s) => s.addMentionedFilesBatch,
 	);
+
+	/*
+	 * The published scan state.
+	 *
+	 * Kept in React state because the panel head is React; written through a
+	 * comparator because this hook runs on every transcript delta and a fresh
+	 * object per delta would re-render the grid (and re-render it again for the
+	 * identity alone).
+	 */
+	const [scanState, setScanState] = useState<MentionScanState>(IDLE_SCAN);
+	const published = useRef<MentionScanState>(IDLE_SCAN);
+	const publish = useCallback((next: MentionScanState) => {
+		const previous = published.current;
+		if (
+			previous.active === next.active &&
+			previous.scanned === next.scanned &&
+			previous.hasMore === next.hasMore &&
+			previous.paging === next.paging &&
+			previous.stopped === next.stopped
+		)
+			return;
+		published.current = next;
+		setScanState(next);
+	}, []);
+
+	// `resume` raises the page budget and re-runs the effect: the state object is
+	// what React watches, so the budget itself lives in the ref book.
+	const [scanTick, setScanTick] = useState(0);
+	const resume = useCallback(() => {
+		const book = pageBook.current;
+		if (book) book.budget += SCAN_PAGE_BUDGET;
+		setScanTick((tick) => tick + 1);
+	}, []);
 
 	useEffect(() => {
 		if (!enabled || !conversationId || !records || records.length === 0) return;
@@ -226,4 +319,100 @@ export function useMentionedFiles({
 			}
 		})();
 	}, [enabled, conversationId, records, cwd, addMentionedFilesBatch]);
+
+	/*
+	 * The completeness driver.
+	 *
+	 * Runs while the Files view is open and the transcript still has durable rows
+	 * the reader has not loaded, one page at a time, re-running as each page
+	 * lands. The whole rule - when to ask, when to stop, and what that means for
+	 * the panel's honesty - is `mentioned-files-scan.ts`; this effect is the
+	 * wiring.
+	 *
+	 * Why `requestedFor` rather than a page counter alone: a streaming turn
+	 * changes `records` on every frame, and a naive "records grew, ask again"
+	 * would issue the same `beforeId` page dozens of times. `oldestId` is the
+	 * cursor `loadOlder` uses, so it is the honest key for "is there a page I have
+	 * not asked for yet".
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `scanTick` is the re-run trigger this effect is built around - it is bumped by `resume` and after every page request, and the cursor/budget bookkeeping it re-reads lives in refs so that neither can cause a render on its own.
+	useEffect(() => {
+		const scanned = records?.length ?? 0;
+		if (!enabled || !conversationId || !scan) {
+			publish(IDLE_SCAN);
+			return;
+		}
+		if (pageBook.current?.id !== conversationId)
+			pageBook.current = {
+				id: conversationId,
+				pages: 0,
+				budget: SCAN_PAGE_BUDGET,
+				inFlight: false,
+				requestedFor: null,
+			};
+		const book = pageBook.current;
+		const step = {
+			active: scan.active,
+			scanned,
+			hasMore: scan.hasMore,
+			inFlight: inFlight.current,
+			pagesFetched: book.pages,
+			budget: book.budget,
+		};
+		publish(mentionScanState(step));
+		if (!shouldRequestPage(step)) return;
+		// A cursor already asked for. A live delta re-runs this effect without
+		// moving it, and re-asking would fetch the same page twice; a page that
+		// landed moves it, and a request still in flight will move it or spend the
+		// budget when it fails.
+		if (scan.oldestId !== null && book.requestedFor === scan.oldestId) {
+			if (book.inFlight) return;
+			// Nothing is in flight and the cursor has not moved since the last
+			// request: no page arrived. Stop asking and let the head say so — a cue
+			// that keeps promising more is worse than an honest "not searched",
+			// whose own action is the retry.
+			book.pages = book.budget;
+			publish(mentionScanState({ ...step, pagesFetched: book.pages }));
+			return;
+		}
+
+		book.requestedFor = scan.oldestId;
+		book.inFlight = true;
+		inFlight.current = true;
+		void (async () => {
+			try {
+				const applied = await scan.loadOlder();
+				if (pageBook.current?.id !== conversationId) return;
+				if (applied) book.pages += 1;
+				// Nothing arrived: either there is no older page or the request
+				// failed, and neither is a state to keep spinning in. Spending the
+				// budget is what turns it into the honest "earlier messages not
+				// searched" line, whose own action is the retry.
+				else book.pages = book.budget;
+			} finally {
+				book.inFlight = false;
+				inFlight.current = false;
+				// No `return` in here: a return inside `finally` swallows the promise's
+				// own outcome, and this block has a job whether or not the session moved
+				// on. The guard is the condition instead.
+				if (pageBook.current?.id === conversationId) {
+					publish(
+						mentionScanState({
+							...step,
+							inFlight: false,
+							pagesFetched: book.pages,
+							budget: book.budget,
+						}),
+					);
+					// Re-evaluate once per request. The page that landed changes
+					// `records`, which re-runs this effect on its own — but an empty page
+					// at the end of a history that still claims `has_more` changes
+					// nothing, and without this the cue would stay up forever.
+					setScanTick((tick) => tick + 1);
+				}
+			}
+		})();
+	}, [enabled, conversationId, records, scan, publish, scanTick]);
+
+	return useMemo(() => ({ ...scanState, resume }), [scanState, resume]);
 }

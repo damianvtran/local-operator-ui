@@ -377,6 +377,24 @@ export const STORIES = [
 	["canvas-workspace--code", 1280, 900],
 	["canvas-workspace--code-focused", 1280, 900],
 	["canvas-workspace--files", 1280, 900],
+	/*
+	 * The panel's completeness states, and the four media viewers.
+	 *
+	 * These are the stories the design round judges the two changes this branch
+	 * added to the panel: the head that states what the scan has and has not read
+	 * (`files-scanning`, `files-scan-stopped`), and the one chrome idiom the four
+	 * viewers now share (`pdf-viewer`, `image-viewer`, `audio-viewer`,
+	 * `video-viewer`). The viewers read bytes over IPC, which the story installs a
+	 * fixture for, so each frame shows a real picture rather than an "Opening…"
+	 * line; the video frame is the one state the offline harness can produce, and
+	 * `canvas.stories.tsx` says so at the story.
+	 */
+	["canvas-workspace--files-scanning", 1280, 900],
+	["canvas-workspace--files-scan-stopped", 1280, 900],
+	["canvas-workspace--pdf-viewer", 1280, 900],
+	["canvas-workspace--image-viewer", 1280, 900],
+	["canvas-workspace--audio-viewer", 1280, 900],
+	["canvas-workspace--video-viewer", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],

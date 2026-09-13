@@ -9,6 +9,15 @@
  * (so the records the extractor sees are the records the app would hand it),
  * and prints what the extractor finds.
  *
+ * Each session is scanned with ITS OWN cwd, read from its
+ * `frontend_state_checkpoint_v1` row. That detail is the difference between an
+ * audit of the extractor and an audit of the app: the renderer always passes
+ * `canonical.view.frontend.cwd`, and a cwd is what makes a relative value under
+ * a path key admissible at all. An earlier version of this script passed none,
+ * so it never exercised the relative-admission path production uses — which is
+ * exactly where the harness's own `send` tool was putting peer PIDs and
+ * conversation names into the panel.
+ *
  * Read-only. It touches no session, no socket and no database; `transcript.jsonl`
  * is opened for reading and nothing is written back.
  *
@@ -90,10 +99,30 @@ function recentTranscripts(limit) {
 	return entries.sort((a, b) => b.mtime - a.mtime).slice(0, limit);
 }
 
+/**
+ * The session's own working directory, as the renderer reads it.
+ *
+ * The canonical frontend state is checkpointed into the durable transcript as a
+ * `frontend_state_checkpoint_v1` custom row, so the LAST one is the cwd the
+ * session was working in when it ended — which is the cwd a relative candidate
+ * would have been resolved against.
+ */
+function sessionCwd(rows) {
+	let cwd = null;
+	for (const row of rows) {
+		const payload = row?.payload;
+		if (payload?.custom_type !== "frontend_state_checkpoint_v1") continue;
+		const value = payload?.details?.state?.cwd;
+		if (typeof value === "string" && value.length > 0) cwd = value;
+	}
+	return cwd;
+}
+
 const sessions = recentTranscripts(SESSION_LIMIT);
 const seen = new Map();
 let scannedRecords = 0;
 let sessionsWithMentions = 0;
+let sessionsWithCwd = 0;
 
 for (const session of sessions) {
 	const rows = [];
@@ -113,7 +142,10 @@ for (const session of sessions) {
 		cursor_missing: false,
 	});
 	scannedRecords += state.records.length;
-	const mentions = extractMentionedPaths(state.records);
+	// The call site's own arguments, including the cwd the app would pass.
+	const cwd = sessionCwd(rows);
+	if (cwd !== null) sessionsWithCwd += 1;
+	const mentions = extractMentionedPaths(state.records, cwd ?? undefined);
 	if (mentions.length > 0) sessionsWithMentions += 1;
 	for (const mention of mentions) {
 		if (!seen.has(mention.path))
@@ -175,6 +207,7 @@ console.log(
 	JSON.stringify(
 		{
 			sessionsScanned: sessions.length,
+			sessionsWithCwd,
 			sessionsWithMentions,
 			recordsScanned: scannedRecords,
 			distinctPaths: seen.size,

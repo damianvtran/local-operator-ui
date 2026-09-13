@@ -1529,8 +1529,11 @@ export function desktopEndpoint(request: DesktopRequest): {
  * A bound rather than a guess: a stat on an unmounted network path can hang for
  * seconds, so the renderer chunks its probe requests and main refuses anything
  * larger rather than turning one call into a stall. 64 is comfortably more than
- * a panel's worth of tiles (the store caps a conversation at 500 entries) while
- * keeping a single synchronous batch short.
+ * a panel's worth of tiles while keeping a single synchronous batch short. The
+ * panel's own list is bounded by the conversation, not by this number: a
+ * transcript with hundreds of mentions is probed in chunks of 64, and the
+ * extractor no longer caps its output at all (it used to stop at 200 paths,
+ * which is what made the tail of a long conversation unreachable).
  */
 export const MAX_PROBE_PATHS = 64;
 

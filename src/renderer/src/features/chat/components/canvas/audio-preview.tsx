@@ -3,19 +3,24 @@ import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo } from "react";
-import { FileViewerState, OpenInOsButton } from "./file-viewer-state";
+import {
+	FileViewerState,
+	OpenInOsButton,
+	ViewerChrome,
+} from "./file-viewer-state";
 
 /**
  * Audio the agent produced, played in the panel.
  *
- * Over IPC bytes like the image viewer, not the backend's `/v1/static/audio`
- * route. A short clip does not need Range requests, and the blob keeps the
- * viewer working with the backend stopped — which is the same reason the image
- * viewer reads bytes rather than asking the static route for a URL.
+ * Over IPC bytes and a blob URL, like the image viewer and unlike the video one:
+ * an audio file is small enough to hand over whole, and a blob URL works with
+ * the backend stopped.
  *
- * The one thing this surface must not do is autoplay: a panel that starts
- * talking because a tile was clicked is a hostile surprise, and the controls are
- * the affordance that says "this plays when you say so".
+ * The name bar carries `Open in default app` like its three siblings
+ * (`ViewerChrome`). It used to carry the name and nothing else, so this was the
+ * one media viewer with no way out to another application — a wave file's
+ * natural home is often a player, and the viewer knew that only in its error
+ * state.
  */
 const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
@@ -23,21 +28,12 @@ const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
-		enabled: !document.path.startsWith("data:"),
+		sizeBytes: document.sizeBytes,
 	});
 
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
-			<div
-				className={cn(
-					"flex min-h-8 shrink-0 items-center gap-2",
-					"border-hairline border-b bg-surface px-2 py-1.5",
-				)}
-			>
-				<span className={cn("truncate text-body-sm text-ink")}>
-					{document.title}
-				</span>
-			</div>
+			<ViewerChrome title={document.title} path={document.path} />
 			{state.status === "ready" ? (
 				<div className={cn("flex flex-1 items-center justify-center p-6")}>
 					{/* biome-ignore lint/a11y/useMediaCaption: the operator's own audio file has no caption track to offer. */}
@@ -59,7 +55,7 @@ const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 								? "File no longer exists"
 								: "This audio file could not be opened"
 					}
-					detail={document.path}
+					detail={state.message ?? document.path}
 				>
 					<OpenInOsButton path={document.path} />
 				</FileViewerState>

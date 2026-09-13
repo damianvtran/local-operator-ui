@@ -35,8 +35,12 @@ const bundle = await build({
 				extractFromArgs,
 				normalizeCandidate,
 				KNOWN_EXTENSIONS,
-				MAX_CANDIDATES_PER_PASS,
 			} from "./src/renderer/src/features/chat/canonical/mentioned-files";
+			export {
+				SCAN_PAGE_BUDGET,
+				mentionScanState,
+				shouldRequestPage,
+			} from "./src/renderer/src/features/chat/canonical/mentioned-files-scan";
 			export { buildFileTiles, parentDirectory } from "./src/renderer/src/features/chat/components/canvas/file-tiles";
 		`,
 		resolveDir: process.cwd(),
@@ -58,7 +62,9 @@ const {
 	extractFromArgs,
 	normalizeCandidate,
 	KNOWN_EXTENSIONS,
-	MAX_CANDIDATES_PER_PASS,
+	SCAN_PAGE_BUDGET,
+	mentionScanState,
+	shouldRequestPage,
 	buildFileTiles,
 	parentDirectory,
 } = await import(
@@ -296,6 +302,89 @@ test("normalizeCandidate rejects the whole documented family", () => {
 	assert.equal(normalizeCandidate("/Users/x/a.png"), "/Users/x/a.png");
 });
 
+test("a shell metacharacter is a placeholder, not a path", () => {
+	// Found on screen during the QA walk: `qa-res-$PID.pdf`, `prod-res-$PID.pdf`
+	// and a heredoc's `<name` were full tiles with a `Not found` receipt under
+	// them, and in that session a third of the grid was dead tiles.
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/qa-res-$PID.pdf")]), []);
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/prod-res-$PID.pdf")]), []);
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/a{b,c}.ts")]), []);
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/out/*.log")]), []);
+	assert.deepEqual(
+		paths([assistant(1, "opened file:///tmp/agent-out/<name>.")]),
+		[],
+		"the placeholder must not be cut short into a tile for its directory",
+	);
+	assert.equal(normalizeCandidate("/tmp/a$b.md"), null);
+});
+
+test("a file:// URL whose name contains a bracket is recorded whole", () => {
+	// macOS names screenshots `Screenshot 2024-01-01 at 10.00.00 (1).png`, and the
+	// scanner's character class had to stop at `(` to avoid swallowing a markdown
+	// link's closing bracket — so the path was recorded truncated. Parsing the URL
+	// separates the two questions.
+	assert.deepEqual(
+		paths([assistant(1, "saved file:///Users/x/Downloads/screen(1).png")]),
+		["/Users/x/Downloads/screen(1).png"],
+	);
+	// The bracket a SENTENCE closes with is still trimmed.
+	assert.deepEqual(
+		paths([assistant(1, "see [the shot](file:///Users/x/Downloads/screen(1).png)")]),
+		["/Users/x/Downloads/screen(1).png"],
+	);
+	// And a percent-encoded spelling names the file on disk.
+	assert.deepEqual(
+		paths([assistant(1, "open file:///Users/x/My%20Docs/a.pdf")]),
+		["/Users/x/My Docs/a.pdf"],
+	);
+	// A non-local host is not a path on this machine.
+	assert.deepEqual(
+		paths([assistant(1, "share is file://other-host/share/a.pdf")]),
+		[],
+	);
+});
+
+test("a plain path list keeps its file:// entry (the next line is not a continuation)", () => {
+	// The truncation guard could not tell "the same line continues" from "the
+	// next line starts", so a reply naming a file ONLY as a `file://` link on a
+	// line followed by another path lost it silently.
+	assert.deepEqual(
+		paths([
+			assistant(
+				1,
+				"file:///Users/damian/local-operator-ui/AGENTS.md\n~/local-operator-ui/AGENTS.md",
+			),
+		]),
+		[
+			"/Users/damian/local-operator-ui/AGENTS.md",
+			"~/local-operator-ui/AGENTS.md",
+		],
+	);
+	// A blank line between them is still a new line.
+	assert.deepEqual(
+		paths([assistant(1, "file:///Users/x/a.md\n\n/tmp/b.md")]),
+		["/Users/x/a.md", "/tmp/b.md"],
+	);
+});
+
+test("a semantic label is not a path key", () => {
+	// The harness's own `send` tool: `target` is a peer PID or another session's
+	// conversation name. With a cwd present both used to be admitted, resolved
+	// against the session and probed into `Not found` tiles.
+	const cwd = "/Users/damian/proj";
+	for (const key of ["target", "source", "dest", "destination"])
+		assert.deepEqual(
+			paths([tool("a", { [key]: "50809" })], cwd),
+			[],
+			`${key} must not admit a bare token`,
+		);
+	assert.deepEqual(paths([tool("a", { target: "lop-bridge-wedge" })], cwd), []);
+	// The real path keys are unchanged.
+	assert.deepEqual(paths([tool("a", { file_path: "src/app.ts" })], cwd), [
+		"src/app.ts",
+	]);
+});
+
 // ------------------------------------------------------------ invariants
 
 test("16. scanning twice is idempotent, and a streamed delta adds no duplicate", () => {
@@ -360,11 +449,90 @@ test("a path named in prose and again in a read call keeps its first mention", (
 	assert.equal(sources(reversed)["/Users/y/spec.md"], "tool-arg");
 });
 
-test("the per-pass cap bounds a pathological transcript", () => {
+test("the extractor has no output cap: a long conversation yields its tail", () => {
+	// The 200-path cap used to truncate here, and because records only append and
+	// the scan restarts from record 0, the same first 200 came back on every pass —
+	// so paths 201+ were unreachable for the life of the conversation, not merely
+	// delayed. Measured on this machine: 23 of 1,735 real sessions returned exactly
+	// 200 paths, and one lost ~1,700 of them.
 	const records = [
 		assistant(1, Array.from({ length: 300 }, (_, i) => `/tmp/f${i}.md`).join(" ")),
 	];
-	assert.equal(extractMentionedPaths(records).length, MAX_CANDIDATES_PER_PASS);
+	const found = extractMentionedPaths(records);
+	assert.equal(found.length, 300, "every mention is reported, not the first 200");
+	assert.equal(found[299].path, "/tmp/f299.md", "the tail is present, in order");
+
+	// The same claim in the shape a real session has: the tail lives in the OLDEST
+	// records, which arrive by paging. Nothing about admitting them depends on
+	// where in the list they sit.
+	const older = [
+		assistant(0, "/tmp/only-in-the-oldest-page.pdf"),
+		...Array.from({ length: 250 }, (_, i) =>
+			assistant(i + 1, `/tmp/middle-${i}.md`),
+		),
+	];
+	assert.ok(
+		paths(older).includes("/tmp/only-in-the-oldest-page.pdf"),
+		"a path reachable only through older history is reported",
+	);
+});
+
+test("the scan pauses at its budget and the tail is recoverable", () => {
+	// The bound that remains is a SCAN bound, and the panel states it. This is the
+	// "first N of M" case asserted rather than described: with a budget of three
+	// pages and more available, the scan stops, says so, and the resume action is
+	// what reaches the rest.
+	const base = {
+		active: true,
+		scanned: 300,
+		hasMore: true,
+		inFlight: false,
+		budget: 3,
+	};
+	assert.equal(shouldRequestPage({ ...base, pagesFetched: 0 }), true);
+	assert.equal(
+		shouldRequestPage({ ...base, pagesFetched: 3 }),
+		false,
+		"budget spent",
+	);
+	assert.deepEqual(mentionScanState({ ...base, pagesFetched: 1 }), {
+		active: true,
+		scanned: 300,
+		hasMore: true,
+		paging: true,
+		stopped: false,
+	});
+	const stopped = mentionScanState({ ...base, pagesFetched: 3 });
+	assert.equal(
+		stopped.stopped,
+		true,
+		"the head can say which messages were searched",
+	);
+	assert.equal(stopped.paging, false);
+
+	// `resume` raises the budget by one step, and the tail becomes reachable again.
+	const resumed = { ...base, budget: 3 + SCAN_PAGE_BUDGET, pagesFetched: 3 };
+	assert.equal(shouldRequestPage(resumed), true);
+	assert.equal(mentionScanState(resumed).stopped, false);
+
+	// A closed panel asks for nothing, and says nothing.
+	const idle = mentionScanState({ ...base, active: false, pagesFetched: 0 });
+	assert.deepEqual(idle, {
+		active: false,
+		scanned: 300,
+		hasMore: true,
+		paging: false,
+		stopped: false,
+	});
+	assert.equal(
+		shouldRequestPage({ ...base, active: false, pagesFetched: 0 }),
+		false,
+	);
+
+	// A whole transcript is neither paging nor stopped.
+	const done = mentionScanState({ ...base, hasMore: false, pagesFetched: 2 });
+	assert.equal(done.paging, false);
+	assert.equal(done.stopped, false);
 });
 
 test("the known-extension set is the one the classifier owns", () => {

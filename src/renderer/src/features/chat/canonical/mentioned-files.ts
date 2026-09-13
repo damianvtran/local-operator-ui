@@ -78,7 +78,18 @@ export type MentionedPath = {
 	source: MentionedFileSource;
 };
 
-/** Keys whose value is a path even when it looks like nothing at all. */
+/**
+ * Keys whose value is a path even when it looks like nothing at all.
+ *
+ * Semantic labels are deliberately absent. `target`, `source`, `dest` and
+ * `destination` used to be listed here, and the harness's own `send` tool is
+ * what turned that into a defect: `{"target": "50809"}` is a peer PID and
+ * `{"target": "lop-bridge-wedge"}` is another session's conversation NAME, and
+ * because a cwd was present both were admitted as files and probed to a
+ * "Not found" tile. A key that means "the thing this call is about" is not a
+ * key that means "a path"; the real-path keys below are, and the prose scanner
+ * still catches a path that genuinely appears in a `command` string.
+ */
 const PATH_KEYS = new Set([
 	"path",
 	"file",
@@ -86,10 +97,6 @@ const PATH_KEYS = new Set([
 	"filepath",
 	"file_path",
 	"filename",
-	"target",
-	"source",
-	"destination",
-	"dest",
 	"output_path",
 	"output_file",
 	"directory",
@@ -98,23 +105,65 @@ const PATH_KEYS = new Set([
 ]);
 
 /**
+ * Characters that make a candidate a shell glob or a placeholder, not a path.
+ *
+ * `$PID`, `*.log`, `{a,b}.ts` and `<name>` are text a transcript legitimately
+ * contains — a prompt documenting a command, a heredoc placeholder — and every
+ * one of them used to reach the panel as a tile that could never open. The
+ * number is known rather than guessed: the real-payload audit counted the
+ * metacharacter share of admitted paths, and the QA walk found `qa-res-$PID.pdf`
+ * and `<name` on screen. A path on disk may technically contain `$`, but the
+ * trade is explicit: a placeholder tile is a click that fails, and the file is
+ * still reachable through the structured tiers when an agent really touches it.
+ */
+const SHELL_METACHARACTERS = /[$*?{}<>]/;
+
+/**
+ * An editor line reference: `/a/run.mjs:59` and `/a/run.mjs:59:12`.
+ *
+ * Only the file-url tier needs the trim. Prose already rejects such a token
+ * because its extension reads `ts:59`, while a `file://` URL is admitted on the
+ * URL alone and would carry the suffix into the panel as a path that does not
+ * exist. Found by running the extractor over real histories
+ * (`scripts/mentioned-files-real-payload.mjs`): one of the first fifty paths was
+ * `…/drive-model-picker.mjs:59`, quoted from an editor line reference.
+ */
+const LINE_REFERENCE = /:[0-9]+(?::[0-9]+)?$/;
+
+/** Where a prose path token ends: whitespace, a quote, or sentence punctuation. */
+const PROSE_TOKEN_END = /[\s"'`()\[\]{}<>,;*|]/;
+
+/** An http(s) URL, removed before prose is scanned (it contains a path). */
+const HTTP_URL = /https?:\/\/\S+/g;
+
+/** A line break, which is what tells a continuation from a new line. */
+const LINE_BREAK = /[\n\r]/;
+
+/** Any whitespace. A path never contains it, so a value that does is prose. */
+const WHITESPACE = /\s/;
+
+/**
  * A `file://` URL, one capture group holding the path.
  *
  * `localhost` is allowed because the app writes both spellings (`file:///…` and
  * `file://localhost/…`). The character class stops at whitespace and at the
- * punctuation that usually follows a path in a sentence — a markdown link's
- * `)`, a JSON string's `"`, a bullet's `*`. `(`, `[` and `{` are deliberately
- * absent from it: a path is far more likely to be followed by a closing bracket
- * than to contain an opening one, and the trailing-punctuation trim below
- * catches the leftovers.
+ * punctuation that usually terminates a URL in a sentence — a JSON string's
+ * `"`, a markdown link's `]`, a bullet's `*`, an inline-code backtick.
  *
- * The `]` is escaped on purpose. The design's version of this pattern wrote the
- * closing bracket unescaped inside the class, which ENDS the class there and
- * turns the rest of the expression into literal characters that no text can
- * satisfy — the pattern silently matched nothing at all. Escaping it is the
- * difference between a rule and a comment.
+ * `(`, `)`, `{` and `<` ARE allowed, and that is the difference between a rule
+ * and a guess. macOS names screenshots `Screenshot … (1).png`, so excluding `(`
+ * recorded a truncated `/Users/x/Downloads/screen(1` for a file that plainly
+ * exists; and a placeholder like `file:///tmp/out/<name>.` must be captured
+ * whole so the metacharacter rule above can REJECT it, rather than being cut
+ * short into a tile for the directory that happens to precede it. A
+ * sentence-final `)` is trimmed by `TRAILING_PUNCTUATION` below, which is what
+ * makes admitting `)` safe.
+ *
+ * The whole match is used, not a capture group: the path is parsed out of the
+ * URL with `new URL` (`normalizeFileUrl`), which is the only way to tell a
+ * bracket inside a name from a bracket that closes a sentence.
  */
-const FILE_URL = /file:\/\/(?:localhost)?(\/[^\s"')}\]>*,;`]+)/g;
+const FILE_URL = /file:\/\/(?:localhost)?\/[^\s"'`>*,;}\]]+/g;
 
 /**
  * A bare absolute or `~`-relative path token.
@@ -164,9 +213,6 @@ const MAX_CANDIDATE_LENGTH = 4096;
  */
 const API_PATH_PREFIXES = ["/v1/", "/api/"];
 
-/** Cap on candidates from one pass, so a pathological transcript stays bounded. */
-export const MAX_CANDIDATES_PER_PASS = 200;
-
 /**
  * Memo, keyed by the record object the reducer guarantees is stable, and
  * separated per cwd.
@@ -213,7 +259,9 @@ export function normalizeCandidate(raw: string): string | null {
 	// A path token never contains whitespace: the scanners split on it, so a
 	// candidate that still has some came from a value that was prose rather than
 	// a path, and admitting it would put a phrase in the panel.
-	if (/\s/.test(candidate)) return null;
+	if (WHITESPACE.test(candidate)) return null;
+	// A glob or a placeholder is not a file. See `SHELL_METACHARACTERS`.
+	if (SHELL_METACHARACTERS.test(candidate)) return null;
 	return candidate;
 }
 
@@ -222,25 +270,42 @@ export function normalizeCandidate(raw: string): string | null {
  * URL and therefore do not need the absolute-path test.
  */
 function normalizeFileUrl(raw: string): string | null {
-	const stripped = raw.startsWith("file://")
-		? raw.slice("file://".length)
-		: raw;
-	let candidate = stripped.replace(TRAILING_PUNCTUATION, "");
-	if (!candidate || candidate.length > MAX_CANDIDATE_LENGTH) return null;
 	/*
-	 * `file:///x/y.ts:59` is a line reference, not a filename.
+	 * Parsed as a URL, not string-stripped.
 	 *
-	 * Only this tier needs the trim: prose already rejects such a token because
-	 * its extension reads `ts:59`, while a `file://` URL is admitted on the URL
-	 * alone and would carry the suffix into the panel as a path that does not
-	 * exist. Found by running the extractor over real histories
-	 * (`scripts/mentioned-files-real-payload.mjs`): one of the first fifty paths
-	 * was `…/drive-model-picker.mjs:59`, quoted from an editor line reference.
+	 * Slicing `file://` off the front cannot see a path that contains the very
+	 * characters a name may legally contain: a screenshot called `screen(1).png`
+	 * was captured as `/Users/x/Downloads/screen(1` because the scanner's
+	 * character class had to stop at `(` to avoid swallowing a markdown link's
+	 * closing bracket. `new URL` separates the two questions — where the URL
+	 * ends and what the path is — and percent-decodes the result, so a URL that
+	 * reached the transcript as `My%20Docs` names the file on disk.
 	 */
-	candidate = candidate.replace(/:[0-9]+(?::[0-9]+)?$/, "");
+	let candidate: string;
+	try {
+		const parsed = new URL(raw);
+		if (parsed.protocol !== "file:") return null;
+		// `file://other-host/share` names another machine's share, not a local
+		// file. Only the empty host and the app's own `localhost` spelling are
+		// accepted; both are already written by the canvas.
+		if (parsed.host && parsed.host !== "localhost") return null;
+		candidate = parsed.pathname;
+		try {
+			candidate = decodeURIComponent(candidate);
+		} catch {
+			// A malformed escape is not a reason to drop the path: the encoded
+			// form is what the transcript wrote, and it is still a path.
+		}
+	} catch {
+		return null;
+	}
+	candidate = candidate.replace(TRAILING_PUNCTUATION, "");
+	if (!candidate || candidate.length > MAX_CANDIDATE_LENGTH) return null;
+	candidate = candidate.replace(LINE_REFERENCE, "");
 	if (!candidate) return null;
 	if (API_PATH_PREFIXES.some((prefix) => candidate.startsWith(prefix)))
 		return null;
+	if (SHELL_METACHARACTERS.test(candidate)) return null;
 	return candidate.startsWith("/") ? candidate : null;
 }
 
@@ -252,23 +317,30 @@ function normalizeFileUrl(raw: string): string | null {
  * `/Users/x/My` — and a truncated path is dropped rather than guessed. This is
  * the documented cost of not having a quoting grammar, asserted as such in the
  * tests so the trade stays visible.
+ *
+ * Only a SAME-LINE continuation counts: the guard exists for a URL that
+ * contained a space, and a newline is a new line. Narrowing it that way is what
+ * lets a plain path list keep its `file://` entry.
  */
 function scanFileUrls(text: string): string[] {
 	const found: string[] = [];
 	for (const match of text.matchAll(FILE_URL)) {
-		const raw = match[1];
-		if (!raw) continue;
 		const end = (match.index ?? 0) + match[0].length;
-		const next = text[end];
-		if (next !== undefined && /\s/.test(next)) {
-			const rest = text.slice(end).trimStart();
-			const token = rest.split(/[\s"'`()\[\]{}<>,;*|]/, 1)[0] ?? "";
+		const rest = text.slice(end);
+		const trimmed = rest.trimStart();
+		// The gap between the URL and the next token, and whether that token is on
+		// the SAME line. A newline is a new line, never a continuation: a plain
+		// path list (`file:///…/AGENTS.md\n~/…/AGENTS.md`) used to lose the URL
+		// entry because the line below happened to start with a path.
+		const gap = rest.slice(0, rest.length - trimmed.length);
+		if (gap !== "" && !LINE_BREAK.test(gap)) {
+			const token = trimmed.split(PROSE_TOKEN_END, 1)[0] ?? "";
 			// More path after the space: the URL contained a space and the match
 			// is a fragment of it. Returning a fragment would put a path in the
 			// panel that no file has.
 			if (token.includes("/") || token.includes(".")) continue;
 		}
-		const candidate = normalizeFileUrl(raw);
+		const candidate = normalizeFileUrl(match[0]);
 		if (candidate) found.push(candidate);
 	}
 	return found;
@@ -282,7 +354,7 @@ function scanFileUrls(text: string): string[] {
  * `https://example.com/a/b.png` as `/a/b.png`.
  */
 function scanProse(text: string): string[] {
-	const stripped = text.replace(/https?:\/\/\S+/g, " ");
+	const stripped = text.replace(HTTP_URL, " ");
 	const found: string[] = [];
 	for (const match of stripped.matchAll(PROSE_PATH)) {
 		const index = match.index ?? 0;
@@ -322,7 +394,9 @@ function normalizePathValue(raw: string): string | null {
 	// Whitespace inside a path key's value means the value is prose (a whole
 	// command, a sentence), and treating a sentence as a path is how a panel
 	// fills with junk. The prose scanner handles those values instead.
-	if (/\s/.test(candidate)) return null;
+	if (WHITESPACE.test(candidate)) return null;
+	// A glob or a placeholder under a path key is still not a file.
+	if (SHELL_METACHARACTERS.test(candidate)) return null;
 	return candidate;
 }
 
@@ -454,6 +528,21 @@ function extractFromRecord(
  * source. Nothing is ever re-sorted: a re-scan after an older page arrives must
  * not shuffle entries a reader is already looking at, and the store's append
  * order is the only order the panel has.
+ *
+ * ## There is no output cap, and its absence is the fix
+ *
+ * This used to stop at 200 candidates. Because records only ever append and a
+ * re-scan restarts from record 0 in the same order, the same first 200 mentions
+ * came back on every pass — so paths 201+ were not merely delayed, they were
+ * unreachable for the life of the conversation, and `use-mentioned-files` saw
+ * an empty delta and stopped probing. Measured on this machine's own durable
+ * store, 23 of 1,735 sessions returned exactly 200 paths and one real session
+ * lost ~1,700 of them. A scan bound belongs at the SCAN (how far back the
+ * producer pages, which the panel states and can extend); an output bound here
+ * dropped files silently, which is the failure the panel exists to prevent.
+ *
+ * Cost is bounded without it: the per-record memo means a re-scan is O(new
+ * records), and the number of paths is bounded by the conversation itself.
  */
 export function extractMentionedPaths(
 	records: readonly TranscriptRecord[],
@@ -472,7 +561,6 @@ export function extractMentionedPaths(
 			if (seen.has(mention.path)) continue;
 			seen.add(mention.path);
 			found.push(mention);
-			if (found.length >= MAX_CANDIDATES_PER_PASS) return found;
 		}
 	}
 	return found;

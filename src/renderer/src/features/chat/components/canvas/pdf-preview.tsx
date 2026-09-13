@@ -1,11 +1,13 @@
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
-import { Button, Tooltip } from "@shared/components/ui";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
-import { FileUp } from "lucide-react";
 import { type FC, memo } from "react";
-import { FileViewerState, OpenInOsButton } from "./file-viewer-state";
+import {
+	FileViewerState,
+	OpenInOsButton,
+	ViewerChrome,
+} from "./file-viewer-state";
 
 /**
  * PDFs, in Chromium's own viewer, over a blob URL.
@@ -19,16 +21,18 @@ import { FileViewerState, OpenInOsButton } from "./file-viewer-state";
  * and would widen the app's plugin surface for no behaviour, so
  * `webPreferences` is not touched.
  *
- * ## The toolbar beneath the chrome bar
+ * ## Naming the file once
  *
- * Chromium's PDF viewer draws its own toolbar inside the frame: a page count, a
- * zoom stepper, rotate, download and print, in the platform's colours. It is not
- * themeable, it is not addressable from our DOM, and it is therefore an
- * **accepted platform object** rather than a themed surface — the same category
- * as the OS file picker or the native scrollbar. What we own is the strip above
- * it: the file's name and a way out to the OS, on `surface` with our hairline
- * rule, so the themed part of the frame is clearly ours and the document begins
- * where our chrome ends.
+ * Chromium draws its toolbar from the frame's URL — an iframe's `title`
+ * attribute is an accessibility label, not a document name — so a blob URL put
+ * the UUID of the blob in the platform bar while our own bar printed the
+ * filename, two names for one document and one of them garbage. `#toolbar=0`
+ * (a fragment Chromium's PDF viewer honours; verified in the app, not assumed)
+ * drops the platform toolbar entirely, which leaves the name this file actually
+ * has in the one strip we own. The trade is stated rather than hidden: the
+ * platform's page counter, zoom stepper and print button go with it. Those are
+ * in the OS viewer, one click away in the bar above, and a UUID printed as a
+ * filename is worse than a missing zoom control.
  *
  * The honest limitation, which is why the PDF frames in the evidence set come
  * from the real app rather than the storybook sweep: the probe proves the viewer
@@ -46,49 +50,25 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
-		enabled: !document.path.startsWith("data:"),
+		sizeBytes: document.sizeBytes,
 	});
 
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
-			{/*
-			 * Our chrome. The document frame below starts where this ends, which is
-			 * the entire reason it exists: without it the first thing under the tab
-			 * strip is a foreign toolbar and the panel reads as if the document had
-			 * been embedded from somewhere else.
-			 */}
-			<div
-				className={cn(
-					"flex min-h-8 shrink-0 items-center justify-between gap-2",
-					"border-hairline border-b bg-surface px-2 py-1.5",
-				)}
-			>
-				<span className={cn("truncate text-body-sm text-ink")}>
-					{document.title}
-				</span>
-				<Tooltip content="Open in default app">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Open in default app"
-						onClick={() => window.api.openFile(document.path)}
-					>
-						<FileUp aria-hidden="true" />
-					</Button>
-				</Tooltip>
-			</div>
+			{/* Our chrome, and the only name on this surface: see the note above. */}
+			<ViewerChrome title={document.title} path={document.path} />
 
 			<div className={cn("min-h-0 flex-1")}>
 				{state.status === "ready" ? (
 					<iframe
-						src={state.url}
+						src={`${state.url}#toolbar=0`}
 						title={`PDF: ${document.title}`}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				) : state.status === "loading" ? (
 					<FileViewerState quiet title="Opening…" />
 				) : state.code === "too-large" ? (
-					<FileViewerState title="Too large to preview" detail={document.path}>
+					<FileViewerState title="Too large to preview" detail={state.message}>
 						<OpenInOsButton path={document.path} />
 					</FileViewerState>
 				) : (
@@ -98,7 +78,7 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 								? "File no longer exists"
 								: "This PDF could not be opened"
 						}
-						detail={state.message}
+						detail={state.message ?? document.path}
 					>
 						<OpenInOsButton path={document.path} />
 					</FileViewerState>

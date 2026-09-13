@@ -2,13 +2,15 @@ import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
-import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
-import { FileUp } from "lucide-react";
 import { type FC, memo, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
-import { FileViewerState, OpenInOsButton } from "./file-viewer-state";
+import {
+	FileViewerState,
+	OpenInOsButton,
+	ViewerChrome,
+} from "./file-viewer-state";
 
 /**
  * Video the agent produced, played in the panel.
@@ -40,26 +42,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
-			<div
-				className={cn(
-					"flex min-h-8 shrink-0 items-center justify-between gap-2",
-					"border-hairline border-b bg-surface px-2 py-1.5",
-				)}
-			>
-				<span className={cn("truncate text-body-sm text-ink")}>
-					{document.title}
-				</span>
-				<Tooltip content="Open in default app">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Open in default app"
-						onClick={() => window.api.openFile(document.path)}
-					>
-						<FileUp aria-hidden="true" />
-					</Button>
-				</Tooltip>
-			</div>
+			<ViewerChrome title={document.title} path={document.path} />
 			{failed ? (
 				<FileViewerState
 					title="This video could not be played"
