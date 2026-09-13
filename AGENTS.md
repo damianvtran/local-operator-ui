@@ -88,6 +88,46 @@ uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
 proof. Broader verification remains typecheck, lint, the theme gates, a real
 build, and rendered evidence from the live app or Storybook as appropriate.
 
+**The desktop suite caps its own concurrency.** It runs through
+`scripts/run-desktop-tests.mjs` rather than `node --test` directly, so node's
+default of one file worker per core (minus one) — 13 on a 14-core box — never
+applies here. The cap is the smaller of half the cores and a memory budget,
+resolved by `scripts/desktop-test-concurrency.mjs`, and the runner prints the
+number it chose, the term that bound and the inputs behind it before the first
+test, because that line is what a reviewer reads to know what actually ran.
+
+It exists because this repo is worked through many concurrent git worktrees and
+several agent sessions run this suite at once on one laptop. Measured on the
+14-core / 36 GB host by sampling the whole process tree (`ps`), three
+interleaved rounds: the uncapped default peaks at 1,187-1,291 MB across 25-28
+processes, 13 of them test-file workers, while the governor's cap peaks at
+666-892 MB across 15-19 processes and 5-7 workers, for a wall time that
+overlaps (91.5 and 93.3 s uncapped against 93.1 and 95.7 s capped — about 2% at
+worst, in a suite this CPU-light). The cap is on file workers, not processes:
+several of these files spawn real children — the esbuild binary that most of
+them bundle through, a real `/usr/bin/codesign` run in
+`update-robustness.test.mjs`, node subprocesses in `linux-sandbox.test.mjs` —
+which is why the memory budget divides by 192 MB per worker rather than by the
+~65 MB marginal cost the measurements suggest: the runner's own accounting
+misses what its children cost.
+
+Override the number, or bypass the governor entirely:
+
+```sh
+LOCAL_OPERATOR_UI_TEST_CONCURRENCY=12 pnpm test:desktop        # honoured unclamped
+node scripts/run-desktop-tests.mjs --test-concurrency=12 <files...>  # bypasses it
+```
+
+An explicit `--test-concurrency=N` is forwarded untouched; whoever passed it
+knows how wide they want to run. **CI keeps every core:** `CI` set without
+`LOCAL_OPERATOR_AGENT_SHELL` takes node's own default untouched, because a
+hosted runner is dedicated and taking parallelism away from it is a regression
+paid on every run. Our own bash tool sets `CI=1` on agent-run commands, so it
+also sets `LOCAL_OPERATOR_AGENT_SHELL=1`; the governor denies that marker and
+takes the developer path, which is the only reason agent-run suites on a laptop
+are capped at all. A probe failure degrades to a CPU-only cap, and the governor
+never raises a machine's parallelism above what node itself would have used.
+
 ## Release Bump Runbook (Major/Minor/Patch)
 
 Use this process whenever asked to cut a release.
