@@ -257,6 +257,15 @@ type MessageInputProps = {
 	 * and the draft sends as prose.
 	 */
 	onSlashCommand?: (line: string) => Promise<SlashDispatchOutcome>;
+	/**
+	 * Say something in the composer's own note idiom.
+	 *
+	 * The dispatcher already owns that surface (`useSlashDispatch`'s `note`), so
+	 * the composer borrows it rather than growing a second one. Used for the two
+	 * outcomes a user cannot read off the box: a mid-draft name-list command
+	 * whose list cannot answer, and a staged reassembly that did NOT send.
+	 */
+	onSlashNote?: (text: string) => void;
 };
 
 /**
@@ -409,6 +418,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isHydrating = false,
 			sessionStatus,
 			onSlashCommand,
+			onSlashNote,
 		},
 		ref,
 	) => {
@@ -654,22 +664,52 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				draft: string,
 				at: number,
 			) => {
+				/*
+				 * A non-`send` plan only exists with a dispatcher (`planFor` answers
+				 * `send` without one), so this is a wiring guard rather than a runtime
+				 * case: an optional call here would make a missing prop read as a
+				 * refusal that restores the draft (round 1 NIT-3).
+				 */
+				const runSlashCommand = onSlashCommand;
+				if (!runSlashCommand) return;
 				if (plan.kind === "list-open") {
-					// The roster list owns the next Enter. Nothing is submitted and
-					// nothing is rewritten — the TUI's own exception
-					// (`editor.py:8219-8222`): the name is picked from the autofill
-					// first.
+					// The roster owns the next Enter — but only while it can give a row.
+					// While the list is up with rows in it, nothing is submitted and
+					// nothing is rewritten: the TUI's own exception
+					// (`editor.py:8219-8222`), the name is picked from the autofill
+					// first. Dismissed or empty, the same plan was a DEAD Enter —
+					// nothing ran, nothing sent, no note — so say what the key is
+					// waiting for (round 1 UX U5).
+					if (slash.open && slash.matches.length > 0) return;
+					onSlashNote?.(
+						`Type a name after ${plan.line}, or choose one from the list.`,
+					);
+					return;
+				}
+				if (plan.kind === "unrecognised") {
+					// Reported through the SAME dispatch that owns the "did you mean"
+					// note, then the ORIGINAL draft comes back whole: the misspelling
+					// is the thing the user has to fix, so consuming it removes the
+					// only copy of it (round 1 UX U8).
+					await runSlashCommand(plan.line);
+					pendingCaret.current = at;
+					setNewMessage(draft);
+					setCaret(at);
 					return;
 				}
 				if (plan.kind === "reassemble") {
 					// Staged, never submitted: the user reads the assembled line and
-					// sends it themselves.
+					// sends it themselves. The box changing IS the guard against
+					// guessing which trailing words are a name — but a user who pressed
+					// Enter twice has no other signal that their sentence MOVED and the
+					// key did not send, so say it (round 1 UX U7).
 					pendingCaret.current = plan.caret;
 					setNewMessage(plan.text);
 					setCaret(plan.caret);
+					onSlashNote?.(`Staged ${plan.text.trim()}. Enter again runs it.`);
 					return;
 				}
-				const outcome = await onSlashCommand?.(plan.line);
+				const outcome = await runSlashCommand(plan.line);
 				if (outcome === "consumed") {
 					const text = plan.kind === "whole" ? "" : plan.text;
 					const next = plan.kind === "whole" ? 0 : plan.caret;
@@ -682,7 +722,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				setNewMessage(draft);
 				setCaret(at);
 			},
-			[onSlashCommand, setNewMessage],
+			[
+				onSlashCommand,
+				onSlashNote,
+				setNewMessage,
+				slash.open,
+				slash.matches.length,
+			],
 		);
 
 		const handleSlashPick = useCallback(

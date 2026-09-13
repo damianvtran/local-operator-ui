@@ -68,12 +68,50 @@ test("the whole-draft command shape is unchanged", () => {
 	assert.equal(plan("  /usage  ", 10).kind, "whole");
 	// A command with arguments on the SAME line is still a whole-draft command:
 	// the existing shape, kept deliberately so `/model gpt-5` does not become a
-	// splice. Note the consequence the inline contract accepts: a second LINE
-	// under a leading command word is read as its argument, which is why a
-	// message kept apart from the command sits BEFORE the slash or on another
-	// line (see the case below).
+	// splice.
 	assert.equal(plan("/usage more prose", 6).kind, "whole");
-	assert.equal(plan("/usage\nfix this", 6).kind, "whole");
+});
+
+test("the caret's token decides, not the whole-draft regex (round 1 R2)", () => {
+	/*
+	 * The blocker: a command on line 1 of a TWO-line draft. `SLASH_SUBMISSION`
+	 * against the whole draft reads the newline as the command/argument
+	 * separator, so line 2 became `/usage`'s argument, the box was cleared on
+	 * `consumed`, and the prose reached the transport as a provider name —
+	 * observed end to end as `422 Invalid desktop operation.` (QA round 1 Q1, UX
+	 * round 1 U1). The reference `_run_command_from_buffer` takes the span on the
+	 * caret's LINE and splices when the remainder is non-empty (`editor.py:
+	 * 8184-8200`), which is what these three cases pin.
+	 */
+	const spliced = plan("/usage\nfix this", 6);
+	assert.equal(spliced.kind, "splice");
+	assert.equal(spliced.line, "/usage");
+	assert.equal(spliced.text, "fix this");
+
+	// Same draft, caret at the END of line 2: the command is above the caret, so
+	// the caret is not on any token and the draft is prose. Nothing is lost
+	// either way — line 2 is never handed over as an argument.
+	assert.deepEqual(plan("/usage\nfix this", 16), { kind: "send" });
+
+	// A command on its own line UNDER a message splices the same way, and the
+	// message survives in the composer.
+	const below = plan("fix this\n/usage", 15);
+	assert.equal(below.kind, "splice");
+	assert.equal(below.line, "/usage");
+	assert.equal(below.text, "fix this");
+});
+
+test("a slash-shaped token that names no command is reported, not consumed", () => {
+	// Round 1 UX U8: `fix this /tema` used to splice the misspelling out of the
+	// box, so the user lost the only copy of the word they had to fix. The
+	// planner reports it (the dispatcher owns the "did you mean" note) and the
+	// caller restores the ORIGINAL draft.
+	const result = plan("fix this /tema", 14);
+	assert.equal(result.kind, "unrecognised");
+	assert.equal(result.line, "/tema");
+	// A whole-draft misspelling keeps the existing shape: dispatch answers
+	// `not-a-command` / `consumed` exactly as it did before this change.
+	assert.equal(plan("/tema", 5).kind, "whole");
 });
 
 test("a draft with no command token at the caret is prose", () => {
@@ -111,10 +149,20 @@ test("a free-text command mid-draft reassembles to the front, staged", () => {
 test("a name-list command with no name typed keeps its list open", () => {
 	// Acceptance criterion 21: `/team` and `/agent` do NOT reassemble on the word
 	// alone — the name is picked from the list first
-	// (`editor.py:8219-8222`).
-	assert.deepEqual(plan("fix this /team", 13), { kind: "list-open" });
-	assert.deepEqual(plan("fix this /agent", 14), { kind: "list-open" });
-	assert.deepEqual(plan("fix this /teams", 14), { kind: "list-open" });
+	// (`editor.py:8219-8222`). The plan carries the line so a caller whose list
+	// cannot answer can still say which command is waiting (round 1 UX U5).
+	assert.deepEqual(plan("fix this /team", 13), {
+		kind: "list-open",
+		line: "/team",
+	});
+	assert.deepEqual(plan("fix this /agent", 14), {
+		kind: "list-open",
+		line: "/agent",
+	});
+	assert.deepEqual(plan("fix this /teams", 14), {
+		kind: "list-open",
+		line: "/teams",
+	});
 	// With a name typed, the exception does not apply and it reassembles.
 	assert.equal(plan("fix this /team ops", 17).kind, "reassemble");
 });

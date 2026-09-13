@@ -12,16 +12,31 @@
  *
  * Rule order, one-to-one with the TUI:
  *
- *   1. The whole trimmed draft is a command → hand it to dispatch as today. All
- *      three existing `SlashDispatchOutcome` meanings are untouched.
- *   2. No slash token at the caret → prose; send it.
- *   3. The token IS the draft (nothing survives its removal) → whole.
+ *   0. The capability is off → send. Nothing is spliced on a host that could not
+ *      run the command it was deleted for.
+ *   1. The token at the CARET (`slashTokenSpan`, which is what
+ *      `_run_command_from_buffer` itself calls first) defines the span the run
+ *      owns. No token at the caret → prose; send it. The whole-draft shape is
+ *      NOT tested first: a `/usage` on line 1 of a two-line draft is a token on
+ *      its own LINE, and asking `SLASH_SUBMISSION` about the whole draft let it
+ *      claim line 2 as its argument and clear the box (round 1 R2 = Q1 = U1).
+ *   2. Nothing survives removing the span → the token IS the draft → whole.
+ *   3. A slash-shaped token that names no command → `unrecognised`: report it
+ *      through the normal dispatch (which owns the "did you mean" note) and keep
+ *      the ORIGINAL draft, so a misspelt inline command is there to fix rather
+ *      than gone (round 1 U8).
  *   4. A free-text command → reassemble to the front, STAGED, never submitted.
  *      Exception: a NAME+message command (`/team`, `/agent`) with no name typed
  *      yet does NOT reassemble on the word alone — the name is picked from the
  *      argument list first, and leaving that list open IS the interaction.
  *   5. Otherwise splice the token out and run it; the surrounding draft
  *      survives.
+ *
+ * "WHICH LINE THE COMMAND OWNS", the rule this file exists to state: a command
+ * owns its word plus the rest of ITS OWN LINE, never the lines around it. That
+ * is why the span ends at the line end (`slash-token.ts` `slashTokenSpan`) and
+ * why a message meant to survive a run sits BEFORE the slash or on another
+ * line.
  *
  * WHY the reassembly is never auto-submitted: the risk in both directions is
  * the same one — treating trailing prose as a name silently ate a user's
@@ -48,15 +63,17 @@ export type SlashSubmissionPlan =
 	/** Move `line` to the front, keep the rest as its argument, stage, do not run. */
 	| { kind: "reassemble"; text: string; caret: number }
 	/** A name-list command with no name typed yet: the roster list owns the key. */
-	| { kind: "list-open" };
+	| { kind: "list-open"; line: string }
+	/** Slash-shaped, but names no command: report it and KEEP the draft. */
+	| { kind: "unrecognised"; line: string };
 
 /**
  * The whole-draft command shape.
  *
- * Exported so the planner and `slash-dispatch`'s own guard are the same
- * pattern object: "is this line a command at all" must have one answer, and two
- * copies of a regex is how a draft comes to be a command on one path and prose
- * on the other.
+ * The DISPATCHER's guard, not the planner's: `planSlashSubmission` no longer
+ * asks this question, because the token at the caret is what decides a draft.
+ * It stays exported as the ONE pattern object `slash-dispatch.ts` imports, so
+ * "is this line a command at all" cannot drift between two copies.
  */
 export const SLASH_SUBMISSION = /^\/([A-Za-z]+)(?:\s([\s\S]*))?$/;
 
@@ -92,19 +109,30 @@ export function planSlashSubmission({
 	// cannot run the command it was deleted for.
 	if (!enabled) return { kind: "send" };
 
-	const trimmed = draft.trim();
-	if (SLASH_SUBMISSION.test(trimmed)) return { kind: "whole", line: trimmed };
-
+	/*
+	 * The token at the CARET decides first, and the whole-draft shape is then a
+	 * CONSEQUENCE of that decision (nothing survives the span). The reverse order
+	 * — asking `SLASH_SUBMISSION` about the whole trimmed draft first — is how
+	 * `/usage\nfix this` came to be handed over as one command: the regex reads
+	 * the newline as the command/argument separator, so line 2 became `/usage`'s
+	 * argument, the box was cleared on `consumed`, and the argument reached the
+	 * transport as a provider name (round 1 R2 = QA Q1 = UX U1). The reference
+	 * calls `slash_token_span` first for the same reason (`editor.py:8184-8197`).
+	 */
 	const span = slashTokenSpan(draft, caret, commandNames);
 	if (span === null) return { kind: "send" };
 
-	// The separator rule is the splice's, reused rather than restated: what
-	// survives a removal is exactly what a completion would have left behind.
 	const spliced = replaceSpan(draft, span.start, span.end, "");
 	const commandText = draft.slice(span.start, span.end).trim();
 	if (spliced.text.trim() === "") return { kind: "whole", line: commandText };
 
 	const word = wordOf(commandText);
+	// Slash-shaped but not a command this host knows: the misspelling is the
+	// thing to fix, so the caller reports it and keeps the draft rather than
+	// consuming the token (round 1 U8).
+	if (!commandNames.has(word))
+		return { kind: "unrecognised", line: commandText };
+
 	if (promptCommands.has(word)) {
 		const typedArgument = commandText.slice(1).split(" ").slice(1).join(" ");
 		// A name-list command with no name typed yet: `_apply_command` has
@@ -112,7 +140,7 @@ export function planSlashSubmission({
 		// leaving it open is the whole interaction, and reassembly happens when
 		// a NAME row is chosen (TUI `editor.py:8219-8222`).
 		if (nameListCommands.has(word) && !typedArgument.trim())
-			return { kind: "list-open" };
+			return { kind: "list-open", line: commandText };
 		const rest = spliced.text.trim();
 		const text = rest ? `${commandText} ${rest}` : `${commandText} `;
 		return { kind: "reassemble", text, caret: text.length };
