@@ -13,7 +13,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { is } from "@electron-toolkit/utils";
 import { BrowserWindow, app, dialog as electronDialog } from "electron";
-import { withPythonBytecodeCache } from "../python-bytecode-cache";
+import {
+	bundledPythonTreePaths,
+	sealPythonInterpreterTrees,
+	withPythonBytecodeCache,
+} from "../python-bytecode-cache";
 import { LogFileType, logger } from "./logger";
 import {
 	linuxInstallScript,
@@ -61,6 +65,29 @@ export class BackendInstaller {
 			process.env.NODE_ENV === "development"
 				? join(process.cwd(), "resources")
 				: join(process.resourcesPath);
+
+		// Take the write bits off the bundled interpreter trees, so CPython cannot
+		// cache bytecode inside the code-sealed bundle.
+		//
+		// The environment this class hands the install script is only half the
+		// guarantee: an interpreter started with `-E`/`-I` ignores every `PYTHON*`
+		// variable by design, and CPython's own pip bootstrap goes through an
+		// isolated child. Sealing the tree is the half no child can evade - see
+		// `sealPythonInterpreterTrees`, which carries the measurements.
+		//
+		// Packaged only: a dev run resolves `resourcesPath` at an Electron install,
+		// and clearing write bits there would change a tree this app does not own.
+		// Best-effort: a bundle on a read-only volume, or owned by another user,
+		// stays exactly as it is and the environment half still applies.
+		if (app.isPackaged) {
+			const seal = sealPythonInterpreterTrees(
+				bundledPythonTreePaths(this.resourcesPath),
+			);
+			logger.info(
+				`Bundled interpreter trees sealed against bytecode writes: ${seal.sealed.join(", ") || "(none present)"}; ${seal.cleared} path(s) made read-only, ${seal.alreadyReadOnly} already were, ${seal.failures.length} refused`,
+				LogFileType.INSTALLER,
+			);
+		}
 
 		// Find Python executable
 		this.pythonPath = this.findPython();

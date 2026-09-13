@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	chmodSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -45,8 +48,11 @@ const cache = await import(
 	).toString("base64")}`
 );
 const {
+	BUNDLED_PYTHON_TREE_NAMES,
+	bundledPythonTreePaths,
 	PYTHON_BYTECODE_CACHE_DIR_NAME,
 	pythonBytecodeCacheDir,
+	sealPythonInterpreterTrees,
 	withPythonBytecodeCache,
 } = cache;
 
@@ -790,6 +796,137 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 		rmSync(resources, { recursive: true, force: true });
 		// `install()` writes its script into the OS temp directory; reclaim it.
 		rmSync(join(tmpdir(), `install-backend-${process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : "linux"}.${process.platform === "win32" ? "ps1" : "sh"}`), { force: true });
+	}
+});
+
+/** Hash every file under `dir`, so a seal can be shown not to change content. */
+function hashTree(dir) {
+	const digest = createHash("sha256");
+	const walk = (current) => {
+		for (const entry of readdirSync(current, { withFileTypes: true }).sort(
+			(a, b) => a.name.localeCompare(b.name),
+		)) {
+			const child = join(current, entry.name);
+			digest.update(child.slice(dir.length));
+			if (entry.isDirectory()) walk(child);
+			else digest.update(readFileSync(child));
+		}
+	};
+	walk(dir);
+	return digest.digest("hex");
+}
+
+/** The write CPython performs for a cache entry: a directory, then the .pyc. */
+function writeCacheEntry(tree, relative) {
+	const target = join(tree, relative);
+	mkdirSync(target, { recursive: true });
+	writeFileSync(join(target, "mod.cpython-312.pyc"), "bytecode");
+}
+
+test("a sealed interpreter tree refuses the write a CPython cache write performs", () => {
+	const root = mkdtempSync(join(tmpdir(), "lo-seal-"));
+	const tree = join(root, "python_aarch64");
+	const untouched = join(root, "elsewhere");
+	mkdirSync(join(tree, "lib", "python3.12"), { recursive: true });
+	mkdirSync(untouched, { recursive: true });
+	writeFileSync(join(tree, "lib", "python3.12", "os.py"), "# stdlib\n");
+	writeFileSync(join(untouched, "keep.py"), "# not ours\n");
+	const before = hashTree(tree);
+
+	try {
+		// What an isolated child would do: `-E`/`-I` ignore the environment, so
+		// this write is the only thing standing between it and the sealed bundle.
+		assert.doesNotThrow(
+			() => writeCacheEntry(tree, join("lib", "python3.12", "__pycache__")),
+			"the fixture must be writable first, or the seal proves nothing",
+		);
+		rmSync(join(tree, "lib", "python3.12", "__pycache__"), {
+			recursive: true,
+			force: true,
+		});
+
+		const seal = sealPythonInterpreterTrees([tree, join(root, "python")]);
+		assert.deepEqual(seal.sealed, [tree], "only the tree that exists is sealed");
+		assert.ok(seal.cleared > 0, "the seal clears write bits");
+		assert.deepEqual(seal.failures, []);
+
+		// The contents are intact - a mode change is not a resource change, which
+		// is what keeps the code signature this exists to protect valid.
+		assert.equal(hashTree(tree), before, "a seal must not change a byte");
+		// Readable and traversable, so the interpreter that owns it still runs.
+		assert.equal(readFileSync(join(tree, "lib", "python3.12", "os.py"), "utf8"), "# stdlib\n");
+
+		assert.throws(
+			() => writeCacheEntry(tree, join("lib", "python3.12", "__pycache__")),
+			{ code: "EACCES" },
+			"a sealed tree must refuse the write an unredirected interpreter makes",
+		);
+		assert.throws(
+			() => writeFileSync(join(tree, "lib", "python3.12", "new.py"), "# new\n"),
+			{ code: "EACCES" },
+		);
+
+		// Nothing outside the named trees is touched.
+		assert.doesNotThrow(() =>
+			writeFileSync(join(untouched, "kept.py"), "# still writable\n"),
+		);
+
+		// Idempotent: the second pass reports what it found and changes nothing.
+		const again = sealPythonInterpreterTrees([tree]);
+		assert.equal(again.cleared, 0, "an already-sealed tree is left alone");
+		assert.ok(again.alreadyReadOnly > 0);
+		assert.equal(hashTree(tree), before);
+	} finally {
+		// The fixture must be made writable again before it can be removed.
+		chmodRecursiveWritable(tree);
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+/** Give every path under `dir` its write bits back, so rm can reclaim the tree. */
+function chmodRecursiveWritable(dir) {
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const child = join(dir, entry.name);
+		if (entry.isDirectory()) chmodRecursiveWritable(child);
+		chmodSync(child, 0o755);
+	}
+	chmodSync(dir, 0o755);
+}
+
+test("constructing the installer seals the bundled trees of a packaged app", async () => {
+	const { BackendInstaller } = await loadMainProcess();
+
+	const resources = mkdtempSync(join(tmpdir(), "lo-resources-seal-"));
+	// The tree a packaged arm64 app ships, with one writable file in it: if the
+	// constructor does not seal it, the assertion below fails on this tree.
+	const tree = join(resources, "python_aarch64");
+	mkdirSync(join(tree, "bin"), { recursive: true });
+	mkdirSync(join(tree, "lib", "python3.12"), { recursive: true });
+	writeFileSync(join(tree, "bin", "python3"), "#!/bin/sh\n");
+	writeFileSync(join(tree, "lib", "python3.12", "json.py"), "# stdlib\n");
+
+	const hadResourcesPath = "resourcesPath" in process;
+	const originalResourcesPath = process.resourcesPath;
+	process.resourcesPath = resources;
+	try {
+		new BackendInstaller();
+		assert.throws(
+			() =>
+				writeCacheEntry(
+					tree,
+					join("lib", "python3.12", "json", "__pycache__"),
+				),
+			{ code: "EACCES" },
+			"a packaged app must seal its bundled interpreter before any python runs",
+		);
+		// And the sibling tree this build does not ship stays absent rather than
+		// being created: the seal walks, it does not provision.
+		assert.equal(existsSync(join(resources, "python")), false);
+	} finally {
+		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		else delete process.resourcesPath;
+		chmodRecursiveWritable(resources);
+		rmSync(resources, { recursive: true, force: true });
 	}
 });
 

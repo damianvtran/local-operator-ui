@@ -1,3 +1,10 @@
+import {
+	type Dirent,
+	type Stats,
+	chmodSync,
+	lstatSync,
+	readdirSync,
+} from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -46,9 +53,15 @@ import { join } from "node:path";
  * left the tree byte-for-byte unchanged (1821 files) and cached 582 `.pyc`
  * under the prefix.
  *
+ * The environment variable is only half the guarantee, and the smaller half:
+ * an interpreter started with `-E`/`-I` ignores every `PYTHON*` variable by
+ * design, so `sealPythonInterpreterTrees()` below removes the write bits from
+ * the shipped tree itself. Read its docstring before changing either half - it
+ * carries the measurements, and the two exist as a pair.
+ *
  * Deliberately free of Electron imports so the contract tests bundle this
- * shipped module in memory (`pnpm test:desktop`), and pure so the decision is
- * testable without a process to spawn.
+ * shipped module in memory (`pnpm test:desktop`), and the environment decision
+ * is a pure function so it is testable without a process to spawn.
  */
 
 /**
@@ -110,4 +123,137 @@ export function withPythonBytecodeCache(
 	const existing = env.PYTHONPYCACHEPREFIX?.trim();
 	if (existing && !insideAppBundle(existing)) return { ...env };
 	return { ...env, PYTHONPYCACHEPREFIX: pythonBytecodeCacheDir(userDataDir) };
+}
+
+/**
+ * The interpreter trees an app rooted at `resourcesPath` may ship.
+ *
+ * The same two directory names `backend-installer.ts` probes when it looks for
+ * the bundled interpreter (`findPython`): the arm64 build ships
+ * `python_aarch64`, every other build `python`. Kept here as one list so a new
+ * spelling cannot appear beside it.
+ */
+export const BUNDLED_PYTHON_TREE_NAMES = ["python", "python_aarch64"] as const;
+
+/** The candidate bundled-interpreter trees for a packaged app. */
+export function bundledPythonTreePaths(resourcesPath: string): string[] {
+	return BUNDLED_PYTHON_TREE_NAMES.map((name) => join(resourcesPath, name));
+}
+
+/** What {@link sealPythonInterpreterTrees} did, and what it could not do. */
+export type PythonTreeSeal = {
+	/** Trees that exist and were walked. */
+	sealed: string[];
+	/** Paths whose write bits were cleared by this call. */
+	cleared: number;
+	/** Paths that were already read-only, so this call left them alone. */
+	alreadyReadOnly: number;
+	/** Paths the walk refused to change, with the reason. Never thrown. */
+	failures: { path: string; error: string }[];
+};
+
+/**
+ * Take the write bit off every file and directory under each tree.
+ *
+ * Why this exists beside `withPythonBytecodeCache` (measured on 2026-09-13,
+ * macOS 25.6.0, against the shipped 0.19.2 interpreter tree):
+ *
+ * `PYTHONPYCACHEPREFIX` is an *environment variable*, so it protects only a
+ * process that reads the environment. A child started with `-E` or `-I` ignores
+ * every `PYTHON*` variable by design - that is what the flags mean - and
+ * CPython's own tooling uses them: `venv` bootstraps pip through `ensurepip`,
+ * which inserts `-I` when it is already isolated, and this repository spawns its
+ * own evaluation workers with `-I -s -E` (with `-B` precisely because of this).
+ * Measured from the bundled tree, with the prefix pointing at userData:
+ * `-I -c "import json, subprocess, uuid"` wrote **41** `.pyc` into the sealed
+ * tree, `-E -c "import json, csv, argparse"` wrote **24**, and an environment
+ * carrying `PYTHONDONTWRITEBYTECODE=1` was ignored the same way (30). So an
+ * isolated or environment-stripped grandchild can still unseal the bundle, and
+ * nothing the app sets in an environment can reach it.
+ *
+ * Making the *target* refuse the write is the one form of this guarantee that
+ * does not depend on the child at all, and CPython already treats it as normal:
+ * a `__pycache__` it cannot write is simply not cached, silently, with no error
+ * and no behavioural change. Measured on a copy of the shipped tree: with the
+ * tree read-only, a bare run and an isolated (`-I`) run wrote **0** files, the
+ * tree's contents were unchanged, `python -m venv` still produced a working
+ * environment with pip, and `codesign --verify --deep --strict` still exited 0 -
+ * a mode change is not a sealed resource, so this does not invalidate the
+ * signature it is protecting.
+ *
+ * `-B`/`PYTHONDONTWRITEBYTECODE` was the alternative belt and is deliberately
+ * NOT used: it stops bytecode caching rather than redirecting it (every backend
+ * and session-runtime launch would recompile its import graph), and in its
+ * environment form it is ignored by exactly the isolated children it would need
+ * to stop.
+ *
+ * Read-only rather than deleted: the tree is the interpreter's own stdlib, and
+ * the app must never remove a sealed resource. Directories keep read+execute, so
+ * the tree stays fully usable; only writes are refused. Best-effort by design -
+ * a bundle on a read-only volume, or one owned by another user, must leave the
+ * app exactly as it was, because the environment half of the pair still applies.
+ */
+export function sealPythonInterpreterTrees(
+	trees: readonly string[],
+): PythonTreeSeal {
+	const result: PythonTreeSeal = {
+		sealed: [],
+		cleared: 0,
+		alreadyReadOnly: 0,
+		failures: [],
+	};
+	for (const tree of trees) {
+		let root: Stats;
+		try {
+			root = lstatSync(tree);
+		} catch {
+			// Absent is the normal case for the tree this build does not ship
+			// (x64 apps have `python`, arm64 apps `python_aarch64`) and for a dev
+			// run, whose resources directory is an Electron install.
+			continue;
+		}
+		if (!root.isDirectory()) continue;
+		result.sealed.push(tree);
+		clearWriteBits(tree, result);
+	}
+	return result;
+}
+
+/** Depth-first walk clearing write bits, tolerant of a tree that changes size. */
+function clearWriteBits(path: string, result: PythonTreeSeal): void {
+	let entries: Dirent[];
+	try {
+		entries = readdirSync(path, { withFileTypes: true });
+	} catch (error) {
+		result.failures.push({ path, error: String(error) });
+		return;
+	}
+	for (const entry of entries) {
+		const child = join(path, entry.name);
+		// A symlink is not followed: the shipped tree links to itself and to
+		// nothing outside it, and chmod through a link would reach a file this
+		// tree does not own.
+		if (entry.isDirectory()) clearWriteBits(child, result);
+		if (entry.isSymbolicLink()) continue;
+		clearWriteBit(child, result);
+	}
+	// The directory itself last, so the walk could still create nothing it
+	// needed to: without its own write bit, new cache directories are refused.
+	clearWriteBit(path, result);
+}
+
+/** Clear one path's write bits, recording rather than raising a failure. */
+function clearWriteBit(path: string, result: PythonTreeSeal): void {
+	try {
+		const mode = lstatSync(path).mode & 0o777;
+		const readOnly = mode & ~0o222;
+		if (mode === readOnly) {
+			result.alreadyReadOnly += 1;
+			return;
+		}
+		chmodSync(path, readOnly);
+		result.cleared += 1;
+	} catch (error) {
+		result.failures.push({ path, error: String(error) });
+	}
 }
