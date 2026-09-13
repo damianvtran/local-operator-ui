@@ -1,7 +1,7 @@
 {
-  "head": "199a11d92388983b0e68ed0c85e21173f21e525c",
-  "srcTree": "53f2e66e080b8ddb3cecc653a6dac3b52e516db5",
-  "scriptsTree": "cbd606da9af2f089d9aacfc8e7d41150964f0e86",
+  "head": "dc0e0073b",
+  "srcTree": "676c81ce54d56d5b34939d64ee64280001b3b8e0",
+  "scriptsTree": "f95dfd457d6f7f60f94d6bfde6bbe7a61f19160f",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 738,
@@ -208,10 +208,10 @@
       "frames": 26,
       "surfaces": 16,
       "themes": 1,
-      "capturedAtHead": "199a11d92388983b0e68ed0c85e21173f21e525c",
+      "capturedAtHead": "dc0e0073b8be7236028afb27d1180dd250abf7d9",
       "source": "the REAL built Electron app (`pnpm build`, then `docs/evidence/window-mode/harness/run.sh` with EXTRA_SEED=seed-model-picker.mjs and DRIVE_SCRIPT=drive-model-picker.mjs, headless, 1380x900) against an isolated `local-operator serve` on a port the script owns, 0 frontmost samples in every run and 0 renderer errors. Sixteen states, and they come from TWO runs because two starting states are needed: fifteen from the branch's own seed (no provider credential, i.e. the refusal path \u2014 the seed the `before-*` halves were taken under, so the pairs still differ by the change and not by the setup), and the three `needs-sign-in-*` frames from a second run on QA's credentialed seed (`/tmp/qa130/seed-qa.mjs`, a synthetic `openai` credential written through the backend's own AuthStore) \u2014 without a credential the owner refuses every switch, so a switch it ACCEPTS does not exist there. The second run's frames are prefixed `cred-` by the driver so no frame can be mistaken for the other seed's. `localOperatorDark` is the app's own default theme, which is the only theme the harness boots into. **U7 round.** The one frame UX U7 invalidated was re-captured on the fixed head and one `before-*` half was added beside it: `needs-sign-in-pick-settled` now shows `This session runs anthropic/claude-opus-5.` (the row the check is on) where the pre-fix frame showed `openai/gpt-4.1`, and that pre-fix frame is committed as `before-header-names-the-switch` \u2014 the only `before-*` half taken on this branch's own pre-fix head (`ccbeb0e2a`) rather than on the merge-base, because UX filed U7 against the branch rather than against the base. That run is also the first whose cache lives inside the scratch root: `run.sh` now sets `HOME=\"$SCRATCH/home\"` (QA round 2, Q3 \u2014 the catalogue cache resolves from `HOME`, not from the config dir), so the seed copies the same `*.listing.json` files the earlier run read into the scratch home, and nothing outside `/tmp` is written. Both runs' measurements are committed beside the frames (`picker-metrics.json`, `picker-metrics-credentialed.json`), so every number the README quotes is re-derivable from the tree.",
       "why": "the claim is that a hover, a keyboard highlight, an in-flight pick and the OUTCOME of that pick are perceivable \u2014 properties of computed style and of timing that no palette assertion and no component test can see. The unit suite asserts the classes, the transitions and the reading rule (`scripts/picker-feedback.test.mjs`); only a frame of the running app shows the ground and the edge the row actually paints inside a dialog whose own ground is `elevated`, and what the user is left with when the answer arrives after the dialog is gone. The `before-*` halves carry the defect as a measurement: the active row's computed background is `rgb(40,35,24)`, identical to the dialog's, and `before-pointer-left-list` is byte-identical to `before-keyboard-highlight` (AE 0 of 4,813,440 px). Seven of the sixteen states are after-only, and that is the finding rather than an omission: each is a state the old code could not produce or could not report \u2014 the pointer's structural edge in a palette where the wash collapses (D12), the footer naming the row Enter acts on while that row is off screen (U1), the band holding a labelled spinner while the pick is unconfirmed (U3), the refusal landing with the dialog already closed (U2), and the three `needs-sign-in-*` frames (Q1). The transcript note count is measured either side of the U2 case \u2014 1 before the click, 2 after it, with the dialog closed 80 ms in \u2014 because the refusal sentence is identical for every refused pick and only a count can prove a second one was written. The U7 pair is measured rather than described: between the two frames AE is 85,307 px (1.77%) of 4,813,440, of which 13,230 px (2% fuzz) sit in one 952x64 band across the header sentence's own text line and 274 px are the clock.",
-      "capturedAt": "2026-09-13T09:41:40Z"
+      "capturedAt": "2026-09-13T11:16:00Z"
     }
   ]
 }
