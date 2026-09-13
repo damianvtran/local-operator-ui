@@ -1111,6 +1111,27 @@ export type InstallFailurePayload = {
 };
 
 /**
+ * When this install started, in the form a person reads.
+ *
+ * A shared helper rather than a line in each payload because BOTH details lines
+ * end up in front of a user: the failure panel's, and the in-flight panel's,
+ * whose Details block is what "Copy details" hands to a support thread. The
+ * in-flight payload shipped interpolating `marker.startedAt` verbatim, so that
+ * line read `Install started 2026-09-13T07:39:00.991Z from ...` and the raw
+ * ISO-8601 UTC stamp wrapped mid-token in the panel's narrow details block - the
+ * machine-readable form belongs in the log, not in a notice (review R1).
+ *
+ * The fallback is a sentence rather than an empty interpolation because a marker
+ * with no start time still has to produce a readable line.
+ */
+export function installStartedText(marker: PendingInstallMarker): string {
+	const started = marker.startedAt ? new Date(marker.startedAt) : null;
+	return started && !Number.isNaN(started.getTime())
+		? started.toLocaleString()
+		: "at an unknown time";
+}
+
+/**
  * What the user is told after an install that did not complete.
  *
  * Two things here are deliberate. The remedy carries the download page URL so
@@ -1148,11 +1169,7 @@ export function installFailurePayload(
 		cancelledByRelaunch?: boolean;
 	} = {},
 ): InstallFailurePayload {
-	const started = marker.startedAt ? new Date(marker.startedAt) : null;
-	const startedText =
-		started && !Number.isNaN(started.getTime())
-			? started.toLocaleString()
-			: "at an unknown time";
+	const startedText = installStartedText(marker);
 	const logText = options.shipItLogPath
 		? ` Squirrel's own log is at ${options.shipItLogPath}.`
 		: "";
@@ -1189,6 +1206,11 @@ export function installFailurePayload(
  * Squirrel only asks whether the app is running once, so quitting now can still
  * let the swap through. The message says why the app's presence matters, since
  * "quit again" without a reason is what a user reads as the app being broken.
+ *
+ * The Details line goes through `installStartedText` for the same reason the
+ * failure's does: it is read by a person and copied into support threads, so its
+ * start time is a locale string rather than the marker's raw ISO-8601 stamp
+ * (review R1).
  */
 export type InstallInFlightPayload = {
 	targetVersion: string;
@@ -1203,7 +1225,7 @@ export function installInFlightPayload(
 	return {
 		targetVersion: marker.targetVersion,
 		message: `Version ${marker.targetVersion} is still being installed. The update can't finish while Local Operator is open, so quit and leave it closed until it opens again by itself.`,
-		detail: `Install started ${marker.startedAt || "at an unknown time"} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
+		detail: `Install started ${installStartedText(marker)} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
 	};
 }
 
@@ -1500,10 +1522,24 @@ notify() {
 	[ -n "$1" ] || return 0
 	osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' "$1" "Local Operator" >/dev/null 2>&1 &
 }
-# launchctl list <label> exits 113 when the job is not loaded, 0 when it is.
-# With no probe there is no launchd to ask, and this answers "cannot ask" rather
-# than "not loaded": job_known below requires the probe for the same reason.
-shipit_loaded() { [ -n "$SHIPIT_PROBE" ] && [ -n "$SHIPIT_JOB" ] && "$SHIPIT_PROBE" list "$SHIPIT_JOB" >/dev/null 2>&1; }
+# launchctl list <label> exits 0 when the job is loaded and 113 when launchd has
+# no such job; every other status is not an answer at all. An unanswerable probe
+# is read as "still loaded" - the safe direction - because the one decision this
+# feeds here is whether to start the app into a live install, and a launchctl
+# that failed for some other reason (not on PATH, a transient launchd error) must
+# not be what starts it. The other direction is not licensed by it: the hard
+# bound still ends the wait, so an unanswered probe costs time rather than the
+# install. A definite 113 still means the install declared itself over, which is
+# the one answer that ends the wait early. With no probe at all there is no
+# launchd to ask, and this answers "cannot ask" rather than "not loaded":
+# job_known below requires the probe for the same reason.
+shipit_loaded() {
+	[ -n "$SHIPIT_PROBE" ] && [ -n "$SHIPIT_JOB" ] || return 1
+	"$SHIPIT_PROBE" list "$SHIPIT_JOB" >/dev/null 2>&1
+	job_status=$?
+	[ "$job_status" -eq 113 ] && return 1
+	return 0
+}
 # (b), the swap's own state: is the app at the target path AT OR BEYOND the
 # version this update was for? plutil rather than \`defaults read\`, which reads
 # through a preference domain and can answer from a stale cache; a half-written

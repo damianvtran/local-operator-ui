@@ -68,6 +68,7 @@ const {
 	healPythonBytecode,
 	installFailurePayload,
 	installInFlightPayload,
+	installStartedText,
 	installedBundleSealBlock,
 	isInstallInFlight,
 	isPythonBytecodePath,
@@ -855,6 +856,12 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.match(payload.message, /quit and leave it closed/);
 	assert.match(payload.detail, /0\.19\.5-universal\.zip/);
 	assert.match(payload.detail, /while version 0\.19\.4 was running/);
+	// The Details line is read by a person and copied into a support thread, so it
+	// carries the locale form of the start time rather than the marker's raw
+	// ISO-8601 stamp - the same helper the failure payload uses, pinned by identity
+	// instead of by re-deriving the locale string (review R1).
+	assert.ok(payload.detail.includes(installStartedText(marker)));
+	assert.doesNotMatch(payload.detail, /\d{4}-\d{2}-\d{2}T/);
 });
 
 /**
@@ -1664,6 +1671,62 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 		}).hardTimeoutSeconds,
 		WATCHDOG_HARD_TIMEOUT_SECONDS,
 	);
+});
+
+/**
+ * A probe that cannot answer is not an install that has ended.
+ *
+ * `launchctl list <label>` exits 0 for a loaded job and 113 for one launchd has
+ * never heard of; every other status - the tool missing from `PATH`, a transient
+ * launchd error - is not an answer at all. Read as "not loaded" it decided the
+ * install was over, which is the relaunch direction the hold exists to prevent:
+ * a probe that failed for an unrelated reason would start the app into a live
+ * install and abort it, the 2026-09-13 defect through a different door (review
+ * N3). So the unanswerable case holds, and the hard bound is still where a
+ * genuinely hung install gives the user their app back - an unanswered probe
+ * costs time, not the install.
+ */
+test("an unanswerable job probe holds rather than starting the app into the install", async () => {
+	const dir = tempDir("lo-watchdog-probe-error-");
+	const fixture = makeWatchdogFixture(dir);
+	// A probe that fails for its own reasons rather than answering `113`: what the
+	// fixture's own shim would say is beside the point here.
+	const erroringProbe = join(fixture.binDir, "launchctl-error");
+	writeFileSync(erroringProbe, "#!/bin/sh\nexit 64\n", "utf8");
+	spawnSync("/bin/chmod", ["+x", erroringProbe]);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		platform: "darwin",
+		signals: { jobProbe: erroringProbe, plistReader: fixture.probes.plistReader },
+		timeoutSeconds: 3,
+		hardTimeoutSeconds: 6,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	app.kill();
+
+	// Past the soft bound: no launch, because a probe error is not evidence that
+	// the install's job has gone.
+	await new Promise((resolve) => setTimeout(resolve, 4200));
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"a probe that could not answer was read as the install being over",
+	);
+
+	// The bound is unchanged as the last resort, so the safe direction costs time
+	// rather than leaving the user with no app.
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
 });
 
 /**
@@ -3870,33 +3933,20 @@ test("a version read that never answers is killed, not left running", () => {
 });
 
 /**
- * The remedy the compatibility banner produces names the release the last check
- * read.
+ * The shipped update service, bundled with Electron stubbed rather than launched.
  *
- * This is the one defect class this change was reviewed for three times: a value
- * the code looks like it sets that never reaches the payload on the path that
- * matters (review U17). The panel's version sentence renders from
- * `latestVersion`, the banner's remedy calls `updateBackend()` with no target at
- * all, and the fallback to the published release the last check read is the
- * whole fix. It only had coverage through the real banner path, so a regression
- * in the fallback would look exactly like the original defect: a panel with no
- * version sentence on the path most users take.
+ * Extracted from the case that first needed it so a second one can drive the same
+ * module: what both are about is behaviour inside `UpdateService`, not the window
+ * it runs in. The bundled module graph IS the app's main process, so the fixtures
+ * below cover every surface it touches at import time - `app.getPath` for the
+ * logger and the pending-install marker, `electron-log`'s transports, and the
+ * autoUpdater object the constructor configures.
  *
- * Driven against the SHIPPED main process, bundled the way the rest of this file
- * bundles its modules - but with Electron stubbed instead of launched, because
- * what is under test is one function's payload rather than a window. Every path
- * the module reads or writes is redirected into a temp dir and the health probe
- * is pointed at a closed port, so nothing of the operator's own install, state
- * or running server is touched.
+ * Returns the module and the directory it was written to. The import has to run
+ * from a real path rather than a `data:` URL, because the Electron fixture needs
+ * an `import.meta.url` that `createRequire` can resolve.
  */
-test("the banner's remedy names the release the last check read", async () => {
-	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
-	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
-	// The bundled module graph is the app's main process, so the fixtures have to
-	// cover every surface it touches at import time: `app.getPath` for the logger
-	// and the pending-install marker, `electron-log`'s transports, and the
-	// autoUpdater object the constructor configures.
+const loadUpdateServiceModule = async () => {
 	const fixture = (contents) => ({ contents, loader: "js" });
 	const bundle = await build({
 		stdin: {
@@ -3998,9 +4048,34 @@ test("the banner's remedy names the release the last check read", async () => {
 	const serviceDir = mkdtempSync(join(tmpdir(), "lo-service-bundle-"));
 	const serviceFile = join(serviceDir, "update-service.mjs");
 	writeFileSync(serviceFile, bundle.outputFiles[0].text);
-	// Imported from a real path rather than a `data:` URL: the banner shim above
-	// needs an `import.meta.url` that `createRequire` can resolve.
-	const service = await import(serviceFile);
+		return { service: await import(serviceFile), serviceDir };
+};
+
+/**
+ * The remedy the compatibility banner produces names the release the last check
+ * read.
+ *
+ * This is the one defect class this change was reviewed for three times: a value
+ * the code looks like it sets that never reaches the payload on the path that
+ * matters (review U17). The panel's version sentence renders from
+ * `latestVersion`, the banner's remedy calls `updateBackend()` with no target at
+ * all, and the fallback to the published release the last check read is the
+ * whole fix. It only had coverage through the real banner path, so a regression
+ * in the fallback would look exactly like the original defect: a panel with no
+ * version sentence on the path most users take.
+ *
+ * Driven against the SHIPPED main process, bundled the way the rest of this file
+ * bundles its modules - but with Electron stubbed instead of launched, because
+ * what is under test is one function's payload rather than a window. Every path
+ * the module reads or writes is redirected into a temp dir and the health probe
+ * is pointed at a closed port, so nothing of the operator's own install, state
+ * or running server is touched.
+ */
+test("the banner's remedy names the release the last check read", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
 	try {
@@ -4870,5 +4945,91 @@ test("without the block maps a release offers, the updater transfers the whole f
 		);
 	} finally {
 		run.close();
+	}
+});
+
+/**
+ * A failure found on a re-check is delivered through the scheduler, and the
+ * state it supersedes waits for that delivery.
+ *
+ * The re-check used to push the notice itself and stop there. A push is not a
+ * delivery here: `sendToRenderer` answers true for any live `webContents`, so a
+ * notice sent before the renderer's React effect subscribes still set
+ * `installFailureDelivered` and nothing ever sent it again - while the branch had
+ * already dropped the in-flight payload and cleared the marker, leaving a panel
+ * that claims an install is still running for one that has failed (review R2).
+ *
+ * What this pins is that shape rather than the wording: the re-check itself
+ * pushes nothing, the marker is still on disk while the notice is unsent, and
+ * both the notice and the cleanup arrive when the scheduler's fallback fires.
+ */
+test("a re-check failure goes out through the delivery scheduler, not a bare push", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: (channel, payload) => sent.push({ channel, payload }),
+					isDestroyed: () => false,
+					// A no-op window: the load event must not be what delivers the notice
+					// here, so the case can only pass on the scheduler's own fallback.
+					once: () => {},
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		updateService.backendUrl = "http://127.0.0.1:9";
+
+		// A marker for an install the running version never reached: the failure
+		// this re-check reports once ShipIt's job has gone. Written AFTER the
+		// constructor, which runs its own start-up recovery on an empty directory.
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.19.5",
+			artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+			startedAt: new Date(Date.now() - 60_000).toISOString(),
+			watchdogPid: null,
+		});
+		// The in-flight reading that makes this a re-check rather than a start-up:
+		// the panel is up, and the process has already told the renderer so.
+		updateService.installWasInFlight = true;
+		updateService.installInFlightDelivered = true;
+		sent.length = 0;
+
+		updateService.recoverPendingInstall();
+
+		// Nothing is pushed by the re-check itself: delivery is the scheduler's.
+		assert.deepEqual(
+			sent.filter(({ channel }) => channel === "update-install-failed"),
+			[],
+		);
+		// And the marker is still there to be re-reported until it is heard.
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
+
+		// The scheduler's fallback - `did-finish-load` cannot fire on a stub - is
+		// what delivers it, and only then does the superseded state go.
+		await new Promise((resolve) => setTimeout(resolve, 5300));
+		const failures = sent.filter(
+			({ channel }) => channel === "update-install-failed",
+		);
+		assert.equal(failures.length, 1, JSON.stringify(sent));
+		assert.match(
+			failures[0].payload.detail,
+			/local-operator-ui-0\.19\.5-universal\.zip/,
+		);
+		assert.equal(failures[0].payload.cancelledByRelaunch, true);
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), false);
+	} finally {
+		if (interval) clearInterval(interval);
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
 	}
 });

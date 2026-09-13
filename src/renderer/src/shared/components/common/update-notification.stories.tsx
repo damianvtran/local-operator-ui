@@ -375,8 +375,12 @@ const mockUpdaterApi = () => {
 					targetVersion: "0.19.5",
 					message:
 						"Version 0.19.5 is still being installed. The update can't finish while Local Operator is open, so quit and leave it closed until it opens again by itself.",
+					// The locale form `installStartedText` produces, not the marker's raw
+					// ISO-8601 stamp: this fixture has to be the payload the main process
+					// actually sends, and the raw stamp was the copy the app shipped by
+					// mistake - it wrapped mid-token in the panel's details block (R1).
 					detail:
-						"Install started 2026-09-13T09:39:00.991Z from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip, while version 0.19.4 was running.",
+						"Install started 13/09/2026, 09:39:00 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip, while version 0.19.4 was running.",
 				});
 			}
 			return () => {};

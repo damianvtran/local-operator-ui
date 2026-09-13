@@ -580,19 +580,32 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.pendingInstallFailure = payload;
-				this.pendingInstallInFlight = null;
+				/*
+				 * NOT nulled here, and the marker is not cleared here either.
+				 *
+				 * The renderer is showing "still installing" for this very install when
+				 * this branch runs off a re-check, and the panel only changes when it
+				 * hears this failure. Dropping the in-flight payload and the marker
+				 * before that notice lands would leave the user's screen claiming an
+				 * install is running for one that is over, with nothing left to
+				 * re-send - so both go when the notice is delivered
+				 * (`deliverPendingInstallFailure`, review R2).
+				 */
 				this.stopInstallInFlightRecheck();
 				this.reapWatchdog(outcome.marker, false);
-				clearPendingInstallMarker(this.markerDir());
 				this.reapFailedInstallLeftovers();
-				// A failure found on a re-check is found while the app is up and the
-				// renderer is listening, so it is delivered now; the scheduled path is
-				// for the failure read during start-up, before the window can hear it.
-				if (this.installWasInFlight) {
-					this.deliverPendingInstallFailure();
-				} else {
-					this.schedulePendingInstallFailureDelivery();
-				}
+				/*
+				 * The same delivery path the start-up failure takes, for every failure.
+				 *
+				 * A re-check is not evidence the renderer is listening: `sendToRenderer`
+				 * answers true whenever a live `webContents` exists, so a direct push
+				 * with no subscriber still sets `installFailureDelivered` and the notice
+				 * is lost with no second attempt. The scheduler is what gives it one -
+				 * the load event it may have missed, then the delayed fallback - and it
+				 * is safe to call from any branch because the send itself is guarded by
+				 * that flag (review R2).
+				 */
+				this.schedulePendingInstallFailureDelivery();
 			}
 		}
 	}
@@ -711,9 +724,12 @@ export class UpdateService {
 	/**
 	 * Deliver the failed-install notice once the renderer can hear it.
 	 *
-	 * The marker is read while the window is still loading, so the push happens
-	 * on `did-finish-load` with a delayed fallback: the component subscribes from
-	 * a React effect, which may run after the load event.
+	 * The single delivery path for every install failure, read at start-up or
+	 * found on a re-check: the marker is read while the window is still loading
+	 * (and, on a re-check, the window is up but the React effect that subscribes
+	 * is not provably past), so the push happens on `did-finish-load` with a
+	 * delayed fallback. One path rather than two is what keeps "delivered"
+	 * meaning the same thing in both cases (review R2).
 	 */
 	private schedulePendingInstallFailureDelivery(): void {
 		if (!this.pendingInstallFailure) return;
@@ -733,6 +749,14 @@ export class UpdateService {
 			return;
 		}
 		this.installFailureDelivered = true;
+		/*
+		 * The state this failure supersedes goes only now, once the notice is
+		 * away: the in-flight panel and the marker on disk both exist to be
+		 * re-reported until the user is told what happened, so clearing them
+		 * before this point is what made a lost push unrecoverable (review R2).
+		 */
+		this.pendingInstallInFlight = null;
+		clearPendingInstallMarker(this.markerDir());
 		logger.info(
 			"Reported a failed update install to the renderer",
 			LogFileType.UPDATE_SERVICE,
@@ -776,7 +800,11 @@ export class UpdateService {
 	 * effect that can run after `did-finish-load`.
 	 */
 	private scheduleInstallInFlightDelivery(): void {
-		if (!this.pendingInstallInFlight) return;
+		// Guarded on the delivered flag as well as on the payload, because the
+		// re-check calls this on every pass: without it a long install accumulates
+		// a `did-finish-load` listener and a 5 s timer per pass, all of them no-ops
+		// by then, for as long as the install lasts (review N1).
+		if (!this.pendingInstallInFlight || this.installInFlightDelivered) return;
 		const deliver = () => this.deliverPendingInstallInFlight();
 		const webContents = this.mainWindow?.webContents;
 		if (webContents && !webContents.isDestroyed()) {
