@@ -31,6 +31,7 @@ import {
 } from "@shared/components/ui/dialog";
 import { Input } from "@shared/components/ui/input";
 import { Label } from "@shared/components/ui/label";
+import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import { Check, Search } from "lucide-react";
 import {
@@ -95,6 +96,16 @@ export type PickerHostProps = {
 	 * not instead of it.
 	 */
 	notice?: string | null;
+	/**
+	 * The detail behind `notice`, shown on hover.
+	 *
+	 * One line on screen and the full list on demand, so a note about a wall of
+	 * names (the operator's own catalogue: 21 of them) reads as copy rather than
+	 * as a log (design D16, UX nit). The ids are names nobody can act on, which is
+	 * why they are not the sentence.
+	 */
+	noticeDetail?: string | null;
+
 	/** Text shown when the (filtered) list is empty. */
 	emptyText?: string;
 	searchPlaceholder?: string;
@@ -112,6 +123,25 @@ export type PickerHostProps = {
 	result?: PickerResult | null;
 	/** An operation is in flight; the footer shows it and disables submit. */
 	busy?: boolean;
+	/**
+	 * What the in-flight footer says, in the user's terms.
+	 *
+	 * The default names the CHANGE rather than the machinery: "Waiting for the
+	 * backend…" is honest but answers a question the user did not ask — what they
+	 * asked is whether their pick registered (design D14, UX nit). An adapter
+	 * that knows the change it is making says it (`/model` passes "Switching the
+	 * model…"), and the generic default stays true for every other destination.
+	 */
+	busyText?: string;
+	/**
+	 * The picked row's spinner name, for the accessibility tree.
+	 *
+	 * Its own prop rather than `busyText` so the announcement is a statement
+	 * ("Switching the model") rather than a sentence fragment with an ellipsis.
+	 * Omitted, the spinner is hidden from the tree — no row can be named as
+	 * "applying" when the host has not been told what is applying.
+	 */
+	busyLabel?: string;
 	/** Widen for data views (usage, analytics). */
 	wide?: boolean;
 	/** Rendered above the list, below the search (a scope toggle, a filter). */
@@ -156,7 +186,18 @@ type PickerRowProps = {
 	/** This row's value is the one an in-flight operation is answering about. */
 	isPicked: boolean;
 	onHover: (index: number | null) => void;
-	onPick: (option: PickerOption) => void;
+	/**
+	 * The row was chosen, and which row it is.
+	 *
+	 * The index is part of the contract, not a convenience: the click also MOVES
+	 * the keyboard's row to what it clicked (UX U1 — a pick used to leave the
+	 * highlight on a row the user never chose, so the one row still marked as
+	 * "selected" was not the row in force), and the host needs the index to do
+	 * that.
+	 */
+	onPick: (option: PickerOption, index: number) => void;
+	/** See `PickerHostProps.busyLabel`: the picked row's spinner name. */
+	busyLabel?: string;
 };
 
 /*
@@ -234,17 +275,31 @@ export function pickerBodyKind(state: {
  *
  * The arrow/Enter hint is advertised only when there IS something to move
  * through and nothing else is happening: with no rows it described controls
- * that do nothing (design D6), and while busy the useful fact is that the owner
- * is still being waited on (design D3, latency U2).
+ * that do nothing (design D6), and while busy the useful fact is what is being
+ * done to the user's session (design D3, latency U2, D14).
+ *
+ * It NAMES the row Enter would pick. That is UX U1's second half: the keyboard's
+ * row can be scrolled out of view (the reader scrolled 1800px, the pointer was
+ * on row 39, Enter picked row 0 — 1492px above the fold). Hover deliberately
+ * does not steer the selection (design D2), so the two marks can sit on
+ * different rows and a word is what tells the user which one the key acts on
+ * without moving the pointer or fighting their scroll.
  */
 export function pickerFooterHint(state: {
 	busy: boolean;
 	hasList: boolean;
 	rowCount: number;
+	/** The label of the row Enter picks, when the host can name one. */
+	activeLabel?: string | null;
+	/** What an in-flight operation is doing, in the user's terms. */
+	busyText?: string;
 }): string {
-	if (state.busy) return "Waiting for the backend…";
-	if (state.hasList && state.rowCount > 0)
-		return "Arrows move, Enter picks, Esc closes";
+	if (state.busy) return state.busyText ?? "Applying the change…";
+	if (state.hasList && state.rowCount > 0) {
+		return state.activeLabel
+			? `Arrows move · Enter picks ${state.activeLabel} · Esc closes`
+			: "Arrows move, Enter picks, Esc closes";
+	}
 	return "Esc closes";
 }
 
@@ -253,15 +308,17 @@ export function pickerFooterHint(state: {
  *
  * `Close` while busy rather than `Cancel`: closing the dialog does not cancel
  * the operation the owner is already performing (design D3). `Done` once a
- * non-refused result is on screen, `Cancel` when a pick has not succeeded —
- * the two words the host already used.
+ * non-refused result is on screen, and `Close` for every state where nothing
+ * has landed — the same word the Esc hint above uses, because one action with
+ * two names in one row is what design D15 filed (the footer read "Esc closes"
+ * beside a button labelled `Cancel`).
  */
 export function pickerPrimaryLabel(state: {
 	busy: boolean;
 	result: PickerResult | null;
 }): string {
 	if (state.busy) return "Close";
-	return state.result && state.result.tone !== "error" ? "Done" : "Cancel";
+	return state.result && state.result.tone !== "error" ? "Done" : "Close";
 }
 
 /**
@@ -300,9 +357,37 @@ export function pickerPrimaryLabel(state: {
  * under it), and Enter belongs to the keyboard. The alternative — hover sets
  * `active` too, as the popup does — is why the two states were byte-identical
  * before (design D2).
+ *
+ * WHY THE POINTER ALSO CARRIES A STRUCTURAL EDGE.
+ *
+ * `accent-wash` is not perceptible on `elevated` in every theme, and the design
+ * audit measured it: obsidian ΔE00 0.77 (1.014:1), tokyoNight 3.74, dracula
+ * 3.99, dune 4.88. In obsidian the pointer's mark was therefore invisible — the
+ * operator's original report surviving intact in a user-selectable theme — and
+ * the in-flight row lost its mark with it. So the mark is not wash-only any
+ * more: a 1px `outline-control` edge clears the 3:1 structural floor against
+ * the dialog's ground in ALL twelve palettes BY CONSTRUCTION, which is why the
+ * contrast contract asserts the ROLE on this ground (`picker row pointer mark`)
+ * rather than only the class string — the string stayed green while the role
+ * collapsed. The wash is kept where it does read, as the tint the sibling popup
+ * uses for the same gesture.
+ *
+ * `isPicked` keeps that edge for as long as the operation is in flight, so the
+ * row being switched to is marked even after the pointer leaves it; the spinner
+ * in its meta slot is what says what is happening (D3).
  */
 export const PickerRow: FC<PickerRowProps> = memo(
-	({ id, option, index, isActive, isHovered, isPicked, onHover, onPick }) => (
+	({
+		id,
+		option,
+		index,
+		isActive,
+		isHovered,
+		isPicked,
+		onHover,
+		onPick,
+		busyLabel = "Applying the change",
+	}) => (
 		/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant. */
 		<div
 			id={id}
@@ -324,12 +409,16 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				// mousedown, not click: keeps focus in the search input, the same
 				// reason the composer popup does it.
 				event.preventDefault();
-				onPick(option);
+				onPick(option, index);
 			}}
 			className={cn(
 				"flex cursor-default items-start gap-3 rounded-sm px-2 py-1.5",
 				isActive && "bg-sunken",
 				isHovered && !isActive && "bg-accent-wash",
+				// The structural half of both marks; see the block comment above for
+				// why the wash alone is not enough in all twelve themes.
+				(isPicked || (isHovered && !isActive)) &&
+					"outline-solid outline-1 -outline-offset-1 outline-control",
 				option.disabled && "text-ink-disabled",
 			)}
 		>
@@ -361,7 +450,7 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				   It replaces the meta slot rather than adding a second element, so the
 				   row does not change height while the answer is pending. */
 				<span className="shrink-0">
-					<Spinner size="sm" label="Waiting for the backend" />
+					<Spinner size="sm" label={busyLabel} />
 				</span>
 			) : option.meta ? (
 				<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
@@ -382,6 +471,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	loading = false,
 	loadError = null,
 	notice = null,
+	noticeDetail = null,
 	emptyText = "Nothing matches.",
 	searchPlaceholder = "Search",
 	onPick,
@@ -392,6 +482,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 	actions,
 	result = null,
 	busy = false,
+	busyText,
+	busyLabel = "Applying the change",
 	wide = false,
 	toolbar,
 	body,
@@ -496,6 +588,16 @@ export const PickerHost: FC<PickerHostProps> = ({
 		);
 	}, [options, query]);
 
+	/**
+	 * The row Enter would pick, by name.
+	 *
+	 * The footer states it (UX U1): the keyboard's row can be scrolled out of view,
+	 * and the pointer does not steer it (design D2), so a WORD is what tells the
+	 * user which model the key is about to switch them to without moving the
+	 * pointer or fighting their scroll.
+	 */
+	const activeLabel = filtered[active]?.label ?? null;
+
 	// Reset per open so a re-opened picker never carries a stale filter.
 	useEffect(() => {
 		if (!open) return;
@@ -521,6 +623,24 @@ export const PickerHost: FC<PickerHostProps> = ({
 				: Math.min(current, filtered.length - 1);
 		});
 	}, [filtered, query]);
+	/*
+	 * A query change scrolls the list back to its top (UX U6).
+	 *
+	 * Typing with the list scrolled to `scrollTop: 2200` left the offset where it
+	 * was: the rows narrowed 1450 -> 271 and the best match sat ABOVE the fold, so
+	 * the user asked for a narrower set and was shown its middle. The active-row
+	 * effect below only runs when `active` MOVES, and a filter that keeps index 0
+	 * active moves nothing — which is also why a scroll alone never brings the
+	 * keyboard's row back.
+	 *
+	 * The suppression is the honest form of this effect: `query` is the TRIGGER
+	 * rather than an input — the body reads nothing and the reset is what the
+	 * change causes — and biome's rule cannot tell the two apart.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a query change is the trigger; the effect deliberately reads nothing.
+	useEffect(() => {
+		listRef.current?.scrollTo({ top: 0 });
+	}, [query]);
 	useEffect(() => {
 		const row = listRef.current?.querySelector<HTMLElement>(
 			`[id="${listId}-${active}"]`,
@@ -549,7 +669,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 	useEffect(() => {
 		pickRef.current = pick;
 	}, [pick]);
-	const pickRow = useCallback((option: PickerOption) => {
+	const pickRow = useCallback((option: PickerOption, index: number) => {
+		/*
+		 * The click moves the keyboard's row to what it clicked (UX U1).
+		 *
+		 * Without it, a click left the highlight on the row the arrows had last
+		 * reached — measured at 1492px away, off screen — so the one row still
+		 * marked as "selected" was one the user never chose, for the whole wait.
+		 * The picker's own footers, the row marks and the picked row's `aria-
+		 * selected` all read `active`, so this is what makes the mark and the
+		 * action agree after a pointer pick.
+		 *
+		 * Hover still does NOT steer it (design D2): only an action moves the
+		 * selection, and the pointer's own action is the click.
+		 */
+		setActive(index);
 		void pickRef.current(option);
 	}, []);
 	const setHoveredIndex = useCallback(
@@ -684,7 +818,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 						    it: `catalogue.data` still holds the rows the other providers
 						    answered with (design D4). */}
 						{notice && (
-							<p className="px-2 pb-2 text-body-sm text-warning">{notice}</p>
+							<Tooltip content={noticeDetail}>
+								<p className="px-2 pb-2 text-body-sm text-warning">{notice}</p>
+							</Tooltip>
 						)}
 						{bodyKind === "loading" ? (
 							<div className="flex h-24 items-center justify-center">
@@ -695,14 +831,24 @@ export const PickerHost: FC<PickerHostProps> = ({
 						) : bodyKind === "empty" ? (
 							<p className="px-2 py-3 text-body-sm text-ink-dim">{emptyText}</p>
 						) : (
-							/* biome-ignore lint/a11y/useFocusableInteractive: the search input keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
 							<div
 								ref={listRef}
 								id={listId}
-								// biome-ignore lint/a11y/useFocusableInteractive: the search input keeps focus; the listbox is reached through aria-activedescendant.
-								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
+								/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>. */
 								role="listbox"
 								aria-label={title}
+								/*
+								 * OUT of the tab order, explicitly (UX U5).
+								 *
+								 * Chrome makes a scrollable region focusable, so this reached by Tab drew
+								 * a focus ring that reads as "this region is now in play" while the arrow
+								 * keys scrolled the list instead of moving the selection and Enter picked
+								 * nothing — the one place in the picker where the arrows stop working.
+								 * `-1` keeps it programmatically focusable (and keeps `listRef` and the
+								 * ref callback working) while removing it from the tab sequence, which is
+								 * what the comment above always claimed.
+								 */
+								tabIndex={-1}
 								// The pointer's highlight is cleared when it leaves the list, so a
 								// hover left over from somewhere else can never read as the
 								// keyboard's selection (design D2).
@@ -730,6 +876,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 													isPicked={list.picked === option.value}
 													onHover={setHoveredIndex}
 													onPick={pickRow}
+													busyLabel={busyLabel}
 												/>
 											);
 										})}
@@ -832,30 +979,48 @@ export const PickerHost: FC<PickerHostProps> = ({
 				)}
 
 				<div className="flex items-center justify-between gap-3 px-5 py-4">
-					<span className="text-ink-dim text-meta">
+					{/*
+					 * The hint names the row Enter would pick (UX U1) and truncates rather
+					 * than wrapping, because a long model name here is the only text in the
+					 * dialog that is not already bounded by a column.
+					 */}
+					<span className="min-w-0 truncate text-ink-dim text-meta">
 						{busy ? (
 							/*
 							 * `Working` was the whole of the feedback while a pick was in flight,
 							 * and a cold backend bind measures 1.1-4.2 s — long enough that the
-							 * word alone reads as a hang (design D3, latency U2). What the UI
-							 * actually knows is that it asked the owner and is waiting for the
-							 * answer, so that is what it says; the picked row's spinner says
-							 * which row the answer is about.
+							 * word alone reads as a hang (design D3, latency U2). The adapter
+							 * names the change it is making (`busyText`); the picked row's
+							 * spinner says which row the answer is about.
 							 */
 							<span className="flex items-center gap-2 text-ink-muted">
 								<Spinner size="sm" />
-								{pickerFooterHint({ busy, hasList, rowCount: filtered.length })}
+								{pickerFooterHint({
+									busy,
+									hasList,
+									rowCount: filtered.length,
+									activeLabel,
+									busyText,
+								})}
 							</span>
 						) : (
-							pickerFooterHint({ busy, hasList, rowCount: filtered.length })
+							pickerFooterHint({
+								busy,
+								hasList,
+								rowCount: filtered.length,
+								activeLabel,
+								busyText,
+							})
 						)}
 					</span>
 					<div className="flex items-center gap-2">
 						{actions}
 						{/*
-						 * `Cancel` while busy named the wrong action: the dialog closing does not
-						 * cancel the switch the owner is already performing — it only stops the
-						 * user watching it (design D3). `Close` says what the control does.
+						 * `Cancel` named an action the control does not take: closing the dialog
+						 * does not cancel the switch the owner is already performing — it only
+						 * stops the user watching it (design D3). `Close` also ends the two-words-
+						 * for-one-action row D15 filed, where the hint beside it read "Esc
+						 * closes".
 						 */}
 						<Button variant="ghost" size="sm" type="button" onClick={onClose}>
 							{pickerPrimaryLabel({ busy, result })}

@@ -195,6 +195,30 @@ const CONTROLS = [
 		ink: "info",
 	},
 	{
+		/*
+		 * The picker row's pointer mark and in-flight mark.
+		 *
+		 * A row's edge inside the dialog: the pointer's own position, and the row
+		 * an operation is answering about, are both marked with a 1px
+		 * `outline-control` edge on top of (not instead of) the pointer's tint.
+		 *
+		 * This entry is the ROLE half of design D12, and it is here because the
+		 * call-site pin alone was the reason the defect survived round 1: the gate
+		 * pinned the string `bg-accent-wash` and stayed green while the ROLE it
+		 * names collapsed onto the ground it is drawn on — obsidian ΔE00 0.77,
+		 * 1.014:1 — so hovering a row in obsidian changed nothing a user could see,
+		 * which was the operator's original report surviving intact in a
+		 * user-selectable theme. A `structural` edge cannot collapse that way:
+		 * `borderControl` is asserted at 3:1 on all four grounds by the loop above,
+		 * and this entry asserts the same floor for the row it is painted on.
+		 */
+		name: "picker row pointer mark",
+		on: ["elevated"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
 		name: "accent wash chip",
 		on: ["canvas", "surface"],
 		fill: "accentWash",
@@ -588,10 +612,11 @@ const STRUCTURAL_CALL_SITES = [
 		 * adjacent-ground row above already asserts as a perceptible step from
 		 * `elevated` in all twelve themes. It is NOT `accent-wash`, the sibling
 		 * composer popup's tint and the first candidate: `accent-wash` collapses
-		 * onto `elevated` in obsidian (ΔE00 0.77, ratio 1.01) and is under ΔE00 4 in
-		 * dune and tokyoNight, so it would reproduce the original defect on
-		 * whichever palette the user happens to run. The wash keeps the pointer's
-		 * role instead.
+		 * onto `elevated` in obsidian (ΔE00 0.77, ratio 1.01), and is 3.74
+		 * tokyoNight / 3.99 dracula / 4.88 dune — so it would reproduce the original
+		 * defect on whichever palette the user happens to run. The wash keeps the
+		 * pointer's role instead, with the structural edge below carrying the floor
+		 * it cannot.
 		 */
 		what: "picker option row selection ground",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
@@ -603,6 +628,26 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: 'isHovered && !isActive && "bg-accent-wash"',
 		why: "the pointer's mark is deliberately a different ground from the selection's, so the two states are distinguishable and a highlight left by the pointer cannot read as the keyboard's; cleared by the listbox's own onMouseLeave (design D2)",
+	},
+	{
+		/*
+		 * The picker row's STRUCTURAL mark, and the other half of design D12.
+		 *
+		 * The tint above is pinned because it is a deliberate state; it is NOT
+		 * enough on its own, and this pin is what says so. `accent-wash` is ΔE00
+		 * 0.77 on the dialog's own ground in obsidian — no mark at all — and
+		 * perceptibility is a property of the role pair, not of the class string,
+		 * which is exactly how the gate stayed green while the pointer gave no
+		 * feedback in four of twelve themes. `outline-control` is the structural
+		 * answer: the CONTROLS entry `picker row pointer mark` asserts its 3:1 floor
+		 * on this same ground, so a palette edit that collapsed the edge fails the
+		 * role assertion and an edit that drops the edge fails this one. Reverting
+		 * this expression to the tint alone is what the two pins catch together.
+		 */
+		what: "picker option row structural mark",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: 'isPicked || (isHovered && !isActive)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
 	},
 	{
 		what: "context wheel empty track role",

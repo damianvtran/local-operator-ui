@@ -36,8 +36,9 @@
  *     two different states, not one state reached two ways: the pointer marks a
  *     row without moving the selection, and its mark clears when it leaves.
  *   - `Busy` — a row has been picked and the command is in flight: the picked
- *     row carries the mark, the footer says the owner is being waited on, and
- *     the right-hand control reads `Close` rather than `Cancel`.
+ *     row carries the mark and its own structural edge, the footer says what is
+ *     being done to the session (`Switching the model…`, not "waiting for the
+ *     backend"), and the right-hand control reads `Close` rather than `Cancel`.
  *   - `Result` — the command answered; the strip is up and the indicator moved.
  *   - `RefreshPending` — `Refresh from providers` clicked: the button says
  *     `Refreshing…` and the rows it already had stay painted.
@@ -453,15 +454,28 @@ export const Populated: Story = {
  *
  * The pair with `KeyboardHighlight` is the measurement, and after D2 the two
  * frames are DIFFERENT states: this one marks the pointer's row with the
- * accent-wash tint and leaves the selection where it was, where the keyboard's
- * frame moves the selection and paints it with the `sunken` ground. The play
- * asserts exactly that: the pointer's mark appears and `aria-selected` does not
- * move.
+ * accent-wash tint PLUS a 1px `outline-control` edge and leaves the selection
+ * where it was, where the keyboard's frame moves the selection and paints it
+ * with the `sunken` ground. The edge is not decoration: `accent-wash` collapses
+ * onto `elevated` in obsidian (ΔE00 0.77), so the tint alone was no mark at all
+ * in four of the twelve themes (design D12). The play asserts the separation
+ * AND what UX U1 asks for in the same frame: with the pointer on a row that is
+ * NOT the keyboard's, the footer still names the row Enter would pick.
  */
 export const Hovered: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
 	play: async () => {
 		await hoverRow(/GPT-5\.4/);
+		// U1: the pointer's row is not the pick target, and the footer says which
+		// row is (`aria-selected` confirms the keyboard did not move).
+		await waitFor(() =>
+			expect(screen.getByText(/Enter picks Claude Opus 5/)).toBeTruthy(),
+		);
+		expect(
+			document
+				.querySelector('[role="option"][data-hovered="true"]')
+				?.getAttribute("aria-selected"),
+		).toBe("false");
 	},
 };
 
@@ -501,10 +515,10 @@ export const Busy: Story = {
 					?.textContent,
 			).toContain("Claude Haiku 4.5"),
 		);
-		// The footer says what the UI knows: it asked the owner and is waiting.
-		// `Working` alone was not feedback for the 1.1-4.2 s cold path.
+		// The footer names the change, in the user's terms: "the backend" is the
+		// implementation's noun for the session the pick changes (D14).
 		await waitFor(() =>
-			expect(screen.getByText(/Waiting for the backend/)).toBeTruthy(),
+			expect(screen.getByText(/Switching the model/)).toBeTruthy(),
 		);
 		// The control closes the dialog; it does not cancel the switch.
 		await waitFor(() =>
