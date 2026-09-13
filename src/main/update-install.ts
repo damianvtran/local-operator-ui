@@ -428,6 +428,19 @@ export type BytecodeHealResult = BytecodeHealPlan & { removed: string[] };
  * an empty `__pycache__` added after signing still verifies), so removing them
  * would be extra deletion with nothing to gain.
  *
+ * A *sealed* tree is healable, and that is a property of the seal rather than of
+ * this function: `sealPythonInterpreterTrees` withholds `add_file` and
+ * `add_subdirectory` from the trees' directories and `write`/`append` from the
+ * bytecode already in them, and deliberately leaves `delete_child` granted -
+ * unlinking is a directory right, not a file one. So both halves of the
+ * guarantee hold at once: a sealed bundle cannot *gain* a `.pyc` for codesign to
+ * report, and this removal still works on one that already carries it. The
+ * previous revision of the seal cleared the trees' write bits instead, which
+ * refuses the write and the unlink together: the heal came back
+ * `healable=false removed=0` - the reinstall refusal, on exactly the install this
+ * exists to repair - and `rm -rf` of the tree exited 1, so the app could not be
+ * deleted either. Neither half is allowed to break the other.
+ *
  * `remove` is injectable so the tests can drive every branch without a signed
  * bundle on disk; the default is the real thing. A path is re-checked against
  * `isPythonBytecodePath` immediately before it is removed, so a caller holding
