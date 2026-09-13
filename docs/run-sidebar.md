@@ -58,8 +58,8 @@ it looks:
   and the backend builds those rows through
   `FrontendStateStore._jobs` → `_with_lineage`
   (`local_operator/session/frontend_state.py:4034-4076`, `:4181-4230`), which
-  stamps `parent_job_id`, `session_id` and `session_dir` from the comms node onto
-  **every** row, live or restored, on the 50 ms roster coalesce
+  stamps `parent_job_id`, `session_id` and `session_dir` from the comms NODE onto
+  every row it can resolve one for, on the 50 ms roster coalesce
   (`:3586-3604`). `JobState` itself carries `prompt`, `launch_prompts`,
   `launch_message_id`, `attempt_aliases`, `agent_role`, `effort`, `model_label`,
   `context_window`, `direct_cost`, `start_time`, `settled_at`, `error_text`,
@@ -67,6 +67,26 @@ it looks:
   (`local_operator/session/frontend_state.py:1363-1444`). So the roster, the
   lineage, the reader's header and the reader's brief are all already in
   renderer state.
+
+  **Not every row, and the exceptions are load-bearing (review round 1, R1-6; and
+  corrected against the backend: PR #1053's reviewer, 2026-09-13).** The stamp is
+  the LIVE node's, and two other shapes carry less than this paragraph used to
+  claim:
+  - the PERSISTED roster record (`harness/comms.py:970-1010`,
+    `SubagentComms.snapshot()`) carries `session_dir` and **never a
+    `session_id`** — it stores the directory that makes a resume possible, and it
+    skips a record with none;
+  - a RESTORED row (`session/restored_rows.py:136-190`) updates only
+    `status`/`restored`/`cut_off_cause` from that record and copies neither
+    field, so on a COLD conversation every roster row arrives with
+    `session_id: null` and `session_dir: null`.
+
+  The renderer reads `session_id` (§ 4), so a cold row has no `childSessionId` and
+  nothing to address the transcript route with. The fix is the backend's (copy the
+  record's `session_dir`/`session_id` onto the restored row, PR #1053); until it
+  ships on the pairing, the renderer's own answer is § 10.3: such a row is not
+  openable, and a reader reached another way (the breadcrumb, the sibling
+  stepper) states that plainly rather than sitting on `Loading…` forever.
 - **The child's conversation is not, and cannot be.** The desktop wire strips
   job trajectories from the snapshot (`frontend_state.sync_wire_payload`,
   `local_operator/session/frontend_state.py:1955-1975`) and blanks them on every
@@ -473,6 +493,17 @@ grammar, on the parent transcript's ground:
   as part of the route family. The constraint if that path ships late: the reader
   renders an honest "Image not available" row rather than a broken one.
 
+  **That is the branch this change takes, and the review round made it explicit
+  (R1-5).** The child attachment op is NOT wired here: the reader renders a
+  child image through the same path as any other blocked image, and the copy is
+  the honest one for a subsystem that is absent — the bytes are not available to
+  this reader — rather than `BrokenAttachment`'s "the file may have been moved,
+  renamed, or deleted", which asserts a cause this code cannot know and is wrong
+  in the ordinary case (the child's attachment store is intact; the route is
+  missing). § 5.1's licence is exactly this: the honest row is the fallback
+  "if that path ships late", and it has not shipped. When the child attachment
+  op lands, the row becomes a picture and this paragraph goes.
+
 ### 5.2 The header
 
 Two rows, mirroring the app's own pane-header idiom rather than inventing one:
@@ -613,14 +644,21 @@ I read `run-detail-todos.tsx` and the model, and the answer is **not** the one
 the brief guessed at. Three facts, in order of how visible they are:
 
 1. **The closure count is stated twice for one list, at two levels, in the same
-   visual weight.** The section header carries `todoTally(details, 46)`
-   (`run-detail-todos.tsx:181`) — `11 of 15 resolved · 1 dropped`
+   visual weight.** The section header carries `todoTally(details, budget)`
+   (`run-detail-todos.tsx:181`) — `11 of 15 closed · 1 dropped`
    (`run-detail-model.ts:1040-1050`) — and every phase header beneath it carries
-   `· {closed}/{total} resolved` (`run-detail-todos.tsx:195-204`), which is a
-   partition of the same number. Both are `text-meta`, both are `ink-dim` or
-   `ink-muted`, and the word `resolved` appears on every line. This is the thing
-   that reads as redundant: **`resolved` is spelled three or four times in four
-   lines and the same closure is measured at two levels.**
+   `· {closed}/{total}` (`run-detail-todos.tsx:195-204`), which is a partition of
+   the same number. Both are `text-meta`, both are `ink-dim` or `ink-muted`, and
+   the same closure is measured at two levels. This is the thing that reads as
+   redundant: **closure is asserted on every line and counted twice.**
+
+   The WORD moved in the review round (D1-8): the tally says `closed`, which is
+   the word the phase headers and the model already use (`TodoPhaseView.closed`).
+   It used to say `resolved`, and on a plan with dropped work that was not merely
+   a second spelling — `3 of 3 resolved · 1 dropped` cannot be checked against the
+   three rows under it when one of them is the dropped one (3 + 1 > 3), and a tally
+   exists to be checkable. `closed` is done OR dropped, so the two numbers always
+   add up to the rows on screen.
 2. **A phase whose name IS the implicit one collides with the section label.**
    `IMPLICIT_PHASE_NAME = "Todos"` (`run-detail-model.ts:182`) and
    `isNamedPhase` (`:800-803`) suppress that name — but only for a plan with
@@ -1087,6 +1125,7 @@ exact steps inside a stated range are the implementation's to choose.
 | | Value | Why |
 |---|---|---|
 | Panel width | default 420px, min 320px, max 640px; `runPanelWidth` in `ui-preferences-store`, persisted | The canvas's own slot is 800/400/1200 (`ui-preferences-store.ts:167`, `chat-content.tsx:446-460`) and a *document* pane deserves 800; a roster plus a prose transcript does not, and 420 is wide enough for the roster's fixed segments (the popover's own 384px floor, `docs/run-details.md` § 5, plus the row's hover ground and the wider activity line). A persistent pane that cannot be widened would be the popover with more chrome, so it is resizable. |
+| Tally budget | derived from the pane's ACTUAL width — `tallyBudget(paneWidth)` (`run-detail-model.ts`), the width minus a fixed chrome allowance over the mono advance — never a constant | A budget pinned to the 420px default was wrong at the pane's own FLOOR, and the failure was visible rather than theoretical: at 320px the subagents tally's 47 characters did not fit, the model shed nothing (it believed it had room), and the CSS `truncate` cut the values mid-word (`… 1 interr…`, review round 1 D1-2). Shedding is only a guarantee if the budget is the width the text is actually laid into, and `§ 8`'s own floor is one of the widths the pane can take. A budget that is not a finite positive number falls back to the default rather than propagating `NaN`, which would disable shedding silently. |
 | Resize | `ResizableDivider`, `side="left"`, `minWidth={320}`, `maxWidth={640}`, `onDoubleClick` restores 420 | The canvas's own control, including its keyboard separator behaviour (`resizable-divider.tsx:220-256`). **Requires** the `aria-label` to be parameterised (§ 3.2). |
 | Panel root | `<section aria-label="Run details">`, `bg-surface`, `h-full overflow-hidden border-l border-hairline` | The canvas's wrapper is exactly this (`chat-content.tsx:461-468`); the ground follows the app's own depth model (rail `sunken` → list panel `surface` → working surface `canvas`), which `chat-content.tsx:299-350` states. |
 | Chrome bar | 40px, `bg-sunken`, full width | The canvas's bar (`canvas/index.tsx:380-425`), same height, same ground, so the two panes are visibly two modes of one slot. |
@@ -1210,9 +1249,14 @@ GET /v1/desktop/sessions/{session_id}/children/{child_id}/attachments/{digest}
   - the parent directory must be a user session (`is_user_session`,
     `resume.py:1013-1032`), and
   - the parent's newest `subagent_roster` custom entry must carry a record whose
-    `session_dir`/`session_id` is this child (`session/session.py:210`,
-    `:11460-11488`; the records list is the whole graph, so a nested grandchild is
-    named too, `harness/comms.py:970-1010`). Precedent for treating a follower's roster —
+    `session_dir` is this child (`session/session.py:210`, `:11460-11488`; the
+    records list is the whole graph, so a nested grandchild is named too,
+    `harness/comms.py:970-1010`). It is matched **by directory, not by
+    `session_id`**: the persisted record has no `session_id` field at all
+    (`SubagentComms.snapshot()`, review round 1 against the backend, PR #1053),
+    and the child's own `session_id` — the id this route is addressed with — is
+    `session_dir.name` or the live child's own id (`harness/comms.py:752-753`).
+    Precedent for treating a follower's roster —
     not the runtime's — as the ownership record: the mobile daemon reads exactly
     this entry to rebuild child routes (`mobile/daemon.py:657-660`).
   If the parent's runtime is already attached, its live comms graph may confirm
@@ -1257,6 +1301,15 @@ GET /v1/desktop/sessions/{session_id}/children/{child_id}/attachments/{digest}
 | media relay | `src/main/desktop-media.ts:72-103` | `{ op: "subagents.attachment", sessionId, childId, digest }` |
 | response types | `src/shared/desktop-session-contract.ts:291-300` | reuse `DesktopHistoryPage` and add the `state` field to the child-page type |
 | subscription | `src/renderer/src/shared/hooks/use-canonical-session.ts:463-471` | the per-job pulse (§ 5.3) |
+
+One renderer rule belongs to this section because it is about the WIRE's shapes
+rather than the pane's: **a roster row with no `childSessionId` is not openable.**
+`session_id` is nullable by design and arrives null on a cold conversation (§ 10.1
+above), so the row renders as a plain state row rather than a control
+(`childOpenable` in `run-detail-model.ts`, pinned by the model test), and a reader
+reached another way — the breadcrumb, the sibling stepper — states the fact in one
+honest terminal line instead of sitting on `Loading…` forever (review round 1,
+R1-6; the backend's own fix for the restored row rides PR #1053).
 
 ### 10.4 Live updates, and the load
 
@@ -1380,14 +1433,15 @@ per `branding.md` § 9's checklist.
 | `reader-failed` | the verbatim exception in the outcome block, `danger` on the header icon only |
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
-| `reader-brief` | the folded brief and its expander |
+| `reader-brief` | the folded brief and its expander, in the one state that renders it: a child whose transcript does NOT already carry the instruction (`reader-resumed` is the state where the brief stands down) |
+| `reader-unaddressed` | § 10.3's third answer: a reader whose row has no child id — the honest terminal line, with a way out |
+| `mcp-dot-ack-acknowledged` / `mcp-dot-ack` | one story each for the two halves of the dot's discipline, because a single frame cannot hold a sequence: closed with a problem (dot on) → the list shown (dot off, acknowledged) → the server heals while the list is shown → the panel closes → it breaks again shut (dot on AGAIN, the re-arm). The heal must happen while the list is ON SCREEN: pruning is part of showing the list, and a sequence that healed with the panel shut would leave the server acknowledged forever and could not be photographed at all. |
 | `reader-resumed` | a RESUMED child's reader: the `subagent-launch:<job_id>` row reconciled to its concise prompt, with no role/team/system preamble above it — § 12's risk 3 has no other frame |
 | `mcp-all-connected` | the section on a session whose servers are all up: one row each with the word, the tool count and the scope qualifier, the `{connected} of {total} connected` tally, and **no** dot on the trigger |
 | `mcp-auth-required` | one server `auth-required`: the `danger` mark, the wire's own word, and its remedy line — plus the trigger's dot and its clause (before/after: closed with the dot, then open on the list with the dot cleared and the row visible) |
 | `mcp-disconnected` | the same encoding for the transport state, with its own copy — the two states must be distinguishable side by side, which is the confusion the operator reported |
 | `mcp-cold` | the cold payload: the section's one line in place of its tally, rows with no status word, no tool count and no dot |
 | `mcp-unknown-status` | a status word this renderer was not taught: rendered verbatim in the quiet ink with the unknown mark, **no** hint, and the dot ON (§ 7.3) — the refusal is "never claim the good state" |
-| `mcp-dot-ack` | the dot's whole discipline for this ledger: closed with a problem (dot on) → open on the list (dot off) → the same server heals and breaks again while closed (dot on again, the re-arm rule) |
 | `narrow-800` | the window floor: panel at its 320px minimum, chat column at its floor, small-view transcript |
 | `capability-absent` | § 10.5's degraded state, **both gated surfaces in one frame pair**: the reader's non-clickable row with the one update line, and no MCP section at all beside it (§ 10.5). One rule, one frame pair — a second near-identical frame for the second capability is the redundancy § 6.1 spends a section removing. |
 | `reduced-motion` | the panel with the spinner's motion off; shape still distinguishes state — for the roster's child spinner **and** the MCP `connecting` mark, which is the only other animated glyph in the pane |
@@ -1418,6 +1472,18 @@ flow (click a row, watch it update, go back up), and a fixture cannot prove the
 pulse-to-transcript path. The story set is required as well — it is what makes
 the states reproducible without a backend — but the live pair is the one that
 proves the feature works.
+
+The live pair taken for this change is committed as
+`docs/evidence/chat-run-panel-live/`, declared in `manifest.json` as a
+`supplementary` set because no sweep can re-derive it, and
+`docs/evidence/chat-run-panel-live/README.md` records the pairing, the ids and
+the readings — including the backend access-log count of transcript reads while
+the reader was open, which is the number that shows the pulse driving a re-read
+rather than a single fetch. It was taken from the BUILT app rather than
+`pnpm dev:headless`, for the measured reason in
+`docs/evidence/chat-title/README.md`: dev paints the development-only Chat|Raw
+strip over the header, which is where this surface's subject lives. Same window
+mode (`LOCAL_OPERATOR_UI_WINDOW_MODE=headless`), same pairing, no focus taken.
 
 **The MCP section has the same split, and its live half is not a frame at all.**
 The marks, the copy and the cold line are fixture-provable and belong in the
