@@ -95,7 +95,7 @@ it looks:
   records trajectory retrieval as an unimplemented slice. The child's transcript
   is a file on disk, written incrementally at tool-batch boundaries
   (`harness/comms.py:1121-1145`), and reading it needs a **new read-only backend
-  route** — the reason for the two-PR split in § 9.
+  route** — the reason for the two-PR split in § 11.
 - **A child is a real session on disk, gated out of the user route.** Its
   directory is `config_dir()/sessions/<12 hex>` minted at launch
   (`harness/subagent.py:1587-1600`), stamped
@@ -490,19 +490,28 @@ grammar, on the parent transcript's ground:
   (`transcript._externalize_attachments`; the parent's route at
   `server/routes/desktop_sessions.py:341-352` exists precisely because of that).
   A child's page therefore needs a child-scoped attachment path, which § 10 marks
-  as part of the route family. The constraint if that path ships late: the reader
-  renders an honest "Image not available" row rather than a broken one.
+  as part of the route family.
 
-  **That is the branch this change takes, and the review round made it explicit
-  (R1-5).** The child attachment op is NOT wired here: the reader renders a
-  child image through the same path as any other blocked image, and the copy is
-  the honest one for a subsystem that is absent — the bytes are not available to
-  this reader — rather than `BrokenAttachment`'s "the file may have been moved,
-  renamed, or deleted", which asserts a cause this code cannot know and is wrong
-  in the ordinary case (the child's attachment store is intact; the route is
-  missing). § 5.1's licence is exactly this: the honest row is the fallback
-  "if that path ships late", and it has not shipped. When the child attachment
-  op lands, the row becomes a picture and this paragraph goes.
+  **That path SHIPS, and the reader is wired to it (round 2 corrected this
+  paragraph).** § 5.1 licensed an honest "Image not available" row only "if that
+  path ships late"; it does not ship late. The backend's child attachment route
+  (`/v1/desktop/sessions/{id}/children/{child}/attachments/{digest}`) lands in the
+  same PR as its `transcript` sibling, and the renderer resolves a child's digest
+  rows through the media relay's child-scoped op (`subagents.attachment`,
+  § 10.3), handed down as an `attachmentScope` on the reader's
+  `CanonicalTranscript` and gated on the same `subagent_transcript` capability
+  that admits the reader at all. A child's screenshot is therefore a picture, not
+  a placeholder, and the parent's picture can never appear in its place.
+
+  An earlier revision of this paragraph claimed the honest copy was in use while
+  the diff still rendered `BrokenAttachment`'s "moved, renamed, or deleted"
+  sentence — a claim the review round was right to refuse. The failure copy is
+  now honest in its own right rather than as a substitute for the route: a digest
+  row that cannot be read says its stored copy is not available to this reader
+  (`ATTACHMENT_UNAVAILABLE_COPY` in `attachment-frame.tsx`), because the two
+  causes a 404 can have — an entry the store never wrote and one it pruned — are
+  indistinguishable from here, and the file-path sentence belongs to the legacy
+  view that really does read paths.
 
 ### 5.2 The header
 
@@ -528,6 +537,15 @@ The header keeps its last-known facts if the child leaves `frontend.jobs` while
 the reader is open (a settled child is swept minutes later, `harness/jobs.py`'s
 manager sweep): the panel caches the row it opened with and updates it from the
 roster while the row is present.
+
+**The breadcrumb holds its width at depth (round 2's open residual risk).** Each
+ancestor crumb is capped (`max-w-32`, the roster's own qualifier cap) so the
+current node keeps the rest, and the cap is paired with a SHRINK floor: the
+ancestors may shorten toward their leading words and the current crumb carries a
+`min-w-16`, so a lineage deeper than the two `reader-nested` proves cannot consume
+the 40px bar and leave the title — the breadcrumb IS the pane's title (`§ 5.2`)
+— at no width. `reader-deep-floor` is the frame at depth 3 with the pane at its
+320px floor.
 
 ### 5.3 Live updates
 
@@ -1278,9 +1296,11 @@ GET /v1/desktop/sessions/{session_id}/children/{child_id}/attachments/{digest}
 
 - The attachment route mirrors the parent's
   (`server/routes/desktop_sessions.py:341-352`): raw bytes, the digest's own mime
-  type declared as the response class, the same containment proof. **Deliberately
-  left to implementation:** whether both attachment paths land in the same PR;
-  the constraint if only the transcript ships is in § 5.1.
+  type declared as the response class, the same containment proof. Both
+  attachment routes ship in the SAME PR as the transcript route — round 2
+  corrected this row, which had left the pairing open — so the renderer's
+  child-scoped op (`subagents.attachment`, § 10.3) is wired against a route that
+  exists, and § 5.1's fallback copy is no longer the branch in use.
 
 ### 10.2 The capability
 
@@ -1298,7 +1318,7 @@ GET /v1/desktop/sessions/{session_id}/children/{child_id}/attachments/{digest}
 | request schema | `src/shared/desktop-contract.ts:137-664` (`desktopRequestSchema`) | `{ op: "subagents.transcript", sessionId, childId, beforeId?, limit? }` |
 | path mapping | same file, `desktopEndpoint` (`:1038-1420`), beside the `sessions.history` case (`:1108-1117`) | maps to the transcript route, `GET` |
 | transport | `src/main/desktop-transport.ts:12-16` | nothing: the op is validated and budgeted generically; it is a control op (fixed-shape query, no body) |
-| media relay | `src/main/desktop-media.ts:72-103` | `{ op: "subagents.attachment", sessionId, childId, digest }` |
+| media relay | `src/main/desktop-media.ts:70-125` | `{ op: "subagents.attachment", sessionId, childId, digest }`, mapped to the child attachment route, `GET`. Wired: the reader passes an `attachmentScope` to `CanonicalTranscript` and `use-attachment-url.ts` selects this op whenever the scope names a child. |
 | response types | `src/shared/desktop-session-contract.ts:291-300` | reuse `DesktopHistoryPage` and add the `state` field to the child-page type |
 | subscription | `src/renderer/src/shared/hooks/use-canonical-session.ts:463-471` | the per-job pulse (§ 5.3) |
 
@@ -1355,9 +1375,12 @@ visible backend update/setup action, and there is no unauthenticated fallback.
 Deliberately not fixed here: the exact widths inside § 8's bounds; all copy except
 the quotes this document fixes in place; whether the reader's scroll position is
 restored when returning from a nested child; the reducer-level memoisation of the
-pulse; whether the attachment path ships in the same backend PR; and the error
+pulse; and the error
 copy's wording. What is fixed is § 10.1's route shape, § 10.2's capability name and
-§ 10.3's op names — those are the contract the two PRs are built against.
+§ 10.3's op names — those are the contract the two PRs are built against. (The one
+item on this list that closed rather than staying open is the attachment route:
+§ 10.1's second route ships in the same PR, so the reader's child-scoped
+attachment op has a route to call.)
 
 ---
 
@@ -1367,8 +1390,8 @@ copy's wording. What is fixed is § 10.1's route shape, § 10.2's capability nam
 
 Contents:
 
-- the route family of § 10.1 (transcript; attachment if it ships here), the
-  containment proof, and the `state` derivation;
+- the route family of § 10.1 — both routes, the transcript and the child
+  attachment — the containment proof, and the `state` derivation;
 - the `subagent_transcript: 1` capability entry;
 - tests at the level this repo requires: unit coverage of the containment proof
   (the three refusals: not an id, not subagent origin, not named by the parent),
@@ -1420,6 +1443,7 @@ per `branding.md` § 9's checklist.
 | story | state it exists to prove |
 |---|---|
 | `trigger-idle` | the icon is on screen with **no** work in flight and nothing open (the old design's "no button" state, inverted) |
+| `trigger-hover` / `trigger-open-hover` | the trigger's hover grounds, with a real pointer moved by the rig's `Input.dispatchMouseEvent` (a hover cannot be produced by a story). Together with `trigger-idle` (closed at rest) and `panel-empty` (open at rest) they are its four states: `canvas` / `elevated` / `accent-wash` / `accent-wash`. The OPEN hovered frame is the one design review round 2 (D2-1) was about: the pressed ground must survive the pointer. |
 | `panel-empty` | the panel open with nothing to show: the empty state, no skeleton, no placeholder rows |
 | `roster-only` / `todos-only` | one section, no empty heading (`docs/run-details.md` § 6.3, carried over) |
 | `both-in-flight` | both sections, the rule between them, the roster's live clock |
@@ -1433,8 +1457,10 @@ per `branding.md` § 9's checklist.
 | `reader-failed` | the verbatim exception in the outcome block, `danger` on the header icon only |
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
+| `reader-deep-floor` | the same breadcrumb at DEPTH 3 with the pane at its 320px floor: the ancestors shrink so the current node — the reader's title (`§ 5.2`) — keeps a legible share. Round 2 left this open; the frame is the proof, not the flex reasoning. |
+| `reader-image` | a child's OWN image: the row carries a digest and the reader resolves it through the child-scoped attachment op, so a child screenshot is a picture. The story stubs the relay for the renderer's half; the route's mapping is pinned by a desktop test. |
 | `reader-brief` | the folded brief and its expander, in the one state that renders it: a child whose transcript does NOT already carry the instruction (`reader-resumed` is the state where the brief stands down) |
-| `reader-unaddressed` | § 10.3's third answer: a reader whose row has no child id — the honest terminal line, with a way out |
+| `reader-unaddressed` | § 10.3's third answer: a reader whose row has no child id. The fixture is the shape that produces it — a COLD conversation's restored row (the durable graph's own status word, no `session_id`, `§ 10.1`) — and the line states the FACT rather than a cause, because on that shape the child usually does have a conversation on disk. |
 | `mcp-dot-ack-acknowledged` / `mcp-dot-ack` | one story each for the two halves of the dot's discipline, because a single frame cannot hold a sequence: closed with a problem (dot on) → the list shown (dot off, acknowledged) → the server heals while the list is shown → the panel closes → it breaks again shut (dot on AGAIN, the re-arm). The heal must happen while the list is ON SCREEN: pruning is part of showing the list, and a sequence that healed with the panel shut would leave the server acknowledged forever and could not be photographed at all. |
 | `reader-resumed` | a RESUMED child's reader: the `subagent-launch:<job_id>` row reconciled to its concise prompt, with no role/team/system preamble above it — § 12's risk 3 has no other frame |
 | `mcp-all-connected` | the section on a session whose servers are all up: one row each with the word, the tool count and the scope qualifier, the `{connected} of {total} connected` tally, and **no** dot on the trigger |
