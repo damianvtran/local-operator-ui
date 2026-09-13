@@ -5,6 +5,19 @@ on:
     branches:
       - main
       - 'dev-*'
+  # Pull requests run this workflow so the runtime-dependency guard below fires
+  # before the merge: GitHub cannot run a single job from a workflow whose
+  # trigger excludes the event, and a guard that only fires on `push` fires
+  # after the merge, which is too late to stop an unvetted dependency shipping.
+  # The rest of the job set riding along is the cost of that, not the reason.
+  pull_request:
+
+# Pull-request runs supersede each other, so the older one is cancelled rather
+# than queued; pushes to `main` are left alone so a merge is never interrupted
+# mid-flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -15,10 +28,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # pnpm is pinned here, and the pin is load-bearing rather than a preference:
+      # pnpm 10.29.3 through at least 10.34.x drops dependency edges from
+      # `pnpm list --prod --json --depth Infinity` - the command electron-builder
+      # runs to decide what to copy into app.asar - so the packaged app can ship
+      # without a module it needs. Measured on this repo, same tree, only pnpm
+      # changed: 10.30.3 reports the `debug` node reached through
+      # electron-updater -> builder-util-runtime without its `ms` dependency, so
+      # the packager copies 43 packages / 5.2 MB and the built app dies at
+      # launch with `Cannot find module 'ms'` from
+      # app.asar/node_modules/debug/src/common.js; 10.29.2 reports that edge,
+      # copies 96 packages / 6.0 MB, and the app starts.
+      # Upstream: pnpm/pnpm#10601 (last known good 10.29.2). Do not raise this
+      # pin without re-measuring that command; see the pnpm section in AGENTS.md.
       - name: Install pnpm
+        # pinned: see the pnpm note above this step
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -32,6 +59,32 @@ jobs:
       - name: Run Biome lint
         run: pnpm lint
 
+  runtime-deps:
+    # What the packaged app ships as node_modules is decided entirely by
+    # package.json `dependencies`: electron-vite's externalizeDepsPlugin()
+    # externalises exactly that set and electron-builder copies it wholesale into
+    # Resources/app.asar, while Vite has already bundled the renderer into
+    # out/renderer. A renderer-only or build-only package that sits in that
+    # section therefore ships to every user - at v0.19.6 the 65 declared
+    # production dependencies put ~470 MB of never-loaded node_modules into a
+    # 1.0 GB install. This job fails on any production dependency the allowlist
+    # in scripts/check-runtime-deps.mjs has not vetted. It deliberately has no
+    # install step: the check reads package.json and nothing else.
+    name: Runtime Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check the runtime dependency allowlist
+        run: node scripts/check-runtime-deps.mjs
+
   check-types:
     name: Type Checking
     runs-on: ubuntu-latest
@@ -43,7 +96,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -97,7 +150,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -156,7 +209,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -237,7 +290,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Build and pack
         env:

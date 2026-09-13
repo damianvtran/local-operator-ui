@@ -1,0 +1,30 @@
+/*
+ * Stylesheet for the submit-latency evidence harness.
+ *
+ * It exists only to tell Tailwind where the classes are. Tailwind v4 detects
+ * source files relative to the VITE ROOT, and this harness's root is
+ * `scripts/` — so the app's own utilities are never generated and the frame
+ * comes out as correct markup with no design system, which is evidence of
+ * nothing. `usage-real-evidence.css` carries the same note for the same reason.
+ *
+ * `@source` points the scanner back at the renderer tree. The app stylesheet is
+ * imported rather than restated so the harness and the product resolve the same
+ * roles, radii and type ramp — which matters more here than in a component
+ * harness, because these frames are read for layout and spacing of the live
+ * transcript, not just for whether a row exists.
+ */
+
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
+
+/*
+ * The app gives the chat surface the full window; `ChatLayout` fills its
+ * parent, so without an explicit viewport box the page collapses to content
+ * height and the transcript has no scroll region to photograph.
+ */
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}

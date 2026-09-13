@@ -10,13 +10,17 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
+import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	UNCONFIRMED_SEND_CODE,
 	admitChatDraft,
 	draftIdentityFor,
+	isRefusedBeforeAdmission,
+	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -116,6 +120,12 @@ function SessionPanel({
 }) {
 	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
 	useDesktopWatchLease(sessionId, canonical.subscriptionId);
+	// Read here rather than threaded from the page: the query is cached with a
+	// 60 s staleTime, so this is a store read and not a second request.
+	const panelCapabilities = useDesktopCapabilities();
+	// Fired from the composer's first keystroke, never from this mount - see
+	// `useWarmSession` for why browsing must not spawn runtimes.
+	const warm = useWarmSession(sessionId, panelCapabilities.data);
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
 	const end = useRef<HTMLDivElement>(null);
@@ -296,7 +306,16 @@ function SessionPanel({
 	const send = async (
 		content: string,
 		attachments: string[],
-	): Promise<boolean> => {
+		/**
+		 * Passed to `admitChatDraft` so the composer can clear itself at the moment
+		 * the optimistic echo is painted rather than at the moment it submitted.
+		 * On the New-chat path nothing clears a live composer - the identity flip
+		 * replaces the one holding the text - so read `use-message-input.ts` for what
+		 * this callback does and does not do there; the distinction is the whole of
+		 * U1/U3.
+		 */
+		onEchoPainted?: () => void,
+	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		// Same identity the view reads, so a send can never address a different
 		// draft than the one whose retained text and Discard control are shown.
@@ -364,6 +383,7 @@ function SessionPanel({
 					cwd,
 				},
 				sessionId,
+				onEchoPainted,
 			);
 			if (!id) return false;
 			if (
@@ -386,7 +406,23 @@ function SessionPanel({
 					? error.code
 					: undefined,
 			);
-			return false;
+			/*
+			 * TWO failures, and the composer acts differently on each.
+			 *
+			 * Refused before admission - 413/422, and every pre-transport refusal
+			 * above: nothing reached the owner, so the text belongs back in the box
+			 * (`false`).
+			 *
+			 * Anything else is UNKNOWABLE: the owner may have admitted the command
+			 * before the response was lost, which is why the echo is deliberately
+			 * left painted in the transcript. Putting the same text back in the box
+			 * would then show one message twice, under copy that names only the box
+			 * (design round 1's D1) - so the answer is `SEND_HELD`, the box stays
+			 * empty, and the retry travels through the store's claim and its own
+			 * "Restore unsent message" control. One predicate, exported from the
+			 * store, so this cannot drift from the echo's retraction rule.
+			 */
+			return isRefusedBeforeAdmission(error) ? false : SEND_HELD;
 		} finally {
 			sendLock.current = false;
 			setAdmitting(false);
@@ -759,6 +795,7 @@ function SessionPanel({
 					onCancelJob={stop}
 					messageInputRef={input}
 					runDetails={runDetails}
+					onComposerInput={warm}
 					canonical={{
 						view,
 						busy,
@@ -835,7 +872,9 @@ export function ChatPage() {
 			});
 	};
 	const id = draftKey ? draft?.sessionId : (active ?? undefined);
-	const identity = draftKey ?? id;
+	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
+	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`.
+	const identity = panelIdentityFor(draftKey, id);
 	return (
 		<ChatLayout
 			sidebar={

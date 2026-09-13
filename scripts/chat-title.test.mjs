@@ -57,6 +57,22 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 					loader: "js",
 					resolveDir: process.cwd(),
 				}));
+				/*
+				 * The store paints the optimistic echo through this hook, which is a
+				 * REACT module - importing it for real would drag a renderer into a
+				 * node bundle that only wants the title rules. Stubbed in the same
+				 * shape as `canonical-chat.test.mjs`, which stubs the same seam for
+				 * the same reason.
+				 */
+				builder.onResolve(
+					{ filter: /@shared\/hooks\/use-canonical-session/ },
+					() => ({ path: "echo", namespace: "echo-fixture" }),
+				);
+				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
+					contents:
+						"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const discardPendingEchoes = () => {};",
+					loader: "js",
+				}));
 			},
 		},
 	],
@@ -178,8 +194,7 @@ test("a streaming tick with an empty live title leaves the row's name standing",
 	assert.equal(store.getState().sessions[0].title, OPENER_NAME);
 	// The defect's other half: it re-blanked on EVERY frontend update, so one
 	// tick is not the assertion - a turn's worth of them is.
-	for (let tick = 0; tick < 40; tick += 1)
-		streamTick("aaaa11112222", "");
+	for (let tick = 0; tick < 40; tick += 1) streamTick("aaaa11112222", "");
 	assert.equal(store.getState().sessions[0].title, OPENER_NAME);
 });
 
@@ -203,7 +218,10 @@ test("a row with no name at all gains none from an empty live title", () => {
 	// chat", and an empty STRING would additionally make a nameless row look
 	// named to anything that tests the key's presence.
 	assert.equal("title" in row, false);
-	assert.equal(resolveChatTitle({ liveTitle: "", catalogueTitle: row.title }), UNTITLED_CHAT);
+	assert.equal(
+		resolveChatTitle({ liveTitle: "", catalogueTitle: row.title }),
+		UNTITLED_CHAT,
+	);
 });
 
 test("isBlankTitle is the one definition both rules read", () => {

@@ -5,4 +5,3 @@ onlyBuiltDependencies:
   - electron-winstaller
   - esbuild
   - sharp
-  - keytar
