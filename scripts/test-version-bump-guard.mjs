@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import {
 	compareVersions,
 	decideVersionBump,
+	listReleaseTags,
 	newVersionFrom,
 	versionLineChanges,
 } from "./version-bump-guard.mjs";
@@ -120,6 +121,11 @@ test("compareVersions follows semver precedence for prereleases", () => {
 test("compareVersions reports unreadable input rather than guessing", () => {
 	assert.equal(compareVersions("v0.19.5", "0.19.5"), null);
 	assert.equal(compareVersions("0.19", "0.19.5"), null);
+	// Leading zeros: `git tag v01.2.3` is permitted by git and rejected by
+	// validate-release's TAG_RE, so a loose `\d+` here would let one junk tag
+	// read as version 1.2.3 and become "the highest tag".
+	assert.equal(compareVersions("01.2.3", "0.19.5"), null);
+	assert.equal(compareVersions("1.0.0-alpha..1", "1.0.0"), null);
 });
 
 // ---------------------------------------------------------------------------
@@ -272,6 +278,20 @@ test("non-version tags on the remote are ignored, not treated as the highest", (
 	});
 	assert.equal(ok, true);
 	assert.match(lines.join("\n"), /above the highest release tag v0\.19\.5/);
+});
+
+test("a leading-zero tag is ignored, not treated as the highest tag", () => {
+	// `v01.2.3` sorts above `v0.19.5` under the loose form and would fail every
+	// subsequent release PR until it was deleted; it is not a tag this repo can
+	// publish from, so it must be skipped the way `nightly` is.
+	const { ok, lines } = decideVersionBump({
+		prTitle: "chore(release): bump version to 0.19.6",
+		diff: versionDiff("0.19.5", "0.19.6"),
+		tags: ["01.2.3", "0.19.5"],
+	});
+	assert.equal(ok, true);
+	assert.match(lines.join("\n"), /above the highest release tag v0\.19\.5/);
+	assert.doesNotMatch(lines.join("\n"), /01\.2\.3/);
 });
 
 test("a release PR may promote a prerelease to its own release", () => {
@@ -500,6 +520,48 @@ test("CLI: an unreadable diff fails the guard instead of reading as no change", 
 		assert.equal(status, 1);
 		assert.match(out, /Could not read the package\.json diff/);
 		assert.doesNotMatch(out, /No version change in package\.json/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("CLI: an unreadable tag list fails the guard instead of reading as no tags", () => {
+	// The twin of the unreadable-diff test above, and the same fail-open
+	// direction: an empty tag list is the "skipping the ordering check" verdict,
+	// so `ls-remote` failing must throw rather than read as "no release tags".
+	const fx = fixtureRepo({
+		base: "0.19.5",
+		change: (dir) => writePackageJson(dir, "0.19.6"),
+	});
+	try {
+		// No `origin` at all is the shape of a checkout whose remote is gone.
+		git(fx.work, ["remote", "remove", "origin"]);
+		const { status, out } = runGuard(
+			fx.work,
+			"chore(release): bump version to 0.19.6",
+		);
+		assert.equal(status, 1);
+		assert.match(out, /Could not read the release tags\./);
+		assert.doesNotMatch(out, /No release tags found on the remote/);
+		assert.doesNotMatch(out, /sorts above the highest release tag/);
+	} finally {
+		fx.cleanup();
+	}
+});
+
+test("listReleaseTags throws rather than reporting no tags when the remote is gone", () => {
+	// The unit-level pin on the same branch: the function must not swallow the
+	// `ls-remote` failure and hand `decideVersionBump` an empty list.
+	const root = mkdtempSync(join(tmpdir(), "version-bump-guard-notags-"));
+	try {
+		git(root, ["init", "--initial-branch=main"]);
+		writePackageJson(root, "0.19.5");
+		git(root, ["add", "-A"]);
+		git(root, ["commit", "-m", "chore: fixture base"]);
+		assert.throws(
+			() => listReleaseTags({ cwd: root, remote: "origin" }),
+			/Could not read the release tags\./,
+		);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}

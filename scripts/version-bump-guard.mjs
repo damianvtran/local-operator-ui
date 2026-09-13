@@ -70,14 +70,37 @@ const NUMERIC_ID_RE = /^\d+$/;
 const FIELD_SPLIT_RE = /\s+/;
 
 /**
- * A version this guard is willing to reason about, in the same shape
- * `scripts/validate-release.mjs` accepts for a tag (TAG_RE). Anything else is
- * ignored rather than fatal: validate-release.mjs rejects a non-conforming tag
+ * A PR title is attacker-controlled text and it is printed to a runner log,
+ * where a line beginning `::` is a workflow command the runner acts on — so a
+ * crafted title could forge an annotation (`::error::…`) in the job output.
+ * Collapse CR/LF (a newline would start a new log line) and drop `::` where it
+ * would be line-leading.
+ *
+ * Log spoofing only: a title cannot change this guard's verdict, which is read
+ * from the diff and from the title's PREFIX and never from its contents.
+ */
+function printableTitle(title) {
+	return title.replace(/[\r\n]+/g, " ").replace(/(^|\s)::/g, "$1");
+}
+
+/**
+ * A version this guard is willing to reason about: the component grammar of
+ * `scripts/validate-release.mjs`'s `TAG_RE`, exactly, minus the leading `v`
+ * and with the prerelease body captured so precedence can be compared.
+ * Anything else is
+ * ignored rather than fatal — validate-release.mjs rejects a non-conforming tag
  * before any build, so such a tag can never name a published release here and
  * cannot be the "highest tag" that a new version has to clear.
+ *
+ * The numeric identifiers are `(0|[1-9]\d*)`, not `\d+`, and that is
+ * load-bearing rather than tidiness: `git tag` permits `v01.2.3`, which
+ * validate-release would reject, and a loose `\d+` would parse it as version
+ * `1.2.3` and let one stray tag become "the highest tag" — failing every
+ * release PR with "does not sort above v01.2.3" until someone deleted the tag.
+ * Ignoring it is the same reasoning that ignores `nightly`.
  */
 const SEMVER_RE =
-	/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
+	/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/;
 
 /** Raw `+`/`-` version lines in the diff, ignoring non-version `package.json` edits. */
 export function versionLineChanges(diff) {
@@ -170,7 +193,7 @@ export function decideVersionBump({ prTitle, diff, tags = [] }) {
 			// overwriting. So the check names the tell rather than the symptom.
 			lines.push(
 				"::error file=package.json::A release PR must actually change the version.",
-				`This PR is titled '${prTitle}' but its diff does not touch the version`,
+				`This PR is titled '${printableTitle(prTitle)}' but its diff does not touch the version`,
 				"line in package.json, so the release would carry the previous version's",
 				"code under a new number.",
 				"",
@@ -303,10 +326,12 @@ export function readVersionDiff({ cwd = process.cwd() } = {}) {
  * `actions/checkout@v4` passes `--no-tags` unless `fetch-tags: true` (its
  * default is false), so the checkout carries ZERO tags and `describe` exits 128
  * on every real run — a check that used it would be dead code that passes a
- * backward bump green. `fetch-tags: true` does not fix it either: at depth 2
- * the tag object arrives but is not REACHABLE in the truncated history, so
- * `describe` still fails whenever the base has moved past the tag, which is the
- * normal state during a release window. `ls-remote` asks the forge instead of
+ * backward bump green. `fetch-tags: true` does not fix it either: it reaches
+ * only as deep as the fetch window, so `describe` finds the tag when it sits on
+ * the checked-out commit's parent and still fails once the tag is deeper than
+ * that window — which is the normal state during a release window, when more
+ * than one merge has landed since the last tag. `ls-remote` asks the forge
+ * instead of
  * the local object store, needs no history, and so reports the highest tag
  * REPO-WIDE rather than merely the newest reachable one — the stricter reading,
  * and the right one: a release must be forward of everything ever published.
