@@ -42,19 +42,25 @@ const bundle = await build({
 const {
 	NOTHING_SEEN,
 	accumulateSeen,
-	acknowledgedOnClose,
-	acknowledgedOnOpen,
+	acknowledgeMcpWhileShown,
+	acknowledgeWhileOpen,
 	childStateLabel,
+	deriveMcpServers,
 	deriveRunDetails,
+	foldBrief,
 	hasLiveChildClock,
 	hasRunDetails,
 	hasUnseenFailure,
+	hasUnseenMcpProblem,
+	mcpServersAreCold,
 	onScreenFailures,
+	reconcileLaunchTurns,
 	retimeRunDetails,
 	runDetailTriggerLabel,
 	subagentTally,
 	todoTally,
 	unseenFailures,
+	unseenMcpProblems,
 	visibleFailures,
 	visibleSubagents,
 	visibleTodoPhases,
@@ -826,8 +832,19 @@ test("a flat plan renders headerless, a phased one keeps its headers", () => {
 	);
 	assert.equal(implicit.todos[0].name, null);
 
-	// Two phases: the second keeps its name whatever the first is called.
-	const two = derive(
+	/*
+	 * The MIXED case, and this is the § 6.1 finding (2) pinned rather than
+	 * described (`§ 11`, risk 4: the single-phase half was already asserted here and
+	 * the mixed half was not, so the defect returned unnoticed).
+	 *
+	 * The wire cannot distinguish an implicit phase from one an agent genuinely
+	 * named `Todos`, and the backend lazily creates the implicit one when `add` is
+	 * called before any phase was named. A plan that ends up holding BOTH used to
+	 * render a `To-dos` section directly above a phase headed `Todos` — the same
+	 * plan named twice — because the fold was applied to the whole plan and only
+	 * when there was exactly one phase. The fold is per PHASE now.
+	 */
+	const mixed = derive(
 		[],
 		[
 			{ name: "Todos", items: [{ text: "a", status: "pending" }] },
@@ -835,8 +852,32 @@ test("a flat plan renders headerless, a phased one keeps its headers", () => {
 		],
 	);
 	assert.deepEqual(
+		mixed.todos.map((phase) => phase.name),
+		[null, "Publish"],
+		"the implicit phase folds wherever it appears, and only it",
+	);
+
+	// A named phase in the same position keeps its header: the fix folds the
+	// implicit NAME, not every phase.
+	const two = derive(
+		[],
+		[
+			{ name: "Reconcile", items: [{ text: "a", status: "pending" }] },
+			{ name: "Publish", items: [{ text: "b", status: "pending" }] },
+		],
+	);
+	assert.deepEqual(
 		two.todos.map((phase) => phase.name),
-		["Todos", "Publish"],
+		["Reconcile", "Publish"],
+	);
+
+	// And a plan of ONE implicit phase is still the back-compat path, byte for
+	// byte: the case `test_band_panels.py`'s goldens guard in the TUI, and the
+	// case `scripts/run-detail-model.test.mjs` has pinned since the flat plan
+	// existed.
+	assert.deepEqual(
+		flat.todos.map((phase) => phase.name),
+		[null],
 	);
 });
 
@@ -882,115 +923,57 @@ test("a failure raises the trigger until it has been seen", () => {
 	assert.deepEqual(unseenFailures(two, seen), ["failed-2"]);
 });
 
-test("opening acknowledges the failures that were on screen, and only those", () => {
+test("the panel's OPEN STATE is the whole acknowledgement rule, continuously", () => {
 	/*
-	 * The rule the dot's promise rests on (`§3.3`). What this replaces bound the
-	 * acknowledgement to a `[open, details]` effect: every failure the roster
-	 * gained while the panel was open was re-recorded as seen, so a child that
-	 * failed while the reader was scrolled down in the plan was marked read
-	 * without ever having been displayed, and the trigger's failure clause was
-	 * gone when they closed the panel.
-	 */
-	const opened = acknowledgedOnOpen(["failed-1"], NOTHING_SEEN);
-	assert.deepEqual([...opened], ["failed-1"]);
-	// A failure that arrives WHILE the panel is open is not acknowledged: the
-	// snapshot is the only thing consulted, and it was taken at the open.
-	const whileOpen = acknowledgedOnOpen(["failed-1"], opened);
-	assert.equal(whileOpen, opened, "an unchanged snapshot must not churn state");
-	assert.equal(
-		hasUnseenFailure(
-			derive([job({ id: "failed-2", status: "failed" })]),
-			whileOpen,
-		),
-		true,
-	);
-	// A failure acknowledged BEFORE stays acknowledged, so a roster that sheds a
-	// row for a frame and republishes it cannot re-light a dot already read.
-	const later = acknowledgedOnOpen(["failed-2"], opened);
-	assert.deepEqual([...later].sort(), ["failed-1", "failed-2"]);
-});
-
-test("closing acknowledges the failures the panel showed, and not the ones it hid", () => {
-	/*
-	 * The other half of the dot's promise (`§3.3`, UX round 2 U2). The open
-	 * snapshot alone left the dot lit for a failure whose row the reader watched
-	 * arrive INSIDE the visible slice: the trigger went on saying "a child failed
-	 * and you have not looked" about something they had just read, and clearing it
-	 * cost an extra open/close cycle.
-	 */
-	const details = derive([
-		job({
-			id: "seen-onscreen",
-			status: "failed",
-			start_time: 100,
-			settled_at: 200,
-		}),
-		job({
-			id: "arrived-later",
-			status: "failed",
-			start_time: 100,
-			settled_at: 300,
-		}),
-	]);
-	// Opened with one failure on screen, the second arriving while it was open:
-	// both rows were in the slice at some point during the open period, which is
-	// the set the close acknowledges (accumulated, not read at the close).
-	const shown = new Set([
-		...visibleFailures(details.subagents.slice(0, 1)),
-		...visibleFailures(details.subagents),
-	]);
-	assert.deepEqual([...shown].sort(), ["arrived-later", "seen-onscreen"]);
-	const afterClose = acknowledgedOnClose(
-		[...shown],
-		acknowledgedOnOpen(["seen-onscreen"], NOTHING_SEEN),
-	);
-	assert.deepEqual([...afterClose].sort(), ["arrived-later", "seen-onscreen"]);
-	assert.equal(hasUnseenFailure(details, afterClose), false);
-
-	/*
-	 * And a failure the panel could NOT display keeps its dot. Eight failures at
-	 * a cap of six is where the reservation runs out of victims, so the two oldest
-	 * sit behind `+N more` — the reader has been told a number, not shown a row,
-	 * and the clause has to survive the close for exactly that case.
-	 */
-	const many = derive(
-		Array.from({ length: 8 }, (_, index) =>
-			job({
-				id: `failed-${index}`,
-				status: "failed",
-				start_time: 100,
-				settled_at: 200 + index,
-			}),
-		),
-	);
-	const hidden = visibleFailures(many.subagents);
-	assert.equal(hidden.length, 6);
-	const kept = acknowledgedOnClose(hidden, NOTHING_SEEN);
-	assert.equal(kept.has("failed-7"), true);
-	assert.equal(kept.has("failed-0"), false);
-	assert.deepEqual(unseenFailures(many, kept).sort(), ["failed-0", "failed-1"]);
-	// Same identity guarantee as the open side: a close that adds nothing must not
-	// churn the seen set.
-	assert.equal(acknowledgedOnClose(hidden, kept), kept);
-});
-
-test("the OPEN instant acknowledges the panel's own slice, not the whole roster", () => {
-	/*
-	 * The defect this pins was in the WIRING, so the argument under test is the
-	 * one the wiring passes — `onScreenFailures(details)` — rather than an id list
-	 * the test supplies for itself. The two tests above both hand `visibleFailures`
-	 * in, which is exactly why neither of them could see it: `run-details-trigger`
-	 * passed `details.failedChildIds` (every failure on the roster) to the OPEN
-	 * instant while the CLOSE instant counted the rendered slice, so past the cap a
-	 * failure behind `+N more` was marked read as the panel opened without its row
-	 * ever being on screen.
+	 * `§ 3.4`, in one sentence: **while the panel is open, every failed child whose
+	 * row is in the rendered slice is acknowledged; when it is closed, nothing is.**
 	 *
-	 * Eight failures at a cap of six is where the two arguments answer differently,
-	 * and the second assertion is the consequence that matters: with every child
-	 * settled and every to-do closed, acknowledging the whole roster leaves
-	 * `hasRunDetails` false — so the trigger, and the panel with it, disappears in
-	 * the same commit that opens it. That is the one state the `danger` dot exists
-	 * for, unreachable.
+	 * The popover's rule was bound to two INSTANTS (an open and a close) because a
+	 * transient surface is opened and closed. A persistent pane is not, so those two
+	 * functions are deleted and this one replaces both: the same union they both
+	 * performed, asked on the same slice, evaluated whenever the slice or the open
+	 * state changes.
+	 *
+	 * The property the old design protected is preserved rather than dropped: a
+	 * failure that arrives while the panel is open and IS in the slice is
+	 * acknowledged because it is genuinely on screen, which is what the dot claims.
+	 */
+	const first = derive([
+		job({ id: "failed-1", status: "failed", start_time: 100, settled_at: 200 }),
+	]);
+	const opened = acknowledgeWhileOpen(onScreenFailures(first), NOTHING_SEEN);
+	assert.deepEqual([...opened], ["failed-1"]);
+
+	// A second failure arriving while the panel is open, IN the slice, is
+	// acknowledged by the same continuous evaluation — the row is on screen.
+	const both = derive([
+		job({ id: "failed-1", status: "failed", start_time: 100, settled_at: 200 }),
+		job({ id: "failed-2", status: "failed", start_time: 100, settled_at: 300 }),
+	]);
+	const grown = acknowledgeWhileOpen(onScreenFailures(both), opened);
+	assert.deepEqual([...grown].sort(), ["failed-1", "failed-2"]);
+	assert.equal(hasUnseenFailure(both, grown), false);
+
+	// A re-evaluation that adds nothing hands back the SAME set, so the ordinary
+	// render — no new failures, panel open — does not churn the trigger's state and
+	// does not re-render the header.
+	assert.equal(acknowledgeWhileOpen(onScreenFailures(both), grown), grown);
+	assert.equal(acknowledgeWhileOpen([], NOTHING_SEEN), NOTHING_SEEN);
+
+	// And nothing is acknowledged while the panel is CLOSED: the rule is stated by
+	// the wiring (`if (isRunPanelOpen)` in the trigger), which the source-text test
+	// below pins, and the model has no way to acknowledge anything by itself.
+	assert.equal(hasUnseenFailure(both, NOTHING_SEEN), true);
+});
+
+test("a failure behind the disclosure keeps its dot, and a displaced row keeps its read", () => {
+	/*
+	 * The slice's boundary and the accumulation's identity, both at once.
+	 *
+	 * Eight failures at a cap of six is where the reservation runs out of victims,
+	 * so the two oldest sit behind the disclosure — the reader has been told a
+	 * number, not shown a row, and `§ 3.4` says a failure not in the rendered slice
+	 * is not acknowledged.
 	 */
 	const many = derive(
 		Array.from({ length: 8 }, (_, index) =>
@@ -1007,43 +990,35 @@ test("the OPEN instant acknowledges the panel's own slice, not the whole roster"
 	assert.equal(shown.length, 6);
 	assert.equal(many.failedChildIds.length, 8);
 
-	// The fix's argument: six rows were on screen, two were not, so two keep the
-	// dot — and the trigger survives the open to be read.
-	const afterOpen = acknowledgedOnOpen(shown, NOTHING_SEEN);
+	const afterOpen = acknowledgeWhileOpen(shown, NOTHING_SEEN);
 	assert.deepEqual(unseenFailures(many, afterOpen).sort(), [
 		"failed-0",
 		"failed-1",
 	]);
 	assert.equal(hasUnseenFailure(many, afterOpen), true);
+	// `hasRunDetails` still answers "is anything outstanding", which is what the
+	// panel's quiet state reads. It no longer decides whether the button exists.
 	assert.equal(hasRunDetails(many, afterOpen), true);
 
-	// The defect kept as the counter-example: the roster-derived argument
-	// acknowledges failures the panel never rendered, and takes the trigger with
-	// them.
-	const rosterDerived = acknowledgedOnOpen(many.failedChildIds, NOTHING_SEEN);
-	assert.equal(hasUnseenFailure(many, rosterDerived), false);
-	assert.equal(hasRunDetails(many, rosterDerived), false);
-});
-
-test("the open period accumulates the slices it showed, and keeps the set's identity", () => {
 	/*
-	 * `viewedRef` is the mechanism that implements the close rule inside the
-	 * component, and it had neither a test nor a frame — so the accumulation is
-	 * extracted (`accumulateSeen`) and asserted here, over a SEQUENCE of slices.
-	 *
-	 * The property that makes the rule right rather than merely implemented is the
-	 * displaced row: a failure that was on screen and was then pushed out of the
-	 * slice by later arrivals has still been read, and a set read once at the close
-	 * would drop it and re-light a dot the reader had already earned.
+	 * The defect kept as the counter-example: the roster-derived argument
+	 * acknowledges failures the panel never rendered.
+	 */
+	const rosterDerived = acknowledgeWhileOpen(many.failedChildIds, NOTHING_SEEN);
+	assert.equal(hasUnseenFailure(many, rosterDerived), false);
+
+	/*
+	 * The displaced row, which is why the acknowledgement ACCUMULATES rather than
+	 * reading the slice once: a failure that was on screen and was then pushed out
+	 * by later arrivals has still been read, and a set read once at the end would
+	 * drop it and re-light a dot the reader had already earned.
 	 */
 	const first = derive([
 		job({ id: "in-view", status: "failed", start_time: 100, settled_at: 200 }),
 	]);
-	const seenOnce = accumulateSeen(NOTHING_SEEN, onScreenFailures(first));
+	const seenOnce = acknowledgeWhileOpen(onScreenFailures(first), NOTHING_SEEN);
 	assert.deepEqual([...seenOnce], ["in-view"]);
-
-	// The roster grows past the cap, so the oldest failure falls out of the slice.
-	const grown = derive([
+	const grownRoster = derive([
 		job({ id: "in-view", status: "failed", start_time: 100, settled_at: 200 }),
 		...Array.from({ length: 6 }, (_, index) =>
 			job({
@@ -1054,31 +1029,74 @@ test("the open period accumulates the slices it showed, and keeps the set's iden
 			}),
 		),
 	]);
-	const displaced = onScreenFailures(grown);
+	const displaced = onScreenFailures(grownRoster);
 	assert.equal(
 		displaced.includes("in-view"),
 		false,
 		"the slice must have dropped it, or this asserts nothing",
 	);
-	const seenTwice = accumulateSeen(seenOnce, displaced);
+	const seenTwice = acknowledgeWhileOpen(displaced, seenOnce);
 	assert.equal(
 		seenTwice.has("in-view"),
 		true,
 		"a row that was read stays read",
 	);
+});
 
-	// The identity guarantee the ref relies on, for the reason that is true of the
-	// caller (`setSeen`): a re-render that adds nothing hands back the same set, so
-	// an open or close that adds nothing does not churn the trigger's state.
-	assert.equal(accumulateSeen(seenTwice, displaced), seenTwice);
-	assert.equal(accumulateSeen(seenTwice, []), seenTwice);
+test("the MCP ledger acknowledges a problem row on the same rule, and a different key space", () => {
+	/*
+	 * The attention dot's second ledger, and the reason it is a second ledger: one
+	 * dot, two facts, and a job id and a server name are both strings in the same
+	 * shape, so sharing a VALUE would let a server called `job-ledger` acknowledge a
+	 * failed child.
+	 */
+	const servers = deriveMcpServers([
+		{ name: "notion", status: "auth-required" },
+		{ name: "files", status: "connected", tool_count: 12 },
+		{ name: "slack", status: "disconnected" },
+	]);
+	assert.deepEqual(unseenMcpProblems(servers).sort(), ["notion", "slack"]);
+	assert.equal(hasUnseenMcpProblem(servers), true);
+
+	const seen = acknowledgeWhileOpen(unseenMcpProblems(servers), NOTHING_SEEN);
+	assert.deepEqual([...seen].sort(), ["notion", "slack"]);
+	assert.equal(hasUnseenMcpProblem(servers, seen), false);
+
+	// A server that BREAKS after the acknowledgement lights it again: the ledger
+	// accumulates names, it does not latch the whole section into "read".
+	const broken = deriveMcpServers([
+		{ name: "notion", status: "auth-required" },
+		{ name: "slack", status: "disconnected" },
+		{ name: "linear", status: "auth-required" },
+	]);
+	assert.deepEqual(unseenMcpProblems(broken, seen), ["linear"]);
+
+	// Each ledger is consulted with its OWN set, and neither set answers the other
+	// ledger's question. That separation is what the two values buy: the trigger
+	// holds `seen` and `seenMcp` side by side, and a server named after a job id
+	// could not otherwise acknowledge that child's failure.
+	const failDetails = derive([job({ id: "failed-1", status: "failed" })]);
+	const failSeen = acknowledgeWhileOpen(
+		onScreenFailures(failDetails),
+		NOTHING_SEEN,
+	);
+	assert.deepEqual(unseenFailures(failDetails, failSeen), []);
+	assert.deepEqual(unseenMcpProblems(servers, seen), []);
+	assert.equal(hasUnseenFailure(failDetails, failSeen), false);
+	assert.equal(hasUnseenMcpProblem(servers, seen), false);
+});
+
+test("the open period accumulates the slices it showed, and keeps the set's identity", () => {
+	/*
+	 * `accumulateSeen` is the union every acknowledgement performs — both ledgers,
+	 * and the trigger's own continuous evaluation — so its two guarantees are
+	 * asserted once here rather than three times through three callers.
+	 */
+	const seenOnce = accumulateSeen(NOTHING_SEEN, ["a", "b"]);
+	assert.deepEqual([...seenOnce].sort(), ["a", "b"]);
+	assert.equal(accumulateSeen(seenOnce, ["b"]), seenOnce);
+	assert.equal(accumulateSeen(seenOnce, []), seenOnce);
 	assert.equal(accumulateSeen(NOTHING_SEEN, []), NOTHING_SEEN);
-
-	// And the close may count only what was accumulated: every failure of the grown
-	// roster was shown at some point, so the dot goes out for all of them.
-	const closed = acknowledgedOnClose([...seenTwice], NOTHING_SEEN);
-	assert.equal(seenTwice.size, grown.failedChildIds.length);
-	assert.equal(hasUnseenFailure(grown, closed), false);
 });
 
 test("the trigger's acknowledgement wiring asks the model's predicate", () => {
@@ -1107,59 +1125,66 @@ test("the trigger's acknowledgement wiring asks the model's predicate", () => {
 	);
 	assert.match(
 		trigger,
-		/acknowledgedOnOpen\(onScreenFailures\(detailsRef\.current\), previous\)/,
-		"the open instant must acknowledge the panel's own slice",
+		/acknowledgeWhileOpen\(onScreenFailures\(details\), seen\)/,
+		"the acknowledgement must ask the panel's own slice",
+	);
+	assert.match(
+		trigger,
+		/if \(details && listOnScreen\) \{/,
+		"the acknowledgement must be gated on the LIST being on screen, not on the pane being open",
+	);
+	assert.match(
+		trigger,
+		/if \(readerChildId\) \{/,
+		"and a reader acknowledges only the child it is showing",
 	);
 	assert.doesNotMatch(
 		trigger,
-		/acknowledgedOnOpen\(\s*detailsRef\.current\?\.failedChildIds/,
+		/acknowledgeWhileOpen\(\s*details\?\.failedChildIds/,
 		"and never the whole roster, which marks hidden failures read",
 	);
-	assert.match(
-		trigger,
-		/viewedRef\.current = accumulateSeen\(\s*viewedRef\.current,\s*onScreenFailures\(details\),\s*\)/,
-		"the open period must accumulate the slices the panel showed",
-	);
-	// The seeded open (`defaultOpen`, the capture rig's path) is an open instant
-	// too, so it asks the same question rather than the roster's.
-	assert.match(
-		trigger,
-		/new Set\(defaultOpen \? onScreenFailures\(details\) : \[\]\)/,
-		"a seeded open acknowledges the same slice a click does",
-	);
 	/*
-	 * The CLOSE is the second instant the round's claim covers, and it is pinned to
-	 * the accumulated ref rather than to a fresh read (round 4, R4-2). The
-	 * regression is the mirror image of the one above and passes every model test
-	 * in this file: a close that re-asks the slice marks only the failures still in
-	 * it at the close instant, so a row the reader watched fail and then displace
-	 * keeps its dot — telling the reader who read it that they have not.
+	 * The MCP ledger's own call: `prune, then union` (`§ 7.3`), so a server
+	 * acknowledged while broken and then repaired can announce itself again instead
+	 * of staying silent forever.
 	 */
 	assert.match(
 		trigger,
-		/acknowledgedOnClose\(\[\.\.\.viewedRef\.current\], previous\)/,
-		"the close must acknowledge what the open period accumulated",
+		/acknowledgeMcpWhileShown\(mcpServers, seenMcp\)/,
+		"the MCP ledger must acknowledge the rows the section renders, on the re-arm rule",
 	);
-	assert.doesNotMatch(
+	assert.match(
 		trigger,
-		/acknowledgedOnClose\(\s*(onScreenFailures\(|detailsRef\.current\?\.failedChildIds)/,
-		"and must never re-ask for the slice at the close instant, which leaves a displaced row unread",
+		/mcpProblems,\s*\}\)/,
+		"and the label must be given the problem count it is naming",
 	);
+	/*
+	 * The deleted pair, asserted as absent rather than assumed gone: `§ 3.4`
+	 * removes both instants because a persistent pane is not opened or closed, and
+	 * a file that still carried them would be two rules for one dot again.
+	 */
+	assert.doesNotMatch(trigger, /acknowledgedOn(Open|Close)/);
+	assert.doesNotMatch(trigger, /viewedRef/);
 });
 
 test("the panel renders the slice the acknowledgement predicates count", () => {
 	/*
-	 * The OTHER end of the pairing the test above pins (round 4, R4-2). The model
-	 * can only promise that the dot answers the rows the reader could see if the
-	 * section renders that same slice: a panel-side filter or cap restores the
-	 * divergence with every model assertion in this file green, because the model
-	 * is then asked about a slice the component never rendered.
+	 * The OTHER end of the pairing the test above pins. The model can only promise
+	 * that the dot answers the rows the reader could see if the section renders that
+	 * same slice: a panel-side filter or cap restores the divergence with every
+	 * model assertion in this file green, because the model is then asked about a
+	 * slice the component never rendered.
 	 *
-	 * Asserted by source text for the same reason as the trigger's call sites, and
-	 * in the same shape. The slice has ONE entry point (`panelSlice`) - which is
-	 * what `visibleFailures` counts and what this test refuses to see bypassed at
-	 * the panel - so a change to the cap, the failure reservation or the rank
-	 * order is a change both ends inherit rather than one they can drift from.
+	 * The slice has ONE entry point (`panelSlice`), and the disclosure is the only
+	 * thing allowed to move its cap: `§ 4` item 3 makes `+N more` a control that
+	 * "raises the cap to a stated larger bound", so the expanded call is pinned here
+	 * as passing the roster's own length — every row, in the same priority order —
+	 * rather than a second constant that could drift from the priority rule.
+	 *
+	 * What the expanded case does NOT do is widen the dot's slice: `§ 3.4` fixes the
+	 * rendered slice as the capped `panelSlice`, so a failure revealed only by
+	 * expanding keeps its dot. That is a design decision, not an accident here, and
+	 * `panelSlice`'s own parameter comment says so.
 	 */
 	const panel = readFileSync(
 		join(
@@ -1170,7 +1195,7 @@ test("the panel renders the slice the acknowledgement predicates count", () => {
 	);
 	assert.match(
 		panel,
-		/const \{ rows, hidden \} = panelSlice\(details\.subagents\);/,
+		/const \{ rows, hidden \} = panelSlice\(\s*details\.subagents,\s*expanded \? details\.subagents\.length : undefined,\s*\)/,
 		"the section must render the model's own slice, not one it narrows itself",
 	);
 	assert.doesNotMatch(
@@ -1222,56 +1247,117 @@ test("the clock ticks only for a child that has a running clock", () => {
 /* Trigger copy                                                        */
 /* ------------------------------------------------------------------ */
 
-test("the tooltip carries counts, pluralised honestly", () => {
+test("the tooltip carries counts, pluralised honestly, and names the ACTION", () => {
+	/*
+	 * `§ 3.3` fixes the verb and it is the toggle's own state: a control that names
+	 * the surface rather than the action tells a reader that pressing it opens
+	 * something they are already looking at.
+	 */
 	const both = derive(
 		[job({ id: "a" }), job({ id: "b" })],
 		plan(["pending", "pending", "pending", "pending"]),
 	);
 	assert.equal(
 		runDetailTriggerLabel(both),
-		"Run details — 2 subagents running, 4 to-dos open",
+		"Open run details — 2 subagents running, 4 to-dos open",
 	);
 
 	const one = derive([job({ id: "a" })], plan(["pending"]));
 	assert.equal(
 		runDetailTriggerLabel(one),
-		"Run details — 1 subagent running, 1 to-do open",
+		"Open run details — 1 subagent running, 1 to-do open",
 	);
 
 	const children = derive([job({ id: "a" }), job({ id: "b" })]);
 	assert.equal(
 		runDetailTriggerLabel(children),
-		"Run details — 2 subagents running",
+		"Open run details — 2 subagents running",
 	);
 
 	const todos = derive([], plan(["pending", "pending", "pending"]));
-	assert.equal(runDetailTriggerLabel(todos), "Run details — 3 to-dos open");
+	assert.equal(
+		runDetailTriggerLabel(todos),
+		"Open run details — 3 to-dos open",
+	);
 
 	const failed = derive([job({ id: "a", status: "failed" })]);
 	assert.equal(
 		runDetailTriggerLabel(failed),
-		"Run details — 1 subagent failed",
+		"Open run details — 1 subagent failed",
+	);
+
+	// The open pane names the OTHER action, and keeps the counts: the clause list is
+	// about the run, and it is as true while the pane is open as while it is shut.
+	assert.equal(
+		runDetailTriggerLabel(both, NOTHING_SEEN, { open: true }),
+		"Close run details — 2 subagents running, 4 to-dos open",
+	);
+	// With nothing to say the label is the action ALONE, which is the copy § 3.3
+	// fixes for the idle state.
+	assert.equal(runDetailTriggerLabel(derive([], [])), "Open run details");
+	assert.equal(
+		runDetailTriggerLabel(derive([], []), NOTHING_SEEN, { open: true }),
+		"Close run details",
 	);
 });
 
-test("the tooltip sheds whole clauses, never half of one", () => {
+test("the tooltip sheds whole clauses, never half of one, and keeps what the dot means", () => {
 	const details = derive(
 		[job({ id: "a" }), job({ id: "b" })],
 		plan(["pending", "pending", "pending", "pending"]),
 	);
 	assert.equal(
-		runDetailTriggerLabel(details, NOTHING_SEEN, 40),
-		"Run details — 2 subagents running",
+		runDetailTriggerLabel(details, NOTHING_SEEN, { maxChars: 40 }),
+		"Open run details — 2 subagents running",
 	);
 	assert.equal(
-		runDetailTriggerLabel(details, NOTHING_SEEN, 60),
-		"Run details — 2 subagents running, 4 to-dos open",
+		runDetailTriggerLabel(details, NOTHING_SEEN, { maxChars: 60 }),
+		"Open run details — 2 subagents running, 4 to-dos open",
 	);
-	// Below the first clause's own width the label stays whole rather than
-	// truncating: a clause cut mid-sentence states a count and hides its noun.
+	/*
+	 * Below the first clause's own width the label stays whole rather than
+	 * truncating: a clause cut mid-sentence states a count and hides its noun. The
+	 * VERB may never be shed either — a control whose name lost its action names
+	 * nothing — so the floor is `Open run details` plus its first clause.
+	 */
 	assert.equal(
-		runDetailTriggerLabel(details, NOTHING_SEEN, 5),
-		"Run details — 2 subagents running",
+		runDetailTriggerLabel(details, NOTHING_SEEN, { maxChars: 5 }),
+		"Open run details — 2 subagents running",
+	);
+
+	/*
+	 * `§ 3.4`: the two ATTENTION clauses — an unseen failure and an MCP problem —
+	 * are the LAST the budget may shed, because a lit dot whose accessible name lost
+	 * its reason is unreadable to the reader who cannot see the dot. They lead the
+	 * clause list and survive a budget that cannot hold the counts.
+	 */
+	const attention = derive(
+		[job({ id: "failed", status: "failed" }), job({ id: "b" })],
+		plan(["pending", "pending", "pending", "pending"]),
+	);
+	assert.equal(
+		runDetailTriggerLabel(attention, NOTHING_SEEN, { mcpProblems: 1 }),
+		"Open run details — 1 subagent failed, 1 MCP server needs attention, 1 subagent running, 4 to-dos open",
+	);
+	assert.equal(
+		runDetailTriggerLabel(attention, NOTHING_SEEN, { mcpProblems: 2 }),
+		"Open run details — 1 subagent failed, 2 MCP servers need attention, 1 subagent running, 4 to-dos open",
+	);
+	const tight = runDetailTriggerLabel(attention, NOTHING_SEEN, {
+		mcpProblems: 1,
+		maxChars: 80,
+	});
+	assert.match(tight, /1 subagent failed/);
+	assert.match(tight, /1 MCP server needs attention/);
+	assert.doesNotMatch(tight, /4 to-dos open/);
+
+	// No MCP problem and no failure is the ordinary label: the clause appears only
+	// when it has something to say.
+	assert.equal(
+		runDetailTriggerLabel(derive([job({ id: "a" })]), NOTHING_SEEN, {
+			mcpProblems: 0,
+		}),
+		"Open run details — 1 subagent running",
 	);
 });
 
@@ -1279,8 +1365,341 @@ test("a seen failure is dropped from the label", () => {
 	const details = derive([job({ id: "failed-1", status: "failed" })]);
 	assert.equal(
 		runDetailTriggerLabel(details, new Set(["failed-1"])),
-		"Run details",
+		"Open run details",
 	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The reader's own rows                                               */
+/* ------------------------------------------------------------------ */
+
+test("the reader's fields are read off the row the roster already has", () => {
+	/*
+	 * `§ 4`: the reader's needs add fields to `SubagentRow`, and every one of them is
+	 * read off the job row that ALREADY arrives — no wire change. The test asserts
+	 * that rather than the fact that fields exist, because the value of the claim is
+	 * that nothing new has to be published for the reader to work.
+	 */
+	const row = derive([
+		job({
+			id: "job-child",
+			session_id: "a1b2c3d4e5f6",
+			parent_job_id: "job-parent",
+			model_label: "claude-opus-5",
+			prompt: "Investigate the ledger\nand report",
+			launch_message_id: "subagent-launch:job-child",
+			launch_prompts: { "subagent-launch:job-child": "Check the ledger" },
+			result_text: "  done  ",
+		}),
+	]).subagents[0];
+	assert.equal(row.childSessionId, "a1b2c3d4e5f6");
+	assert.equal(row.parentJobId, "job-parent");
+	assert.equal(row.modelLabel, "claude-opus-5");
+	// The brief prefers the CONCISE authored prompt of the current launch, and
+	// falls back to the row's own `prompt` (`frontend_state.py:1413`, `:1461-1486`).
+	assert.equal(row.brief, "Check the ledger");
+	assert.deepEqual(row.launchPrompts, {
+		"subagent-launch:job-child": "Check the ledger",
+	});
+	assert.equal(row.launchMessageId, "subagent-launch:job-child");
+	assert.equal(row.resultText, "done");
+
+	// A row from a runtime that predates the launch fields degrades to the prompt,
+	// which is the safe direction: the reader keeps its brief and reconciles
+	// nothing.
+	const old = derive([
+		job({
+			id: "job-old",
+			prompt: "Read the export",
+			session_id: "abcdefabcdef",
+		}),
+	]).subagents[0];
+	assert.equal(old.brief, "Read the export");
+	assert.deepEqual(old.launchPrompts, {});
+	assert.equal(old.launchMessageId, "");
+
+	// `errorLine` stays the roster's one-line summary; `errorText` is the whole
+	// thing, for the reader's outcome block.
+	const failed = derive([
+		job({
+			id: "job-fail",
+			status: "failed",
+			error_text: "ValueError: bad row\n  line 12",
+		}),
+	]).subagents[0];
+	assert.equal(failed.errorLine, "ValueError: bad row");
+	assert.equal(failed.errorText, "ValueError: bad row\n  line 12");
+
+	// Nothing reported is absent, never an empty string: the roster's omission rule
+	// applies to the reader's fields too.
+	const bare = derive([job({ id: "job-bare" })]).subagents[0];
+	assert.equal(bare.childSessionId, null);
+	assert.equal(bare.parentJobId, null);
+	assert.equal(bare.modelLabel, null);
+	assert.equal(bare.brief, null);
+	assert.equal(bare.resultText, null);
+	assert.equal(bare.errorText, null);
+});
+
+test("a child's child count comes from the roster's own edges", () => {
+	/*
+	 * `childCount` is derived by grouping on `parent_job_id` rather than read from
+	 * the wire: a published count would be a second statement of what the lineage
+	 * already says, and two statements can disagree.
+	 */
+	const details = derive([
+		job({ id: "parent", status: "running" }),
+		job({ id: "kid-1", status: "running", parent_job_id: "parent" }),
+		job({ id: "kid-2", status: "done", parent_job_id: "parent" }),
+		job({
+			id: "grandchild",
+			status: "running",
+			parent_job_id: "kid-1",
+		}),
+	]);
+	const byId = new Map(details.subagents.map((row) => [row.id, row]));
+	assert.equal(byId.get("parent").childCount, 2);
+	assert.equal(byId.get("kid-1").childCount, 1);
+	assert.equal(byId.get("kid-2").childCount, 0);
+	// A root child's parent is absent rather than an empty string, so the walk up
+	// the lineage stops on a real value.
+	assert.equal(byId.get("parent").parentJobId, null);
+	assert.equal(byId.get("grandchild").parentJobId, "kid-1");
+});
+
+test("the launch turn is reconciled, and only the ids the map vouches for", () => {
+	/*
+	 * `§ 5.1`: without this the reader opens on the full role/team/system preamble,
+	 * because the durable launch row carries it and the row's id IS the launch's
+	 * message id (`session/transcript.py:656-672`).
+	 */
+	const records = [
+		{
+			kind: "user",
+			id: "subagent-launch:job-1",
+			ts: 1,
+			text: "ROLE/TEAM/SYSTEM…",
+			images: [],
+		},
+		{
+			kind: "assistant",
+			id: "a",
+			ts: 2,
+			text: "working",
+			streaming: false,
+			complete: true,
+		},
+	];
+	const reconciled = reconcileLaunchTurns(records, {
+		"subagent-launch:job-1": "Check the March ledger",
+	});
+	assert.equal(reconciled[0].text, "Check the March ledger");
+	// Only USER rows are rewritten: the same id on another kind is not a launch turn.
+	assert.equal(reconciled[1].text, "working");
+
+	// An id the map does not carry is left exactly as it is — duplicating wrapper
+	// text is the TUI's chosen failure mode and it is the safer direction.
+	const untouched = reconcileLaunchTurns(records, {
+		"subagent-launch:other": "x",
+	});
+	assert.equal(untouched, records, "an unreconciled list keeps its identity");
+
+	// And a list where nothing changed keeps its identity too, so the reader's
+	// memoised transcript does not repaint every row on every pulse.
+	assert.equal(
+		reconcileLaunchTurns(reconciled, {
+			"subagent-launch:job-1": "Check the March ledger",
+		}),
+		reconciled,
+	);
+});
+
+test("the brief folds to a summary that states what expanding costs", () => {
+	/*
+	 * `§ 5.1` ports the TUI's rule: at most a handful of rows, with the hidden count
+	 * stated, because `⟨expand⟩` alone cannot distinguish two more lines from fifty
+	 * (`subagent_view.py:1053-1073`).
+	 */
+	const short = foldBrief("one\ntwo");
+	assert.deepEqual(short.lines, ["one", "two"]);
+	assert.equal(short.hidden, 0);
+
+	const long = foldBrief(
+		Array.from({ length: 10 }, (_, i) => `line ${i}`).join("\n"),
+	);
+	assert.equal(long.lines.length, 6);
+	assert.equal(long.hidden, 4);
+
+	// A child with no brief has nothing to fold, and the block renders as absence.
+	assert.deepEqual(foldBrief(null), { lines: [""], hidden: 0 });
+});
+
+/* ------------------------------------------------------------------ */
+/* MCP servers                                                         */
+/* ------------------------------------------------------------------ */
+
+test("every MCP state the wire reports is folded explicitly, and carried verbatim", () => {
+	const rows = deriveMcpServers([
+		{ name: "notion", status: "auth-required" },
+		{ name: "files", status: "connected", tool_count: 12 },
+		{ name: "slack", status: "connecting" },
+		{ name: "legacy", status: "disconnected" },
+		{ name: "odd", status: "reticulating" },
+	]);
+	const byName = new Map(rows.map((row) => [row.name, row]));
+
+	/*
+	 * The predicate is a NEGATIVE (`§ 7.3`): everything that is not `connected`,
+	 * `connecting` or `cold` is a problem — including a word this build has never
+	 * been taught. The positive two-word list this replaced carries the defect the
+	 * TUI band recorded on this same data, where an equality test on
+	 * `disconnected` stopped counting an auth-blocked server the moment the
+	 * vocabulary grew.
+	 */
+	assert.deepEqual(
+		rows.filter((row) => row.problem).map((row) => row.name),
+		["legacy", "notion", "odd"],
+	);
+	assert.match(byName.get("notion").hint, /Grant this server account access/);
+	assert.match(byName.get("legacy").hint, /Reconnect/);
+
+	// `connecting` is not a failure — the same way a queued child is not one — and
+	// lighting for it would make a red lamp the normal boot.
+	assert.equal(byName.get("slack").problem, false);
+
+	// The unrecognised word takes attention and gets NO hint: the renderer must not
+	// claim a `danger` failure it cannot name, and a fix for a word it cannot name
+	// would be a guess. (The quiet INK is the component's, via `MCP_INK`'s fallback.)
+	assert.equal(byName.get("odd").status, "reticulating");
+	assert.equal(byName.get("odd").hint, null);
+
+	// The tool count is a connected server's reach, and nothing else's: a
+	// disconnected server's last-known count would claim tools it is not serving.
+	assert.equal(byName.get("files").toolCount, 12);
+	assert.equal(byName.get("notion").toolCount, null);
+
+	// Sorted by name so a refetch cannot reorder the list under a reader.
+	assert.deepEqual(
+		rows.map((row) => row.name),
+		["files", "legacy", "notion", "odd", "slack"],
+	);
+});
+
+test("the cold payload is the SECTION's state, and lights nothing", () => {
+	/*
+	 * The route's cold branch stamps `status: "cold"` on every configured server
+	 * (`desktop_lifecycle.py:111-134`). `cold` is not a problem — no runtime attached
+	 * is a fact about the session, not a fault of the server — and it is not a ROW
+	 * state either: the section says it once in place of its tally, because N copies
+	 * of one jargon word plus a `0 of N connected` tally would claim three servers
+	 * are down when none was asked to be up.
+	 */
+	const rows = deriveMcpServers([
+		{ name: "notion", status: "cold" },
+		{ name: "files", status: "cold" },
+	]);
+	assert.deepEqual(
+		rows.map((row) => row.status),
+		["cold", "cold"],
+	);
+	assert.equal(
+		rows.some((row) => row.problem),
+		false,
+		"a cold payload lights no dot",
+	);
+	assert.equal(
+		rows.some((row) => row.toolCount !== null),
+		false,
+		"and claims no tools, because nothing was checked",
+	);
+	assert.equal(mcpServersAreCold(rows), true);
+	// A MIXED payload is not cold: the section's one line would then be a lie about
+	// the rows that WERE checked.
+	assert.equal(
+		mcpServersAreCold(
+			deriveMcpServers([
+				{ name: "a", status: "cold" },
+				{ name: "b", status: "connected" },
+			]),
+		),
+		false,
+	);
+	assert.equal(mcpServersAreCold([]), false);
+});
+
+test("the MCP ledger prunes to what is still broken, so a healed server can speak again", () => {
+	/*
+	 * `§ 7.3`'s re-arm rule, and the reason this ledger needs one at all: its key is
+	 * a NAME, which outlives the problem. A server acknowledged while
+	 * `auth-required`, later repaired, then broken again, would stay silent forever
+	 * under a union that never subtracts — and no frame of a correctly-quiet dot can
+	 * distinguish "acknowledged" from "never re-armed", which is why the rule is
+	 * pinned here rather than hoped for.
+	 */
+	const broken = deriveMcpServers([
+		{ name: "notion", status: "auth-required" },
+		{ name: "slack", status: "disconnected" },
+	]);
+	const seenOnce = acknowledgeMcpWhileShown(broken, NOTHING_SEEN);
+	assert.deepEqual([...seenOnce].sort(), ["notion", "slack"]);
+	assert.deepEqual(unseenMcpProblems(broken, seenOnce), []);
+	// Re-evaluating with the same rows adds nothing and keeps the set's identity.
+	assert.equal(acknowledgeMcpWhileShown(broken, seenOnce), seenOnce);
+
+	// `notion` recovers: it leaves the ledger, so its name is no longer held.
+	const healed = deriveMcpServers([
+		{ name: "notion", status: "connected", tool_count: 3 },
+		{ name: "slack", status: "disconnected" },
+	]);
+	const afterHeal = acknowledgeMcpWhileShown(healed, seenOnce);
+	assert.deepEqual([...afterHeal], ["slack"], "the healed server is forgotten");
+
+	// And it breaks AGAIN: the dot must speak. This is the assertion the whole rule
+	// exists for — under a union it would be silent, and nothing on screen would say
+	// so.
+	const brokenAgain = deriveMcpServers([
+		{ name: "notion", status: "auth-required" },
+		{ name: "slack", status: "disconnected" },
+	]);
+	assert.deepEqual(unseenMcpProblems(brokenAgain, afterHeal), ["notion"]);
+	assert.equal(hasUnseenMcpProblem(brokenAgain, afterHeal), true);
+
+	// The child ledger deliberately has NO such rule: a job id names one episode, so
+	// a set that never subtracts is exactly right for it.
+	const child = derive([job({ id: "job-x", status: "failed" })]);
+	const childSeen = acknowledgeWhileOpen(onScreenFailures(child), NOTHING_SEEN);
+	assert.equal(hasUnseenFailure(child, childSeen), false);
+});
+
+test("an MCP payload is folded tolerantly, and a nameless row is dropped", () => {
+	// The payload is JSON off a backend that may be older or newer than this
+	// renderer, so a row missing everything still renders as a named server in an
+	// unknown state rather than throwing.
+	const [bare] = deriveMcpServers([{ name: "bare" }]);
+	assert.equal(bare.status, "cold");
+	assert.equal(bare.problem, false);
+	assert.equal(bare.scope, null);
+
+	// A nameless row cannot be pointed at, and a nameless "problem" would light a
+	// dot no surface could acknowledge.
+	assert.deepEqual(
+		deriveMcpServers([{ status: "disconnected" }, { name: "" }]),
+		[],
+	);
+	// A payload that is not a list at all is no servers, not a crash.
+	assert.deepEqual(deriveMcpServers(null), []);
+	assert.deepEqual(deriveMcpServers({ servers: [] }), []);
+
+	// The scope qualifier falls back from the owned scope to the config source.
+	const [scoped] = deriveMcpServers([
+		{
+			name: "s",
+			status: "connected",
+			owned_scope: "project",
+			source: "global",
+		},
+	]);
+	assert.equal(scoped.scope, "project");
 });
 
 /* ------------------------------------------------------------------ */

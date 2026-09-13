@@ -197,49 +197,64 @@ export const STORIES = [
 	   exactly; only these three boundaries tell the two apart. */
 	["chat-tool-rows--trace-gap-boundaries", 1024, 860],
 
-	/* The run-details popover, in the REAL ChatHeader inside a chat-column ground.
-	   Sized to the panel rather than to a window: 384px of popover plus the 12px
-	   anchor offset leaves the left of a 560px frame showing the transcript it
-	   opens over, and around 500px tall is where the six content states stop
-	   being mostly ground - a popover on an empty page is what the uniformity
-	   ceiling exists to reject, and at 1280x900 four of those six came back at
-	   over 99% one colour.
-
-	   `crowded` and `todos-only` are taller on purpose: their subject is an overflow
-	   disclosure, and the panel's own ceiling is `min(60vh, 480px)`, so the viewport
-	   has to clear 800px tall before the panel reaches the 480px cap it is judged
-	   at. At a 480px viewport that cap is 288px, which puts the item cap's
-	   `+4 more` row past the fold of the very frame that exists to show it.
-
-	   `settled`, `header-trigger` and `header-trigger-failed` are captured narrow
-	   and short because the button in the header is the subject, not the panel: the
-	   first pair differs only in their fixture, which is what makes the presence and
-	   absence of the trigger readable as one comparison. */
-	["chat-run-details--both-in-flight", 560, 520],
-	["chat-run-details--subagents-only", 560, 440],
-	["chat-run-details--todos-only", 560, 820],
-	["chat-run-details--failure", 560, 460],
-	/* The unseen-failure state photographed OPEN — the regression frame for the
-	   panel unmounting while it is read, and the only frame whose trigger has a
-	   failure as its sole reason to exist. Sized like `both-in-flight`: a
-	   two-child roster over a closed three-item plan fits well inside the panel's
-	   `min(60vh, 480px)` ceiling, so this frame shows a panel that does NOT
-	   scroll, which is the other half of what `--crowded` proves about `type`
-	   (a short panel gains no scrollbar chrome). */
-	["chat-run-details--failure-unseen", 560, 520],
-	/* The three states a LIVE session cannot produce — a restored pause, a row the
-	   durable graph swept without an outcome, and a word from a runtime this
-	   renderer has not been taught. `§6.4` gives all nine states a mark and the
-	   six above are photographed; these three were glyphs and inks no frame had
-	   ever shown, so they are photographed here rather than asserted. Sized to
-	   their content like `subagents-only`: three single-line rows over no plan is
-	   the whole panel, and the panel is content-height, so a taller viewport buys
-	   ground and nothing else. */
-	["chat-run-details--restored-and-unrecognised", 560, 400],
-	["chat-run-details--crowded", 560, 820],
-	["chat-run-details--settled", 460, 220],
-	["chat-run-details--header-trigger", 460, 220],
-	["chat-run-details--header-trigger-failed", 460, 220],
+	/*
+	 * The run PANEL: the right pane that replaced the popover (`§ 3`), with its
+	 * roster, its child reader, its plan and its MCP section.
+	 *
+	 * The pane is 420px wide and the chat column takes the rest, so a frame with
+	 * the pane open is captured at 1280: a viewport narrower than the pane plus the
+	 * column's own floor photographs the narrow layout instead of the layout these
+	 * stories exist to show. `narrow-800` is the exception, captured at 800 on
+	 * purpose, because it IS the floor.
+	 *
+	 * The two header-only frames (`trigger-idle`, `mcp-auth-required-closed`) are
+	 * 460x220 for the reason the retired `header-trigger` pair was: the button and
+	 * its dot are the subject, the pane is shut, and a wide viewport of an empty
+	 * transcript under a trigger is mostly ground.
+	 */
+	["chat-run-panel--trigger-idle", 460, 220],
+	["chat-run-panel--panel-empty", 1280, 700],
+	["chat-run-panel--settled-history", 1280, 700],
+	["chat-run-panel--roster-only", 1280, 700],
+	["chat-run-panel--todos-only", 1280, 820],
+	["chat-run-panel--both-in-flight", 1280, 700],
+	/* The disclosure, before and after: the pair is the whole claim that every
+	   child is reachable, and nine children at a cap of six is where they differ. */
+	["chat-run-panel--roster-capped", 1280, 820],
+	["chat-run-panel--roster-capped-expanded", 1280, 900],
+	/* The plan's two frames: every phase named, against the implicit phase beside
+	   a named one — which is the pair § 6.2's finding (2) is about. */
+	["chat-run-panel--todos-phased", 1280, 820],
+	["chat-run-panel--todos-implicit-phase", 1280, 820],
+	/* The swap in both directions, through the real `ChatContent`: the same slot
+	   with the canvas open and with the run panel open. */
+	["chat-run-panel--swap-canvas-open", 1280, 700],
+	["chat-run-panel--swap-run-open", 1280, 700],
+	/* The reader. `reader-live` here is the FIXTURE-backed rendering of a running
+	   child's page; the live-app frames under `live-app/` are what prove the
+	   pulse-to-transcript path (`§ 11.3`), and the manifest declares them as a
+	   supplementary set this sweep must not take with it. */
+	["chat-run-panel--reader-live", 1280, 900],
+	["chat-run-panel--reader-settled", 1280, 900],
+	["chat-run-panel--reader-failed", 1280, 900],
+	["chat-run-panel--reader-nested", 1280, 900],
+	["chat-run-panel--reader-resumed", 1280, 900],
+	/* The MCP section, whose states a live session cannot produce on demand: an
+	   expired grant, a dead process, a word from a runtime this build has not been
+	   taught, and the cold payload of a session with no runtime. */
+	["chat-run-panel--mcp-all-connected", 1280, 700],
+	["chat-run-panel--mcp-auth-required-closed", 460, 220],
+	["chat-run-panel--mcp-auth-required", 1280, 700],
+	["chat-run-panel--mcp-disconnected", 1280, 700],
+	["chat-run-panel--mcp-unknown-status", 1280, 700],
+	["chat-run-panel--mcp-cold", 1280, 700],
+	["chat-run-panel--mcp-connecting", 1280, 700],
+	/* The window floor, and the two gated surfaces in one frame pair. */
+	["chat-run-panel--narrow-800", 800, 700],
+	["chat-run-panel--capability-absent", 1280, 700],
+	/* The pane's two animated glyphs with motion reduced: the running child's
+	   spinner and the MCP `connecting` mark. */
+	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
 	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
 	   `usage_panel.py`. Swept for the states that cannot be produced on demand
 	   live — an OAuth grant has to die, a provider has to go idle past its
@@ -880,8 +895,20 @@ const main = async () => {
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
-	for (const [story, width, height] of stories) {
+	for (const [story, width, height, options] of stories) {
 		for (const theme of themes) {
+			/*
+			 * `prefers-reduced-motion` is a VIEWPORT state rather than a story
+			 * state: the app's own cap is a media block in `styles/index.css`, so a
+			 * frame that faked the reduced style would be evidence about the fake.
+			 * Reset for every story, so one reduced-motion frame cannot leak its
+			 * media feature into the frames captured after it.
+			 */
+			await cdp.send("Emulation.setEmulatedMedia", {
+				features: options?.reducedMotion
+					? [{ name: "prefers-reduced-motion", value: "reduce" }]
+					: [],
+			});
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
 				width,
 				height,
