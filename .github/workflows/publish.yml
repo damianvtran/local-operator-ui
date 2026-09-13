@@ -403,15 +403,19 @@ jobs:
         run: |
           echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
 
-      # `nsis.buildUniversalInstaller: false` is what keeps this to the two
-      # per-architecture installers. With it unset, electron-builder's default
-      # (`true`) makes the NSIS target build ONE installer containing both
-      # architectures, and because `win.artifactName` carries `${arch}` it also
-      # emits the per-arch pair - so every release shipped three, the third
-      # being the union of the other two (v0.19.5: 421,851,256 bytes against
-      # 210,066,624 + 212,406,896). The universal one is the default that
-      # electron-updater would then hand every Windows user, so removing it is
-      # also what makes a Windows update pick the delta for its own arch.
+      # The Windows installer set is deliberately left alone, `nsis
+      # .buildUniversalInstaller` included. It builds THREE files - the union
+      # installer and one per architecture - and the union one is the file every
+      # Windows user is served: `NsisUpdater.doDownloadUpdate` picks
+      # `findFile(resolveFiles(info), "exe")`, which is the *first* `.exe` in the
+      # feed with no architecture filter at all (unlike `MacUpdater`, which
+      # filters by architecture before it picks), and `latest.yml` lists the
+      # union installer first and as `path` (v0.19.5: 421,851,256 bytes against
+      # 210,066,624 + 212,406,896). Turning the union installer off would
+      # therefore hand every Windows-on-ARM user the x64 build, chosen by the
+      # order two concurrent per-arch tasks happened to finish in. The 402 MB it
+      # costs buys a correct architecture for both; removing it is a change to
+      # `electron-updater`'s Windows path, not to this file. See docs/BUILD.md.
       - name: Build Windows app
         run: pnpm dist:win
         env:

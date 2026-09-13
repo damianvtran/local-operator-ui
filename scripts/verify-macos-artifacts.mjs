@@ -130,22 +130,78 @@ export function bundledPythonTrees(appPath, { listDir = readdirSync } = {}) {
 	return entries.filter((name) => BUNDLED_PYTHON_TREES.includes(name));
 }
 
-/** A failure entry in the same shape as the other checks. */
+const LIPO = "/usr/bin/lipo";
+
+/**
+ * The architecture a packaged app runs as, read from the bundle itself.
+ *
+ * `lipo -archs` on the framework binary rather than on the launcher: the path is
+ * fixed in every Electron bundle (`Contents/MacOS/<product>` needs the
+ * `CFBundleExecutable` name first), and the answer is the same. Both are thin in
+ * a per-architecture app; a fat answer means the bundle is not one, which the
+ * caller reports rather than rounding to a nearby architecture.
+ */
+export function bundleArchitectures(appPath, { run = spawnRunner } = {}) {
+	const binary = join(
+		appPath,
+		"Contents",
+		"Frameworks",
+		"Electron Framework.framework",
+		"Versions",
+		"A",
+		"Electron Framework",
+	);
+	if (!existsSync(binary)) {
+		return { archs: [], error: `no framework binary at ${binary}` };
+	}
+	const result = run(LIPO, ["-archs", binary]);
+	const archs = `${result.stdout}`.trim().split(/\s+/).filter(Boolean);
+	if (result.status !== 0 || archs.length === 0) {
+		return { archs: [], error: `lipo could not read ${binary}` };
+	}
+	return { archs };
+}
+
+/**
+ * A failure entry in the same shape as the other checks.
+ *
+ * Both halves are asserted for a reason: "exactly one tree" without "the right
+ * tree" passes for an arm64 bundle that pruned the aarch64 interpreter and kept
+ * the x86_64 one, which is a bundle that cannot start its backend at all. The
+ * expected directory name is the one `backend-installer.ts` probes for the
+ * architecture the bundle actually is.
+ */
 export function bundledPythonCheck(appPath, options = {}) {
 	const trees = bundledPythonTrees(appPath, options);
-	const exactlyOne = trees.length === 1;
+	const { archs, error } = bundleArchitectures(appPath, options);
+	const describe = (trees.length === 0 ? ["none"] : trees)
+		.map((name) => `Contents/Resources/${name}`)
+		.join(", ");
+	const fail = (output) => ({
+		id: "app-one-bundled-python",
+		scope: "app",
+		target: appPath,
+		description: "the bundled python interpreter tree this architecture needs",
+		passed: false,
+		output,
+	});
+	if (error != null) return fail(`${error}; cannot tell which interpreter this app needs`);
+	if (archs.length !== 1)
+		return fail(
+			`the app is ${archs.join(" + ")} (not a single architecture); a fat bundle needs both interpreters, and mac.target builds one per architecture`,
+		);
+	const expected = archs[0] === "arm64" ? "python_aarch64" : "python";
+	if (trees.length !== 1 || trees[0] !== expected)
+		return fail(
+			`the ${archs[0]} app ships ${describe}, but it resolves Contents/Resources/${expected}`,
+		);
 	return {
 		id: "app-one-bundled-python",
 		scope: "app",
 		target: appPath,
-		description: "exactly one bundled python interpreter tree",
-		passed: exactlyOne,
-		output:
-			trees.length === 0
-				? "no bundled interpreter under Contents/Resources; this app cannot create its backend venv"
-				: exactlyOne
-					? `one interpreter tree: Contents/Resources/${trees[0]}`
-					: `${trees.length} bundled interpreter trees: ${trees.map((name) => `Contents/Resources/${name}`).join(", ")}`,
+		description: "the bundled python interpreter tree this architecture needs",
+		passed: true,
+		output: `${archs[0]} app ships only Contents/Resources/${expected}`,
 	};
 }
 
@@ -363,7 +419,7 @@ export function verifyArtifacts({
 		// build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
-		results.push(bundledPythonCheck(appPath));
+		results.push(bundledPythonCheck(appPath, { run }));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -400,7 +456,7 @@ export function verifyArtifacts({
 		);
 		if (interpreters) {
 			log(
-				`The app does not ship exactly one bundled interpreter: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs removes the tree this architecture cannot run, and it runs before signing, so fix the build rather than the bundle.`,
+				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
 			);
 		}
 	}

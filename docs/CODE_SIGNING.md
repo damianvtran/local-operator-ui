@@ -117,7 +117,7 @@ build actually produced, and any failure fails the release before upload:
 | Image is accepted | `spctl -a -vvv -t open --context context:primary-signature` on the `.dmg` |
 | Image ticket is stapled | `xcrun stapler validate` on the `.dmg` |
 | No bytecode ships | Walks `Contents/Resources/python[_aarch64]` for `.pyc`/`.pyo` |
-| One interpreter ships | Asserts exactly one of `Contents/Resources/python`, `python_aarch64` is present |
+| One interpreter ships | Asserts the single tree present is the one `lipo -archs` says this bundle's architecture resolves |
 
 The last two ask nothing of `codesign`: they are about what the build
 assembled. A shipped `.pyc` is a seal break the app cannot heal, and two

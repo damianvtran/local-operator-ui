@@ -2149,20 +2149,34 @@ test("missing artifacts fail rather than passing vacuously", () => {
  */
 test("every discovered image is checked, and an unreadable entry fails cleanly", () => {
 	const dir = tempDir("lo-dist-multi-");
+	/** The `lipo -archs` answer per bundle, because the check reads the answer. */
+	const lipoGroups = new Map();
+	// `mac` is where an x64 build lands and `mac-arm64` where an arm64 one does:
+	// electron-builder suffixes the app directory for every architecture except
+	// the default one, so neither is `mac-x64`.
 	mkdirSync(join(dir, "mac-arm64"), { recursive: true });
-	mkdirSync(join(dir, "mac-x64"), { recursive: true });
-	mkdirSync(join(dir, "mac-arm64", "Local Operator.app"), { recursive: true });
-	mkdirSync(join(dir, "mac-x64", "Local Operator.app"), { recursive: true });
-	// Each bundle carries the one interpreter its architecture runs, which is what
-	// `afterPack` leaves behind and what the per-app checks are asserted against.
-	for (const [archDir, tree] of [
-		["mac-arm64", "python_aarch64"],
-		["mac-x64", "python"],
+	mkdirSync(join(dir, "mac"), { recursive: true });
+	for (const [archDir, tree, arch] of [
+		["mac-arm64", "python_aarch64", "arm64"],
+		["mac", "python", "x86_64"],
 	]) {
-		mkdirSync(
-			join(dir, archDir, "Local Operator.app", "Contents", "Resources", tree),
-			{ recursive: true },
+		const app = join(dir, archDir, "Local Operator.app");
+		mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+		// The framework binary the interpreter check reads the bundle's
+		// architecture from, and the one interpreter `afterPack` leaves for it.
+		const framework = join(
+			app,
+			"Contents",
+			"Frameworks",
+			"Electron Framework.framework",
+			"Versions",
+			"A",
+			"Electron Framework",
 		);
+		mkdirSync(dirname(framework), { recursive: true });
+		writeFileSync(framework, `binary for ${arch}`, "utf8");
+		lipoGroups.set(framework, arch);
+		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
 	}
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-arm64.dmg"), "x");
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-x64.dmg"), "x");
@@ -2177,13 +2191,19 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		dist: dir,
 		run: (command, args) => {
 			checked.push(args[args.length - 1]);
+			// `lipo -archs` is the one command whose answer the check reads rather
+			// than its status, and the answer is per bundle.
+			if (command.endsWith("lipo")) {
+				const group = lipoGroups.get(args[args.length - 1]);
+				return { status: 0, stdout: `${group}\n`, stderr: "" };
+			}
 			return { status: 0, stdout: "accepted", stderr: "" };
 		},
 		log: (line) => lines.push(line),
 	});
 	assert.equal(result.ok, true);
 	// 3 signer checks per app plus the bundled-bytecode walk and the interpreter
-	// count, and 2 image checks per image: nothing is left unaudited.
+	// check, and 2 image checks per image: nothing is left unaudited.
 	const bytecodeChecks = result.results.filter(
 		(check) => check.id === "app-no-bundled-bytecode",
 	);
@@ -2196,13 +2216,10 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		result.results.length,
 		2 * 3 + 2 * 2 + bytecodeChecks.length + interpreterChecks.length,
 	);
-	// Every check that shells out went through the injected runner; the two
-	// per-app checks walk the bundle themselves because their subject is what the
-	// build put there, before anything was signed.
-	assert.equal(
-		checked.length,
-		result.results.length - bytecodeChecks.length - interpreterChecks.length,
-	);
+	// Every check that shells out went through the injected runner. The bytecode
+	// walk is the exception: its subject is what the build put in the bundle,
+	// before anything was signed, so it reads the tree directly.
+	assert.equal(checked.length, result.results.length - bytecodeChecks.length);
 	for (const target of [...discovered.apps, ...discovered.dmgs]) {
 		assert.ok(checked.includes(target), `${target} was never checked`);
 	}
@@ -3885,7 +3902,7 @@ function loWriteUpdateConfig(cacheRoot, port) {
  * A whole update scenario: the previous release's zip in the updater's cache,
  * both releases' assets on a local feed, and an updater pointed at it.
  */
-function loUpdateScenario({ cache = true, blockmaps = true } = {}) {
+function loUpdateScenario({ blockmaps = true, patchLength = 4096 } = {}) {
 	const dir = tempDir("lo-update-");
 	// One seed per architecture, so that fetching the wrong architecture's build
 	// cannot pass a hash check by accident: the two blobs are unrelated except
@@ -3896,7 +3913,7 @@ function loUpdateScenario({ cache = true, blockmaps = true } = {}) {
 		loBlob(LO_ARTIFACT_SIZE, {
 			seed: seedFor(arch),
 			patchAt: 1 * LO_MB,
-			patchLength: 4096,
+			patchLength,
 		});
 	const old = loMakeRelease(dir, { version: "0.19.6", bytes: previous, blockmaps });
 	const next = loMakeRelease(dir, { version: "0.19.7", bytes: current, blockmaps });
@@ -3950,10 +3967,21 @@ async function loAsArch(arch, run) {
  * previous release's zip where the updater keeps the copy a delta is computed
  * against.
  */
-async function loRunUpdate({ arch, blockmaps = true, cachedOld = true }) {
-	const scenario = loUpdateScenario({ blockmaps });
+async function loRunUpdate({
+	arch,
+	blockmaps = true,
+	cachedOld = true,
+	// `false` is the transition off the universal build: the release a user is
+	// updating from published no block map at all.
+	oldBlockmaps = true,
+	// Overrides the cached diff base, for the universal-to-per-arch case where
+	// the base is an artifact shape this release no longer produces.
+	cacheBase = null,
+	patchLength = 4096,
+}) {
+	const scenario = loUpdateScenario({ blockmaps, patchLength });
 	const state = loServe(scenario.next.web);
-	if (cachedOld) {
+	if (cachedOld && oldBlockmaps) {
 		// The previous release's block maps are theirs, not this release's: they
 		// live on the older release, and the updater derives their URL from the
 		// version it is running (`0.19.6`) rather than from the one it fetches.
@@ -3970,7 +3998,10 @@ async function loRunUpdate({ arch, blockmaps = true, cachedOld = true }) {
 	const updateCache = loWriteUpdateConfig(cacheRoot, port);
 	if (cachedOld) {
 		mkdirSync(updateCache, { recursive: true });
-		writeFileSync(join(updateCache, "update.zip"), scenario.previous(arch));
+		writeFileSync(
+			join(updateCache, "update.zip"),
+			cacheBase ?? scenario.previous(arch),
+		);
 	}
 
 	const result = await loAsArch(arch, async () => {
@@ -4085,6 +4116,70 @@ for (const [arch, own, other] of [
 		}
 	});
 }
+
+test("a build that changed across most of the file transfers most of it", async () => {
+	// The honest counterpart to the delta above, and the reason the PR body does
+	// not claim routine updates are small: the mechanism transfers the blocks
+	// that changed, so a Chromium bump - which changes most of an archive - still
+	// costs most of an archive. What it no longer costs is "all of it, always".
+	const run = await loRunUpdate({
+		arch: "arm64",
+		patchLength: Math.round(LO_ARTIFACT_SIZE * 0.6),
+	});
+	try {
+		const own = "local-operator-ui-0.19.7-arm64.zip";
+		const entry = run.scenario.next.entries.find((it) => it.url === own);
+		assert.equal(loSha512(run.downloadedPath(own)), entry.sha512);
+		const transferred = run.state.bytesFor(own);
+		assert.ok(
+			transferred > entry.size * 0.4 && transferred < entry.size,
+			`expected a large but partial transfer, got ${transferred} of ${entry.size}`,
+		);
+		console.log(
+			`60% of the file changed: ${transferred} of ${entry.size} bytes transferred (${((transferred / entry.size) * 100).toFixed(2)}%)`,
+		);
+	} finally {
+		run.close();
+	}
+});
+
+test("the first update off a universal build falls back to a full download", async () => {
+	// The state every existing macOS user is in for exactly one release: they run
+	// a universal 0.19.6 whose zip sits in the cache as the diff base, and this
+	// release ships per-arch zips. The old block-map URL the updater derives is
+	// the *per-arch* name at the version it is running, which 0.19.6 never
+	// published - so the fetch 404s and the update has to degrade safely rather
+	// than diff a per-arch artifact against a universal base.
+	const run = await loRunUpdate({
+		arch: "arm64",
+		oldBlockmaps: false,
+		// Deliberately a different length from the release's own zip, so a diff
+		// against the wrong base could not pass a size or hash check by accident.
+		cacheBase: loBlob(LO_ARTIFACT_SIZE + 4096, { seed: 11 }),
+	});
+	try {
+		const own = "local-operator-ui-0.19.7-arm64.zip";
+		const entry = run.scenario.next.entries.find((it) => it.url === own);
+		const oldBlockMap = "local-operator-ui-0.19.6-arm64.zip.blockmap";
+		assert.ok(
+			run.state.requests.some((request) => request.name === oldBlockMap),
+			`the previous release's block map was not even attempted: ${run.state.requests.map((request) => request.name).join(", ")}`,
+		);
+		assert.ok(
+			run.lines.some((line) =>
+				line.includes("Cannot download differentially"),
+			),
+			`the fallback was not taken: ${run.lines.join(" | ")}`,
+		);
+		assert.equal(run.state.bytesFor(own), entry.size);
+		// The property that makes the fallback the *safe* outcome: what lands is
+		// this release's artifact, whole, verified against the channel file's
+		// hash - not a per-arch zip with a universal diff base spliced into it.
+		assert.equal(loSha512(run.downloadedPath(own)), entry.sha512);
+	} finally {
+		run.close();
+	}
+});
 
 test("without the block maps a release offers, the updater transfers the whole file", async () => {
 	// The world every release up to now lived in: electron-builder built a block

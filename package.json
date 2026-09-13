@@ -290,7 +290,6 @@
       "verifyUpdateCodeSignature": false
     },
     "nsis": {
-      "buildUniversalInstaller": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": true,
