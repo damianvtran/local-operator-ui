@@ -52,11 +52,15 @@ const {
 	hasRunDetails,
 	hasUnseenFailure,
 	hasUnseenMcpProblem,
+	MCP_COLD_LINE,
+	mcpErrorTexts,
 	mcpServersAreCold,
+	mcpTally,
 	onScreenFailures,
 	briefIsInTranscript,
 	childOpenable,
 	reconcileLaunchTurns,
+	retimeChildRow,
 	retimeRunDetails,
 	tallyBudget,
 	runDetailTriggerLabel,
@@ -1601,11 +1605,15 @@ test("the reader's fields are read off the row the roster already has", () => {
 	assert.equal(bare.errorText, null);
 });
 
-test("a child's child count comes from the roster's own edges", () => {
+test("a child's child count comes from the lineage's own edges", () => {
 	/*
 	 * `childCount` is derived by grouping on `parent_job_id` rather than read from
 	 * the wire: a published count would be a second statement of what the lineage
 	 * already says, and two statements can disagree.
+	 *
+	 * Counted over the LINEAGE, and the roster is what makes that visible: this
+	 * payload's only top-level child is `parent`, and `parent`'s control must still
+	 * be able to say `2 children` about two rows the roster does not list.
 	 */
 	const details = derive([
 		job({ id: "parent", status: "running" }),
@@ -1617,7 +1625,7 @@ test("a child's child count comes from the roster's own edges", () => {
 			parent_job_id: "kid-1",
 		}),
 	]);
-	const byId = new Map(details.subagents.map((row) => [row.id, row]));
+	const byId = new Map(details.lineage.map((row) => [row.id, row]));
 	assert.equal(byId.get("parent").childCount, 2);
 	assert.equal(byId.get("kid-1").childCount, 1);
 	assert.equal(byId.get("kid-2").childCount, 0);
@@ -1625,6 +1633,16 @@ test("a child's child count comes from the roster's own edges", () => {
 	// the lineage stops on a real value.
 	assert.equal(byId.get("parent").parentJobId, null);
 	assert.equal(byId.get("grandchild").parentJobId, "kid-1");
+	// The roster is the members alone, and every descendant stays on the lineage —
+	// which is what the reader walks (`§ 4`, `§ 5.5`).
+	assert.deepEqual(
+		details.subagents.map((row) => row.id),
+		["parent"],
+	);
+	assert.deepEqual(
+		details.lineage.map((row) => row.id),
+		["parent", "kid-1", "kid-2", "grandchild"],
+	);
 });
 
 test("the launch turn is reconciled, and only the ids the map vouches for", () => {
@@ -2085,4 +2103,249 @@ test("the model records the instant it was measured at, and the real one", () =>
 	assert.ok(Math.abs(pinned.measuredAtRealMs - Date.now()) < 5_000);
 	const live = deriveRunDetails({ jobs: [], todos: [] });
 	assert.ok(Math.abs(live.measuredAtMs - Date.now()) < 5_000);
+});
+
+/* ------------------------------------------------------------------ */
+/* The roster's membership (`§ 4`)                                     */
+/* ------------------------------------------------------------------ */
+
+test("the roster is the session's sub-agents, not its job ledger", () => {
+	/*
+	 * `frontend.jobs` is `comms.job_rows()`: the ROOT session's job manager plus
+	 * every live child's (`harness/comms.py:799-824`), so the list carries the
+	 * children's own tool calls — and the session's own — beside the children
+	 * themselves. QA's live capture read
+	 * `c1ccfe6839cb bash running "bash: sleep 150 ; echo child-done"` beside the
+	 * one real delegated child, and the roster painted both: `2 running`, with the
+	 * bash row sorted above the child it belonged to (round 1, Q1/U1-4).
+	 *
+	 * Membership is a filter on the row's own `type`, which the wire already
+	 * stamps: a delegated child is `task`, a tool job carries the tool's NAME.
+	 */
+	const details = derive([
+		job({ id: "child", status: "running", label: "Audit the invoices" }),
+		job({
+			id: "tool",
+			type: "bash",
+			status: "running",
+			label: "bash: sleep 150 ; echo child-done",
+		}),
+	]);
+	assert.deepEqual(
+		details.subagents.map((row) => row.id),
+		["child"],
+		"a child's own tool call is not a sub-agent",
+	);
+	assert.equal(
+		details.openChildren,
+		1,
+		"the tally counts members, not rows on the wire",
+	);
+	assert.equal(subagentTally(details.subagents), "1 running");
+	// A row that does not SAY what it is is KEPT: a runtime this renderer has not
+	// been taught must not have its children silently dropped, and a lost child is
+	// the worse of the two failures (over-reporting is the one this rule stops).
+	const untyped = derive([{ id: "child", status: "running", label: "Audit" }]);
+	assert.deepEqual(
+		untyped.subagents.map((row) => row.id),
+		["child"],
+	);
+});
+
+test("a nested child is a descendant, and its parent's control is the way to it", () => {
+	/*
+	 * Q2: a grandchild painted as a top-level row double-reports the same work in
+	 * the tally and beside its own parent, while the parent's `N children`
+	 * control is the documented way to reach it (`§ 5.5`).
+	 */
+	const details = derive([
+		job({ id: "parent", status: "running" }),
+		job({ id: "grandchild", status: "running", parent_job_id: "parent" }),
+	]);
+	assert.deepEqual(
+		details.subagents.map((row) => row.id),
+		["parent"],
+	);
+	assert.equal(details.openChildren, 1);
+	assert.deepEqual(
+		details.lineage.map((row) => row.id),
+		["parent", "grandchild"],
+		"the reader's path is walked over the lineage, so the descendant stays reachable",
+	);
+	assert.equal(details.lineage[0].childCount, 1);
+	/*
+	 * And the opposite case, which is why the rule asks whether the PARENT IS ON
+	 * THE LIST rather than whether `parent_job_id` is null: `comms.job_rows()`
+	 * returns a child's raw `parent_job_id` when the record it names is gone, and
+	 * a row nothing could reach is a member by construction.
+	 */
+	const orphan = derive([job({ id: "orphan", parent_job_id: "swept-away" })]);
+	assert.deepEqual(
+		orphan.subagents.map((row) => row.id),
+		["orphan"],
+	);
+});
+
+test("the reader's clock re-measures ONE row, on the roster's own rule", () => {
+	/*
+	 * Q3: the reader's header sat on the elapsed label the wire last published
+	 * while the roster beside it counted up. `retimeChildRow` is the one-row half
+	 * of `retimeRunDetails`, so the two surfaces cannot come to different answers
+	 * about which rows have a clock that is still running.
+	 */
+	const [open, settled] = derive([
+		job({ id: "open", start_time: 1_000 }),
+		job({ id: "settled", start_time: 1_000, settled_at: 1_010 }),
+	]).subagents;
+	assert.equal(open.elapsedLabel, "1m");
+	assert.equal(retimeChildRow(open, NOW_MS + 120_000).elapsedLabel, "3m");
+	assert.equal(
+		retimeChildRow(settled, NOW_MS + 120_000).elapsedLabel,
+		"10s",
+		"a settled child's duration is a fact about the job",
+	);
+	// Identity when nothing moved, so a header whose label is unchanged does not
+	// repaint — the same property `retimeRunDetails` keeps for the list.
+	assert.equal(retimeChildRow(open, NOW_MS + 400), open);
+	// And the model's own re-measure reaches the LINEAGE, not only the roster: a
+	// nested child's row is exactly what a reader draws when it is open on one.
+	const nested = derive([
+		job({ id: "parent", status: "done", settled_at: 1_010 }),
+		job({
+			id: "kid",
+			status: "running",
+			start_time: 1_000,
+			parent_job_id: "parent",
+		}),
+	]);
+	assert.equal(nested.subagents.length, 1);
+	assert.equal(nested.lineage.length, 2);
+	assert.equal(
+		retimeRunDetails(nested, NOW_MS + 120_000).lineage[1].elapsedLabel,
+		"3m",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The MCP section's two copy rules                                    */
+/* ------------------------------------------------------------------ */
+
+test("the MCP tally pluralises, and agrees with the trigger's own clause", () => {
+	/*
+	 * Q7/U1-7: `1 need attention` sat beside the trigger's `1 MCP server needs
+	 * attention` — one count, two spellings, one of them ungrammatical, on the two
+	 * surfaces a single reader sees together.
+	 */
+	const one = deriveMcpServers([
+		{ name: "files", status: "connected", tool_count: 12 },
+		{ name: "notion", status: "auth-required" },
+	]);
+	assert.equal(mcpTally(one), "1 of 2 connected · 1 needs attention");
+	const two = deriveMcpServers([
+		{ name: "files", status: "disconnected" },
+		{ name: "notion", status: "auth-required" },
+	]);
+	assert.equal(mcpTally(two), "0 of 2 connected · 2 need attention");
+	// No problem is no clause at all, and the trigger's own clause for the same
+	// fact is the spelling this one now matches.
+	const healthy = deriveMcpServers([
+		{ name: "files", status: "connected", tool_count: 12 },
+		{ name: "notion", status: "connecting" },
+	]);
+	assert.equal(mcpTally(healthy), "1 of 2 connected");
+	const label = runDetailTriggerLabel(derive([job({})]), NOTHING_SEEN, {
+		mcpProblems: 1,
+	});
+	assert.match(label, /1 MCP server needs attention/);
+	// The cold payload has no status to tally at all.
+	assert.equal(mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])), MCP_COLD_LINE);
+});
+
+test("an MCP row's diagnosis is the canonical projection's, and only where it applies", () => {
+	/*
+	 * U1-8: `mcp.list` reports no reason for a server being down, so a row broken
+	 * by its own command offered `Reconnect this server in Settings` — a remedy
+	 * that cannot fix a command that does not exist — and hid the runtime's own
+	 * words. The canonical projection's `error` is the only place they exist.
+	 */
+	const errors = mcpErrorTexts([
+		{
+			name: "playwright",
+			status: "disconnected",
+			error: "[Errno 2] No such file or directory: '/nonexistent/x'",
+		},
+		// A stale startup failure for a server that came up afterwards.
+		{ name: "files", status: "connected", error: "auth probe failed at boot" },
+		// A row with no error contributes nothing, and neither does a nameless one.
+		{ name: "notion", status: "auth-required", error: "" },
+		{ status: "connected", error: "orphaned" },
+	]);
+	assert.deepEqual(Object.keys(errors).sort(), ["files", "playwright"]);
+	const rows = deriveMcpServers(
+		[
+			{ name: "playwright", status: "disconnected" },
+			{ name: "files", status: "connected", tool_count: 12 },
+		],
+		errors,
+	);
+	const byName = new Map(rows.map((row) => [row.name, row]));
+	assert.equal(
+		byName.get("playwright").errorText,
+		"[Errno 2] No such file or directory: '/nonexistent/x'",
+		"the runtime's words, verbatim",
+	);
+	assert.equal(
+		byName.get("playwright").hint,
+		"Reconnect this server in Settings",
+		"the remedy is still carried, for a surface that wants it",
+	);
+	assert.equal(
+		byName.get("files").errorText,
+		null,
+		"a live `connected` word outranks a failure the runtime recorded at boot",
+	);
+	// No projection at all is the story set's and the legacy path's shape.
+	assert.deepEqual(mcpErrorTexts(undefined), {});
+	assert.equal(
+		deriveMcpServers([{ name: "playwright", status: "disconnected" }])[0]
+			.errorText,
+		null,
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The plan's unnamed group (`§ 6.2`)                                  */
+/* ------------------------------------------------------------------ */
+
+test("a headerless group that does not lead the plan is given a boundary", () => {
+	/*
+	 * Q9/U1-5: the fold is honest only where it LEADS. An implicit phase the
+	 * backend grew after a named one rendered its rows at the previous phase's
+	 * indent, with no header and — the per-phase counts having been removed by
+	 * this change — no other signal either, so `sweep the build cache` read as a
+	 * `Ship it` item.
+	 *
+	 * A paint rule cannot be asserted from here: this file bundles the model and
+	 * the fixtures and has no DOM. The pin is therefore on the SOURCE, in the
+	 * shape this file already uses for the two call sites it cannot reach. The
+	 * FRAME (`todos-implicit-phase`) is the evidence; this is what stops the rule
+	 * being deleted without the frame being re-taken.
+	 */
+	const todos = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/run-details/run-detail-todos.tsx",
+		),
+		"utf8",
+	);
+	assert.match(
+		todos,
+		/const leadsThePlan = phaseIndex === 0;/,
+		"the unnamed group's boundary depends on whether it leads",
+	);
+	assert.match(
+		todos,
+		/phase\.name === null && !leadsThePlan && <Separator \/>/,
+		"and a non-leading group states the boundary it has no name for",
+	);
 });
