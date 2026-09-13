@@ -68,18 +68,23 @@ meaningful by contrast, because that window is focusable and shown.
 captured from a real, shown window — differ only in **one clock**: the seeded
 transcript's message time.
 
-- 800x600, committed frame against a fresh run: 390 pixels, all inside one
-  `62x19` box at the timestamp (round 3's independent run measured 649 there).
-- 1380x900, `headless` against `inactive`: 1,596 channels, the same box.
-- 1380x900, two `headless` runs: 1,526 channels, the same box.
+- 800x600, committed frame against a fresh run: 390 differing pixels, all inside
+  one `60x19` box at the timestamp (independent runs measured 624 and 649 there).
+- 1380x900, `headless` against `inactive`: 532 differing pixels (1,596 channels),
+  all inside one `62x19` box.
+- 1380x900, two `headless` runs: 509 differing pixels (1,526 channels), the same
+  box.
 
 **Apart from that box the frames reproduce pixel-for-pixel**, which is the fact
 that matters. The box is not a mode difference and cannot be: `seed.mjs` stamps
-the transcript with `Date.now()`, the app renders that opener with
-`hour: "numeric"`, and two runs a minute apart therefore print different
-times. Two runs started in the same minute are byte-identical — which is why
-the first pair measured 0 differing channels and a later pair does not. The
-control is the wall clock, not the mode.
+the transcript with `Date.now()`, and the app renders that opener through
+`TIME_FORMAT` in
+`src/renderer/src/features/chat/utils/message-grouping.ts` — `hour: "numeric"`
+with `minute: "2-digit"`, which is why two runs a minute apart differ by exactly
+that box and nothing else. Two runs started in the same minute are byte-identical
+(a fresh `headless`/`inactive` pair seeded in the same minute measured 0
+differing pixels), which is why the first pair measured 0 and a later pair does
+not. The control is the wall clock, not the mode.
 
 Two caveats, measured rather than assumed:
 
