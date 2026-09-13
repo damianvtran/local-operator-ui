@@ -96,8 +96,20 @@ const Frame = ({
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
+		/*
+		 * A FLEX column of a fixed height, not a plain scroller.
+		 *
+		 * `CanonicalTranscript` is the app's scroll container and expects to be the
+		 * flex child that absorbs the pane's leftover height (`min-h-0 grow`).
+		 * Wrapped in a plain `overflow-y-auto` div it was instead free to grow to
+		 * its own content height inside that div, which is how a story twice the
+		 * pane's height photographed as the TOP of a document: the frame showed the
+		 * callout and clipped the hint, which is not a state the app can be in. It
+		 * is the pane's behaviour that matters for a height question, and the app
+		 * pins the pane to its newest content — so the story has to be the pane.
+		 */
 		<div
-			className="overflow-y-auto p-6"
+			className="flex flex-col overflow-hidden p-6"
 			ref={containerRef}
 			style={{ width, height }}
 		>
@@ -160,6 +172,14 @@ export const Options: Story = {
  * One option, which is the shape that most tempts a card into looking broken:
  * a single button under a question reads as a confirmation dialog unless the
  * free-text hint below it stays honest.
+ *
+ * NOT A PRODUCTION STATE, kept as defensive coverage. `AskQuestion._shape` in
+ * the harness (`local_operator/harness/types.py`) rejects a non-secret ask with
+ * fewer than two options — "at least two answers to pick from" — so a real `ask`
+ * gate never arrives holding one. The frame is still worth having because the
+ * component is what decides whether it degrades honestly if a future wire does
+ * carry one; it is not evidence about a state a user can reach (code review
+ * round 1, R-NIT).
  */
 export const SingleOption: Story = {
 	render: () => (
@@ -181,13 +201,21 @@ export const SingleOption: Story = {
 
 /**
  * Eight options — the density at which the ordinals earn their keep and at
- * which a card with no scroll of its own has to stay scannable.
+ * which the option band has to cap itself.
+ *
+ * Captured at a 620px pane on purpose, which is the app's own default window
+ * (1380x900 leaves the transcript about 617px once the header and the composer
+ * band are taken out). Before the band had a ceiling this state pushed the
+ * callout, the eyebrow and the question out of the top of the pane — the
+ * options stayed visible and the question they answer did not (design round 1,
+ * D1). At 620 the frame IS the failure mode the fix addresses, so a regression
+ * shows up here rather than only at a window nobody runs.
  */
 export const ManyOptions: Story = {
 	render: () => (
 		<Frame
 			asked="Start the design pass on the desktop app."
-			height={820}
+			height={620}
 			pending={gate({
 				title: "Which surface should I start with?",
 				options: [
@@ -212,6 +240,10 @@ export const ManyOptions: Story = {
  * The label and its description must stay distinguishable after they wrap, and
  * the ordinal must stay pinned to the first line rather than centring itself
  * against a three-line block.
+ *
+ * Captured at two widths. At the 1024 column the label does not wrap at all, so
+ * the property this story exists for was never in any committed frame; the 760
+ * pair is where the wrap actually happens (design round 1, D5).
  */
 export const WrappingLabels: Story = {
 	render: () => (
@@ -269,8 +301,12 @@ export const MultiQuestion: Story = {
  * An answer is in flight.
  *
  * Every option is disabled so a second press — or a typed send racing a click
- * — cannot post a second answer for one question. Disabled changes COLOUR and
- * never opacity, which is what keeps this frame legible rather than faded.
+ * — cannot post a second answer for one question, and the callout's eyebrow
+ * says what is happening: "Sending your answer…", because with the eyebrow
+ * static this state is indistinguishable from a press that never registered
+ * (design round 1, D3; UX round 1, U2, measured at 9.1s of no feedback at all).
+ * Disabled changes COLOUR and never opacity, which is what keeps this frame
+ * legible rather than faded.
  */
 export const AnswerInFlight: Story = {
 	render: () => (

@@ -3,11 +3,24 @@
 Ninety-six frames — eight stories across all twelve themes — of the story file
 `Chat/Ask options`, captured with the same tooling
 (`scripts/capture-evidence.mjs`), the same fixtures and the same viewports from
-**unmodified `origin/main` at `54bf411e0`** — the commit this branch is rebased
-on, so the pair compares two cards on one tree rather than across a moved base.
+**unmodified `origin/main` at `54bf411e0`** (`chore(release): bump version to
+0.19.0`), so the pair compares two cards rather than two trees.
+
+**That commit is NOT this branch's rebase target, and an earlier version of this
+sentence said it was.** `54bf411e0` is 16 commits *behind* the commit the branch
+was cut from and rebased onto, `f3eb589c1` (`0.19.1`); the branch now sits on
+`6950d0bf3` (`0.19.5`). What makes the comparison valid is not the commit but the
+measurement: from `54bf411e0` to `6950d0bf3`, `git diff --name-only --
+'src/renderer/src/features/chat/canonical/**'
+'src/renderer/src/features/chat/components/trace/**'
+'src/renderer/src/features/chat/components/message-item/**'` is **empty** — none
+of main's later work draws this card — and among the 16 commits between
+`54bf411e0` and `f3eb589c1` only `chat-page.tsx` and `chat-title.ts` move, neither
+of which draws it either. See `why[3]` of this set in `manifest.json`, which
+carries the same correction; it is the durable record.
 
 RE-CAPTURED at `54bf411e0` after the rebase. The previous set was taken against
-`a09f2e6f4`, and `main` has since landed scroll paging (#112) and the
+`a09f2e6f4`, and `main` had since landed scroll paging (#112) and the
 run-details trigger (#115), both of which touch the transcript these frames are
 drawn inside — so the old set could no longer be relied on to depict main's
 current card. Measured rather than assumed: of the 96, **90 came back
@@ -26,10 +39,10 @@ photograph. Read the pair:
 | --- | --- | --- |
 | the options | inert muted text, one line each | a bordered, focusable control each |
 | label and consequence | run together on one line, joined by an em dash | label on its own line, consequence beneath it |
-| the recommended option | not marked at all — `recommended` is not in main's TS type | marked `RECOMMENDED` in accent beside the label |
-| the hint below | "Type your answer below." | "Choose an option, or type your own answer below." |
+| the recommended option | not marked at all — `recommended` is not in main's TS type | marked `Recommended` beside the label, in `ink` rather than the accent, in sentence case |
+| the hint below | "Type your answer below." | "Choose an option, press 1-9, or type your own answer below." |
 | answering | retype a label, or type `1` and have the agent receive the string `"1"` | press the option, or type `1` and have it resolve to that option's label |
-| an answer in flight | no such state — there was nothing to press | every option disabled by colour, never opacity |
+| an answer in flight | no such state — there was nothing to press | every option disabled by colour, never opacity, under an eyebrow reading "Sending your answer…" |
 | a secret ask | no options (unchanged) | no options (unchanged) |
 | an approval gate | "Reply yes or no in the composer." (unchanged) | identical — this change is scoped to `ask` |
 
@@ -40,7 +53,7 @@ proves they were not disturbed.
 ## Reproduction
 
 ```sh
-git worktree add /tmp/ask-baseline --detach origin/main   # 54bf411e0
+git worktree add /tmp/ask-baseline --detach 54bf411e0   # the 0.19.0 release commit
 cd /tmp/ask-baseline && pnpm install --frozen-lockfile
 # Copy this branch's story file in and port its `chat-ask-options` block into
 # main's own STORIES list (leaving main's run-details entries intact), then
@@ -52,7 +65,11 @@ cd /tmp/ask-baseline && pnpm install --frozen-lockfile
 #     serves a blank document, which the capturer reports as
 #     `document carries theme "" after 10s` rather than as a compile error.
 # The fixtures, the viewports and the component under them are otherwise
-# untouched, which is what makes the pair a fair comparison.
+# untouched, which is what makes the pair a fair comparison. This set is
+# captured at ONE width per story: `chat-ask-options--wrapping-labels` is taken
+# at 1024 and 760 on this branch (`wrapping-labels@1024/`, `wrapping-labels@760/`),
+# so the comparable half of that one story is `wrapping-labels@1024/` — the
+# same column, and the frames the pair's pixel comparisons use.
 pnpm storybook --port 6018 --no-open --quiet &
 node scripts/capture-evidence.mjs http://localhost:6018 \
   --only=chat-ask-options --allow-backend

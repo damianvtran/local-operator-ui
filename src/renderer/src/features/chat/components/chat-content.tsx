@@ -96,6 +96,13 @@ type ChatContentProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
+		/*
+		 * Passed straight through to the page's `send`. See `MessageInputProps`
+		 * for why the typed text travels beside the composed payload: the gate
+		 * answer path must resolve an option ordinal against what the user typed,
+		 * not against a payload a staged reply has already wrapped.
+		 */
+		typed?: string,
 	) => undefined | boolean | Promise<undefined | boolean>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
@@ -139,6 +146,12 @@ type ChatContentProps = {
 		 * it rather than posted from the row that was clicked.
 		 */
 		onAnswer?: (label: string) => void;
+		/**
+		 * What `SessionPanel` knows about the gate it just answered. Passed through
+		 * untouched: the card's hold and its refusal sentence are decided where the
+		 * request and its failure are, not re-derived here.
+		 */
+		answer?: { sending: boolean; refused: string | null } | null;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -404,6 +417,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											// The composer's own in-flight flag, reused: one
 											// answer per question, whichever surface starts it.
 											answering={Boolean(canonical.admitting)}
+											// This panel's own record of the gate it pressed, so the
+											// card holds itself disabled after an answer instead of
+											// coming back live against a gate the owner already took.
+											answer={canonical.answer ?? null}
 										/>
 									) : (
 										<MessagesView

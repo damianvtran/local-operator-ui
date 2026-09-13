@@ -136,6 +136,29 @@ export function desktopProxyPlugin(): Plugin {
 						}
 						res.end();
 					} catch {
+						/*
+						 * Once a byte of the stream has gone out, the response is
+						 * COMMITTED: its status and headers are already on the wire, and
+						 * setting them again throws `ERR_HTTP_HEADERS_SENT` from inside a
+						 * connect middleware, which Vite does not contain — the whole dev
+						 * server dies.
+						 *
+						 * That is not hypothetical. It destroyed this PR's own live
+						 * evidence capture (QA round 1, Q1/Q2): the dev server died between
+						 * the before-click and after-click frames, so the after-frame shows
+						 * backend-unreachable banners instead of the resolved gate. The
+						 * cheapest trigger is the most ordinary thing a reviewer does —
+						 * closing the page while the SSE stream is open — so without this
+						 * guard every live QA pass on this surface ends unpredictably.
+						 *
+						 * An aborted relay needs no reply at all: the client that went away
+						 * is the reason we are here. Destroy the socket instead, which is
+						 * the only honest signal left once a 200 has been promised.
+						 */
+						if (res.headersSent) {
+							res.destroy();
+							return;
+						}
 						res.statusCode = 503;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
