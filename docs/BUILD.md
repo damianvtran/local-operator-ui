@@ -133,6 +133,42 @@ The build configuration is defined in the `build` section of `package.json`. You
 - `directories.output`: Output directory for distributables
 - `mac`, `win`, `linux`: Platform-specific configurations
 
+### macOS: one artifact set per architecture, and one bundled interpreter
+
+`mac.target` builds a `dmg` and a `zip` for `arm64` and `x64` separately, so
+`artifactName` (`${name}-${version}-${arch}.${ext}`) produces
+`local-operator-ui-<version>-arm64.dmg`, `-x64.dmg`, `-arm64.zip` and
+`-x64.zip`. There is no universal image: a universal `.app` carries two copies
+of the Electron framework and both bundled interpreters, so half of every
+download is code the user's machine cannot run.
+
+`extraResources` is not architecture-aware and copies both interpreters into
+every build. `scripts/prune-python-resource.mjs` runs as `afterPack` and deletes
+the one the app cannot run — `backend-installer.ts` probes `python_aarch64` on
+arm64 and `python` on x64. It has to run before signing: the interpreter tree is
+code-sealed inside the `.app`, and removing a sealed file is a violation no
+update-time heal can repair. `pnpm verify-macos-artifacts` fails the release if
+an app bundle does not carry exactly the tree its architecture needs.
+
+### Windows: the union installer is load-bearing
+
+Windows keeps **three** installers: `local-operator-ui-setup-<version>.exe`
+containing both architectures, plus the per-architecture pair, because
+`win.artifactName` carries `${arch}`. `electron-builder`'s
+`nsis.buildUniversalInstaller` (default `true`) builds the union one, and it is
+tempting to turn it off — it is 402 MB, roughly the sum of the other two.
+
+Do not, unless the updater changes too. `NsisUpdater.doDownloadUpdate` resolves
+its download with `findFile(resolveFiles(info), "exe")`, which takes the
+**first** `.exe` in the feed and applies no architecture filter at all
+(`MacUpdater` filters by architecture first; the Windows path does not), and
+`latest.yml` lists the union installer first and as `path`. Every Windows user
+is therefore served the union installer today, which is what gives a
+Windows-on-ARM machine an ARM64 install. Remove it and the winner is whichever
+of the two concurrent per-arch packaging tasks finished first — an x64 build,
+emulated, for ARM64 users. Making the Windows feed architecture-aware is the
+precondition for dropping the union installer, not a packaging tweak.
+
 ## Auto-Updates
 
 Local Operator UI supports automatic updates using [electron-updater](https://www.electron.build/auto-update.html).
