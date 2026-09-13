@@ -21,6 +21,7 @@
  * (`owned_scope`, `setup.text`, `status`); see `MCPServerRow`.
  */
 
+import { compactPath } from "@features/chat/components/trace/tool-row-model";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -33,7 +34,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plug, PlugZap, RotateCw, Trash2 } from "lucide-react";
 import type { FC, RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
+import type {
+	DesktopControlResult,
+	DesktopMcpState,
+} from "../../../../../shared/desktop-control-contract";
+import { foreignMcpConfigOrigin } from "../../../../../shared/mcp-foreign-config-origin";
 import { SettingsSection } from "./settings-section";
 
 /**
@@ -48,26 +53,28 @@ import { SettingsSection } from "./settings-section";
  * a project-owned server became unremovable, since the backend compares the
  * requested scope against the source file's real one.
  *
- * Deriving the row from `DesktopMcpState` makes the next divergence a compile
- * error instead of a silent no-op. The real names are worth knowing at the
- * point of use: `owned_scope` is the writable scope owning the server's SOURCE
- * FILE (`owned_scope_for_source` in `mcp/config.py`) and is `null` for the six
- * foreign configs this app must not write, `setup` is
- * `{kind: "session_prompt", text}` and is absent from the route's cold facade,
- * and `status` is the vocabulary `connected | connecting | auth-required |
- * disconnected` (plus `cold` on that facade).
+ * Deriving the row from `DesktopMcpState` makes divergence between THIS file and
+ * the contract a compile error instead of a silent no-op — which is the half of
+ * the problem a type can close. It does not close the other half, and the
+ * contract does not pretend otherwise: `desktop-control-contract.ts` is
+ * hand-written and already omits fields the live snapshot sends (`removable`) and
+ * that `public_server_config` sends (`argument_count`, `url`, `endpoint_redacted`,
+ * `environment_keys`, `header_keys`), and `desktopResult<T>` is an unchecked cast,
+ * so a backend rename would still arrive silently. Catching that needs a parity
+ * assertion against a pinned payload from the backend, which this repository
+ * cannot make on its own — see the note in `mcp-foreign-config-origin.ts`.
+ *
+ * The real names are worth knowing at the point of use: `owned_scope` is the
+ * writable scope owning the server's SOURCE FILE (`owned_scope_for_source` in
+ * `mcp/config.py`) and is `null` for the six foreign configs this app must not
+ * write, `setup` is `{kind: "session_prompt", text}` and is absent from the
+ * route's cold facade, and `status` is the vocabulary `connected | connecting |
+ * auth-required | disconnected` (plus `cold` on that facade).
  */
 type MCPServerRow = DesktopMcpState["servers"][number];
 
 /** Lifecycle routes wrap their payload as `{data, replayed}`. */
-type MCPListResult = {
-	data: {
-		servers: MCPServerRow[];
-		operations?: Array<Record<string, unknown>>;
-		cold?: boolean;
-	};
-	replayed?: boolean;
-};
+type MCPListResult = DesktopControlResult<DesktopMcpState>;
 
 type MCPAction =
 	| "list"
@@ -276,7 +283,7 @@ export const McpManagementSection: FC<{
 		staleTime: 10_000,
 	});
 
-	const servers = listQuery.data?.servers ?? [];
+	const servers: MCPServerRow[] = listQuery.data?.servers ?? [];
 
 	// `/mcp <name>` emits `&mcp=<name>` and nothing read it, so the argument was
 	// silently dropped and the command landed on an undifferentiated list (UX
@@ -399,6 +406,15 @@ export const McpManagementSection: FC<{
 							// narrowing: the scope of the write and the reason the Remove
 							// control exists are the same question.
 							const ownedScope = server.owned_scope;
+							// Whether this row offers the sign-in control that fixes a
+							// `auth-required` server; where it does not, the row has to say so
+							// in words (see the hint below).
+							const canGrantAccountAccess =
+								server.transport === "http" &&
+								server.transport_oauth_supported !== false;
+							// The tool that owns a config this app must not write, or null when
+							// the table does not know the file.
+							const foreignOrigin = foreignMcpConfigOrigin(server.source);
 							return (
 								<li
 									key={server.name}
@@ -415,11 +431,19 @@ export const McpManagementSection: FC<{
 											<span className="truncate font-medium text-body text-ink">
 												{server.name}
 											</span>
+											{/* The scope chip leads and the transport chip follows. Scope is
+											    the fact that decides whether this row has a Remove control;
+											    `stdio`/`http` is a token the row's other copy already
+											    implies, so it takes the quieter variant. The words are the
+											    add form's own (`Global` / `This project`), so the two
+											    places that name this axis agree. */}
 											{ownedScope && (
-												<Badge variant="neutral">{ownedScope}</Badge>
+												<Badge variant="outline">
+													{ownedScope === "project" ? "This project" : "Global"}
+												</Badge>
 											)}
 											{server.transport && (
-												<Badge variant="outline">{server.transport}</Badge>
+												<Badge variant="neutral">{server.transport}</Badge>
 											)}
 										</div>
 										<Badge
@@ -428,7 +452,9 @@ export const McpManagementSection: FC<{
 													? "success"
 													: server.status === "connecting"
 														? "info"
-														: "neutral"
+														: server.status === "auth-required"
+															? "warning"
+															: "neutral"
 											}
 										>
 											{server.status ?? "unknown"}
@@ -439,9 +465,44 @@ export const McpManagementSection: FC<{
 											{server.tool_count} tools available
 										</p>
 									)}
-									{/* No error line: the wire never sends `error`, and `status` is the
-									    one signal for "this server has a problem" — `auth-required`
-									    names its own remedy rather than reading as a dead process. */}
+									{/* No error line: the wire never sends `error`, so `status` IS the
+									    row's health story. `auth-required` is a recoverable grant
+									    problem rather than a dead process, which is why it takes the
+									    warning variant above — and where the row renders no sign-in
+									    control, this line is the only place its remedy can be named. */}
+									{server.status === "auth-required" &&
+										!canGrantAccountAccess && (
+											<p className="text-meta text-ink-dim">
+												Sign in again to use this server.
+											</p>
+										)}
+									{/* The row that has no Remove control says WHY in words: the tool
+									    that owns the file, then the file. The TUI's `/mcp remove`
+									    refusal names both for the same reason (`mcp/verbs.py`'s
+									    `_foreign_config_origin`). The path is machine voice, so it is
+									    monospace and `~`-relative (`compactPath`); and the sentence
+									    sits on its own line at every width, because trailing the
+									    controls it broke to one below ~1000px anyway and a caveat
+									    that changes role with the column reads as two things
+									    (review D1-6). */}
+									{!ownedScope && (
+										<p className="text-meta text-ink-dim">
+											{foreignOrigin ? (
+												<>
+													Imported from {foreignOrigin}. Remove it in{" "}
+													<span className="font-mono text-mono-sm text-ink-dim">
+														{compactPath(server.source ?? "")}
+													</span>
+													.
+												</>
+											) : (
+												<>
+													Imported from another tool's configuration. Remove it
+													there.
+												</>
+											)}
+										</p>
+									)}
 									<div className="flex flex-wrap items-center gap-2">
 										{connected ? (
 											<Button
@@ -478,8 +539,7 @@ export const McpManagementSection: FC<{
 										{/* OAuth grant login only where the transport can do it;
 										    stdio servers get the setup-prompt offer instead of a
 										    browser login that would fail against a local process. */}
-										{server.transport === "http" &&
-										server.transport_oauth_supported !== false ? (
+										{canGrantAccountAccess ? (
 											<Button
 												variant="ghost"
 												size="sm"
@@ -551,12 +611,7 @@ export const McpManagementSection: FC<{
 													Remove
 												</Button>
 											)
-										) : (
-											<span className="text-meta text-ink-dim">
-												Defined in {server.source ?? "another config file"}.
-												Remove it there.
-											</span>
-										)}
+										) : null}
 									</div>
 								</li>
 							);
