@@ -1,1 +1,5 @@
-{"PAIRING": ["Popup is not open"]}
+{
+  "PAIRING": [
+    "Popup is open - generate the pairing code"
+  ]
+}
