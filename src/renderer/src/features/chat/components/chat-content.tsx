@@ -23,6 +23,7 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -242,6 +243,24 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 		// Get canvas state for the current conversation
 		const conversationId = agentId; // assuming agentId is the conversation ID
+
+		/*
+		 * The Files panel's producer, called exactly once and here because this is
+		 * the only component that holds BOTH halves it needs: the canonical
+		 * transcript (`records`, the full loaded list rather than the painted
+		 * window) and the canvas-store key (`conversationId`, which is `agentId`
+		 * for a live session and the draft key for a draft - they differ).
+		 *
+		 * `cwd` comes off the canonical frontend, read the same way the working
+		 * directory chip reads it, and is what lets a relative path in a tool
+		 * argument be resolved against the session rather than guessed at.
+		 */
+		useMentionedFiles({
+			conversationId,
+			records: canonical?.view.transcript.records ?? null,
+			cwd: canonical?.view.frontend?.cwd,
+			enabled: Boolean(canonical && agentId),
+		});
 		const canvasState = useCanvasStore((s) => s.conversations[conversationId]);
 		const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
 		const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
