@@ -849,11 +849,18 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	);
 
 	// What the user is told while it is still running: this is not a failure, and
-	// the action that can still save the install is to quit.
+	// the action that can still save the install is to quit. The message has to
+	// name the COST of the other action - Squirrel abandons the install when an
+	// instance of the app is running, so "the update can't finish while Local
+	// Operator is open" alone reads as "quit later and it will finish", and the
+	// panel's secondary action forfeits the install (review D1). It also no longer
+	// opens by restating the panel's heading (review D4).
 	const payload = installInFlightPayload(marker, "0.19.4");
 	assert.equal(payload.targetVersion, "0.19.5");
-	assert.match(payload.message, /still being installed/);
-	assert.match(payload.message, /quit and leave it closed/);
+	assert.match(payload.message, /Version 0\.19\.5 can't finish installing/);
+	assert.match(payload.message, /keeping it open cancels the install/);
+	assert.match(payload.message, /Quit and leave it closed/);
+	assert.doesNotMatch(payload.message, /still being installed/);
 	assert.match(payload.detail, /0\.19\.5-universal\.zip/);
 	assert.match(payload.detail, /while version 0\.19\.4 was running/);
 	// The Details line is read by a person and copied into a support thread, so it
@@ -901,25 +908,49 @@ test("the failed install is recorded so a dismiss is not the end of the record",
 
 	const first = recordInstallFailure(dir, {
 		payload,
+		// The version the caller is running, which the panel above already named:
+		// the record used to carry the PREVIOUS record's version forward and wrote
+		// "unknown" on a first failure while the panel said "Version 0.17.0 is still
+		// running" (QA Q1). Pinned here because Settings renders this field.
+		runningVersion: "0.17.0",
 		startedAt: marker.startedAt,
 		detectedAt: "2026-09-12T00:00:00.000Z",
 	});
 	assert.equal(first.attempts, 1);
+	assert.equal(first.runningVersion, "0.17.0");
 	const second = recordInstallFailure(dir, {
 		payload,
+		// A later failure on a newer running version replaces it rather than
+		// inheriting the first failure's.
+		runningVersion: "0.17.1",
 		startedAt: marker.startedAt,
 		detectedAt: "2026-09-12T01:00:00.000Z",
 	});
 	assert.equal(second.attempts, 2);
+	assert.equal(second.runningVersion, "0.17.1");
 	assert.deepEqual(readLastInstallAttempt(dir), second);
 
 	// A different target is a new record, not a third attempt at this one.
 	const other = recordInstallFailure(dir, {
 		payload: { ...payload, targetVersion: "0.19.0" },
+		runningVersion: "0.17.1",
 		startedAt: null,
 		detectedAt: "2026-09-12T02:00:00.000Z",
 	});
 	assert.equal(other.attempts, 1);
+
+	// The fallback stays honest about what it does not know: with nothing running
+	// to name and nothing earlier to fall back on, the record says so.
+	const blank = tempDir("lo-attempt-blank-");
+	assert.equal(
+		recordInstallFailure(blank, {
+			payload,
+			runningVersion: "",
+			startedAt: null,
+			detectedAt: "2026-09-12T03:00:00.000Z",
+		}).runningVersion,
+		"unknown",
+	);
 
 	// A corrupt record reads as "nothing recorded" rather than throwing.
 	writeFileSync(lastInstallAttemptPath(dir), "{not json", "utf8");
@@ -5024,6 +5055,12 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 			/local-operator-ui-0\.19\.5-universal\.zip/,
 		);
 		assert.equal(failures[0].payload.cancelledByRelaunch, true);
+		// The durable record names the version the panel named, read from
+		// `app.getVersion()` on this same pass - not the previous record's version
+		// carried forward, which is what made a first failure say "unknown" while the
+		// panel said otherwise (QA Q1). The harness stubs `getVersion` at
+		// "0.0.0-test", so this is the service's own field reaching disk.
+		assert.equal(readLastInstallAttempt(userData).runningVersion, "0.0.0-test");
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), false);
 	} finally {
 		if (interval) clearInterval(interval);

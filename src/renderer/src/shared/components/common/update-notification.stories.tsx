@@ -374,7 +374,7 @@ const mockUpdaterApi = () => {
 				callback({
 					targetVersion: "0.19.5",
 					message:
-						"Version 0.19.5 is still being installed. The update can't finish while Local Operator is open, so quit and leave it closed until it opens again by itself.",
+						"Version 0.19.5 can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.",
 					// The locale form `installStartedText` produces, not the marker's raw
 					// ISO-8601 stamp: this fixture has to be the payload the main process
 					// actually sends, and the raw stamp was the copy the app shipped by

@@ -143,14 +143,24 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
  * an update was refused, an install failed - and they were announced to nobody
  * while every transient message in this file went out as a live region
  * (review U6).
+ *
+ * `role` overrides that default for a panel whose deadline is the point: a
+ * polite live region waits for a pause in the reader's own output, and the
+ * in-flight install panel is the one state where the pause is the cost, so it
+ * asks to be announced assertively without borrowing the failure marker it is
+ * deliberately not carrying (review D3).
  */
 export const UpdateContainer = ({
 	className,
 	tone = "notice",
+	role,
 	...props
-}: HTMLAttributes<HTMLDivElement> & { tone?: "notice" | "failed" }) => (
+}: HTMLAttributes<HTMLDivElement> & {
+	tone?: "notice" | "failed";
+	role?: "status" | "alert";
+}) => (
 	<div
-		role={tone === "failed" ? "alert" : "status"}
+		role={role ?? (tone === "failed" ? "alert" : "status")}
 		className={cn(
 			"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 			"rounded-lg bg-elevated p-4 shadow-overlay",
@@ -193,6 +203,41 @@ export const UpdateHeading = ({
 );
 
 /**
+ * A path separator that may take a line break: a `/` whose next character is not
+ * a digit.
+ *
+ * The digit guard keeps the rule inside the value it was written for. A details
+ * line is not always a path - the same field carries the locale start time,
+ * `13/09/2026, 09:39:00` - and a break opportunity after `13/` would let that
+ * date split across two lines, which is the same mid-token break this rule
+ * exists to remove, moved from the path to the date. Nothing is lost by
+ * refusing it: a date fits on a line, and a path segment that does begin with a
+ * digit keeps the separators on either side of it.
+ *
+ * Hoisted rather than inline, which is also what this tree's lint rule asks of
+ * a regex in a function body.
+ */
+const BREAKABLE_SEPARATOR = /\/(?=\D|$)/g;
+
+/**
+ * Break opportunities inside a machine value that has no spaces to break at.
+ *
+ * A path is one word to the line breaker, so once it runs out of room the
+ * browser splits it wherever that lands - the captured frame read
+ * `/Users/operator/Library/Cach` / `es/local-operator-ui-`, a break inside a path
+ * segment that looks like a typo in exactly the string the copy button exists
+ * for (review D7). A zero-width space after each path separator gives the line a
+ * break opportunity at every segment boundary, which is where a person would
+ * break it.
+ *
+ * The value itself is untouched: the copy button, the clipboard and the label
+ * all read `detail`, never this render, so nothing copied out of the panel gains
+ * an invisible character.
+ */
+const withPathBreaks = (value: string) =>
+	value.replace(BREAKABLE_SEPARATOR, "/\u200B");
+
+/**
  * Machine voice at the bottom of a panel, labelled and copyable.
  *
  * It used to sit directly above the buttons, unlabelled and at 12px mono, so the
@@ -213,7 +258,7 @@ export const PanelDetails = ({ detail }: { detail: string }) => {
 			    monospace exists for here, while the evidence README claimed the
 			    machine voice (review D10). The label stays sans: it is a word. */}
 			<span className="min-w-0 flex-1 break-words font-mono text-mono-sm text-ink-dim">
-				{detail}
+				{withPathBreaks(detail)}
 			</span>
 			{/* Named, not a bare "Copy": both by-hand panels carry a copy button
 			    beside the command well as well as this one, and only position said
@@ -971,24 +1016,32 @@ export const UpdateNotification = ({
 	 * Ahead of the start-up check for the same reason the failure notice is: it is
 	 * the thing the user has to act on, and the action is time-sensitive - quitting
 	 * is what lets Squirrel's install finish, and every second the app stays open
-	 * is another second it may be cancelled. The secondary action is a real
-	 * choice and not a fob-off: someone who needs the app now can keep it, at the
-	 * cost of this install.
+	 * is another second it may be cancelled. Squirrel asks once whether an instance
+	 * is running and abandons the install when one is, so the secondary action is a
+	 * real choice that FORFEITS the install - someone who needs the app now can keep
+	 * it, at the cost of this update - and both the sentence above it and the label
+	 * itself say so. The panel is announced assertively for the same reason: it is
+	 * the one panel whose window closes while the user reads it (reviews D1, D3).
 	 */
 	if (installInFlight) {
 		return (
-			<UpdateContainer>
+			<UpdateContainer role="alert">
 				<UpdateHeading>The update is still installing</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{installInFlight.message}
 				</p>
 				<UpdateActions>
+					{/* The cost is on the label, not only in the paragraph: this
+					    button's chrome is the same as the ordinary notice a user has
+					    learned to dismiss at a glance, and reflex-clicking a benign
+					    label over a forfeited install is how the incident recurs
+					    (review D1). */}
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => setInstallInFlight(null)}
 					>
-						Keep using Local Operator
+						Keep using Local Operator (cancels the install)
 					</Button>
 					<Button
 						variant="primary"
@@ -1298,10 +1351,16 @@ export const UpdateNotification = ({
 						Version {updateInfo.version} has been downloaded. You are currently
 						using version {appVersion}.
 					</p>
-					<p className="mt-2 text-body-sm text-ink-muted">
+					{/* `text-body`, not a step down: this sentence is the whole
+					    user-facing mitigation for the cancelled install, and it was the
+					    least prominent text in the panel - a footnote under a line
+					    carrying less consequence (review D2). Three sentences, not one
+					    run-on whose payload trails a spliced clause (review D5). */}
+					<p className="mt-2 text-body text-ink-muted">
 						Installing closes the app for a few minutes while the update is
-						verified and put in place. Don't reopen it until it starts by itself
-						- opening it while the update is installing cancels the install.
+						verified and put in place. Don't reopen it until it starts by
+						itself. Opening it while the update is installing cancels the
+						install.
 					</p>
 
 					<UpdateActions>

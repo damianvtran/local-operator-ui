@@ -905,11 +905,20 @@ export function readLastInstallAttempt(dir: string): LastInstallAttempt | null {
  * that keeps failing is the one that has to be replaced by hand, and the panel
  * can only say so once somebody has counted (review U1). Written temp-then-
  * rename for the same reason the marker is.
+ *
+ * `runningVersion` is passed in rather than carried forward from the previous
+ * record. It is what Settings prints as "Version X is running", and carrying it
+ * forward made a first failure on a machine record "unknown" while the panel two
+ * lines above named the real version - the same event described two ways, one of
+ * them wrong (QA Q1). An empty answer from the caller is the only case where the
+ * previous record beats "unknown": it is at least a version this machine ran.
  */
 export function recordInstallFailure(
 	dir: string,
 	input: {
 		payload: InstallFailurePayload;
+		/** The version running now, from `app.getVersion()`. */
+		runningVersion: string;
 		/** The marker's own start time, when it recorded one. */
 		startedAt: string | null;
 		detectedAt: string;
@@ -918,7 +927,8 @@ export function recordInstallFailure(
 	const previous = readLastInstallAttempt(dir);
 	const record: LastInstallAttempt = {
 		targetVersion: input.payload.targetVersion,
-		runningVersion: previous?.runningVersion ?? "unknown",
+		runningVersion:
+			input.runningVersion || previous?.runningVersion || "unknown",
 		startedAt: input.startedAt,
 		detectedAt: input.detectedAt,
 		detail: input.payload.detail,
@@ -1177,7 +1187,7 @@ export function installFailurePayload(
 		return {
 			message: `The update to version ${marker.targetVersion} was cancelled because Local Operator was opened while the update was installing. Version ${runningVersion} is still running.`,
 			remedy: {
-				text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app - and leave it closed until the update finishes.",
+				text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app — and leave it closed until the update finishes.",
 				url: DOWNLOAD_PAGE_URL,
 			},
 			detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}. Squirrel cancels an install when an instance of the app is running.${logText}`,
@@ -1211,6 +1221,15 @@ export function installFailurePayload(
  * failure's does: it is read by a person and copied into support threads, so its
  * start time is a locale string rather than the marker's raw ISO-8601 stamp
  * (review R1).
+ *
+ * The message names the COST of staying open rather than only the reason the
+ * install is stuck. "The update can't finish while Local Operator is open" reads
+ * as "not yet" - a user who needs the app now reads it as "quit later and it will
+ * finish" - while Squirrel asks once whether an instance is running and abandons
+ * the install when one is (the 2026-09-13 incident, and the failure state this
+ * same change adds says "the update was cancelled"). The panel's secondary action
+ * forfeits the install, so the sentence above it has to say so. It also no longer
+ * opens by restating the panel's heading (review D1, D4).
  */
 export type InstallInFlightPayload = {
 	targetVersion: string;
@@ -1224,7 +1243,7 @@ export function installInFlightPayload(
 ): InstallInFlightPayload {
 	return {
 		targetVersion: marker.targetVersion,
-		message: `Version ${marker.targetVersion} is still being installed. The update can't finish while Local Operator is open, so quit and leave it closed until it opens again by itself.`,
+		message: `Version ${marker.targetVersion} can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.`,
 		detail: `Install started ${installStartedText(marker)} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
 	};
 }
@@ -1678,7 +1697,7 @@ done
 #     nothing should be claimed.
 if ! app_running; then
 	sleep ${announceSeconds}
-	notify "Installing the update. Keep Local Operator closed until it opens again by itself - this can take a few minutes."
+	notify "Installing the update. Keep Local Operator closed until it opens again by itself — this can take a few minutes."
 fi
 # 2. ShipIt's job is submitted as part of the quit, so it may not be loaded the
 #    instant the app is gone: give it a bounded window to appear before treating
@@ -1718,7 +1737,7 @@ if [ "$holding" -eq 1 ]; then
 	while :; do
 		if decided; then break; fi
 		if [ "$(now)" -ge "$hard_deadline" ]; then
-			notify "The update is taking longer than expected. Opening Local Operator again now - check for updates when it is back."
+			notify "The update is taking longer than expected. Opening Local Operator again now — check for updates when it is back."
 			break
 		fi
 		sleep ${intervalSeconds}
