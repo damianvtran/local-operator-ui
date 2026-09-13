@@ -41,6 +41,7 @@
  * following the tail neither loads a page nor has their offset corrected.
  */
 
+import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import {
@@ -142,6 +143,14 @@ export type CanonicalTranscriptProps = {
 	 * to switch the rest of the live-session machinery off.
 	 */
 	attachmentScope?: AttachmentScope | null;
+	/**
+	 * Re-arm the session's stream and history read.
+	 *
+	 * Required rather than optional: every caller of this component has a
+	 * session handle to hand it, and a failure notice with no action is what
+	 * this surface is being fixed to stop showing.
+	 */
+	onRetry: () => void;
 };
 
 // ---------------------------------------------------------------- rows
@@ -528,6 +537,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	error,
 	attachmentScope,
+	onRetry,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -618,10 +628,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * column and centres its group instead. `records` rather than `rows`
 	 * because a record that renders to no row is still nothing to scroll.
 	 *
+	 * THE EXCEPTION IS A TRANSCRIPT THAT CANNOT BE READ, which is not an empty
+	 * one. While the session is `unavailable` with an error to show, the notice
+	 * IS the content: it is the only thing on screen that says what happened and
+	 * the only place the Retry lives, and this rule hid both behind a
+	 * `overflow: hidden` box 0px tall - measured in the running app, the scroller
+	 * box was 880x0 with the notice inside it and the Retry at y=60 outside the
+	 * visible pane. Nothing else in this component can make that notice
+	 * reachable, so the collapse stands down for exactly this state.
+	 *
 	 * The legacy twin (`MessagesView`) already does this with its `collapsed`
 	 * branch; the two paths change together so neither keeps the defect.
 	 */
-	const collapsed = transcript.records.length === 0;
+	const collapsed =
+		transcript.records.length === 0 &&
+		!(status === "unavailable" && Boolean(error));
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -846,7 +867,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				)}
 
 				{status === "unavailable" && error && (
-					<p className="mb-4 text-danger text-meta">{error}</p>
+					// A statement plus the way out of it. The failure this replaces gave
+					// the reader neither: the stream was refused for the rest of the
+					// session, nothing said so, and the only recovery was restarting the
+					// app. A single retry attempt is deliberately NOT offered as the
+					// whole answer - the hook already retried with backoff before
+					// reaching this state, so what is left is a user-driven re-arm.
+					<div className="mb-4 flex flex-wrap items-center gap-3">
+						<p className="text-danger text-meta">{error}</p>
+						<Button variant="outline" size="sm" onClick={onRetry}>
+							Retry
+						</Button>
+					</div>
 				)}
 				{status === "reconnecting" && (
 					<p className="mb-4 text-ink-dim text-meta">Reconnecting</p>

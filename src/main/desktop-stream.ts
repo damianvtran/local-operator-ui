@@ -73,7 +73,25 @@ export class DesktopStreamRelay {
 			throw new Error("Invalid stream cursor.");
 		}
 		if (!this.token) {
-			throw new Error("This backend was not started with desktop controls.");
+			// A refusal, NOT a throw. The caller is an IPC handler whose rejection
+			// the renderer never observes (its `streamIdPromise` has no rejection
+			// path it awaits), so throwing here produced exactly the reported
+			// symptom: the consumer stays at "connecting" forever with no open
+			// frame, no error and nothing to act on. Emitted as an ordinary error
+			// frame on a real stream id instead, so it reaches the one consumer
+			// that asked and is scoped to it like every other frame.
+			//
+			// The detail is the module's own constant: it never carries the URL,
+			// the token or an exception string.
+			const streamId = randomBytes(16).toString("hex");
+			queueMicrotask(() => {
+				emit({
+					streamId,
+					kind: "error",
+					detail: "This backend was not started with desktop controls.",
+				});
+			});
+			return { streamId };
 		}
 
 		const streamId = randomBytes(16).toString("hex");

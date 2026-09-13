@@ -258,6 +258,7 @@ const InTranscript = ({
 				isSmallView={false}
 				status="live"
 				error={null}
+				onRetry={() => {}}
 			/>
 		</div>
 	);

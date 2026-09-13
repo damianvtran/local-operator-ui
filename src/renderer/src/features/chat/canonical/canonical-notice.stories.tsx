@@ -66,6 +66,7 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
 				isSmallView={false}
 				status="live"
 				error={null}
+				onRetry={() => {}}
 			/>
 		</div>
 	);

@@ -67,10 +67,25 @@ export class BackendServiceManager {
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
 
 	/** Authenticated SSE relay for canonical session events. Recreated when the
-	 * backend URL rotates (external-backend discovery) so streams cannot pin a
-	 * stale origin. */
+	 * backend URL rotates (external-backend discovery) or the desktop token does
+	 * (every managed start mints one), and dropped outright by `stop()`.
+	 *
+	 * WHY the token is part of the cache key. A URL-only key was the bug behind
+	 * "every conversation opens empty": an in-place restart - the health-check
+	 * watchdog, or "Update server" - keeps `backendUrl` at
+	 * `http://127.0.0.1:1111` and rotates ONLY the token, so the cached relay
+	 * went on authenticating with the credential of the process that had just
+	 * been killed. Each `GET /v1/desktop/sessions/{id}/events` was refused 401
+	 * while `sessions?limit=500` and `sessions.get` stayed 200 (those read the
+	 * live token at call time), the renderer never received an `open` frame, and
+	 * with no receipt its single auto-reconnect was skipped - so the transcript
+	 * stayed empty until the app itself was restarted. */
 	private streamRelay: DesktopStreamRelay | null = null;
 	private streamRelayUrl = "";
+	/** The token `streamRelay` was built with. Tracked beside the URL, not
+	 * derived from it: the rotation above is exactly a case where the URL is
+	 * unchanged and the token is not. */
+	private streamRelayToken: string | null = null;
 	/** Survives relay recreation so notifications never silently detach
 	 * when the backend URL rotates. */
 	private streamObserver: ((sessionId: string, data: string) => void) | null =
@@ -107,7 +122,11 @@ export class BackendServiceManager {
 	}
 
 	getStreamRelay(): DesktopStreamRelay {
-		if (!this.streamRelay || this.streamRelayUrl !== this.backendUrl) {
+		if (
+			!this.streamRelay ||
+			this.streamRelayUrl !== this.backendUrl ||
+			this.streamRelayToken !== this.desktopToken
+		) {
 			this.streamRelay?.dispose();
 			this.streamRelay = new DesktopStreamRelay(
 				this.backendUrl,
@@ -115,8 +134,28 @@ export class BackendServiceManager {
 			);
 			this.streamRelay.observe(this.streamObserver);
 			this.streamRelayUrl = this.backendUrl;
+			this.streamRelayToken = this.desktopToken;
 		}
 		return this.streamRelay;
+	}
+
+	/**
+	 * Drop the relay and its streams.
+	 *
+	 * Called from `stop()` so an in-place restart cannot leave a stream bound to
+	 * the token of the process being stopped - the open streams are aborted
+	 * deliberately, which the renderer sees as a stream `end` and recovers from
+	 * with a bounded retry rather than waiting for a frame that will never come.
+	 *
+	 * `streamRelayToken` is cleared rather than left at the retired value: the
+	 * next `getStreamRelay()` must not be able to answer "already built" for a
+	 * token whose relay no longer exists.
+	 */
+	private disposeStreamRelay(): void {
+		this.streamRelay?.dispose();
+		this.streamRelay = null;
+		this.streamRelayUrl = "";
+		this.streamRelayToken = null;
 	}
 
 	observeStream(
@@ -881,6 +920,12 @@ export class BackendServiceManager {
 		if (!isRestart) {
 			this.isAppClosing = true;
 		}
+		// The relay authenticates with the token of the process this call is
+		// about to stop, so it dies with it. Leaving it standing (whatever the
+		// early returns below do) is the stale-token 401 the caller is trying to
+		// escape: `start()` mints a new token, the URL is unchanged, and a relay
+		// that survived the stop would never be rebuilt.
+		this.disposeStreamRelay();
 		// Stop health check
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
@@ -1016,23 +1061,31 @@ export class BackendServiceManager {
 									// On Unix, use SIGKILL
 									this.process.kill("SIGKILL");
 
-									// Also try to kill any processes with the same command line pattern
-									try {
-										execPromise('pkill -f "local-operator serve"').catch(
-											(error) => {
-												logger.warn(
-													"Error killing processes by pattern:",
-													LogFileType.BACKEND,
-													error,
-												);
-											},
-										);
-									} catch (pkillError) {
-										logger.warn(
-											"Error executing pkill command:",
-											LogFileType.BACKEND,
-											pkillError,
-										);
+									// Also try to kill any processes with the same command line
+									// pattern - but ONLY on a final shutdown. On a restart this
+									// pattern is machine-wide (no pid, no process group), so it
+									// would take down peer sessions' servers and other running
+									// instances' backends along with the one process we are
+									// actually replacing; a restart means "our process is going",
+									// never "this machine is done with local-operator".
+									if (!isRestart) {
+										try {
+											execPromise('pkill -f "local-operator serve"').catch(
+												(error) => {
+													logger.warn(
+														"Error killing processes by pattern:",
+														LogFileType.BACKEND,
+														error,
+													);
+												},
+											);
+										} catch (pkillError) {
+											logger.warn(
+												"Error executing pkill command:",
+												LogFileType.BACKEND,
+												pkillError,
+											);
+										}
 									}
 
 									// Set a final force kill timeout in case SIGKILL doesn't work
@@ -1043,10 +1096,12 @@ export class BackendServiceManager {
 												LogFileType.BACKEND,
 											);
 											try {
-												// Try more aggressive methods
-												execPromise('pkill -9 -f "local-operator serve"').catch(
-													() => {},
-												);
+												// Machine-wide, so a shutdown only - see the pkill above.
+												if (!isRestart) {
+													execPromise(
+														'pkill -9 -f "local-operator serve"',
+													).catch(() => {});
+												}
 
 												// Even if these fail, mark the process as stopped
 												this.process = null;
@@ -1097,7 +1152,18 @@ export class BackendServiceManager {
 					forceKillTimeoutId = null;
 				}
 
-				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated
+				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated.
+				//
+				// DANGEROUS AND DELIBERATELY NARROW. The Unix branch below kills by
+				// COMMAND LINE PATTERN, machine-wide: every `local-operator serve` on
+				// the box, whoever it belongs to. That is why the gate is a genuine app
+				// shutdown and nothing else - a restart, a watchdog recovery or an
+				// update must pass `isRestart: true`, because each of those means "one
+				// process of ours is being replaced", not "this machine is done with
+				// local-operator". Firing it on an ordinary restart took down peer
+				// sessions' servers and other running instances' backends (the operator's
+				// log at 10:53:38-10:53:40 is exactly that), and those instances have no
+				// way to know why their backend vanished.
 				if (!isRestart) {
 					logger.info(
 						"Performing additional cleanup for final shutdown",
@@ -1202,26 +1268,52 @@ export class BackendServiceManager {
 		}
 
 		// Start new interval
-		this.healthCheckInterval = setInterval(async () => {
-			const isHealthy = await this.checkHealth();
-
-			if (!isHealthy) {
-				logger.info("Backend health check failed", LogFileType.BACKEND);
-
-				if (this.isExternalBackend) {
-					// External backend is no longer healthy
-					this.isExternalBackend = false;
-					this.isRunning = false;
-
-					// Try to start our own backend
-					await this.start();
-				} else if (this.process) {
-					// Our backend is no longer healthy, try to restart it
-					await this.stop();
-					await this.start();
-				}
-			}
+		this.healthCheckInterval = setInterval(() => {
+			void this.checkUnhealthyBackend();
 		}, 30000); // Check every 30 seconds
+	}
+
+	/**
+	 * The watchdog's action for one unhealthy sample.
+	 *
+	 * A method rather than a closure body so the restart INTENT below is
+	 * assertable without waiting out a 30s interval.
+	 */
+	private async checkUnhealthyBackend(): Promise<void> {
+		const isHealthy = await this.checkHealth();
+
+		if (isHealthy) return;
+
+		logger.info("Backend health check failed", LogFileType.BACKEND);
+
+		if (this.isExternalBackend) {
+			// External backend is no longer healthy
+			this.isExternalBackend = false;
+			this.isRunning = false;
+
+			// Try to start our own backend
+			await this.start();
+			return;
+		}
+
+		if (!this.process) return;
+
+		// Our backend is no longer healthy, try to restart it.
+		//
+		// `true` is LOAD-BEARING, not tidiness. `stop()`'s no-argument form is the
+		// FINAL-SHUTDOWN path, and that path runs a machine-wide
+		// `pkill -f "local-operator serve"` (then `pkill -9`) with no `--pid` and
+		// no process-group filter. Invoked here it killed every local-operator
+		// server on the box, not just this app's: the operator's own log shows a
+		// watchdog restart at 10:53:38 announcing "Stopping backend service...
+		// (isRestart: false)" -> "Performing additional cleanup for final
+		// shutdown", and seconds later other running instances started reporting
+		// "Server is offline. Please check your connection" because their
+		// backends had been shot out from under them. This is a RECOVERY for one
+		// unhealthy process; only a genuine app shutdown may clean up
+		// machine-wide.
+		await this.stop(true);
+		await this.start();
 	}
 
 	/**
