@@ -23,6 +23,7 @@ import {
 	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -31,6 +32,7 @@ import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
+import { canvasDocumentForPath } from "../utils/canvas-document";
 import {
 	messageBodyBytes,
 	messageBudgetRefusal,
@@ -386,6 +388,32 @@ function SessionPanel({
 				onEchoPainted,
 			);
 			if (!id) return false;
+			/*
+			 * The composer's own attachments, written to the Files panel here because
+			 * this is the only place they exist. They are NOT on the wire: a canonical
+			 * content block is text or image, so `attachments` never reaches the
+			 * transcript and the transcript scan cannot recover them. This is the
+			 * direct replacement for the `message.files` writer that the canonical
+			 * cutover orphaned.
+			 *
+			 * Both keys, deliberately. A staged draft is keyed by `draftKey` while the
+			 * live session is keyed by the session id it was admitted as, and the
+			 * successful send navigates to `/chat/<id>` - writing only the draft key
+			 * would orphan every attachment the moment the send succeeded, which is
+			 * the exact moment the user looks at the panel. For an already-live session
+			 * the two keys are equal and the second write is a dedupe no-op.
+			 *
+			 * A `data:` attachment is skipped: it is a pasted image, it has no path to
+			 * probe or open, and the transcript's own image path already carries it.
+			 */
+			const sentFiles = attachments
+				.filter((attachment) => !attachment.startsWith("data:"))
+				.map((attachment) => canvasDocumentForPath(attachment));
+			if (sentFiles.length > 0) {
+				const canvas = useCanvasStore.getState();
+				canvas.addMentionedFilesBatch(identity, sentFiles);
+				canvas.addMentionedFilesBatch(id, sentFiles);
+			}
 			if (
 				draftKey &&
 				useCanonicalSessionsStore.getState().activeSessionId === id

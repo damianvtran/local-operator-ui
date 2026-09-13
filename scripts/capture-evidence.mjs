@@ -377,6 +377,27 @@ export const STORIES = [
 	["canvas-workspace--code", 1280, 900],
 	["canvas-workspace--code-focused", 1280, 900],
 	["canvas-workspace--files", 1280, 900],
+	/*
+	 * The panel's completeness states, and the four media viewers.
+	 *
+	 * These are the stories the design round judges the two changes this branch
+	 * added to the panel: the head that states what the scan has and has not read
+	 * (`files-scanning`, `files-scan-stopped`, `files-scan-stopped-empty` - the
+	 * three states the head has to answer for, including the one where it is the
+	 * only thing on screen), and the one chrome idiom the four viewers now share
+	 * (`pdf-viewer`, `image-viewer`, `audio-viewer`, `video-viewer`). The viewers
+	 * read bytes over IPC, which the story installs a fixture for, so each frame
+	 * shows a real picture rather than an "Opening…" line; the video frame is the
+	 * one state the offline harness can produce, and `canvas.stories.tsx` says so
+	 * at the story.
+	 */
+	["canvas-workspace--files-scanning", 1280, 900],
+	["canvas-workspace--files-scan-stopped", 1280, 900],
+	["canvas-workspace--files-scan-stopped-empty", 1280, 900],
+	["canvas-workspace--pdf-viewer", 1280, 900],
+	["canvas-workspace--image-viewer", 1280, 900],
+	["canvas-workspace--audio-viewer", 1280, 900],
+	["canvas-workspace--video-viewer", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
@@ -680,6 +701,36 @@ const assertBackendDown = async () => {
  */
 export function partialFrameCount(previous, added) {
 	return (previous.frames ?? 0) + added.length;
+}
+
+/**
+ * The `added*` half of `partialCapture`, which describes the last pass that ADDED
+ * frames rather than the one currently running.
+ *
+ * The distinction is not cosmetic. `addedAt`/`addedAtHead` answer "which commit
+ * do I fetch to see the frames this story was added by", so a pass that added
+ * none must leave them alone - and the writer used to stamp its OWN head there
+ * unconditionally, which is how they rotted: the citation then named a commit
+ * that had added nothing, and the next force-push orphaned that sha while
+ * `check-evidence.mjs` reported the manifest clean because it did not read the
+ * field at all (round 4, R4-1). The field is now checked for reachability, so
+ * the remaining job is to stop lying about WHICH pass it names.
+ *
+ * Exported for the same reason as `partialFrameCount`: so
+ * `scripts/evidence-manifest.test.mjs` binds this decision instead of
+ * reimplementing it. Returning an empty object on a zero-add pass is what makes
+ * the caller's `...previous.partialCapture` spread carry the earlier values
+ * forward untouched.
+ */
+export function partialAddedFields(
+	addedFrameCount,
+	addedSurfaces,
+	head,
+	at = new Date().toISOString(),
+) {
+	return addedFrameCount > 0
+		? { addedFrames: addedFrameCount, addedSurfaces, addedAt: at, addedAtHead: head }
+		: {};
 }
 
 const main = async () => {
@@ -1332,6 +1383,42 @@ const main = async () => {
 						const priorSurfaces = sameHead
 							? (previous.partialCapture?.addedSurfaces ?? [])
 							: [];
+						/*
+						 * The counts are the ROUND's; the citation is this pass's only if it
+						 * added something. `partialAddedFields` is the rule for the second (round
+						 * 4, R4-1): it returns `{}` on a zero-add pass, so the earlier citation
+						 * survives the `...previous.partialCapture` spread untouched instead of
+						 * being repointed at a commit that had added nothing. Only its two citation
+						 * fields are taken - the counts are `totals` below, which accumulate across
+						 * this pass's commits. The verdict keys on `addedFrames.length`, THIS run's
+						 * additions: keying it on the accumulated total would let a later commit of
+						 * the same pass re-stamp the citation for an earlier commit's frames.
+						 */
+						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						/*
+						 * A pass that added nothing leaves the WHOLE added-pass record
+						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
+						 * the last pass that ADDED frames, so a zero-add run that reset
+						 * them to 0/[] would contradict the citation written beside them -
+						 * the incoherence round 4 R4-1 named, one field along from the one
+						 * it fixed. `sameHead` decides whether this pass's own additions
+						 * accumulate onto the previous ones.
+						 */
+						const totals =
+							added.addedFrames === undefined
+								? {}
+								: {
+										addedFrames:
+											(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
+											addedFrames.length,
+										addedSurfaces: [
+											...new Set([...(sameHead ? priorSurfaces : []), ...addedSurfaces]),
+										],
+									};
+						const citationFields =
+							added.addedFrames === undefined
+								? {}
+								: { addedAt: added.addedAt, addedAtHead: added.addedAtHead };
 						return {
 							/*
 							 * Where the pass STARTED, so the gate can measure the whole
@@ -1351,14 +1438,10 @@ const main = async () => {
 								...new Set([...priorStories, ...stories.map(([id]) => id)]),
 							],
 							refreshedThemes: [...new Set([...priorThemes, ...themes])],
-							addedFrames:
-								(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-								addedFrames.length,
-							addedSurfaces: [...new Set([...priorSurfaces, ...addedSurfaces])],
+							...totals,
+							...citationFields,
 						};
 					})(),
-					addedAt: new Date().toISOString(),
-					addedAtHead: head,
 				},
 			}
 		: {
