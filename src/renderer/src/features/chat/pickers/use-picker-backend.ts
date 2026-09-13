@@ -20,6 +20,22 @@ import type { PickerResult } from "./picker-host";
 
 export type SlashOutcome = DesktopCommandReceipt["result"];
 
+/**
+ * What one `sessions.command` call left behind.
+ *
+ * Two facts rather than one, because the strip and a caller that has to report
+ * the outcome LATER (the answer can land with the dialog already gone, UX U2)
+ * must not state it differently: `result` is the line the strip shows, built
+ * from the owner's own text, and it exists for the case where there is no
+ * `outcome` to build it from — a call that never reached the owner. Returning
+ * only the outcome made that line unreadable outside this hook, where the thrown
+ * error it is composed from no longer exists.
+ */
+export type CommandRun = {
+	outcome: SlashOutcome | null;
+	result: PickerResult;
+};
+
 export function isNativeAction(
 	result: SlashOutcome,
 ): result is Extract<SlashOutcome, { kind: "native_action" }> {
@@ -83,7 +99,7 @@ export function useSessionCommand(sessionId: string) {
 	const [outcome, setOutcome] = useState<SlashOutcome | null>(null);
 
 	const run = useCallback(
-		async (command: string, args: string) => {
+		async (command: string, args: string): Promise<CommandRun> => {
 			setBusy(true);
 			setResult(null);
 			try {
@@ -95,15 +111,16 @@ export function useSessionCommand(sessionId: string) {
 					args,
 				});
 				setOutcome(receipt.result);
-				setResult(toResult(receipt.result));
-				return receipt.result;
+				const result = toResult(receipt.result);
+				setResult(result);
+				return { outcome: receipt.result, result };
 			} catch (error) {
-				const failure: PickerResult = {
+				const result: PickerResult = {
 					tone: "error",
 					text: `/${command} did not run: ${errorText(error)}`,
 				};
-				setResult(failure);
-				return null;
+				setResult(result);
+				return { outcome: null, result };
 			} finally {
 				setBusy(false);
 			}

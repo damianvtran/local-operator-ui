@@ -195,6 +195,30 @@ const CONTROLS = [
 		ink: "info",
 	},
 	{
+		/*
+		 * The picker row's pointer mark and in-flight mark.
+		 *
+		 * A row's edge inside the dialog: the pointer's own position, and the row
+		 * an operation is answering about, are both marked with a 1px
+		 * `outline-control` edge on top of (not instead of) the pointer's tint.
+		 *
+		 * This entry is the ROLE half of design D12, and it is here because the
+		 * call-site pin alone was the reason the defect survived round 1: the gate
+		 * pinned the string `bg-accent-wash` and stayed green while the ROLE it
+		 * names collapsed onto the ground it is drawn on — obsidian ΔE00 0.77,
+		 * 1.014:1 — so hovering a row in obsidian changed nothing a user could see,
+		 * which was the operator's original report surviving intact in a
+		 * user-selectable theme. A `structural` edge cannot collapse that way:
+		 * `borderControl` is asserted at 3:1 on all four grounds by the loop above,
+		 * and this entry asserts the same floor for the row it is painted on.
+		 */
+		name: "picker row pointer mark",
+		on: ["elevated"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
 		name: "accent wash chip",
 		on: ["canvas", "surface"],
 		fill: "accentWash",
@@ -577,6 +601,55 @@ const STRUCTURAL_CALL_SITES = [
 		why: "this rule is the whole signal that a scrolling body continues past the fold, so it cannot ride a decorative weight that is invisible against both neighbours",
 	},
 	{
+		/*
+		 * The picker's option-row grounds, pinned because no palette assertion can
+		 * see a class and every one of them stays green either way.
+		 *
+		 * The row shipped as `bg-elevated` inside a dialog whose own ground is
+		 * `bg-elevated` — measured 1.000:1, ΔE00 0.00, so hover, the keyboard
+		 * highlight and "which row will Enter pick" were all invisible (design D1,
+		 * the operator's own report). The selection ground is `sunken`, which the
+		 * adjacent-ground row above already asserts as a perceptible step from
+		 * `elevated` in all twelve themes. It is NOT `accent-wash`, the sibling
+		 * composer popup's tint and the first candidate: `accent-wash` collapses
+		 * onto `elevated` in obsidian (ΔE00 0.77, ratio 1.01), and is 3.74
+		 * tokyoNight / 3.99 dracula / 4.88 dune — so it would reproduce the original
+		 * defect on whichever palette the user happens to run. The wash keeps the
+		 * pointer's role instead, with the structural edge below carrying the floor
+		 * it cannot.
+		 */
+		what: "picker option row selection ground",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: 'isActive && "bg-sunken"',
+		why: "the row is drawn inside a dialog on the same ground it used to paint, so the class is the whole fix; reverting it to `bg-elevated` restores a 0.00 ΔE00 selection and keeps every palette row in this file green",
+	},
+	{
+		what: "picker option row pointer tint",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: 'isHovered && !isActive && "bg-accent-wash"',
+		why: "the pointer's mark is deliberately a different ground from the selection's, so the two states are distinguishable and a highlight left by the pointer cannot read as the keyboard's; cleared by the listbox's own onMouseLeave (design D2)",
+	},
+	{
+		/*
+		 * The picker row's STRUCTURAL mark, and the other half of design D12.
+		 *
+		 * The tint above is pinned because it is a deliberate state; it is NOT
+		 * enough on its own, and this pin is what says so. `accent-wash` is ΔE00
+		 * 0.77 on the dialog's own ground in obsidian — no mark at all — and
+		 * perceptibility is a property of the role pair, not of the class string,
+		 * which is exactly how the gate stayed green while the pointer gave no
+		 * feedback in four of twelve themes. `outline-control` is the structural
+		 * answer: the CONTROLS entry `picker row pointer mark` asserts its 3:1 floor
+		 * on this same ground, so a palette edit that collapsed the edge fails the
+		 * role assertion and an edit that drops the edge fails this one. Reverting
+		 * this expression to the tint alone is what the two pins catch together.
+		 */
+		what: "picker option row structural mark",
+		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
+		must: 'isPicked || (isHovered && !isActive)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
+	},
+	{
 		what: "context wheel empty track role",
 		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
@@ -844,6 +917,30 @@ for (const { id, palette: p } of palettes) {
 			assertPair(id, p, role, g, FLOOR.text, "colour as text");
 		}
 	}
+
+	/*
+	 * The picker's partial-listing note, on the dialog's own ground.
+	 *
+	 * It cannot join `AS_TEXT`: `elevated` is not one of that list's grounds, and
+	 * it cannot be, because two of the five tone inks do not clear the text floor
+	 * there (`accent` 4.22 on dracula, `danger` 3.76 on monokai) and asserting
+	 * them would report failures against pairs nothing renders.
+	 *
+	 * This note is nevertheless the one place a tone ink IS drawn on `elevated`:
+	 * `models.catalogue` can answer with rows AND per-provider errors, and the
+	 * note about what is missing belongs above the list rather than instead of it
+	 * (design D4). `warning` is the role it renders in, so that is the pair
+	 * asserted — the measured worst case is 5.02 (monokai). Green on the four
+	 * grounds above is not evidence about this one.
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"elevated",
+		FLOOR.text,
+		"the picker's partial-listing note",
+	);
 
 	/* Component triples. */
 	for (const c of CONTROLS) {
