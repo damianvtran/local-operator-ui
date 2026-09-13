@@ -79,17 +79,21 @@ function reset(rows = []) {
 	store.setState({ sessions: rows, activeSessionId: null, error: null });
 }
 
-/** `chat-page.tsx`'s own write, over the real store, for one live tick. */
-function streamTick(sessionId, liveTitle, catalogueTitle) {
-	const current = store
-		.getState()
-		.sessions.find((row) => row.session_id === sessionId);
+/**
+ * `chat-page.tsx`'s own write, over the real store, for one live tick.
+ *
+ * The third argument the call site used to pass - the row's own `title` - is
+ * gone, so this helper takes only what the write now reads. That is the point of
+ * agent review round 1's F1: the value was the row's own name, so writing it back
+ * could never change the merged row, and a helper that kept passing it would keep
+ * the suite green against a branch that did nothing.
+ */
+function streamTick(sessionId, liveTitle) {
 	store.getState().upsertSession({
 		session_id: sessionId,
-		...catalogueTitleUpdate({ liveTitle, catalogueTitle }),
+		...catalogueTitleUpdate({ liveTitle }),
 		attention: undefined,
 	});
-	return current;
 }
 
 test("a blank live title falls back to the catalogue name the row was clicked under", () => {
@@ -170,30 +174,30 @@ test("the draft branch is the draft's own name and never the row's", () => {
 
 test("a streaming tick with an empty live title leaves the row's name standing", () => {
 	reset([{ session_id: "aaaa11112222", title: OPENER_NAME }]);
-	streamTick("aaaa11112222", "", OPENER_NAME);
+	streamTick("aaaa11112222", "");
 	assert.equal(store.getState().sessions[0].title, OPENER_NAME);
 	// The defect's other half: it re-blanked on EVERY frontend update, so one
 	// tick is not the assertion - a turn's worth of them is.
 	for (let tick = 0; tick < 40; tick += 1)
-		streamTick("aaaa11112222", "", OPENER_NAME);
+		streamTick("aaaa11112222", "");
 	assert.equal(store.getState().sessions[0].title, OPENER_NAME);
 });
 
 test("a whitespace-only live title cannot blank the row either", () => {
 	reset([{ session_id: "aaaa11112222", title: OPENER_NAME }]);
-	streamTick("aaaa11112222", "   ", OPENER_NAME);
+	streamTick("aaaa11112222", "   ");
 	assert.equal(store.getState().sessions[0].title, OPENER_NAME);
 });
 
 test("a non-blank live title does reach the row", () => {
 	reset([{ session_id: "aaaa11112222", title: OPENER_NAME }]);
-	streamTick("aaaa11112222", "Retention sweep notes", OPENER_NAME);
+	streamTick("aaaa11112222", "Retention sweep notes");
 	assert.equal(store.getState().sessions[0].title, "Retention sweep notes");
 });
 
 test("a row with no name at all gains none from an empty live title", () => {
 	reset([{ session_id: "cccc33334444" }]);
-	streamTick("cccc33334444", "", undefined);
+	streamTick("cccc33334444", "");
 	const row = store.getState().sessions[0];
 	// Absent, not `""`: the sidebar's own fallback renders both as "Untitled
 	// chat", and an empty STRING would additionally make a nameless row look

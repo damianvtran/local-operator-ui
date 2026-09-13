@@ -260,8 +260,7 @@ function SessionPanel({
 		// Only metadata comes from the stream. Membership/order remain list-owned,
 		// and attention merges by the durable revision rather than arrival time.
 		const store = useCanonicalSessionsStore.getState();
-		const current = store.sessions.find((row) => row.session_id === sessionId);
-		if (!current) return;
+		if (!store.sessions.some((row) => row.session_id === sessionId)) return;
 		// The live title is the backend's JOURNALLED title, so it is blank for the
 		// majority of a real store (see chat-title.ts). Writing it unconditionally
 		// blanked the row this click came from until the next 5s list poll, and
@@ -272,7 +271,6 @@ function SessionPanel({
 			session_id: sessionId,
 			...catalogueTitleUpdate({
 				liveTitle: canonical.frontend.conversation_title,
-				catalogueTitle: current.title,
 			}),
 			attention: canonical.frontend.attention,
 		});
