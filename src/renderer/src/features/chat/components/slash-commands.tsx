@@ -63,7 +63,12 @@ import {
 	argumentRows,
 } from "./slash-argument-rows";
 import { isUnambiguous, matchChoices, matchCommands } from "./slash-rank";
-import { replaceSpan, slashArgumentContext, slashContext } from "./slash-token";
+import {
+	caretPhase,
+	replaceSpan,
+	slashArgumentContext,
+	slashContext,
+} from "./slash-token";
 
 export type SlashCommandMeta = {
 	name: string;
@@ -401,16 +406,26 @@ export function useSlashCompletion({
 	);
 
 	/*
-	 * The command phase needs a non-empty list to open at all (today's
-	 * behaviour: a query that matches nothing shows nothing), while the argument
-	 * phase must open on an empty list because its empty state is a SENTENCE the
-	 * user needs — "not reported yet" is the `effort` cold-owner case, and it is
-	 * a different fact from "this model has none".
+	 * The caret's phase, from the ONE function that defines it, so the two lists
+	 * cannot both be up and the production rule is the rule the tokenizer's own
+	 * tests pin. The command phase additionally needs a non-empty list to open at
+	 * all (today's behaviour: a query that matches nothing shows nothing), while
+	 * the argument phase must open on an EMPTY list because its empty state is a
+	 * SENTENCE the user needs — "not reported yet" is the `effort` cold-owner
+	 * case, and a different fact from "this model has none".
 	 */
+	const purePhase = caretPhase(
+		inputValue,
+		selectionStart,
+		commandNames,
+		vocabulary.words,
+	);
 	const phase: SlashCompletionState["phase"] =
-		inline && argumentContext
-			? "argument"
-			: commandContext && commandMatches.length > 0
+		purePhase === "argument"
+			? inline
+				? "argument"
+				: null
+			: purePhase === "command" && commandMatches.length > 0
 				? "command"
 				: null;
 
