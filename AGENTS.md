@@ -322,6 +322,70 @@ Load-bearing, and enforced at build time: nothing may ship a `.pyc` at all
 rewritten is `file modified:` - the one class codesign cannot accept again and
 the heal cannot repair.
 
+## Which pnpm may install and package
+
+Every workflow pins pnpm to **10.29.2** (the `version:` input on
+`pnpm/action-setup`), and that pin is load-bearing rather than a preference:
+**pnpm 10.29.3 through at least 10.34.x drops dependency edges from
+`pnpm list --prod --json --depth Infinity`**, which is the command
+electron-builder runs to decide what goes inside `app.asar`
+(`app-builder-lib/out/node-module-collector/pnpmNodeModulesCollector.js`). The
+packaged app then ships without a module it needs, and nothing about the build
+looks wrong until it is launched.
+
+Measured on this repository, one tree, only pnpm changed:
+
+- **10.30.3**: the command reports the `debug` node reached through
+  `electron-updater > builder-util-runtime` without its `ms` dependency - that
+  node's `dependencies` map is empty, and the edge survives only on copies of
+  `debug` the production closure does not reach - so the packager copies 43
+  packages / 5.2 MB and the built app dies at load with `Cannot find module
+  'ms'` (require stack `app.asar/node_modules/debug/src/common.js`).
+- **10.29.2**: the same command reports that edge, the packager copies 96
+  packages / 6.0 MB, and the app starts.
+
+Upstream: pnpm/pnpm#10601, open at the time of writing, last known good 10.29.2.
+CI's copy is whatever the workflows pin, but a local `pnpm build` followed by
+`electron-builder` uses whatever pnpm is on `PATH`, and an affected one produces
+the broken asar silently. So when packaging locally from a newer pnpm, put a good
+one in front of the packaging step only:
+
+```bash
+npm install --prefix /tmp/pnpm-good pnpm@10.29.2
+PATH=/tmp/pnpm-good/node_modules/.bin:$PATH CSC_IDENTITY_AUTO_DISCOVERY=false \
+  pnpm exec electron-builder --dir --arm64
+```
+
+**The end-to-end check is the launch, not the build.** With a valid build env -
+note that an empty `VITE_PUBLIC_POSTHOG_KEY` throws inside `new PostHog(...)` at
+module load, before `app.whenReady()`, and surfaces as a main-process error
+dialog rather than a log line - the marker proves the closure came through:
+
+```bash
+LOCAL_OPERATOR_UI_SMOKE_TEST=true "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
+# expect: LOCAL_OPERATOR_UI_READY electron=35.5.1, exit 0
+```
+
+### Removing the pin
+
+Three checks, in order of cost. All three must pass on the candidate version
+before the `version:` inputs change:
+
+```bash
+# 1. Does this pnpm still hide dependency edges? Expect ["ms"]. An empty array
+#    means the regression is still there and the pin stays.
+pnpm list --prod --json --depth Infinity | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s)[0];const d=t.dependencies["electron-updater"].dependencies["builder-util-runtime"].dependencies["debug"];console.log(Object.keys(d.dependencies ?? {}))})'
+
+# 2. Does the package it produces contain the whole runtime closure? Expect
+#    "OK: every resolved production dependency is present".
+pnpm exec electron-builder --dir --arm64   # with that pnpm on PATH, see above
+node scripts/check-packaged-closure.mjs --dist dist
+
+# 3. Does the packaged app start? Expect the marker line and exit 0.
+LOCAL_OPERATOR_UI_SMOKE_TEST=true LOCAL_OPERATOR_UI_WINDOW_MODE=headless \
+  "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
+```
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 A release here is a **combined release**: one version bump, one tag and one
