@@ -531,7 +531,7 @@ export const McpManagementSection: FC<{
 													.
 												</>
 											) : (
-												<>Remove it there.</>
+												<>Remove it wherever it is defined.</>
 											)}
 										</p>
 									)}
