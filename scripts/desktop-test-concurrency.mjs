@@ -240,8 +240,12 @@ export function computeDesktopTestConcurrency({
 			// rather than a number this file invented. See the block comment
 			// above `_CPU_SHARE` for why this repo stands down where conftest
 			// keeps its memory budget live.
+			//
+			// `null` when the caller could not tell us that choice: the runner
+			// then passes no cap at all, which IS "change nothing", instead of
+			// inventing a number or passing `--test-concurrency=null`.
 			return {
-				concurrency: nodeDefault,
+				concurrency: Number.isFinite(nodeDefault) && nodeDefault >= 1 ? nodeDefault : null,
 				arm: "ci",
 				cpus,
 				availableMb,
