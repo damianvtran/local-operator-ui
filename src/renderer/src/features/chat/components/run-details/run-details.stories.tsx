@@ -117,6 +117,7 @@ const TranscriptGround = () => (
 const RunPane = ({
 	details,
 	mcpServers = [],
+	mcpErrors = {},
 	childrenOpenable = true,
 	readerChildId = null,
 	previewPage = null,
@@ -125,6 +126,7 @@ const RunPane = ({
 }: {
 	details: ReturnType<typeof deriveRunDetails>;
 	mcpServers?: readonly Record<string, unknown>[];
+	mcpErrors?: Readonly<Record<string, string>>;
 	childrenOpenable?: boolean;
 	readerChildId?: string | null;
 	previewPage?: DesktopChildTranscriptPage | null;
@@ -146,7 +148,7 @@ const RunPane = ({
 		>
 			<RunPanel
 				details={details}
-				mcpServers={deriveMcpServers(mcpServers)}
+				mcpServers={deriveMcpServers(mcpServers, mcpErrors)}
 				sessionId={
 					(details.subagents.find((row) => row.childSessionId)
 						?.childSessionId as string | undefined) ?? "a1b2c3d4e5f6"
@@ -167,6 +169,7 @@ const RunPane = ({
 const ChatColumn = ({
 	details,
 	mcpServers = [],
+	mcpErrors = {},
 	childrenOpenable = true,
 	openPanel = false,
 	readerChildId = null,
@@ -176,6 +179,13 @@ const ChatColumn = ({
 }: {
 	details: ReturnType<typeof deriveRunDetails>;
 	mcpServers?: readonly Record<string, unknown>[];
+	/**
+	 * The canonical projection's failure text per server, which is the only place
+	 * the runtime states WHY one is down (`McpServerRow.errorText`; round 1,
+	 * U1-8). Optional, like the field itself: a story that supplies none frames
+	 * the remedy line.
+	 */
+	mcpErrors?: Readonly<Record<string, string>>;
 	childrenOpenable?: boolean;
 	openPanel?: boolean;
 	readerChildId?: string | null;
@@ -183,7 +193,7 @@ const ChatColumn = ({
 	pulses?: Record<string, number>;
 	width?: number;
 }) => {
-	const rows = deriveMcpServers(mcpServers);
+	const rows = deriveMcpServers(mcpServers, mcpErrors);
 	/*
 	 * The pane's open state lives in the STORE, not in this prop: the prop decides
 	 * whether the pane is drawn, and the store is what the trigger's pressed state,
@@ -220,6 +230,7 @@ const ChatColumn = ({
 				<RunPane
 					details={details}
 					mcpServers={mcpServers}
+					mcpErrors={mcpErrors}
 					childrenOpenable={childrenOpenable}
 					readerChildId={readerChildId}
 					previewPage={previewPage}
@@ -654,6 +665,33 @@ export const RosterOnly: Story = {
 	decorators: [withCanvasClosed],
 };
 
+/**
+ * The roster's MEMBERSHIP, on the wire that produces the question (`§ 4`).
+ *
+ * The payload carries five rows and only two of them are roster members: a
+ * running child's OWN `bash` job and the root session's own `read` job (both
+ * `type` = the tool, `agent_role` null, `session_id` null), and a `task` row
+ * whose `parent_job_id` is a child on the same list — a grandchild. The frame
+ * must show exactly the two members, tally them as the only work in flight, and
+ * carry no row for the tool calls or for the grandchild, which belongs to
+ * `job-audit`'s own `1 child` control (`reader-child-controls` is that half).
+ *
+ * Why this story exists rather than a real-child frame: the defect (round 1,
+ * Q1/U1-4/Q2) is a DERIVATION rule, and a fixture can put the three shapes on
+ * one list at once — the live run could only produce the tool rows while the
+ * parent turn was streaming, and the nested row at all only from a real nested
+ * delegation.
+ */
+export const RosterMembers: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.rosterMembers())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
 export const TodosOnly: Story = {
 	render: () => (
 		<ChatColumn
@@ -876,6 +914,33 @@ export const ReaderNested: Story = {
 			})}
 			openPanel={true}
 			readerChildId="job-grandchild"
+			previewPage={fixtures.childPage({ includeTool: true })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A member's own page, with the controls its CHILDREN put in the chrome bar
+ * (`§ 5.5`; round 1, Q2/Q8/U1-6).
+ *
+ * The roster is `fixtures.rosterMembers()`, so `job-audit` has one child on the
+ * wire — the grandchild the roster deliberately does NOT list — and this is the
+ * frame that shows it is reachable rather than lost: the header carries the
+ * `1 child` control, whose accessible name says the action (`Open 1 child
+ * subagent`), and the two steppers flank it because this child has one peer.
+ *
+ * The singular is the point of the frame. The control's label used to be
+ * hard-coded `1 children` with no name at all (`run-panel.tsx:437`), which is a
+ * state only a one-child lineage can produce — every other frame in this set
+ * shows a child with no children, where the control is absent.
+ */
+export const ReaderChildControls: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.rosterMembers())}
+			openPanel={true}
+			readerChildId="job-audit"
 			previewPage={fixtures.childPage({ includeTool: true })}
 		/>
 	),
@@ -1178,12 +1243,24 @@ export const McpDotAck: Story = {
 	render: () => <DotAckGround stop="rearmed" />,
 };
 
-/** The transport state beside the auth state: two words, two remedies. */
+/** The transport state beside the auth state, with its own remedy. */
 export const McpDisconnected: Story = {
 	render: () => (
 		<ChatColumn
 			details={deriveRunDetails(fixtures.bothInFlight())}
 			mcpServers={fixtures.mcpDisconnected()}
+			/*
+			 * The canonical projection's own failure text for this server, which is
+			 * the only place the runtime says WHY it is down: `mcp.list` carries
+			 * status, tool count and config and no reason at all (`§ 7.2`; round 1,
+			 * U1-8). QA's dead command produced exactly this string, and the row
+			 * offered `Reconnect this server in Settings` — a remedy that cannot fix
+			 * a command that does not exist.
+			 */
+			mcpErrors={{
+				playwright:
+					"[Errno 2] No such file or directory: '/nonexistent/definitely-not-a-binary'",
+			}}
 			openPanel={true}
 		/>
 	),
