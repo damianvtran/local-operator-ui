@@ -343,8 +343,9 @@ export function pickerPrimaryLabel(state: {
  * from the dialog's own `bg-elevated` in ALL twelve themes (measured ΔE00
  * 5.85-16.70). The sibling composer popup's `bg-accent-wash` tint was the first
  * choice and is a real step in the brand pair, but `accent-wash` collapses onto
- * `elevated` in obsidian (ΔE00 0.77, ratio 1.01) and in dune and tokyoNight it
- * is under ΔE00 4 — i.e. it would reproduce the original defect for whichever
+ * `elevated` in obsidian (ΔE00 0.77, ratio 1.01) and is under ΔE00 4 in
+ * tokyoNight (3.74) and dracula (3.99), with dune's 4.88 the next-worst and the
+ * first to clear it — i.e. it would reproduce the original defect for whichever
  * theme the user happens to run. The wash keeps the pointer's role instead.
  *
  * `isHovered` is the pointer's own position and nothing else. It takes

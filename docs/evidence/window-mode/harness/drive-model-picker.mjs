@@ -241,6 +241,18 @@ const MEASURE = `(() => {
   const outline = (el) => el ? { width: cs(el).outlineWidth, style: cs(el).outlineStyle, colour: cs(el).outlineColor, offset: cs(el).outlineOffset } : null;
   return JSON.stringify({
     dialogOpen: Boolean(dialog),
+    /*
+     * U7: the dialog's own header sentence, the one place that names the
+     * session's model in WORDS. Read from the dialog's "aria-describedby"
+     * node rather than by class, so "the header and the check agree" is read
+     * off the same run as "currentIndex" — the still shows the sentence, this
+     * says whether it is the same model the mark is on.
+     */
+    dialogDescription: (() => {
+      const id = dialog ? dialog.getAttribute("aria-describedby") : null;
+      const el = id ? document.getElementById(id) : null;
+      return el ? el.textContent.replace(/\\s+/g, " ").trim().slice(0, 200) : null;
+    })(),
     dialogBg: colour(dialog, "backgroundColor"),
     dialogRect: dialog ? (() => { const r = dialog.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; })() : null,
     rowCount: options.length,
