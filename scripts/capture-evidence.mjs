@@ -235,8 +235,11 @@ export const STORIES = [
 	["chat-run-panel--settled-history", 1280, 700],
 	["chat-run-panel--roster-only", 1280, 700],
 	/* The roster's MEMBERSHIP (`§ 4`): a payload carrying a child's own `bash`
-	   job, the session's own `read` job and a nested `task` row, of which only
-	   the two top-level children are members. Round 1's Q1/Q2 frame. */
+	   job, the session's own `bash` job and a nested `task` row, of which only
+	   the two top-level children are members. Every tool row is typed `bash` —
+	   `JobType` is `Literal["bash","task"]` (`harness/jobs.py:216`) — so the
+	   fixture cannot describe a tool row the runtime has no word for (round 3,
+	   R3-1). Round 1's Q1/Q2 frame. */
 	["chat-run-panel--roster-members", 1280, 820],
 	["chat-run-panel--todos-only", 1280, 820],
 	["chat-run-panel--both-in-flight", 1280, 700],

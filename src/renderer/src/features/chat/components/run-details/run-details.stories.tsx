@@ -678,8 +678,9 @@ export const RosterOnly: Story = {
  * The roster's MEMBERSHIP, on the wire that produces the question (`§ 4`).
  *
  * The payload carries five rows and only two of them are roster members: a
- * running child's OWN `bash` job and the root session's own `read` job (both
- * `type` = the tool, `agent_role` null, `session_id` null), and a `task` row
+ * running child's OWN `bash` job and the root session's own `bash` job (both
+ * `type: "bash"` — the only word the wire has for a tool row — with `agent_role`
+ * null and `session_id` null), and a `task` row
  * whose `parent_job_id` is a child on the same list — a grandchild. The frame
  * must show exactly the two members, tally them as the only work in flight, and
  * carry no row for the tool calls or for the grandchild, which belongs to
@@ -773,6 +774,66 @@ const InteractiveGround = () => {
 
 export const InteractivePane: Story = {
 	render: () => <InteractiveGround />,
+};
+
+/**
+ * The same pane with a page that arrives LATE, and a control outside it that the
+ * operator could be using meanwhile. Round 3's R3-4 is a claim about who owns the
+ * caret when that page lands — a claim no still can carry and no fixture can hold
+ * in one frame — so the state is driven here and read by a driver: the story
+ * opens on the child's `pending` line and swaps in a readable page after a beat,
+ * which leaves a window for a driver to put focus on the stand-in composer
+ * outside the pane and check that the arrival leaves it there. Not in STORIES.
+ */
+const LatePageGround = () => {
+	const [page, setPage] = useState(() =>
+		fixtures.childPage({ state: "pending" }),
+	);
+	const details = useMemo(() => deriveRunDetails(fixtures.rosterMembers()), []);
+	useEffect(() => {
+		useUiPreferencesStore.setState({
+			isRunPanelOpen: true,
+			isCanvasOpen: false,
+		});
+		/*
+		 * 2.5 s: long enough for a driver to take focus deliberately, short enough
+		 * that the walk is not waiting on the clock.
+		 */
+		const timer = setTimeout(
+			() => setPage(fixtures.childPage({ includeTool: true })),
+			2500,
+		);
+		return () => clearTimeout(timer);
+	}, []);
+	return (
+		<div className="flex h-screen overflow-hidden bg-canvas">
+			<div className="flex min-w-0 flex-1 flex-col">
+				<ChatHeader
+					agentName="Core"
+					description="Invoices workspace · on this machine"
+					onOpenOptions={() => undefined}
+					runDetails={details}
+					mcpServers={[]}
+					listOnScreen={false}
+					readerChildId="job-audit"
+				/>
+				{/* The one thing the story adds: somewhere else to be typing. */}
+				<button
+					type="button"
+					data-harness-composer=""
+					className="w-40 text-left text-ink-muted"
+				>
+					Composer stand-in
+				</button>
+				<TranscriptGround />
+			</div>
+			<RunPane details={details} readerChildId="job-audit" previewPage={page} />
+		</div>
+	);
+};
+
+export const InteractiveLatePage: Story = {
+	render: () => <LatePageGround />,
 };
 
 export const TodosOnly: Story = {
@@ -1059,10 +1120,13 @@ export const ReaderPending: Story = {
 };
 
 /**
- * § 10.1's `gone`: the child's transcript is no longer on disk.
+ * § 10.1's `gone`: the child's session DIRECTORY is no longer on disk.
  *
  * The other absence, and the terminal one — the line says so rather than offering
- * a retry that cannot succeed.
+ * a retry that cannot succeed. `pending` above is the transcript FILE missing;
+ * only a missing directory is final, because a file that has been moved aside
+ * leaves the same two facts on disk as one that was never written (round 1,
+ * Q10).
  */
 export const ReaderGone: Story = {
 	render: () => (

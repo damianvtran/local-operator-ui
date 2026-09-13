@@ -794,27 +794,33 @@ const LONG_BRIEF = [
  * One TOOL job, in the shape `frontend.jobs` really carries one.
  *
  * `comms.job_rows()` snapshots the ROOT session's job manager AND every live
- * child's (`harness/comms.py:799-824`), so the list a session publishes holds
- * the children's own tool calls beside the children themselves — and the tool
- * rows are ordinary `JobState`s with a `type` that is the tool's NAME rather
- * than `task`, a null `agent_role`, a null `session_id`, and a null
- * `parent_job_id` too: the job's parent is an execution rather than another
- * child, so the lineage edge the roster would have had to walk does not exist.
+ * child's (`harness/comms.py:799-815`), so the list a session publishes holds
+ * the children's own tool calls beside the children themselves. Every one of
+ * those rows is typed `bash`, NOT named after the tool that ran: `JobType` is
+ * exactly `Literal["bash", "task"]` (`harness/jobs.py:216`), a background `eval`
+ * registers as `bash` on purpose (`tools/eval.py:938-945`), and a foreground
+ * `read` never gets a row at all. The label carries the distinction
+ * (`bash: <command>`, `tools/builtin.py:2187`).
+ *
+ * So `type` is an argument with a default rather than something derived from the
+ * label: a helper that read the prefix would let a fixture claim a `read` row the
+ * runtime cannot mint, which is what round 3's R3-1 found (it did exactly that).
  *
  * QA's live capture read `c1ccfe6839cb bash running "bash: sleep 150 ; echo
  * child-done"` beside the one real delegated child and the roster painted both
- * (round 1, Q1/U1-4). This is that row, in that shape; the `type` is the whole
- * of what separates it from a child (`§ 4`'s membership rule).
+ * (round 1, Q1/U1-4). This is that row, in that shape.
  */
 const toolJob = (spec: {
 	id: string;
 	label: string;
+	/** `JobType` — `bash` for every tool row; `task` would be a child. */
+	type?: "bash" | "task";
 	status?: string;
 	/** `start_time` in epoch seconds, for a row that is still running. */
 	startedSecondsAgo?: number;
 }): Record<string, unknown> => ({
 	id: spec.id,
-	type: spec.label.split(":")[0],
+	type: spec.type ?? "bash",
 	status: spec.status ?? "running",
 	queued: false,
 	label: spec.label,
@@ -836,9 +842,9 @@ const toolJob = (spec: {
 /**
  * The wire that produces the roster's membership question (`§ 4`).
  *
- * Five rows, four of which are NOT top-level children: two tool jobs (the
- * root session's own `read`, and the running child's own `bash`), and one nested
- * `task` row (`parent_job_id: "job-audit"`) that the child launched itself. The
+ * Five rows, four of which are NOT top-level children: two `bash` tool jobs (the
+ * root session's own, and the running child's own), and one nested `task` row
+ * (`parent_job_id: "job-audit"`) that the child launched itself. The
  * roster must paint exactly the two members — `job-audit` and `job-summarise` —
  * and count only those.
  *
@@ -896,10 +902,13 @@ export const rosterMembers = (): RunDetailsInput => ({
 			parent_job_id: "job-audit",
 		},
 		// The ROOT session's own tool job, which is on the same list and is no more a
-		// sub-agent than the child's bash call is.
+		// sub-agent than the child's bash call is. Typed `bash` like every tool row:
+		// the runtime has no other word for one (`harness/jobs.py:216`), and a
+		// fixture that named the tool here would be describing a wire that does not
+		// exist (round 3, R3-1).
 		toolJob({
 			id: "7a41d0e2f9c3",
-			label: "read: invoices/march.csv",
+			label: "bash: wc -l invoices/march.csv",
 			status: "succeeded",
 			startedSecondsAgo: 240,
 		}),
