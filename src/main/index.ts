@@ -24,6 +24,10 @@ import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
+import {
+	rememberPickedDirectory,
+	withRememberedDirectory,
+} from "./picker-directory";
 import { UpdateService } from "./update-service";
 import {
 	WINDOW_MIN_HEIGHT,
@@ -344,10 +348,17 @@ function createWindow(): BrowserWindow {
 			);
 
 		if (isTrustedAuthDomain) {
-			// Allow the popup for authentication with improved features
+			// Allow the popup for authentication with improved features.
+			//
+			// `overrideBrowserWindowOptions` is the key Electron reads here. This
+			// block used to be `features`, which is a property of the handler's
+			// ARGUMENT (the parsed `window.open()` feature string) and not of the
+			// response, so every option below — including `sandbox: true` — was
+			// silently ignored and the popup got Electron's own defaults. The
+			// options are unchanged; only the key is now the one that is honoured.
 			return {
 				action: "allow",
-				features: {
+				overrideBrowserWindowOptions: {
 					width: 800,
 					height: 700, // Increased height for better visibility
 					minWidth: 600,
@@ -669,7 +680,12 @@ app
 				);
 				return { canceled: true, filePaths: [] };
 			}
-			return dialog.showOpenDialog(mainWindow, options);
+			const result = await dialog.showOpenDialog(
+				mainWindow,
+				withRememberedDirectory("open-file", options),
+			);
+			rememberPickedDirectory("open-file", result.filePaths);
+			return result;
 		});
 
 		// --- Directory Selection IPC Handler ---
@@ -682,11 +698,16 @@ app
 				);
 				return undefined;
 			}
-			const result = await dialog.showOpenDialog(mainWindow, {
+			const directoryOptions: Electron.OpenDialogOptions = {
 				properties: ["openDirectory"],
 				title: "Select Working Directory", // More appropriate title
 				buttonLabel: "Select Folder", // Correct button label
-			});
+			};
+			const result = await dialog.showOpenDialog(
+				mainWindow,
+				withRememberedDirectory("select-directory", directoryOptions),
+			);
+			rememberPickedDirectory("select-directory", result.filePaths, true);
 
 			if (!result.canceled && result.filePaths.length > 0) {
 				return result.filePaths[0]; // Return the selected path
@@ -702,11 +723,16 @@ app
 				);
 				return undefined;
 			}
-			const result = await dialog.showOpenDialog(mainWindow, {
+			const fileOptions: Electron.OpenDialogOptions = {
 				properties: ["openFile"],
 				title: "Select File",
 				buttonLabel: "Open",
-			});
+			};
+			const result = await dialog.showOpenDialog(
+				mainWindow,
+				withRememberedDirectory("select-file", fileOptions),
+			);
+			rememberPickedDirectory("select-file", result.filePaths);
 
 			if (!result.canceled && result.filePaths.length > 0) {
 				const filePath = result.filePaths[0];

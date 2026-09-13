@@ -1,44 +1,42 @@
 #!/usr/bin/env node
 
 /**
- * Restore the setuid bit on Electron's chrome-sandbox helper after install.
+ * Two install-time duties, one script, because both are "the install did not
+ * leave this tree runnable" problems and npm's lifecycle gives us one hook:
  *
- * npm strips setuid bits from package contents by design, so the helper lands
- * root:root 0755 and Chromium aborts for a non-root user (issue #91). We fix it
- * here because `sudo npm install -g` — the ordinary way to install a global CLI
- * — runs this script as root, which is the one moment in the lifecycle where we
- * hold the privilege the fix needs.
+ * 1. Fetch the Electron runtime. Since Electron 42 the `electron` package has
+ *    no postinstall that downloads the binary, and `electron-vite`'s bytecode
+ *    step spawns the binary straight from `dist/` rather than through
+ *    `require("electron")` (the one call that would fetch it on demand). So
+ *    without this, a fresh clone or a cold CI runner fails its first
+ *    `pnpm build` with `[vite:bytecode] spawn ... ENOENT` -- on macOS and
+ *    Windows too, not only on Linux. bin/ensure-electron.js calls the same
+ *    helper from the build path, for trees installed with --ignore-scripts or
+ *    with dist/ removed afterwards.
+ *
+ * 2. Restore the setuid bit on Electron's chrome-sandbox helper. npm strips
+ *    setuid bits from package contents by design, so the helper lands
+ *    root:root 0755 and Chromium aborts for a non-root user (issue #91). We fix
+ *    it here because `sudo npm install -g` -- the ordinary way to install a
+ *    global CLI -- runs this script as root, which is the one moment in the
+ *    lifecycle where we hold the privilege the fix needs. Linux only: the
+ *    helper does not exist anywhere else.
  *
  * THIS SCRIPT MUST NEVER FAIL THE INSTALL. An unprivileged `npm install -g`
  * (prefix in $HOME), a container without CAP_CHOWN, macOS and Windows where the
- * helper does not exist, and an install where the optional Electron download was
- * skipped are all normal situations in which the repair cannot happen. Leaving
- * the user with no package at all would be a worse defect than the one being
- * fixed, so every failure path exits 0. Where the repair does not happen, the
- * launcher's post-mortem guidance (bin/local-operator-ui.js) covers it with the
- * exact commands.
+ * helper does not exist, and an install where the Electron download failed or
+ * was skipped are all normal situations. Leaving the user with no package at
+ * all would be a worse defect than the one being fixed, so every failure path
+ * exits 0. Where the runtime could not be fetched, `bin/ensure-electron.js`
+ * fails the build with the exact command instead, and where the repair does not
+ * happen the launcher's post-mortem guidance (bin/local-operator-ui.js) covers
+ * it.
  *
  * It is quiet on success for the same reason npm scripts generally are: the
  * common case is a working install and noise there trains people to ignore it.
  */
 
 const process = require("node:process");
-
-// Silence is the contract on non-Linux: the helper is a Linux-only artifact, so
-// there is nothing to repair and nothing worth printing on a Mac.
-//
-// LOCAL_OPERATOR_UI_FORCE_POSTINSTALL exists so the test suite can reach the
-// repair path on a macOS developer machine and on CI's ubuntu runner alike.
-// Without it the only assertion this script's test could make on darwin was
-// "exit 0", which it satisfies by returning here before doing anything -- a
-// vacuous test that passed while the whole body was mutated away. It is read
-// only, never written by us, and namespaced so it cannot be set by accident.
-if (
-	process.platform !== "linux" &&
-	process.env.LOCAL_OPERATOR_UI_FORCE_POSTINSTALL !== "1"
-) {
-	process.exit(0);
-}
 
 const main = () => {
 	const path = require("node:path");
@@ -47,16 +45,36 @@ const main = () => {
 		repairSandboxHelper,
 	} = require("./linux-sandbox.js");
 
-	// Do NOT resolve the helper through require("electron"). Nothing has
-	// downloaded dist/ by this point -- and since Electron 42 nothing ever will:
-	// the `electron` package no longer runs a postinstall that fetches the
-	// binary, it downloads on demand the first time its bin script runs. So at
-	// this point that call would trigger a synchronous download inside the
-	// install, and the helper would still not exist yet.
-	// ensureElectronDist() drives electron's installer first; see the long note
-	// on it for the measurements.
+	// Fetch BEFORE the platform guard, because the build needs the runtime on
+	// every platform and this is the only hook that runs on a plain
+	// `pnpm install`. The installer is silent here on purpose: the download
+	// prints a progress bar that would otherwise appear twice in one install,
+	// once from us and once from npm's own run of the same script.
 	const packageRoot = path.join(__dirname, "..");
-	if (!ensureElectronDist(packageRoot)) {
+	const distReady = ensureElectronDist(packageRoot);
+
+	// Silence is the contract on non-Linux: the helper is a Linux-only artifact,
+	// so with the runtime in place there is nothing left to repair and nothing
+	// worth printing on a Mac.
+	//
+	// LOCAL_OPERATOR_UI_FORCE_POSTINSTALL exists so the test suite can reach the
+	// repair path on a macOS developer machine and on CI's ubuntu runner alike.
+	// Without it the only assertion this script's test could make on darwin was
+	// "exit 0", which it satisfies by returning here before doing anything -- a
+	// vacuous test that passed while the whole body was mutated away. It is read
+	// only, never written by us, and namespaced so it cannot be set by accident.
+	if (
+		process.platform !== "linux" &&
+		process.env.LOCAL_OPERATOR_UI_FORCE_POSTINSTALL !== "1"
+	) {
+		return;
+	}
+
+	// Do NOT resolve the helper through require("electron"): that call fetches
+	// the runtime on demand when it is missing, which inside an install is a
+	// synchronous download in the wrong place. ensureElectronDist() above is the
+	// one that drives electron's installer, on purpose.
+	if (!distReady) {
 		// No Electron to repair: optional install skipped, or the download failed.
 		// The launcher reports that case with its own guidance.
 		return;

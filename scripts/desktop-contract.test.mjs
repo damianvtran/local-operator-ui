@@ -8,7 +8,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -39,6 +39,8 @@ const {
 	trustedDesktopFrame,
 	registerDesktopIPC,
 	guardForegroundReceipts,
+	rememberPickedDirectory,
+	withRememberedDirectory,
 	desktopRequestByteBudget,
 	MAX_DESKTOP_REQUEST_BYTES,
 	MAX_DESKTOP_ENVELOPE_BYTES,
@@ -758,6 +760,105 @@ test("IPC rejects other frames and opens only backend-returned authorization onc
 	await assert.rejects(() => open(event, "https://evil.example"));
 	frame.url = "https://evil.example";
 	assert.throws(() => invoke(event, { op: "settings.list" }));
+});
+
+test("the media relay hands on ArrayBuffer-backed bytes and refuses anything else", async () => {
+	// `Blob`, which the relay builds a multipart body from, accepts only views
+	// over a plain ArrayBuffer, and the DOM typings cannot tell a SharedArrayBuffer
+	// view from an ArrayBuffer-backed one at the call site -- which is why the
+	// narrowing lives at this boundary. Each case below is a branch of it.
+	globalThis.__desktopHandlers = new Map();
+	const frame = { url: "file:///app/index.html" };
+	const contents = { mainFrame: frame };
+	const owner = { webContents: contents, isDestroyed: () => false };
+	const seen = [];
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+		undefined,
+		async (_input, bytes) => {
+			seen.push(bytes);
+			return { status: 200, kind: "json", body: { result: {} } };
+		},
+	);
+	const invoke = globalThis.__desktopHandlers.get("desktop-media");
+	const event = { sender: contents, senderFrame: frame };
+	const input = { op: "speech.create" };
+
+	// A whole ArrayBuffer is adopted as a view over it.
+	const buffer = new ArrayBuffer(4);
+	new Uint8Array(buffer).set([1, 2, 3, 4]);
+	await invoke(event, input, buffer);
+	assert.deepEqual([...seen.at(-1)], [1, 2, 3, 4]);
+
+	// A view keeps its own offset and length: the relay forwards the bytes the
+	// caller chose, not the whole backing buffer.
+	const backing = new Uint8Array([9, 8, 7, 6, 5]);
+	await invoke(event, input, backing.subarray(1, 4));
+	assert.deepEqual([...seen.at(-1)], [8, 7, 6]);
+	assert.ok(seen.at(-1).buffer instanceof ArrayBuffer);
+
+	// A SharedArrayBuffer view is not a valid Blob part. It is refused as absent
+	// bytes rather than copied into an ArrayBuffer-backed view that would claim
+	// to be exactly what the caller sent.
+	await invoke(event, input, new Uint8Array(new SharedArrayBuffer(4)));
+	assert.equal(seen.at(-1), null);
+
+	// Everything that is not binary at all is absent bytes too.
+	for (const notBytes of [null, undefined, "bytes", { 0: 1 }, 42]) {
+		await invoke(event, input, notBytes);
+		assert.equal(seen.at(-1), null, JSON.stringify(notBytes));
+	}
+});
+
+test("a picker reopens where the last one of its kind landed", () => {
+	// Electron 43 stopped the OS remembering the last-used directory and made
+	// Downloads the default, so main remembers it instead. `kind` is per picker
+	// so the working-directory picker and the file picker do not share a
+	// directory, and a caller's own `defaultPath` is never overwritten.
+	const first = withRememberedDirectory("picker-test-directory", {});
+	assert.equal(first.defaultPath, undefined, "nothing remembered yet");
+
+	// A directory pick remembers the path itself; a file pick remembers its parent.
+	rememberPickedDirectory("picker-test-directory", ["/tmp/lo-picker/project"], true);
+	assert.equal(
+		withRememberedDirectory("picker-test-directory", {}).defaultPath,
+		"/tmp/lo-picker/project",
+	);
+	rememberPickedDirectory("picker-test-file", ["/tmp/lo-picker/project/notes.txt"]);
+	assert.equal(
+		withRememberedDirectory("picker-test-file", {}).defaultPath,
+		"/tmp/lo-picker/project",
+	);
+	assert.equal(
+		withRememberedDirectory("picker-test-other", {}).defaultPath,
+		undefined,
+		"one picker's directory must not leak into another's",
+	);
+
+	// An explicit defaultPath from the caller wins.
+	assert.equal(
+		withRememberedDirectory("picker-test-file", { defaultPath: "/elsewhere" })
+			.defaultPath,
+		"/elsewhere",
+	);
+
+	// A cancelled pick reports no paths and must not clear or corrupt the memory:
+	// reopening in the directory the user was last in is the point.
+	rememberPickedDirectory("picker-test-file", []);
+	assert.equal(
+		withRememberedDirectory("picker-test-file", {}).defaultPath,
+		"/tmp/lo-picker/project",
+	);
+
+	// The options the caller passed are preserved, and the caller's object is not
+	// mutated -- the renderer's own options object crosses the IPC boundary.
+	const options = { properties: ["openFile"], title: "Select File" };
+	const returned = withRememberedDirectory("picker-test-file", options);
+	assert.deepEqual(returned.properties, ["openFile"]);
+	assert.equal(returned.title, "Select File");
+	assert.equal(options.defaultPath, undefined);
 });
 
 test("a read receipt is admitted only by an actually foreground native window", async () => {

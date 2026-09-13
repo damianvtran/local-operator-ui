@@ -54,6 +54,8 @@
     "dev": "npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'",
     "dev:headless": "LOCAL_OPERATOR_UI_WINDOW_MODE=headless pnpm dev",
     "build": "electron-vite build",
+    "//prebuild": "The build compiles main/preload to V8 bytecode for the pinned Electron, so it needs a real node_modules/electron/dist before electron-vite runs. Since Electron 42 nothing fetches that during an install except our own postinstall, so this hook covers the trees that hook cannot reach (--ignore-scripts, or a dist/ removed by hand) and fails the build by name instead of letting it die inside the bytecode step with an ENOENT. build:npm needs no runtime: it deliberately emits plain JS (LOCAL_OPERATOR_UI_NO_BYTECODE=true).",
+    "prebuild": "node ./bin/ensure-electron.js",
     "prebuild:npm": "rm -rf out/main out/preload",
     "build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
     "postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
@@ -97,6 +99,7 @@
     "posthog-node": "^4.11.3",
     "zod": "^3.24.2"
   },
+"//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
   "//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails. dmg-builder and electron-builder-squirrel-windows are app-builder-lib's peers and the builder refuses to resolve when they disagree with it, so all three move as one version.",
   "optionalDependencies": {
     "electron": "44.3.0"
@@ -128,6 +131,7 @@
     "@tanstack/react-query": "^5.67.1",
     "@tanstack/react-query-devtools": "^5.67.1",
     "@types/hast": "^3.0.4",
+    "@types/node": "22.14.1",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "@types/react-syntax-highlighter": "^15.5.13",

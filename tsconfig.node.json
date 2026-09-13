@@ -10,6 +10,7 @@
     // and preload through rollup, so extensionless imports and package
     // `exports` are both legitimate here.
     "moduleResolution": "bundler",
+    "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "strict": true,
     "noUnusedLocals": true,
