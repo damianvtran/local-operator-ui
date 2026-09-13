@@ -1,7 +1,7 @@
 {
-  "head": "b20e4799f90f361318af0f5396db4b83f2b567e9",
-  "srcTree": "292912489103caf9ae7132ff25d9ee2028941f27",
-  "scriptsTree": "48c2328ca846a3ecd30f107f261faa54ca4a5878",
+  "head": "9ad6a427455c79669772e5c2d7b25d03c1088227",
+  "srcTree": "1d6e37986e0448cc3f2aa03486e04a898ade84c2",
+  "scriptsTree": "0883f2b2589665db47ddc0f0679704fd3f344ea5",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 640,
@@ -160,13 +160,13 @@
       "source": "the BUILT app (pnpm build + electron . in headless window mode) paired to an isolated backend built from the parallel backend worktree, driven over raw CDP",
       "why": "The reader against a REAL running child, which is the one claim no story can carry: docs/run-sidebar.md 11.3 requires the live pairing for `reader-live`, because the subject is a FLOW (click a child's row, watch its durable transcript arrive over subagents.transcript, and arrive again when the child's pulse moves) and a fixture proves only the row pipeline. The backend's access log recorded 4 transcript reads for this child session while the reader was open. The procedure, the ids and the readings are in docs/evidence/chat-run-panel-live/README.md. Not sweepable by construction: it needs a model turn and a child that is running when the shutter opens.",
       "capturedAt": "2026-09-13T05:41:00.000Z",
-      "capturedAtHead": "b20e4799f90f361318af0f5396db4b83f2b567e9"
+      "capturedAtHead": "9ad6a427455c79669772e5c2d7b25d03c1088227"
     }
   ],
   "partialCapture": {
-    "note": "This set is not a full sweep and does not claim to be. The run-panel surfaces were refreshed in the two brand themes by `pnpm capture-evidence.mjs --only=run-panel --themes=localOperatorDark,localOperatorLight`, and the live pair was taken by a separate harness (`docs/evidence/chat-run-panel-live/README.md`). Nothing else was re-taken: the other 600-odd frames describe surfaces this change does not touch. The frames were taken from this working tree minutes before its final lint tidy (a regex literal hoisted to a module constant, with no rendered effect); `srcTree` names the committed tree, and `dirtyWorkingTree: true` is the record that the capture ran against the working tree rather than a commit.",
+    "note": "This set is not a full sweep and does not claim to be. The run-panel surfaces were refreshed in the two brand themes by `pnpm capture-evidence.mjs --only=run-panel --themes=localOperatorDark,localOperatorLight`, and the live pair was taken by a separate harness (`docs/evidence/chat-run-panel-live/README.md`). Nothing else was re-taken: the other 600-odd frames describe surfaces this change does not touch. The frames were taken from this working tree minutes before its final lint tidy (a regex literal hoisted to a module constant, with no rendered effect); `srcTree` names the committed tree, and `dirtyWorkingTree: true` is the record that the capture ran against the working tree rather than a commit. The frames were taken before the branch was rebased onto main's 0309a5a75 (`git range-diff` '=' for all four earlier commits, and the only line that moved under it is the one test-list entry the two sides both extend); `srcTree` and `scriptsTree` name the committed trees.",
     "refreshedAt": "2026-09-13T05:41:00.000Z",
-    "refreshedAtHead": "b20e4799f90f361318af0f5396db4b83f2b567e9",
+    "refreshedAtHead": "9ad6a427455c79669772e5c2d7b25d03c1088227",
     "refreshedFrames": 66,
     "refreshedThemes": [
       "localOperatorDark",
@@ -182,7 +182,7 @@
       "chat-run-panel--mcp-dot-ack-acknowledged"
     ],
     "addedAt": "2026-09-13T05:41:00.000Z",
-    "addedAtHead": "b20e4799f90f361318af0f5396db4b83f2b567e9",
+    "addedAtHead": "9ad6a427455c79669772e5c2d7b25d03c1088227",
     "branchAddition": "Recorded here because an earlier narrowed run overwrote it (review round 1, R1-10): THIS PR added 27 run-panel surfaces and 54 frames on top of main's 574 swept frames, which is what moved the swept total 594 -> 648 before this round added a further six surfaces and twelve frames.",
     "review": "One batched remediation pass against the code and design round-1 findings: R1-1a's live pair (this set), R1-1b's four missing stories and R1-5's child-attachment question answered by narrowing Section 5.1, in docs/run-sidebar.md. The frames for the surfaces the fixes moved were re-taken in the same run."
   },
