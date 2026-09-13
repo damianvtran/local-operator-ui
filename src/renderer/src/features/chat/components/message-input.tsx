@@ -1262,11 +1262,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * The composer's controls and the session's readings, on ONE row.
 					 *
 					 * The readings used to have a row of their own above this one. They are
-					 * inside it now, which is why this row wraps: above 750px of column the
+					 * inside it now, which is why this row wraps: above 750px of COLUMN the
 					 * cluster sits inline and right-justified, immediately left of the
 					 * controls; below it the cluster takes the FIRST line in full
-					 * (`order-first basis-full` in the strip) and the controls keep the
-					 * second. `justify-between` cannot express that — with three children it
+					 * (`order-first basis-full`) and the controls keep the second.
+					 * `justify-between` cannot express that — with three children it
 					 * centres the middle one, which is the opposite of right-justified — so
 					 * the row uses `ml-auto` instead, on exactly one child at a time (see the
 					 * two groups below).
@@ -1274,8 +1274,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
 					 * the within-component step, tighter than the 12px this composer used
 					 * when the readings were a separate row (§ 5).
+					 *
+					 * `flex-nowrap` above the threshold is NOT decoration. Wrapping happens
+					 * on the items' CONTENT sizes, before any shrinking: a long model name (an
+					 * aggregator slug is ~48 characters) makes the cluster wider than its
+					 * share, so a still-wrapping row moves the microphone and send to a
+					 * second line instead of truncating the name — the exact inversion of the
+					 * yield order, where the name truncates first and the controls never
+					 * move. Measured on the live composer at a 750px box: with the row free
+					 * to wrap, the controls sat 24px below the readings; with `flex-nowrap`
+					 * they stay on one line and the name gives up the width.
 					 */}
-					<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+					<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap">
 						{sessionStatus && (
 							<ErrorBoundary fallback={null}>
 								<SessionStatusStrip
