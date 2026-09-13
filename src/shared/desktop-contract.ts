@@ -1510,3 +1510,82 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 	}
 }
+
+/**
+ * The local-file bridge, shared by main, the preload and the renderer.
+ *
+ * These are NOT `DesktopRequest`s. Every op in the union above travels to the
+ * backend over HTTP and is validated by a zod schema there; these four handlers
+ * (`read-file`, `save-file`, `probe-files`, `read-file-bytes`) never leave the
+ * machine, and two of them return bytes that a zod schema would only get in the
+ * way of. They are declared here anyway because this module is the one place
+ * the three processes already agree on a shape, and a type that lives beside
+ * `ReadFileResponse` in a `.d.ts` is a type main cannot import.
+ */
+
+/**
+ * Paths one `probe-files` call may resolve.
+ *
+ * A bound rather than a guess: a stat on an unmounted network path can hang for
+ * seconds, so the renderer chunks its probe requests and main refuses anything
+ * larger rather than turning one call into a stall. 64 is comfortably more than
+ * a panel's worth of tiles (the store caps a conversation at 500 entries) while
+ * keeping a single synchronous batch short.
+ */
+export const MAX_PROBE_PATHS = 64;
+
+/**
+ * The largest file `read-file-bytes` will return, in bytes.
+ *
+ * A cap exists so a 2 GB file cannot OOM the renderer through structured clone.
+ * 64 MiB is chosen against the largest thing a viewer plausibly opens (the
+ * PDFs, images and audio a session touches) with room to spare; a file over it
+ * gets a named refusal and the "open in the default app" action rather than a
+ * spinner that never resolves.
+ */
+export const MAX_FILE_READ_BYTES = 64 * 1024 * 1024;
+
+/** One entry of the `probe-files` answer, in the order it was asked about. */
+export type ProbedFile = {
+	/** The path exactly as the renderer asked about it. */
+	input: string;
+	/** The path after `~`/cwd resolution; the store's dedupe key. */
+	resolved: string;
+	exists: boolean;
+	isFile: boolean;
+	/** Bytes, or `null` when the path does not resolve to a file. */
+	sizeBytes: number | null;
+	/** Modification time, ms since epoch, or `null`. */
+	mtimeMs: number | null;
+	/**
+	 * Present only when `stat` itself failed (permission, a broken mount) rather
+	 * than answering "no such file". Both report `exists: false`; this says
+	 * which one happened, because "deleted" and "cannot look" deserve different
+	 * words in a bug report.
+	 */
+	error?: string;
+};
+
+/**
+ * Why a byte read was refused.
+ *
+ * A string code, not an `Error` subclass: Electron serialises an Error across
+ * IPC by message and stack, so a custom class arrives with a plain `Error`
+ * prototype and an `instanceof FileTooLargeError` test in the renderer is
+ * always false. A discriminant that survives the boundary is the only form the
+ * renderer can act on — and the viewer acts on `too-large` specifically.
+ */
+export type ReadFileBytesFailure =
+	| "too-large"
+	| "not-a-file"
+	| "not-found"
+	| "unreadable";
+
+export type ReadFileBytesResponse =
+	| { success: true; data: Uint8Array; sizeBytes: number }
+	| {
+			success: false;
+			code: ReadFileBytesFailure;
+			error: string;
+			sizeBytes?: number;
+	  };

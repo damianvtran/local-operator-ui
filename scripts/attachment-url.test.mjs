@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -187,6 +188,21 @@ const bundle = await build({
 				builder.onResolve(
 					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
 					() => ({ path: "media", namespace: "fixture" }),
+				);
+				/*
+				 * REAL, not stubbed: the shared refcounted blob cache the hook now imports
+				 * (the discipline used to live in this module, and the canvas viewers need
+				 * the same one). Bundling the shipped module is what keeps these tests
+				 * honest about the reference accounting they exist to pin.
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/lib\/blob-url-cache$/ },
+					() => ({
+						path: resolve(
+							process.cwd(),
+							"src/renderer/src/shared/lib/blob-url-cache.ts",
+						),
+					}),
 				);
 				builder.onLoad({ filter: /^react$/, namespace: "fixture" }, () => ({
 					contents:
