@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
@@ -9,7 +10,12 @@ import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import { costTooltip, sessionCost } from "./session-cost";
-import { effortState, modelIdentity, reconcileEffort } from "./session-model";
+import {
+	bandReadings,
+	effortState,
+	modelIdentity,
+	reconcileEffort,
+} from "./session-model";
 
 /**
  * The session status strip: model, reasoning effort, context and spend.
@@ -95,9 +101,9 @@ export type SessionStatusStripProps = {
 	 * Passed in, not read off `frontend`: the paint is the session handle's, and
 	 * this component must not be the thing that decides what "confirmed" means
 	 * (the handle drops the paint when an authoritative frame names the model).
-	 * While it is set the model reading is drawn as PENDING — dim, and its tooltip
-	 * says what is actually known, which is that the backend is being waited on
-	 * (latency U1/U2).
+	 * While it is set the model reading is drawn as PENDING — dim, with the
+	 * spinner the dialog shows for the same state, because a colour step plus a
+	 * hover-only tooltip is a cue the user has to have been taught (UX U3).
 	 */
 	pendingModel?: CanonicalModel | null;
 	className?: string;
@@ -271,10 +277,16 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	// reading is drawn as pending and reverts the moment the owner's frame names
 	// a model of its own (latency U1).
 	const pending = pendingModel !== null;
-	const model =
-		pendingModel ?? frontend.effective_model ?? frontend.selected_model;
+	/*
+	 * The identity reading and the effort reading come from different specs on
+	 * purpose — see `bandReadings` for why the paint must not outrank the effort
+	 * chip (reviewer round 1, major 1: `effortState` answers `null` for a row's
+	 * spec, so the chip vanished for the whole 1.1-4.2 s pending window).
+	 */
+	const readings = bandReadings(frontend, pendingModel);
+	const model = readings.identity;
 	const identity = modelIdentity(model);
-	const effort = reconcileEffort(effortState(model), effortEntities);
+	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
 	const reading = contextReading({
 		context_tokens: frontend.context_tokens,
 		context_window: frontend.context_window,
@@ -303,7 +315,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={
 						pending
-							? `Model: ${identity.selector}. Chosen; waiting for the backend to confirm.`
+							? `Model: ${identity.selector}. Switching; waiting for the session to confirm it.`
 							: `Model: ${identity.selector}. Choose a different model.`
 					}
 					tooltip={
@@ -312,7 +324,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 								pending
 									? [
 											identity.selector,
-											"Waiting for the backend to confirm the change",
+											"Switching the model; waiting for the session to confirm it",
 										]
 									: [identity.selector, "Click to choose a different model"]
 							}
@@ -330,6 +342,16 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					className={cn("max-w-full shrink", pending && "text-ink-dim")}
 				>
 					<span className="truncate">{identity.name}</span>
+					{/*
+					 * The pending state's non-hover cue (UX U3).
+					 *
+					 * The colour step alone is seen only by a user who already knows to
+					 * look for it, and the sentence that explains it lived in the tooltip —
+					 * i.e. behind a hover. The dialog says the same thing with the same
+					 * spinner while the same operation is in flight, so the band does too;
+					 * the label is what carries it into the accessibility tree.
+					 */}
+					{pending && <Spinner size="xs" label="Switching the model" />}
 				</Reading>
 			)}
 			{effort && (

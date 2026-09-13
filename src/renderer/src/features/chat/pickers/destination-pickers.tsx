@@ -114,6 +114,30 @@ type CatalogueRow = DesktopModelCatalogue["models"][number] & {
 	routed?: boolean;
 };
 
+/** The row's own selector, in the one spelling the wire and the rows share. */
+function selectorOf(row: CatalogueRow): string {
+	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
+}
+
+/**
+ * The default write's failure prefix, in one place.
+ *
+ * `useOperation` composes its strip from it and the picker writes the same
+ * sentence into the transcript when the dialog is gone (reviewer round 1, minor
+ * 4) — two spellings of one fact would drift, so there is one constant.
+ */
+const DEFAULT_SAVE_FAILURE = "The default was not saved";
+
+/**
+ * What a switch to a row with no credential means for the session (QA Q1).
+ *
+ * The switch itself succeeded — the owner accepted the spec — so this is not a
+ * failure; it is the fact that the model cannot answer yet, stated in the
+ * user's terms with the one action that changes it.
+ */
+const SIGN_IN_CAVEAT =
+	"This model has no credential yet, so it cannot answer until you sign in. Connect it in Settings > Providers.";
+
 export const ModelPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
@@ -121,6 +145,29 @@ export const ModelPicker: FC<PickerContext> = ({
 	note,
 }) => {
 	const [live, setLive] = useState(false);
+	/*
+	 * The model the user last switched to, marked in force before the owner's own
+	 * `frontend.update` frame moves `selected_model` (QA Q2).
+	 *
+	 * The receipt and the frame are two different clocks: QA measured the in-force
+	 * check still on the OLD row 3.7 s after the receipt while the band and the
+	 * result strip already read the new one. It is the same optimistic
+	 * registration the band's paint uses, on the picker's own row, and it is
+	 * dropped the moment the authoritative selector matches it — it never outlives
+	 * the fact it paints, and a re-open (a fresh mount) reads the owner's answer.
+	 */
+	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
+	/*
+	 * What the last successful switch did to the session's ability to RUN the
+	 * model it now names (QA Q1).
+	 *
+	 * `switched and runnable` and `switched but needs sign-in` produced an
+	 * identical success strip and an identical permanent band repaint, which is
+	 * the one distinction this picker exists to make: a row the dialog itself
+	 * labels `Needs sign-in … no credential` is a model the session cannot use
+	 * until a credential exists.
+	 */
+	const [switchedNeedsSignIn, setSwitchedNeedsSignIn] = useState(false);
 	const catalogue = useQuery({
 		queryKey: ["desktop", "models", live],
 		queryFn: () =>
@@ -153,6 +200,25 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const currentSelector = modelSelector(selected);
 
+	/*
+	 * The catalogue row's own auth state, by selector.
+	 *
+	 * One map, read by both the row builder below (`group`) and the pick itself,
+	 * so the label the user reads and the outcome the strip reports cannot
+	 * disagree.
+	 */
+	const rowAuth = useMemo(() => {
+		const known = catalogue.data?.credentials_known !== false;
+		const map = new Map<string, "runnable" | "needs-sign-in" | "unknown">();
+		for (const row of (catalogue.data?.models ?? []) as CatalogueRow[]) {
+			map.set(
+				selectorOf(row),
+				!known ? "unknown" : row.connected ? "runnable" : "needs-sign-in",
+			);
+		}
+		return map;
+	}, [catalogue.data]);
+
 	const options = useMemo<PickerOption[]>(() => {
 		const rows = (catalogue.data?.models ?? []) as CatalogueRow[];
 		// `connected` is also true when the credential store could not be read,
@@ -162,7 +228,7 @@ export const ModelPicker: FC<PickerContext> = ({
 		// claiming an auth state it does not have.
 		const known = catalogue.data?.credentials_known !== false;
 		return rows.map((row) => ({
-			value: row.selector ?? row.value ?? `${row.provider}/${row.model_id}`,
+			value: selectorOf(row),
 			label: row.label || row.model_id,
 			description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
 				known && !row.connected ? ", no credential" : ""
@@ -170,7 +236,8 @@ export const ModelPicker: FC<PickerContext> = ({
 			meta: row.context_window
 				? `${Math.round(row.context_window / 1000)}k`
 				: undefined,
-			current: currentSelector === (row.selector ?? row.value),
+			current:
+				(pickedCurrent ?? currentSelector) === (row.selector ?? row.value),
 			group: !known
 				? "Sign-in state unknown"
 				: row.connected
@@ -178,7 +245,7 @@ export const ModelPicker: FC<PickerContext> = ({
 					: "Needs sign-in",
 			keywords: [row.provider, row.model_id],
 		}));
-	}, [catalogue.data, currentSelector]);
+	}, [catalogue.data, currentSelector, pickedCurrent]);
 
 	const listing = catalogueListing(catalogue.data, catalogue, errorText);
 
@@ -204,42 +271,80 @@ export const ModelPicker: FC<PickerContext> = ({
 				display_name: option.label,
 			};
 			canonical.paintPendingModel(model);
-			const outcome = await command.run("model", value);
+			const { outcome, result: failure } = await command.run("model", value);
 			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.
 				canonical.clearPendingModel();
+				/*
+				 * And the failure is reported WHEREVER it lands (UX U2).
+				 *
+				 * It used to be written only on the dialog's close edge, which reads
+				 * `command.result` at that instant — so closing during the wait (the
+				 * natural response to a 1.1-4.2 s bind, and exactly when the dialog is
+				 * most likely to be dismissed) left nothing behind when the refusal
+				 * arrived: only a silent band revert. The composer's note path is not
+				 * the dialog's, so it is still there to write to; the sentence is the
+				 * strip's own, from the same call's result, so the two never disagree.
+				 */
+				note(`The model was not changed. ${failure.text}`, true);
 				return;
+			}
+			// The switch landed: mark the picked row in force at once rather than
+			// waiting out the owner's next frame (QA Q2), and say whether the model
+			// it just switched to can actually run (QA Q1).
+			setPickedCurrent(value);
+			const needsSignIn = rowAuth.get(value) === "needs-sign-in";
+			setSwitchedNeedsSignIn(needsSignIn);
+			if (needsSignIn) {
+				// The strip below carries this while the dialog is open; the note is
+				// the same fact for the case where it is not (UX U2's rule, applied
+				// to the one "success" that still needs the user to do something).
+				note(`The model was changed. ${SIGN_IN_CAVEAT}`);
 			}
 			if (persistDefault) {
 				// Explicit default scope: the session change above is the owner's;
 				// the default is the typed settings key, written only on request.
 				await persist.perform(
 					async () => {
-						await desktopResult({
-							op: "settings.edit",
-							key: "hosting",
-							value: provider,
-						});
-						await desktopResult({
-							op: "settings.edit",
-							key: "model_name",
-							value: modelId,
-						});
-						return value;
+						try {
+							await desktopResult({
+								op: "settings.edit",
+								key: "hosting",
+								value: provider,
+							});
+							await desktopResult({
+								op: "settings.edit",
+								key: "model_name",
+								value: modelId,
+							});
+							return value;
+						} catch (error) {
+							/*
+							 * The default write is a DIFFERENT operation from the switch, and it
+							 * has its own result: on the one path where the switch succeeded
+							 * and the default failed, the failure lived only in the dialog's
+							 * strip, so closing the dialog — the only way out of it — dropped
+							 * it (reviewer round 1, minor 4). Written here, at the moment it is
+							 * known, in the same words the strip uses, and it does NOT claim the
+							 * model was unchanged when only the default was not saved.
+							 */
+							note(`${DEFAULT_SAVE_FAILURE}: ${errorText(error)}`, true);
+							throw error;
+						}
 					},
 					(selector) => ({
 						tone: "success",
 						text: `Default for new sessions: ${selector}`,
 					}),
-					"The default was not saved",
+					DEFAULT_SAVE_FAILURE,
 				);
 			}
 		},
-		[canonical, command, persistDefault, persist],
+		[canonical, command, persistDefault, persist, note, rowAuth],
 	);
 
-	const combined: PickerResult | null = persist.result
+	const ownerOutcome: PickerResult | null = persist.result
 		? {
 				...persist.result,
 				text: [command.result?.text, persist.result.text]
@@ -247,28 +352,46 @@ export const ModelPicker: FC<PickerContext> = ({
 					.join("\n"),
 			}
 		: command.result;
+	/*
+	 * "Switched and runnable" and "switched but cannot run yet" are different
+	 * outcomes, and this picker's whole subject is that difference (QA Q1).
+	 *
+	 * The caveat is APPENDED to the owner's own text rather than replacing it —
+	 * the strip quotes the receipt and this is the renderer's own sentence about
+	 * the row it just switched to — and the tone steps to `warning`, because the
+	 * switch did succeed and the model is not usable yet.
+	 */
+	const combined: PickerResult | null =
+		ownerOutcome && switchedNeedsSignIn && ownerOutcome.tone !== "error"
+			? { tone: "warning", text: `${ownerOutcome.text}\n${SIGN_IN_CAVEAT}` }
+			: ownerOutcome;
 
 	/*
-	 * The strip lives INSIDE the dialog, so a refused pick left the user with
-	 * nothing the moment they closed it — the transcript showed no sign that
-	 * anything had been attempted (design D5). The repo already has this
-	 * outcome's home: the composer's own note path (`slash-dispatch.ts`'s `note`,
-	 * which is what a non-picker slash line uses), so a failed pick is written
-	 * there on close. Only a FAILURE is written: a success is already visible in
-	 * the strip, and the owner repaints the band.
+	 * Closing is not cancelling, and it is no longer the moment a failure is
+	 * written: the outcome carries its own note the moment it lands, so that it
+	 * surfaces whether or not this dialog is still open (UX U2). The comment that
+	 * used to sit here described the close-edge write that caused the gap.
 	 */
-	const closeWithOutcome = useCallback(() => {
-		const failure = command.result;
-		if (failure?.tone === "error") {
-			note(`The model was not changed. ${failure.text}`, true);
+
+	/*
+	 * The check mark follows the switch, not the next owner frame (QA Q2).
+	 *
+	 * The receipt is evidence the switch landed; the frame that moves
+	 * `selected_model` can arrive several seconds later, and until it does the ✓
+	 * sat on the model the user just left while the band and the strip named the
+	 * new one. Dropped as soon as the authoritative selector agrees, so it cannot
+	 * outlive the fact it paints.
+	 */
+	useEffect(() => {
+		if (pickedCurrent && currentSelector === pickedCurrent) {
+			setPickedCurrent(null);
 		}
-		onClose();
-	}, [command.result, note, onClose]);
+	}, [currentSelector, pickedCurrent]);
 
 	return (
 		<PickerHost
 			open
-			onClose={closeWithOutcome}
+			onClose={onClose}
 			/*
 			 * The scope this pick applies to, and it has to be visible: the checkbox
 			 * changes what the pick DOES, and a label identical in both states only
@@ -285,9 +408,17 @@ export const ModelPicker: FC<PickerContext> = ({
 			loading={catalogue.isLoading}
 			loadError={listing.loadError}
 			notice={listing.notice}
+			noticeDetail={listing.noticeDetail}
 			searchPlaceholder="Search models"
 			onPick={onPick}
 			busy={command.busy || persist.busy}
+			/*
+			 * The in-flight copy names the change, not the machinery: the user asked
+			 * whether their pick registered, and "the backend" is the
+			 * implementation's noun for their session (design D14, UX nit).
+			 */
+			busyText="Switching the model…"
+			busyLabel="Switching the model"
 			result={combined}
 			toolbar={
 				<div className="flex items-center justify-between gap-3">
@@ -304,16 +435,27 @@ export const ModelPicker: FC<PickerContext> = ({
 						variant="ghost"
 						size="sm"
 						type="button"
-						onClick={() => setLive(true)}
-						disabled={live && catalogue.isFetching}
+						/*
+						 * A control that looks enabled has to DO something (design D13).
+						 *
+						 * Settled, this used to read `Live list` and its click set `live` to a
+						 * value it already had — a second click changed nothing and said
+						 * nothing, while the button kept the idle control's ink and weight, so it
+						 * was indistinguishable from one that works. It keeps its verb instead
+						 * and re-lists when pressed; the row count under it is what says the
+						 * listing came from the providers.
+						 */
+						onClick={() => {
+							if (live) void catalogue.refetch();
+							else setLive(true);
+						}}
+						disabled={catalogue.isFetching}
 					>
 						{refreshing ? (
 							<span className="flex items-center gap-2">
 								<Spinner size="xs" />
 								Refreshing…
 							</span>
-						) : catalogue.data?.source === "live" ? (
-							"Live list"
 						) : (
 							"Refresh from providers"
 						)}
@@ -505,7 +647,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 		if (!selected) return;
 		// The owner admits `data.request` ONCE on attachment; the renderer must
 		// not re-send it. The receipt's admission field records that fact.
-		const outcome = await command.run(
+		const { outcome } = await command.run(
 			which,
 			request ? `${selected} ${request}` : selected,
 		);

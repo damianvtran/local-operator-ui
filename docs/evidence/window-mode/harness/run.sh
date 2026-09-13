@@ -35,6 +35,22 @@ rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
 for name in $(env | sed -n 's/^\(CMUX_[A-Z_]*\)=.*/\1/p'); do unset "$name"; done
 unset LOCAL_OPERATOR_CONFIG_DIR LOCAL_OPERATOR_HOME LOCAL_OPERATOR_DESKTOP_TOKEN 2>/dev/null || true
 
+# A port that is already LISTENING is not a free one: the CDP driver attaches to
+# whatever answers on it, and if that is another agent's app the frames are of
+# THEIR window and the input events go to their session. This happened on
+# 2026-09-13: a run whose CDP port collided with a peer's drove the operator's
+# own config (282 chats on screen) and photographed it, because nothing checked
+# who owned the socket before typing into it. Fail before launching instead of
+# measuring somebody else's app.
+if lsof -nP -iTCP:"$CDP_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "FAIL: something is already listening on the CDP port $CDP_PORT - refusing to drive a window this run does not own (set CDP_PORT=)" >&2
+  exit 1
+fi
+if lsof -nP -iTCP:"$BACKEND_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "FAIL: something is already listening on the backend port $BACKEND_PORT - refusing to attach to a backend this run did not start (set BACKEND_PORT=)" >&2
+  exit 1
+fi
+
 node "$HARNESS/seed.mjs" "$SCRATCH" >/dev/null
 # Optional second seeding pass, for a specialised driver that needs a different
 # STARTING STATE (a configured model, a credential, a longer transcript) rather
@@ -79,15 +95,27 @@ BEFORE="$(frontmost)"
 
 # ELECTRON_BIN lets the caller point at a working Electron when the tree's own
 # install has no binary; the app under test is still the one built in $TREE.
+#
+# The app is launched from $SCRATCH and handed $TREE as its app path, and that
+# is load-bearing rather than tidy: `src/main/backend/config.ts` loads `.env`
+# with `dotenvConfig({ path: join(process.cwd(), ".env"), override: true })`,
+# so a launch whose cwd is the tree reads the TREE's `.env` — whatever another
+# agent left there — and `override: true` means it beats the
+# `VITE_LOCAL_OPERATOR_API_URL` exported below. QA measured exactly that: a
+# checked-out tree carrying `VITE_LOCAL_OPERATOR_API_URL` silently pointed the
+# run at the live backend on 127.0.0.1:1111 instead of the isolated one on
+# $BACKEND_PORT, so the frames would have been of the operator's real
+# conversation. Launching from the scratch root leaves no `.env` for dotenv to
+# find, which is why the isolated URL below is the one the app uses.
 ELECTRON_BIN="${ELECTRON_BIN:-npx electron}"
-( cd "$TREE"
+( cd "$SCRATCH"
   VITE_DISABLE_BACKEND_MANAGER="true" \
   VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$BACKEND_PORT" \
   LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
   LOCAL_OPERATOR_CONFIG_DIR="$SCRATCH/config" \
   LOCAL_OPERATOR_HOME="$SCRATCH/home" \
   LOCAL_OPERATOR_UI_WINDOW_MODE="$MODE" \
-    nohup $ELECTRON_BIN . --remote-debugging-port="$CDP_PORT" \
+    nohup $ELECTRON_BIN "$TREE" --remote-debugging-port="$CDP_PORT" \
     "--user-data-dir=$SCRATCH/profile" "--window-size=$SIZE" \
     >"$SCRATCH/electron.log" 2>&1 & )
 
@@ -102,6 +130,19 @@ for _ in $(seq 1 60); do
   sleep 2
 done
 
+# And once more with the app up: the socket must belong to THIS run's Electron.
+# A second instance that loses the single-instance lock exits, so the listener
+# can only be ours — but the check is what makes that a fact rather than a hope.
+CDP_OWNER=$(lsof -nP -iTCP:"$CDP_PORT" -sTCP:LISTEN -t 2>/dev/null | head -1)
+if [ -z "$CDP_OWNER" ]; then
+  echo "FAIL: no process is listening on the CDP port $CDP_PORT - the app did not start" >&2
+  exit 1
+fi
+if [ "$CDP_OWNER" != "$(app_main_pid)" ]; then
+  echo "FAIL: the CDP port $CDP_PORT belongs to pid $CDP_OWNER, not this run's app ($(app_main_pid)) - refusing to drive it" >&2
+  exit 1
+fi
+
 LOG="$SCRATCH/frontmost.log"; : > "$LOG"
 ( for _ in $(seq 1 120); do
     echo "$(date +%s.%N) $(frontmost) ours=$(app_main_pid)" >> "$LOG"
@@ -115,8 +156,8 @@ node "${DRIVE_SCRIPT:-$HARNESS/drive.mjs}" "$CDP_PORT" "$SCRATCH" "$ROUTE" | tee
 # hands it to this process as `second-instance`, which is the other path that can
 # raise a window — the one a rig hits when it starts a run twice. The second
 # process quits on the lock.
-( cd "$TREE"
-  nohup "$ELECTRON_BIN" . "--user-data-dir=$SCRATCH/profile" \
+( cd "$SCRATCH"
+  nohup "$ELECTRON_BIN" "$TREE" "--user-data-dir=$SCRATCH/profile" \
     >"$SCRATCH/electron-second.log" 2>&1 & )
 sleep 5
 

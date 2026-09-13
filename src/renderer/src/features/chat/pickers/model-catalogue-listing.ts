@@ -35,23 +35,37 @@ export function failedProviders(
 /**
  * The listing's two independent outcomes.
  *
- * `notice` names the providers that did not answer and says plainly that the
+ * `notice` names how many providers did not answer and says plainly that the
  * rows below are the ones that did — so a user can tell an empty provider from
- * a missing one without opening a log. `loadError` is only ever the query's own
+ * a missing one without opening a log — and `noticeDetail` carries the ids
+ * themselves, for the tooltip. The count is the sentence because the ids are
+ * names nobody can act on: the operator's own catalogue produced 21 of them,
+ * three wrapped lines, occupying the top of the dialog before any row was
+ * reachable (design D16, UX nit). `loadError` is only ever the query's own
  * failure, where there is nothing to draw.
  */
 export function catalogueListing(
 	data: DesktopModelCatalogue | undefined,
 	query: { isError: boolean; error: unknown },
 	errorText: (error: unknown) => string,
-): { loadError: string | null; notice: string | null } {
+): {
+	loadError: string | null;
+	notice: string | null;
+	noticeDetail: string | null;
+} {
 	if (query.isError) {
-		return { loadError: errorText(query.error), notice: null };
+		return {
+			loadError: errorText(query.error),
+			notice: null,
+			noticeDetail: null,
+		};
 	}
 	const failed = failedProviders(data);
-	if (failed.length === 0) return { loadError: null, notice: null };
+	if (failed.length === 0)
+		return { loadError: null, notice: null, noticeDetail: null };
 	return {
 		loadError: null,
-		notice: `Some providers did not answer: ${failed.join(", ")}. The rows below are the ones that did.`,
+		notice: `Some providers did not answer (${failed.length}). The rows below are the ones that did.`,
+		noticeDetail: failed.join(", "),
 	};
 }

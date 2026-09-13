@@ -171,6 +171,61 @@ test("the active row's ground is not the ground it is drawn on", () => {
 	);
 });
 
+test("the pointer's and the in-flight mark carry a floored role, not only a wash", () => {
+	/*
+	 * Design D12, stated as the role rather than as the class string.
+	 *
+	 * The pointer's tint is `accent-wash`, which collapses onto the dialog's own
+	 * ground in obsidian (ΔE00 0.77) and is weak in three more themes — so a
+	 * wash-only mark was NO mark at all in the theme the audit measured, which is
+	 * the operator's original report surviving the fix. The structural half is
+	 * `outline-control`: a role the contrast contract asserts at 3:1 against this
+	 * same ground (`picker row pointer mark`), so the mark cannot be washed away
+	 * by a palette. This test asserts the row RENDERS that role; the palette's
+	 * half of the claim is the contract's, because a colour table cannot see a
+	 * class and this file cannot see a palette (see the header).
+	 */
+	const hovered = classesOf(rowHtml({ isHovered: true }));
+	assert.match(
+		hovered,
+		/\boutline-control\b/,
+		"the pointer's mark carries a structural role; the wash alone is invisible in obsidian",
+	);
+	assert.match(hovered, /\bbg-accent-wash\b/, "and keeps the tint where it reads");
+
+	const picked = classesOf(rowHtml({ isPicked: true }));
+	assert.match(
+		picked,
+		/\boutline-control\b/,
+		"the in-flight row keeps its mark even after the pointer leaves it",
+	);
+
+	const idle = classesOf(rowHtml());
+	assert.doesNotMatch(
+		idle,
+		/\boutline-control\b|\bbg-accent-wash\b|\bbg-sunken\b/,
+		"an untouched row is still pixel-identical to the dialog",
+	);
+
+	// The contract is asserted here as well as in the theme gate, because a
+	// palette edit cannot hide behind a green test and a class edit cannot hide
+	// behind a green colour table: the two halves fail independently.
+	const contract = readFileSync(
+		join(ROOT, "scripts/contrast-contract.mjs"),
+		"utf8",
+	);
+	assert.match(
+		contract,
+		/picker row pointer mark/,
+		"the mark's role is asserted against the dialog's own ground in the theme gate",
+	);
+	assert.match(
+		contract,
+		/outline-solid outline-1 -outline-offset-1 outline-control/,
+		"and the call site that renders it is pinned there too",
+	);
+});
+
 test("the pointer's mark and the keyboard's mark are different states", () => {
 	const hovered = rowHtml({ isHovered: true });
 	const active = rowHtml({ isActive: true });
@@ -181,6 +236,16 @@ test("the pointer's mark and the keyboard's mark are different states", () => {
 	);
 	assert.match(classesOf(hovered), /\bbg-accent-wash\b/);
 	assert.match(classesOf(active), /\bbg-sunken\b/);
+
+	// D2's third case, and the one that reads wrongly if the two rules are not
+	// exclusive: the pointer resting on the row the keyboard has ALSO selected
+	// must not paint the pointer's tint on top of the selection ground, or the
+	// dormant mark looks like the live one.
+	assert.doesNotMatch(
+		classesOf(rowHtml({ isHovered: true, isActive: true })),
+		/\bbg-accent-wash\b/,
+		"the pointer's tint is dropped on the row that already carries the selection",
+	);
 
 	// The pointer must not claim the selection: `aria-selected` is the keyboard's
 	// row, and it is what a screen reader announces as "the row Enter picks".
@@ -229,7 +294,14 @@ test("the picked row carries a mark, in the meta slot, until it settles", () => 
 		/200k/,
 		"the mark REPLACES the meta slot rather than sitting beside it, so the row cannot change height while the answer is pending",
 	);
-	assert.match(picked, /Waiting for the backend/);
+	// The default names the change generically; an adapter that knows what it is
+	// doing passes its own words (`/model` passes "Switching the model").
+	assert.match(picked, /Applying the change/);
+	assert.match(
+		rowHtml({ isPicked: true, busyLabel: "Switching the model" }),
+		/Switching the model/,
+		"the adapter's own words reach the announcement",
+	);
 	// A visible spinner is not enough on its own: `Spinner` only carries meaning
 	// in the accessibility tree when it is given a label.
 	assert.match(picked, /role="status"/);
@@ -242,7 +314,7 @@ test("the picked row carries a mark, in the meta slot, until it settles", () => 
 
 /* --------------------------------------------------------- the footer */
 
-test("the footer never advertises controls that do nothing", () => {
+test("the footer never advertises controls that do nothing, and names the pick", () => {
 	assert.equal(
 		pickerFooterHint({ busy: false, hasList: true, rowCount: 0 }),
 		"Esc closes",
@@ -258,23 +330,51 @@ test("the footer never advertises controls that do nothing", () => {
 	);
 	assert.match(
 		pickerFooterHint({ busy: true, hasList: true, rowCount: 12 }),
-		/Waiting for the backend/,
+		/Applying the change/,
 		"'Working' alone is not feedback for a 1.1-4.2 s wait (D3/U2)",
+	);
+	assert.match(
+		pickerFooterHint({
+			busy: true,
+			hasList: true,
+			rowCount: 12,
+			busyText: "Switching the model…",
+		}),
+		/Switching the model/,
+		"the adapter names the change; 'the backend' is the implementation's noun (D14)",
+	);
+
+	/*
+	 * UX U1, as the invariant rather than as a suggestion: the row Enter acts on
+	 * can be scrolled out of view — the audit scrolled 1800px and picked a row
+	 * 1492px above the fold — so the footer NAMES that row. Hover does not steer
+	 * it (design D2), so a word is the only thing that can say which row the key
+	 * is about while the pointer rests elsewhere.
+	 */
+	assert.equal(
+		pickerFooterHint({
+			busy: false,
+			hasList: true,
+			rowCount: 12,
+			activeLabel: "GPT-5.6 Sol",
+		}),
+		"Arrows move · Enter picks GPT-5.6 Sol · Esc closes",
 	);
 });
 
 test("closing while busy is called Close, not Cancel", () => {
 	// The dialog closing does not cancel the operation the owner is already
-	// performing, so the word has to describe what the control does (D3).
+	// performing, so the word has to describe what the control does (D3), and
+	// it is the same word the Esc hint uses — one action, one name (D15).
 	assert.equal(pickerPrimaryLabel({ busy: true, result: null }), "Close");
-	assert.equal(pickerPrimaryLabel({ busy: false, result: null }), "Cancel");
+	assert.equal(pickerPrimaryLabel({ busy: false, result: null }), "Close");
 	assert.equal(
 		pickerPrimaryLabel({ busy: false, result: { tone: "success", text: "ok" } }),
 		"Done",
 	);
 	assert.equal(
 		pickerPrimaryLabel({ busy: false, result: { tone: "error", text: "no" } }),
-		"Cancel",
+		"Close",
 	);
 });
 
@@ -297,14 +397,31 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 		null,
 		"a provider that failed is not a listing that failed — the rows are still there (D4)",
 	);
-	assert.match(partial.notice ?? "", /openrouter, zai/);
+	/*
+	 * The note is the COUNT and the ids are the tooltip (D16, UX nit): the
+	 * operator's own catalogue produced 21 of them, three wrapped lines at the top
+	 * of the dialog before any row was reachable. Both halves are asserted,
+	 * because a count with nowhere to put the names would be the same
+	 * information deleted rather than moved.
+	 */
+	assert.match(partial.notice ?? "", /\(2\)/);
+	assert.doesNotMatch(
+		partial.notice ?? "",
+		/openrouter/,
+		"the ids are not the sentence any more",
+	);
+	assert.equal(partial.noticeDetail, "openrouter, zai");
 
 	const clean = catalogueListing(
 		{ ...rows, source: "initial", errors: {}, credentials_known: true },
 		{ isError: false, error: null },
 		String,
 	);
-	assert.deepEqual(clean, { loadError: null, notice: null });
+	assert.deepEqual(clean, {
+		loadError: null,
+		notice: null,
+		noticeDetail: null,
+	});
 
 	const total = catalogueListing(undefined, {
 		isError: true,
@@ -356,34 +473,84 @@ test("the adapter wires the decisions the tests above pin", () => {
 
 	// D4: the partial note goes to `notice`, and only the query's own failure to
 	// `loadError`. Both halves are asserted because the defect was passing the
-	// note to the wrong prop while both props looked correct in isolation.
+	// note to the wrong prop while both props looked correct in isolation. The
+	// ids travel beside it in `noticeDetail`, which is the tooltip (D16).
 	assert.match(picker, /const listing = catalogueListing\(/);
 	assert.match(picker, /notice=\{listing\.notice\}/);
+	assert.match(picker, /noticeDetail=\{listing\.noticeDetail\}/);
 	assert.match(picker, /loadError=\{listing\.loadError\}/);
-
-	// D9: the shared selector, not a local expression that can regress.
-	assert.match(picker, /const currentSelector = modelSelector\(selected\)/);
 
 	// U4: the live re-list must not blank the list it is refreshing.
 	assert.match(picker, /placeholderData: keepPreviousData/);
-	assert.match(picker, /import \{[\s\S]*keepPreviousData[\s\S]*\} from "@tanstack\/react-query"/);
+	assert.match(
+		picker,
+		/import \{[\s\S]*keepPreviousData[\s\S]*\} from "@tanstack\/react-query"/,
+	);
 
-	// D8: a pending live fetch gets a pending label; the idle label is only for
-	// idle.
-	assert.match(picker, /const refreshing = live && catalogue\.isFetching/);
-	assert.match(picker, /refreshing \? \(/);
+	// D8: a pending live fetch gets a pending label, and the label that says so
+	// is the one this file's own copy assertion can see.
 	assert.match(picker, /Refreshing…/);
+
+	/*
+	 * D13: the settled control must still DO something. `Live list` looked like an
+	 * enabled button and `setLive(true)` on an already-live picker changed nothing
+	 * and said nothing, so the label states a verb and the click re-lists.
+	 */
+	assert.match(picker, /catalogue\.refetch\(\)/);
+	assert.match(picker, /Refresh from providers/);
+	assert.doesNotMatch(
+		picker,
+		/"Live list"/,
+		"a settled label that names a fact rather than an action is what D13 filed",
+	);
 
 	// D7: the checkbox's label states the consequence while it is ticked.
 	assert.match(picker, /This pick also sets the default for new sessions/);
+
+	/*
+	 * D14: the in-flight copy names the change. Asserted on the props the adapter
+	 * passes, because the words live in the host's defaults for every other
+	 * destination.
+	 */
+	assert.match(picker, /busyText="Switching the model…"/);
+	assert.match(picker, /busyLabel="Switching the model"/);
+
+	/*
+	 * UX U1's invariant has two halves, and this is the second: a CLICK moves the
+	 * keyboard's row to the row it clicked. Without it the one row still marked as
+	 * "selected" was one the user never chose, for the whole wait.
+	 */
+	assert.match(
+		source("features/chat/pickers/picker-host.tsx"),
+		/setActive\(index\);\n\t\tvoid pickRef\.current\(option\)/,
+	);
+
+	/*
+	 * QA Q1: "switched and runnable" and "switched but needs sign-in" must not
+	 * produce the same strip. The caveat is appended to the owner's own text and
+	 * the tone steps off `success`; without both, the two outcomes read alike.
+	 */
+	assert.match(picker, /switchedNeedsSignIn/);
+	assert.match(picker, /tone: "warning"/);
+	assert.match(picker, /SIGN_IN_CAVEAT/);
+
+	// QA Q2: the in-force check mark follows the receipt, not the next owner
+	// frame, and is dropped once the authoritative selector agrees.
+	assert.match(picker, /pickedCurrent/);
 });
 
 test("the pick is painted before the owner is awaited, and rolled back on refusal", () => {
 	/*
 	 * U1's ordering is the fix, so it is asserted as an ORDER rather than as
-	 * three separate presences: a paint that happened after the await would
-	 * still exist in the file and would register nothing until the round trip
-	 * (1.1-4.2 s cold) had already finished.
+	 * three separate presences: a paint that happened after the await would still
+	 * exist in the file and would register nothing until the round trip (1.1-4.2 s
+	 * cold) had already finished.
+	 *
+	 * Two anchors, not a textual window. The window this test used to assert
+	 * (`slice(await_ - 400, rollback)`) pinned the DISTANCE between three
+	 * statements, so extracting a predicate or renaming a local moved it while the
+	 * behaviour was intact (reviewer round 1, test design). Index comparison says
+	 * the same thing without pinning the lines between.
 	 */
 	const picker = source("features/chat/pickers/destination-pickers.tsx");
 	const onPick = picker.slice(picker.indexOf("const onPick = useCallback("));
@@ -398,10 +565,21 @@ test("the pick is painted before the owner is awaited, and rolled back on refusa
 		rollback > await_,
 		"and the refusal path must drop it after the outcome is known",
 	);
-	assert.match(
-		onPick.slice(await_ - 400, rollback),
-		/outcome\.kind === "error"/,
-		"a refused switch is what rolls the paint back",
+
+	/*
+	 * UX U2, and the reason the outcome is no longer written on the close edge:
+	 * closing during the wait is the natural response to a long one, and the
+	 * refusal used to have no home by then. The note is written where the answer
+	 * lands, from the same call's result, so the strip and the transcript cannot
+	 * disagree.
+	 */
+	const note = onPick.indexOf("note(`The model was not changed.");
+	assert.ok(note > rollback, "the failure is reported when the answer arrives");
+	assert.match(onPick, /failure\.text/, "in the strip's own words");
+	assert.doesNotMatch(
+		picker,
+		/closeWithOutcome/,
+		"a write on the close edge is exactly the gap U2 filed",
 	);
 });
 
@@ -419,8 +597,84 @@ test("the handle reconciles the paint against the owner's own frames", () => {
 	const page = source("features/chat/components/chat-page.tsx");
 	assert.match(page, /pendingModel: canonical\.pendingModel/);
 	const strip = source("features/chat/session-status/session-status-strip.tsx");
-	assert.match(strip, /pendingModel \?\? frontend\.effective_model/);
-	assert.match(strip, /Waiting for the backend to confirm/);
+	/*
+	 * Reviewer round 1, major 1: the paint outranks the IDENTITY reading only.
+	 * The painted spec is a row — provider, model_id, display name — so
+	 * `effortState` answers `null` for it (no `reasoning_efforts`), and the effort
+	 * chip vanished for the whole 1.1-4.2 s pending window before this rule
+	 * existed. The reading is now drawn from the in-force spec, which is also the
+	 * honest reading for that window: that is the model the session is running.
+	 */
+	assert.match(strip, /bandReadings\(frontend, pendingModel\)/);
+	assert.match(strip, /effortState\(readings\.effort\)/);
+	assert.doesNotMatch(
+		strip,
+		/effortState\(model\)/,
+		"the effort reading cannot be taken off the paint",
+	);
+	// The pending state is no longer colour-and-tooltip only (U3).
+	assert.match(strip, /Switching the model/);
+});
+
+test("the band does not take a reading off the optimistic paint", async () => {
+	/*
+	 * The BEHAVIOUR behind the pin above, exercised on the shipped rule rather
+	 * than described: a session running a model with a ladder, plus a paint built
+	 * the way the adapter builds one, must leave the effort reading intact. The
+	 * reviewer reached this defect by bundling `session-model.ts` and calling
+	 * `effortState` directly; this does the same through `bandReadings`, which is
+	 * the function that decides it.
+	 */
+	const { bandReadings, effortState } = await bundleInto(
+		"band-readings",
+		`
+		export { bandReadings, effortState } from "./src/renderer/src/features/chat/session-status/session-model";
+	`,
+	);
+	const IN_FORCE = {
+		provider: "anthropic",
+		model_id: "claude-opus-5",
+		display_name: "Claude Opus 5",
+		reasoning_effort: "high",
+		reasoning_efforts: ["minimal", "low", "medium", "high"],
+	};
+	const frontend = {
+		selected_model: IN_FORCE,
+		effective_model: IN_FORCE,
+	};
+	// The paint the adapter makes, verbatim: a provider, an id and a row label.
+	const paint = {
+		provider: "openai",
+		model_id: "gpt-5.6-sol",
+		display_name: "GPT-5.6 Sol",
+	};
+
+	const readings = bandReadings(frontend, paint);
+	assert.equal(
+		readings.identity,
+		paint,
+		"the identity reading is the user's paint, so the pick registers at once",
+	);
+	assert.equal(
+		readings.effort,
+		IN_FORCE,
+		"and the effort reading stays on the model the session is running",
+	);
+	assert.notEqual(
+		effortState(readings.effort),
+		null,
+		"the chip survives the pending window",
+	);
+	assert.equal(
+		effortState(paint),
+		null,
+		"which is the defect: the painted spec has no ladder to read",
+	);
+
+	// The settled case, unchanged: both readings off the owner's own spec.
+	const settled = bandReadings(frontend, null);
+	assert.equal(settled.identity, IN_FORCE);
+	assert.equal(settled.effort, IN_FORCE);
 });
 
 test("the listbox owns the pointer, and clears it on the way out", () => {
@@ -429,6 +683,14 @@ test("the listbox owns the pointer, and clears it on the way out", () => {
 	// The defect's exact shape, pinned so it cannot come back by copy-paste: the
 	// row that painted the dialog's own ground.
 	assert.doesNotMatch(host, /isActive && "bg-elevated"/);
+	/*
+	 * UX U5: the scroll container reached the tab sequence on its own (Chrome
+	 * makes a scrollable region focusable), drew a focus ring that reads as "this
+	 * region is in play", and then answered neither arrow key nor Enter. `-1`
+	 * keeps it programmatically reachable and out of the tab order, which is what
+	 * the comment beside it had always claimed.
+	 */
+	assert.match(host, /tabIndex=\{-1\}/);
 	const contract = readFileSync(join(ROOT, "scripts/contrast-contract.mjs"), "utf8");
 	assert.match(
 		contract,

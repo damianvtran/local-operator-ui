@@ -733,12 +733,21 @@ export function useCanonicalSessionStream(
 	 *
 	 * An effect over the published frontend rather than a clause inside the frame
 	 * reducer: the reducer is a pure fold of the stream with one job, and this is a
-	 * comparison of two fields with two different lifetimes. `sequence` changes on
-	 * every owner frame, so the comparison runs exactly when there is something new
-	 * to compare, and it clears only when the owner's own spec names the painted
-	 * model — a frame that merely arrives is not evidence the switch landed.
+	 * comparison of two fields with two different lifetimes. It compares when
+	 * there is something new to compare — a new owner snapshot, or a paint the
+	 * user just made — and clears only when the owner's own spec names the painted
+	 * model: a frame that merely arrives is not evidence the switch landed.
+	 *
+	 * The dependency array is what the comment above used to claim without having
+	 * it: the effect ran after EVERY render with no array at all, which is extra
+	 * comparisons rather than a bug, but left the file describing a trigger it did
+	 * not have (reviewer round 1, minor 3). `view.frontend` and `view.pendingModel`
+	 * are both read here and are the only two things that can change the answer, so
+	 * the array is exact — and with it in place the `useExhaustiveDependencies`
+	 * suppression that used to sit here had nothing left to suppress (`biome`
+	 * reported it as `suppressions/unused`), so it is gone rather than kept as
+	 * decoration.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the frontend revision is the trigger; `pendingModel` is the comparison's other side.
 	useEffect(() => {
 		const pending = view.pendingModel;
 		if (!pending) return;
@@ -751,7 +760,7 @@ export function useCanonicalSessionStream(
 		) {
 			setView((current) => ({ ...current, pendingModel: null }));
 		}
-	});
+	}, [view.frontend, view.pendingModel]);
 
 	// The bounded backstop for a confirmation that never arrives; see the constant.
 	useEffect(() => {

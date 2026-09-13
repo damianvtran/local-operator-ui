@@ -33,7 +33,10 @@
  * is what makes the segment's presence informative.
  */
 
-import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
 
 export type ModelIdentity = {
 	/** What the chip prints: the human name if resolution found one, else the id. */
@@ -177,6 +180,37 @@ export function modelIdentity(
 		echoesId(display, model.model_id) ||
 		display.toLowerCase() === "unknown";
 	return { name: refused ? bareId(selector) : display, selector };
+}
+
+/**
+ * Which spec each of the band's two readings is drawn from, while a pick is
+ * unconfirmed.
+ *
+ * ## Why the two readings come from different specs
+ *
+ * The user's own paint OUTRANKS the owner for the IDENTITY reading: a switch
+ * that pays a cold runtime bind measures 1.1-4.2 s, and the one thing the user
+ * asked is whether their choice registered (latency U1).
+ *
+ * It must NOT outrank the effort reading. The paint is assembled from the picked
+ * ROW (`destination-pickers.tsx`), which carries a provider, a model_id and a
+ * display name and nothing else — `reasoning_efforts` is absent, so
+ * `effortState` answers `null` (an absent ladder, not an empty one) and the chip
+ * VANISHES for the whole pending window, then reflows back in when it returns.
+ * That is the class this file already refuses: a cold snapshot ships the label
+ * `unknown` rather than nothing, because rendering nothing is a claim. The
+ * in-force spec is also the honest reading for that window — the session is
+ * still running the model it was running, and the level in force is that
+ * model's.
+ */
+export function bandReadings(
+	frontend: CanonicalFrontendState | null | undefined,
+	pendingModel: CanonicalModel | null,
+): { identity: CanonicalModel | null; effort: CanonicalModel | null } {
+	// `selected_model` is the fallback for an owner that reports no effective
+	// spec (nothing has run yet), which is the state a fresh session is in.
+	const inForce = frontend?.effective_model ?? frontend?.selected_model ?? null;
+	return { identity: pendingModel ?? inForce, effort: inForce };
 }
 
 export type EffortState = {
