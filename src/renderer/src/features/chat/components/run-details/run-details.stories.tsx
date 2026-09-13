@@ -123,6 +123,8 @@ const RunPane = ({
 	previewPage = null,
 	width = 420,
 	pulses = {},
+	onReaderChildChange = () => undefined,
+	onClose = () => undefined,
 }: {
 	details: ReturnType<typeof deriveRunDetails>;
 	mcpServers?: readonly Record<string, unknown>[];
@@ -132,6 +134,13 @@ const RunPane = ({
 	previewPage?: DesktopChildTranscriptPage | null;
 	width?: number;
 	pulses?: Record<string, number>;
+	/**
+	 * Real callbacks, for the one harness story that walks the keys. Every
+	 * photographed story leaves them as no-ops: a still cannot carry a key press,
+	 * so a frame proves nothing either way about the ladder.
+	 */
+	onReaderChildChange?: (id: string | null) => void;
+	onClose?: () => void;
 }) => (
 	<>
 		<ResizableDivider
@@ -158,8 +167,8 @@ const RunPane = ({
 				paneWidth={width}
 				readerChildId={readerChildId}
 				previewPage={previewPage}
-				onReaderChildChange={() => undefined}
-				onClose={() => undefined}
+				onReaderChildChange={onReaderChildChange}
+				onClose={onClose}
 			/>
 		</div>
 	</>
@@ -692,6 +701,80 @@ export const RosterMembers: Story = {
 	decorators: [withCanvasClosed],
 };
 
+/**
+ * The pane with REAL callbacks and real state, for a keyboard walk. Deliberately
+ * NOT a frame, and deliberately not in `scripts/capture-evidence.mjs`'s STORIES.
+ *
+ * Every photographed story leaves `onReaderChildChange` and `onClose` as no-ops,
+ * because a still cannot carry a key press: a frame is identical whether or not
+ * Back pops a level, and whether or not focus landed anywhere. The rules round 1
+ * settled are keyboard-visible ONLY — focus entering a reader as it opens,
+ * `Escape` fired from the TRIGGER (which lives outside the pane), Back popping
+ * one level and leaving the pane at the first — so what they need is a pane whose
+ * callbacks move real state, and a driver that presses the keys. This is that
+ * pane: the same `RunPanel`, mounted the way `chat-content.tsx` mounts it, with
+ * `readerChildId` and the store's open flag as state.
+ *
+ * A photograph of it would be a picture of the harness (whatever the walk last
+ * pressed), so it contributes no frame and is absent from the sweep on purpose.
+ */
+const InteractiveGround = () => {
+	/*
+	 * The pane's open state is the STORE's, exactly as `chat-content.tsx` keeps
+	 * it, and not local state: the trigger toggles that flag directly, and a
+	 * harness that owned a second copy would photograph a pane that stayed open
+	 * while the store said closed — the one thing a keyboard walk must not be
+	 * confused by, since closing the pane is half of what it presses keys at.
+	 */
+	const open = useUiPreferencesStore((state) => state.isRunPanelOpen);
+	const setRunPanelOpen = useUiPreferencesStore(
+		(state) => state.setRunPanelOpen,
+	);
+	const [readerChildId, setReaderChildId] = useState<string | null>(null);
+	const details = useMemo(() => deriveRunDetails(fixtures.rosterMembers()), []);
+	const page = useMemo(() => fixtures.childPage({ includeTool: true }), []);
+	useEffect(() => {
+		useUiPreferencesStore.setState({
+			isRunPanelOpen: true,
+			isCanvasOpen: false,
+		});
+	}, []);
+	// The pane's reader belongs to one session's lineage: closing the pane drops
+	// it, which is `chat-content.tsx`'s own rule.
+	useEffect(() => {
+		if (!open) setReaderChildId(null);
+	}, [open]);
+	return (
+		<div className="flex h-screen overflow-hidden bg-canvas">
+			<div className="flex min-w-0 flex-1 flex-col">
+				<ChatHeader
+					agentName="Core"
+					description="Invoices workspace · on this machine"
+					onOpenOptions={() => undefined}
+					runDetails={details}
+					mcpServers={[]}
+					listOnScreen={open && readerChildId === null}
+					readerChildId={readerChildId}
+				/>
+				<TranscriptGround />
+			</div>
+			{open && (
+				<RunPane
+					details={details}
+					readerChildId={readerChildId}
+					previewPage={page}
+					onReaderChildChange={setReaderChildId}
+					onClose={() => setRunPanelOpen(false)}
+				/>
+			)}
+		</div>
+	);
+};
+
+export const InteractivePane: Story = {
+	render: () => <InteractiveGround />,
+};
+
 export const TodosOnly: Story = {
 	render: () => (
 		<ChatColumn
@@ -768,6 +851,11 @@ export const TodosPhased: Story = {
  *
  * The control is `todos-phased`, where every phase is named; this frame is the
  * one where the implicit half renders headerless and its items join the list.
+ */
+/**
+ * The unnamed group AFTER a named phase, which is the shape `§ 6.2`'s fold has
+ * to be honest about: the plan's own boundary is the rule above the group, since
+ * the group has no name to carry one (round 1, Q9/U1-5).
  */
 export const TodosImplicitPhase: Story = {
 	render: () => (
