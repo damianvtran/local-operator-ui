@@ -1,5 +1,33 @@
 {
- "badges": null,
+ "atShotSnapshot": true,
+ "badges": [
+  {
+   "drawn": "Agents",
+   "name": "Agents"
+  },
+  {
+   "drawn": "Teams",
+   "name": "Teams"
+  },
+  {
+   "drawn": "All chats 1 1 matching",
+   "name": "All chats 1 matching"
+  },
+  {
+   "drawn": "New chat",
+   "name": "New chat"
+  },
+  {
+   "drawn": "Active chats",
+   "name": "Active chats"
+  },
+  {
+   "drawn": "Previous chats 1 1 matching",
+   "name": "Previous chats 1 matching"
+  }
+ ],
+ "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 1 1 matching New chat Active chats Nothing running right now. Previous chats 1 1 matching Recent Ship the search endpoint \u00b7 release-pod-observability-remediation-and-incident-response-lead Start a chat Choose an agent or team, or start a new chat. Nothing starts until you send. N",
+ "capturedAgainst": "the 0.20.1 sync",
  "panel": {
   "right": 500,
   "styleWidth": "280px",
@@ -40,7 +68,7 @@
   }
  ],
  "searchInFlight": false,
- "sidebarText": "Chats Agents Create agent Teams Create team All chats 1 matching New chat Active chats Nothing running right now. Previous chats 1 matching Recent Ship the search endpoint \u00b7 release-pod-observability-remediation-and-incident-response-lead",
+ "sidebarText": "Chats Agents Create agent Teams Create team All chats 1 1 matching New chat Active chats Nothing running right now. Previous chats 1 1 matching Recent Ship the search endpoint \u00b7 release-pod-observability-remediation-and-incident-response-lead",
  "url": "/?measure=1&width=280&q=endpoint&shot=after-longbinding-280-dark",
- "viewport": "1440x817@2"
+ "viewport": "1440x873@2"
 }

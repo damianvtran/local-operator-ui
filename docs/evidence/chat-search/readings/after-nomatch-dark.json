@@ -1,9 +1,37 @@
 {
- "badges": null,
+ "atShotSnapshot": true,
+ "badges": [
+  {
+   "drawn": "Agents",
+   "name": "Agents"
+  },
+  {
+   "drawn": "Teams",
+   "name": "Teams"
+  },
+  {
+   "drawn": "All chats",
+   "name": "All chats"
+  },
+  {
+   "drawn": "New chat",
+   "name": "New chat"
+  },
+  {
+   "drawn": "Active chats",
+   "name": "Active chats"
+  },
+  {
+   "drawn": "Previous chats",
+   "name": "Previous chats"
+  }
+ ],
+ "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Nothing in your chats matches \u201ckubernetes\u201d. Nothing in your chats matches kubernetes. Agents Create agent Teams Create team All chats New chat Active chats Nothing running right now. Previous chats Start a chat Choose an agent or team, or start a new chat. Nothing starts until you send. New chat {\"url\":\"/?measure=1&q=kubernete",
+ "capturedAgainst": "the 0.20.1 sync",
  "panel": null,
  "rows": [],
  "searchInFlight": false,
  "sidebarText": null,
  "url": "/?measure=1&q=kubernetes&shot=after-nomatch-dark",
- "viewport": "1440x817@2"
+ "viewport": "1440x873@2"
 }

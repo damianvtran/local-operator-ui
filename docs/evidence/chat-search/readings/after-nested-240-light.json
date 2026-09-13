@@ -1,5 +1,33 @@
 {
- "badges": null,
+ "atShotSnapshot": true,
+ "badges": [
+  {
+   "drawn": "Agents",
+   "name": "Agents"
+  },
+  {
+   "drawn": "Teams",
+   "name": "Teams"
+  },
+  {
+   "drawn": "All chats 3 3 matching",
+   "name": "All chats 3 matching"
+  },
+  {
+   "drawn": "New chat",
+   "name": "New chat"
+  },
+  {
+   "drawn": "Active chats",
+   "name": "Active chats"
+  },
+  {
+   "drawn": "Previous chats 3 3 matching",
+   "name": "Previous chats 3 matching"
+  }
+ ],
+ "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents coder 3 Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 3 3 matching New chat Active chats Nothing r",
+ "capturedAgainst": "the 0.20.1 sync",
  "panel": {
   "right": 460,
   "styleWidth": "240px",
@@ -216,7 +244,7 @@
   }
  ],
  "searchInFlight": false,
- "sidebarText": "Chats Agents coder 3 Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 3 matching New chat Active chats Nothing running right now. Previous chats 3 matching Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+ "sidebarText": "Chats Agents coder 3 Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 3 3 matching New chat Active chats Nothing running right now. Previous chats 3 3 matching Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation",
  "url": "/?measure=1&theme=localOperatorLight&width=240&q=retention&drafts=a1b2c3d4e5f1,a1b2c3d4e5f7&shot=after-nested-240-light",
  "viewport": "1440x873@2"
 }
