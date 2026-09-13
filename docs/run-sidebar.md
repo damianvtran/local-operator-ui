@@ -379,13 +379,30 @@ always on screen.
   documents are per-conversation, `canvas-store.ts:22-30`, `:97-105`), and a
   reader pointed at another session's child is not a state anything should be
   able to reach.
-- **Escape** has a two-step ladder, and it is bound on the panel container, not
-  on `window`:
-  - reader open → back one level (the TUI's `esc`, `subagent_view.py:3423-3424`);
+- **Escape** leaves the VIEW, and it is bound on the DOCUMENT while the pane is
+  open, guarded to a press that came from inside the pane or from the trigger
+  (round 1, U1-2):
+  - reader open → leave the reader for the roster (the TUI's `esc` = `_leave`,
+    `subagent_view.py:3423-3424`, which leaves the mode rather than stepping up a
+    level — the one-level key is its own binding, `p` = `action_subagent_parent`,
+    `app.py:2885`, `:24350-24351`);
   - at the roster → close the panel and return focus to the trigger.
-  The window-level Escape that cancels a pending session open
-  (`chat-page.tsx:804-815`) is untouched; the panel's handler stops propagation
-  so the two cannot both act on one press.
+  **`⌘[`/`Ctrl+[` is the platform's back gesture and takes the BACK rule**, not
+  this one: it pops one level while the reader is deeper than one, and leaves the
+  pane at the first level (see § 5.5). Bound on the container it could never see
+  a key pressed on the trigger, because the trigger lives in the header —
+  outside the pane's subtree — so the state the trigger's own click produces
+  could not be left with `Escape` at all, and `⌘[` was equally dead from there.
+  The guard is what keeps a composer `Escape` the text field's: the handler
+  acts only when the event's target is inside the pane or is
+  `[data-run-panel-trigger]`. The window-level Escape that cancels a pending
+  session open (`chat-page.tsx:804-815`) is untouched; the panel's handler stops
+  propagation so the two cannot both act on one press.
+- **Closing the pane returns focus to the trigger**, and only when the close took
+  it: focus on `<body>` (the ✕ unmounts the button the press landed on) or
+  anywhere inside the pane is a close this button's focus belongs to, while focus
+  on something else the user just pressed — the canvas button that swaps the slot
+  — is left alone.
 - The panel is **not** a Radix portal and therefore not a dialog: it is an
   in-flow `<section>` with an `aria-label="Run details"` (the canvas's own
   precedent, `canvas/index.tsx:363-367`), so the old `aria-dialog-name` work and
@@ -426,14 +443,52 @@ Three things change:
    `scripts/run-detail-model.test.mjs`. The expanded state is component state and
    resets when the panel closes.
 
+### Membership — which rows belong in the roster and which the tally counts
+
+**A roster row is a `task` row whose parent is not itself a `task` row on the
+wire.** Two clauses, and both are load-bearing:
+
+- **`type === "task"`.** `frontend.jobs` is not a roster: it is
+  `comms.job_rows()`, which snapshots the ROOT session's job manager AND every
+  live child's (`harness/comms.py:799-824`), so it carries the session's own tool
+  jobs and each child's own tool calls beside the children themselves — all
+  minted by the same ledger, all shaped like jobs. A tool row says so in its
+  `type` (the tool's name — `bash`, `read` — with a null `agent_role` and a null
+  `session_id`), and until round 1 the roster painted those rows: one delegated
+  child mid-flight read `2 running` with the child's `sleep 150` bash call sorted
+  above it, and the tally inflated with it. `type` is the discriminator rather
+  than `agent_role` (a display field whose `task` default is suppressed) or
+  `session_id` (which a RESTORED child row can lack while still being a child). A
+  row with no `type` at all is KEPT: every `JobState` this wire has shipped has
+  one, so that row is a runtime this renderer has not met, and hiding a real child
+  is the worse of the two failures.
+- **Its parent is not on the list.** `parent_job_id` names the job that launched
+  the row, so a row whose parent IS on the wire was launched from inside another
+  child — a DESCENDANT (a grandchild). It belongs to that parent's `N children`
+  control (§ 5.5), not to the top level: as a top-level row it double-reported the
+  work and inflated the tally (round 1, Q2). The test is whether the parent is in
+  the list rather than whether `parent_job_id` is null, because
+  `comms.job_rows()` returns a child's raw parent id when the record it names is
+  gone and resumed attempts drop their predecessor ids — a row nothing could reach
+  from anywhere is a member by construction.
+
+Members are what the roster renders, what its tally counts, and what the
+`danger` dot's ledger is built from (`onScreenFailures`/`visibleFailures`
+`details.subagents`) — one list, so a failure the panel cannot show can never hold
+the dot. The full `task` set rides beside it as `RunDetails.lineage`, which is
+what the READER walks: the breadcrumb's ancestors, the peer stepper and the
+`N children` control are all questions about the lineage, and a walk that could
+only see members would stop at the first level (§ 5.5).
+
 The reader's needs add **three fields to `SubagentRow`**, all read off the job row
 that already arrives (no wire change): `childSessionId` (from `session_id` — the
 child's transcript directory name, `harness/comms.py:752-768`), `parentJobId`
-(from `parent_job_id`), and `childCount` (derived in the renderer by grouping
-`frontend.jobs` on `parent_job_id`). `resultText` and `errorText` become full
-strings rather than `errorLine` alone, because the reader's outcome block needs
-the whole thing (§ 5.2) — the roster's own `errorLine` rule (first line only,
-`run-detail-model.ts:679-681`) is unchanged.
+(from `parent_job_id`), and `childCount` (derived in the renderer by grouping the
+session's `task` rows on `parent_job_id` — over the LINEAGE, so a parent's control
+counts the descendants the roster does not list). `resultText` and `errorText`
+become full strings rather than `errorLine` alone, because the reader's outcome
+block needs the whole thing (§ 5.2) — the roster's own `errorLine` rule (first
+line only, `run-detail-model.ts:679-681`) is unchanged.
 
 ---
 
@@ -567,6 +622,20 @@ message ends, never per stream delta (`harness/types.py:1580-1591`), and
   child settles, and then stops. No timer runs for a settled child, and none runs
   while the panel is closed — the same discipline the panel's elapsed clock
   already follows (`run-details-clock.ts`, `run-detail-model.ts:918-922`).
+- **The reader header's elapsed value is driven by that same clock, not by the
+  wire** (round 1, Q3). A running child's `elapsedLabel` is measured from
+  `start_time`, and `frontend.update` is published only when the runtime has a
+  field delta to send — so the label freezes whenever the child goes quiet, which
+  is exactly when the number matters. The roster's rows have been re-measured at
+  1 Hz from their own start times since the clock was written; the reader's header
+  is mounted by the PANE rather than by the roster's body, so it sat on the last
+  published label instead: QA sampled `running 3s` six times over ~20 s while the
+  wire's own age for that job was 109 s, and the same header read `2m3s` only
+  after the child settled. `useChildRowClock` is the one-row half of
+  `useRunDetailsClock` (`retimeChildRow` is the model's one-row rule), so the two
+  surfaces cannot come to different answers about which rows still have a clock —
+  and only one of them is mounted at a time, because the pane renders the reader
+  OR the roster.
 - **The cost is stated, because it is real.** `read_transcript_page` is a
   sequential scan of the whole file that retains `limit + 1` rows
   (`session/transcript.py:361-428`) — there is no tail-only read — so each poll
@@ -601,22 +670,34 @@ message ends, never per stream delta (`harness/types.py:1580-1591`), and
 
 **Adopted: the path, derived from lineage.** The reader's position is the chain
 `session → child → … → current`, built by walking `parent_job_id` over
-`frontend.jobs` — the TUI's `_ancestors` model, which is what its breadcrumb
-paints (`subagent_view.py:3196-3206`) and what the wire was explicitly extended
-to carry (`frontend_state.py:1425-1443`: *"lets a follower rebuild the full
-parent/peer/child graph from `state.jobs` alone, so the hierarchy keys navigate
-the authoritative structure rather than silently doing nothing"*).
+`RunDetails.lineage` — every `task` row the wire carries, which includes the
+descendants the roster does not list (§ 4) — the TUI's `_ancestors` model, which
+is what its breadcrumb paints (`subagent_view.py:3196-3206`) and what the wire
+was explicitly extended to carry (`frontend_state.py:1425-1443`: *"lets a
+follower rebuild the full parent/peer/child graph from `state.jobs` alone, so the
+hierarchy keys navigate the authoritative structure rather than silently doing
+nothing"*).
 
 | binding | action | TUI analogue |
 |---|---|---|
 | click a roster row | open that child | `subagent_panel.py:1509` |
 | `Enter` / `Space` on a focused row | open that child | `:1374` |
-| click the back control, or `Escape` | pop one level; at the root, close the panel | `esc` = `_leave` (`subagent_view.py:3423`), handled by `_close_subagent_view` (`app.py:24335`) |
-| `⌘[` / `Ctrl+[` | same as back (the platform's own back gesture) | `p` = parent (`app.py:2885`) |
+| click the back control, or `⌘[` / `Ctrl+[` | pop one level while the reader is deeper than one; at the first level, leave the pane (the same exit as the ✕ and the breadcrumb's root crumb) | `p` = parent (`app.py:2885`, `:24350-24351`); `r` = root (`:2889`) at the top |
+| `Escape` | leave the reader for the roster from any depth; at the roster, close the pane and focus the trigger | `esc` = `_leave` (`subagent_view.py:3423-3424`, handled by `_close_subagent_view`, `app.py:24511-24535`) |
 | click a breadcrumb crumb | jump to that level | the breadcrumb itself |
 | click a peer step (◀ / ▶) | previous / next sibling, in the authoritative sibling order | `[` / `]` = `subagent_peer(∓1)` (`app.py:2886-2887`) |
 | a "N children" control in the header, when the child has children | descend to the first child | `c` = `subagent_child` (`:2888`) |
-| clicking the trigger, the `PanelRightClose` button, or breadcrumb root + one more back | close the panel | `r` = `subagent_root` (`:2889`), `esc` at the root |
+| clicking the trigger, the `PanelRightClose` button, or the breadcrumb's root crumb | close the pane | `r` = `subagent_root` (`:2889`), `esc` at the root |
+
+**Back and `Escape` are deliberately two rules, not one spelling of the same
+thing.** The TUI separates "up one level" (`p`) from "leave the mode" (`esc`),
+and round 1's U1-3 correction is what settled it here: the reader's back control
+pops one level while there is a level to pop and leaves the PANE at the first one,
+while `Escape` is the way out of the reader at any depth and closes the pane from
+the roster. The breadcrumb pop and the back control therefore still agree at every
+depth above the first — which is what the original finding measured — and the odd
+state, a first-level child's page, is left by the same two controls: back (out of
+the pane) and `Escape` (back to the roster).
 
 **Rejected: a visit-history stack** (open A, hop to B, back → A). It would have
 to be maintained beside the lineage, and it diverges from the tree in exactly the
@@ -648,8 +729,8 @@ than a puzzle.
 | child settles (success) | one final refetch, outcome block appears, the header's status icon and elapsed settle, the elapsed timer stops |
 | child fails | final refetch, outcome block becomes the verbatim `error_text` in machine voice, header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
 | child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the outcome block says what the wire said |
-| child never wrote a transcript | the body shows one quiet line naming that fact (§ 10's `pending` state) and the reader retries on the next pulse |
-| transcript gone from disk | the body shows the final "no longer on disk" line (`gone`) |
+| child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
+| the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
 
 ---
@@ -726,11 +807,23 @@ the plan is not repeated between the panel's two sections. Verified, not assumed
   state) now reads as its name and `+5 more`; its completion is legible from
   `+5 more` only in combination with the rows that survived, and from the section
   tally when it is not. § 6.4 rejects the alternative that keeps the counts.
-- **An implicit phase is headerless wherever it appears.** Fix (2) by applying
-  `isNamedPhase`'s test per phase rather than to the whole plan: a phase whose
-  name is `IMPLICIT_PHASE_NAME` renders no header, and its items join the plan as
-  a leading unnamed group (its own `+N more` row still discloses what the cap
-  took from it — the accountability rule of § 6.4 below is kept). A plan whose
+- **An implicit phase is headerless wherever it appears, and it carries its own
+  boundary when it does not lead.** Fix (2) by applying `isNamedPhase`'s test per
+  phase rather than to the whole plan: a phase whose name is
+  `IMPLICIT_PHASE_NAME` renders no header, and its items join the plan as an
+  unnamed group (its own `+N more` row still discloses what the cap took from it
+  — the accountability rule of § 6.4 below is kept). The fold assumes the group
+  LEADS, which is the ordinary case because it is what the first `add` creates —
+  but the backend can grow it after a named phase, and then the fold loses the
+  group's only boundary: its items render at the previous phase's indent under
+  that phase's header, and with the per-phase counts gone (fix 1) nothing else
+  says where one ends. Round 1's U1-5 measured exactly that. So a headerless
+  group that is NOT first is separated by one `hairline` rule, which is the only
+  rule the plan draws: a NAMED phase is bounded by its own header line, so a rule
+  appears exactly where the name that would have carried the boundary is absent.
+  Heading it instead is what fix (2) removed (a `Todos` phase under a `To-dos`
+  section), and inventing a word for the group would be a claim the wire does not
+  make (`branding.md` § 7's rule for machine text). A plan whose
   implicit phase is followed by named ones then reads as one list with real
   sections, which is exactly the shape asked for. This is a **bug fix against
   this codebase's own vocabulary**, not a TUI port: the backend's `_todo_view_text`
@@ -863,8 +956,8 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
 |---|---|---|---|---|
 | `connected` | `Check` | `connected` | no | — |
 | `connecting` | `LoaderCircle`, `motion-safe:animate-spin` | `connecting` | no | — |
-| `auth-required` | `CircleAlert` | `auth-required` | **yes** | `— Grant this server account access in Settings` |
-| `disconnected` | `X` | `disconnected` | **yes** | `— Reconnect this server in Settings` |
+| `auth-required` | `CircleAlert` | `auth-required` | **yes** | `— Grant this server account access in Settings`, or the canonical projection's own error text when it carries one |
+| `disconnected` | `X` | `disconnected` | **yes** | `— Reconnect this server in Settings`, or the canonical projection's own error text when it carries one |
 | `cold` | — (the section's own state, below) | — | no | — |
 | anything else | `CircleHelp` | the wire's own word | **yes** | none — a fix for a word this build cannot name would be a guess |
 
@@ -889,10 +982,25 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   ledger is the whole set. A cap here would put a problem behind a control.
 - **The section's tally** follows its neighbours' grammar (label left, quiet
   right-aligned tally): `{connected} of {total} connected`, and `·
-  {problems} need attention` when there is one. Those are two different facts
-  rather than one restated — `connecting` is neither connected nor a problem, so
-  the healthy count does not imply the problem count — which is why § 6.2's
-  de-duplication argument does not apply here.
+  {problems} needs attention` (singular) or `need attention` when there is one.
+  Those are two different facts rather than one restated — `connecting` is
+  neither connected nor a problem, so the healthy count does not imply the
+  problem count — which is why § 6.2's de-duplication argument does not apply
+  here. The clause AGREES with the trigger's own label (`1 MCP server needs
+  attention`), which is the round-1 fix: the two surfaces read the same count in
+  the same words, in one model function (`mcpTally`), because they said `1 need
+  attention` and `1 MCP server needs attention` about the same server (U1-7/Q7).
+- **The DIAGNOSIS outranks the remedy**, and it is the one field of the canonical
+  projection this section renders (§ 7.4). `mcp.list` reports status, tool count
+  and configuration and no reason at all, so a server broken by its own command —
+  QA's `/nonexistent/definitely-not-a-binary` — got `Reconnect this server in
+  Settings`, which cannot fix a command that does not exist, and the runtime's own
+  `[Errno 2] No such file or directory: …` was rendered nowhere in the app (round
+  1, U1-8). The row's second line is now the canonical
+  `frontend.mcp_servers[].error` when the read carries one — machine voice,
+  verbatim, like every other exception this app prints — and the hint when it does
+  not. It is only ever taken for a row the RENDERED read already calls a problem,
+  so a startup failure cannot sit under a live `connected`.
 - **The cold state is the SECTION's, not the row's.** The route's cold branch
   hard-codes `"status": "cold"` for every configured server
   (`desktop_lifecycle.py:127`), so a per-row status column would print one jargon
@@ -985,7 +1093,16 @@ operator asked for does not exist. Three facts decide how:
    happening" case this surface exists for.
 
 **Therefore: `mcp.list` is the one rendering source, polled; the canonical
-projection is a change signal only.**
+projection is a change signal — with exactly one field of it rendered, on exactly
+one line.** The `error` string is the exception, and it is forced: `mcp.list`
+carries no reason for a server being down at all (`MCPDesktop.snapshot`), so the
+projection is the only place the runtime's own failure text exists, and without
+it a row broken by its own command got a remedy that cannot work and no diagnosis
+(§ 7.2, round 1 U1-8). The exception is bounded: it is read only for a row the
+RENDERED read already calls a problem, so a stale startup failure cannot
+contradict a live `connected`, and it never reaches the tally, the dot or a
+row's status word — status, tool count, qualifier and the row's existence all
+still come from `mcp.list` alone.
 
 - **Cadence: 15 s while the panel is closed, 5 s while it is open**, and never
   while nobody is watching. The closed cadence is the one that pays for the
@@ -1170,7 +1287,25 @@ exact steps inside a stated range are the implementation's to choose.
   part of the page. Opening it leaves focus on the trigger; the reader, when
   opened from a row, moves focus into the reader's body (so `Escape` and the
   scroll keys work there) and returns it to that row on the way back.
-- Escape is bound on the panel container and stops propagation (§ 3.5).
+- **That focus move is driven from the reader's STATE, not from its mount.**
+  The transcript element only exists once the page is readable, so an effect that
+  ran on mount focused `null` while the body painted `Loading…` and never
+  retried — `document.activeElement` stayed on `<body>`, and `Escape` and the
+  reader's paging keys were dead until the user pressed Tab (round 1, U1-1/Q4).
+  The reader's root carries `tabIndex={-1}` and holds the focus for the states
+  that have no transcript yet (`loading`, `pending`, `gone`, `error`, an
+  unaddressed child), so a reader opened on any of them is still leaveable by
+  keyboard; the moment a transcript mounts it takes the focus, because that is
+  the element that pages.
+- Escape is bound on the DOCUMENT while the pane is open, guarded to a press from
+  inside the pane or from the trigger, and stops propagation (§ 3.5) — the
+  trigger is outside the pane's subtree, so a handler on the container could
+  never see a key pressed on it.
+- **Closing the pane returns focus to the trigger** when the close took it (§ 3.5).
+- **The descend control is named for its action and its count**: `aria-label` and
+  the tooltip both read `Open 1 child subagent` / `Open 2 child subagents` while
+  the visible label reads `1 child` / `2 children`. It used to be a hard-coded
+  `1 children` with no name at all (round 1, U1-6/Q8).
 - **Motion**: the only animation is the running child's spinner, unchanged
   (`run-detail-subagents.tsx`'s existing icon; `prefers-reduced-motion` is capped
   to 0.01 ms globally by `styles/index.css`, and the spinner's *shape* already
@@ -1448,6 +1583,7 @@ per `branding.md` § 9's checklist.
 | `roster-only` / `todos-only` | one section, no empty heading (`docs/run-details.md` § 6.3, carried over) |
 | `both-in-flight` | both sections, the rule between them, the roster's live clock |
 | `roster-capped-expanded` | `+N more` before and after the disclosure (before/after pair) |
+| `roster-members` | the roster's MEMBERSHIP (§ 4): a payload carrying a child's own `bash` job, the session's own `read` job and a nested `task` row, of which only the two top-level children are rows and only they are counted |
 | `todos-phased` | phases as headers, items indented, done struck, dropped tagged, blocked with its reason line — and **no per-phase counts** |
 | `todos-implicit-phase` | the § 6.2 fix: an implicit phase rendered headerless beside a named one (the defect, then the fix) |
 | `swap-canvas-open` | the canvas open with the run trigger still visible and pressed-state-free; then the run panel open with the canvas closed (before/after) |
@@ -1457,6 +1593,7 @@ per `branding.md` § 9's checklist.
 | `reader-failed` | the verbatim exception in the outcome block, `danger` on the header icon only |
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
+| `reader-child-controls` | a member's page whose child count is ONE: the descend control's singular label and its accessible name, in the only state that can show either, beside the peer stepper for the same child |
 | `reader-deep-floor` | the same breadcrumb at DEPTH 3 with the pane at its 320px floor: the ancestors shrink so the current node — the reader's title (`§ 5.2`) — keeps a legible share. Round 2 left this open; the frame is the proof, not the flex reasoning. |
 | `reader-image` | a child's OWN image: the row carries a digest and the reader resolves it through the child-scoped attachment op, so a child screenshot is a picture. The story stubs the relay for the renderer's half; the route's mapping is pinned by a desktop test. |
 | `reader-brief` | the folded brief and its expander, in the one state that renders it: a child whose transcript does NOT already carry the instruction (`reader-resumed` is the state where the brief stands down) |
