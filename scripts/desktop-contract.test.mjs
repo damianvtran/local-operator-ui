@@ -146,6 +146,16 @@ test("canonical session operations preserve identity, arguments and main-owned a
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
 		[
 			{
+				op: "sessions.search",
+				q: "retention sweep",
+				limit: 25,
+			},
+			"/search?q=retention+sweep&limit=25",
+			"GET",
+			undefined,
+		],
+		[
+			{
 				op: "sessions.message",
 				sessionId,
 				requestId,
@@ -228,6 +238,23 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			text: "hello",
 		},
 		{ op: "sessions.command", sessionId, requestId, command: "goal extra" },
+		// A search carries a query and nothing else: no query at all is not a
+		// search of everything, and a query longer than the backend's own bound is
+		// refused here rather than by the backend's generic "invalid fields".
+		{ op: "sessions.search" },
+		// An EMPTY query is refused by name too. The backend answers one by listing
+		// the whole store (the phone's web client asks for exactly that), but this
+		// surface already holds that list — its box is a filter over the catalogue —
+		// so an empty `q` would ask the server to send back everything the client
+		// has (review round 1, R5).
+		{ op: "sessions.search", q: "" },
+		{ op: "sessions.search", q: "x".repeat(257) },
+		{ op: "sessions.search", q: "ok", limit: 501 },
+		{
+			op: "sessions.search",
+			q: "ok",
+			sessionId,
+		},
 		// A receipt carries a completion token and nothing else: a timestamp or a
 		// bodyless call is what let a background tab acknowledge an unseen result.
 		{ op: "sessions.seen", sessionId },

@@ -7,6 +7,8 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -38,6 +40,12 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+	hitsAnswerQuery,
+	lostRowsToStaleAnswer,
+	rowTrailingStatement,
+	searchChats,
+} from "../chat-search";
 
 type Props = {
 	selectedConversation?: string;
@@ -162,14 +170,31 @@ export function ChatSidebar({
 		}, 5000);
 		return () => window.clearInterval(timer);
 	}, [ready, fetchSessions]);
-	const matching = useMemo(
+	// Search is the backend's (`sessions.search`, negotiated as `session_search`),
+	// not a filter over titles: a conversation is remembered by what was SAID in
+	// it, and the sidebar only holds titles. The backend's answer is used only
+	// when it is the answer to what is in the box RIGHT NOW (see
+	// `hitsAnswerQuery`), and the local title/agent/team match is applied on top
+	// either way — `searchChats` ORs them — so a query the backend cannot answer
+	// (an older backend, a failed request) still finds chats by name and label
+	// instead of finding nothing.
+	const searchSupported = desktopFeatureEnabled(
+		capabilities.data,
+		"session_search",
+	);
+	const search = useChatSearch(query, ready && searchSupported);
+	const {
+		rows: matching,
+		conversationMatches,
+		synthesized,
+	} = useMemo(
 		() =>
-			sessions.filter((row) =>
-				`${row.title ?? ""} ${row.binding?.agent ?? ""} ${row.binding?.team ?? ""}`
-					.toLocaleLowerCase()
-					.includes(query.toLocaleLowerCase()),
+			searchChats(
+				sessions,
+				query,
+				hitsAnswerQuery(search.data, query) ? search.data.sessions : null,
 			),
-		[sessions, query],
+		[sessions, query, search.data],
 	);
 	const children = (kind: ChatTarget["kind"], name: string) =>
 		matching.filter((row) =>
@@ -180,6 +205,76 @@ export function ChatSidebar({
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
+	/*
+	 * The two states the box can be in while it has no answer, and why they are
+	 * states rather than silence.
+	 *
+	 * `answered` is the answer to the question IN THE BOX (exact, per
+	 * `hitsAnswerQuery`). Anything else — a request in flight, a keystroke that
+	 * invalidated the previous answer — means the list below holds name and label
+	 * matches only, and that is a fact the panel has to say out loud: the list
+	 * visibly drops the conversation matches it was just showing, which reads as a
+	 * bug unless the state is named (review round 1, R2 — which the prefix rule
+	 * tried to fix, and review round 2, R10, which showed the prefix rule put rows
+	 * in the list that the box's own search would not return).
+	 *
+	 * It is also the gate for the no-match claim: `Nothing in your chats matches
+	 * X` while the answer for X has not arrived asserts, then retracts a moment
+	 * later (review round 2, R11 — `isFetching` is FALSE while the debounce is
+	 * still empty, because the query is not enabled until the debounced value is
+	 * non-empty, so the sentence fired on every keystroke of a word).
+	 */
+	const answered = hitsAnswerQuery(search.data, query);
+	/*
+	 * What the list was showing while the LAST answer was still in hand.
+	 *
+	 * The in-flight line exists to explain a visible COLLAPSE — round 1's R2: the
+	 * box has moved on, the answer in hand is stale, and the list falls back to
+	 * name and label matches, so the conversation matches it was showing
+	 * disappear. The line therefore has to fire on the SHRINK, not on emptiness:
+	 * gated on `!matching.length` it spoke in the one state where nothing had
+	 * visibly changed, and stayed silent in the state it was written for (review
+	 * round 3, R17 — reproduced there on a seeded store: two rows with one marked,
+	 * then one row with none, and no explanation for the lost row or the lost
+	 * mark).
+	 *
+	 * `search.data` still holds the previous query's answer (the cache is keyed
+	 * per query string and `keepPreviousData` serves the last one), so the
+	 * comparison is against a real answer rather than a remembered count:
+	 * `searchChats` over the STALE query says what that answer would have shown,
+	 * and the line appears when it would have shown more than the local fallback
+	 * does now.
+	 */
+	const previous = useMemo(() => {
+		if (answered || !search.data || !query.trim()) return null;
+		return searchChats(sessions, search.data.query, search.data.sessions);
+	}, [answered, search.data, sessions, query]);
+	// `!search.isError`: a FAILED search never produces an answer, so without this
+	// term `awaiting` stays true forever and `Searching conversations…` sits under
+	// the failure notice that says the search is unavailable — the panel claiming
+	// to be looking while telling the user it cannot look (design round 3, D16).
+	// The notice is the whole truth in that state, and nothing else should speak.
+	const awaiting =
+		Boolean(query.trim()) &&
+		ready &&
+		searchSupported &&
+		!search.isError &&
+		!answered;
+	/*
+	 * The mark explaining a row is a trailing slot OUTSIDE the truncating title
+	 * span, so the title truncates and the mark cannot be clipped away — with a
+	 * long title the ellipsis used to eat it, on exactly the row whose mismatch is
+	 * hardest to explain (design round 1, D1).
+	 *
+	 * It is rendered on the rows that carry it and NOT reserved list-wide. The
+	 * reservation was the first attempt, and design round 2 (D9) measured what it
+	 * cost: every title in a list containing one marked row lost ~39% (70px of
+	 * 179px; ~46% on nested rows), including `Retention sweep notes` — a row that
+	 * matched by its own NAME, whose query is visible inside its own title, and
+	 * which therefore paid to explain a DIFFERENT row. The ragged right edge a
+	 * per-row mark produces is the panel's existing condition: `· coder`,
+	 * `· Not sent yet` and bare rows already end at three different x positions.
+	 */
 	// A first send that failed after allocation but before admission leaves a real
 	// but empty session. It is NOT hidden — it exists on the backend and hiding it
 	// would make the list lie — but an unfinished draft still holding its id is
@@ -194,52 +289,113 @@ export function ChatSidebar({
 			),
 		[drafts],
 	);
-	const sessionRow = (row: CanonicalSessionRow, nested = false) => (
-		<button
-			key={row.session_id}
-			type="button"
-			data-chat-row
-			data-child={nested || undefined}
-			className={cn(
-				rowStyle,
-				"w-full text-left",
-				nested && "pl-7",
-				selectedConversation === row.session_id &&
-					!activeDraftKey &&
-					"bg-accent-wash text-ink",
-				row.attention?.unseen && "font-semibold",
-			)}
-			aria-current={
-				selectedConversation === row.session_id && !activeDraftKey
-					? "page"
-					: undefined
-			}
-			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
-			onClick={() => onSelectConversation(row.session_id)}
-		>
-			<Status row={row} />
-			<span className="min-w-0 flex-1 truncate">
-				{row.title || "Untitled chat"}
+	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
+		const trailing = rowTrailingStatement({
+			marked: conversationMatches.has(row.session_id),
+			unstarted: unstarted.has(row.session_id),
+			nested,
+			binding: bindingName(row),
+		});
+		return (
+			<button
+				key={row.session_id}
+				type="button"
+				data-chat-row
+				data-child={nested || undefined}
+				className={cn(
+					rowStyle,
+					"w-full text-left",
+					nested && "pl-7",
+					selectedConversation === row.session_id &&
+						!activeDraftKey &&
+						"bg-accent-wash text-ink",
+					row.attention?.unseen && "font-semibold",
+				)}
+				aria-current={
+					selectedConversation === row.session_id && !activeDraftKey
+						? "page"
+						: undefined
+				}
+				/* The tooltip carries what the row does NOT draw: the binding, and the
+			   row's own state — the statements `rowTrailingStatement` withheld. It
+			   deliberately does NOT repeat the search mark's words, because those
+			   are announced by the row itself through the `sr-only` span beside it,
+			   and both channels saying "matched in conversation" would be one fact
+			   announced twice (review round 4, R23). Rule, stated: the row draws
+			   the top statement, the tooltip completes the set minus that one. */
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
+				onClick={() => onSelectConversation(row.session_id)}
+			>
+				<Status row={row} />
+				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
+				    in `features/chat/chat-search.ts` — which is also where the three
+				    failed layouts that led to it are written down (an orphan `·` from
+				    a single truncating span, a starved title from unbounded slots, and
+				    a qualifier clipped to a bare `·` by a floor the row could not pay).
+				    Read that docstring before changing anything here.
+
+				    What matters at this call site: the number of statements is capped
+				    rather than negotiated by the flex algorithm, the title is the only
+				    element that truncates, and no floor is needed because at most one
+				    statement can ever be drawn. */}
+				<span className="min-w-0 flex-1 truncate">
+					{row.title || "Untitled chat"}
+				</span>
 				{/* In a flat list nothing else names the profile answering, so two
-				    untitled chats on different agents were indistinguishable. Nested
-				    rows already inherit the identity from their parent. */}
-				{!nested && bindingName(row) && (
-					<span className="ml-1 text-meta text-ink-muted">
+			    untitled chats on different agents were indistinguishable. Nested
+			    rows already inherit the identity from their parent, and a row that
+			    has something more important to say (the paragraph above) says that
+			    instead. The row's `title` carries the binding in every case, so the
+			    accessible description is never narrower than the pixels. */}
+				{trailing === "binding" && (
+					/* Bounded, unlike the two literals below. `bindingName` is a
+					   user-authored agent or team name and the agent-name field
+					   accepts 64 characters, so `shrink-0` with no `truncate` left an
+					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
+					   which restored round 4's D18 at roughly 35 characters and
+					   overflowed the row at roughly 45 — reachable from the product's
+					   own input limit, with no dragging involved (review round 4,
+					   R21). The cap is a share of the row rather than a fixed width so
+					   it scales with the panel, and `truncate` clips inside it. The
+					   other two are literals and stay `shrink-0`: they cannot grow,
+					   so they cannot starve anything. */
+					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
 				)}
-				{unstarted.has(row.session_id) && (
-					<span className="ml-1 text-meta text-ink-muted">· Not sent yet</span>
+				{trailing === "not_sent" && (
+					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+						· Not sent yet
+					</span>
 				)}
-			</span>
-			{pendingId === row.session_id && (
-				<LoaderCircle
-					className="size-4 shrink-0 motion-safe:animate-spin"
-					aria-label="Opening chat"
-				/>
-			)}
-		</button>
-	);
+				{/* Says WHY a row is in a filtered list when its visible text does not
+			    contain the query. Without it a row appears in a filtered list with
+			    nothing in common with the query, which is worse than no filter: the
+			    user cannot tell a real match from a bug. Rendered in the row's own
+			    `· …` idiom and roles rather than as a glyph, outside the truncating
+			    element so it can never be clipped, and on the rows that carry it.
+			    The visible words are `aria-hidden` and the sentence is carried by
+			    the `sr-only` span after them, so a screen reader hears it once. */}
+				{trailing === "conversation" && (
+					<>
+						<span
+							aria-hidden="true"
+							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+						>
+							· in conversation
+						</span>
+						<span className="sr-only">, matched in conversation</span>
+					</>
+				)}
+				{pendingId === row.session_id && (
+					<LoaderCircle
+						className="size-4 shrink-0 motion-safe:animate-spin"
+						aria-label="Opening chat"
+					/>
+				)}
+			</button>
+		);
+	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
 		const rows = children(kind, name);
 		const key = `${kind}:${name}`;
@@ -379,7 +535,20 @@ export function ChatSidebar({
 			{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
 			{Boolean(count) && (
-				<span className="text-meta tabular-nums">{count}</span>
+				<span
+					className="text-meta tabular-nums"
+					title={
+						query
+							? `${count} ${count === 1 ? "chat matches" : "chats match"} this search`
+							: undefined
+					}
+				>
+					{count}
+					{/* A query turns these numbers from "what you have" into "what
+					    matched", with identical styling, so the count needs to say
+					    which claim it is making (design round 1, D5). */}
+					{query ? <span className="sr-only"> matching</span> : null}
+				</span>
 			)}
 		</button>
 	);
@@ -457,6 +626,79 @@ export function ChatSidebar({
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
 			/>
+			{/* Says what the search actually LOOKED AT, and only while a query is
+			    active, because that is the moment the claim is true and relevant.
+			    Both cases are degradations the user cannot see otherwise: the list
+			    still narrows, it just narrows by less than the box promises, and a
+			    search that quietly stops looking inside conversations is
+			    indistinguishable from one that found nothing there. */}
+			{query && ready && !searchSupported && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Searching chat names only. Update Local Operator to search inside
+					conversations.
+				</p>
+			)}
+			{query && searchSupported && search.isError && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Conversation search is unavailable, so these are name matches.{" "}
+					<Button
+						variant="link"
+						size="sm"
+						type="button"
+						onClick={() => void search.refetch()}
+					>
+						Retry
+					</Button>
+				</p>
+			)}
+			{/* The two states of "there is no answer for what you typed yet", and the
+			    empty result once there is. All three sit here, beside the notices,
+			    rather than inside the scrolling list: they are statements about the
+			    SEARCH, and every other line that says something about the search
+			    holds this column — inside the container they sat ~6px off it, which
+			    showed as a stagger whenever a notice and the sentence appeared
+			    together (design round 2, D13).
+
+			    The no-match sentence is rendered only when the conversation search
+			    actually RAN and answered this exact query. `Nothing in your chats
+			    matches X` is otherwise unverifiable, and on a names-only or failed
+			    backend it is simply false: the app would say it cannot see inside
+			    conversations and then assert that nothing in any conversation
+			    matches (design round 2, D11 — `classifer` matches a conversation on
+			    the capable backend, in the same fixture). When the search could not
+			    run, the notice above is the whole truth and this says nothing.
+
+			    `Searching conversations…` covers the other window: the debounce plus
+			    the round trip, during which the list legitimately holds name and
+			    label matches only. The list visibly loses the conversation matches it
+			    was showing, and without this line that reads as a bug (review round
+			    1, R2) — naming the state is the honest answer, not filling it with
+			    the previous question's hits (review round 2, R10). */}
+			{query.trim() && showList && !matching.length && answered && (
+				<p className="pb-2 text-meta text-ink-muted">
+					Nothing in your chats matches “{query.trim()}”.
+				</p>
+			)}
+			{awaiting &&
+				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length) && (
+					<p className="pb-2 text-meta text-ink-muted">
+						Searching conversations…
+					</p>
+				)}
+			{/* Mounted at all times and filled later: a live region added to the
+			    tree WITH its text already inside is frequently not announced at
+			    all, because the region has to exist before the change for the
+			    change to be the event (design round 2, D15). `sr-only`, so the
+			    announcement mirrors the visible sentence without a second visible
+			    copy of it. */}
+			<p aria-live="polite" className="sr-only">
+				{awaiting &&
+				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
+					? "Searching conversations."
+					: query.trim() && showList && !matching.length && answered
+						? `Nothing in your chats matches ${query.trim()}.`
+						: ""}
+			</p>
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-muted">
@@ -553,8 +795,16 @@ export function ChatSidebar({
 							    the active filter exactly as Active/Previous do. A zero badge
 							    beside the "No chats yet" sentence just repeats it. */}
 							{matching.length > 0 && (
-								<span className="text-meta tabular-nums">
+								<span
+									className="text-meta tabular-nums"
+									title={
+										query
+											? `${matching.length} ${matching.length === 1 ? "chat matches" : "chats match"} this search`
+											: undefined
+									}
+								>
 									{matching.length}
+									{query ? <span className="sr-only"> matching</span> : null}
 								</span>
 							)}
 						</button>
@@ -656,11 +906,21 @@ export function ChatSidebar({
 							</section>
 						</>
 					)}
-					{!sessions.length && !loading && (
-						<p className="text-meta text-ink-muted">
-							No chats yet. Choose an agent, team or New chat.
-						</p>
-					)}
+					{/* A COLD-START sentence, not an empty-list one: it says the store
+					    holds no chats at all, so it must not appear beside rows. The
+					    catalogue being empty while `matching` is not is reachable now
+					    that a search hit for a session beyond this client's page is
+					    rendered as a row of its own (review round 2, R13 — this gate
+					    asked only about `sessions`, and a query was the other half of
+					    the claim). */}
+					{!sessions.length &&
+						!matching.length &&
+						!loading &&
+						!query.trim() && (
+							<p className="text-meta text-ink-muted">
+								No chats yet. Choose an agent, team or New chat.
+							</p>
+						)}
 					{truncated && (
 						<p className="text-meta text-ink-muted">
 							Showing up to 500 chats. Older chats remain available in the
