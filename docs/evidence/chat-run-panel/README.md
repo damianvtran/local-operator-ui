@@ -38,13 +38,12 @@ option, which moves a real pointer over the element with
 cannot produce, and a story that forced the class would be a picture of the
 forced class.
 
-**This set has no live-app counterpart yet, and says so plainly.** The one frame
-that must come from the real app against a real running child (`reader-live`
+**This set's live-app counterpart is `../chat-run-panel-live/`, and the split is deliberate.**
+The one frame that must come from the real app against a real running child (`reader-live`
 paired to `~/local-operator-worktrees/desktop-subagent-transcript`'s
-`subagents.transcript` route) is not in it: the backend worktree's route exists
-(`local_operator/server/routes/desktop_sessions.py:349`). The pairing, a real turn
+`subagents.transcript` route) is not in THIS set: the pairing, a real turn
 with a live child and the CDP drive of the running app were completed in the
-review round: `../chat-run-panel-live/` is that pair, with the pairing, the ids
+review round, and `../chat-run-panel-live/` is that pair, with the pairing, the ids
 and the backend's own read counts recorded in its README. The `reader-live` below
 is the FIXTURE-backed rendering of the same state — it proves the row pipeline,
 and the live pair is what proves the wire. The two are kept apart deliberately and
@@ -104,7 +103,7 @@ identities, and which of them is a defect and which is the point:
 | `both-in-flight` == `swap-run-open` | *was* `5d2b2a5085816a02ebc078e4171cb68a`, both themes | **This was a defect and it is fixed.** The two exist to prove different things — the two sections coexisting, versus which pane owns the slot — and the swap pair rendered the same fixture, so the "mirror" frame carried no picture of its own. `swap-canvas-open`/`swap-run-open` now render `fixtures.swapSlot()` (one child, one open to-do), and all four frames were re-taken. |
 | `trigger-open-hover` == `panel-empty` | `69e0e5aa2e` dark, `6d45582f90` light | **This one IS the claim.** `D2-1`'s fix says the pressed ground must not change under the pointer; a hover that still altered a pixel would be the defect. The pointer's arrival is proven by `trigger-hover`, which does move pixels against `trigger-idle`, and both hover frames are taken by the same rig option. |
 | `mcp-dot-ack-acknowledged` == `trigger-idle` | `69a3a84199` dark, `41926989f3` light | **Inherent, and stated rather than claimed.** An acknowledged dot and a never-broken one are the same pixels by definition — the ledger's hold is invisible, which is why it needs no affordance (`§ 3.4`). The rule that produces the hold is pinned in `scripts/run-detail-model.test.mjs`; the frame is kept as the sequence's endpoint, not as a distinct picture. |
-| `reduced-motion` == `mcp-connecting` | `170ac94459` dark (light differs only in the ground) | **Inherent to the rig.** `capture-evidence.mjs` injects `animation:none; transition:none` before every shutter, so a still cannot differ by the motion media feature — a frame that faked the capped style would be evidence about the fake. The claim lives in the `@media (prefers-reduced-motion: reduce)` block in `styles/index.css`. |
+| `reduced-motion` == `mcp-connecting` | `170ac94459` dark (0 differing pixels); light differs in 2,570 scattered pixels (0.29%, single-pixel antialiasing in the pane) | **Inherent to the rig.** `capture-evidence.mjs` injects `animation:none; transition:none` before every shutter, so a still cannot differ by the motion media feature — a frame that faked the capped style would be evidence about the fake. The claim lives in the `@media (prefers-reduced-motion: reduce)` block in `styles/index.css`. |
 
 Near-twins are not identities and are not listed above: `mcp-dot-ack` and
 `mcp-auth-required-closed` share identical dot measurements (21 danger px dark /
