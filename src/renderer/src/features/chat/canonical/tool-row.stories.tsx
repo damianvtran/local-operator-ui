@@ -398,15 +398,20 @@ export const OperatorSpacingCases: Story = {
 			{/* (a) Four consecutive settled rows: one pitch, repeated.
 			    Heights here and below are `scrollHeight` measured in the rendered
 			    story plus the Frame's 48px of padding, rounded up to the 4px ramp -
-			    not guessed, and not "whatever looked right". The transcript is
-			    `flex-col-reverse` and pins its content to the BOTTOM, so a Frame
-			    that is too short does not letterbox: it pushes the OLDEST rows out
-			    of the picture and paints `Start of conversation` where they were.
-			    On a spacing surface that silently becomes a photograph of a SHORTER
-			    RUN, which is the failure design and QA both caught on
-			    `joined-mid-turn` - six rows in the frame it replaced, five here,
-			    against a README that says six. Two things ate the slack: the
-			    divider itself (#112) and 2px per gap from the hairline. The
+			    not guessed, and not "whatever looked right". A Frame shorter than
+			    its transcript CLIPS it: the story's history is anchored at its top,
+			    so the rows that fall out of the picture are the NEWEST ones, off
+			    the bottom, while everything above them stays exactly where it was.
+			    Read that off the two frames rather than from the flex direction:
+			    across the short frame and its resized replacement the divider sits
+			    at the same y, rows 1-5 sit at the same y, and what the short one is
+			    missing is its sixth row and the trailing date band. On a spacing
+			    surface that silently becomes a photograph of a SHORTER RUN, which
+			    is the failure design and QA both caught on `joined-mid-turn` - six
+			    rows in the frame it replaced, five here, against a README that says
+			    six. Two things ate the slack: the `Start of conversation` divider
+			    (#112), which occupies real height at the top, and 2px per gap from
+			    the hairline. The
 			    capture viewport in `capture-evidence.mjs` has to clear these too,
 			    because the harness takes `max(scrollHeight, declared)` and a
 			    viewport shorter than the Frame re-crops what the Frame just made

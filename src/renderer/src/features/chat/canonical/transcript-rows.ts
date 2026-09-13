@@ -198,7 +198,9 @@ export function buildRows(
  *   magnitude, and it is the narrower column's own doing rather than this tier's.
  *
  * The hairline does NOT shrink in the small view, unlike every other tier — it
- * is the one pair of identical entries in the table below. The tiers above
+ * is the only TIER whose two values are equal in the table below (`first` also
+ * carries two identical entries, but its pair is empty: it is the absence of a
+ * margin, not a width held across both views). The tiers above
  * shrink because they are made of several pixels to spend; 2px is already the
  * floor at which a gap is still a gap, and 1px on a hairline reads as an
  * antialiasing artifact rather than as a boundary. Note that this is therefore

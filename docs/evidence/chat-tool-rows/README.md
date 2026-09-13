@@ -168,25 +168,38 @@ measurement artifact on this surface, not a hypothetical one.
 ## What the hairline cost the frames, and how the set was reframed
 
 Every frame in this directory was re-taken for this change, and the reason is
-worth stating because it is a trap specific to this surface. The transcript is
-`flex-col-reverse` and pins its content to the **bottom**, so a story `Frame`
-shorter than its own transcript does not letterbox — it pushes the **oldest**
-rows out of the picture and paints `Start of conversation` where they used to
-be. The frame still looks well-composed. It is simply a photograph of a shorter
-run.
+worth stating because it is a trap specific to this surface. A story `Frame`
+shorter than its own transcript **clips** it rather than letterboxing: the
+fixture's history is anchored at its top, so the rows that leave the picture are
+the **newest** ones, off the **bottom**, and everything above them stays exactly
+where it was. The frame still looks well-composed. It is simply a photograph of
+a shorter run.
 
-That is not hypothetical: the design and QA rounds on the hairline both caught
-`joined-mid-turn` showing **five** rows where the entry above describes six, and
-QA established the cause — the story is byte-identical to the one that produced
-the six-row frame, so the 2px per gap (plus the `Start of conversation` divider
-#112 added) had consumed the slack its declared height left. Two pixels a row is
-enough to lose a row off the top of a picture.
+That is measured off the frames rather than inferred from a flex direction —
+which matters, because the inference points the wrong way and an earlier draft of
+this section followed it. Across the short frame and its resized replacement the
+`Start of conversation` divider sits at the **same** y, rows 1–5 sit at the same
+y, and what the short frame is missing is its sixth row and the trailing date
+band. Anyone debugging a short frame should look at its bottom edge, not its top.
+
+It is not hypothetical either: the design and QA rounds on the hairline both
+caught `joined-mid-turn` showing **five** rows where the entry above describes
+six, and QA established the cause — the story is byte-identical to the one that
+produced the six-row frame, so the 2px per gap, plus the height the
+`Start of conversation` divider (#112) takes at the top, had consumed the slack
+its declared height left. Two pixels a row is enough to push a row out of a
+picture.
 
 So the rule is now uniform across the set rather than applied where a reviewer
 happened to look: every `Frame` height is the transcript's own `scrollHeight`
 measured in the rendered story, plus the `Frame`'s 48px of padding, rounded up
-to the 4px ramp — and **all sixteen** tool-row frames were short, not only the
-one that had visibly lost a row. The capture viewports in `capture-evidence.mjs`
+to the 4px ramp — and **all fifteen** `Frame`s across the twelve refreshed
+stories were short, not only the one that had visibly lost a row. (Fifteen, not
+sixteen: `working-labels` is the twelfth story and renders `WorkingLine`s
+directly with no `Frame` at all, so it could not be short. The three `diff-body`
+`Frame`s are a different story group, were not reframed, and are not short —
+`-wrapped-cap` runs flush against its clip *by design*, to pin the overflow
+marker to the well's foot.) The capture viewports in `capture-evidence.mjs`
 moved with them, because the harness captures at `max(scrollHeight, declared)`
 and a viewport shorter than the frame re-crops exactly what the frame just made
 room for.
