@@ -86,7 +86,7 @@ export type MentionedPath = {
  * what turned that into a defect: `{"target": "50809"}` is a peer PID and
  * `{"target": "lop-bridge-wedge"}` is another session's conversation NAME, and
  * because a cwd was present both were admitted as files and probed to a
- * "Not found" tile. A key that means "the thing this call is about" is not a
+ * missing-file tile. A key that means "the thing this call is about" is not a
  * key that means "a path"; the real-path keys below are, and the prose scanner
  * still catches a path that genuinely appears in a `command` string.
  */
@@ -143,6 +143,14 @@ const LINE_BREAK = /[\n\r]/;
 const WHITESPACE = /\s/;
 
 /**
+ * The characters `FILE_URL`'s class stops at that are also shell
+ * metacharacters, so a URL whose match ends on one of them was cut short by a
+ * token that continued the path (`…/a*.log`, `…/{a,b}.ts`). `>`, `*` and `}`
+ * are the overlap between that class and `SHELL_METACHARACTERS`.
+ */
+const URL_TRUNCATION = new Set(["*", "}", ">"]);
+
+/**
  * A `file://` URL, one capture group holding the path.
  *
  * `localhost` is allowed because the app writes both spellings (`file:///…` and
@@ -162,6 +170,10 @@ const WHITESPACE = /\s/;
  * The whole match is used, not a capture group: the path is parsed out of the
  * URL with `new URL` (`normalizeFileUrl`), which is the only way to tell a
  * bracket inside a name from a bracket that closes a sentence.
+ *
+ * The class still stops at `*`, `}` and `>`, and that stopping is a TRUNCATION
+ * the class cannot see on its own — `scanFileUrls` reads the character after the
+ * match for it (`URL_TRUNCATION`).
  */
 const FILE_URL = /file:\/\/(?:localhost)?\/[^\s"'`>*,;}\]]+/g;
 
@@ -280,7 +292,18 @@ function normalizeFileUrl(raw: string): string | null {
 	 * closing bracket. `new URL` separates the two questions — where the URL
 	 * ends and what the path is — and percent-decodes the result, so a URL that
 	 * reached the transcript as `My%20Docs` names the file on disk.
+	 *
+	 * The metacharacter rule runs on the RAW match FIRST, because parsing is
+	 * lossy in exactly the direction that matters: `new URL` reads `?` as the
+	 * start of a query, so `file:///tmp/agent-out/a?.log` parses to the pathname
+	 * `/tmp/agent-out/a` — the glob is gone by the time the candidate exists, and
+	 * the rule below has nothing left to reject. That produced the same
+	 * truncated-path missing tile the rule was written to remove (`a*.log`
+	 * arrives through the scanner's own truncation, this one through the URL
+	 * parser's), so the check is on the text as written, before anything parses
+	 * it (round 2, Q2-1).
 	 */
+	if (SHELL_METACHARACTERS.test(raw)) return null;
 	let candidate: string;
 	try {
 		const parsed = new URL(raw);
@@ -333,12 +356,29 @@ function scanFileUrls(text: string): string[] {
 		// path list (`file:///…/AGENTS.md\n~/…/AGENTS.md`) used to lose the URL
 		// entry because the line below happened to start with a path.
 		const gap = rest.slice(0, rest.length - trimmed.length);
+		const continues = (token: string) =>
+			token.includes("/") || token.includes(".");
 		if (gap !== "" && !LINE_BREAK.test(gap)) {
 			const token = trimmed.split(PROSE_TOKEN_END, 1)[0] ?? "";
 			// More path after the space: the URL contained a space and the match
 			// is a fragment of it. Returning a fragment would put a path in the
 			// panel that no file has.
-			if (token.includes("/") || token.includes(".")) continue;
+			if (continues(token)) continue;
+		}
+		/*
+		 * The class stops at `*`, `}` and `>`, so a match that ends on one of them
+		 * is a fragment of a longer token — `file:///tmp/agent-out/a*.log` for a
+		 * log glob, `file:///tmp/out/{a,b}.ts` for a brace expansion — and the
+		 * fragment before it is a path no file has. Same guard shape as the space
+		 * check above, and for the same reason: only a token that CONTINUES A PATH
+		 * means truncation rather than markup, so `**file:///…/a.pdf**` keeps its
+		 * tile (nothing path-like follows the marker) while the glob does not
+		 * (round 2, Q2-1).
+		 */
+		const next = rest[0];
+		if (next !== undefined && URL_TRUNCATION.has(next)) {
+			const token = rest.slice(1).split(PROSE_TOKEN_END, 1)[0] ?? "";
+			if (continues(token)) continue;
 		}
 		const candidate = normalizeFileUrl(match[0]);
 		if (candidate) found.push(candidate);

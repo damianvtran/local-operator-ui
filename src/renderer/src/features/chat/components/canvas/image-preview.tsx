@@ -25,7 +25,9 @@ import {
  * The name bar is not decoration and not optional: without it the picture began
  * directly under the tab strip, and `Open in default app` - the action the other
  * three media viewers carry in their working state - was reachable here only from
- * the error state. That gap is the finding that produced `ViewerChrome`. The bar
+ * the error state. That gap is the finding that produced `ViewerChrome`. (It
+ * carries the action and not the name: the tab above already prints the name, and
+ * a second copy 32 px below it was design round 1's D3.) The bar
  * now states the zero-size and unreadable cases the same way every other viewer
  * does, so the four read as one surface with four contents.
  */
@@ -40,7 +42,7 @@ const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
-			<ViewerChrome title={document.title} path={document.path} />
+			<ViewerChrome path={document.path} />
 			{state.status === "ready" ? (
 				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
 					<img

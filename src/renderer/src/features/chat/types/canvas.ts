@@ -54,7 +54,7 @@ export type CanvasDocument = {
 	 * which is the normal state for the frame between a tile being added and
 	 * `probe-files` answering. The tile renders normally until a probe says
 	 * otherwise, and a document that says `"missing"` keeps its place in the grid
-	 * with a `Not found` receipt rather than being quietly dropped.
+	 * with the `No longer on disk` receipt rather than being quietly dropped.
 	 */
 	availability?: "present" | "missing";
 

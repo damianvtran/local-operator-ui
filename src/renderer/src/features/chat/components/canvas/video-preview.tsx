@@ -42,7 +42,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
-			<ViewerChrome title={document.title} path={document.path} />
+			<ViewerChrome path={document.path} />
 			{failed ? (
 				<FileViewerState
 					title="This video could not be played"

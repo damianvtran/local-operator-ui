@@ -1,6 +1,6 @@
-# The Files panel's producer, and the PDF viewer it opens
+# The Files panel's producer, and the viewers it opens
 
-Two frames from the **real built app**, on a real backend, over a real
+Four frames from the **real built app**, on a real backend, over a real
 transcript — and not one byte of the operator's own data. They exist because the
 claims under review are claims about a running application:
 
@@ -8,17 +8,22 @@ claims under review are claims about a running application:
   the wire, so nothing in `test:desktop` can show that a path an agent wrote
   becomes a tile;
 - the PDF viewer is Chromium's own, over a blob URL, and the only thing that
-  proves a PDF renders is pixels.
+  proves a PDF renders is pixels;
+- the video viewer is the one viewer that streams through the backend's media
+  route with Range requests rather than reading bytes over IPC, so its working
+  state cannot be produced offline at all.
 
 | frame | what it shows |
 | --- | --- |
-| [`files-panel/localOperatorDark.webp`](files-panel/localOperatorDark.webp) | The producer fired: five mentioned paths became five tiles — `notes.txt`, `invoice-review.pdf`, `ledger-summary.png`, `ledger.csv`, and `march-export.csv` carrying the **`Not found` receipt** because no file backs it. |
-| [`pdf-viewer/localOperatorLight.webp`](pdf-viewer/localOperatorLight.webp) | Clicking the PDF tile opens the document in Chromium's viewer under **our own chrome bar** (the filename, and a way out to the OS) — two pages, `1 / 2`, 60% — with no CSP violation on the PDF path. |
+| [`files-panel/localOperatorDark.webp`](files-panel/localOperatorDark.webp) | The producer fired: six mentioned paths became six tiles under the panel head — `notes.txt`, `invoice-review.pdf`, `ledger-summary.png`, `ledger.csv`, `reconcile-clip.mp4` and `march-export.csv`, the last carrying the **`No longer on disk` receipt** because no file backs it. The video tile paints a real frame of the clip, from the media route. |
+| [`pdf-viewer/localOperatorLight.webp`](pdf-viewer/localOperatorLight.webp) | Clicking the PDF tile opens the document in Chromium's viewer under **our own chrome bar** (the way out to the OS; the name is on the tab above it), with no CSP violation on the PDF path. |
+| [`video-viewer/localOperatorDark.webp`](video-viewer/localOperatorDark.webp) | The video viewer PLAYING: a decoded frame of `reconcile-clip.mp4` at 0:01/0:02 over `sunken`, with the platform player's controls, the document tab above and the bar's open-in-OS action. |
+| [`video-viewer/localOperatorLight.webp`](video-viewer/localOperatorLight.webp) | The same state in the light brand palette, where the player's own chrome and the surface under it are the closest of any pairing in the set. |
 
-Both are **clipped to the canvas panel** (`[data-tour-tag="canvas-container"]`'s
-own measured rect), so neither carries the sidebar, the session list or the
+All four are **clipped to the canvas panel** (`[data-tour-tag="canvas-container"]`'s
+own measured rect), so none carries the sidebar, the session list or the
 transcript. That is the point of the isolation below, and it is checked rather
-than intended: the driver writes the un-cropped window frame beside the cropped
+than intended: the driver writes the un-cropped window frame beside each cropped
 one (`window-*.png`, not committed) precisely so a reader can confirm the crop
 decides nothing important.
 
@@ -48,13 +53,17 @@ incidental:
 
 **Every file is invented.** `out/evidence-harness/make-fixtures.mjs` generates
 them: a hand-built two-page PDF (no dependency, no real document), a PNG
-encoded with `zlib` so two runs are byte-identical, a CSV and a `.txt`. The
-fifth path exists only as text — it is the ghost that exercises the availability
-probe. The session is one seeded `transcript.jsonl`
-(`out/evidence-harness/seed-mentioned-files.mjs`) whose assistant turn names
-those paths in prose, which is the strictest admission tier the extractor has
-(absolute path **and** a known extension), plus one `file://` URL for the
-second tier.
+encoded with `zlib` so two runs are byte-identical, a CSV, a `.txt`, and — since
+design round 1 asked for the video viewer's working state — a two-second H.264
+clip. The clip is the one fixture a script cannot compose (a bitstream is not
+hand-writable the way the PDF above is), so that one step shells out to
+`ffmpeg`, and the harness REFUSES to run without it rather than substituting a
+still or the viewer's error state. The sixth path exists only as text — it is
+the ghost that exercises the availability probe. The session is one seeded
+`transcript.jsonl` (`out/evidence-harness/seed-mentioned-files.mjs`) whose
+assistant turn names those paths in prose, which is the strictest admission tier
+the extractor has (absolute path **and** a known extension), plus one `file://`
+URL for the second tier.
 
 The harness lives in gitignored `out/evidence-harness/` — `make-fixtures.mjs`,
 `seed-mentioned-files.mjs`, `drive-mentioned-files.mjs`,
@@ -72,30 +81,45 @@ instance renders an empty panel, which is indistinguishable from a producer that
 never fired). The readings at this head:
 
 ```
-mentionedFilesWritten 5   (text, pdf, image, spreadsheet, spreadsheet/missing)
+mentionedFilesWritten 6   (text, pdf, image, spreadsheet, video, spreadsheet/missing)
 filesGrid             notes.txt | invoice-review.pdf | ledger-summary.png |
-                      ledger.csv | march-export.csv (Not found)
+                      ledger.csv | reconcile-clip.mp4 | march-export.csv (No longer on disk)
 pdfTileClicked        true
 pdfFrame              iframe[src^="blob:"], title "PDF: invoice-review.pdf",
-                      chrome bar "invoice-review.pdf", cspViolations []
+                      open-in-OS control present, cspViolations []
+videoTileClicked      true
+videoFrame            src scheme "http", isMediaRoute true, readyState 4,
+                      currentTime 1.2, duration 2, 480x270, error null
 ```
+
+`readyState 4` with a non-zero `videoWidth` is what makes the video frames
+evidence rather than a picture of a poster: the driver seeks to 1.2s, waits for a
+decoded frame, and only writes the frame when that reading comes back — the
+script refuses (loudly, and without writing) if the clip does not decode, because
+the alternative would be to commit the viewer's error state under a name that
+claims the working one.
 
 ## Why these are a declared set rather than swept frames
 
 `check-evidence.mjs` counts everything outside a declared `supplementary` set as
 the sweep's own, so a set that belongs to another producer has to say so:
 
-- **The PDF frame cannot come from the sweep.** Headless Chrome — what
-  `scripts/capture-evidence.mjs` drives — has no PDF viewer at all; it renders a
-  bare `application/pdf` document with no body. This is a fact about the
-  harness, measured in the design note's Appendix A, not about our code.
-- **The panel frame cannot come from the sweep either.** Its tiles are paths a
+- **The PDF frame is the one that exercises the real read path.** Everything
+  else in this set is a claim about the panel; the PDF frame is the only one that
+  runs main-process `readFileBytes` over IPC on real bytes and shows a document
+  the platform viewer actually painted, which a story fixture cannot.
+- **The panel frame's tiles are transcript-inferred.** They are paths a
   transcript mentioned and its thumbnails come from the backend's static route;
   Storybook has neither. The sweep's `canvas-workspace--files` frame shows the
   same grid from a fixture and says so, with the PNG tile's thumbnail missing —
   which is exactly why the panel's real reading comes from here.
+- **The video frame cannot come from the sweep at all.** It needs a backend
+  answering the media route's Range requests, and `canvas-workspace--video-viewer`
+  is only able to render the viewer's failure state under the story's stub — which
+  is exactly why the working state has a live frame here. The design round asked
+  for this frame by name.
 
-**Correction, 2026-09-13 (round-2 evidence pass).** The first bullet above is
+**Correction, 2026-09-13 (round-2 evidence pass).** The PDF bullet above is
 falsified, and the frames that falsify it are in this tree: the six committed
 `canvas-workspace/pdf-viewer` frames — added when `cb804bc44` declared that story
 in `STORIES` — show Chromium painting the fixture document (heading, subheading,
@@ -105,18 +129,19 @@ makes this a difference between the browser build the probe ran and the one
 `capture-evidence.mjs` spawns rather than a property of the harness. The bullets
 above are left standing as what was measured at the time. The set stays declared
 for the reasons that do not depend on that measurement: the panel frame's tiles
-are transcript-inferred and its thumbnails come from the backend, and the PDF
-frame here is the only one that exercises the real read path — main-process
-`readFileBytes` over IPC on real bytes — which a fixture cannot.
+are transcript-inferred and its thumbnails come from the backend, the PDF frame
+here is the only one that exercises the real read path over IPC on real bytes,
+and the video frame is the only committed picture of that viewer playing
+anything at all.
 
 ## Known artifacts, all of them about the harness
 
 Each of these is visible in the frames and none is a defect in the code under
 review. They are listed so a reader does not have to reverse-engineer them:
 
-1. **The app's own "The server is offline" strip** runs across the top of both
-   frames. The renderer bakes its REST base URL at build time, and the app's CSP
-   (`src/renderer/index.html`) pins `connect-src` to the literal
+1. **The app's own "The server is offline" strip** runs across the top of the
+   panel frames. The renderer bakes its REST base URL at build time, and the
+   app's CSP (`src/renderer/index.html`) pins `connect-src` to the literal
    `localhost:1111` / `127.0.0.1:1111` / `:8080` hosts, so the renderer's legacy
    health poll to the isolated port is refused while every desktop operation
    goes through the main process, which is not subject to that CSP. The same
@@ -129,27 +154,64 @@ review. They are listed so a reader does not have to reverse-engineer them:
    (a `.png` is classified as an image and gets a tile) is unaffected; the
    thumbnail route against the app's configured backend is exercised by
    `scripts/mentioned-files-app-proof.mjs` on the live backend.
-3. **Chromium's PDF toolbar is dark in the light-brand frame**, and that is not
+3. **`media-src`, for the video frame, is widened in the BUILD OUTPUT and
+   nowhere else.** The same CSP names only the `:1111` hosts there too, so the
+   video would not load at all from the isolated backend — which would leave the
+   one frame the design round asked for showing the viewer's error state. The
+   harness therefore rewrites that one directive in `out/renderer/index.html`
+   after the build (see `run-mentioned-files.sh`). `out/` is gitignored and
+   `src/renderer/` is untouched: the shipped CSP still refuses every origin that
+   is not the app's own backend, and script two is why the video tile in the
+   panel frame plays while the PNG tile beside it does not need to.
+4. **Chromium's PDF toolbar is dark in the light-brand frame**, and that is not
    a theming miss: the platform's viewer draws its own chrome, is not
    addressable from our DOM, and is therefore an accepted platform object. What
-   we own is the strip above it, which is themed: `invoice-review.pdf` and the
-   open-in-OS control on `surface` under our hairline rule. This is design-note
-   risk #1, measured here rather than argued.
-4. **The PDF frame is the light brand palette** while the panel frame is the
-   dark one. `check-evidence.mjs` asserts every frame's dominant colour is one of
-   its own theme's grounds — how it catches a surface that painted nothing — and
-   a PDF's paper is white, which no dark palette's ground is near. The document
-   frame is therefore captured in the palette it is honestly a picture of,
-   rather than cropped or zoomed until the checker stops looking.
+   we own is the strip above it, which is themed: `surface` under our hairline
+   rule, carrying the open-in-OS action. The first risk the pull request's design
+   decisions name, measured here rather than argued.
+5. **The platform's PDF field is a fixed colour in every theme, and
+   `color-scheme` does not reach it.** The field around the page — the majority
+   of the surface under the bar in the swept `canvas-workspace/pdf-viewer`
+   frames — measures `#282828` in all twelve palettes, and in the light brand
+   palettes that puts a near-black field under a cream bar with the white page
+   floating in it (design round 1, D2). It was tried and measured, and it cannot
+   be pinned from CSS: neither the inherited `color-scheme` the palettes publish
+   on `[data-theme]`, nor an explicit `color-scheme: light` on the PDF
+   `<iframe>`, nor the same property set on the viewer document's own root, nor
+   an emulated `prefers-color-scheme: light`, moves the field — the platform
+   paints from the BROWSER's preferred colour scheme, not from anything this app
+   authors. The knob that does reach it is the process-wide
+   `nativeTheme.themeSource`, which is a decision about every platform surface in
+   the app rather than about this viewer; it is recorded as an accepted platform
+   boundary in `pdf-preview.tsx` beside the toolbar note in point 4, for the
+   review to weigh. Note that the field is NOT visible in the live frame below:
+   with `#toolbar=0` the platform's default zoom fills the panel with the page,
+   so the field is a property of other zoom levels and of the swept set, where it
+   was measured.
+6. **The PDF frame is the light brand palette** while the panel and the video
+   frames are the dark one. `check-evidence.mjs` asserts every frame's dominant
+   colour is one of its own theme's grounds — how it catches a surface that
+   painted nothing — and a PDF's paper is white, which no dark palette's ground
+   is near. The document frame is therefore captured in the palette it is
+   honestly a picture of, rather than cropped or zoomed until the checker stops
+   looking. The video frames are captured in BOTH brand palettes, because the
+   platform player's own chrome sits on the `sunken` ground and that pairing is
+   the one design round 1 measured as marginal in the light palettes (D7).
 
 ## Provenance
 
 - `capturedAt` / `capturedAtHead`: the head that the built `out/` and the
   seeded fixture were taken at, recorded in `manifest.json` beside this set.
 - App assertions that the frames cannot show: `cspViolations` is empty for the
-  PDF path — the `<iframe src="blob:…">` variant is the one the CSP permits, and
-  the `<embed>` variant the design note's probe found blocked is not used.
+  PDF path — the `<iframe src="blob:…">` variant is the one the CSP permits,
+  and the `<embed>` variant the design decisions' own probe found blocked is not
+  used — and the video reading (`readyState`, `duration`, video dimensions) is
+  what distinguishes a playing clip from a poster.
 - The viewport is 1728x966 at device ratio 2, wider than the app's 1380x900
   default on purpose: at the default the Files grid's fourth column and the PDF
   page both fall outside the panel crop. The window size is a harness knob
   (`LOCAL_OPERATOR_UI_WINDOW_SIZE`), not a change to the app.
+- The design decisions these frames illustrate, and the deviations this
+  implementation forced, are in the pull request's own description:
+  https://github.com/damianvtran/local-operator-ui/pull/128 (the design document
+  itself is not in this repository and is not published here).

@@ -58,8 +58,11 @@ import {
 import { type MentionedPath, extractMentionedPaths } from "./mentioned-files";
 import {
 	type MentionScanState,
-	SCAN_PAGE_BUDGET,
+	type ScanBook,
 	mentionScanState,
+	newScanBook,
+	restartScan,
+	scanLane,
 	shouldRequestPage,
 } from "./mentioned-files-scan";
 import type { TranscriptRecord } from "./transcript-reducer";
@@ -126,18 +129,14 @@ type ProbeBook = {
 	recordCount: number;
 };
 
-/** Per-conversation scan bookkeeping, separate from the probe book on purpose. */
-type PageBook = {
-	id: string;
-	/** Pages fetched since the budget was last raised. */
-	pages: number;
-	/** The current budget, in pages. `resume` raises it. */
-	budget: number;
-	/** A page request is in flight. */
-	inFlight: boolean;
-	/** The `oldestId` a request was last issued for. */
-	requestedFor: string | null;
-};
+/**
+ * Per-conversation scan bookkeeping, separate from the probe book on purpose.
+ *
+ * The budget/cursor half is `ScanBook` in `mentioned-files-scan.ts`, where the
+ * lane's rules live; this is that book plus the conversation it belongs to, so a
+ * session switch starts a new one instead of inheriting a cursor.
+ */
+type PageBook = ScanBook & { id: string };
 
 /**
  * Write probe answers into the store, keyed by the INPUT the probe was asked
@@ -180,7 +179,7 @@ function applyProbeResults(
 		}
 		// A directory is not a missing file: it exists, it is simply not
 		// something a viewer can open - the click hands it to the OS. Only a path
-		// with nothing at it earns the Not found receipt.
+		// with nothing at it earns the missing-file receipt.
 		const availability: CanvasDocument["availability"] =
 			result.exists && result.isFile
 				? "present"
@@ -221,7 +220,15 @@ export function useMentionedFiles({
 	const session = useRef<ProbeBook | null>(null);
 	const pageBook = useRef<PageBook | null>(null);
 	const inFlight = useRef(false);
-	/** The reader's own older-history request, as of the latest render. */
+	/**
+	 * An older-history request is in flight, as of the latest render.
+	 *
+	 * `loadOlder` sets the reader's `loadingOlder` flag for EVERY caller,
+	 * including the scan's own request, so a `false` from it cannot distinguish
+	 * "your own page is out" from "the history did not answer" - the field
+	 * carries no such distinction (round 3, R3-3). All this has to know is that
+	 * a request is out, which is what the lane's `wait` arm is for.
+	 */
 	const blocked = useRef(false);
 	const addMentionedFilesBatch = useCanvasStore(
 		(s) => s.addMentionedFilesBatch,
@@ -251,12 +258,14 @@ export function useMentionedFiles({
 		setScanState(next);
 	}, []);
 
-	// `resume` raises the page budget and re-runs the effect: the state object is
-	// what React watches, so the budget itself lives in the ref book.
+	// `resume` raises the page budget and re-arms the cursor, then re-runs the
+	// effect: the state object is what React watches, so the book itself lives in
+	// the ref. Both halves are `restartScan`'s, because raising the budget alone
+	// leaves a stop-with-an-unmoved-cursor unable to re-issue anything.
 	const [scanTick, setScanTick] = useState(0);
 	const resume = useCallback(() => {
 		const book = pageBook.current;
-		if (book) book.budget += SCAN_PAGE_BUDGET;
+		if (book) restartScan(book);
 		setScanTick((tick) => tick + 1);
 	}, []);
 
@@ -371,13 +380,7 @@ export function useMentionedFiles({
 			return;
 		}
 		if (pageBook.current?.id !== conversationId)
-			pageBook.current = {
-				id: conversationId,
-				pages: 0,
-				budget: SCAN_PAGE_BUDGET,
-				inFlight: false,
-				requestedFor: null,
-			};
+			pageBook.current = { id: conversationId, ...newScanBook() };
 		const book = pageBook.current;
 		const step = {
 			active: scan.active,
@@ -388,35 +391,24 @@ export function useMentionedFiles({
 			budget: book.budget,
 		};
 		publish(mentionScanState(step));
-		if (!shouldRequestPage(step)) return;
 		/*
-		 * The reader's own page owns the cursor right now.
-		 *
-		 * Asking here would be answered with the stand-down `false` and, on this
-		 * code path, would spend the budget for it. Waiting is the honest answer:
-		 * the page that lands moves the cursor, and that re-runs this effect with
-		 * `blocked` false.
+		 * One decision, in one place: whether this cursor earns a request, has to
+		 * wait for the reader's own page, is already out, or is a stop to declare.
+		 * The rules and the bookkeeping they imply are `scanLane`'s - see the
+		 * `stop` and `request` arms in `mentioned-files-scan.ts`, where the dead
+		 * retry this replaced is recorded.
 		 */
-		if (blocked.current) return;
-		// A cursor already asked for. A live delta re-runs this effect without
-		// moving it, and re-asking would fetch the same page twice; a page that
-		// landed moves it, and a request still in flight will move it or spend the
-		// budget when it fails.
-		if (scan.oldestId !== null && book.requestedFor === scan.oldestId) {
-			if (book.inFlight) return;
-			// Nothing is in flight and the cursor has not moved since the last
-			// request: no page arrived. Stop asking and let the head say so — a cue
-			// that keeps promising more is worse than an honest "not searched",
-			// whose own action is the retry. A request refused by the reader's own
-			// page cannot reach this line: `blocked` was false above, and a refusal
-			// with the cursor still here means the history itself did not answer.
-			book.pages = book.budget;
+		const lane = scanLane(book, {
+			canRequest: shouldRequestPage(step),
+			blocked: blocked.current,
+			oldestId: scan.oldestId,
+		});
+		if (lane === "stop") {
 			publish(mentionScanState({ ...step, pagesFetched: book.pages }));
 			return;
 		}
+		if (lane !== "request") return;
 
-		book.requestedFor = scan.oldestId;
-		book.inFlight = true;
 		inFlight.current = true;
 		void (async () => {
 			try {

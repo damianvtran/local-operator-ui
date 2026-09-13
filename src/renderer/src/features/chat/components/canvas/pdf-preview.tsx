@@ -28,11 +28,31 @@ import {
  * the UUID of the blob in the platform bar while our own bar printed the
  * filename, two names for one document and one of them garbage. `#toolbar=0`
  * (a fragment Chromium's PDF viewer honours; verified in the app, not assumed)
- * drops the platform toolbar entirely, which leaves the name this file actually
- * has in the one strip we own. The trade is stated rather than hidden: the
- * platform's page counter, zoom stepper and print button go with it. Those are
- * in the OS viewer, one click away in the bar above, and a UUID printed as a
- * filename is worse than a missing zoom control.
+ * drops the platform toolbar entirely, which leaves the document's name in the
+ * one place the app already prints it for every document: the tab above
+ * (`ViewerChrome` no longer repeats it — see that component for why). The trade
+ * is stated rather than hidden: the platform's page counter, zoom stepper and
+ * print button go with it. Those are in the OS viewer, one click away in the bar
+ * above, and a UUID printed as a filename is worse than a missing zoom control.
+ *
+ * ## The field around the page is the platform's, and `color-scheme` does not
+ * reach it
+ *
+ * In the light brand palettes a near-black field sits under a cream bar with the
+ * white page floating in it, and design review round 1 (D2) asked whether the
+ * app could pin the platform's scheme so the field follows the palette. It was
+ * tried and measured, and it cannot: on Electron 35.5.1 / macOS arm64 the field
+ * measures `#282828` in all twelve palettes with this branch's stylesheets, and
+ * neither the inherited `color-scheme` the palettes already publish on
+ * `[data-theme]`, nor an explicit `color-scheme: light` on this `<iframe>`, nor
+ * the same property set on the viewer document's own root, nor an emulated
+ * `prefers-color-scheme: light`, moves it — the plugin paints from the
+ * BROWSER's preferred colour scheme, not from any CSS we can author. The knob
+ * that does reach it is the process-wide `nativeTheme.themeSource`, which is a
+ * decision about every platform surface in the app rather than about this
+ * viewer, so it is recorded here beside the toolbar note above as an accepted
+ * platform boundary and left for the review to weigh. What the app owns on this
+ * surface is the bar: themed, on `surface`, under its own hairline rule.
  *
  * What the probe proves, and what the frames prove. The probe measures the viewer
  * DOCUMENT: frame URL, the injected `<embed>`, no CSP violations, no download.
@@ -62,7 +82,7 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
 			{/* Our chrome, and the only name on this surface: see the note above. */}
-			<ViewerChrome title={document.title} path={document.path} />
+			<ViewerChrome path={document.path} />
 
 			<div className={cn("min-h-0 flex-1")}>
 				{state.status === "ready" ? (

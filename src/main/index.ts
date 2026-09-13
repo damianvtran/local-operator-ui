@@ -651,7 +651,7 @@ app
 					} catch (error) {
 						// A genuine fault - permission, a stale network mount - is not the
 						// same answer as "no such file", and the difference is the whole
-						// diagnosis when a tile says Not found and the file is there.
+						// diagnosis when a tile says the file is gone and it is there.
 						return {
 							input,
 							resolved,

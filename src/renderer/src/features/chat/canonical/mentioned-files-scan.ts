@@ -28,7 +28,11 @@
  *    conversation is open.
  *
  * Pure: no React, no DOM. The React hook that uses it is a shell, so the
- * "first N of M" case is settled by a test rather than by a screenshot.
+ * "first N of M" case is settled by a test rather than by a screenshot. The
+ * LANE rule is here for the same reason - which of `ask`, `wait`, `stop` and
+ * `leave it to the request already out` a cursor earns, and what `resume` does
+ * to the book - because the failure it guards is invisible in a frame: a retry
+ * action that re-enters the lane and issues nothing.
  */
 
 /**
@@ -104,4 +108,102 @@ export function shouldRequestPage(input: MentionScanInput): boolean {
 		!input.inFlight &&
 		input.pagesFetched < input.budget
 	);
+}
+
+/**
+ * The per-conversation page bookkeeping, and the state the lane's rules read.
+ *
+ * Lives here rather than in the hook's ref because `resume` and the lane
+ * decision are the two halves of ONE rule - when the scan may ask for a page
+ * again - and that rule has a failure mode a screenshot cannot show: a stop
+ * whose cursor did not move used to leave `requestedFor` naming the cursor it
+ * had already asked for, so the action the head offers as the way out of that
+ * stop re-entered the lane, saw "already asked for this cursor, nothing in
+ * flight" and stopped again without issuing anything. A dead retry, exactly
+ * where the user needs it. Asserted in `scripts/mentioned-files.test.mjs`.
+ */
+export type ScanBook = {
+	/** Pages fetched since the budget was last raised. */
+	pages: number;
+	/** The current budget, in pages. `restartScan` raises it. */
+	budget: number;
+	/** A page request is in flight. */
+	inFlight: boolean;
+	/** The `oldestId` a request was last issued for. */
+	requestedFor: string | null;
+};
+
+/** A fresh book, at the shipped starting budget. */
+export function newScanBook(): ScanBook {
+	return {
+		pages: 0,
+		budget: SCAN_PAGE_BUDGET,
+		inFlight: false,
+		requestedFor: null,
+	};
+}
+
+/**
+ * What the lane does with the cursor this render, given the book.
+ *
+ * - `idle` — nothing to ask for: the view is closed, the history is whole, or
+ *   the budget is spent.
+ * - `wait` — the reader's OWN older-history page owns the cursor right now.
+ *   Asking would be answered with the stand-down `false`, and on this code path
+ *   that `false` spends the budget (round 2, R2-5). The page that lands moves
+ *   the cursor and re-runs the caller with `blocked` false.
+ * - `in-flight` — a request for this cursor is already out; it will move the
+ *   cursor or stop the scan.
+ * - `stop` — nothing is in flight and the cursor has not moved since the last
+ *   request: no page arrived. Stop asking and let the head say so, because a cue
+ *   that keeps promising more is worse than an honest "not searched", whose own
+ *   action is the retry.
+ * - `request` — ask for this cursor.
+ */
+export type ScanLane = "idle" | "wait" | "in-flight" | "stop" | "request";
+
+/**
+ * Decide the lane, and apply the bookkeeping the decision implies.
+ *
+ * The two transitions that are part of the DECISION rather than of the caller's
+ * wiring live here so they can be asserted: `stop` spends the budget (that is
+ * what makes the head's stopped state and its action the honest answer), and
+ * `request` records the cursor it is asking for and that a request is out. The
+ * caller performs the effects - publishing the state and calling `loadOlder` -
+ * and clears `inFlight` when the request settles.
+ */
+export function scanLane(
+	book: ScanBook,
+	input: { canRequest: boolean; blocked: boolean; oldestId: string | null },
+): ScanLane {
+	if (!input.canRequest) return "idle";
+	if (input.blocked) return "wait";
+	if (input.oldestId !== null && book.requestedFor === input.oldestId) {
+		if (book.inFlight) return "in-flight";
+		book.pages = book.budget;
+		return "stop";
+	}
+	book.requestedFor = input.oldestId;
+	book.inFlight = true;
+	return "request";
+}
+
+/**
+ * The `Search earlier messages` action: raise the budget and re-arm the cursor.
+ *
+ * Why re-arming is not optional. A stop can be reached with the cursor UNMOVED -
+ * a page request that failed, or an empty page at the end of a history that
+ * still claims more - and `scanLane` spends the budget for it. Raising the
+ * budget alone leaves `requestedFor` naming that same cursor, so the lane reads
+ * "already asked for this cursor, nothing in flight" and stops again without
+ * issuing anything: the one action offered at that stop would be a no-op exactly
+ * where the user needs it. Clearing it here makes the retry mean what its copy
+ * says - ask again for the page that is still missing - while the cursor itself
+ * is untouched, so the request that follows is for the SAME page and the wait
+ * semantics of R2-5 are unaffected (a request in flight is left alone, because
+ * its own answer is what will move the cursor).
+ */
+export function restartScan(book: ScanBook): void {
+	book.budget += SCAN_PAGE_BUDGET;
+	if (!book.inFlight) book.requestedFor = null;
 }

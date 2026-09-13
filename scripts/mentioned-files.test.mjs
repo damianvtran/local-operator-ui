@@ -39,9 +39,12 @@ const bundle = await build({
 			export {
 				SCAN_PAGE_BUDGET,
 				mentionScanState,
+				newScanBook,
+				restartScan,
+				scanLane,
 				shouldRequestPage,
 			} from "./src/renderer/src/features/chat/canonical/mentioned-files-scan";
-			export { buildFileTiles, parentDirectory } from "./src/renderer/src/features/chat/components/canvas/file-tiles";
+			export { buildFileTiles, displayParent, parentDirectory } from "./src/renderer/src/features/chat/components/canvas/file-tiles";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -64,8 +67,12 @@ const {
 	KNOWN_EXTENSIONS,
 	SCAN_PAGE_BUDGET,
 	mentionScanState,
+	newScanBook,
+	restartScan,
+	scanLane,
 	shouldRequestPage,
 	buildFileTiles,
+	displayParent,
 	parentDirectory,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -304,7 +311,7 @@ test("normalizeCandidate rejects the whole documented family", () => {
 
 test("a shell metacharacter is a placeholder, not a path", () => {
 	// Found on screen during the QA walk: `qa-res-$PID.pdf`, `prod-res-$PID.pdf`
-	// and a heredoc's `<name` were full tiles with a `Not found` receipt under
+	// and a heredoc's `<name` were full tiles with a missing-file receipt under
 	// them, and in that session a third of the grid was dead tiles.
 	assert.deepEqual(paths([assistant(1, "wrote /tmp/qa-res-$PID.pdf")]), []);
 	assert.deepEqual(paths([assistant(1, "wrote /tmp/prod-res-$PID.pdf")]), []);
@@ -367,10 +374,39 @@ test("a plain path list keeps its file:// entry (the next line is not a continua
 	);
 });
 
+test("a metacharacter inside a file:// URL is rejected in that tier too", () => {
+	// QA round 2, Q2-1. The metacharacter rule had a hole exactly where the
+	// scanner's own character class truncates: `a*.log` stops the match at the
+	// `*`, and the fragment `/tmp/agent-out/a` carries no metacharacter for the
+	// rule to reject — so a path no file has reached the panel as a tile whose
+	// only possible reading is the not-found receipt.
+	assert.deepEqual(
+		paths([assistant(1, "wrote file:///tmp/agent-out/a*.log")]),
+		[],
+		"the glob must not become the truncated path in front of it",
+	);
+	assert.deepEqual(
+		paths([assistant(1, "wrote file:///tmp/agent-out/run?.log")]),
+		[],
+		"`?` starts a query for `new URL`, so the parsed pathname has lost the glob",
+	);
+	assert.deepEqual(paths([assistant(1, "wrote file:///tmp/out/{a,b}.ts")]), []);
+	// Markup a URL legitimately sits inside is not a truncated path: nothing
+	// path-like follows the marker, so the URL keeps its tile.
+	assert.deepEqual(
+		paths([assistant(1, "see **file:///Users/damian/out/report.pdf** for it")]),
+		["/Users/damian/out/report.pdf"],
+	);
+	// The tiers agree. Prose never admitted a glob - its extension test rejects
+	// the fragment - and the tool-arg tier rejects the metacharacter outright.
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/a*.md")]), []);
+	assert.deepEqual(paths([tool(1, { path: "/tmp/a*.md" })]), []);
+});
+
 test("a semantic label is not a path key", () => {
 	// The harness's own `send` tool: `target` is a peer PID or another session's
 	// conversation name. With a cwd present both used to be admitted, resolved
-	// against the session and probed into `Not found` tiles.
+	// against the session and probed into missing-file tiles.
 	const cwd = "/Users/damian/proj";
 	for (const key of ["target", "source", "dest", "destination"])
 		assert.deepEqual(
@@ -535,6 +571,89 @@ test("the scan pauses at its budget and the tail is recoverable", () => {
 	assert.equal(done.stopped, false);
 });
 
+test("a page that failed is re-requested by the resume action", () => {
+	// The dead retry (found in review round 3, raised as a fix here). A stop can
+	// be reached with the cursor UNMOVED - a page request that failed, or an empty
+	// page at the end of a history that still claims more - and `scanLane` spends
+	// the budget for it. The head then offers `Search earlier messages` as the way
+	// out, and a `resume` that raised the budget without re-arming the cursor left
+	// the lane reading "already asked for this cursor, nothing in flight" and
+	// stopping again WITHOUT issuing anything: the only action offered at that
+	// stop was a no-op exactly where the user needs it.
+	//
+	// The whole loop is driven through the shipped rules: `shouldRequestPage` is
+	// what the hook passes as `canRequest`, and `newScanBook`/`scanLane`/
+	// `restartScan` are the bookkeeping the hook runs.
+	const CURSOR = "m100";
+	const book = newScanBook();
+	const lane = (b) =>
+		scanLane(b, {
+			canRequest: shouldRequestPage({
+				active: true,
+				scanned: 2400,
+				hasMore: true,
+				inFlight: b.inFlight,
+				pagesFetched: b.pages,
+				budget: b.budget,
+			}),
+			blocked: false,
+			oldestId: CURSOR,
+		});
+
+	assert.equal(lane(book), "request", "the scan asks for the oldest cursor");
+	assert.equal(book.requestedFor, CURSOR, "the cursor it asked for is recorded");
+	assert.equal(book.inFlight, true, "and a request is out");
+
+	// It came back with nothing: the hook clears `inFlight` in its `finally`.
+	book.inFlight = false;
+	assert.equal(
+		lane(book),
+		"stop",
+		"the cursor did not move, so the scan stops and says which messages it read",
+	);
+	assert.equal(book.pages, book.budget, "and the budget is what it reports");
+	assert.equal(
+		shouldRequestPage({
+			active: true,
+			scanned: 2400,
+			hasMore: true,
+			inFlight: false,
+			pagesFetched: book.pages,
+			budget: book.budget,
+		}),
+		false,
+		"the head is stopped, which is what puts the action on screen",
+	);
+
+	// The action. This is the assertion the defect failed: a request is ISSUED.
+	restartScan(book);
+	assert.equal(book.budget, SCAN_PAGE_BUDGET * 2, "the budget is raised");
+	assert.equal(book.requestedFor, null, "and the cursor is re-armed");
+	assert.equal(
+		lane(book),
+		"request",
+		"the retry asks again for the SAME cursor, which is the page still missing",
+	);
+	assert.equal(book.requestedFor, CURSOR);
+
+	// Two rules the lane keeps that the hook's own gate already excludes, stated
+	// here because they are the LANE's: a request already out for this cursor is
+	// left to answer for itself - in the hook `shouldRequestPage` also carries
+	// `!inFlight`, so it never reaches this arm, which is the guard for a caller
+	// that asks without that gate - and the reader's own older-history page is a
+	// wait rather than a spent budget (round 2, R2-5).
+	assert.equal(lane(book), "idle", "a request is already out, so nothing is asked");
+	assert.equal(
+		scanLane(book, { canRequest: true, blocked: false, oldestId: CURSOR }),
+		"in-flight",
+	);
+	assert.equal(
+		scanLane(book, { canRequest: true, blocked: true, oldestId: CURSOR }),
+		"wait",
+		"the reader's own page is a wait, not a spent budget",
+	);
+});
+
 test("the known-extension set is the one the classifier owns", () => {
 	// Asserted through the set itself rather than a copied list, so this test
 	// cannot drift from `file-kind.ts`.
@@ -590,8 +709,35 @@ test("two files with one basename survive as two tiles with a parent line", () =
 		[true, true, false],
 		"only the clashing basenames carry a second line",
 	);
-	assert.equal(tiles[0].parent, "/Users/dana/work/reports");
-	assert.equal(tiles[1].parent, "/Users/dana/work/archive");
+	// The line as it is PAINTED, which is the part design round 1 (D1) was about:
+	// `/Users/dana/work/reports` and `/Users/dana/work/archive` used to render
+	// `/Users/dana/work/rep…` and `/Users/dana/work/arch…` — 17 shared characters
+	// kept, the three that differ cut off — so the line could not do the one thing
+	// it exists for. Abbreviating the home prefix is what makes both fit.
+	assert.equal(tiles[0].parent, "~/work/reports");
+	assert.equal(tiles[1].parent, "~/work/archive");
+	assert.notEqual(tiles[0].parent, tiles[1].parent, "the collision is resolved");
+});
+
+test("displayParent keeps the tail when the path cannot fit", () => {
+	// The same rule one level down, where the abbreviation alone is not enough.
+	assert.equal(
+		displayParent("/Users/dana/work/clients/northwind/reports"),
+		"…/northwind/reports",
+	);
+	assert.equal(displayParent("/Users/dana/notes"), "~/notes");
+	assert.equal(displayParent("~/notes"), "~/notes");
+	// The account name is NOT dropped: `/Users/dana` and `/Users/sam` are
+	// different directories, and nothing after the name can carry that.
+	assert.equal(displayParent("/Users/dana"), "/Users/dana");
+	assert.equal(displayParent("/tmp"), "/tmp");
+	assert.equal(displayParent("C:\\Users\\dana\\notes"), "~\\notes");
+	// A budget too small for even the leaf is cut from the LEFT anyway: the tail
+	// of a long name is the informative end, and the leading `…` says where the
+	// information was dropped.
+	const long = displayParent("/a/very-long-directory-name", 8);
+	assert.equal(long.length <= 8, true, `\`${long}\` fits the budget`);
+	assert.equal(long.startsWith("…"), true);
 });
 
 test("a missing document keeps its position and is marked", () => {

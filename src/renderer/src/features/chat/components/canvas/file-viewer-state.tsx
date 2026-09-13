@@ -85,28 +85,38 @@ export const OpenInOsButton: FC<{ path: string; label?: string }> = ({
  * so the picture began directly under the tab strip and there was no in-app way
  * to hand it to another application. Four viewers with three shapes reads as
  * unfinished, and branding.md asks for one idiom app-wide. So: a bar on
- * `surface` closed by a `hairline` rule, the file's name in body type, and the
- * same `Open in default app` action on all four.
+ * `surface` closed by a `hairline` rule, and the same `Open in default app`
+ * action on all four.
  *
- * The path is optional because a `data:` document has no file to hand anywhere;
- * the action renders only when there is something to open. A themed bar over a
- * platform viewer is the boundary branding.md draws for content the app does not
- * own: our chrome, then the document.
+ * ## Why the bar no longer prints the file's name
+ *
+ * It used to, and the name was the THIRD copy of it on screen: the document's
+ * tab reads `q1-invoice-review.pdf`, and in the live app the window title read it
+ * too, so the most-seen 32 px of the panel stated a fact the strip directly above
+ * it had already stated, in the same face, size and ink, 32 px higher (design
+ * round 1, D3). Every viewer renders inside the document view, so the tab is
+ * always there; the bar's real job is the action, and the name is not a
+ * differentiator between two media surfaces — it is the same string twice.
+ *
+ * The path is still a prop because the action needs it, and it is optional
+ * because a `data:` document has no file to hand anywhere; the action renders
+ * only when there is something to open. `px-6` is the Files head's own inset, so
+ * the panel's left and right content edges are one line across its Files tab and
+ * its document tab (D6). A themed bar over a platform viewer is the boundary
+ * branding.md draws for content the app does not own: our chrome, then the
+ * document — and for the PDF viewer that boundary is wider than it looks, see
+ * `pdf-preview`'s note on the platform's own field.
  */
-export const ViewerChrome: FC<{ title: string; path?: string | null }> = ({
-	title,
-	path,
-}) => {
+export const ViewerChrome: FC<{ path?: string | null }> = ({ path }) => {
 	const openable =
 		typeof path === "string" && path.length > 0 && !path.startsWith("data:");
 	return (
 		<div
 			className={cn(
-				"flex min-h-8 shrink-0 items-center justify-between gap-2",
-				"border-hairline border-b bg-surface px-2 py-1.5",
+				"flex min-h-8 shrink-0 items-center justify-end gap-2",
+				"border-hairline border-b bg-surface px-6 py-1.5",
 			)}
 		>
-			<span className={cn("truncate text-body-sm text-ink")}>{title}</span>
 			{openable && (
 				<Tooltip content="Open in default app">
 					<Button

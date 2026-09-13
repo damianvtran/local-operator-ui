@@ -122,7 +122,11 @@ def outstanding(frame: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
  * renders the easy case and proves nothing about the other three.
  *
  * - two `summary.md` in different directories: the basename-collision line, and
- *   the pair the old grid silently merged into one tile.
+ *   the pair the old grid silently merged into one tile. This is also the only
+ *   committed frame of `displayParent`: the line is shortened from the LEFT, so
+ *   the segment that tells the two apart survives at the tile's width (design
+ *   round 1, D1). The scan-state stories render this same fixture, so theirs show
+ *   the line too.
  * - `february.csv` with `availability: "missing"`: the receipt, and a tile that
  *   must keep its place rather than being filtered out.
  * - `q1-invoice-review.pdf`, `dashboard.png`, `todo.txt`: a PDF (its own new

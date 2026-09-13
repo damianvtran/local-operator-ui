@@ -23,11 +23,12 @@ import { getFileName } from "@features/chat/utils/get-file-name";
  *   standing in for two. Identity is the resolved path; a name clash is shown,
  *   not hidden. The second line appears ONLY when a clash exists, so eight
  *   tiles that happen to be called `notes.md` do not carry eight lines of
- *   chrome.
+ *   chrome. The line is SHORTENED FROM THE LEFT (`displayParent`), because the
+ *   part that tells two same-named files apart is the segment nearest the file.
  * - **`missing` is a receipt, not a filter.** A file the agent wrote and the
- *   user later deleted stays in the list with a muted "Not found" under its
- *   name and a working Copy path; dropping it would recreate the original
- *   complaint from the other side.
+ *   user later deleted stays in the list with a muted receipt under its name and
+ *   a working Copy path; dropping it would recreate the original complaint from
+ *   the other side.
  */
 
 export type FileTile = {
@@ -35,7 +36,11 @@ export type FileTile = {
 	document: CanvasDocument;
 	/** The name line, read from the path rather than the title. */
 	name: string;
-	/** The directory line; only meaningful when `showParent` is true. */
+	/**
+	 * The directory line as it is PAINTED; only meaningful when `showParent` is
+	 * true. Shortened from the left — see `displayParent` — so the segment that
+	 * disambiguates two same-named files survives the tile's width.
+	 */
 	parent: string | null;
 	/** Two visible tiles share this basename, so the dir line is drawn. */
 	showParent: boolean;
@@ -66,6 +71,87 @@ export function parentDirectory(path: string): string | null {
 }
 
 /**
+ * How many characters the directory line has room for.
+ *
+ * Measured off the committed frames rather than guessed: at the panel width the
+ * evidence set is captured at, a tile's line is ~129 px of `text-mono-sm`, which
+ * is ~22 characters. It is a character budget rather than a pixel measurement
+ * because the tile's width follows the dock, and the one thing that must not
+ * change with it is WHICH part of the path is kept.
+ */
+export const PARENT_BUDGET = 22;
+
+/** A path separator, either platform's. Hoisted for `useTopLevelRegex`. */
+const SEPARATOR = /[/\\]/;
+
+/**
+ * The shape of a home directory at the head of a path: `/Users/<name>`,
+ * `/home/<name>`, `C:\Users\<name>`, or `/root`. The lookahead requires a
+ * separator after it, so `/Users/dana` with nothing after it does NOT match -
+ * dropping to `~` there would lose the name that distinguishes it from
+ * `/Users/sam`. Hoisted for `useTopLevelRegex`.
+ */
+const HOME_PREFIX =
+	/^(?:(?:\/Users|\/home|[A-Za-z]:\\Users)[/\\][^/\\]+|\/root)(?=[/\\])/;
+
+/**
+ * The home prefix, spelled the way the app itself spells it.
+ *
+ * `~`-abbreviating is not cosmetic here: `/Users/dana/work/reports` spends 12 of
+ * a 22-character budget on the part every tile has in common, which is how two
+ * colliding `summary.md` tiles came to read `/Users/dana/work/rep…` and
+ * `/Users/dana/work/arch…` — the distinguishing segment cut off, and the line
+ * unable to do the one thing it exists for. The shapes below are the platforms'
+ * home layouts, not a list of user names: nothing here is specific to this
+ * machine, and a path that does not match one is returned unchanged.
+ *
+ * There is no `homedir()` to ask: the renderer runs with `contextIsolation` and
+ * no node, and the panel's whole content is paths the transcript wrote, which
+ * may name another machine's home over a mounted share. So the rule is the
+ * SHAPE of a home directory, applied at the front of the path only.
+ */
+function abbreviateHome(path: string): string {
+	const match = HOME_PREFIX.exec(path);
+	if (!match) return path;
+	// Only a path that CONTINUES past the home directory is abbreviated: the
+	// lookahead above is what makes the account-name form safe.
+	return `~${path.slice(match[0].length)}`;
+}
+
+/**
+ * The directory line, shortened so the segment that disambiguates survives.
+ *
+ * Why this exists rather than a CSS ellipsis. `truncate` cuts the END, so a
+ * 129 px line spent on `/Users/dana/work/reports` and `/Users/dana/work/archive`
+ * painted `/Users/dana/work/rep…` and `/Users/dana/work/arch…`: the 17 shared
+ * characters survived and the three that told the files apart did not, and the
+ * tile's tooltip showed the NAME, so nothing on the tile could recover it. The
+ * line exists for a collision, so it has to resolve one (design round 1, D1).
+ *
+ * So: abbreviate the home prefix, and if it still does not fit, drop leading
+ * segments and mark the cut with a leading `…`, which is where the information
+ * was dropped. A path whose own final segment is longer than the budget is cut
+ * from the left too, for the same reason — the tail of a long name is still more
+ * informative than its head.
+ */
+export function displayParent(
+	parent: string,
+	budget: number = PARENT_BUDGET,
+): string {
+	const abbreviated = abbreviateHome(parent);
+	if (abbreviated.length <= budget) return abbreviated;
+	const segments = abbreviated.split(SEPARATOR).filter(Boolean);
+	const kept: string[] = [];
+	for (let index = segments.length - 1; index >= 0; index -= 1) {
+		const next = [segments[index], ...kept];
+		if (`…/${next.join("/")}`.length > budget) break;
+		kept.unshift(segments[index]);
+	}
+	if (kept.length > 0) return `…/${kept.join("/")}`;
+	return `…${abbreviated.slice(-(budget - 1))}`;
+}
+
+/**
  * Build the grid's tiles.
  *
  * `showParent` is computed from the whole visible set rather than per tile, so
@@ -82,8 +168,9 @@ export function buildFileTiles(documents: CanvasDocument[]): FileTile[] {
 
 	return documents.map((document) => {
 		const name = getFileName(document.path);
-		const parent =
+		const directory =
 			parentDirectory(document.path) ?? parentDirectory(document.title);
+		const parent = directory === null ? null : displayParent(directory);
 		return {
 			document,
 			name,

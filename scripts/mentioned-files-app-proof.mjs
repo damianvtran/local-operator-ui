@@ -476,14 +476,26 @@ report.pdfTileClicked = await cdp.evaluate(`(() => {
 await sleep(2500);
 report.pdfFrame = await cdp.evaluate(`(() => {
 	const frame = document.querySelector('iframe[src^="blob:"]');
-	const chromeBar = document.querySelector(".border-hairline.border-b.bg-surface span");
+	const panel = document.querySelector('[data-tour-tag="canvas-container"]');
+	const tab = document.querySelector('[role="tab"][aria-selected="true"]');
+	const openInOs = panel
+		? panel.querySelector('[aria-label="Open in default app"]')
+		: null;
 	return {
 		framePresent: Boolean(frame),
 		frameSrcScheme: frame ? frame.src.split(":")[0] : null,
 		frameTitle: frame ? frame.getAttribute("title") : null,
-		chromeBarText: chromeBar ? chromeBar.textContent : null,
+		/*
+		 * Where the document's name is printed, and where the way out to the OS
+		 * is. The name used to be read out of the viewer bar; design round 1 (D3)
+		 * dropped that copy because the tab above already carries it, so the
+		 * reading follows the decision - the tab is the name, and the bar is its
+		 * action.
+		 */
+		activeTabLabel: tab ? tab.textContent.trim() : null,
+		openInOsControl: Boolean(openInOs),
 		cspViolations: window.__cspViolations ?? null,
-		panelText: document.body.innerText.includes("Not found"),
+		panelReceipt: document.body.innerText.includes("No longer on disk"),
 	};
 })()`);
 const shot2 = await cdp.send("Page.captureScreenshot", { format: "png" });

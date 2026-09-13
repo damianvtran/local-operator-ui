@@ -21,6 +21,15 @@ import {
  * so this was the one media viewer with no way out to another application while it
  * worked - a wave file's natural home is often a player, and the only route there
  * lived in the error state.
+ *
+ * The player sits on `sunken`, the app's recess for a media surface, for the same
+ * reason the image and video surfaces use it: the platform draws the audio pill
+ * itself, and in the light palettes its own chrome (`backdrop-control`, near
+ * white) measures 1.01:1 against `canvas` — the control had no perceivable
+ * boundary at all, so it read as a waveform floating on the page rather than as a
+ * control on a surface. `sunken` is the ground the panel already gives its other
+ * two media surfaces, so the pill is bounded by a step the eye can see in every
+ * palette (design round 1, D7).
  */
 const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
@@ -33,9 +42,13 @@ const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 
 	return (
 		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
-			<ViewerChrome title={document.title} path={document.path} />
+			<ViewerChrome path={document.path} />
 			{state.status === "ready" ? (
-				<div className={cn("flex flex-1 items-center justify-center p-6")}>
+				<div
+					className={cn(
+						"flex flex-1 items-center justify-center bg-sunken p-6",
+					)}
+				>
 					{/* biome-ignore lint/a11y/useMediaCaption: the operator's own audio file has no caption track to offer. */}
 					<audio
 						src={state.url}

@@ -270,7 +270,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 *
 			 * The two checks were in the other order, and that turned a click on a
 			 * missing file whose type has no viewer into nothing at all: `kind ===
-			 * null` handed it to the OS first, so a `Not found` tile that said `Open
+			 * null` handed it to the OS first, so a missing tile that said `Open
 			 * in default app` to nobody swallowed the click. A click must always
 			 * produce something - a viewer, the OS, or a sentence.
 			 *
@@ -441,16 +441,35 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 							Searching earlier messages… {scan.scanned} messages scanned
 						</span>
 					)}
+					{/*
+					 * The stop and the action that answers it, as ONE row.
+					 *
+					 * Two things were wrong with leaving them in the head's own flex row.
+					 * The action was a `ghost` button — no fill, no edge, no underline, one
+					 * ink step above the `ink-dim` sentence beside it — so the only action
+					 * this state offers was marked as a control by contrast alone; it is
+					 * `outline` now, which carries the same `border-control` a control
+					 * boundary is, at rest. And its POSITION was chosen by whether the count
+					 * happened to leave room: with tiles the pair wrapped to a second line
+					 * starting at the head's content edge, with nothing found it sat at the
+					 * end of the sentence instead. Wrapping the pair in a `w-full` row puts
+					 * it on its own line in both states, so the panel's one action is in one
+					 * place whichever stop produced it (design round 1, D4).
+					 */}
 					{scan?.stopped && (
-						<>
+						<div
+							className={cn(
+								"flex w-full flex-wrap items-center gap-x-3 gap-y-1",
+							)}
+						>
 							<span className={cn("text-meta text-ink-dim")}>
 								Searched the most recent {scan.scanned} messages; earlier
 								messages are not searched yet.
 							</span>
-							<Button variant="ghost" size="sm" onClick={scan.resume}>
+							<Button variant="outline" size="sm" onClick={scan.resume}>
 								Search earlier messages
 							</Button>
-						</>
+						</div>
 					)}
 				</div>
 			)}
@@ -494,6 +513,18 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 								!fileDoc.path.startsWith("data:") &&
 								!fileDoc.path.startsWith("http");
 							const normalizedPath = stripFileUrl(fileDoc.path);
+							/*
+							 * The tile's tooltip carries the FULL PATH, not the name. The name is
+							 * already on the tile, and where two tiles share one the path is the
+							 * only thing that tells them apart — so the tooltip has to be the
+							 * thing that resolves the collision rather than a second copy of the
+							 * name (design round 1, D1). A `data:` document has no path to show,
+							 * and pasting a whole data URI into a tooltip would be worse than
+							 * useless, so it keeps its name.
+							 */
+							const tooltip = fileDoc.path.startsWith("data:")
+								? fileDoc.title
+								: fileDoc.path;
 							return (
 								<Card
 									key={fileDoc.id}
@@ -504,7 +535,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 										"transition-colors duration-fast ease-out-quart hover:border-control",
 									)}
 								>
-									<Tooltip content={fileDoc.title}>
+									<Tooltip content={tooltip}>
 										<button
 											type="button"
 											onClick={() => handleFileClick(fileDoc)}
@@ -594,7 +625,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 															"block w-full text-meta text-ink-dim",
 														)}
 													>
-														Not found
+														No longer on disk
 													</span>
 												)}
 											</span>
