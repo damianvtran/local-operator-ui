@@ -429,13 +429,15 @@ function pidsHoldingConfigDir(root) {
 	 * one: on macOS the pid list from `-A` and from `-ax` compared equal, so the
 	 * holder rule above is neither widened nor narrowed by the change.
 	 *
-	 * `-e` is NOT a substitute, and its meaning is exactly the kind of thing
-	 * that differs by mode: in GNU procps' normal mode the man page gives `-e`
-	 * as an alias for `-A`, while measured here on BSD `ps` - where the first
-	 * `-` puts it in the compatibility mode - `ps eww -eo pid=,command=`
-	 * selected only the current terminal's processes (2124 bytes, one process's
-	 * environment). `-A` says "every process" in both modes and on both
-	 * platforms, which is the whole reason to spell it this way.
+	 * `-e` is NOT a substitute, and which `-e` you get depends on the MODE - which
+	 * is decided by the shape of the first argument rather than by any flag
+	 * (review R6): measured on BSD `ps` here, `ps eww -eo pid=,command=` - a
+	 * hyphen-less first argument, i.e. compatibility mode, where `e` means "show
+	 * the environment" - selected only the current terminal's processes (2 lines,
+	 * 1 environment), while `ps -e -o pid=,command=` - normal mode, where the man
+	 * page gives `-e` as an alias for `-A` - selected 813. `-A` means "every
+	 * process" in both modes and on both platforms, which is the whole reason to
+	 * spell it this way.
 	 */
 	const table = ps(["eww", "-A", "-o", "pid=,command="]);
 	if (table === null) return null;
