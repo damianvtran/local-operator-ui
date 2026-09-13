@@ -761,7 +761,13 @@ export const ArgumentPhaseNoMatch: Story = {
 					argumentCommand: "team",
 					inline: { source: "team", nameThenMessage: true, runs: false },
 					argumentQuery: "zzz",
-					matches: argumentRowsFor("team", TEAMS, null, "zzz"),
+					argumentList: {
+						rows: argumentRows("team", TEAMS, null) as ArgumentRow[],
+						loading: false,
+						error: null,
+						needsSession: false,
+					},
+					matches: [],
 				})}
 				onPick={noop}
 			/>
