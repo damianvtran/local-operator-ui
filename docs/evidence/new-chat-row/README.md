@@ -67,11 +67,18 @@ traversal are real `Input.dispatchKeyEvent`s too.
   comment records the measurement that disproved the earlier claim). The
   readback records `disabled: false` on the row in every state rather than
   faking the frame.
-- **Note on the scroll position.** The focus and current frames show the sidebar
-  scrolled a little, because Tab-ing to the row scrolls it into view. That is
-  the browser doing what a keyboard user's browser does; every before/after pair
-  is captured by the same script and carries the same scroll, so the pair stays
-  comparable.
+- **Note on the scroll position.** The focus and current frames are taken after
+  a Tab walk, and Tab scrolls the sidebar's own list region to keep the focused
+  row in view. That is the browser doing what a keyboard user's browser does,
+  and it happens in the before and after sets alike because the walk is the
+  same script. What the alignment rests on is not scrolled in ANY of the
+  sixteen committed frames: the New chat row's own box is at `y=568` in every
+  one of them, and the pinned partition the row lives in reports a scroll
+  offset of `0` in every frame of the re-captured set. An earlier revision of
+  this note stated the scroll as one set-wide fact ("every before/after pair …
+  carries the same scroll"), which the set's own readback contradicted — the two
+  light state frames were captured with the backend down and their row sat at
+  `y=503.83` against `568` everywhere else (review finding M3).
 
 ## Before / after
 
@@ -83,7 +90,7 @@ pane is cropped out.
 | State | Before | After |
 | --- | --- | --- |
 | The block at rest | [`before-sidebar-rest`](before-sidebar-rest/localOperatorDark.webp) — the New chat row is a rounded `border-control` pill | [`after-sidebar-rest`](after-sidebar-rest/localOperatorDark.webp) — plain row, icon and label on the All chats column |
-| New chat hovered | [`before-new-chat-hover`](before-new-chat-hover/localOperatorDark.webp) | [`after-new-chat-hover`](after-new-chat-hover/localOperatorDark.webp) — same colour step, `bg-elevated`, with the pill's edge also stepped |
+| New chat hovered | [`before-new-chat-hover`](before-new-chat-hover/localOperatorDark.webp) — the same colour step on the pill | [`after-new-chat-hover`](after-new-chat-hover/localOperatorDark.webp) — the same colour step on a row with no edge |
 | New chat focused | [`before-new-chat-focus`](before-new-chat-focus/localOperatorDark.webp) | [`after-new-chat-focus`](after-new-chat-focus/localOperatorDark.webp) — the `2px solid` accent outline and its `2px` offset still clear the row |
 | New chat current | [`before-new-chat-current`](before-new-chat-current/localOperatorDark.webp) — after a real Enter | [`after-new-chat-current`](after-new-chat-current/localOperatorDark.webp) — after a real Enter; `accent-wash` and `aria-current="page"` |
 
@@ -136,9 +143,17 @@ Pointer-free keyboard traversal, from the top of the document, with real Tab and
 arrow key events:
 
 ```
-TRAVERSAL  newChatIndex=46  before="All chats 34"  afterTab="Active chats 2"
-           backFromShiftTab="New chat"  arrowUp="All chats 34"  arrowDown="New chat"
+TRAVERSAL (one walk per theme, recorded per run rather than as one set-wide number)
+  after/localOperatorDark   47 stops  newChatIndex=46  before="All chats 34"  afterTab="Active chats 2"
+  after/localOperatorLight  47 stops  newChatIndex=46  before="All chats 34"  afterTab="Active chats 2"
 ```
+
+Both runs agree on the stop count and on every neighbour, and the before set's
+`47 / 46` matches them; the readback carries these fields per theme, which is
+what makes them checkable. An earlier revision quoted `newChatIndex=46` as
+though all four instrumented runs agreed, and the degraded light run did not:
+it recorded **49** stops with a `Retry` at index 0 and index 9 and
+`newChatIndex=48` (review finding M3).
 
 So the row is its own stop in the Tab order and the walk continues past it (and
 Shift+Tab comes back); and it is a stop in the sidebar's own arrow ring, where
@@ -179,10 +194,10 @@ than a focus ring.
 itself, which fails rather than writes if it finds one:
 
 ```
-after-new-chat-current/localOperatorDark.webp     a3f1bd3c8babf600
-after-new-chat-current/localOperatorLight.webp    b8d96a922f4a7484
+after-new-chat-current/localOperatorDark.webp     a98020966190a087
+after-new-chat-current/localOperatorLight.webp    be78a6b2e3510437
 after-new-chat-focus/localOperatorDark.webp       40a5bf566193a43d
-after-new-chat-focus/localOperatorLight.webp      59c68af09f4c4a3e
+after-new-chat-focus/localOperatorLight.webp      f8d6a79f72b232d4
 after-new-chat-hover/localOperatorDark.webp       d98d2bfa2ab2d5dd
 after-new-chat-hover/localOperatorLight.webp      9d9c89639a0c3607
 after-sidebar-rest/localOperatorDark.webp         a0cc7ce6ae96bf08
@@ -197,16 +212,41 @@ before-sidebar-rest/localOperatorDark.webp        f182c146d32df75d
 before-sidebar-rest/localOperatorLight.webp       aeee552c5c47f55a
 ```
 
-Both sets are also **byte-identical across two consecutive runs of the same
-script**, which is what makes the before/after pair comparable rather than
-merely similar. Getting there needed one real fix: the first pass photographed a
+The **after** set is byte-identical across two consecutive runs of the same
+script: the capture was run twice with nothing changed in between and
+`shasum -a 256` agrees on all eight digests above, which is what makes the
+before/after pair comparable rather than merely similar. A third run, taken
+after the branch was rebased onto a moved `main`, reproduced the same eight
+digests again — which is also what shows these frames are pictures of the
+tree under review rather than of the branch as it stood before the rebase.
+Stated that narrowly on purpose — an earlier revision asserted the property for
+both sets without publishing either run's digests, and the round-1 light
+`focus` and `current` frames were re-taken this round precisely because they did
+not hold it (review finding Q4). The `before` set is the single run that
+produced it and is unchanged here.
+
+Getting a clean run needed one real fix. The first pass photographed a
 half-populated sidebar, because the rows exist from the first render while the
 counts, the attention marks and the Active/Previous split arrive on later
 calls — one run had every agent row's count missing and read "Nothing running
-right now." where the next showed two active rows. The capture now waits until
-the row text is unchanged across three consecutive samples **and** the All chats
-row reads the seeded total, and asserts that total at every frame, so a frame
-taken mid-arrival fails instead of publishing.
+right now." where the next showed two active rows. The capture waits until the
+row text is unchanged across three consecutive samples **and** the All chats row
+reads the seeded total, and asserts that total at every frame.
+
+**What makes a frame publishable is now stated in the repository, not only in
+the capture script.** `scripts/new-chat-row-evidence.mjs` exports
+`assertHealthyFrame`, and the capture calls it per frame; the same function runs
+over the committed readbacks in `scripts/new-chat-row-evidence.test.mjs`, which
+is part of `pnpm test:desktop`. A frame has to show the WHOLE seeded fixture —
+`All chats 34`, `Active chats 2` and `Previous chats 32`, the two split totals
+arriving on a later desktop call than the rows — with no `[role=alert]` in the
+sidebar, none of `connectivity-banner.tsx`'s copy anywhere in the document (the
+banner renders outside the sidebar, so no sidebar-scoped check can see it), no
+`Retry` stop in the keyboard walk, and the row still at the position its own
+run's rest frame gives it. Round 1 published two frames that every check in
+force at the time passed: the cached counts still read "All chats 34" while the
+window-level banner was up and the row had been pushed 64.17px out of place.
+That recorded failure is now one of the guard's test cases.
 
 ## Re-capturing this set
 
@@ -232,10 +272,30 @@ but if it is ever lost, it has to be re-taken by hand:
    `desktopProxyPlugin`, whose own import of `../../src/main/desktop-media`
    carries no file extension, which Vite resolves and Node's ESM loader refuses
    with `ERR_MODULE_NOT_FOUND`.
-4. Capture: `node out/evidence-harness/capture.mjs http://localhost:5271
+4. Check the page before spending a run on it: `alerts: []` and a list that
+   reads the seeded totals. A run whose sidebar is carrying the window-level
+   "The server is offline…" banner is a picture of a different surface, and the
+   guard below will refuse it anyway.
+5. Capture: `node out/evidence-harness/capture.mjs http://localhost:5271
    docs/evidence/new-chat-row before|after`. Take `before` with the source tree
    at the pre-change commit (`git stash push -- <the one file>`), then `after`
    on the branch, so the pair comes from the same harness, viewport and script.
+
+**The backend's port has to be one the page's own CSP admits.**
+`src/renderer/index.html` pins `connect-src 'self' http://localhost:1111
+http://127.0.0.1:1111 … http://localhost:8080 …`, so a cross-origin `fetch` to
+an isolated backend on any other port is refused by the page — and the first
+thing the app fetches that way is `/health`, which `useConnectivityStatus` polls
+every 5s. Left unanswered it raises the window-level banner for the whole run
+(measured: `Failed to fetch`, a `connect-src` violation in the console), which is
+the same failure class as the frames this round re-took. Neither allowed port is
+free on this machine — 1111 is the operator's own backend — so
+`new-chat-row.vite.mjs` answers `/health` itself, on the dev origin, by proxying
+it to THIS harness's isolated backend, and configures
+`VITE_LOCAL_OPERATOR_API_URL` to that origin so `'self'` covers the ping. It is a
+proxy rather than a canned body so the app's "is the server there" answer stays
+the real one; every other call still reaches the isolated backend, through
+`desktopProxyPlugin`.
 
 Three pieces of persisted state must be cleared or seeded on every load, or the
 frames lie (`capture.mjs` does all three):
@@ -254,3 +314,10 @@ reaches the document and is seen by React, but does not trigger the browser's
 default activation, so the current-draft frame silently comes back at rest. And
 the animation-freeze stylesheet is lifted before every read, so the reported
 `transition` is the row's own rather than the sheet's.
+
+The capture exits non-zero instead of writing a frame it cannot stand behind:
+`assertHealthyFrame` (`scripts/new-chat-row-evidence.mjs`) is called on every
+frame with the run's own rest position as the baseline, so a run that loses the
+backend mid-walk fails at the frame rather than publishing the set. The test
+beside it, `scripts/new-chat-row-evidence.test.mjs`, checks the same function
+against the round-1 failure and against the committed readbacks.
