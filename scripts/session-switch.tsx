@@ -142,6 +142,22 @@ type Probe = {
 	settle: (id: string) => Promise<void>;
 	switchTo: (id: string, label: string) => Promise<Run>;
 	snapshot: () => unknown;
+	view: () => {
+		activeSessionId: string | null;
+		errorState: string | null;
+		selectedRow: string | null;
+		errorShown: boolean;
+		transcriptHasContent: boolean;
+	};
+	record: () => {
+		entries: Array<{
+			t: number;
+			active: string | null;
+			error: string | null;
+			shown: boolean;
+		}>;
+		stop: () => void;
+	};
 };
 
 const pendingIndicator = () =>
@@ -167,6 +183,15 @@ const latencyOf = () => ({
 	stream: param("stream", 12),
 });
 
+/** Sessions whose guard read is scripted to fail, from `?fail=<id>`. */
+const failGet = () => {
+	const raw = new URLSearchParams(window.location.search).get("fail");
+	if (!raw) return [];
+	// `?fail=incoming` names the session the driver times, which the driver
+	// cannot spell itself: it learns the fixture ids from the page.
+	return raw === "incoming" ? [INCOMING] : [raw];
+};
+
 // --------------------------------------------------------------- the page
 
 const queryClient = new QueryClient({
@@ -177,6 +202,7 @@ const bridge = installSwitchBridge({
 	sessions,
 	stepsBySession,
 	latency: latencyOf(),
+	failGet: failGet(),
 });
 
 const api: Probe = {
@@ -353,6 +379,54 @@ const api: Probe = {
 		latency: bridge.log.latency,
 		hasRow: (id: string) => rowFor(id) !== null,
 	}),
+	/*
+	 * What the user can actually see, read from the document rather than from
+	 * the store alone.
+	 *
+	 * `error` is taken from the rendered text: the store's `error` field being
+	 * set proves the state, not that the sentence reached the screen, and the
+	 * rollback path's whole promise is a claim about the screen.
+	 */
+	view: () => ({
+		activeSessionId: useCanonicalSessionsStore.getState().activeSessionId,
+		errorState: useCanonicalSessionsStore.getState().error,
+		selectedRow:
+			document
+				.querySelector('[data-chat-row][aria-current="page"]')
+				?.textContent?.trim() ?? null,
+		/*
+		 * Read from the SCREEN, not the store: `errorState` can be cleared by the
+		 * sidebar's five-second catalogue poll, which sets `error: null` when it
+		 * starts, so a state read alone cannot say whether the sentence was ever
+		 * shown.
+		 */
+		errorShown: document.body.innerText.includes("Unknown session"),
+		transcriptHasContent: transcriptHasContent(),
+	}),
+	/**
+	 * Every state transition the rollback makes, so a reader can tell "the
+	 * error was never set" from "it was set and something cleared it".
+	 */
+	record: () => {
+		const entries: Array<{
+			t: number;
+			active: string | null;
+			error: string | null;
+			shown: boolean;
+		}> = [];
+		const unsubscribe = useCanonicalSessionsStore.subscribe((state) => {
+			entries.push({
+				t: Math.round(performance.now() * 10) / 10,
+				active: state.activeSessionId,
+				error: state.error,
+				shown: document.body.innerText.includes("Unknown session"),
+			});
+		});
+		return {
+			entries,
+			stop: unsubscribe,
+		};
+	},
 };
 
 probe.__lopSwitch = api;

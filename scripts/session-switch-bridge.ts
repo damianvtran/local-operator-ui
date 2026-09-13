@@ -73,6 +73,17 @@ export type BridgeConfig = {
 	sessions: SessionFixture[];
 	stepsBySession: Record<string, TranscriptStep[]>;
 	latency?: BridgeLatency;
+	/**
+	 * Session ids whose `sessions.get` FAILS with a 404.
+	 *
+	 * The rollback path is the half of an optimistic commit that a timing
+	 * harness cannot see, and it is the half a reviewer is entitled to watch:
+	 * a switch to a session that is gone must end with the error and the
+	 * outgoing conversation still on screen, not with a chat that will not
+	 * open. Driving it here means the claim is checked in the real renderer
+	 * rather than only in the store's own unit test.
+	 */
+	failGet?: string[];
 };
 
 type DesktopRequestLike = { op: string; [key: string]: unknown };
@@ -322,6 +333,7 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 				return { sessions: config.sessions, truncated: false };
 			case "sessions.get": {
 				const sessionId = String(request.sessionId);
+				if (config.failGet?.includes(sessionId)) return { notFound: true };
 				if (!config.sessions.some((row) => row.id === sessionId))
 					return { notFound: true };
 				return {
