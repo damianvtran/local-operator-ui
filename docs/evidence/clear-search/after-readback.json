@@ -1,0 +1,590 @@
+[
+  {
+    "theme": "localOperatorDark",
+    "state": "rest",
+    "file": "docs/evidence/clear-search/after-rest/localOperatorDark.webp",
+    "value": "",
+    "activeElement": "BODY",
+    "focusInInput": false,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 17,
+    "entities": [
+      "architect",
+      "Coder\n4",
+      "Data analyst",
+      "Designer\n1",
+      "Docs writer",
+      "Manager",
+      "Release manager",
+      "Reviewer\n1",
+      "scout",
+      "design-pod",
+      "release-pod\n1"
+    ],
+    "sections": [
+      "Agent",
+      "architect",
+      "Coder\n4",
+      "Data analy t",
+      "De igner\n1",
+      "Doc  writer",
+      "Manager",
+      "Relea e manager",
+      "Reviewer\n1",
+      "cout",
+      "Team",
+      "de ign-pod",
+      "relea e-pod\n1",
+      "All chat \n7",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n7"
+    ],
+    "controlPresent": false,
+    "controlBox": null,
+    "controlFill": null,
+    "controlInk": null,
+    "controlOutline": null,
+    "controlOutlineOffset": null,
+    "controlOutlineColor": null,
+    "controlRingOuter": null,
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "query",
+    "file": "docs/evidence/clear-search/after-query/localOperatorDark.webp",
+    "value": "cod",
+    "activeElement": "INPUT[Search chats and agents]",
+    "focusInInput": true,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 15,
+    "entities": [
+      "Coder\n4"
+    ],
+    "sections": [
+      "Agent",
+      "Coder\n4",
+      "Recent\nClear the  idebar  earch field in one action",
+      "Recent\nCompo er readout  drift after a theme  wap",
+      "Recent\nThe paging cur or lo e  a row at the page boundary",
+      "Recent\nFix the retention  weep on cold  e ion",
+      "Team",
+      "All chat \n4",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n4",
+      "Recent\nClear the  idebar  earch field in one action· Coder",
+      "Recent\nCompo er readout  drift after a theme  wap· Coder",
+      "Recent\nThe paging cur or lo e  a row at the page boundary· Coder",
+      "Recent\nFix the retention  weep on cold  e ion · Coder"
+    ],
+    "controlPresent": true,
+    "controlBox": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "controlFill": "rgba(0, 0, 0, 0)",
+    "controlInk": "rgb(181, 175, 162)",
+    "controlOutline": "3px none",
+    "controlOutlineOffset": "0px",
+    "controlOutlineColor": "rgb(181, 175, 162)",
+    "controlRingOuter": {
+      "x": 463,
+      "y": 53,
+      "w": 34,
+      "h": 34
+    },
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "hover",
+    "file": "docs/evidence/clear-search/after-hover/localOperatorDark.webp",
+    "value": "cod",
+    "activeElement": "INPUT[Search chats and agents]",
+    "focusInInput": true,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 15,
+    "entities": [
+      "Coder\n4"
+    ],
+    "sections": [
+      "Agent",
+      "Coder\n4",
+      "Recent\nClear the  idebar  earch field in one action",
+      "Recent\nCompo er readout  drift after a theme  wap",
+      "Recent\nThe paging cur or lo e  a row at the page boundary",
+      "Recent\nFix the retention  weep on cold  e ion",
+      "Team",
+      "All chat \n4",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n4",
+      "Recent\nClear the  idebar  earch field in one action· Coder",
+      "Recent\nCompo er readout  drift after a theme  wap· Coder",
+      "Recent\nThe paging cur or lo e  a row at the page boundary· Coder",
+      "Recent\nFix the retention  weep on cold  e ion · Coder"
+    ],
+    "controlPresent": true,
+    "controlBox": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "controlFill": "rgb(22, 40, 29)",
+    "controlInk": "rgb(241, 238, 230)",
+    "controlOutline": "3px none",
+    "controlOutlineOffset": "0px",
+    "controlOutlineColor": "rgb(241, 238, 230)",
+    "controlRingOuter": {
+      "x": 463,
+      "y": 53,
+      "w": 34,
+      "h": 34
+    },
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "focused",
+    "file": "docs/evidence/clear-search/after-focused/localOperatorDark.webp",
+    "value": "cod",
+    "activeElement": "BUTTON[Clear search]",
+    "focusInInput": false,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 15,
+    "entities": [
+      "Coder\n4"
+    ],
+    "sections": [
+      "Agent",
+      "Coder\n4",
+      "Recent\nClear the  idebar  earch field in one action",
+      "Recent\nCompo er readout  drift after a theme  wap",
+      "Recent\nThe paging cur or lo e  a row at the page boundary",
+      "Recent\nFix the retention  weep on cold  e ion",
+      "Team",
+      "All chat \n4",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n4",
+      "Recent\nClear the  idebar  earch field in one action· Coder",
+      "Recent\nCompo er readout  drift after a theme  wap· Coder",
+      "Recent\nThe paging cur or lo e  a row at the page boundary· Coder",
+      "Recent\nFix the retention  weep on cold  e ion · Coder"
+    ],
+    "controlPresent": true,
+    "controlBox": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "controlFill": "rgba(0, 0, 0, 0)",
+    "controlInk": "rgb(181, 175, 162)",
+    "controlOutline": "2px solid",
+    "controlOutlineOffset": "-2px",
+    "controlOutlineColor": "rgb(56, 201, 106)",
+    "controlRingOuter": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "cleared",
+    "file": "docs/evidence/clear-search/after-cleared/localOperatorDark.webp",
+    "value": "",
+    "activeElement": "INPUT[Search chats and agents]",
+    "focusInInput": true,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 17,
+    "entities": [
+      "architect",
+      "Coder\n4",
+      "Data analyst",
+      "Designer\n1",
+      "Docs writer",
+      "Manager",
+      "Release manager",
+      "Reviewer\n1",
+      "scout",
+      "design-pod",
+      "release-pod\n1"
+    ],
+    "sections": [
+      "Agent",
+      "architect",
+      "Coder\n4",
+      "Data analy t",
+      "De igner\n1",
+      "Doc  writer",
+      "Manager",
+      "Relea e manager",
+      "Reviewer\n1",
+      "cout",
+      "Team",
+      "de ign-pod",
+      "relea e-pod\n1",
+      "All chat \n7",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n7"
+    ],
+    "controlPresent": false,
+    "controlBox": null,
+    "controlFill": null,
+    "controlInk": null,
+    "controlOutline": null,
+    "controlOutlineOffset": null,
+    "controlOutlineColor": null,
+    "controlRingOuter": null,
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "rest",
+    "file": "docs/evidence/clear-search/after-rest/localOperatorLight.webp",
+    "value": "",
+    "activeElement": "BODY",
+    "focusInInput": false,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 17,
+    "entities": [
+      "architect",
+      "Coder\n4",
+      "Data analyst",
+      "Designer\n1",
+      "Docs writer",
+      "Manager",
+      "Release manager",
+      "Reviewer\n1",
+      "scout",
+      "design-pod",
+      "release-pod\n1"
+    ],
+    "sections": [
+      "Agent",
+      "architect",
+      "Coder\n4",
+      "Data analy t",
+      "De igner\n1",
+      "Doc  writer",
+      "Manager",
+      "Relea e manager",
+      "Reviewer\n1",
+      "cout",
+      "Team",
+      "de ign-pod",
+      "relea e-pod\n1",
+      "All chat \n7",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n7"
+    ],
+    "controlPresent": false,
+    "controlBox": null,
+    "controlFill": null,
+    "controlInk": null,
+    "controlOutline": null,
+    "controlOutlineOffset": null,
+    "controlOutlineColor": null,
+    "controlRingOuter": null,
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "query",
+    "file": "docs/evidence/clear-search/after-query/localOperatorLight.webp",
+    "value": "cod",
+    "activeElement": "INPUT[Search chats and agents]",
+    "focusInInput": true,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 15,
+    "entities": [
+      "Coder\n4"
+    ],
+    "sections": [
+      "Agent",
+      "Coder\n4",
+      "Recent\nClear the  idebar  earch field in one action",
+      "Recent\nCompo er readout  drift after a theme  wap",
+      "Recent\nThe paging cur or lo e  a row at the page boundary",
+      "Recent\nFix the retention  weep on cold  e ion",
+      "Team",
+      "All chat \n4",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n4",
+      "Recent\nClear the  idebar  earch field in one action· Coder",
+      "Recent\nCompo er readout  drift after a theme  wap· Coder",
+      "Recent\nThe paging cur or lo e  a row at the page boundary· Coder",
+      "Recent\nFix the retention  weep on cold  e ion · Coder"
+    ],
+    "controlPresent": true,
+    "controlBox": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "controlFill": "rgba(0, 0, 0, 0)",
+    "controlInk": "rgb(86, 81, 71)",
+    "controlOutline": "3px none",
+    "controlOutlineOffset": "0px",
+    "controlOutlineColor": "rgb(86, 81, 71)",
+    "controlRingOuter": {
+      "x": 463,
+      "y": 53,
+      "w": 34,
+      "h": 34
+    },
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "hover",
+    "file": "docs/evidence/clear-search/after-hover/localOperatorLight.webp",
+    "value": "cod",
+    "activeElement": "INPUT[Search chats and agents]",
+    "focusInInput": true,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 15,
+    "entities": [
+      "Coder\n4"
+    ],
+    "sections": [
+      "Agent",
+      "Coder\n4",
+      "Recent\nClear the  idebar  earch field in one action",
+      "Recent\nCompo er readout  drift after a theme  wap",
+      "Recent\nThe paging cur or lo e  a row at the page boundary",
+      "Recent\nFix the retention  weep on cold  e ion",
+      "Team",
+      "All chat \n4",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n4",
+      "Recent\nClear the  idebar  earch field in one action· Coder",
+      "Recent\nCompo er readout  drift after a theme  wap· Coder",
+      "Recent\nThe paging cur or lo e  a row at the page boundary· Coder",
+      "Recent\nFix the retention  weep on cold  e ion · Coder"
+    ],
+    "controlPresent": true,
+    "controlBox": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "controlFill": "rgb(231, 241, 232)",
+    "controlInk": "rgb(33, 30, 24)",
+    "controlOutline": "3px none",
+    "controlOutlineOffset": "0px",
+    "controlOutlineColor": "rgb(33, 30, 24)",
+    "controlRingOuter": {
+      "x": 463,
+      "y": 53,
+      "w": 34,
+      "h": 34
+    },
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "focused",
+    "file": "docs/evidence/clear-search/after-focused/localOperatorLight.webp",
+    "value": "cod",
+    "activeElement": "BUTTON[Clear search]",
+    "focusInInput": false,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 15,
+    "entities": [
+      "Coder\n4"
+    ],
+    "sections": [
+      "Agent",
+      "Coder\n4",
+      "Recent\nClear the  idebar  earch field in one action",
+      "Recent\nCompo er readout  drift after a theme  wap",
+      "Recent\nThe paging cur or lo e  a row at the page boundary",
+      "Recent\nFix the retention  weep on cold  e ion",
+      "Team",
+      "All chat \n4",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n4",
+      "Recent\nClear the  idebar  earch field in one action· Coder",
+      "Recent\nCompo er readout  drift after a theme  wap· Coder",
+      "Recent\nThe paging cur or lo e  a row at the page boundary· Coder",
+      "Recent\nFix the retention  weep on cold  e ion · Coder"
+    ],
+    "controlPresent": true,
+    "controlBox": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "controlFill": "rgba(0, 0, 0, 0)",
+    "controlInk": "rgb(86, 81, 71)",
+    "controlOutline": "2px solid",
+    "controlOutlineOffset": "-2px",
+    "controlOutlineColor": "rgb(20, 120, 66)",
+    "controlRingOuter": {
+      "x": 460,
+      "y": 50,
+      "w": 28,
+      "h": 28
+    },
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "cleared",
+    "file": "docs/evidence/clear-search/after-cleared/localOperatorLight.webp",
+    "value": "",
+    "activeElement": "INPUT[Search chats and agents]",
+    "focusInInput": true,
+    "inputBox": {
+      "x": 228,
+      "y": 48,
+      "w": 264,
+      "h": 32
+    },
+    "inputPaddingRight": "36px",
+    "rows": 17,
+    "entities": [
+      "architect",
+      "Coder\n4",
+      "Data analyst",
+      "Designer\n1",
+      "Docs writer",
+      "Manager",
+      "Release manager",
+      "Reviewer\n1",
+      "scout",
+      "design-pod",
+      "release-pod\n1"
+    ],
+    "sections": [
+      "Agent",
+      "architect",
+      "Coder\n4",
+      "Data analy t",
+      "De igner\n1",
+      "Doc  writer",
+      "Manager",
+      "Relea e manager",
+      "Reviewer\n1",
+      "cout",
+      "Team",
+      "de ign-pod",
+      "relea e-pod\n1",
+      "All chat \n7",
+      "New chat",
+      "Active chat",
+      "Previou  chat \n7"
+    ],
+    "controlPresent": false,
+    "controlBox": null,
+    "controlFill": null,
+    "controlInk": null,
+    "controlOutline": null,
+    "controlOutlineOffset": null,
+    "controlOutlineColor": null,
+    "controlRingOuter": null,
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    }
+  }
+]
