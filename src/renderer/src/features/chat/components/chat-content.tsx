@@ -125,6 +125,15 @@ type ChatContentProps = {
 		busy: boolean;
 		admitting?: boolean;
 		onStop: () => void;
+		/**
+		 * Answer the pending `ask` gate with an option's label.
+		 *
+		 * Travels beside `onStop` because it is the same kind of thing: a session
+		 * action the transcript can trigger but does not own. `SessionPanel` holds
+		 * the send lock and the error surface, so the answer has to be raised to
+		 * it rather than posted from the row that was clicked.
+		 */
+		onAnswer?: (label: string) => void;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -386,6 +395,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											isSmallView={isSmallView}
 											status={canonical.view.status}
 											error={canonical.view.error}
+											onAnswer={canonical.onAnswer}
+											// The composer's own in-flight flag, reused: one
+											// answer per question, whichever surface starts it.
+											answering={Boolean(canonical.admitting)}
 										/>
 									) : (
 										<MessagesView

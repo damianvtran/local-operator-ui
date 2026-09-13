@@ -320,6 +320,25 @@ export const STORIES = [
 	   against a 700px story padded the frame with 257px of empty ground that
 	   no reviewer is meant to read (design review round 2, D9). */
 	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 700],
+	/* The `ask` gate's options, which became real controls rather than an inert
+	   numbered list. Swept because these states are slow and awkward to hold
+	   open live — a gate ends the moment anyone answers, and eight options, a
+	   wrapping label, a multi-question ask and a secret ask (no options at all)
+	   are not states a live session offers on demand.
+
+	   Each height MATCHES its story's own `Frame height`: the capture floors at
+	   the declared viewport, so declaring more than the story renders pads the
+	   frame with empty ground and crosses `check-evidence`'s uniformity
+	   ceiling. 1024 wide is the chat column at a realistic desktop width, where
+	   the 900px measure cap actually binds. */
+	["chat-ask-options--options", 1024, 470],
+	["chat-ask-options--single-option", 1024, 380],
+	["chat-ask-options--many-options", 1024, 820],
+	["chat-ask-options--wrapping-labels", 1024, 620],
+	["chat-ask-options--multi-question", 1024, 450],
+	["chat-ask-options--answer-in-flight", 1024, 470],
+	["chat-ask-options--secret-ask", 1024, 360],
+	["chat-ask-options--approval-unchanged", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* App shell, swept for the rail-width finding. */

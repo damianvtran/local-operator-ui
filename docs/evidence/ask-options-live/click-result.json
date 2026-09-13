@@ -1,0 +1,50 @@
+{
+ "before": {
+  "found": true,
+  "count": 3,
+  "tags": [
+   "BUTTON",
+   "BUTTON",
+   "BUTTON"
+  ],
+  "names": [
+   "1.Popup is open - generate the pairing codeRecommendedI will read the code back to you.",
+   "2.Popup is not openWalk me through opening it first.",
+   "3.Something else"
+  ],
+  "ordinalHidden": true,
+  "disabled": [
+   false,
+   false,
+   false
+  ],
+  "pe": "auto"
+ },
+ "aim": {
+  "ok": true,
+  "x": 580,
+  "y": 1094.53125,
+  "label": "2.Popup is not openWalk me through opening it first."
+ },
+ "after": {
+  "found": true,
+  "count": 3,
+  "tags": [
+   "BUTTON",
+   "BUTTON",
+   "BUTTON"
+  ],
+  "names": [
+   "1.Popup is open - generate the pairing codeRecommendedI will read the code back to you.",
+   "2.Popup is not openWalk me through opening it first.",
+   "3.Something else"
+  ],
+  "ordinalHidden": true,
+  "disabled": [
+   false,
+   false,
+   false
+  ],
+  "pe": "auto"
+ }
+}
