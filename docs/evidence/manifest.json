@@ -1,7 +1,7 @@
 {
-  "head": "d2ac48d751b9dd9bb4852b01dd505fe9a051f194",
-  "srcTree": "8ff23fe7f67922d4f3046c009c84e016521bce38",
-  "scriptsTree": "07fa8f276182753ea0403fb0a64f335a7d1676cd",
+  "head": "6caac978cb2809a9d5db314d9362ad2a8f1d0375",
+  "srcTree": "120d8d95fa3cfa3c09569a96115e2b2a460c3d4e",
+  "scriptsTree": "2bdc74345507749537a94fa5076828f6fc2aac5c",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 740,
@@ -229,7 +229,7 @@
       "source": "live renderer over CDP against an isolated `local-operator serve` on its own port and config dir, seeded by `out/evidence-harness/seed.mjs` (6 agents, 2 teams, 34 sessions, two carrying an unseen completion) and served by `out/evidence-harness/new-chat-row.vite.mjs`; four states (rest / hover / focus / current) captured on BOTH trees - before from e4d074c60 with the one source file stashed, after from this branch - through the same script, same viewport, same seeded backend. Re-captured for review round 1, because the two light state frames had been taken with the backend down; the same re-capture taught the rig that the dev server has to answer `/health` from that backend on the dev origin, since the page's own `connect-src` CSP admits only ports 1111 and 8080 and an unanswered ping raises the window-level connectivity banner for the whole run.",
       "why": "The claim is a fact about a box: two rows in one block land on the same left inset only once a 1px `border-control` edge is gone from a `box-sizing: border-box` row. The Chats sidebar has no story, so the sweep's STORIES list contains nothing that renders it and a story could not measure the box a class produces. The keyboard states are reached with real CDP key events rather than `.focus()`, because `:focus-visible` is a heuristic on HOW focus arrived. The capture now REFUSES a degraded frame rather than publishing one: `assertHealthyFrame` (`scripts/new-chat-row-evidence.mjs`, checked against the committed readbacks by `scripts/new-chat-row-evidence.test.mjs` on every `pnpm test:desktop`) requires the whole seeded fixture on screen - all three counts, not just the All chats total - no `[role=alert]` in the sidebar, none of the connectivity banner's copy, and no `Retry` stop in the keyboard walk. A sweep cannot re-derive these frames; docs/evidence/new-chat-row/README.md carries the geometry readback, the state checks and the re-capture procedure.",
       "capturedAt": "2026-09-13T17:52:15.000Z",
-      "capturedAtHead": "d2ac48d751b9dd9bb4852b01dd505fe9a051f194"
+      "capturedAtHead": "ad09ec6b4"
     },
     {
       "path": "submit-latency",
