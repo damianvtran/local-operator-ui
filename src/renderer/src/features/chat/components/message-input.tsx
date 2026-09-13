@@ -199,6 +199,13 @@ type MessageInputProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/**
+		 * This pane is a NEW conversation's draft: there is no session yet, so the
+		 * readings come from `sessions.preview` and render inert. See
+		 * `SessionStatusStripProps["draft"]` for why the state is passed in rather
+		 * than inferred from a missing dispatcher.
+		 */
+		draft?: boolean;
 	};
 };
 
@@ -1252,36 +1259,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					)}
 
 					{/*
-					 * The session's readings, on their own row above the controls.
+					 * The composer's controls and the session's readings, on ONE row.
 					 *
-					 * Its own row rather than four more items in the button row below:
-					 * that row is already over budget at the 220px column floor (see
-					 * the working-directory chip's shrink notes, design round 2 D11),
-					 * and these four readings describe the SESSION where the row below
-					 * describes the message being composed. A crash in the strip must
-					 * not take the composer down with it — the readings are metadata
-					 * and the ability to type is not — so it renders inside an error
-					 * boundary with an empty fallback: a missing strip is a degradation
-					 * a user can work through, and a fallback panel here would be a
-					 * bigger interruption than the thing it reports.
+					 * The readings used to have a row of their own above this one. They are
+					 * inside it now, which is why this row wraps: above 750px of column the
+					 * cluster sits inline and right-justified, immediately left of the
+					 * controls; below it the cluster takes the FIRST line in full
+					 * (`order-first basis-full` in the strip) and the controls keep the
+					 * second. `justify-between` cannot express that — with three children it
+					 * centres the middle one, which is the opposite of right-justified — so
+					 * the row uses `ml-auto` instead, on exactly one child at a time (see the
+					 * two groups below).
+					 *
+					 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
+					 * the within-component step, tighter than the 12px this composer used
+					 * when the readings were a separate row (§ 5).
 					 */}
-					{sessionStatus && (
-						<ErrorBoundary fallback={null}>
-							<SessionStatusStrip
-								frontend={sessionStatus.frontend}
-								onCommand={sessionStatus.onCommand}
-								effortEntities={sessionStatus.effortEntities}
-								pendingModel={sessionStatus.pendingModel}
-							/>
-						</ErrorBoundary>
-					)}
-
-					{/* § 2 budgets the accent at about three spends per screen and the
-					 * composer was taking three on its own — attach, microphone and
-					 * send — before the suggestion chips added a dozen more. Send is
-					 * the primary action and keeps it; the two secondary tools are
-					 * neutral until you reach for them. */}
-					<div className="flex min-w-0 items-center justify-between gap-2">
+					<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+						{sessionStatus && (
+							<ErrorBoundary fallback={null}>
+								<SessionStatusStrip
+									frontend={sessionStatus.frontend}
+									onCommand={sessionStatus.onCommand}
+									effortEntities={sessionStatus.effortEntities}
+									draft={sessionStatus.draft}
+									pendingModel={sessionStatus.pendingModel}
+								/>
+							</ErrorBoundary>
+						)}
 						{/*
 						 * Left side: attachment button and the working-directory chip.
 						 *
@@ -1347,8 +1352,43 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							)}
 						</div>
 
-						{/* Right side: microphone, send or stop button */}
-						<div className="flex items-center gap-1">
+						{/*
+						 * The session's readings, inside the row rather than on a row of their
+						 * own above it (R1).
+						 *
+						 * They sit between the directory chip and the microphone — where the row
+						 * has free space, immediately left of the controls. Which LINE they
+						 * occupy is the strip's container query's decision, not this file's, so
+						 * this is one node in ONE place for every state: a second render for the
+						 * wrapped case would be a second layout to keep in step.
+						 *
+						 * A crash in the strip must not take the composer down with it — the
+						 * readings are metadata and the ability to type is not — so it renders
+						 * inside an error boundary with an empty fallback: a missing strip is a
+						 * degradation a user can work through, and a fallback panel here would
+						 * be a bigger interruption than the thing it reports. The row's other
+						 * groups survive the same fallback untouched.
+						 */}
+						{sessionStatus && (
+							<ErrorBoundary fallback={null}>
+								<SessionStatusStrip
+									frontend={sessionStatus.frontend}
+									onCommand={sessionStatus.onCommand}
+									effortEntities={sessionStatus.effortEntities}
+									draft={sessionStatus.draft}
+								/>
+							</ErrorBoundary>
+						)}
+
+						{/* Right side: microphone, send or stop button.
+						 *
+						 * `ml-auto` is the row's ONE live auto margin below 750px of column,
+						 * where the readings have taken the first line and this group has the
+						 * second to itself; above 750 the readings carry it instead (`see
+						 * session-status-strip.tsx`) and this group sits beside them. Two live
+						 * auto margins on one line share the free space evenly, which is how
+						 * this row would end up with the controls floating mid-row. */}
+						<div className="ml-auto flex items-center gap-1 @min-[750px]/chatcol:ml-0">
 							{!isRecording &&
 								!isTranscribing &&
 								!(isLoading && currentJobId) && (
