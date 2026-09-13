@@ -34,11 +34,20 @@ the case: 1380x872 (frames 2760x1744) everywhere except `narrow`, which is
 column hits under 550px. Every frame asserts its own state before it is written,
 so a blank or wrong frame fails the capture instead of reaching review. The set
 was re-captured at this branch's remediation head, after the failure copy, the
-notice's register and the collapse stand-down changed.
+notice's register and the collapse stand-down changed, and then once more on the
+0.21.0 base. Every frame here shows the Chats sidebar and the chat pane, and
+`main` rewrote both inside the windows this branch was rebased across: #136's
+clear control in the search field and #139's New chat row alignment, then #128's
+mentioned-file viewers in `chat-content.tsx` — the component every one of these
+frames renders. So the whole set was taken again on the current base rather than
+argued about. The readbacks below are unchanged by those moves, which is the
+point of re-taking them: the pixels moved, the measured states did not.
+`recovered.png` came back byte-identical.
 
-**The before tree** is a detached worktree at `98c32e85e` — `origin/main` at the
-moment this set was captured, i.e. the tree this branch is proposed against,
-which already carries `0.19.7`, #142, #137, #138 and #118 — with the same harness
+**The before tree** is a detached worktree at `73977340a` — `origin/main` at the
+fourth rebase of this branch, i.e. the tree it is proposed against, which carries
+`0.21.0` (#128, #148) and, before those, #145, #146, #139, #140 and #136 on top
+of the earlier `0.19.7` window (#142, #137, #138, #118) — with the same harness
 copied in, the same stub backend, and the same port pair. The defect reproduces
 on that base unchanged: the stub logged a single `/events` attempt for the
 refusal, and the pane painted the greeting over a conversation whose rows were
