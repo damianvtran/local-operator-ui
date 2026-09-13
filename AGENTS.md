@@ -102,19 +102,44 @@ number it chose, the term that bound and the inputs behind it before the first
 test, because that line is what a reviewer reads to know what actually ran.
 
 It exists because this repo is worked through many concurrent git worktrees and
-several agent sessions run this suite at once on one laptop. Measured on the
-14-core / 36 GB host by sampling the whole process tree (`ps`), three
-interleaved rounds: the uncapped default peaks at 1,187-1,291 MB across 25-28
-processes, 13 of them test-file workers, while the governor's cap peaks at
-666-892 MB across 15-19 processes and 5-7 workers, for a wall time that
-overlaps (91.5 and 93.3 s uncapped against 93.1 and 95.7 s capped — about 2% at
-worst, in a suite this CPU-light). The cap is on file workers, not processes:
-several of these files spawn real children — the esbuild binary that most of
+several agent sessions run this suite at once on one laptop. **What reproduces is
+the concurrency it removes**, not one RSS figure: 13 file workers by default
+against 5-7 under the cap, and with them the peak process count (this branch's
+rounds: 25-28 processes uncapped against 15-19 capped; QA's pass: 32 against 24)
+in two independent passes — this branch's at head `a0174da2f` and QA's at a cap
+of 7. Peak tree RSS is round- and pressure-dependent and a single band should not
+be quoted as the property of the change: this branch measured 666-892 MB at caps
+of 5-7 against 1,187-1,291 MB uncapped, while QA's pass at cap 7 measured a
+998 MB / 24-process peak against a 1,253 MB / 32-process baseline with median
+and p95 RSS essentially unchanged. A suite's peak is dominated by whichever
+heavy file is in flight, not by how many run at once. Wall time overlaps in the
+unpressured case: 91.5-93.3 s uncapped against 93.1-95.7 s capped.
+
+**Know the pressure mode's cost before judging the cap.** The memory arm has a
+floor, and below roughly 3.4 GB available on this host (the reserve plus two
+workers' worth) it can return nothing but `_MIN_WORKERS`. Wall time then roughly
+doubles — **180.6 s against 91.4 s, +98%, measured** — because two workers
+serialise the whole suite. That is the deliberate trade rather than a regression
+to tune away: the condition is a host already swapping, and the point of the
+floor is that this suite is not what pushes it over. A `test:desktop` run that
+looks slow should be read as its concurrency line first and its timer second.
+
+**A test that spawns `node --test` must scrub `NODE_TEST_CONTEXT`.** Node exports
+it into every test-file process, and an inherited copy makes a NESTED run report
+its results to the grandparent's reporter instead of setting its own exit status
+— measured on node 26.5.0: `node --test fails.test.mjs` exits 1, and the same
+command with `NODE_TEST_CONTEXT=child-v8` set exits **0**. `run-desktop-tests.test.mjs`
+filters it out of the environment it hands the runner for exactly this reason;
+without that, its exit-code assertions pass in a plain shell and fail inside this
+suite.
+
+Several files here also spawn real children — the esbuild binary that most of
 them bundle through, a real `/usr/bin/codesign` run in
 `update-robustness.test.mjs`, node subprocesses in `linux-sandbox.test.mjs` —
-which is why the memory budget divides by 192 MB per worker rather than by the
-~65 MB marginal cost the measurements suggest: the runner's own accounting
-misses what its children cost.
+which is why the memory budget divides by a 192 MB per-worker envelope the
+measurements do not themselves justify; the constant's own comment in
+`scripts/desktop-test-concurrency.mjs` says exactly what those measurements do
+and do not bound.
 
 Override the number, or bypass the governor entirely:
 

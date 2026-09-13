@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	OVERRIDE_ENV,
+	_AGENT_SHELL_ENV,
 	_CPU_SHARE,
 	_MAX_WORKERS,
+	_MB_PER_WORKER,
 	_MEMORY_RESERVE_CAP_MB,
 	_MEMORY_RESERVE_FRACTION,
-	_MB_PER_WORKER,
 	_MIN_WORKERS,
-	_AGENT_SHELL_ENV,
-	OVERRIDE_ENV,
 	availableMbFromVmStat,
 	computeDesktopTestConcurrency,
 	formatDesktopTestConcurrencyLine,
@@ -37,6 +37,24 @@ import {
 // `availableMb` is a healthy unloaded figure; `nodeDefault` is what node's test
 // runner picks without `--test-concurrency` (availableParallelism - 1).
 const HOST = { cpus: 14, availableMb: 11800, totalMb: 36864, nodeDefault: 13 };
+
+/*
+ * The evidence line's exact text, at module scope because these are the strings
+ * a reviewer reads and they should be reviewable in one place rather than
+ * scattered through assertions (and because biome wants regexes out of
+ * functions). One per arm the formatter can produce.
+ */
+const CPU_LINE =
+	/^desktop tests: 23 files, concurrency 7 \(cpu share 0\.5 of 14 cores; 11\.5 GB available\)$/;
+const MEMORY_LINE =
+	/concurrency 5 \(memory budget 1\.0 GB of 4\.0 GB available at 192 MB per worker; cpu share would allow 7\)$/;
+const OVERRIDE_LINE =
+	/concurrency 12 \(explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor bypassed\)$/;
+const CI_LINE =
+	/concurrency 13 \(CI runner: governor stands down, node default for 14 cores\)$/;
+const NO_MEMORY_LINE = /memory not measurable/;
+const NO_CAP_LINE =
+	/^desktop tests: 23 files, no concurrency cap \(CI runner: governor stands down/;
 
 /** Run `body` with `env` applied, restoring the previous values afterwards.
  * Mutating the real environment is the only way to exercise the resolution
@@ -74,7 +92,10 @@ test("the memory arm binds below twice the reserve, and the floor catches the re
 	assert.equal(binding.arm, "memory");
 	assert.equal(binding.memoryCap, 5);
 	assert.equal(binding.concurrency, 5);
-	assert.ok(binding.concurrency < 7, "the memory arm must bind below the CPU cap");
+	assert.ok(
+		binding.concurrency < 7,
+		"the memory arm must bind below the CPU cap",
+	);
 
 	// Above twice the reserve the term is invisible: min(share, available -
 	// reserve) == share for all available >= 2 * reserve, so this suite is not
@@ -101,7 +122,11 @@ test("the CI arm returns node's default untouched", () => {
 	// Not clamped into the 2..8 bounds and not lowered by the memory arm: a
 	// hosted runner is dedicated, and taking parallelism away from it is a
 	// regression paid on every run.
-	const narrow = computeDesktopTestConcurrency({ ...HOST, onCi: true, availableMb: 512 });
+	const narrow = computeDesktopTestConcurrency({
+		...HOST,
+		onCi: true,
+		availableMb: 512,
+	});
 	assert.equal(narrow.concurrency, HOST.nodeDefault);
 });
 
@@ -116,8 +141,9 @@ test("CI and the harness marker together take the developer path", () => {
 	// clean shell and fail under `LOCAL_OPERATOR_UI_TEST_CONCURRENCY=12` — the
 	// override legitimately outranks the CI arm, so the test has to pin it away
 	// rather than inherit whatever the caller exported.
-	const onRealCi = withEnv({ CI: "1", [_AGENT_SHELL_ENV]: undefined, [OVERRIDE_ENV]: undefined }, () =>
-		resolveDesktopTestConcurrency(),
+	const onRealCi = withEnv(
+		{ CI: "1", [_AGENT_SHELL_ENV]: undefined, [OVERRIDE_ENV]: undefined },
+		() => resolveDesktopTestConcurrency(),
 	);
 	assert.equal(onRealCi.arm, "ci");
 
@@ -126,12 +152,18 @@ test("CI and the harness marker together take the developer path", () => {
 		() => resolveDesktopTestConcurrency(),
 	);
 	assert.notEqual(onAgentLaptop.arm, "ci");
+	// The arm depends on the HOST, so the expectation must too. On a 14-core
+	// machine it is `cpu` (or `memory` when the box is short); on a 2-core
+	// machine the CPU share gives 1 and the never-raise guard correctly answers
+	// `node-default`. Asserting one of the three developer arms made this test
+	// fail on a small runner for doing exactly the right thing.
 	assert.ok(
-		onAgentLaptop.arm === "cpu" || onAgentLaptop.arm === "memory" || onAgentLaptop.arm === "min",
+		["cpu", "memory", "min", "max", "node-default"].includes(onAgentLaptop.arm),
 		`unexpected arm on an agent-run laptop: ${onAgentLaptop.arm}`,
 	);
-	// And the cap is genuinely lower than node's own answer there, which is the
-	// whole point of not standing down.
+	// And the cap never exceeds node's own answer there, which is the whole point
+	// of not standing down. On a small host the two are equal, and that is the
+	// correct outcome rather than a failure.
 	assert.ok(
 		onAgentLaptop.concurrency <= nodeDefaultConcurrency(onAgentLaptop.cpus),
 		"the governor must not raise a developer machine's parallelism",
@@ -143,20 +175,41 @@ test("an override is honoured unclamped, above and below the bounds", () => {
 	assert.equal(high.arm, "override");
 	assert.equal(high.concurrency, 12); // above _MAX_WORKERS, deliberately
 
-	const low = computeDesktopTestConcurrency({ ...HOST, override: "1", availableMb: 512 });
+	const low = computeDesktopTestConcurrency({
+		...HOST,
+		override: "1",
+		availableMb: 512,
+	});
 	assert.equal(low.concurrency, 1); // below _MIN_WORKERS, deliberately
 
 	// The override also wins over the CI arm, so it stays a usable escape hatch
 	// on a runner.
-	const onCi = computeDesktopTestConcurrency({ ...HOST, onCi: true, override: "3" });
+	const onCi = computeDesktopTestConcurrency({
+		...HOST,
+		onCi: true,
+		override: "3",
+	});
 	assert.equal(onCi.concurrency, 3);
 });
 
 test("an unusable override degrades to the governed path instead of throwing", () => {
-	for (const override of ["", "   ", "abc", "0", "-2", "4abc", null, undefined]) {
+	for (const override of [
+		"",
+		"   ",
+		"abc",
+		"0",
+		"-2",
+		"4abc",
+		null,
+		undefined,
+	]) {
 		const decision = computeDesktopTestConcurrency({ ...HOST, override });
 		assert.equal(decision.arm, "cpu", `override ${JSON.stringify(override)}`);
-		assert.equal(decision.concurrency, 7, `override ${JSON.stringify(override)}`);
+		assert.equal(
+			decision.concurrency,
+			7,
+			`override ${JSON.stringify(override)}`,
+		);
 	}
 });
 
@@ -168,10 +221,14 @@ test("an unmeasurable memory probe degrades to the CPU-only cap", () => {
 		assert.equal(decision.memoryCap, null);
 	}
 	// An unmeasurable core count is the same class of failure and must not
-	// propagate NaN through the min().
+	// propagate NaN through the min(). Asserted against the LITERAL the fallback
+	// implies (4 cores -> a CPU share of 2), not against the constant: a test
+	// that reads the constant cannot notice the constant changing, which is how
+	// `_FALLBACK_WORKERS = 2` survived a mutation round.
 	const noCpus = computeDesktopTestConcurrency({ ...HOST, cpus: null });
-	assert.ok(Number.isInteger(noCpus.concurrency));
-	assert.equal(noCpus.concurrency, _MIN_WORKERS);
+	assert.equal(noCpus.arm, "cpu");
+	assert.equal(noCpus.cpuCap, 2);
+	assert.equal(noCpus.concurrency, 2);
 });
 
 test("the clamp holds at both ends", () => {
@@ -184,7 +241,11 @@ test("the clamp holds at both ends", () => {
 		nodeDefault: 63,
 	});
 	assert.equal(big.arm, "max");
-	assert.equal(big.concurrency, _MAX_WORKERS);
+	// The literal 8, not `_MAX_WORKERS`. Asserting a bound against the constant
+	// that defines it is not a test of the bound: the constant can move to 16 and
+	// stay green.
+	assert.equal(big.concurrency, 8);
+	assert.equal(big.cpuCap, 32);
 });
 
 test("the governor never raises parallelism, even when the floor would", () => {
@@ -203,11 +264,15 @@ test("the governor never raises parallelism, even when the floor would", () => {
 
 test("a shrinking fleet backs the cap off instead of each run halving the rest", () => {
 	const caps = [36864, 12288, 6144, 4096, 2048].map(
-		(availableMb) => computeDesktopTestConcurrency({ ...HOST, availableMb }).concurrency,
+		(availableMb) =>
+			computeDesktopTestConcurrency({ ...HOST, availableMb }).concurrency,
 	);
 	assert.deepEqual(caps, [7, 7, 7, 5, 2]);
 	for (let i = 1; i < caps.length; i += 1) {
-		assert.ok(caps[i] <= caps[i - 1], `cap rose from ${caps[i - 1]} to ${caps[i]}`);
+		assert.ok(
+			caps[i] <= caps[i - 1],
+			`cap rose from ${caps[i - 1]} to ${caps[i]}`,
+		);
 	}
 });
 
@@ -215,13 +280,59 @@ test("the reserve is held OUT of the budget, not subtracted from it first", () =
 	// At 6 GB available on a 36 GB host the two shapes differ (16 vs 8 workers),
 	// which is the ~2.6-worker double charge the `min` form avoids.
 	const availableMb = 6144;
-	const reserveMb = Math.min(_MEMORY_RESERVE_CAP_MB, Math.floor(36864 / _MEMORY_RESERVE_FRACTION));
+	const reserveMb = Math.min(
+		_MEMORY_RESERVE_CAP_MB,
+		Math.floor(36864 / _MEMORY_RESERVE_FRACTION),
+	);
 	const decision = computeDesktopTestConcurrency({ ...HOST, availableMb });
-	assert.equal(decision.memoryCap, Math.floor(Math.min(availableMb * 0.5, availableMb - reserveMb) / _MB_PER_WORKER));
+	assert.equal(
+		decision.memoryCap,
+		Math.floor(
+			Math.min(availableMb * 0.5, availableMb - reserveMb) / _MB_PER_WORKER,
+		),
+	);
 	assert.notEqual(
 		decision.memoryCap,
 		Math.floor(((availableMb - reserveMb) * 0.5) / _MB_PER_WORKER),
 	);
+});
+
+test("the memory share and the reserve fraction each bind where they are the only term left", () => {
+	/*
+	 * Two mutants survived the first round because no case made the mutating
+	 * constant the term that decided the answer:
+	 *
+	 *   - `_MEMORY_SHARE` only decides anything ABOVE twice the reserve (below
+	 *     that the reserve side is the smaller of the two), so every case that
+	 *     existed sat on the `min`'s other arm.
+	 *   - `_MEMORY_RESERVE_FRACTION` only decides anything when the reserve BINDS
+	 *     (below twice the reserve) AND the cap has not flattened it. On a 36 GB
+	 *     host every fraction up to 12 returns the same 3,072 MB reserve, so the
+	 *     constant was pinned against large values only.
+	 */
+
+	// Above twice the reserve, the share is the term: 8 GB available, 36 GB
+	// total, so min(4096, 5120) = 4096 -> 21 workers. A share of 0.6 gives 25,
+	// of 0.4 gives 17, of 0.25 gives 10 - each one red here, which is the point.
+	const shareBinds = computeDesktopTestConcurrency({
+		...HOST,
+		availableMb: 8192,
+	});
+	assert.equal(shareBinds.memoryCap, 21);
+	assert.equal(shareBinds.arm, "cpu");
+
+	// Below twice the reserve on a SMALL host, the fraction is the term: 1.7 GB
+	// available, 8 GB total, reserve = 1024, so min(850, 676) = 676 -> 3
+	// workers. A fraction of 4 reserves 2,048 MB and gives 2; of 12 reserves 682
+	// and gives 4; of 16 reserves 512 and gives 4.
+	const fractionBinds = computeDesktopTestConcurrency({
+		...HOST,
+		availableMb: 1700,
+		totalMb: 8192,
+	});
+	assert.equal(fractionBinds.memoryCap, 3);
+	assert.equal(fractionBinds.arm, "memory");
+	assert.equal(fractionBinds.concurrency, 3);
 });
 
 test("the vm_stat parser counts free + speculative + file-backed and nothing else", () => {
@@ -283,32 +394,31 @@ test("node's default concurrency is availableParallelism - 1, floored at 1", () 
 
 test("the evidence line names the arm that actually bound", () => {
 	const line = (decision) => formatDesktopTestConcurrencyLine(decision, 23);
-	assert.match(
-		line(computeDesktopTestConcurrency(HOST)),
-		/^desktop tests: 23 files, concurrency 7 \(cpu share 0\.5 of 14 cores; 11\.5 GB available\)$/,
-	);
+	assert.match(line(computeDesktopTestConcurrency(HOST)), CPU_LINE);
 	assert.match(
 		line(computeDesktopTestConcurrency({ ...HOST, availableMb: 4096 })),
-		/concurrency 5 \(memory budget 1\.0 GB of 4\.0 GB available at 192 MB per worker; cpu share would allow 7\)$/,
+		MEMORY_LINE,
 	);
 	assert.match(
 		line(computeDesktopTestConcurrency({ ...HOST, override: "12" })),
-		/concurrency 12 \(explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor bypassed\)$/,
+		OVERRIDE_LINE,
 	);
 	assert.match(
 		line(computeDesktopTestConcurrency({ ...HOST, onCi: true })),
-		/concurrency 13 \(CI runner: governor stands down, node default for 14 cores\)$/,
+		CI_LINE,
 	);
 	// A probe failure must read as one rather than as a plausible number.
 	assert.match(
 		line(computeDesktopTestConcurrency({ ...HOST, availableMb: null })),
-		/memory not measurable/,
+		NO_MEMORY_LINE,
 	);
 	// A CI stand-down with no measurable node default must not print a number it
 	// does not have (the runner passes no cap in that case).
 	assert.match(
-		line(computeDesktopTestConcurrency({ ...HOST, onCi: true, nodeDefault: null })),
-		/^desktop tests: 23 files, no concurrency cap \(CI runner: governor stands down/,
+		line(
+			computeDesktopTestConcurrency({ ...HOST, onCi: true, nodeDefault: null }),
+		),
+		NO_CAP_LINE,
 	);
 });
 
@@ -317,7 +427,10 @@ test("resolution on this host never throws and stays plausible", () => {
 	// machine, so it has to pass on a laptop, a 2-vCPU container and a hosted
 	// runner alike.
 	const decision = resolveDesktopTestConcurrency();
-	assert.ok(Number.isInteger(decision.concurrency), "concurrency must be an integer");
+	assert.ok(
+		Number.isInteger(decision.concurrency),
+		"concurrency must be an integer",
+	);
 	assert.ok(decision.concurrency >= 1, "concurrency must be at least 1");
 	assert.ok(decision.concurrency <= 1024, "concurrency must be plausible");
 	assert.doesNotThrow(() => formatDesktopTestConcurrencyLine(decision, 23));
