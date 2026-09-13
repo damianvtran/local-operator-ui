@@ -1,5 +1,33 @@
 {
- "badges": null,
+ "atShotSnapshot": true,
+ "badges": [
+  {
+   "drawn": "Agents",
+   "name": "Agents"
+  },
+  {
+   "drawn": "Teams",
+   "name": "Teams"
+  },
+  {
+   "drawn": "All chats 6 6",
+   "name": "All chats 6"
+  },
+  {
+   "drawn": "New chat",
+   "name": "New chat"
+  },
+  {
+   "drawn": "Active chats",
+   "name": "Active chats"
+  },
+  {
+   "drawn": "Previous chats 6 6",
+   "name": "Previous chats 6"
+  }
+ ],
+ "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect 1 coder 3 designer manager reviewer scout Create agent Teams Create team All chats 6 6 New chat Active chats Nothing running right now. Previous chats 6 6 Start a chat Choose an agent or team, or start a new chat. Nothing starts until you send. New chat {\"url\":\"/?measure=1&width=280&shot=after-rest-dark\",\"view",
+ "capturedAgainst": "the 0.20.1 sync",
  "panel": {
   "right": 500,
   "styleWidth": "280px",
@@ -135,7 +163,7 @@
   }
  ],
  "searchInFlight": false,
- "sidebarText": "Chats Agents architect 1 coder 3 designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6",
- "url": "/?measure=1&shot=after-rest-dark",
- "viewport": "1440x817@2"
+ "sidebarText": "Chats Agents architect 1 coder 3 designer manager reviewer scout Create agent Teams Create team All chats 6 6 New chat Active chats Nothing running right now. Previous chats 6 6",
+ "url": "/?measure=1&width=280&shot=after-rest-dark",
+ "viewport": "1440x873@2"
 }
