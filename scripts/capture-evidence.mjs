@@ -772,6 +772,32 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * JSON-RPC-ish: send {id, method, params}, receive {id, result|error} plus
  * unsolicited events. Only the three domains this script needs are used.
  */
+/**
+ * Whether a document that finished preparing is a story that DREW.
+ *
+ * Two numbers, both measured, and the reason this is a predicate rather than an
+ * inline comparison: the inline version read `n - 2 >= 8`, and 8 sat above the
+ * smallest thing this set legitimately paints. `chat-slash-completion--
+ * argument-phase-no-match` renders a three-line popup over the composer
+ * stand-in - 7 elements of its own inside a 9-element story root, once the
+ * decorator's 2 (theme wrapper + toast container, counted in the page code
+ * below) are subtracted. A story that draws NOTHING measures 0 after the same
+ * subtraction, and that is the failure this floor exists to reject; how much a
+ * drawn story paints is the paint guard's question (`assertFramePaints`), not
+ * this one. At 8 the poll reported a fully rendered story as "never finished
+ * preparing" for its full sixty seconds, so the frame could not be captured at
+ * all - a defect that reads as a Storybook hang and sends its reader to the
+ * story's source instead of to this line.
+ *
+ * Exported, and injected into the page verbatim through its own source text, so
+ * the predicate the browser runs and the one `capture-evidence.test.mjs` pins
+ * are the same function rather than two copies of one threshold. Its body must
+ * therefore stay self-contained - no identifier that only exists in this
+ * module - because the page evaluates it where none of them are defined; the
+ * test that evaluates the source text in a bare scope is what holds that.
+ */
+export const storyDrew = (counted) => counted - 2 >= 7;
+
 class Cdp {
 	constructor(ws) {
 		this.ws = ws;
@@ -1257,6 +1283,15 @@ const main = async () => {
 			// as real source - and the result was committed and would have
 			// thrown on the first story.
 			let prepared = false;
+			/*
+			 * The last probe's own numbers, kept so a timeout can say WHICH gate
+			 * held. Without them the failure reads as "Storybook never finished
+			 * preparing" whichever of the four it was, and the reader's next move
+			 * is a browser session - which is exactly how a one-element floor
+			 * error survived a diagnosis as "the story never reaches a rendered
+			 * state" while the story was rendering all along.
+			 */
+			let probe = null;
 			for (let i = 0; i < 300 && !prepared; i++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -1266,14 +1301,15 @@ const main = async () => {
 								".sb-preparing-story, .sb-preparing-docs, .sb-nopreview, .sb-loader",
 							),
 						].some((el) => el.getBoundingClientRect().height > 0);
-						if (loading) return false;
 						/* A story that needs a moment after mount - data from a
 						   stubbed query, then an interaction on the element it
 						   produced - sets this on mount and clears it when the
 						   frame is worth taking. Stories that never set it are
 						   unaffected, so this costs nothing for the other 37
 						   surfaces. */
-						if (document.documentElement.dataset.capturePending) return false;
+						const pending = Boolean(
+							document.documentElement.dataset.capturePending,
+						);
 						/* Webfonts must have resolved before the shutter.
 
 						   Chrome paints a fallback box for a glyph whose face is
@@ -1291,7 +1327,7 @@ const main = async () => {
 						   is what flips it. No backticks in this comment: the
 						   whole block is a template literal handed to
 						   Runtime.evaluate, and one would end it here. */
-						if (document.fonts.status !== "loaded") return false;
+						const fonts = document.fonts.status;
 						/* Count the STORY's elements, wherever they live.
 						   A plain body count passes on Storybook's own chrome,
 						   which is how a frame of pure ground - the right colour
@@ -1321,10 +1357,10 @@ const main = async () => {
 						   The body sweep's baseline is zero, but the story root's
 						   is not: the preview decorator always renders a theme
 						   wrapper and a toast container, so two elements are
-						   present before a story draws anything. The threshold
-						   below is set against that, and it is the number to
-						   change if the decorator gains furniture. */
-						const DECORATOR_ELEMENTS = 2;
+						   present before a story draws anything. That is the 2 the
+						   floor in storyDrew subtracts, and both of its numbers
+						   are there rather than here so the gate this poll applies
+						   is the one the test pins. */
 						const INERT = ["SCRIPT", "STYLE", "LINK", "TEMPLATE", "NOSCRIPT"];
 						let n = root ? root.querySelectorAll("*").length : 0;
 						if (docsRoot) n += docsRoot.querySelectorAll("*").length;
@@ -1334,15 +1370,24 @@ const main = async () => {
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;
 						}
-						return n - DECORATOR_ELEMENTS >= 8;
+						return {
+							drawn: !loading && !pending && fonts === "loaded" && (${storyDrew})(n),
+							counted: n,
+							loading,
+							pending,
+							fonts,
+						};
 					})()`,
 				});
-				prepared = result.value === true;
+				probe = result.value ?? probe;
+				prepared = probe?.drawn === true;
 				if (!prepared) await sleep(200);
 			}
 			if (!prepared) {
 				throw new Error(
-					`${story} @ ${theme}: Storybook never finished preparing the story (60s)`,
+					`${story} @ ${theme}: Storybook never finished preparing the story (60s). ` +
+						`Last probe: ${JSON.stringify(probe)}. ` +
+						"`counted` is the story's own elements with the decorator's two excluded, and `drawn` false with `loading`/`pending`/`fonts` clear means the element floor in `storyDrew` rejected it",
 				);
 			}
 			/*
