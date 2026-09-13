@@ -36,6 +36,7 @@ import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
 import type { SlashCommandMeta } from "./slash-commands";
+import { SLASH_SUBMISSION } from "./slash-submit";
 
 type SlashDispatchOptions = {
 	/** Canonical session the commands address. */
@@ -71,8 +72,6 @@ type SlashDispatchOptions = {
  * admission and not the keypress is what retires a draft.
  */
 export type SlashDispatchOutcome = "not-a-command" | "consumed" | "retained";
-
-const SLASH_SUBMISSION = /^\/([A-Za-z]+)(?:\s([\s\S]*))?$/;
 
 function systemMessage(text: string, status?: Message["status"]): Message {
 	return {
@@ -421,5 +420,5 @@ export function useSlashDispatch({
 		[dispatch, note],
 	);
 
-	return { dispatch, dispatchFromControl, picker, closePicker };
+	return { dispatch, dispatchFromControl, picker, closePicker, note };
 }
