@@ -1289,6 +1289,14 @@ function SessionPanel({
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
+					/*
+					 * The SAME dispatcher the chips and the escaped-command path use, with
+					 * its outcome handed back: the composer splices a command out of a draft
+					 * and must know whether it ran before deciding what the box holds
+					 * afterwards, and a failure must report through this path's own note
+					 * rather than a second copy of its sentence (round 2, Q-7's contract).
+					 */
+					onSlashCommand={(line: string) => dispatchFromControl(line)}
 					sendError={composerSendError}
 					/*
 					 * The session's readings, straight off the canonical stream, and

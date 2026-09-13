@@ -44,6 +44,7 @@ import {
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { SlashDispatchOutcome } from "./slash-dispatch";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -144,6 +145,12 @@ type ChatContentProps = {
 		/** A draft pane's readings, which have no session behind them. */
 		draft?: boolean;
 	};
+	/**
+	 * The command dispatcher the composer splices an inline command into, with
+	 * its outcome handed back. Forwarded verbatim; see
+	 * `MessageInputProps.onSlashCommand` for why the outcome matters.
+	 */
+	onSlashCommand?: (line: string) => Promise<SlashDispatchOutcome>;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -286,6 +293,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onChangeCwd,
 		sendError,
 		sessionStatus,
+		onSlashCommand,
 		canonical,
 		runDetails,
 		mcpServers = [],
@@ -691,6 +699,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onChangeCwd={onChangeCwd}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
+								onSlashCommand={onSlashCommand}
 								isSmallView={isSmallView}
 							/>
 						)}

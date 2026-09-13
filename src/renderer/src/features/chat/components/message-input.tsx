@@ -36,6 +36,7 @@ import {
 	useCallback,
 	useEffect,
 	useImperativeHandle,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -60,12 +61,21 @@ import { DirectoryIndicator } from "./directory-indicator";
 import { ReplyPreview } from "./reply-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import {
-	type SlashCommandMeta,
+	type CompletionRow,
 	SlashSuggestionsPopup,
-	completeSlashToken,
+	completionFor,
 	handleSlashKeyDown,
-	useSlashCommands,
+	useSlashCompletion,
 } from "./slash-commands";
+/*
+ * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
+ * spliced command line to the page's dispatcher and must know whether it ran to
+ * decide what the box holds afterwards, but it must not own any part of how the
+ * command runs.
+ */
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import { planSlashSubmission } from "./slash-submit";
+import type { SlashSubmissionPlan } from "./slash-submit";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -235,6 +245,18 @@ type MessageInputProps = {
 		 */
 		draft?: boolean;
 	};
+	/**
+	 * Run a slash command line the composer pulled out of the draft, and report
+	 * what happened to it.
+	 *
+	 * The SAME dispatcher the chips and the whole-draft submit path use, so a
+	 * command typed into a sentence cannot take a second route with its own
+	 * outcome mapping. The composer owns the restore/splice decision afterwards
+	 * because it is the only place that knows what it held before; when absent
+	 * (the legacy chat path has no command dispatcher), nothing is ever spliced
+	 * and the draft sends as prose.
+	 */
+	onSlashCommand?: (line: string) => Promise<SlashDispatchOutcome>;
 };
 
 /**
@@ -386,6 +408,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			isHydrating = false,
 			sessionStatus,
+			onSlashCommand,
 		},
 		ref,
 	) => {
@@ -548,21 +571,163 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// Slash completion reads the caret position, so it lives above the
 		// textarea's own onChange rather than deriving position from the value.
 		const [caret, setCaret] = useState(0);
-		const slash = useSlashCommands(newMessage, caret);
-		const slashListId = slash.listId;
-		const handleSlashPick = useCallback(
-			(command: SlashCommandMeta) => {
-				setNewMessage(
-					completeSlashToken(
-						newMessage,
-						slash.tokenEnd,
-						command.name,
-						command.arguments,
-					),
-				);
-				slash.close();
+		/*
+		 * The live session this composer addresses, or undefined for a draft.
+		 *
+		 * `sessionStatus` is supplied by the page only when a canonical session
+		 * exists, and in that case `conversationId` IS its id (the page opens the
+		 * stream on the identity it passes down). So this is the one argument the
+		 * argument list's entity source needs, and its ABSENCE is the honest
+		 * "needs an open conversation" state rather than a query against a draft
+		 * key that could only fail.
+		 */
+		const slashSessionId = sessionStatus ? conversationId : undefined;
+		const slash = useSlashCompletion({
+			inputValue: newMessage,
+			selectionStart: caret,
+			sessionId: slashSessionId,
+			activeProfile: {
+				team: sessionStatus?.frontend?.active_team,
+				agent: sessionStatus?.frontend?.active_agent,
 			},
-			[newMessage, slash, setNewMessage],
+		});
+
+		/*
+		 * A caret a programmatic edit asked for, written to the DOM once the new
+		 * value has rendered.
+		 *
+		 * `setCaret` alone only moves a shadow of the position: the textarea's own
+		 * selection stays where the browser left it, so a completion made under an
+		 * IME or by a click would leave the caret at the old cell and the next
+		 * keystroke would land in the middle of the completed word.
+		 */
+		const pendingCaret = useRef<number | null>(null);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the value is the trigger, the ref is what is written
+		useLayoutEffect(() => {
+			const field = textareaRef.current;
+			const at = pendingCaret.current;
+			if (!field || at === null) return;
+			pendingCaret.current = null;
+			field.setSelectionRange(at, at);
+		}, [newMessage, textareaRef]);
+
+		/*
+		 * What Enter should do with this draft, decided by the pure planner.
+		 *
+		 * Both halves of `enabled` matter: a command needs the feature ON and
+		 * somewhere to hand the line. With neither, the planner answers `send`,
+		 * so nothing is ever spliced on a path that could not run it.
+		 */
+		const planFor = useCallback(
+			(draft: string, at: number) =>
+				planSlashSubmission({
+					draft,
+					caret: at,
+					commandNames: slash.commandNames,
+					promptCommands: slash.promptCommands,
+					nameListCommands: slash.nameListCommands,
+					enabled: slash.available && Boolean(onSlashCommand),
+				}),
+			[
+				slash.commandNames,
+				slash.promptCommands,
+				slash.nameListCommands,
+				slash.available,
+				onSlashCommand,
+			],
+		);
+
+		/**
+		 * Carry out a plan that is not a plain send, and decide what the box holds
+		 * afterwards.
+		 *
+		 * The outcome contract is the dispatcher's, unchanged: `consumed` means the
+		 * command ran, so the token is gone and whatever survives it stays;
+		 * `retained` and `not-a-command` mean it did NOT run, so the ORIGINAL draft
+		 * comes back in full, token included. Restoring rather than deleting is the
+		 * whole point — a splice that produced no note and no run would be a silent
+		 * deletion of text the user typed.
+		 */
+		const applyPlan = useCallback(
+			async (
+				plan: Exclude<SlashSubmissionPlan, { kind: "send" }>,
+				draft: string,
+				at: number,
+			) => {
+				if (plan.kind === "list-open") {
+					// The roster list owns the next Enter. Nothing is submitted and
+					// nothing is rewritten — the TUI's own exception
+					// (`editor.py:8219-8222`): the name is picked from the autofill
+					// first.
+					return;
+				}
+				if (plan.kind === "reassemble") {
+					// Staged, never submitted: the user reads the assembled line and
+					// sends it themselves.
+					pendingCaret.current = plan.caret;
+					setNewMessage(plan.text);
+					setCaret(plan.caret);
+					return;
+				}
+				const outcome = await onSlashCommand?.(plan.line);
+				if (outcome === "consumed") {
+					const text = plan.kind === "whole" ? "" : plan.text;
+					const next = plan.kind === "whole" ? 0 : plan.caret;
+					pendingCaret.current = next;
+					setNewMessage(text);
+					setCaret(next);
+					return;
+				}
+				pendingCaret.current = at;
+				setNewMessage(draft);
+				setCaret(at);
+			},
+			[onSlashCommand, setNewMessage],
+		);
+
+		const handleSlashPick = useCallback(
+			async (row: CompletionRow, disposition: { run: boolean }) => {
+				const completion = completionFor(
+					newMessage,
+					caret,
+					row,
+					slash.commandNames,
+					slash.argumentWords,
+					slash.inline?.nameThenMessage ?? false,
+				);
+				if (!completion) return;
+				slash.close();
+				pendingCaret.current = completion.caret;
+				setNewMessage(completion.text);
+				setCaret(completion.caret);
+				/*
+				 * RUN, when the row's own list says a pick runs and the gate let it
+				 * through. The ambiguity gate is applied by `handleSlashKeyDown` for
+				 * the keyboard and deliberately waived for a pointer click
+				 * (`editor.py:8040`); `runs: false` is honoured here so no `/team`
+				 * name can ever be run on the keystroke that chose it.
+				 */
+				const shouldRun =
+					disposition.run &&
+					(slash.inline?.runs ?? false) &&
+					Boolean(onSlashCommand);
+				if (!shouldRun) return;
+				// Run through the SAME plan a submit takes, so a command picked
+				// mid-draft splices out and leaves the prose, and a whole-draft
+				// command reports its outcome exactly as typing it would.
+				const plan = planFor(completion.text, completion.caret);
+				if (plan.kind === "send") return;
+				await applyPlan(plan, newMessage, caret);
+			},
+			[
+				newMessage,
+				caret,
+				slash,
+				setNewMessage,
+				onSlashCommand,
+				planFor,
+				applyPlan,
+			],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
@@ -597,9 +762,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					event.preventDefault();
 					return;
 				}
+				/*
+				 * Enter is the submit key, and the planner is what decides whether
+				 * this draft is a submit at all: a command typed into a sentence is
+				 * spliced out and run, and a free-text command is reassembled and
+				 * STAGED. `send` and `whole` defer to the composer's own submit path,
+				 * unchanged. The plan is consulted BEFORE the submit, never after, so
+				 * a command can never be quietly turned back into prose.
+				 */
+				if (
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					const plan = planFor(newMessage, caret);
+					if (plan.kind !== "send" && plan.kind !== "whole") {
+						event.preventDefault();
+						void applyPlan(plan, newMessage, caret);
+						return;
+					}
+				}
 				handleKeyDown(event);
 			},
-			[slash, handleSlashPick, handleKeyDown, newMessage],
+			[
+				slash,
+				handleSlashPick,
+				handleKeyDown,
+				planFor,
+				applyPlan,
+				newMessage,
+				caret,
+			],
 		);
 
 		useImperativeHandle(ref, () => ({
@@ -806,6 +999,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
 			if (!newMessage.trim() && attachments.length === 0) return;
+			/*
+			 * The SAME planner the Enter key consults, so the Send button and the
+			 * key cannot disagree about whether a draft is a command. A draft that
+			 * holds a command mid-sentence is spliced and run here too; `send` and
+			 * `whole` fall through to the composer's own submit path unchanged.
+			 */
+			const plan = planFor(newMessage, caret);
+			if (plan.kind !== "send" && plan.kind !== "whole") {
+				void applyPlan(plan, newMessage, caret);
+				return;
+			}
 			submitMessage();
 		};
 
@@ -1283,11 +1487,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * composer band did (round 2, R1). Keep every bound between here
 					 * and the band on the popup's SIBLINGS, never on its ancestors.
 					 */}
-					<SlashSuggestionsPopup
-						state={slash}
-						onPick={handleSlashPick}
-						anchorRef={textareaRef}
-					/>
+					<SlashSuggestionsPopup state={slash} onPick={handleSlashPick} />
 					{(replies.length > 0 || attachments.length > 0) && (
 						/*
 						 * The previews carry their own bound, on a SIBLING of the popup
@@ -1393,12 +1593,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							aria-label="Message"
 							role="combobox"
 							aria-expanded={slash.open}
-							aria-controls={slash.open ? slashListId : undefined}
-							aria-activedescendant={
-								slash.open && slash.matches[slash.active]
-									? `${slashListId}-${slash.matches[slash.active].name}`
-									: undefined
-							}
+							aria-controls={slash.open ? slash.listId : undefined}
+							aria-activedescendant={slash.activeDescendantId ?? undefined}
 						/>
 					)}
 

@@ -401,15 +401,22 @@ export function useSlashDispatch({
 	 *
 	 * The note is the composer's own error idiom, not a second one, so the chip
 	 * and the typed command report through the same surface.
+	 *
+	 * It RETURNS the outcome as well as reporting it. A caller that spliced a
+	 * command token out of a draft needs to know whether it ran before deciding
+	 * what the composer should hold afterwards — and that decision must not come
+	 * with a second copy of this sentence (see `message-input.tsx`).
 	 */
 	const dispatchFromControl = useCallback(
-		async (line: string) => {
+		async (line: string): Promise<SlashDispatchOutcome> => {
 			const outcome = await dispatch(line);
-			if (outcome !== "not-a-command") return;
-			note(
-				"The backend could not complete this request. Check its connection and try again.",
-				true,
-			);
+			if (outcome === "not-a-command") {
+				note(
+					"The backend could not complete this request. Check its connection and try again.",
+					true,
+				);
+			}
+			return outcome;
 		},
 		[dispatch, note],
 	);
