@@ -102,6 +102,20 @@ type MessageInputProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
+		/*
+		 * What the user actually TYPED, before `buildSendPayload` wraps it in any
+		 * staged `<reply-to>` prefix.
+		 *
+		 * Only the pending-gate answer path reads it, and it exists because that
+		 * path must decide whether the composer holds an option ordinal. With a
+		 * reply staged, `content` is `"<reply-to>…</reply-to>\n2"`, which is not a
+		 * bare ordinal — so the resolver passed it through and the owner received
+		 * the whole wrapped string as the answer value (code review round 1,
+		 * MAJOR). Passing the typed text beside the payload keeps that decision
+		 * independent of how the payload is composed, instead of teaching the
+		 * resolver to parse a prefix format it would then have to track forever.
+		 */
+		typed?: string,
 	) => undefined | boolean | Promise<undefined | boolean>;
 	isLoading: boolean;
 	conversationId?: string;
@@ -199,6 +213,37 @@ const ABANDON_NOTICE_MS = 4000;
 
 const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
+
+/**
+ * Move focus out of the composer and onto the pending question's first option.
+ *
+ * ## Why Tab is overridden here, and only here
+ *
+ * The gate renders inside the transcript, which is BEFORE the composer in DOM
+ * order, so forward Tab out of the composer never reaches the question the user
+ * was just shown — it walks the sidebar instead, and the sidebar grows by three
+ * buttons per agent and per chat the user has. Measured with real key events: 24
+ * consecutive forward Tabs from the composer never reached the option group,
+ * while Shift+Tab reached it in one press and nothing on screen said so (UX
+ * round 1, U1).
+ *
+ * Overriding the forward direction only — and only while a live option exists —
+ * makes the two things a pending question has to offer one closed cycle: the
+ * composer, and the options. Shift+Tab is untouched (it still leaves the
+ * composer onto the last option), a disabled card matches nothing so Tab behaves
+ * as it always did, and with no gate pending this never fires at all.
+ *
+ * Returns whether it moved focus, so the caller can leave the event alone when
+ * it did not.
+ */
+const focusFirstAnswerOption = (): boolean => {
+	const first = document.querySelector<HTMLElement>(
+		'[aria-label="Answer options"] button:not([disabled])',
+	);
+	if (!first) return false;
+	first.focus();
+	return true;
+};
 
 /**
  * Type for the imperative handle to expose focusInput method
@@ -377,6 +422,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				const accepted = await onSendMessage(
 					buildSendPayload(message, replies),
 					attachments.map((a) => a.path),
+					// The typed text, beside the composed payload: the gate answer path
+					// resolves an option ordinal against THIS, never against the string
+					// the reply prefix produced.
+					message,
 				);
 				if (accepted === false) return false;
 				if (conversationId) {
@@ -428,6 +477,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
 				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
+					event.preventDefault();
+					return;
+				}
+				// Forward Tab leaves the conversation for the sidebar; while a
+				// question is waiting, the option group is the thing the user was
+				// just shown and is one press away in this direction. See
+				// `focusFirstAnswerOption`.
+				if (
+					event.key === "Tab" &&
+					!event.shiftKey &&
+					focusFirstAnswerOption()
+				) {
 					event.preventDefault();
 					return;
 				}

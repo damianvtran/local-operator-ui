@@ -1,39 +1,30 @@
 {
-  "head": "51032c0d68615487b2942346a0a92441e91aee8f",
-  "srcTree": "46ef185a55ff3c2e27aa2539833a944f572f2ccc",
-  "scriptsTree": "8d64b235cb57af31c14b225924b8103e00f5294d",
-  "dirtyWorkingTree": false,
+  "head": "ae9d862720043dc54cccf2501223a00e977db6fd",
+  "srcTree": "0728a14237052d1036e9e71cf7597021f3a6bd33",
+  "scriptsTree": "57fe310f525a3404041f051e9a9adcb63792ce8d",
+  "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
-  "frames": 836,
-  "surfaces": 116,
+  "frames": 848,
+  "surfaces": 117,
   "themes": 12,
   "countsMean": {
-    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 740 at this head, and the assertion is the definition rather than a restatement of it: 854 `.webp` are committed and the 16 `supplementary` sets below account for 114 of them, leaving 740. Re-derived for THIS head and stated once. Earlier revisions of this field appended a fresh derivation per merge and left the previous ones standing as though they still described the tree, so it accumulated half a dozen figures from superseded heads and, after the 0.19.5 rebase, a subtraction that no longer resolved - the sibling terms were updated and the remainder was not. Those figures are deleted rather than quoted here: a reader scanning this field for a number should not find a wrong one under any framing. A stale derivation is worse here than no derivation, because this field's entire justification is that a reader can re-compute it: one that does not resolve teaches them to stop checking. The three terms above are the whole arithmetic, they are read from the tree rather than transcribed (`find docs/evidence -name '*.webp' | wc -l`, and the summed `frames` of the sets below), and `check-evidence.mjs` fails when they disagree with it - which is what makes the sentence checkable rather than merely asserted. This branch carries no version bump: `package.json` is `0.19.5` here and on `main`.",
-    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 108 entries, counted off the merged literal rather than summed from the two sides' fields (96 on this branch before the rebase and 107 on `main`, each written by a run taken before the other side landed - which is exactly why the merged figure is counted and not added). `main` brought the model-picker surfaces (11 `chat-model-picker--*` states plus the `chat-session-status-strip--model-switch-pending` band); this branch adds the one story it registered, `chat-tool-rows--trace-gap-boundaries`, and 107 + 1 = 108 is the reconciliation. `check-evidence.mjs` counts the list and fails a mismatch (round 4, R3), so this field cannot silently lag its own source.",
+    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 594 at this merge, and the assertion is the definition rather than a restatement of it: 681 `.webp` are committed and the fourteen `supplementary` sets below account for 87 of them, leaving 594 - the `chat-title` set's sixteen frames are the addition, so the sweep's own term is unmoved by it. The arithmetic against the two sides of the merge, which is where the number comes from rather than from a sweep that was never re-run: this branch carried 546 swept frames and main carried 574, and the two are not additive - main's 48 `chat-older-history-slot` frames (4 boards x 12 themes, #112) are the only swept frames this side did not have, so the merged sweep is 546 + 48. The declared sets grew the same way: main's thirteen are this branch's twelve plus `transcript-scroll-paging`, whose seven live frames are already on disk, and the `chat-title` set is a later addition from the untitled-header fix (sixteen frames from the built app, declared with its own provenance below and therefore outside this count by construction). `check-evidence.mjs` is what confirms both terms; the figures are recorded here because a reader who cannot re-derive them has no way to tell a reconciled manifest from one that was edited until the gate passed. **Added by the model-picker feedback fix.** Twelve swept stories (`chat-model-picker--*`, eleven, and `chat-session-status-strip--model-switch-pending`) are 144 frames of the 738, so the swept term is 594 + 144; the fifteen declared sets now account for 103 of the 841 `.webp` on disk (87 + this change's eighteen), which is what leaves 738. Every one of the 144 is a state of the picker or of the band across all twelve themes, because the row's ground is a class the palette gate cannot see: `bg-sunken` on `bg-elevated` is asserted as an adjacent pair in every theme, while the `bg-accent-wash` the sibling popup uses collapses onto `elevated` in obsidian (ΔE00 0.77). **Added by the model-picker remediation round.** The declared `model-picker-feedback` set grew from 18 frames to 25 in the remediation round (nine paired states kept, seven after-only states added) and to 26 in the U7 round (one frame replaced in place, one `before-*` half added), so the swept term is unchanged at 738 and the set's own count is what moved: 851 `.webp` are on disk, 113 of them inside the fifteen declared sets and twenty-six inside this one, which is the assertion `check-evidence.mjs` makes against the tree rather than against this sentence. These frames were captured from the WORKING TREE that the remediation commit contains, which is why the capture itself recorded `dirtyWorkingTree: true`; the commit's trees are what `srcTree`/`scriptsTree` name. **Synced with `main` after the U7 round.** The branch merged `origin/main` (`4df8a0e76`) to clear the `package.json` conflict the release bump and the new `scripts/mcp-foreign-config-origin.test.mjs` entry created, so the trees named here are that merge's — main's additions (`src/main/python-bytecode-cache.ts`, `mcp-management-section.tsx`, that test file) arrive WITH the stamp and are not what any frame in this manifest was captured against; no picker, theme or evidence script is among them, which is what keeps the frames pictures of this code. The only line the merge resolved by hand is `scripts.test:desktop`, which now lists both new test files (`picker-feedback` from this branch, `mcp-foreign-config-origin` from main), and the version stays main's `0.19.4`: this branch carries no bump. ASK-OPTIONS ROUND (rebased onto origin/main `e4d074c60`, v0.19.6): 848 = main's own 740 plus the 108 this branch's `chat-ask-options` boards contribute -- nine capture entries x 12 themes, being the eight states with `wrapping-labels` taken at two widths because at the committed 1024 column its label did not wrap at all (design round 1, D5). The 96 `ask-options-baseline` frames and the 2 `ask-options-live` frames are NOT in this number: both are declared in `supplementary`, and this field is asserted against exactly the frames that fall outside every declared set.",
+    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 95 entries, counted off the merged literal rather than summed from the two sides' fields (91 and 85, each written by a run taken before the other side landed). The four this merge adds are main's `chat-older-history-slot--app-minimum-width`, `--every-state`, `--one-hidden-row` and `--transport-down` boards (#112). `check-evidence.mjs` counts the list and fails a mismatch (round 4, R3), so this field cannot silently lag its own source again. **Added by the model-picker feedback fix.** The list gained twelve: eleven `chat-model-picker--*` states (populated, hovered, keyboard-highlight, busy, result, persist-checked, refresh-pending, loading, empty, partial-error, narrow) and one band state, `chat-session-status-strip--model-switch-pending`, so `STORIES.length` reads 107 and `check-evidence.mjs` counts it off the committed list rather than trusting this field. **Added by the model-picker remediation round.** `STORIES` is unchanged at 107: the remediation added no story, because every state it needed was already a story (`chat-model-picker--hovered` and `--busy` carry the new structural mark, and `chat-session-status-strip--model-switch-pending` carries the labelled spinner), and the seven genuinely new states live in the live-app set above, where a scroll offset, a click and an answer that arrives after the dialog is gone are expressible. ASK-OPTIONS ROUND (rebased onto origin/main `e4d074c60`, v0.19.6): 117, the union of main's story list and this branch's `chat-ask-options` entries -- eight states, one of them listed at two widths, so eight names and nine entries.",
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
   },
   "partialCapture": {
-    "note": "Two narrowed runs rather than one: `--only=chat-model-picker` (132 frames) and `--only=chat-session-status-strip--model-switch-pending` (12), 144 in total, because the picker's twelve stories and the band's pending story are the two surfaces this remediation changed. Each run is written by the capture script and the second overwrote the first here, so this field is the merge of the two as the frames on disk stand: 144 refreshed, 0 added (every one of them replaced a frame the sweep had already committed). Rebased a second time, onto 0.19.5, and the provenance shas moved again for the same reason: the rewrite left `6f66f1a26` reachable from no ref, so they are repointed to its rebased analogue `d90ad6df7`. The justification is narrower this time and worth stating exactly, because upstream's model-picker work DID land in `src/renderer` - so unlike the previous rebase, the renderer subtree is no longer byte-identical to the capture head's. What these frames depend on is not the whole renderer but the import closure of the `chat-tool-rows` stories, and none of the fourteen files upstream touched under `src/` appears in it - thirteen under `src/renderer/` plus one main-process module under `src/shared/`, which is named precisely because 'renderer files' would have overstated it by one (checked against esbuild's metafile for `tool-row.stories.tsx`); no theme, palette or CSS source moved either. The frames are therefore still pictures of the source that paints them, and 0 `.webp` under `chat-tool-rows/` changed across the rebase. Counts here are re-derived for the MERGED tree - upstream added 170 frames and a `model-picker-feedback` supplementary set, so every figure carried from the previous head would have been wrong by construction.",
-    "addedFrames": 0,
-    "addedAt": "2026-09-13T09:46:06Z",
-    "addedAtHead": "8f7c01f11c690d35a8db7e9c6da143244e86341f",
-    "addedSurfaces": [],
-    "refreshedAt": "2026-09-13T07:26:55.352Z",
-    "refreshedAtHead": "d90ad6df7108e5e35eb7a18d336ebca244a9f5a2",
-    "refreshedFrames": 26,
+    "refreshedAt": "2026-09-13T13:59:17.390Z",
+    "refreshedAtHead": "95fa828b65b3da163b2617136dc9b6da1a3182ff",
+    "refreshedFrames": 122,
     "refreshedStories": [
-      "chat-tool-rows--states",
-      "chat-tool-rows--names-and-fallbacks",
-      "chat-tool-rows--joined-mid-turn",
-      "chat-tool-rows--narrow",
-      "chat-tool-rows--working",
-      "chat-tool-rows--working-labels",
-      "chat-tool-rows--operator-spacing-cases",
-      "chat-tool-rows--turn-boundary-and-working-line",
-      "chat-tool-rows--trace-gap-boundaries",
-      "chat-tool-rows--prose-tool-alignment",
-      "chat-tool-rows--streaming-before-first-token",
-      "chat-tool-rows--mixed-prose-code-and-tables"
+      "chat-ask-options--options",
+      "chat-ask-options--single-option",
+      "chat-ask-options--many-options",
+      "chat-ask-options--wrapping-labels",
+      "chat-ask-options--multi-question",
+      "chat-ask-options--answer-in-flight",
+      "chat-ask-options--secret-ask",
+      "chat-ask-options--approval-unchanged"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -49,6 +40,14 @@
       "obsidian",
       "synth"
     ],
+    "addedFrames": 24,
+    "addedSurfaces": [
+      "chat-ask-options/wrapping-labels@1024",
+      "chat-ask-options/wrapping-labels@760"
+    ],
+    "addedAt": "2026-09-13T13:59:17.391Z",
+    "addedAtHead": "95fa828b65b3da163b2617136dc9b6da1a3182ff",
+    "note": "The ask-options remediation recapture, and a NARROWED run rather than a sweep: `--only=chat-ask-options` re-took the eight boards (nine entries) across all twelve themes, 108 frames. Every one of them replaced a frame this branch had already committed, EXCEPT the two new narrow-width entries, which is the 24 `addedFrames` -- `chat-ask-options/wrapping-labels` now exists as `wrapping-labels@1024` and `wrapping-labels@760`, because a story id captured at two widths is written with its width in the path (design round 1, D5). The old single-width `wrapping-labels/` directory those 24 replaced is deleted rather than left behind: it held 12 frames of the same story at the same 1024 column, so keeping it would have been a stale duplicate counted as swept evidence. `frames` and `surfaces` are re-derived from the tree as it stands rather than incremented from the previous values, which is what the capture script's own `+ addedSurfaces.length` would have got wrong here: the two new entries share one story ID, so the entry count moved by one and the directory count by two. Two earlier fields are preserved because they are still true of frames on disk: `previousRefresh` is the model-picker remediation's two runs, unchanged. One more narrowed run is recorded here because this file is the manifest's only per-run record and this round would otherwise have erased it: main's tool-row round (`--only=chat-tool-rows`, refreshed 26 frames across 12 stories, 0 added, at d90ad6df7), which is where `chat-tool-rows/*` and the `tool-rows-4px-rejected` set come from. Both runs are narrowed runs on top of the last full sweep, which is what countsMean.frames is asserted against. `refreshedFrames` is 122 rather than the 108 the run itself wrote, and the difference is deliberate: this field is asserted against every committed .webp that differs from `refreshedAtHead`, and this round ALSO deleted 12 stale duplicates (`chat-ask-options/wrapping-labels/*`, replaced by `wrapping-labels@1024/`) and renamed the live pair's second frame (1 deleted + 1 added, `after-click/` -> `after-click-unresolved/`, which the QA round asked for). 108 + 12 + 2 = 122. Re-run rather than counted by hand: `git diff --name-only 95fa828b6^ -- docs/evidence` filtered to .webp outside the declared sets.",
     "previousRefresh": {
       "refreshedAt": "2026-09-13T07:23:43.292Z",
       "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
@@ -214,24 +213,16 @@
       "capturedAt": "2026-09-13T11:16:00Z"
     },
     {
-      "path": "tool-rows-4px-rejected",
-      "frames": 1,
-      "capturedAt": "2026-09-13",
-      "capturedAtHead": "d90ad6df7108e5e35eb7a18d336ebca244a9f5a2",
-      "source": "scripts/capture-evidence.mjs against chat-tool-rows--operator-spacing-cases with GAP.trace temporarily set to mt-1, then reverted",
-      "why": "The REJECTED alternative, photographed. Both the code comments and this directory's README rest the 'not 4px' half of the decision on 'at 4px the rows float as separate items again' - and no frame in the repository was at 4px, so the comparison that decides the tier is 2 rather than 4 could not be checked by looking, which is the standard this evidence set holds everything else to. A sweep cannot re-derive it: it is a picture of a tier the app does not ship, produced by editing GAP.trace to mt-1 for one capture and reverting. Compare against chat-tool-rows/operator-spacing-cases/localOperatorDark.webp, same story and viewport, which is the shipped 2px."
-    },
-    {
       "path": "ask-options-baseline",
       "frames": 96,
       "surfaces": 8,
       "themes": 12,
-      "source": "scripts/capture-evidence.mjs against unmodified origin/main (a09f2e6f4), same story file, same fixtures and same viewports as chat-ask-options/, with only the two props main's CanonicalTranscript does not have (onAnswer, answering) removed",
+      "source": "scripts/capture-evidence.mjs against unmodified origin/main at 54bf411e0 (chore(release): bump version to 0.19.0), same story file, same fixtures and same viewports as chat-ask-options/, with only what main's tree cannot compile removed: the onAnswer and answering props, and the recommended fixture key, which is not on main's PendingDesktopGate",
       "why": [
         "The fixed frames cannot show what was wrong, because the defect is an ABSENCE: nothing on the ask card was pressable, and an absence does not photograph. This set is main's own card under the same fixtures - inert muted text, label and consequence run together on one line, no recommended marker, and 'Type your answer below.' as the only affordance - so the reviewer can see what changed instead of taking it on trust.",
         "It cannot be regenerated by a sweep: a sweep captures the CURRENT tree, while these need main's own CanonicalTranscript under the same story. Declared as its own set so clearSweptFrames preserves it and the sweep's own count stays honest.",
         "Two of the eight surfaces are meant to look IDENTICAL to their chat-ask-options/ twins - secret-ask (a secret ask arrives with empty options) and approval-unchanged (approvals carry no options and are out of scope). The pair is what proves the non-goals were not disturbed, which no frame of the new card alone can show.",
-        "a09f2e6f4 is this branch's base 1771b0053 plus a package.json version bump and nothing else (git diff --stat 1771b0053 a09f2e6f4), so it is the same gate code the branch was cut from."
+        "THE BASE THIS SET WAS TAKEN FROM IS NOT THE BRANCH'S REBASE TARGET, and an earlier version of this sentence said it was. Corrected: 54bf411e0 is `chore(release): bump version to 0.19.0` and sits 16 commits BEHIND the commit this branch was cut from and rebased onto, f3eb589c1 (`0.19.1`); the branch now sits on 6950d0bf3 (`0.19.5`). The earlier narration also ordered the rebases backwards -- it had the branch rebased onto 54bf411e0 and then 'again' onto 79d0dc889 (#120) -- which cannot have happened: 79d0dc889 was authored at 22:09 and merged into main after 54bf411e0's 19:16, and `git merge-base --is-ancestor 79d0dc889 54bf411e0` is false. The relation that actually makes the comparison valid is measured, not narrated: `git diff --name-only 54bf411e0..6950d0bf3 -- 'src/renderer/src/features/chat/canonical/**' 'src/renderer/src/features/chat/components/trace/**' 'src/renderer/src/features/chat/components/message-item/**'` is EMPTY, so no commit between that tree and the branch's current base draws this card, and among the 16 commits between 54bf411e0 and f3eb589c1 only chat-page.tsx and chat-title.ts move. The re-capture was a null result (90 of the 96 came back byte-identical; the 6 that moved differ by 0 pixels beyond a 5% tolerance, which is webp re-encoding noise), so the frames are kept rather than churned. The full correction, including the counting, is also in this set's README."
       ],
       "capturedAt": "2026-09-12T22:30:00.000Z"
     },
@@ -240,15 +231,23 @@
       "frames": 2,
       "surfaces": 2,
       "themes": 1,
-      "source": "the shipped renderer over Vite with desktopProxyPlugin, driven over CDP against an ISOLATED local-operator backend on a scratch port holding a gate opened by the owner's own handle._ask_gate([AskQuestion(...)]) - the seam tests/e2e/test_desktop_sessions.py uses",
+      "source": "the shipped renderer over Vite with desktopProxyPlugin, driven by the committed scripts/click-proof.mjs over CDP against an ISOLATED local-operator backend on an OS-assigned port holding a gate opened by the owner's own handle._ask_gate([AskQuestion(...)]) - the seam tests/e2e/test_desktop_sessions.py uses. The backend and the dev server are committed beside these frames in harness/ (serve-gate.py, ask-gate.vite.mjs); they used to be a scratch rig under /tmp that nobody else could run.",
       "why": [
-        "The only frames in this tree showing a REAL pending ask gate answered by a REAL mouse click, rather than a story fixture. Storybook cannot produce them: they need a live owner holding a gate open and a backend to answer to, which is why the sweep cannot re-derive them.",
-        "They carry the assertion no story can make - that the option is hit-testable at its painted pixels and that what reaches the owner is the option's LABEL. owner-answer.json is the owner's own return value: {\"PAIRING\": [\"Popup is not open\"]}, the label of the SECOND option, so the result cannot be an index-0 accident.",
-        "before-click.png shows a 'session incident / Stopped with an error' row above the gate. That is the RIG's scripted provider stream running out of turns, not the app; it is left uncropped because a doctored screenshot is worth less than an honest one, and it does not touch the card below it.",
-        "The operator's live backend on 127.0.0.1:1111 was never touched: own config root, own token, OS-assigned port. See this directory's README.md for the reproduction and for the two browser-dev stand-ins it needed.",
+        "WHAT THESE FRAMES ARE. before-click/localOperatorDark.webp is the real pending ask gate in the shipped renderer - three bordered option buttons, the Recommended mark beside the label, the hint - rather than a story fixture. It is the only live frame of the card in this tree.",
+        "WHAT THEY ARE NOT, and this is the correction the QA round asked for. after-click/localOperatorDark.webp is NOT a picture of the gate resolving, and it is renamed after-click-unresolved/ so the path says so. The Vite dev server died between the two frames (a second status write on a committed response, ERR_HTTP_HEADERS_SENT, from scripts/vite-plugins/desktop-proxy.ts - fixed in this round), so that frame shows the gate still on screen with three failure surfaces instead of a cleared card. click-result.json's own `after` block reports {\"found\": true, \"count\": 3}: the DOM had not cleared, and the record says so.",
+        "The click ITSELF is recorded, not photographed: click-result.json carries the pre-click DOM, the aim point after elementFromPoint confirmed those pixels resolve to that option (so the control is hit-testable, not merely painted), and the post-click DOM. owner-answer.json is the owner's own return value, {\"PAIRING\": [\"Popup is not open\"]} - the label of a NON-first option after the harness rotated `recommended: 1` to the front, so it cannot be an index-0 accident. Its `names` field is textContent and INCLUDES the aria-hidden ordinal (\"2.Popup is not open...\"); the claim that the accessible name is the label rests on `ordinalHidden: true` plus the aria-hidden markup, not on that field - which is why it is named textContent.",
+        "The healthy re-capture of the pair is DEFERRED, not done, and the two frames above are not evidence for the resolution. scripts/click-proof.mjs and the committed rig are what the next round needs; see this directory's README for the exact blocker.",
         "Captured in localOperatorDark only: this is a wire-and-interaction proof, not a palette proof. The twelve-theme question is answered by chat-ask-options/, which the sweep takes across every palette."
       ],
       "capturedAt": "2026-09-12T20:06:00.000Z"
+    },
+    {
+      "path": "tool-rows-4px-rejected",
+      "frames": 1,
+      "capturedAt": "2026-09-13",
+      "capturedAtHead": "d90ad6df7108e5e35eb7a18d336ebca244a9f5a2",
+      "source": "scripts/capture-evidence.mjs against chat-tool-rows--operator-spacing-cases with GAP.trace temporarily set to mt-1, then reverted",
+      "why": "The REJECTED alternative, photographed. Both the code comments and this directory's README rest the 'not 4px' half of the decision on 'at 4px the rows float as separate items again' - and no frame in the repository was at 4px, so the comparison that decides the tier is 2 rather than 4 could not be checked by looking, which is the standard this evidence set holds everything else to. A sweep cannot re-derive it: it is a picture of a tier the app does not ship, produced by editing GAP.trace to mt-1 for one capture and reverting. Compare against chat-tool-rows/operator-spacing-cases/localOperatorDark.webp, same story and viewport, which is the shipped 2px."
     }
   ]
 }

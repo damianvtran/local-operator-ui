@@ -338,8 +338,17 @@ export const STORIES = [
 	   the 900px measure cap actually binds. */
 	["chat-ask-options--options", 1024, 470],
 	["chat-ask-options--single-option", 1024, 380],
-	["chat-ask-options--many-options", 1024, 820],
+	/* The app's own default window is 1380x900, which leaves this pane about
+	   617px once the header and the composer band come out. Captured here rather
+	   than at the story's old 820 because 820 was chosen to fit the content, and
+	   a viewport sized to fit cannot show that the content does not fit (design
+	   round 1, D1). */
+	["chat-ask-options--many-options", 1024, 620],
+	/* Two widths, because the label only wraps below ~900px: at 1024 the story
+	   photographed an unwrapped label while claiming to exercise wrapping (design
+	   round 1, D5). */
 	["chat-ask-options--wrapping-labels", 1024, 620],
+	["chat-ask-options--wrapping-labels", 760, 620],
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],

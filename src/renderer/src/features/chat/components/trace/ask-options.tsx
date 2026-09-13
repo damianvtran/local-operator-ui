@@ -72,8 +72,15 @@ export type AskOptionsProps = {
 	 */
 	recommended?: number | null;
 	/**
-	 * An answer is in flight. Disables every option so a second click — or a
-	 * click racing a typed send — cannot post a second answer for one question.
+	 * An answer is in flight, or this gate's answer has already been sent.
+	 * Disables every option so a second click — or a click racing a typed send —
+	 * cannot post a second answer for one question.
+	 *
+	 * "Already been sent" is the second half of that, and it is not the same
+	 * moment: `pending_gate` is only cleared by the next stream frame, so between
+	 * the owner accepting an answer and that frame arriving the card would come
+	 * back live against a gate that is already answered, and a second press would
+	 * post a second answer for a one-shot question (code review round 1, R-MINOR).
 	 */
 	busy?: boolean;
 	/** Submit this option's label as the answer. */
@@ -111,10 +118,29 @@ export const AskOptions = ({
 		 * The browser's default `fieldset` box is reset (`min-w-0` in particular,
 		 * which a fieldset sets to `min-content` and which would stop the long
 		 * labels below from wrapping inside a flex column).
+		 *
+		 * ## Why the band has a ceiling, and why it scrolls inside itself
+		 *
+		 * Eight options put the question out of the pane. Measured at the app's own
+		 * default window (1380x900, a ~617px pane): the gate's ink ran 664.6px from
+		 * the callout's top to the last row, so with the transcript pinned to its
+		 * newest content the callout, the eyebrow and the whole first row sat above
+		 * the top edge — the question the options are answers to, gone, which is the
+		 * one thing § 7's first tier cannot do (design round 1, D1). The parity
+		 * target caps its own option list and keeps the question pinned for exactly
+		 * this reason.
+		 *
+		 * 380px is six two-line rows: past that the band stops growing and scrolls
+		 * itself, so the callout above it and the hint below it stay on screen at
+		 * every window size the app allows. The padding is not decorative either —
+		 * a `2px` focus ring at `offset 2px` is clipped by an overflow container, so
+		 * the top and bottom rows need 4px of room inside it. The `mt-1` above
+		 * compensates so the callout→first-row distance the design round approved
+		 * stays 8px (`mt-1` 4px + `py-1` 4px).
 		 */
 		<fieldset
 			aria-label="Answer options"
-			className="mt-2 flex min-w-0 flex-col gap-1 border-0 p-0"
+			className="mt-1 flex min-w-0 max-h-[380px] flex-col gap-2 overflow-y-auto border-0 px-0 py-1"
 		>
 			{options.map((option, index) => (
 				<button
@@ -169,14 +195,24 @@ export const AskOptions = ({
 								 * learned this one in a design round (D4): the marker was a
 								 * muted style identical to the prose around it, and the
 								 * designer could not find it in the rendered frame without
-								 * searching. It is `text-meta` on the same ground rather
-								 * than a filled badge, so it marks the row without becoming
-								 * a second control beside the one it describes.
+								 * searching.
+								 *
+								 * `ink` at `font-medium`, NOT the accent and NOT uppercase. The
+								 * caps were borrowed from a surface that has no hue to work with
+								 * (`ask_picker.py` draws its badge at `fg` + bold because hue is
+								 * not available there); on this side the accent is already spent
+								 * on the callout above, so a second accent spend here makes the
+								 * accent say two things on one frame and takes the screen's
+								 * budget past § 2's three (design round 1, D2, measured: the
+								 * badge and the callout border were the same `rgb` in every
+								 * palette). Dropping the caps also drops the renderer's only
+								 * uppercase utility, which § 8 reserves for no register this
+								 * app has.
 								 */
 								<span
 									className={cn(
-										"shrink-0 font-medium text-meta uppercase",
-										busy ? "text-ink-disabled" : "text-accent",
+										"shrink-0 font-medium text-meta",
+										busy ? "text-ink-disabled" : "text-ink",
 									)}
 								>
 									Recommended
