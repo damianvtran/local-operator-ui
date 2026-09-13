@@ -186,6 +186,21 @@
 				"a09f2e6f4 is this branch's base 1771b0053 plus a package.json version bump and nothing else (git diff --stat 1771b0053 a09f2e6f4), so it is the same gate code the branch was cut from."
 			],
 			"capturedAt": "2026-09-12T22:30:00.000Z"
+		},
+		{
+			"path": "ask-options-live",
+			"frames": 2,
+			"surfaces": 2,
+			"themes": 1,
+			"source": "the shipped renderer over Vite with desktopProxyPlugin, driven over CDP against an ISOLATED local-operator backend on a scratch port holding a gate opened by the owner's own handle._ask_gate([AskQuestion(...)]) - the seam tests/e2e/test_desktop_sessions.py uses",
+			"why": [
+				"The only frames in this tree showing a REAL pending ask gate answered by a REAL mouse click, rather than a story fixture. Storybook cannot produce them: they need a live owner holding a gate open and a backend to answer to, which is why the sweep cannot re-derive them.",
+				"They carry the assertion no story can make - that the option is hit-testable at its painted pixels and that what reaches the owner is the option's LABEL. owner-answer.json is the owner's own return value: {\"PAIRING\": [\"Popup is not open\"]}, the label of the SECOND option, so the result cannot be an index-0 accident.",
+				"before-click.png shows a 'session incident / Stopped with an error' row above the gate. That is the RIG's scripted provider stream running out of turns, not the app; it is left uncropped because a doctored screenshot is worth less than an honest one, and it does not touch the card below it.",
+				"The operator's live backend on 127.0.0.1:1111 was never touched: own config root, own token, OS-assigned port. See this directory's README.md for the reproduction and for the two browser-dev stand-ins it needed.",
+				"Captured in localOperatorDark only: this is a wire-and-interaction proof, not a palette proof. The twelve-theme question is answered by chat-ask-options/, which the sweep takes across every palette."
+			],
+			"capturedAt": "2026-09-12T20:06:00.000Z"
 		}
 	]
 }
