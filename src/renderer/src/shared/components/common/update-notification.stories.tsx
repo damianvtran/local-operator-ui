@@ -48,6 +48,7 @@ const createEmptyUpdaterMethods = () => {
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
+			quitForUpdateInstall: async () => true,
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
@@ -63,6 +64,7 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateManualRequired: noop,
 			onUpdateInstallBlocked: noop,
 			onUpdateInstallFailed: noop,
+			onUpdateInstallInFlight: noop,
 		};
 	}
 };
@@ -87,6 +89,7 @@ const mockUpdaterApi = () => {
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
+		quitForUpdateInstall: async () => true,
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {
@@ -314,6 +317,7 @@ const mockUpdaterApi = () => {
 				remedy: { text: string; url?: string; command?: string };
 				detail: string;
 				attempts?: number;
+				cancelledByRelaunch?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -329,6 +333,50 @@ const mockUpdaterApi = () => {
 					detail:
 						"Install started 11/09/2026, 22:36:48 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.18.0-universal.zip. Squirrel's own log is at /Users/operator/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log.",
 					attempts: 2,
+				});
+			}
+			// The same failure with the cause this app can attest to: the app was
+			// opened while the install was running, which is what cancels Squirrel's
+			// install (the 2026-09-13 report). It is the state that has to name the
+			// real cause rather than "the update didn't finish".
+			if (window.triggerUpdateInstallFailedCancelledByRelaunch) {
+				callback({
+					targetVersion: "0.19.5",
+					message:
+						"The update to version 0.19.5 was cancelled because Local Operator was opened while the update was installing. Version 0.19.4 is still running.",
+					remedy: {
+						text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app - and leave it closed until the update finishes.",
+						url: "https://local-operator.com/download",
+					},
+					detail:
+						"Install started 13/09/2026, 09:39:00 from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip. Squirrel cancels an install when an instance of the app is running. Squirrel's own log is at /Users/operator/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log.",
+					attempts: 1,
+					cancelledByRelaunch: true,
+				});
+			}
+			return () => {};
+		},
+		/**
+		 * An install that is still running, found when the app came back mid-install.
+		 *
+		 * The state the incident needed and the app did not have: it says the update
+		 * is alive, that the app being open is what stops it finishing, and offers
+		 * the one action that can still save it.
+		 */
+		onUpdateInstallInFlight: (
+			callback: (info: {
+				targetVersion: string;
+				message: string;
+				detail: string;
+			}) => void,
+		) => {
+			if (window.triggerUpdateInstallInFlight) {
+				callback({
+					targetVersion: "0.19.5",
+					message:
+						"Version 0.19.5 is still being installed. The update can't finish while Local Operator is open, so quit and leave it closed until it opens again by itself.",
+					detail:
+						"Install started 2026-09-13T09:39:00.991Z from /Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip, while version 0.19.4 was running.",
 				});
 			}
 			return () => {};
@@ -366,6 +414,8 @@ declare global {
 		triggerBackendUpdateNonManaged?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallFailed?: boolean;
+		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
+		triggerUpdateInstallInFlight?: boolean;
 		triggerNpxUpdate?: boolean;
 		triggerDevMode?: boolean;
 	}
@@ -764,6 +814,8 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateDownloaded"
 	| "triggerUpdateInstallBlocked"
 	| "triggerUpdateInstallFailed"
+	| "triggerUpdateInstallFailedCancelledByRelaunch"
+	| "triggerUpdateInstallInFlight"
 	| "triggerBackendUpdateManualRequired"
 	| "triggerBackendUpdateManualRequiredExistingServer"
 	| "triggerBackendUpdateNonManaged";
@@ -806,6 +858,30 @@ export const InstallFailed: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerUpdateInstallFailed: true },
 	render: () => <Triggered flag="triggerUpdateInstallFailed" />,
+};
+
+/**
+ * The failure state that names the real cause: the app was opened while its
+ * update was installing, which is what cancels Squirrel's install. It is the
+ * 2026-09-13 report, and the retry it offers is only useful if the user is told
+ * to leave the app closed this time.
+ */
+export const InstallFailedCancelledByRelaunch: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallFailedCancelledByRelaunch: true },
+	render: () => (
+		<Triggered flag="triggerUpdateInstallFailedCancelledByRelaunch" />
+	),
+};
+
+/**
+ * The app came back while its update was still installing: not a failure, and
+ * the one state where quitting is the action that saves the update.
+ */
+export const InstallInFlight: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallInFlight: true },
+	render: () => <Triggered flag="triggerUpdateInstallInFlight" />,
 };
 
 /**
