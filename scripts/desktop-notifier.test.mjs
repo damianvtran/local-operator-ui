@@ -1219,3 +1219,102 @@ test("refreshNotificationContract reads the capability and survives failure", as
 		);
 	}
 });
+
+/**
+ * The launch plan's raise policy, threaded in as `windowRaise`.
+ *
+ * Why these cases: a headless run is an agent driving this app on the operator's
+ * machine, and there are exactly two ways it could still interrupt them — a
+ * banner delivered to a screen nobody is watching this app on, and a click on
+ * that banner raising a window the mode promises never to show. The click path
+ * is the one that needs the gate most, because `focusable: false` does NOT stop
+ * a shown window from activating the app (measured on Electron 35.5.1 / macOS:
+ * a non-focusable window, shown, made the app frontmost while `isFocused()`
+ * stayed false). The only thing between a headless run and the operator's focus
+ * is that nothing raises the window.
+ */
+function raiseHarness(windowRaise) {
+	const calls = [];
+	const target = {
+		show: () => calls.push("show"),
+		showInactive: () => calls.push("showInactive"),
+		focus: () => calls.push("focus"),
+		isMinimized: () => false,
+		restore: () => calls.push("restore"),
+		webContents: { send: (channel) => calls.push(`send:${channel}`) },
+	};
+	const requests = [];
+	const notifier = new DesktopNotifier(
+		() => target,
+		async (input) => {
+			requests.push(input);
+			return { status: 200, body: { result: { claimed: true } } };
+		},
+		windowRaise,
+	);
+	return { notifier, calls, requests };
+}
+
+test("a headless run delivers no banner on any path, and burns no claim", async () => {
+	// The composed completion is the case that matters: its cross-surface claim
+	// is taken "immediately before delivery" (design 7.3), so delivering nothing
+	// has to mean claiming nothing, or the completion is marked delivered to a
+	// surface that never showed it.
+	const { notifier, requests } = raiseHarness("never");
+	notifier.observe(SESSION, completionFrame());
+	notifier.observe(SESSION, gateFrame());
+	notifier.observe(SESSION, eventFrame("agent_end"));
+	await settle(100);
+
+	assert.equal(globalThis.__toasts.length, 0, "no toast on a headless run");
+	assert.equal(globalThis.__shown.length, 0, "no banner reached the OS");
+	assert.deepEqual(
+		requests,
+		[],
+		"no capability read, no claim: nothing is burned",
+	);
+});
+
+test("the same three paths do deliver in the ordinary mode", async () => {
+	// The control for the test above: without it, a notifier that delivered
+	// nothing at all would pass it.
+	const { notifier, requests } = raiseHarness("focus");
+	notifier.observe(SESSION, completionFrame());
+	await settle(100);
+	assert.equal(globalThis.__shown.length, 1, "the completion reached the OS");
+	assert.equal(
+		requests.filter((input) => input?.op === "sessions.notified").length,
+		1,
+		"and it took the cross-surface claim on the way",
+	);
+});
+
+test("a clicked banner raises the window only as far as the plan allows", async () => {
+	const cases = [
+		// mode, what the click is allowed to do
+		["focus", ["show", "focus", "send:desktop-open-conversation"]],
+		["inactive", ["showInactive", "send:desktop-open-conversation"]],
+	];
+	for (const [mode, expected] of cases) {
+		globalThis.__toasts = [];
+		globalThis.__shown = [];
+		const { notifier, calls } = raiseHarness(mode);
+		notifier.observe(SESSION, completionFrame());
+		await settle(100);
+		const banner = globalThis.__shown[0];
+		assert.ok(banner, `${mode}: the banner is delivered`);
+		// A real click, through the handler the OS would call.
+		banner.handlers.click();
+		assert.deepEqual(calls, expected, `${mode}: the window was raised`);
+	}
+
+	// `headless` is covered by the absence of the handler itself: no banner, so
+	// nothing to click and no path to a window the mode never shows.
+	globalThis.__toasts = [];
+	globalThis.__shown = [];
+	const { notifier, calls } = raiseHarness("never");
+	notifier.observe(SESSION, completionFrame());
+	await settle(100);
+	assert.equal(globalThis.__shown.length, 0);
+	assert.deepEqual(calls, []);
+});

@@ -25,6 +25,13 @@ import { LogFileType, logger } from "./backend/logger";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import { UpdateService } from "./update-service";
+import {
+	WINDOW_MIN_HEIGHT,
+	WINDOW_MIN_WIDTH,
+	describeWindowLaunch,
+	resolveWindowLaunchPlan,
+} from "./window-mode";
+import { presentWindow, raiseWindow } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -188,18 +195,38 @@ function createApplicationMenu(): void {
 }
 
 function createWindow(): BrowserWindow {
+	/*
+	 * Resolved once, before any window exists, so an agent-driven run can say
+	 * how it wants the window to behave: `headless` (created, never shown) and
+	 * `inactive` (shown without activating the app) are how a QA rig or a
+	 * `pnpm dev` check stops taking the operator's keyboard focus on every
+	 * launch. See `window-mode.ts` for the modes and AGENTS.md for when to use
+	 * which. `normal` is the shipped behaviour, unchanged.
+	 */
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
-		width: 1380,
-		height: 900,
+		width: windowLaunch.width,
+		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
 		// the per-route list pane and the canvas all have their own minimums,
 		// and past this point they start taking room from each other rather
 		// than from the window. The auth popup below sets its own floor the
-		// same way.
-		minWidth: 800,
-		minHeight: 600,
+		// same way. The floor lives in `window-mode.ts` because that is what
+		// clamps a requested `--window-size` to it.
+		minWidth: WINDOW_MIN_WIDTH,
+		minHeight: WINDOW_MIN_HEIGHT,
 		show: false,
+		/*
+		 * `headless` is never shown, so no key window can be made out of it; this
+		 * keeps that true of the window object itself rather than of the code
+		 * path. It is NOT a safety net against a stray `show()`: on macOS
+		 * `NativeWindowMac::Show()` activates the app for any non-panel window
+		 * whatever `focusable` says (measured — a non-focusable window, shown,
+		 * made the app frontmost while `isFocused()` still read false). The guard
+		 * against a window being raised is that `window-raise.ts` is the only
+		 * module that raises one, and this flag is the second line of defence.
+		 */
+		focusable: windowLaunch.focusable,
 		autoHideMenuBar: true,
 		title: "Local Operator",
 		icon,
@@ -214,6 +241,16 @@ function createWindow(): BrowserWindow {
 			contextIsolation: true,
 			webSecurity: true,
 			allowRunningInsecureContent: false,
+			// Chromium throttles timers and animation frames in a window it
+			// believes nobody is looking at, which would make a headless test
+			// run measure a different app than the one users get. Measured on
+			// Electron 35 / macOS: a `show: false` window does keep
+			// `visibilityState` at "visible" and keeps rAF ticking, but that
+			// comes from Electron's MacWebContentsOcclusion default rather
+			// than from anything this app controls, so hold the page at full
+			// rate explicitly instead of trusting the platform. `normal`
+			// keeps Electron's own default.
+			backgroundThrottling: windowLaunch.backgroundThrottling,
 		},
 	});
 
@@ -230,7 +267,38 @@ function createWindow(): BrowserWindow {
 	});
 
 	mainWindow.on("ready-to-show", () => {
-		mainWindow.show();
+		/*
+		 * `normal` raises and focuses the window: the ordinary launch, which is a
+		 * person starting the app. `inactive` orders the window without
+		 * activating the app, so an agent run can be watched without interrupting
+		 * anyone. `headless` does not show it at all: the window still renders at
+		 * its full size, so `capturePage` and CDP see a complete frame.
+		 */
+		presentWindow(mainWindow, windowLaunch.show);
+
+		if (windowLaunch.mode === "normal") return;
+		/*
+		 * A non-normal run states what its window actually did, in its own
+		 * output, once the frame has settled. The window server will not tell a
+		 * rig this: `System Events` reports no windows for a process without
+		 * Accessibility permission and none for a background process even with
+		 * it, so "the app never showed anything" is otherwise unprovable from
+		 * outside. One line, greppable, is what makes the claim checkable by
+		 * whoever reads a QA run's log.
+		 *
+		 * Read `visible` and not `focused`: `focusable: false` forces
+		 * `isFocused()` false, so a headless run would print `focused=false`
+		 * even while it held the operator's focus. `visible=false` is the fact,
+		 * and no app is activated by a window it never shows.
+		 */
+		setTimeout(() => {
+			if (!mainWindow || mainWindow.isDestroyed()) return;
+			const [width, height] = mainWindow.getSize();
+			const [contentWidth, contentHeight] = mainWindow.getContentSize();
+			console.log(
+				`[window-mode] state: visible=${mainWindow.isVisible()} focused=${mainWindow.isFocused()} focusable=${mainWindow.isFocusable()} size=${width}x${height} content=${contentWidth}x${contentHeight}`,
+			);
+		}, 1500);
 	});
 
 	mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -323,6 +391,35 @@ function createWindow(): BrowserWindow {
 const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
 
+/*
+ * How this process wants its window to behave. Resolved at load, from
+ * `LOCAL_OPERATOR_UI_WINDOW_MODE` / `--window-mode=` and `--window-size=`,
+ * so every launch path is covered by one switch: `pnpm dev`, `pnpm start`,
+ * `npx electron .` in a rig, and `npx local-operator-ui` (which spawns
+ * Electron with this process's environment, so it inherits the value).
+ */
+const windowLaunch = resolveWindowLaunchPlan({
+	env: process.env,
+	argv: process.argv,
+});
+for (const problem of windowLaunch.problems) {
+	logger.warn(`[window-mode] ${problem}`, LogFileType.BACKEND);
+	/*
+	 * Also on stdout, because a rejected mode is a fact about the LAUNCH, not
+	 * about the backend: `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falling back
+	 * to `normal` is exactly what turns a typo into an interruption, and the
+	 * warning above only reaches a log file the rig does not read. A rig greps
+	 * stdout; a person reads the terminal.
+	 */
+	console.log(`[window-mode] ${problem}`);
+}
+// Quiet in `normal`, where there is nothing a reader needs to know and the
+// shipped app's stdout stays clean. The smoke-test path returns before this
+// point is reached, so its single marker line is unaffected either way.
+if (windowLaunch.mode !== "normal") {
+	console.log(`[window-mode] ${describeWindowLaunch(windowLaunch)}`);
+}
+
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
 // desktop bearer is process-scoped, so main keeps no credential store.
@@ -366,8 +463,10 @@ if (!gotTheLock) {
 	app.on("second-instance", (_event, commandLine) => {
 		// Someone tried to run a second instance, we should focus our window.
 		if (mainWindow) {
-			if (mainWindow.isMinimized()) mainWindow.restore();
-			mainWindow.focus();
+			// A headless or inactive run exists precisely because the operator
+			// is doing something else, so a second launch must not be what
+			// finally pulls focus away from them; `raiseWindow` decides.
+			raiseWindow(mainWindow, windowLaunch.show);
 
 			// Backend-owned OAuth completes on the backend's loopback callback;
 			// the legacy radient:// deep link is no longer consumed here.
@@ -416,7 +515,11 @@ app
 			() => mainWindow,
 			(input) => backendService.requestDesktop(input),
 		);
-		const desktopNotifier = new DesktopNotifier(() => mainWindow, sendDesktop);
+		const desktopNotifier = new DesktopNotifier(
+			() => mainWindow,
+			sendDesktop,
+			windowLaunch.show,
+		);
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
 		// `backendService.start()` below, so a capability request issued now
