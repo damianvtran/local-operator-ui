@@ -1470,8 +1470,12 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// The premise: the popup positions itself outside its parent's content
 	// box. If this ever stops being true the rest of this test is measuring
 	// nothing, so it is asserted rather than assumed.
+	// The two tokens, in one class list, with a closing quote after them. The
+	// leading-quote anchor this once carried was dropped when the popup gained a
+	// `@container/slash` prefix for the numbers-shed rule; the PREMISE is
+	// unchanged, and it is still asserted rather than assumed.
 	assert.ok(
-		/"absolute bottom-full[^"]*"/.test(slash),
+		/absolute bottom-full[^"]*"/.test(slash),
 		"the slash popup no longer renders `absolute bottom-full`, so this test's premise about escaping the parent box is stale",
 	);
 
@@ -2032,5 +2036,48 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		panelIdentityFor(null, undefined),
 		undefined,
 		"no session and no draft is no panel",
+
+test("the composer plans a slash submit before it submits", async () => {
+	/*
+	 * The shape guard for the inline-command contract (slash parity, round 1).
+	 *
+	 * WHAT IT DEFENDS. Before this change the composer recognised a command only
+	 * when the WHOLE draft was one (`SLASH_SUBMISSION` against `text.trim()`), so
+	 * a command typed into a sentence reached the model as prose — a silent no-op
+	 * the user could not see. The fix is that `message-input.tsx` asks
+	 * `planSlashSubmission` first and only then decides whether to submit. That is
+	 * easy to lose in a refactor that touches only the submit path: deleting the
+	 * plan call leaves every unit test green, because the planner itself is still
+	 * correct and merely unused.
+	 *
+	 * Asserted on the SOURCE rather than by rendering, for the reason the clipping
+	 * guard above is: what is being defended is the ORDER of two calls in one
+	 * file, and a render test would need a real backend to observe the difference
+	 * between "spliced" and "sent to the model".
+	 */
+	const { readFile } = await import("node:fs/promises");
+	const composer = await readFile(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	// The planner is consulted with the CARET, not just the value: the whole
+	// point is the token at the caret (`slashTokenSpan`), so a call that dropped
+	// the caret would re-anchor completion to the buffer start.
+	assert.ok(
+		/planSlashSubmission\(\{[\s\S]{0,240}?caret:/.test(composer),
+		"the composer no longer passes the caret into `planSlashSubmission`, so inline detection has lost the position it is defined against",
+	);
+	const plannedAt = composer.indexOf("planSlashSubmission({");
+	const submitAt = composer.indexOf("submitMessage();");
+	assert.ok(
+		plannedAt !== -1 && submitAt !== -1 && plannedAt < submitAt,
+		"`planSlashSubmission` is gone from message-input.tsx or now runs after `submitMessage()`; a command typed into a sentence would reach the model as prose again",
+	);
+	// And the two entry points a user actually submits with both consult it: the
+	// Enter key and the form's submit (the Send button).
+	const plans = composer.match(/planFor\(newMessage, caret\)/g) ?? [];
+	assert.ok(
+		plans.length >= 2,
+		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
 	);
 });
