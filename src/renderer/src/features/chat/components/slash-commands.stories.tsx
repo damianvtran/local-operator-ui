@@ -334,14 +334,49 @@ type BoxProps = {
  * The frame pushes the box to the bottom so the popup, which renders
  * `bottom-full`, has the space above it that it occupies live.
  */
+const ComposerBox: FC<BoxProps> = ({ width, draft = "", children }) => (
+	<div className="relative" style={{ width }}>
+		{children}
+		<div className="flex h-11 items-center border border-control bg-surface px-3 font-mono text-body-sm text-ink">
+			{draft}
+		</div>
+	</div>
+);
+
+/**
+ * One composer in a frame of its own: the box pushed to the bottom of the
+ * viewport, so the popup has above it exactly the room it has live.
+ */
 const Box: FC<BoxProps> = ({ width, draft = "", children }) => (
 	<div className="flex h-screen items-end justify-center bg-surface p-6">
-		<div className="relative" style={{ width }}>
+		<ComposerBox width={width} draft={draft}>
 			{children}
-			<div className="flex h-11 items-center border border-control bg-surface px-3 font-mono text-body-sm text-ink">
-				{draft}
-			</div>
-		</div>
+		</ComposerBox>
+	</div>
+);
+
+/**
+ * One case inside a board: a composer plus the room its popup needs ABOVE it.
+ *
+ * The popup is `absolute bottom-full`, so a stacked case's popup would render
+ * on top of the case above it if the row were only as tall as the box. The row
+ * therefore reserves the popup's own height, computed from the row count the
+ * case renders — which is why a board's cases are declared with their row count
+ * rather than left to the flexbox to work out.
+ */
+const Case: FC<BoxProps & { rows: number }> = ({
+	width,
+	draft = "",
+	rows,
+	children,
+}) => (
+	<div
+		className="flex flex-col justify-end"
+		style={{ height: `${44 + rows * 36 + 8}px` }}
+	>
+		<ComposerBox width={width} draft={draft}>
+			{children}
+		</ComposerBox>
 	</div>
 );
 
@@ -487,7 +522,7 @@ export const ArgumentPhaseModels: Story = {
 export const ArgumentPhaseEmpty: Story = {
 	render: () => (
 		<Board caption="An empty list is not one fact: a cold owner and a draft are different sentences.">
-			<Box width={720} draft="/effort ">
+			<Case width={720} draft="/effort " rows={1}>
 				<SlashSuggestionsPopup
 					state={state({
 						phase: "argument",
@@ -497,8 +532,8 @@ export const ArgumentPhaseEmpty: Story = {
 					})}
 					onPick={noop}
 				/>
-			</Box>
-			<Box width={720} draft="/team ">
+			</Case>
+			<Case width={720} draft="/team " rows={1}>
 				<SlashSuggestionsPopup
 					state={state({
 						phase: "argument",
@@ -514,7 +549,7 @@ export const ArgumentPhaseEmpty: Story = {
 					})}
 					onPick={noop}
 				/>
-			</Box>
+			</Case>
 		</Board>
 	),
 };
@@ -569,7 +604,7 @@ export const InlineMidDraft: Story = {
 export const NameListCompleted: Story = {
 	render: () => (
 		<Board caption="Choosing a name, and what that pick leaves behind: the space terminates the name, so the list closes and the tail becomes free text.">
-			<Box width={720} draft="/team ops">
+			<Case width={720} draft="/team ops" rows={1}>
 				<SlashSuggestionsPopup
 					state={state({
 						phase: "argument",
@@ -580,13 +615,13 @@ export const NameListCompleted: Story = {
 					})}
 					onPick={noop}
 				/>
-			</Box>
-			<Box width={720} draft="/team ops ">
+			</Case>
+			<Case width={720} draft="/team ops " rows={0}>
 				<SlashSuggestionsPopup
 					state={state({ phase: null, open: false, matches: [] })}
 					onPick={noop}
 				/>
-			</Box>
+			</Case>
 		</Board>
 	),
 };
