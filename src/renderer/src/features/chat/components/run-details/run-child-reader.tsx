@@ -352,22 +352,39 @@ export const RunChildReader = ({
 	 * `pending`, `gone`, `error`, and an unaddressed child), because the way out
 	 * of a reader that has nothing to paint is the same way out as any other
 	 * (`Escape`/Back), and it hands the focus to the transcript — the element that
-	 * actually pages — the moment one mounts. The effect re-runs on `state`, so a
-	 * page that arrives late still takes focus; it does NOT re-run on a pulse or a
-	 * refetch that leaves the state alone, so the reader never steals focus back
-	 * from a user who moved it.
+	 * actually pages — the moment one mounts. The effect re-runs when `hasTranscript`
+	 * flips, so a page that arrives late still takes focus **if the reader still has
+	 * it**, and never otherwise: a reader whose operator has moved on to the composer
+	 * leaves their caret alone (round 3, R3-4). It does not re-run on a pulse or a
+	 * refetch that leaves the state alone.
 	 */
 	const hasTranscript = state === "ready" && painted.records.length > 0;
 	useEffect(() => {
 		/*
 		 * Which element holds focus for THIS state: the transcript when one is painted,
-		 * the reader's root otherwise. `hasTranscript` is read in the body rather than
-		 * used only as a dependency because it IS the transition this effect is about
-		 * — a page arriving is what moves focus from the root into the element that
-		 * pages.
+		 * the reader's root otherwise. `hasTranscript` is a dependency rather than only
+		 * a body read because a page ARRIVING is the transition this effect is about.
+		 *
+		 * The move happens only while the reader still holds the focus it took, which
+		 * is what makes it idempotent per open AND harmless when a page arrives late
+		 * (round 3, R3-4). `document.activeElement` is one of the reader's own two
+		 * elements, or nothing (a pane opened over an unmounted roster row leaves it
+		 * on `<body>`) — those are the cases where the focus is the reader's to move.
+		 * Anything else means the operator has put it somewhere since, and the common
+		 * case is the composer: the previous, unconditional version fired on every
+		 * `hasTranscript` transition, so a slow child's first rows pulled the caret
+		 * out of a half-typed message.
 		 */
 		const target = hasTranscript ? containerRef.current : readerRef.current;
-		target?.focus();
+		if (!target) return;
+		const active = document.activeElement;
+		const mine =
+			active === null ||
+			active === document.body ||
+			active === readerRef.current ||
+			active === containerRef.current;
+		if (!mine || active === target) return;
+		target.focus();
 	}, [hasTranscript]);
 
 	// An unopenable child hands the pane back to the roster, once.

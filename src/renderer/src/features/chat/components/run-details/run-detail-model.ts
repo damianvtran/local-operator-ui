@@ -897,7 +897,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	 * The wire's rows are an execution snapshot, not a roster.
 	 *
 	 * `frontend.jobs` is `comms.job_rows()`, which walks the ROOT session's job
-	 * manager AND every live child's (`harness/comms.py:799-824`) — so the list
+	 * manager AND every live child's (`harness/comms.py:799-815`) — so the list
 	 * carries, beside the delegated children, the parent's own tool jobs and each
 	 * child's own tool calls, all minted by the same ledger as the task rows. A
 	 * roster that painted them answered "which sub-agents are running" with the
@@ -905,13 +905,25 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	 * delegation, with the bash row sorted above the child it belonged to), and
 	 * the same list inflated the tally.
 	 *
-	 * The discriminator is the row's own `type`, which the wire already stamps:
-	 * a delegated child is `task` (`frontend_state.py:4093`, and `JobState.type`
-	 * generally), while a tool job carries the tool's name (`bash`, `read`, ...),
-	 * a null `agent_role` and no `session_id`. Membership is therefore a filter on
-	 * `type` — NOT on `agent_role`, which is a display field whose default value
-	 * `task` is suppressed, and NOT on `session_id`, which a restored row can
-	 * lack while still being a real child.
+	 * The discriminator is the row's own `type`, which the wire already stamps,
+	 * and the vocabulary is exactly two words: `JobType = Literal["bash",
+	 * "task"]` (`harness/jobs.py:216`). A delegated child's row is `task`
+	 * (`harness/subagent.py:546`), and EVERY tool row is `bash` — not the tool's
+	 * name. A background `eval` registers as `bash` deliberately, because a
+	 * settled job's completion is auto-delivered only for types in
+	 * `("task", "bash")` and a third literal would silently strip that delivery
+	 * (`tools/eval.py:938-945`); the label carries the distinction instead
+	 * (`bash: <command>`, `tools/builtin.py:2187`). And a foreground `read` never
+	 * gets a row at all: the only two register paths a tool call has are the
+	 * shell's own detach moments (`tools/builtin.py:2250`, `:2306`). So a
+	 * non-member row is always a `bash` row here, and the filter below is the one
+	 * place that has to know it. (Round 3, R3-1: this comment said "the tool's
+	 * name (`bash`, `read`, …)", which describes rows the runtime cannot
+	 * produce.)
+	 *
+	 * Membership is therefore a filter on `type` — NOT on `agent_role`, which is a
+	 * display field whose default value `task` is suppressed, and NOT on
+	 * `session_id`, which a restored row can lack while still being a real child.
 	 *
 	 * A row with NO `type` at all is kept. Every `JobState` this wire has shipped
 	 * carries one, so the case is a runtime this renderer has not met; keeping the
@@ -1569,10 +1581,12 @@ export function mcpErrorTexts(rows: unknown): Record<string, string> {
  * de-duplication argument does not apply here.
  *
  * The problem clause AGREES with the trigger's own label, and the agreement is
- * the point: `runDetailTriggerLabel` says `1 MCP server needs attention` while
- * this section said `1 need attention` for the same server (round 1, U1-7/Q7) —
- * one count, two spellings, one of them ungrammatical, on the two surfaces a
- * single reader sees together.
+ * enforced by construction rather than by two spellings that happen to match:
+ * `runDetailTriggerLabel` says `1 MCP server needs attention` while this section
+ * said `1 need attention` for the same server (round 1, U1-7/Q7) — one count,
+ * two spellings, one of them ungrammatical, on the two surfaces a single reader
+ * sees together. Both now call `attentionClause`/`attentionVerb` below, which is
+ * the only place the verb is chosen (round 3's last nit).
  */
 export function mcpTally(rows: readonly McpServerRow[]): string {
 	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
@@ -1580,7 +1594,7 @@ export function mcpTally(rows: readonly McpServerRow[]): string {
 	const problems = rows.filter((row) => row.problem).length;
 	const base = `${connected} of ${rows.length} connected`;
 	if (problems === 0) return base;
-	return `${base} · ${problems} ${problems === 1 ? "needs" : "need"} attention`;
+	return `${base} · ${attentionClause(problems)}`;
 }
 
 /**
@@ -2114,11 +2128,28 @@ const todoClause = (count: number): string =>
 const failureClause = (count: number): string =>
 	`${plural(count, "subagent")} failed`;
 
+/**
+ * The attention GRAMMAR, stated once (`§ 3.4`, `§ 7.2`; round 3's nit).
+ *
+ * Three surfaces report an MCP problem with the same two words and differ only
+ * in what they name — the trigger's clause names the servers (`1 MCP server needs
+ * attention`), the section's tally states the count against the list
+ * (`1 of 3 connected · 1 needs attention`) — so the verb lives here and the
+ * clauses are built from it. Two copies of one rule is how round 1's U1-7/Q7
+ * happened: `1 need attention` drifted from `1 MCP server needs attention` on the
+ * two surfaces a single reader sees together, and nothing but review would have
+ * caught it. `needs` for a count of one, `need` otherwise.
+ */
+const attentionVerb = (count: number): string =>
+	count === 1 ? "needs" : "need";
+
+/** The clause that names no subject: `1 needs attention`, `3 need attention`. */
+const attentionClause = (count: number): string =>
+	`${count} ${attentionVerb(count)} attention`;
+
 /** The MCP ledger's clause, with the protocol's own name left singular. */
 const mcpClause = (count: number): string =>
-	count === 1
-		? "1 MCP server needs attention"
-		: `${count} MCP servers need attention`;
+	`${plural(count, "MCP server")} ${attentionVerb(count)} attention`;
 
 /**
  * The tooltip and `aria-label` copy (`§3.3`, `§6.2`).

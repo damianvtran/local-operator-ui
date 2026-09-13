@@ -385,7 +385,7 @@ always on screen.
   - reader open → leave the reader for the roster (the TUI's `esc` = `_leave`,
     `subagent_view.py:3423-3424`, which leaves the mode rather than stepping up a
     level — the one-level key is its own binding, `p` = `action_subagent_parent`,
-    `app.py:2885`, `:24350-24351`);
+    `app.py:2885` for the binding and `:24174` for the action it calls);
   - at the roster → close the panel and return focus to the trigger.
   **`⌘[`/`Ctrl+[` is the platform's back gesture and takes the BACK rule**, not
   this one: it pops one level while the reader is deeper than one, and leaves the
@@ -450,18 +450,28 @@ wire.** Two clauses, and both are load-bearing:
 
 - **`type === "task"`.** `frontend.jobs` is not a roster: it is
   `comms.job_rows()`, which snapshots the ROOT session's job manager AND every
-  live child's (`harness/comms.py:799-824`), so it carries the session's own tool
+  live child's (`harness/comms.py:799-815`), so it carries the session's own tool
   jobs and each child's own tool calls beside the children themselves — all
   minted by the same ledger, all shaped like jobs. A tool row says so in its
-  `type` (the tool's name — `bash`, `read` — with a null `agent_role` and a null
-  `session_id`), and until round 1 the roster painted those rows: one delegated
-  child mid-flight read `2 running` with the child's `sleep 150` bash call sorted
-  above it, and the tally inflated with it. `type` is the discriminator rather
-  than `agent_role` (a display field whose `task` default is suppressed) or
+  `type`, and the vocabulary is exactly two words: `JobType = Literal["bash",
+  "task"]` (`harness/jobs.py:216`). A delegated child's row is `task`
+  (`harness/subagent.py:546`); every TOOL row is `bash`, whatever tool ran — a
+  background `eval` registers as `bash` deliberately, because a settled job's
+  completion is auto-delivered only for types in `("task", "bash")` and a third
+  literal would silently strip it (`tools/eval.py:938-945`), with the label
+  carrying the distinction (`bash: <command>`, `tools/builtin.py:2187`); and a
+  foreground `read` never gets a row at all, because the only two register paths
+  a tool call has are the shell's own detach moments (`tools/builtin.py:2250`,
+  `:2306`). Until round 1 the roster painted those rows: one delegated child
+  mid-flight read `2 running` with the child's `sleep 150` bash call sorted above
+  it, and the tally inflated with it. `type` is the discriminator rather than
+  `agent_role` (a display field whose `task` default is suppressed) or
   `session_id` (which a RESTORED child row can lack while still being a child). A
   row with no `type` at all is KEPT: every `JobState` this wire has shipped has
   one, so that row is a runtime this renderer has not met, and hiding a real child
-  is the worse of the two failures.
+  is the worse of the two failures. (Round 3, R3-1: this bullet said a tool row
+  carries "the tool's name (`bash`, `read`)", which describes a row the runtime
+  cannot produce — a foreground `read` is never registered.)
 - **Its parent is not on the list.** `parent_job_id` names the job that launched
   the row, so a row whose parent IS on the wire was launched from inside another
   child — a DESCENDANT (a grandchild). It belongs to that parent's `N children`
@@ -682,8 +692,8 @@ nothing"*).
 |---|---|---|
 | click a roster row | open that child | `subagent_panel.py:1509` |
 | `Enter` / `Space` on a focused row | open that child | `:1374` |
-| click the back control, or `⌘[` / `Ctrl+[` | pop one level while the reader is deeper than one; at the first level, leave the pane (the same exit as the ✕ and the breadcrumb's root crumb) | `p` = parent (`app.py:2885`, `:24350-24351`); `r` = root (`:2889`) at the top |
-| `Escape` | leave the reader for the roster from any depth; at the roster, close the pane and focus the trigger | `esc` = `_leave` (`subagent_view.py:3423-3424`, handled by `_close_subagent_view`, `app.py:24511-24535`) |
+| click the back control, or `⌘[` / `Ctrl+[` | pop one level while the reader is deeper than one; at the first level, leave the pane (the same exit as the ✕ and the breadcrumb's root crumb) | `p` = parent (`app.py:2885`, action at `:24174`); `r` = root (`:2889`, action at `:24183`) at the top |
+| `Escape` | leave the reader for the roster from any depth; at the roster, close the pane and focus the trigger | `esc` = `_leave` (`subagent_view.py:3423-3424`, handled by `_close_subagent_view`, `app.py:24335`) |
 | click a breadcrumb crumb | jump to that level | the breadcrumb itself |
 | click a peer step (◀ / ▶) | previous / next sibling, in the authoritative sibling order | `[` / `]` = `subagent_peer(∓1)` (`app.py:2886-2887`) |
 | a "N children" control in the header, when the child has children | descend to the first child | `c` = `subagent_child` (`:2888`) |
@@ -1423,8 +1433,8 @@ GET /v1/desktop/sessions/{session_id}/children/{child_id}/attachments/{digest}
 |---|---|---|
 | unknown / non-subagent / uncontained child id | `404` | the row was not openable; the panel keeps the roster and says so in one line |
 | parent unknown or not a user session | `404` | ditto |
-| no transcript file yet | `200`, `state: "pending"`, empty `entries` | "This subagent has not written anything yet." + retry on the next pulse |
-| directory gone | `200`, `state: "gone"`, empty `entries` | "This subagent's transcript is no longer on disk." (final) |
+| no transcript file yet | `200`, `state: "pending"`, empty `entries` | "This subagent has no transcript on disk yet." — the FILE is absent, which is all this route can know — + retry on the next pulse |
+| directory gone | `200`, `state: "gone"`, empty `entries` | "This subagent's session directory is no longer on disk." (final; only a missing DIRECTORY is final — a file moved aside answers `pending` above, round 1's Q10) |
 | cursor vanished (compaction replaced the file) | `200`, `cursor_missing: true` | re-read the tail, dedupe by id |
 | no bearer / wrong origin | `401` / `403` (`require_desktop`, `server/desktop.py:28-64`) | the capability gate means this should not be reachable (§ 10.5) |
 | oversize `limit` | `422` | a bug in this app, not a user state |
@@ -1583,7 +1593,7 @@ per `branding.md` § 9's checklist.
 | `roster-only` / `todos-only` | one section, no empty heading (`docs/run-details.md` § 6.3, carried over) |
 | `both-in-flight` | both sections, the rule between them, the roster's live clock |
 | `roster-capped-expanded` | `+N more` before and after the disclosure (before/after pair) |
-| `roster-members` | the roster's MEMBERSHIP (§ 4): a payload carrying a child's own `bash` job, the session's own `read` job and a nested `task` row, of which only the two top-level children are rows and only they are counted |
+| `roster-members` | the roster's MEMBERSHIP (§ 4): a payload carrying a child's own `bash` job, the session's own `bash` job (a tool row is always `bash` — `JobType` is `Literal["bash","task"]`, `harness/jobs.py:216`) and a nested `task` row, of which only the two top-level children are rows and only they are counted |
 | `todos-phased` | phases as headers, items indented, done struck, dropped tagged, blocked with its reason line — and **no per-phase counts** |
 | `todos-implicit-phase` | the § 6.2 fix: an implicit phase rendered headerless beside a named one (the defect, then the fix) |
 | `swap-canvas-open` | the canvas open with the run trigger still visible and pressed-state-free; then the run panel open with the canvas closed (before/after) |
