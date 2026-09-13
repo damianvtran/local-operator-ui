@@ -152,6 +152,12 @@ type ChatContentProps = {
 	 */
 	onSlashCommand?: (line: string) => Promise<SlashDispatchOutcome>;
 	/**
+	 * The dispatcher's own note surface, borrowed by the composer so a staged
+	 * reassembly and an unanswerable name list can say what happened. Forwarded
+	 * verbatim; see `MessageInputProps.onSlashNote`.
+	 */
+	onSlashNote?: (text: string) => void;
+	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
 	 * job/message list is not mounted. Absent on an old backend.
@@ -294,6 +300,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		sendError,
 		sessionStatus,
 		onSlashCommand,
+		onSlashNote,
 		canonical,
 		runDetails,
 		mcpServers = [],
@@ -700,6 +707,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								sendError={sendError}
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}
+								onSlashNote={onSlashNote}
 								isSmallView={isSmallView}
 							/>
 						)}

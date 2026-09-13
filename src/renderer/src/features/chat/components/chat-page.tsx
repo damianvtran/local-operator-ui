@@ -435,7 +435,12 @@ function SessionPanel({
 		staleTime: 30_000,
 		retry: false,
 	});
-	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
+	const {
+		dispatch,
+		dispatchFromControl,
+		picker,
+		note: slashNote,
+	} = useSlashDispatch({
 		sessionId,
 		canonical,
 		rebind,
@@ -1297,6 +1302,7 @@ function SessionPanel({
 					 * rather than a second copy of its sentence (round 2, Q-7's contract).
 					 */
 					onSlashCommand={(line: string) => dispatchFromControl(line)}
+					onSlashNote={slashNote}
 					sendError={composerSendError}
 					/*
 					 * The session's readings, straight off the canonical stream, and

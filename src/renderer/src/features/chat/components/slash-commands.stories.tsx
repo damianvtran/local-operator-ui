@@ -276,8 +276,33 @@ const TEAMS = [
 	},
 ];
 
+/**
+ * Theme rows, shaped like the `@shared/themes` table `/theme`'s dialog reads
+ * (`{ value, name, description }`): the inline list is renderer-local, so its
+ * fixture is the table itself rather than a backend payload.
+ */
+const THEMES = [
+	{
+		value: "localOperatorDark",
+		name: "Local Operator Dark",
+		description: "The brand dark palette",
+	},
+	{
+		value: "localOperatorLight",
+		name: "Local Operator Light",
+		description: "The brand light palette",
+	},
+	{ value: "dracula", name: "Dracula", description: "The classic dark theme" },
+	{ value: "dune", name: "Dune", description: "Warm sand ground" },
+	{
+		value: "obsidian",
+		name: "Obsidian",
+		description: "Near-black ground",
+	},
+];
+
 const argumentRowsFor = (
-	source: "model" | "team" | "agent" | "effort" | "approvals",
+	source: "model" | "team" | "agent" | "effort" | "approvals" | "theme",
 	entities: readonly unknown[],
 	current: unknown,
 	query = "",
@@ -641,6 +666,125 @@ export const CommandPhaseScrolled: Story = {
 						command,
 						label: command.name,
 					})),
+				})}
+				onPick={noop}
+			/>
+		</Box>
+	),
+};
+
+/**
+ * `/theme ` — the SIXTH inline source, and the one that is renderer-local.
+ *
+ * DESIGN §5.3 originally said the set was exactly the five backend entity ids and
+ * that `/theme` kept its dialog. Keeping the inline list was the operator's own
+ * instruction (round 1 R4), so it is disclosed rather than hidden: the same
+ * `@shared/themes` table the dialog reads fills the rows, no second theme
+ * vocabulary exists, and this story gives the surface the evidence the other
+ * five have. `runs: false` — an unambiguous Enter completes the id and the next
+ * Enter runs the command, because the destination is a dialog.
+ */
+export const ArgumentPhaseThemes: Story = {
+	render: () => (
+		<Box width={720} draft="/theme ">
+			<SlashSuggestionsPopup
+				state={state({
+					phase: "argument",
+					argumentCommand: "theme",
+					inline: { source: "theme", nameThenMessage: false, runs: false },
+					matches: argumentRowsFor("theme", THEMES, "localOperatorDark"),
+				})}
+				onPick={noop}
+			/>
+		</Box>
+	),
+};
+
+/**
+ * The two TRANSIENT states of an argument list, which had no frame at all
+ * (round 1 D5). Loading and failure are different facts about the same list and
+ * they must not read as "nothing to choose": a failure that looks like an empty
+ * roster sends the user to the full picker for an answer that is not there.
+ */
+export const ArgumentPhaseLoadingAndError: Story = {
+	render: () => (
+		<Board caption="An argument list that is still loading, and one whose route failed. Different sentences from 'not reported yet'.">
+			<Case width={720} draft="/team " rows={1}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "team",
+						inline: { source: "team", nameThenMessage: true, runs: false },
+						argumentList: {
+							rows: [],
+							loading: true,
+							error: null,
+							needsSession: false,
+						},
+						matches: [],
+					})}
+					onPick={noop}
+				/>
+			</Case>
+			<Case width={720} draft="/model " rows={1}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						argumentList: {
+							rows: [],
+							loading: false,
+							error: "Could not read the model catalogue.",
+							needsSession: false,
+						},
+						matches: [],
+					})}
+					onPick={noop}
+				/>
+			</Case>
+		</Board>
+	),
+};
+
+/**
+ * A query that matches nothing while the list HAS rows — the state round 1 UX U4
+ * caught reporting "the roster was never reported" about a filter the user had
+ * just typed. It is now its own sentence.
+ */
+export const ArgumentPhaseNoMatch: Story = {
+	render: () => (
+		<Box width={720} draft="/team zzz">
+			<SlashSuggestionsPopup
+				state={state({
+					phase: "argument",
+					argumentCommand: "team",
+					inline: { source: "team", nameThenMessage: true, runs: false },
+					argumentQuery: "zzz",
+					matches: argumentRowsFor("team", TEAMS, null, "zzz"),
+				})}
+				onPick={noop}
+			/>
+		</Box>
+	),
+};
+
+/**
+ * The truncation HALF of the shed order, which the 720px and 332px frames both
+ * missed (round 1 D5): at ~520px the numbers are still shown and the NAME has to
+ * give. The question a design round has to answer is whether the identity stays
+ * readable when it, and not the numbers, truncates — so the frame is captured at
+ * the width where that happens rather than reasoned about.
+ */
+export const ArgumentPhaseTruncatingName: Story = {
+	render: () => (
+		<Box width={520} draft="/model ">
+			<SlashSuggestionsPopup
+				state={state({
+					phase: "argument",
+					argumentCommand: "model",
+					inline: { source: "model", nameThenMessage: false, runs: true },
+					matches: argumentRowsFor("model", MODELS, null),
 				})}
 				onPick={noop}
 			/>

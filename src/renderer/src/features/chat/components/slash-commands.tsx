@@ -62,7 +62,14 @@ import {
 	type ArgumentSource,
 	argumentRows,
 } from "./slash-argument-rows";
-import { isUnambiguous, matchChoices, matchCommands } from "./slash-rank";
+import {
+	enterFooter,
+	phaseLabel,
+	slashDestructive,
+	slashKeyIntent,
+	slashRunAllowed,
+} from "./slash-contract";
+import { commandSuggestions, matchChoices } from "./slash-rank";
 import {
 	caretPhase,
 	replaceSpan,
@@ -82,6 +89,21 @@ export type SlashCommandMeta = {
 };
 
 const MAX_VISIBLE_ROWS = 6;
+
+/**
+ * The popup's row pitch, in px: `py-2` (16) plus the `text-body-sm` line box
+ * (20). Named because the row region's max-height is a whole multiple of it, so
+ * the list never RESTS on a half-row slice — a 2px thumb already says "more
+ * content", and a sliced glyph at the top edge reads as a clipping bug rather
+ * than as a scroller (round 1 N1).
+ */
+const ROW_PITCH = 36;
+
+/**
+ * Any whitespace. Top-level so the "a name is one word" check below builds no
+ * regex per keystroke; the popup re-renders on every character.
+ */
+const WHITESPACE = /\s/;
 
 /** One row of the listbox. Both phases share one geometry and one
  *  `aria-activedescendant` contract, so they also share one row shape. */
@@ -370,16 +392,12 @@ export function useSlashCompletion({
 	const commandMatches = useMemo(() => {
 		if (!commandContext) return [];
 		/*
-		 * A bare `/` shows the WHOLE command list in registry order. An empty
-		 * prefix scores 0 in the matcher — "nothing typed" is not a match — so the
-		 * bare menu is the picker's call, not the matcher's (design §4.1), and this
-		 * is that call. Without it typing `/` would open nothing, which is a
-		 * regression on the list the composer has always shown there.
+		 * A bare `/` shows the WHOLE command list in registry order; a short query
+		 * keeps only its prefix matches when it has any. Both rules live in
+		 * `commandSuggestions` (the TUI's `command_suggestions`), so the picker and
+		 * the matcher cannot answer `/` or `/m` differently (round 1 R3).
 		 */
-		const ranked =
-			commandContext.query === ""
-				? registry.map((command) => ({ name: command.name, command }))
-				: matchCommands(commandContext.query, registry);
+		const ranked = commandSuggestions(commandContext.query, registry);
 		return ranked.map(
 			({ name, command }) =>
 				({ kind: "command", command, label: name }) as CompletionRow,
@@ -420,9 +438,22 @@ export function useSlashCompletion({
 		commandNames,
 		vocabulary.words,
 	);
+	/*
+	 * A NAME+message list ends at the name. The trailing space a completed pick
+	 * inserts is the terminator (`editor.py:_complete_name_argument`), so from
+	 * the first whitespace in the argument on, the caret is in the free-text
+	 * tail and no list is offered — otherwise the pick left the roster sheet
+	 * open over the message the user was writing, reporting a query that matched
+	 * nothing as "the roster was never reported" (round 1 UX U4). A name is one
+	 * word, so whitespace is exactly the signal.
+	 */
+	const nameComplete =
+		inline?.nameThenMessage === true &&
+		argumentContext !== null &&
+		WHITESPACE.test(argumentContext.value);
 	const phase: SlashCompletionState["phase"] =
 		purePhase === "argument"
-			? inline
+			? inline && !nameComplete
 				? "argument"
 				: null
 			: purePhase === "command" && commandMatches.length > 0
@@ -445,20 +476,52 @@ export function useSlashCompletion({
 	 * the TUI's `_sync_picker_if_phase_changed` rule.
 	 */
 	const dismissedPhase = useRef<string | null>(null);
+	/*
+	 * What the list is showing: which list (phase + token start) and what has
+	 * been typed into it. Esc latches on this whole key, which is the TUI's own
+	 * rule — `command_picker.py:_apply` retires `_dismissed_query` as soon as the
+	 * QUERY changes ("the token changed, so Esc's 'not now' has expired") — so a
+	 * user who dismissed a list and kept typing gets it back, while a caret move
+	 * that stays inside one phase does not (`_sync_picker_if_phase_changed`).
+	 */
+	const queryText =
+		phase === "argument"
+			? (argumentContext?.value ?? "")
+			: (commandContext?.query ?? "");
 	const phaseKey =
 		phase === null
 			? null
 			: phase === "argument"
-				? `argument:${argumentContext?.tokenStart ?? -1}`
-				: `command:${commandContext?.start ?? -1}`;
+				? `argument:${argumentContext?.tokenStart ?? -1}:${queryText}`
+				: `command:${commandContext?.start ?? -1}:${queryText}`;
 	const lastPhaseKey = useRef<string | null>(null);
+	/*
+	 * The candidate SET, by rendered row id. The TUI retires an explicit arrow
+	 * choice when the candidate set changes (`command_picker.py:1728`: "the row
+	 * the user arrowed onto is gone"), and carrying the latch across a new list
+	 * is how one arrow press let Enter RUN a fuzzy survivor the user never moved
+	 * to (round 1 R1). Criterion 10's "hand-moved" means moved onto THIS row in
+	 * THIS list.
+	 */
+	const matchKey = matches.map(rowId).join("\n");
+	const lastMatchKey = useRef<string>(matchKey);
 
 	useEffect(() => {
 		if (phaseKey !== dismissedPhase.current) dismissedPhase.current = null;
 		const changed = lastPhaseKey.current !== phaseKey;
 		lastPhaseKey.current = phaseKey;
+		// A different candidate set re-arms the ambiguity gate.
+		if (lastMatchKey.current !== matchKey) {
+			lastMatchKey.current = matchKey;
+			setChosenByHand(false);
+		}
 		setState((current) => {
-			if (!visible) {
+			// Esc latches: while this phase and token are the dismissed ones the
+			// list stays closed, which is what stops it reopening on the very next
+			// keystroke the user is typing into their own message. Without the
+			// second clause the latch was recorded but never consulted, so Escape
+			// only held until the next render changed a dependency (round 1 UX U5).
+			if (!visible || dismissedPhase.current === phaseKey) {
 				return current.open ? { ...current, open: false } : current;
 			}
 			return {
@@ -471,7 +534,7 @@ export function useSlashCompletion({
 					: Math.min(current.active, Math.max(matches.length - 1, 0)),
 			};
 		});
-	}, [visible, phaseKey, matches.length]);
+	}, [visible, phaseKey, matches.length, matchKey]);
 
 	const close = useCallback(() => {
 		dismissedPhase.current = phaseKey;
@@ -554,6 +617,36 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	if (!state.open) return null;
 
 	const argument = state.phase === "argument";
+	const activeRow = state.matches[state.active];
+	const activeArgument = activeRow?.kind === "argument" ? activeRow.row : null;
+	/*
+	 * The footer names what Enter does in the state the user is looking at. The
+	 * four meanings of Enter (complete, complete-and-wait, run, stage) are real
+	 * state, and a user who looked away for one keystroke had no way to tell
+	 * which one was next; the gate that decides run-vs-complete is invisible too
+	 * (round 1 UX U2). Staging is announced by its own note instead — it happens
+	 * on a composer Enter with the list already closed.
+	 */
+	const footer = enterFooter({
+		phase: argument ? "argument" : "command",
+		command: state.argumentCommand,
+		nameThenMessage: state.inline?.nameThenMessage ?? false,
+		runs: state.inline?.runs ?? false,
+		value: activeArgument?.value ?? "",
+		matched: Boolean(activeRow),
+		unambiguous: activeArgument
+			? slashRunAllowed({
+					argumentQuery: state.argumentQuery,
+					value: activeArgument.value,
+					total: state.matches.length,
+					destructive: slashDestructive(
+						state.argumentCommand,
+						activeArgument.alert,
+					),
+					chosenByHand: state.chosenByHand,
+				})
+			: false,
+	});
 
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -565,54 +658,95 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			aria-label={argument ? "Command arguments" : "Slash commands"}
 			className={cn(
 				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
-				"overflow-y-auto rounded-md border border-control bg-elevated",
+				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the
+				// row region below, so the label and the footer stay put and the
+				// region's height can be a whole multiple of the row pitch.
+				"overflow-hidden rounded-md border border-control bg-elevated",
 				"shadow-lg",
 			)}
-			style={{ maxHeight: `${MAX_VISIBLE_ROWS * 56}px` }}
 		>
-			{state.matches.length === 0 ? (
-				<div className="px-3 py-2 text-body-sm text-ink-muted">
-					{argument ? argumentEmptyCopy(state) : "No commands match."}
+			{/*
+			 * The phase label. Both phases rendered one box with one geometry, so
+			 * the only cues that the list changed MEANING were a vanished `/` and a
+			 * vanished hint column — and the meaning is what decides what Enter does
+			 * (round 1 D3 / UX U3). One word, sentence case, an existing role.
+			 */}
+			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
+				{phaseLabel(argument ? "argument" : "command", state.inline?.source)}
+			</div>
+			{/*
+			 * The row region owns the scroller, and its max-height is a whole number
+			 * of ROW_PITCH: a list that rests on a half-row slice reads as a clipped
+			 * glyph rather than as "there is more", which the 2px thumb already
+			 * says (round 1 N1).
+			 */}
+			<div
+				className="overflow-y-auto"
+				style={{ maxHeight: `${MAX_VISIBLE_ROWS * ROW_PITCH}px` }}
+			>
+				{state.matches.length === 0 ? (
+					<div className="px-3 py-2 text-body-sm text-ink-muted">
+						{argument ? argumentEmptyCopy(state) : "No commands match."}
+					</div>
+				) : (
+					<ul>
+						{state.matches.map((row, index) => (
+							/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */
+							<li
+								key={rowId(row)}
+								id={`${listId}-${rowId(row)}`}
+								ref={index === state.active ? activeRef : null}
+								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
+								// biome-ignore lint/a11y/useKeyWithClickEvents: arrows, Enter and Escape are handled on the textarea, not on the option.
+								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
+								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
+								role="option"
+								aria-selected={index === state.active}
+								aria-current={
+									row.kind === "argument" && row.row.current
+										? "true"
+										: undefined
+								}
+								className={cn(
+									"relative flex cursor-default items-baseline gap-3 px-3 py-2",
+									index === state.active
+										? cn(
+												"bg-accent-wash",
+												// The row Enter will APPLY was carried by hue alone — the
+												// wash measures 1.000:1 against its own ground in `dune`
+												// and 1.017-1.046:1 in four more themes, and the `●`
+												// cannot take the job because it means "current". A 2px
+												// accent bar on the leading edge is a second,
+												// non-luminance signal that costs no layout (round 1
+												// D6).
+												"before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
+											)
+										: "bg-transparent",
+								)}
+								onMouseDown={(event) => {
+									// mousedown, not click: a click would blur the textarea before
+									// the pick handler ran and drop the draft's caret position.
+									event.preventDefault();
+									// A click names one exact row with a pointer, which is not the
+									// guess the keyboard ambiguity gate protects against — so a
+									// pointer pick of a runnable row runs it (`editor.py:8040`).
+									onPick(row, { run: true });
+								}}
+								onMouseEnter={() => state.setActiveHover(index)}
+							>
+								{row.kind === "command"
+									? commandRowContent(row)
+									: argumentRowContent(row)}
+							</li>
+						))}
+					</ul>
+				)}
+			</div>
+			{footer ? (
+				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
+					{footer}
 				</div>
-			) : (
-				<ul>
-					{state.matches.map((row, index) => (
-						/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */
-						<li
-							key={rowId(row)}
-							id={`${listId}-${rowId(row)}`}
-							ref={index === state.active ? activeRef : null}
-							// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
-							// biome-ignore lint/a11y/useKeyWithClickEvents: arrows, Enter and Escape are handled on the textarea, not on the option.
-							// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
-							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
-							role="option"
-							aria-selected={index === state.active}
-							aria-current={
-								row.kind === "argument" && row.row.current ? "true" : undefined
-							}
-							className={cn(
-								"flex cursor-default items-baseline gap-3 px-3 py-2",
-								index === state.active ? "bg-accent-wash" : "bg-transparent",
-							)}
-							onMouseDown={(event) => {
-								// mousedown, not click: a click would blur the textarea before
-								// the pick handler ran and drop the draft's caret position.
-								event.preventDefault();
-								// A click names one exact row with a pointer, which is not the
-								// guess the keyboard ambiguity gate protects against — so a
-								// pointer pick of a runnable row runs it (`editor.py:8040`).
-								onPick(row, { run: true });
-							}}
-							onMouseEnter={() => state.setActiveHover(index)}
-						>
-							{row.kind === "command"
-								? commandRowContent(row)
-								: argumentRowContent(row)}
-						</li>
-					))}
-				</ul>
-			)}
+			) : null}
 		</div>
 	);
 };
@@ -646,14 +780,24 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 	const value = row.row;
 	return (
 		<>
-			{/* The current-row marker is the TUI's own (`model_picker.py:_CURRENT_MARK`),
-			    kept as a glyph rather than a colour step so it survives a theme swap
-			    and does not read as a second selection. */}
-			{value.current && (
-				<span aria-hidden="true" className="shrink-0 text-ink">
-					●
-				</span>
-			)}
+			{/*
+			 * The current-row marker is the TUI's own (`model_picker.py:_CURRENT_MARK`),
+			 * kept as a glyph rather than a colour step so it survives a theme swap
+			 * and does not read as a second selection. The SLOT is always rendered,
+			 * fixed width, so the marker can never move the name or the description
+			 * column: it used to sit in the row's text flow and indent the marked row
+			 * by ~24px in all twelve themes (round 1 D1). `title` names it, because
+			 * the glyph is the only thing distinguishing "current" from "the row Enter
+			 * would apply" (round 1 N2); screen readers get the same fact from
+			 * `aria-current` on the row.
+			 */}
+			<span
+				aria-hidden="true"
+				title={value.current ? "Current" : undefined}
+				className="w-2.5 shrink-0 text-center font-mono text-body-sm text-ink"
+			>
+				{value.current ? "●" : ""}
+			</span>
 			<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
 				{value.name}
 			</span>
@@ -665,10 +809,16 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 			{value.detail && (
 				/* The numbers run sheds FIRST under pressure: the identity is what is
 				   being chosen, so it keeps its cells and the detail column steps
-				   aside rather than truncating a price or a window. */
+				   aside rather than truncating a price or a window. `font-mono` because
+				   the detail sits BESIDE a monospace name and DESIGN §7-E calls the
+				   numbers machine voice; in the prose face the 18-character
+				   `200k · $0.075/0.3` measured NARROWER than the 16-character
+				   `1m · usage-based`, which no monospace face can produce (round 1
+				   D4).
+				 */
 				<span
 					className={cn(
-						"hidden shrink-0 text-meta",
+						"hidden shrink-0 font-mono text-meta",
 						NUMBERS_MIN,
 						value.alert ? "text-danger" : "text-ink-dim",
 					)}
@@ -683,20 +833,34 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 /**
  * The honest empty state for an argument list.
  *
- * An empty list has THREE causes and they are different facts. "Not reported
+ * An empty list has FOUR causes and they are different facts. "Not reported
  * yet" is the `effort` cold-owner case: the route reads the owner's live spec,
  * which is unresolved before the first turn, so a model with a full ladder
  * answers `[]` (`destination-pickers.tsx` already carries this rule for the
- * dialog). Reading it as "this model has none" was a defect once. A failure and
- * a missing session are the other two, and the full picker is named because
- * that is the route that can still do something.
+ * dialog). Reading it as "this model has none" was a defect once. A failure, a
+ * missing session and — new here — a query that matched nothing are the others.
+ *
+ * The no-match case used to fall into the cold-owner sentence, so typing a team
+ * the roster does not have reported "the roster was never reported": a false
+ * statement in the primary `/team` flow, in the voice of the one surface the
+ * design made honest about the three empty causes (round 1 UX U4).
+ *
+ * The route is named because that is the promise §C16 makes and because the
+ * user is otherwise at a dead end holding the command. "Enter opens the full
+ * picker" is TRUE in every empty state here: the token is the whole line, so
+ * Enter falls through to the composer's planner, which runs the command the
+ * user typed and opens its picker (round 1 D2).
  */
 function argumentEmptyCopy(state: SlashCompletionState): string {
 	if (state.argumentList.needsSession)
 		return "Needs an open conversation. Start one first.";
 	if (state.argumentList.error) return state.argumentList.error;
 	if (state.argumentList.loading) return "Loading…";
-	return "Not reported yet. The full picker has more.";
+	// Rows exist, the query excluded all of them: "not reported yet" would be a
+	// lie about the source rather than a fact about the filter.
+	if (state.argumentList.rows.length > 0)
+		return "No matches. Enter opens the full picker.";
+	return "Not reported yet. Enter opens the full picker.";
 }
 
 /**
@@ -724,49 +888,36 @@ export function handleSlashKeyDown(
 	state: SlashCompletionState,
 	onPick: (row: CompletionRow, disposition: { run: boolean }) => void,
 ): boolean {
-	if (!state.open) return false;
-	if (event.nativeEvent.isComposing) return false;
-
-	switch (event.key) {
-		case "ArrowDown":
-			state.setActive(Math.min(state.active + 1, state.matches.length - 1));
+	/*
+	 * The decision itself is `slashKeyIntent`, which is pure and bundled by
+	 * `scripts/slash-contract.test.mjs` — the browser harness cannot dispatch key
+	 * events, so the routing and the ambiguity gate have to be exercised as the
+	 * code that ships or they are not exercised at all (round 1 QA Q2). This
+	 * adapter only turns the intent into state changes.
+	 */
+	const intent = slashKeyIntent({
+		key: event.key,
+		composing: event.nativeEvent.isComposing,
+		open: state.open,
+		active: state.active,
+		matches: state.matches,
+		argumentQuery: state.argumentQuery,
+		argumentCommand: state.argumentCommand,
+		nameThenMessage: state.inline?.nameThenMessage ?? false,
+		runs: state.inline?.runs ?? false,
+		chosenByHand: state.chosenByHand,
+	});
+	switch (intent.kind) {
+		case "move":
+			state.setActive(intent.index);
 			return true;
-		case "ArrowUp":
-			state.setActive(Math.max(state.active - 1, 0));
-			return true;
-		case "Enter":
-		case "Tab": {
-			const row = state.matches[state.active];
+		case "apply": {
+			const row = state.matches[intent.index];
 			if (!row) return false;
-			if (row.kind === "command") {
-				// Complete ONLY. Sending here would submit a half-typed command.
-				onPick(row, { run: false });
-				return true;
-			}
-			if (state.inline?.nameThenMessage) {
-				onPick(row, { run: false });
-				return true;
-			}
-			if (event.key === "Tab") {
-				onPick(row, { run: false });
-				return true;
-			}
-			const destructive =
-				(state.argumentCommand ?? "").toLowerCase() === "logout" ||
-				row.row.alert === true;
-			const run =
-				(state.inline?.runs ?? false) &&
-				isUnambiguous(
-					state.argumentQuery,
-					row.row.value,
-					state.matches.length,
-					destructive,
-					state.chosenByHand,
-				);
-			onPick(row, { run });
+			onPick(row, { run: intent.run });
 			return true;
 		}
-		case "Escape":
+		case "close":
 			// Closes the popup and latches the phase; the draft is untouched.
 			state.close();
 			return true;
