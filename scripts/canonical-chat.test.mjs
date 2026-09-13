@@ -1970,6 +1970,26 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		1,
 		"and therefore exactly one distinct key across the whole send",
 	);
+	/*
+	 * LIVENESS OF THAT IN-FLIGHT STATE, asserted rather than assumed (review
+	 * round 5, NIT). The state above is only load-bearing because the `send:`
+	 * row carries the session id: the derivation reads
+	 * `drafts[activeDraftKey]?.sessionId`, so an empty row answers with the
+	 * DRAFT key instead. Reverting the fixture to its earlier inert shape - the
+	 * row present but `activeDraftKey` null - leaves every assertion above
+	 * green, which means the fixture's shape was never pinned. Removing the one
+	 * field the rule reads and showing the answer change is what pins it: if
+	 * this equalises, the fixture has stopped exercising anything.
+	 */
+	assert.notEqual(
+		identityFromStore({
+			activeDraftKey: `send:${sessionId}`,
+			activeSessionId: sessionId,
+			drafts: { [`send:${sessionId}`]: {} },
+		}),
+		sessionId,
+		"the in-flight row's sessionId is what the existing-session key settles on; drop it and a draft-following derivation answers with the draft key",
+	);
 	// The same derivation on a DRAFT send does change key, which is what proves
 	// the assertion above is capable of failing rather than true by shape.
 	const draftSequence = [

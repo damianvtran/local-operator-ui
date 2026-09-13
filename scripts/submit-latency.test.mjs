@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -201,6 +201,17 @@ const { requestDesktop, desktopRequestSchema } = await import(
 // ------------------------------------------------------------------ isolation
 
 /**
+ * The name every throwaway config dir this harness creates is prefixed with.
+ *
+ * ONE definition, read by `mkdtemp` AND by the start-of-run sweep that reaps a
+ * previous run's residue. Two copies of this string would let the sweep quietly
+ * stop matching what the harness creates - and the failure would look exactly
+ * like "there was nothing stale to sweep", which is also what a working sweep
+ * prints.
+ */
+const CONFIG_DIR_PREFIX = "lop-submit-latency-";
+
+/**
  * The environment the backend is spawned with.
  *
  * ISOLATION IS A GATE HERE, NOT A NICETY, and it has two independent halves:
@@ -262,64 +273,113 @@ const started = [];
  * tree underneath, which is why the inode CHANGED across the removal and why a
  * single immediate existence check saw nothing wrong.
  *
- * POSIX-only by nature, like the leak. `ps eww` is the portable way to read
- * another process's environment here; a failure to read one is treated as "not
- * ours" rather than aborting the sweep, because teardown must never be the
- * thing that fails a run.
+ * WHY THE ENVIRONMENT FIELD SPECIFICALLY, AND NOT JUST "THE LINE". `ps eww`
+ * prints argv and the environment CONCATENATED, with no delimiter between them,
+ * so a hit on the raw line cannot say whether the process was STARTED with this
+ * config dir or merely MENTIONS the path in its command line - and a decoy that
+ * names the path in argv is exactly what review measured the naive rule
+ * matching. So a candidate pid is re-read WITHOUT `e`, which yields argv alone,
+ * and that prefix is subtracted from the `eww` line. What is left is the
+ * environment region, which is the half a process cannot forge, and the token
+ * test runs on that.
+ *
+ * The residual over-match is the argv prefix failing to match - the process
+ * changed shape between the two reads - and it is handled by falling back to the
+ * whole line. That is the conservative direction: it can only ever match a
+ * process that already carries `LOCAL_OPERATOR_CONFIG_DIR=<this run's unique
+ * mkdtemp path>` in its command line, which nothing but this harness produces.
+ *
+ * COST, WHICH IS WHY THIS IS TWO READS AND NOT ONE PER PID. The obvious shape -
+ * list the pids, then `ps eww -p <pid>` each - forks once per process on the
+ * box. Measured here at 842 pids: 0.24 s for one whole-table `ps eww -ax`,
+ * against the ~10.6 s idle / 22-26 s loaded per call that per-pid loop cost,
+ * across ~3 calls per root. Teardown that costs more than the benchmark it
+ * cleans up after is a defect in its own right (review R5-3 / QA Q14).
+ *
+ * WHAT THIS CANNOT SEE. macOS prints no environment at all for SIP-protected
+ * system binaries, so a holder started from a system path would be invisible
+ * here (measured: `/bin/sleep` shows none, the venv interpreter shows its own).
+ * It does not arise for what we reap - the backend and its runtimes are always
+ * the venv or uv-tool interpreter this harness was pointed at - but it is why
+ * the start-of-run sweep exists as well: a root nobody can be proved to hold is
+ * removed on the next run regardless.
+ *
+ * POSIX-only by nature, like the leak. A failure to read the table is treated as
+ * "nothing found" rather than aborting the sweep, because teardown must never
+ * be the thing that fails a run.
  */
+// Hoisted so the collector does not rebuild them once per process on the box.
+const PID_AND_COMMAND = /^\s*(\d+)\s(.*)$/;
+const WHITESPACE_RUN = /\s+/;
+
 function pidsHoldingConfigDir(root) {
 	const marker = `LOCAL_OPERATOR_CONFIG_DIR=${root}`;
-	let listing;
-	try {
-		listing = execFileSync("ps", ["-eo", "pid="], { encoding: "utf8" });
-	} catch {
-		return [];
-	}
-	const held = [];
-	for (const line of listing.split("\n")) {
-		const pid = line.trim();
-		if (!pid) continue;
+	const ps = (args) => {
 		try {
-			// `eww` prints the environment; an exact token match avoids a prefix
-			// of this path (another run's dir) counting as ours.
-			const env = execFileSync("ps", ["eww", "-p", pid], {
+			return execFileSync("ps", args, {
 				encoding: "utf8",
+				// The `eww` table of a loaded box is a few hundred KB; the default
+				// 1 MB pipe buffer would truncate it and turn a real census into a
+				// partial one without any error.
+				maxBuffer: 64 << 20,
 				stdio: ["ignore", "pipe", "ignore"],
 			});
-			if (env.split(/\s+/).includes(marker)) held.push(Number(pid));
 		} catch {
-			// Exited between the listing and the read, or not readable. Either way
-			// it is not something we can or need to kill.
+			return "";
 		}
+	};
+
+	const held = [];
+	for (const line of ps(["eww", "-ax", "-o", "pid=,command="]).split("\n")) {
+		const match = line.match(PID_AND_COMMAND);
+		if (!match) continue;
+		const [, pid, full] = match;
+		// Cheapest possible reject first: almost nothing on the box mentions this
+		// path at all, so the string scan and the second read below run on a
+		// handful of lines.
+		if (!full.includes(marker)) continue;
+		// `command=` is the last field on the line, so both edges are padding: the
+		// newline, and (on some ps builds) leading width padding. Trimming both
+		// keeps the prefix subtraction below exact rather than falling through to
+		// the whole-line fallback for every process on the box.
+		const argv = ps(["-p", pid, "-o", "command="]).trim();
+		// Gone between the two reads. There is nothing to signal either way, and
+		// nothing that could be holding the tree, so it is not a holder.
+		if (!argv) continue;
+		const envRegion = full.startsWith(argv) ? full.slice(argv.length) : full;
+		// Exact token match: a prefix of this path (another run's dir) must not
+		// count as ours.
+		if (envRegion.split(WHITESPACE_RUN).includes(marker))
+			held.push(Number(pid));
 	}
 	return held;
 }
 
 /**
- * Signal a backend's whole process GROUP, not just its leader.
+ * Tear a backend down by signalling its SUPERVISOR.
  *
- * The supervisor is killed first; its reap thread then `killpg`s the backend's
- * own session, which is where the server and anything still in its group live.
- * This is the half of teardown that works without reading anyone's environment;
- * `reapConfigDir` covers the runtimes that deliberately leave that group via
- * `start_new_session=True`.
+ * There is no process group for this function to signal, and that is
+deliberate rather than an oversight. The supervisor has to share THIS test
+process's group so that its stdin pipe closes when we die (see `startBackend`),
+so `process.kill(-pid)` here would address our own group rather than the
+backend's. The group kill happens one level down instead: the supervisor's reap
+thread `killpg`s the BACKEND's session, which the backend is given in its own
+right on purpose, and that is where the server and anything still in its group
+live. So this is the half of teardown that works without reading anyone's
+environment; `reapConfigDir` covers the runtimes that leave even that group via
+`start_new_session=True`.
+ *
+ * `process.kill(-child.pid, signal)` used to sit here. It was an ESRCH no-op
+ (the supervisor is not a group leader by construction) whose comment read as
+ load-bearing, so it was removed rather than left to look like a second line
+ of defence. The census sweep is what confirms the result either way.
  */
 function killGroup(child, signal) {
 	if (!child?.pid) return;
-	// Killing the SUPERVISOR closes its end of nothing, so kill it directly and
-	// let its own reap thread take the backend's group down with it; the census
-	// sweep is what confirms the result either way.
 	try {
 		child.kill(signal);
 	} catch {
 		/* already dead */
-	}
-	try {
-		process.kill(-child.pid, signal);
-	} catch {
-		// Not a group leader (the supervisor shares our group by design), or
-		// already gone. The census below is what decides whether anything
-		// survived.
 	}
 }
 
@@ -337,6 +397,17 @@ function reapConfigDir(root, signal) {
 }
 
 const SWEEP_SETTLE_MS = 250;
+/**
+ * How long the polite SIGTERM gets before the sweep escalates, and the total
+ * budget for getting the holders dead. Both are WALL-CLOCK, not iteration
+ * counts: `attempt >= 4` used to be the same thing only while a census was
+ * nearly free. Once each iteration paid a multi-second per-pid scan it became
+ * ~45 s of wall clock, which is what turned a cancelled run's exit into the
+ * 133-189 s review timed (R5-3). Wall-clock deadlines keep the behaviour fixed
+ * as the census gets faster or slower.
+ */
+const SWEEP_ESCALATE_MS = 500;
+const SWEEP_REAP_BUDGET_MS = 10_000;
 const SWEEP_ATTEMPTS = 20;
 
 /**
@@ -354,12 +425,18 @@ const SWEEP_ATTEMPTS = 20;
 async function sweepRoot(root) {
 	if (!existsSync(root) && pidsHoldingConfigDir(root).length === 0) return true;
 	reapConfigDir(root, "SIGTERM");
-	for (let attempt = 0; attempt < SWEEP_ATTEMPTS; attempt++) {
-		const remaining = pidsHoldingConfigDir(root);
-		if (remaining.length === 0) break;
-		// Escalate once the polite signal has had a fair chance; a runtime in its
-		// own session will not die from our process group going away.
-		if (attempt >= 4) reapConfigDir(root, "SIGKILL");
+	// Escalate on a wall-clock deadline; see SWEEP_ESCALATE_MS.
+	const escalateAt = Date.now() + SWEEP_ESCALATE_MS;
+	const deadline = Date.now() + SWEEP_REAP_BUDGET_MS;
+	let escalated = false;
+	while (Date.now() < deadline) {
+		if (pidsHoldingConfigDir(root).length === 0) break;
+		if (!escalated && Date.now() >= escalateAt) {
+			// A runtime in its own session will not die from our process group
+			// going away, so the polite signal is only ever given a moment.
+			reapConfigDir(root, "SIGKILL");
+			escalated = true;
+		}
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 	for (let attempt = 0; attempt < SWEEP_ATTEMPTS; attempt++) {
@@ -434,6 +511,95 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 /**
+ * A tree younger than this is never judged stale, however unheld it looks.
+ *
+ * This exists to close one specific window, not to be a general grace period:
+ * between `mkdtemp` and the spawn of its backend, a LIVE concurrent run has its
+ * root on disk and no process whose environment names it. That window is
+ * milliseconds, so a 60 s floor makes it unreachable - and a tree under live
+ * use is touched every time the run writes into it anyway, so the age test can
+ * never be the only thing sparing something that is actually in use.
+ */
+const STALE_ROOT_MIN_AGE_MS = 60_000;
+
+/**
+ * Reap the residue a previous run could not, before this one starts.
+ *
+ * WHY THIS EXISTS IN ADDITION TO THE SUPERVISOR AND ITS GUARDIAN. Everything
+ * inside a run now cleans up after itself, but a run can die in ways that leave
+ * no code of ours executing at all - a SIGKILL that takes the supervisor and
+ * its guardian together, an OOM kill, a box that loses power - and those are
+ * exactly the cases where a complete config tree (config, transcripts, the
+ * runtime's caches) is left under the temp dir for good. That is
+ * disclosure-shaped, not merely untidy, so every run starts by looking for a
+ * predecessor's trees and removing the ones nothing can be proved to hold.
+ *
+ * THE SAFETY PROPERTY, WHICH IS THE WHOLE POINT. Peers run THIS FILE
+ * concurrently on this machine - 11 at once was measured during round 5 - and
+ * two independent conditions must BOTH hold before a tree is touched:
+ *
+ *   1. NO LIVE HOLDER. `LOCAL_OPERATOR_CONFIG_DIR=<root>` must appear in no
+ *      running process's environment. This is the same census the teardown
+ *      uses, so "held" is proved the same way in both places. There is no
+ *      prefix match, no name match and no process-tree walk anywhere in here:
+ *      the only selector is an exact token in one specific root's environment.
+ *   2. NOT RECENTLY TOUCHED. The tree's mtime must be older than
+ *      STALE_ROOT_MIN_AGE_MS, which is what covers the one window where a live
+ *      concurrent run has no holder yet.
+ *
+ * Anything outside `tmpdir()` is out of scope by construction: the candidate
+ * list is a `readdir` of the temp dir filtered on CONFIG_DIR_PREFIX. The
+ * operator's own `~/.local-operator` is not under it and nothing here can reach
+ * it, whatever the processes on this box are doing.
+ */
+function sweepStaleRoots() {
+	let names;
+	try {
+		names = readdirSync(tmpdir()).filter((name) =>
+			name.startsWith(CONFIG_DIR_PREFIX),
+		);
+	} catch {
+		// No readable temp dir. Nothing to reap, and certainly not a reason to
+		// fail a run that has not started yet.
+		return;
+	}
+	const now = Date.now();
+	const removed = [];
+	let held = 0;
+	let recent = 0;
+	for (const name of names) {
+		const root = join(tmpdir(), name);
+		let age;
+		try {
+			age = now - statSync(root).mtimeMs;
+		} catch {
+			continue; // Vanished between the listing and the stat.
+		}
+		if (age < STALE_ROOT_MIN_AGE_MS) {
+			recent += 1;
+		} else if (pidsHoldingConfigDir(root).length > 0) {
+			held += 1;
+		} else {
+			try {
+				rmSync(root, { recursive: true, force: true, maxRetries: 5 });
+				removed.push(name);
+			} catch {
+				// Left for a later run: a sweep that cannot remove something must
+				// never be the thing that fails the run about to start.
+			}
+		}
+	}
+	if (removed.length || held)
+		console.log(
+			`  stale config trees: removed ${removed.length}${removed.length ? ` (${removed.join(", ")})` : ""}, left ${held} held by a live process, ${recent} too recent to judge`,
+		);
+}
+
+// Runs at import, before any test - and therefore before this run creates any
+// tree of its own, so it can only ever see a predecessor's.
+sweepStaleRoots();
+
+/**
  * Stand up an isolated backend and return its base URL and bearer.
  *
  * `hosting: test` / `model_name: mock` is a real provider path with no network
@@ -443,7 +609,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
  * every number look good.
  */
 async function startBackend() {
-	const root = await mkdtemp(join(tmpdir(), "lop-submit-latency-"));
+	const root = await mkdtemp(join(tmpdir(), CONFIG_DIR_PREFIX));
 	/*
 	 * Registered BEFORE anything that can throw.
 	 *
@@ -492,9 +658,17 @@ async function startBackend() {
 	 * case where none of them get to run.
 	 */
 	const supervisor = `
-import os, signal, subprocess, sys, threading, time
+import os, shutil, signal, subprocess, sys, threading, time
+
 # The backend gets its OWN session, so the server and anything still in its
 # group are reachable as one unit from here.
+#
+# The root to remove from the death path at the bottom of this file. Read from
+# the environment we were given rather than passed as an argument, because it is
+# the same value the backend is started with - one source, so the two cannot
+# drift apart.
+root = os.environ.get("LOCAL_OPERATOR_CONFIG_DIR", "")
+
 child = subprocess.Popen(sys.argv[1:], start_new_session=True)
 
 def kill_child(*_):
@@ -524,31 +698,103 @@ def reap():
     kill_child()
 
 
+def holders_of(root):
+    # The SAME rule the harness's own census uses: a pid holds this root iff
+    # the token LOCAL_OPERATOR_CONFIG_DIR=<root> is an exact
+    # whitespace-delimited token in its ENVIRONMENT. 'ps eww' prints argv and
+    # the environment concatenated, so argv is read separately and subtracted -
+    # a process that merely names the path on its command line is not a holder
+    # and must not be signalled. Ourselves excluded: this guardian inherited the
+    # root in its own environment and would otherwise signal itself before it
+    # had finished.
+    marker = "LOCAL_OPERATOR_CONFIG_DIR=" + root
+
+    def ps(args):
+        try:
+            return subprocess.run(["ps"] + args, capture_output=True, text=True).stdout
+        except Exception:
+            return ""
+
+    argv = {}
+    for line in ps(["-ax", "-o", "pid=,command="]).split("\\n"):
+        parts = line.split(None, 1)
+        if len(parts) == 2 and parts[0].isdigit():
+            argv[parts[0]] = parts[1]
+    found = []
+    for line in ps(["eww", "-ax", "-o", "pid=,command="]).split("\\n"):
+        parts = line.split(None, 1)
+        if len(parts) != 2 or not parts[0].isdigit() or marker not in parts[1]:
+            continue
+        pid, full = parts
+        solo = argv.get(pid)
+        if solo is None or int(pid) == os.getpid():
+            continue
+        region = full[len(solo):] if full.startswith(solo) else full
+        if marker in region.split():
+            found.append(int(pid))
+    return found
+
+
 def guardian():
-    # THE CASE NEITHER OTHER TRIGGER COVERS: this supervisor being SIGKILLed.
-    # No handler runs, no EOF is produced, and the parent-poll below dies with
-    # the thread - so the backend is reparented to init and keeps serving.
-    # Measured: one surviving server per cancelled run, which is exactly what
-    # QA found.
+    # THE CASE NEITHER OTHER TRIGGER COVERS: this supervisor being SIGKILLed
+    # while the file that spawned it is still alive. No handler runs, no EOF is
+    # produced, and the parent-poll thread below dies with us - so the backend
+    # is reparented and keeps serving. Measured: one surviving server per
+    # cancelled run.
     #
     # The guardian is forked into its OWN session, so it outlives this
     # supervisor by construction, and it polls for the supervisor's
-    # disappearance rather than relying on being signalled. It holds no
-    # resources; if it is ever itself killed, the census sweep in the harness
-    # is still the backstop.
+    # disappearance rather than relying on being signalled.
+    #
+    # LIVENESS BY REPARENTING, NOT BY os.kill(sup, 0). kill(pid, 0) succeeds on
+    # a ZOMBIE - a supervisor that is dead but not yet reaped still answers it -
+    # so that check stayed blind for as long as the zombie lasted (measured: the
+    # backend and this guardian still alive 30 s after the supervisor died, with
+    # the backend still serving). getppid() changes the instant the parent dies,
+    # because the kernel reparents us during exit() and before any reaping, so
+    # the 0.5 s poll is a real bound rather than an aspiration.
+    #
+    # IT ALSO REMOVES THE CONFIG TREE, which is the one artefact nothing else
+    # can reach: on a SIGKILLed or timeout-killed run the file process never
+    # runs its cleanup, so there is no in-file sweep left to do it. It removes
+    # exactly the root this run was given - never a prefix, never a pattern,
+    # never anything it was not handed in its own environment.
+    #
+    # WHY IT REAPS AND RETRIES RATHER THAN REMOVING ONCE. The group kill above
+    # reaches the SERVER, and that is all it reaches: the session runtimes are
+    # deliberately in their own sessions (start_new_session=True) so that a
+    # group kill here cannot take them out, and they die a few seconds later,
+    # when the server they belong to is gone. Measured on this host: a runtime
+    # kept writing for ~6 s after the kill, re-created the tree a single rmtree
+    # had already removed, and left an empty directory standing with nothing
+    # holding it. So the tree is only gone once nothing that can write to it is
+    # alive, which means killing what still holds it and confirming the result
+    # - the same reap-then-remove-then-verify shape the harness's own sweep
+    # uses, and the same holder rule.
     sup = os.getpid()
     if os.fork() != 0:
         return
     os.setsid()
+    start_ppid = os.getppid()
     while True:
         time.sleep(0.5)
-        try:
-            os.kill(sup, 0)
-        except OSError:
+        if os.getppid() != start_ppid:
             try:
                 os.killpg(os.getpgid(child.pid), signal.SIGKILL)
             except Exception:
                 pass
+            if root:
+                deadline = time.time() + 30
+                while time.time() < deadline:
+                    for pid in holders_of(root):
+                        try:
+                            os.kill(pid, signal.SIGKILL)
+                        except Exception:
+                            pass
+                    shutil.rmtree(root, ignore_errors=True)
+                    time.sleep(0.25)
+                    if not holders_of(root) and not os.path.exists(root):
+                        break
             os._exit(0)
 
 
@@ -578,28 +824,23 @@ sys.exit(child.wait())
 			env: isolatedEnv(root, token),
 			// stdin is a PIPE and deliberately left open: it is the liveness
 			// channel the supervisor waits on.
-			//
-			// NOT `detached`, and that is load-bearing rather than incidental: a
-			// detached child's stdin pipe was observed staying open after this
-			// process exited, so the supervisor's read never returned and the
-			// backend survived anyway. Verified both ways in isolation before
-			// settling here. The supervisor gives the BACKEND its own session, so
-			// group-killing still works from the supervisor's side.
 			stdio: ["pipe", "pipe", "pipe"],
 			/*
-			 * Its OWN process group, so teardown can signal the backend and anything
-			 * it started as one unit via `process.kill(-pid)`.
+			 * Deliberately NOT `detached`, and that is load-bearing rather than
+			 * incidental: a detached child's stdin pipe was observed staying open
+			 * after this process exited, so the supervisor's read never returned and
+			 * the backend survived anyway. Verified both ways in isolation before
+			 * settling here.
 			 *
-			 * Needed because `node --test` runs this file in a CHILD of the test
-			 * runner: a Ctrl-C or a CI timeout kills the runner, this file's
-			 * handlers may never run, and the backend - which does not watch its
-			 * parent - was simply inherited by init and kept serving. QA cancelled a
-			 * run and found two live `serve` processes and two complete config trees;
-			 * reproduced here before fixing.
+			 * So the supervisor shares THIS process's group, which is why nothing
+			 * here can group-kill it (`process.kill(-pid)` would address our own
+			 * group) and why `killGroup` signals the supervisor directly instead.
+			 * The supervisor gives the BACKEND its own session, so a real `killpg`
+			 * still reaches the server and anything it started, one level down.
 			 *
-			 * The group is what makes the sweep reliable rather than best-effort: the
-			 * runtimes are `start_new_session=True` and leave this group, which is
-			 * exactly why the environment census below exists as well. The two
+			 * The group is what makes the sweep reliable rather than best-effort:
+			 * the runtimes are `start_new_session=True` and leave even that group,
+			 * which is exactly why the environment census exists as well. The two
 			 * mechanisms cover different escapes and are both needed.
 			 */
 		},
@@ -836,80 +1077,98 @@ test("the backend under test is reachable and isolated", async (t) => {
  */
 async function subscribe(url, token, sessionId) {
 	const controller = new AbortController();
-	const response = await fetch(
-		`${url}/v1/desktop/sessions/${sessionId}/events`,
-		{
-			headers: { Authorization: `Bearer ${token}` },
-			signal: controller.signal,
-		},
-	);
-	assert.equal(response.status, 200, "the panel's subscription must open");
-
 	/*
-	 * The subscription id arrives in the `open` frame's PAYLOAD, and the watch
-	 * lease below is useless without it. Reading it from the frame's top level
-	 * instead silently yields null, the lease is never sent, and the runtime
-	 * stops counting this as an interactive viewer - at which point its
-	 * residency drain reaps the very runtime the warm just spawned and the
-	 * measurement quietly becomes meaningless (observed: 503s and sends that
-	 * found "warming" again after a 4 s settle).
+	 * EVERYTHING THAT CAN THROW BEFORE THIS FUNCTION HANDS BACK A HANDLE RUNS
+	 * INSIDE THIS `try`.
+	 *
+	 * The caller's `try/finally` covers the region AFTER `subscribe` returns; it
+	 * cannot cover a throw from inside, because at that point there is no handle
+	 * to close yet - and the socket is already open by the time the `open`-frame
+	 * assert can fail, so the file hangs instead of failing (measured by review:
+	 * no summary within 400 s). This is the residual half of RM4-1.
 	 */
-	let subscriptionId = null;
-	const decoder = new TextDecoder();
-	let buffered = "";
-	(async () => {
-		try {
-			for await (const chunk of response.body) {
-				buffered += decoder.decode(chunk, { stream: true });
-				for (const line of buffered.split("\n")) {
-					if (!line.startsWith("data:")) continue;
-					try {
-						const frame = JSON.parse(line.slice(5).trim());
-						const id = frame.payload?.subscription_id;
-						if (id && !subscriptionId) subscriptionId = id;
-					} catch {
-						// A partial frame; the next chunk completes it.
-					}
-				}
-				buffered = buffered.slice(buffered.lastIndexOf("\n") + 1);
-			}
-		} catch {
-			// Aborted at teardown.
-		}
-	})();
-	for (let i = 0; i < 100 && !subscriptionId; i++)
-		await new Promise((resolve) => setTimeout(resolve, 100));
-	assert.ok(subscriptionId, "the open frame must name the subscription");
-
-	/*
-	 * The watch lease, on the renderer's own 15 s heartbeat but faster here.
-	 * A desktop attach counts as an interactive viewer only while its lease is
-	 * live AND the window reports visible or notifiable; without it the
-	 * runtime's residency drain reaps a warmed session a few seconds later,
-	 * which is exactly the case this benchmark must NOT accidentally measure.
-	 */
-	const beat = () =>
-		requestDesktop(
+	try {
+		const response = await fetch(
+			`${url}/v1/desktop/sessions/${sessionId}/events`,
 			{
-				op: "sessions.watch",
-				sessionId,
-				subscriptionId,
-				visible: true,
-				canNotify: false,
+				headers: { Authorization: `Bearer ${token}` },
+				signal: controller.signal,
 			},
-			url,
-			token,
-		).catch(() => {
-			// A missed heartbeat is self-healing; the next one re-establishes it.
-		});
-	await beat();
-	const timer = setInterval(beat, 5000);
-	return {
-		close: () => {
-			clearInterval(timer);
-			controller.abort();
-		},
-	};
+		);
+		assert.equal(response.status, 200, "the panel's subscription must open");
+
+		/*
+		 * The subscription id arrives in the `open` frame's PAYLOAD, and the watch
+		 * lease below is useless without it. Reading it from the frame's top level
+		 * instead silently yields null, the lease is never sent, and the runtime
+		 * stops counting this as an interactive viewer - at which point its
+		 * residency drain reaps the very runtime the warm just spawned and the
+		 * measurement quietly becomes meaningless (observed: 503s and sends that
+		 * found "warming" again after a 4 s settle).
+		 */
+		let subscriptionId = null;
+		const decoder = new TextDecoder();
+		let buffered = "";
+		(async () => {
+			try {
+				for await (const chunk of response.body) {
+					buffered += decoder.decode(chunk, { stream: true });
+					for (const line of buffered.split("\n")) {
+						if (!line.startsWith("data:")) continue;
+						try {
+							const frame = JSON.parse(line.slice(5).trim());
+							const id = frame.payload?.subscription_id;
+							if (id && !subscriptionId) subscriptionId = id;
+						} catch {
+							// A partial frame; the next chunk completes it.
+						}
+					}
+					buffered = buffered.slice(buffered.lastIndexOf("\n") + 1);
+				}
+			} catch {
+				// Aborted at teardown.
+			}
+		})();
+		for (let i = 0; i < 100 && !subscriptionId; i++)
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		assert.ok(subscriptionId, "the open frame must name the subscription");
+
+		/*
+		 * The watch lease, on the renderer's own 15 s heartbeat but faster here.
+		 * A desktop attach counts as an interactive viewer only while its lease is
+		 * live AND the window reports visible or notifiable; without it the
+		 * runtime's residency drain reaps a warmed session a few seconds later,
+		 * which is exactly the case this benchmark must NOT accidentally measure.
+		 */
+		const beat = () =>
+			requestDesktop(
+				{
+					op: "sessions.watch",
+					sessionId,
+					subscriptionId,
+					visible: true,
+					canNotify: false,
+				},
+				url,
+				token,
+			).catch(() => {
+				// A missed heartbeat is self-healing; the next one re-establishes it.
+			});
+		await beat();
+		const timer = setInterval(beat, 5000);
+		return {
+			close: () => {
+				clearInterval(timer);
+				controller.abort();
+			},
+		};
+	} catch (error) {
+		// No handle exists for the caller to close, so this is the only place the
+		// socket can be released. Without it a failed subscribe takes the whole
+		// run down with it rather than reporting the failure.
+		controller.abort();
+		throw error;
+	}
 }
 
 const percentile = (values, p) => {
