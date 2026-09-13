@@ -649,7 +649,7 @@ export const STORIES = [
 	/* A command typed into a sentence, the list above the prose. */
 	["chat-slash-completion--inline-mid-draft", 768, 340],
 	/* The state a name pick produces: list closed, caret after the space. */
-	["chat-slash-completion--name-list-completed", 768, 220],
+	["chat-slash-completion--name-list-completed", 768, 260],
 	/* A long list: the popup keeps its own scroll at its row cap. */
 	["chat-slash-completion--command-phase-scrolled", 768, 460],
 ];
