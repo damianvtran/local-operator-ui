@@ -1,7 +1,7 @@
 {
-  "head": "65f160bf4853ffed3c751a24f20839343d73dceb",
-  "srcTree": "ec19ccded8af8e76e51a3200f9ffb2028e9248fd",
-  "scriptsTree": "f32732ff099c932c8753495abba435343db81d9f",
+  "head": "64b0ac38d2f7db6e04f7c35ad03dbf2be7d5f80a",
+  "srcTree": "5b3aa879fd472046fbe2dee9db3a18e933c6a2f5",
+  "scriptsTree": "265e64186d9ddfcecaca0d52249bcacdf7964ab8",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 872,
@@ -13,34 +13,22 @@
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
   },
   "partialCapture": {
-    "note": "One narrowed PASS for the slash-completion surfaces, not a sweep: 132 new frames across the eleven `chat-slash-completion` stories (twelve themes each), taken with `--only=<story>` runs against a private Storybook on :6021 in the `feat/composer-slash-parity` worktree, then re-taken for the argument-phase and two board surfaces after two fixes in the same round (the row that let a long model name push its numbers out of the box, and the board case that left a stacked popup's room to the flexbox). Every frame on disk matches the head stamped above. The pass is narrowed rather than swept for two reasons stated plainly: the eleven new surfaces are the only ones this change touches, and the full sweep is recorded as impossible on this tree because `shell-app-shell--settings-appearance` times out preparing in Storybook - reproduced on clean `origin/main` by the earlier pass, not re-tested here. `addedFrames`/`addedSurfaces` count the new surface; `refreshedFrames` accumulates every run of the pass, so it exceeds the 132 added frames by the re-captures. Each run was taken with the documented `--allow-backend` opt-in, which a narrowed run permits: the operator's backend answers on localhost:1111 and these stories render the popup from fixtures and never call out, so nothing was stopped to take them.",
-    "addedFrames": 132,
-    "addedAt": "2026-09-13T16:53:19.456Z",
-    "addedAtHead": "65f160bf4853ffed3c751a24f20839343d73dceb",
-    "addedSurfaces": [
-      "chat-slash-completion/command-phase",
-      "chat-slash-completion/command-phase-narrowed",
-      "chat-slash-completion/command-phase-fuzzy",
-      "chat-slash-completion/command-phase-scrolled",
-      "chat-slash-completion/argument-phase-teams",
-      "chat-slash-completion/argument-phase-narrowed",
-      "chat-slash-completion/argument-phase-models",
-      "chat-slash-completion/argument-phase-empty",
-      "chat-slash-completion/argument-phase-narrow-composer",
-      "chat-slash-completion/inline-mid-draft",
-      "chat-slash-completion/name-list-completed"
-    ],
-    "refreshedAt": "2026-09-13T16:53:19.413Z",
-    "refreshedAtHead": "65f160bf4853ffed3c751a24f20839343d73dceb",
-    "refreshedFrames": 216,
+    "note": "One narrowed PASS over the slash-completion surfaces - the eleven `chat-slash-completion` stories, twelve themes each, taken with `--only=<surface>` runs against a private Storybook on :6021 - and not a sweep, for two independent reasons stated plainly: these eleven surfaces are the only ones this change touches, and the full sweep is recorded as impossible on this tree (`shell-app-shell--settings-appearance` times out while preparing in Storybook - reproduced on clean `origin/main` by the earlier pass, not re-tested here). 132 distinct frames are on disk. `refreshedFrames` counts every frame a capture wrote, so it reads 144 against those 132: the pass re-captured one surface twice, once as a probe and once in its group. `addedFrames` is 0 and `addedSurfaces` is empty because every frame was already declared by an earlier run of this same pass - the ADDITION this branch makes (eleven surfaces, 132 frames) is declared in `capture-evidence.mjs`'s `STORIES` and counted in this manifest's `frames`/`surfaces`, not in that pair. The pass was then re-run end to end after the branch was rebased onto `240fedae0` (`#118`, the send-path merge). That rebase moved nine files under `src/`, and NONE of them is in the subtree that paints these frames: `slash-commands.tsx`, `slash-argument-rows.ts`, `slash-rank.ts`, `slash-token.ts`, `picker-registry.tsx`, `pickers/`, `shared/themes/` and `shared/lib/` are byte-identical to the capture head. Two of the nine - `features/chat/canonical/transcript-reducer.ts` and `shared/desktop-contract.ts` - do sit in the stories' transitive import closure, which is why the pass was re-run rather than only re-stamped. 127 of the 132 frames came back byte-for-byte identical (md5) to their pre-rebase bytes, which is the measurement behind 'the rebase moved no pixel'. The five that differ are five themes of `name-list-completed` - iceberg, radient, neon, obsidian, synth - and they differ because the pre-rebase commit carried the OLD frame for exactly those five (768x220, with the board's caption and its roster row outside the crop) while the other seven themes already carried the corrected 768x260 frame: an earlier capture of this story was interrupted after seven themes and its partial result was committed, so the two halves disagreed. All twelve now show the caption and the full row. `argument-phase-empty`, this pass's other board, was already consistent at 768x300 across all twelve themes and did not change. Every run used the documented `--allow-backend` opt-in, which a narrowed run permits: the operator's backend answers on localhost:1111 and these stories render the popup from fixtures and never call out, so nothing had to be stopped to take them. The provenance shas in this field are the current head itself, so no repoint was needed this time.",
+    "addedFrames": 0,
+    "addedAt": "2026-09-13T17:48:49.095Z",
+    "addedAtHead": "64b0ac38d2f7db6e04f7c35ad03dbf2be7d5f80a",
+    "addedSurfaces": [],
+    "refreshedAt": "2026-09-13T17:48:49.094Z",
+    "refreshedAtHead": "64b0ac38d2f7db6e04f7c35ad03dbf2be7d5f80a",
+    "refreshedFrames": 144,
     "refreshedStories": [
+      "chat-slash-completion--argument-phase-models",
       "chat-slash-completion--command-phase",
       "chat-slash-completion--command-phase-narrowed",
       "chat-slash-completion--command-phase-fuzzy",
       "chat-slash-completion--command-phase-scrolled",
       "chat-slash-completion--argument-phase-teams",
       "chat-slash-completion--argument-phase-narrowed",
-      "chat-slash-completion--argument-phase-models",
       "chat-slash-completion--argument-phase-empty",
       "chat-slash-completion--argument-phase-narrow-composer",
       "chat-slash-completion--inline-mid-draft",
@@ -83,7 +71,7 @@
       "addedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
       "note": "The capture that ADDED this branch's twelve picker/band surfaces. Recorded here because the remediation round's own narrowed capture overwrites `addedFrames`/`addedSurfaces` in place, and an addition that disappears from the manifest reads as though the stories had always been swept."
     },
-    "refreshedFromHead": "7b3d55549c8819bdbc99867562e4cc035bf8e5df"
+    "refreshedFromHead": "64b0ac38d2f7db6e04f7c35ad03dbf2be7d5f80a"
   },
   "supplementary": [
     {
