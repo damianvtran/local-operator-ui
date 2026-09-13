@@ -48,6 +48,13 @@ function createApi(repo, token) {
 					env: { ...process.env, GH_TOKEN: token },
 					encoding: "utf8",
 					stdio: ["ignore", "pipe", "pipe"],
+					// A page of releases is not a small response: 92 releases carrying
+					// their bodies and asset lists measured 1.75 MB in this repository,
+					// over Node's 1 MiB default. Exceeding that surfaces as ENOBUFS,
+					// which the catch below would report as a failed lookup on a read
+					// that actually succeeded -- and the release-window checks fail
+					// closed on an unreadable release.
+					maxBuffer: 32 * 1024 * 1024,
 				}),
 			);
 		} catch {
