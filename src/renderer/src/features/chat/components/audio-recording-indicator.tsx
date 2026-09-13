@@ -66,7 +66,14 @@ export const AudioRecordingIndicator = ({
 	const mediaStreamRef = useRef<MediaStream | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
 	const analyserRef = useRef<AnalyserNode | null>(null);
-	const dataArrayRef = useRef<Uint8Array | null>(null);
+	// `WebAudio`'s `getByteFrequencyData` takes a view over a plain
+	// `ArrayBuffer` (`Uint8Array<ArrayBuffer>`), not a `Uint8Array` over
+	// `ArrayBufferLike`: a SharedArrayBuffer-backed view is not a writable
+	// destination the analyser will fill. This buffer is only ever created by
+	// the `new Uint8Array(frequencyBinCount)` call below, so stating that in
+	// the ref's type is the whole requirement -- nothing here can produce a
+	// shared-buffer view.
+	const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 	const heightsRef = useRef<number[]>(Array(BUFFER_SIZE).fill(MIN_BAR_HEIGHT));
 	const frameCountRef = useRef(0);
 

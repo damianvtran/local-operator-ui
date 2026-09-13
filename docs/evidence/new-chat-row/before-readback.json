@@ -1,0 +1,1060 @@
+[
+  {
+    "theme": "localOperatorDark",
+    "state": "before-sidebar-rest",
+    "file": "docs/evidence/new-chat-row/before-sidebar-rest/localOperatorDark.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": null,
+    "activeTag": "body",
+    "paneTitles": [
+      "Start a chat"
+    ],
+    "ariaCurrentRows": []
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "before-new-chat-hover",
+    "file": "docs/evidence/new-chat-row/before-new-chat-hover/localOperatorDark.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgb(40, 35, 24)",
+      "transition": "all 0s",
+      "hovered": true,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": null,
+    "activeTag": "body",
+    "paneTitles": [
+      "Start a chat"
+    ],
+    "ariaCurrentRows": []
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "before-new-chat-focus",
+    "file": "docs/evidence/new-chat-row/before-new-chat-focus/localOperatorDark.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "2px solid offset 2px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": "New chat",
+    "activeTag": "button",
+    "paneTitles": [
+      "Start a chat"
+    ],
+    "ariaCurrentRows": []
+  },
+  {
+    "theme": "localOperatorDark",
+    "state": "before-new-chat-current",
+    "file": "docs/evidence/new-chat-row/before-new-chat-current/localOperatorDark.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgb(22, 40, 29)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": "page",
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent bg-accent-wash"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": null,
+    "activeTag": "textarea",
+    "paneTitles": [
+      "New chat",
+      "What can I help you with today?"
+    ],
+    "ariaCurrentRows": [
+      "New chat"
+    ],
+    "keyboard": {
+      "traversal": [
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Collapse sidebar"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Chat"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "My agents"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Agent hub"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Schedules"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Settings"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "U User"
+        },
+        {
+          "tag": "input",
+          "row": false,
+          "label": "Search chats and agents"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "Agents"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand architect chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with architect"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage architect"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Coder chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Coder"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Coder"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Data analyst chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Data analyst"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Data analyst"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Designer chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Designer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Designer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Docs writer chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Docs writer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Docs writer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand manager chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Release manager chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Release manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Release manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Reviewer chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Reviewer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Reviewer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand scout chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with scout"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage scout"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Create agent"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "Teams"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand design-pod chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with design-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage design-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand release-pod chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with release-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage release-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Create team"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "All chats 34"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat"
+        }
+      ],
+      "newChatIndex": 46,
+      "before": "All chats 34",
+      "afterTab": "Active chats 2",
+      "backFromShiftTab": "New chat",
+      "arrowUpFrom": "All chats 34",
+      "arrowUpRow": true,
+      "arrowDownBack": "New chat",
+      "arrowDownRow": true
+    },
+    "beforeEnterPaneTitles": [
+      "Start a chat"
+    ]
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "before-sidebar-rest",
+    "file": "docs/evidence/new-chat-row/before-sidebar-rest/localOperatorLight.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": null,
+    "activeTag": "body",
+    "paneTitles": [
+      "Start a chat"
+    ],
+    "ariaCurrentRows": []
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "before-new-chat-hover",
+    "file": "docs/evidence/new-chat-row/before-new-chat-hover/localOperatorLight.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgb(255, 254, 251)",
+      "transition": "all 0s",
+      "hovered": true,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": null,
+    "activeTag": "body",
+    "paneTitles": [
+      "Start a chat"
+    ],
+    "ariaCurrentRows": []
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "before-new-chat-focus",
+    "file": "docs/evidence/new-chat-row/before-new-chat-focus/localOperatorLight.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "2px solid offset 2px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": "New chat",
+    "activeTag": "button",
+    "paneTitles": [
+      "Start a chat"
+    ],
+    "ariaCurrentRows": []
+  },
+  {
+    "theme": "localOperatorLight",
+    "state": "before-new-chat-current",
+    "file": "docs/evidence/new-chat-row/before-new-chat-current/localOperatorLight.webp",
+    "sidebar": {
+      "x": 220,
+      "w": 280
+    },
+    "rowCount": 19,
+    "allChatsText": "All chats 34",
+    "newChat": {
+      "box": {
+        "x": 228,
+        "y": 568,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 233,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 5,
+      "iconCentreOffset": 0,
+      "labelLeft": 253,
+      "borderLeft": "1px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgb(231, 241, 232)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": "page",
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent bg-accent-wash"
+    },
+    "allChats": {
+      "box": {
+        "x": 228,
+        "y": 536,
+        "w": 264,
+        "h": 32
+      },
+      "iconLeft": 232,
+      "iconSize": {
+        "w": 16,
+        "h": 16
+      },
+      "iconInset": 4,
+      "iconCentreOffset": 0,
+      "labelLeft": 252,
+      "borderLeft": "0px",
+      "borderStyle": "solid",
+      "outline": "3px none offset 0px",
+      "transform": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "transition": "all 0s",
+      "hovered": false,
+      "ariaCurrent": null,
+      "disabled": false,
+      "classes": "flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 w-full"
+    },
+    "activeRow": null,
+    "activeTag": "textarea",
+    "paneTitles": [
+      "New chat",
+      "What can I help you with today?"
+    ],
+    "ariaCurrentRows": [
+      "New chat"
+    ],
+    "keyboard": {
+      "traversal": [
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Collapse sidebar"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Chat"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "My agents"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Agent hub"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Schedules"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Settings"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "U User"
+        },
+        {
+          "tag": "input",
+          "row": false,
+          "label": "Search chats and agents"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "Agents"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand architect chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with architect"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage architect"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Coder chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Coder"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Coder"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Data analyst chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Data analyst"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Data analyst"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Designer chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Designer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Designer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Docs writer chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Docs writer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Docs writer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand manager chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Release manager chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Release manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Release manager"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand Reviewer chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with Reviewer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage Reviewer"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand scout chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with scout"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage scout"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Create agent"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "Teams"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand design-pod chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with design-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage design-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Expand release-pod chats"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat with release-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Manage release-pod"
+        },
+        {
+          "tag": "button",
+          "row": false,
+          "label": "Create team"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "All chats 34"
+        },
+        {
+          "tag": "button",
+          "row": true,
+          "label": "New chat"
+        }
+      ],
+      "newChatIndex": 46,
+      "before": "All chats 34",
+      "afterTab": "Active chats 2",
+      "backFromShiftTab": "New chat",
+      "arrowUpFrom": "All chats 34",
+      "arrowUpRow": true,
+      "arrowDownBack": "New chat",
+      "arrowDownRow": true
+    },
+    "beforeEnterPaneTitles": [
+      "Start a chat"
+    ]
+  }
+]
