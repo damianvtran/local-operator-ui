@@ -2,10 +2,16 @@ import type {
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
+import {
+	canvasDocumentForPath,
+	stripFileUrl,
+} from "@features/chat/utils/canvas-document";
+import {
+	imageExtensions,
+	videoExtensions,
+} from "@features/chat/utils/file-kind";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
-import { getFileName } from "@features/chat/utils/get-file-name";
-import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
-import { isSpreadsheetFile } from "@features/chat/utils/is-spreadsheet-file";
+import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
@@ -15,6 +21,7 @@ import { Card, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	Archive,
 	AudioLines,
@@ -29,6 +36,7 @@ import {
 } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
+import { buildFileTiles } from "./file-tiles";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
@@ -48,50 +56,25 @@ const defaultFiles: CanvasDocument[] = [];
 const THUMBNAIL = "h-24 w-full";
 
 /**
- * Checks if a file is an image based on its extension
+ * Checks if a file is an image based on its extension.
+ *
+ * The list lives in `utils/file-kind.ts`, shared with `getFileTypeFromPath` and
+ * the viewers. It used to be spelled here as well, and the two disagreed:
+ * `.tiff .ico .heic .heif .avif .jfif` were images to this grid and `"other"` to
+ * the classifier, so a HEIC tile painted a thumbnail under a type that said the
+ * app did not know the format.
  */
 const isImage = (path: string): boolean => {
-	const imageExtensions = [
-		".jpg",
-		".jpeg",
-		".png",
-		".gif",
-		".webp",
-		".bmp",
-		".svg",
-		".tiff",
-		".tif",
-		".ico",
-		".heic",
-		".heif",
-		".avif",
-		".jfif",
-		".pjpeg",
-		".pjp",
-	];
 	const lowerPath = path.toLowerCase();
-	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
+	return imageExtensions.some((ext) => lowerPath.endsWith(`.${ext}`));
 };
 
 /**
- * Checks if a file is a video based on its extension
+ * Checks if a file is a video based on its extension. Shares the list above.
  */
 const isVideo = (path: string): boolean => {
-	const videoExtensions = [
-		".mp4",
-		".webm",
-		".ogg",
-		".mov",
-		".avi",
-		".wmv",
-		".flv",
-		".mkv",
-		".m4v",
-		".3gp",
-		".3g2",
-	];
 	const lowerPath = path.toLowerCase();
-	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+	return videoExtensions.some((ext) => lowerPath.endsWith(`.${ext}`));
 };
 
 /**
@@ -171,21 +154,12 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	const setViewMode = useCanvasStore((s) => s.setViewMode);
 
-	// Memoize files to prevent unnecessary re-renders
-	const memoizedFiles = useMemo<CanvasDocument[]>(() => {
-		const filesByBaseName = files.reduce(
-			(acc, file) => {
-				const name = getFileName(file.path);
-				// Prioritize files with absolute paths, assuming they are longer
-				if (!acc[name] || file.path.length > acc[name].path.length) {
-					acc[name] = file;
-				}
-				return acc;
-			},
-			{} as Record<string, CanvasDocument>,
-		);
-		return Object.values(filesByBaseName);
-	}, [files]);
+	// The grid's view model: order, the basename-collision line, and which tiles
+	// are known to be gone. `buildFileTiles` is a pure function of this list, so
+	// the rules are testable without React - they used to live in this file's own
+	// `useMemo`, where the only way to ask what two `report.pdf`s look like was to
+	// render the panel.
+	const tiles = useMemo(() => buildFileTiles(files), [files]);
 
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
@@ -201,6 +175,43 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	const handleFileClick = useCallback(
 		async (fileDoc: CanvasDocument) => {
 			const title = fileDoc.title;
+			/*
+			 * The document view does not have its own file list, it has one `files`
+			 * array and one set of tabs, and this is the only place that appends to
+			 * both. Both branches below used to carry a copy of this block, which is
+			 * how the data-URI branch and the path branch drifted apart.
+			 */
+			const openDocument = (document: CanvasDocument) => {
+				const state = useCanvasStore.getState();
+				const conversationCanvasState = state.conversations?.[conversationId];
+				const filesInState = conversationCanvasState?.files ?? [];
+				const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+				const index = filesInState.findIndex(
+					(entry) => entry.id === document.id,
+				);
+				// Replace rather than skip: the entry on screen may hold stale bytes
+				// from an earlier read of the same file.
+				const updatedFiles =
+					index !== -1
+						? [
+								...filesInState.slice(0, index),
+								document,
+								...filesInState.slice(index + 1),
+							]
+						: [...filesInState, document];
+				setFiles(conversationId, updatedFiles);
+
+				const existsTab = openTabsInState.some((tab) => tab.id === document.id);
+				const updatedTabs = existsTab
+					? openTabsInState
+					: [...openTabsInState, { id: document.id, title: document.title }];
+				setOpenTabs(conversationId, updatedTabs);
+				setSelectedTab(conversationId, document.id);
+				setViewMode(conversationId, "documents");
+				onSwitchToDocumentView(document.id);
+			};
+
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
 				// Fallback to OS open for non-canvas supported files
@@ -218,115 +229,93 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				}
 			};
 
+			/*
+			 * One predicate for "can this open in-app, and where". It replaces two
+			 * clauses asked in two orders - `isCanvasSupported(title) ||
+			 * isSpreadsheetFile(title)` at each call site - which both asked the
+			 * TITLE rather than the path, so a file whose name merely ended in
+			 * `.md` routed on the name while its type came from the path.
+			 *
+			 * `null` is not an error: it is the documented downgrade to the OS.
+			 */
+			const kind = viewerFor(fileDoc.path, fileDoc.type);
+
 			if (fileDoc.path.startsWith("data:")) {
-				// Handle base64 data URI
-				if (isCanvasSupported(title) || isSpreadsheetFile(title)) {
-					const docId = fileDoc.path; // Use the data URI itself as a unique ID
-					const newDoc = {
-						id: docId,
+				// A data URI's own text IS its content, so it needs no read: the
+				// bytes are already in the string.
+				if (kind === null) return fallbackAction();
+				openDocument(
+					canvasDocumentForPath(fileDoc.path, {
 						title,
-						path: docId, // Store data URI as path for consistency if needed
-						content: fileDoc.path, // The content is the data URI itself
+						content: fileDoc.path,
 						type: getFileTypeFromPath(title),
-					};
+					}),
+				);
+				return;
+			}
 
-					const state = useCanvasStore.getState();
-					const conversationCanvasState = state.conversations?.[conversationId];
-					const filesInState = conversationCanvasState?.files ?? [];
-					const openTabsInState = conversationCanvasState?.openTabs ?? [];
+			const normalizedPath = stripFileUrl(fileDoc.path);
+			if (kind === null) return fallbackAction();
 
-					const updatedFiles = (() => {
-						const idx = filesInState.findIndex((d) => d.id === docId);
-						if (idx !== -1) {
-							return [
-								...filesInState.slice(0, idx),
-								newDoc,
-								...filesInState.slice(idx + 1),
-							];
-						}
-						return [...filesInState, newDoc];
-					})();
-					setFiles(conversationId, updatedFiles);
-
-					const existsTab = openTabsInState.some((t) => t.id === docId);
-					const updatedTabs = existsTab
-						? openTabsInState
-						: [...openTabsInState, { id: docId, title }];
-					setOpenTabs(conversationId, updatedTabs);
-					setSelectedTab(conversationId, docId);
-					setViewMode(conversationId, "documents");
-					onSwitchToDocumentView(docId);
-				} else {
-					// Not canvas supported, but it's a data URI.
-					fallbackAction();
+			/*
+			 * A tile can already know its file is gone - the probe said so. It must
+			 * not be handed to the OS, which would either do nothing or open the
+			 * wrong thing: the honest answer is a message naming the path, and the
+			 * tile's own Copy path action stays available for it.
+			 *
+			 * One re-probe first, because the interval between the probe and the
+			 * click is exactly when an agent writes the file.
+			 */
+			if (fileDoc.availability === "missing") {
+				const [probe] = await window.api.probeFiles([normalizedPath]);
+				if (!probe || !probe.exists || !probe.isFile) {
+					showErrorToast(
+						`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
+					);
+					return;
 				}
-			} else {
-				// Handle file path
-				const normalizedPath = fileDoc.path.startsWith("file://")
-					? fileDoc.path.substring(7)
-					: fileDoc.path;
-				try {
-					// Use base64 encoding for spreadsheet files, utf-8 for others
-					const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
-					const result = await window.api.readFile(normalizedPath, encoding);
+			}
 
-					if (
-						result.success &&
-						(isCanvasSupported(title) || isSpreadsheetFile(title))
-					) {
-						const docId = normalizedPath;
-						const newDoc = {
-							id: docId,
-							title,
-							path: normalizedPath,
-							content: result.data,
-							type: getFileTypeFromPath(title),
-						};
+			const encoding = READ_ENCODING[kind];
+			if (encoding === "bytes" || encoding === "range") {
+				/*
+				 * The viewer reads its own bytes (`pdf-preview`, `image-preview`,
+				 * `audio-preview`, `video-preview`). Reading them here would put a
+				 * whole document into the store - which is persisted to
+				 * localStorage - for a file the user may close without ever seeing.
+				 */
+				openDocument(
+					canvasDocumentForPath(normalizedPath, {
+						title,
+						type: getFileTypeFromPath(normalizedPath),
+					}),
+				);
+				return;
+			}
 
-						const state = useCanvasStore.getState();
-						const conversationCanvasState =
-							state.conversations?.[conversationId];
-						const filesInState = conversationCanvasState?.files ?? [];
-						const openTabsInState = conversationCanvasState?.openTabs ?? [];
-
-						const updatedFiles = (() => {
-							const idx = filesInState.findIndex((d) => d.id === docId);
-							if (idx !== -1) {
-								return [
-									...filesInState.slice(0, idx),
-									newDoc,
-									...filesInState.slice(idx + 1),
-								];
-							}
-							return [...filesInState, newDoc];
-						})();
-						setFiles(conversationId, updatedFiles);
-
-						const existsTab = openTabsInState.some((t) => t.id === docId);
-						const updatedTabs = existsTab
-							? openTabsInState
-							: [...openTabsInState, { id: docId, title }];
-						setOpenTabs(conversationId, updatedTabs);
-						setSelectedTab(conversationId, docId);
-						setViewMode(conversationId, "documents");
-						onSwitchToDocumentView(docId);
-						return;
-					}
-
-					const errorMessage =
-						!result.success && result.error
-							? result.error instanceof Error
-								? result.error.message
-								: String(result.error)
-							: "Unknown error reading file";
+			try {
+				const result = await window.api.readFile(normalizedPath, encoding);
+				if (!result.success) {
+					const errorMessage = result.error
+						? result.error instanceof Error
+							? result.error.message
+							: String(result.error)
+						: "Unknown error reading file";
 					return fallbackAction(errorMessage);
-				} catch (error: unknown) {
-					const message =
-						error instanceof Error
-							? error.message
-							: String(error ?? "Unknown error reading file");
-					return fallbackAction(message);
 				}
+				openDocument(
+					canvasDocumentForPath(normalizedPath, {
+						title,
+						content: result.data,
+						type: getFileTypeFromPath(normalizedPath),
+					}),
+				);
+			} catch (error: unknown) {
+				const message =
+					error instanceof Error
+						? error.message
+						: String(error ?? "Unknown error reading file");
+				return fallbackAction(message);
 			}
 		},
 		[
@@ -368,14 +357,13 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3",
 				)}
 			>
-				{memoizedFiles.map((fileDoc) => {
+				{tiles.map((tile) => {
+					const fileDoc = tile.document;
 					const IconComponent = getIconForFileType(fileDoc.type);
 					const isLocalFile =
 						!fileDoc.path.startsWith("data:") &&
 						!fileDoc.path.startsWith("http");
-					const normalizedPath = fileDoc.path.startsWith("file://")
-						? fileDoc.path.substring(7)
-						: fileDoc.path;
+					const normalizedPath = stripFileUrl(fileDoc.path);
 					return (
 						<Card
 							key={fileDoc.id}
@@ -441,14 +429,63 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 											<IconComponent size={26} />
 										</span>
 									)}
-									{/* The file name is the content of the tile, so it is
-									    `ink` at the body step, not a caption. */}
+									{/*
+									 * The file name is the content of the tile, so it is
+									 * `ink` at the body step, not a caption. The lines
+									 * beneath it exist only when they say something the name
+									 * does not: a directory that disambiguates a basename
+									 * two tiles share, or the receipt for a file that is
+									 * gone. A second line on every tile would be chrome
+									 * (branding.md: "a completed action is one line, not a
+									 * card").
+									 */}
 									<span
 										className={cn(
-											"block w-full truncate border-hairline border-t px-2.5 py-2 text-body-sm text-ink",
+											"block w-full border-hairline border-t px-2.5 pt-2",
+											tile.showParent || tile.missing ? "pb-1" : "pb-2",
 										)}
 									>
-										{getFileName(fileDoc.title)}
+										<span
+											className={cn(
+												"block w-full truncate text-body-sm text-ink",
+											)}
+										>
+											{tile.name}
+										</span>
+										{/*
+										 * Monospace is machine voice, and a path is the one
+										 * thing this line is. The FULL directory rather than
+										 * the immediate parent's name: two clashing
+										 * `report.pdf` under `~/work/reports` and
+										 * `~/archive/reports` would be as indistinguishable
+										 * as they were before the line existed. It truncates
+										 * like the name does.
+										 */}
+										{tile.showParent && (
+											<span
+												className={cn(
+													"block w-full truncate text-mono-sm text-ink-dim",
+												)}
+											>
+												{tile.parent}
+											</span>
+										)}
+										{/*
+										 * Missing files stay in the grid, in place, with a
+										 * muted receipt: the panel's job is to say what the
+										 * agent touched, and a file the user deleted after
+										 * the fact was still touched. Hiding it would
+										 * recreate the original complaint from the other
+										 * side. Copy path keeps working; the click explains
+										 * instead of opening nothing.
+										 */}
+										{tile.missing && (
+											<span
+												className={cn("block w-full text-meta text-ink-dim")}
+											>
+												Not found
+											</span>
+										)}
 									</span>
 								</button>
 							</Tooltip>

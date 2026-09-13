@@ -111,6 +111,30 @@ def outstanding(frame: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
     return open_rows.sort_values("days_late", ascending=False).head(20)
 `;
 
+/*
+ * The Files view's fixture, and every state the grid has rules about.
+ *
+ * A tile's layout depends on more than its own document: the second line
+ * appears only when two VISIBLE tiles share a basename, and the missing receipt
+ * only for a document whose probe said the bytes are gone. So the fixture has
+ * to carry a collision, a deletion and one of each viewer kind, or the story
+ * renders the easy case and proves nothing about the other three.
+ *
+ * - two `summary.md` in different directories: the basename-collision line, and
+ *   the pair the old grid silently merged into one tile.
+ * - `february.csv` with `availability: "missing"`: the receipt, and a tile that
+ *   must keep its place rather than being filtered out.
+ * - `q1-invoice-review.pdf`, `dashboard.png`, `todo.txt`: a PDF (its own new
+ *   viewer), an image, and a `.txt` - the type the app used to refuse and hand
+ *   to the OS instead of opening in its own editor.
+ *
+ * One caveat for whoever captures frames from this story: the image tile's
+ * thumbnail comes from the backend's static route, as every image thumbnail in
+ * this panel does, so with no backend listening the PNG tile renders its name,
+ * its directory line and a broken image box. That is a fixture artifact, not
+ * the panel's behaviour - which is why the design's PDF and image frames come
+ * from the real app rather than from the storybook sweep.
+ */
 const DOCUMENTS: CanvasDocument[] = [
 	{
 		id: "/Users/dana/work/reports/march-invoice-review.md",
@@ -153,6 +177,56 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/q1-summary.md",
 		content: "# Q1 summary\n",
 		type: "markdown",
+	},
+	{
+		id: "/Users/dana/work/reports/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/reports/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/archive/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/archive/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/invoices/february.csv",
+		title: "february.csv",
+		path: "/Users/dana/work/invoices/february.csv",
+		content: "",
+		type: "spreadsheet",
+		availability: "missing",
+	},
+	{
+		id: "/Users/dana/work/reports/q1-invoice-review.pdf",
+		title: "q1-invoice-review.pdf",
+		path: "/Users/dana/work/reports/q1-invoice-review.pdf",
+		content: "",
+		type: "pdf",
+		availability: "present",
+		sizeBytes: 348_512,
+	},
+	{
+		id: "/Users/dana/work/shots/dashboard.png",
+		title: "dashboard.png",
+		path: "/Users/dana/work/shots/dashboard.png",
+		content: "",
+		type: "image",
+		availability: "present",
+		sizeBytes: 96_204,
+	},
+	{
+		id: "/Users/dana/work/notes/todo.txt",
+		title: "todo.txt",
+		path: "/Users/dana/work/notes/todo.txt",
+		content: "",
+		type: "text",
+		availability: "present",
 	},
 ];
 
