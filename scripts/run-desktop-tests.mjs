@@ -29,9 +29,13 @@
 
 import { spawn } from "node:child_process";
 import {
+	OVERRIDE_ENV,
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+
+/** A positive whole number of workers, which is all node's flag accepts. */
+const WORKER_COUNT_PATTERN = /^\d+$/;
 
 const args = process.argv.slice(2);
 
@@ -39,7 +43,8 @@ const args = process.argv.slice(2);
 // `--test-concurrency 12` slip past the governor and be capped anyway, which is
 // exactly the silent override this branch exists to prevent.
 const explicitFlag = args.find(
-	(arg) => arg === "--test-concurrency" || arg.startsWith("--test-concurrency="),
+	(arg) =>
+		arg === "--test-concurrency" || arg.startsWith("--test-concurrency="),
 );
 
 // The evidence line reports how many test files the run covers, so it must not
@@ -64,8 +69,27 @@ if (explicitFlag === undefined) {
 	const value = explicitFlag.includes("=")
 		? explicitFlag.slice(explicitFlag.indexOf("=") + 1)
 		: args[args.indexOf(explicitFlag) + 1];
+	// A valueless or malformed flag is a usage error and must not be reported as
+	// a cap. It used to print `concurrency undefined` / `0 files` and then hand
+	// the malformed argv to node, which exited 9 — the caller was told something
+	// nonsensical before being told, by a stack trace, that nothing had run.
+	// Same exit code (9 is node's own invalid-argument status, so a caller
+	// keying off it sees the same class of failure), but the message is ours and
+	// names the flag and the alternative.
+	if (
+		value === undefined ||
+		!WORKER_COUNT_PATTERN.test(value) ||
+		Number(value) < 1
+	) {
+		console.error(
+			`desktop tests: ${explicitFlag} needs a positive whole number` +
+				`${value === undefined ? " (none given)" : ` (got ${JSON.stringify(value)})`}.` +
+				` Use --test-concurrency=N, or set ${OVERRIDE_ENV} to override the governor's own number.`,
+		);
+		process.exit(9);
+	}
 	console.log(
-		`desktop tests: ${fileCount} files, concurrency ${value} (explicit ${explicitFlag} in argv; governor bypassed)`,
+		`desktop tests: ${fileCount} file${fileCount === 1 ? "" : "s"}, concurrency ${value} (explicit ${explicitFlag} in argv; governor bypassed)`,
 	);
 }
 nodeArgs.push(...args);
@@ -76,7 +100,8 @@ const child = spawn(process.execPath, nodeArgs, { stdio: "inherit" });
 // suite rather than leaving it orphaned behind a killed wrapper.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
-		if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+		if (child.exitCode === null && child.signalCode === null)
+			child.kill(signal);
 	});
 }
 
@@ -87,7 +112,8 @@ child.on("exit", (code, signal) => {
 		// interrupted" into an ordinary success or failure, and every caller
 		// that inspects the status (CI, a shell `&&`, a signal death in a
 		// pipeline) would then be told the wrong thing.
-		for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.removeAllListeners(sig);
+		for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"])
+			process.removeAllListeners(sig);
 		process.kill(process.pid, signal);
 		return;
 	}

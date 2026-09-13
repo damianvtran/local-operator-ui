@@ -12,9 +12,12 @@
  * (`codesign`, `hdiutil`, a 17 s watchdog tree), so 13 workers is not 13
  * processes.
  *
- * MEASURED, on the 14-core / 36 GB host, `pnpm test:desktop`, two interleaved
- * rounds per setting, sampling the whole process tree (`ps -Ao pid,ppid,rss`)
- * rather than the runner process alone:
+ * MEASURED, on the 14-core / 36 GB host. Two independent sets of rounds, and
+ * they do not fully agree — which is why both are here rather than one number
+ * presented as the property of the change.
+ *
+ * The operator's interleaved A/B at base `79d0dc889`, `pnpm test:desktop` over
+ * the 22 files then in the list, two rounds per setting, whole process tree:
  *
  *   --test-concurrency   peak tree RSS      peak procs   wall
  *   default (13)         1117 / 1124 MB     25 / 27      92.8 / 92.0 s
@@ -22,12 +25,28 @@
  *   4                    515 / 569 MB       9 / 10       98.6 / 97.0 s
  *   2                    392 MB             5            168.1 s (+81%)
  *
- * So capping in the 4-7 range roughly halves the peak and cuts concurrent
- * processes by ~2.6x for ~5% wall; 2 is where the curve turns and the run takes
- * 81% longer, which is why `_MIN_WORKERS` is a floor and not a target. The
- * lever exists for the machine, not for the suite: the suite is not slower in
- * any way that matters at 4-7, and a box in a swap storm is slower for
- * everything on it.
+ * This branch's own rounds at head `a0174da2f` (23 files): 1187 / 1202 /
+ * 1291 MB across 25 / 26 / 28 processes with 13 file workers, 91.5-93.3 s
+ * uncapped; 666-892 MB across 15-19 processes with 5-7 workers, 93.1-95.7 s
+ * capped.
+ *
+ * QA's independent pass at a cap of 7 could NOT reproduce that RSS band: it
+ * measured a 998 MB / 24-process peak against a 1253 MB / 32-process baseline,
+ * with median and p95 RSS essentially unchanged. So the quantity that
+ * reproduces is the CONCURRENCY — 13 file workers down to 5-7, and with them
+ * the peak process count — while peak tree RSS is round- and pressure-dependent
+ * because a suite's peak is dominated by whichever heavy file is in flight, not
+ * by how many workers are running. Treat the worker and process counts as the
+ * property and any single RSS band as an observation.
+ *
+ * THE COST, which is real and belongs here rather than in a review thread: the
+ * memory arm has a floor, and below ~3.4 GB available on this host (the reserve
+ * plus two workers' worth) it can return nothing but `_MIN_WORKERS`. Wall time
+ * then roughly doubles — 180.6 s against 91.4 s, measured, +98% — because two
+ * workers serialise the suite. That is the deliberate trade, not a defect to
+ * tune away: that condition is a host already swapping, and the point of the
+ * floor is that this suite is not what pushes it over. Read the printed line
+ * before the timer when a run looks slow.
  *
  * This mirrors the xdist cap in local-operator's root `conftest.py`, which
  * solves the identical problem for pytest, and deliberately carries over its
@@ -88,16 +107,33 @@ export const _MEMORY_SHARE = 0.5;
 /**
  * Divisor for the memory budget, in MB per worker.
  *
- * A deliberately CONSERVATIVE ENVELOPE, not the measured per-worker figure - do
- * not "correct" it downward. The table above gives a marginal cost of roughly
- * 60-70 MB per extra worker (1117 -> 708 -> 515 -> 392 MB across 13/6/4/2), but
- * that is the runner's own accounting and it misses what the workers spawn:
- * several files here fork real subprocesses (`codesign`, `hdiutil`, a 17 s
- * watchdog process tree) whose footprint never appears in the runner's RSS. 192
- * is ~3x the marginal figure, which is the same posture conftest takes with its
- * 600 MB against measured worker RSS. The asymmetry justifies it:
- * under-provisioning costs a little wall time, over-provisioning costs the
- * whole machine a swap storm.
+ * A DELIBERATE SAFETY ENVELOPE. Read this before "correcting" the number in
+ * either direction, because the measurements below do NOT justify 192 — they
+ * bound it from below.
+ *
+ * What was measured is the marginal cost of an extra WORKER in whole-tree
+ * terms, and it is not one number: this branch's rounds moved the tree by ~78 MB
+ * per worker (1291 MB at 13 workers to 666 MB at 5), the operator's table by
+ * ~50-90 MB per worker, and QA's baseline-to-cap-7 comparison by far less with
+ * median and p95 RSS unchanged. A suite's peak is dominated by whichever heavy
+ * file is in flight, so a whole-tree delta divided by a worker difference
+ * understates the cost of adding one more worker to a machine that is already
+ * tight.
+ *
+ * And the two quantities are not the same: this budget is charged PER WORKER
+ * against what the machine can spare, while every measurement available is a
+ * whole-tree figure that already contains the runner, the launcher and the
+ * children. Several files here fork real children — the esbuild binary they
+ * bundle through, a real `/usr/bin/codesign`, node subprocesses — whose
+ * footprint never appears in the runner's accounting at all.
+ *
+ * So: 192 is a safety envelope of roughly 3-6x the largest marginal this file
+ * can cite, chosen the way conftest chose 600, on the asymmetry that
+ * under-provisioning costs a little wall time while over-provisioning costs the
+ * whole machine a swap storm. The operating evidence for it is not the table
+ * above; it is that the cap has never been observed to make the host worse, and
+ * that the memory arm binds (to the floor, at real cost — see the module
+ * docstring) exactly when the host is short.
  */
 export const _MB_PER_WORKER = 192;
 
@@ -245,7 +281,8 @@ export function computeDesktopTestConcurrency({
 			// then passes no cap at all, which IS "change nothing", instead of
 			// inventing a number or passing `--test-concurrency=null`.
 			return {
-				concurrency: Number.isFinite(nodeDefault) && nodeDefault >= 1 ? nodeDefault : null,
+				concurrency:
+					Number.isFinite(nodeDefault) && nodeDefault >= 1 ? nodeDefault : null,
 				arm: "ci",
 				cpus,
 				availableMb,
@@ -261,7 +298,8 @@ export function computeDesktopTestConcurrency({
 		// An unmeasurable core count is the same class of failure as an
 		// unmeasurable memory probe, so it takes the same fallback rather than
 		// propagating NaN through the min().
-		const cpuCount = Number.isFinite(cpus) && cpus > 0 ? cpus : _FALLBACK_WORKERS;
+		const cpuCount =
+			Number.isFinite(cpus) && cpus > 0 ? cpus : _FALLBACK_WORKERS;
 		const cpuCap = Math.max(1, Math.floor(cpuCount * _CPU_SHARE));
 
 		// No memory measurement degrades to the CPU-only cap rather than to a
@@ -298,7 +336,11 @@ export function computeDesktopTestConcurrency({
 		// default of 1). A governor that may not lower a machine must not raise
 		// one either, or it is not a governor — so the floor yields to node's
 		// own answer when that answer is smaller.
-		if (Number.isFinite(nodeDefault) && nodeDefault >= 1 && concurrency > nodeDefault) {
+		if (
+			Number.isFinite(nodeDefault) &&
+			nodeDefault >= 1 &&
+			concurrency > nodeDefault
+		) {
 			concurrency = nodeDefault;
 			arm = "node-default";
 		}
@@ -333,6 +375,21 @@ export function computeDesktopTestConcurrency({
 }
 
 /**
+ * The `vm_stat` patterns, at module scope so they are compiled once rather than
+ * per call (biome's `useTopLevelRegex`), and so the exact spellings vm_stat uses
+ * are visible in one place instead of buried in the parse.
+ */
+const _PAGE_SIZE_PATTERN = /page size of (\d+) bytes/;
+const _WHITESPACE_PATTERN = /\s+/;
+const _PAGE_COUNT_PATTERNS = new Map([
+	["Pages free", /^Pages free:\s+(\d+)\./m],
+	["Pages speculative", /^Pages speculative:\s+(\d+)\./m],
+]);
+// Absent on some macOS versions, so a miss is 0 pages rather than a probe
+// failure; see the function below.
+const _FILE_BACKED_PATTERN = /^File-backed pages:\s+(\d+)\./m;
+
+/**
  * PURE. Memory the suite can take without pushing the machine into swap, from
  * the text of `vm_stat`, in MB — or `null` when the output cannot be read.
  *
@@ -362,25 +419,29 @@ export function computeDesktopTestConcurrency({
  * both free and file-backed, so subtracting would double-count.
  */
 export function availableMbFromVmStat(text) {
-	const header = /page size of (\d+) bytes/.exec(text);
+	const header = _PAGE_SIZE_PATTERN.exec(text);
 	if (header === null) return null;
 	const pageSize = Number.parseInt(header[1], 10);
 	if (!Number.isFinite(pageSize) || pageSize <= 0) return null;
 
 	const counts = {};
-	for (const label of ["Pages free", "Pages speculative"]) {
-		const match = new RegExp(`^${label}:\\s+(\\d+)\\.`, "m").exec(text);
+	for (const [label, pattern] of _PAGE_COUNT_PATTERNS) {
+		const match = pattern.exec(text);
 		if (match === null) return null;
 		counts[label] = Number.parseInt(match[1], 10);
 	}
 	// "File-backed pages" is absent on some macOS versions; treat a miss as 0
 	// rather than as a probe failure, which degrades to the free-page estimate
 	// instead of discarding a usable measurement.
-	const fileBacked = /^File-backed pages:\s+(\d+)\./m.exec(text);
-	counts["File-backed pages"] = fileBacked === null ? 0 : Number.parseInt(fileBacked[1], 10);
+	const fileBacked = _FILE_BACKED_PATTERN.exec(text);
+	counts["File-backed pages"] =
+		fileBacked === null ? 0 : Number.parseInt(fileBacked[1], 10);
 
 	const perMb = pageSize / (1024 * 1024);
-	return Math.max(0, Math.trunc(Object.values(counts).reduce((a, b) => a + b, 0) * perMb));
+	return Math.max(
+		0,
+		Math.trunc(Object.values(counts).reduce((a, b) => a + b, 0) * perMb),
+	);
 }
 
 /** Probe the host for available memory in MB, or `null` when it cannot be
@@ -402,7 +463,9 @@ function availableMemoryMb() {
 			// reclaimable page cache and would badly understate a warm container.
 			for (const line of readFileSync("/proc/meminfo", "utf8").split("\n")) {
 				if (line.startsWith("MemAvailable:")) {
-					return Math.trunc(Number.parseInt(line.split(/\s+/)[1], 10) / 1024);
+					return Math.trunc(
+						Number.parseInt(line.split(_WHITESPACE_PATTERN)[1], 10) / 1024,
+					);
 				}
 			}
 		}
@@ -417,7 +480,9 @@ function availableMemoryMb() {
 function totalMemoryMb() {
 	try {
 		const bytes = totalmem();
-		return Number.isFinite(bytes) && bytes > 0 ? Math.trunc(bytes / (1024 * 1024)) : null;
+		return Number.isFinite(bytes) && bytes > 0
+			? Math.trunc(bytes / (1024 * 1024))
+			: null;
 	} catch {
 		return null;
 	}
@@ -484,7 +549,10 @@ function gb(mb) {
  * and the bypass arms say so rather than borrowing the governed wording.
  */
 export function formatDesktopTestConcurrencyLine(decision, fileCount) {
-	const prefix = `desktop tests: ${fileCount} files, concurrency ${decision.concurrency}`;
+	// "1 file", not "1 files": the line is read by humans and by grep, and the
+	// count is the one field a reader checks first.
+	const noun = fileCount === 1 ? "file" : "files";
+	const prefix = `desktop tests: ${fileCount} ${noun}, concurrency ${decision.concurrency}`;
 	const { arm } = decision;
 	// A probe failure reads as a probe failure rather than as a plausible
 	// figure, so the line can never quietly imply a measurement that did not
