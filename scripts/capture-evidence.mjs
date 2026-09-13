@@ -615,6 +615,43 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/* `/`-completion: the composer's slash popup, in both of its phases.
+	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
+	   popup from wire-shaped fixtures — the rows the backend's
+	   `command-entities` route sends, shaped by the production `argumentRows`
+	   and ranked by the production `matchCommands`, so a frame here is evidence
+	   about a shape that really arrives rather than a hand-written list.
+
+	   Sized to the popup plus the composer box it anchors to, at the width the
+	   popup actually spans (the composer's, not the window's), because the
+	   numbers column's shed order is measured against THAT width: the narrow
+	   entry is a 330px composer, which is what the `@container/slash` query
+	   answers. A frame taken at 1280 would photograph a layout no composer has
+	   and hide the one rule this set exists to show. */
+	["chat-slash-completion--command-phase", 768, 460],
+	/* Two rows: `/tea` matches the primary and its alias, in registry order. */
+	["chat-slash-completion--command-phase-narrowed", 768, 220],
+	/* One row, found by SUBSEQUENCE — `/lgt` finds `logout` where the old
+	   prefix filter found nothing. */
+	["chat-slash-completion--command-phase-fuzzy", 768, 200],
+	/* Six teams, one marked current: the roster the word-completion opens. */
+	["chat-slash-completion--argument-phase-teams", 768, 340],
+	/* And the same list narrowed by the ARGUMENT, not by the command word. */
+	["chat-slash-completion--argument-phase-narrowed", 768, 200],
+	/* The price/window column: `free`, `usage-based`, a three-significant-
+	   figure pair, and a row nobody quoted (blank, never `free`). */
+	["chat-slash-completion--argument-phase-models", 908, 320],
+	/* The cold-owner empty list — "not reported yet", which is a different
+	   fact from "this model has none". */
+	["chat-slash-completion--argument-phase-empty", 768, 300],
+	/* The shed order under pressure: numbers dropped, name kept. */
+	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
+	/* A command typed into a sentence, the list above the prose. */
+	["chat-slash-completion--inline-mid-draft", 768, 340],
+	/* The state a name pick produces: list closed, caret after the space. */
+	["chat-slash-completion--name-list-completed", 768, 220],
+	/* A long list: the popup keeps its own scroll at its row cap. */
+	["chat-slash-completion--command-phase-scrolled", 768, 460],
 ];
 
 /**
