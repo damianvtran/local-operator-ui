@@ -137,6 +137,34 @@ BEFORE  ... px-1 ... mb-1 w-full border border-control disabled:text-ink-disable
 AFTER   ... px-1 ... mb-1 w-full disabled:text-ink-disabled ...
 ```
 
+### Re-read on the head that carries `#136` above the block
+
+`#136` (the sidebar search field's clear control) landed on `main` after these
+frames were taken, and it changes the search field **directly above** the list.
+The rest position pinned here - New chat at `y=568`, the partition at
+`navScroll 0` - is therefore an assumption about the merged tree rather than a
+fact about it, and `assertHealthyFrame` cannot settle it: that guard compares a
+frame against its own run's baseline, so a set that moved *consistently* still
+passes. So the rig was stood up once more on the rebased tree (the commit whose
+`src`/`scripts` are the ones `manifest.json` stamps) and the position read live
+rather than inferred. Same seed, same isolated backend, same harness; one theme
+only, because the question is a layout fact and the palette does not enter it,
+and the frames went to a scratch directory rather than into this set - **no
+frame here is claimed from this run**.
+
+```
+node out/evidence-harness/capture.mjs http://localhost:5271 <scratch> after localOperatorDark
+
+sidebar-rest, localOperatorDark
+  navScroll=0   alerts=0   rowCount=19
+  All chats 34   Active chats 2   Previous chats 32
+  New chat  box=(228,568) 264x32  iconLeft=232  labelLeft=252  inset=4  borderLeft=0px
+```
+
+Every figure is the committed readback's own value for the same fixture, so the
+pinned rest position survives `#136`: the clear control changed the search
+field's own DOM without moving the block below it by a pixel.
+
 ## The states around it still work
 
 Pointer-free keyboard traversal, from the top of the document, with real Tab and
