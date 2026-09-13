@@ -784,23 +784,46 @@ export const ArgumentPhaseNoMatch: Story = {
 
 /**
  * The truncation HALF of the shed order, which the 720px and 332px frames both
- * missed (round 1 D5): at ~520px the numbers are still shown and the NAME has to
- * give. The question a design round has to answer is whether the identity stays
- * readable when it, and not the numbers, truncates — so the frame is captured at
- * the width where that happens rather than reasoned about.
+ * missed (round 1 D5): the width where the numbers are still shown and the NAME
+ * has to give. The question a design round has to answer is whether the identity
+ * stays readable when it, and not the numbers, truncates — so the frame is
+ * captured at the width where that happens rather than reasoned about.
+ *
+ * 520px, the width this story first claimed, is not that width, and it was
+ * measured rather than guessed: with the popup's own container at 520px every
+ * name and every description fits. The description column gives first (from
+ * ~440px), the NAME truncates only from 396px down, and at 385px the numbers
+ * step out on their own container step (`24rem`) and the name fits again — so
+ * the band where the identity is cut while the numbers stay is 386-396px wide.
+ * The board shows both ends of it, because a frame that claims a truncation it
+ * does not contain is worse than no frame: 520px with nothing shed, 390px with
+ * `Claude Opus 4.5 (2025-11-01)` cut and `200k · $18.8/15` still on the row.
  */
 export const ArgumentPhaseTruncatingName: Story = {
 	render: () => (
-		<Box width={520} draft="/model ">
-			<SlashSuggestionsPopup
-				state={state({
-					phase: "argument",
-					argumentCommand: "model",
-					inline: { source: "model", nameThenMessage: false, runs: true },
-					matches: argumentRowsFor("model", MODELS, null),
-				})}
-				onPick={noop}
-			/>
-		</Box>
+		<Board caption="520px: nothing has given yet. 390px: the NAME gives while the numbers stay — the only band where that happens, measured in the browser.">
+			<Case width={520} draft="/model " rows={6}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						matches: argumentRowsFor("model", MODELS, null),
+					})}
+					onPick={noop}
+				/>
+			</Case>
+			<Case width={390} draft="/model " rows={6}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						matches: argumentRowsFor("model", MODELS, null),
+					})}
+					onPick={noop}
+				/>
+			</Case>
+		</Board>
 	),
 };

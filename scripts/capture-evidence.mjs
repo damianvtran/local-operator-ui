@@ -664,7 +664,7 @@ export const STORIES = [
 	/* The truncation HALF of the shed order at ~520px: numbers shown, name
 	   giving. The 330px frame shows numbers dropped and the 908px frame shows
 	   nothing squeezed, so this is the width where the question lives (D5). */
-	["chat-slash-completion--argument-phase-truncating-name", 568, 340],
+	["chat-slash-completion--argument-phase-truncating-name", 768, 680],
 ];
 
 /**
