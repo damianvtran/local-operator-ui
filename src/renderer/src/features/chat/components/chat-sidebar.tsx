@@ -600,20 +600,33 @@ export function ChatSidebar({
 						    promise something to expand. Disabled tracks `ready` because
 						    staging a draft needs the session catalogue that gate covers.
 
-						    It is the only ACTION in a run of three label-ish rows
-						    (All chats / New chat / Active chats) that shared its type
-						    step and left inset, so at rest it read as the third heading
-						    rather than as a control. A `border-control` edge is the
-						    system's existing "outline control" idiom (contrast-contract
-						    §CONTROLS), so it reads as a control at rest without spending
-						    a fourth accent and without a resting `bg-elevated`, which
-						    would have swallowed `rowStyle`'s `hover:bg-elevated` and left
-						    the row with no hover feedback at all. The margin breaks the
-						    three rows out of one visual block. `MessageSquarePlus` rather than
-						    `Plus` because `Plus` means "open a creation form" twice over
-						    in this panel (Create agent, Create team), while this stages a
-						    chat; it also matches the glyph the entity rows reveal for the
-						    same outcome, so one action now has one icon. */}
+						    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
+						    an omission. It used to wear `border-control` as this system's
+						    "outline control" idiom, which reads as a control at rest — but
+						    that edge was also the one thing that stepped the row out of
+						    line with the All chats row directly above it. The app is
+						    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
+						    own `h-8` box and pushes the icon and the label in by 1px on
+						    each side, and no other row in this block has a boundary at all.
+						    The operator asked for the two rows to line up and for the pill
+						    to go; removing the edge is what does both, and the measurement
+						    is in docs/evidence/new-chat-row (the icon's left inset goes
+						    from 5px, the border plus `rowStyle`'s `px-1`, to 4px).
+
+						    What still marks the row as the ACTION here is everything the
+						    rows around it do NOT have: the `MessageSquarePlus` glyph
+						    rather than `Plus`, which means "open a creation form" twice
+						    over in this panel (Create agent, Create team) while this
+						    stages a chat, and which matches the glyph the entity rows
+						    reveal for the same outcome; the `mb-1` margin that separates
+						    it from the Active/Previous split below; `rowStyle`'s
+						    `hover:bg-elevated` colour step; and `bg-accent-wash` while an
+						    untargeted draft is staged.
+
+						    `border-control` is therefore RETIRED on this row by the
+						    operator's own instruction, not merely unused: re-adding it puts
+						    the row back 1px out of alignment with the row above, so it is
+						    not a free tidy-up for a later reader. */}
 						<button
 							type="button"
 							// DEFENSIVE, not currently reachable — and the earlier comment
@@ -637,7 +650,7 @@ export function ChatSidebar({
 							data-chat-row={ready || undefined}
 							className={cn(
 								rowStyle,
-								"mb-1 w-full border border-control disabled:text-ink-disabled disabled:hover:bg-transparent",
+								"mb-1 w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
 								// Marked current on the same terms as an entity row: an
 								// untargeted draft is the one THIS row stages. A draft
 								// carrying a target belongs to its entity row, which is
