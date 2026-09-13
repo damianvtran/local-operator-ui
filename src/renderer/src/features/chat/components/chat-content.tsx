@@ -17,7 +17,10 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -114,6 +117,8 @@ type ChatContentProps = {
 		onCommand?: (line: string) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
+		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
+		pendingModel?: CanonicalModel | null;
 	};
 	/**
 	 * Present when the conversation is a canonical backend session: the

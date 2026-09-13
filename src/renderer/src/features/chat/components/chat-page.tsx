@@ -732,6 +732,13 @@ function SessionPanel({
 							? {
 									frontend: canonical.frontend,
 									/*
+									 * The chosen-but-unconfirmed model, so the strip can paint the pick
+									 * the moment it is made instead of waiting out a cold runtime bind
+									 * (latency U1). Straight off the handle, which owns both the paint and
+									 * its reconciliation with the authoritative frames.
+									 */
+									pendingModel: canonical.pendingModel,
+									/*
 									 * `dispatchFromControl`, not `dispatch`: a chip has no
 									 * fallback path to report a failure the way typed text
 									 * does, so an unconsumed outcome has to be surfaced here

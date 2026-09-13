@@ -38,7 +38,10 @@ import {
 } from "react";
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
-import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
@@ -169,6 +172,8 @@ type MessageInputProps = {
 		onCommand?: (line: string) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
+		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
+		pendingModel?: CanonicalModel | null;
 	};
 };
 
@@ -1211,6 +1216,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								frontend={sessionStatus.frontend}
 								onCommand={sessionStatus.onCommand}
 								effortEntities={sessionStatus.effortEntities}
+								pendingModel={sessionStatus.pendingModel}
 							/>
 						</ErrorBoundary>
 					)}

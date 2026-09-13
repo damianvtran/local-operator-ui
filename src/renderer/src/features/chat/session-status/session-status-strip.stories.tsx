@@ -217,6 +217,50 @@ export const States: Story = {
 	),
 };
 
+/**
+ * The band while a model switch is UNCONFIRMED — the state U1 paints.
+ *
+ * Two frames of the same strip, stacked, because the claim is a comparison: the
+ * user picks a model and the band shows it IMMEDIATELY, drawn as pending rather
+ * than as the model in force, and the moment the owner's own `frontend.update`
+ * frame names it the paint is dropped and the reading goes back to full weight.
+ *
+ * The pending value is a prop, so this story can reach a state the live app
+ * reaches only during the 1.1-4.2 s a cold runtime bind costs. What it cannot
+ * show is the RECONCILIATION: that is the session handle's effect, asserted in
+ * `scripts/picker-feedback.test.mjs`, and this frame is what the user sees
+ * before it runs.
+ */
+export const ModelSwitchPending: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame label="Before the pick: the model in force, nothing pending">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 12_000,
+						context_window: 400_000,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => {}}
+				/>
+			</Frame>
+			<Frame label="The pick registers in the frame it is made: the chosen model, marked unconfirmed">
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 12_000,
+						context_window: 400_000,
+						cost_knowledge: "exact",
+					})}
+					pendingModel={GPT_4O_MINI}
+					onCommand={() => {}}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
 /** The cost readout's four honesty states, side by side. */
 export const CostStates: Story = {
 	render: () => (
