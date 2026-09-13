@@ -132,15 +132,6 @@ const M1_MINIMUM_SPEEDUP = 3;
  */
 const M3_WARM_CEILING_MS = 100;
 /*
- * How long the harness waits between the warm and the send.
- *
- * Stands in for the window a real user spends finishing their sentence after
- * the first keystroke fired the warm, which is the case the feature is FOR.
- * The engage is ~1.15 s, so a shorter settle would measure a PARTIALLY warmed
- * session and report the feature as weaker than it is.
- */
-const SETTLE_MS = 2000;
-/*
  * Rounds per population. Ten is enough for a p50/p95 to mean something on a
  * shared laptop without spending ten runtime spawns per extra sample - each is
  * roughly 283 MB of RSS, and this host is memory- and disk-constrained.
