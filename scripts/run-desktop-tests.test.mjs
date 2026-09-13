@@ -20,7 +20,10 @@ import { test } from "node:test";
  *     an escape hatch that does not open;
  *   - a valueless flag that is reported as a cap prints a number that means
  *     nothing before node fails, which is how `concurrency undefined` reached a
- *     reviewer.
+ *     reviewer;
+ *   - and an ambient `NODE_TEST_CONTEXT` reaching the child makes the whole suite
+ *     exit 0 without running a single file, which is why the runner filters that
+ *     one key out of the environment it hands the child.
  *
  * The tests spawn the real runner over real (tiny) test files rather than
  * mocking `spawn`, because the thing under test is the process contract. Signals
@@ -36,6 +39,10 @@ const BYPASS_LINE =
 	/^desktop tests: 2 files, concurrency 3 \(explicit --test-concurrency=3 in argv; governor bypassed\)$/;
 const ONE_FILE_LINE = /^desktop tests: 1 file, /;
 const USAGE_ERROR = /needs a positive whole number/;
+// The child's own reporter footer. A run that was skipped prints nothing at all
+// (0 bytes of stdout), so matching this is how a case proves the suite RAN
+// rather than that a status happened to land the right way.
+const TESTS_SUMMARY = /^ℹ tests \d+/m;
 
 /*
  * Two throwaway test files: one that passes and one that fails. They live in the
@@ -58,23 +65,24 @@ process.on("exit", () => rmSync(scratch, { recursive: true, force: true }));
 /**
  * Run the runner and return its status, stdout and stderr.
  *
- * `NODE_TEST_CONTEXT` is deliberately scrubbed, and this is not defensive
- * tidiness: node's test runner exports it into every test-file process, and an
- * inherited copy makes a NESTED `node --test` report its results to the
- * grandparent's reporter instead of setting its own exit status. Measured
- * directly (node 26.5.0): `node --test fails.test.mjs` exits 1, the same command
- * with `NODE_TEST_CONTEXT=child-v8` in the environment exits **0**. Without the
- * scrub these tests pass in a plain shell and fail — wrongly, and for the wrong
- * reason — inside this very suite, which is the "a local failure CI does not have
- * is usually your shell" class this repo already documents in AGENTS.md.
+ * The environment is passed through UNFILTERED, deliberately. This harness used
+ * to scrub `NODE_TEST_CONTEXT` itself, which made its exit-code assertions pass
+ * whether or not the runner scrubbed anything — they were proving the harness,
+ * not the runner, and QA caught exactly that. The scrub now lives in
+ * `run-desktop-tests.mjs` (`_TEST_CONTEXT_ENV`) where it belongs, so every case
+ * below runs with the variable genuinely present in the ambient environment, as
+ * node exports it into this very test file.
+ *
+ * `timeout` is not decoration either: node's default test timeout is infinite,
+ * so a runner that hangs instead of failing — which is what a malformed argv
+ * used to do before the value check existed — would block the suite until CI's
+ * job limit rather than reddening an assertion.
  */
-function runRunner(args) {
-	const env = Object.fromEntries(
-		Object.entries(process.env).filter(([key]) => key !== "NODE_TEST_CONTEXT"),
-	);
+function runRunner(args, extraEnv = {}) {
 	const result = spawnSync(process.execPath, [RUNNER, ...args], {
 		encoding: "utf8",
-		env,
+		env: { ...process.env, ...extraEnv },
+		timeout: 60000,
 	});
 	return {
 		status: result.status,
@@ -117,13 +125,50 @@ test("a --test-concurrency with no value fails loudly instead of inventing a lin
 		["--test-concurrency"],
 		["--test-concurrency="],
 		["--test-concurrency=abc"],
+		// Node ACCEPTS this one and runs the suite at its default width; being
+		// stricter than node is the point, since `0` is not a worker count.
+		["--test-concurrency=0"],
 	]) {
 		const { status, stdout, stderr } = runRunner([...args, PASSES]);
-		// 9 is node's own invalid-argument status, so a caller keying off it sees
-		// the same class of failure it saw before this check existed.
+		// 9 is the status node itself uses for a missing value; for a non-numeric
+		// or zero value this check is deliberately stricter than node.
 		assert.equal(status, 9, `args ${JSON.stringify(args)}: ${stdout}${stderr}`);
 		assert.match(stderr, USAGE_ERROR, `args ${JSON.stringify(args)}`);
 		// And crucially: no evidence line claiming a cap that does not exist.
 		assert.equal(stdout.trim(), "", `args ${JSON.stringify(args)}: ${stdout}`);
 	}
+
+	// The truly empty value slot, on its own because it is a different shape: the
+	// flag is the last argument, so there is nothing in the slot at all. Without
+	// this case the guard's `value === undefined` arm is uncovered — with a file
+	// after the flag the slot holds that path and the pattern arm catches it
+	// instead, which is how removing the whole disjunct survived the suite.
+	const empty = runRunner(["--test-concurrency"]);
+	assert.equal(empty.status, 9, empty.stdout);
+	assert.match(empty.stderr, USAGE_ERROR);
+	assert.equal(empty.stdout.trim(), "");
+});
+
+test("an ambient NODE_TEST_CONTEXT cannot make a failing suite report success", () => {
+	/*
+	 * Node exports this variable into every test-file process, and a nested
+	 * `node --test` that inherits it warns (`node:test run() is being called
+	 * recursively within a test file. skipping running files.`), skips running
+	 * the files entirely — 0 bytes of stdout — and exits 0. Before the runner
+	 * filtered it, this invocation returned 0. QA reproduced it on the gate
+	 * command itself: `env NODE_TEST_CONTEXT=child-v8 pnpm test:desktop` over a
+	 * sabotaged tree exited 0 in 0.41 s with no summary lines. That is the
+	 * false-green class this whole change exists to remove, one level up.
+	 */
+	const failing = runRunner([FAILS], { NODE_TEST_CONTEXT: "child-v8" });
+	assert.equal(failing.status, 1, failing.stdout);
+	// The failing file really ran: its own summary is on stdout, which a skipped
+	// run does not print. Without this the status assertion alone could be
+	// satisfied by some other route to a non-zero exit.
+	assert.match(failing.stdout, TESTS_SUMMARY);
+
+	// And the same variable must not disturb a passing suite.
+	const passing = runRunner([PASSES], { NODE_TEST_CONTEXT: "child-v8" });
+	assert.equal(passing.status, 0, passing.stdout);
+	assert.match(passing.stdout, TESTS_SUMMARY);
 });

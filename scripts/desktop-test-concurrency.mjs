@@ -8,9 +8,10 @@
  * is the right default for one checkout on an idle machine and the wrong one
  * here, because this repo is worked through many concurrent git worktrees and
  * several agent sessions run the suite at the same time. A handful of files in
- * this suite are not pure JavaScript either: they spawn real subprocesses
- * (`codesign`, `hdiutil`, a 17 s watchdog tree), so 13 workers is not 13
- * processes.
+ * this suite are not pure JavaScript either: most of them bundle through the
+ * esbuild binary, one runs a real `/usr/bin/codesign`
+ * (`update-robustness.test.mjs`), and one spawns node subprocesses
+ * (`linux-sandbox.test.mjs`), so 13 workers is not 13 processes.
  *
  * MEASURED, on the 14-core / 36 GB host. Two independent sets of rounds, and
  * they do not fully agree — which is why both are here rather than one number
@@ -25,10 +26,10 @@
  *   4                    515 / 569 MB       9 / 10       98.6 / 97.0 s
  *   2                    392 MB             5            168.1 s (+81%)
  *
- * This branch's own rounds at head `a0174da2f` (23 files): 1187 / 1202 /
- * 1291 MB across 25 / 26 / 28 processes with 13 file workers, 91.5-93.3 s
- * uncapped; 666-892 MB across 15-19 processes with 5-7 workers, 93.1-95.7 s
- * capped.
+ * This branch's own rounds (23 files in the list then, base `79d0dc889`, run
+ * before the rebases onto main): 1187 / 1202 / 1291 MB across 25 / 26 / 28
+ * processes with 13 file workers, 91.5-93.3 s uncapped; 666-892 MB across 15-19
+ * processes with 5-7 workers, 93.1-95.7 s capped.
  *
  * QA's independent pass at a cap of 7 could NOT reproduce that RSS band: it
  * measured a 998 MB / 24-process peak against a 1253 MB / 32-process baseline,
@@ -40,13 +41,17 @@
  * property and any single RSS band as an observation.
  *
  * THE COST, which is real and belongs here rather than in a review thread: the
- * memory arm has a floor, and below ~3.4 GB available on this host (the reserve
- * plus two workers' worth) it can return nothing but `_MIN_WORKERS`. Wall time
- * then roughly doubles — 180.6 s against 91.4 s, measured, +98% — because two
- * workers serialise the suite. That is the deliberate trade, not a defect to
- * tune away: that condition is a host already swapping, and the point of the
- * floor is that this suite is not what pushes it over. Read the printed line
- * before the timer when a run looks slow.
+ * memory arm has a floor, and **below 3,648 MB available on this host** — the
+ * 3,072 MB reserve plus three workers' worth, at which point the arm returns 3
+ * and below which it can return nothing but 2 — it can return nothing above
+ * `_MIN_WORKERS`. Wall time then grows by roughly half to double, because two
+ * workers serialise the suite: **+47% to +98%** across two independent passes
+ * (+46.7% in QA's same-window A/B on this head, 133.4 s against 91.0 s; +98% in
+ * its round-1 A/B on a busier box, 180.6 s against 91.4 s). The direction is the
+ * point and the multiple follows what else the host is doing. That is the
+ * deliberate trade, not a defect to tune away: that condition is a host already
+ * swapping, and the point of the floor is that this suite is not what pushes it
+ * over. Read the printed line before the timer when a run looks slow.
  *
  * This mirrors the xdist cap in local-operator's root `conftest.py`, which
  * solves the identical problem for pytest, and deliberately carries over its
@@ -114,11 +119,11 @@ export const _MEMORY_SHARE = 0.5;
  * What was measured is the marginal cost of an extra WORKER in whole-tree
  * terms, and it is not one number: this branch's rounds moved the tree by ~78 MB
  * per worker (1291 MB at 13 workers to 666 MB at 5), the operator's table by
- * ~50-90 MB per worker, and QA's baseline-to-cap-7 comparison by far less with
- * median and p95 RSS unchanged. A suite's peak is dominated by whichever heavy
- * file is in flight, so a whole-tree delta divided by a worker difference
- * understates the cost of adding one more worker to a machine that is already
- * tight.
+ * ~59-88 MB per worker (1,120 MB at 13 to 708 MB at 6, and 569 MB at 4 to 392 MB
+ * at 2), and QA's baseline-to-cap-7 comparison by ~42 MB per worker with median
+ * and p95 RSS unchanged. A suite's peak is dominated by whichever heavy file is
+ * in flight, so a whole-tree delta divided by a worker difference understates
+ * the cost of adding one more worker to a machine that is already tight.
  *
  * And the two quantities are not the same: this budget is charged PER WORKER
  * against what the machine can spare, while every measurement available is a
@@ -127,13 +132,19 @@ export const _MEMORY_SHARE = 0.5;
  * bundle through, a real `/usr/bin/codesign`, node subprocesses — whose
  * footprint never appears in the runner's accounting at all.
  *
- * So: 192 is a safety envelope of roughly 3-6x the largest marginal this file
- * can cite, chosen the way conftest chose 600, on the asymmetry that
- * under-provisioning costs a little wall time while over-provisioning costs the
- * whole machine a swap storm. The operating evidence for it is not the table
- * above; it is that the cap has never been observed to make the host worse, and
- * that the memory arm binds (to the floor, at real cost — see the module
- * docstring) exactly when the host is short.
+ * So, with the arithmetic shown so nobody has to re-derive it and get a
+ * different answer: 192 is 2.2x the LARGEST marginal this file can cite
+ * (192 / 88 MB per worker) and 4.5x the smallest (192 / 42 MB), so roughly
+ * **2-4.5x across the band those marginals span** — chosen the way conftest chose
+ * 600, on the asymmetry that under-provisioning costs a little wall time while
+ * over-provisioning costs the whole machine a swap storm. It is a safety
+ * envelope, not a measured per-worker cost, and it is not to be "corrected"
+ * toward those marginals: they are whole-tree deltas on a loaded machine, and the
+ * quantity this budget divides is a per-worker charge against memory the machine
+ * can spare. The operating evidence for it is not the table above; it is that
+ * the cap has never been observed to make the host worse, and that the memory arm
+ * binds (to the floor, at real cost — see the module docstring) exactly when the
+ * host is short.
  */
 export const _MB_PER_WORKER = 192;
 
