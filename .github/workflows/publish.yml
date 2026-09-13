@@ -248,8 +248,9 @@ jobs:
     if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' && needs.preflight-macos.result == 'success' && needs.npm-publish.result == 'success' }}
     # A hung codesign (run 33948569170 sat at "signing file=...app" for 5h50m
     # until cancelled) must fail bounded rather than burn the 6h job default.
-    # Windows takes ~13 min and Linux ~8 min; universal mac packaging, signing
-    # and notarization realistically take 20-40 min, so 60 leaves headroom.
+    # Windows takes ~13 min and Linux ~8 min; packaging, signing and notarizing
+    # two macOS app bundles and their disk images realistically take 30-50 min, so
+    # 60 leaves headroom.
     timeout-minutes: 60
 
     steps:
@@ -290,9 +291,9 @@ jobs:
           security default-keychain -s "$CSC_KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
           # A fresh keychain defaults to lock-on-sleep with a 300s timeout. It
-          # relocked partway through signing the universal app and codesign
-          # blocked on a GUI unlock prompt for ~6h (run 33948569170). Without
-          # -t/-l this removes both the timeout and lock-on-sleep, mirroring
+          # relocked partway through signing the app and codesign blocked on a
+          # GUI unlock prompt for ~6h (run 33948569170). Without -t/-l this
+          # removes both the timeout and lock-on-sleep, mirroring
           # electron-builder's own createKeychain. show-keychain-info prints
           # only the resulting "no-timeout" line, never the password.
           security set-keychain-settings "$CSC_KEYCHAIN"
@@ -346,10 +347,19 @@ jobs:
       # release whose DMG fails them cannot be opened on a fresh machine - so
       # this fails the release rather than shipping it and finding out from a
       # user. `pnpm verify-macos-artifacts` exits non-zero on the first failure
-      # it cannot clear, and prints each check with its raw output.
+      # it cannot clear, and prints each check with its raw output. Every app
+      # bundle and every image the build produced is asserted, so both
+      # architectures are covered rather than the first of each.
       - name: Verify macOS artifacts
         run: pnpm verify-macos-artifacts
 
+      # `*.blockmap` is what makes an update a delta rather than a 350 MB
+      # download: electron-updater fetches `<artifact>.blockmap` for the version
+      # being replaced and the one being installed, and falls back to the whole
+      # file when either is missing. electron-builder writes one beside every
+      # macOS archive and every NSIS installer (`building block map` in the build
+      # log), so omitting them here is what left every previous release without a
+      # single one: the files existed on the runner and were dropped at upload.
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -357,6 +367,7 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.zip
+            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
           retention-days: 5
@@ -392,6 +403,15 @@ jobs:
         run: |
           echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
 
+      # `nsis.buildUniversalInstaller: false` is what keeps this to the two
+      # per-architecture installers. With it unset, electron-builder's default
+      # (`true`) makes the NSIS target build ONE installer containing both
+      # architectures, and because `win.artifactName` carries `${arch}` it also
+      # emits the per-arch pair - so every release shipped three, the third
+      # being the union of the other two (v0.19.5: 421,851,256 bytes against
+      # 210,066,624 + 212,406,896). The universal one is the default that
+      # electron-updater would then hand every Windows user, so removing it is
+      # also what makes a Windows update pick the delta for its own arch.
       - name: Build Windows app
         run: pnpm dist:win
         env:
@@ -413,6 +433,7 @@ jobs:
           path: |
             dist/*.exe
             dist/*.msi
+            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
           retention-days: 5
@@ -455,6 +476,11 @@ jobs:
       - name: Assert the packaged app carries its whole runtime closure
         run: node scripts/check-packaged-closure.mjs --dist dist
 
+      # The `*.blockmap` glob is kept here for symmetry and forward
+      # compatibility, and currently matches nothing: none of the Linux targets
+      # emits one (AppImage resolves its own deltas through zsync), so the
+      # `if-no-files-found: error` below is satisfied - as it must be - by the
+      # installers and `latest-linux.yml` alone.
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -463,6 +489,7 @@ jobs:
             dist/*.deb
             dist/*.AppImage
             dist/*.rpm
+            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
           retention-days: 5
