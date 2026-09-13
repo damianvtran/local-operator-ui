@@ -19,6 +19,19 @@
  *
  *   - `refused`   the stream is refused and never recovers (stub `down`).
  *   - `recovered` the stream is refused, then served (stub `flaky`).
+ *   - `loading`   the retry window: the stream is between attempts (stub `down`,
+ *                 sampled early), so the pane has to say it is loading without
+ *                 saying the conversation is empty (design round 1, D5(a)).
+ *   - `empty`     a conversation with NO durable rows, SERVED (stub `flaky` +
+ *                 `SESSION_LOAD_ROWS=0`): it must end up saying the conversation
+ *                 is empty, not loading forever (D5(b)).
+ *   - `narrow`    the same refusal in a small view, where the notice wraps and
+ *                 the greeting and chips are suppressed (D5(c)).
+ *   - `before`    the pre-fix tree's defect frame (see README).
+ *
+ * The viewport follows the case: `narrow` is the app's own `isSmallView`
+ * boundary (the chat column under 550px), everything else is the app's
+ * evidence size of 1380x872.
  *
  * The measured assertions come from the page itself: the presence of the
  * greeting, the number of painted transcript rows, and whether a Retry control
@@ -36,6 +49,19 @@ const ORIGIN = process.argv[4] ?? process.env.SESSION_LOAD_ORIGIN ?? "http://loc
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 /** The session the stub catalogue lists. Clicked, not assumed. */
 const SESSION = process.env.SESSION_LOAD_SESSION ?? "92602660eb9e";
+
+/**
+ * The viewport a case is photographed at.
+ *
+ * `narrow` sits below the app's own `isSmallView` boundary (`chat-content.tsx`
+ * flips at a 550px chat COLUMN, and the sidebar takes ~500px of the window), so
+ * the notice's `flex-wrap` path and the suppressed greeting/chips are what the
+ * frame shows rather than an assumption about them.
+ */
+const viewportFor = (name) =>
+	name === "narrow"
+		? { width: 980, height: 760 }
+		: { width: 1380, height: 872 };
 
 /** Same minimal CDP client as `scripts/capture-evidence.mjs`. */
 class Cdp {
@@ -136,11 +162,12 @@ const main = async () => {
 	const cdp = new Cdp(ws);
 	await cdp.send("Page.enable");
 	await cdp.send("Runtime.enable");
+	const { width, height } = viewportFor(CASE);
 	// The viewport the app's own evidence set uses, read back below so the frame
 	// can be labelled with a size the page really had.
 	await cdp.send("Emulation.setDeviceMetricsOverride", {
-		width: 1380,
-		height: 872,
+		width,
+		height,
 		deviceScaleFactor: 2,
 		mobile: false,
 	});
@@ -181,12 +208,43 @@ const main = async () => {
 				greeting: text.includes("What can I help you with today?"),
 				loading: document.querySelector('[aria-label="Loading conversation"]') !== null,
 				rows: transcript ? transcript.querySelectorAll(':scope > div').length : 0,
-				retry: (() => {
-					// Scoped to the transcript's own pane, not the page: the shell also
-					// carries a legacy server banner with its own "Retry", and an
-					// unscoped query would report that button as this control.
+				// The transcript's own control, which is named for what it does. The
+				// shell also carries a legacy server banner with a "Retry" that
+				// re-probes a different API, so an unscoped query would report that
+				// one (design round 1, D4).
+				legacyRetry: [...document.querySelectorAll("button")].filter(
+					(b) => b.textContent.trim() === "Retry",
+				).length,
+				reconnect: (() => {
 					const pane = transcript?.closest("div")?.parentElement ?? document.body;
-					return [...pane.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Retry").length;
+					return [...pane.querySelectorAll("button")].filter(
+						(b) => b.textContent.trim() === "Reconnect",
+					).length;
+				})(),
+				// The failure notice's own geometry and type step, so the frame is
+				// quoted from the page rather than measured by eye (D2).
+				failure: (() => {
+					const box = document.querySelector("[data-lo-session-failure]");
+					if (!box) return null;
+					const rect = box.getBoundingClientRect();
+					const text = box.querySelector("p");
+					return {
+						text: text ? text.textContent.trim() : "",
+						fontPx: text ? getComputedStyle(text).fontSize : null,
+						fontColour: text ? getComputedStyle(text).color : null,
+						rect: [
+							Math.round(rect.x),
+							Math.round(rect.y),
+							Math.round(rect.width),
+							Math.round(rect.height),
+						],
+					};
+				})(),
+				// The scroller's own height: D3's defect was this being 0 while the
+				// "Reconnecting" line sat above the box's top edge, clipped.
+				scrollerHeight: (() => {
+					const box = transcript?.parentElement;
+					return box ? Math.round(box.getBoundingClientRect().height) : null;
 				})(),
 				// What the transcript pane actually says, so a frame that lost its
 				// notice fails here rather than in review.
@@ -224,25 +282,59 @@ const main = async () => {
 		throw new Error("the sidebar never listed the conversation");
 	}
 	// Long enough for the retry schedule to run out in `refused` (23.5s of
-	// backoff) and for the served snapshot to paint in `recovered`.
-	await settle(CASE === "refused" ? 30_000 : 4_000);
+	// backoff), for the served snapshot to paint in `recovered`/`empty`, and
+	// short enough in `loading` to photograph the window rather than its end
+	// (the first backoff step is 500ms and the budget is 23.5s).
+	await settle(
+		CASE === "refused" || CASE === "narrow" ? 30_000 : CASE === "loading" ? 2_500 : 4_000,
+	);
 	// One more settle for the transcript's own layout pass.
 	await settle(1_000);
 
 	const state = await readState();
 	process.stdout.write(`${CASE} state ${JSON.stringify(state)}\n`);
 
-	if (CASE === "refused") {
+	if (CASE === "refused" || CASE === "narrow") {
 		// The whole point: the app must NOT claim this conversation is empty, and
 		// it must offer a way back rather than sitting silent.
 		if (state.greeting)
-			throw new Error("refused: the greeting is painted over a conversation that is not empty");
-		if (state.retry < 1)
-			throw new Error("refused: no Retry control reached the user");
+			throw new Error(`${CASE}: the greeting is painted over a conversation that is not empty`);
+		if (state.reconnect < 1)
+			throw new Error(`${CASE}: no Reconnect control reached the user`);
 		if (state.rows < 1)
-			throw new Error("refused: the failure notice is not rendered where the reader can see it");
+			throw new Error(`${CASE}: the failure notice is not rendered where the reader can see it`);
 		if ((state.notice ?? "").trim() === "")
-			throw new Error("refused: the transcript pane is blank, so the app failed silently");
+			throw new Error(`${CASE}: the transcript pane is blank, so the app failed silently`);
+		if (!state.failure?.text)
+			throw new Error(`${CASE}: no failure notice was found in the pane`);
+	} else if (CASE === "loading") {
+		/*
+		 * The retry window (D5(a), D3). Two things have to be true: the app must not
+		 * claim the conversation is empty while it is still trying, and the state has
+		 * to be PERCEIVABLE - either the composer's skeleton or the pane's own
+		 * "Reconnecting" line, and with the scroller open rather than the 0px box
+		 * that clipped the line above it.
+		 */
+		if (state.greeting)
+			throw new Error("loading: the greeting claims the conversation is empty while the app is still reading it");
+		if (state.failure)
+			throw new Error("loading: a settled failure notice is painted, so this is not the retry window");
+		if (!(state.loading || /reconnecting/i.test(state.notice ?? "")))
+			throw new Error("loading: the retry window is not perceivable - neither the skeleton nor the pane's own line is rendered");
+		if (!(state.scrollerHeight > 0))
+			throw new Error(`loading: the transcript scroller is collapsed (h ${state.scrollerHeight}), so the pane cannot name the state (D3)`);
+	} else if (CASE === "empty") {
+		/*
+		 * D5(b), the counter-case: a conversation with no rows that the app CAN
+		 * read must end up saying it is empty. Without this, "do not claim empty"
+		 * and "load forever" are indistinguishable.
+		 */
+		if (state.rows !== 0)
+			throw new Error(`empty: expected an empty transcript, got ${state.rows} rows`);
+		if (state.loading)
+			throw new Error("empty: the app is still loading a conversation it has already read");
+		if (!state.greeting)
+			throw new Error("empty: a readable empty conversation must be stated as empty");
 	} else if (CASE === "before") {
 		/*
 		 * The defect frame, captured from the tree WITHOUT the fix and asserted so
@@ -255,8 +347,8 @@ const main = async () => {
 			throw new Error("before: the greeting is missing, so this tree already carries the fix");
 		if (state.rows !== 0)
 			throw new Error(`before: expected an empty transcript, got ${state.rows} rows`);
-		if (state.retry > 0)
-			throw new Error("before: a Retry control exists, so this tree is not the pre-fix behaviour");
+		if (state.reconnect > 0)
+			throw new Error("before: a Reconnect control exists, so this tree is not the pre-fix behaviour");
 	} else {
 		if (state.rows < 2)
 			throw new Error(`recovered: the transcript painted ${state.rows} rows`);

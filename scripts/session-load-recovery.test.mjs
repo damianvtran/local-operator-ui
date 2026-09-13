@@ -67,6 +67,10 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
+			// The notice module is the ONE authority for the sentence the reader sees.
+			// Exported through the same bundle so this test compares the shipping mapping
+			// rather than a copy of it (design round 1, D1).
+			'export { streamFailureNotice, DESKTOP_STREAM_DETAIL, HISTORY_UNREADABLE } from "./src/shared/desktop-stream-notice.ts";',
 			// Re-exported from the fixture so each fresh copy of the hook can be
 			// bound to its own runtime: a shared global would let a previous
 			// mount's pending render read THIS mount's hook slots.
@@ -233,6 +237,15 @@ async function loadHook(tag) {
 	);
 	return module;
 }
+
+/**
+ * The shipping notice mapping, from the same bundle the hook runs.
+ *
+ * Imported once at module scope under its own tag so the assertions below can
+ * name the exact sentence a transport detail must produce.
+ */
+const { streamFailureNotice, DESKTOP_STREAM_DETAIL, HISTORY_UNREADABLE } =
+	await loadHook("notice");
 
 /** The hook's view, and its handle, as last rendered. */
 function mountHook(module, sessionId, enabled = true) {
@@ -452,7 +465,16 @@ test("a stream that never opens is retried without a receipt, within a bounded s
 	fail("The event stream was refused (401).");
 	await settle();
 	assert.equal(mounted.view().status, "unavailable");
-	assert.match(mounted.view().error ?? "", /401/);
+	assert.deepEqual(
+		mounted.view().failure,
+		streamFailureNotice(DESKTOP_STREAM_DETAIL.refused(401)),
+		"the surfaced state is the product sentence for the 401 the relay emitted, not the transport detail itself (D1)",
+	);
+	assert.doesNotMatch(
+		mounted.view().failure.statement,
+		/401|refused|event stream/i,
+		"the reader is never shown transport register",
+	);
 	assert.equal(
 		mounted.view().hydrated,
 		false,
@@ -548,7 +570,7 @@ test("a failed history read on an empty transcript is retried, then surfaced ins
 		"an unreadable history is not an empty history - this is the assertion that stops the greeting painting over real rows",
 	);
 	assert.equal(mounted.view().status, "unavailable");
-	assert.match(mounted.view().error ?? "", /history/i);
+	assert.match(mounted.view().failure?.statement ?? "", /history/i);
 	assert.equal(
 		mounted.view().transcript.records.length,
 		0,
@@ -573,4 +595,148 @@ test("an empty applied page IS a claim the app may make", async () => {
 		"a genuinely empty conversation must still be able to say so - the fix is about proof, not about never being sure",
 	);
 	assert.equal(mounted.view().transcript.records.length, 0);
+});
+
+test("Retry during a pending stream retry opens ONE subscription and leaves no orphan (R1-1)", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	timerQueue.length = 0;
+	rafQueue.length = 0;
+	// The history read fails for good, so the reconcile retries on the same
+	// backoff schedule as the stream. That is what puts the Retry control on
+	// screen while a stream retry is STILL pending: the two error surfaces are
+	// independent, and only one of them has to give up.
+	test_state.network = async () => {
+		throw new Error("history unavailable");
+	};
+	const known = new Set();
+	/** Retry timers armed since the last call, oldest first. The frame-flush
+	 * backstop (250ms) shares this queue and is filtered out. */
+	const freshRetries = () => {
+		const out = timerQueue
+			.filter((entry) => !known.has(entry.id) && entry.delay >= 500)
+			.sort((a, b) => a.id - b.id);
+		for (const entry of timerQueue) known.add(entry.id);
+		return out;
+	};
+	const fire = (entry) => {
+		const at = timerQueue.indexOf(entry);
+		if (at >= 0) timerQueue.splice(at, 1);
+		entry.callback();
+	};
+
+	const mounted = mountHook(await loadHook("race"), SESSION);
+	await settle();
+	freshRetries();
+	send(openFrame());
+	await settle();
+	send(cursorMissingSnapshotFrame());
+	await settle();
+	const reconcileRetry1 = freshRetries();
+	assert.equal(reconcileRetry1.length, 1, "the reconcile armed its first retry");
+	assert.equal(reconcileRetry1[0].delay, 500);
+
+	fire(reconcileRetry1[0]);
+	await settle();
+	const reconcileRetry2 = freshRetries();
+	assert.equal(reconcileRetry2.length, 1, "the reconcile armed its second retry");
+	assert.equal(reconcileRetry2[0].delay, 1000);
+
+	// The stream dies AFTER that, so its retry is the newest retry timer.
+	fail("The event stream was refused (401).");
+	await settle();
+	const streamRetry = freshRetries();
+	assert.equal(streamRetry.length, 1, "the stream armed its own retry");
+
+	// Fire only the reconcile's retry: the history failure surfaces while the
+	// stream's retry is still pending - the exact state the Retry control is on
+	// screen in, with `dispose === null` and a queued `connect()`.
+	fire(reconcileRetry2[0]);
+	await settle();
+	assert.equal(mounted.view().status, "unavailable", "the history failure surfaced");
+	assert.ok(mounted.view().failure, "with a sentence to show");
+	assert.ok(
+		timerQueue.includes(streamRetry[0]),
+		"a stream retry is still pending while Retry is offered",
+	);
+
+	const before = test_state.streams.length;
+	mounted.view().retry();
+	await settle();
+	assert.equal(
+		test_state.streams.length,
+		before + 1,
+		"Retry opened a stream",
+	);
+	assert.equal(
+		timerQueue.includes(streamRetry[0]),
+		false,
+		"Retry must CANCEL the pending retry timer; leaving it queued is what opened a second subscription - and overwrote the single dispose closure, orphaning the first (R1-1)",
+	);
+	// The regression, stated as the invariant the effect owes: one subscription.
+	const live = test_state.streams.filter((s) => !s.disposed).length;
+	assert.equal(
+		live,
+		1,
+		"exactly one subscription may be live after Retry settles",
+	);
+	// And draining every remaining timer cannot resurrect the orphan.
+	await runTimers();
+	assert.equal(
+		test_state.streams.filter((s) => !s.disposed).length,
+		1,
+		"no queued timer may open a stream the effect can no longer dispose",
+	);
+});
+
+test("every transport detail maps to ONE product sentence, and none of them leaks transport register (D1)", async () => {
+	const refused = streamFailureNotice(DESKTOP_STREAM_DETAIL.refused(401));
+	const ended = streamFailureNotice(DESKTOP_STREAM_DETAIL.ended);
+	const connectionFailed = streamFailureNotice(
+		DESKTOP_STREAM_DETAIL.connectionFailed,
+	);
+	assert.equal(
+		refused.statement,
+		ended.statement,
+		"the packaged relay's 401 and the browser proxy's `ended` must paint the SAME sentence - two sentences for one failure is what the round-1 frame showed",
+	);
+	assert.equal(ended.statement, connectionFailed.statement);
+	assert.equal(
+		ended.statement,
+		streamFailureNotice(DESKTOP_STREAM_DETAIL.openFailed).statement,
+	);
+	for (const detail of [
+		DESKTOP_STREAM_DETAIL.refused(401),
+		DESKTOP_STREAM_DETAIL.refused(403),
+		DESKTOP_STREAM_DETAIL.refusedWithoutStatus,
+		DESKTOP_STREAM_DETAIL.ended,
+		DESKTOP_STREAM_DETAIL.connectionFailed,
+		DESKTOP_STREAM_DETAIL.openFailed,
+		"a detail this build has never heard of",
+	]) {
+		const notice = streamFailureNotice(detail);
+		assert.doesNotMatch(
+			notice.statement,
+			/401|403|refused|event stream|http/i,
+			`the reader is never shown transport register (${detail})`,
+		);
+		assert.match(
+			notice.statement,
+			/reconnect/i,
+			"the sentence has to say what to do about it",
+		);
+	}
+	assert.equal(
+		streamFailureNotice(DESKTOP_STREAM_DETAIL.serverDown).statement.includes(
+			"server",
+		),
+		true,
+		"a backend that is not answering is named as the server, not as the stream (Q-2)",
+	);
+	assert.equal(
+		streamFailureNotice(DESKTOP_STREAM_DETAIL.notPaired).action,
+		null,
+		"no control is offered where reconnecting cannot help",
+	);
+	assert.deepEqual(streamFailureNotice(null), refused);
 });

@@ -5,6 +5,7 @@ import {
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	MAX_DESKTOP_ENVELOPE_BYTES,
 } from "../../src/shared/desktop-contract";
+import { DESKTOP_STREAM_DETAIL } from "../../src/shared/desktop-stream-notice";
 
 /** Browser-only development uses the same typed vocabulary as Electron IPC.
  * The token is read by this Node process, never by Vite's client env machinery.
@@ -123,7 +124,7 @@ export function desktopProxyPlugin(): Plugin {
 							res.setHeader("Content-Type", "application/json");
 							res.end(
 								JSON.stringify({
-									detail: "The event stream was refused.",
+									detail: DESKTOP_STREAM_DETAIL.refusedWithoutStatus,
 								}),
 							);
 							return;

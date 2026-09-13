@@ -567,8 +567,57 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Check if an external backend is already running
-	 * @returns Promise resolving to true if an external backend is running, false otherwise
+	 * True when this app holds a desktop credential for the configured backend.
+	 *
+	 * This is the RELAY's own `available` fact, asked here rather than re-derived,
+	 * so that adopting a backend and streaming from it agree on what "we can talk
+	 * to this server" means. A server this app holds no token for is one it can
+	 * never authenticate to: adopting it attaches the renderer to a backend that
+	 * refuses every session list and every stream - the empty-conversation
+	 * outcome this whole subsystem exists to remove.
+	 */
+	private canAuthenticate(): boolean {
+		return this.getStreamRelay().available;
+	}
+
+	/**
+	 * Ask the answering backend whether it will accept this app's bearer.
+	 *
+	 * A `/health` 200 proves a process is listening, not that it is OURS. The
+	 * desktop vocabulary answers 401/403 for a bearer it does not hold, so one
+	 * authenticated read is what separates a legitimate paired backend from a
+	 * stranger that happens to occupy the port.
+	 */
+	private async authenticatesAgainstBackend(): Promise<boolean> {
+		try {
+			const result = await this.requestDesktop({
+				op: "sessions.list",
+				limit: 1,
+			});
+			return result.status >= 200 && result.status < 300;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Check if an external backend is already running AND usable by this app.
+	 *
+	 * WHY the pairing gate. A liveness probe alone made adoption a decision this
+	 * app was not entitled to: `checkExistingBackend()` fired against the
+	 * CONFIGURED origin, so an app pointed at one port could still adopt whatever
+	 * answered a hardcoded fallback on another one, with no desktop token - i.e.
+	 * it attached itself to a backend it could never authenticate to, and every
+	 * conversation opened empty. The old code even rotated `backendUrl` onto that
+	 * fallback origin, so a rig configured for an isolated port silently became a
+	 * client of the operator's live server (QA round 1, Q-1).
+	 *
+	 * Two rules replace it: the probe only ever targets the configured origin, and
+	 * a healthy answer is only adopted when this app can authenticate to it.
+	 * Declining is not a failure - `start()` spawns our own backend exactly as it
+	 * would have on a cold start.
+	 *
+	 * @returns Promise resolving to true if a paired external backend is running
 	 */
 	async checkExistingBackend(): Promise<boolean> {
 		if (this.isDisabled) {
@@ -577,6 +626,14 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 			return true;
+		}
+
+		if (!this.canAuthenticate()) {
+			logger.info(
+				"No desktop pairing token for the configured backend; not adopting an external backend.",
+				LogFileType.BACKEND,
+			);
+			return false;
 		}
 
 		try {
@@ -603,8 +660,15 @@ export class BackendServiceManager {
 			);
 
 			if (response.ok) {
+				if (!(await this.authenticatesAgainstBackend())) {
+					logger.info(
+						"A backend answered health but refused this app's desktop token; starting our own instead.",
+						LogFileType.BACKEND,
+					);
+					return false;
+				}
 				logger.info(
-					"External backend detected and healthy",
+					"External backend detected, healthy and paired",
 					LogFileType.BACKEND,
 				);
 				this.isExternalBackend = true;
@@ -612,53 +676,6 @@ export class BackendServiceManager {
 				return true;
 			}
 		} catch (error) {
-			// Try alternative URL with localhost if the first attempt failed
-			try {
-				if (this.backendUrl.includes("127.0.0.1")) {
-					const altUrl = "http://localhost:1111";
-					logger.info(
-						`Trying alternative URL: ${altUrl}/health`,
-						LogFileType.BACKEND,
-					);
-
-					const controller = new AbortController();
-					const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-					const response = await fetch(`${altUrl}/health`, {
-						method: "GET",
-						headers: { Accept: "application/json" },
-						signal: controller.signal,
-					});
-
-					clearTimeout(timeoutId);
-
-					logger.info(
-						`Alternative URL health check response status: ${response.status}`,
-						LogFileType.BACKEND,
-					);
-
-					if (response.ok) {
-						// Update the URL for future requests
-						this.backendUrl = altUrl;
-						logger.info(
-							"External backend detected and healthy using alternative URL",
-							LogFileType.BACKEND,
-						);
-						this.isExternalBackend = true;
-						// Fired AFTER the URL rotates, so a consumer re-reading
-						// capabilities queries the address the app actually uses.
-						this.notifyBackendReady();
-						return true;
-					}
-				}
-			} catch (altError) {
-				logger.error(
-					"Error checking alternative backend URL:",
-					LogFileType.BACKEND,
-					altError,
-				);
-			}
-
 			logger.error(
 				"Error checking external backend:",
 				LogFileType.BACKEND,
@@ -1296,7 +1313,31 @@ export class BackendServiceManager {
 			return;
 		}
 
-		if (!this.process) return;
+		/*
+		 * A child that EXITED is not covered by the restart below: its `exit` handler
+		 * nulls `this.process`, and this method used to return early on that fact, so
+		 * nothing ever brought the backend back. The renderer's Retry could re-arm
+		 * the stream but could never succeed, and the failure it showed named the
+		 * stream instead of the missing server (QA round 1, Q-2). The watchdog is the
+		 * only thing in the app that owns the process lifecycle, so the recovery
+		 * lives here; `start()` re-runs its own adoption check and spawns a
+		 * replacement.
+		 *
+		 * The guards are the states in which a spawn would fight the user or another
+		 * actor: a disabled manager never owns a process, a closing app is going
+		 * away, and an update is mid-handoff to the new version - `update-service`
+		 * restarts the backend itself there. Without them a shutdown could race a
+		 * spawn it just killed.
+		 */
+		if (!this.process) {
+			if (this.isDisabled || this.isAppClosing || this.isAutoUpdating) return;
+			logger.info(
+				"Backend process is gone; starting a replacement",
+				LogFileType.BACKEND,
+			);
+			await this.start();
+			return;
+		}
 
 		// Our backend is no longer healthy, try to restart it.
 		//

@@ -14,9 +14,31 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,128}$/;
+/**
+ * The one distinguishable fetch failure worth naming.
+ *
+ * `ECONNREFUSED` is the only transport error that tells the app something it
+ * did not already know: NOTHING is listening on the backend's origin, i.e. the
+ * managed backend is not running. That is Q-2's state - a backend child that
+ * exited is terminal, so the reader must be told the server is gone rather than
+ * that "the stream ended", which names the wrong thing and implies the app is
+ * still attached to something. Every other exception stays generic, because an
+ * exception string can carry the URL (and, in a misconfigured future, a
+ * credential).
+ */
+function transportFailureDetail(error: unknown): string {
+	if (error instanceof Error && error.name === "AbortError") {
+		return DESKTOP_STREAM_DETAIL.ended;
+	}
+	const code = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
+	if (code === "ECONNREFUSED") return DESKTOP_STREAM_DETAIL.serverDown;
+	return DESKTOP_STREAM_DETAIL.connectionFailed;
+}
+
 /** Relay frame cap, matching the backend's per-frame bound. */
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
@@ -88,7 +110,7 @@ export class DesktopStreamRelay {
 				emit({
 					streamId,
 					kind: "error",
-					detail: "This backend was not started with desktop controls.",
+					detail: DESKTOP_STREAM_DETAIL.notPaired,
 				});
 			});
 			return { streamId };
@@ -141,7 +163,7 @@ export class DesktopStreamRelay {
 				emit({
 					streamId,
 					kind: "error",
-					detail: `The event stream was refused (${response.status}).`,
+					detail: DESKTOP_STREAM_DETAIL.refused(response.status),
 				});
 				return;
 			}
@@ -162,7 +184,7 @@ export class DesktopStreamRelay {
 							emit({
 								streamId,
 								kind: "error",
-								detail: "The event stream exceeded its frame budget.",
+								detail: DESKTOP_STREAM_DETAIL.frameBudget,
 							});
 							reader.cancel().catch(() => undefined);
 							return;
@@ -194,10 +216,7 @@ export class DesktopStreamRelay {
 			emit({
 				streamId,
 				kind: "error",
-				detail:
-					error instanceof Error && error.name === "AbortError"
-						? "The event stream ended."
-						: "The event stream connection failed.",
+				detail: transportFailureDetail(error),
 			});
 		}
 	}

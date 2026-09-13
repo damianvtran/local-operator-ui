@@ -257,8 +257,8 @@ const InTranscript = ({
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"
-				error={null}
-				onRetry={() => {}}
+				failure={null}
+				onReconnect={() => {}}
 			/>
 		</div>
 	);
