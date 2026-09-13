@@ -282,7 +282,7 @@ const started = [];
  *
  * COST, WHICH IS WHY THIS IS TWO READS AND NOT ONE PER PID. The obvious shape -
  * list the pids, then `ps eww -p <pid>` each - forks once per process on the
- * box. Measured here at 842 pids: 0.24 s for one whole-table `ps eww -ax`,
+ * box. Measured here at 842 pids: 0.24 s for one whole-table `ps eww -A`,
  * against the ~10.6 s idle / 22-26 s loaded per call that per-pid loop cost,
  * across ~3 calls per root. Teardown that costs more than the benchmark it
  * cleans up after is a defect in its own right (review R5-3 / QA Q14).
@@ -317,7 +317,7 @@ const PID_AND_COMMAND = /^\s*(\d+)\s(.*)$/;
 const WHITESPACE_RUN = /\s+/;
 
 /*
- * Report the FIRST refusal of the census, once per process, with `ps`'s reason.
+ * Report the FIRST refusal of each KIND, once per process, with `ps`'s reason.
  *
  * That reason used to be discarded (`stdio[2] = "ignore"`, no stderr in the
  * result), and the cost was concrete rather than theoretical: `ps eww -ax` is a
@@ -328,14 +328,22 @@ const WHITESPACE_RUN = /\s+/;
  * exactly what a transient failure prints, so nothing named the cause; finding it
  * took running the file in a Linux container.
  *
- * One latched line, not one per call: this runs inside a per-pid loop and inside
- * per-root loops, so an unlatched report would flood the run it is describing.
+ * ONE LINE PER KIND, AND KEYED BY THE REASON RATHER THAN A SINGLE FLAG (review
+ * R1). A single latch loses the line to the FIRST refusal, and the first refusal
+ * is normally the benign one: `ps -p <pid>` on a pid that exited between the two
+ * reads exits 1 with nothing on stderr, which happens mid-loop on a busy box. A
+ * system-wide invocation error would then be the second, and silent - which is
+ * the failure this reporting exists to prevent. The cap is the other half: at
+ * most four distinct reasons, so a pathological `ps` cannot turn diagnostics into
+ * the flood they would otherwise become.
  */
-let censusRefusalReported = false;
+const censusRefusalsReported = new Set();
 function reportCensusRefusal(args, why, stderr) {
-	if (censusRefusalReported) return;
-	censusRefusalReported = true;
 	const reason = (stderr ?? "").split("\n").find((line) => line.trim()) ?? "";
+	const kind = `${why}|${reason.trim()}`;
+	if (censusRefusalsReported.has(kind) || censusRefusalsReported.size >= 4)
+		return;
+	censusRefusalsReported.add(kind);
 	console.log(
 		`  census: ps ${args.join(" ")} refused (${why})${reason ? `: ${reason.trim().slice(0, 200)}` : ""}`,
 	);
@@ -351,7 +359,7 @@ function pidsHoldingConfigDir(root) {
 	 * tell "ps refused the question" from "ps answered and there was no matching
 	 * process" - the two cases have opposite meanings here.
 	 *
-	 * The `error` arm is not hypothetical. `ps eww -ax` prints well over the 1 MB
+	 * The `error` arm is not hypothetical. `ps eww -A` prints well over the 1 MB
 	 * default buffer on a loaded box: measured at this machine's load, the
 	 * default buffer produced `ENOBUFS` with a TRUNCATED table in `stdout`, which
 	 * is the worst possible answer - a partial census that reads as a complete
@@ -414,11 +422,20 @@ function pidsHoldingConfigDir(root) {
 	 * was green on macOS, which is how a file that had only ever been run on a
 	 * laptop shipped red to the only platform that runs it.
 	 *
-	 * `-A` selects the same set on both: verified `rc=0` on macOS (814990 bytes,
-	 * environment present) and on procps 4.0.2 (669 bytes, environment present),
-	 * with `-eo`/`-e` NOT a substitute - on BSD `-e` is "show the environment"
-	 * rather than "every process", and it silently narrows the selection to the
-	 * current terminal (measured: 2124 bytes, one process's environment).
+	 * `-A` selects the same set on both, and the environment comes with it:
+	 * `rc=0` with the environment present on macOS (one 762-815 KB snapshot,
+	 * depending on what the box is running) and on procps 4.0.2 (669 bytes in a
+	 * fresh container). The set is *the same set* rather than merely a working
+	 * one: on macOS the pid list from `-A` and from `-ax` compared equal, so the
+	 * holder rule above is neither widened nor narrowed by the change.
+	 *
+	 * `-e` is NOT a substitute, and its meaning is exactly the kind of thing
+	 * that differs by mode: in GNU procps' normal mode the man page gives `-e`
+	 * as an alias for `-A`, while measured here on BSD `ps` - where the first
+	 * `-` puts it in the compatibility mode - `ps eww -eo pid=,command=`
+	 * selected only the current terminal's processes (2124 bytes, one process's
+	 * environment). `-A` says "every process" in both modes and on both
+	 * platforms, which is the whole reason to spell it this way.
 	 */
 	const table = ps(["eww", "-A", "-o", "pid=,command="]);
 	if (table === null) return null;
