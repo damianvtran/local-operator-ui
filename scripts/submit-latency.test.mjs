@@ -237,18 +237,64 @@ function freePort() {
 }
 
 const started = [];
+
+/**
+ * Wait for a killed child to be REAPED, rather than guessing at how long that
+ * takes.
+ *
+ * `kill()` only delivers the signal. Returning before the process is gone is
+ * what left the config dir behind: the old teardown slept a flat 1000 ms and
+ * then removed the tree, so on a loaded box the `rm` succeeded while a runtime
+ * grandchild was still alive and immediately RE-CREATED `run/mobile` under it.
+ * Review caught that by the inode changing across the removal, and QA measured
+ * one leftover on 5/5 runs that engaged a runtime and 0/2 that did not - the
+ * signature of a surviving child, not of a failed unlink.
+ */
+function reaped(child) {
+	if (!child || child.exitCode !== null || child.signalCode !== null)
+		return Promise.resolve();
+	return new Promise((resolve) => {
+		// `close` rather than `exit`: it fires once the child is gone AND its
+		// stdio has been drained, which is the point after which nothing of the
+		// process tree can still be writing.
+		child.once("close", resolve);
+		// A child that will not die must not hang the suite; the sweep below
+		// still removes the tree, and a re-created dir is reported rather than
+		// silently left.
+		setTimeout(resolve, 5000);
+	});
+}
+
 after(async () => {
 	// `child` is null when the failure happened between creating the config dir
 	// and spawning into it; the dir still has to go.
 	for (const { child } of started) child?.kill("SIGKILL");
-	// The backend's runtime children are grandchildren of this process and keep
-	// writing into the config dir for a moment after the server dies, so an
-	// immediate rmdir races them and fails with ENOTEMPTY. The pause is not a
-	// fix for a leak - `force` already tolerates a missing tree - it just keeps
-	// teardown from reporting a failure that is nothing to do with the results.
-	await new Promise((resolve) => setTimeout(resolve, 1000));
+	await Promise.all(started.map(({ child }) => reaped(child)));
+	/*
+	 * The grandchildren are the runtime processes the backend spawned. They are
+	 * not ours to wait on individually - we never held their handles - but they
+	 * die with their parent's session, so a short settle AFTER the parent is
+	 * confirmed gone covers the window in which one could still write. This is a
+	 * bounded settle on a known-dead parent, not the old blind sleep.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 250));
 	for (const { root } of started)
 		await rm(root, { recursive: true, force: true, maxRetries: 5 });
+	/*
+	 * VERIFY, because the failure mode this exists for is a removal that
+	 * SUCCEEDS and is then undone. Anything still present is re-removed once and
+	 * reported - a silent leftover is how this survived two rounds of review.
+	 */
+	const survivors = [];
+	for (const { root } of started) {
+		if (!existsSync(root)) continue;
+		await rm(root, { recursive: true, force: true, maxRetries: 5 });
+		survivors.push(root);
+	}
+	if (survivors.length)
+		console.log(
+			`  NOTE: ${survivors.length} config dir(s) were re-created after removal and have been swept again: ${survivors.join(", ")}`,
+		);
 });
 
 /**
@@ -330,37 +376,74 @@ async function startBackend() {
  * here would reintroduce the very failure this exists to remove, just in the
  * shape of a skip instead of a red run.
  */
-const WARM_LANDING_TIMEOUT_MS = Number(
-	process.env.LOP_WARM_LANDING_TIMEOUT_MS ?? 20000,
-);
+const WARM_LANDING_TIMEOUT_MS = (() => {
+	const raw = process.env.LOP_WARM_LANDING_TIMEOUT_MS;
+	if (raw === undefined) return 20000;
+	const parsed = Number(raw);
+	/*
+	 * Validated rather than coerced, because every bad value fails in the
+	 * direction that LOOKS fine. `Number("")` is 0 and `Number("abc")` is NaN;
+	 * both make the deadline expire on the first check, so every round skips
+	 * and - before the UNVERIFIED rule above - the run exited 0 having measured
+	 * nothing. A typo in an env var must not be able to turn the gate off.
+	 */
+	if (!Number.isFinite(parsed) || parsed <= 0)
+		throw new Error(
+			`LOP_WARM_LANDING_TIMEOUT_MS must be a positive number of milliseconds, got ${JSON.stringify(raw)}`,
+		);
+	return parsed;
+})();
 
 /**
- * Poll the warm receipt until the engage has LANDED, or the deadline passes.
+ * Poll until the engage has LANDED, reading a NON-ENGAGING observable.
  *
- * Re-issuing `sessions.warm` is the read: the op is idempotent and reports the
- * session's current state, so this observes the precondition without a second
- * vocabulary for asking about it. It cannot itself start a competing engage -
- * a session already warming reports `warming`, and one already warm reports
- * `warm`.
+ * THE POLL MUST NOT BE ABLE TO WARM THE SESSION IT IS MEASURING. The previous
+ * version re-issued `sessions.warm` as its read, which made the harness repair
+ * the very thing under test: a broken warm that left the session cold was
+ * silently fixed by the poll, and review's decoy mutant - which scored 1.2x
+ * when the warm was sabotaged - came back at 5.5x and PASSED. A gate that
+ * performs the behaviour it is checking cannot fail.
+ *
+ * `sessions.get` is the shipped snapshot read the UI already makes. Its
+ * `payload.cold` is `self.remote is None or self.remote.is_cold` - a pure read
+ * of bridge state - and the route never calls `_ensure_bound`, so it cannot
+ * spawn a runtime. Verified against a real backend: five consecutive
+ * `sessions.get` calls on a cold session reported `cold = true` every time with
+ * the runtime process count unchanged, while a session with a subscription held
+ * flipped `cold: true -> false` in the same second its warm receipt went
+ * `warming -> warm`. So this observes the landing without causing it, and
+ * without inventing a product field for the harness's benefit.
  */
 async function waitForWarm(url, token, sessionId) {
 	const at = performance.now();
 	const deadline = Date.now() + WARM_LANDING_TIMEOUT_MS;
-	let state;
 	for (;;) {
-		const receipt = await requestDesktop(
-			{ op: "sessions.warm", sessionId },
+		const snapshot = await requestDesktop(
+			{ op: "sessions.get", sessionId },
 			url,
 			token,
 		);
-		state = receipt.body.result?.state;
-		if (state === "warm")
-			return { ok: true, state, waitedMs: Math.round(performance.now() - at) };
-		// Any state that is not "warming" is terminal for this round: the engage
-		// is not on its way, so waiting the full deadline would only slow the run
-		// down to reach the same skip.
-		if (state !== "warming" || Date.now() > deadline)
-			return { ok: false, state, waitedMs: Math.round(performance.now() - at) };
+		// A snapshot that will not answer is not evidence the warm failed, so it
+		// is reported as its own state rather than folded into "cold".
+		if (snapshot.status !== 200)
+			return {
+				ok: false,
+				state: `snapshot ${snapshot.status}`,
+				waitedMs: Math.round(performance.now() - at),
+			};
+		const cold = snapshot.body.result?.payload?.cold;
+		if (cold === false)
+			return {
+				ok: true,
+				state: "warm",
+				waitedMs: Math.round(performance.now() - at),
+			};
+		if (Date.now() > deadline)
+			return {
+				ok: false,
+				state: "cold",
+				waitedMs: Math.round(performance.now() - at),
+			};
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 }
@@ -682,26 +765,47 @@ test("M1/M2/M3: the warm removes the engage from the send, and the control prove
 	}
 
 	/*
-	 * EVERY round skipped means the precondition never held on this host, which
-	 * is a statement about the environment and not about the feature. Reported
-	 * like the route-absent case - visible reason, exit 0 - because a run that
-	 * could not test the hypothesis must not be able to refute it.
+	 * ZERO LANDED ROUNDS ON A BACKEND THAT HAS THE ROUTE IS A FAILURE, NOT A
+	 * SKIP.
+	 *
+	 * The distinction is what the run can conclude, and it is not the same
+	 * question in the two cases:
+	 *
+	 *   route ABSENT  - a compatibility state. The renderer gates on
+	 *                   session_catalogue >= 3 and no-ops cleanly, so there is
+	 *                   nothing to measure and nothing is wrong. Handled above:
+	 *                   skip, exit 0.
+	 *   route PRESENT - the feature is supposed to work here. If nothing landed
+	 *                   within the deadline, either the warm is broken or this
+	 *                   host cannot run it; both mean the gate has NO evidence,
+	 *                   and exiting 0 would let a green run stand in for a
+	 *                   feature that never engaged. That was the hole: the
+	 *                   harness claimed the ratio catches a cancelled warm while
+	 *                   a cancelled warm produced zero landed rounds and passed.
+	 *
+	 * So this fails, loudly and with the reason attached. A slow box does not
+	 * land here by accident - WARM_LANDING_TIMEOUT_MS is generous and per round,
+	 * so reaching this means every round exhausted it.
 	 */
 	if (warmed.length === 0) {
 		record(
 			"M1",
 			"send after warm (subscribed)",
-			"skipped",
+			"UNVERIFIED",
 			`warm never landed in ${WARM_LANDING_TIMEOUT_MS}ms (${skipped.length}/${ROUNDS} rounds)`,
 		);
 		console.log(
-			`  SKIPPED: the warm did not land on any of ${ROUNDS} rounds; states seen: ${JSON.stringify(settled)}`,
+			`  UNVERIFIED: the warm did not land on any of ${ROUNDS} rounds; states seen: ${JSON.stringify(settled)}`,
 		);
 		console.log(
-			"  This run measured nothing about M1 - it is not evidence the warm is broken.",
+			"  This run measured NOTHING about the feature: no round satisfied M1's precondition,",
 		);
-		t.skip(`warm never landed in ${WARM_LANDING_TIMEOUT_MS}ms`);
-		return;
+		console.log(
+			"  so neither the speedup nor its absence has been demonstrated here.",
+		);
+		assert.fail(
+			`UNVERIFIED: the warm route is present (session_catalogue ${version}) but no round reached a warm runtime within ${WARM_LANDING_TIMEOUT_MS}ms. This run measured nothing about the feature - it is not a pass.`,
+		);
 	}
 	if (skipped.length)
 		console.log(

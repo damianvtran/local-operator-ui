@@ -675,8 +675,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * until a panel mounts, and a discarded draft is the case where
 					 * one may never do - so this is the user's deletion being
 					 * honoured in memory, not just in the store.
+					 *
+					 * THE SESSION ID LIVES IN TWO PLACES DEPENDING ON HOW THE DRAFT
+					 * WAS MADE, and reading only one of them made this a no-op for
+					 * the commonest send. A draft staged from "New chat" is keyed
+					 * `draft:<uuid>` and LEARNS its session id mid-send, so the row
+					 * carries it. A send from an existing conversation is keyed
+					 * `send:<sessionId>` by `draftIdentityFor` and the id is passed
+					 * to `admitChatDraft` as an argument - it is never written to
+					 * the row, so `drafts[key].sessionId` is undefined there and the
+					 * abandoned echo survived with its text and attachments.
+					 *
+					 * Both shapes are read, row first: the row is authoritative when
+					 * present, and the key is the fallback that covers the send path.
 					 */
-					const abandoned = drafts[key]?.sessionId;
+					const abandoned =
+						drafts[key]?.sessionId ??
+						(key.startsWith("send:") ? key.slice("send:".length) : undefined);
 					if (abandoned) discardPendingEchoes(abandoned);
 					delete drafts[key];
 					/*
