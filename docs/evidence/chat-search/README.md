@@ -24,12 +24,14 @@ harness against the same seeded store.
 | Query `classifer` (a typo) | [`before-typo`](before-typo/localOperatorDark.webp) — **nothing at all**: an empty panel, no count, no explanation | [`after-typo`](after-typo/localOperatorDark.webp) — **1 row**: `Investigate throughput`, surfaced by the word `classifier` inside it and marked as such |
 | Query `kubernetes` (no match) | [`before-nomatch`](before-nomatch/localOperatorDark.webp) — an empty panel | [`after-nomatch`](after-nomatch/localOperatorDark.webp) — the same rows, plus `Nothing in your chats matches “kubernetes”.` |
 | A row carrying its own STATE (`· Not sent yet`) | not reachable without a failed first send | [`after-unstarted`](after-unstarted/localOperatorDark.webp) — `Watchlist dossiers · Not sent yet`; the binding is withheld to the tooltip, because a row draws ONE statement and the row's own state outranks it |
-| **A NESTED row at the DEFAULT width** (design round 5's D19 — the case this set was re-shot for) | not covered before this pass | [`after-nested-280`](after-nested-280/localOperatorDark.webp) (dark, [light](after-nested-280/localOperatorLight.webp)) — under `coder 3`, a nested row carrying `· Not sent yet` and another carrying `· in conversation`, both drawn whole at the default 280px |
-| **A 64-character binding** (review round 4's R21) | not covered before this pass | [`after-longbinding-280`](after-longbinding-280/localOperatorDark.webp) — `Ship the search endpoint · release-pod-ob…`: the slot truncates INSIDE its 45% cap and the row stays whole |
-| Either case at the narrowest width the sidebar drags to | not covered before this pass | [`after-longbinding-240`](after-longbinding-240/localOperatorDark.webp) — the same binding at the 240px clamp |
+| **A NESTED row at the DEFAULT width** (design round 5's D19 — the case this set was re-shot for) | not covered before this pass | [`after-nested-280`](after-nested-280/localOperatorDark.webp) (dark, [light](after-nested-280/localOperatorLight.webp)) — under `coder 3`, a nested row carrying `· Not sent yet` and another carrying `· in conversation`, both drawn whole at the default 280px. Both halves are a MATCHED pair: `2880x1746`, read at `1440x873@2`, each with its own report |
+| **The same at the narrowest width the sidebar drags to** | not covered before this pass | [`after-nested-240`](after-nested-240/localOperatorDark.webp) (dark, [light](after-nested-240/localOperatorLight.webp)) — the nested rows at the 240px clamp, both palettes, both with their readings |
+| **A 64-character binding** (review round 4's R21) | not covered before this pass | [`after-longbinding-280`](after-longbinding-280/localOperatorDark.webp) — `Ship the search endpoint · release-pod-ob…`: the slot truncates INSIDE its 45% cap and the row stays whole; the light half of this pair is still to come, see below |
+| The same binding at the narrowest width | not covered before this pass | [`after-longbinding-240`](after-longbinding-240/localOperatorDark.webp) — the same at the 240px clamp |
 | A query past the op's own bound (review round 7's R37) | not reachable: the box had no bound to break | [`after-overlimit`](after-overlimit/localOperatorDark.webp) — `Search terms are limited to 256 characters. This one is longer, so only chat names are being searched.`, with no `Retry` offered and no `Searching conversations…` under it |
-| Query `classifer` against a backend that cannot search conversations | the same empty panel | [`after-namesonly`](after-namesonly/localOperatorDark.webp) — **STALE FRAME, kept deliberately**: see "What this pass did not capture" |
-| A search route that fails while the rest of the backend answers | — | [`after-searchfail`](after-searchfail/localOperatorDark.webp) — **STALE FRAME**, same reason |
+| A count that is a FLOOR rather than a total | not reachable: the panel counted rows it already held | no frame of its own yet: the badge draws `100+` on a full page, and its accessible name is `At least 100 matching`. Until design round 6 (D23) it was `100+ or more matching`, which said "or more" twice; the glyphs are `aria-hidden` now and the sentence is spoken once, which alters no pixel and so needed no re-shoot |
+| Query `classifer` against a backend that cannot search conversations | the same empty panel | [`after-namesonly`](after-namesonly/localOperatorDark.webp) — **NOT a picture of the current tree**: a `cf0db490e` frame carrying a `server is offline` strip over a state whose whole point is that the backend answers. See the section below |
+| A search route that fails while the rest of the backend answers | — | [`after-searchfail`](after-searchfail/localOperatorDark.webp) — **NOT a picture of the current tree**, same reason |
 
 Read out of the live DOM in the same runs, not from the pixels — and from THIS
 run's head, so the dumps below are the rows as they draw now rather than as they
@@ -161,42 +163,47 @@ bare `·` and overflowed the container (design round 5, D19). The history lives 
 - **The phone's search and the TUI picker**, which share the same backend
   mechanic, are covered by that repository's tests rather than by these frames.
 
-## What this pass did not capture
+## What is missing, and what is stale
 
-The set was re-shot at `bed8de048` in one session, through the operator's own
-browser, and the browser bridge dropped repeatedly under this machine's load — so
-this pass is a large part of the set rather than all of it. What is missing is
-listed here rather than left to be discovered, because a set that quietly omits a
-state reads as a state that passed.
+This set was re-shot at `bed8de048` through the operator's own browser, over two
+windows, because the bridge drops repeatedly under this machine's load. What is in
+the set is the state table above. What is not, or is in it but stale, is here —
+named rather than left to be discovered, because a set that quietly omits a state
+reads as a state that passed.
 
-- **`after-nested-240` — the reading is in, the frame is not.** The boxes at 240px
-  are in the table above and they say what D19 needs said: at the narrowest width
-  the sidebar drags to, every statement is still drawn whole (76 and 93 client px,
-  nothing clipped), every title truncates rather than being starved, and no row
-  overflows. The screenshot did not land before the bridge stopped answering, so
-  there is no picture of it yet; it is the first frame of the next pass.
-- **A clipped answer** (a query with more matches than the op's page of 100), and its
-  `100+` / `At least 100 chats match this search; the list stops there` copy. Not
-  photographed. The store for it exists and was verified through the real route:
-  120 seeded sessions whose conversation mentions `invoices` and whose titles do not,
-  so `sessions.search?q=invoices` answers with exactly `limit` hits and the catalogue
-  route returns `truncated: true`. Vite was pointed at it for the shot and the bridge
-  dropped first. The decision itself is covered by `scripts/chat-search.test.mjs`
-  (`searchAnswerIsClipped`), which is not a picture.
-- **`after-namesonly` and `after-searchfail` are STALE, and they are kept only
-  because they are the only committed frames of those two states.** Both were taken
-  at `cf0db490e`, and in the run they came from the isolated backend had died — so
-  each carries the app's own `server is offline` strip across the top, a state this
-  README does not otherwise claim to be showing. Neither contains a session row
-  (both panels show the notice over an empty list), so they do not carry the row
-  layout that moved; what they are evidence of is the notice copy and nothing else.
-  The next pass re-shoots both, and they should be REPLACED rather than kept.
-- **The light palette for `after-longbinding-280`.** Its dark half is here; the light
-  half of that pair is the next pass's. `after-nested-280` has both.
+- **`after-namesonly` and `after-searchfail` are not pictures of this tree, and the
+  frames say so themselves.** Both are `cf0db490e` frames from the first pass, both
+  are `1184x1935` — a portrait window (592x967 CSS, sidebar about 330px, nav rail
+  about 260px) — and in the run they came from the isolated backend had DIED, so
+  each carries the app's own `server is offline` strip across the top, over a state
+  whose whole point is that the backend answers while one route fails. They are the
+  last frames in this set from the older run. Neither contains a session row (both
+  panels show the notice over an empty list), so they do not carry the row layout
+  that moved; what they are evidence of is the NOTICE COPY, and that alone.
+  **Replacing them is an open follow-up**, not an omission: two windows against the
+  two degrade proxies (`:7344` names-only, `:7346` search-failed) is the whole job.
+- **The clipped-answer frame is still missing.** The state itself is verified two
+  other ways — the op's own answer on the second store returns exactly `limit` hits
+  with the catalogue route reporting `truncated: true`, and `searchAnswerIsClipped`
+  is exercised over its inputs in `scripts/chat-search.test.mjs` — and design round
+  6 drove it and read the DOM. What does not exist is a committed picture. Two
+  attempts this pass caught the panel mid-load (`Loading agents…`, no rows yet),
+  which is not a picture of the state, so neither was committed.
+- **The light half of `after-longbinding-280`.** The dark half is here and a light
+  reading with identical numbers exists; the light frame is the outstanding half of
+  that pair.
+- **`after-nested-240` is no longer missing.** Design round 6 accepted it as a
+  recorded gap with the boxes read; both palettes are in this set now, `2880x1746`,
+  `1440x873@2`, each with its own report.
 
-None of this is a disagreement about the code. The two states the last three design
-rounds were actually about — a nested row at the default width, and a binding that is
-a 64-character name — are both in this set now, with their boxes.
+The nested-280 pair was a MISMATCH when design round 6 read it — the light half at
+`817` CSS against the dark half's `873`, with no reading behind it (D21) — and that
+is what the re-shoot fixed: both halves were taken in one session at the same
+viewport, and every number in the table above is a reading from one of the two
+runs. The last pass's frames are `2880x1634` (817 CSS) and this pass's are
+`2880x1746` (873 CSS), because the window the capture ran in changed height between
+the two sessions; a pair is matched within itself, which is the property the pairs
+are read for.
 
 ## Re-capturing this set
 
