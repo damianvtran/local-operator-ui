@@ -1,0 +1,36 @@
+<!doctype html>
+<!--
+  Evidence harness: the REAL chat surface on the REAL submit path, in a browser.
+
+  What this exists to photograph: pressing Enter used to leave the user's text
+  sitting in the composer for ~1.15s with nothing on screen, because the cold
+  runtime engage was taken inline inside the message request. The fix is a
+  frame-level claim -- the text moves from box to transcript in one frame -- and
+  a frame-level claim needs a rendered frame.
+
+  It cannot be photographed against a mock. The whole point is the round trip,
+  so this harness mounts the SHIPPED `ChatPage` and lets it drive the SHIPPED
+  `desktopRequest` over a real same-origin `/__desktop` POST, through the dev
+  desktop proxy, to a real `local-operator serve`, with a real SSE stream coming
+  back. Nothing on the submit path is stubbed.
+
+  Why a browser at all: the app's own `electron-vite dev --rendererOnly` crashes
+  in a plain browser because the preload never runs and `app.tsx` reaches for
+  `window.electron.ipcRenderer` unguarded at mount. That is pre-existing and
+  blocks browser evidence for every PR in this repo, so this harness mounts
+  `ChatPage` under its own minimal shell instead of booting `app.tsx`.
+
+  NOT the packaged app and NOT Electron's window: there is no main process here
+  and no IPC hop. See docs/evidence/submit-latency/README.md for exactly what
+  these frames do and do not prove.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Submit latency — real chat surface</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./submit-latency-evidence.tsx"></script>
+	</body>
+</html>

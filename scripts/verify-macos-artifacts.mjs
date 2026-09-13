@@ -104,6 +104,121 @@ export function artifactChecks({ appPath, dmgPath }) {
 	return checks;
 }
 
+/** The directory names the two bundled interpreters occupy, in app resources. */
+const BUNDLED_PYTHON_TREES = ["python", "python_aarch64"];
+
+/**
+ * The bundled-interpreter trees a packaged app actually carries.
+ *
+ * `extraResources` lists both names for every build, and the app resolves only
+ * the one its architecture runs (`backend-installer.ts` `findPython`), so a
+ * bundle with two trees carries an interpreter the machine cannot execute - half
+ * the interpreter's weight again, in every download and every update. `afterPack`
+ * (`scripts/prune-python-resource.mjs`) is what removes the other one, and this
+ * is the check that the removal happened: the failure mode is a silent 47 MB,
+ * because a bundle carrying both trees still runs perfectly.
+ */
+export function bundledPythonTrees(appPath, { listDir = readdirSync } = {}) {
+	const resources = join(appPath, "Contents", "Resources");
+	if (!existsSync(resources)) return [];
+	let entries = [];
+	try {
+		entries = listDir(resources);
+	} catch {
+		return [];
+	}
+	return entries.filter((name) => BUNDLED_PYTHON_TREES.includes(name));
+}
+
+const LIPO = "/usr/bin/lipo";
+
+/**
+ * The interpreter directory each architecture resolves, from
+ * `backend-installer.ts` `findPython`. A directory *absent* from this map is a
+ * failure rather than a default: with a fallback the check would demand `python`
+ * of an architecture nobody has mapped, and a third architecture is exactly the
+ * case where the answer should be someone looking at this file rather than a
+ * guess that happens to pass.
+ */
+const INTERPRETER_BY_ARCH = { arm64: "python_aarch64", x86_64: "python" };
+
+/**
+ * The architecture a packaged app runs as, read from the bundle itself.
+ *
+ * `lipo -archs` on the framework binary rather than on the launcher: the path is
+ * fixed in every Electron bundle (`Contents/MacOS/<product>` needs the
+ * `CFBundleExecutable` name first), and the answer is the same. Both are thin in
+ * a per-architecture app; a fat answer means the bundle is not one, which the
+ * caller reports rather than rounding to a nearby architecture.
+ */
+export function bundleArchitectures(appPath, { run = spawnRunner } = {}) {
+	const binary = join(
+		appPath,
+		"Contents",
+		"Frameworks",
+		"Electron Framework.framework",
+		"Versions",
+		"A",
+		"Electron Framework",
+	);
+	if (!existsSync(binary)) {
+		return { archs: [], error: `no framework binary at ${binary}` };
+	}
+	const result = run(LIPO, ["-archs", binary]);
+	const archs = `${result.stdout}`.trim().split(/\s+/).filter(Boolean);
+	if (result.status !== 0 || archs.length === 0) {
+		return { archs: [], error: `lipo could not read ${binary}` };
+	}
+	return { archs };
+}
+
+/**
+ * A failure entry in the same shape as the other checks.
+ *
+ * Both halves are asserted for a reason: "exactly one tree" without "the right
+ * tree" passes for an arm64 bundle that pruned the aarch64 interpreter and kept
+ * the x86_64 one, which is a bundle that cannot start its backend at all. The
+ * expected directory name is the one `backend-installer.ts` probes for the
+ * architecture the bundle actually is.
+ */
+export function bundledPythonCheck(appPath, options = {}) {
+	const trees = bundledPythonTrees(appPath, options);
+	const { archs, error } = bundleArchitectures(appPath, options);
+	const describe = (trees.length === 0 ? ["none"] : trees)
+		.map((name) => `Contents/Resources/${name}`)
+		.join(", ");
+	const fail = (output) => ({
+		id: "app-one-bundled-python",
+		scope: "app",
+		target: appPath,
+		description: "the bundled python interpreter tree this architecture needs",
+		passed: false,
+		output,
+	});
+	if (error != null) return fail(`${error}; cannot tell which interpreter this app needs`);
+	if (archs.length !== 1)
+		return fail(
+			`the app is ${archs.join(" + ")} (not a single architecture); a fat bundle needs both interpreters, and mac.target builds one per architecture`,
+		);
+	if (!Object.hasOwn(INTERPRETER_BY_ARCH, archs[0]))
+		return fail(
+			`the app is ${archs[0]}, which no bundled interpreter matches; mac.target builds arm64 and x64`,
+		);
+	const expected = INTERPRETER_BY_ARCH[archs[0]];
+	if (trees.length !== 1 || trees[0] !== expected)
+		return fail(
+			`the ${archs[0]} app ships ${describe}, but it resolves Contents/Resources/${expected}`,
+		);
+	return {
+		id: "app-one-bundled-python",
+		scope: "app",
+		target: appPath,
+		description: "the bundled python interpreter tree this architecture needs",
+		passed: true,
+		output: `${archs[0]} app ships only Contents/Resources/${expected}`,
+	};
+}
+
 /**
  * Bytecode the bundled interpreters must not ship, as a check of its own.
  *
@@ -128,7 +243,7 @@ export function findBundledBytecode(
 	{ walk = defaultWalk } = {},
 ) {
 	const found = [];
-	for (const name of ["python", "python_aarch64"]) {
+	for (const name of BUNDLED_PYTHON_TREES) {
 		const root = join(appPath, "Contents", "Resources", name);
 		if (!existsSync(root)) continue;
 		for (const relative of walk(root)) {
@@ -200,10 +315,10 @@ export function summarize(results) {
 /**
  * Everything under `dist` the gate is responsible for.
  *
- * Why a plural discovery rather than "the first match": `package.json` builds
- * one `universal` dmg today, so asserting only the first image was complete by
- * accident rather than by construction - `mac.target` already lists a dmg and a
- * zip, and a per-architecture matrix would leave images unaudited (review R9).
+ * Why a plural discovery rather than "the first match": `mac.target` builds a
+ * dmg and a zip for each architecture, so asserting only the first image was
+ * complete by accident rather than by construction, and a malformed bundle or
+ * image for a second architecture would have shipped unaudited (review R9).
  *
  * Each entry is inspected inside a try/catch: a broken symlink where an image
  * should be is a failing check with a reason, not an exception out of discovery.
@@ -314,9 +429,11 @@ export function verifyArtifacts({
 		}
 		log(`Checking app: ${appPath}`);
 		results.push(...runChecks({ appPath, dmgPath: null, run }));
-		// Not a `codesign` question: this one is about what the build assembled,
-		// and it fails with the offending paths so the fix is obvious.
+		// Neither of the next two is a `codesign` question: both are about what the
+		// build assembled, and they fail with the offending paths so the fix is
+		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
+		results.push(bundledPythonCheck(appPath, { run }));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -346,6 +463,14 @@ export function verifyArtifacts({
 		if (bytecode) {
 			log(
 				`The app ships the bundled interpreter's stale bytecode: ${bytecode.output}. Run scripts/setup-python-resource.sh, or delete the __pycache__ directories under Contents/Resources/python[_aarch64], before building.`,
+			);
+		}
+		const interpreters = failures.find(
+			(result) => result.id === "app-one-bundled-python",
+		);
+		if (interpreters) {
+			log(
+				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
 			);
 		}
 	}

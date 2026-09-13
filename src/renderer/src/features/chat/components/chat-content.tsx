@@ -6,6 +6,7 @@ import type {
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -96,12 +97,21 @@ type ChatContentProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
-	) => undefined | boolean | Promise<undefined | boolean>;
+		/** See `MessageInputProps.onSendMessage` - the echo seam's paint callback. */
+		onEchoPainted?: () => void,
+	) => SendOutcome | Promise<SendOutcome>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
 	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
+	/**
+	 * The user has begun composing. Forwarded verbatim to the composer, which
+	 * calls it on the textarea's own onChange; the POLICY of what that triggers
+	 * (at most one speculative runtime warm per session) lives in
+	 * `useWarmSession`, not here.
+	 */
+	onComposerInput?: () => void;
 	/** Working directory for this conversation, shown on the composer's chip. */
 	cwd?: string;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
@@ -187,6 +197,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onSendMessage,
 		currentJobId,
 		onCancelJob,
+		onComposerInput,
 		agentData,
 		refetch,
 		messageInputRef,
@@ -420,6 +431,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
+								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								isLoading={canonical ? Boolean(canonical.admitting) : isLoading}
 								conversationId={agentId}
