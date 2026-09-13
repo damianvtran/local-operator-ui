@@ -12,6 +12,7 @@ import { contextReading, contextTooltipLines } from "./session-context";
 import { costTooltip, sessionCost } from "./session-cost";
 import {
 	DURATION_EXPLANATION,
+	DURATION_LABEL_EXPLANATION,
 	durationReading,
 	formatDuration,
 } from "./session-duration";
@@ -801,7 +802,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 */}
 			{duration && (
 				<Reading
-					label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_EXPLANATION}`}
+					label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_LABEL_EXPLANATION}`}
 					tooltip={
 						<TooltipLines
 							lines={[formatDuration(activeSeconds), DURATION_EXPLANATION]}

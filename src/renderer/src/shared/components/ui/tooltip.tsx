@@ -88,6 +88,14 @@ export const TooltipContent = forwardRef<
 >(({ className, sideOffset = 6, ...props }, ref) => (
 	<TooltipPrimitive.Content
 		ref={ref}
+		// The hook `styles/index.css` uses to disable the POSITIONER Radix wraps
+		// this in. The panel's own `pointer-events-none` below is not enough: the
+		// wrapper has the same box and takes the pointer itself, which is what
+		// made the composer's readings unclickable under a tooltip (QA round 2,
+		// Q1). An attribute rather than a class because the rule must match the
+		// wrapper's CHILD, and a utility class on this element would still leave
+		// the selector needing something stable to look for.
+		data-lo-tooltip-panel=""
 		sideOffset={sideOffset}
 		className={cn(
 			"z-50 max-w-64 rounded-sm border border-hairline bg-elevated px-2 py-1",
