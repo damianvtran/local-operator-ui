@@ -119,6 +119,28 @@ const PATH_KEYS = new Set([
 const SHELL_METACHARACTERS = /[$*?{}<>]/;
 
 /**
+ * A `?`'s tail, when that tail reads as a query rather than as the rest of a
+ * filename.
+ *
+ * `new URL` cannot tell a glob from a query — both are `search` to it — and both
+ * spellings really arrive: `file:///tmp/agent-out/a?.log` is a glob whose match
+ * is a URL only because `?` happens to be a legal query delimiter, while
+ * `file:///…/popup.html?state=pending&pin=86` is a real cache-busted local file
+ * the operator's transcripts name. The distinguishing property is the query's
+ * SHAPE: a `key=value` parameter list, `&`-joined. That is what the store
+ * contains (all 29 `?`-carrying `file://` tokens in 1,903 stored sessions are
+ * either this shape or a V8 stack frame's `:line:col` tail), and every glob tail
+ * is a filename fragment instead (`.log`).
+ *
+ * A flag with no `=` (`?debug`), and a `?` with nothing after it at all, are
+ * therefore rejected along with the globs. That is the fail-safe direction this
+ * module trades in throughout: a missing tile, never a tile for a path no file
+ * has. (A bare trailing `?` is also how a sentence asks about a URL, and the
+ * module already declines that spelling rather than guessing.)
+ */
+const URL_QUERY = /^[^&#]+=[^&#]*(?:&[^&#]+=[^&#]*)*$/;
+
+/**
  * An editor line reference: `/a/run.mjs:59` and `/a/run.mjs:59:12`.
  *
  * Only the file-url tier needs the trim. Prose already rejects such a token
@@ -156,16 +178,18 @@ const URL_TRUNCATION = new Set(["*", "}", ">"]);
  * `localhost` is allowed because the app writes both spellings (`file:///…` and
  * `file://localhost/…`). The character class stops at whitespace and at the
  * punctuation that usually terminates a URL in a sentence — a JSON string's
- * `"`, a markdown link's `]`, a bullet's `*`, an inline-code backtick.
+ * `"`, a bullet's `*`, an inline-code backtick.
  *
- * `(`, `)`, `{` and `<` ARE allowed, and that is the difference between a rule
- * and a guess. macOS names screenshots `Screenshot … (1).png`, so excluding `(`
- * recorded a truncated `/Users/x/Downloads/screen(1` for a file that plainly
- * exists; and a placeholder like `file:///tmp/out/<name>.` must be captured
- * whole so the metacharacter rule above can REJECT it, rather than being cut
- * short into a tile for the directory that happens to precede it. A
- * sentence-final `)` is trimmed by `TRAILING_PUNCTUATION` below, which is what
- * makes admitting `)` safe.
+ * `(`, `)`, `[`, `]`, `{` and `<` ARE allowed, and that is the difference
+ * between a rule and a guess. macOS names screenshots
+ * `Screenshot … (1).png`, so excluding `(` recorded a truncated
+ * `/Users/x/Downloads/screen(1` for a file that plainly exists; `a[1].pdf` is
+ * the same real-transcript case through the square bracket, and excluding `]`
+ * recorded `/tmp/x/a[1` (round 4, Q3-2). A placeholder like
+ * `file:///tmp/out/<name>.` must be captured whole so the metacharacter rule
+ * can REJECT it, rather than being cut short into a tile for the directory that
+ * happens to precede it — and a bracket that CLOSES a sentence is trimmed by
+ * `TRAILING_PUNCTUATION` below, which is what makes admitting it safe.
  *
  * The whole match is used, not a capture group: the path is parsed out of the
  * URL with `new URL` (`normalizeFileUrl`), which is the only way to tell a
@@ -174,8 +198,11 @@ const URL_TRUNCATION = new Set(["*", "}", ">"]);
  * The class still stops at `*`, `}` and `>`, and that stopping is a TRUNCATION
  * the class cannot see on its own — `scanFileUrls` reads the character after the
  * match for it (`URL_TRUNCATION`).
+ *
+ * `?` is NOT excluded, and cannot be: it is the URL's own query delimiter, so
+ * the parser below is where a glob has to be told from a query (`URL_QUERY`).
  */
-const FILE_URL = /file:\/\/(?:localhost)?\/[^\s"'`>*,;}\]]+/g;
+const FILE_URL = /file:\/\/(?:localhost)?\/[^\s"'`>*,;}]+/g;
 
 /**
  * A bare absolute or `~`-relative path token.
@@ -293,17 +320,27 @@ function normalizeFileUrl(raw: string): string | null {
 	 * ends and what the path is — and percent-decodes the result, so a URL that
 	 * reached the transcript as `My%20Docs` names the file on disk.
 	 *
-	 * The metacharacter rule runs on the RAW match FIRST, because parsing is
-	 * lossy in exactly the direction that matters: `new URL` reads `?` as the
-	 * start of a query, so `file:///tmp/agent-out/a?.log` parses to the pathname
-	 * `/tmp/agent-out/a` — the glob is gone by the time the candidate exists, and
-	 * the rule below has nothing left to reject. That produced the same
-	 * truncated-path missing tile the rule was written to remove (`a*.log`
-	 * arrives through the scanner's own truncation, this one through the URL
-	 * parser's), so the check is on the text as written, before anything parses
-	 * it (round 2, Q2-1).
+	 * The metacharacter rule runs on the PARSED PATHNAME, not on the raw text.
+	 * Where a metacharacter survives parsing (`a*.log`, `qa-res-$PID.pdf`) the
+	 * pathname is the thing that carries it, and that is where the rule looks.
+	 * Where it does not survive — `?` — the parser has turned a glob into a
+	 * query, and the query's SHAPE is what tells the two apart (`URL_QUERY`):
+	 * `a?.log` is rejected because `.log` is not a query, and
+	 * `popup.html?state=pending&pin=86` keeps its path because it is one. The
+	 * check reads the RAW text (up to any `#`, since a fragment is not a path
+	 * either and may itself contain a `?`) rather than `parsed.search`, because
+	 * `new URL` reports an empty query as no query at all — `file:///a.pdf?`
+	 * would slip through as `/a.pdf`.
+	 *
+	 * Running the rule on the raw match instead (round 2, Q2-1 to round 4) closed
+	 * the glob hole by rejecting every `?`, which also threw away that real,
+	 * cache-busted local file — the module's own asymmetry, since a missed
+	 * mention is the bug this change exists to fix (round 4, R4-3).
 	 */
-	if (SHELL_METACHARACTERS.test(raw)) return null;
+	const rawPath = raw.split("#", 1)[0] ?? raw;
+	const queryAt = rawPath.indexOf("?");
+	if (queryAt !== -1 && !URL_QUERY.test(rawPath.slice(queryAt + 1)))
+		return null;
 	let candidate: string;
 	try {
 		const parsed = new URL(raw);

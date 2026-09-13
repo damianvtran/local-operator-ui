@@ -703,6 +703,36 @@ export function partialFrameCount(previous, added) {
 	return (previous.frames ?? 0) + added.length;
 }
 
+/**
+ * The `added*` half of `partialCapture`, which describes the last pass that ADDED
+ * frames rather than the one currently running.
+ *
+ * The distinction is not cosmetic. `addedAt`/`addedAtHead` answer "which commit
+ * do I fetch to see the frames this story was added by", so a pass that added
+ * none must leave them alone - and the writer used to stamp its OWN head there
+ * unconditionally, which is how they rotted: the citation then named a commit
+ * that had added nothing, and the next force-push orphaned that sha while
+ * `check-evidence.mjs` reported the manifest clean because it did not read the
+ * field at all (round 4, R4-1). The field is now checked for reachability, so
+ * the remaining job is to stop lying about WHICH pass it names.
+ *
+ * Exported for the same reason as `partialFrameCount`: so
+ * `scripts/evidence-manifest.test.mjs` binds this decision instead of
+ * reimplementing it. Returning an empty object on a zero-add pass is what makes
+ * the caller's `...previous.partialCapture` spread carry the earlier values
+ * forward untouched.
+ */
+export function partialAddedFields(
+	addedFrameCount,
+	addedSurfaces,
+	head,
+	at = new Date().toISOString(),
+) {
+	return addedFrameCount > 0
+		? { addedFrames: addedFrameCount, addedSurfaces, addedAt: at, addedAtHead: head }
+		: {};
+}
+
 const main = async () => {
 	sweepStaleProfiles();
 	if (!ALLOW_BACKEND) await assertBackendDown();
@@ -1353,6 +1383,28 @@ const main = async () => {
 						const priorSurfaces = sameHead
 							? (previous.partialCapture?.addedSurfaces ?? [])
 							: [];
+						/*
+						 * The counts are the ROUND's; the citation is this pass's only if it
+						 * added something. `partialAddedFields` is the rule for the second (round
+						 * 4, R4-1): it returns `{}` on a zero-add pass, so the earlier citation
+						 * survives the `...previous.partialCapture` spread untouched instead of
+						 * being repointed at a commit that had added nothing. Only its two citation
+						 * fields are taken - the counts are `totals` below, which accumulate across
+						 * this pass's commits. The verdict keys on `addedFrames.length`, THIS run's
+						 * additions: keying it on the accumulated total would let a later commit of
+						 * the same pass re-stamp the citation for an earlier commit's frames.
+						 */
+						const totals = {
+							addedFrames:
+								(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
+								addedFrames.length,
+							addedSurfaces: [...new Set([...priorSurfaces, ...addedSurfaces])],
+						};
+						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						const citationFields =
+							added.addedFrames === undefined
+								? {}
+								: { addedAt: added.addedAt, addedAtHead: added.addedAtHead };
 						return {
 							/*
 							 * Where the pass STARTED, so the gate can measure the whole
@@ -1372,14 +1424,10 @@ const main = async () => {
 								...new Set([...priorStories, ...stories.map(([id]) => id)]),
 							],
 							refreshedThemes: [...new Set([...priorThemes, ...themes])],
-							addedFrames:
-								(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-								addedFrames.length,
-							addedSurfaces: [...new Set([...priorSurfaces, ...addedSurfaces])],
+							...totals,
+							...citationFields,
 						};
 					})(),
-					addedAt: new Date().toISOString(),
-					addedAtHead: head,
 				},
 			}
 		: {

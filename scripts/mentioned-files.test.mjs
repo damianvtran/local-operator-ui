@@ -466,6 +466,89 @@ test("17. order is first mention, and a re-scan never re-sorts", () => {
 	);
 });
 
+test("a square bracket in a file:// name survives, and a sentence's closing one does not", () => {
+	// QA round 3, Q3-2. The class stopped at `]` for the same reason it stopped
+	// at `(` — a markdown link's closing bracket — so a real transcript's
+	// `a[1].pdf` was recorded as `/tmp/x/a[1`, a path no file has, arriving
+	// through the OPPOSITE bracket of the case above and reaching the grid as a
+	// permanent `No longer on disk` tile.
+	assert.deepEqual(
+		paths([assistant(1, "wrote file:///tmp/x/a[1].pdf")]),
+		["/tmp/x/a[1].pdf"],
+	);
+	assert.deepEqual(
+		paths([assistant(1, "wrote file:///tmp/x/report(1)[2].png")]),
+		["/tmp/x/report(1)[2].png"],
+		"both bracket pairs name one file",
+	);
+	// The bracket a SENTENCE closes with is still trimmed, which is what makes
+	// admitting them safe — for the square bracket exactly as for the round one.
+	assert.deepEqual(
+		paths([assistant(1, "see [the doc](file:///tmp/x/a[1].pdf)")]),
+		["/tmp/x/a[1].pdf"],
+	);
+	assert.deepEqual(
+		paths([assistant(1, "in [file:///tmp/x/a.pdf]")]),
+		["/tmp/x/a.pdf"],
+	);
+	// The prose tier keeps its own rule — it stops at both brackets — and that
+	// stays SAFE rather than silently wrong: the truncated token has no known
+	// extension, so nothing is admitted at all. The URL tier is the one that
+	// cannot fall back on an extension test (a `file://` URL is admitted on the
+	// URL alone), which is why the fix belongs there.
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/x/a[1].pdf")]), []);
+	assert.deepEqual(paths([assistant(1, "wrote /tmp/a[1].md")]), []);
+});
+
+test("a `?` in a file:// URL is a query only when it reads as one", () => {
+	// Round 4, R4-3 / QA round 3, Q3-1. Round 3 moved the metacharacter rule
+	// onto the RAW match, which closed the glob hole and took every legitimate
+	// query with it: `?` is the URL's own query delimiter, and the real
+	// cache-busted local file below — taken from one of the operator's own
+	// transcripts, and a file that exists on disk — resolved to nothing where the
+	// round-2 head resolved it correctly. The rule is now the query's SHAPE: a
+	// `key=value` parameter list is a query, anything else is the tail of a
+	// filename, i.e. this scanner's own truncation.
+	assert.deepEqual(
+		paths([
+			assistant(
+				1,
+				"the popup it rendered is at file:///tmp/lo-design-r3/popup-render/popup.html?state=pending&pin=86",
+			),
+		]),
+		["/tmp/lo-design-r3/popup-render/popup.html"],
+		"the cache-busted file the audit found must keep its path",
+	);
+	assert.deepEqual(paths([assistant(1, "open file:///tmp/a.html?v=2")]), [
+		"/tmp/a.html",
+	]);
+	assert.deepEqual(
+		paths([assistant(1, "wrote file:///tmp/a.pdf?x=1&y=2")]),
+		["/tmp/a.pdf"],
+	);
+	// A fragment is not a path either, and may carry a `?` of its own.
+	for (const text of [
+		"file:///tmp/a.pdf#toolbar=0",
+		"file:///tmp/a.pdf?x=1#frag",
+		"file:///tmp/a.pdf#x?y",
+	])
+		assert.deepEqual(paths([assistant(1, `wrote ${text}`)]), ["/tmp/a.pdf"], text);
+	// The QUERY is not a path and its content is not a reason to reject one.
+	assert.deepEqual(paths([assistant(1, "file:///tmp/a.pdf?x=*")]), [
+		"/tmp/a.pdf",
+	]);
+	// The glob case stays rejected: `.log` is a filename tail, not a query.
+	assert.deepEqual(
+		paths([assistant(1, "wrote file:///tmp/agent-out/run?.log")]),
+		[],
+		"a `?` the parser would hide must not become `/tmp/agent-out/run`",
+	);
+	// A `?` with no query behind it is not a query either — the fail-safe
+	// direction this module trades in (a missing tile, never a wrong one).
+	for (const text of ["file:///tmp/a.pdf?", "file:///tmp/a.pdf?x", "file:///tmp/a.pdf?}"])
+		assert.deepEqual(paths([assistant(1, `wrote ${text}`)]), [], text);
+});
+
 test("a path named in prose and again in a read call keeps its first mention", () => {
 	// First mention wins the source label, and the record list's order is what
 	// "first" means: the label is evidence about how the file entered the panel,
