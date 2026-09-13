@@ -1130,6 +1130,71 @@ export function reconcileLaunchTurns(
 }
 
 /**
+ * Whether the transcript already carries the brief, so the reader does not say it
+ * twice.
+ *
+ * It usually does. `launch_prompts` holds the CONCISE authored prompt, the same
+ * string `row.brief` is read from (`§5.1`), and `reconcileLaunchTurns` rewrites the
+ * durable launch row with it — so in the ordinary case the instruction is already
+ * on screen, in its own chronological place, as a normal user turn. Rendering the
+ * brief block above it put the same sentence in the pane twice, 12px mono and
+ * 14px prose apart (`reader-resumed`), which is the sort of near-duplication that
+ * reads as a rendering fault rather than as emphasis.
+ *
+ * The brief block is therefore the FALLBACK: it renders when the transcript does
+ * not already say it — a child whose record predates `launch_message_id` and
+ * matched no launch row, exactly the case `reconcileLaunchTurns` documents.
+ * Comparing the RECONCILED list (not the raw one) is what makes this agree with
+ * what is painted; comparing the brief against the raw rows would keep the block
+ * for a preamble the reader never renders.
+ *
+ * Whitespace-insensitive comparison, because a trailing newline in a stored
+ * prompt is not a difference a reader can see — and NOT plain equality, because
+ * the wire ABBREVIATES `launch_prompts`. Measured: the live pairing behind
+ * `docs/evidence/chat-run-panel-live/README.md` delivered a 201-character entry
+ * ending `…` where the row's own `prompt` carries all 264, so the reconciled
+ * launch row is a TRUNCATED copy of the brief and equality failed on two strings
+ * that say the same thing — the duplication this rule exists to prevent, back
+ * through the one path it did not cover. A record whose whole text is a prefix
+ * of the brief is that same instruction.
+ */
+export function briefIsInTranscript(
+	records: readonly TranscriptRecord[],
+	brief: string | null,
+): boolean {
+	const wanted = normalizeBrief(brief);
+	if (!wanted) return false;
+	return records.some((record) => {
+		// Only a USER turn can be the launch: an assistant quoting the
+		// instruction back at itself is not the instruction.
+		if (record.kind !== "user") return false;
+		const painted = normalizeBrief(record.text);
+		if (!painted) return false;
+		if (painted === wanted) return true;
+		const head = painted.replace(BRIEF_TRAILING_ELLIPSIS, "").trim();
+		// A short prefix is a coincidence (`Run`, `Check the`), not a copy of the
+		// same instruction: the floor is what stops a two-word record from
+		// silencing a paragraph the reader still needs.
+		return head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head);
+	});
+}
+
+/*
+ * Top-level literals, not inline ones: the project's linter asks for it, and the
+ * reason is real rather than stylistic — a regex constructed per call in a
+ * function the roster calls per row is a per-row allocation for a constant.
+ */
+const BRIEF_WHITESPACE = /\s+/g;
+const BRIEF_TRAILING_ELLIPSIS = /…+$/;
+
+/** Whitespace-insensitive: two copies of one instruction may wrap differently. */
+const normalizeBrief = (text: string | null): string =>
+	(text ?? "").replace(BRIEF_WHITESPACE, " ").trim();
+
+/** Shortest prefix that counts as the same instruction (see the rule above). */
+const BRIEF_PREFIX_FLOOR = 32;
+
+/**
  * How many lines of the brief are shown before the expander offers the rest.
  *
  * A handful rather than a fixed height: the block is the child's authored
@@ -1432,6 +1497,65 @@ const shedSegments = (segments: string[], maxChars?: number): string => {
 };
 
 /**
+ * The header's own paddings (`px-3`) plus the 8px gap between the label and the
+ * tally: the fixed steal every tally pays before its own text. */
+const TALLY_CHROME_PX = 12 + 8 + 12;
+
+/**
+ * `Subagents` at `text-meta` — the WIDER of the two section labels (`To-dos` is
+ * the other), so one budget fits both sections.
+ */
+const TALLY_LABEL_PX = 66;
+
+/**
+ * The advance of one `text-meta` character in the average tally string.
+ *
+ * Measured, not chosen: the committed `chat-run-panel/narrow-800` frame draws
+ * `2 running · 1 queued · 1 failed · 1 interr…` across x562-784, i.e. 222px for
+ * 43 characters = 5.16px. Rounded UP to 6px so the budget errs short — an
+ * under-budget sheds one whole segment earlier, while an over-budget is the
+ * mid-word ellipsis this exists to prevent.
+ */
+const TALLY_CHAR_PX = 6;
+
+/**
+ * The pane's default width, mirrored from `ui-preferences-store`'s
+ * `DEFAULT_RUN_PANEL_WIDTH`.
+ *
+ * Duplicated rather than imported, and this is the only place the duplication is
+ * acceptable: importing the store here would drag zustand into a module that is
+ * otherwise pure arithmetic — the module the model test bundles and runs without
+ * a DOM — to obtain one number the CALLER always has. The real width is passed in
+ * by the pane (`chat-content.tsx`), so this is only the fallback for a width that
+ * is not a usable number at all.
+ */
+const FALLBACK_PANE_PX = 420;
+
+/**
+ * How many characters a section's trailing tally may occupy, from the PANE's own
+ * width.
+ *
+ * The pane is resizable (320/420/640, `§ 8`), so a budget pinned to the default
+ * was wrong at the pane's own floor: `subagentTally`'s 48 characters fit 420px
+ * and burst 320px, where the CSS `truncate` then cut the value mid-word
+ * (`… 1 interr…`) — the failure clause shedding exists to prevent, arriving
+ * through the one path shedding does not cover.
+ *
+ * A width that is not a finite positive number falls back to the design's
+ * default rather than propagating: `Math.max(1, NaN)` is `NaN`, and a `NaN`
+ * budget makes the shedding comparison false for every segment — i.e. it would
+ * silently degrade to "shed nothing", which is the clipping failure again.
+ */
+export const tallyBudget = (paneWidth: number): number => {
+	const width =
+		Number.isFinite(paneWidth) && paneWidth > 0 ? paneWidth : FALLBACK_PANE_PX;
+	return Math.max(
+		1,
+		Math.floor((width - TALLY_CHROME_PX - TALLY_LABEL_PX) / TALLY_CHAR_PX),
+	);
+};
+
+/**
  * The subagents section's trailing tally: `2 running · 1 done`.
  *
  * Order is the eviction ladder read left to right — the states that need
@@ -1471,22 +1595,26 @@ export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
 }
 
 /**
- * The to-dos section's trailing tally: `10 of 14 resolved · 1 dropped`.
+ * The to-dos section's trailing tally: `10 of 14 closed · 1 dropped`.
  *
- * **`resolved` is closure — done OR dropped — and it is the same notion the
- * phase headers count** (`TodoPhaseView.closed`). One word for one fact, or the
- * section and the headers beneath it disagree: a tally that said `9 of 14 done`
- * over a header reading `4/5` was counting two different things under two
- * spellings, with nothing on screen saying which was which.
+ * **`closed` is closure — done OR dropped — and it is the word the phase model
+ * already uses** (`TodoPhaseView.closed`). One word for one fact, or the section
+ * and the model beneath it disagree: a tally that said `9 of 14 done` over a
+ * phase closure of `4/5` was counting two different things under two spellings,
+ * with nothing on screen saying which was which.
+ *
+ * `resolved` was that word and it was WRONG, not merely redundant: `3 of 3
+ * resolved · 1 dropped` is uncheckable against the three rows under it when one
+ * of them is the dropped one (3 + 1 > 3), and `§8`'s "every claim checkable" is
+ * the clause it broke. `closed` is true of both settled states, which is what
+ * the count actually means.
  *
  * The `dropped` segment is the breakdown of that closure, not a second count:
- * `resolved` says how much of the plan is finished with, and `dropped` says how
+ * `closed` says how much of the plan is finished with, and `dropped` says how
  * much of it was abandoned rather than done. Both facts are worth stating — a
  * plan that quietly abandoned a third of itself should not read like one that
  * completed — which is why the word survives alongside the count that contains
  * it.
- *
- * The TUI's `n/total resolved` is the same claim in a terminal's compression.
  */
 export function todoTally(
 	details: RunDetails | null | undefined,
@@ -1494,7 +1622,7 @@ export function todoTally(
 ): string {
 	if (!details) return "";
 	const segments = [
-		`${resolvedTodos(details)} of ${details.totalTodos} resolved`,
+		`${closedTodos(details)} of ${details.totalTodos} closed`,
 		...(details.droppedTodos > 0 ? [`${details.droppedTodos} dropped`] : []),
 	];
 	return shedSegments(segments, maxChars);
@@ -1504,7 +1632,7 @@ export function todoTally(
  * How much of the plan is finished with, in the one sense of "finished with"
  * this surface uses: done plus dropped. The TUI's `RESOLVED_STATUSES`.
  */
-export function resolvedTodos(details: RunDetails): number {
+export function closedTodos(details: RunDetails): number {
 	return details.doneTodos + details.droppedTodos;
 }
 
@@ -1679,18 +1807,17 @@ export function visibleFailures(rows: readonly SubagentRow[]): string[] {
 
 /**
  * The failures a panel OPEN at this instant puts on screen — the ONE predicate
- * both acknowledgement instants are asked about (`§3.3`).
+ * both acknowledgement ledgers are asked about (`§3.3`).
  *
  * It is `visibleFailures(details.subagents)` and nothing more, and it is a named
- * function rather than that expression written twice because the two instants
- * drifted apart: the close half asked `visibleFailures` while the open half
- * asked `details.failedChildIds` — the WHOLE roster — so past the cap a failure
- * behind `+N more` was marked read by an open that never displayed it. With
- * nothing else outstanding, `hasRunDetails` then went false and the trigger
- * disappeared: the one state the `danger` dot exists for could not be read at
- * all. A name both call sites share makes that a compile-visible edit rather
- * than a silent difference, and it is the argument the model test pins — the
- * WIRING's own, not an id list the test supplies for itself.
+ * function rather than that expression written twice because two instants of the
+ * RETIRED trigger drifted apart over exactly this expression: its close half
+ * asked `visibleFailures` while its open half asked `details.failedChildIds` —
+ * the WHOLE roster — so past the cap a failure behind the disclosure was marked
+ * read by an open that never displayed it. A name both call sites share is what
+ * makes that a compile-visible edit rather than a silent difference, and it is
+ * still the single expression the two ledgers on the live trigger share, so the
+ * name is kept even though the popover that motivated it is gone.
  *
  * `details` may be null (the trigger's ref is read at click time), and a null
  * view model has no rows to show.
@@ -1880,3 +2007,20 @@ export function runDetailTriggerLabel(
 export function childStateLabel(row: SubagentRow): string {
 	return row.stateWord;
 }
+
+/**
+ * Whether a row has a conversation the reader could actually open.
+ *
+ * `childSessionId` is the READER's key — the transcript route is addressed by
+ * `(session_id, child_id)` and never by a path — and the wire leaves it null for
+ * a job the runtime has not given a durable directory yet (a child the manager
+ * has queued but not started). A row with no key is not a control: pressing it
+ * mounted a reader whose loader returned immediately on every read, so the pane
+ * sat on `Loading this subagent's conversation…` for as long as it was open. The
+ * honest thing to say about a row that cannot be read is nothing at all, which
+ * is what the roster's quiet (non-button) branch already says — and the reader
+ * keeps its own terminal line for the one way in this cannot cover
+ * (`run-child-reader.tsx`, the breadcrumb and the sibling stepper).
+ */
+export const childOpenable = (row: SubagentRow): boolean =>
+	row.childSessionId !== null;

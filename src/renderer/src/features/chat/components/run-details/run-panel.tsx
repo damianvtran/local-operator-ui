@@ -36,12 +36,7 @@ import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-	ChevronLeft,
-	ChevronRight,
-	PanelRightClose,
-	Undo2,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { RunChildReader } from "./run-child-reader";
@@ -60,7 +55,7 @@ export type RunPanelProps = {
 	sessionId: string | null;
 	/** Per-child pulse counters, from the canonical session stream (`§ 5.3`). */
 	pulses: Readonly<Record<string, number>>;
-	/** Whether `subagent_transcript` negotiated (`§ 9.5`). */
+	/** Whether `subagent_transcript` negotiated (`§ 10.2`). */
 	childrenOpenable: boolean;
 	/**
 	 * The child whose reader is open, or `null` for the roster view.
@@ -73,6 +68,16 @@ export type RunPanelProps = {
 	 */
 	readerChildId: string | null;
 	onReaderChildChange: (id: string | null) => void;
+	/**
+	 * The pane's own width, in pixels — the pane's geometry, threaded to the
+	 * sections whose tallies are budgeted against it (`§ 8`, `tallyBudget`).
+	 *
+	 * Passed DOWN rather than read from the store in the sections: the pane is
+	 * sized by the value `chat-content.tsx` puts on the wrapper's `width` and
+	 * `minWidth`, and a section that read the preference itself could disagree
+	 * with the pane it is drawn in.
+	 */
+	paneWidth: number;
 	/**
 	 * A child page to paint instead of fetching one, for the story set.
 	 *
@@ -110,6 +115,7 @@ export const RunPanel = ({
 	sessionId,
 	pulses,
 	childrenOpenable,
+	paneWidth,
 	readerChildId,
 	onReaderChildChange,
 	previewPage = null,
@@ -311,7 +317,14 @@ export const RunPanel = ({
 									aria-label="Back"
 									onClick={back}
 								>
-									<Undo2 aria-hidden="true" />
+									{/*
+									 * `ChevronLeft`, not `Undo2`: in this app `Undo2` is the REVERT
+									 * glyph (`backend-setting-row.tsx`) and the directional chevron is
+									 * what every back affordance uses (`sidebar-navigation`,
+									 * `inline-edit`, `compact-pagination`). Left is also the direction
+									 * this pane's breadcrumb runs.
+									 */}
+									<ChevronLeft aria-hidden="true" />
 								</Button>
 							</Tooltip>
 							{/*
@@ -334,32 +347,49 @@ export const RunPanel = ({
 								>
 									Run details
 								</button>
-								{path.map((crumb, crumbIndex) => (
-									<span
-										key={crumb.id}
-										className={cn("flex min-w-0 items-center gap-1")}
-									>
-										<span aria-hidden="true" className={cn("text-ink-dim")}>
-											/
-										</span>
-										<button
-											type="button"
-											aria-current={
-												crumbIndex === path.length - 1 ? "page" : undefined
-											}
-											onClick={() => openChild(crumb.id)}
+								{/*
+								 * The ancestors are CAPPED and the current node takes the rest.
+								 *
+								 * Both used to be plain `truncate` in one flex row, which starved the
+								 * segment that matters: measured in `reader-nested`, the ancestor
+								 * took 166px while `Verify t…` got 49px — about eight characters,
+								 * the smallest share on the line. `§5.2` makes the breadcrumb the
+								 * reader's title (the pane has no visible one), so the current node
+								 * is the one that must be legible and the ancestors can shorten to
+								 * the leading words that distinguish them. `max-w-32` is the same
+								 * cap the roster gives its model segment, for the same reason: a
+								 * qualifier shortens before the subject does.
+								 */}
+								{path.map((crumb, crumbIndex) => {
+									const current = crumbIndex === path.length - 1;
+									return (
+										<span
+											key={crumb.id}
 											className={cn(
-												"min-w-0 truncate rounded-sm px-1 text-meta",
-												crumbIndex === path.length - 1
-													? "text-ink"
-													: "text-ink-muted hover:text-ink",
+												"flex items-baseline gap-1",
+												current ? "min-w-0 flex-1" : "max-w-32 shrink-0",
 											)}
-											title={crumb.label}
 										>
-											{crumb.label}
-										</button>
-									</span>
-								))}
+											<span aria-hidden="true" className={cn("text-ink-dim")}>
+												/
+											</span>
+											<button
+												type="button"
+												aria-current={current ? "page" : undefined}
+												onClick={() => openChild(crumb.id)}
+												className={cn(
+													"truncate rounded-sm px-1 text-meta",
+													current
+														? "min-w-0 flex-1 text-left text-ink"
+														: "min-w-0 text-ink-muted hover:text-ink",
+												)}
+												title={crumb.label}
+											>
+												{crumb.label}
+											</button>
+										</span>
+									);
+								})}
 							</nav>
 						</>
 					) : (
@@ -503,7 +533,16 @@ export const RunPanel = ({
 										{updatingBackend ? "Updating" : "Update backend"}
 									</Button>
 								)}
-								<Button variant="ghost" size="sm" onClick={retryCapabilities}>
+								<Button variant="outline" size="sm" onClick={retryCapabilities}>
+									{/*
+									 * `outline`, not `ghost`: the ghost variant has no ground and no
+									 * border at rest, so this remedy rendered as the bare word `Retry`
+									 * three pixels under the sentence it answers — reading as a label
+									 * rather than as the one thing to press. `outline` is the variant
+									 * that exists for "a secondary action on a quiet surface" and it
+									 * carries the `border-control` floor, so the action reads as an
+									 * action beside `Update backend` without competing with it.
+									 */}
 									Retry
 								</Button>
 								{updateBackendError && (
@@ -526,6 +565,7 @@ export const RunPanel = ({
 						onOpenChild={openChild}
 						rosterExpanded={rosterExpanded}
 						onToggleRosterExpanded={() => setRosterExpanded(true)}
+						paneWidth={paneWidth}
 					/>
 				</div>
 			)}

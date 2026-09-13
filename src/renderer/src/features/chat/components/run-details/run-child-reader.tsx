@@ -3,7 +3,7 @@
  * (`docs/run-sidebar.md` § 5).
  *
  * **The body is the parent's own transcript grammar**, not a second one. The
- * page is fetched from the read-only route (§ 9.1), reduced by the parent's own
+ * page is fetched from the read-only route (§ 10.1), reduced by the parent's own
  * `applyHistoryPage` into a FRESH `TranscriptState`, and painted by the parent's
  * own `CanonicalTranscript` — because the durable-row → record mapping already
  * drops exactly the bookkeeping a child's transcript is full of
@@ -42,7 +42,11 @@ import {
 	applyHistoryPage,
 } from "../../canonical/transcript-reducer";
 import type { SubagentRow } from "./run-detail-model";
-import { foldBrief, reconcileLaunchTurns } from "./run-detail-model";
+import {
+	briefIsInTranscript,
+	foldBrief,
+	reconcileLaunchTurns,
+} from "./run-detail-model";
 import { NumberRun, SubagentStateIcon } from "./run-detail-row-parts";
 import {
 	type ChildTranscriptState,
@@ -63,14 +67,19 @@ export type RunChildReaderProps = {
 	 * states that need a live backend to reach cannot be photographed from a story
 	 * otherwise, and a fixture is what makes them reproducible. The app never
 	 * passes this, and a supplied page also stops the pulse and the fallback poll,
-	 * because a preview has no route to re-read.
+	 * because a preview has no route to re-read — which is enforced rather than
+	 * documented: the seam nulls the hook's `childId`, and every one of the hook's
+	 * four effects returns early on a null `childId`, so a previewed reader makes
+	 * NO request at all (before the fix the comment claimed this while the hook
+	 * still read the tail once on mount and again on every 5s tick, which is the
+	 * kind of quiet cost a story frame hides).
 	 */
 	previewPage?: DesktopChildTranscriptPage | null;
 	/**
 	 * Called when the child's page cannot be opened at all.
 	 *
 	 * The panel keeps the ROSTER and says so in one line rather than leaving a
-	 * reader parked on an error (§ 9.1's `404` row), so the decision belongs to
+	 * reader parked on an error (§ 10.1's `404` row), so the decision belongs to
 	 * the surface that can put the roster back.
 	 */
 	onUnopenable: () => void;
@@ -143,19 +152,37 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 						className={cn("shrink-0 text-ink-muted")}
 						aria-expanded={expanded}
 						onClick={() => setExpanded((value) => !value)}
+						data-run-panel-brief-disclosure=""
 					>
 						{expanded ? (
 							<ChevronDown aria-hidden={true} />
 						) : (
 							<ChevronRight aria-hidden={true} />
 						)}
-						{expanded ? "Collapse" : `${folded.hidden} more lines`}
+						{/*
+						 * `Show N more lines` / `Show less`, in the roster's own phrasing: the
+						 * two controls that say "there is more" in this pane are this one and
+						 * the roster's `Show N more`, and a third spelling of the same job one
+						 * section apart is the drift `branding.md` § 7's one-idiom rule exists
+						 * to stop. The unit survives because it is the honest one: the count
+						 * is LINES of one authored instruction, not rows.
+						 */}
+						{expanded ? "Show less" : `Show ${folded.hidden} more lines`}
 					</Button>
 				)}
 			</div>
+			{/*
+			 * PROSE, in the prose role (`branding.md` § 4). The authored
+			 * instruction is a paragraph the user wrote, not machine voice, and
+			 * `font-mono` is reserved for paths, code, counts and identifiers —
+			 * "monospace for emphasis, or for prose, is forbidden". The block's own
+			 * ground and border already do the quoting; the monospace was doing no
+			 * work the border was not, and it set the same sentence in a different
+			 * voice from the identical sentence in the launch bubble below.
+			 */}
 			<pre
 				className={cn(
-					"max-h-48 overflow-auto font-mono text-mono-sm leading-4 whitespace-pre-wrap break-words text-ink-muted",
+					"max-h-48 overflow-auto font-sans text-body-sm leading-5 whitespace-pre-wrap break-words text-ink-muted",
 				)}
 			>
 				{lines.join("\n")}
@@ -163,6 +190,28 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 		</section>
 	);
 };
+
+/**
+ * The reader's foot: what a user CANNOT do here (§ 5.6).
+ *
+ * Present for every child state, and that is the point. The foot slot used to
+ * hold only the outcome block, which exists once a child has settled — so the
+ * one state in which "can I steer this?" arises (a RUNNING child) showed no
+ * controls and said nothing about why. That is the puzzle § 5.6 says this line
+ * exists to prevent: the absence of controls is then a stated fact rather than
+ * something to work out from what is missing.
+ *
+ * Quiet by construction — `text-meta`, `ink-muted`, no ground — because it is
+ * not an alert and not a status; a `danger` or accented footer would put a
+ * statement about the SURFACE above the agent's own output in § 7's hierarchy.
+ */
+const ReadOnlyFooter = () => (
+	<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
+		<p className={cn("text-meta text-ink-muted")}>
+			Read-only — this is the subagent's conversation, not a way to steer it.
+		</p>
+	</div>
+);
 
 /** One quiet line for a state where the body has nothing to paint. */
 const QuietLine = ({ children }: { children: React.ReactNode }) => (
@@ -178,9 +227,23 @@ export const RunChildReader = ({
 	onUnopenable,
 }: RunChildReaderProps) => {
 	const containerRef = useRef<HTMLDivElement>(null);
+	/*
+	 * The preview seam, decided BEFORE the hook is called because it decides what
+	 * the hook is asked for. A supplied page means "paint this instead of reading
+	 * one", and the hook is therefore given no child to read: every one of its four
+	 * effects returns early on a null `childId`, so a previewed reader issues no
+	 * request — no tail read on mount, no 5s poll, no pulse read. Nulling the id
+	 * also clears the state the hook keeps for a child, which is what makes the
+	 * seam genuinely inert rather than merely ignored.
+	 *
+	 * The alternative — passing the real id and just not painting the result — was
+	 * what the code did, and it cost a `subagents.transcript` request per reader
+	 * mount and another every 5s, from every story frame in the set.
+	 */
+	const usingPreview = previewPage !== null;
 	const fetched = useChildTranscript({
 		sessionId,
-		childId: row.childSessionId,
+		childId: usingPreview ? null : row.childSessionId,
 		pulse,
 		live,
 	});
@@ -194,7 +257,6 @@ export const RunChildReader = ({
 	const [previewTranscript] = useState(() =>
 		previewPage ? applyHistoryPage(EMPTY_TRANSCRIPT, previewPage) : null,
 	);
-	const usingPreview = previewPage !== null;
 	const state: ChildTranscriptState = usingPreview
 		? (previewPage?.state ?? "ready")
 		: fetched.state;
@@ -237,6 +299,14 @@ export const RunChildReader = ({
 	}, [onUnopenable, state]);
 
 	const stateWord = row.stateWord;
+	/*
+	 * Whether the brief block has anything left to say: `BriefBlock` renders only
+	 * when the row carries a brief AND the transcript is not already showing it.
+	 * Computed from the RECONCILED records, so the two can never disagree about
+	 * what is painted.
+	 */
+	const briefOnScreen =
+		Boolean(row.brief) && !briefIsInTranscript(painted.records, row.brief);
 	return (
 		<div className={cn("flex min-h-0 flex-1 flex-col")}>
 			{/*
@@ -270,7 +340,14 @@ export const RunChildReader = ({
 				</div>
 			</div>
 
-			<BriefBlock row={row} />
+			{/*
+			 * The brief, and ONLY when the transcript is not already carrying it
+			 * (`briefIsInTranscript`). In the ordinary case the reconciled launch turn
+			 * IS the brief, in its own chronological place, so this block is the
+			 * fallback for a launch the transcript does not render — not a second copy
+			 * of the sentence above it.
+			 */}
+			{briefOnScreen && <BriefBlock row={row} />}
 
 			{/*
 			 * The BODY, and the one scroll owner in this view. `bg-canvas` is the
@@ -281,16 +358,30 @@ export const RunChildReader = ({
 			<div
 				className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas")}
 			>
-				{state === "pending" ? (
+				{!row.childSessionId ? (
 					/*
-					 * § 9.1's first absence, in the copy that document fixes: the
+					 * The one row the ROSTER cannot stop you reaching: a child with no
+					 * `session_id` is not a control there, but the breadcrumb and the
+					 * sibling stepper walk the wire's own lineage and can land here, so
+					 * the reader states the fact rather than parking on a load that can
+					 * never resolve. `Loading…` was the honest label for a request that
+					 * was in flight; for one that was never issued it was a spinner
+					 * forever.
+					 */
+					<QuietLine>
+						This subagent has no conversation to open — the run has not given it
+						a session yet.
+					</QuietLine>
+				) : state === "pending" ? (
+					/*
+					 * § 10.1's first absence, in the copy that document fixes: the
 					 * directory exists and the file does not yet, which is a fact about
 					 * a child that has not reached its first append — and it is
 					 * re-probed on the next pulse rather than being final.
 					 */
 					<QuietLine>This subagent has not written anything yet.</QuietLine>
 				) : state === "gone" ? (
-					/* § 9.1's second absence: the directory itself is missing. Final. */
+					/* § 10.1's second absence: the directory itself is missing. Final. */
 					<QuietLine>
 						This subagent's transcript is no longer on disk.
 					</QuietLine>
@@ -314,9 +405,22 @@ export const RunChildReader = ({
 						loadingOlder={loadingOlder}
 						onLoadOlder={loadOlder}
 						containerRef={containerRef}
-						// The pane is 420px by default and the reader is its own column,
-						// so the transcript's narrow rules do not apply: those exist for a
-						// chat column squeezed by a pane beside it, and this IS the pane.
+						/*
+						 * The pane is 420px by default and the reader is its own column, so the
+						 * transcript's narrow rules do not apply: those exist for a chat column
+						 * squeezed by a pane beside it, and this IS the pane.
+						 *
+						 * The transcript's bottom-pinning (`flex-col-reverse`) is KEPT, and it
+						 * is a deliberate decision rather than an inherited accident: the page
+						 * `§5.3` fetches is the TAIL, so the bottom edge is where the newest
+						 * rows are, and a top-anchored scroller would open a long child on its
+						 * oldest loaded row instead. A short child therefore shows ground above
+						 * its first row, which is the parent's own grammar — and the reader's
+						 * foot is closed by the `§5.6` read-only statement below it, so the
+						 * empty space sits above a settled foot rather than below a floating
+						 * body. Recorded in `docs/run-sidebar.md` (`§5.6`) so it is not
+						 * re-raised as an oversight.
+						 */
 						isSmallView={false}
 						status="live"
 						error={null}
@@ -327,7 +431,8 @@ export const RunChildReader = ({
 				 * the TUI's roster-carries-the-outcome rule applied in the page. It
 				 * needs no new wire data and no read of the transcript's tail, and it
 				 * is where a reader looks for "how did this end" without scrolling a
-				 * conversation to its last row.
+				 * conversation to its last row. It renders only once the child has
+				 * settled, which is why it cannot be the only thing in the foot slot.
 				 */}
 				{(row.errorText || row.resultText) && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
@@ -338,6 +443,13 @@ export const RunChildReader = ({
 					</div>
 				)}
 			</div>
+			{/*
+			 * The read-only statement, OUTSIDE the scroll region so it holds the foot
+			 * of the reader in every state (§ 5.6). Placed after the body rather than
+			 * before it because it is about the whole surface, and a statement above
+			 * the conversation would read as a header for the child's first turn.
+			 */}
+			<ReadOnlyFooter />
 		</div>
 	);
 };

@@ -232,22 +232,48 @@ export const RunDetailMcp = ({
 	const cold = mcpServersAreCold(servers);
 	return (
 		<section className={cn("flex flex-col pb-1.5")}>
-			<div
-				className={cn(
-					"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",
-				)}
-			>
-				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					MCP servers
-				</span>
-				<span
+			{cold ? (
+				/*
+				 * The cold header is the ONE section header in the pane that does not
+				 * sit on one line, and the reason is that its right-hand slot holds a
+				 * SENTENCE rather than a tally.
+				 *
+				 * Measured on `mcp-cold`: the label takes x874-943 and the sentence is
+				 * given x954-1268 — 314px for a 56-character line that needs ~336px at
+				 * this size, four characters short, so the ellipsis landed inside
+				 * `checked` and the section's ONLY explanation of why it reports
+				 * nothing was cut mid-word. Sharing the line cannot be fixed by a wider
+				 * budget at 320px either: the sentence needs the row.
+				 *
+				 * So the sentence gets its own line, the full pane width, and WRAPS
+				 * (`text-pretty`, no truncate) — which is what makes the 320px floor
+				 * honest too. It stays the section's quiet ink: nothing here is wrong,
+				 * so nothing here is loud.
+				 */
+				<div className={cn("flex flex-col gap-0.5 px-3 pt-2 pb-1")}>
+					<span className={cn("text-meta text-ink-muted")}>MCP servers</span>
+					<span className={cn("text-meta text-ink-dim")}>
+						{mcpTally(servers)}
+					</span>
+				</div>
+			) : (
+				<div
 					className={cn(
-						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
+						"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",
 					)}
 				>
-					{mcpTally(servers)}
-				</span>
-			</div>
+					<span className={cn("shrink-0 text-meta text-ink-muted")}>
+						MCP servers
+					</span>
+					<span
+						className={cn(
+							"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
+						)}
+					>
+						{mcpTally(servers)}
+					</span>
+				</div>
+			)}
 			<ul className={cn("flex flex-col")}>
 				{servers.map((row) => (
 					<McpRow key={row.name} row={row} cold={cold} />

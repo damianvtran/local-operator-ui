@@ -279,7 +279,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.strict(),
 	/*
 	 * One child's durable transcript, for the run panel's reader
-	 * (`docs/run-sidebar.md` § 9.1, § 9.3).
+	 * (`docs/run-sidebar.md` § 10.1, § 10.3).
 	 *
 	 * Both ids are the same `^[a-f0-9]{12}$` the whole desktop surface already
 	 * validates on, and NEITHER is a path: the child directory is resolved by the

@@ -38,6 +38,10 @@ type JobSpec = {
 	progress?: string;
 	/** `error_text`, on a failure. */
 	error?: string;
+	/** `result_text`, on a normal settle — the reader's success outcome (`§ 5.1`). */
+	result?: string;
+	/** `session_id`, the reader's key. `null` is a job the runtime has not given one. */
+	sessionId?: string | null;
 	/** The child's own model, when it differs from the parent's. */
 	model?: string;
 	tokens?: number;
@@ -71,7 +75,15 @@ const child = (spec: JobSpec): Record<string, unknown> => ({
 	agent_role: spec.role ?? "task",
 	latest_details: spec.progress ? { progress: spec.progress } : null,
 	error_text: spec.error ?? "",
-	result_text: "",
+	/*
+	 * `result_text` is EMPTY unless a spec supplies one, and that default was a
+	 * defect in the first cut of this fixture: `reader-settled` claimed an outcome
+	 * block its own frame could not contain, because no story could set the field.
+	 * A settled child's outcome is a state `§ 5.7` names, so the fixture has to be
+	 * able to carry it.
+	 */
+	result_text: spec.result ?? "",
+	session_id: spec.sessionId === undefined ? "a1b2c3d4e5f6" : spec.sessionId,
 	model_label: spec.model ?? "claude-sonnet-4-5",
 	context_window: spec.window ?? null,
 	usage: spec.tokens === undefined ? null : { context_tokens: spec.tokens },
@@ -267,6 +279,25 @@ export const todosOnly = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
 	jobs: [],
 	todos: longPlan(),
+});
+
+/**
+ * ONE section, and the plan that arrived with no phases of its own.
+ *
+ * The `todos-only` half of `§ 11.3`'s `roster-only / todos-only` row is "one
+ * section, no empty heading", so this fixture pairs the flat `init` shape
+ * (`flat`) with an empty roster: the plan renders headerless with no section
+ * heading above it.
+ *
+ * It exists because `todos-only` and `todos-phased` were BYTE-IDENTICAL frames —
+ * both stories rendered `todosOnly()` — which made two of the set's rows describe
+ * the same picture and left the flat/no-heading claim unframed. `todos-phased`
+ * keeps the phased plan; this is the other half.
+ */
+export const todosFlat = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: flat(),
 });
 
 /**
@@ -728,6 +759,11 @@ const LONG_BRIEF = [
 export const readerChild = (
 	over: Partial<JobSpec> = {},
 ): Record<string, unknown> => ({
+	/*
+	 * `session_id` comes from `child()` and can be overridden to `null` through
+	 * `over.sessionId` — the row the wire leaves unaddressable, which the roster
+	 * must not offer to open and the reader must not sit on `Loading…` for.
+	 */
 	...child({
 		id: "job-reader",
 		label: "Re-check the pending rows against the ledger",
@@ -740,7 +776,6 @@ export const readerChild = (
 		cost: 0.08,
 		...over,
 	}),
-	session_id: "a1b2c3d4e5f6",
 	prompt: LONG_BRIEF,
 	launch_message_id: "subagent-launch:job-reader",
 	launch_prompts: {
@@ -832,10 +867,14 @@ export const childPage = ({
 					entry("c-u2", 320, "user", "", {
 						images: [
 							{
-								// A digest with no bytes: the child-scoped attachment path is not
-								// part of this change, so the reader must render its honest
-								// "not available" row rather than a broken image or, worse, the
-								// PARENT's picture.
+								// A digest with no bytes. The child-scoped attachment route
+								// SHIPS (`server/routes/desktop_sessions.py`'s
+								// `.../children/{child_id}/attachments/{digest}`) and this
+								// renderer does not fetch it: the reader is handed no child
+								// scope, so the row must render the honest "not available"
+								// note rather than a broken image, the parent's picture, or
+								// a cause it cannot know (`§ 5.1`, and `CanonicalImage`
+								// carries the copy's own argument).
 								kind: "digest",
 								digest: "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
 								media_type: "image/png",
@@ -858,7 +897,7 @@ export const childPage = ({
  *
  * `owned_scope` and `tool_count` rather than the model's `scope`/`toolCount`: the
  * fixtures are payloads and the model folds them, which is what keeps the story
- * set honest about the one part of this section that has a wire contract (`§ 9`).
+ * set honest about the one part of this section that has a wire contract (`§ 10`).
  */
 type McpWireRow = Record<string, unknown>;
 
