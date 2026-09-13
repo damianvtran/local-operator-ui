@@ -121,29 +121,47 @@ that it measured the button-line wrapper instead of the controls inside it and
 reported the controls' auto margin as `0px`, which reads exactly like the
 blocker this round fixed.
 
-## Round 3: the fifth reading, photographed
+## Round 3: the fifth reading, photographed off the real wire
 
-The `after/` set was re-captured again at the final head, because the round-2
-commit added a fifth reading and the previous frames showed four — a frame that
-depicts a replaced layout is the one thing this directory must not ship.
+The `after/` set was re-captured at the final head. Two corrections to what the
+previous revision of this file claimed, both found by review round 3:
 
-What the new frames add:
+**The duration value is the backend's own, not an injected one.** An earlier
+revision injected `active_duration_s` into the canonical snapshot and labelled
+the frames as such, because `_restore_cold_details` did not restore it on a
+cold open. That gap has since been closed on the backend: the cold
+`GET /v1/desktop/sessions/{id}` now answers `active_duration_s: 2461.0` from the
+durable checkpoint, verified against the running server before this capture. The
+injection is removed from the harness and `numbers.json` records
+`durationSource: "the wire"`.
 
-- **Five readings** at 900, ending in the session's active processing time
-  (`41m1s` from the seeded checkpoint), inert and last in the cluster.
-- **The drop rung, observed rather than asserted.** At a 750px box the duration
-  is `SHED` — present in the DOM, hidden by its container-range query — and at
-  749 and every wrapped width down to the 220 floor it is back, because below
-  the wrap threshold the cluster owns its own line and has room for it. That is
-  the ladder the band uses, and `numbers.json` records it per frame as
-  `durationReading.shed`.
-- **`estimate-800` / `estimate-900`**, the state that SET the 860 threshold: the
-  context reading carrying the word `estimate` on either side of the band.
-- **`chip-menu-220`**, the icon-only chip's menu open at the floor.
+**The set contains twenty views, and every claim below has a frame.** The
+previous revision named `chip-menu-220`, which does not exist here: its capture
+needs the chip's menu open at a 220px column and the backend did not stay up
+long enough under load to take it. It is listed under "not captured" rather than
+described as though it shipped.
 
-`durationSource` is stated on every frame: the value is injected into the
-canonical snapshot, because `active_duration_s` is banked into the durable
-checkpoint but `_restore_cold_details` does not restore it on a cold open, so
-the wire answers `0.0` and the reading is correctly absent. Injecting and
-labelling it is the honest way to photograph the reading; captioning an absence
-as the feature is not. The backend gap is a separate PR.
+What the set shows that the round-2 frames could not:
+
+- **Five readings**, ending in the session's active processing time.
+- **The drop rung, observed rather than asserted.** `numbers.json` records
+  `durationReading.shed` per frame: shed at a 750 and an 800 box (inside the
+  750-860 band), present at 900, and present again at every wrapped width from
+  749 down to the 220 floor, because below the wrap threshold the cluster owns
+  its own line and has room for it.
+- **`estimate-800` / `estimate-900`** — the state that SET the 860 threshold,
+  photographed either side of the band: at 800 the context reading carries the
+  word `estimate` and the duration is shed; at 900 all five are whole.
+- **`45s` and `1h2m`** beside the usual `41m1s`, so three of the port's four
+  branches appear in a frame rather than only in the unit test.
+
+### Not captured, and why
+
+- `chip-menu-220` — the icon-only chip's menu open at the floor. Three capture
+  attempts on a host at load 110-180 lost the backend mid-run. The affordance
+  it would show is asserted in `scripts/composer-readings.test.mjs` (the chip
+  keeps its `aria-label`, tooltip, menu and focusability when its text goes
+  `sr-only`); the frame is not claimed here.
+- A duration reading in a LIVE turn. Every frame is a cold resume, so the clock
+  is showing banked time and is not ticking. The tick is unit-pinned; filming a
+  running turn needs a real model credential, which this rig does not have.

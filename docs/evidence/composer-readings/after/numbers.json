@@ -5,219 +5,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
-    "column": 1000,
-    "container": 952,
-    "box": {
-      "x": 550,
-      "y": 872.3,
-      "w": 900,
-      "h": 111.7,
-      "right": 1450
-    },
-    "boxOverflowX": 0,
-    "rowFound": true,
-    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
-    "row": {
-      "box": {
-        "x": 567,
-        "y": 935,
-        "w": 866,
-        "h": 32,
-        "right": 1433
-      },
-      "clientWidth": 866,
-      "scrollWidth": 866,
-      "overflowX": 0
-    },
-    "rowChildren": [
-      {
-        "tag": "DIV",
-        "role": "readings",
-        "box": {
-          "x": 873,
-          "y": 939,
-          "w": 268,
-          "h": 24,
-          "right": 1141
-        },
-        "order": "2",
-        "marginLeft": "-6px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
-        "role": "left group",
-        "box": {
-          "x": 567,
-          "y": 935,
-          "w": 304,
-          "h": 32,
-          "right": 871
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
-        "role": "controls",
-        "box": {
-          "x": 1365,
-          "y": 935,
-          "w": 68,
-          "h": 32,
-          "right": 1433
-        },
-        "order": "3",
-        "marginLeft": "221.984px",
-        "flexBasis": "auto",
-        "centre": 951
-      }
-    ],
-    "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
-    "stripDraft": null,
-    "stripBox": {
-      "x": 873,
-      "y": 939,
-      "w": 268,
-      "h": 24,
-      "right": 1141
-    },
-    "clusterToControlsGap": 224,
-    "clusterToBoxLeft": 323,
-    "attach": {
-      "x": 567,
-      "y": 935,
-      "w": 32,
-      "h": 32,
-      "right": 599
-    },
-    "chip": {
-      "x": 611,
-      "y": 935,
-      "w": 260,
-      "h": 32,
-      "right": 871
-    },
-    "chipPath": "/Users/damian/workspace",
-    "controls": [
-      {
-        "label": "Start recording",
-        "box": {
-          "x": 1365,
-          "y": 935,
-          "w": 32,
-          "h": 32,
-          "right": 1397
-        }
-      },
-      {
-        "label": "Send message",
-        "box": {
-          "x": 1401,
-          "y": 935,
-          "w": 32,
-          "h": 32,
-          "right": 1433
-        }
-      }
-    ],
-    "readings": [
-      {
-        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
-        "text": "gpt-5",
-        "box": {
-          "x": 873,
-          "y": 939,
-          "w": 56,
-          "h": 24,
-          "right": 929
-        },
-        "disabled": null,
-        "control": true,
-        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
-      },
-      {
-        "label": "Reasoning effort: high.",
-        "text": "high",
-        "box": {
-          "x": 933,
-          "y": 939,
-          "w": 40.8,
-          "h": 24,
-          "right": 973.8
-        },
-        "disabled": "true",
-        "control": true,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      },
-      {
-        "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
-        "text": "3.8%/400k",
-        "box": {
-          "x": 977.8,
-          "y": 939,
-          "w": 96.8,
-          "h": 24,
-          "right": 1074.6
-        },
-        "disabled": null,
-        "control": true,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
-      },
-      {
-        "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
-        "box": {
-          "x": 1078.6,
-          "y": 939,
-          "w": 62.4,
-          "h": 24,
-          "right": 1141
-        },
-        "disabled": null,
-        "control": false,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      }
-    ],
-    "rowOnOneLine": true,
-    "rowLineCount": 1,
-    "rowRole": "button row (strip parent)",
-    "chipText": {
-      "w": 96.3,
-      "label": "/Users/damian/workspace",
-      "srOnly": false
-    },
-    "send": {
-      "disabled": true,
-      "fill": "rgb(15, 12, 8)"
-    },
-    "nameSpan": {
-      "clientWidth": 32,
-      "scrollWidth": 32,
-      "truncated": false
-    },
-    "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
-    "durationReading": null,
-    "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "221.984px",
-    "rowChildCount": 3,
-    "what": "all four readings inline after the chip, with the free space before an ENABLED accent send, dark and light",
-    "themeMechanism": "persisted preference"
-  },
-  "populated-900/localOperatorLight": {
-    "viewport": {
-      "w": 1500,
-      "h": 1000
-    },
-    "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Rea",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -383,7 +171,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 1078.6,
           "y": 939,
@@ -396,7 +184,237 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
+        "text": "41m1s",
+        "box": {
+          "x": 1145,
+          "y": 939,
+          "w": 48,
+          "h": 24,
+          "right": 1193
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim @min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
+    "durationReading": {
+      "text": "41m1s",
+      "w": 48,
+      "shed": false
+    },
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "169.984px",
+    "rowChildCount": 3,
+    "what": "all four readings inline after the chip, with the free space before an ENABLED accent send, dark and light",
+    "themeMechanism": "persisted preference"
+  },
+  "populated-900/localOperatorLight": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 872.3,
+      "w": 900,
+      "h": 111.7,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 935,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 320,
+          "h": 24,
+          "right": 1193
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 871
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "169.984px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 873,
+      "y": 939,
+      "w": 320,
+      "h": 24,
+      "right": 1193
+    },
+    "clusterToControlsGap": 172,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 567,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 871
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 56,
+          "h": 24,
+          "right": 929
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high. Change it.",
+        "text": "high",
+        "box": {
+          "x": 933,
+          "y": 939,
+          "w": 40.8,
+          "h": 24,
+          "right": 973.8
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "3.8%/400k",
+        "box": {
+          "x": 977.8,
+          "y": 939,
+          "w": 96.8,
+          "h": 24,
+          "right": 1074.6
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "\u2265$0.060",
+        "box": {
+          "x": 1078.6,
+          "y": 939,
+          "w": 62.4,
+          "h": 24,
+          "right": 1141
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 1145,
@@ -428,7 +446,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -447,7 +465,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Ope",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats 1 Ope",
     "column": 798,
     "container": 750,
     "box": {
@@ -613,7 +631,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 1052.6,
           "y": 939,
@@ -626,7 +644,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 0,
@@ -658,7 +676,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 0,
@@ -677,7 +695,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Ope",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats 1 Ope",
     "column": 797,
     "container": 749,
     "box": {
@@ -828,7 +846,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 740.6,
           "y": 903,
@@ -841,7 +859,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 807,
@@ -873,7 +891,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -892,7 +910,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Rea",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats 1 Rea",
     "column": 598,
     "container": 550,
     "box": {
@@ -1043,7 +1061,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 740.9,
           "y": 903,
@@ -1056,7 +1074,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 807.5,
@@ -1088,7 +1106,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48.1,
@@ -1107,7 +1125,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 308,
     "container": 260,
     "box": {
@@ -1258,7 +1276,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 527,
           "y": 923,
@@ -1271,7 +1289,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 593.4,
@@ -1303,7 +1321,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -1322,7 +1340,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 288,
     "container": 240,
     "box": {
@@ -1473,7 +1491,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 527,
           "y": 923,
@@ -1486,7 +1504,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 593.4,
@@ -1518,7 +1536,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -1537,7 +1555,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 268,
     "container": 220,
     "box": {
@@ -1688,7 +1706,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 527,
           "y": 923,
@@ -1701,7 +1719,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 593.4,
@@ -1733,7 +1751,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -1752,7 +1770,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 268,
     "container": 220,
     "box": {
@@ -1903,7 +1921,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 527,
           "y": 923,
@@ -1916,7 +1934,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 593.4,
@@ -1948,7 +1966,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -1967,7 +1985,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 268,
     "container": 220,
     "box": {
@@ -2118,7 +2136,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 527,
           "y": 923,
@@ -2131,7 +2149,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 593.4,
@@ -2163,7 +2181,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -2182,14 +2200,14 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
       "x": 550,
-      "y": 872.3,
+      "y": 452.8,
       "w": 900,
-      "h": 111.7,
+      "h": 112,
       "right": 1450
     },
     "boxOverflowX": 0,
@@ -2198,7 +2216,7 @@
     "row": {
       "box": {
         "x": 567,
-        "y": 935,
+        "y": 515.8,
         "w": 866,
         "h": 32,
         "right": 1433
@@ -2213,22 +2231,22 @@
         "role": "readings",
         "box": {
           "x": 873,
-          "y": 939,
-          "w": 471.4,
+          "y": 519.8,
+          "w": 471.9,
           "h": 24,
-          "right": 1344.4
+          "right": 1344.9
         },
         "order": "2",
         "marginLeft": "-6px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 531.8
       },
       {
         "tag": "DIV",
         "role": "left group",
         "box": {
           "x": 567,
-          "y": 935,
+          "y": 515.8,
           "w": 304,
           "h": 32,
           "right": 871
@@ -2236,22 +2254,22 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 531.8
       },
       {
         "tag": "DIV",
         "role": "controls",
         "box": {
           "x": 1365,
-          "y": 935,
+          "y": 515.8,
           "w": 68,
           "h": 32,
           "right": 1433
         },
         "order": "3",
-        "marginLeft": "18.5859px",
+        "marginLeft": "18.1172px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 531.8
       }
     ],
     "stripParentIsRow": true,
@@ -2259,23 +2277,23 @@
     "stripDraft": null,
     "stripBox": {
       "x": 873,
-      "y": 939,
-      "w": 471.4,
+      "y": 519.8,
+      "w": 471.9,
       "h": 24,
-      "right": 1344.4
+      "right": 1344.9
     },
-    "clusterToControlsGap": 20.6,
+    "clusterToControlsGap": 20.1,
     "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
-      "y": 935,
+      "y": 515.8,
       "w": 32,
       "h": 32,
       "right": 599
     },
     "chip": {
       "x": 611,
-      "y": 935,
+      "y": 515.8,
       "w": 260,
       "h": 32,
       "right": 871
@@ -2286,7 +2304,7 @@
         "label": "Start recording",
         "box": {
           "x": 1365,
-          "y": 935,
+          "y": 515.8,
           "w": 32,
           "h": 32,
           "right": 1397
@@ -2296,7 +2314,7 @@
         "label": "Send message",
         "box": {
           "x": 1401,
-          "y": 935,
+          "y": 515.8,
           "w": 32,
           "h": 32,
           "right": 1433
@@ -2309,7 +2327,7 @@
         "text": "kimi-k2-instruct-0905-preview-long-context",
         "box": {
           "x": 873,
-          "y": 939,
+          "y": 519.8,
           "w": 266.6,
           "h": 24,
           "right": 1139.6
@@ -2323,10 +2341,10 @@
         "text": "auto",
         "box": {
           "x": 1143.6,
-          "y": 939,
-          "w": 40.8,
+          "y": 519.8,
+          "w": 40.9,
           "h": 24,
-          "right": 1184.4
+          "right": 1184.5
         },
         "disabled": "true",
         "control": true,
@@ -2336,11 +2354,11 @@
         "label": "Context: 52.5%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "52.5%/400k",
         "box": {
-          "x": 1188.4,
-          "y": 939,
-          "w": 104,
+          "x": 1188.5,
+          "y": 519.8,
+          "w": 104.3,
           "h": 24,
-          "right": 1292.4
+          "right": 1292.8
         },
         "disabled": null,
         "control": true,
@@ -2350,11 +2368,11 @@
         "label": "Session spend so far: $1.84.",
         "text": "$1.84",
         "box": {
-          "x": 1296.4,
-          "y": 939,
-          "w": 48,
+          "x": 1296.8,
+          "y": 519.8,
+          "w": 48.1,
           "h": 24,
-          "right": 1344.4
+          "right": 1344.9
         },
         "disabled": null,
         "control": false,
@@ -2379,11 +2397,11 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "18.5859px",
+    "controlsAbsorbFreeSpace": "18.1172px",
     "rowChildCount": 3,
     "what": "a 48-character slug: the row is one line, the box 111.7, and the name FITS (clientWidth = scrollWidth) with the full selector in its tooltip - no truncation at this length, which is what round 1's caption got wrong",
     "themeMechanism": "persisted preference"
@@ -2394,7 +2412,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Rea",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 798,
     "container": 750,
     "box": {
@@ -2522,9 +2540,9 @@
         "box": {
           "x": 847,
           "y": 939,
-          "w": 127.5,
+          "w": 135.2,
           "h": 24,
-          "right": 974.5
+          "right": 982.2
         },
         "disabled": null,
         "control": true,
@@ -2534,25 +2552,25 @@
         "label": "Reasoning effort: auto.",
         "text": "auto",
         "box": {
-          "x": 978.5,
+          "x": 986.2,
           "y": 939,
-          "w": 40.9,
+          "w": 40.8,
           "h": 24,
-          "right": 1019.4
+          "right": 1027
         },
         "disabled": "true",
         "control": true,
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Context: 164.1%/128k. Measured now; click for the full breakdown, which estimates your next request",
-        "text": "164.1%/128k",
+        "label": "Context: 52.5%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "52.5%/400k",
         "box": {
-          "x": 1023.4,
+          "x": 1031,
           "y": 939,
-          "w": 111.5,
+          "w": 104,
           "h": 24,
-          "right": 1134.9
+          "right": 1135
         },
         "disabled": null,
         "control": true,
@@ -2562,29 +2580,15 @@
         "label": "Session spend so far: $1.84.",
         "text": "$1.84",
         "box": {
-          "x": 1138.9,
+          "x": 1139,
           "y": 939,
-          "w": 48.1,
+          "w": 48,
           "h": 24,
           "right": 1187
         },
         "disabled": null,
         "control": false,
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      },
-      {
-        "label": "Active time: 4d5h. Time spent working in this conversation. Waiting between turns is not counted.",
-        "text": "4d5h",
-        "box": {
-          "x": 0,
-          "y": 0,
-          "w": 0,
-          "h": 0,
-          "right": 0
-        },
-        "disabled": null,
-        "control": false,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim @min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
       }
     ],
     "rowOnOneLine": true,
@@ -2600,17 +2604,13 @@
       "fill": "rgb(20, 120, 66)"
     },
     "nameSpan": {
-      "clientWidth": 116,
+      "clientWidth": 123,
       "scrollWidth": 255,
       "truncated": true
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
-    "durationReading": {
-      "text": "4d5h",
-      "w": 0,
-      "shed": true
-    },
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
+    "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
     "controlsAbsorbFreeSpace": "0px",
@@ -2624,7 +2624,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -2752,9 +2752,9 @@
         "box": {
           "x": 873,
           "y": 939,
-          "w": 278,
+          "w": 226,
           "h": 24,
-          "right": 1151
+          "right": 1099
         },
         "disabled": null,
         "control": true,
@@ -2764,25 +2764,25 @@
         "label": "Reasoning effort: high.",
         "text": "high",
         "box": {
-          "x": 1155,
+          "x": 1103,
           "y": 939,
           "w": 40.8,
           "h": 24,
-          "right": 1195.8
+          "right": 1143.8
         },
         "disabled": "true",
         "control": true,
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Context: 66.0%/400k. Measured now; click for the full breakdown, which estimates your next request",
-        "text": "66.0%/400k",
+        "label": "Context: 206.2%/128k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "206.2%/128k",
         "box": {
-          "x": 1199.8,
+          "x": 1147.8,
           "y": 939,
-          "w": 104,
+          "w": 111.2,
           "h": 24,
-          "right": 1303.8
+          "right": 1259
         },
         "disabled": null,
         "control": true,
@@ -2790,17 +2790,31 @@
       },
       {
         "label": "Session spend is at least $2.41. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$2.41",
+        "text": "\u2265$2.41",
         "box": {
-          "x": 1307.8,
+          "x": 1263,
           "y": 939,
           "w": 55.2,
+          "h": 24,
+          "right": 1318.2
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Active time: 1h2m. Time spent working; waiting is not counted.",
+        "text": "1h2m",
+        "box": {
+          "x": 1322.2,
+          "y": 939,
+          "w": 40.8,
           "h": 24,
           "right": 1363
         },
         "disabled": null,
         "control": false,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim @min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
       }
     ],
     "rowOnOneLine": true,
@@ -2816,13 +2830,17 @@
       "fill": "rgb(15, 12, 8)"
     },
     "nameSpan": {
-      "clientWidth": 266,
+      "clientWidth": 214,
       "scrollWidth": 817,
       "truncated": true
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
-    "durationReading": null,
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
+    "durationReading": {
+      "text": "1h2m",
+      "w": 40.8,
+      "shed": false
+    },
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
     "controlsAbsorbFreeSpace": "0px",
@@ -2836,7 +2854,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Ope",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 798,
     "container": 750,
     "box": {
@@ -3002,7 +3020,7 @@
       },
       {
         "label": "Session spend is at least $2.41. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$2.41",
+        "text": "\u2265$2.41",
         "box": {
           "x": 1131.8,
           "y": 939,
@@ -3015,7 +3033,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 1h2m. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 1h2m. Time spent working; waiting is not counted.",
         "text": "1h2m",
         "box": {
           "x": 0,
@@ -3047,7 +3065,7 @@
       "truncated": true
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "1h2m",
       "w": 0,
@@ -3066,7 +3084,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Ope",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 798,
     "container": 750,
     "box": {
@@ -3232,7 +3250,7 @@
       },
       {
         "label": "Session spend is at least $2.41. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$2.41",
+        "text": "\u2265$2.41",
         "box": {
           "x": 1131.8,
           "y": 939,
@@ -3245,7 +3263,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 1h2m. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 1h2m. Time spent working; waiting is not counted.",
         "text": "1h2m",
         "box": {
           "x": 0,
@@ -3277,7 +3295,7 @@
       "truncated": true
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "1h2m",
       "w": 0,
@@ -3296,7 +3314,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Rea",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -3328,9 +3346,9 @@
         "box": {
           "x": 873,
           "y": 939,
-          "w": 130.8,
+          "w": 152.4,
           "h": 24,
-          "right": 1003.8
+          "right": 1025.4
         },
         "order": "2",
         "marginLeft": "-6px",
@@ -3363,7 +3381,7 @@
           "right": 1433
         },
         "order": "3",
-        "marginLeft": "359.195px",
+        "marginLeft": "337.594px",
         "flexBasis": "auto",
         "centre": 951
       }
@@ -3374,11 +3392,11 @@
     "stripBox": {
       "x": 873,
       "y": 939,
-      "w": 130.8,
+      "w": 152.4,
       "h": 24,
-      "right": 1003.8
+      "right": 1025.4
     },
-    "clusterToControlsGap": 361.2,
+    "clusterToControlsGap": 339.6,
     "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
@@ -3433,14 +3451,14 @@
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
-        "label": "Reasoning effort: auto. Change it.",
-        "text": "auto",
+        "label": "Reasoning effort: unknown. Change it.",
+        "text": "unknown",
         "box": {
           "x": 933,
           "y": 939,
-          "w": 40.8,
+          "w": 62.4,
           "h": 24,
-          "right": 973.8
+          "right": 995.4
         },
         "disabled": null,
         "control": true,
@@ -3450,11 +3468,11 @@
         "label": "Context: no reading yet. Click for the full breakdown",
         "text": "",
         "box": {
-          "x": 977.8,
+          "x": 999.4,
           "y": 939,
           "w": 26,
           "h": 24,
-          "right": 1003.8
+          "right": 1025.4
         },
         "disabled": null,
         "control": true,
@@ -3479,11 +3497,11 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "359.195px",
+    "controlsAbsorbFreeSpace": "337.594px",
     "rowChildCount": 3,
     "what": "a resume whose transcript carries no receipts: no reading, not zero",
     "themeMechanism": "dataset attribute"
@@ -3494,7 +3512,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Rea",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -3660,7 +3678,7 @@
       },
       {
         "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$4.02",
+        "text": "\u2265$4.02",
         "box": {
           "x": 1140.2,
           "y": 939,
@@ -3691,7 +3709,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
@@ -3706,14 +3724,14 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats 1 Rea",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
       "x": 550,
-      "y": 872.3,
+      "y": 452.8,
       "w": 900,
-      "h": 111.7,
+      "h": 112,
       "right": 1450
     },
     "boxOverflowX": 0,
@@ -3722,7 +3740,7 @@
     "row": {
       "box": {
         "x": 567,
-        "y": 935,
+        "y": 515.8,
         "w": 866,
         "h": 32,
         "right": 1433
@@ -3737,22 +3755,22 @@
         "role": "readings",
         "box": {
           "x": 873,
-          "y": 939,
-          "w": 360.8,
+          "y": 519.8,
+          "w": 323.1,
           "h": 24,
-          "right": 1233.8
+          "right": 1196.1
         },
         "order": "2",
         "marginLeft": "-6px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 531.8
       },
       {
         "tag": "DIV",
         "role": "left group",
         "box": {
           "x": 567,
-          "y": 935,
+          "y": 515.8,
           "w": 304,
           "h": 32,
           "right": 871
@@ -3760,22 +3778,22 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 531.8
       },
       {
         "tag": "DIV",
         "role": "controls",
         "box": {
           "x": 1365,
-          "y": 935,
+          "y": 515.8,
           "w": 68,
           "h": 32,
           "right": 1433
         },
         "order": "3",
-        "marginLeft": "129.242px",
+        "marginLeft": "166.922px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 531.8
       }
     ],
     "stripParentIsRow": true,
@@ -3783,23 +3801,23 @@
     "stripDraft": null,
     "stripBox": {
       "x": 873,
-      "y": 939,
-      "w": 360.8,
+      "y": 519.8,
+      "w": 323.1,
       "h": 24,
-      "right": 1233.8
+      "right": 1196.1
     },
-    "clusterToControlsGap": 131.2,
+    "clusterToControlsGap": 168.9,
     "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
-      "y": 935,
+      "y": 515.8,
       "w": 32,
       "h": 32,
       "right": 599
     },
     "chip": {
       "x": 611,
-      "y": 935,
+      "y": 515.8,
       "w": 260,
       "h": 32,
       "right": 871
@@ -3810,7 +3828,7 @@
         "label": "Start recording",
         "box": {
           "x": 1365,
-          "y": 935,
+          "y": 515.8,
           "w": 32,
           "h": 32,
           "right": 1397
@@ -3820,7 +3838,7 @@
         "label": "Send message",
         "box": {
           "x": 1401,
-          "y": 935,
+          "y": 515.8,
           "w": 32,
           "h": 32,
           "right": 1433
@@ -3833,7 +3851,7 @@
         "text": "gpt-5",
         "box": {
           "x": 873,
-          "y": 939,
+          "y": 519.8,
           "w": 56,
           "h": 24,
           "right": 929
@@ -3843,25 +3861,25 @@
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
-        "label": "Reasoning effort: low. Change it.",
+        "label": "Reasoning effort: low.",
         "text": "low",
         "box": {
           "x": 933,
-          "y": 939,
+          "y": 519.8,
           "w": 33.7,
           "h": 24,
           "right": 966.7
         },
-        "disabled": null,
+        "disabled": "true",
         "control": true,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 88.0%/400k, estimated. Estimated now; click for the full breakdown, which estimates your next request",
         "text": "88.0%/400kestimate",
         "box": {
           "x": 970.7,
-          "y": 939,
+          "y": 519.8,
           "w": 166,
           "h": 24,
           "right": 1136.7
@@ -3872,10 +3890,10 @@
       },
       {
         "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$4.02",
+        "text": "\u2265$4.02",
         "box": {
           "x": 1140.7,
-          "y": 939,
+          "y": 519.8,
           "w": 55.4,
           "h": 24,
           "right": 1196.1
@@ -3883,20 +3901,6 @@
         "disabled": null,
         "control": false,
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      },
-      {
-        "label": "Active time: 45s. Time spent working in this conversation. Waiting between turns is not counted.",
-        "text": "45s",
-        "box": {
-          "x": 1200.1,
-          "y": 939,
-          "w": 33.7,
-          "h": 24,
-          "right": 1233.8
-        },
-        "disabled": null,
-        "control": false,
-        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim @min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
       }
     ],
     "rowOnOneLine": true,
@@ -3917,15 +3921,11 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
-    "durationReading": {
-      "text": "45s",
-      "w": 33.7,
-      "shed": false
-    },
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
+    "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "129.242px",
+    "controlsAbsorbFreeSpace": "166.922px",
     "rowChildCount": 3,
     "what": "the danger rung and the estimate marker beside an ENABLED accent send",
     "themeMechanism": "persisted preference"
@@ -3936,7 +3936,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -4102,7 +4102,7 @@
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "≥$0.060",
+        "text": "\u2265$0.060",
         "box": {
           "x": 1078.6,
           "y": 939,
@@ -4115,7 +4115,7 @@
         "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Active time: 41m1s. Time spent working in this conversation. Waiting between turns is not counted.",
+        "label": "Active time: 41m1s. Time spent working; waiting is not counted.",
         "text": "41m1s",
         "box": {
           "x": 1145,
@@ -4147,7 +4147,7 @@
       "truncated": false
     },
     "effortReading": true,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": {
       "text": "41m1s",
       "w": 48,
@@ -4166,7 +4166,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -4335,7 +4335,7 @@
       "truncated": false
     },
     "effortReading": false,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
@@ -4350,7 +4350,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
@@ -4519,7 +4519,7 @@
       "truncated": false
     },
     "effortReading": false,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
@@ -4534,7 +4534,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 268,
     "container": 220,
     "box": {
@@ -4688,7 +4688,7 @@
       "truncated": false
     },
     "effortReading": false,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": false,
     "stripAbsorbsFreeSpace": "-6px",
@@ -4703,7 +4703,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 268,
     "container": 220,
     "box": {
@@ -4857,7 +4857,7 @@
       "truncated": false
     },
     "effortReading": false,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": false,
     "stripAbsorbsFreeSpace": "-6px",
@@ -4872,12 +4872,12 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 6 New chat Active chats Nothi",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
     "column": 1000,
     "container": 952,
     "box": {
       "x": 550,
-      "y": 452.8,
+      "y": 434,
       "w": 900,
       "h": 112,
       "right": 1450
@@ -4888,7 +4888,7 @@
     "row": {
       "box": {
         "x": 567,
-        "y": 515.8,
+        "y": 497,
         "w": 866,
         "h": 32,
         "right": 1433
@@ -4903,7 +4903,7 @@
         "role": "readings",
         "box": {
           "x": 786.9,
-          "y": 519.8,
+          "y": 501,
           "w": 86,
           "h": 24,
           "right": 872.9
@@ -4911,14 +4911,14 @@
         "order": "2",
         "marginLeft": "-6px",
         "flexBasis": "auto",
-        "centre": 531.8
+        "centre": 513
       },
       {
         "tag": "DIV",
         "role": "left group",
         "box": {
           "x": 567,
-          "y": 515.8,
+          "y": 497,
           "w": 217.9,
           "h": 32,
           "right": 784.9
@@ -4926,14 +4926,14 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 531.8
+        "centre": 513
       },
       {
         "tag": "DIV",
         "role": "controls",
         "box": {
           "x": 1365,
-          "y": 515.8,
+          "y": 497,
           "w": 68,
           "h": 32,
           "right": 1433
@@ -4941,7 +4941,7 @@
         "order": "3",
         "marginLeft": "490.078px",
         "flexBasis": "auto",
-        "centre": 531.8
+        "centre": 513
       }
     ],
     "stripParentIsRow": true,
@@ -4949,7 +4949,7 @@
     "stripDraft": "true",
     "stripBox": {
       "x": 786.9,
-      "y": 519.8,
+      "y": 501,
       "w": 86,
       "h": 24,
       "right": 872.9
@@ -4958,14 +4958,14 @@
     "clusterToBoxLeft": 236.9,
     "attach": {
       "x": 567,
-      "y": 515.8,
+      "y": 497,
       "w": 32,
       "h": 32,
       "right": 599
     },
     "chip": {
       "x": 611,
-      "y": 515.8,
+      "y": 497,
       "w": 173.9,
       "h": 32,
       "right": 784.9
@@ -4976,7 +4976,7 @@
         "label": "Start recording",
         "box": {
           "x": 1365,
-          "y": 515.8,
+          "y": 497,
           "w": 32,
           "h": 32,
           "right": 1397
@@ -4986,7 +4986,7 @@
         "label": "Send message",
         "box": {
           "x": 1401,
-          "y": 515.8,
+          "y": 497,
           "w": 32,
           "h": 32,
           "right": 1433
@@ -4999,7 +4999,7 @@
         "text": "gpt-5",
         "box": {
           "x": 786.9,
-          "y": 519.8,
+          "y": 501,
           "w": 56,
           "h": 24,
           "right": 842.9
@@ -5013,7 +5013,7 @@
         "text": "",
         "box": {
           "x": 846.9,
-          "y": 519.8,
+          "y": 501,
           "w": 26,
           "h": 24,
           "right": 872.9
@@ -5041,7 +5041,7 @@
       "truncated": false
     },
     "effortReading": false,
-    "durationSource": "injected (backend cold restore omits active_duration_s)",
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
     "durationReading": null,
     "stripCentredWithControls": true,
     "stripAbsorbsFreeSpace": "-6px",
@@ -5049,5 +5049,465 @@
     "rowChildCount": 3,
     "what": "the blocker's state: a draft whose backend advertises NO preview op, so the cluster is absent - the controls must still sit flush right (they did not, pre-fix)",
     "themeMechanism": "persisted preference"
+  },
+  "estimate-800/localOperatorLight": {
+    "viewport": {
+      "w": 1348,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
+    "column": 848,
+    "container": 800,
+    "box": {
+      "x": 524,
+      "y": 872.3,
+      "w": 800,
+      "h": 111.7,
+      "right": 1324
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 541,
+        "y": 935,
+        "w": 766,
+        "h": 32,
+        "right": 1307
+      },
+      "clientWidth": 766,
+      "scrollWidth": 766,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 322.4,
+          "h": 24,
+          "right": 1169.4
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 541,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 845
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1239,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1307
+        },
+        "order": "3",
+        "marginLeft": "67.5938px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 847,
+      "y": 939,
+      "w": 322.4,
+      "h": 24,
+      "right": 1169.4
+    },
+    "clusterToControlsGap": 69.6,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 541,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 573
+    },
+    "chip": {
+      "x": 585,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 845
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1239,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1271
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1275,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1307
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 56,
+          "h": 24,
+          "right": 903
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: low. Change it.",
+        "text": "low",
+        "box": {
+          "x": 907,
+          "y": 939,
+          "w": 33.6,
+          "h": 24,
+          "right": 940.6
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Context: 88.0%/400k, estimated. Estimated now; click for the full breakdown, which estimates your next request",
+        "text": "88.0%/400kestimate",
+        "box": {
+          "x": 944.6,
+          "y": 939,
+          "w": 165.6,
+          "h": 24,
+          "right": 1110.2
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "\u2265$4.02",
+        "box": {
+          "x": 1114.2,
+          "y": 939,
+          "w": 55.2,
+          "h": 24,
+          "right": 1169.4
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Active time: 45s. Time spent working; waiting is not counted.",
+        "text": "45s",
+        "box": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "right": 0
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim @min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
+    "durationReading": {
+      "text": "45s",
+      "w": 0,
+      "shed": true
+    },
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "67.5938px",
+    "rowChildCount": 3,
+    "what": "the state that SET the drop threshold: the context reading carrying the word `estimate` at a width inside the drop band, so duration is shed and the other four are whole",
+    "themeMechanism": "dataset attribute"
+  },
+  "estimate-900/localOperatorLight": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "The server is offline. The interface will not function properly until the server is back online. Retry Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 5 New chat Active chats Nothi",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 872.3,
+      "w": 900,
+      "h": 111.7,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 935,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 360,
+          "h": 24,
+          "right": 1233
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 871
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "129.992px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 873,
+      "y": 939,
+      "w": 360,
+      "h": 24,
+      "right": 1233
+    },
+    "clusterToControlsGap": 132,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 567,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 871
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 56,
+          "h": 24,
+          "right": 929
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: low. Change it.",
+        "text": "low",
+        "box": {
+          "x": 933,
+          "y": 939,
+          "w": 33.6,
+          "h": 24,
+          "right": 966.6
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Context: 88.0%/400k, estimated. Estimated now; click for the full breakdown, which estimates your next request",
+        "text": "88.0%/400kestimate",
+        "box": {
+          "x": 970.6,
+          "y": 939,
+          "w": 165.6,
+          "h": 24,
+          "right": 1136.2
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "\u2265$4.02",
+        "box": {
+          "x": 1140.2,
+          "y": 939,
+          "w": 55.2,
+          "h": 24,
+          "right": 1195.4
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Active time: 45s. Time spent working; waiting is not counted.",
+        "text": "45s",
+        "box": {
+          "x": 1199.4,
+          "y": 939,
+          "w": 33.6,
+          "h": 24,
+          "right": 1233
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim @min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "durationSource": "the wire (cold GET restores active_duration_s from the checkpoint)",
+    "durationReading": {
+      "text": "45s",
+      "w": 33.6,
+      "shed": false
+    },
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "129.992px",
+    "rowChildCount": 3,
+    "what": "the same state above the band: five readings, all whole, nothing shed",
+    "themeMechanism": "dataset attribute"
   }
 }
