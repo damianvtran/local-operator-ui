@@ -87,3 +87,36 @@ composer; a second document load leaves two SSE watches on one session and the
 backend refuses the second with 409; and Chrome accumulates
 `addScriptToEvaluateOnNewDocument` sources per tab, so a per-view seed is won by
 the first view every time.
+
+## Round 2: what changed under these frames
+
+The `after/` set was re-captured in full at the remediation head, because the
+round-1 review changed the row's anchor, the floor's chip and the draft's
+readings — every claim the previous set carried. `before/` is unchanged
+(`78e694777`, dark only, as recorded below).
+
+Three things are new in the set rather than merely re-taken:
+
+- **Every populated frame has text typed**, so the send button is the live
+  accent control rather than the disabled one design D5 found in all fifteen
+  round-1 frames. The harness types through the browser's own input pipeline
+  (a `.value` assignment leaves React's tracker unaware) and refuses to take a
+  frame whose send is still disabled.
+- **The draft cells are live.** `run-tree.sh` drives the sibling backend branch
+  and checks `draft_preview` on `/v1/capabilities` before the draft views open
+  at all, so the strip in `draft-900` and `draft-220` is the real preview op's
+  answer. `draft-no-strip-900` is the same pane against a backend WITHOUT the
+  op: the cluster is absent and the controls are still flush right, which is
+  the state round 1's blocker shipped wrong.
+- **`hugename-*` is the truncation proof.** The committed `longname-*` frames
+  do NOT truncate (`clientWidth === scrollWidth` at 750) — QA was right that
+  round 1's caption claimed something its pixels did not show — so a
+  139-character id is seeded and captioned as the frame that yields.
+
+`numbers.json` gained `rowLineCount` (measured from painted geometry, so a
+`display: contents` wrapper cannot hide a line), `nameSpan` (client/scroll
+width, i.e. whether the name truncated), `chipText`, `send` and
+`effortReading`. The `rowChildren[]` walk flattens `display: contents`: without
+that it measured the button-line wrapper instead of the controls inside it and
+reported the controls' auto margin as `0px`, which reads exactly like the
+blocker this round fixed.

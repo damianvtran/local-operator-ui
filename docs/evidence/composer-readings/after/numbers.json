@@ -5,7 +5,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=13",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=13 rowRenders=8 rows=4 flushes=1 flushP50=0.30ms f",
     "column": 1000,
     "container": 952,
     "box": {
@@ -33,6 +33,22 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 268,
+          "h": 24,
+          "right": 1141
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 567,
           "y": 935,
@@ -47,20 +63,7 @@
       },
       {
         "tag": "DIV",
-        "box": {
-          "x": 1095,
-          "y": 939,
-          "w": 268,
-          "h": 24,
-          "right": 1363
-        },
-        "order": "0",
-        "marginLeft": "215.984px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 1365,
           "y": 935,
@@ -68,24 +71,24 @@
           "h": 32,
           "right": 1433
         },
-        "order": "0",
-        "marginLeft": "0px",
+        "order": "3",
+        "marginLeft": "221.984px",
         "flexBasis": "auto",
         "centre": 951
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
-      "x": 1095,
+      "x": 873,
       "y": 939,
       "w": 268,
       "h": 24,
-      "right": 1363
+      "right": 1141
     },
-    "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 545,
+    "clusterToControlsGap": 224,
+    "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
       "y": 935,
@@ -128,61 +131,82 @@
         "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
         "text": "gpt-5",
         "box": {
-          "x": 1095,
+          "x": 873,
           "y": 939,
           "w": 56,
           "h": 24,
-          "right": 1151
+          "right": 929
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
         "label": "Reasoning effort: high.",
         "text": "high",
         "box": {
-          "x": 1155,
+          "x": 933,
           "y": 939,
           "w": 40.8,
           "h": 24,
-          "right": 1195.8
+          "right": 973.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
-          "x": 1199.8,
+          "x": 977.8,
           "y": 939,
           "w": 96.8,
           "h": 24,
-          "right": 1296.6
+          "right": 1074.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
-          "x": 1300.6,
+          "x": 1078.6,
           "y": 939,
           "w": 62.4,
           "h": 24,
-          "right": 1363
+          "right": 1141
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "215.984px",
-    "controlsAbsorbFreeSpace": "0px",
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "221.984px",
     "rowChildCount": 3,
-    "what": "all four readings inline on the controls' row, dark and light",
+    "what": "all four readings inline after the chip, with the free space before an ENABLED accent send, dark and light",
     "themeMechanism": "persisted preference"
   },
   "populated-900/localOperatorLight": {
@@ -191,7 +215,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=13",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=15 rowRenders=8 rows=4 flushes=1 flushP50=0.20ms f",
     "column": 1000,
     "container": 952,
     "box": {
@@ -219,6 +243,22 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 268,
+          "h": 24,
+          "right": 1141
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 567,
           "y": 935,
@@ -233,20 +273,7 @@
       },
       {
         "tag": "DIV",
-        "box": {
-          "x": 1095,
-          "y": 939,
-          "w": 268,
-          "h": 24,
-          "right": 1363
-        },
-        "order": "0",
-        "marginLeft": "215.984px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 1365,
           "y": 935,
@@ -254,24 +281,24 @@
           "h": 32,
           "right": 1433
         },
-        "order": "0",
-        "marginLeft": "0px",
+        "order": "3",
+        "marginLeft": "221.984px",
         "flexBasis": "auto",
         "centre": 951
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
-      "x": 1095,
+      "x": 873,
       "y": 939,
       "w": 268,
       "h": 24,
-      "right": 1363
+      "right": 1141
     },
-    "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 545,
+    "clusterToControlsGap": 224,
+    "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
       "y": 935,
@@ -314,61 +341,82 @@
         "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
         "text": "gpt-5",
         "box": {
-          "x": 1095,
+          "x": 873,
           "y": 939,
           "w": 56,
           "h": 24,
-          "right": 1151
+          "right": 929
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
         "label": "Reasoning effort: high.",
         "text": "high",
         "box": {
-          "x": 1155,
+          "x": 933,
           "y": 939,
           "w": 40.8,
           "h": 24,
-          "right": 1195.8
+          "right": 973.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
-          "x": 1199.8,
+          "x": 977.8,
           "y": 939,
           "w": 96.8,
           "h": 24,
-          "right": 1296.6
+          "right": 1074.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
-          "x": 1300.6,
+          "x": 1078.6,
           "y": 939,
           "w": 62.4,
           "h": 24,
-          "right": 1363
+          "right": 1141
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "215.984px",
-    "controlsAbsorbFreeSpace": "0px",
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "221.984px",
     "rowChildCount": 3,
-    "what": "all four readings inline on the controls' row, dark and light",
+    "what": "all four readings inline after the chip, with the free space before an ENABLED accent send, dark and light",
     "themeMechanism": "dataset attribute"
   },
   "populated-750/localOperatorDark": {
@@ -377,7 +425,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=14",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=15 rowRenders=8 rows=4 flushes=1 flushP50=0.20ms f",
     "column": 798,
     "container": 750,
     "box": {
@@ -405,6 +453,22 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 268,
+          "h": 24,
+          "right": 1115
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 541,
           "y": 935,
@@ -419,20 +483,7 @@
       },
       {
         "tag": "DIV",
-        "box": {
-          "x": 919,
-          "y": 939,
-          "w": 268,
-          "h": 24,
-          "right": 1187
-        },
-        "order": "0",
-        "marginLeft": "65.9844px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 1189,
           "y": 935,
@@ -440,24 +491,24 @@
           "h": 32,
           "right": 1257
         },
-        "order": "0",
-        "marginLeft": "0px",
+        "order": "3",
+        "marginLeft": "71.9844px",
         "flexBasis": "auto",
         "centre": 951
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
-      "x": 919,
+      "x": 847,
       "y": 939,
       "w": 268,
       "h": 24,
-      "right": 1187
+      "right": 1115
     },
-    "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 395,
+    "clusterToControlsGap": 74,
+    "clusterToBoxLeft": 323,
     "attach": {
       "x": 541,
       "y": 935,
@@ -500,61 +551,82 @@
         "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
         "text": "gpt-5",
         "box": {
-          "x": 919,
+          "x": 847,
           "y": 939,
           "w": 56,
           "h": 24,
-          "right": 975
+          "right": 903
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
         "label": "Reasoning effort: high.",
         "text": "high",
         "box": {
-          "x": 979,
+          "x": 907,
           "y": 939,
           "w": 40.8,
           "h": 24,
-          "right": 1019.8
+          "right": 947.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
-          "x": 1023.8,
+          "x": 951.8,
           "y": 939,
           "w": 96.8,
           "h": 24,
-          "right": 1120.6
+          "right": 1048.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
-          "x": 1124.6,
+          "x": 1052.6,
           "y": 939,
           "w": 62.4,
           "h": 24,
-          "right": 1187
+          "right": 1115
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(56, 201, 106)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "65.9844px",
-    "controlsAbsorbFreeSpace": "0px",
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "71.9844px",
     "rowChildCount": 3,
-    "what": "the threshold itself: the tightest inline case",
+    "what": "the threshold itself: the tightest inline case, one line, name at its floor",
     "themeMechanism": "persisted preference"
   },
   "populated-749/localOperatorLight": {
@@ -563,7 +635,7 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=15",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=16 rowRenders=8 rows=4 flushes=1 flushP50=0.20ms f",
     "column": 797,
     "container": 749,
     "box": {
@@ -591,20 +663,7 @@
     "rowChildren": [
       {
         "tag": "DIV",
-        "box": {
-          "x": 541,
-          "y": 935,
-          "w": 304,
-          "h": 32,
-          "right": 845
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
+        "role": "readings",
         "box": {
           "x": 535,
           "y": 903,
@@ -612,28 +671,29 @@
           "h": 24,
           "right": 1250
         },
-        "order": "-9999",
+        "order": "0",
         "marginLeft": "-6px",
         "flexBasis": "100%",
         "centre": 915
       },
       {
         "tag": "DIV",
+        "role": "controls",
         "box": {
-          "x": 1188,
+          "x": 541,
           "y": 935,
-          "w": 68,
+          "w": 715,
           "h": 32,
           "right": 1256
         },
         "order": "0",
-        "marginLeft": "335px",
+        "marginLeft": "0px",
         "flexBasis": "auto",
         "centre": 951
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
       "x": 535,
@@ -642,7 +702,7 @@
       "h": 24,
       "right": 1250
     },
-    "clusterToControlsGap": -62,
+    "clusterToControlsGap": -709,
     "clusterToBoxLeft": 11,
     "attach": {
       "x": 541,
@@ -693,6 +753,7 @@
           "right": 591
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
@@ -706,7 +767,8 @@
           "right": 635.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
@@ -719,11 +781,12 @@
           "right": 736.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
           "x": 740.6,
           "y": 903,
@@ -731,16 +794,34 @@
           "h": 24,
           "right": 803
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": false,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "335px",
-    "rowChildCount": 3,
-    "what": "one pixel below: the cluster takes the row's first line",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "one pixel below: the cluster takes the row's first line, the button line stays whole",
     "themeMechanism": "dataset attribute"
   },
   "populated-550/localOperatorLight": {
@@ -749,14 +830,14 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=15",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=15 rowRenders=0 rows=0 flushes=2 flushP50=1.20ms f",
     "column": 598,
     "container": 550,
     "box": {
       "x": 524,
-      "y": 840.3,
+      "y": 380.5,
       "w": 550,
-      "h": 143.7,
+      "h": 144,
       "right": 1074
     },
     "boxOverflowX": 0,
@@ -765,7 +846,7 @@
     "row": {
       "box": {
         "x": 541,
-        "y": 903,
+        "y": 443.5,
         "w": 516,
         "h": 64,
         "right": 1057
@@ -777,72 +858,60 @@
     "rowChildren": [
       {
         "tag": "DIV",
-        "box": {
-          "x": 541,
-          "y": 935,
-          "w": 255.6,
-          "h": 32,
-          "right": 796.6
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
+        "role": "readings",
         "box": {
           "x": 535,
-          "y": 903,
+          "y": 443.5,
           "w": 516,
           "h": 24,
           "right": 1051
         },
-        "order": "-9999",
+        "order": "0",
         "marginLeft": "-6px",
         "flexBasis": "100%",
-        "centre": 915
+        "centre": 455.5
       },
       {
         "tag": "DIV",
+        "role": "controls",
         "box": {
-          "x": 989,
-          "y": 935,
-          "w": 68,
+          "x": 541,
+          "y": 475.5,
+          "w": 516,
           "h": 32,
           "right": 1057
         },
         "order": "0",
-        "marginLeft": "184.398px",
+        "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 951
+        "centre": 491.5
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
       "x": 535,
-      "y": 903,
+      "y": 443.5,
       "w": 516,
       "h": 24,
       "right": 1051
     },
-    "clusterToControlsGap": -62,
+    "clusterToControlsGap": -510,
     "clusterToBoxLeft": 11,
     "attach": {
       "x": 541,
-      "y": 935,
+      "y": 475.5,
       "w": 32,
       "h": 32,
       "right": 573
     },
     "chip": {
       "x": 585,
-      "y": 935,
-      "w": 211.6,
+      "y": 475.5,
+      "w": 212.2,
       "h": 32,
-      "right": 796.6
+      "right": 797.2
     },
     "chipPath": "/Users/damian/workspace",
     "controls": [
@@ -850,7 +919,7 @@
         "label": "Start recording",
         "box": {
           "x": 989,
-          "y": 935,
+          "y": 475.5,
           "w": 32,
           "h": 32,
           "right": 1021
@@ -860,7 +929,7 @@
         "label": "Send message",
         "box": {
           "x": 1025,
-          "y": 935,
+          "y": 475.5,
           "w": 32,
           "h": 32,
           "right": 1057
@@ -873,12 +942,13 @@
         "text": "gpt-5",
         "box": {
           "x": 535,
-          "y": 903,
+          "y": 443.5,
           "w": 56,
           "h": 24,
           "right": 591
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
@@ -886,47 +956,457 @@
         "text": "high",
         "box": {
           "x": 595,
-          "y": 903,
-          "w": 40.8,
+          "y": 443.5,
+          "w": 40.9,
           "h": 24,
-          "right": 635.8
+          "right": 635.9
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
-          "x": 639.8,
-          "y": 903,
-          "w": 96.8,
+          "x": 639.9,
+          "y": 443.5,
+          "w": 97,
           "h": 24,
-          "right": 736.6
+          "right": 736.9
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
-          "x": 740.6,
-          "y": 903,
-          "w": 62.4,
+          "x": 740.9,
+          "y": 443.5,
+          "w": 62.6,
           "h": 24,
-          "right": 803
+          "right": 803.5
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 166.2,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": false,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "184.398px",
-    "rowChildCount": 3,
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
     "what": "small view: compacted padding, icon-sm controls, readings whole",
+    "themeMechanism": "dataset attribute"
+  },
+  "populated-260/localOperatorLight": {
+    "viewport": {
+      "w": 808,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=18 rowRenders=8 rows=4 flushes=2 flushP50=1.10ms f",
+    "column": 308,
+    "container": 260,
+    "box": {
+      "x": 524,
+      "y": 852,
+      "w": 260,
+      "h": 144,
+      "right": 784
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 533,
+        "y": 897,
+        "w": 242,
+        "h": 90,
+        "right": 775
+      },
+      "clientWidth": 242,
+      "scrollWidth": 242,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 242,
+          "h": 50,
+          "right": 769
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 922
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 533,
+          "y": 955,
+          "w": 242,
+          "h": 32,
+          "right": 775
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 971
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 527,
+      "y": 897,
+      "w": 242,
+      "h": 50,
+      "right": 769
+    },
+    "clusterToControlsGap": -236,
+    "clusterToBoxLeft": 3,
+    "attach": {
+      "x": 533,
+      "y": 957,
+      "w": 28,
+      "h": 28,
+      "right": 561
+    },
+    "chip": {
+      "x": 573,
+      "y": 955,
+      "w": 134,
+      "h": 32,
+      "right": 707
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 715,
+          "y": 957,
+          "w": 28,
+          "h": 28,
+          "right": 743
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 747,
+          "y": 957,
+          "w": 28,
+          "h": 28,
+          "right": 775
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 56,
+          "h": 24,
+          "right": 583
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high.",
+        "text": "high",
+        "box": {
+          "x": 587,
+          "y": 897,
+          "w": 40.8,
+          "h": 24,
+          "right": 627.8
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "3.8%/400k",
+        "box": {
+          "x": 631.8,
+          "y": 897,
+          "w": 96.8,
+          "h": 24,
+          "right": 728.6
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$0.060",
+        "box": {
+          "x": 527,
+          "y": 923,
+          "w": 62.4,
+          "h": 24,
+          "right": 589.4
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 88,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "stripCentredWithControls": false,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "just above the icon-only threshold: the chip still shows its path",
+    "themeMechanism": "dataset attribute"
+  },
+  "populated-240/localOperatorLight": {
+    "viewport": {
+      "w": 788,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=18 rowRenders=8 rows=4 flushes=2 flushP50=1.00ms f",
+    "column": 288,
+    "container": 240,
+    "box": {
+      "x": 524,
+      "y": 852.5,
+      "w": 240,
+      "h": 143.5,
+      "right": 764
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 533,
+        "y": 897,
+        "w": 222,
+        "h": 90,
+        "right": 755
+      },
+      "clientWidth": 222,
+      "scrollWidth": 222,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 222,
+          "h": 50,
+          "right": 749
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 922
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 533,
+          "y": 955,
+          "w": 222,
+          "h": 32,
+          "right": 755
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 971
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 527,
+      "y": 897,
+      "w": 222,
+      "h": 50,
+      "right": 749
+    },
+    "clusterToControlsGap": -216,
+    "clusterToBoxLeft": 3,
+    "attach": {
+      "x": 533,
+      "y": 957,
+      "w": 28,
+      "h": 28,
+      "right": 561
+    },
+    "chip": {
+      "x": 573,
+      "y": 955,
+      "w": 114,
+      "h": 32,
+      "right": 687
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 695,
+          "y": 957,
+          "w": 28,
+          "h": 28,
+          "right": 723
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 727,
+          "y": 957,
+          "w": 28,
+          "h": 28,
+          "right": 755
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 56,
+          "h": 24,
+          "right": 583
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high.",
+        "text": "high",
+        "box": {
+          "x": 587,
+          "y": 897,
+          "w": 40.8,
+          "h": 24,
+          "right": 627.8
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "3.8%/400k",
+        "box": {
+          "x": 631.8,
+          "y": 897,
+          "w": 96.8,
+          "h": 24,
+          "right": 728.6
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$0.060",
+        "box": {
+          "x": 527,
+          "y": 923,
+          "w": 62.4,
+          "h": 24,
+          "right": 589.4
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 68,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "stripCentredWithControls": false,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "the threshold: the chip is icon-only, the button line is whole, two lines",
     "themeMechanism": "dataset attribute"
   },
   "populated-220/localOperatorDark": {
@@ -935,14 +1415,14 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=11",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=19 rowRenders=8 rows=4 flushes=4 flushP50=0.80ms f",
     "column": 268,
     "container": 220,
     "box": {
       "x": 524,
-      "y": 816.5,
+      "y": 852.5,
       "w": 220,
-      "h": 179.5,
+      "h": 143.5,
       "right": 744
     },
     "boxOverflowX": 0,
@@ -951,9 +1431,9 @@
     "row": {
       "box": {
         "x": 533,
-        "y": 861,
+        "y": 897,
         "w": 202,
-        "h": 126,
+        "h": 90,
         "right": 735
       },
       "clientWidth": 202,
@@ -963,9 +1443,25 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 202,
+          "h": 50,
+          "right": 729
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 922
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 533,
-          "y": 919,
+          "y": 955,
           "w": 202,
           "h": 32,
           "right": 735
@@ -973,62 +1469,34 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 935
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 527,
-          "y": 861,
-          "w": 202,
-          "h": 50,
-          "right": 729
-        },
-        "order": "-9999",
-        "marginLeft": "-6px",
-        "flexBasis": "100%",
-        "centre": 886
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 675,
-          "y": 959,
-          "w": 60,
-          "h": 28,
-          "right": 735
-        },
-        "order": "0",
-        "marginLeft": "142px",
-        "flexBasis": "auto",
-        "centre": 973
+        "centre": 971
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
       "x": 527,
-      "y": 861,
+      "y": 897,
       "w": 202,
       "h": 50,
       "right": 729
     },
-    "clusterToControlsGap": -54,
+    "clusterToControlsGap": -196,
     "clusterToBoxLeft": 3,
     "attach": {
       "x": 533,
-      "y": 921,
+      "y": 957,
       "w": 28,
       "h": 28,
       "right": 561
     },
     "chip": {
       "x": 573,
-      "y": 919,
-      "w": 162,
+      "y": 955,
+      "w": 44,
       "h": 32,
-      "right": 735
+      "right": 617
     },
     "chipPath": "/Users/damian/workspace",
     "controls": [
@@ -1036,7 +1504,7 @@
         "label": "Start recording",
         "box": {
           "x": 675,
-          "y": 959,
+          "y": 957,
           "w": 28,
           "h": 28,
           "right": 703
@@ -1046,7 +1514,7 @@
         "label": "Send message",
         "box": {
           "x": 707,
-          "y": 959,
+          "y": 957,
           "w": 28,
           "h": 28,
           "right": 735
@@ -1059,12 +1527,13 @@
         "text": "gpt-5",
         "box": {
           "x": 527,
-          "y": 861,
+          "y": 897,
           "w": 56,
           "h": 24,
           "right": 583
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
@@ -1072,47 +1541,67 @@
         "text": "high",
         "box": {
           "x": 587,
-          "y": 861,
+          "y": 897,
           "w": 40.8,
           "h": 24,
           "right": 627.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
           "x": 631.8,
-          "y": 861,
+          "y": 897,
           "w": 96.8,
           "h": 24,
           "right": 728.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
           "x": 527,
-          "y": 887,
+          "y": 923,
           "w": 62.4,
           "h": 24,
           "right": 589.4
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 1,
+      "label": "/Users/damian/workspace",
+      "srOnly": true
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(56, 201, 106)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": false,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "142px",
-    "rowChildCount": 3,
-    "what": "the 220px box design D1 is arithmetic about: the cluster wraps, nothing clipped",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "the 220px column floor: icon-only chip, TWO lines, the box at its pre-change height",
     "themeMechanism": "persisted preference"
   },
   "populated-220/localOperatorLight": {
@@ -1121,14 +1610,14 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=13",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=20 rowRenders=8 rows=4 flushes=4 flushP50=0.50ms f",
     "column": 268,
     "container": 220,
     "box": {
       "x": 524,
-      "y": 816.5,
+      "y": 852.5,
       "w": 220,
-      "h": 179.5,
+      "h": 143.5,
       "right": 744
     },
     "boxOverflowX": 0,
@@ -1137,9 +1626,9 @@
     "row": {
       "box": {
         "x": 533,
-        "y": 861,
+        "y": 897,
         "w": 202,
-        "h": 126,
+        "h": 90,
         "right": 735
       },
       "clientWidth": 202,
@@ -1149,9 +1638,25 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 202,
+          "h": 50,
+          "right": 729
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 922
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 533,
-          "y": 919,
+          "y": 955,
           "w": 202,
           "h": 32,
           "right": 735
@@ -1159,62 +1664,34 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 935
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 527,
-          "y": 861,
-          "w": 202,
-          "h": 50,
-          "right": 729
-        },
-        "order": "-9999",
-        "marginLeft": "-6px",
-        "flexBasis": "100%",
-        "centre": 886
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 675,
-          "y": 959,
-          "w": 60,
-          "h": 28,
-          "right": 735
-        },
-        "order": "0",
-        "marginLeft": "142px",
-        "flexBasis": "auto",
-        "centre": 973
+        "centre": 971
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
       "x": 527,
-      "y": 861,
+      "y": 897,
       "w": 202,
       "h": 50,
       "right": 729
     },
-    "clusterToControlsGap": -54,
+    "clusterToControlsGap": -196,
     "clusterToBoxLeft": 3,
     "attach": {
       "x": 533,
-      "y": 921,
+      "y": 957,
       "w": 28,
       "h": 28,
       "right": 561
     },
     "chip": {
       "x": 573,
-      "y": 919,
-      "w": 162,
+      "y": 955,
+      "w": 44,
       "h": 32,
-      "right": 735
+      "right": 617
     },
     "chipPath": "/Users/damian/workspace",
     "controls": [
@@ -1222,7 +1699,7 @@
         "label": "Start recording",
         "box": {
           "x": 675,
-          "y": 959,
+          "y": 957,
           "w": 28,
           "h": 28,
           "right": 703
@@ -1232,7 +1709,7 @@
         "label": "Send message",
         "box": {
           "x": 707,
-          "y": 959,
+          "y": 957,
           "w": 28,
           "h": 28,
           "right": 735
@@ -1245,12 +1722,13 @@
         "text": "gpt-5",
         "box": {
           "x": 527,
-          "y": 861,
+          "y": 897,
           "w": 56,
           "h": 24,
           "right": 583
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
@@ -1258,47 +1736,262 @@
         "text": "high",
         "box": {
           "x": 587,
-          "y": 861,
+          "y": 897,
           "w": 40.8,
           "h": 24,
           "right": 627.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
           "x": 631.8,
-          "y": 861,
+          "y": 897,
           "w": 96.8,
           "h": 24,
           "right": 728.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
           "x": 527,
-          "y": 887,
+          "y": 923,
           "w": 62.4,
           "h": 24,
           "right": 589.4
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 1,
+      "label": "/Users/damian/workspace",
+      "srOnly": true
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": false,
     "stripAbsorbsFreeSpace": "-6px",
-    "controlsAbsorbFreeSpace": "142px",
-    "rowChildCount": 3,
-    "what": "the 220px box design D1 is arithmetic about: the cluster wraps, nothing clipped",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "the 220px column floor: icon-only chip, TWO lines, the box at its pre-change height",
+    "themeMechanism": "dataset attribute"
+  },
+  "populated-220-canvas/localOperatorLight": {
+    "viewport": {
+      "w": 768,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Review IDV retention /Users/damian/workspace Chat Raw commits=18 rowRenders=8 rows=4 flushes=3 flushP50=0.90ms f",
+    "column": 268,
+    "container": 220,
+    "box": {
+      "x": 524,
+      "y": 852.5,
+      "w": 220,
+      "h": 143.5,
+      "right": 744
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 533,
+        "y": 897,
+        "w": 202,
+        "h": 90,
+        "right": 735
+      },
+      "clientWidth": 202,
+      "scrollWidth": 202,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 202,
+          "h": 50,
+          "right": 729
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 922
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 533,
+          "y": 955,
+          "w": 202,
+          "h": 32,
+          "right": 735
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 971
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 527,
+      "y": 897,
+      "w": 202,
+      "h": 50,
+      "right": 729
+    },
+    "clusterToControlsGap": -196,
+    "clusterToBoxLeft": 3,
+    "attach": {
+      "x": 533,
+      "y": 957,
+      "w": 28,
+      "h": 28,
+      "right": 561
+    },
+    "chip": {
+      "x": 573,
+      "y": 955,
+      "w": 44,
+      "h": 32,
+      "right": 617
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 675,
+          "y": 957,
+          "w": 28,
+          "h": 28,
+          "right": 703
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 707,
+          "y": 957,
+          "w": 28,
+          "h": 28,
+          "right": 735
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 527,
+          "y": 897,
+          "w": 56,
+          "h": 24,
+          "right": 583
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high.",
+        "text": "high",
+        "box": {
+          "x": 587,
+          "y": 897,
+          "w": 40.8,
+          "h": 24,
+          "right": 627.8
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "3.8%/400k",
+        "box": {
+          "x": 631.8,
+          "y": 897,
+          "w": 96.8,
+          "h": 24,
+          "right": 728.6
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$0.060",
+        "box": {
+          "x": 527,
+          "y": 923,
+          "w": 62.4,
+          "h": 24,
+          "right": 589.4
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 1,
+      "label": "/Users/damian/workspace",
+      "srOnly": true
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "stripCentredWithControls": false,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "the floor with the canvas panel open, which is the column the floor exists for",
     "themeMechanism": "dataset attribute"
   },
   "longname-900/localOperatorDark": {
@@ -1307,379 +2000,7 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Kimi long-context run /Users/damian/workspace Chat Raw commits=1",
-    "column": 1000,
-    "container": 952,
-    "box": {
-      "x": 550,
-      "y": 872.3,
-      "w": 900,
-      "h": 111.7,
-      "right": 1450
-    },
-    "boxOverflowX": 0,
-    "rowFound": true,
-    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
-    "row": {
-      "box": {
-        "x": 567,
-        "y": 935,
-        "w": 866,
-        "h": 32,
-        "right": 1433
-      },
-      "clientWidth": 866,
-      "scrollWidth": 866,
-      "overflowX": 0
-    },
-    "rowChildren": [
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 567,
-          "y": 935,
-          "w": 304,
-          "h": 32,
-          "right": 871
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 891.6,
-          "y": 939,
-          "w": 471.4,
-          "h": 24,
-          "right": 1363
-        },
-        "order": "0",
-        "marginLeft": "12.5859px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 1365,
-          "y": 935,
-          "w": 68,
-          "h": 32,
-          "right": 1433
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 951
-      }
-    ],
-    "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
-    "stripDraft": null,
-    "stripBox": {
-      "x": 891.6,
-      "y": 939,
-      "w": 471.4,
-      "h": 24,
-      "right": 1363
-    },
-    "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 341.6,
-    "attach": {
-      "x": 567,
-      "y": 935,
-      "w": 32,
-      "h": 32,
-      "right": 599
-    },
-    "chip": {
-      "x": 611,
-      "y": 935,
-      "w": 260,
-      "h": 32,
-      "right": 871
-    },
-    "chipPath": "/Users/damian/workspace",
-    "controls": [
-      {
-        "label": "Start recording",
-        "box": {
-          "x": 1365,
-          "y": 935,
-          "w": 32,
-          "h": 32,
-          "right": 1397
-        }
-      },
-      {
-        "label": "Send message",
-        "box": {
-          "x": 1401,
-          "y": 935,
-          "w": 32,
-          "h": 32,
-          "right": 1433
-        }
-      }
-    ],
-    "readings": [
-      {
-        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-long-context. Click to choose a different model",
-        "text": "kimi-k2-instruct-0905-preview-long-context",
-        "box": {
-          "x": 891.6,
-          "y": 939,
-          "w": 266.6,
-          "h": 24,
-          "right": 1158.2
-        },
-        "disabled": null,
-        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
-      },
-      {
-        "label": "Reasoning effort: auto.",
-        "text": "auto",
-        "box": {
-          "x": 1162.2,
-          "y": 939,
-          "w": 40.8,
-          "h": 24,
-          "right": 1203
-        },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      },
-      {
-        "label": "Context: 52.5%/400k. Measured now; click for the full breakdown, which estimates your next request",
-        "text": "52.5%/400k",
-        "box": {
-          "x": 1207,
-          "y": 939,
-          "w": 104,
-          "h": 24,
-          "right": 1311
-        },
-        "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
-      },
-      {
-        "label": "Session spend so far: $1.84.",
-        "text": "$1.84",
-        "box": {
-          "x": 1315,
-          "y": 939,
-          "w": 48,
-          "h": 24,
-          "right": 1363
-        },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      }
-    ],
-    "rowOnOneLine": true,
-    "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "12.5859px",
-    "controlsAbsorbFreeSpace": "0px",
-    "rowChildCount": 3,
-    "what": "a long name truncating, its tooltip open with the full selector",
-    "themeMechanism": "persisted preference"
-  },
-  "longname-750/localOperatorDark": {
-    "viewport": {
-      "w": 1298,
-      "h": 1000
-    },
-    "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Kimi long-context run /Users/damian/workspace Chat Raw commits=1",
-    "column": 798,
-    "container": 750,
-    "box": {
-      "x": 524,
-      "y": 854.3,
-      "w": 750,
-      "h": 129.7,
-      "right": 1274
-    },
-    "boxOverflowX": 0,
-    "rowFound": true,
-    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
-    "row": {
-      "box": {
-        "x": 541,
-        "y": 917,
-        "w": 716,
-        "h": 50,
-        "right": 1257
-      },
-      "clientWidth": 716,
-      "scrollWidth": 716,
-      "overflowX": 0
-    },
-    "rowChildren": [
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 541,
-          "y": 926,
-          "w": 250.1,
-          "h": 32,
-          "right": 791.1
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 942
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 799.1,
-          "y": 917,
-          "w": 387.9,
-          "h": 50,
-          "right": 1187
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 942
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 1189,
-          "y": 926,
-          "w": 68,
-          "h": 32,
-          "right": 1257
-        },
-        "order": "0",
-        "marginLeft": "0px",
-        "flexBasis": "auto",
-        "centre": 942
-      }
-    ],
-    "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
-    "stripDraft": null,
-    "stripBox": {
-      "x": 799.1,
-      "y": 917,
-      "w": 387.9,
-      "h": 50,
-      "right": 1187
-    },
-    "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 275.1,
-    "attach": {
-      "x": 541,
-      "y": 926,
-      "w": 32,
-      "h": 32,
-      "right": 573
-    },
-    "chip": {
-      "x": 585,
-      "y": 926,
-      "w": 206.1,
-      "h": 32,
-      "right": 791.1
-    },
-    "chipPath": "/Users/damian/workspace",
-    "controls": [
-      {
-        "label": "Start recording",
-        "box": {
-          "x": 1189,
-          "y": 926,
-          "w": 32,
-          "h": 32,
-          "right": 1221
-        }
-      },
-      {
-        "label": "Send message",
-        "box": {
-          "x": 1225,
-          "y": 926,
-          "w": 32,
-          "h": 32,
-          "right": 1257
-        }
-      }
-    ],
-    "readings": [
-      {
-        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-long-context. Click to choose a different model",
-        "text": "kimi-k2-instruct-0905-preview-long-context",
-        "box": {
-          "x": 799.1,
-          "y": 917,
-          "w": 266.6,
-          "h": 24,
-          "right": 1065.7
-        },
-        "disabled": null,
-        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
-      },
-      {
-        "label": "Reasoning effort: auto.",
-        "text": "auto",
-        "box": {
-          "x": 1069.7,
-          "y": 917,
-          "w": 40.8,
-          "h": 24,
-          "right": 1110.5
-        },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      },
-      {
-        "label": "Context: 52.5%/400k. Measured now; click for the full breakdown, which estimates your next request",
-        "text": "52.5%/400k",
-        "box": {
-          "x": 799.1,
-          "y": 943,
-          "w": 104,
-          "h": 24,
-          "right": 903.1
-        },
-        "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
-      },
-      {
-        "label": "Session spend so far: $1.84.",
-        "text": "$1.84",
-        "box": {
-          "x": 907.1,
-          "y": 943,
-          "w": 48,
-          "h": 24,
-          "right": 955.1
-        },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
-      }
-    ],
-    "rowOnOneLine": true,
-    "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "0px",
-    "controlsAbsorbFreeSpace": "0px",
-    "rowChildCount": 3,
-    "what": "the truncation floor holds at the threshold",
-    "themeMechanism": "persisted preference"
-  },
-  "no-receipts-900/localOperatorLight": {
-    "viewport": {
-      "w": 1500,
-      "h": 1000
-    },
-    "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Which IDV retention rule applies to a soft hit? /Users/damian/wo",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Kimi long-context run /Users/damian/workspace Chat Raw commits=10 rowRenders=0 rows=0 flushes=1 flushP50=0.30ms ",
     "column": 1000,
     "container": 952,
     "box": {
@@ -1707,6 +2028,22 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 519.8,
+          "w": 471.9,
+          "h": 24,
+          "right": 1344.9
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 531.8
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 567,
           "y": 515.8,
@@ -1721,20 +2058,7 @@
       },
       {
         "tag": "DIV",
-        "box": {
-          "x": 1210.4,
-          "y": 519.8,
-          "w": 152.6,
-          "h": 24,
-          "right": 1363
-        },
-        "order": "0",
-        "marginLeft": "331.422px",
-        "flexBasis": "auto",
-        "centre": 531.8
-      },
-      {
-        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 1365,
           "y": 515.8,
@@ -1742,24 +2066,24 @@
           "h": 32,
           "right": 1433
         },
-        "order": "0",
-        "marginLeft": "0px",
+        "order": "3",
+        "marginLeft": "18.1172px",
         "flexBasis": "auto",
         "centre": 531.8
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
-      "x": 1210.4,
+      "x": 873,
       "y": 519.8,
-      "w": 152.6,
+      "w": 471.9,
       "h": 24,
-      "right": 1363
+      "right": 1344.9
     },
-    "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 660.4,
+    "clusterToControlsGap": 20.1,
+    "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
       "y": 515.8,
@@ -1799,93 +2123,143 @@
     ],
     "readings": [
       {
-        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
-        "text": "gpt-5",
+        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-long-context. Click to choose a different model",
+        "text": "kimi-k2-instruct-0905-preview-long-context",
         "box": {
-          "x": 1210.4,
+          "x": 873,
           "y": 519.8,
-          "w": 56,
+          "w": 266.6,
           "h": 24,
-          "right": 1266.4
+          "right": 1139.6
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
-        "label": "Reasoning effort: unknown. Change it.",
-        "text": "unknown",
+        "label": "Reasoning effort: auto.",
+        "text": "auto",
         "box": {
-          "x": 1270.4,
+          "x": 1143.6,
           "y": 519.8,
-          "w": 62.6,
+          "w": 40.9,
           "h": 24,
-          "right": 1333
+          "right": 1184.5
         },
-        "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Context: no reading yet. Click for the full breakdown",
-        "text": "",
+        "label": "Context: 52.5%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "52.5%/400k",
         "box": {
-          "x": 1337,
+          "x": 1188.5,
           "y": 519.8,
-          "w": 26,
+          "w": 104.3,
           "h": 24,
-          "right": 1363
+          "right": 1292.8
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend so far: $1.84.",
+        "text": "$1.84",
+        "box": {
+          "x": 1296.8,
+          "y": 519.8,
+          "w": 48.1,
+          "h": 24,
+          "right": 1344.9
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 255,
+      "scrollWidth": 255,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "331.422px",
-    "controlsAbsorbFreeSpace": "0px",
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "18.1172px",
     "rowChildCount": 3,
-    "what": "a resume whose transcript carries no receipts: no reading, not zero",
-    "themeMechanism": "dataset attribute"
+    "what": "a 48-character slug: the row is one line, the box 111.7, and the name FITS (clientWidth = scrollWidth) with the full selector in its tooltip - no truncation at this length, which is what round 1's caption got wrong",
+    "themeMechanism": "persisted preference"
   },
-  "saturated-900/localOperatorLight": {
+  "longname-750/localOperatorLight": {
     "viewport": {
-      "w": 1500,
+      "w": 1298,
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Compaction overdue /Users/damian/workspace Chat Raw commits=11 r",
-    "column": 1000,
-    "container": 952,
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Kimi long-context run /Users/damian/workspace Chat Raw commits=18 rowRenders=8 rows=4 flushes=3 flushP50=0.90ms ",
+    "column": 798,
+    "container": 750,
     "box": {
-      "x": 550,
+      "x": 524,
       "y": 872.3,
-      "w": 900,
+      "w": 750,
       "h": 111.7,
-      "right": 1450
+      "right": 1274
     },
     "boxOverflowX": 0,
     "rowFound": true,
     "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
     "row": {
       "box": {
-        "x": 567,
+        "x": 541,
         "y": 935,
-        "w": 866,
+        "w": 716,
         "h": 32,
-        "right": 1433
+        "right": 1257
       },
-      "clientWidth": 866,
-      "scrollWidth": 866,
+      "clientWidth": 716,
+      "scrollWidth": 716,
       "overflowX": 0
     },
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
         "box": {
-          "x": 567,
+          "x": 847,
+          "y": 939,
+          "w": 340,
+          "h": 24,
+          "right": 1187
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 541,
           "y": 935,
           "w": 304,
           "h": 32,
-          "right": 871
+          "right": 845
         },
         "order": "0",
         "marginLeft": "0px",
@@ -1894,151 +2268,159 @@
       },
       {
         "tag": "DIV",
+        "role": "controls",
         "box": {
-          "x": 1040.6,
-          "y": 939,
-          "w": 322.4,
-          "h": 24,
-          "right": 1363
-        },
-        "order": "0",
-        "marginLeft": "161.594px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 1365,
+          "x": 1189,
           "y": 935,
           "w": 68,
           "h": 32,
-          "right": 1433
+          "right": 1257
         },
-        "order": "0",
+        "order": "3",
         "marginLeft": "0px",
         "flexBasis": "auto",
         "centre": 951
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
-      "x": 1040.6,
+      "x": 847,
       "y": 939,
-      "w": 322.4,
+      "w": 340,
       "h": 24,
-      "right": 1363
+      "right": 1187
     },
     "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 490.6,
+    "clusterToBoxLeft": 323,
     "attach": {
-      "x": 567,
+      "x": 541,
       "y": 935,
       "w": 32,
       "h": 32,
-      "right": 599
+      "right": 573
     },
     "chip": {
-      "x": 611,
+      "x": 585,
       "y": 935,
       "w": 260,
       "h": 32,
-      "right": 871
+      "right": 845
     },
     "chipPath": "/Users/damian/workspace",
     "controls": [
       {
         "label": "Start recording",
         "box": {
-          "x": 1365,
+          "x": 1189,
           "y": 935,
           "w": 32,
           "h": 32,
-          "right": 1397
+          "right": 1221
         }
       },
       {
         "label": "Send message",
         "box": {
-          "x": 1401,
+          "x": 1225,
           "y": 935,
           "w": 32,
           "h": 32,
-          "right": 1433
+          "right": 1257
         }
       }
     ],
     "readings": [
       {
-        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
-        "text": "gpt-5",
+        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-long-context. Click to choose a different model",
+        "text": "kimi-k2-instruct-0905-preview-long-context",
         "box": {
-          "x": 1040.6,
+          "x": 847,
           "y": 939,
-          "w": 56,
+          "w": 135.2,
           "h": 24,
-          "right": 1096.6
+          "right": 982.2
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
-        "label": "Reasoning effort: low.",
-        "text": "low",
+        "label": "Reasoning effort: auto.",
+        "text": "auto",
         "box": {
-          "x": 1100.6,
+          "x": 986.2,
           "y": 939,
-          "w": 33.6,
+          "w": 40.8,
           "h": 24,
-          "right": 1134.2
+          "right": 1027
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
-        "label": "Context: 88.0%/400k, estimated. Estimated now; click for the full breakdown, which estimates your next request",
-        "text": "88.0%/400kestimate",
+        "label": "Context: 52.5%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "52.5%/400k",
         "box": {
-          "x": 1138.2,
+          "x": 1031,
           "y": 939,
-          "w": 165.6,
+          "w": 104,
           "h": 24,
-          "right": 1303.8
+          "right": 1135
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
-        "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$4.02",
+        "label": "Session spend so far: $1.84.",
+        "text": "$1.84",
         "box": {
-          "x": 1307.8,
+          "x": 1139,
           "y": 939,
-          "w": 55.2,
+          "w": 48,
           "h": 24,
-          "right": 1363
+          "right": 1187
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 123,
+      "scrollWidth": 255,
+      "truncated": true
+    },
+    "effortReading": true,
     "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "161.594px",
+    "stripAbsorbsFreeSpace": "-6px",
     "controlsAbsorbFreeSpace": "0px",
     "rowChildCount": 3,
-    "what": "the danger rung and the estimate marker beside the accent send",
+    "what": "the same slug at the threshold: still no truncation, so the SHORTER of the two proof frames - the 139-character id is the one that yields",
     "themeMechanism": "dataset attribute"
   },
-  "hover-focus-900/localOperatorDark": {
+  "hugename-900/localOperatorDark": {
     "viewport": {
       "w": 1500,
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 Review IDV retention /Users/damian/workspace Chat Raw commits=10",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Ultra-long routing slug /Users/damian/workspace Chat Raw commits=9 rowRenders=8 rows=4 flushes=1 flushP50=0.30ms",
     "column": 1000,
     "container": 952,
     "box": {
@@ -2066,6 +2448,22 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 490,
+          "h": 24,
+          "right": 1363
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 567,
           "y": 935,
@@ -2080,20 +2478,7 @@
       },
       {
         "tag": "DIV",
-        "box": {
-          "x": 1095,
-          "y": 939,
-          "w": 268,
-          "h": 24,
-          "right": 1363
-        },
-        "order": "0",
-        "marginLeft": "215.984px",
-        "flexBasis": "auto",
-        "centre": 951
-      },
-      {
-        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 1365,
           "y": 935,
@@ -2101,24 +2486,24 @@
           "h": 32,
           "right": 1433
         },
-        "order": "0",
+        "order": "3",
         "marginLeft": "0px",
         "flexBasis": "auto",
         "centre": 951
       }
     ],
     "stripParentIsRow": true,
-    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 order-first basis-full @min-[750px]/chatcol:order-none @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:ml-auto",
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
     "stripDraft": null,
     "stripBox": {
-      "x": 1095,
+      "x": 873,
       "y": 939,
-      "w": 268,
+      "w": 490,
       "h": 24,
       "right": 1363
     },
     "clusterToControlsGap": 2,
-    "clusterToBoxLeft": 545,
+    "clusterToBoxLeft": 323,
     "attach": {
       "x": 567,
       "y": 935,
@@ -2158,16 +2543,17 @@
     ],
     "readings": [
       {
-        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
-        "text": "gpt-5",
+        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-ultra-long-context-experimental-routing-preview-build-2026-09-01-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. Click to choose a different model",
+        "text": "kimi-k2-instruct-0905-preview-ultra-long-context-experimental-routing-preview-build-2026-09-01-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "box": {
-          "x": 1095,
+          "x": 873,
           "y": 939,
-          "w": 56,
+          "w": 278,
           "h": 24,
           "right": 1151
         },
         "disabled": null,
+        "control": true,
         "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
       },
       {
@@ -2181,41 +2567,1307 @@
           "right": 1195.8
         },
         "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 66.0%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "66.0%/400k",
+        "box": {
+          "x": 1199.8,
+          "y": 939,
+          "w": 104,
+          "h": 24,
+          "right": 1303.8
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $2.41. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$2.41",
+        "box": {
+          "x": 1307.8,
+          "y": 939,
+          "w": 55.2,
+          "h": 24,
+          "right": 1363
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 266,
+      "scrollWidth": 817,
+      "truncated": true
+    },
+    "effortReading": true,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 3,
+    "what": "a 139-character model id: the row is one line, the box 111.7, and the name TRUNCATES (clientWidth < scrollWidth) with the full selector in its tooltip",
+    "themeMechanism": "persisted preference"
+  },
+  "hugename-750/localOperatorDark": {
+    "viewport": {
+      "w": 1298,
+      "h": 1000
+    },
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 5 New chat Active chats Nothing running right now. Previous chats 5 Ultra-long routing slug /Users/damian/workspace Chat Raw commits=17 rowRenders=8 rows=4 flushes=1 flushP50=0.20m",
+    "column": 798,
+    "container": 750,
+    "box": {
+      "x": 524,
+      "y": 872.3,
+      "w": 750,
+      "h": 111.7,
+      "right": 1274
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 541,
+        "y": 935,
+        "w": 716,
+        "h": 32,
+        "right": 1257
+      },
+      "clientWidth": 716,
+      "scrollWidth": 716,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 340,
+          "h": 24,
+          "right": 1187
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 541,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 845
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1189,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1257
+        },
+        "order": "3",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 847,
+      "y": 939,
+      "w": 340,
+      "h": 24,
+      "right": 1187
+    },
+    "clusterToControlsGap": 2,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 541,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 573
+    },
+    "chip": {
+      "x": 585,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 845
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1189,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1221
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1225,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1257
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-ultra-long-context-experimental-routing-preview-build-2026-09-01-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. Click to choose a different model",
+        "text": "kimi-k2-instruct-0905-preview-ultra-long-context-experimental-routing-preview-build-2026-09-01-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 128,
+          "h": 24,
+          "right": 975
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high.",
+        "text": "high",
+        "box": {
+          "x": 979,
+          "y": 939,
+          "w": 40.8,
+          "h": 24,
+          "right": 1019.8
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 66.0%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "66.0%/400k",
+        "box": {
+          "x": 1023.8,
+          "y": 939,
+          "w": 104,
+          "h": 24,
+          "right": 1127.8
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $2.41. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$2.41",
+        "box": {
+          "x": 1131.8,
+          "y": 939,
+          "w": 55.2,
+          "h": 24,
+          "right": 1187
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(56, 201, 106)"
+    },
+    "nameSpan": {
+      "clientWidth": 116,
+      "scrollWidth": 817,
+      "truncated": true
+    },
+    "effortReading": true,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 3,
+    "what": "the same slug at the threshold: the name gives up the width to its floor, four readings stay on one line, the chip keeps its cap",
+    "themeMechanism": "persisted preference"
+  },
+  "hugename-750/localOperatorLight": {
+    "viewport": {
+      "w": 1298,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 Ultra-long routing slug /Users/damian/workspace Chat Raw commits=20 rowRenders=8 rows=4 flushes=1 flushP50=0.20m",
+    "column": 798,
+    "container": 750,
+    "box": {
+      "x": 524,
+      "y": 872.3,
+      "w": 750,
+      "h": 111.7,
+      "right": 1274
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 541,
+        "y": 935,
+        "w": 716,
+        "h": 32,
+        "right": 1257
+      },
+      "clientWidth": 716,
+      "scrollWidth": 716,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 340,
+          "h": 24,
+          "right": 1187
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 541,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 845
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1189,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1257
+        },
+        "order": "3",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 847,
+      "y": 939,
+      "w": 340,
+      "h": 24,
+      "right": 1187
+    },
+    "clusterToControlsGap": 2,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 541,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 573
+    },
+    "chip": {
+      "x": 585,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 845
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1189,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1221
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1225,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1257
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/moonshotai/kimi-k2-instruct-0905-preview-ultra-long-context-experimental-routing-preview-build-2026-09-01-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. Click to choose a different model",
+        "text": "kimi-k2-instruct-0905-preview-ultra-long-context-experimental-routing-preview-build-2026-09-01-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "box": {
+          "x": 847,
+          "y": 939,
+          "w": 128,
+          "h": 24,
+          "right": 975
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high.",
+        "text": "high",
+        "box": {
+          "x": 979,
+          "y": 939,
+          "w": 40.8,
+          "h": 24,
+          "right": 1019.8
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 66.0%/400k. Measured now; click for the full breakdown, which estimates your next request",
+        "text": "66.0%/400k",
+        "box": {
+          "x": 1023.8,
+          "y": 939,
+          "w": 104,
+          "h": 24,
+          "right": 1127.8
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $2.41. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$2.41",
+        "box": {
+          "x": 1131.8,
+          "y": 939,
+          "w": 55.2,
+          "h": 24,
+          "right": 1187
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 116,
+      "scrollWidth": 817,
+      "truncated": true
+    },
+    "effortReading": true,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 3,
+    "what": "the same slug at the threshold: the name gives up the width to its floor, four readings stay on one line, the chip keeps its cap",
+    "themeMechanism": "dataset attribute"
+  },
+  "no-receipts-900/localOperatorLight": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 Which IDV retention rule applies to a soft hit? /Users/damian/workspace Chat Raw commits=12 rowRenders=8 rows=4 ",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 872,
+      "w": 900,
+      "h": 112,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 935,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 152.4,
+          "h": 24,
+          "right": 1025.4
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 871
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "337.594px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 873,
+      "y": 939,
+      "w": 152.4,
+      "h": 24,
+      "right": 1025.4
+    },
+    "clusterToControlsGap": 339.6,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 567,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 871
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 56,
+          "h": 24,
+          "right": 929
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: unknown. Change it.",
+        "text": "unknown",
+        "box": {
+          "x": 933,
+          "y": 939,
+          "w": 62.4,
+          "h": 24,
+          "right": 995.4
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Context: no reading yet. Click for the full breakdown",
+        "text": "",
+        "box": {
+          "x": 999.4,
+          "y": 939,
+          "w": 26,
+          "h": 24,
+          "right": 1025.4
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "337.594px",
+    "rowChildCount": 3,
+    "what": "a resume whose transcript carries no receipts: no reading, not zero",
+    "themeMechanism": "dataset attribute"
+  },
+  "saturated-900/localOperatorLight": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 Compaction overdue /Users/damian/workspace Chat Raw commits=10 rowRenders=0 rows=0 flushes=1 flushP50=0.30ms flu",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 434,
+      "w": 900,
+      "h": 112,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 497,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 501,
+          "w": 323.1,
+          "h": 24,
+          "right": 1196.1
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 513
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 497,
+          "w": 304,
+          "h": 32,
+          "right": 871
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 513
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 497,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "166.922px",
+        "flexBasis": "auto",
+        "centre": 513
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 873,
+      "y": 501,
+      "w": 323.1,
+      "h": 24,
+      "right": 1196.1
+    },
+    "clusterToControlsGap": 168.9,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 567,
+      "y": 497,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 497,
+      "w": 260,
+      "h": 32,
+      "right": 871
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 497,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 497,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 873,
+          "y": 501,
+          "w": 56,
+          "h": 24,
+          "right": 929
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: low.",
+        "text": "low",
+        "box": {
+          "x": 933,
+          "y": 501,
+          "w": 33.7,
+          "h": 24,
+          "right": 966.7
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 88.0%/400k, estimated. Estimated now; click for the full breakdown, which estimates your next request",
+        "text": "88.0%/400kestimate",
+        "box": {
+          "x": 970.7,
+          "y": 501,
+          "w": 166,
+          "h": 24,
+          "right": 1136.7
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$4.02",
+        "box": {
+          "x": 1140.7,
+          "y": 501,
+          "w": 55.4,
+          "h": 24,
+          "right": 1196.1
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "166.922px",
+    "rowChildCount": 3,
+    "what": "the danger rung and the estimate marker beside an ENABLED accent send",
+    "themeMechanism": "dataset attribute"
+  },
+  "saturated-900/localOperatorDark": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 Compaction overdue /Users/damian/workspace Chat Raw commits=23 rowRenders=8 rows=4 flushes=3 flushP50=0.90ms flu",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 872.3,
+      "w": 900,
+      "h": 111.7,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 935,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 322.4,
+          "h": 24,
+          "right": 1195.4
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 871
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "167.594px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 873,
+      "y": 939,
+      "w": 322.4,
+      "h": 24,
+      "right": 1195.4
+    },
+    "clusterToControlsGap": 169.6,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 567,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 871
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 56,
+          "h": 24,
+          "right": 929
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: low.",
+        "text": "low",
+        "box": {
+          "x": 933,
+          "y": 939,
+          "w": 33.6,
+          "h": 24,
+          "right": 966.6
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      },
+      {
+        "label": "Context: 88.0%/400k, estimated. Estimated now; click for the full breakdown, which estimates your next request",
+        "text": "88.0%/400kestimate",
+        "box": {
+          "x": 970.6,
+          "y": 939,
+          "w": 165.6,
+          "h": 24,
+          "right": 1136.2
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+      },
+      {
+        "label": "Session spend is at least $4.02. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
+        "text": "≥$4.02",
+        "box": {
+          "x": 1140.2,
+          "y": 939,
+          "w": 55.2,
+          "h": 24,
+          "right": 1195.4
+        },
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(56, 201, 106)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "167.594px",
+    "rowChildCount": 3,
+    "what": "the danger rung and the estimate marker beside an ENABLED accent send",
+    "themeMechanism": "persisted preference"
+  },
+  "hover-focus-900/localOperatorDark": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 Review IDV retention /Users/damian/workspace Chat Raw commits=11 rowRenders=8 rows=4 flushes=2 flushP50=1.20ms f",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 872.3,
+      "w": 900,
+      "h": 111.7,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 935,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 268,
+          "h": 24,
+          "right": 1141
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 935,
+          "w": 304,
+          "h": 32,
+          "right": 871
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 951
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "221.984px",
+        "flexBasis": "auto",
+        "centre": 951
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": null,
+    "stripBox": {
+      "x": 873,
+      "y": 939,
+      "w": 268,
+      "h": 24,
+      "right": 1141
+    },
+    "clusterToControlsGap": 224,
+    "clusterToBoxLeft": 323,
+    "attach": {
+      "x": 567,
+      "y": 935,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 935,
+      "w": 260,
+      "h": 32,
+      "right": 871
+    },
+    "chipPath": "/Users/damian/workspace",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 935,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. Click to choose a different model",
+        "text": "gpt-5",
+        "box": {
+          "x": 873,
+          "y": 939,
+          "w": 56,
+          "h": 24,
+          "right": 929
+        },
+        "disabled": null,
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1! min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Reasoning effort: high.",
+        "text": "high",
+        "box": {
+          "x": 933,
+          "y": 939,
+          "w": 40.8,
+          "h": 24,
+          "right": 973.8
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       },
       {
         "label": "Context: 3.8%/400k. Measured now; click for the full breakdown, which estimates your next request",
         "text": "3.8%/400k",
         "box": {
-          "x": 1199.8,
+          "x": 977.8,
           "y": 939,
           "w": 96.8,
           "h": 24,
-          "right": 1296.6
+          "right": 1074.6
         },
         "disabled": null,
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
       },
       {
         "label": "Session spend is at least $0.060. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.",
-        "text": "\u2265$0.060",
+        "text": "≥$0.060",
         "box": {
-          "x": 1300.6,
+          "x": 1078.6,
           "y": 939,
           "w": 62.4,
           "h": 24,
-          "right": 1363
+          "right": 1141
         },
-        "disabled": "true",
-        "classes": "inline-flex h-6 min-w-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+        "disabled": null,
+        "control": false,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
       }
     ],
     "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 96.3,
+      "label": "/Users/damian/workspace",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(56, 201, 106)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": true,
     "stripCentredWithControls": true,
-    "stripAbsorbsFreeSpace": "215.984px",
-    "controlsAbsorbFreeSpace": "0px",
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "221.984px",
     "rowChildCount": 3,
-    "what": "one reading hovered, one focused: a colour step, no lift, ring intact",
+    "what": "the model reading in its BUTTON form hovered (a colour step, no lift) with another reading focused: the ring, unclipped",
     "themeMechanism": "persisted preference"
   },
   "draft-900/localOperatorDark": {
@@ -2224,12 +3876,12 @@
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 New chat The session starts when you send your first message. Ch",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 New chat The session starts when you send your first message. Chat Raw commits=6 rowRenders=8 rows=0 flushes=3 f",
     "column": 1000,
     "container": 952,
     "box": {
       "x": 550,
-      "y": 434,
+      "y": 452.8,
       "w": 900,
       "h": 112,
       "right": 1450
@@ -2240,7 +3892,7 @@
     "row": {
       "box": {
         "x": 567,
-        "y": 497,
+        "y": 515.8,
         "w": 866,
         "h": 32,
         "right": 1433
@@ -2252,9 +3904,25 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 786.9,
+          "y": 519.8,
+          "w": 86,
+          "h": 24,
+          "right": 872.9
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 531.8
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 567,
-          "y": 497,
+          "y": 515.8,
           "w": 217.9,
           "h": 32,
           "right": 784.9
@@ -2262,39 +3930,46 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 513
+        "centre": 531.8
       },
       {
         "tag": "DIV",
+        "role": "controls",
         "box": {
-          "x": 792.9,
-          "y": 497,
+          "x": 1365,
+          "y": 515.8,
           "w": 68,
           "h": 32,
-          "right": 860.9
+          "right": 1433
         },
-        "order": "0",
-        "marginLeft": "0px",
+        "order": "3",
+        "marginLeft": "490.078px",
         "flexBasis": "auto",
-        "centre": 513
+        "centre": 531.8
       }
     ],
-    "stripParentIsRow": false,
-    "stripClasses": null,
-    "stripDraft": null,
-    "stripBox": null,
-    "clusterToControlsGap": null,
-    "clusterToBoxLeft": null,
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": "true",
+    "stripBox": {
+      "x": 786.9,
+      "y": 519.8,
+      "w": 86,
+      "h": 24,
+      "right": 872.9
+    },
+    "clusterToControlsGap": 492.1,
+    "clusterToBoxLeft": 236.9,
     "attach": {
       "x": 567,
-      "y": 497,
+      "y": 515.8,
       "w": 32,
       "h": 32,
       "right": 599
     },
     "chip": {
       "x": 611,
-      "y": 497,
+      "y": 515.8,
       "w": 173.9,
       "h": 32,
       "right": 784.9
@@ -2304,31 +3979,77 @@
       {
         "label": "Start recording",
         "box": {
-          "x": 792.9,
-          "y": 497,
+          "x": 1365,
+          "y": 515.8,
           "w": 32,
           "h": 32,
-          "right": 824.9
+          "right": 1397
         }
       },
       {
         "label": "Send message",
         "box": {
-          "x": 828.9,
-          "y": 497,
+          "x": 1401,
+          "y": 515.8,
           "w": 32,
           "h": 32,
-          "right": 860.9
+          "right": 1433
         }
       }
     ],
-    "readings": [],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. The first message will use it. Change it once the conversation starts.",
+        "text": "gpt-5",
+        "box": {
+          "x": 786.9,
+          "y": 519.8,
+          "w": 56,
+          "h": 24,
+          "right": 842.9
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Context: nothing measured yet. The window fills as the conversation runs.",
+        "text": "",
+        "box": {
+          "x": 846.9,
+          "y": 519.8,
+          "w": 26,
+          "h": 24,
+          "right": 872.9
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
     "rowOnOneLine": true,
-    "stripCentredWithControls": null,
-    "stripAbsorbsFreeSpace": null,
-    "controlsAbsorbFreeSpace": "0px",
-    "rowChildCount": 2,
-    "what": "a NEW conversation pane: no session exists yet",
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 7.2,
+      "label": "~",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": false,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "490.078px",
+    "rowChildCount": 3,
+    "what": "a NEW conversation pane against a backend with the preview op: the identity the first turn will use, an empty ring, no cost chip, and no effort reading because the preview's spec carries no ladder",
     "themeMechanism": "persisted preference"
   },
   "draft-900/localOperatorLight": {
@@ -2337,12 +4058,12 @@
       "h": 1000
     },
     "theme": "localOperatorLight",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 New chat The session starts when you send your first message. Ch",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 New chat The session starts when you send your first message. Chat Raw commits=5 rowRenders=0 rows=0 flushes=0 f",
     "column": 1000,
     "container": 952,
     "box": {
       "x": 550,
-      "y": 434,
+      "y": 452.8,
       "w": 900,
       "h": 112,
       "right": 1450
@@ -2353,7 +4074,7 @@
     "row": {
       "box": {
         "x": 567,
-        "y": 497,
+        "y": 515.8,
         "w": 866,
         "h": 32,
         "right": 1433
@@ -2365,9 +4086,25 @@
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 786.9,
+          "y": 519.8,
+          "w": 86,
+          "h": 24,
+          "right": 872.9
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 531.8
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
         "box": {
           "x": 567,
-          "y": 497,
+          "y": 515.8,
           "w": 217.9,
           "h": 32,
           "right": 784.9
@@ -2375,39 +4112,46 @@
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 513
+        "centre": 531.8
       },
       {
         "tag": "DIV",
+        "role": "controls",
         "box": {
-          "x": 792.9,
-          "y": 497,
+          "x": 1365,
+          "y": 515.8,
           "w": 68,
           "h": 32,
-          "right": 860.9
+          "right": 1433
         },
-        "order": "0",
-        "marginLeft": "0px",
+        "order": "3",
+        "marginLeft": "490.078px",
         "flexBasis": "auto",
-        "centre": 513
+        "centre": 531.8
       }
     ],
-    "stripParentIsRow": false,
-    "stripClasses": null,
-    "stripDraft": null,
-    "stripBox": null,
-    "clusterToControlsGap": null,
-    "clusterToBoxLeft": null,
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": "true",
+    "stripBox": {
+      "x": 786.9,
+      "y": 519.8,
+      "w": 86,
+      "h": 24,
+      "right": 872.9
+    },
+    "clusterToControlsGap": 492.1,
+    "clusterToBoxLeft": 236.9,
     "attach": {
       "x": 567,
-      "y": 497,
+      "y": 515.8,
       "w": 32,
       "h": 32,
       "right": 599
     },
     "chip": {
       "x": 611,
-      "y": 497,
+      "y": 515.8,
       "w": 173.9,
       "h": 32,
       "right": 784.9
@@ -2417,48 +4161,94 @@
       {
         "label": "Start recording",
         "box": {
-          "x": 792.9,
-          "y": 497,
+          "x": 1365,
+          "y": 515.8,
           "w": 32,
           "h": 32,
-          "right": 824.9
+          "right": 1397
         }
       },
       {
         "label": "Send message",
         "box": {
-          "x": 828.9,
-          "y": 497,
+          "x": 1401,
+          "y": 515.8,
           "w": 32,
           "h": 32,
-          "right": 860.9
+          "right": 1433
         }
       }
     ],
-    "readings": [],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. The first message will use it. Change it once the conversation starts.",
+        "text": "gpt-5",
+        "box": {
+          "x": 786.9,
+          "y": 519.8,
+          "w": 56,
+          "h": 24,
+          "right": 842.9
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Context: nothing measured yet. The window fills as the conversation runs.",
+        "text": "",
+        "box": {
+          "x": 846.9,
+          "y": 519.8,
+          "w": 26,
+          "h": 24,
+          "right": 872.9
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
     "rowOnOneLine": true,
-    "stripCentredWithControls": null,
-    "stripAbsorbsFreeSpace": null,
-    "controlsAbsorbFreeSpace": "0px",
-    "rowChildCount": 2,
-    "what": "a NEW conversation pane: no session exists yet",
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 7.2,
+      "label": "~",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": false,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "490.078px",
+    "rowChildCount": 3,
+    "what": "a NEW conversation pane against a backend with the preview op: the identity the first turn will use, an empty ring, no cost chip, and no effort reading because the preview's spec carries no ladder",
     "themeMechanism": "dataset attribute"
   },
   "draft-220/localOperatorDark": {
     "viewport": {
-      "w": 820,
+      "w": 768,
       "h": 1000
     },
     "theme": "localOperatorDark",
-    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 4 New chat Active chats Nothing running right now. Previous chats 4 New chat The session starts when you send your first message. Ch",
-    "column": 320,
-    "container": 272,
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 New chat The session starts when you send your first message. Chat Raw commits=4 rowRenders=0 rows=0 flushes=0 f",
+    "column": 268,
+    "container": 220,
     "box": {
       "x": 524,
-      "y": 508.3,
-      "w": 272,
-      "h": 85.5,
-      "right": 796
+      "y": 492.3,
+      "w": 220,
+      "h": 117.5,
+      "right": 744
     },
     "boxOverflowX": 0,
     "rowFound": true,
@@ -2466,95 +4256,498 @@
     "row": {
       "box": {
         "x": 533,
-        "y": 552.8,
-        "w": 254,
-        "h": 32,
-        "right": 787
+        "y": 536.8,
+        "w": 202,
+        "h": 64,
+        "right": 735
       },
-      "clientWidth": 254,
-      "scrollWidth": 254,
+      "clientWidth": 202,
+      "scrollWidth": 202,
       "overflowX": 0
     },
     "rowChildren": [
       {
         "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 536.8,
+          "w": 202,
+          "h": 24,
+          "right": 729
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 548.8
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
         "box": {
           "x": 533,
-          "y": 552.8,
-          "w": 136,
+          "y": 568.8,
+          "w": 202,
           "h": 32,
-          "right": 669
+          "right": 735
         },
         "order": "0",
         "marginLeft": "0px",
         "flexBasis": "auto",
-        "centre": 568.8
-      },
-      {
-        "tag": "DIV",
-        "box": {
-          "x": 727,
-          "y": 554.8,
-          "w": 60,
-          "h": 28,
-          "right": 787
-        },
-        "order": "0",
-        "marginLeft": "50px",
-        "flexBasis": "auto",
-        "centre": 568.8
+        "centre": 584.8
       }
     ],
-    "stripParentIsRow": false,
-    "stripClasses": null,
-    "stripDraft": null,
-    "stripBox": null,
-    "clusterToControlsGap": null,
-    "clusterToBoxLeft": null,
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": "true",
+    "stripBox": {
+      "x": 527,
+      "y": 536.8,
+      "w": 202,
+      "h": 24,
+      "right": 729
+    },
+    "clusterToControlsGap": -196,
+    "clusterToBoxLeft": 3,
     "attach": {
       "x": 533,
-      "y": 554.8,
+      "y": 570.8,
       "w": 28,
       "h": 28,
       "right": 561
     },
     "chip": {
       "x": 573,
-      "y": 552.8,
-      "w": 96,
+      "y": 568.8,
+      "w": 44,
       "h": 32,
-      "right": 669
+      "right": 617
     },
     "chipPath": "~",
     "controls": [
       {
         "label": "Start recording",
         "box": {
-          "x": 727,
-          "y": 554.8,
+          "x": 675,
+          "y": 570.8,
           "w": 28,
           "h": 28,
-          "right": 755
+          "right": 703
         }
       },
       {
         "label": "Send message",
         "box": {
-          "x": 759,
-          "y": 554.8,
+          "x": 707,
+          "y": 570.8,
           "w": 28,
           "h": 28,
-          "right": 787
+          "right": 735
         }
       }
     ],
-    "readings": [],
-    "rowOnOneLine": true,
-    "stripCentredWithControls": null,
-    "stripAbsorbsFreeSpace": null,
-    "controlsAbsorbFreeSpace": "50px",
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. The first message will use it. Change it once the conversation starts.",
+        "text": "gpt-5",
+        "box": {
+          "x": 527,
+          "y": 536.8,
+          "w": 56,
+          "h": 24,
+          "right": 583
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Context: nothing measured yet. The window fills as the conversation runs.",
+        "text": "",
+        "box": {
+          "x": 587,
+          "y": 536.8,
+          "w": 26,
+          "h": 24,
+          "right": 613
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 1,
+      "label": "~",
+      "srOnly": true
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": false,
+    "stripCentredWithControls": false,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
     "rowChildCount": 2,
-    "what": "a NEW conversation pane at the column floor",
+    "what": "the same pane at the column floor: the cluster wraps internally, nothing clipped, no cost chip",
+    "themeMechanism": "persisted preference"
+  },
+  "draft-220/localOperatorLight": {
+    "viewport": {
+      "w": 768,
+      "h": 1000
+    },
+    "theme": "localOperatorLight",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 New chat The session starts when you send your first message. Chat Raw commits=7 rowRenders=0 rows=0 flushes=0 f",
+    "column": 268,
+    "container": 220,
+    "box": {
+      "x": 524,
+      "y": 492,
+      "w": 220,
+      "h": 118,
+      "right": 744
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 533,
+        "y": 537,
+        "w": 202,
+        "h": 64,
+        "right": 735
+      },
+      "clientWidth": 202,
+      "scrollWidth": 202,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 527,
+          "y": 537,
+          "w": 202,
+          "h": 24,
+          "right": 729
+        },
+        "order": "0",
+        "marginLeft": "-6px",
+        "flexBasis": "100%",
+        "centre": 549
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 533,
+          "y": 569,
+          "w": 202,
+          "h": 32,
+          "right": 735
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 585
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": "true",
+    "stripBox": {
+      "x": 527,
+      "y": 537,
+      "w": 202,
+      "h": 24,
+      "right": 729
+    },
+    "clusterToControlsGap": -196,
+    "clusterToBoxLeft": 3,
+    "attach": {
+      "x": 533,
+      "y": 571,
+      "w": 28,
+      "h": 28,
+      "right": 561
+    },
+    "chip": {
+      "x": 573,
+      "y": 569,
+      "w": 44,
+      "h": 32,
+      "right": 617
+    },
+    "chipPath": "~",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 675,
+          "y": 571,
+          "w": 28,
+          "h": 28,
+          "right": 703
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 707,
+          "y": 571,
+          "w": 28,
+          "h": 28,
+          "right": 735
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. The first message will use it. Change it once the conversation starts.",
+        "text": "gpt-5",
+        "box": {
+          "x": 527,
+          "y": 537,
+          "w": 56,
+          "h": 24,
+          "right": 583
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Context: nothing measured yet. The window fills as the conversation runs.",
+        "text": "",
+        "box": {
+          "x": 587,
+          "y": 537,
+          "w": 26,
+          "h": 24,
+          "right": 613
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": false,
+    "rowLineCount": 2,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 1,
+      "label": "~",
+      "srOnly": true
+    },
+    "send": {
+      "disabled": false,
+      "fill": "rgb(20, 120, 66)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": false,
+    "stripCentredWithControls": false,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "0px",
+    "rowChildCount": 2,
+    "what": "the same pane at the column floor: the cluster wraps internally, nothing clipped, no cost chip",
+    "themeMechanism": "dataset attribute"
+  },
+  "draft-no-strip-900/localOperatorDark": {
+    "viewport": {
+      "w": 1500,
+      "h": 1000
+    },
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents Create agent Teams Create team All chats 6 New chat Active chats Nothing running right now. Previous chats 6 New chat The session starts when you send your first message. Chat Raw commits=5 rowRenders=0 rows=0 flushes=0 f",
+    "column": 1000,
+    "container": 952,
+    "box": {
+      "x": 550,
+      "y": 415.3,
+      "w": 900,
+      "h": 112,
+      "right": 1450
+    },
+    "boxOverflowX": 0,
+    "rowFound": true,
+    "rowClasses": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "row": {
+      "box": {
+        "x": 567,
+        "y": 478.3,
+        "w": 866,
+        "h": 32,
+        "right": 1433
+      },
+      "clientWidth": 866,
+      "scrollWidth": 866,
+      "overflowX": 0
+    },
+    "rowChildren": [
+      {
+        "tag": "DIV",
+        "role": "readings",
+        "box": {
+          "x": 786.9,
+          "y": 482.3,
+          "w": 86,
+          "h": 24,
+          "right": 872.9
+        },
+        "order": "2",
+        "marginLeft": "-6px",
+        "flexBasis": "auto",
+        "centre": 494.3
+      },
+      {
+        "tag": "DIV",
+        "role": "left group",
+        "box": {
+          "x": 567,
+          "y": 478.3,
+          "w": 217.9,
+          "h": 32,
+          "right": 784.9
+        },
+        "order": "0",
+        "marginLeft": "0px",
+        "flexBasis": "auto",
+        "centre": 494.3
+      },
+      {
+        "tag": "DIV",
+        "role": "controls",
+        "box": {
+          "x": 1365,
+          "y": 478.3,
+          "w": 68,
+          "h": 32,
+          "right": 1433
+        },
+        "order": "3",
+        "marginLeft": "490.078px",
+        "flexBasis": "auto",
+        "centre": 494.3
+      }
+    ],
+    "stripParentIsRow": true,
+    "stripClasses": "-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+    "stripDraft": "true",
+    "stripBox": {
+      "x": 786.9,
+      "y": 482.3,
+      "w": 86,
+      "h": 24,
+      "right": 872.9
+    },
+    "clusterToControlsGap": 492.1,
+    "clusterToBoxLeft": 236.9,
+    "attach": {
+      "x": 567,
+      "y": 478.3,
+      "w": 32,
+      "h": 32,
+      "right": 599
+    },
+    "chip": {
+      "x": 611,
+      "y": 478.3,
+      "w": 173.9,
+      "h": 32,
+      "right": 784.9
+    },
+    "chipPath": "~",
+    "controls": [
+      {
+        "label": "Start recording",
+        "box": {
+          "x": 1365,
+          "y": 478.3,
+          "w": 32,
+          "h": 32,
+          "right": 1397
+        }
+      },
+      {
+        "label": "Send message",
+        "box": {
+          "x": 1401,
+          "y": 478.3,
+          "w": 32,
+          "h": 32,
+          "right": 1433
+        }
+      }
+    ],
+    "readings": [
+      {
+        "label": "Model: openrouter/openai/gpt-5. The first message will use it. Change it once the conversation starts.",
+        "text": "gpt-5",
+        "box": {
+          "x": 786.9,
+          "y": 482.3,
+          "w": 56,
+          "h": 24,
+          "right": 842.9
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim min-w-14 max-w-full shrink"
+      },
+      {
+        "label": "Context: nothing measured yet. The window fills as the conversation runs.",
+        "text": "",
+        "box": {
+          "x": 846.9,
+          "y": 482.3,
+          "w": 26,
+          "h": 24,
+          "right": 872.9
+        },
+        "disabled": "true",
+        "control": true,
+        "classes": "inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta cursor-default text-ink-dim"
+      }
+    ],
+    "rowOnOneLine": true,
+    "rowLineCount": 1,
+    "rowRole": "button row (strip parent)",
+    "chipText": {
+      "w": 7.2,
+      "label": "~",
+      "srOnly": false
+    },
+    "send": {
+      "disabled": true,
+      "fill": "rgb(15, 12, 8)"
+    },
+    "nameSpan": {
+      "clientWidth": 32,
+      "scrollWidth": 32,
+      "truncated": false
+    },
+    "effortReading": false,
+    "stripCentredWithControls": true,
+    "stripAbsorbsFreeSpace": "-6px",
+    "controlsAbsorbFreeSpace": "490.078px",
+    "rowChildCount": 3,
+    "what": "the blocker's state: a draft whose backend advertises NO preview op, so the cluster is absent - the controls must still sit flush right (they did not, pre-fix)",
     "themeMechanism": "persisted preference"
   }
 }
