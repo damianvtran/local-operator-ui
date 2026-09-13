@@ -1,7 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import type { FC, ReactNode } from "react";
+import { type FC, type ReactNode, useEffect, useState } from "react";
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
@@ -10,6 +10,11 @@ import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import { costTooltip, sessionCost } from "./session-cost";
+import {
+	DURATION_EXPLANATION,
+	durationReading,
+	formatDuration,
+} from "./session-duration";
 import {
 	bandReadings,
 	effortState,
@@ -167,6 +172,47 @@ const READING_BUTTON = cn(
 
 /** The inert form, for a reading with nothing to open. */
 const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
+
+/** The duration reading ticks at 1Hz because it shows whole seconds. */
+const CLOCK_MS = 1000;
+
+/**
+ * Seconds of active time, banked plus the turn currently in flight, re-read
+ * once a second while a turn is running.
+ *
+ * The shape is `tool-row.tsx`'s `useRunningElapsed`, for its reasons: seeded
+ * SYNCHRONOUSLY so a session attached mid-turn shows true elapsed rather than
+ * restarting at `0s`, and the interval exists only while something is actually
+ * running, so an idle composer holds zero timers.
+ *
+ * Why the cell owns a clock at all, when this component holds no other local
+ * state: the canonical stream does not repaint at 1 Hz — that is why the app
+ * has a row clock in the first place — so a stream-only reading would FREEZE
+ * during a quiet tool call, which is a lie about a running session. What is
+ * local here is the clock, not the reading: `banked` only ever comes from the
+ * snapshot and the open edge is re-derived from the canonical epoch on every
+ * tick, so attaching mid-turn cannot double-count and nothing is optimistically
+ * written.
+ */
+function useActiveSeconds(banked: number, startedAt: number | null): number {
+	const read = () =>
+		startedAt === null
+			? banked
+			: banked + Math.max(0, (Date.now() - startedAt) / 1000);
+	const [seconds, setSeconds] = useState(read);
+	useEffect(() => {
+		if (startedAt === null) {
+			setSeconds(banked);
+			return;
+		}
+		const tick = () =>
+			setSeconds(banked + Math.max(0, (Date.now() - startedAt) / 1000));
+		tick();
+		const timer = window.setInterval(tick, CLOCK_MS);
+		return () => window.clearInterval(timer);
+	}, [banked, startedAt]);
+	return seconds;
+}
 
 /**
  * One reading, as a button when it can be opened and a label when it cannot.
@@ -447,6 +493,21 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		context_is_estimate: frontend.context_is_estimate,
 	});
 	const cost = sessionCost(frontend, frontend.last_usage);
+	/*
+	 * Active time: banked seconds plus the open turn, or `null` for a session
+	 * that has done nothing. A draft needs no branch here — its
+	 * `active_duration_s` is 0 and its `activity_started_at` null, which is the
+	 * same input a freshly opened session gives, and both render no reading
+	 * rather than a `0s` that claims a turn completed in under a second (D21).
+	 */
+	const duration = durationReading(
+		frontend.active_duration_s,
+		frontend.activity_started_at,
+	);
+	const activeSeconds = useActiveSeconds(
+		duration?.banked ?? 0,
+		duration?.startedAt ?? null,
+	);
 
 	// Nothing known at all: a session that has connected but reported no model,
 	// no reading and no spend. An empty row is better than a row of dashes.
@@ -585,15 +646,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * on the label: the same empty ladder on a live session is a fact about
 			 * the model and stays.
 			 *
-			 * `knownLadder`, not `adjustable`: the `unknown` branch is deliberately
-			 * ADJUSTABLE (a live session can open its picker and find out, which is why
-			 * that branch is not inert), so an adjustability test would let the very
-			 * state this rule exists to hide straight through. What a draft must not do
-			 * is print a level-shaped word for a ladder nobody knows yet; when the spec
-			 * did carry the rungs - empty or not - the reading is a fact and stays, on a
-			 * draft exactly as on a session.
+			 * `levelKnown`, not `adjustable` and not `knownLadder`. `adjustable` is
+			 * wrong because the `unknown` branch is deliberately adjustable (a live
+			 * session can open its picker and find out), so it would let the very
+			 * state this rule exists to hide straight through. `knownLadder` is wrong
+			 * in the other direction: a spec can carry an EXPLICIT level while this
+			 * dump does not carry the rungs, and that level is known - dropping it
+			 * would shed a fact the first turn then puts back, which is U1's shift
+			 * wearing a different hat. What a draft must not print is a level-shaped
+			 * word for a level nobody has: that is exactly `unknown`.
 			 */}
-			{effort && (!draft || effort.knownLadder) && (
+			{effort && (!draft || effort.levelKnown) && (
 				<Reading
 					label={[
 						`Reasoning effort: ${effort.label}.`,
@@ -702,6 +765,63 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					    question (this account's billing) and opening it from a session
 					    figure would answer something the user did not ask. */}
 					<span className="font-mono text-mono-sm">{cost.text}</span>
+				</Reading>
+			)}
+			{/*
+			 * Active processing time, LAST in the cluster and the first thing shed.
+			 *
+			 * Render order and shed order are different facts and the band keeps
+			 * them apart: its right group ends `… context · cost · duration`, and
+			 * its own drop ladder sheds duration first, because it is the one
+			 * reading re-derivable from the transcript (`status_line.py`,
+			 * `_DROP_LADDER[0]`). The strip copies both. Sitting outboard also
+			 * means the one value that moves while the user watches grows into the
+			 * row's free space rather than into another reading.
+			 *
+			 * The drop is a container-range query rather than a wrap, because a
+			 * wrap above the threshold is what put the microphone and send on a
+			 * second line — the defect this PR's own D1/D8 round fixed. `hidden`
+			 * rather than `sr-only`: a shed reading does not exist, and the band
+			 * renders it as absent rather than as something a screen reader still
+			 * hears (the chip's icon-only form is the opposite case, and uses
+			 * `sr-only` for that reason).
+			 *
+			 * MEASURED, not guessed: at a 750px box the row is 716 and the
+			 * cluster's budget is 328 after the chip group (304), the controls
+			 * (68) and the gaps (16). The five-reading cluster at the name's floor
+			 * measures 320 in its plain state but 372 once the context reading
+			 * carries the word `estimate` — 44px over, with the name already at
+			 * its floor and nothing left to yield. The threshold is therefore the
+			 * width at which the FULLEST state still fits, not the plainest:
+			 * measured at 900 in both themes the five readings need 424px of the
+			 * 494px available, and the state that sets it is `estimate` plus a
+			 * four-digit cost. 860px of column is the first width where that state
+			 * fits with the chip at its cap, so the reading is hidden between the
+			 * 750px wrap threshold and there.
+			 */}
+			{duration && (
+				<Reading
+					label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_EXPLANATION}`}
+					tooltip={
+						<TooltipLines
+							lines={[formatDuration(activeSeconds), DURATION_EXPLANATION]}
+						/>
+					}
+					// Inert, like the spend beside it and like the band's own: it opens
+					// nothing, and this is the reading the band ranks least actionable.
+					// A readout rather than a disabled button for the same reason the
+					// cost is one — there is no picker for it to be unavailable FOR.
+					readout
+					className="@min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+				>
+					{/*
+					 * `tabular-nums`: the digits change once a second, and a
+					 * proportional `1` would shift the reading's width under the
+					 * reader as the number ticks.
+					 */}
+					<span className="font-mono text-mono-sm tabular-nums">
+						{formatDuration(activeSeconds)}
+					</span>
 				</Reading>
 			)}
 		</div>

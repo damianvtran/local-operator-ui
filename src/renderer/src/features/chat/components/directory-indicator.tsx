@@ -133,7 +133,8 @@ const CHIP_WRAPPER =
 /**
  * The chip at the composer's own floor: the glyph, and nothing else.
  *
- * Below a 240px column the chip's 96px floor and the session's readings cannot
+ * Below `CHAT_CHIP_ICON_ONLY_PX` (240) of column the chip's 96px floor and the
+ * session's readings cannot
  * share the row. Measured at the 220px floor (the canvas-open column): the row
  * is 202px, the readings take their own line, and the button line then needs
  * 28 + 12 + 96 + 8 + 60 = 204 of it - two pixels over, so the controls broke to

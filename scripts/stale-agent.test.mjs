@@ -50,7 +50,10 @@ const relayDown = new DesktopControlError(
 	503,
 	"The backend could not complete this request.",
 );
-const refused = new DesktopControlError(401, "Desktop authorization is required.");
+const refused = new DesktopControlError(
+	401,
+	"Desktop authorization is required.",
+);
 
 test("a 404 is 'agent gone', never 'server down'", () => {
 	assert.equal(isAgentNotFound(notFound), true);

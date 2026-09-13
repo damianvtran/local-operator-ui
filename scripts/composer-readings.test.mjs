@@ -481,14 +481,65 @@ test("the row right-justifies its controls whether or not the readings render", 
  * file; the property is "no `ml-auto` and no `chatcol:ml-auto` anywhere in it",
  * which is what this reads.
  */
+/**
+ * Whether the cluster claims the row's free space at ANY width.
+ *
+ * The property, not one literal: `ml-auto`, `ms-auto`, `mx-auto` and a
+ * container-scoped `@min-[750px]/chatcol:ml-auto` all do the same thing to the
+ * row, and round 1's blocker shipped precisely because the test named one
+ * string. Anything that resolves to an automatic inline-start margin counts,
+ * whatever variant carries it.
+ */
 function stripHasAutoMargin(strip) {
 	const root = strip.match(/"basis-full[^"]*"/);
 	assert.ok(
 		root,
 		"the strip's root class list is not where this test expects it",
 	);
-	return /(^|\s|:)ml-auto/.test(root[0]);
+	return /(^|\s|:)(ml|ms|mx)-auto/.test(root[0]);
 }
+
+test("the inline layout is a PAIRING, and neither half works alone", () => {
+	// `display: contents` on the button line and `order-2`/`order-3` on the
+	// cluster and controls are one mechanism with two halves: the wrapper exists
+	// so the narrow row keeps its button line on ONE line, and it must dissolve
+	// above the threshold or the cluster would sit inside it instead of between
+	// the chip and the controls. Deleting either half inverts the inline layout
+	// while every rendering test stays green, because the strip's own markup is
+	// unchanged - so the pairing is asserted where it lives.
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+
+	const wrapper = composer.match(
+		/<div className="([^"]*@min-\[750px\]\/chatcol:contents[^"]*)">/,
+	);
+	assert.ok(wrapper, "the button line's wrapper must exist");
+	// Below the threshold it IS a flex item and must not wrap internally: that
+	// is what makes "the second line" mean one line rather than three.
+	assert.match(wrapper[1], /\bflex\b/);
+	assert.match(wrapper[1], /\bflex-nowrap\b/);
+	assert.match(wrapper[1], /\bw-full\b/);
+	assert.match(wrapper[1], /\bmin-w-0\b/);
+
+	// The other half: with the wrapper dissolved, order is what restores the
+	// painted sequence [attach][chip] [readings] [mic][send] out of a DOM whose
+	// first child is the cluster.
+	assert.match(strip, /@min-\[750px\]\/chatcol:order-2/);
+	assert.match(composer, /@min-\[750px\]\/chatcol:order-3/);
+
+	// And the left group holds its width above the threshold. Without this the
+	// chip's own `shrink-0` (which makes the NAME truncate first) let the group
+	// close around it, and the path painted across the readings - visible only
+	// in a frame, because `row.overflowX` reads 0 when the group fits and its
+	// child does not (code review round 2).
+	assert.match(composer, /@min-\[750px\]\/chatcol:shrink-0/);
+});
 
 // The draft's payload reaches the STRIP and nothing else. Asserted on the
 // source because `SessionPanel` cannot be rendered in isolation (it needs the
@@ -575,5 +626,159 @@ test("sessions.preview routes to its own POST, with create's body and a closed s
 			sessionId: "aaaaaaaaaaaa",
 		}).success,
 		false,
+	);
+});
+
+/* ---- 5. the duration reading -------------------------------------------- */
+
+test("the duration port spells what the band spells, bounded at six cells", async () => {
+	// The port's contract is the Python function's domain, so the cases are the
+	// ones `format_duration`'s own docstring names, plus the boundaries that
+	// decide a branch. A number this app prints in two places has to be the same
+	// number in both, which is the whole reason it is a port.
+	const { formatDuration } = await import(
+		"../src/renderer/src/features/chat/session-status/session-duration.ts"
+	);
+
+	const cases = [
+		[0, "0s"],
+		// Sub-second WORK renders 0s rather than vanishing: a finished turn
+		// always leaves a mark. (Whether a turn happened at all is the reading's
+		// question, not the formatter's - see the guard test below.)
+		[0.4, "0s"],
+		[9, "9s"],
+		[59, "59s"],
+		[60, "1m"],
+		// A whole minute drops its seconds; a partial one keeps them.
+		[300, "5m"],
+		[2461, "41m1s"],
+		[3599, "59m59s"],
+		[3600, "1h"],
+		[3720, "1h2m"],
+		[86_399, "23h59m"],
+		[86_400, "1d"],
+		[363_600, "4d5h"],
+		[8_639_999, "99d23h"],
+		// The cap names the bound it fired at: `99d+` would read as the duration
+		// having got SMALLER one minute after `99d23h`.
+		[8_640_000, "100d+"],
+	];
+	for (const [input, expected] of cases)
+		assert.equal(formatDuration(input), expected, `${input}s`);
+
+	// The six-cell bound is a CONTRACT, not an accident of the cases above: the
+	// reading is never truncated, and that is only affordable because the widest
+	// string is known. Swept across the whole domain rather than asserted on the
+	// three known-widest strings, so a new branch cannot quietly exceed it.
+	for (let s = 0; s < 400 * 86_400; s += 997)
+		assert.ok(
+			formatDuration(s).length <= 6,
+			`${s}s renders ${formatDuration(s)}, which is wider than six cells`,
+		);
+});
+
+test("a session that has done nothing renders no duration, and a running one always does", async () => {
+	const { durationReading } = await import(
+		"../src/renderer/src/features/chat/session-status/session-duration.ts"
+	);
+
+	// Nothing banked and nothing running: no reading. `0s` would claim a turn
+	// completed in under a second, which is the claim `$0.00` makes about a
+	// session that has spent nothing (R19, D21). This is also exactly a DRAFT's
+	// input, which is why the draft needs no branch of its own.
+	assert.equal(durationReading(0, null), null);
+	assert.equal(durationReading(null, null), null);
+	assert.equal(durationReading(undefined, undefined), null);
+
+	// Banked, not running: the frozen truth and NO timer.
+	assert.deepEqual(durationReading(41, null), { banked: 41, startedAt: null });
+
+	// Running at zero banked seconds is never null: work is happening, and the
+	// reading appearing as the first turn starts is the point.
+	const live = durationReading(0, 1_760_000_000);
+	assert.ok(live);
+	assert.equal(live.banked, 0);
+	// The wire carries epoch SECONDS; every clock in this app is Date.now()-based.
+	assert.equal(live.startedAt, 1_760_000_000_000);
+});
+
+test("a draft renders four fewer claims than a running session: no cost, no duration", () => {
+	// The two ends of D21 in one assertion, because they are one rule: a surface
+	// with nothing to report reports nothing, rather than reporting a zero.
+	const draft = renderStrip({
+		frontend: { ...DRAFT, active_duration_s: 0, activity_started_at: null },
+		draft: true,
+	});
+	assert.doesNotMatch(draft, /Active time:/);
+	assert.doesNotMatch(draft, /aria-label="Spend/);
+
+	// The same strip on a session that HAS run carries both.
+	const ran = renderStrip({
+		frontend: {
+			...DRAFT,
+			context_tokens: 15_200,
+			cumulative_parent_cost: 0.0603,
+			cost_knowledge: "floor",
+			active_duration_s: 2461,
+			activity_started_at: null,
+		},
+	});
+	assert.match(ran, /aria-label="Active time: 41m1s\./);
+	// Inert, and a readout rather than a disabled button: it opens nothing, so
+	// there is no control for `aria-disabled` to describe as unavailable.
+	assert.doesNotMatch(ran, /aria-label="Active time[^"]*"[^>]*aria-disabled/);
+});
+
+test("duration is the only reading that may be shed, and only between the two thresholds", () => {
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+
+	// The shed is a container-range query: a single `@max` would hide it at the
+	// wrapped widths too, where the cluster owns its own line and has room for
+	// it (D20 rung 3). `hidden`, not `sr-only` - a shed reading does not exist,
+	// unlike the chip's icon-only text, which is still readable by a screen
+	// reader.
+	assert.match(
+		strip,
+		/className="@min-\[750px\]\/chatcol:@max-\[860px\]\/chatcol:hidden"/,
+		"duration must drop only in the band between the wrap threshold and the width where five readings fit",
+	);
+	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
+
+	// And it is the ONLY one: the other four are protected by R8/R14, so a
+	// `hidden` anywhere else in this file is a reading being dropped that the
+	// design says must never drop.
+	assert.equal(
+		strip.match(/chatcol:hidden/g)?.length,
+		1,
+		"only the duration reading may be shed",
+	);
+});
+
+test("the value readings hold their width; only the model name yields", () => {
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+
+	// D10: the value readings kept the default shrink, so a long model name
+	// squeezed them below their content and their glyphs overlapped - `high` cut
+	// mid-word, `66.0%/400k` and `≥$2.41` drawn on top of each other, at 750 AND
+	// 900. A clipped figure is a false one, so the shared box refuses to shrink
+	// and the name opts back in as the single item allowed to yield.
+	assert.match(
+		strip,
+		/const READING_BOX =\s*\n?\s*"[^"]*\bshrink-0\b/,
+		"every reading box must refuse to shrink by default",
+	);
+	// The override is on the MODEL reading and nowhere else: `shrink` (not
+	// `shrink-0`) appears exactly once in the file, in the model's className.
+	const shrinkOverrides = strip.match(/"min-w-14 max-w-full shrink"/g) ?? [];
+	assert.equal(
+		shrinkOverrides.length,
+		1,
+		"exactly one reading may opt back into shrinking, and it is the name",
 	);
 });
