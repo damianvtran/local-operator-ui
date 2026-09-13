@@ -32,12 +32,14 @@ system temp dir, swept on exit, `Page.captureScreenshot` with
 are 2760x1744, unaltered. Every frame asserts its own state before it is
 written, so a blank or wrong frame fails the capture instead of reaching review.
 
-**The before tree** is a detached worktree at `87411d12a` — `origin/main` at the
+**The before tree** is a detached worktree at `98c32e85e` — `origin/main` at the
 moment this set was captured, i.e. the tree this branch is proposed against,
-which already carries `0.19.7` and #118 — with the same harness copied in, the
-same stub backend, and the same port pair. The defect reproduces on that base
-unchanged: the stub logged a single `/events` attempt for the refusal, and the
-pane painted the greeting over a conversation whose rows were on the server.
+which already carries `0.19.7`, #142, #137, #138 and #118 — with the same harness
+copied in, the same stub backend, and the same port pair. The defect reproduces
+on that base unchanged: the stub logged a single `/events` attempt for the
+refusal, and the pane painted the greeting over a conversation whose rows were
+on the server. The frame was re-captured on each base this branch was rebased
+onto, so the pixels and the tree they describe are the same tree.
 
 **These frames therefore do NOT prove:** packaged Electron IPC, the preload
 bridge, main's `DesktopStreamRelay` token binding, a real `local-operator serve`
