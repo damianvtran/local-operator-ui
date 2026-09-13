@@ -539,6 +539,43 @@ test("the adapter wires the decisions the tests above pin", () => {
 	assert.match(picker, /pickedCurrent/);
 });
 
+test("one binding answers which model the session is on", () => {
+	/*
+	 * UX U7. The ✓ and the header sentence read two different fields, so the
+	 * dialog disagreed with itself for the whole window in which the owner's frame
+	 * lagged a successful switch: the strip, the band and the row mark named the
+	 * new model while the header still claimed the old one, measured over 100
+	 * samples spanning 15.4 s and never resolving.
+	 *
+	 * The pin is the ONE binding both call sites read, plus the shape of the
+	 * defect stated as a negative: a class edit or a refactor that re-derives
+	 * either call site from `selected_model` alone has to delete the binding
+	 * first, and that is the defect coming back.
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(
+		picker,
+		/const shownSelector = pickedCurrent \?\? currentSelector/,
+		"the picker's one answer to which model this session is on",
+	);
+	const options = picker.slice(picker.indexOf("const options = useMemo"));
+	assert.match(
+		options,
+		/current:\s*shownSelector === \(row\.selector \?\? row\.value\)/,
+		"the in-force row mark reads that binding rather than a field of its own",
+	);
+	assert.match(
+		picker,
+		/description=\{\s*shownSelector\s*\?\s*`This session runs \$\{shownSelector\}/,
+		"and so does the header sentence",
+	);
+	assert.doesNotMatch(
+		picker,
+		/This session runs \$\{currentSelector\}/,
+		"the header cannot read the owner's field alone — that is UX U7",
+	);
+});
+
 test("the pick is painted before the owner is awaited, and rolled back on refusal", () => {
 	/*
 	 * U1's ordering is the fix, so it is asserted as an ORDER rather than as

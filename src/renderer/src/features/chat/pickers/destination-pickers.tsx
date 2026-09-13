@@ -151,10 +151,13 @@ export const ModelPicker: FC<PickerContext> = ({
 	 *
 	 * The receipt and the frame are two different clocks: QA measured the in-force
 	 * check still on the OLD row 3.7 s after the receipt while the band and the
-	 * result strip already read the new one. It is the same optimistic
-	 * registration the band's paint uses, on the picker's own row, and it is
-	 * dropped the moment the authoritative selector matches it — it never outlives
-	 * the fact it paints, and a re-open (a fresh mount) reads the owner's answer.
+	 * result strip already read the new one — and, before UX U7, the header
+	 * sentence with them. It is the same optimistic registration the band's paint
+	 * uses, on the picker's own row and, through `shownSelector` below, in the
+	 * header; it is dropped when the authoritative selector agrees with it (the
+	 * narrower rule the reconciliation effect below states in full, and the reason
+	 * it is not dropped on every disagreement), and a re-open (a fresh mount) reads
+	 * the owner's answer.
 	 */
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
 	/*
@@ -199,6 +202,26 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * means one string in both places.
 	 */
 	const currentSelector = modelSelector(selected);
+	/*
+	 * The one answer this dialog gives to "which model is this session on?"
+	 * (UX U7).
+	 *
+	 * The ✓ and the header sentence read DIFFERENT fields until this line existed:
+	 * the ✓ followed the receipt (`pickedCurrent`, the QA Q2 fix) while the
+	 * sentence interpolated `selected_model` alone, which is the field Q2's own
+	 * comment documents as arriving several seconds later. So for the whole window
+	 * in which the owner's frame lagged a successful switch, the dialog
+	 * contradicted itself — the strip, the band and the row mark all named the new
+	 * model while its own header still claimed the old one. UX measured it over 100
+	 * samples and 15.4 s and it never resolved.
+	 *
+	 * One binding, read by both call sites, is what makes that impossible rather
+	 * than merely unlikely: the optimistic pick until the owner's own frame agrees
+	 * with it, the owner's selector otherwise. The band still reads
+	 * `effective_model` first (`bandReadings`), because it is describing what the
+	 * session RUNS rather than which row the picker marks.
+	 */
+	const shownSelector = pickedCurrent ?? currentSelector;
 
 	/*
 	 * The catalogue row's own auth state, by selector.
@@ -236,8 +259,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			meta: row.context_window
 				? `${Math.round(row.context_window / 1000)}k`
 				: undefined,
-			current:
-				(pickedCurrent ?? currentSelector) === (row.selector ?? row.value),
+			current: shownSelector === (row.selector ?? row.value),
 			group: !known
 				? "Sign-in state unknown"
 				: row.connected
@@ -245,7 +267,7 @@ export const ModelPicker: FC<PickerContext> = ({
 					: "Needs sign-in",
 			keywords: [row.provider, row.model_id],
 		}));
-	}, [catalogue.data, currentSelector, pickedCurrent]);
+	}, [catalogue.data, shownSelector]);
 
 	const listing = catalogueListing(catalogue.data, catalogue, errorText);
 
@@ -379,8 +401,19 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * The receipt is evidence the switch landed; the frame that moves
 	 * `selected_model` can arrive several seconds later, and until it does the ✓
 	 * sat on the model the user just left while the band and the strip named the
-	 * new one. Dropped as soon as the authoritative selector agrees, so it cannot
-	 * outlive the fact it paints.
+	 * new one — and, before UX U7, the header sentence with them.
+	 *
+	 * It is dropped on AGREEMENT, and deliberately not on any disagreement: a frame
+	 * that still names the model we left IS the lag this state exists for, so
+	 * clearing on difference would put the ✓ back on the old row until the frame
+	 * arrived, which is the defect QA Q2 filed. The price is narrow and stated
+	 * rather than implied: an owner frame naming a THIRD model while the dialog is
+	 * open — the same session driven from another window — leaves the receipt's
+	 * mark preferred until the dialog is re-opened (a fresh mount reads the owner's
+	 * answer). Telling that frame from the lag needs the pre-pick selector kept
+	 * beside the pick, i.e. a change to the arbitration this head's QA round
+	 * verified, so it is deferred in the PR rather than folded in here (reviewer
+	 * round 2, nit 2; UX U7's shared binding does not reach it).
 	 */
 	useEffect(() => {
 		if (pickedCurrent && currentSelector === pickedCurrent) {
@@ -400,8 +433,8 @@ export const ModelPicker: FC<PickerContext> = ({
 			 */
 			title="Model"
 			description={
-				currentSelector
-					? `This session runs ${currentSelector}. Choosing another applies to this session only unless you also set it as the default.`
+				shownSelector
+					? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
 					: "Choose the model for this session."
 			}
 			options={options}

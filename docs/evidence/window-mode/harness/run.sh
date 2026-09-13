@@ -4,8 +4,14 @@
 #   bash run.sh <tree> <label> <mode> <WxH> [hash-route]
 #
 # Isolated the way a QA rig is: a backend on a port this script owns, and
-# LOCAL_OPERATOR_CONFIG_DIR / LOCAL_OPERATOR_HOME under /tmp, so ~/.local-operator
-# is never touched.
+# LOCAL_OPERATOR_CONFIG_DIR / LOCAL_OPERATOR_HOME / HOME under /tmp, so
+# ~/.local-operator is never touched. HOME is load-bearing and not tidiness: the
+# model catalogue's cache resolves from it (`local_operator/model/catalogue.py`
+# `default_cache_dir()` -> `~/.local-operator/cache`), NOT from the config dir,
+# so an inherited HOME writes a run's synthetic listings into the operator's real
+# cache — which then lists models that do not exist until something refreshes it.
+# An earlier version of this file isolated the two LOCAL_OPERATOR_* variables
+# only, while this header claimed otherwise (QA round 2, Q3).
 #
 # While the app runs it samples the OS for one fact: WHICH process is frontmost.
 # That is the fact the change is about, and it is measured with pids rather than
@@ -28,7 +34,7 @@ HARNESS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRATCH="${SCRATCH:-/tmp/window-mode/$LABEL}"
 BACKEND_PORT="${BACKEND_PORT:-14381}"
 CDP_PORT="${CDP_PORT:-9471}"
-rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
+rm -rf "$SCRATCH"; mkdir -p "$SCRATCH" "$SCRATCH/home"
 
 # An inherited CMUX_* variable has renamed a real workspace from an earlier
 # headless test in this repository, so clear them before anything boots.
@@ -62,6 +68,7 @@ TOKEN=$(openssl rand -hex 32)
 echo "== $LABEL: tree=$TREE mode=$MODE window=$SIZE scratch=$SCRATCH"
 LOCAL_OPERATOR_CONFIG_DIR="$SCRATCH/config" \
 LOCAL_OPERATOR_HOME="$SCRATCH/home" \
+HOME="$SCRATCH/home" \
 LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
   nohup local-operator serve --host 127.0.0.1 --port "$BACKEND_PORT" \
   >"$SCRATCH/backend.log" 2>&1 &
@@ -114,6 +121,7 @@ ELECTRON_BIN="${ELECTRON_BIN:-npx electron}"
   LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
   LOCAL_OPERATOR_CONFIG_DIR="$SCRATCH/config" \
   LOCAL_OPERATOR_HOME="$SCRATCH/home" \
+  HOME="$SCRATCH/home" \
   LOCAL_OPERATOR_UI_WINDOW_MODE="$MODE" \
     nohup $ELECTRON_BIN "$TREE" --remote-debugging-port="$CDP_PORT" \
     "--user-data-dir=$SCRATCH/profile" "--window-size=$SIZE" \

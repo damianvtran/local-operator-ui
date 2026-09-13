@@ -9,10 +9,17 @@ identical while the pointer crossed four rows.
 
 This directory holds the in-app before/after pairs for the eight states that
 carry those findings, plus the ninth that is the pick's own outcome, plus the
-seven states the remediation round added (below) — twenty-five frames, nine of
-them the audit's `before-*` halves. The all-twelve-themes set lives
+seven states the remediation round added (below), plus the pair the UX round's
+U7 added — twenty-six frames, nine of them the audit's `before-*` halves and one
+this branch's own pre-fix head. The all-twelve-themes set lives
 in `docs/evidence/chat-model-picker/` and
 `docs/evidence/chat-session-status-strip/model-switch-pending/`.
+
+The two runs' own measurements are committed beside the frames:
+`picker-metrics.json` (the branch's seed) and `picker-metrics-credentialed.json`
+(the credentialed run whose `needs-sign-in-*` frames these are). Every number
+this README quotes can be read off them, and both are produced by
+`drive-model-picker.mjs`'s `MEASURE` block rather than typed.
 
 ## What produced these frames
 
@@ -52,9 +59,18 @@ SCRATCH=/tmp/modelswitch-credentialed \
 ```
 
 The backend is a real `local-operator serve` on a port the script owns, with
-`LOCAL_OPERATOR_CONFIG_DIR` / `LOCAL_OPERATOR_HOME` under `/tmp`, so no request
-can reach the operator's own store. The app was frontmost in 0 of 66 samples and
-the run reported 0 renderer errors.
+`LOCAL_OPERATOR_CONFIG_DIR` / `LOCAL_OPERATOR_HOME` **and `HOME`** under `/tmp`,
+so no request can reach the operator's own store and no cache write can land in
+`~/.local-operator`. The `HOME` override is QA round 2's Q3: the catalogue cache
+resolves from `HOME` (`local_operator/model/catalogue.py` `default_cache_dir()`
+→ `~/.local-operator/cache`) rather than from the config dir, so the runs that
+produced the frames below READ the operator's real cache and a bare
+`bash run.sh` would have WRITTEN a run's synthetic listing into it. The app was
+frontmost in 0 of 66 samples and the run reported 0 renderer errors — 0 of 120
+in the U7 re-capture, which is the first run whose cache lives in the scratch
+root: it seeds that cache with a copy of the same listing files the earlier run
+read, so its frames still differ by the change rather than by their catalogue,
+and nothing outside `/tmp` is written.
 
 **The `before-*` halves are the audit's own frames**, captured on the base tree
 (`78e694777`, the tree the audit's frames were taken on — after the branch merged
@@ -79,7 +95,7 @@ into its default theme.
 | `picker-open` | selected row computed `rgb(40,35,24)` = the dialog's own `rgb(40,35,24)`: **1.000:1, ΔE00 0.00** — the row that is about to be picked is invisible | selected row `rgb(15,12,8)` (`sunken`) against the dialog's `rgb(40,35,24)` (`elevated`): **ΔE00 8.32**, the adjacent-ground pair `check-themes` asserts in every theme |
 | `row-hovered` | the pointer *moved the selection*, so hovering gave no separate mark | the pointer marks its own row: the `accent-wash` tint **and** a 1px `outline-control` edge, while the selection stays put. The edge is the mark that survives every palette — the wash alone is ΔE00 0.77 on this ground in obsidian (design D12) |
 | `keyboard-highlight` | selection on row 8, ground `rgb(40,35,24)` — a highlight the user cannot see | selection on row 4, ground `rgb(15,12,8)` — visible, and the footer names it (`Enter picks …`) |
-| `pointer-left-list` | **byte-identical to `keyboard-highlight`**: AE 0 of 4,813,440 px, same md5 — the highlight never cleared | the pointer's tint AND edge clear and the selection stays. **The demonstrating pair is `row-hovered` → `pointer-left-list`**: design D18 caught this row claiming `keyboard-highlight` → `pointer-left-list`, and the re-capture measures why that pair cannot demonstrate it — the arrow keys had already landed the selection on the row the pointer was over, `isHovered && !isActive` suppresses the mark there, so **04→05 is AE 0 of 4,813,440 px again** (md5-equal). 03→05 differs by **AE 268,767 px (5.6% of the frame)**, all of them the hovered row's tint and edge. |
+| `pointer-left-list` | **byte-identical to `keyboard-highlight`**: AE 0 of 4,813,440 px, same md5 — the highlight never cleared | the pointer's tint AND edge clear and the selection stays. **The demonstrating pair is `row-hovered` → `pointer-left-list`**: design D18 caught this row claiming `keyboard-highlight` → `pointer-left-list`, and the re-capture measures why that pair cannot demonstrate it — the arrow keys had already landed the selection on the row the pointer was over, `isHovered && !isActive` suppresses the mark there, so **04→05 is AE 0 of 4,813,440 px again** (md5-equal). 03→05 differs by **AE 268,767 px (5.6% of the frame)**: 113,661 of them (42.3%) sit inside the marked row's own box — y 1008–1106 × x 780–1970, i.e. 97% of that row, which is the clearing — and the remainder is a text-repaint residue elsewhere in the frame (the description line, other rows' labels with subpixel fringing, sidebar items). The pair demonstrates the clearing; "all of them" is not what the pixels hold. |
 | `persist-checked` | the label is `Also make it the default for new sessions`, **identical to unchecked** — nothing says what the tick did to *this* pick | `This pick also sets the default for new sessions` |
 | `refresh-clicked-immediate` | the button still reads `Refresh from providers` (disabled) and the listing is **gone** — the listbox is not in the DOM | the button reads `Refreshing…`, and the 1005 rows it already had are still painted (`keepPreviousData`) |
 | `refresh-settled` | still **no rows**, the body reading `Listing unavailable for:` followed by 21 provider names, while the footer went on advertising the arrow keys; the description reads `This session runs /.` | rows present (1505 after the live re-list), the same provider names reduced to a count above the list (the ids are in the note's tooltip), and a description that names the session's model |
@@ -100,7 +116,7 @@ there is no frame of it on the base tree to pair with.
 | State | What it shows |
 | --- | --- |
 | `pick-pending-band` | UX U3 and design D12 together, 60 ms after the click: the picked row carries its structural edge and the spinner, the footer reads `Switching the model…`, and the band below the dialog shows the chosen model at `ink-dim` **with its own spinner** (measured: `bandSpinners: 2`) — so "waiting" is not a colour step and a hover-only tooltip. |
-| `footer-names-the-pick` | UX U1. The list is scrolled 1500 px away from the keyboard's row and the pointer rests on a different one, so the only thing that says which model Enter will switch to is the footer: `Arrows move · Enter picks <the keyboard's row> · Esc closes`. Measured in the run's `picker-metrics.json`: `activeIndex: 0`, `activeInList: false`, `footerText: "Arrows move · Enter picks GPT-5.6 Sol · Esc closes"`. |
+| `footer-names-the-pick` | UX U1. The list is scrolled 1500 px away from the keyboard's row and the pointer rests on a different one, so the only thing that says which model Enter will switch to is the footer: `Arrows move · Enter picks <the keyboard's row> · Esc closes`. Measured in this run's own committed metrics (`picker-metrics.json` beside these frames, `states[15-footer-names-the-pick]`): `activeIndex: 0`, `activeInList: false`, `footerText: "Arrows move · Enter picks GPT-5.6 Sol · Esc closes"`. |
 | `closed-while-in-flight` | UX U2. Escape 80 ms after the click, dialog gone, and the band carries the paint with its spinner (`bandText: "GPT-4.1Switching the model"`, `bandSpinners: 2`) while the transcript still holds **1** note — the answer has not landed yet. |
 | `refusal-after-close` | UX U2 at the moment it matters: the refusal landed with nothing on screen. The same run measures the transcript note count going **1 → 2** across this pair, which is the falsifiable form of the claim — the refusal sentence is identical for every refused pick, so only a count can show that THIS pick's outcome was written with the dialog already gone. Before the fix nothing was written at all. |
 | `needs-sign-in-row` | QA Q1, part 1: the row the dialog itself labels `no credential`, which is the case the strip used to report as an ordinary success. |
@@ -115,6 +131,34 @@ aggregator listing): without a credential the owner refuses every switch, so
 frames with `cred-` so a frame cannot be mistaken for the other seed's, and the
 nine paired states above keep the branch's own seed — which is what makes their
 before/after comparison a comparison of the change rather than of the setup.
+
+### UX U7's pair: the header sentence
+
+`before-header-names-the-switch` is the ONE `before-*` half that is not the
+audit's: it is this branch's own pre-fix head (`ccbeb0e2a`), because UX filed U7
+against the branch's remediation rather than against the base. The state is
+`needs-sign-in-pick-settled` again: the switch to `anthropic/claude-opus-5` has
+landed — the strip names it, the ✓ has moved to the row, the band reads
+`Claude Opus 5` — and the dialog's own header sentence still reads
+`This session runs openai/gpt-4.1.` UX measured that over 100 samples spanning
+15.4 s and it never resolved, because the sentence read `selected_model` alone
+while the ✓, the strip and the band followed the receipt.
+
+The after half is the re-capture on the fixed head, from the same seed, the same
+driver and the same state. Its own committed metrics
+(`picker-metrics-credentialed.json`, `states[19-needs-sign-in-pick-settled]`)
+read `dialogDescription: "This session runs anthropic/claude-opus-5. …"`,
+`currentIndex: 12`, `activeLabel: "Claude Opus 5anthropic, no credential1000k"`,
+strip `model: openai/gpt-4.1 → anthropic/claude-opus-5 (this session)` — one
+answer to "which model is this session on?" in all four places, measured rather
+than asserted.
+
+Measured between the two frames: **AE 85,307 px (1.77%)** of 4,813,440, and of
+that, at a 2% fuzz to ignore resampling, **13,230 px sit in one 952x64 band
+across the sentence's own text line** (the model name is longer, so the sentence
+re-wraps before its last clause), **274 px are the clock** (6:37 → 7:14) and the
+rest is text antialiasing. The rows, the ✓, the strip, the band and the rest of
+the frame are unchanged — the pair differs by the sentence it is about.
 
 ## What these frames do not prove
 
@@ -141,12 +185,23 @@ before/after comparison a comparison of the change rather than of the setup.
   labelled spinner (`Switching the model`) and the footer names the row Enter
   would pick, which ARE the accessibility-tree changes this round made — but
   whether a screen reader announces them on change was not measured here.
-- Two findings are deliberately not fixed here and are recorded in the PR: the
-  dark-palette `success-border` on the dialog's ground (`D10`, a palette/contract
-  change, deferred — **six** dark palettes, 2.64 obsidian worst to 2.96 dracula,
-  and no ground role is within 3:1 of `elevated`, so only the token can clear
-  it), and the row's `data-current` attribute is kept as an unstyled a11y/test
-  hook (`D11`).
+- Findings deliberately not fixed here, each recorded in the PR's *Not
+  addressed* section: the dark-palette `success-border` on the dialog's ground
+  (`D10`, a palette/contract change — **six** dark palettes, 2.64 obsidian worst
+  to 2.96 dracula, and no ground role is within 3:1 of `elevated`, so only the
+  token can clear it); the same class in the new `warning`-toned needs-sign-in
+  strip, which renders on `elevated` where the `warning callout` triple is
+  asserted only on `canvas`/`surface` (design N1, **seven** palettes
+  2.51 monokai – 2.98 neon against the 3:1 floor, text legible everywhere) —
+  `D17`'s deferred palette work and this one are one question, and the
+  `elevated` alternative is not a one-line change: the contract's edge assertion
+  is the one branch that does not consult `EXCEPTIONS`, so it would hard-fail
+  those seven palettes with nowhere to record the acceptance; the out-of-band
+  case in `pickedCurrent`'s reconciliation (reviewer round 2, nit 2 — clearing on
+  any disagreement would put the ✓ back on the old row until the owner's frame
+  arrived, which is QA Q2, so the correct fix keeps the pre-pick selector and
+  changes the arbitration that round verified); and the row's `data-current`
+  attribute is kept as an unstyled a11y/test hook (`D11`).
 
 ## Known gaps in the change itself
 
