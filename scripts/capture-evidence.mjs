@@ -156,6 +156,17 @@ export const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 
+	/* Session incidents on their own rows — the operator's report that an error
+	  row read only `session incident` with the message behind a chevron. The
+	  rows are the PRODUCTION reducer's, over fourteen real persisted payloads
+	  (one per category the classifier emits, plus the three harness statements
+	  and a relayed `hub_message` as the bulky control), so the frame shows what
+	  the row is GIVEN rather than what a hand-written record can be made to
+	  say. Sized to the rows it holds (700), for the reason `working-labels`
+	  is: at 900 tall it is mostly ground, which crosses `check-evidence`'s
+	  uniformity ceiling. */
+	["chat-canonical-notices--session-incidents", 1280, 700],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as

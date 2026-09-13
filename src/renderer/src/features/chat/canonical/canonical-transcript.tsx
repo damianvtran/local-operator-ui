@@ -459,17 +459,52 @@ const NoticeRow = memo(function NoticeRow({
 	>;
 	isSmallView: boolean;
 }) {
+	// A custom row and a notice are two registers, and the difference is what
+	// the row is FOR.
+	//
+	// A custom row is a STATEMENT the harness made in the conversation -- a
+	// session incident, a model switch, a relayed message -- and its text IS the
+	// message. Painting its type name and hiding the text behind a chevron is
+	// what made 946 of the operator's own incidents read as the literal string
+	// "session incident": an error row in the info ink, its message visible only
+	// to someone who thought to click. The TUI has never done that
+	// (`tui/widgets/transcript.py::NoticeBlock` paints one wrapping line in the
+	// kind's ink, message in place), and the reducer now decides the level, the
+	// message and the supporting detail for every custom type -- so this row
+	// paints what it is given rather than re-deciding how long is too long.
+	if (record.kind === "custom") {
+		const Icon = record.level === "error" ? CircleAlert : MessageSquareText;
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<TraceLine
+					// The ledger pitch, so a run does not go ragged wherever a
+					// statement lands in it. The message wraps BELOW that pitch
+					// rather than truncating at it: a clipped sentence costs the
+					// reader the half that says what happened.
+					dense
+					verbOverride={record.category ?? record.customType.replace(/_/g, " ")}
+					narration={record.headline}
+					failed={record.level === "error"}
+					wrap
+					glyph={<Icon />}
+					details={
+						record.detail ? (
+							<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
+								{record.detail}
+							</p>
+						) : undefined
+					}
+				/>
+			</MessageContainer>
+		);
+	}
 	const level = record.kind === "notice" ? record.level : ("info" as const);
 	const Icon =
 		level === "error"
 			? CircleAlert
 			: level === "warning"
 				? TriangleAlert
-				: record.kind === "custom"
-					? MessageSquareText
-					: Info;
-	const label =
-		record.kind === "custom" ? record.customType.replace(/_/g, " ") : undefined;
+				: Info;
 	// Notices are machine voice at the trace tier: one quiet line, the body
 	// (when genuinely long) behind the same disclosure idiom as a tool's output.
 	//
@@ -493,8 +528,7 @@ const NoticeRow = memo(function NoticeRow({
 				// Same column as the tool rows, so the same pitch: a notice must not
 				// be the row that makes a run look ragged.
 				dense={!long}
-				verbOverride={label ?? (long ? "Notice" : record.text)}
-				narration={label && !long ? record.text : undefined}
+				verbOverride={long ? "Notice" : record.text}
 				failed={level === "error"}
 				// The row carries the whole message when it is not collapsed, so
 				// it must not be clipped to the rail width.
