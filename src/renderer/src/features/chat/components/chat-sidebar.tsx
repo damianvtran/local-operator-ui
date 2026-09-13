@@ -7,6 +7,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -29,6 +30,7 @@ import {
 	Pause,
 	Plus,
 	Users,
+	X,
 } from "lucide-react";
 import {
 	type KeyboardEvent,
@@ -38,6 +40,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearSearch } from "../clear-search";
 
 type Props = {
 	selectedConversation?: string;
@@ -449,14 +452,46 @@ export function ChatSidebar({
 			<div className="flex h-8 items-center px-1">
 				<h2 className="text-body-sm font-medium">Chats</h2>
 			</div>
-			<input
-				ref={searchRef}
-				aria-label="Search chats and agents"
-				placeholder="Search chats and agents"
-				className="my-2 h-8 w-full rounded-md border border-control bg-surface px-2 text-body-sm"
-				value={query}
-				onChange={(event) => setQuery(event.target.value)}
-			/>
+			{/* The field carries its own clear control rather than relying on
+			    Escape, which also blurs: a pointer user who wants to widen the filter
+			    back out had to select the text and delete it, and there was nothing on
+			    screen saying the field could be emptied at all. `pr-9` keeps the query
+			    clear of the control — the same reserved-column idiom the settings
+			    search uses on the left for its leading glyph. */}
+			<div className="relative my-2">
+				<input
+					ref={searchRef}
+					aria-label="Search chats and agents"
+					placeholder="Search chats and agents"
+					className="h-8 w-full rounded-md border border-control bg-surface pr-9 pl-2 text-body-sm"
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+				/>
+				{/* Rendered only while a filter is applied: a clear control beside an
+				    empty field is a control that does nothing.
+
+				    The ring is pulled INSIDE the control's own box, against the shared
+				    `icon-sm` step. That step draws a 2px outline at a 1px offset, which
+				    needs 3px of clearance around the control; this one is 28px inside a
+				    32px field, so 2px is all there is, and at the step's own offset the
+				    ring's top and bottom arcs crossed the field's `border-control` line
+				    and read as a control bulging out of the field it sits in (design
+				    round 1, D1). Inset, the ring hugs the control's own radius, stays
+				    clear of the 14px glyph, and cannot leave the field in any palette.
+				    `!` because the size step's offset is itself important and this is
+				    an override of it rather than a second convention. */}
+				{query && (
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+						onClick={() => clearSearch(searchRef.current, setQuery)}
+						aria-label="Clear search"
+					>
+						<X aria-hidden="true" />
+					</Button>
+				)}
+			</div>
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-muted">
