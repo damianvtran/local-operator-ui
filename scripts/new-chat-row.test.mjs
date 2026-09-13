@@ -243,14 +243,30 @@ test("the New chat row declares no box of its own, so it takes rowStyle's", () =
 test("the two rows differ only by the vertical step and the disabled pair", () => {
 	const tokens = (label) =>
 		classLiterals(classExpressionFor(label)).split(WHITESPACE).filter(Boolean);
+	const newChat = new Set(tokens("New chat"));
 	const allChats = new Set(tokens("All chats"));
-	const extras = tokens("New chat")
-		.filter((token) => !allChats.has(token))
-		.sort();
+	/*
+	 * BOTH directions, because each is a way to break an alignment this file
+	 * cannot measure from source alone. An inset added to the All chats row
+	 * moves it off the New chat column exactly as one added here does, and a
+	 * token New chat LOSES (`w-full`, say) never reaches the extras below - a
+	 * one-directional comparison reads a row that dropped a class as a row that
+	 * agreed. Stating the relationship as an equality is what makes either side
+	 * of the pair observable.
+	 */
 	assert.deepEqual(
-		extras,
+		tokens("New chat")
+			.filter((token) => !allChats.has(token))
+			.sort(),
 		[...ROW_SPECIFIC_TOKENS].sort(),
 		"the New chat row added or lost a class the All chats row does not carry, so the pair is no longer the same row with a margin",
+	);
+	assert.deepEqual(
+		tokens("All chats")
+			.filter((token) => !newChat.has(token))
+			.sort(),
+		[],
+		"the All chats row carries a class the New chat row does not, so an inset added to the row ABOVE moves it off the alignment this branch establishes just as one added below would",
 	);
 });
 
