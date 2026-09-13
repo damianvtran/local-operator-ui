@@ -15,6 +15,9 @@ This file defines project-specific operating guidelines for AI coding agents wor
 
 - Keep changes scoped to the requested task; do not refactor unrelated areas.
 - Do not revert or overwrite user changes that are outside your task.
+- Never launch the app in a way that takes the operator's window focus. Every
+  agent-driven run names a window mode; see *Running the app without taking the
+  operator's focus* below.
 - Prefer small, explicit commits with clear conventional-style messages.
 - Before finalizing, run the narrowest relevant checks for touched code.
 - Follow existing code style and project conventions (Biomes/TS settings already configured).
@@ -73,6 +76,8 @@ ground where it does not.
 
 - Install deps: `pnpm install`
 - Dev app: `pnpm dev` (needs `.env`; copy from `.env.template`)
+- Dev app, no window: `pnpm dev:headless`
+- Built app, no window: `pnpm app:headless -- <extra electron args>`
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
 - Typecheck: `pnpm check-types`
@@ -87,6 +92,86 @@ Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
 proof. Broader verification remains typecheck, lint, the theme gates, a real
 build, and rendered evidence from the live app or Storybook as appropriate.
+
+## Running the app without taking the operator's focus
+
+Agents run this app on the operator's own desktop, several at a time. Until the
+window mode existed, every one of those runs ended at `ready-to-show` with
+`show()`, which activates the app and takes the keyboard focus away from
+whatever the operator was doing — a seven-cycle QA matrix is seven
+interruptions, and it is the most disruptive thing an agent can do in this
+repository.
+
+**Every agent-driven launch must name a window mode.** The app resolves it from
+`--window-mode=<mode>` or `LOCAL_OPERATOR_UI_WINDOW_MODE` (the argument wins),
+and takes `--window-size=WxH` or `LOCAL_OPERATOR_UI_WINDOW_SIZE` for the size:
+
+| Mode | The window | Use it for |
+| --- | --- | --- |
+| `headless` | created at the requested size, **never shown**, unfocusable, page unthrottled | every test, QA, harness and evidence run — the default choice |
+| `inactive` | shown with `showInactive()`: visible, but the app is never activated and the window never takes focus | a run somebody wants to watch or click into |
+| `normal` | `show()` — raises and focuses the window | a human starting the app. Never an agent run |
+
+```bash
+# The built app, driven over CDP at an exact size, with no window at all.
+pnpm app:headless -- --remote-debugging-port=9451 --user-data-dir="$SCRATCH/profile" \
+  --window-size=1380x900
+
+# The dev app, same rule.
+pnpm dev:headless
+
+# A harness that already spawns Electron itself: the switch rides the environment.
+LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=9451
+```
+
+`npx local-operator-ui` spawns Electron with this process's environment, so the
+same switch covers a check of the published launcher. Any mode but `normal`
+prints a `[window-mode] ...` line to the process's own output, so a run says out
+loud that it was headless instead of looking identical to one that popped a
+window.
+
+### `headless` is a full-fidelity rendering path, not a degraded one
+
+That is what makes it usable as evidence rather than only as a way to stay out
+of the way. Measured on Electron 35 / macOS 25.6, with a 1380x900 window:
+
+- `document.visibilityState` stays `"visible"` and `requestAnimationFrame`
+  keeps ticking, so a run is not measuring a paused page;
+- `webContents.capturePage()` and CDP `Page.captureScreenshot` both return a
+  complete frame — 2760x1744 pixels at devicePixelRatio 2, the same size a
+  shown window gives;
+- the frontmost application keeps the focus and the menu bar for the whole run:
+  `win.isFocused()` stays false and no `activate` event fires.
+
+Two consequences for how you take evidence:
+
+- **Read the viewport from the page and label frames with it.** A
+  `BrowserWindow` size includes the platform's window chrome, so 1380x900 is a
+  1380x872 CSS viewport on macOS. A `--window-size` under the verified 800x600
+  floor is clamped to it and reported in the log, so a frame cannot be labelled
+  with a size the window never had.
+- **Focus-dependent rendering is the one thing that differs**, because a window
+  that is never shown cannot be focused: text carets, `:focus`/`:focus-visible`
+  rings, and anything gated on `document.hasFocus()`. For a change about those,
+  drive it in `inactive` mode, or force focus with CDP
+  `Emulation.setFocusEmulationEnabled(true)` — and say which you did.
+
+### Capturing the frame
+
+Capture from inside the app — `webContents.capturePage()` or CDP — never with
+macOS `screencapture`, which works only on the frontmost window and so requires
+exactly the focus theft this section exists to remove. Storybook evidence is
+unaffected: `pnpm capture:evidence` already drives a private `--headless=new`
+Chrome.
+
+### What already opens no window, so a rebase does not re-introduce one
+
+`pnpm test:desktop` bundles modules in process; the CI npx smoke test prints its
+marker from `whenReady()` and exits before a window exists; the Storybook and
+CDP capture scripts run headless Chrome. The windows come from live-app
+harnesses — `pnpm dev`, `npx electron .`, `npx local-operator-ui` — which is why
+the mode belongs in the harness's own spawn call and not in whatever the shell
+happened to export.
 
 ## Release Bump Runbook (Major/Minor/Patch)
 
