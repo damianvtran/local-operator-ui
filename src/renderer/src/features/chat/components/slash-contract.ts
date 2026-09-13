@@ -1,7 +1,7 @@
 /**
  * The popup's own contract, pure and I/O-free: what a key means, when an
- * explicit arrow choice survives, and the two lines of copy that tell the user
- * which list is up and what Enter will do with it.
+ * explicit arrow choice survives, and the copy that tells the user which list is
+ * up, what Enter will do with it, and what an empty argument list means.
  *
  * WHY this is a module rather than three closures inside the component. Round 1
  * left the whole keyboard half of the interaction unverifiable: the browser
@@ -235,4 +235,55 @@ export function enterFooter(input: EnterFooterInput): string | null {
 	if (!input.unambiguous) return "Enter completes; Enter again runs.";
 	const command = input.command ? `/${input.command} ` : "";
 	return `Enter runs ${command}${input.value}.`.trim();
+}
+
+/**
+ * The minimum the empty copy reads, named structurally for the same reason
+ * `RoutableRow` is: `SlashArgumentListState` lives in `slash-commands.tsx`,
+ * which imports this module, so naming it here would turn a type-only
+ * dependency into a cycle.
+ */
+export type EmptyArgumentList = {
+	rows: readonly unknown[];
+	loading: boolean;
+	error: string | null;
+	needsSession: boolean;
+};
+
+/**
+ * The honest empty state for an argument list.
+ *
+ * An empty list has FOUR causes and they are different facts. "Not reported
+ * yet" is the `effort` cold-owner case: the route reads the owner's live spec,
+ * which is unresolved before the first turn, so a model with a full ladder
+ * answers `[]` (`destination-pickers.tsx` already carries this rule for the
+ * dialog). Reading it as "this model has none" was a defect once. A failure, a
+ * missing session and — new here — a query that matched nothing are the others.
+ *
+ * The no-match case used to fall into the cold-owner sentence, so typing a team
+ * the roster does not have reported "the roster was never reported": a false
+ * statement in the primary `/team` flow, in the voice of the one surface the
+ * design made honest about the three empty causes (round 1 UX U4).
+ *
+ * The route is named because that is the promise §C16 makes and because the
+ * user is otherwise at a dead end holding the command. "Enter opens the full
+ * picker" is TRUE in every empty state here: the token is the whole line, so
+ * Enter falls through to the composer's planner, which runs the command the
+ * user typed and opens its picker (round 1 D2).
+ *
+ * It lives here, beside the Enter footer, because it is the other line of copy
+ * whose correctness is a decision rather than a rendering, and because the
+ * no-match sentence is the one a story frame has to be able to reach:
+ * `slash-contract.test.mjs` derives the state the way the component derives it
+ * (a non-empty list the matcher answers nothing for) instead of trusting a
+ * fixture to agree with the component's rule.
+ */
+export function argumentEmptyCopy(list: EmptyArgumentList): string {
+	if (list.needsSession) return "Needs an open conversation. Start one first.";
+	if (list.error) return list.error;
+	if (list.loading) return "Loading…";
+	// Rows exist, the query excluded all of them: "not reported yet" would be a
+	// lie about the source rather than a fact about the filter.
+	if (list.rows.length > 0) return "No matches. Enter opens the full picker.";
+	return "Not reported yet. Enter opens the full picker.";
 }
