@@ -219,11 +219,25 @@ export const STORIES = [
 	   uses. The rest states are `trigger-idle` (closed, at rest) and `panel-empty`
 	   (open, at rest), so the four grounds are `canvas` / `elevated` /
 	   `accent-wash` / `accent-wash`, and the last one is the fix. */
-	["chat-run-panel--trigger-hover", 460, 220, { hover: "[data-run-panel-trigger]" }],
-	["chat-run-panel--trigger-open-hover", 1280, 700, { hover: "[data-run-panel-trigger]" }],
+	[
+		"chat-run-panel--trigger-hover",
+		460,
+		220,
+		{ hover: "[data-run-panel-trigger]" },
+	],
+	[
+		"chat-run-panel--trigger-open-hover",
+		1280,
+		700,
+		{ hover: "[data-run-panel-trigger]" },
+	],
 	["chat-run-panel--panel-empty", 1280, 700],
 	["chat-run-panel--settled-history", 1280, 700],
 	["chat-run-panel--roster-only", 1280, 700],
+	/* The roster's MEMBERSHIP (`§ 4`): a payload carrying a child's own `bash`
+	   job, the session's own `read` job and a nested `task` row, of which only
+	   the two top-level children are members. Round 1's Q1/Q2 frame. */
+	["chat-run-panel--roster-members", 1280, 820],
 	["chat-run-panel--todos-only", 1280, 820],
 	["chat-run-panel--both-in-flight", 1280, 700],
 	/* The disclosure, before and after: the pair is the whole claim that every
@@ -246,6 +260,10 @@ export const STORIES = [
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
+	/* A member's page whose child count is ONE: the descend control's singular
+	   label and its accessible name, in the only state that can show either
+	   (round 1, Q8/U1-6), beside the peer stepper for the same child. */
+	["chat-run-panel--reader-child-controls", 1280, 900],
 	["chat-run-panel--reader-resumed", 1280, 900],
 	/* The brief, in the one state that renders it: a child whose transcript does
 	   NOT already carry the instruction, so the block is the only copy rather
@@ -1584,8 +1602,9 @@ const main = async () => {
 									head)
 								: head,
 							refreshedFrames:
-								(sameHead ? (previous.partialCapture?.refreshedFrames ?? 0) : 0) +
-								captured,
+								(sameHead
+									? (previous.partialCapture?.refreshedFrames ?? 0)
+									: 0) + captured,
 							refreshedStories: [
 								...new Set([...priorStories, ...stories.map(([id]) => id)]),
 							],

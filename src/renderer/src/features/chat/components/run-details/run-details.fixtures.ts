@@ -782,7 +782,124 @@ const LONG_BRIEF = [
 ].join("\n");
 
 /**
- * A child with a durable launch turn, a brief long enough to fold, and a name
+ * One TOOL job, in the shape `frontend.jobs` really carries one.
+ *
+ * `comms.job_rows()` snapshots the ROOT session's job manager AND every live
+ * child's (`harness/comms.py:799-824`), so the list a session publishes holds
+ * the children's own tool calls beside the children themselves — and the tool
+ * rows are ordinary `JobState`s with a `type` that is the tool's NAME rather
+ * than `task`, a null `agent_role`, a null `session_id`, and a null
+ * `parent_job_id` too: the job's parent is an execution rather than another
+ * child, so the lineage edge the roster would have had to walk does not exist.
+ *
+ * QA's live capture read `c1ccfe6839cb bash running "bash: sleep 150 ; echo
+ * child-done"` beside the one real delegated child and the roster painted both
+ * (round 1, Q1/U1-4). This is that row, in that shape; the `type` is the whole
+ * of what separates it from a child (`§ 4`'s membership rule).
+ */
+const toolJob = (spec: {
+	id: string;
+	label: string;
+	status?: string;
+	/** `start_time` in epoch seconds, for a row that is still running. */
+	startedSecondsAgo?: number;
+}): Record<string, unknown> => ({
+	id: spec.id,
+	type: spec.label.split(":")[0],
+	status: spec.status ?? "running",
+	queued: false,
+	label: spec.label,
+	agent: "core",
+	agent_role: null,
+	latest_details: null,
+	error_text: "",
+	result_text: "",
+	session_id: null,
+	model_label: null,
+	context_window: null,
+	usage: null,
+	direct_cost: null,
+	start_time:
+		spec.startedSecondsAgo === undefined ? 0 : at(spec.startedSecondsAgo),
+	settled_at: null,
+});
+
+/**
+ * The wire that produces the roster's membership question (`§ 4`).
+ *
+ * Five rows, four of which are NOT top-level children: two tool jobs (the
+ * root session's own `read`, and the running child's own `bash`), and one nested
+ * `task` row (`parent_job_id: "job-audit"`) that the child launched itself. The
+ * roster must paint exactly the two members — `job-audit` and `job-summarise` —
+ * and count only those.
+ *
+ * The shapes are the live ones: the tool rows came off the wire in QA's capture,
+ * and the nested row is the shape `frontend_state._with_lineage` mints for a
+ * launch from inside a child (`comms.job_rows()` resolves the parent through the
+ * shared graph).
+ */
+export const rosterMembers = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		child({
+			id: "job-audit",
+			label: "Audit the March invoices against the ledger export",
+			role: "reviewer",
+			status: "running",
+			startedSecondsAgo: 150,
+			progress: "bash: sleep 150 ; echo child-done",
+			model: "claude-sonnet-4-5",
+			tokens: 92_000,
+			window: 200_000,
+			cost: 0.31,
+		}),
+		// The running child's OWN tool call, and the row the roster used to paint as
+		// a peer sub-agent — sorted above the child it belongs to.
+		toolJob({
+			id: "c1ccfe6839cb",
+			label: "bash: sleep 150 ; echo child-done",
+			startedSecondsAgo: 131,
+		}),
+		child({
+			id: "job-summarise",
+			label: "Summarise the findings",
+			role: "writer",
+			status: "running",
+			startedSecondsAgo: 18,
+			progress: "Drafting the summary",
+			tokens: 12_400,
+			window: 200_000,
+			cost: 0.02,
+		}),
+		// A GRANDCHILD: launched from inside `job-audit`, so its parent is a job row
+		// that IS on the wire. It belongs to the child's own `1 child` control rather
+		// than to the top level (`§ 4`, `§ 5.5`).
+		{
+			...child({
+				id: "job-verify",
+				label: "Verify the totals",
+				role: "task",
+				status: "done",
+				startedSecondsAgo: 120,
+				settledSecondsAgo: 40,
+				sessionId: "bb11cc22dd33",
+			}),
+			parent_job_id: "job-audit",
+		},
+		// The ROOT session's own tool job, which is on the same list and is no more a
+		// sub-agent than the child's bash call is.
+		toolJob({
+			id: "7a41d0e2f9c3",
+			label: "read: invoices/march.csv",
+			status: "succeeded",
+			startedSecondsAgo: 240,
+		}),
+	],
+	todos: [],
+});
+
+/**
+ * One child with a durable launch turn, a brief long enough to fold, and a name
  * taken from the launch map.
  *
  * `launch_prompts` carries the CONCISE authored prompt against the launch
