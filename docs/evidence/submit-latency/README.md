@@ -103,6 +103,19 @@ Chromium) precisely because a throwaway browser cannot hold a real login. So the
 capture is a person driving their own Chrome. This section is written to be
 followed verbatim in about five minutes.
 
+Measured twice, and neither measurement took a frame. **2026-09-13, 13:34-13:36
+UTC (manager):** navigation and the origin allowlist worked, but `screenshot`,
+`read`, `snapshot` and `close` each returned "the browser extension received X
+but did not answer within 20 s". **2026-09-13, ~14:01 UTC (implementing agent):**
+the harness itself was healthy - the isolated `local-operator serve` reported
+`session_catalogue 3` and both surfaces answered `200` on 5202 and 5203 - but no
+browser could be driven at all: `browser` and `tabs` both returned "the bridge
+daemon is running but no browser is attached".
+
+So every image in the table above is still missing, and no substitute apparatus
+- a downloaded Chromium, a CDP client, a headless engine - was used in place of
+the operator's own browser. The capture remains a hand procedure.
+
 ### 1. Start an isolated backend (once, ~30s)
 
 Any backend with the warm route works. Nothing here touches a real config dir or
