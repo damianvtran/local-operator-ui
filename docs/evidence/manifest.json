@@ -1,7 +1,7 @@
 {
-  "head": "8f7c01f11c690d35a8db7e9c6da143244e86341f",
-  "srcTree": "0bf2427571a65e8562a87514e5d367facc20d1c0",
-  "scriptsTree": "1c97aedab2cd601658a9e75735ba5c12c2ca7cbb",
+  "head": "3a4e6a20f8a3d5a764c5c7813fc44b277c627464",
+  "srcTree": "53f2e66e080b8ddb3cecc653a6dac3b52e516db5",
+  "scriptsTree": "cbd606da9af2f089d9aacfc8e7d41150964f0e86",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 738,
@@ -208,7 +208,7 @@
       "frames": 25,
       "surfaces": 16,
       "themes": 1,
-      "capturedAtHead": "PENDING_RESTAMP",
+      "capturedAtHead": "3a4e6a20f8a3d5a764c5c7813fc44b277c627464",
       "source": "the REAL built Electron app (`pnpm build`, then `docs/evidence/window-mode/harness/run.sh` with EXTRA_SEED=seed-model-picker.mjs and DRIVE_SCRIPT=drive-model-picker.mjs, headless, 1380x900) against an isolated `local-operator serve` on a port the script owns, 0 frontmost samples in every run and 0 renderer errors. Sixteen states, and they come from TWO runs because two starting states are needed: fifteen from the branch's own seed (no provider credential, i.e. the refusal path \u2014 the seed the `before-*` halves were taken under, so the pairs still differ by the change and not by the setup), and the three `needs-sign-in-*` frames from a second run on QA's credentialed seed (`/tmp/qa130/seed-qa.mjs`, a synthetic `openai` credential written through the backend's own AuthStore) \u2014 without a credential the owner refuses every switch, so a switch it ACCEPTS does not exist there. The second run's frames are prefixed `cred-` by the driver so no frame can be mistaken for the other seed's. `localOperatorDark` is the app's own default theme, which is the only theme the harness boots into.",
       "why": "the claim is that a hover, a keyboard highlight, an in-flight pick and the OUTCOME of that pick are perceivable \u2014 properties of computed style and of timing that no palette assertion and no component test can see. The unit suite asserts the classes, the transitions and the reading rule (`scripts/picker-feedback.test.mjs`); only a frame of the running app shows the ground and the edge the row actually paints inside a dialog whose own ground is `elevated`, and what the user is left with when the answer arrives after the dialog is gone. The `before-*` halves carry the defect as a measurement: the active row's computed background is `rgb(40,35,24)`, identical to the dialog's, and `before-pointer-left-list` is byte-identical to `before-keyboard-highlight` (AE 0 of 4,813,440 px). Seven of the sixteen states are after-only, and that is the finding rather than an omission: each is a state the old code could not produce or could not report \u2014 the pointer's structural edge in a palette where the wash collapses (D12), the footer naming the row Enter acts on while that row is off screen (U1), the band holding a labelled spinner while the pick is unconfirmed (U3), the refusal landing with the dialog already closed (U2), and the three `needs-sign-in-*` frames (Q1). The transcript note count is measured either side of the U2 case \u2014 1 before the click, 2 after it, with the dialog closed 80 ms in \u2014 because the refusal sentence is identical for every refused pick and only a count can prove a second one was written.",
       "capturedAt": "2026-09-13T09:41:40Z"
