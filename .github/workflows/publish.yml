@@ -148,10 +148,16 @@ jobs:
         with:
           ref: ${{ needs.validate-release.outputs.source_sha }}
 
+      # pnpm is pinned to the same version as every other workflow: this is the
+      # file that builds the installers, and pnpm 10.29.3+ makes electron-builder
+      # copy an incomplete runtime closure into app.asar (`Cannot find module
+      # 'ms'` at launch). See the pnpm note in .github/workflows/ci.yml and the
+      # pnpm section in AGENTS.md before changing it.
       - name: Install pnpm
+        # pinned: see the pnpm note above this step
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -255,7 +261,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -363,7 +369,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -416,7 +422,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

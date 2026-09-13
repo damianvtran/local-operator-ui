@@ -23,10 +23,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # pnpm is pinned here, and the pin is load-bearing rather than a preference:
+      # pnpm 10.29.3 through at least 10.34.x drops dependency edges from
+      # `pnpm list --prod --json --depth Infinity` - the command electron-builder
+      # runs to decide what to copy into app.asar - so the packaged app can ship
+      # without a module it needs. Measured on this repo, same tree, only pnpm
+      # changed: 10.30.3 reports the `debug` node under electron-updater ->
+      # builder-util-runtime with `dependencies {}`, packs 43 packages / 5.2 MB,
+      # and the built app dies at launch with `Cannot find module 'ms'` from
+      # app.asar/node_modules/debug/src/common.js; 10.29.2 reports
+      # `dependencies ["ms"]`, packs 96 packages / 6.0 MB, and the app starts.
+      # Upstream: pnpm/pnpm#10601 (last known good 10.29.2). Do not raise this
+      # pin without re-measuring that command; see the pnpm section in AGENTS.md.
       - name: Install pnpm
+        # pinned: see the pnpm note above this step
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -77,7 +90,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -131,7 +144,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -190,7 +203,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -271,7 +284,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.29.2'
 
       - name: Build and pack
         env:

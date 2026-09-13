@@ -322,6 +322,52 @@ Load-bearing, and enforced at build time: nothing may ship a `.pyc` at all
 rewritten is `file modified:` - the one class codesign cannot accept again and
 the heal cannot repair.
 
+## Which pnpm may install and package
+
+Every workflow pins pnpm to **10.29.2** (the `version:` input on
+`pnpm/action-setup`), and that pin is load-bearing rather than a preference:
+**pnpm 10.29.3 through at least 10.34.x drops dependency edges from
+`pnpm list --prod --json --depth Infinity`**, which is the command
+electron-builder runs to decide what goes inside `app.asar`
+(`app-builder-lib/out/node-module-collector/pnpmNodeModulesCollector.js`). The
+packaged app then ships without a module it needs, and nothing about the build
+looks wrong until it is launched.
+
+Measured on this repository, one tree, only pnpm changed:
+
+- **10.30.3**: the command reports the `debug` node under
+  `electron-updater > builder-util-runtime` with `dependencies {}`,
+  electron-builder packs 43 packages / 5.2 MB into `app.asar`, and the built app
+  dies at load with `Cannot find module 'ms'` (require stack
+  `app.asar/node_modules/debug/src/common.js`).
+- **10.29.2**: the same command reports `dependencies ["ms"]`, the packager
+  copies 96 packages / 6.0 MB, and the app starts.
+
+Upstream: pnpm/pnpm#10601, open at the time of writing, last known good 10.29.2.
+CI's copy is whatever the workflows pin, but a local `pnpm build` followed by
+`electron-builder` uses whatever pnpm is on `PATH`, and an affected one produces
+the broken asar silently. So when packaging locally from a newer pnpm, put a good
+one in front of the packaging step only:
+
+```bash
+npm install --prefix /tmp/pnpm-good pnpm@10.29.2
+PATH=/tmp/pnpm-good/node_modules/.bin:$PATH CSC_IDENTITY_AUTO_DISCOVERY=false \
+  pnpm exec electron-builder --dir --arm64
+```
+
+**The end-to-end check is the launch, not the build.** With a valid build env -
+note that an empty `VITE_PUBLIC_POSTHOG_KEY` throws inside `new PostHog(...)` at
+module load, before `app.whenReady()`, and surfaces as a main-process error
+dialog rather than a log line - the marker proves the closure came through:
+
+```bash
+LOCAL_OPERATOR_UI_SMOKE_TEST=true "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
+# expect: LOCAL_OPERATOR_UI_READY electron=35.5.1, exit 0
+```
+
+Remove the pin once a pnpm release reports the full closure again - the command
+above prints `ms` for the `debug` node - and the launch line still passes.
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 A release here is a **combined release**: one version bump, one tag and one
