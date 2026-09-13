@@ -2036,6 +2036,8 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		panelIdentityFor(null, undefined),
 		undefined,
 		"no session and no draft is no panel",
+	);
+});
 
 test("the composer plans a slash submit before it submits", async () => {
 	/*
