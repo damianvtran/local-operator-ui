@@ -18,12 +18,20 @@
  * - **The reader's position**, which is the lineage PATH over `parent_job_id`
  *   (`§ 5.5`) rather than a visit-history stack: a path needs no separate state,
  *   cannot go stale, and makes the breadcrumb and "back" agree by construction.
+ *   It is walked over `details.lineage` — every `task` row — not over the roster,
+ *   which is the members alone (`§ 4`): a walk that could only see members would
+ *   stop at the first level and take the ancestors, the peer stepper and the
+ *   `N children` control with it.
  * - **The scroll owner**: the roster area in the roster view, the transcript in
  *   the reader view, never both. Two nested scrollers is the defect the old
  *   popover's `min(60vh, 480px)` ceiling existed to avoid.
- * - **The Escape ladder** (`§ 3.5`), bound on this container and stopping
- *   propagation so the window-level Escape that cancels a pending session open
- *   cannot act on the same press.
+ * - **The Escape ladder** (`§ 3.5`), bound on the DOCUMENT while the pane is
+ *   open and guarded to a press that came from inside the pane or from the
+ *   trigger, stopping propagation so the window-level Escape that cancels a
+ *   pending session open cannot act on the same press. It is not bound on this
+ *   container because the trigger lives in the header, OUTSIDE it: a ladder
+ *   bound here can never see a key pressed on the trigger, which is the state
+ *   the trigger's own click leaves focus in (round 1, U1-2).
  *
  * It does NOT own `isRunPanelOpen`: that is global and persisted (§ 3.5), like
  * the canvas's own flag, so switching conversations keeps the pane open on the
@@ -122,6 +130,12 @@ export const RunPanel = ({
 	onClose,
 }: RunPanelProps) => {
 	const openChildId = readerChildId;
+	/**
+	 * The pane's own root, for the Escape ladder's guard: a press belongs to the
+	 * pane when its target is inside this element (or is the trigger, which is
+	 * deliberately outside it — see the document listener below).
+	 */
+	const sectionRef = useRef<HTMLElement>(null);
 	/*
 	 * The disclosure's state, hoisted here from the roster so a drill-in and back
 	 * does not collapse the list under the reader (`§ 4`: it lasts "for as long as
@@ -170,9 +184,9 @@ export const RunPanel = ({
 	const openRow = useMemo(
 		() =>
 			openChildId
-				? (details.subagents.find((row) => row.id === openChildId) ?? null)
+				? (details.lineage.find((row) => row.id === openChildId) ?? null)
 				: null,
-		[details.subagents, openChildId],
+		[details.lineage, openChildId],
 	);
 	// The roster's live row while it is present, else whatever the panel opened
 	// with: a swept child keeps its facts instead of blanking its own header.
@@ -186,7 +200,7 @@ export const RunPanel = ({
 	 */
 	const path = useMemo(() => {
 		if (!row) return [] as SubagentRow[];
-		const byId = new Map(details.subagents.map((entry) => [entry.id, entry]));
+		const byId = new Map(details.lineage.map((entry) => [entry.id, entry]));
 		const chain: SubagentRow[] = [];
 		const seen = new Set<string>();
 		let cursor: SubagentRow | undefined = row;
@@ -196,15 +210,15 @@ export const RunPanel = ({
 			cursor = cursor.parentJobId ? byId.get(cursor.parentJobId) : undefined;
 		}
 		return chain;
-	}, [details.subagents, row]);
+	}, [details.lineage, row]);
 
 	/*
-	 * Closing the reader. Focus returns to the row it came from — one rAF later,
-	 * because the roster has to paint before its button can take focus — and the
-	 * unopenable note is cleared, since it describes a child the reader has now
-	 * left.
+	 * Leaving the reader entirely (`§ 5.5`): the roster replaces the child's page.
+	 * Focus returns to the row it came from — one rAF later, because the roster has
+	 * to paint before its button can take focus — and the unopenable note is
+	 * cleared, since it describes a child the reader has now left.
 	 */
-	const back = useCallback(() => {
+	const leaveReader = useCallback(() => {
 		const from = openedFrom.current;
 		onReaderChildChange(null);
 		setUnopenable(false);
@@ -218,6 +232,47 @@ export const RunPanel = ({
 		});
 	}, [onReaderChildChange]);
 
+	/*
+	 * BACK: one level UP the lineage, and out of the pane at the first level
+	 * (`§ 5.5`, `§ 3.5`).
+	 *
+	 * The two-rung rule is the document's own, implemented rather than
+	 * approximated: the reader's path is `session -> child -> ... -> current`, so
+	 * while there is a parent to land on, back is that parent's page; at the first
+	 * level there is no step left inside the reader and back leaves the pane, the
+	 * same exit the ✕ and the breadcrumb's root crumb take. Before this rule the
+	 * control left the reader from ANY depth, which is why it disagreed with the
+	 * breadcrumb — the crumb popped one level from the same state (round 1,
+	 * Q6/U1-3).
+	 *
+	 * `Escape` is deliberately NOT this (`leaveReader`, below): the TUI separates
+	 * "up one level" (`p` = parent) from "leave the mode" (`esc` = `_leave`,
+	 * `subagent_view.py:3423-3424`), and the desktop's two controls follow it.
+	 */
+	const back = useCallback(() => {
+		const parent = path.length > 1 ? path[path.length - 2] : null;
+		if (parent) {
+			/*
+			 * A level up, NOT through `openChild`: that records the row the reader was
+			 * opened FROM, and a step up the lineage is not a new open — the return
+			 * path after it is still the row the user started from. Focus needs no
+			 * help here either: the reader is keyed by the child, so the parent's page
+			 * mounts afresh and takes focus into its own body (`§ 8`).
+			 */
+			setUnopenable(false);
+			onReaderChildChange(parent.id);
+			return;
+		}
+		/*
+		 * The first level. The pane closes, and the trigger takes focus back — which
+		 * is the trigger's own effect rather than a call here, because this button
+		 * unmounts with the pane and a `focus()` on a detached node is a no-op.
+		 */
+		openedFrom.current = null;
+		setUnopenable(false);
+		onClose();
+	}, [onClose, onReaderChildChange, path]);
+
 	const openChild = useCallback(
 		(id: string) => {
 			openedFrom.current = id;
@@ -229,18 +284,41 @@ export const RunPanel = ({
 	);
 
 	/*
-	 * `§ 3.5`'s two-step ladder, on the container and not on `window`. The reader
-	 * open: back one level. At the roster: close the panel. `stopPropagation` is
-	 * what keeps the window-level Escape (which cancels a pending session open,
-	 * `chat-page.tsx:804-815`) from acting on the same press.
+	 * `§ 3.5`'s ladder, bound on the DOCUMENT while the pane is open and GUARDED
+	 * to a press that actually belongs to it: one that came from inside this
+	 * section, or from the trigger.
 	 *
-	 * `⌘[`/`Ctrl+[` is the platform's own back gesture (`§ 5.5`), and it is a
-	 * keyboard binding rather than a bare letter because the composer is live in
-	 * this layout: the TUI's `p`/`c`/`r` would have to be stolen from a focused
-	 * text field, and that is why its single-letter keys are controls here.
+	 * Why not on the container, which is where it used to be: the trigger lives in
+	 * the header, outside this subtree (`section.contains(trigger) === false`), so
+	 * the state the trigger's own click produces — focus on the button, pane open,
+	 * list on screen — could not be left with Escape at all, and `⌘[` was equally
+	 * dead from there (round 1, U1-2/Q5). A ladder bound where the trigger's focus
+	 * cannot reach is a promise the surface does not keep.
+	 *
+	 * Why not unguarded on the window: the composer is a live text field in this
+	 * layout, and Escape belongs to it. The guard names the two places a press can
+	 * come from, so a key pressed in the textarea is not this pane's to answer —
+	 * and it is a test of the EVENT TARGET rather than of `activeElement`, because
+	 * a synthetic key event carries its own target.
+	 *
+	 * `stopPropagation` is what keeps the window-level Escape (which cancels a
+	 * pending session open, `chat-page.tsx`) from acting on the same press: a
+	 * listener on `document` is on the way to `window`, so stopping here is enough.
+	 *
+	 * `⌘[`/`Ctrl+[` is the platform's own back gesture (`§ 5.5`) and takes the back
+	 * RULE; `Escape` takes the leave-the-view rule. Both are keyboard chords rather
+	 * than bare letters because the composer is live: the TUI's `p`/`c`/`r` would
+	 * have to be stolen from a focused text field, which is why its single-letter
+	 * keys are controls here.
 	 */
-	const onKeyDown = useCallback(
-		(event: React.KeyboardEvent) => {
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.defaultPrevented) return;
+			const target = event.target instanceof Element ? event.target : null;
+			if (!target) return;
+			const fromTrigger = target.closest("[data-run-panel-trigger]") !== null;
+			const inPane = sectionRef.current?.contains(target) ?? false;
+			if (!fromTrigger && !inPane) return;
 			if (
 				event.key === "[" &&
 				(event.metaKey || event.ctrlKey) &&
@@ -253,14 +331,21 @@ export const RunPanel = ({
 			}
 			if (event.key !== "Escape") return;
 			event.stopPropagation();
+			/*
+			 * The reader: leave it, at any depth (`leaveReader`), because Escape is the
+			 * TUI's `esc` and that key leaves the MODE rather than stepping up one
+			 * level. At the roster there is nothing left to leave, so the pane closes —
+			 * the rung that could not fire from the trigger before this binding.
+			 */
 			if (openChildId) {
-				back();
+				leaveReader();
 				return;
 			}
 			onClose();
-		},
-		[back, onClose, openChildId],
-	);
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [back, leaveReader, onClose, openChildId]);
 
 	/*
 	 * Switching conversations resets the reader (`§ 3.5`). Keyed on the session
@@ -276,24 +361,46 @@ export const RunPanel = ({
 		cachedRow.current = null;
 	}, [sessionId]);
 
-	const siblings = row ? siblingsOf(details.subagents, row) : [];
+	const siblings = row ? siblingsOf(details.lineage, row) : [];
 	const index = row ? siblings.findIndex((entry) => entry.id === row.id) : -1;
 	const previous = index > 0 ? siblings[index - 1] : null;
 	const next =
 		index >= 0 && index < siblings.length - 1 ? siblings[index + 1] : null;
-	const children = row ? childrenOf(details.subagents, row) : [];
+	const children = row ? childrenOf(details.lineage, row) : [];
+	/**
+	 * The descend control's two strings, and the reason they are derived rather
+	 * than typed at the call site: the name says the ACTION and the count (`§ 8`),
+	 * the label says the count alone, and `1 children` was one hard-coded plural
+	 * in the label of a control whose own tooltip two lines above it agreed with
+	 * neither (round 1, U1-6, Q8). Both come off ONE count, so they cannot drift.
+	 */
+	const childControlName = `Open ${children.length} child subagent${
+		children.length === 1 ? "" : "s"
+	}`;
+	const childControlLabel = `${children.length} child${
+		children.length === 1 ? "" : "ren"
+	}`;
 
 	return (
 		/*
-		 * `tabIndex={-1}` so the container can hold focus for the Escape ladder
-		 * without entering the tab order; the ROLE is the canvas's own precedent —
-		 * a named `region` rather than a dialog, because this is in-flow content
-		 * and not a modal the user has to dismiss before touching anything else.
+		 * `tabIndex={-1}` so the container can hold focus without entering the tab
+		 * order; the ROLE is the canvas's own precedent — a named `region` rather
+		 * than a dialog, because this is in-flow content and not a modal the user has
+		 * to dismiss before touching anything else. The ladder is NOT bound here: see
+		 * the document listener above for why the trigger's focus cannot reach a
+		 * handler on this subtree, and `sectionRef` for what the guard tests.
 		 */
 		<section
+			ref={sectionRef}
+			/*
+			 * The pane's own marker, read by the trigger's close-focus rule
+			 * (`run-details-trigger.tsx`) to tell "the pane took the focus with it"
+			 * from "the user pressed something else". A data attribute rather than
+			 * the `aria-label`, because a name is copy and this is a hook.
+			 */
+			data-run-panel-pane=""
 			aria-label="Run details"
 			tabIndex={-1}
-			onKeyDown={onKeyDown}
 			className={cn("flex h-full flex-col bg-surface")}
 		>
 			{/*
@@ -419,22 +526,25 @@ export const RunPanel = ({
 						<>
 							{children.length > 0 && (
 								/*
-								 * The descend control (`§ 5.5`): named for the count rather
-								 * than with an arrow, because an unlabelled chevron beside the
-								 * peer stepper is three arrows with two meanings.
+								 * The descend control (`§ 5.5`), named for the count rather than with
+								 * an arrow, because an unlabelled chevron beside the peer stepper is
+								 * three arrows with two meanings.
+								 *
+								 * Both strings are derived from ONE count: the accessibible name says
+								 * the action and the count (`Open 1 child subagent`, `§ 8`), and the
+								 * visible label says the count alone, pluralised. The label on its own
+								 * read `1 children` and carried no name the action could be heard in
+								 * (round 1, U1-6 and Q8).
 								 */
-								<Tooltip
-									content={`Open ${children.length} child subagent${
-										children.length === 1 ? "" : "s"
-									}`}
-								>
+								<Tooltip content={childControlName}>
 									<Button
 										variant="ghost"
 										size="sm"
 										className={cn("text-meta text-ink-muted")}
+										aria-label={childControlName}
 										onClick={() => openChild(children[0].id)}
 									>
-										{`${children.length} children`}
+										{childControlLabel}
 									</Button>
 								</Tooltip>
 							)}
@@ -508,6 +618,15 @@ export const RunPanel = ({
 					}
 					pulse={pulses[row.id] ?? 0}
 					live={OPEN_CHILD_STATUSES.includes(row.status)}
+					/*
+					 * The reader's clock anchors (`useChildRowClock`): the instants THIS model
+					 * was measured at, so the header's elapsed ticks from the same pinned
+					 * clock the roster's rows do — a running child's page used to sit on the
+					 * label the wire last published while the roster beside it ticked
+					 * (round 1, Q3).
+					 */
+					measuredAtMs={details.measuredAtMs}
+					measuredAtRealMs={details.measuredAtRealMs}
 					previewPage={previewPage}
 					onUnopenable={() => {
 						onReaderChildChange(null);

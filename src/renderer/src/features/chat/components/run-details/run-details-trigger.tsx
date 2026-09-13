@@ -31,7 +31,7 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Activity } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	type McpServerRow,
 	type RunDetails,
@@ -89,6 +89,37 @@ export const RunDetailsTrigger = ({
 	const setRunPanelOpen = useUiPreferencesStore(
 		(state) => state.setRunPanelOpen,
 	);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * CLOSING RETURNS FOCUS HERE (`§ 3.5`, `§ 9`; round 1, U1-2/Q5).
+	 *
+	 * The trigger is what opens the pane, so it is where a keyboard user's place
+	 * is once the pane is gone — and without this the ✕ left focus on `<body>`:
+	 * the button the press landed on unmounts with the pane, and the browser drops
+	 * focus rather than restoring it. `Escape` bound where this button's focus can
+	 * reach (the pane's document listener) fixes the same finding's other half.
+	 *
+	 * The refocus is CONDITIONAL, and the condition is the whole reason this is a
+	 * reader-worthy four lines: only a close that TOOK the focus does the trigger
+	 * claim it back. Focus on `<body>` is the signature of a control that
+	 * unmounted under the pointer, and focus inside the pane is a close driven
+	 * from the pane's own keys; focus anywhere else means the user pressed
+	 * something else on the way here (the canvas button that swaps the slot), and
+	 * yanking it back to this button would undo their own click.
+	 */
+	const wasOpen = useRef(isRunPanelOpen);
+	useEffect(() => {
+		const was = wasOpen.current;
+		wasOpen.current = isRunPanelOpen;
+		if (!was || isRunPanelOpen) return;
+		const active = document.activeElement;
+		const lostInPane =
+			active === null ||
+			active === document.body ||
+			(active instanceof Element &&
+				active.closest("[data-run-panel-pane]") !== null);
+		if (lostInPane) triggerRef.current?.focus();
+	}, [isRunPanelOpen]);
 
 	/*
 	 * The two acknowledgement ledgers, both owned here because this is the surface
@@ -170,6 +201,7 @@ export const RunDetailsTrigger = ({
 	return (
 		<Tooltip content={label} side="top">
 			<Button
+				ref={triggerRef}
 				variant="ghost"
 				size="icon"
 				/*

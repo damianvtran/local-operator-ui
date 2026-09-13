@@ -41,7 +41,11 @@ import {
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import type { MessageInputHandle } from "./message-input";
-import { deriveRunDetails, useRunPanelMcpServers } from "./run-details";
+import {
+	deriveRunDetails,
+	mcpErrorTexts,
+	useRunPanelMcpServers,
+} from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
@@ -207,6 +211,13 @@ function SessionPanel({
 		accelerator: canonical.frontend
 			? JSON.stringify(canonical.frontend.mcp_servers ?? null)
 			: null,
+		/*
+		 * And the ONE field of that projection this pane renders: the runtime's own
+		 * failure text, which the rendered read does not carry at all (`§ 7.2`; round
+		 * 1, U1-8). `mcpErrorTexts` narrows it to the names that carry one, and the
+		 * derivation only ever uses it on a row the rendered read calls a problem.
+		 */
+		errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
 	});
 	const capabilities = useDesktopCapabilities();
 	/*

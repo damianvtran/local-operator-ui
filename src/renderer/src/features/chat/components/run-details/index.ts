@@ -18,6 +18,7 @@ export {
 	hasRunDetails,
 	hasUnseenFailure,
 	hasUnseenMcpProblem,
+	mcpErrorTexts,
 	mcpProblemNames,
 	mcpServersAreCold,
 	NOTHING_SEEN,
