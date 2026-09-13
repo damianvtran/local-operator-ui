@@ -253,3 +253,75 @@ export function fileKind(path: string): CanvasDocumentType {
 
 	return "other";
 }
+
+/**
+ * The MIME type a local file's bytes should carry once they are a `Blob`.
+ *
+ * Not cosmetic. A blob with no type is what makes Chromium offer a PDF as a
+ * download instead of rendering it: the frame's document is chosen from the
+ * response's content type, and a `Blob` created without one presents
+ * `application/octet-stream`. `static.ts` on the backend carries the same table
+ * for the media routes; this is its renderer-side counterpart for the bytes the
+ * viewers read over IPC, and it covers only the types those viewers handle.
+ */
+export function mimeTypeForPath(path: string): string {
+	const extension = extensionOf(path);
+	if (!extension) return "application/octet-stream";
+
+	switch (extension) {
+		case "pdf":
+			return "application/pdf";
+		case "png":
+			return "image/png";
+		case "jpg":
+		case "jpeg":
+		case "jfif":
+		case "pjpeg":
+		case "pjp":
+			return "image/jpeg";
+		case "gif":
+			return "image/gif";
+		case "webp":
+			return "image/webp";
+		case "bmp":
+			return "image/bmp";
+		case "svg":
+			return "image/svg+xml";
+		case "tiff":
+		case "tif":
+			return "image/tiff";
+		case "ico":
+			return "image/x-icon";
+		case "avif":
+			return "image/avif";
+		case "heic":
+		case "heif":
+			return "image/heic";
+		case "mp3":
+			return "audio/mpeg";
+		case "wav":
+			return "audio/wav";
+		case "aac":
+			return "audio/aac";
+		case "flac":
+			return "audio/flac";
+		case "m4a":
+			return "audio/mp4";
+		case "ogg":
+		case "oga":
+			return "audio/ogg";
+		case "mp4":
+		case "m4v":
+			return "video/mp4";
+		case "webm":
+			return "video/webm";
+		case "mov":
+			return "video/quicktime";
+		case "mkv":
+			return "video/x-matroska";
+		case "avi":
+			return "video/x-msvideo";
+		default:
+			return "application/octet-stream";
+	}
+}
