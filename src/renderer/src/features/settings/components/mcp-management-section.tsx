@@ -58,8 +58,9 @@ import { SettingsSection } from "./settings-section";
  * the problem a type can close. It does not close the other half, and the
  * contract does not pretend otherwise: `desktop-control-contract.ts` is
  * hand-written and already omits fields the live snapshot sends (`removable`) and
- * that `public_server_config` sends (`argument_count`, `url`, `endpoint_redacted`,
- * `environment_keys`, `header_keys`), and `desktopResult<T>` is an unchecked cast,
+ * that `public_server_config` sends (`command`, `argument_count`, `url`,
+ * `endpoint_redacted`, `environment_keys`, `header_keys`), and
+ * `desktopResult<T>` is an unchecked cast,
  * so a backend rename would still arrive silently. Catching that needs a parity
  * assertion against a pinned payload from the backend, which this repository
  * cannot make on its own — see the note in `mcp-foreign-config-origin.ts`.
@@ -431,19 +432,25 @@ export const McpManagementSection: FC<{
 											<span className="truncate font-medium text-body text-ink">
 												{server.name}
 											</span>
-											{/* The scope chip leads and the transport chip follows. Scope is
-											    the fact that decides whether this row has a Remove control;
-											    `stdio`/`http` is a token the row's other copy already
-											    implies, so it takes the quieter variant. The words are the
-											    add form's own (`Global` / `This project`), so the two
-											    places that name this axis agree. */}
+											{/* The scope chip is the row's only left-rail pill, and that is
+											    the point: it carries the fact that decides whether this row
+											    has a Remove control, so it keeps the emphasised variant
+											    (D1-4). Its words are the add form's own (`Global` /
+											    `This project`), so the two places that name this axis
+											    agree. */}
 											{ownedScope && (
 												<Badge variant="outline">
 													{ownedScope === "project" ? "This project" : "Global"}
 												</Badge>
 											)}
+											{/* Plain meta text, not a second pill: the transport token is a
+											    machine word the row's other copy already implies, and as a
+											    pill it wore the same three roles as the neutral status badge
+											    at the far end of the row (D2-3). */}
 											{server.transport && (
-												<Badge variant="neutral">{server.transport}</Badge>
+												<span className="text-meta text-ink-dim">
+													{server.transport}
+												</span>
 											)}
 										</div>
 										<Badge
@@ -466,40 +473,65 @@ export const McpManagementSection: FC<{
 										</p>
 									)}
 									{/* No error line: the wire never sends `error`, so `status` IS the
-									    row's health story. `auth-required` is a recoverable grant
-									    problem rather than a dead process, which is why it takes the
-									    warning variant above — and where the row renders no sign-in
-									    control, this line is the only place its remedy can be named. */}
+									    row's health story, and `auth-required` takes the warning variant
+									    above because it is recoverable — unlike a dead process.
+
+									    Where the row cannot offer a sign-in, the copy must not name one.
+									    `!canGrantAccountAccess` means `server_rejects_oauth`
+									    (`mcp/auth.py`), which is true for TWO shapes and never for a
+									    server that could use a grant: a stdio server (no URL to carry
+									    a bearer), and — the http row this branch is mostly about — a
+									    config declaring some OTHER `auth` type, where starting an
+									    OAuth flow would answer a question the user already answered,
+									    so the login is a HARD REFUSAL. The backend's own display
+									    authority for both, `McpManager.auth_recovery_hint`
+									    (`mcp/manager.py`), says the config is the only place to fix
+									    it ("check {name}'s credentials in its MCP config"), and
+									    `_auth_challenge_text` for a 401 with no discoverable OAuth
+									    endpoint says "set its API key or headers". So the sentence
+									    names the credential need, and names the control that is
+									    actually on the row when the backend sent one: the setup
+									    prompt, which is how the user gets walked to that config. */}
 									{server.status === "auth-required" &&
 										!canGrantAccountAccess && (
 											<p className="text-meta text-ink-dim">
-												Sign in again to use this server.
+												{server.setup?.text
+													? "This server needs credentials local-operator cannot collect. Copy the setup prompt to have an agent walk you through it."
+													: "This server needs credentials local-operator cannot collect."}
 											</p>
 										)}
 									{/* The row that has no Remove control says WHY in words: the tool
-									    that owns the file, then the file. The TUI's `/mcp remove`
-									    refusal names both for the same reason (`mcp/verbs.py`'s
-									    `_foreign_config_origin`). The path is machine voice, so it is
-									    monospace and `~`-relative (`compactPath`); and the sentence
-									    sits on its own line at every width, because trailing the
-									    controls it broke to one below ~1000px anyway and a caveat
-									    that changes role with the column reads as two things
-									    (review D1-6). */}
+									    that owns the file when this table knows it, then the file.
+									    The TUI's `/mcp remove` refusal names both for the same reason
+									    (`mcp/verbs.py`'s `_foreign_config_origin`). The path is
+									    machine voice, so it is monospace and `~`-relative
+									    (`compactPath`); and the sentence sits on its own line at
+									    every width, because trailing the controls it broke to one
+									    below ~1000px anyway and a caveat that changes role with the
+									    column reads as two things (review D1-6).
+
+									    A source this table does not know is NOT given a guessed
+									    owner. The case that reaches it most is the project's own bare
+									    `.mcp.json`, which the backend calls "a project .mcp.json
+									    local-operator does not write" (`mcp/verbs.py`) — the
+									    user's own file, not another tool's — so the unnamed branch
+									    claims only what is true and keeps the path, which is the
+									    actionable half (review D2-2/R2-2). */}
 									{!ownedScope && (
 										<p className="text-meta text-ink-dim">
-											{foreignOrigin ? (
+											{foreignOrigin
+												? `Imported from ${foreignOrigin}.`
+												: "Imported from a configuration local-operator does not write."}{" "}
+											{server.source ? (
 												<>
-													Imported from {foreignOrigin}. Remove it in{" "}
+													Remove it in{" "}
 													<span className="font-mono text-mono-sm text-ink-dim">
-														{compactPath(server.source ?? "")}
+														{compactPath(server.source)}
 													</span>
 													.
 												</>
 											) : (
-												<>
-													Imported from another tool's configuration. Remove it
-													there.
-												</>
+												<>Remove it there.</>
 											)}
 										</p>
 									)}
