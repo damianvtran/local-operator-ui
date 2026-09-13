@@ -271,6 +271,21 @@ test("15b. a file:// URL followed by ordinary prose is still admitted", () => {
 	);
 });
 
+test("15c. an editor line reference is a path, not a filename with :59 on it", () => {
+	// Real-payload finding (risk 2). The file-url tier admits on the URL alone, so
+	// a `:59` from an editor reference rode along as part of the path and the
+	// panel offered a file that does not exist. Prose never had the bug: `mjs:59`
+	// is not a known extension and is rejected there.
+	assert.deepEqual(
+		paths([assistant(1, "see file:///Users/damian/scripts/run.mjs:59")]),
+		["/Users/damian/scripts/run.mjs"],
+	);
+	assert.deepEqual(
+		paths([assistant(1, "see file:///Users/damian/scripts/run.mjs:59:12")]),
+		["/Users/damian/scripts/run.mjs"],
+	);
+});
+
 test("normalizeCandidate rejects the whole documented family", () => {
 	assert.equal(normalizeCandidate("https://example.com/a.png"), null);
 	assert.equal(normalizeCandidate("//host/share/a.png"), null);

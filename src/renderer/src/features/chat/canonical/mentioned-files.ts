@@ -225,8 +225,20 @@ function normalizeFileUrl(raw: string): string | null {
 	const stripped = raw.startsWith("file://")
 		? raw.slice("file://".length)
 		: raw;
-	const candidate = stripped.replace(TRAILING_PUNCTUATION, "");
+	let candidate = stripped.replace(TRAILING_PUNCTUATION, "");
 	if (!candidate || candidate.length > MAX_CANDIDATE_LENGTH) return null;
+	/*
+	 * `file:///x/y.ts:59` is a line reference, not a filename.
+	 *
+	 * Only this tier needs the trim: prose already rejects such a token because
+	 * its extension reads `ts:59`, while a `file://` URL is admitted on the URL
+	 * alone and would carry the suffix into the panel as a path that does not
+	 * exist. Found by running the extractor over real histories
+	 * (`scripts/mentioned-files-real-payload.mjs`): one of the first fifty paths
+	 * was `…/drive-model-picker.mjs:59`, quoted from an editor line reference.
+	 */
+	candidate = candidate.replace(/:[0-9]+(?::[0-9]+)?$/, "");
+	if (!candidate) return null;
 	if (API_PATH_PREFIXES.some((prefix) => candidate.startsWith(prefix)))
 		return null;
 	return candidate.startsWith("/") ? candidate : null;

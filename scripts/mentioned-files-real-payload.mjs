@@ -53,12 +53,22 @@ const { EMPTY_TRANSCRIPT, applyHistoryPage, extractMentionedPaths } = await impo
 );
 
 /** The same expansion `resolveUserPath` performs in main, for the audit only. */
+function diskPath(path) {
+	return path.startsWith("~/") ? join(homedir(), path.slice(2)) : path;
+}
+
 function existsOnDisk(path) {
-	const expanded = path.startsWith("~/")
-		? join(homedir(), path.slice(2))
-		: path;
 	try {
-		return existsSync(expanded);
+		return existsSync(diskPath(path));
+	} catch {
+		return false;
+	}
+}
+
+/** True when the path is a directory rather than a file. */
+function isDirectoryOnDisk(path) {
+	try {
+		return statSync(diskPath(path)).isDirectory();
 	} catch {
 		return false;
 	}
@@ -156,6 +166,9 @@ const audit = {
 	// `cwd` argument lands; counted so the decision to keep or drop it is made
 	// on a number rather than an opinion.
 	missingNoExtension: group(missing, (path) => !/\.[A-Za-z0-9]+$/.test(path)),
+	// Directories that EXIST, which is the number that decides whether a panel
+	// promising "files" should carry tiles that are not files.
+	existingDirectories: all.filter((row) => isDirectoryOnDisk(row.path)).length,
 };
 
 console.log(
