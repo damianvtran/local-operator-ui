@@ -94,22 +94,106 @@ these frames are about.
 | [after-after-enter.png](after-after-enter.png) | The claim. Immediately after Enter the composer is **already empty** and the user's message is **already in the transcript**, painted optimistically under the admission request UUID while the engage is still running behind it. |
 | [after-settled.png](after-settled.png) | The owner's own row has replaced the echo in place — one row, not two, because the echo is keyed by the id the backend gives the durable row. The agent's reply follows. |
 
-## Reproducing
+## Capturing the frames by hand
 
-Start an isolated backend (`hosting: test` / `model_name: mock`), then in each
-worktree:
+The frames above are **pending**: the browser tool's extension bridge was
+unavailable from every agent session during this PR, and the operator's standing
+rule forbids scripting a browser engine (no CDP, no Playwright, no downloaded
+Chromium) precisely because a throwaway browser cannot hold a real login. So the
+capture is a person driving their own Chrome. This section is written to be
+followed verbatim in about five minutes.
+
+### 1. Start an isolated backend (once, ~30s)
+
+Any backend with the warm route works. Nothing here touches a real config dir or
+spends tokens: `hosting: test` / `model_name: mock` is a real provider path with
+no network.
 
 ```sh
-LOCAL_OPERATOR_DESKTOP_TOKEN=<token> \
-LOCAL_OPERATOR_DESKTOP_BACKEND_URL=http://127.0.0.1:<backend-port> \
-VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:<backend-port> \
-  npx vite --config scripts/submit-latency-evidence.vite.mjs
+ROOT=$(mktemp -d /tmp/lo-frames-XXXXXX)
+PORT=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')
+TOKEN=$(openssl rand -hex 32)
+printf 'version: 0.0.0\nvalues:\n  hosting: test\n  model_name: mock\n' > "$ROOT/config.yml"
+# Scrub inherited cmux vars: an inherited CMUX_WORKSPACE_ID has renamed real
+# workspaces before.
+for n in $(env | sed -n 's/^\(CMUX_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$n"; done
+HOME="$ROOT" LOCAL_OPERATOR_CONFIG_DIR="$ROOT" LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
+  <path-to-warm-backend>/.venv/bin/local-operator serve --host 127.0.0.1 --port "$PORT" &
+sleep 8
+# Must print 3. Below 3 the renderer gates the warm off by design.
+curl -s "http://127.0.0.1:$PORT/v1/capabilities" | python3 -c 'import json,sys;print("session_catalogue =",json.load(sys.stdin)["result"]["features"]["session_catalogue"])'
 ```
 
-- after: <http://localhost:5202/submit-latency-evidence.html>
-- before: <http://localhost:5203/submit-latency-evidence.html>
+### 2. Serve the two surfaces (~20s each)
 
-Point `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` at a backend **with** the warm route
-to see the warmed path, or at one without it to see the degraded path — the
-renderer is gated on `session_catalogue >= 3` and no-ops cleanly against an
-older backend, which is itself worth photographing if the gate is ever doubted.
+Run each in its own shell, from its own worktree. Port 5202 is the branch, 5203
+is the merge-base; they are configured to differ so both can run at once and be
+photographed side by side.
+
+```sh
+# AFTER - in the PR branch worktree
+cd <repo>            # the branch worktree
+LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
+LOCAL_OPERATOR_DESKTOP_BACKEND_URL="http://127.0.0.1:$PORT" \
+VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$PORT" \
+  npx vite --config scripts/submit-latency-evidence.vite.mjs
+
+# BEFORE - in a worktree at this PR's merge-base, same harness files copied in
+cd <before-worktree>
+# ...identical command; its vite config pins port 5203.
+```
+
+Check each answers before opening a browser:
+
+```sh
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5202/submit-latency-evidence.html   # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5203/submit-latency-evidence.html   # 200
+```
+
+- **after:** <http://localhost:5202/submit-latency-evidence.html>
+- **before:** <http://localhost:5203/submit-latency-evidence.html>
+
+### 3. The click sequence, identical on both URLs
+
+The two columns must differ only by the code, so run exactly the same steps on
+each port. Use the same message text both times.
+
+1. Open the URL. Wait until the left sidebar lists agents — that means the
+   renderer has reached the backend through the proxy.
+2. Click **New chat** (the button in the sidebar, or the one on the empty state).
+   This is the case the whole PR is about: a draft with no session yet.
+3. Click into the composer and type: `Warm the runtime and echo this line`
+4. **Capture `<col>-typed.png`** — before pressing anything.
+5. Press **Enter**, and **immediately capture `<col>-after-enter.png`**. This is
+   the frame that carries the claim, so take it as fast as the screenshot tool
+   allows; on the before column you have ~1.15s, on the after column the state
+   is stable and you can take your time.
+6. Wait until the agent's reply finishes rendering. **Capture
+   `<col>-settled.png`.**
+
+Replace `<col>` with `before` or `after`. The six filenames are exactly those in
+the table above, and `scripts/check-evidence.mjs` expects that naming.
+
+### What each frame has to show
+
+- `*-typed.png` — identical on both columns. If they differ, something other
+  than this PR is in the diff.
+- `before-after-enter.png` — **text still in the composer, transcript empty.**
+- `after-after-enter.png` — **composer already empty, message already in the
+  transcript.** This pair is the entire before/after argument.
+- `after-settled.png` — exactly **one** copy of the user's message. Two would
+  mean the echo failed to coalesce with the durable row, which is the R6 defect.
+
+### Degraded path (optional, one extra frame)
+
+Point `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` at a backend **without** the warm
+route. The renderer is gated on `session_catalogue >= 3`, so the warm silently
+no-ops and the send falls back to the old timing — the echo still paints, since
+it does not depend on the warm. Worth photographing only if the gate is doubted.
+
+### Cleanup
+
+```sh
+kill %1                 # the backend; vite dies with its shell
+rm -rf "$ROOT"
+```

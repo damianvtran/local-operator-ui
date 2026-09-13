@@ -54,7 +54,12 @@ const bundle = await build({
 					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
 	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
 export const retractPendingUser = (sessionId, id) =>
-	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });`,
+	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
+// Recorded like the other two so a store change that stops evicting an
+// abandoned draft's buffered echo is visible here as well; the buffer's own
+// bounds are asserted against the real registry in echo-delivery.test.mjs.
+export const discardPendingEchoes = (sessionId) =>
+	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
 					loader: "js",
 					resolveDir: process.cwd(),
 				}));
@@ -1895,12 +1900,31 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		sequence[1],
 		"and the change that does happen is the create, which is before the POST",
 	);
-	// An EXISTING-session send has no transition at all, which is the case M5/M6
-	// hold unscoped for.
+	/*
+	 * An EXISTING-session send has no transition at all - the case M5/M6 hold
+	 * unscoped for.
+	 *
+	 * Asserted as the SEQUENCE the page computes across such a send, because the
+	 * previous version of this compared `panelIdentityFor(null, sessionId)` with
+	 * itself and therefore could not fail whatever the function did. The states
+	 * that matter are the ones the send actually moves through: a send from an
+	 * existing session has no draft key at any point, so all three collapse to
+	 * one key and `new Set(...).size === 1` is the whole claim.
+	 */
+	const existingSequence = [
+		panelIdentityFor(null, sessionId), // at Enter
+		panelIdentityFor(null, sessionId), // admission in flight
+		panelIdentityFor(null, sessionId), // admitted
+	];
 	assert.equal(
-		panelIdentityFor(null, sessionId),
-		panelIdentityFor(null, sessionId),
-		"an existing-session send never changes key",
+		new Set(existingSequence).size,
+		1,
+		"an existing-session send must never change key, so there is no remount and no reconnect",
+	);
+	assert.equal(
+		existingSequence[0],
+		sessionId,
+		"and that one key is the session itself, not a draft",
 	);
 	// The reverse direction still remounts, and must: "New chat" stages a fresh
 	// draft with no session, so it cannot inherit the previous transcript.

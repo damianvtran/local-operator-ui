@@ -189,13 +189,37 @@ const pendingEchoes = new Map<
 	((state: TranscriptState) => TranscriptState)[]
 >();
 
+/*
+ * What the buffer may retain, and WHY THE LIMITS ARE WHAT THEY ARE.
+ *
+ * This is a retention bound, not housekeeping. A queued mutation closes over
+ * the user's message text AND its images as base64 (`TranscriptImage`), so an
+ * echo for a session that never mounts is that content held in renderer memory
+ * for the lifetime of the window - after a failed send the user believes they
+ * abandoned, and with no UI anywhere showing it. The drain is destructive, so
+ * anything that MOUNTS costs nothing; these limits exist purely for the
+ * sessions that never do.
+ *
+ * Per session: a send admits at most one echo plus at most one retraction for
+ * the same request id, so 4 covers the legitimate case (a retry that re-echoes
+ * before the first mount) with room to spare. Past that the OLDEST goes, since
+ * the newest paint is the one the user is waiting to see.
+ *
+ * Across sessions: a user can stage drafts faster than panels mount, so the map
+ * itself is capped and evicts by insertion order - `Map` preserves it, and the
+ * oldest un-mounted session is the one least likely to ever be looked at.
+ *
+ * Both bounds only ever drop an OPTIMISTIC row. The durable message is the
+ * backend's, and it paints from the owner's own `message_start` when the panel
+ * mounts, so the worst case of an eviction is the pre-PR behaviour: the user
+ * waits for the real row instead of seeing an echo.
+ */
+const MAX_PENDING_ECHOES_PER_SESSION = 4;
+const MAX_PENDING_ECHO_SESSIONS = 16;
+
 /**
  * Apply now if a transcript is listening, otherwise hold it for the one that
  * is about to mount.
- *
- * Bounded by construction: entries are drained on registration and dropped
- * when the mutation is applied, and a send admits at most one echo plus at
- * most one retraction per request id.
  */
 function deliverEcho(
 	sessionId: string,
@@ -207,8 +231,28 @@ function deliverEcho(
 		return;
 	}
 	const queued = pendingEchoes.get(sessionId);
-	if (queued) queued.push(mutate);
-	else pendingEchoes.set(sessionId, [mutate]);
+	if (queued) {
+		queued.push(mutate);
+		if (queued.length > MAX_PENDING_ECHOES_PER_SESSION) queued.shift();
+		return;
+	}
+	if (pendingEchoes.size >= MAX_PENDING_ECHO_SESSIONS) {
+		// Insertion order: the least recently buffered session is evicted whole.
+		const oldest = pendingEchoes.keys().next();
+		if (!oldest.done) pendingEchoes.delete(oldest.value);
+	}
+	pendingEchoes.set(sessionId, [mutate]);
+}
+
+/**
+ * Drop anything buffered for a session that will not be coming back.
+ *
+ * Called when a draft is abandoned or its send fails terminally, so the text
+ * and images do not sit in memory waiting for a panel that has no reason to
+ * mount. Safe to call for a session with nothing buffered.
+ */
+export function discardPendingEchoes(sessionId: string): void {
+	pendingEchoes.delete(sessionId);
 }
 
 /**
