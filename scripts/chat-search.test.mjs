@@ -28,6 +28,7 @@ const module = await import(
 const {
 	lostRowsToStaleAnswer,
 	rowTrailingStatement,
+	effectiveSearchQuery,
 	searchAnswerIsClipped,
 	searchQueryExceedsLimit,
 	SESSION_RANK_NAME,
@@ -405,6 +406,80 @@ test("an over-long query is refused by the surface, on the number the contract b
 		),
 		true,
 	);
+});
+
+/*
+ * The race QA round 1's Q1 left open, and the reason the rule above is only half
+ * the decision (review round 7, R37).
+ *
+ * The box and the debounced box disagree for one debounce, and the gate used to
+ * read one while the request carried the other: the reviewer rendered the
+ * shipped hook over a spied transport and watched the wire carry `q` lengths
+ * [257, 256] — the 257 sent AFTER the box had been shortened to 256, because the
+ * gate opened on the box while the debounced value was still the over-limit
+ * string. That request is refused by the contract's own schema and arrives as the
+ * "conversation search is unavailable" notice with a Retry that cannot succeed,
+ * which is the state Q1 was filed to make unreachable.
+ *
+ * These cases are the two orderings plus the states on either side of them, and
+ * they are asserted against the rule the hook actually resolves with, so a future
+ * change that reads the box in the gate fails here rather than on the wire.
+ */
+test("the query acted on is the one the gate approved, not the box for one debounce", () => {
+	const max = SESSION_SEARCH_MAX_CHARS;
+	const long = "a".repeat(max + 1);
+	const legal = "a".repeat(max);
+
+	// The R37 case: the box is back inside the limit while the debounced value is
+	// still the over-limit string. Following the box here is what stops an
+	// over-limit `q` from being sent, and it is also what lets the notice go the
+	// moment the user shortens their query — the states the two halves of Q1 and
+	// R37 are about, and they are the same decision.
+	assert.equal(effectiveSearchQuery(legal, long), legal);
+	assert.equal(
+		searchQueryExceedsLimit(effectiveSearchQuery(legal, long)),
+		false,
+		"nothing may be sent that the contract would refuse",
+	);
+
+	// The other ordering: the box has just gone over while the debounced value is
+	// still legal. The debounced value stands, because it IS what the gate approved
+	// and what the request will carry — a legal 256-character search, not an
+	// eagerly-refused 257-character one. Its own two cases above are what the
+	// notice is shown for, one debounce later, when the box's text settles.
+	assert.equal(effectiveSearchQuery(long, legal), legal);
+
+	// Both over: the settled string stands and is refused, which is the only state
+	// the notice speaks in. Following the box would say the same thing here, so the
+	// case is asserted to pin the one that does NOT depend on the debounce.
+	assert.equal(effectiveSearchQuery(long, long), long);
+	assert.equal(searchQueryExceedsLimit(effectiveSearchQuery(long, long)), true);
+
+	// Both legal: the settled string, so the box cannot pre-empt the debounce and
+	// turn a fast typist into one request per keystroke.
+	assert.equal(effectiveSearchQuery("retention", "reten"), "reten");
+	assert.equal(effectiveSearchQuery("retention", "retention"), "retention");
+
+	// A box cleared while the debounced value is still over-limit: nothing to ask
+	// and nothing to explain.
+	assert.equal(effectiveSearchQuery("", long), "");
+	assert.equal(effectiveSearchQuery("   ", long), "");
+
+	// Measured on the trimmed pair, like the rule it stands on: padding does not
+	// make a legal query over-limit, and it must not survive as the string sent.
+	assert.equal(effectiveSearchQuery(`${legal}   `, long), legal);
+	assert.equal(effectiveSearchQuery(long, `${legal}   `), legal);
+
+	// The invariant the two halves of Q1/R37 share, over every combination of
+	// inside/outside on both inputs: a string the contract would refuse is only
+	// ever the one the surface has ALREADY refused, so no request can carry one.
+	for (const box of ["", legal, long, "retention"])
+		for (const settled of ["", legal, long, "reten"])
+			assert.equal(
+				searchQueryExceedsLimit(effectiveSearchQuery(box, settled)),
+				searchQueryExceedsLimit(box) && searchQueryExceedsLimit(settled),
+				`${JSON.stringify({ box: box.length, settled: settled.length })} must refuse only what the notice can explain`,
+			);
 });
 
 test("a count is a floor only when the answer came back full", () => {

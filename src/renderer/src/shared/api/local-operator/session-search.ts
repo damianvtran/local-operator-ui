@@ -1,3 +1,7 @@
+import {
+	effectiveSearchQuery,
+	searchQueryExceedsLimit,
+} from "@features/chat/chat-search";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 /**
  * The chat sidebar's backend search, as a query the sidebar can read.
@@ -10,7 +14,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
  * side: debounce the box, ask for the settled query, and hand back the answer
  * with the question it answers.
  *
- * Two deliberate properties:
+ * Three deliberate properties:
  *
  * - **The answer is keyed and echoed, never assumed.** `react-query` caches per
  *   query string (so backspacing re-uses an answer instead of re-asking), and
@@ -21,6 +25,11 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
  *   this one; retrying a failed search only delays the honest fallback the
  *   caller already applies, and re-asking a question the user has moved on from
  *   spends the store scan for an answer nobody is waiting for.
+ * - **One string decides and is sent.** The gate that refuses an over-limit
+ *   query and the `q` that goes out are the same value, resolved once here —
+ *   this module is the only place that knows what would actually be sent. Gating
+ *   on anything else is how an over-limit query reached the wire while the box
+ *   read as legal (review round 7, R37).
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SESSION_SEARCH_DEFAULT_LIMIT } from "../../../../../shared/desktop-contract";
@@ -48,14 +57,29 @@ export function useChatSearch(query: string, enabled: boolean) {
 	// The DEBOUNCED query is what is asked for and what keys the cache; the raw
 	// box value stays with the caller so the list can still narrow on a local
 	// match while the request is in flight.
-	const settled = useDebouncedValue(query.trim(), CHAT_SEARCH_DEBOUNCE_MS);
+	const debounced = useDebouncedValue(query.trim(), CHAT_SEARCH_DEBOUNCE_MS);
+	/*
+	 * The one string this hook acts on, resolved from both inputs: the debounced
+	 * value, except where the box has already left an over-limit string behind
+	 * (see `effectiveSearchQuery`). `asked` is what the gate is measured against
+	 * AND what is sent, so the two cannot disagree — which they did while the gate
+	 * read the box and the request carried the debounced value (review round 7,
+	 * R37).
+	 */
+	const asked = effectiveSearchQuery(query, debounced);
+	/*
+	 * Whether that string is refused, computed HERE rather than left to the caller:
+	 * a surface that re-derives it from the box can only re-derive the old answer,
+	 * and the caller's job is to say what the refusal means, not to decide it.
+	 */
+	const refused = searchQueryExceedsLimit(asked);
 	const result = useQuery({
-		queryKey: chatSearchKey(settled),
-		enabled: enabled && settled.length > 0,
+		queryKey: chatSearchKey(asked),
+		enabled: enabled && asked.length > 0 && !refused,
 		queryFn: () =>
 			desktopResult<SessionSearchResult>({
 				op: "sessions.search",
-				q: settled,
+				q: asked,
 				limit: SESSION_SEARCH_DEFAULT_LIMIT,
 			}),
 		// Long enough that re-typing the same query during a session is free,
@@ -78,5 +102,5 @@ export function useChatSearch(query: string, enabled: boolean) {
 		placeholderData: keepPreviousData,
 		retry: false,
 	});
-	return { settled, ...result };
+	return { settled: asked, refused, ...result };
 }
