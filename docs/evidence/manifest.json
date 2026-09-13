@@ -1,42 +1,35 @@
 {
-  "head": "d7f92fe8bdd2a8e106987b70638b81e00d4df28e",
-  "srcTree": "870cce6f7a0d01ad81d84771fbbe467283fea29e",
-  "scriptsTree": "c3f85fd9b9c6fb5d07f0ca8cacd05f0fb6ffb9da",
+  "head": "e64c50d34c34865fe7826202f0be676440bc603c",
+  "srcTree": "e1e27b3536c02413ccfcd0eaa98907881317aca2",
+  "scriptsTree": "dfc0197081c39432b0af0e4ccd337c8090d73040",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-08-06T18:36:03.218Z",
   "frames": 752,
   "surfaces": 110,
   "themes": 12,
   "countsMean": {
-    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 752 at this head, and the assertion is the definition rather than a restatement of it: 854 `.webp` are committed and the 16 `supplementary` sets below account for 114 of them, leaving 740. Re-derived for THIS head and stated once. Earlier revisions of this field appended a fresh derivation per merge and left the previous ones standing as though they still described the tree, so it accumulated half a dozen figures from superseded heads and, after the 0.19.5 rebase, a subtraction that no longer resolved - the sibling terms were updated and the remainder was not. Those figures are deleted rather than quoted here: a reader scanning this field for a number should not find a wrong one under any framing. A stale derivation is worse here than no derivation, because this field's entire justification is that a reader can re-compute it: one that does not resolve teaches them to stop checking. The three terms above are the whole arithmetic, they are read from the tree rather than transcribed (`find docs/evidence -name '*.webp' | wc -l`, and the summed `frames` of the sets below), and `check-evidence.mjs` fails when they disagree with it - which is what makes the sentence checkable rather than merely asserted. The update pair is a NARROWED refresh (see `partialCapture`) on top of the set `main` carried, so 752 is `main`'s 740 plus the 12 frames this branch adds: six `dracula` frames for update panels that carried two themes, and the two new stories (`install-in-flight`, `install-failed-cancelled-by-relaunch`) across the three refreshed themes. This branch carries no version bump: `package.json` is `0.19.6` here and on `main`.",
+    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 752 at this head, and the assertion is the definition rather than a restatement of it: 866 `.webp` are committed and the 17 `supplementary` sets below account for 114 of them, leaving 752. Re-derived for THIS head and stated once. Earlier revisions of this field appended a fresh derivation per merge and left the previous ones standing as though they still described the tree, so it accumulated half a dozen figures from superseded heads and, after the 0.19.5 rebase, a subtraction that no longer resolved - the sibling terms were updated and the remainder was not. Those figures are deleted rather than quoted here: a reader scanning this field for a number should not find a wrong one under any framing. A stale derivation is worse here than no derivation, because this field's entire justification is that a reader can re-compute it: one that does not resolve teaches them to stop checking. The three terms above are the whole arithmetic, they are read from the tree rather than transcribed (`find docs/evidence -name '*.webp' | wc -l`, and the summed `frames` of the sets below), and `check-evidence.mjs` fails when they disagree with it - which is what makes the sentence checkable rather than merely asserted. The update pair is a NARROWED refresh (see `partialCapture`) on top of the set `main` carried, so 752 is `main`'s 740 plus the 12 frames this branch adds: six `dracula` frames for update panels that carried two themes, and the two new stories (`install-in-flight`, `install-failed-cancelled-by-relaunch`) across the three refreshed themes. This branch carries no version bump of its own: `package.json` is `0.19.7` here and on `main`, the release that landed while this branch was in review.",
     "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 110 entries, counted off the merged literal rather than summed from the two sides' fields (96 on this branch before the rebase and 107 on `main`, each written by a run taken before the other side landed - which is exactly why the merged figure is counted and not added). `main` brought the model-picker surfaces (11 `chat-model-picker--*` states plus the `chat-session-status-strip--model-switch-pending` band); this branch adds the one story it registered, `chat-tool-rows--trace-gap-boundaries`, and 107 + 1 = 108 was that reconciliation. This branch adds the two states the 2026-09-13 incident needed and the app did not have - `common-updatenotification--install-in-flight` and `common-updatenotification--install-failed-cancelled-by-relaunch` - for 110. `check-evidence.mjs` counts the list and fails a mismatch (round 4, R3), so this field cannot silently lag its own source.",
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12."
   },
   "partialCapture": {
-    "note": "One narrowed run on this head: `--only=common-updatenotification --themes=localOperatorDark,localOperatorLight,dracula`, 27 frames refreshed and none added - the two new states' frames (`install-in-flight` and `install-failed-cancelled-by-relaunch`) were written by the same narrowed command before this branch was rebased onto `main`, and this run refreshed all 27 in place, so the branch adds 12 frames against `main`'s 740 (six `dracula` frames for panels that carried two themes, plus the two new states across three themes). Narrowed rather than swept because the change is the update path's own states and copy, so these are the frames it moves rather than the ~450 a sweep would rewrite. The tool's guard REFUSED a normal run - a Local Operator backend owns 127.0.0.1:1111 on this machine, and it is the operator's live app instance, so it was neither stopped nor captured against - and `--allow-backend` is the tool's documented opt-in for a narrowed run whose surfaces never call out: every panel here renders from a fixture payload against a mocked `window.api`. The live-app halves of the same incident (the app coming back mid-install with the marker and the install job left alone, and the cancelled-by-relaunch failure that follows) are driven and quoted in the PR body rather than committed as frames, because every surface they show has a story here.",
+    "note": "One narrowed run on this head: `--only=common-updatenotification--install-in-flight --themes=localOperatorDark,localOperatorLight,dracula`, 3 frames refreshed and none added. What it moves is the in-flight panel's Details line, which interpolated the marker's raw ISO-8601 stamp (`Install started 2026-09-13T07:39:00.991Z ...`, wrapped mid-token in the panel's narrow details block) and now carries the locale form the failure payload already used (review R1); the story fixture moved with it, because it stands in for the payload the main process sends. Narrowed rather than swept because the change is one line of one state: the two new states' frames (`install-in-flight` and `install-failed-cancelled-by-relaunch`) were written by the earlier 27-frame narrowed run this branch carried through its rebase, and the branch's totals against `main`'s 740 are unchanged - six `dracula` frames for panels that carried two themes, plus the two new states across the three refreshed themes. The tool's guard REFUSED a normal run - a Local Operator backend owns 127.0.0.1:1111 on this machine, and it is the operator's live app instance, so it was neither stopped nor captured against - and `--allow-backend` is the tool's documented opt-in for a narrowed run whose surfaces never call out: every panel here renders from a fixture payload against a mocked `window.api`. The live-app halves of the same incident (the app coming back mid-install with the marker and the install job left alone, and the cancelled-by-relaunch failure that follows) are driven and quoted in the PR body rather than committed as frames, because every surface they show has a story here.",
     "addedFrames": 0,
-    "addedAt": "2026-09-13T16:24:40.920Z",
-    "addedAtHead": "d7f92fe8bdd2a8e106987b70638b81e00d4df28e",
+    "addedAt": "2026-09-13T18:21:17.193Z",
+    "addedAtHead": "e64c50d34c34865fe7826202f0be676440bc603c",
     "addedSurfaces": [],
-    "refreshedAt": "2026-09-13T16:24:40.786Z",
-    "refreshedAtHead": "d7f92fe8bdd2a8e106987b70638b81e00d4df28e",
-    "refreshedFrames": 27,
+    "refreshedAt": "2026-09-13T18:21:17.134Z",
+    "refreshedAtHead": "e64c50d34c34865fe7826202f0be676440bc603c",
+    "refreshedFrames": 3,
     "refreshedStories": [
-      "common-updatenotification--update-available",
-      "common-updatenotification--downloaded",
-      "common-updatenotification--install-blocked",
-      "common-updatenotification--install-failed",
-      "common-updatenotification--install-in-flight",
-      "common-updatenotification--install-failed-cancelled-by-relaunch",
-      "common-updatenotification--backend-manual-required",
-      "common-updatenotification--backend-manual-required-existing-server",
-      "common-updatenotification--backend-update-non-managed"
+      "common-updatenotification--install-in-flight"
     ],
     "refreshedThemes": [
       "localOperatorDark",
       "localOperatorLight",
       "dracula"
-    ]
+    ],
+    "refreshedFromHead": "e64c50d34c34865fe7826202f0be676440bc603c"
   },
   "supplementary": [
     {
