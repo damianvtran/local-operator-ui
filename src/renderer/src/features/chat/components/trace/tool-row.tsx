@@ -79,15 +79,26 @@ export type ToolRowOutcome = "running" | "success" | "error" | "interrupted";
  * matters because they live in different files. The box is `border-box`, so
  * `min-h-6` (24px) dominates `py-0.5` rather than adding to it and the old row
  * measured 24px, not 28px; the other 4px was the old `trace` gap (`mt-1`) that
- * `transcript-rows.ts` puts BETWEEN adjacent ledger rows. The fix removed both
- * — row 24→20 here, trace gap 4→0 there — and that second half is why
- * uniformity is structural: with the gap at zero the row height IS the pitch,
- * so there is no gap arithmetic left to drift. A reader chasing the spacing
- * model needs `transcript-rows.ts` as well as this constant.
+ * `transcript-rows.ts` puts BETWEEN adjacent ledger rows. The fix cut both —
+ * row 24→20 here, trace gap 4→0 there — and the gap then came back to 2px,
+ * because a run at zero read as one fused column with no boundary between
+ * consecutive calls. So THIS constant is the row's height and not the pitch:
+ * a run measures `N × 20px + (N-1) × 2px`, and a reader chasing the spacing
+ * model needs `transcript-rows.ts`'s `GAP` as well as this constant. Changing
+ * one without reading the other is how the two drift.
+ *
  * The TUI reference the operator sent measures ~20.4px per line, and the
- * designer rendered the same four rows at both pitches: at 28px they float as
- * separate items, at 20px they cohere into a block the eye runs down. Density
- * is the substance of "more tightly packed", not a finish detail.
+ * designer rendered the same four rows at 28px and at this height: at 28 they
+ * float as separate items, here they cohere into a block the eye runs down.
+ * Density is the substance of "more tightly packed", not a finish detail.
+ *
+ * Read that comparison as 28 against the shipped 22 — this 20px box plus the
+ * hairline — NOT as an endorsement of a 20px pitch. A 20px pitch is the
+ * gap-at-zero state the tier has since moved off, because a run with no gap at
+ * all fused into one column; a designer who reads this paragraph as "20 is the
+ * cohering pitch" would be reading the argument for the row's HEIGHT as an
+ * argument about the distance between rows, which is the confusion the
+ * paragraph above exists to prevent.
  *
  * 20px with no padding: `min-h-5` clears the 17.4px text box by 2.6px, so the
  * line still has air around it and nothing clips at any of the twelve themes'

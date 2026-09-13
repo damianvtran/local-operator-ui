@@ -3,11 +3,29 @@
  *
  * Per docs/branding.md § 7, N adjacent actions in one turn read as one quiet
  * block, not N separate cards: single spacing between lines, no chrome around
- * the group. In the live message list the rows are flat siblings rendered by
- * messages-view, so the tight coupling is achieved there by the
- * `data-lo-trace` sibling rule on MessageItem's trace root; this component is
- * the same block for contexts that compose traces directly (stories, future
- * surfaces).
+ * the group. In the canonical transcript the rows are flat siblings rather than
+ * children of this component, so the same coupling is achieved there by
+ * `transcript-rows.ts`'s `trace` tier; this component is the same block for
+ * contexts that compose traces directly (stories, future surfaces).
+ *
+ * `gap-0.5` is 2px, deliberately the same step that tier carries, so a reader
+ * comparing a story composed of these against the canonical transcript finds one
+ * distance rather than two. Change one and change the other. (The line HEIGHT
+ * still differs: this group composes `TraceLine` at its comfortable default,
+ * while the transcript opts its rows into the dense 20px ledger height.)
+ *
+ * That agreement is between THESE TWO and is not a claim about the repository.
+ * A third definition of the same tier lives in `utils/message-grouping.ts`
+ * (`boundarySpacing`: `trace` ⇒ `mt-1`, 4px, in the comfortable view), and it is
+ * not dead code — the legacy `messages-view.tsx` renders live conversations
+ * through it, and the swept `chat-trace--conversation*` stories render through
+ * it too, so `docs/evidence/chat-trace/` and `docs/evidence/chat-tool-rows/`
+ * genuinely show two different distances side by side. That is a real
+ * inconsistency and it is deliberately NOT resolved here: converging the legacy
+ * surface is a change to a live rendering path with its own frames to re-take,
+ * and folding it into a tier adjustment for the canonical transcript would be a
+ * second, unreviewed change riding along. Whoever converges them should move
+ * `boundarySpacing`'s `trace` arm and re-capture `chat-trace/*`.
  */
 
 import { cn } from "@shared/lib/utils";
