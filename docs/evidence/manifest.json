@@ -1,50 +1,50 @@
 {
-  "head": "64682a9b8e263df6ec0bd8f4af9f3be7f2e8a606",
+  "head": "eb2b14e8d8a92d9d804e87fc906743cc9493bfac",
   "headNote": "`head` names the commit this evidence pass ran at, and the stamps beside it describe that commit's trees - the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts`. The commit this file rides in changes `docs/evidence` alone, so its two tree hashes are identical to `head`'s and the stamps hold across the pair. The rebase onto `2a5752b3b` (`main`, `package.json` `0.21.1`: the 0.21.1 release, #153's evidence-provenance repair and #132's composer readings) replayed this branch's ten commits onto a moved base, and the merge-base moved with it, so every value in this block was re-derived rather than carried across: `srcTree`/`scriptsTree` from `git rev-parse HEAD:src`/`HEAD:scripts`, `surfaces`/`themes` from the capturer's own lists, `frames` from the frames on disk. THE FRAMES WERE RE-CAPTURED at this head rather than merely re-stamped, and that is what makes the rest of this note an observation instead of an argument: the whole `chat-ask-options` set - nine entries, twelve themes, 108 frames - was re-taken with the committed capturer against a real Storybook, and 0 of those 108 differ from the committed frames in bytes. It matters more here than at the previous re-stamp, because the upstream commits this rebase brought in DO reach the set's import closure - `src/renderer/src/styles/index.css`, `src/renderer/src/features/chat/session-status/session-model.ts` and `src/renderer/src/shared/components/ui/tooltip.tsx` are all in the esbuild closure of `canonical/ask-options.stories.tsx` - so the intersection argument the repository's other re-stamps use would not have been enough on its own; the frames had to be shown to be this tree's rendering, and they are, by hash. `dirtyWorkingTree` is TRUE at that run and it is not this branch's source: the run needed `reactDocgen: false` in `.storybook/main.ts` for its own local Storybook, because the shipped value cannot build a preview against the TypeScript 7 pin (design round 3, D12) - and this comparison is the measurement that shows that stand-in is pixel-neutral. Both tree hashes are of the COMMITTED trees, so they name source rather than a work in progress. Two of the stamps are now asserted rather than merely written: `scripts/evidence-manifest.test.mjs` binds this block to `HEAD` from inside `test:desktop` (the round-3 M1 prevention), and `stampFailures` derives the swept frame count as well - the one stamp question only the full sweep's `main()` asked, which no CI job runs (code review round 4, m4). The rest of this manifest is the merged tree, counted off it rather than added from either side: this branch's own sets, and `main`'s evidence since the branch's base.",
-  "srcTree": "bc788c8a9c91e2c5285fafc4653204b26e4be584",
-  "scriptsTree": "221175bef625ead08c78d87938e65094e70f405c",
-  "dirtyWorkingTree": true,
+  "srcTree": "c154150689c2fd8175f881ac917cb37489bf2288",
+  "scriptsTree": "3327b64a5210fe579b78bdaaf3a9f3bbb0afca3f",
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
-  "frames": 1068,
-  "surfaces": 127,
+  "frames": 1106,
+  "surfaces": 132,
   "themes": 12,
   "countsMean": {
-    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 1068 at this head, and the assertion is the definition rather than a restatement of it: 1350 `.webp` are committed under `docs/evidence`, 282 of them sit inside the 23 declared sets below, and the remaining 1068 are the sweep's. Re-derived for THIS tree and stated once. Which term is authoritative is worth knowing before re-computing it: the exclusion is by DIRECTORY, so a set whose own `frames` field disagrees with the frames under its path does not move this count - `main`'s `composer-readings` states 23 while 34 frames sit under it (its `before/` half is not counted in that field), which is why the arithmetic here sums the directories rather than the declared fields. Two earlier derivations are deleted rather than quoted, on the rule this field already carries: a stale derivation is worse here than none, because the field's whole justification is that a reader can re-compute it, and one that does not resolve teaches them to stop checking. `check-evidence.mjs` fails when these terms disagree with it - in the fast half as well as in the sweep, so the field cannot lag the disk for a whole review round again (code review round 4, m4). This branch carries no version bump of its own: it is rebased onto the release commit rather than merged with a bump, so `package.json` on it reads `0.21.1`, byte-identical to `origin/main`'s apart from the `test:desktop` file list, which is what the repository's version-bump guard reads.",
-    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 127 entries, counted off the capturer's own literal by the gate itself rather than summed from the two sides. 118 of them are `main`'s own list at this branch's base, and the nine this branch adds are the `chat-ask-options` entries: eight stories, with `wrapping-labels` counting twice because a story id captured at two widths is written with its width in the path (`wrapping-labels@1024` and `wrapping-labels@560`). 118 + 9 = 127 is a derivation, not the assertion: the gate counts the list and fails a mismatch, so this field cannot silently lag its own source - which is exactly how it read 115 against the capturer's 124 for a whole review round (code review round 3, M1), and why the number is now counted rather than reasoned.",
+    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 1106 at this head, and the assertion is the definition rather than a restatement of it: 1407 `.webp` are committed under `docs/evidence`, 301 of them sit inside the 24 declared sets below, and the remaining 1106 are the sweep's. Re-derived for THIS tree and stated once. The exclusion is by DIRECTORY, which is why the set list below and this number cannot disagree: every declared set's `frames` field matched the frames under its own path when this was written (the check this field's own history needed - `main`'s `composer-readings` used to state 23 against 34 frames and was repaired on `main` in `05a48ca4c`, not here). Two earlier derivations are deleted rather than quoted, on the rule this field already carries: a stale derivation is worse here than none, because the field's whole justification is that a reader can re-compute it, and one that does not resolve teaches them to stop checking. `check-evidence.mjs` fails when these terms disagree with it - in the fast half as well as in the sweep, so the field cannot lag the disk for a whole review round again (code review round 4, m4). This branch carries no version bump of its own: it is rebased onto the release commit rather than merged with a bump, so `package.json` on it reads `0.21.3`, byte-identical to `origin/main`'s apart from the `test:desktop` file list, which is what the repository's version-bump guard reads.",
+    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 132 entries, counted off the capturer's own literal by the gate itself rather than summed from the two sides. 123 of them are `main`'s own list at this branch's base, and the nine this branch adds are the `chat-ask-options` entries: eight stories, with `wrapping-labels` counting twice because a story id captured at two widths is written with its width in the path (`wrapping-labels@1024` and `wrapping-labels@560`). 123 + 9 = 132 is a derivation, not the assertion: the gate counts the list and fails a mismatch, so this field cannot silently lag its own source - which is exactly how it read 115 against the capturer's 124 for a whole review round (code review round 3, M1), and why the number is now counted rather than reasoned.",
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12. Asserted the same way as `surfaces`: the gate counts the capturer's own list and fails a mismatch."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-14T06:06:33.476Z",
-    "refreshedAtHead": "64682a9b8e263df6ec0bd8f4af9f3be7f2e8a606",
+    "refreshedAt": "2026-09-14T07:43:09.742Z",
+    "refreshedAtHead": "eb2b14e8d8a92d9d804e87fc906743cc9493bfac",
     "refreshedFrames": 108,
     "refreshedStories": [
-      "chat-ask-options--options",
-      "chat-ask-options--single-option",
-      "chat-ask-options--many-options",
-      "chat-ask-options--wrapping-labels",
-      "chat-ask-options--multi-question",
-      "chat-ask-options--answer-in-flight",
-      "chat-ask-options--secret-ask",
-      "chat-ask-options--approval-unchanged"
+        "chat-ask-options--options",
+        "chat-ask-options--single-option",
+        "chat-ask-options--many-options",
+        "chat-ask-options--wrapping-labels",
+        "chat-ask-options--multi-question",
+        "chat-ask-options--answer-in-flight",
+        "chat-ask-options--secret-ask",
+        "chat-ask-options--approval-unchanged"
     ],
     "refreshedThemes": [
-      "localOperatorDark",
-      "localOperatorLight",
-      "dracula",
-      "dune",
-      "sage",
-      "monokai",
-      "tokyoNight",
-      "iceberg",
-      "radient",
-      "neon",
-      "obsidian",
-      "synth"
+        "localOperatorDark",
+        "localOperatorLight",
+        "dracula",
+        "dune",
+        "sage",
+        "monokai",
+        "tokyoNight",
+        "iceberg",
+        "radient",
+        "neon",
+        "obsidian",
+        "synth"
     ],
     "addedFrames": 24,
     "addedSurfaces": [
-      "chat-ask-options/wrapping-labels@1024",
-      "chat-ask-options/wrapping-labels@560"
+        "chat-ask-options/wrapping-labels@1024",
+        "chat-ask-options/wrapping-labels@560"
     ],
     "addedAt": "2026-09-13T22:53:20.687Z",
     "addedAtHead": "3f4f92097444b2269476a783468235ff634697e8",
@@ -72,7 +72,7 @@
         "addedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
         "note": "The capture that ADDED this branch's twelve picker/band surfaces. Recorded here because the remediation round's own narrowed capture overwrites `addedFrames`/`addedSurfaces` in place, and an addition that disappears from the manifest reads as though the stories had always been swept."
     },
-    "refreshedFromHead": "64682a9b8e263df6ec0bd8f4af9f3be7f2e8a606"
+    "refreshedFromHead": "eb2b14e8d8a92d9d804e87fc906743cc9493bfac"
   },
   "supplementary": [
     {
@@ -313,7 +313,7 @@
         "The fixed frames cannot show what was wrong, because the defect is an ABSENCE: nothing on the ask card was pressable, and an absence does not photograph. This set is main's own card under the same fixtures - inert muted text, label and consequence run together on one line, no recommended marker, and 'Type your answer below.' as the only affordance - so the reviewer can see what changed instead of taking it on trust.",
         "It cannot be regenerated by a sweep: a sweep captures the CURRENT tree, while these need main's own CanonicalTranscript under the same story. Declared as its own set so clearSweptFrames preserves it and the sweep's own count stays honest.",
         "Two of the eight surfaces are meant to look IDENTICAL to their chat-ask-options/ twins - secret-ask (a secret ask arrives with empty options) and approval-unchanged (approvals carry no options and are out of scope). The pair is what proves the non-goals were not disturbed, which no frame of the new card alone can show.",
-        "THE BASE THIS SET WAS TAKEN FROM IS NOT THE BRANCH'S REBASE TARGET, and an earlier version of this sentence said it was. Corrected: 54bf411e0 is `chore(release): bump version to 0.19.0` and sits 16 commits BEHIND the commit this branch was cut from and rebased onto, f3eb589c1 (`0.19.1`); the branch now sits on 6950d0bf3 (`0.19.5`). The earlier narration also ordered the rebases backwards -- it had the branch rebased onto 54bf411e0 and then 'again' onto 79d0dc889 (#120) -- which cannot have happened: 79d0dc889 was authored at 22:09 and merged into main after 54bf411e0's 19:16, and `git merge-base --is-ancestor 79d0dc889 54bf411e0` is false. The relation that actually makes the comparison valid is measured, not narrated: `git diff --name-only 54bf411e0..6950d0bf3 -- 'src/renderer/src/features/chat/canonical/**' 'src/renderer/src/features/chat/components/trace/**' 'src/renderer/src/features/chat/components/message-item/**'` is EMPTY, so no commit between that tree and the branch's current base draws this card, and among the 16 commits between 54bf411e0 and f3eb589c1 only chat-page.tsx and chat-title.ts move. The re-capture was a null result (90 of the 96 came back byte-identical; the 6 that moved differ by 0 pixels beyond a 5% tolerance, which is webp re-encoding noise), so the frames are kept rather than churned. The full correction, including the counting, is also in this set's README."
+        "THE BASE THIS SET WAS TAKEN FROM IS NOT THE BRANCH'S REBASE TARGET, and an earlier version of this sentence said it was. Corrected: 54bf411e0 is `chore(release): bump version to 0.19.0` and sits BEHIND the commit this branch was cut from, f3eb589c1 (`0.19.1`). The earlier narration also ordered the rebases backwards -- it had the branch rebased onto 54bf411e0 and then 'again' onto 79d0dc889 (#120) -- which cannot have happened: 79d0dc889 was authored at 22:09 and merged into main after 54bf411e0's 19:16, and `git merge-base --is-ancestor 79d0dc889 54bf411e0` is false. What makes the comparison valid is measured rather than narrated, and the measurement is NOT that the diff is empty - an earlier correction of this same sentence said it was, and that was wrong when it was written: `git diff --name-only 54bf411e0..$(git merge-base HEAD origin/main)` over `src/renderer/src/features/chat/canonical/**`, `src/renderer/src/features/chat/components/trace/**` and `src/renderer/src/features/chat/components/message-item/**` returns ELEVEN files at the current base: main's trace tier, main's mentioned-file rebuild, and main's own `reconnect-gap.stories.tsx`. None of the eleven draws this card, which is the property the comparison needs, and this set's README carries the list and the reason each file is outside it - the count is the base's to move, so the list lives there rather than in a field that cannot be re-derived. The re-capture was a null result (90 of the 96 came back byte-identical; the 6 that moved differ by 0 pixels beyond a 5% tolerance, which is webp re-encoding noise), so the frames are kept rather than churned."
       ],
       "capturedAt": "2026-09-12T22:30:00.000Z"
     },
@@ -333,5 +333,5 @@
       "capturedAt": "2026-09-14T01:10:00.000Z"
     }
   ],
-  "headNote": "`head` names the commit this branch's fix pass ran at, cited as its reachable replay in this history after the rebase onto `af4786bb1`: a commit cannot name its own sha, and every rebase this branch carries rewrites the commit it ran at, so the citation is `85055fa30` (`fix(chat): one honest sentence per failure, no orphaned stream retry, and a backend this app can authenticate to`). `srcTree`/`scriptsTree` are the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts` at the docs commit that carries this manifest, and they are this head's own trees, re-derived rather than carried across the rebase, because this branch moves both (the shared notice module, the main-process relay and backend service, the renderer hook, the main-process IPC and three desktop test files). This file is rebuilt from `main`'s rather than merged: every top-level field conflicted on the rebase onto `af4786bb1` (`main`, `0.22.0` - the `0.22.0` bump, `#129`'s run-panel and sidebar surfaces, `#152`'s history reconcile, `#141`, and the `0.21.3`/`0.21.4` windows before them), and `package.json` on this head reads `0.22.0` because this branch carries no version bump of its own. The `headNote` this replaces was ANOTHER branch's pass text - the update-panel pass whose lineage `main`'s copy names - and it is named here rather than carried, because its first sentences explain a `head` that is not this one. The counts below are `main`'s own and are verified at this head rather than re-derived: this branch contributes no `.webp` at all (its six frames under `docs/evidence/session-load-recovery` are `.png`, which the walker does not enumerate), and `main`'s arithmetic resolves here - 1056 swept plus 225 across the 24 declared `supplementary` sets is 1281 committed `.webp`, which is what this head's disk holds. THE PIXEL SWEEP WAS NOT RE-RUN, here or on the bases this branch was rebased across: the swept pixels are older than the tree these stamps name, which is the disclosure this file has carried since `#132` rewrote the composer row, and which of those frames still describe this tree is a convergence question rather than a claim made here. THIS BRANCH'S OWN SIX FRAMES WERE RE-CAPTURED ON THIS HEAD, and the result is recorded as a comparison rather than asserted: `refused`, `loading` and `narrow` came back byte-identical to the frames they replaced (`sha256 0f51b9ac`, `aec176e4`, `c90d263d`), while `recovered` and `empty` moved because `#132` moved the readings into the composer's bottom row - the 148 CSS px box the `0.21.0` base grew whenever a session snapshot arrived exists nowhere on this head, where every composer box is 112 CSS px and the notice's block still ends 28 px above the composer's top border at `y 744`, with `scrollerHeight` 632 at 1380x872 and 569 at 980x760. `before` was re-taken on the base it documents, where the defect reproduces unchanged. The set's own README carries the method and every number quoted here."
+  "headNote": "`head` names the commit this evidence pass ran at, and the stamps beside it describe that commit's trees - the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts`. The commit this file rides in changes `docs/evidence` alone, so its two tree hashes are identical to `head`'s and the stamps hold across the pair. The rebase onto `54e78e278` (`main`, `package.json` `0.21.3`: the 0.21.2 and 0.21.3 releases, #117's chat search, #161's update-install work and the evidence-arithmetic repairs) replayed this branch's twelve commits onto a moved base and moved the merge-base with them, so every value here was re-derived rather than carried across: `srcTree`/`scriptsTree` from `git rev-parse HEAD:src`/`HEAD:scripts`, `surfaces`/`themes` from the capturer's own lists, `frames` from the frames on disk outside the declared sets. THE FRAMES WERE RE-CAPTURED at this head rather than re-stamped, and that is what makes the stamps a measurement instead of an argument: the whole `chat-ask-options` set - nine entries, twelve themes, 108 frames - was re-taken with the committed capturer against a real Storybook, and 0 of those 108 differ from the committed frames in bytes. The re-capture is required here on the repository's own rule, not out of caution: the upstream delta this rebase brought in REACHES the set's import closure, because `src/renderer/src/shared/hooks/use-canonical-session.ts` and `src/shared/desktop-session-contract.ts` are both in the esbuild closure of `canonical/ask-options.stories.tsx`, so the intersection argument the repository's other re-stamps use could not have settled it. Two smaller disclosures from the same run: `dirtyWorkingTree` is FALSE, because main's `6a952c469` moved the shipped `.storybook/main.ts` to the JSX docgen and the preview now builds against the TypeScript 7 pin with no local workaround - the stand-in the previous re-stamp had to disclose is gone; and the capturer's own manifest write did not complete on this run, because the process exited on an unsettled top-level await after its last frame, so the counts and `partialCapture` below are written here from the run's own outputs (its frames, re-hashed; `git rev-parse`; the capturer's story list) rather than by the tool. Both tree hashes are of the COMMITTED trees, so they name source rather than a work in progress. Two of the stamps are asserted rather than merely written: `scripts/evidence-manifest.test.mjs` binds this block to `HEAD` from inside `test:desktop`, and `stampFailures` derives the swept frame count as well - the one stamp question only the full sweep's `main()` asked, which no CI job runs (code review round 4, m4). The rest of this manifest is the merged tree, counted off it rather than added from either side: this branch's own sets, and `main`'s evidence since the branch's base."
 }
