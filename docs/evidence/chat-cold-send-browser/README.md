@@ -64,6 +64,18 @@ Coordinate scenario windows when sharing this server; each reviewer owns a
 separate browser-tool tab. Do not stop another reviewer's services or change the
 operator's browser permissions. The implementing coder closed its owned tab.
 
+## Required merge after capture
+
+The final pre-push fetch found GitHub **DIRTY** against `8d019993e` (newly merged
+composer tabs, #175). The merge preserved both sides; only manifest metadata
+conflicted. These images **precede that merge** and are not re-stamped as merged
+composer screenshots. A new browser-tool open for post-merge verification failed:
+`cmux.sock: Connection refused`; `lop browser status` then reported daemon healthy,
+paired, but **extension connected: no**. Post-merge rendered validation is therefore
+**BLOCKED pending browser reconnection**, not green. The unchanged failure/echo
+logic is supported by the pre-merge real flows plus merged-tree regression tests;
+final independent QA/design/UX must inspect the merged composer when connected.
+
 ## Geometry and gates
 
 Read-only DOM instrumentation was served by the test harness and collected with

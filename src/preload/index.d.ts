@@ -16,6 +16,40 @@ declare global {
 		electron: ElectronAPI;
 		api: {
 			desktop: DesktopAPI;
+			/**
+			 * The browser feature's chrome controls. Shapes are `unknown` because
+			 * main owns the projection: the renderer renders what it is given, and a
+			 * mirrored interface here would be a second copy of a shape that can
+			 * drift from the one main actually sends.
+			 */
+			browser: {
+				state: () => Promise<unknown>;
+				newTab: () => Promise<unknown>;
+				closeTab: (tabId: number) => Promise<unknown>;
+				activateTab: (tabId: number) => Promise<unknown>;
+				navigate: (url: string) => Promise<unknown>;
+				reload: () => Promise<unknown>;
+				stop: () => Promise<unknown>;
+				history: (direction: "back" | "forward") => Promise<unknown>;
+				setContentRect: (
+					rect: { x: number; y: number; width: number; height: number } | null,
+				) => Promise<unknown>;
+				setViewVisible: (visible: boolean) => Promise<unknown>;
+				handOver: (tabId: number, sessionId: string) => Promise<unknown>;
+				revokeHandOver: (tabId: number) => Promise<unknown>;
+				respondToConsent: (
+					entryId: string,
+					decision: "once" | "site" | "domain" | "deny",
+				) => Promise<unknown>;
+				clearData: (
+					what: "cookies" | "cache" | "everything",
+				) => Promise<unknown>;
+				onStateChanged: (callback: () => void) => () => void;
+				onConsentChanged: (callback: () => void) => () => void;
+				onPopupBlocked: (
+					callback: (payload: { tabId: number; url: string }) => void,
+				) => () => void;
+			};
 			openFile: (filePath: string) => Promise<void>;
 			readFile: (
 				filePath: string,

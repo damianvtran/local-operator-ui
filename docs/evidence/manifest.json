@@ -1,16 +1,16 @@
 {
   "head": "7550bf1aee8428e860a44af5cd2a7642eff6b3aa",
-  "headNote": "Cold-send remediation inherited HEAD 7550bf1ae (merge of main 142e86904 via 6e2a015da; package version 0.22.3, no feature bump). The source/script hashes identify the final reviewed source tree, not a claim of whole-corpus recapture. The 16 composer/rung frames were inherited from the earlier legacy capture pass; the two legacy full-pane frames are separately declared with limited provenance. Nine NEW browser-tool full-pane images and their precise before/after source boundary are documented in chat-cold-send-browser/README.md. Unchanged upstream evidence retains its own per-set citations. No stale release number or fictional rebase describes this pass.",
-  "srcTree": "703220858849598fc0397c8e054ab60dec9b4a3f",
-  "scriptsTree": "68a0098473814b9bd2a392ca386c6bac0aed7629",
+  "headNote": "Cold-send remediation inherited HEAD 7550bf1ae (merge of main 142e86904 via 6e2a015da; package version 0.22.3, no feature bump). The source/script hashes identify the final reviewed source tree, not a claim of whole-corpus recapture. The 16 composer/rung frames were inherited from the earlier legacy capture pass; the two legacy full-pane frames are separately declared with limited provenance. Nine NEW browser-tool full-pane images and their precise before/after source boundary are documented in chat-cold-send-browser/README.md. Unchanged upstream evidence retains its own per-set citations. No stale release number or fictional rebase describes this pass. Required final merge: 8d019993e (composer tabs, #175), because GitHub was DIRTY. Top source hashes now name the merged reviewed tree. New cold-send browser images PRECEDE this merge; post-merge browser verification is blocked by the disconnected extension and explicitly not claimed. Separate upstreamComposerCapture cites upstream images.",
+  "srcTree": "035f469cd58941d61eea025157f4052a506d72de",
+  "scriptsTree": "faf913bbb7b003db87abe8393656fd4c07a0ffa1",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
-  "frames": 1180,
-  "surfaces": 165,
+  "frames": 1188,
+  "surfaces": 173,
   "themes": 12,
   "countsMean": {
-    "frames": "1528 committed WebP files: 1180 swept and 348 in 29 declared supplementary sets. These are file counts, not a newly completed full sweep.",
-    "surfaces": "165 entries in the current capture script; supplementary real-browser and legacy full-pane sets are not swept stories.",
+    "frames": "1536 WebP files: 1188 swept and 348 in declared supplementary sets. File counts, not a newly completed full sweep.",
+    "surfaces": "173 entries in the merged capture script; supplementary live-pane sets are not swept stories.",
     "themes": "12 theme names in the capture script. Per-set theme counts may be narrower."
   },
   "partialCapture": {
@@ -86,6 +86,7 @@
     },
     "refreshedFromHead": "9c82dce4f2a498c5ea97066b12c0ec3b24b1be88"
   },
+  "upstreamComposerCapture": {"mergeTarget": "8d019993e", "sourceManifest": "8d019993e:docs/evidence/manifest.json", "capturedAtHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519", "refreshedAt": "2026-09-14T18:10:25.667Z", "refreshedFrames": 310, "note": "Main composer-tabs capture history remains at the source manifest above; its images and surface entries are preserved unchanged. This is not part of the cold-send capture pass. Integration was required by GitHub DIRTY and a manifest conflict; the renderer overlap is covered by a scoped post-merge smoke, not a corpus recapture."},
   "supplementary": [
     {"path": "chat-cold-send-browser", "frames": 9, "surfaces": 9, "themes": 1, "source": "Real browser-tool screenshots, lossless WebP conversions; actual React renderer and isolated HTTP/SSE backend", "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep."},
     {"path": "chat-tool-rows/cold-send-live-pane", "frames": 2, "surfaces": 1, "themes": 2, "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures", "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."},

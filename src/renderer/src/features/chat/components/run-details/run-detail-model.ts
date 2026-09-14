@@ -195,7 +195,7 @@ const LABEL_CLOSE = "Close run details";
  * from the comma between two counts — the same distinction `SEAM` (the counts
  * seam) draws for the tallies.
  */
-const LABEL_SEAM = " — ";
+export const LABEL_SEAM = " — ";
 
 /** The TUI's name for a plan that arrived with no phases of its own. */
 const IMPLICIT_PHASE_NAME = "Todos";
@@ -2122,7 +2122,24 @@ const plural = (count: number, noun: string): string =>
 const childClause = (count: number): string =>
 	`${plural(count, "subagent")} running`;
 
-const todoClause = (count: number): string =>
+/**
+ * The plan's count, in the app's one spelling of it: `1 to-do open`,
+ * `4 to-dos open`, `0 to-dos open`.
+ *
+ * EXPORTED, and deliberately not re-derived anywhere (round 1's U1-7/Q7 is the
+ * precedent this follows): the composer's plan chip states the very fact the
+ * trigger's tooltip states, and those two surfaces are read together in one
+ * glance — the chip above the box and the button's tooltip two rows below it.
+ * A second pluralisation, or a second tally, is how `1 to-dos open` reaches a
+ * user on one of them and nothing but review would catch it. Callers pass
+ * `RunDetails["openTodos"]` — pending plus blocked, over the WHOLE wire list —
+ * so the count has exactly one derivation and this function only spells it.
+ *
+ * A settled plan prints `0 to-dos open` rather than nothing: see
+ * `docs/composer-status-tabs.md` § 5.1 for why the composer's chip must not
+ * vanish when the last item closes.
+ */
+export const todoClause = (count: number): string =>
 	count === 1 ? "1 to-do open" : `${count} to-dos open`;
 
 const failureClause = (count: number): string =>
