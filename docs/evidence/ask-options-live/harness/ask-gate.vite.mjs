@@ -129,16 +129,30 @@ window.electron = {
  * \`window.api.updater.onBackendUpdateManualRequired is not a function\`, which
  * named this very gap — and that is a better failure than a shim that answers
  * anything and quietly reports success for channels it never received.
+ *
+ * The gap this mechanism is designed to expose recurred: \`onUpdateInstallInFlight\`
+ * and \`quitForUpdateInstall\` arrived with the update-install work and were not
+ * added here, so \`UpdateNotification\` threw at mount and the app never painted —
+ * the harness could not be re-driven at all from this commit onwards (UX round 5).
+ * Both are answerable by the same two shapes the list already uses: the app calls
+ * \`quitForUpdateInstall\` and ignores its answer, and it subscribes with
+ * \`onUpdateInstallInFlight\` and keeps the unsubscribe, which is what \`noop\`
+ * returns. Re-run the grep above before adding to either list rather than
+ * guessing which half a new name belongs in — the two lists are not
+ * interchangeable and a subscription placed in the calling list throws on mount
+ * instead of on subscribe.
  */
 const updater = {};
 for (const name of [
 	"checkForUpdates", "checkForAllUpdates", "checkForBackendUpdates",
 	"downloadUpdate", "quitAndInstall", "updateBackend",
+	"quitForUpdateInstall",
 ]) updater[name] = async () => ({});
 for (const name of [
 	"onUpdateAvailable", "onUpdateNotAvailable", "onUpdateDevMode",
 	"onUpdateNpxAvailable", "onUpdateDownloaded", "onUpdateError",
 	"onUpdateProgress", "onUpdateInstallBlocked", "onUpdateInstallFailed",
+	"onUpdateInstallInFlight",
 	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",
 	"onBackendUpdateManualRequired",
