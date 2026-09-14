@@ -2128,3 +2128,95 @@ test("an incident carries the provider it names, and a row with nothing to say i
 		);
 	}
 });
+
+test("a statement splits at the sentence end, not at an abbreviation or a list marker", () => {
+	// Round 2's R7: the bare "terminator followed by whitespace" rule split real
+	// text in half. Each case here is one the reviewer measured through the
+	// shipped reducer.
+	const cases = [
+		[
+			"You are now running as gpt-6 (approx. 200k ctx).",
+			"This applies from now on.",
+		],
+		[
+			"You are now running as gpt-6, e.g. the fast tier.",
+			"This applies from now on.",
+		],
+		["1. You are now running as gpt-6.", "This applies."],
+	];
+	for (const [fact, instruction] of cases) {
+		const [row] = replay([
+			custom("s", "session_model_switch", {
+				text: `[model switch] ${fact} ${instruction}`,
+			}),
+		]);
+		assert.equal(row.headline, fact);
+		assert.equal(row.detail, instruction);
+	}
+	// And the shapes that must keep splitting exactly as they did: a decimal, a
+	// version, a URL with a dotted version in it, and a question.
+	for (const [fact, instruction] of [
+		["Running at 0.5 units.", "This applies."],
+		[
+			"You are now running as deepseek/deepseek-v4.1-flash (was x).",
+			"This applies.",
+		],
+		["POST http://1.2.3.4:8000/v2.0 now.", "This applies."],
+		["Are you ready?", "This applies."],
+	]) {
+		const [row] = replay([
+			custom("s", "session_model_switch", {
+				text: `[model switch] ${fact} ${instruction}`,
+			}),
+		]);
+		assert.equal(row.headline, fact);
+	}
+});
+
+test("a relayed row joins a heading to its outcome, and a one-shot wake states its goal", () => {
+	// Round 2's U10, both measured over the store: 37 of 39 job results end their
+	// inline half on a colon with the outcome on the next line, and 121 of 955
+	// wake rows are one-shot, so the arming line carries no cadence to state.
+	const [job] = replay([
+		custom("j", "job_result", {
+			text: "background job 'design849' failed:\n[Errno 28] No space left on device",
+		}),
+	]);
+	assert.equal(
+		job.headline,
+		"background job 'design849' failed: [Errno 28] No space left on device",
+	);
+
+	const [oneShot] = replay([
+		custom("w", "wake_prompt", {
+			text: "(alarm) Scheduled wake w1 (1/1).\n\nPost-release check for core-svc MR !193: verify prod-2 is Synced.",
+		}),
+	]);
+	assert.equal(
+		oneShot.headline,
+		"Post-release check for core-svc MR !193: verify prod-2 is Synced.",
+	);
+
+	// A wake WITH a cadence still states the cadence.
+	const [recurring] = replay([
+		custom("w2", "wake_prompt", {
+			text: '(alarm) Scheduled wake w1 (1/16, every 1h30m) — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n\nGPU capacity probe.',
+		}),
+	]);
+	assert.equal(
+		recurring.headline,
+		"(alarm) Scheduled wake w1 (1/16, every 1h30m)",
+	);
+});
+
+test("the wake-arming clause is only stripped from a wake row", () => {
+	// Round 2's R9: applying the strip to every relay would edit a hub message
+	// that happened to quote the phrase. Its words are the payload's own.
+	const [hub] = replay([
+		custom("h", "hub_message", {
+			text: '<parent-message>\nThis is a note, not a question. No reply is needed unless it changes what you should do.\n\nWe cancelled w1 — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n</parent-message>',
+		}),
+	]);
+	assert.ok(hub.headline.includes("cancel with wake("));
+	assert.ok(!hub.headline.startsWith("This is a note"));
+});

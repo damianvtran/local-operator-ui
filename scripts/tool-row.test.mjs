@@ -428,7 +428,7 @@ test("the app window's CSP admits the blob images the attachment path produces",
 const rowsBundle = await build({
 	stdin: {
 		contents:
-			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -445,7 +445,7 @@ const rowsBundle = await build({
 	},
 	write: false,
 });
-const { buildRows, GAP, isTraceLike, ledgerName, paintsSomething } = await import(
+const { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } = await import(
 	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -1780,4 +1780,33 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 	assert.equal(wakeIsCatchup({ wake_catchup: true }), true);
 	assert.equal(wakeIsCatchup({}), false);
 	assert.equal(wakeIsCatchup({ wake_catchup: 0 }), false);
+});
+test("a notice's body is partitioned between its row and its disclosure", () => {
+	// The row paints the opening line; the disclosure paints the rest, and only
+	// the rest. Round 2's D7/Q5/R11/U14: a long single-line notice painted all of
+	// itself and then repeated it verbatim behind the chevron, so the affordance
+	// promised material it did not add.
+	const single = splitFirstLine(`${"z".repeat(400)} END`);
+	assert.equal(
+		single.rest,
+		null,
+		"a newline-free body is all headline, nothing to disclose",
+	);
+	assert.equal(single.headline.length, 404);
+
+	const multi = splitFirstLine(
+		"Two lines of notice.\nThe second line, disclosed.",
+	);
+	assert.equal(multi.headline, "Two lines of notice.");
+	assert.equal(multi.rest, "The second line, disclosed.");
+	// The two halves never overlap: this is the property the duplication broke.
+	assert.ok(!multi.rest.includes(multi.headline));
+
+	// Leading blanks do not become the headline, and the rest still follows it.
+	const padded = splitFirstLine("\n\n  Indented opening.  \nThe rest.");
+	assert.equal(padded.headline, "Indented opening.");
+	assert.equal(padded.rest, "The rest.");
+
+	// Whitespace alone has nothing to say, and says it as a static line.
+	assert.deepEqual(splitFirstLine("   \n \n"), { headline: "", rest: null });
 });
