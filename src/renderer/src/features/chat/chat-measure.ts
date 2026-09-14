@@ -105,3 +105,34 @@ export const CHAT_CHIP_ICON_ONLY_PX = 240;
  * gutter in the same commit, or the edges part again.
  */
 export const CHAT_COLUMN_INSET = "px-6";
+
+/**
+ * The composer's capped blocks: a whole number of lines, and the leading they are
+ * counted in.
+ *
+ * Two blocks in the composer band grow and therefore cap themselves - the status
+ * row's goal body and the send-error alert above the box - and both used
+ * `max-h-32` (128px). At the composer's own `leading-5` that is six lines plus 8px
+ * of a seventh, so the cap lands INSIDE a line's glyphs: the paint is a row of
+ * letter TOPS under a complete line, which reads as a rendering accident rather
+ * than as "there is more" (design review round 1, D2, measured on the column
+ * floor's frame at 5x: ink runs at y458-460, 3px of the seventh line's glyphs,
+ * immediately above the plan chip).
+ *
+ * 120px is six whole lines, so the last painted line is always a complete one.
+ * `leading-5` is stated rather than inherited for the same reason: the cap is an
+ * arithmetic property of the leading, and a block whose leading came from a text
+ * token (the alert's `text-body-sm` pairs 13px with 1.5, i.e. 19.5px) would put
+ * the boundary back through a line. The alert's lines are therefore 20px rather
+ * than 19.5px, which is the cost of one shared device instead of two magic
+ * numbers, and it is the only visual change to that block.
+ *
+ * A FADE was considered and rejected as the cue: the repo does have the device
+ * (`picker-host.tsx`, `canvas-tabs.tsx`, `[mask-image:linear-gradient(...)]`),
+ * but it is applied unconditionally there to regions that always overflow. On a
+ * block that does NOT overflow, a static mask would dim the last line of a
+ * two-line alert - a new defect in exchange for the old one. The scrollbar the
+ * browser paints while scrolling is the interaction-time cue; what this constant
+ * removes is the broken glyphs at rest.
+ */
+export const CAPPED_BLOCK = "max-h-[7.5rem] overflow-y-auto leading-5";
