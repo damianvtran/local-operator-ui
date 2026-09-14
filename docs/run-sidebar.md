@@ -693,7 +693,7 @@ nothing"*).
 | click a roster row | open that child | `subagent_panel.py:1509` |
 | `Enter` / `Space` on a focused row | open that child | `:1374` |
 | click the back control, or `⌘[` / `Ctrl+[` | pop one level while the reader is deeper than one; at the first level, leave the pane (the same exit as the ✕ and the breadcrumb's root crumb) | `p` = parent (`app.py:2885`, action at `:24174`); `r` = root (`:2889`, action at `:24183`) at the top |
-| `Escape` | leave the reader for the roster from any depth; at the roster, close the pane and focus the trigger | `esc` = `_leave` (`subagent_view.py:3423-3424`, handled by `_close_subagent_view`, `app.py:24335`) |
+| `Escape` | leave the reader for the roster from any depth, returning focus to the nearest ancestor that IS a row, else the trigger; at the roster, close the pane and focus the trigger | `esc` = `_leave` (`subagent_view.py:3423-3424`, handled by `_close_subagent_view`, `app.py:24335`) |
 | click a breadcrumb crumb | jump to that level | the breadcrumb itself |
 | click a peer step (◀ / ▶) | previous / next sibling, in the authoritative sibling order | `[` / `]` = `subagent_peer(∓1)` (`app.py:2886-2887`) |
 | a "N children" control in the header, when the child has children | descend to the first child | `c` = `subagent_child` (`:2888`) |
@@ -708,6 +708,22 @@ the roster. The breadcrumb pop and the back control therefore still agree at eve
 depth above the first — which is what the original finding measured — and the odd
 state, a first-level child's page, is left by the same two controls: back (out of
 the pane) and `Escape` (back to the roster).
+
+**Where focus lands when a reader is left** (round 2, Q2-1/U2-1). The row the
+reader was opened from is not always a row: a grandchild, and every page reached
+by descending (the `N children` control, a crumb, a peer stepper), has none by
+design (§ 4). Focus therefore goes to the nearest ancestor on the reader's own
+path that IS a row — the row the reader is transitively inside — and to the
+trigger when even that is not on screen, since a member behind `Show N more` is a
+member without a rendered row. It is never left on `<body>`, which is the whole
+point: a press carrying no element is not the pane's by the guard's own test, so
+a reader left without a target made the rung above unfireable however many times
+`Escape` was pressed. The guard now accepts `<body>` as a target for the same
+reason, and it treats a press from the pane's own chrome as the pane's even when
+a TOOLTIP has already claimed it (Radix's `DismissableLayer` preventDefaults from
+a capture-phase listener before it dismisses, and the only dismissable layers
+this surface opens are tooltips) — a choice named here because the next layer
+added inside the pane would have to revisit it.
 
 **Rejected: a visit-history stack** (open A, hop to B, back → A). It would have
 to be maintained beside the lineage, and it diverges from the tree in exactly the
@@ -850,7 +866,9 @@ the plan is not repeated between the panel's two sections. Verified, not assumed
 
 The four states and their encoding are `docs/run-details.md` § 4.2's, unchanged:
 `pending` `ink-muted`, `done` / `dropped` `ink-dim` struck, `blocked` full `ink`
-with `— blocked: <reason>` on its own indented line; lucide boxes for the marks
+with `— blocked: <reason>` on its own indented line — clamped to two lines like
+every other variable-length line in the pane (`§ 8`), with the whole sentence
+still available to assistive tech and on hover — lucide boxes for the marks
 (`run-detail-todos.tsx:40-45`); the flat single-phase case headerless; items
 capped at ten with the oldest **closed** rows shed first and the hidden rows
 disclosed inside the phase that lost them
@@ -953,10 +971,16 @@ label, then the quiet numbers):
 | qualifier | `tool_count` when connected (`12 tools`, singular `1 tool`), then `owned_scope` (`global` / `project`) else the source file's basename | `ink-dim`; the count `tabular-nums` |
 
 **The second line exists only for a remedy**, and only on a problem row: an
-indented, quiet line in the to-do section's blocked-row shape (`— <hint>`). The
-scope is a qualifier, not a subject, so it stays on line one; giving it a line of
-its own makes every healthy row two lines tall for a fact the reader is not
-looking for, and doubles the section's height in the pane's scarcest direction.
+indented, quiet line in the to-do section's blocked-row shape (`— <hint>`). A
+problem row whose read carries a diagnosis takes a **third line** under it — the
+projection's own failure text, VERBATIM and in mono — because the two answer two
+different questions (what to do, and why this server is down) and round 2's U2-2
+settled that the row owes both: the remedy alone answers nothing about a command
+that does not exist, and the diagnosis alone leaves the operator asking the
+question the section exists for. The scope is a qualifier, not a subject, so it
+stays on line one; giving it a line of its own makes every healthy row two lines
+tall for a fact the reader is not looking for, and doubles the section's height
+in the pane's scarcest direction.
 
 **The state table**, marks ported by MEANING from the roster's own table
 (`run-detail-subagents.tsx:51-84`) so the panel has one vocabulary rather than
@@ -966,8 +990,8 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
 |---|---|---|---|---|
 | `connected` | `Check` | `connected` | no | — |
 | `connecting` | `LoaderCircle`, `motion-safe:animate-spin` | `connecting` | no | — |
-| `auth-required` | `CircleAlert` | `auth-required` | **yes** | `— Grant this server account access in Settings`, or the canonical projection's own error text when it carries one |
-| `disconnected` | `X` | `disconnected` | **yes** | `— Reconnect this server in Settings`, or the canonical projection's own error text when it carries one |
+| `auth-required` | `CircleAlert` | `auth-required` | **yes** | `— Grant this server account access in Settings`, with the canonical projection's own error text on the line below when it carries one |
+| `disconnected` | `X` | `disconnected` | **yes** | `— Reconnect this server in Settings`, with the canonical projection's own error text on the line below when it carries one |
 | `cold` | — (the section's own state, below) | — | no | — |
 | anything else | `CircleHelp` | the wire's own word | **yes** | none — a fix for a word this build cannot name would be a guess |
 
@@ -1277,7 +1301,7 @@ exact steps inside a stated range are the implementation's to choose.
 | Roster area | `bg-surface`, rows hover `bg-elevated`, scroll region = the rest of the panel | A list panel's ground; `elevated` is the hovered-row role (`branding.md` § 2). |
 | Reader body | `bg-canvas` | The main transcript's ground (`chat-content.tsx:349`), so the child's conversation resolves against the same plane as the parent's — the "reads like the parent transcript" requirement is partly a *ground* requirement. |
 | Between sections | one `hairline` rule | Unchanged from `docs/run-details.md` § 5. |
-| Row heights | unchanged: subagent 32/48/64px, to-do 24/40px; **MCP 32px, 48px on a problem row** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The MCP row is the roster's compact height, and takes the to-do blocked row's second line only for a remedy (§ 7.2) — so a healthy server costs one line and a broken one costs two. |
+| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, up to 64px when the diagnosis wraps** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. |
 | MCP row segments | mark 16px (the roster's own box), name truncating with an ellipsis, then the status word, tool count and scope as non-truncating qualifiers | The roster's segment grammar, so the two lists read as one panel. The name is the only segment allowed to shrink: the numbers rule of § 9 forbids truncating a value mid-figure, and a name has a `title` to state it whole. |
 | MCP section | last in the panel's scroll region; its own section header with the tally; no separate scroll container, no hover ground, no cap | § 7.2's fixed order; the panel's single scroll region (the `Scroll owner` row below) is the roster's, so a section with its own container would put two scrollbars in one pane. |
 | Scroll owner | the roster area in the roster view; the transcript in the reader view — never both | Two nested scroll containers is the defect the old doc's `min(60vh, 480px)` ceiling existed to avoid; with a full-height pane the roster scrolls in the pane, and the cap that used to be a popover artefact is gone. |
