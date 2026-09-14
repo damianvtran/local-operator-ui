@@ -2015,14 +2015,26 @@ export type DesktopInfoSessionLine = {
 /**
  * `info.get`'s `data`.
  *
- * **The live half is deliberately empty and the client does not read it.**
- * `agents.tree`, `agents.running/queued/settled/max_running`, `env.mcp_*` and
- * `env.approval_mode` are `LiveState()` defaults, because those facts belong to
- * a SESSION and the desktop already holds them live for the conversation on
- * screen. The `/info` panel renders subagents and MCP from
- * `canonical.frontend` instead. The fields are typed here so they are
- * demonstrably ignored rather than forgotten — a later reader "fixing" the
- * panel to read them would introduce a second source of truth for a live fact.
+ * **The live half arrives as `null` and the client does not read it.** The route
+ * nulls these fields explicitly (`_unmeasure_live_half` in
+ * `server/routes/desktop_catalogues.py`) because `LiveState()` has no session
+ * attached: `agents.tree`/`running`/`queued`/`settled`/`max_running`/
+ * `at_capacity`/`max_depth`/`deeper`/`roster_unread`/`cross_session_known` and
+ * `env.mcp_configured`/`mcp_connected`/`mcp_failed`/`mcp_settling`/
+ * `mcp_failures`/`approval_mode`/`skills` are the dataclass DEFAULTS of a state
+ * nothing measured, and a `0`/`false`/`[]` is indistinguishable from a reading on
+ * the one screen whose job is to be believed (backend QA round on the sibling
+ * PR, which found this route shipping them as values). The `/info` panel renders
+ * subagents and MCP from `canonical.frontend` instead, and reads no field below
+ * from this block.
+ *
+ * They are typed `| null` on purpose: the desktop's route never attaches a
+ * session, so the nulls are the NORMAL payload, and a type that says `number`
+ * made `formatCount(null)` compile into a confident "0 skills" — the fixture
+ * typed to the old shape hid it. A later reader "fixing" the panel to read them
+ * would introduce a second source of truth for a live fact, which is why the
+ * fields are still typed here rather than dropped: demonstrably ignored, and now
+ * unable to read as measured.
  */
 export type DesktopInfoData = {
 	install: {
@@ -2100,25 +2112,25 @@ export type DesktopInfoData = {
 			parent_job_id: string | null;
 			session_id: string | null;
 			live: boolean;
-		}>;
-		running: number;
-		queued: number;
-		settled: number;
+		}> | null;
+		running: number | null;
+		queued: number | null;
+		settled: number | null;
 		max_running: number | null;
-		at_capacity: boolean;
-		max_depth: number;
-		deeper: number;
-		cross_session_known: boolean;
-		roster_unread: boolean;
+		at_capacity: boolean | null;
+		max_depth: number | null;
+		deeper: number | null;
+		cross_session_known: boolean | null;
+		roster_unread: boolean | null;
 	};
 	env: {
-		mcp_configured: number;
-		mcp_connected: number;
-		mcp_failed: number;
-		mcp_settling: boolean;
+		mcp_configured: number | null;
+		mcp_connected: number | null;
+		mcp_failed: number | null;
+		mcp_settling: boolean | null;
 		/** `[server name, truncated message]`. */
-		mcp_failures: Array<[string, string]>;
-		approval_mode: string;
+		mcp_failures: Array<[string, string]> | null;
+		approval_mode: string | null;
 		theme: string;
 		terminal_size: [number, number] | null;
 		term: string;
@@ -2134,7 +2146,8 @@ export type DesktopInfoData = {
 		/** NAMES ONLY — never a value, a length or a prefix. */
 		credential_keys: string[];
 		guides: number;
-		skills: number;
+		/** `null` on every desktop read: no session is attached, so nothing counted. */
+		skills: number | null;
 	};
 	/** `[field or block name, one-line reason]`. */
 	degraded: Array<[string, string]>;
