@@ -396,15 +396,50 @@ Decided from the row's payload, in this order, with no new op:
      the unhelpful-copy class `branding.md` § 8 refuses.
 3. Any word this build has not been taught → no remedy (unchanged, § 7.2).
 
-### 3.4 The key case: no popout in this PR, and the reason is a missing write path.
+### 3.4 The key case: the popout SHIPS, and its write path is a backend dependency.
 
-The operator asked for "a popout to enter in the API key". There is no op that
-can write one for an existing server, so a popout would be a form that cannot
-save:
+**Amended in the remediation round, because the original text below described a
+different PR than the one that ships.** The operator overrode the deferral: the
+popout is in this PR, in its own final commit so it can be split off. What
+follows is what actually ships, then the original reasoning, which is still the
+reason the write path is a dependency rather than a detail.
 
-- `mcp.control` accepts `env`/`headers` **only** on `add`
-  (`mcp/desktop.py:59-60`, `:62-88` — "Configuration fields are only accepted by
-  add"), and `add` refuses a name that already exists (`:174-176`).
+**What ships** (`run-details/mcp-key-dialog.tsx`, `use-mcp-remedy.pressKey`):
+one password field per credential field the PAYLOAD declares
+(`environment_keys` / `header_keys` — names only, never a value,
+`mcp/desktop.py:92-116`), written through the owner credential store's own op
+(`credentials.update`, the same one Settings → API credentials writes), then the
+server reconnects through `mcp.control {action: "connect"}`.
+
+**What it does NOT do:** it writes no configuration. No `add`, no `env`/`headers`
+map, no scope — the panel's rule (`§ 7.2` amended) holds, and the op that a popout
+*had* to avoid is exactly why: `mcp.control` accepts `env`/`headers` only on `add`
+(`mcp/desktop.py:59-60`, `:62-88` — "Configuration fields are only accepted by
+add"), and `add` refuses a name that already exists (`:174-176`).
+
+**What it depends on, and how the copy stays honest on both backends.** Nothing
+in `main` expands a `${NAME}` reference in the MCP path: the stdio child is built
+as `get_default_environment() | CHILD_QUIET_ENV | dict(cfg.env or {})`
+(`mcp/manager.py:747`), where `get_default_environment()` copies six allowlisted
+variables (`manager.py:569-577`) and the config's map is merged last and wins — so
+`{"TOKEN": "${TOKEN}"}` reaches the child as the literal string, and a repo-wide
+grep for a resolver (expandvars, a `${…}` regex, a prefix strip) finds none. The
+parallel backend change that enables it is `damianvtran/local-operator` **PR
+#1125**.
+
+Because that PR may land after this one, the surface claims nothing it cannot
+keep: the dialog's line promises what it DOES ("Saved to your credential manager,
+then this server is reconnected"), and the OUTCOME is derived from the read —
+`pressKey` judges the returned snapshot's own row rather than the request's status
+(`manager.reconnect_server` swallows failures and returns `None`,
+`manager.py:1671-1679`), so a backend without the resolver says "The key was saved,
+but the server still needs sign-in" and the dialog stays open. `run-sidebar.md` §
+13 carries the same coupling.
+
+---
+
+The original reasoning, kept as the record of why the write path is a dependency:
+
 - The credential dialog (`credential-dialog.tsx`, `CredentialDialogProps:40-52`)
   is bound to `CREDENTIAL_MANIFEST` and writes the owner secret store
   (`sessions.credential`); it is not the config's `env`/`headers` map, and the
@@ -412,24 +447,13 @@ save:
   credential manager".
 - The config stores a *reference*: `public_server_config` publishes
   `environment_keys`/`header_keys` names only, and `desktop.py:85` requires
-  `"${NAME}"`-shaped values. **But nothing expands a `${NAME}` reference in the
-  MCP path.** The stdio child is built as `get_default_environment() |
-  CHILD_QUIET_ENV | dict(cfg.env or {})` (`mcp/manager.py:747`), where
-  `get_default_environment()` copies six allowlisted variables
-  (`manager.py:569-577`) and the config's map is merged last and wins — so
-  `{"TOKEN": "${TOKEN}"}` reaches the child as the literal string. Repo-wide
-  grep for a resolver (expandvars, a `${…}` regex, a prefix strip) finds none.
-  That is a backend defect in a different repo and is **out of scope here**
-  (§ 5, § 7) — but it decides this item: a key-entry popout would write a value
-  the runtime does not read.
-
-So: the key case's in-place affordance is the honest pointer to the configuration
-surface (3.3-1), and the deep link (D2) is what makes that pointer one click
-instead of a hunt. The popout lands with the backend write path (§ 5, item 3).
+  `"${NAME}"`-shaped values (the paragraph above quotes the missing resolver),
+  which is why the popout stores a credential the runtime only reads once PR
+  #1125 lands.
 
 - **The panel would notice if it changed:** `environment_keys`/`header_keys` are
-  already on the row payload, so a later popout can be pre-seeded from them with
-  no new read.
+  already on the row payload, and the popout is pre-seeded from them with no new
+  read.
 
 ### 3.5 `disconnected`: reconnect, not reauth.
 
@@ -530,8 +554,11 @@ control, not the TUI's verb", lines 118-124, and the § 7.6/§ 13 entries):
    remove, reload, scope, credential entry) and a clickable row (they carry no
    single action).
 3. § 13 (line 1822): delete "Restoring a control (reauth / connect / reload) to
-   the MCP row", and add a deferred row for the key-entry popout, pointing at § 5
-   of this brief and the backend write path it needs.
+   the MCP row", and record the key-entry popout as SHIPPED — with the backend
+   reference-expansion change (`local-operator` PR #1125) it depends on. **The
+   overridden deferral**: the operator's override for this PR put the popout in,
+   so the row that was drafted here as a deferral is the shipped one (§ 3.4,
+   amended).
 
 ---
 
@@ -693,8 +720,12 @@ Settings path with the deep link. `U`-findings.
 
 - **Any backend change**, in this repo or `~/local-operator`: the four gaps in § 5
   are recorded, not fixed here.
-- **A credential/API-key popout.** No write path exists (§ 3.4). Not "deferred
-  pending design" — deferred pending a backend action.
+- **A credential/API-key popout** is IN this PR, in its own final commit so it can
+  be split off if the parallel backend change slips (`§ 3.4`, amended: the popout
+  ships, and the `${NAME}` resolution it needs is `local-operator` PR #1125). Its
+  copy claims only what it does — store, then reconnect — and its outcome is read
+  off the snapshot, so it is honest against a backend with that change and one
+  without it.
 - **Configuration in the panel**: no add, remove, reload, scope control, or
   transport editing on the run panel's rows.
 - **Re-spelling the wire's status words.** `auth-required` stays verbatim

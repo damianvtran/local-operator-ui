@@ -462,6 +462,36 @@ export const STORIES = [
 	   declared names, never a value. */
 	["chat-run-panel--mcp-key-auth", 1280, 700],
 	["chat-run-panel--mcp-key-popout", 1280, 700],
+	/* The settled-op state, which is where a remedy can vanish: two operations the
+	   backend finished earlier in the session beside servers that are problems
+	   again. Round 1's finding 1 was that this path blanked the row. */
+	["chat-run-panel--mcp-grant-settled", 1280, 700],
+	/* § 8's 64px shape: a grant line AND the runtime's own diagnosis under it. */
+	["chat-run-panel--mcp-grant-failed-diagnosis", 1280, 700],
+	/* The remedy link's hover ground and its `:focus-visible` ring. The pointer is
+	   the rig's own CDP input (`{ hover }`), the same mechanism the trigger's hover
+	   frames use; the ring is produced by the story, since a programmatic focus is
+	   not the same thing as keyboard focus. */
+	[
+		"chat-run-panel--mcp-remedy-hover",
+		1280,
+		700,
+		{ hover: '[data-mcp-remedy="grant"]' },
+	],
+	["chat-run-panel--mcp-remedy-focus", 1280, 700],
+	/* The two dialog states a click cannot reach: the write in flight, and the
+	   reconnect that came back without the credential taking. Captured at the size
+	   of the dialog in its window rather than at the pane's, because the dialog is
+	   portal-rendered and viewport-fixed (`check-evidence`'s uniformity ceiling is
+	   the other half of the number). */
+	["chat-run-panel--mcp-key-saving", 900, 620],
+	["chat-run-panel--mcp-key-error", 900, 620],
+	/* The pane's 320px floor with the longest action line it can hold. Round 1's D5
+	   measured `Sign-in cancelled` + the credential sentence + `Try again` at 369px
+	   in the 375px column a 420px pane gives, so the floor is where it has to wrap
+	   rather than ellipsise. 800x700 for the reason `narrow-800` uses it: the pane
+	   plus the chat column's own floor. */
+	["chat-run-panel--mcp-floor-320", 800, 700],
 	/* The window floor, and the two gated surfaces in one frame pair. */
 	["chat-run-panel--narrow-800", 800, 700],
 	["chat-run-panel--capability-absent", 1280, 700],
@@ -482,6 +512,14 @@ export const STORIES = [
 	 */
 	["settings-integrations--deep-link-hit", 1000, 860],
 	["settings-integrations--deep-link-verb-hit", 1000, 860],
+	/* The shadowed case, which is the one frame where the resolution RULE becomes
+	   visible: with a server named `login`, `/mcp login hubspo` resolves to `login`
+	   and the section says so instead of landing in silence (round-1 code review,
+	   finding 4). Recorded here so nobody re-shoots the frame above expecting a
+	   delta: `deep-link-verb-hit` (`reauth hubspot`) is byte-identical to
+	   `deep-link-hit` by DESIGN — the verb is a token that is not a server, it is
+	   dropped, and a resolution that had something else to say would be the bug. */
+	["settings-integrations--deep-link-verb-shadowed", 1000, 860],
 	["settings-integrations--deep-link-miss", 1000, 860],
 	["settings-integrations--no-session-fallback", 1000, 860],
 	["settings-integrations--filtered", 1000, 860],

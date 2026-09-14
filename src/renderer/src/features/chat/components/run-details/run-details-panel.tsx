@@ -30,6 +30,8 @@ import type { McpRemedyControls } from "./use-mcp-remedy";
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
+	/** Whether the read carries an operation that is still running (`§ 7.2`). */
+	mcpGrantRunning: boolean;
 	/** The pane's MCP remedy controls: see `use-mcp-remedy.ts`. */
 	mcpRemedy: McpRemedyControls;
 	/** Whether a child's row can be opened (`§ 10.2`). */
@@ -62,6 +64,7 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 export const RunDetailsPanel = ({
 	details,
 	mcpServers,
+	mcpGrantRunning,
 	mcpRemedy,
 	childrenOpenable,
 	onOpenChild,
@@ -140,7 +143,13 @@ export const RunDetailsPanel = ({
 	if (mcpServers.length > 0) {
 		sections.push({
 			key: "mcp",
-			body: <RunDetailMcp servers={mcpServers} remedy={mcpRemedy} />,
+			body: (
+				<RunDetailMcp
+					servers={mcpServers}
+					grantRunning={mcpGrantRunning}
+					remedy={mcpRemedy}
+				/>
+			),
 		});
 	}
 

@@ -54,6 +54,7 @@ const {
 	hasUnseenMcpProblem,
 	MCP_COLD_LINE,
 	mcpErrorTexts,
+	mcpGrantInFlight,
 	mcpServersAreCold,
 	mcpTally,
 	onScreenFailures,
@@ -2448,6 +2449,84 @@ test("a row's grant state is the newest operation the read carries", () => {
 	);
 	// No operations at all is no grant state, which is the story set's shape.
 	assert.equal(deriveMcpServers(servers)[0].grant, null);
+});
+
+test("an operation the backend FINISHED is not a row state, and never deletes a remedy", () => {
+	const problem = [
+		{ name: "hubspot", status: "auth-required", transport: "http" },
+	];
+	const settled = [
+		{
+			id: "op-1",
+			name: "hubspot",
+			action: "reauth",
+			status: "complete",
+			created_at: 100,
+			credential_removed: false,
+		},
+	];
+	const row = deriveMcpServers(problem, {}, settled)[0];
+
+	// No grant line: the row's own status from the next read is the statement about
+	// the server, and the backend holds settled operations for the rest of the
+	// session (they are evicted only at 64).
+	assert.equal(row.grant, null);
+	// And the remedy is still there. That is the whole finding: rendering `complete`
+	// deleted the row's control and its sentence for the rest of the session (code
+	// review round 1, finding 1).
+	assert.deepEqual(row.remedy, { kind: "grant" });
+
+	// The same rule for a transport that dropped after a successful connect.
+	const dropped = [{ name: "slack", status: "disconnected", transport: "http" }];
+	const connected = [
+		{
+			id: "op-2",
+			name: "slack",
+			action: "connect",
+			status: "complete",
+			created_at: 200,
+			credential_removed: false,
+		},
+	];
+	assert.equal(deriveMcpServers(dropped, {}, connected)[0].grant, null);
+	assert.deepEqual(deriveMcpServers(dropped, {}, connected)[0].remedy, {
+		kind: "reconnect",
+	});
+
+	// A stale `failed` op beside a NEWER `complete` one loses too: the newest
+	// statement about the name is the completed sign-in, so neither is rendered —
+	// which is why `complete` stays in the parsed vocabulary rather than being
+	// dropped before the fold compares timestamps.
+	assert.equal(
+		deriveMcpServers(problem, {}, [
+			settled[0],
+			{ ...settled[0], id: "op-3", status: "failed", created_at: 50 },
+		])[0].grant,
+		null,
+	);
+});
+
+test("the session's grant lock is read off the document, not off the rows", () => {
+	// An operation whose server has NO row still holds the backend's one-grant lock
+	// (`mcp/desktop.py`), and a fold over the rows cannot see it — so a press from
+	// another row would reach the route's opaque 409 with every control live (code
+	// review round 1, finding 5).
+	assert.equal(
+		mcpGrantInFlight([{ id: "op", name: "gone", status: "running" }]),
+		true,
+	);
+	assert.equal(
+		mcpGrantInFlight([{ id: "op", name: "gone", status: "complete" }]),
+		false,
+	);
+	assert.equal(mcpGrantInFlight([]), false);
+	assert.equal(mcpGrantInFlight(undefined), false);
+	// A word this build was not taught is not running — the same direction the fold
+	// refuses in.
+	assert.equal(
+		mcpGrantInFlight([{ id: "op", name: "x", status: "reticulating" }]),
+		false,
+	);
 });
 
 test("a server that declares credential fields gets the key remedy, and one that declares none keeps the sentence", () => {

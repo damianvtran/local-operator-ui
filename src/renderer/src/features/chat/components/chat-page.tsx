@@ -355,30 +355,31 @@ function SessionPanel({
 	 * to someone already looking at that section — which is the failure the operator
 	 * reported, not the fix.
 	 */
-	const mcpServers = useRunPanelMcpServers({
-		sessionId,
-		/*
-		 * The accelerator (`§ 7.4`): a string that changes when the canonical
-		 * `mcp_servers` projection changes. It is a SIGNAL and never a rendering
-		 * source — the projection cannot build this section's row (no `tool_count`, no
-		 * `owned_scope`) and can be minutes stale on an idle session — so it only
-		 * invalidates the query when the backend PUBLISHES a transition, which is what
-		 * makes a startup settle or a reconnect land in about a frame rather than
-		 * within the next 15 s tick. `null` means "no canonical frontend", which
-		 * disables the read entirely: a legacy chat grows no trigger and therefore no
-		 * dot, so a poll there would be pure waste.
-		 */
-		accelerator: canonical.frontend
-			? JSON.stringify(canonical.frontend.mcp_servers ?? null)
-			: null,
-		/*
-		 * And the ONE field of that projection this pane renders: the runtime's own
-		 * failure text, which the rendered read does not carry at all (`§ 7.2`; round
-		 * 1, U1-8). `mcpErrorTexts` narrows it to the names that carry one, and the
-		 * derivation only ever uses it on a row the rendered read calls a problem.
-		 */
-		errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
-	});
+	const { servers: mcpServers, grantRunning: mcpGrantRunning } =
+		useRunPanelMcpServers({
+			sessionId,
+			/*
+			 * The accelerator (`§ 7.4`): a string that changes when the canonical
+			 * `mcp_servers` projection changes. It is a SIGNAL and never a rendering
+			 * source — the projection cannot build this section's row (no `tool_count`, no
+			 * `owned_scope`) and can be minutes stale on an idle session — so it only
+			 * invalidates the query when the backend PUBLISHES a transition, which is what
+			 * makes a startup settle or a reconnect land in about a frame rather than
+			 * within the next 15 s tick. `null` means "no canonical frontend", which
+			 * disables the read entirely: a legacy chat grows no trigger and therefore no
+			 * dot, so a poll there would be pure waste.
+			 */
+			accelerator: canonical.frontend
+				? JSON.stringify(canonical.frontend.mcp_servers ?? null)
+				: null,
+			/*
+			 * And the ONE field of that projection this pane renders: the runtime's own
+			 * failure text, which the rendered read does not carry at all (`§ 7.2`; round
+			 * 1, U1-8). `mcpErrorTexts` narrows it to the names that carry one, and the
+			 * derivation only ever uses it on a row the rendered read calls a problem.
+			 */
+			errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
+		});
 	/*
 	 * The panel's MCP remedies, taken HERE for the same reason the list is: this is
 	 * the component that owns the session identity, and a press has to write the
@@ -1569,6 +1570,7 @@ function SessionPanel({
 					 */
 					onComposerInput={warm}
 					mcpServers={mcpServers}
+					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
 					childrenOpenable={childrenOpenable}
 					pulses={canonical.subagentPulses}

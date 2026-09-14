@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -56,6 +57,27 @@ const { fetchMcpList, mcpKeys, mcpListOperations, mcpListServers } =
  * what makes this a run of the product's own request path rather than of a
  * re-implementation of it.
  */
+/**
+ * Every TypeScript source under a directory.
+ *
+ * Hand-rolled rather than a glob dependency: this test's own bundle step pulls
+ * esbuild and nothing else, and the walk is over a few hundred files — the point is
+ * that the claim is made over the WHOLE renderer rather than over two named files,
+ * so a third reader of the op cannot slip past it.
+ */
+const rendererSources = (root) => {
+	const out = [];
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = join(dir, entry.name);
+			if (entry.isDirectory()) walk(path);
+			else if (/\.(ts|tsx)$/.test(entry.name)) out.push(path);
+		}
+	};
+	walk(root);
+	return out;
+};
+
 const installBridge = (request) => {
 	const page = globalThis;
 	page.window = page.window ?? {};
@@ -185,4 +207,26 @@ test("both consumers read the shared module, and neither unwraps again", () => {
 	// And the key is not restated anywhere: one module owns it, so a third
 	// consumer cannot invent a shape this test does not see.
 	assert.doesNotMatch(settings, /export const mcpKeys/);
+
+	/*
+	 * The sharpest form of the same claim, over the whole renderer rather than over
+	 * the two files named above: `op: "mcp.list"` appears in ONE place. The header of
+	 * this file describes the risk as a THIRD consumer, and a test that names two
+	 * files cannot see one arrive — this can, wherever it lands (code review round 1,
+	 * nit 8). A file that needs the list takes `fetchMcpList`/`mcpKeys` from the
+	 * module; a file that spells the op itself is about to cache a shape of its own
+	 * under the same key, which is exactly the defect this branch fixes.
+	 */
+	const offenders = [];
+	for (const file of rendererSources("src/renderer/src")) {
+		if (file.endsWith("shared/api/local-operator/mcp-list.ts")) continue;
+		if (/op:\s*["']mcp\.list["']/.test(readFileSync(file, "utf8"))) {
+			offenders.push(file);
+		}
+	}
+	assert.deepEqual(
+		offenders,
+		[],
+		"only mcp-list.ts may spell the mcp.list op: every other reader would cache a second shape under the shared key",
+	);
 });

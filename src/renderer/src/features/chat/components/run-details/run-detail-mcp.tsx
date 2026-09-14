@@ -136,7 +136,7 @@ const MCP_CREDENTIALS_WORD = "Manage this server's credentials in Settings";
 /** The sentence form of a remedy, prefixed the way the row's prose lines are. */
 const words = (label: string) => (
 	<span
-		className={cn("truncate text-ink-muted text-meta leading-4")}
+		className={cn("truncate self-start text-ink-muted text-meta leading-4")}
 		title={label}
 	>
 		{`— ${label}`}
@@ -150,14 +150,16 @@ const words = (label: string) => (
  * The order is fixed and it is the reason a terminal operation can never be read
  * as the row's state:
  *
- * 1. a grant the backend says is `complete` clears the line — the next read calls
- *    the server `connected` and the tool count appears, and this surface never
- *    says a sign-in finished before the backend does;
- * 2. a grant that is `running`, `failed` or `cancelled` IS the line, with the
- *    cancel or the retry that belongs to it. The cancelled case appends the
- *    credential's fate, because `grants.py:168-175` records that a cancel between
- *    the grant's delete and its reconnect leaves the server with NO credential —
- *    "cancelled" alone would send the reader to a server that cannot connect;
+ * 1. an operation that is `running` IS the line, with the cancel that belongs to
+ *    it — a grant the backend has finished is NOT a state this line renders (`round
+ *    1, finding 1`): the row's own status closes it, and a `complete` op left in
+ *    the read for the rest of the session must not delete the remedy from a row
+ *    that is a problem again;
+ * 2. a grant that is `failed` or `cancelled` IS the line, with the retry that
+ *    belongs to it. The cancelled case appends the credential's fate, because
+ *    `grants.py:168-175` records that a cancel between the grant's delete and its
+ *    reconnect leaves the server with NO credential — "cancelled" alone would send
+ *    the reader to a server that cannot connect;
  * 3. a refusal the surface has established replaces the control with its cause;
  * 4. otherwise the remedy itself: a link control, or the sentence for the states
  *    this surface cannot act on.
@@ -167,6 +169,26 @@ const words = (label: string) => (
  * every problem row's height budget (`§ 8`), while a row that lit up would promise
  * one action where two are possible. Disabled is a colour step, never opacity
  * (`branding.md` § 6).
+ *
+ * Every shape this returns carries `self-start`.
+ *
+ * `button.tsx` gives every control `inline-flex justify-center`, which is right
+ * inside a row and wrong inside the COLUMN this line is a child of: a stretched
+ * flex item fills the content column and its own `justify-center` then centres the
+ * label, so the link landed mid-pane while the sentence form and the to-do
+ * blocked row it borrows its shape from both sit left at the name column — and,
+ * worse, the whole empty second line became pressable, so a stray press on the
+ * row's blank space started a grant that deletes the stored credential before it
+ * re-consents (design review round 1, D1). `self-start` fixes the indent and
+ * shrinks the target to the label in one class.
+ *
+ * The grant line WRAPS where the single-control forms do not. It is the one line
+ * that can hold three things — the state word, the credential's fate and the
+ * control — and round 1's D5 measured it at 369px inside the 375px column a 420px
+ * pane gives, so at the pane's own 320px floor it must take a second line rather
+ * than ellipsise mid-sentence beside a live control. `§ 8` budgets 48px for a row
+ * with a remedy and up to 80px with the diagnosis, so the 64px it becomes is
+ * inside the contract.
  */
 const McpActionLine = ({
 	row,
@@ -186,16 +208,18 @@ const McpActionLine = ({
 			size="sm"
 			disabled={disabled}
 			data-mcp-remedy="key"
+			className="self-start"
 			onClick={() => onPress(row)}
 		>
 			{MCP_CONTROL_WORD.key}
 		</Button>
 	);
 	const grant = row.grant;
-	if (grant?.status === "complete") return null;
 	if (grant) {
 		return (
-			<span className={cn("flex min-w-0 items-baseline gap-2")}>
+			<span
+				className={cn("flex min-w-0 flex-wrap items-baseline gap-2 self-start")}
+			>
 				<span
 					className={cn("min-w-0 truncate text-ink-muted text-meta leading-4")}
 				>
@@ -223,7 +247,7 @@ const McpActionLine = ({
 		);
 	}
 
-	const refusal = remedy.refusalFor(row.name);
+	const refusal = remedy.refusalFor(row);
 	if (refusal === "not-oauth") {
 		/*
 		 * The probe said this transport cannot do OAuth, so the grant is not the fix
@@ -243,6 +267,7 @@ const McpActionLine = ({
 			variant="link"
 			size="sm"
 			disabled={disabled}
+			className="self-start"
 			/*
 			 * The capture rig's handle on this control, which is how the confirm frame is
 			 * taken by clicking the real link rather than by opening the dialog by hand
@@ -432,9 +457,21 @@ const McpRow = ({
 
 export const RunDetailMcp = ({
 	servers,
+	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * A prop rather than a fold over the rows, and that is the difference between
+	 * locking the controls and not: a row exists only where the read carries a
+	 * server, so an operation for a server that was removed or renamed still holds
+	 * the backend's one-grant lock while no row would show it (code review round 1,
+	 * finding 5). Derived at the page from the document's own `operations`
+	 * (`mcpGrantInFlight`).
+	 */
+	grantRunning,
 	remedy,
 }: {
 	servers: readonly McpServerRow[];
+	grantRunning: boolean;
 	/**
 	 * The pane's remedy controls, threaded from the page (`chat-page.tsx`).
 	 *
@@ -467,12 +504,14 @@ export const RunDetailMcp = ({
 	if (servers.length === 0) return null;
 	const cold = mcpServersAreCold(servers);
 	/*
-	 * One grant per session, so while any row's grant is running every OTHER row's
-	 * control is disabled. Read off the rows, which are folded from the read's own
-	 * `operations`: a grant started anywhere — the TUI, another conversation — locks
-	 * these controls too, and local state could not know that.
+	 * One grant per session, so while one is running every OTHER row's control is
+	 * disabled. `grantRunning` comes from the read's own operations rather than from
+	 * these rows (see the prop), and every row's control is judged against it: the
+	 * operation keeps the backend's lock for the whole session, wherever it came
+	 * from — the TUI, another conversation, or a server this pane no longer lists.
 	 */
-	const grantRunning = servers.some((row) => row.grant?.status === "running");
+	const disabledFor = (row: McpServerRow) =>
+		grantRunning && row.grant?.status !== "running";
 	const start = (row: McpServerRow) => {
 		if (row.remedy?.kind === "grant") {
 			setConfirmTarget(row);
@@ -535,7 +574,7 @@ export const RunDetailMcp = ({
 						row={row}
 						cold={cold}
 						remedy={remedy}
-						controlDisabled={grantRunning && row.grant?.status !== "running"}
+						controlDisabled={disabledFor(row)}
 						onPress={start}
 					/>
 				))}
@@ -575,7 +614,7 @@ export const RunDetailMcp = ({
 						: null
 				}
 				saving={keyTarget !== null && remedy.pendingName === keyTarget.name}
-				error={remedy.keyError}
+				error={keyTarget ? remedy.keyErrorFor(keyTarget.name) : null}
 				onCancel={() => setKeyTarget(null)}
 				onSave={(values) => {
 					const row = keyTarget;

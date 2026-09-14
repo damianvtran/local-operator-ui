@@ -129,9 +129,19 @@ const WHITESPACE = /\s+/;
  * effect returned silently for exactly this case, which is why the operator's
  * own remedy line (`/mcp reauth hubspot`) did nothing at all rather than
  * something wrong.
+ *
+ * `unresolved` is the residual that rule cannot fix, stated rather than hidden
+ * (code review round 1, finding 4): with a server named like a verb — `login` —
+ * `/mcp login hubspo` (a typo) resolves to `login` and reveals it, because the
+ * last token that IS configured wins and no verb list may exist here. The cost
+ * of guessing wrong is a silent landing on the wrong server, so a match that
+ * needed a token other than the LAST one carries that last token back and the
+ * section says which server it resolved to. It is `null` for every resolution
+ * the last token alone explains, including the operator's own `reauth hubspot`,
+ * so the note never appears on the case this rule exists for.
  */
 export type McpTarget =
-	| { kind: "matched"; name: string }
+	| { kind: "matched"; name: string; unresolved: string | null }
 	| { kind: "miss"; asked: string }
 	| null;
 
@@ -142,12 +152,19 @@ export const resolveMcpServerTarget = (
 	const asked = raw?.trim();
 	if (!asked) return null;
 	const configured = new Set(names);
-	if (configured.has(asked)) return { kind: "matched", name: asked };
+	if (configured.has(asked)) {
+		return { kind: "matched", name: asked, unresolved: null };
+	}
 	const tokens = asked.split(WHITESPACE);
+	const last = tokens[tokens.length - 1] ?? "";
 	for (let index = tokens.length - 1; index >= 0; index -= 1) {
 		const token = tokens[index];
 		if (token && configured.has(token)) {
-			return { kind: "matched", name: token };
+			return {
+				kind: "matched",
+				name: token,
+				unresolved: token === last ? null : last || null,
+			};
 		}
 	}
 	return { kind: "miss", asked };
@@ -604,6 +621,19 @@ export const McpManagementSection: FC<{
 				{target?.kind === "miss" && servers.length > 0 && (
 					<p className="text-body-sm text-ink-muted">
 						{`No MCP server matches "${target.asked}".`}
+					</p>
+				)}
+				{/*
+				 * The other half of the same rule, and the reason it is stated rather than
+				 * hidden: a server can be NAMED like a verb, so `/mcp login hubspo` resolves
+				 * to the server called `login` and reveals an unrelated row unless the
+				 * resolution says so (code review round 1, finding 4). Only a match the last
+				 * token does not explain carries an `unresolved` tail, so the operator's own
+				 * `reauth hubspot` never sees this line.
+				 */}
+				{target?.kind === "matched" && target.unresolved && (
+					<p className="text-body-sm text-ink-muted">
+						{`Showing "${target.name}" — "${target.unresolved}" is not one of your servers.`}
 					</p>
 				)}
 				{listQuery.isSuccess && servers.length === 0 && (

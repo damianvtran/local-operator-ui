@@ -40,6 +40,7 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { DialogDescription, Input, Label } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -118,15 +119,27 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 			}
 		>
 			<DialogDescription asChild>
-				<div className="flex flex-col gap-3 text-body text-ink-muted">
+				{/*
+				 * `p-1.5` is not decoration: the dialog's scroll body (`base-dialog.tsx:142`)
+				 * is `overflow-y-auto` with no padding of its own, so a control flush with its
+				 * edge has its focus ring clipped to whichever segment has room — this field
+				 * rendered a top-only accent line instead of a ring (design review round 1,
+				 * D2). 6px is the 2px outline plus its 2px offset, with a pixel to spare.
+				 */}
+				<div
+					className={cn("flex flex-col gap-3 p-1.5 text-body text-ink-muted")}
+				>
 					<p>
 						{/*
-						 * The consequence, stated before the fields: the value goes to the
-						 * credential manager rather than into the server's configuration, and
-						 * the reconnect is what makes the running server pick it up.
+						 * A claim about what this dialog DOES, not about what the runtime will do
+						 * with the value. Reference resolution is a backend capability this build
+						 * cannot assume (`docs/run-sidebar.md` § 13), so the copy promises the
+						 * store and the reconnect and nothing further — and the outcome is stated
+						 * by the write's own result instead: `use-mcp-remedy.pressKey` reads the
+						 * returned snapshot and says the server still needs sign-in when it does,
+						 * which is true against a backend with the resolver and one without it.
 						 */}
-						Stored in your credential manager, then this server reconnects to
-						use it.
+						Saved to your credential manager, then this server is reconnected.
 					</p>
 					{keyNames.map((name) => (
 						<div key={name} className="flex flex-col gap-1">

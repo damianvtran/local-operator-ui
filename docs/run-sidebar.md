@@ -993,8 +993,8 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
 |---|---|---|---|---|
 | `connected` | `Check` | `connected` | no | — |
 | `connecting` | `LoaderCircle`, `motion-safe:animate-spin` | `connecting` | no | — |
-| `auth-required` | `CircleAlert` | `auth-required` | **yes** | `— Grant this server account access in Settings`, with the canonical projection's own error text on the line below when it carries one |
-| `disconnected` | `X` | `disconnected` | **yes** | `— Reconnect this server in Settings`, with the canonical projection's own error text on the line below when it carries one |
+| `auth-required` | `CircleAlert` | `auth-required` | **yes** | one of three forms, by what the transport can do: `Grant account access` (a link) when it can complete a browser sign-in; `Enter API key` when it cannot but the config DECLARES credential fields (`environment_keys`/`header_keys`); otherwise `— Manage this server's credentials in Settings`. The canonical projection's own error text goes on the line below when it carries one |
+| `disconnected` | `X` | `disconnected` | **yes** | `Reconnect` (a link), with the canonical projection's own error text on the line below when it carries one |
 | `cold` | — (the section's own state, below) | — | no | — |
 | anything else | `CircleHelp` | the wire's own word | **yes** | none — a fix for a word this build cannot name would be a guess |
 
@@ -1006,6 +1006,23 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   between them. The human meaning is carried by the remedy line instead, which
   names the fix in the app's own control vocabulary. A friendlier *word* is a
   backend vocabulary change; § 13 defers it rather than re-spelling it here.
+- **One word, two severities, and the reason (round-1 design finding D4).**
+  `auth-required` is `danger` ink here and an amber `warning` pill on Settings
+  (`mcp-management-section.tsx:686-697`), and this change is what newly sends a
+  reader from the red row to that page. The difference is deliberate rather than
+  missed, because the two surfaces answer different questions:
+
+  - **Settings is a MANAGEMENT list.** Its pill states what can be done about the
+    entry, and amber is the recoverable class — the row beside it offers
+    `Grant account access` or the credential form.
+  - **The panel is a LIVE VIEW.** The same server is unusable *right now*, its ink
+    is the dock band's failure ink (§ 6.3), and the dot it feeds exists to say
+    "this needs you". `disconnected` is the same distinction from the other side:
+    neutral on Settings (a state the page can change), `danger` here.
+
+  A later round that prefers one severity for one word changes two state tables
+  and re-shoots the MCP frames; what must not happen is one surface drifting into
+  the other's spelling by accident.
 - **The remedy is actionable in place, and the panel still does not own
   configuration.**
 
@@ -1048,7 +1065,9 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   ledger is the whole set. A cap here would put a problem behind a control.
 - **The section's tally** follows its neighbours' grammar (label left, quiet
   right-aligned tally): `{connected} of {total} connected`, and `·
-  {problems} needs attention` (singular) or `need attention` when there is one.
+  {problems} need attention` (plural) or `needs attention` when there is one —
+  which is the order the frames render (`1 needs attention`, `2 need attention`,
+  `3 need attention`).
   Those are two different facts rather than one restated — `connecting` is
   neither connected nor a problem, so the healthy count does not imply the
   problem count — which is why § 6.2's de-duplication argument does not apply
@@ -1859,7 +1878,7 @@ The backend PR takes the review round alone.
 | The failure REASON on a panel MCP row | `mcp.list` carries no error field (`mcp/desktop.py:127-152` sends none), and the only source on the wire is the canonical projection's startup-failure map (`frontend_state.py:4385-4387`) — a BOOT snapshot that `mcp_status.py:47-49` explicitly says cannot describe a server that dropped later. Adding it to the route is a backend change, and a reason that is right for a startup failure and wrong for the reported case is worse than no reason. |
 | A human spelling for the wire status words (`auth-required`) | The string is the wire's and the backend's docstring makes rendering it directly the contract between surfaces (`mcp/manager.py:1331-1335`); re-spelling it in one renderer is the divergence § 7.2 refuses. A friendlier word is a backend vocabulary change with its own review. |
 | A push channel for MCP status (a frame, or a delta at every manager transition) | It would close the residue § 7.4 accepts — a transport that dies while the app is idle — but it is a backend change to fix a gap in the PUBLISH, not the observation, and the poll already makes the indication exist. Worth doing if the 15 s latency proves too coarse. |
-| The key-entry popout's WRITE PATH, which no action on the wire can reach | The popout ships (it is the `key` remedy on a row whose transport cannot do OAuth), and its write is the owner credential store — the same path Settings' API credentials use. What it depends on is a BACKEND change in `~/local-operator`: `${NAME}` references in MCP `env` and `headers` values must resolve from that store at transport-build time, with an unresolved whole-value reference refused by name. Today nothing expands a `${NAME}` in the MCP path (`mcp/manager.py:747` merges the map into the child's environment values verbatim), so against the shipped backend the popout stores the credential and the server still cannot use it — stated in the PR body rather than left to be discovered. |
+| The key-entry popout's WRITE PATH, which no action on the wire can reach | The popout ships (it is the `key` remedy on a row whose transport cannot do OAuth), and its write is the owner credential store — the same path Settings' API credentials use. What it depends on is `damianvtran/local-operator` **PR #1125**: `${NAME}` references in MCP `env` and `headers` values must resolve from that store at transport-build time, with an unresolved whole-value reference refused by name. Today nothing expands a `${NAME}` in the MCP path (`mcp/manager.py:747` merges the map into the child's environment values verbatim). The COUPLING is therefore in the copy rather than in silence: the dialog promises only what it does ("Saved to your credential manager, then this server is reconnected"), and the outcome is derived from the read — the returned snapshot's own row, because `manager.reconnect_server` swallows failures and returns `None` (`manager.py:1671-1679`) — so a backend without the resolver says "The key was saved, but the server still needs sign-in" and keeps the form open. |
 
 ---
 

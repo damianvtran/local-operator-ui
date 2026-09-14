@@ -244,6 +244,17 @@ type ChatContentProps = {
 	 */
 	mcpServers?: readonly McpServerRow[];
 	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * Threaded from the page (`use-mcp-servers.ts`) so the section can disable every
+	 * other row's control while the backend's one grant runs. It comes off the
+	 * document's `operations` rather than off the folded rows on purpose: a row
+	 * exists only where the read carries a server, so an operation for a server that
+	 * was removed or renamed still holds the lock while no row would show it (code
+	 * review round 1, finding 5).
+	 */
+	mcpGrantRunning?: boolean;
+	/**
 	 * The panel's MCP remedy controls (`use-mcp-remedy.ts`).
 	 *
 	 * Read by the page, like the server list itself, and threaded down rather than
@@ -359,6 +370,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		canonical,
 		runDetails,
 		mcpServers = [],
+		mcpGrantRunning = false,
 		mcpRemedy,
 		childrenOpenable = false,
 		pulses,
@@ -946,6 +958,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<RunPanel
 								details={runDetails}
 								mcpServers={mcpServers}
+								mcpGrantRunning={mcpGrantRunning}
 								mcpRemedy={mcpRemedy}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}

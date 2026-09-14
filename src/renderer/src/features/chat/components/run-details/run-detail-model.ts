@@ -1441,7 +1441,21 @@ const MCP_WORDS: Record<string, string> = {
 export type McpGrantState = {
 	id: string;
 	action: string;
-	status: "running" | "complete" | "failed" | "cancelled";
+	/**
+	 * The states a ROW can be in — and `complete` is deliberately not one of them.
+	 *
+	 * The backend keeps settled operations for the rest of the session (they are
+	 * evicted only when the dict reaches 64, `mcp/desktop.py`), so a completed
+	 * `reauth` from twenty minutes ago sits in the read beside a server whose
+	 * credential has since expired. Rendering that op would say "the sign-in
+	 * finished" about a row that is a problem AGAIN — and, because the action line
+	 * gates on the op before the remedy, it would delete the row's control and its
+	 * sentence for the rest of the session (code review round 1, finding 1). What a
+	 * finished sign-in means for a row is the row's own status on the next read, and
+	 * that read is 5 s away, so the fold DROPS `complete` rather than inventing a
+	 * fifth rendering for it (`mcpGrantStates`).
+	 */
+	status: "running" | "failed" | "cancelled";
 	/**
 	 * Whether the grant deleted the stored credential before it re-consented.
 	 *
@@ -1702,11 +1716,33 @@ const MCP_GRANT_STATUSES = [
  * folded to the nearest word: the same refusal an unrecognised server status
  * gets, and for the same reason — a row must not claim a sign-in is running when
  * the word is one it cannot read.
+ *
+ * And a newest op that is `complete` yields NO entry at all, which is a decision
+ * rather than an omission: `complete` is a statement about a sign-in that
+ * finished, not about the server now, and every row that carries it is judged by
+ * its own status on the next read. Keeping it would blank a problem row's remedy
+ * for the rest of the session (`McpGrantState["status"]`). The word stays in the
+ * PARSED vocabulary above so a stale `failed` op beside a newer `complete` one
+ * cannot win the fold by the `complete` one being dropped early.
  */
+/**
+ * One operation, with the status word still as the WIRE spells it.
+ *
+ * The wire vocabulary is wider than the rendered one on purpose: `complete` is
+ * parsed so that a stale `failed` beside it cannot win the newest-wins fold, and
+ * then dropped when the map is built (`McpGrantState["status"]`). Comparing
+ * against `McpGrantState["status"]` here would ask the compiler whether a
+ * rendered state is a wire state, which is the question this split answers.
+ */
+type WireGrantState = Omit<McpGrantState, "status"> & {
+	status: (typeof MCP_GRANT_STATUSES)[number];
+	createdAt: number;
+};
+
 export const mcpGrantStates = (
 	operations: unknown,
 ): Map<string, McpGrantState> => {
-	const newest = new Map<string, McpGrantState & { createdAt: number }>();
+	const newest = new Map<string, WireGrantState>();
 	for (const row of toWireList(operations)) {
 		const name = wireText(row.name);
 		const id = wireText(row.id);
@@ -1725,17 +1761,39 @@ export const mcpGrantStates = (
 		newest.set(name, {
 			id,
 			action: wireText(row.action) || "reauth",
-			status: status as McpGrantState["status"],
+			status: status as WireGrantState["status"],
 			credentialRemoved: row.credential_removed === true,
 			createdAt,
 		});
 	}
 	const states = new Map<string, McpGrantState>();
 	for (const [name, { createdAt: _createdAt, ...state }] of newest) {
-		states.set(name, state);
+		if (state.status === "complete") continue;
+		// The cast is the `continue` above, spelled for the compiler: a state that is
+		// not `complete` is one of the three the row can render.
+		states.set(name, state as McpGrantState);
 	}
 	return states;
 };
+
+/**
+ * Whether ANY operation in the read is still running.
+ *
+ * The backend allows one grant per session under `self.lock` (`mcp/desktop.py`),
+ * and the lock is the reason every control must be disabled while one runs: a
+ * press from another row is refused with the route's single opaque 409 sentence,
+ * which this surface cannot turn into a cause. Read off the DOCUMENT's own
+ * `operations` rather than off the folded rows, because a row exists only where
+ * the read carries a server: an operation for a server that was removed, renamed
+ * or written out of `mcp.json` by another window still holds the backend lock
+ * while no row would show it (code review round 1, finding 5).
+ *
+ * `operations` is unknown-shaped on purpose — it comes straight off the wire —
+ * and anything this build cannot read counts as not running, which is the same
+ * direction the fold refuses in.
+ */
+export const mcpGrantInFlight = (operations: unknown): boolean =>
+	toWireList(operations).some((row) => wireText(row.status) === "running");
 
 /** The last path segment of a config source, or `""` when there is none.
  *
