@@ -27,7 +27,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
-			export { showErrorToast } from "./src/renderer/src/shared/utils/toast-manager";
+			export { showErrorToast, resetToastDedup } from "./src/renderer/src/shared/utils/toast-manager";
 			export { toast, __TestToast } from "sonner";
 		`,
 		resolveDir: process.cwd(),
@@ -144,6 +144,8 @@ function fixture(duration) {
 	};
 }
 
+const REFUSAL_MESSAGE = "This name is reserved for the session.";
+
 test("production default reproduces the refusal gap despite two-second retries", () => {
 	const f = fixture(undefined);
 	assert.equal(f.container.props.duration, undefined);
@@ -171,13 +173,24 @@ test("refusal story keeps its one real toast beyond lifetime and cooldown withou
 		/parameters: \{ toastDuration: Number\.POSITIVE_INFINITY \}/,
 	);
 	assert.doesNotMatch(refusalStory, /setInterval|keepAlive/);
+	/*
+	 * One write, and this is the assertion that keeps it one. The story clicks
+	 * the panel's trigger and then its submit; a second submit is exactly the
+	 * two-second replay round 3 removed, because it renews the toast instead of
+	 * holding it and hides a submit that never settles. Read off the click
+	 * calls rather than off a fixed expression, so the waits around them (the
+	 * panel's readiness, and the settlement the story now asserts) can be
+	 * written out in full without this pin going stale.
+	 */
 	assert.equal(
-		(
-			refusalStory.match(
-				/userEvent\.click\(\s*await screen\.findByRole\("button", \{ name: "Create" \}\)/g,
-			) ?? []
-		).length,
+		(refusalStory.match(/userEvent\.click\(/g) ?? []).length,
+		2,
+		"the panel trigger and its one submit, never a replay",
+	);
+	assert.equal(
+		(refusalStory.match(/userEvent\.click\(submit\)/g) ?? []).length,
 		1,
+		"the submit is the one write this story drives",
 	);
 	assert.match(
 		source(".storybook/preview.tsx"),
@@ -198,4 +211,81 @@ test("refusal story keeps its one real toast beyond lifetime and cooldown withou
 			"one refusal, no repeated fake writes",
 		);
 	}
+});
+
+/*
+ * Agent review round 4, C-11. An infinity toast is never dismissed and never
+ * auto-closes, so an unmount is not a dismissal: sonner's list goes away with
+ * the Toaster while `toast-manager`'s deduplication key does not, and the next
+ * mount of the same refusal is handed the spent id instead of a toast. These
+ * two tests pin the defect and the story's teardown.
+ *
+ * What the harness models is the manager and sonner's publication stream -
+ * `getHistory()` is where every published toast lands, so its length is this
+ * fixture's publication count, the quantity the review measured as
+ * "publications=0" and "publications=1". A remounting Toaster's own (empty)
+ * list is not modelled, because the defect is decided before it is consulted.
+ */
+test("a remount without the story's teardown is handed the spent refusal, and nothing is published", () => {
+	const f = fixture(Number.POSITIVE_INFINITY);
+	// Past both the cooldown and the count window: what still holds the key is
+	// the held toast itself, not either clock.
+	f.advance(60_000);
+	const published = f.api.toast.getHistory().length;
+	assert.equal(f.api.showErrorToast(REFUSAL_MESSAGE), f.id);
+	assert.equal(
+		f.api.toast.getHistory().length,
+		published,
+		"the remount published nothing, so its story has no refusal on screen",
+	);
+});
+
+test("the story's teardown releases the toast and the dedup key, so a remount publishes again", () => {
+	// Wired in the story, not merely available: the test above is only fixed if
+	// the fixture really calls this when it unmounts. The teardown component is
+	// declared above the story it belongs to, so it is asserted on the file and
+	// the story is asserted to use it.
+	assert.match(stories, /toast\.dismiss\(\)/);
+	assert.match(stories, /resetToastDedup\(\)/);
+	assert.match(refusalStory, /<RefusalFixture>/);
+	const f = fixture(Number.POSITIVE_INFINITY);
+	f.advance(60_000);
+	const published = f.api.toast.getHistory().length;
+	// The story's own teardown, in the story's own order.
+	f.api.toast.dismiss();
+	f.api.resetToastDedup();
+	const again = f.api.showErrorToast(REFUSAL_MESSAGE);
+	assert.ok(
+		again,
+		"the remedy must not suppress the toast it exists to restore",
+	);
+	assert.notEqual(again, f.id);
+	assert.equal(
+		f.api.toast.getHistory().length,
+		published + 1,
+		"a second mount's refusal really is published",
+	);
+});
+
+/*
+ * Design round 4, D1. The fixture's React Query environment is a decision, and
+ * this pins the source half of it: the client is built from the policy the app
+ * ships rather than React Query's defaults, and the rig states the focus fact
+ * production always has (a capture tab is a background tab, and
+ * `retryer.canContinue` - the only thing that lifts a paused mutation - reads
+ * `focusManager`). The behavioural half is driven in
+ * `scripts/storybook-query-fixture.test.mjs`.
+ */
+test("the fixture constructs the app's query policy and states the rig's focus fact", () => {
+	const preview = source(".storybook/preview.tsx");
+	assert.match(preview, /focusManager\.setFocused\(true\)/);
+	assert.match(
+		preview,
+		/new QueryClient\(\{ defaultOptions: defaultQueryOptions \}\)/,
+	);
+	assert.doesNotMatch(
+		preview,
+		/new QueryClient\(\);/,
+		"React Query's defaults are not the app's policy",
+	);
 });
