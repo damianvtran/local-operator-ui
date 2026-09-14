@@ -1062,7 +1062,9 @@ export const VariablesRowActions: Story = {
 		const canvas = within(canvasElement);
 		// The second row: the first is the uneditable DataFrame, which has its own
 		// story below.
-		const edits = await canvas.findAllByRole("button", { name: "Edit variable" });
+		const edits = await canvas.findAllByRole("button", {
+			name: "Edit variable",
+		});
 		edits[1].focus();
 		await waitFor(() => {
 			if (document.activeElement !== edits[1]) throw new Error("not focused");
@@ -1095,7 +1097,9 @@ export const VariablesUneditableRow: Story = {
 	play: async ({ canvasElement }) => {
 		holdShutter();
 		const canvas = within(canvasElement);
-		const edits = await canvas.findAllByRole("button", { name: "Edit variable" });
+		const edits = await canvas.findAllByRole("button", {
+			name: "Edit variable",
+		});
 		edits[0].focus();
 		await waitFor(() => {
 			if (document.activeElement !== edits[0]) throw new Error("not focused");
