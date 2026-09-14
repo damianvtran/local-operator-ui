@@ -31,7 +31,14 @@
 
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import {
+	type KeyboardEvent as ReactKeyboardEvent,
+	type MouseEvent as ReactMouseEvent,
+	type ReactNode,
+	useId,
+	useRef,
+	useState,
+} from "react";
 
 export type DisclosureProps = {
 	/**
@@ -112,6 +119,11 @@ const CONTENT_INDENT = "ml-5";
  * high without it. Exported rather than written twice: the row's own identity
  * glyph and this trigger's chevron share one rail, so they have to share the
  * one number that keeps them on it.
+ *
+ * THE PAIR THIS NUMBER IS FOR: a `size-3.5` (14px) mark in the ledger's 20px
+ * first line box. The mark's size is written in two places — the chevron below
+ * and `TraceGlyph` in `trace-rail.tsx` — so a change to either size has to come
+ * back here, or both marks sit off the line they were pinned to.
  */
 export const FIRST_LINE_MARK = "self-start mt-0.5";
 
@@ -149,25 +161,141 @@ export const Disclosure = ({
 }: DisclosureProps) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
 	const contentId = useId();
+	const buttonRef = useRef<HTMLButtonElement>(null);
 	// The chevron slot, and the mark inside it, take the first line's height when
 	// the summary wraps — see `FIRST_LINE_MARK`.
 	const mark = cn("shrink-0", summaryAlign === "firstLine" && FIRST_LINE_MARK);
-	const ROW_ALIGN =
-		summaryAlign === "firstLine" ? "items-start" : "items-center";
+	/*
+	 * Only ever OVERRIDES `ROW`'s own `items-center`, and only when the summary
+	 * wraps. A `cn` that restated the default emitted a different class string on
+	 * every tool row — tailwind-merge normalised it, so the pixels were the same,
+	 * but a markup diff then looked like a change nothing had caused (round 2's
+	 * Q4).
+	 */
+	const rowAlign = summaryAlign === "firstLine" ? "items-start" : null;
 
 	/*
-	 * A drag that SELECTS text inside the trigger must not toggle the row.
+	 * A text gesture must not toggle the row; a click on the row's chrome must.
 	 *
-	 * The trigger is `select-none`, so the only selectable text in it is content
-	 * a caller deliberately opted in — a notice's or an incident's message, which
-	 * is exactly the text a reader has to be able to paste somewhere. A selection
-	 * ends on mouseup, and that mouseup is also a click on the button, so without
-	 * this guard copying a row's message collapsed the row underneath it.
-	 * Keyboard activation has no selection and is unaffected.
+	 * The gesture decides, not the selection:
+	 *
+	 * - A press on text the summary keeps SELECTABLE (TraceLine's narration is
+	 *   the only one today) that ends with a selection live was the user dragging
+	 *   across the message or pressing inside a selection they had already made.
+	 *   The row is not what they clicked, so that click does not toggle it.
+	 * - A click on the chrome around that text — chevron, label, gutter — IS a row
+	 *   action and toggles with the selection live: a reader who has just copied a
+	 *   message has to be able to collapse the row under it.
+	 * - The FIRST click of a double-click cannot be told from a single click at the
+	 *   moment it fires, so it toggles, and the `dblclick` that follows takes that
+	 *   back — which leaves the row exactly as it was, and the word the gesture
+	 *   selected selected, because the narration node does not move. A
+	 *   double-click that is NOT on text is two ordinary toggles that cancel out
+	 *   on their own, so it is left alone.
+	 * - The keyboard path is not gated at all (below): a reader with a selection
+	 *   had a row that ignored the mouse AND Enter, with no way out.
+	 *
+	 * The first version of this guard asked `window.getSelection()` on a plain
+	 * `onClick`, which has neither of those properties: `select-none` chrome never
+	 * clears a selection, so the state that suppressed the click was preserved by
+	 * the suppression itself and the row swallowed every click and every keypress
+	 * until something else cleared it.
 	 */
-	const toggle = () => {
-		if (window.getSelection()?.toString()) return;
+	const pressOnText = useRef(false);
+	/*
+	 * Whether a selection was live when the press landed, which is NOT the same
+	 * question as whether one is live when the click fires: a mousedown inside a
+	 * selection collapses it, so the click that ends that gesture is exactly the
+	 * one with no selection left to test. Reading it here is what stops that
+	 * click from toggling the row as well as collapsing the selection — one
+	 * action per click (round 2's requirement 6).
+	 */
+	const heldSelection = useRef(false);
+	const undo = useRef<boolean | null>(null);
+
+	/** Whether a press landed on text this summary keeps selectable. */
+	const isSelectableText = (target: EventTarget | null): boolean => {
+		for (
+			let node = target instanceof Element ? target : null;
+			node && node !== buttonRef.current;
+			node = node.parentElement
+		) {
+			if (window.getComputedStyle(node).userSelect === "text") return true;
+		}
+		return false;
+	};
+
+	const onMouseDown = (event: ReactMouseEvent<HTMLButtonElement>) => {
+		pressOnText.current = isSelectableText(event.target);
+		heldSelection.current = Boolean(window.getSelection()?.toString());
+		/*
+		 * A press that STARTS a gesture invalidates any toggle an earlier one left
+		 * pending — otherwise a stray `dblclick` could take back a click from a
+		 * different gesture. A second press (`detail > 1`) is the continuation
+		 * whose `dblclick` may legitimately need it, so it is kept.
+		 */
+		if (event.detail <= 1) undo.current = null;
+	};
+
+	const onClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+		/*
+		 * `detail === 0` is the click the browser synthesises from Enter or Space
+		 * on a focused button. The keyboard must never be gated on what happens to
+		 * be selected — that was round 2's U8, where a live selection left the row
+		 * unreachable by mouse and by key alike.
+		 */
+		const fromKeyboard = event.detail === 0;
+		const selecting =
+			heldSelection.current || Boolean(window.getSelection()?.toString());
+		/*
+		 * `detail > 1` is the second or later click of a MULTI-click, and on text
+		 * that gesture is always a selection (a word, then a paragraph). The first
+		 * click of it could not be told from a single click when it fired, so the
+		 * row may have toggled: take that back here, and do not toggle again —
+		 * otherwise a double-click ends with one net toggle, which is what the
+		 * earlier round's guard did (measured: closed -> double-click -> open).
+		 */
+		if (
+			!fromKeyboard &&
+			pressOnText.current &&
+			(selecting || event.detail > 1)
+		) {
+			if (event.detail > 1 && undo.current !== null) {
+				setIsOpen(undo.current);
+				undo.current = null;
+			}
+			return;
+		}
+		undo.current = isOpen;
 		setIsOpen((previous) => !previous);
+	};
+
+	/**
+	 * The belt to the braces above: a gesture whose second click never arrived as
+	 * a click on this trigger (the mouseup landed outside it) still says what it
+	 * was with `dblclick`, and the toggle the first click made is still pending.
+	 */
+	const onDoubleClick = () => {
+		if (!pressOnText.current || undo.current === null) return;
+		setIsOpen(undo.current);
+		undo.current = null;
+	};
+
+	/**
+	 * The only keyboard exit a reader with a selection has.
+	 *
+	 * `select-none` chrome never clears a selection by itself and a focused
+	 * button gets no native cancel from Escape, so without this the reader's
+	 * selection is stuck until they click somewhere: round 2's U8 measured
+	 * Escape leaving an 82-character selection intact. Scoped to a selection this
+	 * trigger OWNS, so Escape is not taken from the rest of the app.
+	 */
+	const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+		if (event.key !== "Escape") return;
+		const selection = window.getSelection();
+		if (!selection || selection.isCollapsed) return;
+		if (!buttonRef.current?.contains(selection.anchorNode)) return;
+		selection.removeAllRanges();
 	};
 
 	// The chevron slot is reserved rather than dropped: losing 20px of gutter
@@ -177,7 +305,7 @@ export const Disclosure = ({
 	if (disabled) {
 		return (
 			<div className={className}>
-				<div className={cn(ROW, ROW_ALIGN, "text-ink-dim", rowClassName)}>
+				<div className={cn(ROW, rowAlign, "text-ink-dim", rowClassName)}>
 					{chevron === "leading" && (
 						<span className={cn("size-3.5", mark)} aria-hidden={true} />
 					)}
@@ -199,10 +327,14 @@ export const Disclosure = ({
 				type="button"
 				aria-expanded={isOpen}
 				aria-controls={contentId}
-				onClick={toggle}
+				ref={buttonRef}
+				onMouseDown={onMouseDown}
+				onClick={onClick}
+				onDoubleClick={onDoubleClick}
+				onKeyDown={onKeyDown}
 				className={cn(
 					ROW,
-					ROW_ALIGN,
+					rowAlign,
 					"cursor-pointer select-none",
 					"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
 					rowClassName,
