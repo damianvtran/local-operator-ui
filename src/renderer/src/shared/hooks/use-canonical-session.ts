@@ -55,13 +55,13 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
-/* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
-import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 import {
 	HISTORY_UNREADABLE,
 	type SessionFailureNotice,
 	streamFailureNotice,
 } from "../../../../shared/desktop-stream-notice";
+/* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
+import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
 export type CanonicalSessionStatus =
 	| "connecting"
@@ -694,18 +694,24 @@ export function useCanonicalSessionStream(
 			generation: number,
 			painted: ReadonlySet<string>,
 			missingCalls: number,
+			/**
+			 * Which attempt this is on the NOTHING-PAINTED failure path below, 1-based so
+			 * it names a delay in `STREAM_RETRY_DELAYS_MS` directly. A parameter rather
+			 * than a local because the retry re-enters this function: a counter inside it
+			 * would reset to the first delay on every re-entry, which is a backoff that
+			 * never backs off. Callers that are not retrying (`flush`, `reopen`) omit it.
+			 */
+			historyAttempt = 1,
 		) => {
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
 			let rows = 0;
-			let failures = 0;
 			/**
-			 * Attempts spent on the NOTHING-PAINTED failure path below (1-based, the
-			 * same base `streamRetryDelayMs` takes). Kept apart from `failures`, which
-			 * counts the painted path's single immediate retry: the two paths fail for
-			 * different reasons and one of them has to give up in a different way.
+			 * The painted path's own budget: one immediate retry, then a quiet stand-down
+			 * (see the failure arm). Counted here rather than passed because this path
+			 * never re-enters the function.
 			 */
-			let historyAttempts = 1;
+			let failures = 0;
 			while (rows < RECONCILE_WALK_MAX_ROWS) {
 				let page: DesktopHistoryPage;
 				try {
@@ -738,16 +744,17 @@ export function useCanonicalSessionStream(
 						if (failures++ > 0) return;
 						continue;
 					}
-					if (historyAttempts < HISTORY_RECONCILE_ATTEMPTS) {
-						reconcileTimer = window.setTimeout(
-							() => {
-								reconcileTimer = 0;
-								if (generationRef.current !== generation) return;
-								void reconcileTail(generation, painted, missingCalls);
-							},
-							streamRetryDelayMs(historyAttempts),
-						);
-						historyAttempts += 1;
+					if (historyAttempt < HISTORY_RECONCILE_ATTEMPTS) {
+						reconcileTimer = window.setTimeout(() => {
+							reconcileTimer = 0;
+							if (generationRef.current !== generation) return;
+							void reconcileTail(
+								generation,
+								painted,
+								missingCalls,
+								historyAttempt + 1,
+							);
+						}, streamRetryDelayMs(historyAttempt));
 						return;
 					}
 					// Nothing is painted and nothing could be read: this conversation is
@@ -1134,26 +1141,6 @@ export function useCanonicalSessionStream(
 			});
 			if (needsReconcile || missingLabels.length > 0) {
 				void reconcileTail(generation, paintedEntryIds, missingLabels.length);
-			}
-		};
-
-		/**
-		 * Tear the current subscription down, marking it as OUR decision so the
-		 * browser transport's `end` is not mistaken for a dead stream.
-		 */
-		const closeStream = () => {
-			const closing = dispose;
-			dispose = null;
-			if (!closing) return;
-			closingIntentionally = true;
-			// Cleared in `finally`, not left standing: the browser transport emits its
-			// `end` SYNCHRONOUSLY from inside this call, while Electron's says nothing
-			// at all - so a flag that outlived the call would swallow the NEXT real
-			// failure's retry on the native path.
-			try {
-				closing();
-			} finally {
-				closingIntentionally = false;
 			}
 		};
 
