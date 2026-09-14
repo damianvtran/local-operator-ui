@@ -1,6 +1,7 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
+import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
 	ProbedFile,
@@ -49,6 +50,19 @@ declare global {
 				onConsentChanged: (callback: () => void) => () => void;
 				onPopupBlocked: (
 					callback: (payload: { tabId: number; url: string }) => void,
+				) => () => void;
+			};
+			/**
+			 * The server-status signal, from the MAIN process.
+			 *
+			 * Not a health probe made by the renderer: main sends no Origin and holds
+			 * the bearer, so this answer cannot be turned into "server down" by a CORS
+			 * or allowlist decision (see `shared/backend-status.ts`).
+			 */
+			backend: {
+				getStatus: () => Promise<DaemonStatusSnapshot>;
+				onStatusChange: (
+					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;
 			};
 			openFile: (filePath: string) => Promise<void>;
