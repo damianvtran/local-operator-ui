@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -43,10 +44,90 @@ const {
 	enterFooter,
 	matchChoices,
 	phaseLabel,
+	pointerPickRuns,
 	slashKeyIntent,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * The pick rule's inputs are the DESTINATION TABLE's own fields — a
+ * destination's kind and whether it declares an inline list — so the cases
+ * below read them off `picker-registry.tsx` rather than restating them: a table
+ * edit that gave `/analytics` a list, or made `session.compact` routable, has to
+ * turn this file red instead of passing against a stale copy.
+ *
+ * The table cannot be IMPORTED. Its entries hold the picker components as
+ * values, so bundling it pulls the whole renderer and every package it imports
+ * under node — measured at 18s of bundling plus 3s of execution, in a file that
+ * ran in 1.3s, and it would run app code that has no business loading in a unit
+ * test. Reading the source is the same move `slash-row-format.test.mjs` makes to
+ * pin the entity ids, and it fails loudly: a rename makes these cases fail by
+ * name rather than silently answering from the unknown-destination arm.
+ */
+const REGISTRY = readFileSync(
+	"src/renderer/src/features/chat/pickers/picker-registry.tsx",
+	"utf8",
+);
+
+/*
+ * The four fields `pointerPickRuns` consumes, read off one entry's own block.
+ * Top-level, like the composer's other regexes: `registryEntry` runs once per
+ * case rather than per keystroke, but a module-level literal is the repo's rule
+ * (`lint/performance/useTopLevelRegex`) and these are constants.
+ */
+const KIND = /kind: "(\w+)"/;
+const INLINE_SOURCE = /source: "(\w+)"/;
+const NAME_THEN_MESSAGE = /nameThenMessage: (true|false)/;
+const RUNS = /runs: (true|false)/;
+
+/**
+ * The `DESTINATIONS` entry for `id`, as `pointerPickRuns` consumes it.
+ *
+ * The block is the entry's OWN braces, so an `inline` in a neighbouring entry
+ * cannot be read as this one's.
+ */
+function registryEntry(id) {
+	// Quoted only when the id needs it (`"window.close"`), bare otherwise
+	// (`appearance`), which is how the table is written.
+	const at = Math.max(
+		REGISTRY.indexOf(`\n\t"${id}": `),
+		REGISTRY.indexOf(`\n\t${id}: `),
+	);
+	if (at < 0) return undefined;
+	const open = REGISTRY.indexOf("{", at);
+	let depth = 0;
+	let close = open;
+	for (let i = open; i < REGISTRY.length; i++) {
+		if (REGISTRY[i] === "{") depth++;
+		else if (REGISTRY[i] === "}") {
+			depth--;
+			if (depth === 0) {
+				close = i;
+				break;
+			}
+		}
+	}
+	const block = REGISTRY.slice(open, close + 1);
+	const kind = KIND.exec(block)?.[1];
+	assert.ok(kind, `${id} declares its kind`);
+	const source = INLINE_SOURCE.exec(block)?.[1];
+	return {
+		kind,
+		inline: source
+			? {
+					source,
+					nameThenMessage: NAME_THEN_MESSAGE.exec(block)?.[1] === "true",
+					runs: RUNS.exec(block)?.[1] === "true",
+				}
+			: undefined,
+	};
+}
+
+/** Whether a pointer pick of `id` runs, decided from the registry's own entry. */
+function pickRuns(id) {
+	return pointerPickRuns(id, registryEntry(id));
+}
 
 const commandRow = { kind: "command" };
 const argumentRow = (value, over = {}) => ({
@@ -266,7 +347,10 @@ test("the footer says what Enter will do, in each state", () => {
 		matched: true,
 		unambiguous: true,
 	};
-	assert.equal(enterFooter({ ...base, phase: "command" }), "Enter completes the command.");
+	assert.equal(
+		enterFooter({ ...base, phase: "command" }),
+		"Enter completes the command.",
+	);
 	assert.equal(
 		enterFooter({ ...base, nameThenMessage: true, runs: false }),
 		"Enter chooses this name.",
@@ -278,7 +362,10 @@ test("the footer says what Enter will do, in each state", () => {
 		enterFooter({ ...base, unambiguous: false }),
 		"Enter completes; Enter again runs.",
 	);
-	assert.equal(enterFooter({ ...base, runs: false }), "Enter completes the value.");
+	assert.equal(
+		enterFooter({ ...base, runs: false }),
+		"Enter completes the value.",
+	);
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
 });
@@ -296,7 +383,10 @@ test("the empty copy names which of the four causes it is", () => {
 		"Needs an open conversation. Start one first.",
 	);
 	assert.equal(
-		argumentEmptyCopy({ ...list, error: "Could not read the model catalogue." }),
+		argumentEmptyCopy({
+			...list,
+			error: "Could not read the model catalogue.",
+		}),
 		"Could not read the model catalogue.",
 	);
 	assert.equal(argumentEmptyCopy({ ...list, loading: true }), "Loading…");
@@ -319,7 +409,11 @@ test("the empty copy names which of the four causes it is", () => {
 test("the no-match state is what typing a missing team produces", () => {
 	const teams = [
 		{ value: "delivery", name: "delivery", description: "Ships the release" },
-		{ value: "reviewers", name: "reviewers", description: "Reviews every diff" },
+		{
+			value: "reviewers",
+			name: "reviewers",
+			description: "Reviews every diff",
+		},
 	];
 	const rows = argumentRows("team", teams, null);
 	assert.ok(rows.length > 0, "the roster is reported");
@@ -333,4 +427,89 @@ test("the no-match state is what typing a missing team produces", () => {
 		}),
 		"No matches. Enter opens the full picker.",
 	);
+});
+
+const PICK_RUNS = [
+	// Panel destinations. The pick IS the gesture: running opens the panel, and
+	// completing alone would leave the word in the composer for a second Enter,
+	// which is the operator's report. `/analytics` is the regression row if this
+	// is keyed off the registry's `arguments` field instead: it is
+	// `arguments: "optional"` with NO inline list, so an `arguments`-keyed rule
+	// would complete-only the one command that has nothing to list.
+	"analytics",
+	"usage",
+	"commands",
+	"skills",
+	// Navigate destinations: the surface they name is the outcome.
+	"settings",
+	"providers",
+	"accounts",
+	"updates",
+	"mcp",
+];
+
+test("a pointer pick runs the command unless completing it opens a list", () => {
+	for (const id of PICK_RUNS) {
+		assert.ok(registryEntry(id), `${id} is a real destination`);
+		assert.equal(pickRuns(id), true, id);
+	}
+});
+
+test("the two REQUIRED-argument commands run on a pick (a deliberate deviation)", () => {
+	/*
+	 * The TUI must not run a REQUIRED-argument command on accept, because
+	 * accepting there opens an inline list (`Editor.opens_a_list`). These two have
+	 * no inline list HERE — the picker IS the provider list, and it is a dialog —
+	 * so completing-only would strand the user on `/login ` with nothing to pick.
+	 */
+	for (const id of ["auth.login", "auth.logout"]) {
+		assert.equal(registryEntry(id)?.kind, "picker", id);
+		assert.equal(registryEntry(id)?.inline, undefined, id);
+		assert.equal(pickRuns(id), true, id);
+	}
+});
+
+test("a list-bearing command completes and never runs", () => {
+	for (const [id, source] of [
+		["session.model", "model"],
+		["session.effort", "effort"],
+		["session.approvals", "approvals"],
+		// `/theme`: an inline list whose apply path is a dialog (`runs: false`).
+		["appearance", "theme"],
+	]) {
+		assert.equal(registryEntry(id)?.inline?.source, source, id);
+		assert.equal(pickRuns(id), false, id);
+	}
+	// A NAME+message row (`/team`, `/agent`): "a name is chosen" is "ready for the
+	// message", never "run it".
+	for (const id of ["session.team", "session.agent"]) {
+		assert.equal(registryEntry(id)?.inline?.nameThenMessage, true, id);
+		assert.equal(pickRuns(id), false, id);
+	}
+});
+
+test("the three protected destinations are protected by id, not by kind", () => {
+	// Two are `direct` and one is a `picker` with no inline list, so a rule
+	// written off the kind alone would run all three — and a stray click would
+	// detach the app, wipe the transcript view or start a compaction.
+	assert.equal(registryEntry("window.close")?.kind, "direct");
+	assert.equal(registryEntry("transcript.clear")?.kind, "direct");
+	assert.equal(registryEntry("session.compact")?.kind, "picker");
+	assert.equal(
+		registryEntry("session.compact")?.inline,
+		undefined,
+		"and it lists nothing, so only the protected set keeps it from running",
+	);
+	for (const id of ["window.close", "transcript.clear", "session.compact"])
+		assert.equal(pickRuns(id), false, id);
+});
+
+test("a destination this side does not route yet answers by kind, not by id", () => {
+	// These two arrive as `{kind: "picker"}` panels on the side that routes them.
+	// Read off the kind, they run on the day their rows land, with no change here
+	// — which is why neither id may be hardcoded into the rule.
+	for (const id of ["info", "session.diagnostics"]) {
+		assert.equal(registryEntry(id), undefined, `${id} is not routed here yet`);
+		assert.equal(pickRuns(id), true, id);
+	}
 });
