@@ -159,3 +159,13 @@ the original published feature lineage is integrated as an additional merge
 parent without changing that candidate's tree. Publication is an ordinary
 fast-forward push of the existing PR branch. Both histories survive; this is
 not a PR merge or release. The final PR comment records ancestry/tree checks.
+
+## D19 — the blank zero-credential cell
+
+Design round 3's D19: the facts table's value cell preferred `row.names`, and an
+empty array is truthy, so a host with no stored credentials rendered
+`[].join(", ")` — blank — where the row's computed answer is `none`. The choice
+now lives in the shipped `factValue`, bound by
+`scripts/panel-info-credentials.test.mjs`, and the affected frame
+(`panels-live/wire-environment/localOperatorDark.webp`) was re-captured through
+the `browser` tool and read back as `none`.

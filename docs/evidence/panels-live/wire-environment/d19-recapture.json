@@ -1,0 +1,14 @@
+{
+  "frame": "docs/evidence/panels-live/wire-environment/localOperatorDark.webp",
+  "sourcePngSha256": "c96f09dad8fc503c75c3cc859851bb4bfbee0e5c4bef22cc6948e07250cd337c",
+  "dimensions": [
+    2880,
+    1634
+  ],
+  "supersededFrameDimensions": [
+    2880,
+    1634
+  ],
+  "reason": "D19: the value cell rendered blank for a zero-credential host; this frame is the re-capture after factValue fell through to the computed \"none\".",
+  "capturedAtUtc": "2026-09-14T22:20:00Z"
+}
