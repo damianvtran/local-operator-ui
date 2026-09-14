@@ -199,6 +199,18 @@ export type TranscriptRecord =
 			 * failure's own words. `null` on every other custom row.
 			 */
 			category: string | null;
+			/**
+			 * The `provider/model` the incident names in its head
+			 * (`[session incident (anthropic/claude-opus-5)] rate-limit: …`), which the
+			 * row paints in the ledger's machine-voice `object` column.
+			 *
+			 * It is carried because the harness's own advice for a rate limit is "tell
+			 * the user which provider hit the limit", and for an operator running
+			 * several providers that is the decision-relevant half of the row.
+			 * `null` when the incident names none (every no-provider `cut-off`, and
+			 * every non-incident custom row).
+			 */
+			provider: string | null;
 			attribution: "user" | "agent" | "system";
 	  }
 	| {
@@ -541,12 +553,16 @@ const SILENT_CUSTOM_TYPES = new Set([
 /**
  * Custom rows whose TEXT is the message, not a payload to disclose.
  *
- * A `session_incident` is why the last turn died; the other three are the
- * harness telling the reader that something changed mid-session (a model
- * switch, a recovered MCP server, a stored credential). All four are short
- * statements a reader has to be able to read, and the TUI paints every one of
- * them as a wrapping line for the same reason
+ * The three types here are the harness telling the reader that something changed
+ * mid-session (a model switch, a recovered MCP server, a stored credential).
+ * Each is a short statement a reader has to be able to read, and the TUI paints
+ * it as a wrapping line for the same reason
  * (`tui/widgets/transcript.py::NoticeBlock`).
+ *
+ * `session_incident` is deliberately NOT in this set even though it is painted
+ * the same way: it takes its own path through `incidentRow`, which is reached
+ * before this set is read, so listing it here would be configuration that can
+ * never fire.
  *
  * Any other custom type is a RELAYED payload — a `hub_message`, a
  * `peer_message`, a wake prompt, a job result — whose body belongs behind the
@@ -556,7 +572,6 @@ const SILENT_CUSTOM_TYPES = new Set([
  * substantive line and keeps the body one click away.
  */
 const INLINE_CUSTOM_TYPES = new Set([
-	"session_incident",
 	"session_mcp_recovery",
 	"session_model_switch",
 	"session_credential",
@@ -573,16 +588,47 @@ const INLINE_CUSTOM_TYPES = new Set([
  * repository a build.
  */
 const INCIDENT_HEAD =
-	/^\[session incident(?:\s*\([^)]*\))?\]\s*([^:\n]{1,40}):\s*/;
+	/^\[session incident(?:\s*\(([^)]*)\))?\]\s*([^:\n]{1,40}):\s*/;
 
 /**
- * A leading envelope tag line: `<parent-message>`, `<peer-session-message …>`.
+ * An envelope tag line: `<parent-message>`, `<peer-session-message …>`, and the
+ * CLOSING form `</parent-message>`.
  *
  * Both relays put the actual message on the NEXT line, so quoting the tag alone
  * tells a reader nothing — which is what a first-line headline did for every
- * `hub_message` in the store.
+ * `hub_message` in the store. Closing tags matter for the same reason rather
+ * than for symmetry: a relay whose body is empty is persisted as
+ * `<subagent-message label=… job=…>` / blank / `</subagent-message>` (34 rows in
+ * the store), and without this the row painted the closing tag as its message.
  */
-const ENVELOPE_TAG = /^<[a-z][a-z0-9-]*(\s[^>]*)?>$/i;
+const ENVELOPE_TAG = /^<\/?[a-z][a-z0-9-]*(\s[^>]*)?>$/i;
+
+/**
+ * The three lines `harness/comms.py::TO_CHILD_INSTRUCTIONS` prepends to a
+ * relayed `hub_message`, normalised to one lowercase line.
+ *
+ * They are the channel's manners, not the message: measured over the store,
+ * 411 hub rows open with the `note` line verbatim, so quoting it inline made
+ * every one of those rows read the same and pushed the parent's actual words
+ * behind the chevron. The instruction stays in the body — it is the first thing
+ * a reader meets once they open the row, and the kind is on the label.
+ */
+const RELAY_INSTRUCTIONS = new Set([
+	"this changes your instructions. apply it from now on, and drop work it makes pointless.",
+	"answer it now with the `hub` tool — a short, direct reply — then carry on with what you were doing. do not restructure your work around the question.",
+	"this is a note, not a question. no reply is needed unless it changes what you should do.",
+]);
+
+/**
+ * The wake-arming clause the scheduler appends to a wake prompt's first line:
+ * `— cancel with wake({op:"cancel",id:"w1"}) once its goal is met.`
+ *
+ * Also agent-directed (it is how the run cancels its own alarm) and carried by
+ * 749 of the store's 951 wake rows, so it crowded out the one thing a reader
+ * wants from that row: the cadence before it, `w1 (1/16, every 1h30m)`. The
+ * clause stays in the body.
+ */
+const WAKE_ARM_CLAUSE = /\s+—\s*cancel with wake\([^)]*\)[^.]*\.?/;
 
 /** The bracket the harness prefixes its statement texts with (`[model switch]`). */
 const STATEMENT_TAG = /^\[[^\]]{1,32}\]\s*/;
@@ -611,23 +657,64 @@ function customRow(
 	details: Record<string, unknown>,
 ): Pick<
 	Extract<TranscriptRecord, { kind: "custom" }>,
-	"level" | "headline" | "detail" | "category"
+	"level" | "headline" | "detail" | "category" | "provider"
 > {
 	if (customType !== "session_incident") {
-		const inline = INLINE_CUSTOM_TYPES.has(customType);
+		// The statement's own bracket tag repeats the row's label
+		// ("session model switch: [model switch] …"), so the headline starts at
+		// the sentence — and the harness's instruction to the MODEL, which follows
+		// that sentence, is not a headline at all. A RELAYED payload keeps its
+		// whole body as the detail, because what makes it bulky is the payload
+		// itself rather than an instruction appended to a fact.
 		return {
 			level: "info",
 			category: null,
-			// The statement's own bracket tag repeats the row's label
-			// ("session model switch: [model switch] …"), so the headline starts
-			// at the sentence.
-			headline: inline
-				? text.trim().replace(STATEMENT_TAG, "")
-				: headlineOf(text),
-			detail: inline ? null : text,
+			provider: null,
+			...(INLINE_CUSTOM_TYPES.has(customType)
+				? splitStatement(text.trim().replace(STATEMENT_TAG, ""))
+				: { headline: headlineOf(text), detail: text }),
 		};
 	}
 	return { level: "error", ...incidentRow(text, details) };
+}
+
+/**
+ * Split a harness statement into the fact and the instruction that follows it.
+ *
+ * A statement is two things in one string: what changed (`You are now running as
+ * X (was Y).`) and what the MODEL is to do about it (`This applies from now on.
+ * Capabilities, context window, and tone may differ from the previous model; act
+ * as the model you now are.`). Measured over the store, all 231 model-switch rows
+ * carry that tail, and painting it inline put a 3-4 line agent-directed block in
+ * a one-line ledger, on a row with nothing to disclose. The rule is the same one
+ * `incidentRow` applies to an incident's head: the fact is the row, the
+ * instruction is what the disclosure is for.
+ */
+function splitStatement(
+	text: string,
+): Pick<Extract<TranscriptRecord, { kind: "custom" }>, "headline" | "detail"> {
+	const trimmed = text.trim();
+	const at = firstSentenceEnd(trimmed);
+	if (at < 0) return { headline: trimmed, detail: null };
+	const detail = trimmed.slice(at).trim();
+	return { headline: trimmed.slice(0, at).trim(), detail: detail || null };
+}
+
+/**
+ * The index just past the first sentence's terminator, or -1 when there is none.
+ *
+ * A terminator is one of `.`, `!`, `?` or `…` FOLLOWED BY whitespace, so a
+ * version or a filename (`deepseek-v4.1-flash`, `march.csv`) does not split the
+ * sentence in half — which is the entire reason this is a scan rather than a
+ * split on the character.
+ */
+function firstSentenceEnd(text: string): number {
+	for (let i = 0; i < text.length - 1; i++) {
+		if (!".!?…".includes(text[i])) continue;
+		if (!/\s/.test(text[i + 1])) continue;
+		return i + 1;
+	}
+	return -1;
 }
 
 /**
@@ -652,7 +739,7 @@ function incidentRow(
 	details: Record<string, unknown>,
 ): Pick<
 	Extract<TranscriptRecord, { kind: "custom" }>,
-	"headline" | "detail" | "category"
+	"headline" | "detail" | "category" | "provider"
 > {
 	const lines = text.split("\n");
 	const head = lines[0].match(INCIDENT_HEAD);
@@ -663,21 +750,61 @@ function incidentRow(
 		text.trim();
 	const tail = lines.slice(1).join("\n").trim();
 	return {
-		category: head ? head[1].trim() : null,
+		// The head's parenthetical is the `provider/model` that died, and the
+		// harness's own advice for a rate limit is "tell the user which provider
+		// hit the limit" — so it is a fact the row has to carry. It rides the
+		// `object` column rather than the message, which is the ledger's slot for
+		// a machine-voice identifier (a path, a URL, a command) and keeps the
+		// vendor's own error string intact as the sentence.
+		provider: (head?.[1] ?? "").trim() || null,
+		category: (head?.[2] ?? "").trim() || null,
 		headline: message,
 		detail: tail || null,
 	};
 }
 
-/** The first line of a relayed payload that is not only its envelope tag. */
+/**
+ * The line of a relayed payload that says something, bounded to a headline.
+ *
+ * Three kinds of line are not the message and are stepped over:
+ *
+ * 1. the envelope's own tags, opening or closing — `<parent-message>`, and the
+ *    `</subagent-message>` an empty relay would otherwise paint;
+ * 2. the channel's fixed instruction line (see `RELAY_INSTRUCTIONS`), which is
+ *    byte-identical on 411 hub rows;
+ * 3. the wake-arming clause, which is the same class of agent-directed text.
+ *
+ * When nothing survives, the ENVELOPE itself is the honest headline: a relay
+ * with an empty body still names its label and job id
+ * (`<subagent-message label='rollover-template-fix' job='5fb25794e06c'>`), which
+ * is strictly better than a stray closing token.
+ */
 function headlineOf(text: string): string {
-	const line = text
+	const lines = text
 		.split("\n")
 		.map((candidate) => candidate.trim())
-		.find((candidate) => candidate && !ENVELOPE_TAG.test(candidate));
-	const headline = line ?? text.trim();
-	if (headline.length <= HEADLINE_MAX) return headline;
-	const cut = headline.slice(0, HEADLINE_MAX);
+		.filter(Boolean);
+	const substantive = lines.find(
+		(line) => !ENVELOPE_TAG.test(line) && !isRelayInstruction(line),
+	);
+	const opening = lines.find(
+		(line) => ENVELOPE_TAG.test(line) && !line.startsWith("</"),
+	);
+	return bounded(
+		(substantive ?? opening ?? text.trim()).replace(WAKE_ARM_CLAUSE, ""),
+	);
+}
+
+/** Whether a line is one of the channel's fixed instruction lines. */
+function isRelayInstruction(line: string): boolean {
+	return RELAY_INSTRUCTIONS.has(line.replace(/\s+/g, " ").trim().toLowerCase());
+}
+
+/** Cut a headline to its bound, on a word boundary so it reads as one. */
+function bounded(headline: string): string {
+	const trimmed = headline.trim();
+	if (trimmed.length <= HEADLINE_MAX) return trimmed;
+	const cut = trimmed.slice(0, HEADLINE_MAX);
 	const lastSpace = cut.lastIndexOf(" ");
 	return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
@@ -726,7 +853,12 @@ function durableRecord(
 		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		const text = String(details.text ?? details.detail ?? "");
-		if (!text) return null;
+		// A row with nothing to say paints nothing. `trim()` rather than a falsy
+		// test, because a whitespace-only body would otherwise reach `headlineOf`
+		// and produce an empty headline — which is the shape the operator reported
+		// (a row that states nothing but its type name). No producer emits one
+		// today; the gate is here so none can.
+		if (!text.trim()) return null;
 		return {
 			kind: "custom",
 			id: entry.id,

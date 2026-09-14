@@ -56,7 +56,9 @@ change, not this change's business.
 
 | Directory | Tree | What it shows |
 | --- | --- | --- |
-| [`session-incidents`](session-incidents/) | this change | The fixed rows: danger glyph and category label, the vendor's message in place and wrapping, the harness's advice behind the disclosure. |
+| [`session-incidents`](session-incidents/) | this change | The fixed rows: danger glyph and category label, the provider the incident names, the vendor's message in place and wrapping, the harness's advice behind the disclosure. |
+| [`session-incidents-narrow`](session-incidents-narrow/) | this change | The same 17 rows at 560, where a row wraps hardest — the width the wrapped-mark defect was measured at. |
+| [`notice-lengths`](notice-lengths/) | this change | The notice register's own length cases, including the bulky one that used to render as the literal word "Notice". |
 | [`../session-incident-rows-before`](../session-incident-rows-before/) | unmodified `origin/main` (`73977340a`) | The defect, from the same story and the same payloads: ten rows reading `session incident`, the info ink, no message anywhere but behind the chevrons. |
 
 The pair is same-viewport (1280x700), same story, same themes, and the only
@@ -121,12 +123,78 @@ That is the broader claim one screenful cannot make: not that this fixture
 renders, but that every row of this shape in the operator's own store now says
 what happened.
 
+## Round 2: what the review rounds changed here
+
+The four round-1 reports are on the PR. The frames above are the round-2 set; what
+moved in them, and what did not:
+
+- **The wrapped row's marks (design D1).** A 14px mark was vertically centred over
+  the whole wrapped block, so a multi-line row carried its kind on line 2 — or, at
+  420px, nowhere on line 1 at all. `Disclosure` gained one mode
+  (`summaryAlign: "firstLine"`) and the offset it applies is exported
+  (`FIRST_LINE_MARK`) so the row's glyph and the trigger's chevron take the same
+  number. Measured in the DOM at 1280: every row's chevron and glyph sit 3.0px
+  above the first line's box centre, wrapped rows included
+  (`context-length` cy 185.8 with `rate-limit` cy 252.8), where the before-frame
+  put the chevron *between* the two lines. `session-incidents-narrow` is the same
+  claim at the width it was measured wrong.
+- **The tool rows did not move.** All 32 registered `chat-tool-rows` frames were
+  re-captured through the same command. 21 came back byte-identical; the 11 that
+  differ differ **only** in bands this rig cannot make deterministic, and that is
+  measured rather than assumed: a second capture of `working-labels` at the *same*
+  tree differs from the first by 5,986 pixels in the same `292x148+32+32` box (the
+  working line's animated spinner), and `states` differs from its committed frame
+  by 399 pixels in an `18x29` box that is the running row's live clock reading
+  `16s` where the committed frame reads `13s`. Those 11 frames were left at their
+  committed bytes rather than carry capture noise; the pass's own
+  `refreshedFrames` counts them as written.
+- **The provider is back on the row (design D2).** `anthropic/claude-opus-5`
+  rides the ledger's machine-voice object column, so the row reads
+  `mcp: anthropic/claude-opus-5 MCP server 'notion': …`. Measured over the store,
+  789 of 968 incident rows name a provider; the rest are the no-provider
+  `cut-off` shape, which states that by omission.
+- **The message is selectable again (UX U1).** The trigger is `select-none`, so
+  the narration span opts back in and the primitive ignores a click that ended a
+  selection. Exercised against the real component over CDP: selecting the row's
+  message yields 82 characters, a click while that selection is live leaves
+  `aria-expanded` at `false`, the selection survives, and the next click with no
+  selection opens the row.
+- **A relay states its message, not the envelope's manners (UX U3 / design D3 /
+  review R1).** The channel's three fixed instruction lines are matched and
+  skipped, and so is the wake-arming clause. Over the store: 0 of 4,389
+  `hub_message` and 0 of 4,424 `peer_message` headlines are boilerplate now, where
+  411 hub rows opened with the same sentence; 0 of 951 wake rows lead with the
+  cancellation call; and the 34 empty relays state their envelope
+  (`<subagent-message label='…' job='…'>`) instead of a closing tag.
+- **A statement states its fact, not its instruction (UX U2).** The three
+  statement types split at the first sentence, so a model switch reads
+  `You are now running as X (was Y).` on the row and the agent-directed tail is
+  behind the chevron. Measured: all 227 real model-switch rows carried that tail
+  inline before.
+- **A long notice states its own first line (design D5).** The `notice` branch
+  used to paint the literal word "Notice" for anything over 400 characters or one
+  line; `notice-lengths` is the frame that judges it, and the `notice` row's pitch
+  and wrap are otherwise unchanged.
+- **Not changed, and why (design D4).** The finding asked for `ml-5` on the
+  detail paragraph. Measured in the live DOM at 1280, the disclosure's content box
+  already sits at x250 — the same edge as a tool row's args block (x250) — and
+  the paragraph shares it; `ml-5` moved it to x270, off the edge it already had.
+  Reverted, with the numbers in the PR thread.
+
+The reducer rules above are pinned by tests (`scripts/transcript-reducer.test.mjs`,
+47 tests) and measured store-wide through the shipped `applyHistoryPage` over
+every persisted custom row in `~/.local-operator/sessions`: 10,997 records, 0 with
+an empty headline, 0 whose headline is its type name.
+
 ## What these frames do not prove
 
-- **Two themes, not twelve,** and one viewport: this is a narrowed capture
-  (`manifest.json`'s `partialCapture`). The twelve-theme sweep was not re-run —
-  it would rewrite 400+ frames nobody is reviewing, and it cannot be re-run at
-  all at this head while the Storybook docgen build is broken (above).
+- **Two themes, not twelve.** The committed set is a narrowed capture
+  (`manifest.json`'s `partialCapture`): `localOperatorDark` and
+  `localOperatorLight`, at 1280 and (for the narrow claim) 560. The twelve-theme
+  sweep was not re-run — it would rewrite 400+ frames nobody is reviewing, and it
+  cannot be re-run at all at this head while the Storybook docgen build is broken
+  (above). The design round rendered five palettes from its own probe and cleared
+  contrast at token level for the other seven.
 - **Not the live app.** The rows, the reducer and the transcript are the shipped
   ones, but the frames are not a screenshot of the Electron app against a live
   session; the story is the pinning surface and the reducer probe above is the
@@ -139,13 +207,15 @@ what happened.
 
 ## Re-capturing
 
-The story id is registered in `scripts/capture-evidence.mjs`'s `STORIES`
-(`chat-canonical-notices--session-incidents`, 1280x700), so the next full sweep
-covers it in all twelve themes:
+The three story ids are registered in `scripts/capture-evidence.mjs`'s `STORIES`
+(`chat-canonical-notices--session-incidents` 1280x800,
+`--session-incidents-narrow` 560x1220 and `--notice-lengths` 1280x340), so the
+next full sweep covers them in all twelve themes:
 
 ```
 pnpm storybook                                  # :6006
 node scripts/capture-evidence.mjs http://localhost:6006 --only=session-incidents
+node scripts/capture-evidence.mjs http://localhost:6006 --only=notice-lengths
 ```
 
 The `before` frames cannot be re-derived from this tree; they live in

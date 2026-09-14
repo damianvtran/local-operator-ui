@@ -71,6 +71,12 @@ export type DisclosureProps = {
 	 */
 	triggerClassName?: string;
 	/**
+	 * Where the trigger's marks sit against a wrapping summary. Default
+	 * `center`; `firstLine` pins them to the summary's first line (see
+	 * `FIRST_LINE_MARK`).
+	 */
+	summaryAlign?: SummaryAlign;
+	/**
 	 * Extra classes on the ROW BOX, applied in both the interactive and the
 	 * `disabled` branch.
 	 *
@@ -139,6 +145,33 @@ export type DisclosureProps = {
 // A trailing chevron leaves no leading gutter, so the content is flush.
 const CONTENT_INDENT = "ml-5";
 
+/**
+ * Where a 14px mark sits when a summary WRAPS, so it stays on the first line.
+ *
+ * A wrapping row's marks used to be centred over the whole block, which put the
+ * glyph and the chevron in the middle of their own message: measured at 420px, a
+ * three-line incident row carried no mark on its first line at all (both sat on
+ * line 2), and in a run of them the gutter zig-zagged line-1, line-2, line-3. In
+ * the ledger that reads as the row having no kind.
+ *
+ * `self-start` puts the mark's top on the line box's top; the half-step lifts it
+ * onto that line's optical centre, because a 14px glyph in a 20px line box sits
+ * high without it. Exported rather than written twice: the row's own identity
+ * glyph and this trigger's chevron share one rail, so they have to share the
+ * one number that keeps them on it.
+ */
+export const FIRST_LINE_MARK = "self-start mt-0.5";
+
+/**
+ * How a trigger's own marks sit against its summary.
+ *
+ * `center` is the default and is right for a one-line summary. `firstLine`
+ * exists for the rows whose summary IS a message and therefore wraps: there the
+ * mark belongs on the line carrying the label, not adrift in the middle of the
+ * paragraph.
+ */
+export type SummaryAlign = "center" | "firstLine";
+
 // The row box, shared by the trigger and the `disabled` branch. A trace line
 // that has finished sits directly above one still running, so a row with
 // nothing to reveal has to be the same height and start on the same rail as
@@ -157,6 +190,7 @@ export const Disclosure = ({
 	chevron = "leading",
 	className,
 	triggerClassName,
+	summaryAlign = "center",
 	rowClassName,
 	disabled = false,
 	triggerLabel,
@@ -165,6 +199,26 @@ export const Disclosure = ({
 }: DisclosureProps) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
 	const contentId = useId();
+	// The chevron slot, and the mark inside it, take the first line's height when
+	// the summary wraps — see `FIRST_LINE_MARK`.
+	const mark = cn("shrink-0", summaryAlign === "firstLine" && FIRST_LINE_MARK);
+	const ROW_ALIGN =
+		summaryAlign === "firstLine" ? "items-start" : "items-center";
+
+	/*
+	 * A drag that SELECTS text inside the trigger must not toggle the row.
+	 *
+	 * The trigger is `select-none`, so the only selectable text in it is content
+	 * a caller deliberately opted in — a notice's or an incident's message, which
+	 * is exactly the text a reader has to be able to paste somewhere. A selection
+	 * ends on mouseup, and that mouseup is also a click on the button, so without
+	 * this guard copying a row's message collapsed the row underneath it.
+	 * Keyboard activation has no selection and is unaffected.
+	 */
+	const toggle = () => {
+		if (window.getSelection()?.toString()) return;
+		setIsOpen((previous) => !previous);
+	};
 
 	// The chevron slot is reserved rather than dropped: losing 20px of gutter
 	// is exactly the jog this shares a constant to avoid. Interactive
@@ -175,9 +229,9 @@ export const Disclosure = ({
 	if (disabled) {
 		return (
 			<div className={className}>
-				<div className={cn(ROW, "text-ink-dim", rowClassName)}>
+				<div className={cn(ROW, ROW_ALIGN, "text-ink-dim", rowClassName)}>
 					{chevron === "leading" && (
-						<span className="size-3.5 shrink-0" aria-hidden={true} />
+						<span className={cn("size-3.5", mark)} aria-hidden={true} />
 					)}
 					<span className="min-w-0 flex-1">{summary}</span>
 				</div>
@@ -193,29 +247,16 @@ export const Disclosure = ({
 
 	return (
 		<div className={className}>
-			{/*
-			 * `Tooltip` renders its child BARE when it has no content, so this is not
-			 * a second branch: a caller that passes no `triggerTooltip` gets the
-			 * trigger unwrapped with no extra node, which is what every existing call
-			 * site does.
-			 */}
 			<Tooltip content={triggerTooltip} side="top">
 				<button
 					type="button"
 					aria-expanded={isOpen}
 					aria-controls={contentId}
 					aria-label={triggerLabel}
-					onClick={() => {
-						/*
-						 * Reported OUTSIDE the state updater: React may invoke an updater
-						 * more than once for one press (StrictMode does), and a callback that
-						 * runs inside it would then be called twice for one toggle.
-						 */
-						setIsOpen(!isOpen);
-						onOpenChange?.(!isOpen);
-					}}
+					onClick={toggle}
 					className={cn(
 						ROW,
+						ROW_ALIGN,
 						"cursor-pointer select-none",
 						"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
 						rowClassName,
@@ -223,11 +264,11 @@ export const Disclosure = ({
 					)}
 				>
 					{chevron === "leading" && (
-						<span className="flex shrink-0 text-ink-disabled">{glyph}</span>
+						<span className={cn("flex text-ink-disabled", mark)}>{glyph}</span>
 					)}
 					<span className="min-w-0 flex-1">{summary}</span>
 					{chevron === "trailing" && (
-						<span className="flex shrink-0 text-ink-disabled">{glyph}</span>
+						<span className={cn("flex text-ink-disabled", mark)}>{glyph}</span>
 					)}
 				</button>
 			</Tooltip>
