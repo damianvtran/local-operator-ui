@@ -672,7 +672,7 @@ function customRow(
 			provider: null,
 			...(INLINE_CUSTOM_TYPES.has(customType)
 				? splitStatement(text.trim().replace(STATEMENT_TAG, ""))
-				: { headline: headlineOf(text), detail: text }),
+				: { headline: headlineOf(text, customType), detail: text }),
 		};
 	}
 	return { level: "error", ...incidentRow(text, details) };
@@ -703,15 +703,30 @@ function splitStatement(
 /**
  * The index just past the first sentence's terminator, or -1 when there is none.
  *
- * A terminator is one of `.`, `!`, `?` or `…` FOLLOWED BY whitespace, so a
- * version or a filename (`deepseek-v4.1-flash`, `march.csv`) does not split the
- * sentence in half — which is the entire reason this is a scan rather than a
- * split on the character.
+ * Two conditions beyond "a terminator followed by whitespace", both of which
+ * exist because the bare rule split real text in half (round 2's R7):
+ *
+ * 1. the first non-space character AFTER the terminator must be a capital, so a
+ *    mid-sentence abbreviation — `e.g. the fast tier`, `(approx. 200k ctx)` — is
+ *    not read as a sentence end;
+ * 2. a terminator that is preceded only by digits AND opens the text is a list
+ *    marker (`1. You are now running as …`), not a sentence end.
+ *
+ * This is deliberately not a list of abbreviations, which would be a table to
+ * keep in step with English forever. When nothing qualifies there is no split at
+ * all: the row paints the whole text and discloses nothing, which is the safe
+ * direction — nothing is hidden from the reader.
+ *
+ * The whitespace requirement is what keeps versions and filenames intact
+ * (`deepseek-v4.1-flash`, `march.csv`), and it is why this is a scan rather than
+ * a split on the character.
  */
 function firstSentenceEnd(text: string): number {
 	for (let i = 0; i < text.length - 1; i++) {
 		if (!".!?…".includes(text[i])) continue;
 		if (!/\s/.test(text[i + 1])) continue;
+		if (/^\d+\.$/.test(text.slice(0, i + 1))) continue;
+		if (!/[A-Z]/.test(text.slice(i + 1).trimStart()[0] ?? "")) continue;
 		return i + 1;
 	}
 	return -1;
@@ -772,26 +787,57 @@ function incidentRow(
  *    `</subagent-message>` an empty relay would otherwise paint;
  * 2. the channel's fixed instruction line (see `RELAY_INSTRUCTIONS`), which is
  *    byte-identical on 411 hub rows;
- * 3. the wake-arming clause, which is the same class of agent-directed text.
+ * 3. the wake-arming clause — and only on a wake row, which is the only producer
+ *    that writes it. Stripping it from every relay would silently edit a
+ *    hub message that happened to quote the phrase (round 2's R9; 0 store rows
+ *    have that shape today, so the point is to remove the class rather than to
+ *    fix a row).
  *
  * When nothing survives, the ENVELOPE itself is the honest headline: a relay
  * with an empty body still names its label and job id
  * (`<subagent-message label='rollover-template-fix' job='5fb25794e06c'>`), which
  * is strictly better than a stray closing token.
+ *
+ * Two further shapes, both of which left the row stating a LABEL rather than the
+ * message it exists to state (round 2's U10, measured):
+ *
+ * - a chosen line that ENDS in a colon is a heading with its outcome on the next
+ *   line — `background job 'design849' failed:` / `[Errno 28] No space left on
+ *   device` — so the two are joined, which is 37 of the store's 39 job results;
+ * - a one-shot wake states no cadence (`(alarm) Scheduled wake w1 (1/1).`, 121 of
+ *   955 wake rows), which leaves the arming line with nothing to say, so the row
+ *   quotes the goal out of the body instead.
  */
-function headlineOf(text: string): string {
+function headlineOf(text: string, customType: string): string {
 	const lines = text
 		.split("\n")
 		.map((candidate) => candidate.trim())
 		.filter(Boolean);
-	const substantive = lines.find(
-		(line) => !ENVELOPE_TAG.test(line) && !isRelayInstruction(line),
-	);
+	/** Whether a line is the payload's own words rather than the channel's. */
+	const speaks = (line: string) =>
+		!ENVELOPE_TAG.test(line) && !isRelayInstruction(line);
+	const substantive = lines.find(speaks);
 	const opening = lines.find(
 		(line) => ENVELOPE_TAG.test(line) && !line.startsWith("</"),
 	);
+	let chosen = substantive ?? opening ?? text.trim();
+
+	if (
+		customType === "wake_prompt" &&
+		chosen === substantive &&
+		!/\bevery\b/.test(chosen)
+	) {
+		chosen = lines.find((line) => speaks(line) && line !== chosen) ?? chosen;
+	}
+
+	const at = lines.indexOf(chosen);
+	if (at >= 0 && chosen.endsWith(":")) {
+		const outcome = lines.slice(at + 1).find(speaks);
+		if (outcome) chosen = `${chosen} ${outcome}`;
+	}
+
 	return bounded(
-		(substantive ?? opening ?? text.trim()).replace(WAKE_ARM_CLAUSE, ""),
+		customType === "wake_prompt" ? chosen.replace(WAKE_ARM_CLAUSE, "") : chosen,
 	);
 }
 
