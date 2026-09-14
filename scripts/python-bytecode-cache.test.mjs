@@ -628,10 +628,21 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 	const withheld = () => new Promise(() => {});
 	const originalLoad = BackendServiceManager.prototype.loadMacOSEnvironment;
 	const originalPrefix = process.env.PYTHONPYCACHEPREFIX;
+	const originalConfigDir = process.env.LOCAL_OPERATOR_CONFIG_DIR;
 	BackendServiceManager.prototype.loadMacOSEnvironment = withheld;
 	// And the seed carries a value pointing inside the bundle, because that is
 	// what the spawn site has to correct rather than merely fill.
 	process.env.PYTHONPYCACHEPREFIX = INSIDE_BUNDLE_PREFIX;
+	/*
+	 * An empty config root, so discovery cannot decide this test's branch.
+	 * `start()` runs discovery before it spawns, and discovery reads serve
+	 * records - on this machine the operator's own daemon publishes one, and a
+	 * live record this app may not attach to is exactly the state that makes
+	 * `start()` refuse to spawn a second daemon. That guard is right, and it is
+	 * not what this test is about: the subject here is the spawn ENVIRONMENT.
+	 * Redirecting the root rather than stubbing the method keeps discovery real.
+	 */
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = join(PATHS.home, "config");
 
 	const managers = [];
 	try {
@@ -642,11 +653,13 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 
 			const manager = new BackendServiceManager();
 			managers.push(manager);
-			// This worktree's `.env` sets VITE_DISABLE_BACKEND_MANAGER=true for
+			// A dev worktree's `.env` sets VITE_DISABLE_BACKEND_MANAGER=true for
 			// `pnpm dev`, and `dotenv` (override: true) has already put that into
-			// `process.env`. The subject here is the spawn environment, so the
-			// flag is forced rather than the spawn being blamed for it.
-			manager.isDisabled = false;
+			// `process.env`, so the manager is constructed spawn-denied. The subject
+			// here is the spawn environment, so the permission is forced - naming the
+			// property the code actually reads, which is why a local run and CI agree
+			// only because both force it.
+			manager.managerMaySpawn = true;
 			// Stubbed on the instance, not at the module boundary: a real
 			// `which local-operator` would pick the branch by what this machine
 			// happens to have installed, and a real health probe would be a
@@ -724,6 +737,9 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 		}
 	} finally {
 		BackendServiceManager.prototype.loadMacOSEnvironment = originalLoad;
+		if (originalConfigDir === undefined)
+			delete process.env.LOCAL_OPERATOR_CONFIG_DIR;
+		else process.env.LOCAL_OPERATOR_CONFIG_DIR = originalConfigDir;
 		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
 		else process.env.PYTHONPYCACHEPREFIX = originalPrefix;
 		for (const manager of managers) {
@@ -755,7 +771,6 @@ test("the belt: shellEnv is corrected after the rc files have been sourced", asy
 	delete process.env.PYTHONPYCACHEPREFIX;
 
 	const manager = new BackendServiceManager();
-	manager.isDisabled = false;
 	try {
 		await manager.loadShellEnvironment();
 		assert.equal(
