@@ -28,6 +28,11 @@ import {
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import {
+	browserHostEnabled,
+	startBrowserHost,
+	stopBrowserHost,
+} from "./browser";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -622,10 +627,16 @@ app
 				// A frame the renderer cannot parse is not a notification either.
 			}
 		});
+		// The ONE trusted renderer URL: the dev server while developing, the packaged
+		// document otherwise. Named rather than inlined because a second consumer
+		// (the browser IPC namespace) checks the same value, and two spellings of
+		// "the trusted frame" is how one of them drifts.
+		const rendererUrl =
+			process.env.ELECTRON_RENDERER_URL ||
+			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
 		registerDesktopIPC(
 			() => mainWindow,
-			process.env.ELECTRON_RENDERER_URL ||
-				pathToFileURL(join(__dirname, "../renderer/index.html")).href,
+			rendererUrl,
 			sendDesktop,
 			() => backendService.getStreamRelay(),
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
@@ -1140,14 +1151,61 @@ app
 			});
 		}
 
+		/*
+		 * The browser host: the loopback endpoint a lop session drives, the tab
+		 * registry it addresses, and the persistent jar both share.
+		 *
+		 * WHY it is tied to the WINDOW's lifetime rather than the app's: every driven
+		 * view is a child of that window's content view, and `WebContentsView` does NOT
+		 * take its webContents down when the window closes (Electron's own documented
+		 * leak). So closing the window stops the host — which closes every view,
+		 * releases every debugger session and removes the state file — and a window
+		 * re-created by a dock click starts a fresh one. Tabs do not survive that, and
+		 * a session holding a handle gets the ordinary `tab_closed` and re-`open`s,
+		 * which is the designed recovery rather than a special case. Restoring tabs
+		 * across a window re-creation is the tab-restore work (design 7), not this PR.
+		 *
+		 * A failure here must never be why the app does not start: the host is a
+		 * capability, not a dependency of the window. It is reported and the app
+		 * carries on, the same direction `state.py` takes for discovery.
+		 */
+		let browserHostRunning = false;
+		async function startBrowserHostForWindow(
+			window: BrowserWindow,
+		): Promise<void> {
+			if (browserHostRunning || !browserHostEnabled()) return;
+			browserHostRunning = true;
+			window.on("closed", () => {
+				browserHostRunning = false;
+				void stopBrowserHost();
+			});
+			try {
+				await startBrowserHost({
+					window,
+					expectedUrl: rendererUrl,
+					appVersion: app.getVersion(),
+					userDataDir: app.getPath("userData"),
+					log: (message) => logger.info(message, LogFileType.BACKEND),
+				});
+			} catch (error) {
+				browserHostRunning = false;
+				logger.error(
+					`Could not start the browser host: ${String(error)}`,
+					LogFileType.BACKEND,
+				);
+			}
+		}
+
 		// Initial window + update service setup
 		setupMainWindowWithUpdateService();
+		if (mainWindow) await startBrowserHostForWindow(mainWindow);
 
 		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
 			// dock icon is clicked and there are no other windows open.
 			if (BrowserWindow.getAllWindows().length === 0) {
 				setupMainWindowWithUpdateService();
+				if (mainWindow) void startBrowserHostForWindow(mainWindow);
 			}
 		});
 	})
@@ -1440,6 +1498,11 @@ app.on("before-quit", () => {
 	 * once per quit.
 	 */
 	activeUpdateService?.quitForInFlightInstall("app quit");
+	// Close every driven view, release the debugger sessions and remove the state
+	// file, so a session stopping at the same moment does not read a record naming
+	// a process that is already gone. Not awaited: `before-quit` is synchronous,
+	// and each of these steps is also safe to lose (see `stopBrowserHost`).
+	void stopBrowserHost();
 });
 
 // Add a failsafe to ensure child processes are terminated when the app exits

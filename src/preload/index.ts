@@ -333,6 +333,84 @@ const api = {
 		},
 	},
 
+	/**
+	 * The browser feature's chrome controls.
+	 *
+	 * A namespace of its own rather than more operations on `desktop`, because
+	 * `desktop`'s vocabulary maps to BACKEND HTTP paths: routing a browser
+	 * operation through that allowlist would give the renderer a way to name
+	 * browser commands through a channel designed for something else. Every
+	 * handler behind these channels checks the sender in main.
+	 *
+	 * None of these carries a surface token, and that is deliberate: the
+	 * capability to drive a tab belongs to a lop session, not to the app's own
+	 * page. The renderer addresses tabs by `tabId`, and the one place authority
+	 * moves to a session (the hand-over) mints a nonce main never sends back here.
+	 */
+	browser: {
+		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
+		newTab: (): Promise<unknown> => ipcRenderer.invoke("browser-new-tab"),
+		closeTab: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-close-tab", tabId),
+		activateTab: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-activate-tab", tabId),
+		navigate: (url: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-navigate", url),
+		reload: (): Promise<unknown> => ipcRenderer.invoke("browser-reload"),
+		stop: (): Promise<unknown> => ipcRenderer.invoke("browser-stop"),
+		history: (direction: "back" | "forward"): Promise<unknown> =>
+			ipcRenderer.invoke("browser-history", direction),
+		setContentRect: (
+			rect: { x: number; y: number; width: number; height: number } | null,
+		): Promise<unknown> => ipcRenderer.invoke("browser-set-content-rect", rect),
+		setViewVisible: (visible: boolean): Promise<unknown> =>
+			ipcRenderer.invoke("browser-set-visible", visible),
+		handOver: (tabId: number, sessionId: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-hand-over", tabId, sessionId),
+		revokeHandOver: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-revoke-hand-over", tabId),
+		respondToConsent: (
+			entryId: string,
+			decision: "once" | "site" | "domain" | "deny",
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-consent-respond", entryId, decision),
+		clearData: (what: "cookies" | "cache" | "everything"): Promise<unknown> =>
+			ipcRenderer.invoke("browser-clear-data", what),
+		onStateChanged: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("browser-state-changed", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-state-changed", handler);
+			};
+		},
+		onConsentChanged: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("browser-consent-changed", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-consent-changed", handler);
+			};
+		},
+		onPopupBlocked: (
+			callback: (payload: { tabId: number; url: string }) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { tabId?: unknown; url?: unknown },
+			) => {
+				if (
+					typeof payload?.url === "string" &&
+					typeof payload.tabId === "number"
+				) {
+					callback({ tabId: payload.tabId, url: payload.url });
+				}
+			};
+			ipcRenderer.on("browser-popup-blocked", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-popup-blocked", handler);
+			};
+		},
+	},
+
 	/** Opens a native dialog to select a directory */
 	selectDirectory: (): Promise<string | undefined> =>
 		ipcRenderer.invoke("select-directory"),
