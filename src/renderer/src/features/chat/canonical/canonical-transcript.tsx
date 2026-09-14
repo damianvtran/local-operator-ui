@@ -41,6 +41,7 @@
  * following the tail neither loads a page nor has their offset corrected.
  */
 
+import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import {
@@ -64,6 +65,7 @@ import type {
 	CanonicalFrontendState,
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
+import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { ErrorBlock } from "../components/message-item/error-block";
@@ -93,6 +95,7 @@ import {
 	withRecoveredOutcome,
 } from "./transcript-reducer";
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
 import { deriveWorkingLine } from "./working-line-model";
 
@@ -147,19 +150,68 @@ export type CanonicalTranscriptProps = {
 	isSmallView: boolean;
 
 	status: "connecting" | "live" | "reconnecting" | "unavailable";
-	error: string | null;
+	/** The published failure state: one product sentence and its action. */
+	failure: SessionFailureNotice | null;
+
+	/**
+	 * Which conversation's rows this is, for attachment resolution — defaulting
+	 * to the live session's own.
+	 *
+	 * Supplied by the run panel's child reader, whose rows belong to a CHILD
+	 * conversation inside the same session: a child's images are digests in the
+	 * shared store and are served by the child-scoped route, which the parent's
+	 * route refuses. Left undefined here, the scope is derived from `frontend`,
+	 * which is the live session and the right answer for the main transcript.
+	 * The reader passes its own because it deliberately hands `frontend={null}`
+	 * to switch the rest of the live-session machinery off.
+	 */
+	attachmentScope?: AttachmentScope | null;
+	/**
+	 * Re-arm the session's stream and history read.
+	 *
+	 * Required rather than optional: every caller of this component has a
+	 * session handle to hand it, and a failure notice with no action is what
+	 * this surface is being fixed to stop showing.
+	 */
+	onReconnect: () => void;
 };
+
+/**
+ * Does the transcript pane have something of its own to say right now?
+ *
+ * ONE authority for the two decisions that must agree: whether the pane may
+ * collapse out of the layout (so the composer band can grow for the greeting),
+ * and whether the band may claim the conversation is empty. They are the same
+ * question - "is anything painted above the composer?" - and the failure notice
+ * and the reconnecting line are both answers of "yes".
+ *
+ * The reconnecting half is design round 1's D3: the collapse stand-down used to
+ * cover only `unavailable` + error, so for the whole ~23.5s retry budget this
+ * PR introduces the pane was `h-0 overflow-hidden` and the "Reconnecting" line
+ * was clipped above the box (measured: scroller h 0, text at y 70.6). A state
+ * the user is waiting through has to be visible, and it has to stop the band
+ * from offering the greeting over a conversation nobody has read.
+ */
+export function canonicalTranscriptSpeaks(view: {
+	status: CanonicalTranscriptProps["status"];
+	failure: SessionFailureNotice | null;
+}): boolean {
+	return (
+		view.status === "reconnecting" ||
+		(view.status === "unavailable" && Boolean(view.failure))
+	);
+}
 
 // ---------------------------------------------------------------- rows
 
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
-	sessionId,
+	scope,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
-	sessionId: string | null;
+	scope: AttachmentScope | null;
 }) {
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
@@ -188,7 +240,7 @@ const UserRow = memo(function UserRow({
 									<CanonicalImage
 										key={image.id}
 										image={image}
-										sessionId={sessionId}
+										scope={scope}
 										label={
 											record.images.length === 1
 												? "Attached image"
@@ -278,13 +330,13 @@ const ToolRow = memo(function ToolRow({
 	isSmallView,
 	showAvatar,
 	nameColumn,
-	sessionId,
+	scope,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	nameColumn: number;
-	sessionId: string | null;
+	scope: AttachmentScope | null;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -348,7 +400,7 @@ const ToolRow = memo(function ToolRow({
 					<CanonicalImage
 						key={image.id}
 						image={image}
-						sessionId={sessionId}
+						scope={scope}
 						label={
 							record.images.length === 1
 								? "Screenshot"
@@ -461,12 +513,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
 	nameColumn,
-	sessionId,
+	scope,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
-	sessionId: string | null;
+	scope: AttachmentScope | null;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -474,11 +526,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	switch (record.kind) {
 		case "user":
 			body = (
-				<UserRow
-					record={record}
-					isSmallView={isSmallView}
-					sessionId={sessionId}
-				/>
+				<UserRow record={record} isSmallView={isSmallView} scope={scope} />
 			);
 			break;
 		case "assistant":
@@ -497,7 +545,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
-					sessionId={sessionId}
+					scope={scope}
 				/>
 			);
 			break;
@@ -538,7 +586,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	containerRef,
 	isSmallView,
 	status,
-	error,
+	failure,
+	attachmentScope,
+	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -553,6 +603,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * The attachment scope: the caller's when it supplied one (the child
+	 * reader), otherwise the live session with no child. One value, computed
+	 * once, so no row can disagree with another about where its bytes come
+	 * from.
+	 */
+	const mediaScope: AttachmentScope | null =
+		attachmentScope ?? (sessionId ? { sessionId, childId: null } : null);
 	if (recovered.current.session !== sessionId) {
 		recovered.current = { session: sessionId, anchors: new Set() };
 	}
@@ -621,13 +679,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * column and centres its group instead. `records` rather than `rows`
 	 * because a record that renders to no row is still nothing to scroll.
 	 *
-	 * AN ADMITTED SEND IS THE EXCEPTION, and it is the whole point of the rung
-	 * this file renders at the foot. The wait for a cold session's first frame is
-	 * a real state with a real thing to say, and it has no records in it at all:
+	 * TWO EXCEPTIONS, and each is a state this pane has something to say in that
+	 * the record list cannot express.
+	 *
+	 * THE FIRST IS A TRANSCRIPT THAT CANNOT BE READ, which is not an empty one,
+	 * or one that is being waited through. While the pane has something of its
+	 * own to say - the failure notice, or the line that says the app is
+	 * reconnecting - that statement IS the content: the notice is the only thing
+	 * on screen that says what happened, and the only place its control lives,
+	 * and this rule hid both behind an `overflow: hidden` box 0px tall - measured
+	 * in the running app, the scroller box was 880x0 with the notice inside it and
+	 * the control at y=60 outside the visible pane. The reconnecting line was
+	 * clipped the same way for the whole retry window (design round 1, D3:
+	 * scroller h 0, text at y 70.6). `canonicalTranscriptSpeaks` owns that
+	 * decision, and the composer band asks it the same question before it claims
+	 * the free height for a greeting.
+	 *
+	 * THE SECOND IS AN ADMITTED SEND, and it is the whole point of the rung this
+	 * file renders at the foot. The wait for a cold session's first frame is a
+	 * real state with a real thing to say, and it has no records in it at all:
 	 * on the New-chat path the identity flip happens before the owner's first
 	 * frame, and the optimistic echo is not durable history either, so for the
 	 * whole engage the record list is legitimately empty. Collapsed on `records`
-	 * alone, this element is a zero-height clipping box through that entire
+	 * alone, this element was a zero-height clipping box through that entire
 	 * window - the rung was in the DOM at t+258 ms and painted its first pixel at
 	 * t+13.8 s (QA round 1, Q1), which is exactly the dead air the operator
 	 * reported. So a send this pane has admitted holds the column open, and the
@@ -637,7 +711,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * The legacy twin (`MessagesView`) already does this with its `collapsed`
 	 * branch; the two paths change together so neither keeps the defect.
 	 */
-	const collapsed = transcript.records.length === 0 && !starting;
+	const collapsed =
+		transcript.records.length === 0 &&
+		!canonicalTranscriptSpeaks({ status, failure }) &&
+		!starting;
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -730,9 +807,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				starting,
 				startingAfterId,
 				gate: Boolean(gate),
-				// The transcript renders the error itself in this state, so the line
-				// must not claim work beside it.
-				unavailable: status === "unavailable" || Boolean(error),
+				// One definition of "this pane is speaking for itself", shared with the
+				// band's own greeting decision rather than a second copy of "the
+				// transport is down": the failure notice and the reconnecting line are
+				// the only things on screen that say what happened, so the rung must
+				// not claim progress beside them.
+				unavailable: canonicalTranscriptSpeaks({ status, failure }),
 				records: transcript.records,
 			}),
 		[
@@ -741,7 +821,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			startingAfterId,
 			gate,
 			status,
-			error,
+			failure,
 			transcript.records,
 		],
 	);
@@ -837,11 +917,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					/>
 				)}
 
-				{status === "unavailable" && error && (
-					<p className="mb-4 text-danger text-meta">{error}</p>
+				{status === "unavailable" && failure && (
+					/*
+					 * One sentence and the one action that helps.
+					 *
+					 * The sentence is the PRODUCT's, not the transport's:
+					 * `failure.statement` is translated from the relay's machine detail by
+					 * `shared/desktop-stream-notice.ts`, so the packaged app and the
+					 * browser harness paint the same words for the same failure - which is
+					 * what was broken when the frame showed "The event stream ended." and
+					 * the shipped relay said "The event stream was refused (401)."
+					 * (design round 1, D1).
+					 *
+					 * It sits at the reading register the contract gives something the
+					 * reader must act on (D2): `text-meta` is the caption step, and this
+					 * was the bottom 4% of a 648px void. The block is edge-aligned with the
+					 * composer by sharing the column container above, and its bottom
+					 * margin is small so the notice reads as attached to the composer
+					 * rather than floating in the pane.
+					 *
+					 * The control is named for what it DOES (D4): the shell carries a
+					 * legacy banner whose "Retry" re-probes a different API, and two
+					 * controls with one accessible name and two actions reached a keyboard
+					 * user together. `action === null` means reconnecting cannot help, so
+					 * no control is painted rather than one that cannot work (Q-2).
+					 */
+					<div
+						data-lo-session-failure
+						className="mb-1 flex flex-wrap items-center gap-3"
+					>
+						<p className="text-body-sm text-danger">{failure.statement}</p>
+						{failure.action === "reconnect" && (
+							<Button variant="outline" size="sm" onClick={onReconnect}>
+								Reconnect
+							</Button>
+						)}
+					</div>
 				)}
 				{status === "reconnecting" && (
-					<p className="mb-4 text-ink-dim text-meta">Reconnecting</p>
+					// Reading register, not the caption step: during the retry window
+					// this is the pane's only statement, and it has to be perceivable
+					// (design round 1, D3).
+					<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
 				)}
 
 				{visible.map((row) => (
@@ -850,7 +967,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						row={row}
 						isSmallView={isSmallView}
 						nameColumn={nameColumn}
-						sessionId={sessionId}
+						scope={mediaScope}
 					/>
 				))}
 

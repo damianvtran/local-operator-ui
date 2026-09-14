@@ -10,7 +10,6 @@ import {
 	createReadStream,
 	existsSync,
 	readdirSync,
-	rmSync,
 	statSync,
 	statfsSync,
 } from "node:fs";
@@ -31,6 +30,7 @@ import {
 	type InstallBlock,
 	type InstallFailurePayload,
 	type InstallIdentity,
+	type InstallInFlightPayload,
 	type LastInstallAttempt,
 	type PendingInstallMarker,
 	type UpdateFileMetadata,
@@ -44,7 +44,10 @@ import {
 	evaluatePendingInstall,
 	healPythonBytecode,
 	installFailurePayload,
+	installInFlightPayload,
 	installedBundleSealBlock,
+	isInstallInFlight,
+	launchdJobLoaded,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePipShowVersion,
@@ -53,6 +56,7 @@ import {
 	readLastInstallAttempt,
 	readPendingInstallMarker,
 	reapFailedInstall,
+	reapStagedTree,
 	recordInstallFailure,
 	requiredDiskBytes,
 	resolveCommandPath,
@@ -62,6 +66,7 @@ import {
 	shipItJobLabel,
 	verifyStagedArtifact,
 	watchdogIsOurs,
+	watchdogSignals,
 	watchdogSwapTarget,
 	writePendingInstallMarker,
 } from "./update-install";
@@ -73,6 +78,18 @@ const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
 
 /** A reverse-DNS bundle identifier, and nothing else. */
 const BUNDLE_ID_REGEX = /^[\w.-]+$/;
+
+/**
+ * How often a live install is re-checked while the app is open, in ms.
+ *
+ * ShipIt either swaps or aborts within a couple of minutes of the app coming
+ * back - it asks "is any instance of the app running?" as its last validation -
+ * so this is the delay between the panel saying the update is still going and
+ * the user hearing the truth. It is not the bound: `isInstallInFlight` stops
+ * calling a marker current after `PENDING_INSTALL_RECENCY_SECONDS`, and the
+ * first re-check past that point evaluates as a failure and ends the loop.
+ */
+const INSTALL_IN_FLIGHT_RECHECK_MS = 10_000;
 
 /** What `launchctl remove` prints when the job is not loaded. */
 const LAUNCHCTL_NOT_LOADED_REGEX = /could not find|no such process/i;
@@ -285,6 +302,42 @@ export class UpdateService {
 	private installFailureDelivered = false;
 
 	/**
+	 * An install this process found still running, if any.
+	 *
+	 * The opposite fact to `pendingInstallFailure`, and kept apart from it: this
+	 * one means the update is still in progress and the user has to leave the app
+	 * closed for it to finish. Nothing may be cleared, reaped or reported while
+	 * it is up.
+	 */
+	private pendingInstallInFlight: InstallInFlightPayload | null = null;
+	private installInFlightDelivered = false;
+
+	/**
+	 * True once this process has seen its own install run.
+	 *
+	 * It is what lets a later failure name the real cause: an install this app
+	 * watched start and then not finish, on a machine where the app was open for
+	 * part of it, was cancelled by that relaunch (Squirrel asks whether any
+	 * instance is running before it swaps), and saying "the update didn't finish"
+	 * there sends the user back to retry the one thing that cannot work.
+	 */
+	private installWasInFlight = false;
+
+	/** The pending re-check of a live install, while the app is open. */
+	private installInFlightTimer: NodeJS.Timeout | null = null;
+
+	/**
+	 * True once a quit following an in-flight install has made sure the app will
+	 * come back.
+	 *
+	 * The two callers are the same quit seen twice - `window-all-closed` decides
+	 * and `before-quit` runs as it goes through - so without this the launchd
+	 * probe, the `ps` read and the "no watchdog is running" log all happen twice
+	 * for one quit.
+	 */
+	private inFlightQuitWatchdogEnsured = false;
+
+	/**
 	 * True while `quit-and-install` is running its pre-flight.
 	 *
 	 * The pre-flight can take seconds over a large bundle and artifact, and the
@@ -448,12 +501,27 @@ export class UpdateService {
 	 * update did not happen. Everything the user learns afterwards starts here:
 	 * the notice, the durable record it can be found in later, and the cleanup of
 	 * what Squirrel left running.
+	 *
+	 * The one case that must NOT be read as a failure is the install that is still
+	 * running, and it is the 2026-09-13 incident: the app comes back mid-install
+	 * on the old version, because the swap has not happened yet. That used to
+	 * clear the marker, remove the very job doing the installing, and tell the
+	 * user the update had failed - two seconds before ShipIt aborted the install
+	 * on its own final check. So the job is probed first, a live install is left
+	 * alone entirely, and the re-check below reports what really happens to it.
 	 */
 	private recoverPendingInstall(): void {
 		const marker = readPendingInstallMarker(this.markerDir());
 		const outcome = evaluatePendingInstall({
 			marker,
 			runningVersion: app.getVersion(),
+			// Probed once per evaluation, and only on macOS: a loaded job plus a
+			// current marker is what makes "still on the old version" an install in
+			// progress rather than an install that failed.
+			installInFlight: isInstallInFlight({
+				marker,
+				jobLoaded: this.shipItInstallJobLoaded(),
+			}),
 		});
 
 		switch (outcome.kind) {
@@ -478,6 +546,23 @@ export class UpdateService {
 				this.reapWatchdog(outcome.marker, true);
 				clearPendingInstallMarker(this.markerDir());
 				return;
+			case "in-flight": {
+				this.installWasInFlight = true;
+				logger.info(
+					`Update marker: the install of version ${outcome.marker.targetVersion} is still running (its install job is loaded). Leaving the marker, the install job and the relaunch watchdog in place.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				// The user is told, because the app being open is what stops this
+				// install finishing - and quitting now can still let the swap through,
+				// which is the one action that saves it.
+				this.pendingInstallInFlight = installInFlightPayload(
+					outcome.marker,
+					app.getVersion(),
+				);
+				this.scheduleInstallInFlightDelivery();
+				this.scheduleInstallInFlightRecheck();
+				return;
+			}
 			case "failed": {
 				// The log Squirrel wrote is the only record of WHY, because this
 				// process was dead while the install failed (review U14).
@@ -485,23 +570,57 @@ export class UpdateService {
 				const record = recordInstallFailure(this.markerDir(), {
 					payload: installFailurePayload(outcome.marker, app.getVersion(), {
 						shipItLogPath,
+						cancelledByRelaunch: this.installWasInFlight,
 					}),
+					// The record names the version that is running now, which is the same
+					// answer the payload above was built from: Settings renders it as
+					// "Version X is running", and it used to carry the previous failure's
+					// version forward instead (QA Q1).
+					runningVersion: app.getVersion(),
 					startedAt: outcome.marker.startedAt || null,
 					detectedAt: new Date().toISOString(),
 				});
 				const payload = installFailurePayload(
 					outcome.marker,
 					app.getVersion(),
-					{ attempts: record.attempts, shipItLogPath },
+					{
+						attempts: record.attempts,
+						shipItLogPath,
+						// An install this process watched run and then not finish, with the
+						// app open for part of it, was cancelled by that relaunch.
+						cancelledByRelaunch: this.installWasInFlight,
+					},
 				);
 				logger.error(
 					`Update marker: install of version ${outcome.marker.targetVersion} did not complete (attempt ${record.attempts}). ${payload.detail}`,
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.pendingInstallFailure = payload;
+				/*
+				 * NOT nulled here, and the marker is not cleared here either.
+				 *
+				 * The renderer is showing "still installing" for this very install when
+				 * this branch runs off a re-check, and the panel only changes when it
+				 * hears this failure. Dropping the in-flight payload and the marker
+				 * before that notice lands would leave the user's screen claiming an
+				 * install is running for one that is over, with nothing left to
+				 * re-send - so both go when the notice is delivered
+				 * (`deliverPendingInstallFailure`, review R2).
+				 */
+				this.stopInstallInFlightRecheck();
 				this.reapWatchdog(outcome.marker, false);
-				clearPendingInstallMarker(this.markerDir());
 				this.reapFailedInstallLeftovers();
+				/*
+				 * The same delivery path the start-up failure takes, for every failure.
+				 *
+				 * A re-check is not evidence the renderer is listening: `sendToRenderer`
+				 * answers true whenever a live `webContents` exists, so a direct push
+				 * with no subscriber still sets `installFailureDelivered` and the notice
+				 * is lost with no second attempt. The scheduler is what gives it one -
+				 * the load event it may have missed, then the delayed fallback - and it
+				 * is safe to call from any branch because the send itself is guarded by
+				 * that flag (review R2).
+				 */
 				this.schedulePendingInstallFailureDelivery();
 			}
 		}
@@ -595,7 +714,13 @@ export class UpdateService {
 				},
 				exists: (path) => existsSync(path),
 				listDir: (dir) => readdirSync(dir),
-				removeDir: (dir) => rmSync(dir, { recursive: true, force: true }),
+				// Retried, because the draw this cleans up is a race: on 2026-09-13
+				// ShipIt was moving this very tree into place while the reap walked
+				// it, and the rmdir it lost surfaced as ENOTDIR - which `rmSync`
+				// does not retry (see `removeStagedTree`). A tree that cannot be
+				// removed after that is still reported, because it is ~1 GiB the
+				// user's disk is paying for.
+				removeDir: (dir) => reapStagedTree(dir),
 				log,
 			});
 			if (result.errors.length > 0) {
@@ -615,9 +740,12 @@ export class UpdateService {
 	/**
 	 * Deliver the failed-install notice once the renderer can hear it.
 	 *
-	 * The marker is read while the window is still loading, so the push happens
-	 * on `did-finish-load` with a delayed fallback: the component subscribes from
-	 * a React effect, which may run after the load event.
+	 * The single delivery path for every install failure, read at start-up or
+	 * found on a re-check: the marker is read while the window is still loading
+	 * (and, on a re-check, the window is up but the React effect that subscribes
+	 * is not provably past), so the push happens on `did-finish-load` with a
+	 * delayed fallback. One path rather than two is what keeps "delivered"
+	 * meaning the same thing in both cases (review R2).
 	 */
 	private schedulePendingInstallFailureDelivery(): void {
 		if (!this.pendingInstallFailure) return;
@@ -637,10 +765,228 @@ export class UpdateService {
 			return;
 		}
 		this.installFailureDelivered = true;
+		/*
+		 * The state this failure supersedes goes only now, once the notice is
+		 * away: the in-flight panel and the marker on disk both exist to be
+		 * re-reported until the user is told what happened, so clearing them
+		 * before this point is what made a lost push unrecoverable (review R2).
+		 */
+		this.pendingInstallInFlight = null;
+		clearPendingInstallMarker(this.markerDir());
 		logger.info(
 			"Reported a failed update install to the renderer",
 			LogFileType.UPDATE_SERVICE,
 		);
+	}
+
+	/**
+	 * A substituted answer to "is this app's install job loaded", or null.
+	 *
+	 * The production answer is the launchd probe in `shipItInstallJobLoaded`, and
+	 * it asks about a label read from the RUNNING BUNDLE (`shipItJob`). A test or a
+	 * harness process that is not that bundle has no label to ask about, so the
+	 * whole in-flight path - recovery's reading, the re-check, and the quit below -
+	 * is otherwise unreachable from a suite. This is the same shape as the
+	 * watchdog's own probe, which is invoked by name precisely so a harness can
+	 * substitute it: one seam for the whole answer, so what a test drives is the
+	 * rule production uses rather than a second copy of it. Production never sets
+	 * it.
+	 */
+	public installJobLoadedProbe: (() => boolean) | null = null;
+
+	/**
+	 * Whether this app's ShipIt install job is loaded, right now.
+	 *
+	 * This is the machine's own answer to "is an install in flight", and the only
+	 * answer that can tell a live install apart from the job a failed one left
+	 * behind. It is asked of launchd by label rather than inferred from a process
+	 * name, so nothing else on the machine can be mistaken for it. Off macOS there
+	 * is no launchd to ask, so the answer is a plain no and recovery stays
+	 * version-only there, exactly as it is today.
+	 */
+	private shipItInstallJobLoaded(): boolean {
+		if (this.installJobLoadedProbe) return this.installJobLoadedProbe();
+		// The command comes from the same place the watchdog's own probe does, so
+		// there is one answer to "which command asks launchd about this job" and
+		// the two cannot disagree. It is invoked by name, exactly as the script
+		// invokes it, which is also what makes this probe substitutable in a
+		// harness: PATH resolves it to /bin/launchctl on any machine with launchd.
+		const jobProbe = watchdogSignals(process.platform).jobProbe;
+		if (!jobProbe) return false;
+		return launchdJobLoaded(this.shipItJob(), (label) => {
+			const result = spawnSync(jobProbe, ["list", label], {
+				encoding: "utf8",
+				timeout: 5000,
+			});
+			// No exit status is not an answer: a probe that could not run must not
+			// read as "loaded", and `launchdJobLoaded` treats null as not loaded.
+			return result.error || result.status == null ? null : result.status;
+		});
+	}
+
+	/**
+	 * Deliver the still-installing notice once the renderer can hear it.
+	 *
+	 * Same shape and the same reason as the failure's delivery: the marker is read
+	 * while the window is still loading, and the component subscribes from a React
+	 * effect that can run after `did-finish-load`.
+	 */
+	private scheduleInstallInFlightDelivery(): void {
+		// Guarded on the delivered flag as well as on the payload, because the
+		// re-check calls this on every pass: without it a long install accumulates
+		// a `did-finish-load` listener and a 5 s timer per pass, all of them no-ops
+		// by then, for as long as the install lasts (review N1).
+		if (!this.pendingInstallInFlight || this.installInFlightDelivered) return;
+		const deliver = () => this.deliverPendingInstallInFlight();
+		const webContents = this.mainWindow?.webContents;
+		if (webContents && !webContents.isDestroyed()) {
+			webContents.once("did-finish-load", deliver);
+		}
+		setTimeout(deliver, 5000);
+	}
+
+	private deliverPendingInstallInFlight(): void {
+		if (!this.pendingInstallInFlight || this.installInFlightDelivered) return;
+		if (
+			!this.sendToRenderer(
+				"update-install-in-flight",
+				this.pendingInstallInFlight,
+			)
+		) {
+			return;
+		}
+		this.installInFlightDelivered = true;
+		logger.info(
+			"Reported an install still in flight to the renderer",
+			LogFileType.UPDATE_SERVICE,
+		);
+	}
+
+	/**
+	 * Re-check a live install while the app stays open, until it settles.
+	 *
+	 * The panel that says "the update is still installing" cannot be the end of
+	 * the story: ShipIt decides within a couple of minutes of the app coming back
+	 * (it asks whether any instance is running as its final validation), and the
+	 * user has to hear what that decision was. Re-evaluating is what produces it -
+	 * the job no longer loaded means the install is over, and the marker plus the
+	 * old running version then say truthfully that it was cancelled. The loop ends
+	 * by itself: once the marker is older than
+	 * `PENDING_INSTALL_RECENCY_SECONDS` nothing calls it current, the next
+	 * evaluation is a failure, and that branch stops the timer.
+	 */
+	private scheduleInstallInFlightRecheck(): void {
+		if (this.installInFlightTimer) return;
+		this.installInFlightTimer = setTimeout(() => {
+			this.installInFlightTimer = null;
+			this.recoverPendingInstall();
+		}, INSTALL_IN_FLIGHT_RECHECK_MS);
+		// Unref'd: a panel staying in step is not a reason for the app to stay
+		// alive, and this timer must never be what keeps the process up.
+		this.installInFlightTimer.unref();
+	}
+
+	private stopInstallInFlightRecheck(): void {
+		if (!this.installInFlightTimer) return;
+		clearTimeout(this.installInFlightTimer);
+		this.installInFlightTimer = null;
+	}
+
+	/**
+	 * Make sure something will start the app again after a quit that is only
+	 * getting out of an install's way.
+	 *
+	 * The watchdog from the original install is usually still there - it holds
+	 * while the job is loaded now, rather than starting the app into the swap -
+	 * but it may have run out its own bounds, and the user may be quitting hours
+	 * later. Quitting without one would leave them with no app at all, which is
+	 * the outcome this whole change exists to remove. Nothing is started when ours
+	 * is alive, because two watchdogs relaunching at the same moment is a race
+	 * with nothing to gain. The marker is left exactly as it is: its start time is
+	 * what tells recovery this is still the same install.
+	 */
+	private ensureWatchdogAfterInFlightQuit(marker: PendingInstallMarker): void {
+		const pid = marker.watchdogPid;
+		const commandLine =
+			pid == null
+				? null
+				: readCommandOutput("/bin/ps", ["-o", "command=", "-p", String(pid)]);
+		if (
+			watchdogIsOurs({
+				alive: commandLine != null,
+				commandLine,
+				installSucceeded: true,
+			})
+		) {
+			logger.info(
+				`Relaunch watchdog ${pid} is still running; it will start the app when the install settles.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		const launched = this.launchWatchdog(marker.targetVersion);
+		logger.info(
+			launched
+				? `Started relaunch watchdog ${launched} for the install already in flight; it will start the app when the install's job goes.`
+				: "No relaunch watchdog is running for the install in flight and none could be started; the app will need starting by hand after it quits.",
+			LogFileType.UPDATE_SERVICE,
+		);
+	}
+
+	/**
+	 * The pending-install marker, if the machine says an install is live now.
+	 *
+	 * The marker is read first, because the ordinary answer to "is an update
+	 * installing" is no and a file read answers it; the launchd probe behind it is
+	 * a process spawn and is only worth paying for when there is a marker to ask
+	 * about.
+	 */
+	private livePendingInstallMarker(): PendingInstallMarker | null {
+		const marker = readPendingInstallMarker(this.markerDir());
+		if (!marker) return null;
+		return isInstallInFlight({
+			marker,
+			jobLoaded: this.shipItInstallJobLoaded(),
+		})
+			? marker
+			: null;
+	}
+
+	/**
+	 * Treat a quit as a quit for an install that is in flight, and make sure
+	 * something will start the app again.
+	 *
+	 * Two gestures reach this, and a user believes both are harmless: the macOS
+	 * close-the-last-window close, and any ordinary quit (Cmd+Q, the dock, the
+	 * menu). `window-all-closed` on macOS deliberately leaves the app running with
+	 * no window, which is right for every ordinary close - but a running instance
+	 * of this app is exactly what Squirrel's final validation aborts an install on,
+	 * so a user who closes the window during an install has cancelled their update
+	 * without being told, and reached the incident this whole change exists to
+	 * remove by the platform's most familiar gesture (UX U1). The relaunch promise
+	 * was also button-shaped: a plain quit while an install was in flight left it
+	 * resting on whatever watchdog the install happened to still have (UX U2).
+	 *
+	 * The probe is the machine's answer rather than the renderer's, so this holds
+	 * even when the panel was never drawn - the app can come back mid-install and
+	 * have its last window closed before the renderer has heard anything.
+	 *
+	 * Returns true when an install was in flight, so a caller that is deciding
+	 * whether to quit knows the close was taken over. Nothing here touches the
+	 * marker, the install's job or the failure record: this only gets the app out
+	 * of Squirrel's way and makes sure it comes back.
+	 */
+	public quitForInFlightInstall(context: string): boolean {
+		const marker = this.livePendingInstallMarker();
+		if (!marker) return false;
+		if (this.inFlightQuitWatchdogEnsured) return true;
+		this.inFlightQuitWatchdogEnsured = true;
+		logger.info(
+			`Quitting so the in-flight update install can finish (${context}).`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.ensureWatchdogAfterInFlightQuit(marker);
+		return true;
 	}
 
 	/**
@@ -1041,9 +1387,13 @@ export class UpdateService {
 			});
 			child.unref();
 			// The bound is the promise the user is given, so it is stated here with
-			// what shortens it rather than as a bare timeout (review R11).
+			// what shortens it rather than as a bare timeout (review R11) - and the
+			// second bound is stated because it is the one that now applies when the
+			// install is demonstrably still working (2026-09-13: a launch at the
+			// first bound is what aborted the install, so the script holds for the
+			// harder one instead of starting the app into the swap).
 			logger.info(
-				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${plan.env.LO_UPDATE_WATCHDOG_TARGET_VERSION || "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens.`,
+				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${plan.env.LO_UPDATE_WATCHDOG_TARGET_VERSION || "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens - or at the ${plan.hardTimeoutSeconds}s hard bound when the install's job is still loaded at the first, which is the case where starting the app would cancel the install.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return child.pid ?? null;
@@ -1069,6 +1419,11 @@ export class UpdateService {
 			this.updateCheckInterval = null;
 		}
 
+		// A pending re-check of a live install is a timer holding a reference to
+		// this service and, through the closure, to the window: dropped with the
+		// rest of them.
+		this.stopInstallInFlightRecheck();
+
 		// Remove all autoUpdater event listeners
 		autoUpdater.removeAllListeners();
 
@@ -1080,6 +1435,7 @@ export class UpdateService {
 		ipcMain.removeHandler("update-backend");
 		ipcMain.removeHandler("download-update");
 		ipcMain.removeHandler("quit-and-install");
+		ipcMain.removeHandler("quit-for-update-install");
 
 		// Set mainWindow to null to break references
 		this.mainWindow = null;
@@ -1578,6 +1934,45 @@ export class UpdateService {
 
 			this.backendService?.setAutoUpdating(true);
 			autoUpdater.quitAndInstall(false, true);
+			return true;
+		});
+
+		/**
+		 * Quit so an install that is ALREADY running can finish.
+		 *
+		 * What the panel for an in-flight install offers, and deliberately not
+		 * `quit-and-install`: the marker is already written, the install's job is
+		 * loaded and its watchdog is running, so re-entering the pre-flight would
+		 * verify the seal of a bundle Squirrel is halfway through replacing and then
+		 * write a second marker over the first. All this needs to do is get the app
+		 * out of the way of Squirrel's last validation, which asks whether any
+		 * instance of the target app is running before it swaps.
+		 */
+		ipcMain.handle("quit-for-update-install", () => {
+			const marker = readPendingInstallMarker(this.markerDir());
+			logger.info(
+				"Quitting so the in-flight update install can finish.",
+				LogFileType.UPDATE_SERVICE,
+			);
+			/*
+			 * Recorded the way `quitForInFlightInstall` records it, and before the
+			 * ensure rather than after: this handler IS the decision, and this app's
+			 * quit runs the other one again on the way out (`before-quit` asks the
+			 * same question). Without the flag the second answer finds
+			 * `inFlightQuitWatchdogEnsured` false, decides again and ensures again -
+			 * two decisions and two watchdogs for one quit, where the window-close
+			 * gesture has always been one (UX U8). The flag is what makes "one
+			 * decision per quit" a property of the service rather than of which
+			 * gesture reached it.
+			 */
+			if (marker && !this.inFlightQuitWatchdogEnsured) {
+				this.inFlightQuitWatchdogEnsured = true;
+				this.ensureWatchdogAfterInFlightQuit(marker);
+			}
+			// Deferred so the reply reaches the renderer first: the button that
+			// asked for this reports a failure if the app quits mid-request, and
+			// the quit it asked for is happening either way.
+			setImmediate(() => app.quit());
 			return true;
 		});
 	}

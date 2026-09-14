@@ -197,49 +197,120 @@ export const STORIES = [
 	   exactly; only these three boundaries tell the two apart. */
 	["chat-tool-rows--trace-gap-boundaries", 1024, 860],
 
-	/* The run-details popover, in the REAL ChatHeader inside a chat-column ground.
-	   Sized to the panel rather than to a window: 384px of popover plus the 12px
-	   anchor offset leaves the left of a 560px frame showing the transcript it
-	   opens over, and around 500px tall is where the six content states stop
-	   being mostly ground - a popover on an empty page is what the uniformity
-	   ceiling exists to reject, and at 1280x900 four of those six came back at
-	   over 99% one colour.
-
-	   `crowded` and `todos-only` are taller on purpose: their subject is an overflow
-	   disclosure, and the panel's own ceiling is `min(60vh, 480px)`, so the viewport
-	   has to clear 800px tall before the panel reaches the 480px cap it is judged
-	   at. At a 480px viewport that cap is 288px, which puts the item cap's
-	   `+4 more` row past the fold of the very frame that exists to show it.
-
-	   `settled`, `header-trigger` and `header-trigger-failed` are captured narrow
-	   and short because the button in the header is the subject, not the panel: the
-	   first pair differs only in their fixture, which is what makes the presence and
-	   absence of the trigger readable as one comparison. */
-	["chat-run-details--both-in-flight", 560, 520],
-	["chat-run-details--subagents-only", 560, 440],
-	["chat-run-details--todos-only", 560, 820],
-	["chat-run-details--failure", 560, 460],
-	/* The unseen-failure state photographed OPEN — the regression frame for the
-	   panel unmounting while it is read, and the only frame whose trigger has a
-	   failure as its sole reason to exist. Sized like `both-in-flight`: a
-	   two-child roster over a closed three-item plan fits well inside the panel's
-	   `min(60vh, 480px)` ceiling, so this frame shows a panel that does NOT
-	   scroll, which is the other half of what `--crowded` proves about `type`
-	   (a short panel gains no scrollbar chrome). */
-	["chat-run-details--failure-unseen", 560, 520],
-	/* The three states a LIVE session cannot produce — a restored pause, a row the
-	   durable graph swept without an outcome, and a word from a runtime this
-	   renderer has not been taught. `§6.4` gives all nine states a mark and the
-	   six above are photographed; these three were glyphs and inks no frame had
-	   ever shown, so they are photographed here rather than asserted. Sized to
-	   their content like `subagents-only`: three single-line rows over no plan is
-	   the whole panel, and the panel is content-height, so a taller viewport buys
-	   ground and nothing else. */
-	["chat-run-details--restored-and-unrecognised", 560, 400],
-	["chat-run-details--crowded", 560, 820],
-	["chat-run-details--settled", 460, 220],
-	["chat-run-details--header-trigger", 460, 220],
-	["chat-run-details--header-trigger-failed", 460, 220],
+	/*
+	 * The run PANEL: the right pane that replaced the popover (`§ 3`), with its
+	 * roster, its child reader, its plan and its MCP section.
+	 *
+	 * The pane is 420px wide and the chat column takes the rest, so a frame with
+	 * the pane open is captured at 1280: a viewport narrower than the pane plus the
+	 * column's own floor photographs the narrow layout instead of the layout these
+	 * stories exist to show. `narrow-800` is the exception, captured at 800 on
+	 * purpose, because it IS the floor.
+	 *
+	 * The two header-only frames (`trigger-idle`, `mcp-auth-required-closed`) are
+	 * 460x220 for the reason the retired `header-trigger` pair was: the button and
+	 * its dot are the subject, the pane is shut, and a wide viewport of an empty
+	 * transcript under a trigger is mostly ground.
+	 */
+	["chat-run-panel--trigger-idle", 460, 220],
+	/* The trigger's HOVER grounds (design review round 2, D2-1). A pointer cannot
+	   be produced by a story, so the rig dispatches a real mouse move at the
+	   trigger before the shutter — the same CDP input the scroll-paging harness
+	   uses. The rest states are `trigger-idle` (closed, at rest) and `panel-empty`
+	   (open, at rest), so the four grounds are `canvas` / `elevated` /
+	   `accent-wash` / `accent-wash`, and the last one is the fix. */
+	[
+		"chat-run-panel--trigger-hover",
+		460,
+		220,
+		{ hover: "[data-run-panel-trigger]" },
+	],
+	[
+		"chat-run-panel--trigger-open-hover",
+		1280,
+		700,
+		{ hover: "[data-run-panel-trigger]" },
+	],
+	["chat-run-panel--panel-empty", 1280, 700],
+	["chat-run-panel--settled-history", 1280, 700],
+	["chat-run-panel--roster-only", 1280, 700],
+	/* The roster's MEMBERSHIP (`§ 4`): a payload carrying a child's own `bash`
+	   job, the session's own `bash` job and a nested `task` row, of which only
+	   the two top-level children are members. Every tool row is typed `bash` —
+	   `JobType` is `Literal["bash","task"]` (`harness/jobs.py:216`) — so the
+	   fixture cannot describe a tool row the runtime has no word for (round 3,
+	   R3-1). Round 1's Q1/Q2 frame. */
+	["chat-run-panel--roster-members", 1280, 820],
+	["chat-run-panel--todos-only", 1280, 820],
+	["chat-run-panel--both-in-flight", 1280, 700],
+	/* The disclosure, before and after: the pair is the whole claim that every
+	   child is reachable, and nine children at a cap of six is where they differ. */
+	["chat-run-panel--roster-capped", 1280, 820],
+	["chat-run-panel--roster-capped-expanded", 1280, 900],
+	/* The plan's two frames: every phase named, against the implicit phase beside
+	   a named one — which is the pair § 6.2's finding (2) is about. */
+	["chat-run-panel--todos-phased", 1280, 820],
+	["chat-run-panel--todos-implicit-phase", 1280, 820],
+	/* The swap in both directions, through the real `ChatContent`: the same slot
+	   with the canvas open and with the run panel open. */
+	["chat-run-panel--swap-canvas-open", 1280, 700],
+	["chat-run-panel--swap-run-open", 1280, 700],
+	/* The reader. `reader-live` here is the FIXTURE-backed rendering of a running
+	   child's page; the LIVE pair is a supplementary set the manifest declares
+	   (`chat-run-panel-live/`), because the drill-in is a flow against a real
+	   backend and no story can produce it (`§ 11.3`). */
+	["chat-run-panel--reader-live", 1280, 900],
+	["chat-run-panel--reader-settled", 1280, 900],
+	["chat-run-panel--reader-failed", 1280, 900],
+	["chat-run-panel--reader-nested", 1280, 900],
+	/* A member's page whose child count is ONE: the descend control's singular
+	   label and its accessible name, in the only state that can show either
+	   (round 1, Q8/U1-6), beside the peer stepper for the same child. */
+	["chat-run-panel--reader-child-controls", 1280, 900],
+	["chat-run-panel--reader-resumed", 1280, 900],
+	/* The brief, in the one state that renders it: a child whose transcript does
+	   NOT already carry the instruction, so the block is the only copy rather
+	   than the same sentence twice. */
+	["chat-run-panel--reader-brief", 1280, 900],
+	/* `§ 10.1`'s two absences, with their separate copy — the states that break,
+	   and the cheapest pair in the set to take. */
+	["chat-run-panel--reader-pending", 1280, 900],
+	["chat-run-panel--reader-gone", 1280, 900],
+	/* A row the wire left unaddressable (`session_id` null): the reader's own
+	   terminal line, reached through the breadcrumb or the sibling stepper
+	   because the roster does not offer the row at all. */
+	["chat-run-panel--reader-unaddressed", 1280, 900],
+	/* A child's own image: its row carries a digest and the reader resolves it
+	   through the child-scoped attachment op (`subagents.attachment`), which the
+	   story's relay stub answers with real bytes. The renderer's half of the
+	   path, in a picture. */
+	["chat-run-panel--reader-image", 1280, 900],
+	/* A lineage of depth 3 with the pane at its 320px floor: the width the
+	   breadcrumb's cap has to survive (round 2's open residual risk). */
+	["chat-run-panel--reader-deep-floor", 800, 700],
+	/* The MCP section, whose states a live session cannot produce on demand: an
+	   expired grant, a dead process, a word from a runtime this build has not been
+	   taught, and the cold payload of a session with no runtime. */
+	["chat-run-panel--mcp-all-connected", 1280, 700],
+	["chat-run-panel--mcp-auth-required-closed", 460, 220],
+	["chat-run-panel--mcp-auth-required", 1280, 700],
+	["chat-run-panel--mcp-disconnected", 1280, 700],
+	["chat-run-panel--mcp-unknown-status", 1280, 700],
+	["chat-run-panel--mcp-cold", 1280, 700],
+	["chat-run-panel--mcp-connecting", 1280, 700],
+	/* The dot's whole discipline for the MCP ledger, driven through the real
+	   trigger: the two frames below are the halves a single state cannot show —
+	   the acknowledgement HOLDING once the pane closes, and the re-arm after the
+	   server healed and broke again. Header-only, because both end with the pane
+	   shut; the story holds the shutter until the sequence has arrived. */
+	["chat-run-panel--mcp-dot-ack-acknowledged", 460, 220],
+	["chat-run-panel--mcp-dot-ack", 460, 220],
+	/* The window floor, and the two gated surfaces in one frame pair. */
+	["chat-run-panel--narrow-800", 800, 700],
+	["chat-run-panel--capability-absent", 1280, 700],
+	/* The pane's two animated glyphs with motion reduced: the running child's
+	   spinner and the MCP `connecting` mark. */
+	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
 	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
 	   `usage_panel.py`. Swept for the states that cannot be produced on demand
 	   live — an OAuth grant has to die, a provider has to go idle past its
@@ -302,6 +373,17 @@ export const STORIES = [
 	["chat-session-status-strip--context-tooltip", 860, 400],
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
+	/* The draft's three readings, which only exist on a session-less pane. Its
+	   frames are declared here rather than left to the live app because the
+	   preview op they need ships on a different branch: what a story can judge is
+	   the RENDERING rule (no cost chip, an empty ring, inert labels), and that is
+	   the part this set owns. The box is 900 - the composer's own width in the
+	   live frames - rather than the 720 its siblings use, so the draft and the
+	   populated session can be compared at one width. The tooltip story needs
+	   room for the panel above the trigger. */
+	["chat-session-status-strip--draft", 1000, 400],
+	["chat-session-status-strip--draft-tooltip", 1000, 520],
+	["chat-session-status-strip--commands-off", 1000, 300],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap
@@ -433,6 +515,16 @@ export const STORIES = [
 	// remedy, and the next start admitting the install did not take.
 	["common-updatenotification--install-blocked", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
+	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
+	// back (not a failure, and the one state whose action decides whether the
+	// install lives), and the failure afterwards that names the relaunch as what
+	// cancelled it. Both are states the operator saw the hard way.
+	["common-updatenotification--install-in-flight", 1280, 900],
+	[
+		"common-updatenotification--install-failed-cancelled-by-relaunch",
+		1280,
+		900,
+	],
 	// A server the app does not own, with the command that fits how it was
 	// installed (the pip line the operator was shown is gone) - from both
 	// producers of that state: one the app installed itself, and one it merely
@@ -475,6 +567,25 @@ export const STORIES = [
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
 	["chat-older-history-slot--transport-down", 900, 800],
+
+	/* The other half of the transcript's completeness: a reader who returns from
+	   another conversation, in the two states the fix is about. The claim is a
+	   COMPARISON — the same transcript with the rows written during the absence
+	   missing, then present — so the pair is what carries it, and both are built
+	   by the production reducer from wire-shaped frames (the way
+	   `chat-tool-rows--joined-mid-turn` is). Sized to their own content: the
+	   transcript is `overflow-auto` with `column-reverse`, so a viewport shorter
+	   than the rows photographs a scrolled corner of it and cuts off the oldest
+	   rows — which are exactly the ones in question. */
+	["chat-reconnect-gap--gap", 1024, 480],
+	["chat-reconnect-gap--restored", 1024, 560],
+	/* The state the report is about: the reader returns WHILE the turn runs. The
+	   restored rows carry a call that succeeded and one that failed, and the
+	   turn's own liveness line and running call sit below them. Captured in the
+	   two `localOperator` palettes only: the claim is about the ink/ground
+	   relationship of three states the brand pair already spans, and the palette
+	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
+	["chat-reconnect-gap--restored-running", 1024, 620],
 ];
 
 /**
@@ -482,13 +593,17 @@ export const STORIES = [
  * and hand back their declarations for the manifest this run will write.
  *
  * Why this is not a plain `rmSync(OUT)`: not every frame in the tree comes
- * from this script. A surface whose claim is a pointer hover or a click that
- * changes state cannot be photographed from Storybook, and some of them - the
- * chat sidebar among them - have no story at all, so a blanket wipe destroys
- * frames this script cannot re-derive. It used to destroy their manifest entry
- * in the same pass, which was the dangerous part: the frames and the count
- * that accounted for them vanished together, the arithmetic still balanced,
- * and `check-evidence` stayed green over evidence that no longer existed.
+ * from this script. A surface whose claim is a click that changes STORE state,
+ * or a flow against a live backend, cannot be photographed from Storybook, and
+ * some of them - the chat sidebar among them - have no story at all, so a
+ * blanket wipe destroys frames this script cannot re-derive. (A pointer HOVER
+ * used to belong on that list and no longer does: the tuple's `hover` option
+ * moves a real pointer through the input pipeline, so the trigger's hover
+ * grounds are swept frames now rather than a bolted-on set.) It used to destroy
+ * their manifest entry in the same pass, which was the dangerous part: the
+ * frames and the count that accounted for them vanished together, the
+ * arithmetic still balanced, and `check-evidence` stayed green over evidence
+ * that no longer existed.
  *
  * Returning the declarations rather than re-reading them at the write site
  * keeps one definition of what "preserved" means, so the directories kept on
@@ -856,8 +971,20 @@ const main = async () => {
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
-	for (const [story, width, height] of stories) {
+	for (const [story, width, height, options] of stories) {
 		for (const theme of themes) {
+			/*
+			 * `prefers-reduced-motion` is a VIEWPORT state rather than a story
+			 * state: the app's own cap is a media block in `styles/index.css`, so a
+			 * frame that faked the reduced style would be evidence about the fake.
+			 * Reset for every story, so one reduced-motion frame cannot leak its
+			 * media feature into the frames captured after it.
+			 */
+			await cdp.send("Emulation.setEmulatedMedia", {
+				features: options?.reducedMotion
+					? [{ name: "prefers-reduced-motion", value: "reduce" }]
+					: [],
+			});
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
 				width,
 				height,
@@ -1065,7 +1192,7 @@ const main = async () => {
 						   stubbed query, then an interaction on the element it
 						   produced - sets this on mount and clears it when the
 						   frame is worth taking. Stories that never set it are
-						   unaffected, so this costs nothing for the other 33
+						   unaffected, so this costs nothing for the other 37
 						   surfaces. */
 						if (document.documentElement.dataset.capturePending) return false;
 						/* Webfonts must have resolved before the shutter.
@@ -1179,6 +1306,52 @@ const main = async () => {
 				deviceScaleFactor: 1,
 				mobile: false,
 			});
+			/*
+			 * A POINTER HOVER, for the frames whose claim is a hover ground.
+			 *
+			 * `:hover` is browser state, not story state: no story can force it, and a
+			 * story that faked the class would be evidence about the fake. So the rig
+			 * moves the real pointer through the input pipeline
+			 * (`Input.dispatchMouseEvent`), which is what a trackpad does, and then
+			 * takes the frame with the pointer still there.
+			 *
+			 * Dispatched AFTER the content-height resize, because the coordinates are
+			 * viewport pixels read from the element itself and a resize moves the
+			 * element; and BEFORE the two paint frames, so the shutter opens on the
+			 * hovered state. A selector that matches nothing THROWS rather than
+			 * photographing the resting state, because the two are indistinguishable
+			 * in a directory listing.
+			 *
+			 * `modifiers`/`clickCount`/`buttons` are not optional in every Chromium
+			 * build: omitting them makes the bindings layer reject the call, which a
+			 * rig that ignored rejections would read as "no hover happened".
+			 */
+			if (options?.hover) {
+				const { result: target } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const el = document.querySelector(${JSON.stringify(options.hover)});
+						if (!el) return null;
+						const r = el.getBoundingClientRect();
+						return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+					})()`,
+				});
+				if (!target.value) {
+					throw new Error(
+						`${story} @ ${theme}: the hover selector \`${options.hover}\` matched nothing`,
+					);
+				}
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
@@ -1448,8 +1621,9 @@ const main = async () => {
 									head)
 								: head,
 							refreshedFrames:
-								(sameHead ? (previous.partialCapture?.refreshedFrames ?? 0) : 0) +
-								captured,
+								(sameHead
+									? (previous.partialCapture?.refreshedFrames ?? 0)
+									: 0) + captured,
 							refreshedStories: [
 								...new Set([...priorStories, ...stories.map(([id]) => id)]),
 							],

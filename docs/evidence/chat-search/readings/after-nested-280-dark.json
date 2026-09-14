@@ -1,0 +1,250 @@
+{
+ "atShotSnapshot": true,
+ "badges": [
+  {
+   "drawn": "Agents",
+   "name": "Agents"
+  },
+  {
+   "drawn": "Teams",
+   "name": "Teams"
+  },
+  {
+   "drawn": "All chats 3 3 matching",
+   "name": "All chats 3 matching"
+  },
+  {
+   "drawn": "New chat",
+   "name": "New chat"
+  },
+  {
+   "drawn": "Active chats",
+   "name": "Active chats"
+  },
+  {
+   "drawn": "Previous chats 3 3 matching",
+   "name": "Previous chats 3 matching"
+  }
+ ],
+ "bodyText": "Local Operator Chat My agents Agent hub Schedules Settings U User Chats Agents coder 3 Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 3 3 matching New chat Active chats Nothing r",
+ "capturedAgainst": "the 0.20.1 sync",
+ "panel": {
+  "right": 500,
+  "styleWidth": "280px",
+  "w": 280,
+  "x": 220
+ },
+ "rows": [
+  {
+   "content": 192,
+   "drawn": "coder 3",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -40,
+   "rowRight": 460,
+   "rowWidth": 200,
+   "slots": [],
+   "title": {
+    "client": 132,
+    "clipped": false,
+    "right": 416,
+    "scroll": 132,
+    "text": "coder",
+    "w": 132,
+    "x": 284
+   },
+   "tooltip": "New chat with coder"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Retention sweep notes \u00b7 Not sent yet",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [
+    {
+     "client": 76,
+     "clipped": false,
+     "right": 484,
+     "scroll": 76,
+     "text": "\u00b7 Not sent yet",
+     "w": 76.04,
+     "x": 407.96
+    }
+   ],
+   "title": {
+    "client": 120,
+    "clipped": true,
+    "right": 399.96,
+    "scroll": 138,
+    "text": "Retention sweep notes",
+    "w": 119.96,
+    "x": 280
+   },
+   "tooltip": "Retention sweep notes (coder): Recent, not sent yet"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conver",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 484,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 391.25
+    }
+   ],
+   "title": {
+    "client": 103,
+    "clipped": true,
+    "right": 383.25,
+    "scroll": 354,
+    "text": "Migrate the billing reconciliation pipeline to the new ledger",
+    "w": 103.25,
+    "x": 280
+   },
+   "tooltip": "Migrate the billing reconciliation pipeline to the new ledger (coder): Recent, not sent yet"
+  },
+  {
+   "content": 224,
+   "drawn": "Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+   "nested": true,
+   "padLeft": "28px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -12,
+   "rowRight": 488,
+   "rowWidth": 256,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 484,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 391.25
+    }
+   ],
+   "title": {
+    "client": 103,
+    "clipped": true,
+    "right": 383.25,
+    "scroll": 116,
+    "text": "Refactor the loader",
+    "w": 103.25,
+    "x": 280
+   },
+   "tooltip": "Refactor the loader (coder): Recent"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Retention sweep notes \u00b7 Not sent yet",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 76,
+     "clipped": false,
+     "right": 488,
+     "scroll": 76,
+     "text": "\u00b7 Not sent yet",
+     "w": 76.04,
+     "x": 411.96
+    }
+   ],
+   "title": {
+    "client": 152,
+    "clipped": false,
+    "right": 403.96,
+    "scroll": 152,
+    "text": "Retention sweep notes",
+    "w": 151.96,
+    "x": 252
+   },
+   "tooltip": "Retention sweep notes (coder): Recent, not sent yet"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conver",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 488,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 395.25
+    }
+   ],
+   "title": {
+    "client": 135,
+    "clipped": true,
+    "right": 387.25,
+    "scroll": 354,
+    "text": "Migrate the billing reconciliation pipeline to the new ledger",
+    "w": 135.25,
+    "x": 252
+   },
+   "tooltip": "Migrate the billing reconciliation pipeline to the new ledger (coder): Recent, not sent yet"
+  },
+  {
+   "content": 256,
+   "drawn": "Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 492,
+   "rowWidth": 264,
+   "slots": [
+    {
+     "client": 93,
+     "clipped": false,
+     "right": 488,
+     "scroll": 93,
+     "text": "\u00b7 in conversation",
+     "w": 92.75,
+     "x": 395.25
+    }
+   ],
+   "title": {
+    "client": 135,
+    "clipped": false,
+    "right": 387.25,
+    "scroll": 135,
+    "text": "Refactor the loader",
+    "w": 135.25,
+    "x": 252
+   },
+   "tooltip": "Refactor the loader (coder): Recent"
+  }
+ ],
+ "searchInFlight": false,
+ "sidebarText": "Chats Agents coder 3 Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation Create agent Teams Create team All chats 3 3 matching New chat Active chats Nothing running right now. Previous chats 3 3 matching Recent Retention sweep notes \u00b7 Not sent yet Recent Migrate the billing reconciliation pipeline to the new ledger \u00b7 in conversation , matched in conversation Recent Refactor the loader \u00b7 in conversation , matched in conversation",
+ "url": "/?measure=1&width=280&q=retention&drafts=a1b2c3d4e5f1,a1b2c3d4e5f7&shot=after-nested-280-dark",
+ "viewport": "1440x873@2"
+}

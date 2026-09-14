@@ -144,7 +144,10 @@ test("used over used+remaining when there is no limit to divide by", () => {
 		0.25,
 	);
 	// Both halves zero: the sum is not positive, so there is nothing to state.
-	assert.equal(fractionOf(amount({ used: 0, remaining: 0, unit: "usd" })), null);
+	assert.equal(
+		fractionOf(amount({ used: 0, remaining: 0, unit: "usd" })),
+		null,
+	);
 });
 
 test("a fraction is never guessed", () => {
@@ -176,11 +179,15 @@ test("an unmeasurable amount is unknown, not ok", () => {
 test("a vendor status wins over the derived one", () => {
 	// `UsageLimit.effective_status()` is `self.status or self.amount.status()`.
 	assert.equal(
-		effectiveStatus(limit({ status: "exhausted", amount: amount({ used_fraction: 0.1 }) })),
+		effectiveStatus(
+			limit({ status: "exhausted", amount: amount({ used_fraction: 0.1 }) }),
+		),
 		"exhausted",
 	);
 	assert.equal(
-		effectiveStatus(limit({ status: null, amount: amount({ used_fraction: 0.9 }) })),
+		effectiveStatus(
+			limit({ status: null, amount: amount({ used_fraction: 0.9 }) }),
+		),
 		"warning",
 	);
 });
@@ -211,7 +218,9 @@ test("a vendor status the view has no colour for survives as the vendor's word",
 	assert.equal(stats.unreported, 0);
 	// An empty string is not a stated status: Python's `or` treats it as absent.
 	assert.equal(
-		effectiveStatus(limit({ status: "", amount: amount({ used_fraction: 0.9 }) })),
+		effectiveStatus(
+			limit({ status: "", amount: amount({ used_fraction: 0.9 }) }),
+		),
 		"warning",
 	);
 	assert.equal(effectiveStatus(limit({ status: "unknown" })), "unknown");
@@ -280,9 +289,7 @@ test("a large amount formats exactly instead of throwing or lying", () => {
 	// it and the dialog, so the whole view unmounted rather than one row being
 	// wrong. A fetcher's contract is that a number is a number; the Python this
 	// ports never raises for a finite float.
-	assert.doesNotThrow(() =>
-		formatAmount(amount({ used: 1e21, unit: "usd" })),
-	);
+	assert.doesNotThrow(() => formatAmount(amount({ used: 1e21, unit: "usd" })));
 	assert.equal(
 		formatAmount(amount({ used: 1e21, unit: "usd" })),
 		"1000000000000000000000.00 USD",
@@ -366,7 +373,10 @@ test("other units use %g and their own label", () => {
 	);
 	// `unknown` has no label (a CNY balance rides in the row's label instead),
 	// so the number prints bare rather than wearing a unit it did not earn.
-	assert.equal(formatAmount(amount({ remaining: 88.25, unit: "unknown" })), "88.25 left");
+	assert.equal(
+		formatAmount(amount({ remaining: 88.25, unit: "unknown" })),
+		"88.25 left",
+	);
 });
 
 test("a remaining-only balance still prints its number", () => {
@@ -611,9 +621,21 @@ test("an exhausted per-model cap is not counted as the account being dead", () =
 	const reports = [
 		report({
 			limits: [
-				limit({ id: "weekly", amount: amount({ used_fraction: 0.4 }), shared: true }),
-				limit({ id: "opus", tier: "opus", amount: amount({ used_fraction: 1 }) }),
-				limit({ id: "sonnet", tier: "sonnet", amount: amount({ used_fraction: 1 }) }),
+				limit({
+					id: "weekly",
+					amount: amount({ used_fraction: 0.4 }),
+					shared: true,
+				}),
+				limit({
+					id: "opus",
+					tier: "opus",
+					amount: amount({ used_fraction: 1 }),
+				}),
+				limit({
+					id: "sonnet",
+					tier: "sonnet",
+					amount: amount({ used_fraction: 1 }),
+				}),
 			],
 		}),
 	];
@@ -621,15 +643,18 @@ test("an exhausted per-model cap is not counted as the account being dead", () =
 	assert.equal(counted.windows, 3);
 	assert.equal(counted.exhausted, 0);
 	assert.equal(counted.tierExhausted, 2);
-	assert.equal(
-		describeStats(counted),
-		"3 windows · 2 model caps exhausted",
-	);
+	assert.equal(describeStats(counted), "3 windows · 2 model caps exhausted");
 	// An account-wide window at its cap IS the account being blocked, and keeps
 	// the unqualified word.
 	const blocked = collectStats([
 		report({
-			limits: [limit({ id: "weekly", shared: true, amount: amount({ used_fraction: 1 }) })],
+			limits: [
+				limit({
+					id: "weekly",
+					shared: true,
+					amount: amount({ used_fraction: 1 }),
+				}),
+			],
 		}),
 	]);
 	assert.equal(blocked.exhausted, 1);
@@ -698,7 +723,10 @@ test("the stale threshold is the cache TTL plus its jitter", () => {
 	// minutes old.
 	assert.equal(STALE_BEHIND_MS, 375_000);
 	const header = NOW;
-	assert.equal(isStale(report({ fetched_at: header - 374_999 }), header), false);
+	assert.equal(
+		isStale(report({ fetched_at: header - 374_999 }), header),
+		false,
+	);
 	assert.equal(isStale(report({ fetched_at: header - 375_000 }), header), true);
 });
 
@@ -791,7 +819,10 @@ test("the newest confirmation is the max, so one stuck account cannot pin the se
 	// A report with no stamp at all contributes nothing rather than zero, which
 	// as a `max` baseline would be harmless but as a `min` would be catastrophic.
 	assert.equal(
-		newestConfirmedMs([report({ fetched_at: 0 }), report({ fetched_at: NOW - 60_000 })], NOW),
+		newestConfirmedMs(
+			[report({ fetched_at: 0 }), report({ fetched_at: NOW - 60_000 })],
+			NOW,
+		),
 		NOW - 60_000,
 	);
 	// An empty set has no confirmation to measure from and falls back to now.
@@ -829,7 +860,10 @@ test("only a CONFIRMED report can be the freshness baseline", () => {
 	assert.equal(newestConfirmedMs(withStub, NOW), fortyMinutesAgo);
 	// And the consequence the user reads: the set is described at its true age
 	// rather than as `just now`.
-	assert.match(describeSource("cached", newestConfirmedMs(withStub, NOW), NOW), /40m ago/);
+	assert.match(
+		describeSource("cached", newestConfirmedMs(withStub, NOW), NOW),
+		/40m ago/,
+	);
 
 	// A dead grant is tested FIRST and separately in the Python, because it
 	// carries neither a streak nor the unavailable flag — it never enters the
@@ -837,7 +871,12 @@ test("only a CONFIRMED report can be the freshness baseline", () => {
 	// being the least confirmed state there is.
 	const withDeadGrant = [
 		confirmed,
-		report({ provider: "xai", fetched_at: NOW, credential_invalid: true, limits: [] }),
+		report({
+			provider: "xai",
+			fetched_at: NOW,
+			credential_invalid: true,
+			limits: [],
+		}),
 	];
 	assert.equal(newestConfirmedMs(withDeadGrant, NOW), fortyMinutesAgo);
 
@@ -883,7 +922,10 @@ test("a wholly degraded set reports the age of its last-good numbers", () => {
 		}),
 	];
 	assert.equal(newestConfirmedMs(degraded, NOW), anHourAgo);
-	assert.match(describeSource("cached", newestConfirmedMs(degraded, NOW), NOW), /1h ago/);
+	assert.match(
+		describeSource("cached", newestConfirmedMs(degraded, NOW), NOW),
+		/1h ago/,
+	);
 
 	// Nothing confirmed AND no failing report carries limits: real stamps exist,
 	// but every one of them dates a failed probe, so the wall clock is the only
@@ -949,7 +991,10 @@ test("a dead grant names the command that fixes it, and outranks staleness", () 
 /* --------------------------------------------------- rows and whole blocks */
 
 test("an unmeasurable window renders no fill and the words not reported", () => {
-	const row = limitRow(limit({ label: "Balance", amount: amount({ remaining: 12, unit: "usd" }) }), NOW);
+	const row = limitRow(
+		limit({ label: "Balance", amount: amount({ remaining: 12, unit: "usd" }) }),
+		NOW,
+	);
 	assert.equal(row.fraction, null);
 	assert.equal(row.amount, "12.00 USD left");
 	assert.equal(row.status, "unknown");
@@ -1077,7 +1122,10 @@ test("a negative percent that rounds to zero keeps Python's sign", () => {
 	// `f"{-0.49999:.0f}"` is `-0`, and the module's contract is "if you change
 	// anything here, change it there too". Cosmetic, but a divergence from the
 	// stated source of truth is exactly what this file exists to catch.
-	assert.equal(formatAmount(amount({ used: -0.49999, unit: "percent" })), "-0%");
+	assert.equal(
+		formatAmount(amount({ used: -0.49999, unit: "percent" })),
+		"-0%",
+	);
 	assert.equal(formatAmount(amount({ used: 0, unit: "percent" })), "0%");
 });
 

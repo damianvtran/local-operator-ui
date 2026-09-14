@@ -237,6 +237,16 @@ export type EffortState = {
 	 * rung list has anything to add.
 	 */
 	knownLadder: boolean;
+	/**
+	 * Whether the LEVEL on the chip is a fact about the model, as opposed to the
+	 * synthesised `unknown` a cold snapshot produces.
+	 *
+	 * Distinct from `knownLadder`, which is about the RUNGS: a spec can report
+	 * an explicit level while carrying no ladder, and that level is known. A
+	 * surface that must not print a level nobody has (a draft, which has no
+	 * owner to resolve one) asks this rather than either of the other two flags.
+	 */
+	levelKnown: boolean;
 	/** Why the level reads the way it does, for the tooltip. */
 	detail: string;
 };
@@ -344,6 +354,7 @@ export function effortState(
 			adjustable: ladder === null || ladder.length > 0,
 			// Known only when this dump actually carried the rungs.
 			knownLadder: Boolean(ladder && ladder.length > 0),
+			levelKnown: true,
 			detail:
 				ladder && ladder.length > 0
 					? `Reasoning effort. This model offers ${ladder.join(", ")}.`
@@ -359,6 +370,7 @@ export function effortState(
 			label: "auto",
 			adjustable: true,
 			knownLadder: true,
+			levelKnown: true,
 			detail: `No level is set, so this model runs at its own default${
 				fallbackDefault ? ` (${fallbackDefault})` : ""
 			}. It offers ${ladder.join(", ")}.`,
@@ -400,6 +412,10 @@ export function effortState(
 			adjustable: true,
 			// The whole point of this branch: the ladder is NOT known.
 			knownLadder: false,
+			// The level itself is synthesised, not reported: this branch exists
+			// because the spec carries no metadata at all. A surface with no owner
+			// to resolve one (a draft) must render nothing rather than this word.
+			levelKnown: false,
 			/*
 			 * Promises only what the click delivers. Round 2 said "run /effort",
 			 * round 3 said "open this to see the levels now" - and opening the
@@ -419,6 +435,7 @@ export function effortState(
 			// The spec DID carry the ladder; it is empty. That is knowledge, and
 			// it is the only source entitled to make this control read-only.
 			knownLadder: true,
+			levelKnown: true,
 			detail:
 				"This model reasons, but exposes no effort levels to choose between.",
 		};
@@ -431,6 +448,7 @@ export function effortState(
 			label: fallbackDefault,
 			adjustable: false,
 			knownLadder: false,
+			levelKnown: true,
 			detail:
 				"The level this model runs at by default. This backend does not report which other levels it accepts.",
 		};

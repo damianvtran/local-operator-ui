@@ -25,6 +25,10 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
+import {
+	type SessionFailureNotice,
+	streamFailureNotice,
+} from "../../../../../shared/desktop-stream-notice";
 import "../../../styles/index.css";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
@@ -84,7 +88,7 @@ const Frame = ({
 	starting = false,
 	startingAfterId = null,
 	status = "live",
-	error = null,
+	failure = null,
 	isSmallView = false,
 	openRows = false,
 }: {
@@ -109,7 +113,8 @@ const Frame = ({
 	startingAfterId?: string | null;
 	/** The stream's own state, so the clears this rung has can be photographed. */
 	status?: "connecting" | "live" | "reconnecting" | "unavailable";
-	error?: string | null;
+	/** The published failure notice, as the stream hands it over. */
+	failure?: SessionFailureNotice | null;
 	/** The small-view wrapper of the same transcript. */
 	isSmallView?: boolean;
 	/**
@@ -151,7 +156,8 @@ const Frame = ({
 				containerRef={containerRef}
 				isSmallView={isSmallView}
 				status={status}
-				error={error}
+				failure={failure}
+				onReconnect={() => {}}
 			/>
 		</div>
 	);
@@ -969,7 +975,7 @@ export const AdmittedSendTransportDown: Story = {
 			starting
 			startingAfterId="s1"
 			status="unavailable"
-			error="The connection to the local operator was lost. Reopen the session to reconnect."
+			failure={streamFailureNotice(null)}
 			height={220}
 			records={
 				appendPendingUser(

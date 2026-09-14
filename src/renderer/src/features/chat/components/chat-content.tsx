@@ -23,7 +23,10 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import {
+	CanonicalTranscript,
+	canonicalTranscriptSpeaks,
+} from "../canonical/canonical-transcript";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -42,7 +45,7 @@ import {
 } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
-import type { RunDetails } from "./run-details";
+import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -131,6 +134,8 @@ type ChatContentProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/** A draft pane's readings, which have no session behind them. */
+		draft?: boolean;
 	};
 	/**
 	 * Present when the conversation is a canonical backend session: the
@@ -168,6 +173,28 @@ type ChatContentProps = {
 	 * so the legacy transcript grows no button and no reserved space.
 	 */
 	runDetails?: RunDetails | null;
+	/**
+	 * The session's configured MCP servers, for the panel's MCP section and the
+	 * trigger's attention dot.
+	 *
+	 * Read by the page (`useRunPanelMcpServers`) rather than by either consumer,
+	 * because the dot and the section must answer from ONE list: a trigger with
+	 * its own copy could acknowledge a row the panel never drew. Empty when the
+	 * capability is absent or nothing is configured, which is also what makes the
+	 * section render as absence.
+	 */
+	mcpServers?: readonly McpServerRow[];
+	/**
+	 * Whether a child's row can be opened: the `subagent_transcript` capability
+	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
+	 * inert.
+	 */
+	childrenOpenable?: boolean;
+	/**
+	 * Per-child `subagent_*` pulse counters, from the canonical stream, for the
+	 * reader's refresh cadence (`§ 5.3`).
+	 */
+	pulses?: Readonly<Record<string, number>>;
 };
 
 /**
@@ -182,6 +209,32 @@ const EMPTY_MESSAGES: Message[] = [];
 const CANONICAL_NONEMPTY: Message[] = [
 	{ id: "canonical", role: "system", timestamp: new Date(0) },
 ];
+/** One shared empty map, so an absent pulse prop costs no render churn. */
+const EMPTY_PULSES: Readonly<Record<string, number>> = {};
+/**
+ * The composer band's only question is whether anything is painted ABOVE it,
+ * and a readable failure notice counts: while the transcript is saying why it
+ * cannot be read (and offering a way back), letting the band grow would take the
+ * free height for a greeting the app has no business showing, and would put the
+ * notice and the composer in competition for the same space.
+ *
+ * The SAME predicate drives the transcript's own collapse stand-down, so the
+ * pane and the band cannot disagree about whether the pane has something to
+ * say (design round 1, D3 added the reconnecting window to it: during the whole
+ * retry budget the pane was 0px tall and the "Reconnecting" line was clipped,
+ * while the band was free to paint the greeting over a conversation nobody had
+ * read).
+ */
+const canonicalSpeaking = (
+	canonical?: ChatContentProps["canonical"],
+): boolean =>
+	Boolean(
+		canonical &&
+			canonicalTranscriptSpeaks({
+				status: canonical.view.status,
+				failure: canonical.view.failure,
+			}),
+	);
 
 const defaultCanvasState = {
 	isOpen: false,
@@ -228,6 +281,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		sessionStatus,
 		canonical,
 		runDetails,
+		mcpServers = [],
+		childrenOpenable = false,
+		pulses,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -321,6 +377,39 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 		const setFiles = useCanvasStore((s) => s.setFiles);
 
+		/*
+		 * `isCanvasOpen` is read once, above, by the Files view's own predicate; the run
+		 * pane reads the same store field, so the rebase's duplicate of that line is
+		 * dropped here rather than shadowing it (both sides had added the declaration
+		 * for their own reason, which is what a union of the two sides has to settle).
+		 */
+		const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
+		const runPanelWidth = useUiPreferencesStore((s) => s.runPanelWidth);
+		const setRunPanelWidth = useUiPreferencesStore((s) => s.setRunPanelWidth);
+		const restoreDefaultRunPanelWidth = useUiPreferencesStore(
+			(s) => s.restoreDefaultRunPanelWidth,
+		);
+		const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
+		/*
+		 * The pane's VIEW state — which of its two views is showing — and the reason it
+		 * lives HERE rather than inside `RunPanel` (`§ 3.4`).
+		 *
+		 * The trigger's attention dot has to know whether the list is on screen, because
+		 * a reader replaces the panel's body wholesale: acknowledging on "the panel is
+		 * open" alone would mark a failure or a dropped MCP server as seen the moment it
+		 * landed behind a reader the user was reading. This component renders BOTH the
+		 * header (and therefore the trigger) and the pane, so it is the lowest point
+		 * that can answer the question once for both.
+		 */
+		const [readerChildId, setReaderChildId] = useState<string | null>(null);
+		const listOnScreen = isRunPanelOpen && readerChildId === null;
+		/*
+		 * Closing the pane drops the reader: the child belongs to one session's lineage,
+		 * and a reader left set would acknowledge its row while nothing is on screen.
+		 */
+		useEffect(() => {
+			if (!isRunPanelOpen) setReaderChildId(null);
+		}, [isRunPanelOpen]);
 		const openTabs = (canvasState ?? defaultCanvasState).openTabs;
 		const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
 		const files = (canvasState ?? defaultCanvasState).files;
@@ -332,6 +421,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// No effect needed: always use the value from the store, or fallback to default if 0
 		const effectiveCanvasPanelWidth =
 			canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
+		// The run panel's own zero-fallback is its default rather than the canvas's
+		// 450: the two panes are deliberately different widths, and an unset
+		// preference should land the run panel on the design's 420.
+		const effectiveRunPanelWidth = runPanelWidth === 0 ? 420 : runPanelWidth;
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -450,6 +543,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							fileCount={mentionedFileCount}
+							mcpServers={mcpServers}
+							listOnScreen={listOnScreen}
+							readerChildId={readerChildId}
 						/>
 						{/* Chat Options Sidebar */}
 						{!canonical && (
@@ -481,7 +577,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											containerRef={messagesContainerRef}
 											isSmallView={isSmallView}
 											status={canonical.view.status}
-											error={canonical.view.error}
+											failure={canonical.view.failure}
+											onReconnect={canonical.view.retry}
 										/>
 									) : (
 										<MessagesView
@@ -523,17 +620,22 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								messages={
 									canonical
 										? /*
-											 * A send this pane has admitted counts as content here, and that is a
-											 * correction rather than a nicety: with zero records the greeting's
-											 * branch renders into the column and the transcript is left no
-											 * height at all (`canonical-transcript.tsx`'s `collapsed`), so the
-											 * rung existed in the DOM through the whole cold engage and never
-											 * painted a pixel — the operator's dead-air window, unchanged
+											 * A send this pane has admitted counts as content here, and that is
+											 * a correction rather than a nicety: with zero records the
+											 * greeting's branch renders into the column and the transcript is
+											 * left no height at all (`canonical-transcript.tsx`'s `collapsed`),
+											 * so the rung existed in the DOM through the whole cold engage and
+											 * never painted a pixel — the operator's dead-air window, unchanged
 											 * (QA round 1, Q1). The pane is not empty once a message is on its
 											 * way: "What can I help you with today?" and the suggestion chips
 											 * are claims about a conversation that has already started.
+											 *
+											 * `canonicalSpeaking` is the other half of the same question, for
+											 * the states where the pane speaks for itself (a failure notice, a
+											 * reconnect) rather than answering anybody.
 											 */
 											canonical.view.transcript.records.length > 0 ||
+											canonicalSpeaking(canonical) ||
 											canonical.starting
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
@@ -548,9 +650,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// before it knew, then repainted when history arrived
 								// (design D7's hydration note). Passing the real state
 								// lets the composer wait instead of guessing.
-								isHydrating={
-									canonical ? canonical.view.status === "connecting" : false
-								}
+								// The rule is NOT "the stream is connecting" any more. That
+								// asked the transport a question the reader was asking about
+								// the CONVERSATION: a stream that failed, or one whose
+								// history read did, is not "connecting", so the composer
+								// asserted the empty-conversation greeting over rows that
+								// had existed the whole time. `hydrated` answers the reader's
+								// actual question instead - has an authoritative page been
+								// applied for this session - so the loading state holds
+								// until the app genuinely knows, whether that takes a retry
+								// or not.
+								isHydrating={canonical ? !canonical.view.hydrated : false}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
@@ -581,6 +691,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							maxWidth={1200}
 							side="left"
 							onDoubleClick={restoreDefaultCanvasPanelWidth}
+							label="Resize canvas"
 						/>
 						<div
 							ref={canvasContainerRef}
@@ -615,6 +726,64 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
+							/>
+						</div>
+					</>
+				)}
+
+				{/*
+				 * The run panel: the SAME slot, mutually exclusive with the canvas by
+				 * construction (`setRunPanelOpen`/`setCanvasOpen` each clear the other), so
+				 * only one of these two blocks can ever be mounted and neither needs a
+				 * guard against the other. It reuses the canvas's own three pieces — the
+				 * divider, the pinned-width wrapper with the `border-l` seam, and a root
+				 * element — because the pane mechanics are the slot's rather than either
+				 * occupant's. The divider takes its own label: two separators named
+				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
+				 *
+				 * The width range is the design's (320/420/640), narrower than the canvas's
+				 * because a roster and a prose transcript do not need a document pane's
+				 * room, and the pane does NOT auto-hide at narrow widths: the operator
+				 * asked for persistence, and a pane that disappears below a breakpoint is
+				 * the defect this replaces in a new costume.
+				 */}
+				{isRunPanelOpen && runDetails && (
+					<>
+						<ResizableDivider
+							sidebarWidth={effectiveRunPanelWidth}
+							onSidebarWidthChange={setRunPanelWidth}
+							minWidth={320}
+							maxWidth={640}
+							side="left"
+							onDoubleClick={restoreDefaultRunPanelWidth}
+							label="Resize run details"
+						/>
+						<div
+							style={{
+								minWidth: effectiveRunPanelWidth,
+								width: effectiveRunPanelWidth,
+							}}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+						>
+							<RunPanel
+								details={runDetails}
+								mcpServers={mcpServers}
+								sessionId={canonical?.view.frontend?.session_id ?? null}
+								pulses={pulses ?? EMPTY_PULSES}
+								childrenOpenable={childrenOpenable}
+								/*
+								 * The pane's own width, in pixels, and the SAME value the
+								 * wrapper's `width`/`minWidth` take above — not a second
+								 * reading of the preference. The pane owns its width; the
+								 * sections whose tallies are budgeted against it (`§ 8`)
+								 * receive it rather than measuring themselves, so a section
+								 * can never disagree with the pane it is drawn in at the
+								 * window floor.
+								 */
+								paneWidth={effectiveRunPanelWidth}
+								readerChildId={readerChildId}
+								onReaderChildChange={setReaderChildId}
+								onClose={() => setRunPanelOpen(false)}
 							/>
 						</div>
 					</>

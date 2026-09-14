@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
-import { after, before, test } from "node:test";
+import { createServer } from "node:http";
 import { resolve } from "node:path";
+import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -306,6 +306,80 @@ test("an unpaired backend refuses the attachment fetch rather than calling it un
 		null,
 	);
 	assert.equal(response.status, 503);
+	assert.equal(seen.length, count);
+});
+
+test("a CHILD's attachment fetch reaches the child-scoped path and nothing else", async () => {
+	// The reader's rows reference digests in the shared store, and the parent's
+	// route refuses them: it takes the session whose transcript holds the
+	// reference, which a child session is not. So the two ids in the PATH are the
+	// whole contract, and a wiring regression that dropped back to the parent's op
+	// would 404 in the app while every renderer test stayed green.
+	const digest = "0f1e2d3c4b5a69788796a5b4c3d2e1f0";
+	const response = await requestDesktopMedia(
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "fedcba987654",
+			digest,
+		},
+		null,
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(response.kind, "bytes");
+	assert.deepEqual(Buffer.from(response.data), PNG);
+	const last = seen.at(-1);
+	assert.equal(
+		last.path,
+		`/v1/desktop/sessions/0123456789ab/children/fedcba987654/attachments/${digest}`,
+	);
+	assert.equal(last.method, "GET");
+	assert.equal(last.authorization, `Bearer ${token}`);
+});
+
+test("a renderer cannot steer the child attachment fetch either", async () => {
+	const count = seen.length;
+	for (const request of [
+		// Traversal in the child id, which is the identifier this op adds.
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "../../admin",
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "a".repeat(31),
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "FEDCBA987654",
+			digest: "a".repeat(32),
+		},
+		// The parent op cannot be reached by omitting the child id.
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			digest: "a".repeat(32),
+		},
+		// `.strict()`, as above: no smuggled path, and no parent field.
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "fedcba987654",
+			digest: "a".repeat(32),
+			path: "/v1/anything",
+		},
+	]) {
+		const response = await requestDesktopMedia(request, null, url, token);
+		assert.equal(response.status, 422, JSON.stringify(request));
+		assert.equal(response.kind, "error");
+	}
 	assert.equal(seen.length, count);
 });
 
@@ -747,10 +821,10 @@ const EDIT_DIFF = [
 	"@@ -18,7 +18,8 @@ export function diffCounts(details: unknown) {",
 	" \tconst source = (details ?? {}) as Record<string, unknown>;",
 	"-\tconst count = (value: unknown) =>",
-	"-\t\ttypeof value === \"number\" && value > 0 ? value : 0;",
+	'-\t\ttypeof value === "number" && value > 0 ? value : 0;',
 	"+\tconst count = (value: unknown) =>",
-	"+\t\ttypeof value === \"number\" && Number.isInteger(value) && value > 0;",
-	' \treturn { added: count(source.added), removed: count(source.removed) };',
+	'+\t\ttypeof value === "number" && Number.isInteger(value) && value > 0;',
+	" \treturn { added: count(source.added), removed: count(source.removed) };",
 	" }",
 ];
 
@@ -968,7 +1042,9 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 	// glyph already carries the outcome, and a non-zero exit is what turns that
 	// glyph into a cross.
 	assert.equal(
-		outputFallbackLine("exit code: 0\n--- stdout ---\n=== downloads ===\nLO.app"),
+		outputFallbackLine(
+			"exit code: 0\n--- stdout ---\n=== downloads ===\nLO.app",
+		),
 		"… === downloads ===",
 		"the status line and the section marker both step aside",
 	);
@@ -978,13 +1054,18 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 	);
 	// Observed in a real transcript: a killed call writes the marker without a
 	// number at all, and an indented one.
-	assert.equal(outputFallbackLine("      exit code\n--- stdout ---\nreal"), "… real");
+	assert.equal(
+		outputFallbackLine("      exit code\n--- stdout ---\nreal"),
+		"… real",
+	);
 
 	// The marker is what keeps a line of the RESULT from reading as the call's
 	// own object in that column — the design round's D1. Every line that reaches
 	// the column through this path carries it.
 	assert.ok(
-		outputFallbackLine("exit code: 0\n--- stdout ---\n=== x ===").startsWith("… "),
+		outputFallbackLine("exit code: 0\n--- stdout ---\n=== x ===").startsWith(
+			"… ",
+		),
 	);
 
 	// The producer's shape for a call that printed nothing, verbatim
@@ -1016,7 +1097,10 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 		outputFallbackLine("exit code: 0 and then some"),
 		"… exit code: 0 and then some",
 	);
-	assert.equal(outputFallbackLine("200 match(es) for 'wake'"), "… 200 match(es) for 'wake'");
+	assert.equal(
+		outputFallbackLine("200 match(es) for 'wake'"),
+		"… 200 match(es) for 'wake'",
+	);
 
 	// Nothing to offer is `null`, not an empty string: the row must be able to
 	// tell "there was no stand-in" from "the stand-in is blank".

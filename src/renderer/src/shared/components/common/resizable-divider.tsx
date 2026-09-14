@@ -89,6 +89,17 @@ export type ResizableDividerProps = {
 	 * Optional double-click handler for restoring default width
 	 */
 	onDoubleClick?: () => void;
+	/**
+	 * The separator's accessible name.
+	 *
+	 * REQUIRED rather than defaulted, because a default is how the two right-slot
+	 * panes ended up sharing one hard-coded `"Resize canvas"`: the run panel's
+	 * handle would have announced the canvas while the canvas's own handle sat
+	 * 8px away with the same name, leaving a screen-reader user with two
+	 * indistinguishable separators and no way to tell which pane each sized. A
+	 * caller that cannot name what it is sizing has not finished wiring the pane.
+	 */
+	label: string;
 };
 
 /**
@@ -102,6 +113,7 @@ export const ResizableDivider = ({
 	maxWidth = 600,
 	side = "right",
 	onDoubleClick,
+	label,
 }: ResizableDividerProps) => {
 	const [hovering, setHovering] = useState(false);
 	const [dragging, setDragging] = useState(false);
@@ -224,7 +236,7 @@ export const ResizableDivider = ({
 			 */}
 			<div
 				role="separator"
-				aria-label="Resize canvas"
+				aria-label={label}
 				aria-orientation="vertical"
 				aria-valuenow={Math.round(sidebarWidth)}
 				aria-valuemin={minWidth}

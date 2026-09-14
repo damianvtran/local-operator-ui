@@ -1,0 +1,46 @@
+{
+ "badges": null,
+ "panel": {
+  "right": 460,
+  "styleWidth": "240px",
+  "w": 240,
+  "x": 220
+ },
+ "rows": [
+  {
+   "content": 216,
+   "drawn": "Recent Ship the search endpoint \u00b7 release-pod-observability-remediation-and-inci",
+   "nested": false,
+   "padLeft": "4px",
+   "rowOverflowsItself": false,
+   "rowPastPanelRight": -8,
+   "rowRight": 452,
+   "rowWidth": 224,
+   "slots": [
+    {
+     "client": 97,
+     "clipped": true,
+     "right": 448,
+     "scroll": 390,
+     "text": "\u00b7 release-pod-observability-remediation-and-incident-response-lead",
+     "w": 97.2,
+     "x": 350.8
+    }
+   ],
+   "title": {
+    "client": 91,
+    "clipped": true,
+    "right": 342.8,
+    "scroll": 151,
+    "text": "Ship the search endpoint",
+    "w": 90.8,
+    "x": 252
+   },
+   "tooltip": "Ship the search endpoint (release-pod-observability-remediation-and-incident-response-lead): Recent"
+  }
+ ],
+ "searchInFlight": false,
+ "sidebarText": "Chats Agents Create agent Teams Create team All chats 1 matching New chat Active chats Nothing running right now. Previous chats 1 matching Recent Ship the search endpoint \u00b7 release-pod-observability-remediation-and-incident-response-lead",
+ "url": "/?measure=1&width=240&q=endpoint&shot=after-longbinding-240-dark",
+ "viewport": "1440x817@2"
+}

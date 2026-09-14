@@ -99,6 +99,12 @@ const GPT_5 = {
  * a `border-control` edge and `rounded-frame`. The ring's track and the
  * readings' hover fill both resolve against THAT ground, so a frame taken
  * anywhere else is evidence about a surface the user does not see.
+ *
+ * `@container/chatcol` on the box, because the strip's line is decided by the
+ * COLUMN's width (`order-first basis-full` below 750, inline above it). With no
+ * container in the tree the query matches nothing and EVERY frame would
+ * photograph the wrapped layout — a story set certifying a layout the product
+ * does not have at that width.
  */
 const Frame = ({
 	children,
@@ -115,7 +121,7 @@ const Frame = ({
 	>
 		{label && <p className="text-ink-dim text-meta">{label}</p>}
 		<div
-			className="flex flex-col gap-3 rounded-frame border border-control bg-surface p-4"
+			className="@container/chatcol flex flex-col gap-3 rounded-frame border border-control bg-surface p-4"
 			style={{ width }}
 		>
 			{children}
@@ -767,4 +773,169 @@ export const TooltipHonesty: Story = {
 			</div>
 		);
 	},
+};
+
+/**
+ * A NEW conversation's draft: the readings for a first turn that has not
+ * happened yet.
+ *
+ * The state a live harness cannot reach on this tree, which is why it is here.
+ * A draft pane has no session, so the strip's payload comes from
+ * `POST /v1/desktop/sessions/preview` rather than from the canonical stream —
+ * the same backend resolution the session will get, so the identity on screen
+ * is the identity that will answer. Stories supply the payload directly, so
+ * these frames judge the RENDERING rules (R18-R23), not the resolution, which
+ * the live frames and the wire test own.
+ *
+ * What to look for:
+ *
+ * - Three readings at most, never four: no cost chip, because nothing has been
+ *   spent and both `$0.00` and `$—` are claims about a session that does not
+ *   exist; and no effort reading where the spec carries no ladder, which is the
+ *   shape the preview route returns because it skips the account-metadata step
+ *   a cold open runs. The word that would otherwise sit there is `unknown` - a
+ *   value a session only shows while it has an owner - and the first turn would
+ *   replace it with `auto`, moving the readings beside it (UX round 1, U1).
+ * - All three inert: `ink-dim`, no hover step, `aria-disabled`, and still
+ *   focusable so the explanation stays reachable from the keyboard (§ 6).
+ * - An EMPTY ring beside the word "Context" — no number and no percentage,
+ *   because nothing has been counted.
+ * - The cluster in the same place and order as a populated session's, so the
+ *   first receipt moves nothing: the cost chip appears after the context
+ *   reading and the other three stay where they are (R23).
+ */
+export const Draft: Story = {
+	render: () => {
+		const model = GPT_5;
+		return (
+			<div className="flex flex-col gap-4 bg-canvas p-2">
+				<Frame
+					width={900}
+					label="Draft at a wide column: model, effort, an empty context ring, no spend"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: model,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+					/>
+				</Frame>
+				<Frame
+					width={220}
+					label="Draft at the 220px floor: the cluster wraps, nothing is dropped"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: model,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+					/>
+				</Frame>
+				<Frame
+					width={900}
+					label="Draft on a spec with no ladder, which is what the preview always returns: no effort reading at all"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: {
+								...GPT_5,
+								reasoning_effort: null,
+								reasoning_efforts: [],
+							},
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+					/>
+				</Frame>
+				<Frame
+					width={900}
+					label="Draft with no resolved model: an empty cluster, never a row of dashes"
+				>
+					<SessionStatusStrip
+						frontend={state({ context_tokens: null, context_window: null })}
+						draft={true}
+					/>
+				</Frame>
+			</div>
+		);
+	},
+};
+
+/**
+ * The draft's model tooltip, opened the way a keyboard user opens it.
+ *
+ * D3 and R21: the label form's closing line used to be the constant "Click to
+ * choose a different model", which a draft cannot do — there is no session for
+ * `/model` to address. The sentence now states the fact and the reason
+ * instead, and this is the frame that shows which sentence a draft gets.
+ */
+export const DraftTooltip: Story = {
+	render: () => {
+		const Focused = () => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				// The model reading is the first control in the cluster.
+				const buttons = host.current?.querySelectorAll("button");
+				(buttons?.[0] as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: GPT_5,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+					/>
+				</div>
+			);
+		};
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame
+					width={900}
+					label="Draft model tooltip: the full selector, and a reason that is not an action"
+				>
+					<Focused />
+				</Frame>
+			</div>
+		);
+	},
+};
+
+/**
+ * A live session whose backend has commands OFF.
+ *
+ * The other way a reading can have nothing to open, and the one that made D3 a
+ * defect rather than a nit: `onCommand === undefined` on a SESSION means there
+ * is no dispatcher, and the chip used to keep advertising one. It is a story
+ * because it needs a backend without the command surface, which is not the one
+ * these frames are taken against.
+ */
+export const CommandsOff: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={900}
+				label="Commands off: every reading is a label, and says why it cannot open"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						context_is_estimate: false,
+						cumulative_parent_cost: 0.003018,
+						cost_knowledge: "exact",
+					})}
+				/>
+			</Frame>
+		</div>
+	),
 };

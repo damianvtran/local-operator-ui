@@ -140,6 +140,7 @@ test("arbitrary URL, injected headers, path traversal and wrong body types never
 
 test("canonical session operations preserve identity, arguments and main-owned authorization", async () => {
 	const sessionId = "123456abcdef";
+	const childId = "fedcba987654";
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 	for (const [operation, suffix, method, expected] of [
 		[
@@ -149,6 +150,16 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			{ request_id: requestId, cwd: "/tmp/example" },
 		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		[
+			{
+				op: "sessions.search",
+				q: "retention sweep",
+				limit: 25,
+			},
+			"/search?q=retention+sweep&limit=25",
+			"GET",
+			undefined,
+		],
 		[
 			{
 				op: "sessions.message",
@@ -189,6 +200,34 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			`/${sessionId}/answers`,
 			"POST",
 			{ request_id: "gate-id", epoch: "owner-epoch", approved: false },
+		],
+		/*
+		 * The run panel's reader. It is the newest read on this surface and it
+		 * had NO unit pin: `grep -rn 'subagents.transcript' scripts/` was empty,
+		 * so the op's endpoint mapping and the two ids it validates rested on a
+		 * story frame whose page came out of a fixture seam. The mapping is
+		 * asserted here through the REAL transport (the request is issued and the
+		 * path is read off the wire), and the query string is part of it: the
+		 * cursor is `before_id` — an entry id, not an offset — and the row cap
+		 * defaults to the parent's own 100.
+		 */
+		[
+			{ op: "subagents.transcript", sessionId, childId },
+			`/${sessionId}/children/${childId}/transcript?limit=100`,
+			"GET",
+			undefined,
+		],
+		[
+			{
+				op: "subagents.transcript",
+				sessionId,
+				childId,
+				beforeId: "entry-abc",
+				limit: 25,
+			},
+			`/${sessionId}/children/${childId}/transcript?limit=25&before_id=entry-abc`,
+			"GET",
+			undefined,
 		],
 		[
 			{
@@ -233,6 +272,23 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			text: "hello",
 		},
 		{ op: "sessions.command", sessionId, requestId, command: "goal extra" },
+		// A search carries a query and nothing else: no query at all is not a
+		// search of everything, and a query longer than the backend's own bound is
+		// refused here rather than by the backend's generic "invalid fields".
+		{ op: "sessions.search" },
+		// An EMPTY query is refused by name too. The backend answers one by listing
+		// the whole store (the phone's web client asks for exactly that), but this
+		// surface already holds that list — its box is a filter over the catalogue —
+		// so an empty `q` would ask the server to send back everything the client
+		// has (review round 1, R5).
+		{ op: "sessions.search", q: "" },
+		{ op: "sessions.search", q: "x".repeat(257) },
+		{ op: "sessions.search", q: "ok", limit: 501 },
+		{
+			op: "sessions.search",
+			q: "ok",
+			sessionId,
+		},
 		// A receipt carries a completion token and nothing else: a timestamp or a
 		// bodyless call is what let a background tab acknowledge an unseen result.
 		{ op: "sessions.seen", sessionId },
@@ -255,6 +311,20 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			visible: "true",
 			canNotify: true,
 		},
+		/*
+		 * The reader's own containment, refused before any HTTP. Neither id is a
+		 * path and neither may be shaped like one: the route resolves the child
+		 * directory from the ids and the parent's roster, so a traversal that
+		 * reached `endpoint()` would be renderer-controlled path text. The cursor
+		 * is bounded like every other entry id (128 chars), and an unknown field
+		 * is refused rather than ignored.
+		 */
+		{ op: "subagents.transcript", sessionId, childId: "../config" },
+		{ op: "subagents.transcript", sessionId: "../config", childId },
+		{ op: "subagents.transcript", sessionId, childId, limit: 501 },
+		{ op: "subagents.transcript", sessionId, childId, limit: 0 },
+		{ op: "subagents.transcript", sessionId, childId, beforeId: "e".repeat(129) },
+		{ op: "subagents.transcript", sessionId, childId, path: "/etc/passwd" },
 	])
 		assert.equal((await requestDesktop(input, url, token)).status, 422);
 	assert.equal(seen.length, count);

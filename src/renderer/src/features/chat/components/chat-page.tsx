@@ -28,6 +28,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import type { CanonicalFrontendSync } from "../../../../../shared/desktop-session-contract";
 import {
 	type AdmittedSend,
 	admittedSendFor,
@@ -45,7 +46,11 @@ import {
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import type { MessageInputHandle } from "./message-input";
-import { deriveRunDetails } from "./run-details";
+import {
+	deriveRunDetails,
+	mcpErrorTexts,
+	useRunPanelMcpServers,
+} from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
@@ -244,6 +249,52 @@ function SessionPanel({
 				: null,
 		[canonical.frontend],
 	);
+	/*
+	 * The run panel's MCP half, read here for the reason the model is derived here:
+	 * this is the component that owns the session identity and the capabilities, and
+	 * the trigger's dot and the panel's section have to answer from ONE list.
+	 *
+	 * The read's own cadence (15s closed, 5s open, stopping on hidden/unfocused) is
+	 * stated in `use-mcp-servers.ts`, which is also where the argument for polling a
+	 * CLOSED panel at all is recorded: an expired MCP sign-in changes with no
+	 * frontend frame, so a section wired to the canonical stream would show it only
+	 * to someone already looking at that section — which is the failure the operator
+	 * reported, not the fix.
+	 */
+	const mcpServers = useRunPanelMcpServers({
+		sessionId,
+		/*
+		 * The accelerator (`§ 7.4`): a string that changes when the canonical
+		 * `mcp_servers` projection changes. It is a SIGNAL and never a rendering
+		 * source — the projection cannot build this section's row (no `tool_count`, no
+		 * `owned_scope`) and can be minutes stale on an idle session — so it only
+		 * invalidates the query when the backend PUBLISHES a transition, which is what
+		 * makes a startup settle or a reconnect land in about a frame rather than
+		 * within the next 15 s tick. `null` means "no canonical frontend", which
+		 * disables the read entirely: a legacy chat grows no trigger and therefore no
+		 * dot, so a poll there would be pure waste.
+		 */
+		accelerator: canonical.frontend
+			? JSON.stringify(canonical.frontend.mcp_servers ?? null)
+			: null,
+		/*
+		 * And the ONE field of that projection this pane renders: the runtime's own
+		 * failure text, which the rendered read does not carry at all (`§ 7.2`; round
+		 * 1, U1-8). `mcpErrorTexts` narrows it to the names that carry one, and the
+		 * derivation only ever uses it on a row the rendered read calls a problem.
+		 */
+		errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
+	});
+	const capabilities = useDesktopCapabilities();
+	/*
+	 * The child reader is the one part of the panel that needs a route an older
+	 * backend does not have (`docs/run-sidebar.md` § 10.2), so it is the part that
+	 * negotiates. Everything else in the pane ships with the renderer.
+	 */
+	const childrenOpenable = desktopFeatureEnabled(
+		capabilities.data,
+		"subagent_transcript",
+	);
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		void useCanonicalSessionsStore
@@ -323,6 +374,68 @@ function SessionPanel({
 			queryKey: ["desktop", "entities", sessionId, "effort", ""],
 		});
 	}, [sessionId, resolvedModel, queryClient]);
+	/*
+	 * ONE declaration for two readers, which is what the merge has to settle rather
+	 * than what either side wrote: `main` added this call for the draft-preview
+	 * readings below, and this branch added its own for the reader's capability
+	 * negotiation above. Both are the same hook on the same component, so the one
+	 * declaration higher up serves both — two would be a redeclaration, and biome
+	 * reads the earlier USE as a use-before-declaration (the rebase left exactly
+	 * that pair here, and `pnpm check-types` reported it as TS2451).
+	 */
+	/*
+	 * The readings a NEW conversation WILL start with, resolved by the backend
+	 * without creating anything.
+	 *
+	 * A draft pane has no session, so the canonical stream has nothing to say and
+	 * the strip used to be withheld until the first send. The identity the first
+	 * turn will use is real and knowable before then — from the same backend
+	 * resolution a session gets, which is the point: composing it here from
+	 * `config.get` + the model catalogue would move model resolution into the
+	 * renderer and report nothing when the catalogue lacks the pair.
+	 *
+	 * `enabled` is the whole gate. A draft with no staged directory has nothing to
+	 * preview; a backend that does not advertise `draft_preview` gets no strip in a
+	 * draft, exactly as it used to (fail-closed, per `desktopFeatureEnabled`); and
+	 * once the first send creates the session the stream takes over and this query
+	 * switches off, so there is one source for the readings at any moment.
+	 *
+	 * The payload goes to the STRIP ONLY. It is never written into the canonical
+	 * sessions store: that store's rows are sessions, and this is a projection of a
+	 * configuration that has no session behind it (`snapshot.session_id` is empty).
+	 */
+	const preview = useQuery({
+		// Keyed on the identity the answer depends on: the directory and the bound
+		// profile. A draft re-staged onto another agent is a different question, and a
+		// key that ignored the target would answer it with the previous agent's model.
+		queryKey: [
+			"desktop",
+			"session-preview",
+			cwd,
+			draft?.target?.kind ?? null,
+			draft?.target?.name ?? null,
+		],
+		queryFn: () =>
+			desktopResult<{ frontend: CanonicalFrontendSync }>({
+				op: "sessions.preview",
+				requestId: crypto.randomUUID(),
+				cwd,
+				...(draft?.target ? { target: draft.target } : {}),
+			}),
+		// A pure read, and only for a pane that has no session: once the first send
+		// creates one, the canonical stream is the only source and this query stops.
+		// The empty cwd is refused rather than sent: the contract requires 1..4096
+		// characters and a draft whose directory is not settled has nothing to
+		// preview ("known and empty" is a legal staged cwd - see the chip's notes).
+		enabled:
+			!sessionId &&
+			cwd.length > 0 &&
+			desktopFeatureEnabled(capabilities.data, "draft_preview"),
+		// The resolution is config state: it changes when the default model changes,
+		// not between two paints of one pane.
+		staleTime: 30_000,
+		retry: false,
+	});
 	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
 		sessionId,
 		canonical,
@@ -851,11 +964,15 @@ function SessionPanel({
 					 * what keeps `/model` typed and `/model` clicked on one path:
 					 * there is no second way to open a picker in this app.
 					 *
-					 * A draft has no session yet, so it has no readings and no owner
-					 * to ask - `dispatch` itself answers "/model needs an open
-					 * conversation" in that state, which is a worse way to learn it
-					 * than not offering the control, so the strip is withheld until
-					 * the session exists.
+					 * A DRAFT pane has no session, so its readings come from
+					 * `sessions.preview` instead — the same backend resolution the
+					 * session will get, rendered inert (`draft: true`) because
+					 * there is no session for a chip to command: `dispatch` itself
+					 * answers "/model needs an open conversation" in that state,
+					 * which is a worse way to learn it than a label that says so
+					 * (R22). No `onCommand` is passed, and the strip is told which
+					 * of the two reasons applies rather than inferring it from the
+					 * absence.
 					 */
 					sessionStatus={
 						sessionId
@@ -883,13 +1000,35 @@ function SessionPanel({
 									 */
 									effortEntities: effortEntities.data?.entities,
 								}
-							: undefined
+							: preview.data
+								? {
+										/*
+										 * `snapshot`, because the strip reads the canonical STATE
+										 * and the preview answers in the wire shape the stream
+										 * publishes (`CanonicalFrontendSync`). No `onCommand`,
+										 * and `draft` so the strip knows WHY: a command needs a
+										 * session to address, and a missing dispatcher alone
+										 * already means a backend with commands off (R22).
+										 */
+										frontend: preview.data.frontend.snapshot,
+										draft: true,
+									}
+								: undefined
 					}
 					currentJobId={null}
 					onCancelJob={stop}
 					messageInputRef={input}
 					runDetails={runDetails}
+					/*
+					 * The composer's first keystroke warms the runtime (main's rule,
+					 * `use-warm-session.ts`): this read is threaded from the panel rather
+					 * than taken inside the content component, so the branch's new props
+					 * sit BESIDE it rather than in its place.
+					 */
 					onComposerInput={warm}
+					mcpServers={mcpServers}
+					childrenOpenable={childrenOpenable}
+					pulses={canonical.subagentPulses}
 					canonical={{
 						view,
 						busy,

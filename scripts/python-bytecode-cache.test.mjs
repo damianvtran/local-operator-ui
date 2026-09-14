@@ -249,13 +249,13 @@ async function loadMainProcess() {
 			const banner = {
 				js: [
 					'import { createRequire as __loCreateRequire } from "node:module";',
-					'const __loRequire = __loCreateRequire(import.meta.url);',
+					"const __loRequire = __loCreateRequire(import.meta.url);",
 					'const require = (id) => (id === "electron" && globalThis.__loElectronFixture ? globalThis.__loElectronFixture : __loRequire(id));',
 					// Electron runs the main process as CJS, so the shipped modules use
 					// `__dirname` freely; an ESM bundle has to define it. Nothing under
 					// test reads through it - it names the installer window's own
 					// preload and renderer files, which the BrowserWindow stub ignores.
-					'const __dirname = process.cwd();',
+					"const __dirname = process.cwd();",
 					'const __filename = "";',
 				].join(" "),
 			};
@@ -409,9 +409,7 @@ async function loadMainProcess() {
 				],
 			});
 
-			mainProcessBundleDir = mkdtempSync(
-				join(tmpdir(), "lo-bytecode-bundle-"),
-			);
+			mainProcessBundleDir = mkdtempSync(join(tmpdir(), "lo-bytecode-bundle-"));
 			const file = join(mainProcessBundleDir, "backend-service.mjs");
 			writeFileSync(file, bundle.outputFiles[0].text);
 			// Imported from a real path rather than a `data:` URL: the spawn
@@ -443,9 +441,7 @@ async function loadInstallScripts() {
 				format: "esm",
 				platform: "node",
 				write: false,
-				plugins: [
-					rawInstallScriptPlugin,
-				],
+				plugins: [rawInstallScriptPlugin],
 			});
 			return await import(
 				`data:text/javascript;base64,${Buffer.from(
@@ -491,7 +487,12 @@ function runMacosInstallScript(scriptText, extraEnv) {
 	);
 	chmodSync(pythonStub, 0o755);
 
-	const env = { ...process.env, HOME: home, PYTHON_BIN: pythonStub, ...extraEnv };
+	const env = {
+		...process.env,
+		HOME: home,
+		PYTHON_BIN: pythonStub,
+		...extraEnv,
+	};
 	const result = spawnSync("/bin/bash", ["-x", scriptPath], {
 		env,
 		encoding: "utf8",
@@ -500,11 +501,7 @@ function runMacosInstallScript(scriptText, extraEnv) {
 }
 
 after(() => {
-	for (const dir of [
-		PATHS.home,
-		PATHS.userData,
-		mainProcessBundleDir,
-	]) {
+	for (const dir of [PATHS.home, PATHS.userData, mainProcessBundleDir]) {
 		if (dir) rmSync(dir, { recursive: true, force: true });
 	}
 	delete globalThis.__loTestPaths;
@@ -671,7 +668,9 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 
 	assert.match(
 		macosInstallScript,
-		new RegExp(`:\\s*"\\$\\{PYTHONPYCACHEPREFIX:=\\$APP_DATA_DIR/${dirName}\\}"`),
+		new RegExp(
+			`:\\s*"\\$\\{PYTHONPYCACHEPREFIX:=\\$APP_DATA_DIR/${dirName}\\}"`,
+		),
 		"the macOS script must default the prefix itself",
 	);
 	assert.match(macosInstallScript, /^export PYTHONPYCACHEPREFIX$/m);
@@ -684,9 +683,7 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 	);
 	assert.match(linuxInstallScript, /^export PYTHONPYCACHEPREFIX$/m);
 	assert.ok(
-		windowsInstallScript.includes(
-			`if (-not $env:PYTHONPYCACHEPREFIX) {`,
-		) &&
+		windowsInstallScript.includes(`if (-not $env:PYTHONPYCACHEPREFIX) {`) &&
 			windowsInstallScript.includes(
 				`PYTHONPYCACHEPREFIX = "$AppDataDir\\\\${dirName}"`,
 			),
@@ -702,10 +699,10 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		const expected = pythonBytecodeCacheDir(run.appDataDir);
 		const trace = run.stderr;
 		// Bash's xtrace prints this assignment as the expanded argument of `:`,
-			// so the line is read rather than pattern-matched to a `VAR=value`
-			// spelling (measured: `+ : '<path>'`).
-			const assignment = trace
-				.split("\n")
+		// so the line is read rather than pattern-matched to a `VAR=value`
+		// spelling (measured: `+ : '<path>'`).
+		const assignment = trace
+			.split("\n")
 			.find((line) => line.startsWith("+ : "));
 		assert.ok(
 			assignment?.includes(expected),
@@ -713,13 +710,13 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 				.split("\n")
 				.slice(0, 12)
 				.join("\n")}`,
-			);
-			assert.match(
+		);
+		assert.match(
 			trace,
 			/^\+ export PYTHONPYCACHEPREFIX$/m,
 			"the script must export the prefix it defaulted, or the python it runs will not inherit it",
 		);
-			assert.ok(
+		assert.ok(
 			!trace.includes(".app"),
 			"the default must not resolve inside a bundle",
 		);
@@ -727,13 +724,13 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		rmSync(run.home, { recursive: true, force: true });
 	}
 
-		// A value the app already set is kept, so the script and the app cannot end
-			// up disagreeing when the script is run from the app rather than standalone.
-			const appValue = "/Users/someone/pycache";
-		const runWithValue = runMacosInstallScript(macosInstallScript, {
+	// A value the app already set is kept, so the script and the app cannot end
+	// up disagreeing when the script is run from the app rather than standalone.
+	const appValue = "/Users/someone/pycache";
+	const runWithValue = runMacosInstallScript(macosInstallScript, {
 		PYTHONPYCACHEPREFIX: appValue,
-			});
-			try {
+	});
+	try {
 		const preset = runWithValue.stderr
 			.split("\n")
 			.find((line) => line.startsWith("+ : "));
@@ -802,7 +799,13 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 		else delete process.resourcesPath;
 		rmSync(resources, { recursive: true, force: true });
 		// `install()` writes its script into the OS temp directory; reclaim it.
-		rmSync(join(tmpdir(), `install-backend-${process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : "linux"}.${process.platform === "win32" ? "ps1" : "sh"}`), { force: true });
+		rmSync(
+			join(
+				tmpdir(),
+				`install-backend-${process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : "linux"}.${process.platform === "win32" ? "ps1" : "sh"}`,
+			),
+			{ force: true },
+		);
 	}
 });
 
