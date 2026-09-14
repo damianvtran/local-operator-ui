@@ -9,8 +9,11 @@
  * how much room it has.
  *
  * Network and Electron access are stubbed at the boundary — `fetch` for the
- * execution-variables endpoint, `window.api` for the file bridge — so the real
- * components run rather than a re-drawn copy of them.
+ * desktop transport (`POST /__desktop`, which is where every op lands in
+ * Storybook) and `window.api` for the file bridge — so the real components run
+ * rather than a re-drawn copy of them. Each variables story answers a
+ * different backend state through that one seam, which is what makes the
+ * panel's states photographable at all.
  *
  * The theme comes from the preview-level frame in `.storybook/preview.tsx`,
  * which moves MUI context, `data-theme` and the preferences store together.
@@ -19,6 +22,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { screen, userEvent, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
@@ -235,56 +239,199 @@ const DOCUMENTS: CanvasDocument[] = [
 	},
 ];
 
+/*
+ * A session's namespace as the backend renders it.
+ *
+ * `editable` is the backend's own judgement, computed from the same table it
+ * coerces writes with: `DataFrame` is memory the panel must list and cannot
+ * replace, and the other six keep the edit affordance. Nothing here is a local
+ * list of type names - the panel no longer has one.
+ */
 const VARIABLES = [
 	{
 		key: "outstanding",
 		type: "DataFrame",
 		value:
 			"          Customer   Invoice   Amount        Due  days_late\n0        Northwind  INV-2213  4280.00 2026-03-02         12\n1          Contoso  INV-2231  1150.00 2026-03-09          5\n2         Fabrikam  INV-2240   860.00 2026-03-12          2",
+		editable: false,
+		truncated: false,
 	},
-	{ key: "total_outstanding", type: "float", value: "6290.0" },
-	{ key: "invoice_count", type: "int", value: "42" },
+	{
+		key: "total_outstanding",
+		type: "float",
+		value: "6290.0",
+		editable: true,
+		truncated: false,
+	},
+	{
+		key: "invoice_count",
+		type: "int",
+		value: "42",
+		editable: true,
+		truncated: false,
+	},
 	{
 		key: "owners",
 		type: "list",
 		value: "['Dana', 'Priya', 'Sam']",
+		editable: true,
+		truncated: false,
 	},
 	{
 		key: "ledger_path",
 		type: "str",
 		value: "/Users/dana/work/invoices/payments-ledger-2026.csv",
+		editable: true,
+		truncated: false,
 	},
 	{
 		key: "thresholds",
 		type: "dict",
 		value:
 			"{'late_days': 7, 'escalate_days': 30, 'minimum_amount': 100.0, 'currency': 'USD'}",
+		editable: true,
+		truncated: false,
 	},
-	{ key: "sent_reminders", type: "bool", value: "False" },
+	{
+		key: "sent_reminders",
+		type: "bool",
+		value: "False",
+		editable: true,
+		truncated: false,
+	},
 ];
 
-const json = (body: unknown) =>
+const json = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), {
-		status: 200,
+		status,
 		headers: { "Content-Type": "application/json" },
 	});
 
+
+/** The session id the variables stories read, in the wire's own shape (12 hex). */
+const STORY_SESSION_ID = "8fd6c6a40934";
+
+/** The dialog's name field, found by its label. */
+const VARIABLE_KEY_LABEL = /Name \(key\)/;
+/** The refusal the backend answers with, as the toast renders it. */
+const REFUSAL_SENTENCE = /'secrets' is a name the session keeps/;
+
 /**
- * `fetch` is stubbed rather than the hooks, so the queries, the API client and
- * each component's own loading and error handling all run for real. Unmatched
- * `/v1/` reads answer with an empty envelope rather than failing, because a
- * connection-refused toast over every frame is not a state worth photographing.
+ * One answer from the stub, as the BACKEND would give it: a status plus the
+ * envelope body. Refusals carry `detail.code`/`detail.message`, which is the
+ * shape `desktopResult` lifts a write's sentence out of.
+ *
+ * It is not the shape the renderer receives. Both real transports - main's IPC
+ * call and the dev server's `/__desktop` proxy - answer with
+ * `{status: <backend status>, body: <this envelope>}`, so `respond` below wraps
+ * every answer in that second layer. Skipping it is silent: the query resolves
+ * `undefined` and React Query reports "data is undefined" over the panel's copy
+ * for an unreachable backend, which is a picture of nothing this app ships.
+ */
+type DesktopAnswer = { status: number; body: unknown };
+
+const ok = (result: unknown): DesktopAnswer => ({
+	status: 200,
+	body: { status: 200, message: "ok", result },
+});
+
+const refused = (
+	status: number,
+	code: string,
+	message: string,
+): DesktopAnswer => ({
+	status,
+	body: { detail: { code, message } },
+});
+
+/**
+ * The transport's own response: the backend's status and envelope, wrapped.
+ *
+ * The HTTP status stays 200 because that is what both real transports return to
+ * the renderer - a refusal is a `status` INSIDE the envelope, which is what
+ * lets `desktopResult` lift `detail.message` and what keeps a 409 from being
+ * mistaken for a dead backend.
+ */
+const respond = (answer: DesktopAnswer) =>
+	json({ status: answer.status, body: answer.body });
+
+const observed = (
+	variables: unknown[],
+	over: {
+		runtime?: "running" | "absent";
+		kernel?: "resident" | "absent";
+		truncated?: boolean;
+	} = {},
+): DesktopAnswer =>
+	ok({
+		state: "observed",
+		runtime: over.runtime ?? "running",
+		kernel: over.kernel ?? "resident",
+		variables,
+		truncated: over.truncated ?? false,
+	});
+
+/**
+ * What this story's desktop ops answer, replaced per story.
+ *
+ * `features` is the capabilities map. Leaving `session_variables` out of it is
+ * what an older backend looks like, and it is a state worth photographing
+ * rather than an error: the panel must offer the update instead of calling a
+ * route that is not there. Everything else is answered by `op`, so a story can
+ * put the panel in a state no live session can be talked into - a kernel that
+ * was released after sitting idle, a namespace mutated while it was read.
+ */
+type DesktopAnswers = {
+	list: () => DesktopAnswer;
+	features?: Record<string, number>;
+	write?: (op: string, request: Record<string, unknown>) => DesktopAnswer;
+};
+
+let desktopAnswers: DesktopAnswers = {
+	features: { session_variables: 1 },
+	list: () => observed(VARIABLES),
+};
+
+/**
+ * `fetch` is stubbed rather than the hooks, so the schema, the transport, the
+ * query cache and each component's own loading and error handling all run for
+ * real. Every desktop op arrives at one place in Storybook - the transport
+ * finds no `window.api.desktop` and posts the op's body to `/__desktop` - so
+ * the answers are picked out of the body's `op`. Unmatched `/v1/` reads answer
+ * with an empty envelope rather than failing, because a connection-refused
+ * toast over every frame is not a state worth photographing.
  */
 const installFetchStub = () => {
 	const original = window.fetch;
 	window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = typeof input === "string" ? input : input.toString();
-		if (url.includes("/execution-variables")) {
-			return json({
-				status: 200,
-				message: "ok",
-				result: { execution_variables: VARIABLES, count: VARIABLES.length },
-			});
+		if (url.includes("/__desktop")) {
+			const request = JSON.parse(String(init?.body ?? "{}")) as {
+				op?: string;
+			};
+			if (request.op === "capabilities") {
+				return respond(
+					ok({
+						// The wire shape `DesktopCapabilities` declares, all four
+						// fields: `desktopFeatureEnabled` reads `desktop_available`
+						// AND the feature's version, so a reply that omitted either
+						// would gate every surface off rather than one.
+						desktop_contract: 1,
+						desktop_available: true,
+						desktop_auth: "bearer",
+						features: desktopAnswers.features ?? {},
+					}),
+				);
+			}
+			if (request.op === "sessions.variables.list") {
+				return respond(desktopAnswers.list());
+			}
+			if (request.op?.startsWith("sessions.variables.")) {
+				return respond(
+					desktopAnswers.write?.(request.op, request) ?? ok({ state: "ok" }),
+				);
+			}
+			return respond(ok({}));
 		}
 		if (url.includes("/v1/config")) {
 			return json({
@@ -430,10 +577,29 @@ const CanvasFrame = ({
 	width = 720,
 	scan = null,
 	mentionedFiles = DOCUMENTS,
+	variables,
+	sessionId = STORY_SESSION_ID,
 }: {
 	view: "documents" | "files" | "variables";
 	activeId: string;
 	width?: number;
+	/**
+	 * What this frame's desktop ops answer, replaced per frame.
+	 *
+	 * A module-level slot rather than a prop drilled into the panel: the panel
+	 * reaches the backend through the transport, and the transport is what the
+	 * stub stands in for - so a story expresses a backend state, not a
+	 * component's prop. Set during render, after the import-time install, so
+	 * one story cannot leak its state into the next.
+	 */
+	variables?: DesktopAnswers;
+	/**
+	 * The canonical session the code-memory panel reads, or `null` for a staged
+	 * draft. `conversationId` stays set either way, because that is the pair the
+	 * real `chat-content` passes: a draft has a canvas-store key (its draft key)
+	 * and no session, and the panel must not confuse the two.
+	 */
+	sessionId?: string | null;
 	/**
 	 * The completeness state of the Files scan, for the stories that exist to show
 	 * what the panel head says while it is paging, when it stops short, and when it
@@ -449,6 +615,11 @@ const CanvasFrame = ({
 	 */
 	mentionedFiles?: CanvasDocument[];
 }) => {
+	// The story's backend state, installed before anything can ask for it.
+	useMemo(() => {
+		if (variables) desktopAnswers = variables;
+	}, [variables]);
+
 	// Seeded before first paint so the panel never renders an empty frame.
 	useMemo(() => {
 		useCanvasStore.setState((state) => ({
@@ -479,6 +650,7 @@ const CanvasFrame = ({
 					initialDocuments={DOCUMENTS}
 					conversationId={CONVERSATION_ID}
 					agentId="story-agent"
+					sessionId={sessionId ?? undefined}
 					scan={scan}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
@@ -566,6 +738,187 @@ export const Files: Story = {
 /** Variables view: row density and the disclosure. */
 export const Variables: Story = {
 	render: () => <CanvasFrame view="variables" activeId={DOCUMENTS[0].id} />,
+};
+
+/**
+ * A namespace with a kernel behind it that has not been written to yet.
+ *
+ * "Nothing stored yet" is only true once there IS an interpreter holding the
+ * nothing: the New control belongs here, and its absence in
+ * `VariablesNoKernel` beside it is the whole distinction.
+ */
+export const VariablesEmptyWithKernel: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed([]),
+			}}
+		/>
+	),
+};
+
+/**
+ * No kernel at all - the interpreter was released after sitting idle, or the
+ * chat has not run code yet.
+ *
+ * The panel must NOT say "nothing stored yet" here, because nobody read a
+ * namespace: there is no namespace. It also must not offer New, because a write
+ * never spawns a runtime or a kernel (see the design's write semantics), so the
+ * control could only fail.
+ */
+export const VariablesNoKernel: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed([], { kernel: "absent" }),
+			}}
+		/>
+	),
+};
+
+/**
+ * A staged draft: no session, so there is nothing to ask about.
+ *
+ * The answer below is a LOUD failure on purpose. "The panel shows the right
+ * sentence" is not the same evidence as "the panel made no call": if a draft
+ * ever reaches the backend, this frame shows a 500 rather than the copy it
+ * would have shown anyway. The same trick is why `VariablesBackendTooOld`
+ * refuses instead of answering.
+ */
+export const VariablesDraft: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			sessionId={null}
+			variables={{
+				features: { session_variables: 1 },
+				list: () =>
+					refused(
+						500,
+						"draft_read_attempted",
+						"A draft has no session, so this read must never happen.",
+					),
+			}}
+		/>
+	),
+};
+
+/**
+ * A cell is running, so the namespace cannot be read this instant.
+ *
+ * This is not an error state and must never look like one: the reading is
+ * simply not available yet. The frame shows the quiet affordance with no list
+ * to keep, which is the state a session reaches before it has ever been read;
+ * the "keep the previous list while it re-reads" half needs a live session and
+ * is photographed in the app, not here.
+ */
+export const VariablesBusy: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => ok({ state: "busy" }),
+			}}
+		/>
+	),
+};
+
+/**
+ * A runtime that answered `unsupported`: it has code memory, but no way to
+ * hand it over (an older runtime behind a current backend).
+ *
+ * Distinct from the older-backend state below - the route exists here, and
+ * "update the backend" would be the wrong sentence.
+ */
+export const VariablesUnsupported: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => ok({ state: "unsupported" }),
+			}}
+		/>
+	),
+};
+
+/**
+ * A backend that predates the surface: it advertises other features and not
+ * this one, and the panel must offer the update rather than call a route that
+ * is not there.
+ *
+ * The `list` answer refuses too, for the same reason `VariablesDraft`'s does -
+ * the capabilities gate is supposed to make the call unnecessary, and a frame
+ * that only showed the copy would not prove it did.
+ */
+export const VariablesBackendTooOld: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { lifecycle: 1 },
+				list: () =>
+					refused(
+						404,
+						"not_found",
+						"This backend has no code-memory route, so this read must never happen.",
+					),
+			}}
+		/>
+	),
+};
+
+/**
+ * A write the backend refuses, in the backend's own words.
+ *
+ * The form is driven rather than faked: the play function opens the real
+ * dialog, types a name the session reserves, submits, and waits for the toast -
+ * so what is photographed is the refusal path end to end through the mutation
+ * hook, not a hand-drawn toast.
+ */
+export const VariablesWriteRefused: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed(VARIABLES),
+				write: () =>
+					refused(
+						409,
+						"reserved_name",
+						"'secrets' is a name the session keeps for its own tools.",
+					),
+			}}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		// Only the trigger is inside the frame: the dialog and the toast both
+		// render through portals at the document root, so `screen` is what can
+		// see them.
+		const canvas = within(canvasElement);
+		await userEvent.click(await canvas.findByRole("button", { name: "New" }));
+		await userEvent.type(
+			await screen.findByLabelText(VARIABLE_KEY_LABEL),
+			"secrets",
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Create variable" }),
+		);
+		await screen.findByText(REFUSAL_SENTENCE);
+	},
 };
 
 /* ------------------------------------------------------------------ */

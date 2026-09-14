@@ -719,6 +719,21 @@ export const STORIES = [
 	["canvas-workspace--audio-viewer", 1280, 900],
 	["canvas-workspace--video-viewer", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
+	/* The other seven states the code-memory panel defines. They are separate
+	   stories rather than one story with a knob because each is a claim about
+	   what the panel SAYS when the backend answers differently - and two of them
+	   (no kernel, a draft) are claims about what it does not say, which a
+	   populated frame cannot show. */
+	["canvas-workspace--variables-empty-with-kernel", 1280, 900],
+	["canvas-workspace--variables-no-kernel", 1280, 900],
+	["canvas-workspace--variables-draft", 1280, 900],
+	["canvas-workspace--variables-busy", 1280, 900],
+	["canvas-workspace--variables-unsupported", 1280, 900],
+	["canvas-workspace--variables-backend-too-old", 1280, 900],
+	/* The refusal toast, driven through the real form by the story's play
+	   function: the only frame in this set whose subject is a control's
+	   outcome rather than a rest state. */
+	["canvas-workspace--variables-write-refused", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
 
