@@ -23,9 +23,10 @@ import { type ChildProcess, exec, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
+import type { DaemonStatusSnapshot } from "../../shared/backend-status";
 import type {
 	DesktopFeedState,
 	DesktopResponse,
@@ -39,7 +40,33 @@ import {
 import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
+import { readInstallIdentity, resolveCommandPath } from "../update-install";
 import { backendConfig } from "./config";
+import {
+	DETACHED_AFTER_MS,
+	type DaemonIdentity,
+	DaemonStateMachine,
+	PROBE_INTERVAL_MS,
+	PROBE_TIMEOUT_MS,
+	type ProbeObservation,
+} from "./daemon-status";
+import {
+	type DiscoveredDaemon,
+	HEALTH_PATH,
+	OWNED_RECORD_WINDOW_MS,
+	OWNED_REGISTRATION_WINDOW_MS,
+	type WedgedRecord,
+	claimDesktopPlane,
+	discoverDaemons,
+	normaliseAddress,
+	parseRecord,
+	pidLiveness,
+	probeIdentity,
+	readIdentity,
+	reapStaleRecords,
+	recordAddress,
+	serveRunDir,
+} from "./discovery";
 import { LogFileType, logger } from "./logger";
 import { isLegacyManagedCommand } from "./managed-python";
 import { managedVenvPath } from "./venv-paths";
@@ -83,6 +110,14 @@ const execPromise = promisify(exec);
 const ENV_VAR_REGEX = /^([^=]+)=(.*)$/;
 const LINE_BREAK = /\r?\n/;
 
+/** Options a `start()` caller may set. `quiet` is the watchdog's retry, whose
+ * failures the status surface is already reporting; `reuseDiscovery` is the
+ * startup block's second call, in the same tick as its own discovery pass. */
+interface StartOptions {
+	quiet?: boolean;
+	reuseDiscovery?: boolean;
+}
+
 /**
  * One managed `serve` lifetime: the handle this app actually spawned, plus the
  * state that decides its shutdown.
@@ -124,11 +159,36 @@ export class BackendServiceManager {
 	private process: ChildProcess | null = null;
 	private isRunning = false;
 	private isExternalBackend = false;
-	private isDisabled = backendConfig.VITE_DISABLE_BACKEND_MANAGER === "true";
+	/**
+	 * Whether this app may SPAWN or KILL a daemon - never whether one exists.
+	 *
+	 * `VITE_DISABLE_BACKEND_MANAGER=true` used to mean "assume a backend is
+	 * already there": `checkExistingBackend()` returned true before probing and
+	 * the startup block in `index.ts` was skipped outright, so discovery never
+	 * ran, no daemon was ever found, no bearer was ever held, and every
+	 * conversation opened empty. It now means exactly what its name says: do not
+	 * spawn one and do not kill one. Discovery runs either way, which is the
+	 * only way the operator's own daemon (started by a TUI, publishing a record)
+	 * is ever found by an app configured this way.
+	 */
+	private readonly managerMaySpawn =
+		backendConfig.VITE_DISABLE_BACKEND_MANAGER !== "true";
 	private startupMode: LocalOperatorStartupMode =
 		LocalOperatorStartupMode.NOT_STARTED;
 	private port: number;
 	private backendUrl: string;
+	private remoteConfigured = false;
+	/** A failed probe or unreadable record is not evidence that spawning is safe. */
+	private discoveryBlocksSpawn = false;
+	/**
+	 * Records discovery found alive but unresponsive (pid alive, heartbeat
+	 * stopped). They are why no candidate exists AND why spawning is forbidden,
+	 * and they are carried separately from `discoveryBlocksSpawn` so the app can
+	 * say which of those two facts it observed.
+	 */
+	private discoveryWedged: WedgedRecord[] = [];
+	private recoveryInFlight = false;
+	private nextRecoveryAt = 0;
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
 	private healthCheckInterval: NodeJS.Timeout | null = null;
@@ -144,6 +204,20 @@ export class BackendServiceManager {
 	 * report success or adopt its child: the cancellation happened after it
 	 * checked, and this is what it re-checks across each await. */
 	private startEpoch = 0;
+	/** The record behind the current attachment, when discovery found it. */
+	private attachedRecord: DiscoveredDaemon | null = null;
+	/**
+	 * The connection state.
+	 *
+	 * One machine, one answer to "is the server up": the renderer's status
+	 * signal is this object's snapshot (see `getStatusSnapshot`), so a second
+	 * opinion about liveness cannot grow inside the renderer or in a probe that
+	 * forgot the capability rules.
+	 */
+	private daemonState = new DaemonStateMachine();
+	/** Consumers of status changes in main (the window's IPC sender). */
+	private statusObserver: ((snapshot: DaemonStatusSnapshot) => void) | null =
+		null;
 	private shellEnv: Record<string, string | undefined> = {};
 	// External/dev backends may be explicitly paired through main's environment.
 	// Managed starts always rotate this; it is never exposed by preload or logs.
@@ -235,6 +309,45 @@ export class BackendServiceManager {
 			// backend is up either way, and this is a notification, not a step.
 			logger.error("Backend-ready observer threw:", LogFileType.BACKEND, error);
 		}
+	}
+
+	/**
+	 * Subscribe to status changes.
+	 *
+	 * A push rather than a poll so a state change reaches the renderer within a
+	 * probe interval, and a pull (`getStatusSnapshot`) so a window that opens
+	 * later is not left waiting for the next transition.
+	 */
+	onStatusChange(
+		observer: ((snapshot: DaemonStatusSnapshot) => void) | null,
+	): void {
+		this.statusObserver = observer;
+	}
+
+	private notifyStatus(): void {
+		try {
+			this.statusObserver?.(this.getStatusSnapshot());
+		} catch (error) {
+			// A consumer's failure must not take down the supervisor: the state
+			// is reported either way, and a later push carries it again.
+			logger.error(
+				"Backend status observer threw:",
+				LogFileType.BACKEND,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * The server-status signal, for the renderer's IPC handlers.
+	 *
+	 * Carries the daemon's identity (version, prefix, install kind) because the
+	 * main process is the only caller that can read it honestly: it holds the
+	 * bearer and sends no Origin, so neither CORS nor a gated route can turn
+	 * "I am not allowed" into "it is down".
+	 */
+	getStatusSnapshot(): DaemonStatusSnapshot {
+		return this.daemonState.snapshot();
 	}
 
 	getStreamRelay(): DesktopStreamRelay {
@@ -380,8 +493,16 @@ export class BackendServiceManager {
 			const apiUrl = new URL(backendConfig.VITE_LOCAL_OPERATOR_API_URL);
 			this.port = Number.parseInt(apiUrl.port, 10) || 1111; // Default to 1111 if port is not specified
 
-			// Use explicit IPv4 address instead of localhost for better compatibility
-			this.backendUrl = `http://127.0.0.1:${this.port}`;
+			this.remoteConfigured = !["localhost", "127.0.0.1", "[::1]"].includes(
+				apiUrl.hostname,
+			);
+			// A remote configuration is an explicit target, not a local port hint.
+			// Never rewrite its scheme/host or substitute a local daemon for it.
+			this.backendUrl = this.remoteConfigured
+				? apiUrl.href.endsWith("/")
+					? apiUrl.href.slice(0, -1)
+					: apiUrl.href
+				: `http://127.0.0.1:${this.port}`;
 
 			logger.info(
 				`Backend service configured with port ${this.port} and URL ${this.backendUrl}`,
@@ -414,7 +535,7 @@ export class BackendServiceManager {
 
 		// Log initialization status
 		logger.info(
-			`Backend Service Manager initialized. Disabled: ${this.isDisabled}`,
+			`Backend Service Manager initialized. May spawn or kill: ${this.managerMaySpawn}`,
 			LogFileType.BACKEND,
 		);
 		logger.info(
@@ -703,6 +824,54 @@ export class BackendServiceManager {
 		}
 	}
 
+	/** Publish WHY no daemon could be attached, as a named state rather than a
+	 * generic failure.
+	 *
+	 * Three different facts reach the no-spawn branch and a surface told only
+	 * "blocked" rendered a daemon that is still running as an outage: a wedged
+	 * record is a LIVE process whose heartbeat stopped, a gone record is a lost
+	 * server whose heartbeat is too fresh to reap, and a remote target that
+	 * refused this app's credential is a third. Each is named here, which is what
+	 * lets the copy say "a server is running and this app did not attach to it"
+	 * instead of "the server is offline". */
+	private observeNoCandidate(): void {
+		const wedged = this.discoveryWedged.find((record) => record.alive);
+		const goneRecord = this.discoveryWedged.find((record) => !record.alive);
+		if (wedged) {
+			/*
+			 * A daemon IS running: its process is alive and its record is on disk,
+			 * but its published heartbeat stopped, so discovery refuses both to
+			 * attach to it and to start a second one over it. Reporting this as
+			 * `detached` was the last way this app told a user their server was
+			 * offline while a process was still there - the record is the reason
+			 * it is named by pid, which is also its filename in `run/serve`.
+			 */
+			this.daemonState.observe({
+				kind: "heartbeat-stale",
+				detail: `A Local Operator daemon is running (pid ${wedged.pid}), but it stopped publishing its heartbeat, so this app did not attach to it. Waiting without starting a second one.`,
+			});
+		} else {
+			this.daemonState.observe({
+				kind: "no-candidate",
+				detail: this.remoteConfigured
+					? "The configured remote server is unavailable or refused this app's credential; no local replacement will be started."
+					: goneRecord
+						? /*
+							 * The other way a record is `wedged`: the process is GONE and the
+							 * heartbeat is too fresh to justify reaping. That is a lost server,
+							 * not a running one, so it is reported as a detach - claiming a
+							 * daemon "is running" here would be the same wrong sentence QA
+							 * round 1 found in the rejection detail, on the surface a user reads.
+							 */
+							`The Local Operator server whose record names pid ${goneRecord.pid} is no longer running, but its record is too fresh to reap, so this app did not attach to it.`
+						: this.discoveryBlocksSpawn
+							? "A local daemon may still be running, but could not be attached. Waiting without starting a duplicate."
+							: "No Local Operator daemon was found and this app is configured not to start one.",
+			});
+		}
+		this.notifyStatus();
+	}
+
 	/**
 	 * Check if the local-operator command exists globally
 	 * @returns Promise resolving to true if the command exists, false otherwise
@@ -762,6 +931,41 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * Check if the local-operator command exists globally
+	 * @returns Promise resolving to true if the command exists, false otherwise
+	 */
+	private canonicalLauncher(): string | null {
+		// Rank and spawn from the same entrypoint; shell rc files may prepend an
+		// unrelated venv, so resolving a bare command a second time is unsafe.
+		return resolveCommandPath("lop") ?? resolveCommandPath("local-operator");
+	}
+
+	/**
+	 * `sys.prefix` of the install the user's own `lop` runs, when it can be named.
+	 *
+	 * This is ranking rule 1 (design §3.5): the daemon to prefer is the one that
+	 * shares your CLI's install, because the complaint that produced this work
+	 * is that the app used to prefer its OWN bundled venv. The prefix is read
+	 * from the resolved shim's layout - uv writes `uv-receipt.toml` beside the
+	 * environment, pip/pipx leave `pyvenv.cfg` in it - rather than from a version
+	 * comparison, since two installs can hold the same version and still be the
+	 * wrong one.
+	 */
+	private preferredInstallPrefix(): string | null {
+		try {
+			const identity = readInstallIdentity(this.canonicalLauncher());
+			if (identity.uvReceipt) return dirname(identity.uvReceipt);
+			if (identity.venvPrefix) return identity.venvPrefix;
+			return null;
+		} catch {
+			// Not being able to name the user's install is a ranking downgrade,
+			// never a reason to fail: discovery still attaches to a validated
+			// daemon by version and start time.
+			return null;
+		}
+	}
+
+	/**
 	 * True when this app holds a desktop credential for the configured backend.
 	 *
 	 * This is the RELAY's own `available` fact, asked here rather than re-derived,
@@ -770,18 +974,361 @@ export class BackendServiceManager {
 	 * never authenticate to: adopting it attaches the renderer to a backend that
 	 * refuses every session list and every stream - the empty-conversation
 	 * outcome this whole subsystem exists to remove.
+	 *
+	 * Since discovery, the ordinary path mints that credential through the claim
+	 * handshake (`attachIfUsable`). This predicate is the gate of the ONE path
+	 * that cannot: the legacy fixed-port fallback below.
 	 */
 	private canAuthenticate(): boolean {
 		return this.getStreamRelay().available;
 	}
 
 	/**
+	 * Discover the daemons on this machine, then attach to the best usable one.
+	 *
+	 * The replacement for "probe one URL and accept any 200". Every candidate is
+	 * a record whose pid is alive and whose `/health` proves it is the process
+	 * the record describes, so this answers the two questions the old probe could
+	 * not: WHICH daemon is this, and is it the same one I was talking to a minute
+	 * ago.
+	 *
+	 * Candidates are tried in rank order and the first USABLE one wins, where
+	 * usable means this app holds a bearer the daemon actually accepts. That gate
+	 * is not new and not negotiable: adopting a daemon this app cannot
+	 * authenticate to attaches the renderer to a backend that refuses every
+	 * session list and every stream - the empty-conversation outcome. A daemon
+	 * that answers but is out of this app's reach is REPORTED (its capability is
+	 * in the status) and skipped, which is also why the next candidate gets a
+	 * try: the operator can have several daemons, and the right one is not
+	 * necessarily the first by version.
+	 *
+	 * @returns true when a daemon was attached (which is not the same as "the
+	 * app will not start one": `start()` decides that separately, and an app
+	 * forbidden from spawning is still allowed to discover).
+	 */
+	private async discoverAndAttach(): Promise<boolean> {
+		if (this.isAppClosing) return false;
+		this.discoveryWedged = [];
+		if (this.remoteConfigured) {
+			this.discoveryBlocksSpawn = true;
+			return await this.legacyFixedPortAdoption();
+		}
+		const result = await discoverDaemons({
+			configuredUrl: backendConfig.VITE_LOCAL_OPERATOR_API_URL,
+			preferredPrefix: this.preferredInstallPrefix(),
+			log: (message) => logger.info(message, LogFileType.BACKEND),
+		});
+		this.discoveryBlocksSpawn = result.blocksSpawn;
+		this.discoveryWedged = result.wedged;
+		// Reaping is the one write discovery may lead to, and it is guarded
+		// inside `reapStaleRecords`: dead pid, aged heartbeat, and a re-read
+		// record that must still classify as dead. A proven-dead record is MOVED
+		// into `<run dir>/reaped/`, never deleted - the backend's own reaper keeps
+		// it there as the evidence an attention classifier reads.
+		for (const file of reapStaleRecords(result.reapable)) {
+			logger.info(`Reaped stale serve record ${file}`, LogFileType.BACKEND);
+		}
+		for (const candidate of result.candidates) {
+			if (await this.attachIfUsable(candidate)) return true;
+		}
+		if (result.noRecordsAtAll) return await this.legacyFixedPortAdoption();
+		return false;
+	}
+
+	/**
+	 * Attach to one candidate, if this app holds a bearer its desktop plane
+	 * accepts.
+	 *
+	 * The claim happens HERE, before anything about this app changes: a candidate
+	 * that turns out to be unusable must leave the manager exactly as it was, or
+	 * a failed attach would strand the app on a daemon it cannot talk to. The
+	 * key comes from that daemon's 0600 record - the only channel it is ever
+	 * published through - and is used as a bearer and nothing else: never logged,
+	 * never returned, never forwarded, including in the failure branches below,
+	 * which name the OUTCOME only.
+	 *
+	 * @returns true when the candidate was adopted
+	 */
+	private async attachIfUsable(candidate: DiscoveredDaemon): Promise<boolean> {
+		const key = candidate.record.claim_key;
+		// Two ways to hold a bearer for somebody else's daemon: the claim key it
+		// published, or the token this app was paired with through its
+		// environment. With neither, the daemon is out of reach by construction -
+		// an env-governed daemon the app did not spawn has no key on disk and a
+		// token nobody told us.
+		if (!key && !this.desktopToken) {
+			logger.info(
+				`Daemon ${candidate.address} publishes no claim key and this app holds no pairing token for it; not attaching (its controls would refuse every call).`,
+				LogFileType.BACKEND,
+			);
+			// A CAPABILITY result, recorded beside the state: the daemon is
+			// running, this app simply may not use it. Rendering that as "server
+			// down" is the conflation this whole change exists to remove.
+			this.daemonState.observe({
+				kind: "capability",
+				status: 401,
+				detail: `A daemon is running at ${candidate.address}, but this app holds no credential for its desktop plane.`,
+			});
+			this.notifyStatus();
+			return false;
+		}
+		const token = key || (this.desktopToken as string);
+		if (key) {
+			const outcome = await claimDesktopPlane(candidate.address, key, {
+				origins: this.rendererOrigins(),
+			});
+			switch (outcome.outcome) {
+				case "claimed":
+					logger.info(
+						`Claimed the desktop plane on ${candidate.address}${outcome.origins.length > 0 ? ` declaring ${outcome.origins.length} renderer origin(s)` : ""}.`,
+						LogFileType.BACKEND,
+					);
+					break;
+				case "already-claimed":
+					// The latch: the plane is already governed. The key it was
+					// governed with is the SAME key this record publishes (the claim
+					// stores the published value), so the read below decides - and a
+					// second app instance on this machine is a normal thing for the
+					// operator to run, not an error.
+					logger.info(
+						`Daemon ${candidate.address} is already governed (claim latch). Verifying that this app's key is the accepted one rather than fighting for ownership.`,
+						LogFileType.BACKEND,
+					);
+					break;
+				case "wrong-key":
+				case "refused":
+					// The record's key is not the plane's (a record from a previous
+					// process), or this caller may not claim at all. Either way there
+					// is nothing to use here.
+					logger.info(
+						`Daemon ${candidate.address} did not accept this app's claim (${outcome.outcome}); not attaching.`,
+						LogFileType.BACKEND,
+					);
+					return false;
+				case "unreachable":
+					logger.info(
+						`Daemon ${candidate.address} could not be reached to claim its desktop plane: ${outcome.detail}`,
+						LogFileType.BACKEND,
+					);
+					return false;
+			}
+		}
+		if (!(await this.authenticatesAgainst(candidate.address, token))) {
+			logger.info(
+				`Daemon ${candidate.address} refuses this app's bearer for its desktop plane; not attaching (it would refuse every session list and every stream).`,
+				LogFileType.BACKEND,
+			);
+			this.daemonState.observe({
+				kind: "capability",
+				status: 403,
+				detail: `A daemon is running at ${candidate.address}, but it refused this app's credential for its desktop plane.`,
+			});
+			this.notifyStatus();
+			return false;
+		}
+		await this.attachTo(candidate, token);
+		return true;
+	}
+
+	/**
+	 * One authenticated read against a specific address with a specific bearer.
+	 *
+	 * A `/health` 200 proves a process is listening, not that it is OURS or that
+	 * this app may use it. The desktop vocabulary answers 401/403 for a bearer it
+	 * does not hold, so one authenticated read is what separates a daemon this
+	 * app can actually drive from one that merely answers.
+	 *
+	 * The address and token are parameters rather than `this.backendUrl` /
+	 * `this.desktopToken` because this runs BEFORE adoption: the candidate must
+	 * be proved usable without the manager having committed to it.
+	 */
+	private async authenticatesAgainst(
+		address: string,
+		token: string,
+	): Promise<boolean> {
+		try {
+			const result = await requestDesktop(
+				{ op: "sessions.list", limit: 1 },
+				address,
+				token,
+			);
+			return result.status >= 200 && result.status < 300;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Adopt a validated, usable daemon: rotate onto it and publish the state.
+	 *
+	 * The rotation must happen before `notifyBackendReady()`: everything that
+	 * queries the backend (the SSE relay, `requestDesktop`, the capability read)
+	 * resolves against `backendUrl` at call time, and a consumer that ran against
+	 * the previous address would describe a daemon the app has just left
+	 * (review round 2, R2-2).
+	 */
+	private async attachTo(
+		candidate: DiscoveredDaemon,
+		token: string,
+	): Promise<void> {
+		const previousUrl = this.backendUrl;
+		this.port = candidate.record.port;
+		this.backendUrl = candidate.address;
+		this.attachedRecord = candidate;
+		this.isExternalBackend = true;
+		// The bearer that was just proved accepted, kept for the relay and every
+		// later desktop call against this daemon.
+		this.desktopToken = token;
+		// EXISTING_SERVER, not a new mode: "a daemon this app did not start is
+		// serving" is exactly what that mode already means to the update plan and
+		// to the quit path, and a second spelling for it would be a second opinion
+		// about ownership (design §3.7).
+		this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
+		logger.info(
+			`Attached to daemon ${candidate.address} (pid ${candidate.record.pid}, v${candidate.identity.version}, ${candidate.record.install_kind || "kind unknown"}, record ${candidate.file})${previousUrl !== candidate.address ? ` - backend URL moved from ${previousUrl}` : ""}`,
+			LogFileType.BACKEND,
+		);
+		this.daemonState.attach(
+			{
+				url: candidate.address,
+				instanceId: candidate.identity.instanceId,
+				pid: candidate.record.pid,
+				version: candidate.identity.version,
+				prefix: candidate.identity.prefix || candidate.record.prefix,
+				installKind:
+					candidate.identity.installKind || candidate.record.install_kind,
+			},
+			{ owned: false },
+		);
+		this.daemonState.setDesktopAvailable(true);
+		if (candidate.record.retiring_to) {
+			/*
+			 * The record announces that the INSTALLED build changed under this
+			 * daemon. It is NOT a handover: the daemon keeps serving, and no
+			 * successor is promised, so this only names what was observed. Reading
+			 * it as "handing over" and moving the state would detach the event
+			 * stream and abandon in-flight turns over an announcement. Acting on it
+			 * is the update-continuity work, which needs a verified idle-boundary
+			 * handoff from the backend before the app may do anything at all.
+			 */
+			this.daemonState.observe({
+				kind: "build-announced",
+				detail: `Daemon ${candidate.address} reports a new installed build (v${candidate.record.retiring_from ?? "?"} -> v${candidate.record.retiring_to}); it is still serving on this connection.`,
+			});
+		}
+		this.notifyStatus();
+		this.notifyBackendReady();
+	}
+
+	/**
+	 * The origins a claim may declare, or none.
+	 *
+	 * Only a real `http(s)` origin is declarable. The packaged app renders from
+	 * `file://`, whose origin is the literal `"null"` that the backend refuses to
+	 * install - it names every opaque document rather than this application - so
+	 * a packaged claim declares nothing, and because an EMPTY allowlist keeps the
+	 * daemon's historical CORS echo, the renderer's remaining direct reads keep
+	 * working. In development the renderer is served from an http origin, and
+	 * declaring it is what admits that origin once the claim tightens the plane.
+	 */
+	private rendererOrigins(): string[] {
+		const url = process.env.ELECTRON_RENDERER_URL;
+		if (!url) return [];
+		const origin = normaliseAddress(url);
+		return origin ? [origin] : [];
+	}
+
+	/**
+	 * The ONE-release fallback for a daemon that predates the rendezvous record.
+	 *
+	 * This is the previous adoption path, kept verbatim in intent and renamed for
+	 * what it now is (design §8): reachable ONLY when the record directory holds
+	 * no record at all, i.e. the daemon serving this machine was built before
+	 * `run/serve` existed. Without it a UI update would strand every user whose
+	 * daemon is older than the UI; with it, that user keeps exactly the behaviour
+	 * they had, including the pairing gate: a listener is adopted only when this
+	 * app can authenticate to it.
+	 *
+	 * It is NOT reachable when records exist. There, a listener that is not the
+	 * daemon a record describes is refused by the identity check - precisely the
+	 * bug that admitted a stale dev server eleven releases behind - and the
+	 * configured URL can only rank a candidate last, never admit one.
+	 */
+	private async legacyFixedPortAdoption(): Promise<boolean> {
+		if (!this.canAuthenticate()) {
+			logger.info(
+				"No desktop pairing token for the configured backend; not adopting an external backend.",
+				LogFileType.BACKEND,
+			);
+			return false;
+		}
+		try {
+			logger.warn(
+				`Deprecated: no serve records found. Falling back to the fixed-port probe at ${this.backendUrl}/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).`,
+				LogFileType.BACKEND,
+			);
+			const response = await fetch(`${this.backendUrl}${HEALTH_PATH}`, {
+				method: "GET",
+				headers: { Accept: "application/json" },
+				signal: AbortSignal.timeout(PROBE_TIMEOUT_MS * 2),
+			});
+			if (!response.ok) {
+				logger.info(
+					`Legacy probe of ${this.backendUrl} answered ${response.status}; not adopting.`,
+					LogFileType.BACKEND,
+				);
+				return false;
+			}
+			const payload = (await response.json().catch(() => null)) as {
+				result?: { version?: unknown };
+			} | null;
+			if (!(await this.authenticatesAgainstBackend())) {
+				logger.info(
+					"A backend answered health but refused this app's desktop token; not adopting it.",
+					LogFileType.BACKEND,
+				);
+				return false;
+			}
+			const version =
+				typeof payload?.result?.version === "string"
+					? payload.result.version
+					: "";
+			this.attachedRecord = null;
+			this.isExternalBackend = true;
+			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
+			this.daemonState.attach(
+				{
+					url: this.backendUrl,
+					instanceId: "",
+					pid: 0,
+					version,
+					prefix: "",
+					installKind: "",
+				},
+				{ owned: false },
+			);
+			this.daemonState.setDesktopAvailable(true);
+			logger.info(
+				`Adopted a pre-record daemon at ${this.backendUrl} (v${version || "unknown"}) through the deprecated fallback.`,
+				LogFileType.BACKEND,
+			);
+			this.notifyStatus();
+			this.notifyBackendReady();
+			return true;
+		} catch (error) {
+			logger.info(
+				`Legacy fixed-port probe of ${this.backendUrl} failed: ${error instanceof Error ? error.message : String(error)}`,
+				LogFileType.BACKEND,
+			);
+			return false;
+		}
+	}
+
+	/**
 	 * Ask the answering backend whether it will accept this app's bearer.
 	 *
-	 * A `/health` 200 proves a process is listening, not that it is OURS. The
-	 * desktop vocabulary answers 401/403 for a bearer it does not hold, so one
-	 * authenticated read is what separates a legitimate paired backend from a
-	 * stranger that happens to occupy the port.
+	 * Used by the deprecated pre-record fallback, which has no claim key to
+	 * present: the only credential there is the token this app already holds.
 	 */
 	private async authenticatesAgainstBackend(): Promise<boolean> {
 		try {
@@ -796,95 +1343,22 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Check if an external backend is already running AND usable by this app.
+	 * Check whether a daemon this app can use is already running, and attach to
+	 * it if so.
 	 *
-	 * WHY the pairing gate. A liveness probe alone made adoption a decision this
-	 * app was not entitled to: `checkExistingBackend()` fired against the
-	 * CONFIGURED origin, so an app pointed at one port could still adopt whatever
-	 * answered a hardcoded fallback on another one, with no desktop token - i.e.
-	 * it attached itself to a backend it could never authenticate to, and every
-	 * conversation opened empty. The old code even rotated `backendUrl` onto that
-	 * fallback origin, so a rig configured for an isolated port silently became a
-	 * client of the operator's live server (QA round 1, Q-1).
+	 * Declining is not a failure: `start()` spawns this app's own daemon exactly
+	 * as it would on a cold start, and only when the manager is permitted to.
 	 *
-	 * Two rules replace it: the probe only ever targets the configured origin, and
-	 * a healthy answer is only adopted when this app can authenticate to it.
-	 * Declining is not a failure - `start()` spawns our own backend exactly as it
-	 * would have on a cold start.
-	 *
-	 * @returns Promise resolving to true if a paired external backend is running
+	 * @returns Promise resolving to true if a daemon was discovered and adopted
 	 */
 	async checkExistingBackend(): Promise<boolean> {
-		if (this.isDisabled) {
-			logger.info(
-				"Backend Service Manager is disabled. Assuming external backend is available.",
-				LogFileType.BACKEND,
-			);
-			return true;
-		}
-
-		if (!this.canAuthenticate()) {
-			logger.info(
-				"No desktop pairing token for the configured backend; not adopting an external backend.",
-				LogFileType.BACKEND,
-			);
-			return false;
-		}
-
-		try {
-			logger.info(
-				`Checking for external backend at ${this.backendUrl}/health`,
-				LogFileType.BACKEND,
-			);
-
-			// Set a shorter timeout for the fetch request
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-			const response = await fetch(`${this.backendUrl}/health`, {
-				method: "GET",
-				headers: { Accept: "application/json" },
-				signal: controller.signal,
-			});
-
-			clearTimeout(timeoutId);
-
-			logger.info(
-				`External backend health check response status: ${response.status}`,
-				LogFileType.BACKEND,
-			);
-
-			if (response.ok) {
-				if (!(await this.authenticatesAgainstBackend())) {
-					logger.info(
-						"A backend answered health but refused this app's desktop token; starting our own instead.",
-						LogFileType.BACKEND,
-					);
-					return false;
-				}
-				logger.info(
-					"External backend detected, healthy and paired",
-					LogFileType.BACKEND,
-				);
-				this.isExternalBackend = true;
-				this.notifyBackendReady();
-				return true;
-			}
-		} catch (error) {
-			logger.error(
-				"Error checking external backend:",
-				LogFileType.BACKEND,
-				error,
-			);
-			logger.info(
-				"No external backend detected or backend is not healthy",
-				LogFileType.BACKEND,
-			);
-		}
-
-		return false;
+		return await this.discoverAndAttach();
 	}
 
+	/**
+	 * Start the backend service
+	 * @returns Promise resolving to true if the backend was started successfully, false otherwise
+	 */
 	/** Keep PATH discovery authoritative; `ownedServeLaunch` proves the identity
 	 * of what it found rather than trusting the name it was resolved under. */
 	private async resolveGlobalConsole(env: NodeJS.ProcessEnv): Promise<string> {
@@ -898,52 +1372,94 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Start the backend service
+	 * Start a daemon this app owns, or attach to one that already exists.
+	 *
+	 * `stop(false)` is terminal by design: the app is going away or handing the
+	 * installation over, and a spawn racing that hand-off is the double-serve
+	 * case. A restart asks for `stop(true)`, which leaves this flag alone.
+	 *
+	 * Discovery runs FIRST, because this method is also the watchdog's recovery
+	 * path: a daemon that appeared (or came back) after the app lost the one it
+	 * had must be found again before a second one is ever spawned.
+	 *
+	 * @param options.quiet set by the watchdog, whose retries would otherwise
+	 * raise one modal error dialog per attempt for a failure the app is already
+	 * reporting in its status surface
+	 * @param options.reuseDiscovery the caller has JUST run discovery in this same
+	 * startup tick and its verdict - `discoveryBlocksSpawn`, the wedged records,
+	 * the configured/remote flag - is what the decision below reads. Never pass it
+	 * where time has passed in between - an installer, a dialog, anything that can
+	 * let a daemon appear - because then the verdict is stale and spawning over a
+	 * live daemon is the failure this path exists to prevent.
 	 * @returns Promise resolving to true if the backend was started successfully, false otherwise
 	 */
-	start(): Promise<boolean> {
-		// `stop(false)` is terminal by design: the app is going away or handing the
-		// installation over, and a spawn racing that hand-off is the double-serve
-		// case. A restart asks for `stop(true)`, which leaves this flag alone.
+	start(options: StartOptions = {}): Promise<boolean> {
 		if (this.isAppClosing) return Promise.resolve(false);
 		if (this.startPromise) return this.startPromise;
-		this.startPromise = this.startOwned(this.startEpoch).finally(() => {
-			this.startPromise = null;
-		});
+		this.startPromise = this.startOwned(this.startEpoch, options).finally(
+			() => {
+				this.startPromise = null;
+			},
+		);
 		return this.startPromise;
 	}
 
-	private async startOwned(epoch: number): Promise<boolean> {
+	private async startOwned(
+		epoch: number,
+		options: StartOptions = {},
+	): Promise<boolean> {
 		if (this.ownedServe?.stop) return false;
 		if (this.ownedServe) return this.isRunning;
 
-		if (this.isDisabled) {
-			logger.info(
-				"Backend Service Manager is disabled. Skipping backend start.",
-				LogFileType.BACKEND,
-			);
-			this.notifyBackendReady();
+		/*
+		 * Discovery, unless the caller has just run it in this same startup tick.
+		 *
+		 * `checkExistingBackend()` publishes the attached state when it finds one,
+		 * and it fires `notifyBackendReady()` AFTER the URL rotation - which is the
+		 * ordering a consumer re-reading capabilities needs. Firing it again here
+		 * raised two concurrent capability probes on the ordinary external-backend
+		 * start, doubling that traffic and letting the OLDER read decide the result
+		 * by settling last (review round 2, R2-2).
+		 */
+		if (!options.reuseDiscovery && (await this.checkExistingBackend())) {
+			this.isRunning = true;
+			this.startHealthCheck();
 			return true;
 		}
-
-		// First check if an external backend is already running
-		const existing = await this.checkExistingBackend();
 		if (epoch !== this.startEpoch || this.isAppClosing) return false;
-		if (existing) {
-			this.isRunning = true;
-			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
+
+		if (
+			!this.managerMaySpawn ||
+			this.remoteConfigured ||
+			this.discoveryBlocksSpawn
+		) {
+			/*
+			 * `VITE_DISABLE_BACKEND_MANAGER=true` means "do not spawn or kill a
+			 * daemon", NOT "assume one exists". Discovery found nothing, so there
+			 * is nothing to attach to and nothing this app is allowed to start:
+			 * the honest outcome is a named state plus a probe loop that keeps
+			 * re-discovering, so the daemon the operator starts a minute later is
+			 * attached without restarting the app. Returning true here, as the old
+			 * early return did, is what made every conversation open empty.
+			 */
+			/*
+			 * Three different reasons reach this branch, and a log that named the
+			 * disable flag for all of them sent whoever read it looking in the wrong
+			 * place - a remote target reported as "VITE_DISABLE_BACKEND_MANAGER=true"
+			 * is a config file that is not the one in play.
+			 */
+			const noSpawnReason = this.managerMaySpawn
+				? this.remoteConfigured
+					? `the configured target (${this.backendUrl}) is remote`
+					: "a local daemon may still be running and could not be attached"
+				: "VITE_DISABLE_BACKEND_MANAGER=true";
+			logger.info(
+				`No daemon discovered, and this app is configured not to spawn one (${noSpawnReason}).`,
+				LogFileType.BACKEND,
+			);
+			this.observeNoCandidate();
 			this.startHealthCheck();
-			// NO `notifyBackendReady()` here. `checkExistingBackend()` already
-			// fired it on both paths that can return true from HERE — its
-			// `isDisabled` early return is unreachable at this point, because the
-			// disabled branch above returns first — and it fires it AFTER the
-			// alternative-URL rotation, which is the ordering a consumer re-reading
-			// capabilities needs. Firing again raised two concurrent capability
-			// probes on the ordinary external-backend start, doubling that traffic
-			// and letting the OLDER read decide the result by settling last
-			// (review round 2, R2-2). The notifier is also generation-guarded now,
-			// so a duplicate is no longer incorrect — it is merely wasted.
-			return true;
+			return false;
 		}
 
 		// No external backend, start our own
@@ -1043,6 +1559,10 @@ export class BackendServiceManager {
 					break;
 				if (healthy) {
 					this.isRunning = true;
+					// Registered BEFORE readiness is announced: the Settings row's
+					// version comes from this registration, and a consumer that
+					// re-reads capabilities on `backendReady` must already see it.
+					await this.registerOwnedDaemon(child);
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -1062,10 +1582,8 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 
-			// Report the failure without parking the main thread - see
-			// `reportStartFailure` for why the modal is suppressed on the quit path.
-			this.reportStartFailure(
-				"Backend Error",
+			this.reportStartOutcome(
+				options,
 				"Failed to start the Local Operator backend service. Please check the logs for more information.",
 			);
 
@@ -1103,15 +1621,203 @@ export class BackendServiceManager {
 				error,
 			);
 
-			// Report the failure without parking the main thread - see
-			// `reportStartFailure` for why the modal is suppressed on the quit path.
-			this.reportStartFailure(
-				"Backend Error",
+			this.reportStartOutcome(
+				options,
 				`Error starting the Local Operator backend service: ${error}`,
 			);
 
 			return false;
 		}
+	}
+
+	/**
+	 * Register the daemon this app just spawned with the state machine.
+	 *
+	 * WHY this exists. `attach()` used to be called only for a daemon this app
+	 * DISCOVERED (plus a spawn that asked for an ephemeral port), so the ordinary
+	 * fixed-port spawn - the path every user without a global `lop` takes -
+	 * returned `true` without registering anything. The snapshot then described
+	 * an app with no daemon (`owned: false`, no version, no pid), Settings printed
+	 * `Unknown (update required)` for a backend the app had started seconds ago,
+	 * and the death notice called it "the attached backend". Registering here is
+	 * also what makes the app's own daemon reachable by the same rules as every
+	 * other one: the probe loop can compare an `instance_id`, and the renderer can
+	 * name which daemon the number describes.
+	 *
+	 * Identity comes from the child's own record when it publishes one - the only
+	 * source of the `instance_id` a later probe compares against - and otherwise
+	 * from the address that just answered, where the identity question for a
+	 * process this app spawned itself is "is the answering pid my child". That
+	 * second arm is the case of an install predating the record format, which is
+	 * reachable on a fixed port exactly as the deprecated adoption path allows.
+	 */
+	private async registerOwnedDaemon(child: ChildProcess): Promise<void> {
+		const identity = await this.ownedDaemonIdentity(child);
+		if (!identity) {
+			/*
+			 * Nothing could be established: no record, and the address either did
+			 * not answer or was answered by a process that is not this child.
+			 * Registering a guess is the failure mode this whole module exists to
+			 * remove, so the manager reports and leaves the state alone.
+			 */
+			logger.warn(
+				`Started a daemon at ${this.backendUrl} (pid ${child.pid}) but could not establish its identity; it stays unregistered until the next probe.`,
+				LogFileType.BACKEND,
+			);
+			return;
+		}
+		this.daemonState.attach(identity, { owned: true });
+		// Spawned by this app with this app's desktop token, so the plane accepts
+		// it. Never asserted for a daemon this app did not start.
+		this.daemonState.setDesktopAvailable(true);
+		this.notifyStatus();
+		logger.info(
+			`Registered this app's own daemon: ${identity.url} (pid ${identity.pid}, v${identity.version || "unknown"}, ${identity.installKind || "kind unknown"}).`,
+			LogFileType.BACKEND,
+		);
+	}
+
+	/**
+	 * The identity of a daemon this app spawned, or null when it cannot be proved.
+	 *
+	 * The record is preferred and is asked for with the SHORT registration window:
+	 * the child has already answered `/health` here, and a record is published
+	 * with the listener, so the file is either already there or this install does
+	 * not write one at all (see `OWNED_REGISTRATION_WINDOW_MS`).
+	 */
+	private async ownedDaemonIdentity(
+		child: ChildProcess,
+	): Promise<DaemonIdentity | null> {
+		const pid = child.pid;
+		if (pid === undefined) return null;
+		const resolved = await this.resolveOwnedAddress(
+			child,
+			OWNED_REGISTRATION_WINDOW_MS,
+		);
+		if (resolved) {
+			/*
+			 * The URL stays the address the app is dialling and just proved healthy:
+			 * the record's spelling of the same listener (`localhost` for
+			 * `127.0.0.1`, say) is a second place for the two to disagree, and every
+			 * later request resolves against this field.
+			 */
+			return {
+				url: this.backendUrl,
+				instanceId: resolved.instanceId,
+				pid,
+				version: resolved.version,
+				prefix: resolved.prefix,
+				installKind: resolved.installKind,
+			};
+		}
+		try {
+			const response = await fetch(`${this.backendUrl}${HEALTH_PATH}`, {
+				method: "GET",
+				headers: { Accept: "application/json" },
+				signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+			});
+			if (!response.ok) return null;
+			const payload = (await response.json().catch(() => null)) as {
+				result?: { version?: unknown };
+			} | null;
+			const health = readIdentity(payload);
+			// A daemon that names a DIFFERENT process is somebody else's: the port
+			// was taken, and registering it would label a stranger as this app's
+			// child - the conflation the identity check exists to prevent.
+			if (health && health.pid !== 0 && health.pid !== pid) return null;
+			const version =
+				health?.version ||
+				(typeof payload?.result?.version === "string"
+					? payload.result.version
+					: "");
+			return {
+				url: this.backendUrl,
+				// Empty for an install predating `instance_id`, which is what the
+				// deprecated adoption path publishes for the same reason: there is
+				// nothing to compare a later probe against, and the state machine
+				// says so rather than inventing one.
+				instanceId: health?.instanceId ?? "",
+				pid,
+				version,
+				prefix: health?.prefix ?? "",
+				installKind: health?.installKind ?? "",
+			};
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Wait for the child to publish its own record, then prove the address it
+	 * names is the child.
+	 *
+	 * The record is keyed by pid, which is why this is scoped to THIS child: a
+	 * record for any other pid is somebody else's daemon and is never adopted
+	 * here. The `/health` identity check afterwards is what makes the record's
+	 * claim trustworthy rather than merely plausible - the same rule discovery
+	 * applies to every other candidate.
+	 */
+	private async resolveOwnedAddress(
+		child: ChildProcess,
+		windowMs: number = OWNED_RECORD_WINDOW_MS,
+	): Promise<{
+		address: string;
+		port: number;
+		instanceId: string;
+		version: string;
+		prefix: string;
+		installKind: string;
+	} | null> {
+		if (!child.pid) return null;
+		const deadline = Date.now() + windowMs;
+		while (Date.now() < deadline) {
+			if (this.process !== child) return null;
+			const file = join(serveRunDir(), `${child.pid}.json`);
+			try {
+				const entry = parseRecord(
+					JSON.parse(fs.readFileSync(file, "utf8")),
+					file,
+				);
+				if (entry.record && entry.record.pid === child.pid) {
+					const address = recordAddress(entry.record);
+					const probe = await probeIdentity(address, entry.record.instance_id, {
+						timeoutMs: PROBE_TIMEOUT_MS,
+					});
+					if (probe.outcome === "identified") {
+						return {
+							address,
+							port: entry.record.port,
+							instanceId: probe.identity.instanceId,
+							version: probe.identity.version || entry.record.version,
+							prefix: probe.identity.prefix || entry.record.prefix,
+							installKind:
+								probe.identity.installKind || entry.record.install_kind,
+						};
+					}
+				}
+			} catch {
+				// No record yet (or a torn read): the child publishes once it has
+				// bound its listener, which is what this loop waits for.
+			}
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+		return null;
+	}
+
+	/** Report a start failure, honouring the watchdog's `quiet` retry.
+	 *
+	 * A retry the status surface is already reporting must not raise one modal per
+	 * attempt; every other caller goes through `reportStartFailure`, which keeps
+	 * the quit-path suppression that stops a modal parking the main thread. */
+	private reportStartOutcome(options: StartOptions, message: string): void {
+		if (options.quiet) {
+			logger.error(
+				`Backend Error (not shown; a retry is already reported in the status surface): ${message}`,
+				LogFileType.BACKEND,
+			);
+			return;
+		}
+		this.reportStartFailure("Backend Error", message);
 	}
 
 	/**
@@ -1340,8 +2046,69 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Start health check interval
-	 * Periodically checks the health of the backend service
+	 * One probe of the daemon this app is attached to.
+	 *
+	 * "Identified" means the answer came from the process we attached to, which
+	 * is a strictly stronger question than "something answered 200". A 200 from a
+	 * DIFFERENT process means the daemon was replaced under us or its port was
+	 * taken, and that is a failure of the attachment, not a success.
+	 *
+	 * `/health` carries no authorization, so a gated route's 401/403/503 can
+	 * never be read as a liveness answer here - which is the conflation this
+	 * whole change is about. Those statuses surface through `requestDesktop`, and
+	 * `DaemonStateMachine` records them BESIDE the state.
+	 */
+	private async probeAttachedDaemon(): Promise<ProbeObservation> {
+		const expected = this.daemonState.expectedInstanceId();
+		if (!expected) {
+			// No identity to compare against (only reachable through the
+			// deprecated pre-record path): a 200 is the most that can be known,
+			// and it is reported as what it is.
+			const ok = await this.checkHealth();
+			return ok
+				? { kind: "identified" }
+				: {
+						kind: "failed",
+						detail: `No answer from ${this.backendUrl}${HEALTH_PATH}`,
+					};
+		}
+		const probe = await probeIdentity(this.backendUrl, expected, {
+			timeoutMs: PROBE_TIMEOUT_MS,
+		});
+		switch (probe.outcome) {
+			case "identified":
+				return probe.identity.pid === this.daemonState.snapshot().pid
+					? { kind: "identified" }
+					: {
+							kind: "failed",
+							detail:
+								"The answering daemon's PID no longer matches the attachment.",
+						};
+			case "identity-mismatch":
+				return {
+					kind: "failed",
+					detail: `Another process is answering at ${this.backendUrl} (${probe.detail})`,
+				};
+			case "not-a-daemon":
+				return {
+					kind: "failed",
+					detail: `${this.backendUrl} answered but is not a Local Operator daemon (${probe.detail})`,
+				};
+			case "unreachable":
+				return {
+					kind: "failed",
+					detail: `${this.backendUrl} did not answer (${probe.detail})`,
+				};
+		}
+	}
+
+	/**
+	 * Start health check interval.
+	 *
+	 * 10 s rather than 30 s, because the loop is now cheap and non-destructive:
+	 * it observes, and the state machine - not the clock - decides whether
+	 * anything is done about what it saw. A single missed probe changes nothing
+	 * at all.
 	 */
 	private startHealthCheck(): void {
 		// Clear existing interval if any
@@ -1351,75 +2118,185 @@ export class BackendServiceManager {
 
 		// Start new interval
 		this.healthCheckInterval = setInterval(() => {
-			void this.checkUnhealthyBackend();
-		}, 30000); // Check every 30 seconds
+			void this.checkBackendHealth();
+		}, PROBE_INTERVAL_MS);
 	}
 
 	/**
-	 * The watchdog's action for one unhealthy sample.
+	 * One watchdog tick: observe the daemon, then act only where the state
+	 * machine says action is warranted.
 	 *
-	 * A method rather than a closure body so the restart INTENT below is
-	 * assertable without waiting out a 30s interval.
+	 * The previous loop restarted the backend on ONE failed 30 s sample - for a
+	 * daemon that might have been mid-restart, busy with someone else's turn, or
+	 * serving another app - and, for an external daemon, adopted it as "ours" and
+	 * started a second one. Neither is possible here: `degraded` never starts
+	 * anything, and only `detached` reaches {@link recoverFromDetachment}.
 	 */
-	private async checkUnhealthyBackend(): Promise<void> {
-		const epoch = this.startEpoch;
-		const isHealthy = await this.checkHealth();
-		if (
-			epoch !== this.startEpoch ||
-			this.isAppClosing ||
-			this.isAutoUpdating ||
-			this.isDisabled
-		)
-			return;
-		if (isHealthy) return;
+	private async checkBackendHealth(): Promise<void> {
+		if (this.isAppClosing) return;
 
-		logger.info("Backend health check failed", LogFileType.BACKEND);
-
-		if (this.isExternalBackend) {
-			// External backend is no longer healthy
-			this.isExternalBackend = false;
-			this.isRunning = false;
-
-			// Try to start our own backend
-			await this.start();
-			return;
-		}
-
-		/*
-		 * A child that EXITED is not covered by the restart below: its `exit` handler
-		 * nulls `this.process`, and this method used to return early on that fact, so
-		 * nothing ever brought the backend back. The renderer's Retry could re-arm
-		 * the stream but could never succeed, and the failure it showed named the
-		 * stream instead of the missing server (QA round 1, Q-2). The watchdog is the
-		 * only thing in the app that owns the process lifecycle, so the recovery
-		 * lives here; `start()` re-runs its own adoption check and spawns a
-		 * replacement.
-		 *
-		 * The guards are the states in which a spawn would fight the user or another
-		 * actor: a disabled manager never owns a process, a closing app is going
-		 * away, and an update is mid-handoff to the new version - `update-service`
-		 * restarts the backend itself there. Without them a shutdown could race a
-		 * spawn it just killed.
-		 */
-		if (!this.process) {
-			if (this.isDisabled || this.isAppClosing || this.isAutoUpdating) return;
+		// A child of ours whose pid is gone is EVIDENCE, not a timeout to
+		// interpret: no probe is needed to learn something we already know.
+		// The pid may belong to an EXTERNAL daemon this app discovered, so the
+		// sentence names which one it was: reporting a discovered daemon as
+		// "owned" tells the operator this app was managing it, which is exactly
+		// the claim the no-replacement rules exist to make false.
+		const snapshot = this.daemonState.snapshot();
+		const pid = this.remoteConfigured
+			? null
+			: snapshot.pid || this.process?.pid;
+		if (pid && pidLiveness(pid) === "dead") {
 			logger.info(
-				"Backend process is gone; starting a replacement",
+				`${snapshot.owned ? "The backend this app started" : "The attached backend"} (pid ${pid}, ${snapshot.installKind ?? "unknown install"}) is gone; detaching immediately.`,
 				LogFileType.BACKEND,
 			);
-			await this.start();
+			this.daemonState.observe({ kind: "pid-dead" });
+			this.notifyStatus();
+			await this.recoverFromDetachment();
 			return;
 		}
 
-		await this.restart();
+		if (
+			this.daemonState.getState() === "detached" ||
+			this.daemonState.getState() === "wedged"
+		) {
+			// Already without a usable daemon: this tick is a re-discovery, never a
+			// restart of the daemon that was lost. `wedged` takes the same path for
+			// the same reason - a record whose heartbeat stopped may resume, may die
+			// (and then be reaped), or may be replaced by a daemon the operator
+			// starts, and all three are found by looking, not by spawning.
+			await this.recoverFromDetachment();
+			return;
+		}
+
+		const observation = await this.probeAttachedDaemon();
+		const before = this.daemonState.snapshot();
+		const next = this.daemonState.observe(observation);
+		const after = this.daemonState.snapshot();
+		// Push only a real change: a probe that found what the last probe found is
+		// not news, and a status event per 10 s tick would be one IPC wake-up per
+		// interval forever.
+		if (after.state !== before.state || after.detail !== before.detail) {
+			this.notifyStatus();
+		}
+		if (next === "detached") {
+			logger.warn(
+				`Backend detached: ${this.daemonState.snapshot().detail}`,
+				LogFileType.BACKEND,
+			);
+			await this.recoverFromDetachment();
+		}
 	}
 
+	/**
+	 * Re-discover NOW, on the renderer's request, and answer with the snapshot.
+	 *
+	 * The connectivity banner's Retry needs this. Recovery is paced by
+	 * `nextRecoveryAt`, so once the liveness signal moved to MAIN a renderer that
+	 * only re-read the snapshot could not cause an attempt the timer was not
+	 * already going to make - an inert control in the one state that offers it.
+	 * This clears the pacing for this attempt (a user asking IS the reason to try
+	 * now) and runs the same recovery path the timer runs, so the two cannot
+	 * drift apart about what trying means.
+	 *
+	 * @returns the snapshot as it stands when the attempt has finished, so the
+	 * caller renders what main observed rather than what it hoped for
+	 */
+	async reconnectNow(): Promise<DaemonStatusSnapshot> {
+		this.nextRecoveryAt = 0;
+		await this.recoverFromDetachment();
+		return this.getStatusSnapshot();
+	}
+
+	/**
+	 * Recover from a lost daemon - by RE-DISCOVERING, and only then by starting
+	 * one.
+	 *
+	 * The order is the whole safety property: a daemon that a TUI (or a previous
+	 * app run) owns may still be there on a port this app has not looked at yet,
+	 * and starting a second one because the first did not answer would leave two
+	 * servers writing one transcript. An external daemon is never restarted or
+	 * replaced at all: if it is gone, the app says so.
+	 */
+	private async recoverFromDetachment(): Promise<void> {
+		if (this.isAppClosing || this.isAutoUpdating || this.recoveryInFlight)
+			return;
+		// Backoff applies to a daemon we HAD (re-attaching to a specific daemon
+		// on a specific address is the case worth pacing). With no daemon at all,
+		// a tick is one directory read plus a couple of loopback probes, and
+		// discovering one the operator starts a minute later is the entire point.
+		if (this.daemonState.expectedInstanceId() !== null) {
+			const now = Date.now();
+			if (now < this.nextRecoveryAt) return;
+			// Advance only on a real attempt, not each skipped timer tick.
+			this.nextRecoveryAt = now + this.daemonState.nextBackoff();
+		}
+		if (this.daemonState.isReportablyGone()) {
+			// Named with the record that described it: "the daemon my TUI started
+			// is gone" is diagnosable only if the log says which record was
+			// behind the attachment.
+			logger.info(
+				`No daemon at ${this.backendUrl} for over ${DETACHED_AFTER_MS / 1000}s${this.attachedRecord ? ` (its record was ${this.attachedRecord.file})` : ""}; reporting it as stopped rather than reconnecting.`,
+				LogFileType.BACKEND,
+			);
+		}
+		this.recoveryInFlight = true;
+		try {
+			// Recover the selected daemon first. Re-discovery must not silently switch
+			// installs during a transient outage, especially with an active turn.
+			if (this.daemonState.expectedInstanceId()) {
+				const observation = await this.probeAttachedDaemon();
+				if (observation.kind === "identified") {
+					this.daemonState.observe(observation);
+					this.nextRecoveryAt = 0;
+					this.notifyStatus();
+					this.notifyBackendReady();
+					return;
+				}
+				const selectedPid = this.daemonState.snapshot().pid;
+				if (selectedPid && pidLiveness(selectedPid) !== "dead") return;
+			}
+			// A live owned ChildProcess (including a legacy daemon without records)
+			// is not ours to kill just because HTTP timed out.
+			if (
+				this.process &&
+				this.process.exitCode === null &&
+				this.process.signalCode == null
+			)
+				return;
+			if (await this.discoverAndAttach()) return;
+			if (
+				!this.managerMaySpawn ||
+				this.remoteConfigured ||
+				this.isExternalBackend ||
+				this.discoveryBlocksSpawn
+			)
+				return;
+			await this.start({ quiet: true });
+		} finally {
+			this.recoveryInFlight = false;
+		}
+	}
 	/**
 	 * Get the port number used by the backend service
 	 * @returns The port number
 	 */
 	getPort(): number {
 		return this.port;
+	}
+
+	/**
+	 * The pid of the process this app SPAWNED, or null.
+	 *
+	 * The one way any caller may learn what this app is allowed to signal. It is
+	 * deliberately not "the backend's pid": an attached daemon has a pid too, and
+	 * it is not this app's to kill - the invariant is `owned <-> this.process`.
+	 *
+	 * Used by the quit path's last-resort handler, which must be synchronous and
+	 * therefore cannot go through `stop()`.
+	 */
+	getOwnedPid(): number | null {
+		return this.process?.pid ?? null;
 	}
 
 	/**
