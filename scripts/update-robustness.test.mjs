@@ -4235,9 +4235,53 @@ const loadUpdateServiceModule = async () => {
 						}
 						if (args.path === "electron-updater") {
 							return fixture(`
+								/*
+								 * A listener registry rather than the no-op methods this
+								 * stub used to carry, so the service's OWN wiring is
+								 * exercised: the renderer message a not-available check
+								 * produces comes from the listener registered in the service's
+								 * constructor rather than from the check itself, and a stub
+								 * that swallowed registrations could not tell whether that
+								 * path still works.
+								 */
+								const listeners = new Map();
+								const register = (event, handler) => {
+									listeners.set(event, [...(listeners.get(event) ?? []), handler]);
+									return autoUpdater;
+								};
 								export const autoUpdater = {
-									on: () => {}, once: () => {}, removeAllListeners: () => {},
-									checkForUpdates: async () => null,
+									on: (event, handler) => register(event, handler),
+									once: (event, handler) => register(event, handler),
+									removeAllListeners: (event) => {
+										if (event === undefined) listeners.clear();
+										else listeners.delete(event);
+										return autoUpdater;
+									},
+									listeners: (event) => listeners.get(event) ?? [],
+									emit: (event, payload) => {
+										for (const handler of [...(listeners.get(event) ?? [])]) handler(payload);
+									},
+									/*
+									 * The library's own ORDER, which is the part that matters
+									 * here: electron-updater emits update-not-available and only
+									 * then resolves a result whose isUpdateAvailable is false,
+									 * and resolves null only when isUpdaterActive() says the
+									 * updater will not run at all. The outcome is driven through
+									 * a global so a case can hand the check either thing. No
+									 * backticks in this comment: it lives inside a template
+									 * literal, and one would end it here.
+									 */
+									checkForUpdates: async () => {
+										const result = globalThis.__loTestAppCheck
+											? await globalThis.__loTestAppCheck()
+											: null;
+										if (result && !result.isUpdateAvailable) {
+											autoUpdater.emit("update-not-available", {
+												version: "0.0.0-test",
+											});
+										}
+										return result;
+									},
 									downloadUpdate: async () => [],
 									quitAndInstall: () => {},
 									setFeedURL: () => {},
@@ -4345,6 +4389,355 @@ test("the banner's remedy names the release the last check read", async () => {
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// The one sentence a whole update check may earn
+// ---------------------------------------------------------------------------
+
+/**
+ * Why this section exists: a user reported seeing, from ONE press of "Check for
+ * updates", both "Server version 0.54.44 is available. You are currently using
+ * version 0.54.43." and "You are up to date" - application 0.22.1 against
+ * server 0.54.43, with 0.54.44 published. It happened "when there's an
+ * available version on either the server or the UI", which is the shape of the
+ * bug: each channel's own event was rendered as a sentence about the whole
+ * installation, so exactly one trailing channel produced an offer and an
+ * affirmation in the same turn, and which sentence the user saw was decided by
+ * whichever event the main process happened to emit last.
+ *
+ * The rule under test (`src/main/update-check-verdict.ts`): the affirmation is
+ * earned only by a check that positively proved BOTH channels current, never by
+ * a channel with an update to offer and never by a channel that could not find
+ * out. These cases drive the real service and assert the real renderer events,
+ * so "the app channel said nothing newer" is asserted BESIDE the verdict that
+ * refuses to affirm - which is the property the event-driven button lacked.
+ *
+ * What is real, and what is substituted - the bound on the claim:
+ *
+ * REAL: `UpdateService.checkForUpdates`, `checkForBackendUpdates` and
+ * `checkForAllUpdates`, the server probe over real loopback HTTP (the shipped
+ * `getInstalledBackendVersion` fetch, status handling and version parse), the
+ * comparison that decides whether the server trails, and every renderer event
+ * each channel sends.
+ *
+ * SUBSTITUTED: `electron`, `electron-updater` and `electron-log`, because this
+ * process is not Electron (`loadUpdateServiceModule`'s fixture - the app
+ * channel's outcome is handed in as the `UpdateCheckResult` the real updater
+ * resolves), and `getLatestPypiVersion`, whose only source is a hard-coded
+ * `https://pypi.org/pypi/local-operator/json` that no test can point at
+ * loopback. The published version is an INPUT to the check rather than part of
+ * the rule, so supplying it directly copies nothing the assertions rely on.
+ */
+
+/**
+ * Drive one aggregate check against the shipped service.
+ *
+ * Returns the verdict the renderer receives and every event the check sent it,
+ * because the defect is about the two TOGETHER: an event that means "nothing
+ * newer on this channel" is legitimate, and only the sentence built from it was
+ * not.
+ */
+const loAggregateCheck = async ({
+	appCheck,
+	serverVersion,
+	publishedVersion,
+	serverAnswersVersion = true,
+	devMode = false,
+}) => {
+	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	let interval = null;
+	let health = null;
+	try {
+		health = createServer((request, response) => {
+			if (!request.url?.startsWith("/health")) {
+				response.writeHead(404);
+				response.end();
+				return;
+			}
+			response.writeHead(200, { "Content-Type": "application/json" });
+			response.end(
+				JSON.stringify({
+					result: serverAnswersVersion ? { version: serverVersion } : {},
+				}),
+			);
+		});
+		const port = await new Promise((resolve) =>
+			health.listen(0, "127.0.0.1", () => resolve(health.address().port)),
+		);
+
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: (channel, payload) => sent.push({ channel, payload }),
+					isDestroyed: () => false,
+				},
+			},
+			{
+				getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+			},
+		);
+		interval = updateService.updateCheckInterval;
+		updateService.backendUrl = `http://127.0.0.1:${port}`;
+		// The field the constructor derives from `app.isPackaged`, which the
+		// fixture pins to a packaged app for every other case in this file.
+		if (devMode) updateService.isDevMode = true;
+		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
+		globalThis.__loTestAppCheck = appCheck;
+		const verdict = await updateService.checkForAllUpdates(false);
+		return { verdict, sent };
+	} finally {
+		delete globalThis.__loTestAppCheck;
+		if (interval) clearInterval(interval);
+		if (health) {
+			health.closeAllConnections();
+			health.close();
+		}
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+};
+
+const loAppCurrent = () => ({ isUpdateAvailable: false });
+const loAppTrails = () => ({ isUpdateAvailable: true });
+
+/**
+ * The pure rule, bundled with NO fixture and no stubs.
+ *
+ * Kept out of `loadUpdateServiceModule` on purpose: the module's whole point is
+ * that it has no electron import standing between it and its callers, and a
+ * case that reaches it through the service's graph could not tell the two
+ * apart. The caller removes the temp directory.
+ */
+const loadVerdictRule = async () => {
+	const built = await build({
+		stdin: {
+			contents: 'export * from "./src/main/update-check-verdict";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const dir = mkdtempSync(join(tmpdir(), "lo-verdict-rule-"));
+	const file = join(dir, "update-check-verdict.mjs");
+	writeFileSync(file, built.outputFiles[0].text);
+	return { rule: await import(file), dir };
+};
+
+/**
+ * The operator's report, as a test: the app is current and the server trails
+ * 0.54.43 -> 0.54.44.
+ */
+test("a server offer leaves the whole check with nothing to affirm", async () => {
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+
+	/*
+	 * Both halves of the reported pair really are produced, and that is the
+	 * point: `update-not-available` is the app channel saying the app is
+	 * current, and `backend-update-available` carries the server offer. The
+	 * old button turned the FIRST of those into "You are up to date" and the
+	 * notification panel rendered the second, so asserting only the absence of
+	 * an affirmation would pass on a check that had stopped offering anything.
+	 */
+	const channels = sent.map(({ channel }) => channel);
+	assert.ok(
+		channels.includes("update-not-available"),
+		JSON.stringify(channels),
+	);
+	assert.ok(
+		channels.includes("backend-update-available"),
+		JSON.stringify(channels),
+	);
+
+	// And the verdict - the only thing the renderer may read a sentence from -
+	// affirms nothing, because half of this check found an update.
+	assert.equal(verdict.app, "current");
+	assert.equal(verdict.server, "available");
+	assert.equal(verdict.affirmation, null);
+});
+
+/**
+ * The mirror case, which the report also named ("either the server or the UI"):
+ * the app trails and the server is current. The old renderer turned the server
+ * channel's `backend-update-not-available` into "The server is up to date"
+ * beside the app's own update offer.
+ */
+test("an app offer leaves the whole check with nothing to affirm", async () => {
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loAppTrails,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+
+	const channels = sent.map(({ channel }) => channel);
+	assert.ok(
+		channels.includes("backend-update-not-available"),
+		JSON.stringify(channels),
+	);
+	// The event still exists and still means what it says about its own
+	// channel; what changed is that no sentence about the installation is
+	// built from it while the app has an update to offer.
+	assert.equal(verdict.app, "available");
+	assert.equal(verdict.server, "current");
+	assert.equal(verdict.affirmation, null);
+});
+
+/** The one pair that earns a sentence, and it names both halves. */
+test("a check that proved both channels current earns the affirmation", async () => {
+	// The sentence is READ from the shipped module rather than retyped here, so
+	// a copy change cannot pass an assertion that repeats the old words.
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const { verdict, sent } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+
+		assert.equal(verdict.app, "current");
+		assert.equal(verdict.server, "current");
+		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		// Both channels' own "nothing newer" events are still emitted (the
+		// notification panel clears a stale offer on them), so the sentence and
+		// the events cannot have been the same mechanism by accident.
+		const channels = sent.map(({ channel }) => channel);
+		assert.ok(
+			channels.includes("update-not-available"),
+			JSON.stringify(channels),
+		);
+		assert.ok(
+			channels.includes("backend-update-not-available"),
+			JSON.stringify(channels),
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/** Both trailing: an offer on each side and no sentence. */
+test("two offers leave the whole check with nothing to affirm", async () => {
+	const { verdict } = await loAggregateCheck({
+		appCheck: loAppTrails,
+		serverVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+
+	assert.equal(verdict.app, "available");
+	assert.equal(verdict.server, "available");
+	assert.equal(verdict.affirmation, null);
+});
+
+/**
+ * A channel that could not find out is not a channel that found nothing, and it
+ * may not supply the half of the affirmation the other channel is missing. This
+ * is the repository's documented defect class - a surface treating "we could
+ * not find out" as an answer - in the one place it decided a sentence.
+ */
+test("a channel that could not find out does not let the other one affirm", async () => {
+	// The app channel errors (a real throw from the updater, which is what a
+	// failed feed fetch does) while the server is positively current.
+	const errored = await loAggregateCheck({
+		appCheck: () => {
+			throw new Error("net::ERR_INTERNET_DISCONNECTED");
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(errored.verdict.app, "unavailable");
+	assert.equal(errored.verdict.server, "current");
+	assert.equal(errored.verdict.affirmation, null);
+	// The failure is still reported to the user: the status replaces nothing.
+	assert.ok(
+		errored.sent.some(({ channel }) => channel === "update-error"),
+		JSON.stringify(errored.sent.map(({ channel }) => channel)),
+	);
+
+	// A health endpoint that answers but carries no version: "Unknown" is the
+	// absence of a reading, not an older version (the same confusion produced
+	// a pip command for a server whose version could not be read at all).
+	const unreadable = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverAnswersVersion: false,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(unreadable.verdict.server, "unavailable");
+	assert.equal(unreadable.verdict.app, "current");
+	assert.equal(unreadable.verdict.affirmation, null);
+
+	// Development mode never runs the check at all, so it has nothing to say.
+	const dev = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		devMode: true,
+	});
+	assert.equal(dev.verdict.app, "unavailable");
+	assert.equal(dev.verdict.server, "unavailable");
+	assert.equal(dev.verdict.affirmation, null);
+});
+
+/**
+ * The rule itself, over every pair: the affirmation is a function of the two
+ * channel statuses and of nothing else. Pinned as a table because the cases
+ * above can only ever visit four of the nine pairs, and the sentence's own
+ * content matters - it has to speak for both halves, since a sentence that
+ * names one channel is the defect.
+ */
+test("the affirmation is earned by both channels current and by nothing else", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const {
+			updateCheckVerdict: verdictFor,
+			updateCheckAffirmation: affirmationFor,
+			UP_TO_DATE_AFFIRMATION: sentence,
+		} = rule;
+
+		const statuses = ["available", "current", "unavailable"];
+		let earned = 0;
+		for (const app of statuses) {
+			for (const server of statuses) {
+				const verdict = verdictFor({ app, server });
+				assert.equal(verdict.app, app);
+				assert.equal(verdict.server, server);
+				const bothCurrent = app === "current" && server === "current";
+				assert.equal(
+					verdict.affirmation,
+					bothCurrent ? sentence : null,
+					`${app}/${server}`,
+				);
+				assert.equal(affirmationFor({ app, server }), verdict.affirmation);
+				if (bothCurrent) earned++;
+			}
+		}
+
+		// Exactly one of the nine pairs earns a sentence, and the sentence
+		// speaks for both halves - one that named a single channel is the
+		// defect, stated as copy.
+		assert.equal(earned, 1);
+		assert.match(sentence, /app/i);
+		assert.match(sentence, /server/i);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
 	}
 });
 

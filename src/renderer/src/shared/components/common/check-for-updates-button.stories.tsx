@@ -3,6 +3,7 @@ import { Button } from "@shared/components/ui";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
+import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
 import { CheckForUpdatesButton } from "./check-for-updates-button";
 import { FloatingAlert } from "./floating-alert";
 
@@ -45,7 +46,8 @@ const createEmptyUpdaterMethods = () => {
 			checkForUpdates: async () =>
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
 			checkForBackendUpdates: async () => Promise.resolve(null),
-			checkForAllUpdates: async () => Promise.resolve(),
+			checkForAllUpdates: async () =>
+				updateCheckVerdict({ app: "current", server: "current" }),
 			getLastInstallAttempt: async () => null,
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
@@ -86,7 +88,8 @@ const mockUpdaterApi = () => {
 				cancellationToken: {},
 			}),
 		checkForBackendUpdates: async () => Promise.resolve(null),
-		checkForAllUpdates: async () => Promise.resolve(),
+		checkForAllUpdates: async () =>
+			updateCheckVerdict({ app: "current", server: "current" }),
 		getLastInstallAttempt: async () => null,
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
