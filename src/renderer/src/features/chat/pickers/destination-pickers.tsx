@@ -24,6 +24,7 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
@@ -35,18 +36,30 @@ import {
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopLoopState,
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
 import type {
+	CanonicalFrontendSync,
 	CanonicalModel,
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import type { SlashCommandMeta } from "../components/slash-commands";
-import { modelSelector, specUnresolved } from "../session-status/session-model";
+import {
+	type DraftSelectionTarget,
+	NO_DRAFT_TARGET,
+	draftPreviewQuery,
+} from "../draft-selection";
+import {
+	bandReadings,
+	effortLadder,
+	modelSelector,
+	specUnresolved,
+} from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
 import { catalogueListing } from "./model-catalogue-listing";
 import {
@@ -79,6 +92,34 @@ export type PickerContext = {
 	dispatch: (text: string) => void;
 	/** Switch the agent's bound canonical session (resume/fork/new). */
 	rebind: (sessionId: string) => void;
+	/**
+	 * The DRAFT pane this picker was opened for, when it was opened from one.
+	 *
+	 * A new-conversation pane has no session for `/model` or `/effort` to address,
+	 * so the two pickers read and write a pane's own selection instead: it resolves
+	 * through `sessions.preview` and rides `sessions.create`, never `settings.edit`
+	 * (the machine's default is not this control's to change) and never
+	 * `sessions.command` (there is no owner to command yet).
+	 *
+	 * `sessionId` is an empty string in that case, and the draft branch of each
+	 * picker never reads it: the two modes are exclusive, and the shape says so by
+	 * carrying the pane's own target rather than a session id it does not have.
+	 */
+	draft?: DraftPickerSession;
+};
+
+/**
+ * A DRAFT pane's selection, as the pickers see it.
+ *
+ * `target` is the pane's own `{cwd, target, model}` — the same value the pane's
+ * `sessions.preview` query is keyed on, which is what lets the picker's re-read
+ * and the pane's reading be ONE cache entry rather than two answers. `select` is
+ * called only after the backend has resolved the candidate, so the pane never
+ * repaints on a choice the backend refused.
+ */
+export type DraftPickerSession = {
+	target: DraftSelectionTarget;
+	select: (selection: DesktopModelSelection | null) => void;
 };
 
 type Entities<T = Record<string, unknown>> = {
@@ -138,11 +179,149 @@ const DEFAULT_SAVE_FAILURE = "The default was not saved";
 const SIGN_IN_CAVEAT =
 	"This model has no credential yet, so it cannot answer until you sign in. Connect it in Settings > Providers.";
 
+/**
+ * Resolve a DRAFT pane's pick through the backend, THEN record it. One
+ * implementation for both readings the pane can pick.
+ *
+ * Both halves of that order are load-bearing, and they are the reason this is
+ * not a copy of the session's `useSessionCommand`:
+ *
+ * Resolving first means the pane only ever shows a choice the backend accepted.
+ * The window, the price pair and the effort ladder the strip prints are the ones
+ * `sessions.preview` returned for the CHOSEN selection, never values read off the
+ * row that was clicked — the picker's own row carries no window and no ladder at
+ * all. It is also what lets a refusal be reported honestly here rather than at
+ * the first send: the preview runs the resolution `sessions.create` will run.
+ *
+ * Recording second means a refusal leaves the draft exactly as it was. The cache
+ * is written under the candidate's own key either way, so nothing is left
+ * half-applied: an unselected candidate is a cache entry nothing reads.
+ *
+ * The conversation is already given by the caller: a model pick replaces the
+ * selection outright (a new model has its own ladder, so the previous model's
+ * rung does not carry), an effort pick keeps it and changes only the rung.
+ */
+function useDraftPick(
+	draft: DraftPickerSession | undefined,
+	note: (text: string, error?: boolean) => void,
+) {
+	const queryClient = useQueryClient();
+	const [busy, setBusy] = useState(false);
+	const [result, setResult] = useState<PickerResult | null>(null);
+	/*
+	 * The selection in force, seeded from the pane and advanced by every pick the
+	 * backend confirmed.
+	 *
+	 * `draft.target` is a snapshot taken when this dialog OPENED — `PickerOutlet`
+	 * is handed the context that spawned it — so it does not move when the pane's
+	 * own value does: the store write a pick performs re-renders the pane and
+	 * leaves this dialog reading the value it was opened on. Without a local
+	 * memory the dialog therefore contradicts itself the instant a pick succeeds,
+	 * the strip and the result strip naming the new model while the header
+	 * sentence and the checkmark still name the old one (review round 1, R2). It
+	 * is the same defect the session's picker fixed for its own lagging owner
+	 * frame in QA Q2, which is why it is a remembered receipt and not a re-read.
+	 *
+	 * It is also what keeps the dialog's other half honest: the ladder an effort
+	 * pick offers is read from THIS selection's `sessions.preview` resolution, so
+	 * an effort dialog opened after a model pick offers the new model's rungs
+	 * rather than the previous model's.
+	 *
+	 * The pane stays the authority for a dialog that has not picked (the seed is
+	 * the prop) and for a re-open (a fresh mount re-seeds from the pane).
+	 */
+	const [picked, setPicked] = useState<DesktopModelSelection | null>(
+		draft?.target.model ?? null,
+	);
+	const selection = picked ?? draft?.target.model ?? null;
+	/**
+	 * What this dialog's preview is resolved for: the pane's target with the
+	 * selection in force substituted for the one it opened on. Undefined `model`
+	 * is the wire's "the configured default", which is what an unpicked pane
+	 * asks for.
+	 */
+	const target = useMemo(
+		() =>
+			draft
+				? ({
+						...draft.target,
+						model: selection ?? undefined,
+					} as DraftSelectionTarget)
+				: undefined,
+		[draft, selection],
+	);
+	/*
+	 * One refusal, said twice: the strip for a reader still looking at the dialog,
+	 * the composer's note for one who closed it during the wait — the rule UX U2
+	 * set for the session's picker, which has the same wait for the opposite
+	 * reason (a cold runtime bind there, a resolution here).
+	 */
+	const refuse = useCallback(
+		(text: string) => {
+			note(text, true);
+			setResult({ tone: "error", text });
+		},
+		[note],
+	);
+	const pick = useCallback(
+		async (
+			/**
+			 * Null when the reading this pick belongs to cannot name a model to change
+			 * — an effort rung with no model behind it. Refused out loud rather than
+			 * silently ignored, so the dialog says why the click did nothing.
+			 */
+			next: DesktopModelSelection | null,
+			reading: {
+				/** What the strip says once the backend has resolved the pick. */
+				describe: (resolved: CanonicalFrontendSync) => string;
+				/**
+				 * What a refusal names, and it names the READING rather than "the model":
+				 * an effort pick that failed has not changed the model, and saying so
+				 * tells the user to re-check the one thing that is still correct.
+				 */
+				refused: string;
+			},
+		) => {
+			if (!draft) return;
+			if (!next) {
+				refuse(
+					`${reading.refused} This pane has not resolved a model to change.`,
+				);
+				return;
+			}
+			setBusy(true);
+			setResult(null);
+			try {
+				const resolved = await queryClient.fetchQuery(
+					draftPreviewQuery({ ...draft.target, model: next }),
+				);
+				draft.select(next);
+				setPicked(next);
+				setResult({ tone: "success", text: reading.describe(resolved) });
+			} catch (error) {
+				/*
+				 * Said twice on purpose, and it is the same sentence both times: the
+				 * strip for a reader still looking at the dialog, the composer's note for
+				 * one who closed it during the wait — the rule UX U2 set for the session's
+				 * picker, which has the same wait for the opposite reason (a cold runtime
+				 * bind there, a resolution here).
+				 */
+				refuse(`${reading.refused} ${errorText(error)}`);
+			} finally {
+				setBusy(false);
+			}
+		},
+		[draft, queryClient, refuse],
+	);
+	return { pick, busy, result, selection, target, refuse };
+}
+
 export const ModelPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
 	note,
+	draft,
 }) => {
 	const [live, setLive] = useState(false);
 	/*
@@ -190,6 +369,25 @@ export const ModelPicker: FC<PickerContext> = ({
 	// the user never asked for (design D8).
 	const refreshing = live && catalogue.isFetching;
 	const command = useSessionCommand(sessionId);
+	/*
+	 * A DRAFT pane's own reading, from the ONE query the pane itself reads.
+	 *
+	 * Same key, same fetch: React Query serves the composer's strip and this
+	 * dialog from a single cache entry, so the list's ✓, the header sentence and
+	 * the readings behind the dialog cannot describe three different models. It
+	 * is mounted (disabled) in session mode because hooks cannot be conditional.
+	 */
+	const draftPick = useDraftPick(draft, note);
+	/*
+	 * Keyed on the hook's target rather than on the pane's own prop: the prop is the
+	 * snapshot this dialog opened on, so a pick would otherwise leave this dialog's
+	 * reading — the window, the price pair, the ladder and the row it marks —
+	 * resolved for the model BEFORE the pick (review round 1, R2).
+	 */
+	const draftPreview = useQuery({
+		...draftPreviewQuery(draftPick.target ?? NO_DRAFT_TARGET),
+		enabled: Boolean(draft),
+	});
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
 	const selected = canonical.frontend?.selected_model;
@@ -220,8 +418,25 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * with it, the owner's selector otherwise. The band still reads
 	 * `effective_model` first (`bandReadings`), because it is describing what the
 	 * session RUNS rather than which row the picker marks.
+	 *
+	 * A DRAFT pane has no owner frame to reconcile against, so it reads the
+	 * backend's own answer to `sessions.preview` — the resolution the first turn
+	 * will get — and nothing else. That is what makes the ✓ on a draft name a model
+	 * the backend has already confirmed rather than the row that was clicked.
 	 */
-	const shownSelector = pickedCurrent ?? currentSelector;
+	const draftFrontend = draft ? draftPreview.data?.snapshot : undefined;
+	/*
+	 * The draft's answer comes from `bandReadings` — the SAME function the strip
+	 * prints through — rather than from a second reading of the same two fields in
+	 * the opposite order (review round 1, R4). One precedence, one place: the chip
+	 * the user is looking at and the header line they are about to act on can no
+	 * longer name different models, and a change to which field wins reaches both.
+	 * The session branch keeps its own selector, which is a different fact: it says
+	 * which row this picker MARKS, not what the session runs.
+	 */
+	const shownSelector = draft
+		? modelSelector(bandReadings(draftFrontend, null).identity)
+		: (pickedCurrent ?? currentSelector);
 
 	/*
 	 * The catalogue row's own auth state, by selector.
@@ -273,6 +488,33 @@ export const ModelPicker: FC<PickerContext> = ({
 
 	const onPick = useCallback(
 		async (value: string, option: PickerOption) => {
+			const [provider, ...rest] = value.split("/");
+			const modelId = rest.join("/");
+			/*
+			 * A DRAFT pane's pick is not a command and has no owner to switch.
+			 *
+			 * The rung is cleared because it belonged to the previous model's ladder:
+			 * carrying `high` onto a model that does not offer it is a request the
+			 * backend would have to drop silently, and the wire cannot say "keep the
+			 * old value" — `null` is "no rung chosen", which resolves to the new
+			 * model's own default exactly as `/effort auto` does.
+			 */
+			if (draft) {
+				await draftPick.pick(
+					{ provider, model_id: modelId, reasoning_effort: null },
+					{
+						describe: (resolved) =>
+							`The first message will run ${
+								modelSelector(
+									resolved.snapshot.selected_model ??
+										resolved.snapshot.effective_model,
+								) || option.label
+							}.`,
+						refused: "The model was not changed.",
+					},
+				);
+				return;
+			}
 			/*
 			 * U1: paint the chosen model in the session status band BEFORE awaiting
 			 * the owner. A switch that pays a cold runtime bind measures 1.1-4.2 s, and
@@ -285,8 +527,6 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * The model is assembled from the selector the row carried, so the paint
 			 * cannot name a model the catalogue did not offer.
 			 */
-			const [provider, ...rest] = value.split("/");
-			const modelId = rest.join("/");
 			const model: CanonicalModel = {
 				provider,
 				model_id: modelId,
@@ -363,7 +603,16 @@ export const ModelPicker: FC<PickerContext> = ({
 				);
 			}
 		},
-		[canonical, command, persistDefault, persist, note, rowAuth],
+		[
+			canonical,
+			command,
+			persistDefault,
+			persist,
+			note,
+			rowAuth,
+			draft,
+			draftPick.pick,
+		],
 	);
 
 	const ownerOutcome: PickerResult | null = persist.result
@@ -433,9 +682,13 @@ export const ModelPicker: FC<PickerContext> = ({
 			 */
 			title="Model"
 			description={
-				shownSelector
-					? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
-					: "Choose the model for this session."
+				draft
+					? shownSelector
+						? `The first message will run ${shownSelector}. Choosing another changes what this conversation starts on.`
+						: "Choose the model the first message will run on."
+					: shownSelector
+						? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
+						: "Choose the model for this session."
 			}
 			options={options}
 			loading={catalogue.isLoading}
@@ -444,26 +697,45 @@ export const ModelPicker: FC<PickerContext> = ({
 			noticeDetail={listing.noticeDetail}
 			searchPlaceholder="Search models"
 			onPick={onPick}
-			busy={command.busy || persist.busy}
+			busy={draft ? draftPick.busy : command.busy || persist.busy}
 			/*
 			 * The in-flight copy names the change, not the machinery: the user asked
 			 * whether their pick registered, and "the backend" is the
 			 * implementation's noun for their session (design D14, UX nit).
+			 *
+			 * On a draft the engine is a RESOLUTION rather than a switch, because
+			 * nothing is running yet: the sentence may not promise a switch that has
+			 * not happened.
 			 */
-			busyText="Switching the model…"
-			busyLabel="Switching the model"
-			result={combined}
+			busyText={draft ? "Resolving the model…" : "Switching the model…"}
+			busyLabel={draft ? "Resolving the model" : "Switching the model"}
+			result={draft ? draftPick.result : combined}
 			toolbar={
-				<div className="flex items-center justify-between gap-3">
-					<PickerCheck
-						checked={persistDefault}
-						onCheckedChange={setPersistDefault}
-						tone="muted"
-					>
-						{persistDefault
-							? "This pick also sets the default for new sessions"
-							: "Also make it the default for new sessions"}
-					</PickerCheck>
+				/*
+				 * A draft's toolbar has no default checkbox, and that is the whole of
+				 * requirement 3 rather than a copy decision: `settings.edit` writes the
+				 * MACHINE's hosting and model_name, and a new-conversation pane's pick is
+				 * this conversation's first turn. Offering the write here would put a
+				 * global change behind a per-conversation control. The session's picker
+				 * keeps it, where "this session vs the default" is the actual question.
+				 */
+				<div
+					className={cn(
+						"flex items-center gap-3",
+						draft ? "justify-end" : "justify-between",
+					)}
+				>
+					{!draft && (
+						<PickerCheck
+							checked={persistDefault}
+							onCheckedChange={setPersistDefault}
+							tone="muted"
+						>
+							{persistDefault
+								? "This pick also sets the default for new sessions"
+								: "Also make it the default for new sessions"}
+						</PickerCheck>
+					)}
 					<Button
 						variant="ghost"
 						size="sm"
@@ -505,18 +777,51 @@ export const EffortPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
+	draft,
+	note,
 }) => {
-	const entities = useEntities<{ value: string }>(sessionId, "effort");
+	/*
+	 * A session's rungs come from the owner (`command-entities?command=effort`),
+	 * which is the list `/effort <rung>` itself validates against. A DRAFT pane has
+	 * no owner to ask, so its rungs come from the ONE resolution the pane is already
+	 * showing — `sessions.preview` for its selection — which is the same spec its
+	 * chip reads. One source per state, both the backend's: nothing here computes a
+	 * ladder, and there is no second list to disagree with the chip.
+	 */
+	const entities = useEntities<{ value: string }>(
+		sessionId,
+		"effort",
+		undefined,
+		!draft,
+	);
 	const command = useSessionCommand(sessionId);
-	const model = canonical.frontend?.selected_model;
+	const draftPick = useDraftPick(draft, note);
+	/* Same key as the model dialog's: the selection in force, not the snapshot the
+	   dialog opened on, so the rungs offered are the current model's (R2). */
+	const draftPreview = useQuery({
+		...draftPreviewQuery(draftPick.target ?? NO_DRAFT_TARGET),
+		enabled: Boolean(draft),
+	});
+	const draftModel = draft
+		? (draftPreview.data?.snapshot.selected_model ??
+			draftPreview.data?.snapshot.effective_model ??
+			null)
+		: null;
+	const model = draft ? draftModel : canonical.frontend?.selected_model;
+	const rungs = draft
+		? effortLadder(draftModel)
+		: (entities.data?.entities ?? []).map((row) => row.value);
+	const currentRung = draft
+		? (draftModel?.reasoning_effort ?? null)
+		: (entities.data?.current ?? null);
 	const options = useMemo<PickerOption[]>(
 		() =>
-			(entities.data?.entities ?? []).map((row) => ({
-				value: row.value,
-				label: row.value,
-				current: entities.data?.current === row.value,
+			rungs.map((value) => ({
+				value,
+				label: value,
+				current: currentRung === value,
 			})),
-		[entities.data],
+		[rungs, currentRung],
 	);
 	const label = model
 		? `${model.provider}/${model.model_id}`
@@ -537,7 +842,21 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * deciding for itself.
 	 */
 	const unresolved = specUnresolved(model);
-	const noOptions = options.length === 0 && !entities.isLoading;
+	/*
+	 * What "nothing to show" means, which differs by state rather than by pane:
+	 * a draft's list is the backend's own resolution, so an empty one is the model
+	 * having no rungs; a session's is a read of a live spec, which can be empty
+	 * because the owner has not resolved it yet.
+	 */
+	const loading = draft ? draftPreview.isLoading : entities.isLoading;
+	const noOptions = options.length === 0 && !loading;
+	const loadError = draft
+		? draftPreview.isError
+			? errorText(draftPreview.error)
+			: null
+		: entities.isError
+			? errorText(entities.error)
+			: null;
 	return (
 		<PickerHost
 			open
@@ -549,21 +868,49 @@ export const EffortPicker: FC<PickerContext> = ({
 						? // Naming the rung matters: opening this picker is a read and
 							// cannot resolve the spec, so the only route out is the one
 							// act that does.
-							`${label} has not reported its effort levels yet. They appear after the next turn, or run /effort <level> to set one now.`
-						: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
-					: `Effort levels ${label} supports. Applies to this session.`
+							draft
+							? `${label} has not reported its effort levels yet. They appear after the first turn.`
+							: `${label} has not reported its effort levels yet. They appear after the next turn, or run /effort <level> to set one now.`
+						: draft
+							? `${label} has no adjustable effort. Pick another model.`
+							: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
+					: draft
+						? `Effort levels ${label} supports. Applies to the first message.`
+						: `Effort levels ${label} supports. Applies to this session.`
 			}
 			options={options}
-			loading={entities.isLoading}
-			loadError={entities.isError ? errorText(entities.error) : null}
+			loading={loading}
+			loadError={loadError}
 			emptyText={
 				unresolved
-					? "Not known yet - run /effort <level> to set one."
+					? "Not known yet."
 					: "Effort is not adjustable on this model."
 			}
-			onPick={(value) => void command.run("effort", value)}
-			busy={command.busy}
-			result={command.result}
+			onPick={(value) => {
+				if (!draft) {
+					void command.run("effort", value);
+					return;
+				}
+				/*
+				 * The rung rides the pane's OWN selection: the model stays what it is and
+				 * only the effort changes. It is the hook's selection — seeded from the pane,
+				 * advanced by every confirmed pick — rather than the prop, so an effort picked
+				 * after a model pick rides the model actually in force. A pane that has
+				 * resolved no model has nothing to hang a rung on, and `pick` says so in the
+				 * dialog rather than swallowing the click (review round 1, R6).
+				 */
+				void draftPick.pick(
+					draftPick.selection
+						? { ...draftPick.selection, reasoning_effort: value }
+						: null,
+					{
+						describe: () => `Effort for the first message: ${value}.`,
+						refused: "The effort was not changed.",
+					},
+				);
+			}}
+			busy={draft ? draftPick.busy : command.busy}
+			result={draft ? draftPick.result : command.result}
 		/>
 	);
 };

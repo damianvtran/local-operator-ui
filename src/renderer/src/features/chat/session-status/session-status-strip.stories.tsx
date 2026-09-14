@@ -837,7 +837,7 @@ export const Draft: Story = {
 				</Frame>
 				<Frame
 					width={900}
-					label="Draft on a spec with no ladder, which is what the preview always returns: no effort reading at all"
+					label="Draft on a spec whose ladder is empty, which is what `sessions.preview` returns before the account-metadata step: nothing to offer, because a draft's picker is a pure read of this dump"
 				>
 					<SessionStatusStrip
 						frontend={state({
@@ -859,6 +859,107 @@ export const Draft: Story = {
 					<SessionStatusStrip
 						frontend={state({ context_tokens: null, context_window: null })}
 						draft={true}
+					/>
+				</Frame>
+			</div>
+		);
+	},
+};
+
+/**
+ * The same draft on a backend that CAN birth a conversation on a choice.
+ *
+ * One prop differs from `Draft`: `onOpenDraftPicker`, which is the capability's
+ * whole renderer-side footprint. The model and the effort become CONTROLS — the
+ * same button a session's readings are — and their sentences move from the
+ * fact-plus-reason register to the actionable one, because the control's nature
+ * is what the copy describes. The context reading does not move: nothing has
+ * been measured, so there is still no breakdown to open, and it keeps the inert
+ * label form that stays focusable so its explanation is reachable (R19-R21).
+ *
+ * What to look for:
+ *
+ * - The model chip is no longer `aria-disabled`, carries the hover step a
+ *   control has, and says "Click to choose a different model"; the sentence the
+ *   old draft copy used ("The first message will use it. Change it once the
+ *   conversation starts.") is gone, because it is no longer true.
+ * - The effort chip says "Change it." — the session's own sentence.
+ * - The context chip is UNCHANGED: still the inert label, still focusable.
+ * - Geometry: the strip measures 92px in BOTH boards at every width this set
+ *   declares (900, the 220px floor and the 1000px capture viewport), and only
+ *   the chips' ink differs between them. That measurement is what backs "the
+ *   first turn moves nothing" (R23); the two stories do not carry the same
+ *   number of boards because each one shows its own empty state, not because a
+ *   board went missing (review round 1, R5).
+ *
+ * The last board is the state the operator's report is about, in its actionable
+ * form: a pane whose resolution named NO model. It used to render nothing at all
+ * - the cluster was suppressed - so there was no way to give the first message a
+ * model by any means other than editing the machine's default. With the
+ * capability it renders one control where the model reading sits (design D3),
+ * which is also the position the value lands in once a pick resolves, so the
+ * first receipt still moves nothing.
+ */
+export const DraftActionable: Story = {
+	render: () => {
+		const model = GPT_5;
+		const open = () => undefined;
+		return (
+			<div className="flex flex-col gap-4 bg-canvas p-2">
+				<Frame
+					width={900}
+					label="Draft the backend can select for: model and effort are controls, context is not"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: model,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+						onOpenDraftPicker={open}
+					/>
+				</Frame>
+				<Frame
+					width={220}
+					label="The same at the 220px floor: the box, the order and the wrap are the inert draft's"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: model,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+						onOpenDraftPicker={open}
+					/>
+				</Frame>
+				<Frame
+					width={900}
+					label="A spec with no ladder: the model is a control, the effort reading is inert and offered by nothing"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: {
+								...GPT_5,
+								reasoning_effort: null,
+								reasoning_efforts: [],
+							},
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+						onOpenDraftPicker={open}
+					/>
+				</Frame>
+				<Frame
+					width={900}
+					label="No model resolved at all: the control that fixes it, beside the empty ring a draft always carries"
+				>
+					<SessionStatusStrip
+						frontend={state({ context_tokens: null, context_window: null })}
+						draft={true}
+						onOpenDraftPicker={open}
 					/>
 				</Frame>
 			</div>
@@ -907,6 +1008,88 @@ export const DraftTooltip: Story = {
 			</div>
 		);
 	},
+};
+
+/**
+ * The ACTIONABLE draft's model tooltip, opened the way a keyboard user opens it.
+ *
+ * The pair of `DraftTooltip`: same chip, same focus, one capability apart. A draft
+ * that can open gets the control's sentence ("Click to choose a different model")
+ * and a draft that cannot gets the fact-plus-reason one, and the only way to see
+ * that the two frames say different things is to photograph both (design round 1,
+ * D1). The tooltip is the button's `aria-label` content, so this frame is the
+ * accessible name as much as it is the panel.
+ */
+export const DraftActionableTooltip: Story = {
+	render: () => {
+		const Focused = () => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				// The model reading is the first control in the cluster.
+				const buttons = host.current?.querySelectorAll("button");
+				(buttons?.[0] as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: GPT_5,
+							context_tokens: null,
+							context_window: 400_000,
+						})}
+						draft={true}
+						onOpenDraftPicker={open}
+					/>
+				</div>
+			);
+		};
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame
+					width={900}
+					label="Actionable draft model tooltip: the full selector, and the action the control performs"
+				>
+					<Focused />
+				</Frame>
+			</div>
+		);
+	},
+};
+
+/**
+ * The actionable model chip with the POINTER on it.
+ *
+ * The hover step is the control's primary affordance - it is what separates a
+ * chip that opens from a reading that does not, at rest and without a click -
+ * and no frame in this set showed it (design round 1, D1). It cannot be produced
+ * from inside a story: `userEvent.hover` moves a synthetic pointer and never sets
+ * Chromium's `:hover`, which is how an earlier `hovered` frame came back as a
+ * still of the resting state while its own assertion passed. The capture drives
+ * `Input.dispatchMouseEvent` for the stories that declare it, and refuses to keep
+ * a frame whose ink did not move.
+ *
+ * The render is deliberately the resting one: the story says what is hovered, and
+ * the harness performs it.
+ */
+export const DraftActionableHovered: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={900}
+				label="Actionable draft, pointer on the model chip: the hover step a control has and an inert reading does not"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: null,
+						context_window: 400_000,
+					})}
+					draft={true}
+					onOpenDraftPicker={open}
+				/>
+			</Frame>
+		</div>
+	),
 };
 
 /**
