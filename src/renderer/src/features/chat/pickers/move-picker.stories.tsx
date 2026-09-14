@@ -19,31 +19,40 @@
  * `~` spelling in a receipt is the fixture's own, since only a real backend
  * knows how to spell the home directory of the machine it runs on.
  *
- * The states, and what each one is for:
+ * The states that are here, and what each one is for:
  *
  *   - `Idle` - the resting picker: one editable chip, no result. This is the
  *     state a bare `/move` opens in.
- *   - `Busy` - a directory has been chosen and the move has not answered: the
- *     footer names the CHANGE ("Moving this session…") and the chip carries its
- *     pending copy. The transport never resolves, which is the only way to hold
- *     this state still for a camera.
- *   - `Refused` - the backend refused (a mid-turn session is the case a user hits
- *     most), so the dialog STAYS OPEN with the backend's own sentence in the
- *     strip and the chip still showing what the session actually works in.
  *   - `Unavailable` - a backend without `session_move`: the chooser is mounted
- *     read-only with the reason, and the strip says the same thing. A picker
- *     whose every commit would 404 is the control the negotiation exists to
- *     avoid offering.
+ *     read-only with the reason, and the dialog's description says the same
+ *     thing. A picker whose every commit would 404 is the control the negotiation
+ *     exists to avoid offering.
  *
- * The success state is deliberately NOT here: a successful move closes this
- * dialog (the receipt goes to the transcript, which is where the live-app pair
- * on the PR photographs it), so a still frame of "success" would be a picture of
- * a closed dialog.
+ * TWO STATES THAT ARE STORIES BUT NOT SWEPT FRAMES, and the reason is a
+ * measurement rather than a preference: the in-flight picker (`Busy` - the footer
+ * saying `Moving this session…`) and the refusal (`Refused` - the backend's own
+ * sentence in the strip) both need the chip's directory menu to be chosen from,
+ * and a `play` cannot drive that menu in a BUILT preview. The trigger is a Radix
+ * `DropdownMenu` inside a modal `Dialog`, and in the built preview the dialog
+ * takes focus back after `trigger.focus()` - the menu never opens, the play
+ * throws, and the rig photographs the RESTING state under the name `refused`
+ * regardless (all three attempts - `userEvent.click`, a bare
+ * `fireEvent.pointerDown`, and a keyboard-driven `ArrowDown` with the focus
+ * asserted - produced a frame byte-identical to `idle`). Both are therefore
+ * hand-drivable in Storybook and deliberately absent from the swept set, because
+ * a frame that silently shows the resting state under a refusal's name is worse
+ * than no frame at all; `docs/evidence/chat-move-picker/README.md` records what
+ * reaching them takes, with the readback a real interaction produced, and
+ * `scripts/move-session.test.mjs` pins the refusal sentence itself.
+ *
+ * The success state is deliberately absent for a different reason: a successful
+ * move closes this dialog (the receipt goes to the transcript), so a still frame
+ * of "success" would be a picture of a closed dialog.
  */
 
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { expect, waitFor, within } from "@storybook/test";
 import type { FC } from "react";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
@@ -197,23 +206,18 @@ const Frame: FC<FrameProps> = ({ bridge: storyBridge, cwd = CURRENT }) => {
 };
 
 /**
- * Choose a directory the way a user does: the chip's own menu, then a row.
+ * The page, which is what these plays must query.
  *
- * The chip inside the picker is the composer's control, so this is the same
- * three-step path a live user takes - and it is what makes the pending and
- * refusal frames real rather than posed. The row is a DEFAULT directory
- * (`~/Downloads`), which exists on every machine this app ships to; typing a
- * custom path would exercise the same commit with more keystrokes and more to go
- * wrong in a play.
+ * `screen` is NOT it: Testing Library's `screen` resolves to the canvas element
+ * Storybook hands a play, and Radix renders a menu's rows into a PORTAL on
+ * `document.body` - outside that canvas. A `screen.findByRole("menuitem")`
+ * therefore never matches, the play throws, and the story is photographed in its
+ * untouched resting state while the file claims to show something else (measured:
+ * `Unable to find role="menuitem"`). `within(document.body)` is the query scope
+ * that includes the portal, and it is what the removed menu-driven plays needed
+ * too - see the file docstring for why they are gone.
  */
-const chooseDownloads = async () => {
-	await userEvent.click(
-		await screen.findByRole("button", { name: /^Working directory:/ }),
-	);
-	await userEvent.click(
-		await screen.findByRole("menuitem", { name: /~\/Downloads/ }),
-	);
-};
+const page = () => within(document.body);
 
 const meta: Meta<typeof MovePicker> = {
 	title: "chat-move-picker",
@@ -231,35 +235,33 @@ export const Idle: Story = {
 };
 
 /**
- * A directory chosen, the move unanswered.
+ * A directory chosen, the move unanswered: the footer names what is happening to
+ * the SESSION ("Moving this session…", not "Waiting for the backend…") and the
+ * chip is already painting the directory that was chosen while nothing has
+ * confirmed it.
  *
- * The transport never settles, so the frame holds the state a fast backend hides:
- * the footer says what is happening to the SESSION ("Moving this session…", not
- * "Waiting for the backend…"), and the chip is already painting the directory the
- * user chose while nothing has confirmed it.
+ * REACH IT BY HAND, not by a play. Click the chip, choose `~/Downloads`, and the
+ * transport never answers - so the state stays up for as long as you look at it.
+ * A play cannot do that here: the menu is a Radix `DropdownMenu` inside this
+ * modal `Dialog`, and in a BUILT preview the dialog re-takes focus so the menu
+ * never opens, which makes a `play` photograph the RESTING state under this
+ * story's name (measured three ways - see the file docstring). It is therefore
+ * not in the swept set, and `docs/evidence/chat-move-picker/README.md` carries
+ * the readback a real interaction produced.
  */
 export const Busy: Story = {
 	render: () => <Frame bridge={moveBridge(true, () => pending())} />,
-	play: async () => {
-		await chooseDownloads();
-		await waitFor(() =>
-			expect(screen.getByText(/Moving this session/)).toBeTruthy(),
-		);
-		// The chip is showing what was CHOSEN, and its own commit has already
-		// recorded it as a recent directory.
-		await waitFor(() =>
-			expect(screen.getByRole("button", { name: /~\/Downloads/ })).toBeTruthy(),
-		);
-	},
 };
 
 /**
- * The refusal a user actually meets: a session that is mid-turn.
+ * The refusal a user actually meets: a session that is mid-turn. The sentence is
+ * the BACKEND's, quoted rather than re-worded, and the dialog stays open so the
+ * next directory is one click away instead of a re-typed command.
  *
- * Two things this frame is evidence of. The sentence is the BACKEND's, quoted
- * rather than re-worded ("this session is working right now — /move again when
- * the turn finishes"), and the dialog stays open so the next directory is one
- * click away instead of a re-typed command.
+ * REACH IT BY HAND, the same way as `Busy`: click the chip and choose a
+ * directory. (With the mock transport it needs a refusal - a real backend that
+ * is mid-turn refuses on its own, which is what `scripts/move-session.test.mjs`
+ * pins and what QA exercises live.) Not in the swept set, for the reason above.
  */
 export const Refused: Story = {
 	render: () => (
@@ -274,16 +276,6 @@ export const Refused: Story = {
 			)}
 		/>
 	),
-	play: async () => {
-		await chooseDownloads();
-		await waitFor(() =>
-			expect(
-				screen.getByText(
-					/this session is working right now — \/move again when the turn finishes/,
-				),
-			).toBeTruthy(),
-		);
-	},
 };
 
 /**
@@ -300,7 +292,7 @@ export const Unavailable: Story = {
 	play: async () => {
 		await waitFor(() =>
 			expect(
-				screen.getAllByText(/This backend cannot move a live session/).length,
+				page().getAllByText(/This backend cannot move a live session/).length,
 			).toBeGreaterThan(0),
 		);
 		// And the chooser is INERT rather than merely explained: the chip is the

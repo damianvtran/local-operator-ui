@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -76,21 +76,19 @@ const bundle = await build({
 					path: "desktop-api-move-fixture",
 					namespace: "move-fixture",
 				}));
-				builder.onLoad(
-					{ filter: /.*/, namespace: "move-fixture" },
-					() => ({
-						// Only the network is faked. `DesktopControlError`,
-						// `UserFacingError` and `userFacingMessage` are the real
-						// implementations, re-exported from the shipped module, and the
-						// fixture errors are built from the REAL classes so the sentence a
-						// user reads is decided by the shipped classifier rather than by
-						// this file's imitation of it.
-						contents: `export * from ${JSON.stringify(
-							`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
-						)}
+				builder.onLoad({ filter: /.*/, namespace: "move-fixture" }, () => ({
+					// Only the network is faked. `DesktopControlError`,
+					// `UserFacingError` and `userFacingMessage` are the real
+					// implementations, re-exported from the shipped module, and the
+					// fixture errors are built from the REAL classes so the sentence a
+					// user reads is decided by the shipped classifier rather than by
+					// this file's imitation of it.
+					contents: `export * from ${JSON.stringify(
+						`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+					)}
 import { DesktopControlError, UserFacingError } from ${JSON.stringify(
-							`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
-						)};
+						`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+					)};
 export const desktopResult = (request) => globalThis.__moveRequest(request);
 export const errors = {
 	// The session is mid-turn: the backend's own refusal, mapped from the
@@ -105,10 +103,9 @@ export const errors = {
 	// Nothing authored it: a runtime exception whose message is not copy.
 	raw: new TypeError("fetch failed"),
 };`,
-						loader: "js",
-						resolveDir: process.cwd(),
-					}),
-				);
+					loader: "js",
+					resolveDir: process.cwd(),
+				}));
 			},
 		},
 	],
@@ -188,12 +185,18 @@ test("a successful move posts the op once, with the path as typed", async () => 
 
 test("the receipt's four sentences, and the eval clause only when eval was used", () => {
 	const rebound = receipt({ outcome: "rebound", will_wait: true });
-	assert.equal(moveReceiptLine(rebound, false), "moved to ~/moved — this session's runtime is restarting there");
+	assert.equal(
+		moveReceiptLine(rebound, false),
+		"moved to ~/moved — this session's runtime is restarting there",
+	);
 	assert.equal(
 		moveReceiptLine(rebound, true),
 		"moved to ~/moved — this session's runtime is restarting there, so everything you set up in eval was lost",
 	);
-	assert.equal(moveReceiptLine(receipt({ outcome: "unchanged" }), true), "already in ~/moved");
+	assert.equal(
+		moveReceiptLine(receipt({ outcome: "unchanged" }), true),
+		"already in ~/moved",
+	);
 	// The LABEL is the backend's, and it is what is printed: a client-side `~`
 	// would spell the renderer's own home for a remote backend, which is a
 	// different directory with the same name.
@@ -262,7 +265,10 @@ test("the optimistic value is dropped by a refusal and held until the stream agr
 	// retiring runtime's last words name the directory it started in - so it must
 	// not be read as agreement.
 	const confirmed = pendingAfterReceipt(committed, SESSION, "/Users/me/moved");
-	assert.equal(pendingAfterStream(confirmed, SESSION, "/Users/me/old"), confirmed);
+	assert.equal(
+		pendingAfterStream(confirmed, SESSION, "/Users/me/old"),
+		confirmed,
+	);
 	assert.equal(
 		pendingAfterStream(confirmed, SESSION, "~/moved"),
 		confirmed,
@@ -287,7 +293,10 @@ test("a pending value belongs to ONE session", () => {
 	// clear it. Keyed by id rather than a bare boolean for exactly this reason.
 	assert.equal(pendingAfterFailure(mine, OTHER_SESSION), mine);
 	assert.equal(pendingAfterReceipt(mine, OTHER_SESSION, "/elsewhere"), mine);
-	assert.equal(pendingAfterStream(mine, OTHER_SESSION, "/Users/me/moved"), mine);
+	assert.equal(
+		pendingAfterStream(mine, OTHER_SESSION, "/Users/me/moved"),
+		mine,
+	);
 	assert.equal(
 		pendingAfterStream(mine, undefined, "/Users/me/moved"),
 		mine,
@@ -358,7 +367,10 @@ test("no request is issued at all without the session_move capability", () => {
 	);
 	// And the sentence that stands in for the missing route, which is the whole
 	// degradation story for an older backend.
-	assert.match(MOVE_UNAVAILABLE_REASON, /^This backend cannot move a live session\./);
+	assert.match(
+		MOVE_UNAVAILABLE_REASON,
+		/^This backend cannot move a live session\./,
+	);
 });
 
 test("a commit issues exactly one request", () => {
@@ -395,7 +407,9 @@ test("a typed /move runs its argument without posting to /commands first", () =>
 	// that a path is never handed to the runtime's slash dispatcher, which would
 	// answer `move` with its "run it from a terminal" refusal - a false statement
 	// about a command this surface can run.
-	const executeBranch = dispatchSource.indexOf('entry.argsBehavior === "execute"');
+	const executeBranch = dispatchSource.indexOf(
+		'entry.argsBehavior === "execute"',
+	);
 	const commandPost = dispatchSource.indexOf('op: "sessions.command"');
 	assert.ok(executeBranch > -1, "the execute branch must exist");
 	assert.ok(commandPost > -1, "the command post must still exist");
