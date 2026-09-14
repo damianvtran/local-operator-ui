@@ -177,23 +177,37 @@ const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 					)}
 				</div>
 				{/*
-				 * The row's second line, and there are two kinds of it.
+				 * The row's second and third lines, and they answer the two halves of the
+				 * question this section exists for.
 				 *
-				 * The DIAGNOSIS wins when the read carries one (round 1, U1-8): the
-				 * wire's own failure text is the only thing that says WHY a server is
-				 * down, and for a server whose command does not exist — QA's
-				 * `/nonexistent/definitely-not-a-binary`, whose `[Errno 2] …` the
-				 * canonical projection already carries — a reconnect hint is a remedy
-				 * that cannot work. It is machine voice and VERBATIM, like every other
-				 * exception this app prints: a paraphrased diagnosis is a claim nobody
-				 * can check.
+				 * The REMEDY comes first (`§ 7.2`): an indented, quiet line in the to-do
+				 * section's blocked-row shape, because "what do I do about a server that is
+				 * down" is the ask, and a row that answers only with a diagnosis leaves it
+				 * unanswered for exactly the broken case (round 2, U2-2 — round 1's U1-8 had
+				 * pushed the hint out entirely to make room for the wire's own failure text,
+				 * which was a choice where the design asks for both).
 				 *
-				 * The HINT is the fallback, on the states it is right for. It is an
-				 * indented, quiet line in the to-do section's blocked-row shape. An
-				 * unrecognised word gets neither — a fix for a word this build cannot
-				 * name would be a guess, and a guess is worse than the quiet unknown row
-				 * that does still take attention.
+				 * The DIAGNOSIS follows, on its own line, when the read carries one (`§ 7.2`,
+				 * round 1's U1-8): the wire's failure text is the only thing that says WHY a
+				 * server is down — for QA's `/nonexistent/definitely-not-a-binary` the remedy
+				 * above cannot work, and the reader can only know that from this line. It is
+				 * machine voice and VERBATIM, like every other exception this app prints: a
+				 * paraphrased diagnosis is a claim nobody can check. `line-clamp-2` is the
+				 * roster's own wrapped-failure bound (`§ 8`), and the `title` carries the
+				 * whole string for the rare errno that outruns it.
+				 *
+				 * An unrecognised word gets neither: a fix for a word this build cannot name
+				 * would be a guess, and a guess is worse than the quiet unknown row that does
+				 * still take attention.
 				 */}
+				{row.hint ? (
+					<span
+						className={cn("truncate text-ink-muted text-meta leading-4")}
+						title={row.hint}
+					>
+						{`— ${row.hint}`}
+					</span>
+				) : null}
 				{row.errorText ? (
 					<span
 						className={cn(
@@ -202,13 +216,6 @@ const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 						title={row.errorText}
 					>
 						{row.errorText}
-					</span>
-				) : row.hint ? (
-					<span
-						className={cn("truncate text-ink-muted text-meta leading-4")}
-						title={row.hint}
-					>
-						{row.hint}
 					</span>
 				) : null}
 			</div>

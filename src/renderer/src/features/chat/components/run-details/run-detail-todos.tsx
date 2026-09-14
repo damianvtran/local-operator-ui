@@ -132,25 +132,29 @@ const TodoRow = ({ item }: { item: TodoItemView }) => {
 					)}
 				</div>
 				{reason && (
-					/*
-					 * The blocked reason gets its OWN line — the grammar the subagent
-					 * section already uses for the activity datum — because sharing the
-					 * item's line truncated both strings to fragments: the item (the
-					 * subject) lost its payload, and the reason was cut mid-word. Two
-					 * variable-length strings on one line means neither is ever
-					 * readable. The item takes the full row width; the reason takes the
-					 * line below, where it has that same width to itself.
-					 *
-					 * `ink-muted` rather than the mark's `ink-dim`: on a blocked row
-					 * this is the part that says what the work is waiting on, and `dim`
-					 * is the ink for settled work.
-					 */
-					<span
-						className={cn("truncate text-ink-muted text-meta leading-4")}
-						title={reason}
-					>
-						{reason}
-					</span>
+					<>
+						{/*
+						 * `line-clamp-2` and a `sr-only` twin, rather than the single clipped line
+						 * this used to be (round 2, U2-3): the reason is a variable-length sentence
+						 * and the row already owns the line, so the pane's own convention for
+						 * prose — the roster's activity line and failure text, the MCP diagnosis —
+						 * applies here too. A reason longer than two lines still exists in full for
+						 * assistive tech (the twin) and on hover (the `title`), and a mouse is no
+						 * longer the only way to read a sentence that is the whole point of the
+						 * blocked state. The row grows with it: 16px per line, the same pin the
+						 * record already carries (§ 8). `ink-muted` rather than the mark's
+						 * `ink-dim`: on a blocked row this is the part that says what the work is
+						 * waiting on, and `dim` is the ink for settled work.
+						 */}
+						<span
+							aria-hidden={true}
+							className={cn("line-clamp-2 text-ink-muted text-meta leading-4")}
+							title={reason}
+						>
+							{reason}
+						</span>
+						<span className={cn("sr-only")}>{reason}</span>
+					</>
 				)}
 			</div>
 		</li>
