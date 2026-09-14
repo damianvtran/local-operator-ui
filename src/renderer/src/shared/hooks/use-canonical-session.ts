@@ -55,6 +55,8 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
+/* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
+import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
 export type CanonicalSessionStatus =
 	| "connecting"
@@ -94,6 +96,24 @@ export type CanonicalSessionView = {
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
 	loadingOlder: boolean;
+	/**
+	 * How many `subagent_start|subagent_progress|subagent_end` events this viewer
+	 * has seen for each child, keyed by job id (`docs/run-sidebar.md` § 5.3).
+	 *
+	 * A PULSE, not a transcript: the child's own transcript is a file on disk, and
+	 * this is the parent stream's signal that something about a child changed —
+	 * emitted at tool-batch boundaries and never per stream delta
+	 * (`harness/types.py:1580-1591`), which is exactly the boundary the file is
+	 * written at. A reader that wants the child's newest rows therefore needs a
+	 * counter it can watch, and the counter must be part of the view because the
+	 * renderer cannot observe an event the stream has already consumed.
+	 *
+	 * Seeded from the snapshot's own `live_events`, so a viewer that JOINS a turn
+	 * in flight starts with the beats already recorded rather than at zero — a
+	 * counter that began at zero for a child that had been working for a minute
+	 * would make the first refetch look like the first change.
+	 */
+	subagentPulses: Readonly<Record<string, number>>;
 };
 
 export type CanonicalSessionHandle = CanonicalSessionView & {
@@ -468,6 +488,9 @@ export function useCanonicalSessionStream(
 				? seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT)
 				: EMPTY_TRANSCRIPT,
 		loadingOlder: false,
+		// No child has been heard from yet: the snapshot that follows seeds the
+		// counter from its own `live_events`.
+		subagentPulses: {},
 	}));
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
@@ -816,6 +839,14 @@ export function useCanonicalSessionStream(
 							);
 							next = {
 								...next,
+								// The pulse is SEEDED here rather than merged: a snapshot is the
+								// authoritative statement of what this viewer has seen, and it is
+								// the frame that follows a reconnect or a fresh subscription —
+								// exactly the moments a counter carried over from before would be
+								// counting events the new subscription never delivered.
+								subagentPulses: seedSubagentPulses(
+									snapshot.frontend.snapshot.live_events,
+								),
 								status: "live",
 								frontend: {
 									...snapshot.frontend.snapshot,
@@ -895,6 +926,31 @@ export function useCanonicalSessionStream(
 						const transcript = applyEvent(next.transcript, frame.payload, now);
 						if (transcript !== next.transcript) {
 							next = { ...next, transcript };
+						}
+						/*
+						 * The child pulse (§ 5.3), bumped in this branch because this is the
+						 * one place a live event is applied — a second listener would be a
+						 * second consumer of the same stream, and the two could disagree
+						 * about which events happened.
+						 *
+						 * The event set, the id rule and the bump all live in
+						 * `applySubagentPulse`, and this call site holds none of them: the
+						 * member and the filter cannot drift from the module's because there
+						 * is no second copy to drift. The step returns the SAME map for an
+						 * event that is not a beat, which is what keeps an unrelated frame
+						 * from looking like a change to the reader.
+						 *
+						 * It rides the same `next` object as everything else, so a beat that
+						 * arrives in a coalesced frame does not cost an extra render: the
+						 * reader that watches this counter is re-rendered because the frame
+						 * arrived, not because the pulse is a separate piece of state.
+						 */
+						const pulsed = applySubagentPulse(
+							next.subagentPulses,
+							frame.payload,
+						);
+						if (pulsed !== next.subagentPulses) {
+							next = { ...next, subagentPulses: pulsed };
 						}
 					}
 				}
@@ -999,6 +1055,9 @@ export function useCanonicalSessionStream(
 			terminal: null,
 			transcript: EMPTY_TRANSCRIPT,
 			status: "connecting",
+			// A different session's children are different children, and a pulse
+			// carried across is a counter no reader can match to a job.
+			subagentPulses: {},
 			// Belt to the early return's braces: whatever a superseded page in
 			// flight does, a freshly opened session is not loading older rows.
 			loadingOlder: false,

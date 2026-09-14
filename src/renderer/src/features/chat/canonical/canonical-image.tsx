@@ -12,7 +12,11 @@
  * The unavailable state is `BrokenAttachment` rather than an empty gap, and
  * that is the same argument the TUI makes for its own `▨ image unavailable`
  * receipt (`tui/widgets/image_block.py:24-29`): "the reader learns an image WAS
- * here, which is the fact the empty space would have hidden."
+ * here, which is the fact the empty space would have hidden." It carries
+ * `ATTACHMENT_UNAVAILABLE_COPY` rather than that component's default sentence:
+ * a canonical image is a digest in the app's own store, not a path on disk, so
+ * the moved/renamed/deleted cause is one this row cannot know — see the copy's
+ * own comment in `attachment-frame.tsx`.
  *
  * Sizing follows the TUI's ledger rule — one shared height ceiling with the
  * width following each image's own aspect — so a column of mixed screenshots
@@ -23,14 +27,25 @@
  */
 
 import { cn } from "@shared/lib/utils";
-import { BrokenAttachment } from "../components/message-item/attachment-frame";
+import {
+	ATTACHMENT_UNAVAILABLE_COPY,
+	BrokenAttachment,
+} from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
 import type { TranscriptImage } from "./transcript-reducer";
-import { useAttachmentUrl } from "./use-attachment-url";
+import { type AttachmentScope, useAttachmentUrl } from "./use-attachment-url";
 
 export type CanonicalImageProps = {
 	image: TranscriptImage;
-	sessionId: string | null;
+	/**
+	 * The conversation the row was read from, as `{ sessionId, childId }`.
+	 *
+	 * The scope rather than a bare session id because the bytes live behind a
+	 * route scoped to the transcript that references them, and a child's page is
+	 * a conversation of its own — the parent's route refuses a child's digests
+	 * (`use-attachment-url.ts`'s `AttachmentScope`).
+	 */
+	scope: AttachmentScope | null;
 	/**
 	 * What to call this attachment when it cannot be shown. The row above
 	 * already names the action, so this is a position rather than a filename —
@@ -41,11 +56,15 @@ export type CanonicalImageProps = {
 
 export const CanonicalImage = ({
 	image,
-	sessionId,
+	scope,
 	label,
 }: CanonicalImageProps) => {
-	const src = useAttachmentUrl(image, sessionId);
-	if (!src) return <BrokenAttachment name={label} />;
+	const src = useAttachmentUrl(image, scope);
+	if (!src) {
+		return (
+			<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+		);
+	}
 	return (
 		<div className={cn("inline-block max-w-full")}>
 			<ImageAttachment
@@ -68,7 +87,7 @@ export const CanonicalImage = ({
 				// from the URL it would be the blob's UUID, which is what a screen
 				// reader announced.
 				label={label}
-				conversationId={sessionId ?? ""}
+				conversationId={scope?.sessionId ?? ""}
 			/>
 		</div>
 	);
