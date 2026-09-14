@@ -315,6 +315,7 @@ export const Disclosure = ({
 		}
 		if (pressOnText.current && undo.current !== null) {
 			setIsOpen(undo.current);
+			onOpenChange?.(undo.current);
 			undo.current = null;
 		}
 	};
@@ -346,7 +347,10 @@ export const Disclosure = ({
 			return;
 		}
 		undo.current = isOpen;
-		setIsOpen((previous) => !previous);
+		// Preserve the upstream composer's state report after the selection guard
+		// accepts a toggle. Keep callbacks outside React's replayable updater.
+		setIsOpen(!isOpen);
+		onOpenChange?.(!isOpen);
 	};
 
 	/**
