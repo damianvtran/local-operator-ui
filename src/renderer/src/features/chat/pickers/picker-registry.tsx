@@ -17,6 +17,8 @@
 
 import type { FC } from "react";
 import type { ArgumentSource } from "../components/slash-argument-rows";
+import { runMoveSessionFromDispatch } from "../move-session";
+import type { MoveRunContext } from "../move-session";
 import {
 	AnalyticsView,
 	ApprovalsPicker,
@@ -55,9 +57,11 @@ export type DestinationEntry =
 			kind: "picker";
 			component: FC<PickerContext>;
 			inline?: InlineArgumentSource;
+			argsBehavior?: "present" | "execute";
+			runArgs?: (context: MoveRunContext) => Promise<void>;
 	  }
 	| { kind: "navigate"; route: (args: string, sessionId: string) => string }
-	| { kind: "direct"; action: "clear" | "exit" };
+	| { kind: "direct"; action: "clear" | "exit" | "focus-cwd-chip" };
 
 /**
  * One argument list's rows, and how they may be acted on.
@@ -139,6 +143,16 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"sessions.stop": { kind: "picker", component: StopPicker },
 	"session.rename": { kind: "picker", component: RenamePicker },
 	"session.fork": { kind: "picker", component: ForkPicker },
+	/*
+	 * The one destination whose ARGUMENTS are the action: `/move ~/x` moves the
+	 * session, and only the bare form opens anything. See `argsBehavior` above.
+	 */
+	"session.move": {
+		kind: "picker",
+		component: MovePicker,
+		argsBehavior: "execute",
+		runArgs: runMoveSessionFromDispatch,
+	},
 	"session.model": {
 		kind: "picker",
 		component: ModelPicker,

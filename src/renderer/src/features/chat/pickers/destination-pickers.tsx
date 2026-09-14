@@ -48,6 +48,7 @@ import type {
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
+import { DirectoryIndicator } from "../components/directory-indicator";
 import { formatPricePair } from "../components/slash-argument-rows";
 import type { SlashCommandMeta } from "../components/slash-commands";
 import type { SlashCommandInvocation } from "../components/slash-submit";
@@ -60,6 +61,12 @@ import {
 	selectionFromModel,
 	selectionSelector,
 } from "../draft-selection";
+import {
+	MOVE_UNAVAILABLE_REASON,
+	runMoveSession,
+	useEvalUsage,
+	useSessionMoveCapability,
+} from "../move-session";
 import {
 	bandReadings,
 	effortLadder,
@@ -2703,3 +2710,113 @@ export function latestAssistantText(page: DesktopHistoryPage) {
 	}
 	return "";
 }
+
+// ------------------------------------------------------------------- move
+
+/**
+ * `/move` - point a LIVE session at another working directory.
+ *
+ * The picker HOSTS the composer's own chooser rather than building a second one:
+ * `DirectoryIndicator` is already the control with the custom-path field, the
+ * native browser and the recents menu, and a move reaches the same decision a
+ * draft's first directory does. A second directory picker beside it would be two
+ * answers to one question, and the two would drift.
+ *
+ * Choosing is immediate - no confirmation - which is what the TUI's picker does
+ * (`_move_choice` applies the row) and what the draft chip already does. It is a
+ * runtime restart from one menu click, and the receipt says so in the terminal
+ * state: success closes this dialog and leaves `moved to ~/x — this session's
+ * runtime is restarting there` in the transcript (plus the eval-state clause when
+ * this conversation has run `eval`), while a refusal stays OPEN with the
+ * backend's own sentence in the strip.
+ *
+ * Against a backend without `session_move` the chooser is mounted READ-ONLY with
+ * the reason and the strip says the same thing. A picker that opened an editable
+ * chip whose every commit 404s is the control this feature's negotiation exists
+ * to avoid.
+ */
+export const MovePicker: FC<PickerContext> = ({
+	sessionId,
+	canonical,
+	onClose,
+	note,
+}) => {
+	const { enabled } = useSessionMoveCapability();
+	const evalUsed = useEvalUsage(sessionId, canonical);
+	const [result, setResult] = useState<PickerResult | null>(null);
+	const [busy, setBusy] = useState(false);
+
+	/*
+	 * The strip and the transcript carry the SAME sentence, composed once.
+	 *
+	 * `runMoveSession` reports a failure only through `note`, so the wrapper below
+	 * mirrors an error into the strip rather than letting the dialog stay open with
+	 * no explanation in it; a success is composed by `moveReceiptLine`, which the
+	 * write path itself uses for the transcript line.
+	 */
+	const noteBoth = useCallback(
+		(text: string, error = false) => {
+			note(text, error);
+			if (error) setResult({ tone: "error", text });
+		},
+		[note],
+	);
+
+	const commit = useCallback(
+		async (path: string) => {
+			setBusy(true);
+			setResult(null);
+			try {
+				const receipt = await runMoveSession({
+					sessionId,
+					cwd: path,
+					note: noteBoth,
+					evalUsed,
+				});
+				/*
+				 * A refusal keeps the dialog open: the reason is in the strip and the user's
+				 * next choice is one click away, whereas closing would leave them at the
+				 * transcript re-typing `/move` to try another directory.
+				 *
+				 * A success closes it, and the receipt is not repeated in the strip on the
+				 * way out: `runMoveSession` has already written the line into the transcript
+				 * (the durable surface, and the one the user is left looking at), so a strip
+				 * update in the same tick as the close would be a sentence painted onto a
+				 * dialog that is being removed - visible to nobody and asserted by nobody.
+				 */
+				if (receipt) onClose();
+			} finally {
+				setBusy(false);
+			}
+		},
+		[sessionId, noteBoth, evalUsed, onClose],
+	);
+
+	return (
+		<PickerHost
+			open
+			onClose={onClose}
+			title="Move this session"
+			description={
+				enabled
+					? "Choose the folder this session works in. A running session's runtime restarts there."
+					: MOVE_UNAVAILABLE_REASON
+			}
+			form={
+				<div className={cn("flex flex-col gap-3 px-1 pb-1")}>
+					<DirectoryIndicator
+						currentWorkingDirectory={canonical.frontend?.cwd}
+						onChangeDirectory={
+							enabled ? (path) => void commit(path) : undefined
+						}
+						pending={busy}
+						readOnlyReason={enabled ? undefined : MOVE_UNAVAILABLE_REASON}
+					/>
+				</div>
+			}
+			busy={busy}
+			busyText="Moving this session…"
+			result={result}
+		/>
+	);
+};

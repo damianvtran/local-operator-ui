@@ -45,10 +45,8 @@ import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
 import type { DraftPickerDestination } from "../draft-selection";
-import type {
-	DraftPickerSession,
-	PickerContext,
-} from "../pickers/destination-pickers";
+import { MOVE_UNAVAILABLE_REASON, useEvalUsage } from "../move-session";
+import type { DraftPickerSession, PickerContext } from "../pickers/destination-pickers";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
@@ -192,6 +190,21 @@ export function useSlashDispatch({
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	const commandsEnabled = desktopFeatureEnabled(capabilities.data, "commands");
+	/*
+	 * Whether a move can be executed at all against this backend.
+	 *
+	 * Read here rather than inside the runner because the ANSWER changes what the
+	 * user is told, not merely whether a request succeeds: with the route absent, a
+	 * typed `/move <path>` must report the same thing the read-only chip does
+	 * instead of spending a round trip to learn 404. The catalogue deliberately
+	 * still offers `/move` on such a backend - the catalogue is the backend's own
+	 * (`desktop_commands.command_catalogue`), and filtering it renderer-side would
+	 * be a second source of truth about what a destination can do.
+	 */
+	const canMove = desktopFeatureEnabled(capabilities.data, "session_move");
+	// The eval clause of a move receipt needs this conversation's history, not a
+	// live kernel reading - see `useEvalUsage` for why a latch is the honest shape.
+	const evalUsed = useEvalUsage(sessionId, canonical);
 	const commandsQuery = useQuery({
 		queryKey: desktopKeys.commands,
 		queryFn: () =>
@@ -297,6 +310,51 @@ export function useSlashDispatch({
 			}
 			if (entry?.kind === "navigate") {
 				navigate(entry.route(args, sessionId ?? ""));
+				return "consumed";
+			}
+
+			// A destination whose ARGUMENTS are the action runs them rather than opening
+			// anything. `/move <path>` is the only one, and it is the TUI's own rule for
+			// the same command (`_cmd_move` applies the argument form and only opens the
+			// picker for the bare form). Resolving the destination BEFORE posting saves a
+			// round trip whose only answer would be "please now do the thing", and it is
+			// why a path is never sent to the command endpoint - there, the runtime's own
+			// slash dispatcher would answer `move` with its "run it from a terminal"
+			// refusal, which is false about this command on this surface.
+			if (
+				entry?.kind === "picker" &&
+				entry.argsBehavior === "execute" &&
+				args
+			) {
+				if (!sessionId) {
+					note(
+						`/${spec.name} needs an open conversation. Start one first.`,
+						true,
+					);
+					return "consumed";
+				}
+				if (!canMove) {
+					note(MOVE_UNAVAILABLE_REASON, true);
+					return "consumed";
+				}
+				if (entry.runArgs) {
+					await entry.runArgs({
+						sessionId,
+						cwd: args,
+						canonical,
+						note,
+						evalUsed,
+					});
+				} else {
+					// Unreachable: the registry's one `execute` entry always carries its
+					// runner. Named rather than silently dropped, because a destination that
+					// says it executes and then does nothing is exactly the silent dead end
+					// this table exists to make loud.
+					note(
+						`/${spec.name} is not available in the desktop app yet. Run it in the terminal with local-operator.`,
+						true,
+					);
+				}
 				return "consumed";
 			}
 
@@ -442,6 +500,8 @@ export function useSlashDispatch({
 			canonical,
 			rebind,
 			closePicker,
+			canMove,
+			evalUsed,
 		],
 	);
 
