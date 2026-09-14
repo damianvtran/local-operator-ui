@@ -40,6 +40,13 @@ import {
 	errorCodeOf,
 	lostAnswerMessage,
 } from "../ask-answer";
+import {
+	type AdmittedSend,
+	admittedSendFor,
+	ownerAnswered,
+	stoppedAfterAdmission,
+	turnStopped,
+} from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
@@ -220,6 +227,89 @@ function SessionPanel({
 		canonical.transcript.records.length,
 	);
 	const busy = canonical.frontend?.streaming === true;
+	/*
+	 * The send this pane ADMITTED and the owner has not answered.
+	 *
+	 * This is the app's own fact, not the owner's, and it is the only signal that
+	 * exists for the window the user actually waits through: a cold session
+	 * spends ~1.15 s inside the message request spawning its runtime
+	 * (`use-warm-session.ts`), and until the first frame lands the transcript
+	 * used to paint the user's own bubble and then nothing at all.
+	 *
+	 * Read from the STORE's draft row rather than from this component's
+	 * `admitting`, and LATCHED rather than derived per render, for two reasons
+	 * review round 1 measured:
+	 *
+	 * 1. On the New-chat path the identity flip remounts this panel while the
+	 *    row is live - the panel that paints the rung is not the one the send
+	 *    started in - so local state does not carry it and the row does.
+	 * 2. `finishDraft` DELETES that row when the receipt arrives, and the receipt
+	 *    can arrive before the owner's first frame (they land 3-6 ms apart when
+	 *    the session is warm). Deriving `starting` from the row alone therefore
+	 *    dropped the rung for a frame in that gap, which restarted its clock at
+	 *    `0s` under the reader - the exact defect `working-line.tsx` documents as
+	 *    impossible. The latch spans the whole wait, from the send until the
+	 *    owner paints something.
+	 *
+	 * A ref, not state, because every transition that matters is already a store
+	 * change that re-renders this panel: the row appearing, the row failing, and
+	 * content arriving are all store updates, so there is nothing for a
+	 * `setState` to schedule. The write is idempotent, which is what makes it
+	 * safe under a repeated render.
+	 */
+	const admittedNow = admittedSendFor(sessionId, draft);
+	const admitted = useRef<AdmittedSend | null>(null);
+	const outcomeAtAdmission = useRef<{
+		requestId: string;
+		anchor: string | null;
+	} | null>(null);
+	if (admittedNow) {
+		// Keep the baseline after retirement too: the receipt may lag the
+		// completion frame, leaving this same draft pending for another render.
+		// Re-snapshotting then would turn the just-finished outcome into "old"
+		// history and resurrect the wait we just cleared.
+		if (outcomeAtAdmission.current?.requestId !== admittedNow.requestId) {
+			outcomeAtAdmission.current = {
+				requestId: admittedNow.requestId,
+				anchor: canonical.frontend?.attention?.anchor_id ?? null,
+			};
+		}
+		admitted.current = admittedNow;
+	}
+	/*
+	 * What ends the wait, and what deliberately does not.
+	 *
+	 * CONTENT ends it, measured from this send's echo record rather than from the
+	 * tail of the transcript: prose or a tool row is the owner answering, and a
+	 * record that paints nothing (a `message_start` placeholder) does not count,
+	 * which is the same predicate the transcript itself rows on
+	 * (`ownerAnswered`). A FAILURE ends it too: the store records one on the row
+	 * when the request throws, and the composer carries the remedy, so the rung
+	 * must not keep claiming progress beside it.
+	 *
+	 * A pending gate and a dead stream only SUSPEND the rung, in
+	 * `working-line-model.ts`: the send is still unanswered, so answering the
+	 * gate has to bring the rung back rather than start a new wait.
+	 *
+	 * One corner is recorded rather than hidden: a message the user abandons
+	 * while it is unconfirmed may still have landed on the owner, and the app
+	 * cannot tell that from a lost one - so the rung stays until the owner paints
+	 * something or the store records a failure. That is the app saying it is
+	 * still waiting, which is true; it is not a claim that the turn is running.
+	 */
+	const answered = ownerAnswered(
+		canonical.transcript.records,
+		admitted.current?.requestId,
+	);
+	const stopped =
+		turnStopped(canonical.transcript.records, admitted.current?.requestId) ||
+		stoppedAfterAdmission(
+			canonical.frontend?.attention,
+			outcomeAtAdmission.current?.anchor ?? null,
+		);
+	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
+		admitted.current = null;
+	const starting = admitted.current !== null;
 	/*
 	 * The run-details view model (`docs/run-details.md` § 8), derived once per
 	 * wire frame from the two lists the canonical stream already carries and
@@ -1259,7 +1349,25 @@ function SessionPanel({
 						// profile was in force.
 						loaded ||
 						(draftKey
-							? "The session starts when you send your first message."
+							? /*
+								 * While a send is ADMITTED the head stops instructing and
+								 * names what the send is being started with, which is the
+								 * draft's own bound target - the same durable identity the
+								 * header falls back to once the conversation is live. The
+								 * instruction was true only before the send: it sat over the
+								 * wait line telling the user to do the thing they had just
+								 * done, which is precisely the "did my send register" doubt
+								 * this change exists to remove (design round 2, D4; UX round
+								 * 2, U2).
+								 *
+								 * ONE line either way, so the slot's height does not move at
+								 * the instant of the send - the constraint the designer set on
+								 * this fix, since a second line that disappears at that moment
+								 * is a reflow the reader watches happen.
+								 */
+								starting
+								? (loadedTarget ?? "Starting the session")
+								: "The session starts when you send your first message."
 							: canonical.frontend?.cwd || "Canonical chat")
 					}
 					descriptionPending={identityPending}
@@ -1366,6 +1474,8 @@ function SessionPanel({
 						view,
 						busy,
 						admitting,
+						starting,
+						startingAfterId: admitted.current?.requestId ?? null,
 						onStop: stop,
 						onAnswer: (label: string) => void answerWithOption(label),
 						answer: answerForThisGate,

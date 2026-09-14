@@ -275,6 +275,9 @@ const Frame = ({
 					transcript={transcript}
 					gate={null}
 					waiting={waiting}
+					// A story cannot admit a send: this frame is about the stream's own
+					// states, so the admitted-send rung is not in play here.
+					starting={false}
 					loadingOlder={false}
 					onLoadOlder={async () => true}
 					containerRef={containerRef}
