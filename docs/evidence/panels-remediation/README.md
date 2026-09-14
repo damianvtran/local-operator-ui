@@ -95,3 +95,35 @@ than current claims. No whole-theme/full-surface sweep was run.
 The checker itself is unchanged. The full gate result and convergence accounting
 are recorded with the evidence commit/PR remediation, not inferred from the
 cheap inventory check.
+
+
+## Conflict-only convergence and history-preserving publication
+
+GitHub reported the PR conflicting. The saved pre-convergence evidence head is
+`bcc27879e` on the published `evidence/panels-before-convergence-20260914` ref;
+this preserves the actual capture/source citations. The current main fetched
+while this was in progress advanced to `8d019993e`, which is the exact base used
+by the completed candidate, not the earlier observed `915928a18`.
+
+`convergence.json` records the proof: **821 nonconflicting files byte-identical**,
+with added/deleted line multisets identical for all files except the manifest
+and package.json. Source remediation `642e6934d` → `2f33db239` is `=` in
+`git range-diff`. The manifest preserves a path-keyed union of 29 supplementary
+sets and the complete upstream record. Package.json keeps main's **0.22.3** and
+all upstream test entries; this branch adds only the panel chart test. The
+capture-list and contrast-contract patches are unchanged. No gate was weakened.
+
+The integrated shared walker counts **2279 total = 1928 sweep + 351 supplementary**
+WebPs, with **228 capture-list entries**. These replace the pre-convergence
+inventory above, not its capture timestamp. Upstream's shared CSS/utility change
+only introduces `pulse-visible`, which none of these panel captures uses;
+palettes and branch-authored panel/chart files are unchanged. The attempted
+optional post-convergence browser sample hit two 20-second screenshot timeouts;
+there is no claim of a newly captured convergence frame. Existing captures keep
+their pre-convergence provenance and the exact-source proof is stated separately.
+
+To avoid any force push, the reconciled candidate is kept on a safety ref, then
+the original published feature lineage is integrated as an additional merge
+parent without changing that candidate's tree. Publication is an ordinary
+fast-forward push of the existing PR branch. Both histories survive; this is
+not a PR merge or release. The final PR comment records ancestry/tree checks.

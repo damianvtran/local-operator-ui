@@ -1,16 +1,16 @@
 {
   "head": "642e6934d9e7c566ddaf3dd220381c557f2bb2f4",
-  "srcTree": "5f33aed3715c3d8aa406a99811b321764176ca95",
-  "scriptsTree": "e042fdf5607145303d01e6465894b9cfac19c796",
+  "srcTree": "01c0df6a8eaf303b875e5e31d85f9c4b1150a7f9",
+  "scriptsTree": "86b3ca980de7bd5906befac94769ae9c2d37f564",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
-  "frames": 1812,
-  "surfaces": 215,
+  "frames": 1928,
+  "surfaces": 228,
   "themes": 12,
   "countsMean": {
-    "frames": "1812 WebPs outside all declared supplementary sets, derived with the exported frames walker. Not the number captured in this remediation.",
-    "surfaces": "215 entries in capture-evidence.mjs STORIES, derived with the gate parser. Interactive and WireEnvironment require manual interaction/a running isolated backend and are not fixture sweep entries.",
-    "themes": "12 declared THEMES; new real-wire and interaction supplementary frames use localOperatorDark only."
+    "frames": "1928 WebPs outside every declared supplementary path, from the shared frames walker: 2279 total minus351 supplementary. This is the merged inventory, not the count captured in one pass.",
+    "surfaces": "228 entries in the integrated capture-evidence.mjs STORIES literal, counted by the unchanged upstream gate parser; interactive and real-wire stories are outside the unattended fixture list.",
+    "themes": "12 declared capture themes; manual supplementary captures state their individual theme scope."
   },
   "partialCapture": {
     "note": "Narrowed browser-tool remediation, not a full sweep. The prior partialCapture record is preserved verbatim as previousPartialCapture; its old arithmetic and clean-source implications are historical claims corrected here, not current facts. See panels-remediation/README.md for exact scope and provenance.",
@@ -577,6 +577,34 @@
   ],
   "headNote": "head names the reachable source milestone used to reconcile this mixed-generation inventory, NOT a claim that every image was taken at that commit. srcTree/scriptsTree are the reviewed content-tree stamps required by check-evidence. Per-pass capture origins, dirty edits, and limits are explicit in partialCapture and panels-remediation/README.md; earlier records are retained as previousPartialCapture/previousHeadNote. capturedAt remains the last full-sweep timestamp. No full sweep was performed in this remediation.",
   "previousHeadNote": "`head` names the commit this branch's fix pass ran at, cited as its reachable replay in this history after the rebase onto `af4786bb1`: a commit cannot name its own sha, and every rebase this branch carries rewrites the commit it ran at, so the citation is `85055fa30` (`fix(chat): one honest sentence per failure, no orphaned stream retry, and a backend this app can authenticate to`). `srcTree`/`scriptsTree` are the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts` at the docs commit that carries this manifest, and they are this head's own trees, re-derived rather than carried across the rebase, because this branch moves both (the shared notice module, the main-process relay and backend service, the renderer hook, the main-process IPC and three desktop test files). This file is rebuilt from `main`'s rather than merged: every top-level field conflicted on the rebase onto `af4786bb1` (`main`, `0.22.0` - the `0.22.0` bump, `#129`'s run-panel and sidebar surfaces, `#152`'s history reconcile, `#141`, and the `0.21.3`/`0.21.4` windows before them), and `package.json` on this head reads `0.22.0` because this branch carries no version bump of its own. The `headNote` this replaces was ANOTHER branch's pass text - the update-panel pass whose lineage `main`'s copy names - and it is named here rather than carried, because its first sentences explain a `head` that is not this one. The counts below are `main`'s own and are verified at this head rather than re-derived: this branch contributes no `.webp` at all (its six frames under `docs/evidence/session-load-recovery` are `.png`, which the walker does not enumerate), and `main`'s arithmetic resolves here - 1056 swept plus 225 across the 24 declared `supplementary` sets is 1281 committed `.webp`, which is what this head's disk holds. THE PIXEL SWEEP WAS NOT RE-RUN, here or on the bases this branch was rebased across: the swept pixels are older than the tree these stamps name, which is the disclosure this file has carried since `#132` rewrote the composer row, and which of those frames still describe this tree is a convergence question rather than a claim made here. THIS BRANCH'S OWN SIX FRAMES WERE RE-CAPTURED ON THIS HEAD, and the result is recorded as a comparison rather than asserted: `refused`, `loading` and `narrow` came back byte-identical to the frames they replaced (`sha256 0f51b9ac`, `aec176e4`, `c90d263d`), while `recovered` and `empty` moved because `#132` moved the readings into the composer's bottom row - the 148 CSS px box the `0.21.0` base grew whenever a session snapshot arrived exists nowhere on this head, where every composer box is 112 CSS px and the notice's block still ends 28 px above the composer's top border at `y 744`, with `scrollerHeight` 632 at 1380x872 and 569 at 980x760. `before` was re-taken on the base it documents, where the defect reproduces unchanged. The set's own README carries the method and every number quoted here. THIS RECORDS THE PANELS PASS (PR #165), rebuilt from `main`'s text rather than merged: the `headNote` it replaces is another branch's pass text and is named rather than carried, because its sentences explain a `head` that is not this one. The stamps above are re-derived at the rebase onto `97467e5a9` (`main`, 0.22.1 - the release, #144's session-load work and their evidence), where `head`, `srcTree`, `scriptsTree`, `frames`, `surfaces` and both `partialCapture` head citations all conflicted because both sides restamp the same fields. `head` names `84084d580`, the review-and-design remediation commit whose `src`/`scripts` trees are the pair above - cited from the stamp commit that follows it, because the trees cannot be named from inside the commit that produces them; the 120 panel frames were captured at two commits the rebase replayed and no ref reaches any more, which is what `panelsAddition` records. The re-stamp is argued rather than assumed, and the argument is about PAINT rather than about the closure as a whole: inside the closure of those frames `main` changed `styles/index.css` (+35), `shared/components/ui/tooltip.tsx` (+33), `src/shared/desktop-contract.ts` (+157) and `shared/api/local-operator/desktop-hooks.ts` (+25), and the last two ARE read by these panels (value imports at `panel-queries.ts:7`, `analytics-model.ts:4`, `session-report-model.ts:5`, `info-panel.tsx:4`, `session-panel.tsx:4`) - zod schemas, an op-to-HTTP map and a capability-key union, none of which produces a byte a frame renders - while the two that DO change paint are `pointer-events` rules on Radix's popper wrapper and the tooltip panel, i.e. hit-testing, and no theme, token, type, spacing or shared primitive those frames render moved at all. Naming all four is the point: a closure claim falsifiable by one `git diff` is what this file exists to prevent (review round 1, R7). THE ONE THING NOT VERIFIED AT THIS HEAD: `pnpm check-evidence` has not been run since the last capture (the host was under other sessions' sweeps), so these hashes are a re-stamp awaiting that pass; and the review and design rounds' fixes change what fourteen surfaces render, so the panel frames need re-taking before those rounds can be re-signed. Until then, treat the pixel-level currency of this set as asserted by the argument above rather than measured.",
+  "convergence": {
+    "oldBase": "97467e5a937c76865b1cc539243684381e455f98",
+    "oldHead": "bcc27879ef53776429da0ca66c95a88c3f4a871b",
+    "newBase": "8d019993eb8b54913d89fa5288aafbaf88f293d3",
+    "candidateHead": "03a553f2e743e5a901e0613f8e5337eee7c6729d",
+    "nonconflictingFileCount": 821,
+    "differentNonconflictingBlobs": [],
+    "bothTouched": [
+      "docs/evidence/manifest.json",
+      "package.json",
+      "scripts/capture-evidence.mjs",
+      "scripts/contrast-contract.mjs"
+    ],
+    "nonidenticalAddedDeletedLineSets": [
+      "docs/evidence/manifest.json",
+      "package.json"
+    ],
+    "method": "Conflict-only rebase candidate preserved; final publication merges the original published feature lineage as an additional parent with an identical candidate tree, so the PR push fast-forwards and no published history is deleted.",
+    "sourceProof": "821 nonconflicting files have byte-identical git blobs. Added/deleted line multisets are identical except package.json and manifest.json. Package retains main 0.22.3 and every upstream test, adding only panel-chart-motion.test.mjs. Manifest is a path-keyed supplementary union with the complete upstream record retained. capture-evidence.mjs and contrast-contract.mjs additive patches are byte-identical.",
+    "paintBoundary": "Upstream shared CSS adds the pulse-visible keyframe/token and the utility merge registration; no captured panel uses that new animation. Theme palettes, chart/panel primitives and all branch-authored src files are byte-identical. Optional post-convergence screenshot attempt was blocked by two browser-extension 20-second screenshot timeouts; no new pixel-equivalence claim is made. The 96 captures retain their actual pre-convergence origin.",
+    "counts": {
+      "total": 2279,
+      "outsideSupplementary": 1928,
+      "supplementary": 351,
+      "captureListSurfaces": 228
+    },
+    "archiveRef": "refs/heads/evidence/panels-before-convergence-20260914"
+  },
   "convergenceUpstreamRecord": {
     "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
     "headNote": "Recovery integration: normal merge of origin/main 915928a18 into 535a99de5, preserving both histories (no rebase or force-push). The top-level tree stamps describe the integrated source, not a new capture. Existing frame timestamps and partialCapture provenance remain unchanged: composer round-1 remediation frames were captured at 0f19ae5e2 and committed in 535a99de5. Upstream changes no renderer source or capture script; all 109 nonconflicting feature files are byte-identical to 535a99de5. Conflicts were additive test-list union in package.json (version remains main 0.22.3) and this manifest stamp block. New browser-tool validation is reported separately on PR #175; these historical frames are not represented as independently re-captured during recovery.",
