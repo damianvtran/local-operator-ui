@@ -101,7 +101,8 @@ function Panel({
 				containerRef={containerRef}
 				isSmallView={false}
 				status={status}
-				error={null}
+				failure={null}
+				onReconnect={() => undefined}
 				stale={stale}
 				missing={missing}
 			/>
