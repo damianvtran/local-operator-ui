@@ -76,8 +76,10 @@ import {
 } from "react";
 import {
 	type DetailLine,
+	SUBPIXEL_TOLERANCE,
 	argumentLines,
 	detailOverflowLabel,
+	linesBelowFold,
 	resultLines,
 } from "./tool-detail-model";
 
@@ -183,6 +185,13 @@ const DetailLines: FC<{ lines: readonly DetailLine[]; label: string }> = ({
  * only change when the CONTENT does — the CONTENT is what the observer watches
  * rather than the box, because a result streaming into an open pane grows the
  * content and resizes nothing the box itself could report.
+ *
+ * BOTH comparisons take `SUBPIXEL_TOLERANCE`, and it is one constant rather than
+ * two numbers because they answer the same question about the same edge: a
+ * screenshot at 560 left the last line box 0.203px past the box's bottom edge at
+ * the section's own scroll limit, and a count with no tolerance turned that
+ * invisible residue into a line the reader was told they could not reach
+ * (reviewer round 3 F8, design round 3 D7).
  */
 function useSectionReport(ref: RefObject<HTMLDivElement | null>): {
 	lines: number;
@@ -209,24 +218,29 @@ function useSectionReport(ref: RefObject<HTMLDivElement | null>): {
 			const contentRect = target.getBoundingClientRect();
 			// A half pixel of tolerance: the cap and the content are both rects, and
 			// a section that fits exactly is not an overflow.
-			setOverflowing(contentRect.height > boxRect.height + 0.5);
+			setOverflowing(contentRect.height > boxRect.height + SUBPIXEL_TOLERANCE);
 			/*
 			 * The `<pre>` a raw result prints in holds its text as a text node rather
 			 * than as child elements, so it is walked as the one row it is and its own
 			 * newlines are the line boxes inside it.
+			 *
+			 * Read here, decided in the model: a DOM read is the part of this that
+			 * needs a browser, and the count it feeds is the part that can be wrong
+			 * on its own (see `linesBelowFold`).
 			 */
 			const rows =
 				target.children.length > 0 ? Array.from(target.children) : [target];
-			let below = 0;
-			for (const row of rows) {
-				const rect = row.getBoundingClientRect();
-				if (rect.height <= 0) continue;
-				const boxes = Math.max(1, Math.round(rect.height / lineHeight));
-				for (let index = 1; index <= boxes; index++) {
-					if (rect.top + index * lineHeight > boxRect.bottom) below++;
-				}
-			}
-			setLines(below);
+			setLines(
+				linesBelowFold(
+					rows.map((row) => {
+						const rect = row.getBoundingClientRect();
+						return { top: rect.top, height: rect.height };
+					}),
+					lineHeight,
+					boxRect.bottom,
+					SUBPIXEL_TOLERANCE,
+				),
+			);
 		};
 		measure();
 		box.addEventListener("scroll", measure, { passive: true });

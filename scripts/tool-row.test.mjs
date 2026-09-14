@@ -1196,10 +1196,12 @@ const detailBundle = await build({
 });
 const {
 	EMPTY_SENDER,
+	SUBPIXEL_TOLERANCE,
 	argumentLines,
 	detailOverflowLabel,
 	detailText,
 	hasDetail,
+	linesBelowFold,
 	peerFields,
 	peerHasDetail,
 	peerIdentity,
@@ -1377,6 +1379,70 @@ test("a capped section says how much of itself is not shown", () => {
 	assert.equal(detailOverflowLabel(1), "… 1 more line");
 	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 	assert.equal(detailOverflowLabel(0), "… 0 more lines");
+});
+
+test("a sub-pixel overhang is not a line below the fold", () => {
+	/*
+	 * The branch of `tool-detail.tsx` this suite can reach. The count lives in
+	 * the model precisely so this boundary is a number here rather than a
+	 * picture in `docs/evidence`: no script under `pnpm test:desktop` imports
+	 * the component, jsdom measures no layout, and three mutations of that file
+	 * left the suite green (reviewer round 3, N6).
+	 *
+	 * The two overhangs are the ones reviewer F8 and designer D7 measured
+	 * independently at 560, on a section parked at its OWN scroll limit — the
+	 * state this pane's fix is about. Chrome saturates a non-composited scroller
+	 * on an integer offset, so 0.203px of the first pane's last line and 0.469px
+	 * of the second's stay outside the box forever, and the reader is looking
+	 * straight at those lines.
+	 */
+	const line = 17.4;
+	const firstPane = { top: 361.204 - line, height: line };
+	const secondPane = { top: 729.641 - line, height: line };
+	assert.equal(linesBelowFold([firstPane], line, 361.0, SUBPIXEL_TOLERANCE), 0);
+	assert.equal(linesBelowFold([secondPane], line, 729.172, SUBPIXEL_TOLERANCE), 0);
+	// Without the tolerance those two ARE the defect: one line each, claimed
+	// through every wheel notch, about a line that is on screen.
+	assert.equal(linesBelowFold([firstPane], line, 361.0, 0), 1);
+	assert.equal(linesBelowFold([secondPane], line, 729.172, 0), 1);
+});
+
+test("the count is line boxes below the fold, and the tolerance is one of them", () => {
+	const line = 20;
+	const boxBottom = 100;
+	const flush = { top: boxBottom - line, height: line };
+	// Flush and exactly-one-tolerance both count as inside; the tolerance is a
+	// boundary, not a licence to hide the next line.
+	assert.equal(linesBelowFold([flush], line, boxBottom, SUBPIXEL_TOLERANCE), 0);
+	assert.equal(
+		linesBelowFold(
+			[{ top: flush.top + SUBPIXEL_TOLERANCE, height: line }],
+			line,
+			boxBottom,
+			SUBPIXEL_TOLERANCE,
+		),
+		0,
+	);
+	assert.equal(
+		linesBelowFold(
+			[{ top: flush.top + SUBPIXEL_TOLERANCE + 0.01, height: line }],
+			line,
+			boxBottom,
+			SUBPIXEL_TOLERANCE,
+		),
+		1,
+	);
+	// A row two line boxes tall is two lines, not one row: the reader counts
+	// lines, and the pitch between rows is a different number (QA round 2, Q-6).
+	assert.equal(
+		linesBelowFold([{ top: boxBottom, height: 2 * line }], line, boxBottom, SUBPIXEL_TOLERANCE),
+		2,
+	);
+	// An element with no box occupies no line, and a section whose line-height
+	// cannot be resolved reports nothing rather than an infinity of lines.
+	assert.equal(linesBelowFold([{ top: boxBottom, height: 0 }], line, boxBottom, SUBPIXEL_TOLERANCE), 0);
+	assert.equal(linesBelowFold([flush], Number.NaN, boxBottom, SUBPIXEL_TOLERANCE), 0);
+	assert.equal(linesBelowFold([], line, boxBottom, SUBPIXEL_TOLERANCE), 0);
 });
 
 test("a receipt row never degrades to an unnamed pid", () => {

@@ -105,6 +105,85 @@ export function detailOverflowLabel(hidden: number): string {
 }
 
 /**
+ * The sub-pixel tolerance this pane's two placement decisions share.
+ *
+ * Both are comparisons of one rect against another — the section's content
+ * against its box (`overflowing`, in `useSectionReport`) and each line box's
+ * bottom edge against that same box (`linesBelowFold`) — and neither is exact:
+ * the cap is authored in whole pixels (`max-h`), a line box is not (`line-height`
+ * × the font's own metrics), and Chrome's non-composited scroller saturates on
+ * an integer offset, so a section at its END can leave a fraction of a pixel of
+ * its last line outside the box forever.
+ *
+ * The fraction is what makes this ONE constant rather than two numbers that can
+ * drift: `overflowing` has carried it since the cap was written (a section that
+ * fits exactly is not an overflow), and the count needed the same reading — at
+ * 560 the residue is 0.203px in the first pane's input section and 0.469px in
+ * the second's, and without it the marker went on saying `… 1 more line` about a
+ * line the reader IS looking at, through eight real wheel notches, forever
+ * (reviewer round 3 F8, design round 3 D7, two independent reproductions).
+ *
+ * A HALF PIXEL, not a round one: it is under the smallest distance a display
+ * can paint (one device pixel at 1x) and comfortably above the sub-pixel
+ * residues above, so it cannot hide a line the reader could actually lose.
+ */
+export const SUBPIXEL_TOLERANCE = 0.5;
+
+/**
+ * One row of a capped section as its own box measures it — the row's top edge
+ * and its height, in the same coordinate space as the box's bottom edge.
+ */
+export type RowBox = { top: number; height: number };
+
+/**
+ * How many of a section's LINE BOXES sit below its fold — the arithmetic behind
+ * `detailOverflowLabel`.
+ *
+ * The unit is the reader's, not the component's: a row is walked as its line
+ * boxes (`Math.round(height / lineHeight)`) and each box is tested on its own
+ * bottom edge, so a wrapped value counts as the lines it occupies and a value
+ * between two others counts as one. Dividing the overflow by the block's ROW
+ * PITCH (line-height plus row-gap) answers a different question and printed
+ * `… 27 more lines` for the 33 a reader counted (QA round 2, Q-6).
+ *
+ * WHY IT IS HERE rather than inline in `tool-detail.tsx`: the pane's count is a
+ * rule with a right answer, and rules inside a component are rules nobody can
+ * falsify — no script under `pnpm test:desktop` imports the component and jsdom
+ * measures no layout, so three mutations of that file (the marker mounted from
+ * `scrollTop`, the pitch instead of the line boxes, an unmounted marker instead
+ * of a quiet one) left the whole suite green (reviewer round 3, N6). The
+ * FUNCTION is the part of that file that can be pinned cheaply: the caller does
+ * the DOM reads and hands over plain numbers, and `scripts/tool-row.test.mjs`
+ * then pins the sub-pixel boundary the frames and the rigs could only
+ * photograph.
+ *
+ * The tolerance is a PARAMETER rather than this module's own choice, because
+ * the caller has to make the same comparison for `overflowing` and one shared
+ * constant is what keeps the two answers agreeing at the boundary.
+ */
+export function linesBelowFold(
+	rows: readonly RowBox[],
+	lineHeight: number,
+	boxBottom: number,
+	tolerance: number,
+): number {
+	// Defensive rather than required: the caller already refuses a non-finite
+	// line-height, but this is exported now, and `height / 0` is Infinity — an
+	// unbounded loop rather than a wrong number.
+	if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 0;
+	let below = 0;
+	for (const row of rows) {
+		// A row with no box (a hidden or empty element) occupies no line.
+		if (row.height <= 0) continue;
+		const boxes = Math.max(1, Math.round(row.height / lineHeight));
+		for (let index = 1; index <= boxes; index++) {
+			if (row.top + index * lineHeight > boxBottom + tolerance) below++;
+		}
+	}
+	return below;
+}
+
+/**
  * The pane's content as plain text, one line per `DetailLine`.
  *
  * The component renders these as two spans rather than as text (the key takes
