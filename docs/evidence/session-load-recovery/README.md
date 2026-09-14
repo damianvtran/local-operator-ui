@@ -34,25 +34,58 @@ the case: 1380x872 (frames 2760x1744) everywhere except `narrow`, which is
 column hits under 550px. Every frame asserts its own state before it is written,
 so a blank or wrong frame fails the capture instead of reaching review. The set
 was re-captured at this branch's remediation head, after the failure copy, the
-notice's register and the collapse stand-down changed, and then once more on the
-0.21.0 base. Every frame here shows the Chats sidebar and the chat pane, and
-`main` rewrote both inside the windows this branch was rebased across: #136's
-clear control in the search field and #139's New chat row alignment, then #128's
-mentioned-file viewers in `chat-content.tsx` — the component every one of these
-frames renders. So the whole set was taken again on the current base rather than
-argued about. The readbacks below are unchanged by those moves, which is the
-point of re-taking them: the pixels moved, the measured states did not.
-`recovered.png` came back byte-identical.
+notice's register and the collapse stand-down changed, then on the 0.21.0 base,
+and finally on this head (`5add3780e`, base `7bc101fbb`) — because `main` kept
+moving under it and `#132` and `#117` between them rewrote
+`message-input.tsx` by 460 lines, the composer every frame here paints.
 
-**The before tree** is a detached worktree at `73977340a` — `origin/main` at the
-fourth rebase of this branch, i.e. the tree it is proposed against, which carries
-`0.21.0` (#128, #148) and, before those, #145, #146, #139, #140 and #136 on top
-of the earlier `0.19.7` window (#142, #137, #138, #118) — with the same harness
-copied in, the same stub backend, and the same port pair. The defect reproduces
-on that base unchanged: the stub logged a single `/events` attempt for the
-refusal, and the pane painted the greeting over a conversation whose rows were
-on the server. The frame was re-captured on each base this branch was rebased
-onto, so the pixels and the tree they describe are the same tree.
+**That last re-take is what settled whether the earlier ones still describe this
+tree, so it is recorded as a comparison rather than asserted.** `refused.png`,
+`loading.png` and `narrow.png` came back **byte-identical** to the committed
+frames (`sha256 0f51b9ac…`, `aec176e4…`, `c90d263d…`), and the capture re-read
+the same readbacks from the page on the way: the notice block
+`[524,688,832,28]` at 13px `rgb(239, 128, 120)` with `scrollerHeight 632` at
+1380x872, and `[524,593,432,60]` with `scrollerHeight 569` at 980x760.
+`recovered.png`, `empty.png` and `before.png` did **not**. The two of those that
+show a served snapshot are the composer's doing: on the 0.21.0 base the composer
+grew a third row whenever the session snapshot arrived, so `recovered` and
+`empty` were photographed at a box 148 CSS px tall whose top sat at 708 — a box
+that does not exist anywhere on this head, where the readings ride in the
+composer's bottom row and the box is 112 CSS px in every state, top 744 at
+1380x872 and 675 at 980x760. `before` moved for the reason its own paragraph
+gives — the tree it documents had moved under it — and not because its pixels
+were wrong: its composer is 112 CSS px tall on both bases. Those three frames
+were re-taken, which is why the set in this directory is one capture of one tree:
+the measurements around the notice are the same measurements, and the pixels that
+had moved are the pixels around them.
+
+**Two of these frames cannot be byte-stable, and that is the app rather than the
+capture.** The greeting states (`empty`, `before`) sample seven suggestion chips
+out of the 25 in `chat-content.tsx`'s pool on every mount (`message-input.tsx`,
+`MAX_SUGGESTIONS`, `sort(() => Math.random() - 0.5)`), and the greeting block is
+centred, so a sampled set that wraps to four chip rows instead of three moves the
+whole block — composer included — by 19 CSS px. Both `before` frames above are
+112 CSS px tall boxes whose tops are 19 px apart for exactly that reason. What
+those two frames are asserted to show is their state
+(`{"greeting":true,"rows":0,"loading":false}`), which the capture re-reads on
+every run; their chip rows are a sample, and a byte comparison of them is not a
+test of anything.
+
+**The before tree** is `7bc101fbb` — `origin/main` at the round-3 rebase, i.e. the
+tree this branch is proposed against, carrying `0.21.2` (#117's chat-search merge
+and #157's bump, on top of `#132`'s composer row, #153, #151 and #147 and the
+`0.21.0` window of #128 and #148) — materialised with `git archive 7bc101fbb`
+into a temporary directory rather than as a worktree, so nothing is written into
+the repository's own `.git`, and with the same harness copied in, the same stub
+backend and the same port pair. The defect reproduces on that base unchanged: the
+stub logged a single `/events` attempt for the refusal, and the pane painted the
+greeting over a conversation whose rows were on the server — the frame's own
+readback, `{"greeting":true,"rows":0,"reconnect":0}`, is what the harness
+asserts before it writes it. Its composer is 112 CSS px tall on both bases,
+because in this state no snapshot ever arrives and the readings row it would have
+carried never appears; what moved between the two `before` frames is the sampled
+chip set, as above. The frame was re-captured on every base this branch was
+rebased onto, so the pixels and the tree they describe are the same tree.
 
 **These frames therefore do NOT prove:** packaged Electron IPC, the preload
 bridge, main's `DesktopStreamRelay` token binding, a real `local-operator serve`
@@ -86,7 +119,7 @@ edge.
 
 | Frame | Observed behaviour |
 | --- | --- |
-| [before.png](before.png) | The reported state, on `origin/main`, with the stub refusing the stream twice and then serving it. The conversation is open — its row is the sidebar's `Previous chats` entry, `Failing deploys` — the pane says "What can I help you with today?" over a conversation whose two durable rows are on the server, and the stream is refused. Every frame in this set paints that conversation in the chat pane's header — the title `Failing deploys` over the subtitle `Canonical chat` here and on `loading`, `refused` and `narrow`, and over `~/.workspace` on `recovered` and `empty` — with the `Chat \| Raw` tabs beneath it, so the header names the conversation and the sidebar carries its row. The defect reproduces on base unchanged: the stub logged **one** `/events` attempt, because with no receipt the single auto-reconnect was skipped, so the refusal was permanent for that session. |
+| [before.png](before.png) | The reported state, on the base this branch is proposed against (`7bc101fbb`), with the stub refusing the stream twice and then serving it. The conversation is open — its row is the sidebar's `Previous chats` entry, `Failing deploys` — the pane says "What can I help you with today?" over a conversation whose two durable rows are on the server, and the stream is refused. Every frame in this set paints that conversation in the chat pane's header — the title `Failing deploys` over the subtitle `Canonical chat` here and on `loading`, `refused` and `narrow`, and over `~/.workspace` on `recovered` and `empty` — with the `Chat \| Raw` tabs beneath it, so the header names the conversation and the sidebar carries its row. The defect reproduces on base unchanged: the stub logged **one** `/events` attempt, because with no receipt the single auto-reconnect was skipped, so the refusal was permanent for that session. |
 | [loading.png](loading.png) | This branch, 2.5s in with the stub refusing every attempt: the retry window. The pane says **Reconnecting**, at the reading step and inside the pane rather than clipped above a 0px box (measured `scrollerHeight 632`), and the greeting is NOT shown — the app does not yet know what the conversation holds. |
 | [recovered.png](recovered.png) | This branch, same refusal, same stub. The stub logged `events attempt 1 -> 401`, `2 -> 401`, `3 -> 200` — the bounded retry re-armed the stream, the relay was rebuilt against the live token, and the real transcript painted: the user row, the agent's answer, "Start of conversation". No app restart. |
 | [refused.png](refused.png) | This branch, with the stream refused for good. After the retry budget is spent the transcript says **"Lost the connection to this conversation — reconnect to keep reading."** with a **Reconnect** beside it, above the composer. The greeting is NOT shown: the app does not know this conversation is empty, so it does not say so. |
@@ -113,7 +146,7 @@ The words in `refused.png` are not the transport's. `src/shared/desktop-stream-n
 
 ### The register and the alignment (design round 1, D2)
 
-The notice was set at `text-meta` — the contract's caption step, the same step this pane uses for a timestamp — for the only actionable thing on screen, at the bottom ~4% of a 648px void. It is now at the reading step § 4 gives something the reader must act on (`text-body-sm`, measured `13px`, `danger #ef8078` on canvas = 7.08:1 against the 3:1 floor for text). Placement is unchanged and is the reason it stays: it shares the composer's own column, edge-aligned with the composer it belongs to (measured `rect [524,688,832,28]`; the composer column starts at the same x), so it reads as attached to the composer rather than floating in the pane.
+The notice was set at `text-meta` — the contract's caption step, the same step this pane uses for a timestamp — for the only actionable thing on screen, at the bottom ~4% of a 648px void. It is now at the reading step § 4 gives something the reader must act on (`text-body-sm`, measured `13px`, `danger #ef8078` on canvas = 7.08:1 against the 3:1 floor for text). Placement is unchanged and is the reason it stays: it shares the composer's own column, edge-aligned with the composer it belongs to (measured `rect [524,688,832,28]`; the composer column starts at the same x), with the block's bottom 28 CSS px above the composer's top border — read off `refused.png`'s own pixels as a composer box at `y 744`, `h 112` at this viewport, which is the number the design round published for it, re-derived from the frame here rather than carried — so it reads as attached to the composer rather than floating in the pane. Re-measured on this head at `5add3780e` with the same method: `refused`, `loading` and `narrow` are byte-identical to the frames this paragraph was written against, so the 28 px is this head's own measurement rather than an inherited one.
 
 ### Naming the control (design round 1, D4)
 
