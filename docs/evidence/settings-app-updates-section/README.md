@@ -15,18 +15,31 @@ one trailing channel produced an offer and an affirmation together.
 
 ## The frames
 
-`server-update-offered/` is that one press, in the state the report describes:
-the app channel fires its own "nothing newer" event and the server channel
-carries the offer. This is the AFTER side — the offer stands, the notification's
-own "a new server update is available" line is up, and **nothing affirms** that
-the installation is current.
+Two states of the same press, each in `localOperatorDark` and
+`localOperatorLight`:
+
+- `server-update-offered/` is that one press, in the state the report describes:
+  the app channel fires its own "nothing newer" event and the server channel
+  carries the offer. This is the AFTER side — the offer stands, the
+  notification's own "a new server update is available" line is up, and
+  **nothing affirms** that the installation is current.
+- `all-current/` is the same press when the whole check positively proved BOTH
+  channels current — the only state that earns a sentence. The verdict carries
+  `UP_TO_DATE_AFFIRMATION`, so this frame holds the green "The application and
+  server are up to date" snackbar and no offer panel at all. It is here because
+  that copy is new with this branch: the two hand-rolled button stories that
+  used to depict a "latest version" alert were driven by a channel's own
+  `onUpdateNotAvailable`, which is a state the shipped button can no longer
+  produce from any event.
 
 The same story, captured on a scratch worktree at the pre-fix commit these frames
 were paired against (`ef40c81e2`, this branch's base before it was rebased onto
 `142e86904`), is the report itself, and lives in
 `docs/evidence/update-check-affirmation-before/` — the panel with "You are up to
 date" over it. The story contains no part of the fix, so the pair is one script
-on two trees rather than two scripts.
+on two trees rather than two scripts. There is no before half for the
+affirmation: the sentence does not exist before the fix, which is why
+`all-current/` is the one state here photographed on this tree alone.
 
 ## What produced these frames
 
@@ -37,12 +50,19 @@ the wrong thing to photograph — so these frames come from a **production
 Storybook build**, not the dev server:
 
 ```sh
-pnpm build-storybook
+nice -n 19 pnpm build-storybook           # 3.25 min under this host's load
 python3 -m http.server 6034 --directory storybook-static
-node scripts/capture-evidence.mjs http://localhost:6034 \
+nice -n 19 node scripts/capture-evidence.mjs http://localhost:6034 \
   --only=settings-app-updates-section \
   --themes=localOperatorDark,localOperatorLight --allow-backend
 ```
+
+One narrowed run takes both states: `--only` matches the story id prefix, so the
+`server-update-offered` frames are refreshed and the `all-current` pair is
+written in the same pass — four frames across two themes at `48d9803cf`. The run
+re-stamps the manifest itself (`head`, `srcTree` and `scriptsTree` from the tree,
+`frames` and `surfaces` from the disk and the capturer's own list), which is why
+no count in `docs/evidence/manifest.json` is hand-edited after it.
 
 Two notes on that command:
 
@@ -62,10 +82,13 @@ subscriptions before pressing — they register in passive effects, and a press
 from the layout phase fires into an empty registry — and it holds the capture
 open until the offer is on screen.
 
-## What the frame shows, and what it does not
+## What the frames show, and what they do not
 
-The two fixed panels are the app's own: the offer is `UpdateNotification`'s
-(the component `app.tsx` mounts beside the shell) and the snackbar line is the
-same component's informational message about the server release. The affirmation
-below it is what this branch removes, and the only way to see it is the before
-set. The section's version rows are the story's fixtures, not a live read.
+The panels in `server-update-offered/` are the app's own: the offer is
+`UpdateNotification`'s (the component `app.tsx` mounts beside the shell) and the
+snackbar line is the same component's informational message about the server
+release. The affirmation below it is what this branch removes, and the only way
+to see it is the before set. `all-current/` is the opposite end of the same
+press: the section's own button carrying the sentence the branch introduces, with
+no notification panel on screen, because that check had nothing to offer. In
+both, the section's version rows are the story's fixtures, not a live read.
