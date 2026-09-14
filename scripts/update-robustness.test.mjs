@@ -5622,3 +5622,201 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		rmSync(userData, { recursive: true, force: true });
 	}
 });
+
+// ---------------------------------------------------------------------------
+// The start-up seal pass, and who owns the packaged app's install state
+
+/**
+ * A start-up pass that repairs the bundle it runs from, and refuses when it can
+ * not.
+ *
+ * Why this is a pass of its own rather than only the pre-flight's: the break is
+ * created by the app RUNNING, not by the update, and macOS refuses to launch a
+ * bundle whose seal is bad - so an install that breaks itself this way is refused
+ * at its next launch with nothing of ours left to run. Probing at start-up is the
+ * only point at which the app can catch it while it is still running, and the
+ * pre-flight's heal stays as the second chance for a bundle that breaks later.
+ */
+test("the start-up seal pass heals the bundle it runs from, or refuses out loud", async (t) => {
+	if (process.platform !== "darwin") {
+		t.skip("macOS only: the probe, the heal and their fixture all use codesign");
+		return;
+	}
+	const home = mkdtempSync(join(tmpdir(), "lo-startup-seal-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-startup-seal-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	const updateService = new service.UpdateService(
+		{
+			isDestroyed: () => false,
+			webContents: {
+				send: (channel, payload) => sent.push({ channel, payload }),
+				isDestroyed: () => false,
+				// No `did-finish-load` on a stub: the refusal can only arrive on the
+				// scheduler's own fallback, which is the delivery this asserts.
+				once: () => {},
+			},
+		},
+		{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+	);
+	const interval = updateService.updateCheckInterval;
+	try {
+		// The field shape: a bundle signed clean that a python later wrote one
+		// `__pycache__/*.pyc` into.
+		const healedFixture = makeBytecodeFixture(tempDir("lo-startup-heal-"));
+		writeAddedPyc(
+			join(healedFixture.pythonRoot, "lib", "python3.12", "json"),
+			"__init__.cpython-312.pyc",
+		);
+		assert.equal(
+			healedFixture.probe().exitCode,
+			1,
+			"the fixture must start out broken, or the case proves nothing",
+		);
+
+		await updateService.repairRunningBundleSeal(healedFixture.app);
+
+		assert.equal(
+			healedFixture.probe().exitCode,
+			0,
+			"the start-up pass must leave the bundle it runs from sealed",
+		);
+		assert.deepEqual(
+			sent.filter(({ channel }) => channel === "update-install-blocked"),
+			[],
+			"a bundle that healed is not a refusal the user has to be shown",
+		);
+
+		// The arm that cannot be healed: a sealed resource was rewritten, which
+		// no deletion can undo (`file modified:`), so the user gets the remedy.
+		const refusedFixture = makeBytecodeFixture(tempDir("lo-startup-refuse-"));
+		writeAddedPyc(
+			join(refusedFixture.pythonRoot, "lib", "python3.12", "json"),
+			"__init__.cpython-312.pyc",
+		);
+		writeFileSync(
+			join(refusedFixture.contents, "Resources", "asset.txt"),
+			"tampered\n",
+			"utf8",
+		);
+		await updateService.repairRunningBundleSeal(refusedFixture.app);
+
+		// Scheduled rather than pushed: the window is loading when a start-up pass
+		// runs, and a push no subscriber saw still reports success.
+		assert.deepEqual(sent, [], "the refusal must wait for the delivery scheduler");
+		await new Promise((resolve) => setTimeout(resolve, 5300));
+		const blocks = sent.filter(
+			({ channel }) => channel === "update-install-blocked",
+		);
+		assert.equal(blocks.length, 1, JSON.stringify(sent));
+		assert.equal(blocks[0].payload.code, "installed-bundle-not-sealed");
+		assert.match(blocks[0].payload.detail, /a sealed resource is missing or invalid/);
+		assert.match(blocks[0].payload.remedy.text, /download a fresh copy/);
+	} finally {
+		if (interval) clearInterval(interval);
+		delete globalThis.__loTestPaths;
+		delete globalThis.__loTestIpcHandlers;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * An unpackaged instance leaves the packaged app's install state exactly as it
+ * is.
+ *
+ * Why: those instances share the packaged app's log directory (measured - the
+ * macOS log path is hardcoded, so one file interleaves the 09:48 packaged install
+ * with every worktree's `Dev mode: true` start), and the marker, the ShipIt job
+ * and the staged tree all describe an install of a bundle such an instance is
+ * not. Acting on that state - clearing the marker, reaping the job, writing a
+ * marker of its own - either destroys the only record of the packaged app's
+ * install or invents one for an install that cannot happen.
+ */
+test("an unpackaged instance leaves the packaged app's install state alone", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-dev-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-dev-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const originalPackaged = globalThis.__loTestAppIsPackaged;
+	globalThis.__loTestAppIsPackaged = false;
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	const updateService = new service.UpdateService(
+		{
+			isDestroyed: () => false,
+			webContents: {
+				send: (channel, payload) => sent.push({ channel, payload }),
+				isDestroyed: () => false,
+				once: () => {},
+			},
+		},
+		{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+	);
+	const interval = updateService.updateCheckInterval;
+	try {
+		// The operator's own leftovers, reproduced: a marker for an install this
+		// instance never ran, dated now so nothing about the age of it decides the
+		// case.
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.22.2",
+			artifactPath: "/tmp/local-operator-ui-0.22.2-arm64.zip",
+			startedAt: new Date().toISOString(),
+			watchdogPid: 77355,
+		});
+
+		updateService.recoverPendingInstall();
+
+		assert.equal(
+			existsSync(pendingInstallMarkerPath(userData)),
+			true,
+			"an unpackaged instance must not clear the packaged app's marker",
+		);
+		assert.deepEqual(
+			sent,
+			[],
+			"and must not report an install it cannot know the outcome of",
+		);
+		// The reaping half: a failure verdict is what removes ShipIt's job and the
+		// staged tree, and it is reached only through `recoverPendingInstall`. Held
+		// open from the outside - the method the failure branch calls - so the claim
+		// is about this instance's decisions rather than about what `launchctl` does
+		// on the machine running the tests.
+		const reaped = [];
+		updateService.reapFailedInstallLeftovers = () => reaped.push("reaped");
+		// Run again with the same marker: a second pass must reach the same answer,
+		// because nothing was cleared the first time round.
+		updateService.recoverPendingInstall();
+		assert.deepEqual(
+			reaped,
+			[],
+			"an unpackaged instance must not reap the packaged app's install",
+		);
+
+		// And an install cannot be started from here either: the marker below is
+		// written by the install path, so a refusal is what keeps this instance
+		// from writing one for a bundle it is not.
+		updateService.setupIpcHandlers();
+		const quitAndInstall = globalThis.__loIpcHandlers["quit-and-install"];
+		assert.equal(await quitAndInstall(), false);
+		const marker = JSON.parse(
+			readFileSync(pendingInstallMarkerPath(userData), "utf8"),
+		);
+		assert.equal(
+			marker.targetVersion,
+			"0.22.2",
+			"the marker must still be the packaged app's own record",
+		);
+		assert.equal(marker.watchdogPid, 77355);
+	} finally {
+		if (interval) clearInterval(interval);
+		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
+		else globalThis.__loTestAppIsPackaged = originalPackaged;
+		delete globalThis.__loTestPaths;
+		delete globalThis.__loIpcHandlers;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});

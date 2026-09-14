@@ -25,14 +25,18 @@ import type { BackendServiceManager } from "./backend/backend-service";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { managedVenvPath, venvInterpreterBundle } from "./backend/venv-paths";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
+	type BytecodeHealResult,
 	type InstallBlock,
 	type InstallFailurePayload,
 	type InstallIdentity,
 	type InstallInFlightPayload,
 	type LastInstallAttempt,
 	type PendingInstallMarker,
+	type SealProbe,
+	type SealVerdict,
 	type UpdateFileMetadata,
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
@@ -102,6 +106,17 @@ const LAUNCHCTL_NOT_LOADED_REGEX = /could not find|no such process/i;
  * out there used to refuse the install for good (review R5).
  */
 const SEAL_PROBE_TIMEOUT_MS = 45_000;
+
+/**
+ * How long after the window is created the start-up seal pass runs.
+ *
+ * The same `codesign --verify --deep` the pre-flight runs, over the same bundle,
+ * measured at 4.1 s and 4.3 s on the shipped 0.22.2 app on this machine - so it
+ * does not belong in the launch path, which is already loading a renderer and
+ * starting a backend. Nothing is lost by the delay: the break it repairs is the
+ * one the NEXT launch is refused for, and this process is already up.
+ */
+const STARTUP_SEAL_PROBE_DELAY_MS = 15_000;
 
 /** ` to version X`, or nothing when the version is unknown. */
 function versionSuffix(version: string | null | undefined): string {
@@ -302,6 +317,20 @@ export class UpdateService {
 	private installFailureDelivered = false;
 
 	/**
+	 * A refusal this process found at start-up, if any.
+	 *
+	 * Kept apart from `pendingInstallFailure` because they are different facts with
+	 * different remedies - that one is an install that did not finish, this one is a
+	 * bundle that can no longer be replaced in place - and both can be true of the
+	 * same start. Delivered through the same scheduler shape for the same reason:
+	 * the window is loading when this is produced (the service is constructed as
+	 * the window is created), and a bare `webContents.send` with no subscriber
+	 * still reports success.
+	 */
+	private pendingInstallBlock: InstallBlock | null = null;
+	private installBlockDelivered = false;
+
+	/**
 	 * An install this process found still running, if any.
 	 *
 	 * The opposite fact to `pendingInstallFailure`, and kept apart from it: this
@@ -406,6 +435,29 @@ export class UpdateService {
 		// completed. Recover it before anything else can offer the update again.
 		this.recoverPendingInstall();
 
+		/*
+		 * Then repair this bundle's seal, if an earlier run broke it.
+		 *
+		 * After the marker, deliberately: what is on disk about an install whose result
+		 * the user still has to hear is reported first, and this pass can only affect
+		 * the next install. Deferred, and unref'd, because the probe is a real
+		 * `codesign --verify --deep` over the bundle - measured at 4.1 s and 4.3 s on
+		 * the shipped 0.22.2 app on this machine, and the file's own note records 6.1 s
+		 * for the ~1 GiB install - and nothing about the repair is time-critical while
+		 * the app is up: the damage it repairs is what the NEXT launch is refused for.
+		 * A quit before the timer fires simply leaves it to the next start, which is
+		 * why this timer is unref'd rather than awaited.
+		 */
+		const sealProbe = setTimeout(() => {
+			void this.repairReachableBundleSeals().catch((error: unknown) => {
+				logger.warn(
+					`Start-up seal check could not run: ${error instanceof Error ? error.message : String(error)}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			});
+		}, STARTUP_SEAL_PROBE_DELAY_MS);
+		sealProbe.unref();
+
 		// Start periodic update checks (every 5 minutes)
 		this.startPeriodicUpdateChecks();
 	}
@@ -484,13 +536,31 @@ export class UpdateService {
 			`Update refused (${block.code}): ${block.detail}`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		this.sendToRenderer("update-install-blocked", {
+		this.sendToRenderer(
+			"update-install-blocked",
+			this.installBlockPayload(block, version ?? null),
+		);
+	}
+
+	/**
+	 * The refusal payload the renderer's panel reads.
+	 *
+	 * One builder, so a refusal found at start-up and one found by the pre-flight
+	 * cannot arrive in two shapes: the renderer keys the heading off `code` and the
+	 * remedy off `remedy`, and a field missing in one path is a panel that renders
+	 * nothing where the user was told what to do.
+	 */
+	private installBlockPayload(
+		block: InstallBlock,
+		version: string | null,
+	): Record<string, unknown> {
+		return {
 			code: block.code,
-			version: version ?? null,
+			version,
 			message: block.message,
 			remedy: block.remedy,
 			detail: block.detail,
-		});
+		};
 	}
 
 	/**
@@ -511,6 +581,39 @@ export class UpdateService {
 	 * alone entirely, and the re-check below reports what really happens to it.
 	 */
 	private recoverPendingInstall(): void {
+		/*
+		 * Only the packaged app acts on this state.
+		 *
+		 * The marker describes an install of the packaged bundle, and ShipIt's job and
+		 * staging tree are that install's. An unpackaged instance - `pnpm dev` in a
+		 * worktree, `npx electron .` - writes its log into the same directory, because
+		 * on macOS the log path is hardcoded to `~/Library/Application Support/Local
+		 * Operator/logs` rather than read from `app.getPath("userData")`, so one file
+		 * interleaves the packaged app's installs with every worktree's starts
+		 * (measured on 2026-09-14: the 09:48:42 packaged install and every `Update
+		 * service initialized. Dev mode: true` line after 09:50 are in one log).
+		 * Whether such an instance's userData ALSO lands on the packaged app's is an
+		 * Electron naming accident rather than a rule, and the rule must not depend on
+		 * it: acting here would report a failure the packaged app never saw, clear the
+		 * marker that is the only record the install was attempted, or reap a ShipIt
+		 * job mid-install - and the packaged app coming back would then have nothing
+		 * left to tell the user, which is the silence this path exists to remove. So
+		 * this names what it found and touches nothing.
+		 *
+		 * The predicate is `app.isPackaged`, not `isDevMode`: the question is whether
+		 * this process is the bundle an install replaces, and a packaged build pointed
+		 * at a dev server still is.
+		 */
+		if (!app.isPackaged) {
+			const marker = readPendingInstallMarker(this.markerDir());
+			logger.info(
+				marker
+					? `Unpackaged instance: leaving the packaged app's pending install marker for version ${marker.targetVersion} alone, with its install job and staging tree; this process cannot act on an install of a bundle it is not.`
+					: "Unpackaged instance: no packaged install state to leave alone.",
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
 		const marker = readPendingInstallMarker(this.markerDir());
 		const outcome = evaluatePendingInstall({
 			marker,
@@ -775,6 +878,47 @@ export class UpdateService {
 		clearPendingInstallMarker(this.markerDir());
 		logger.info(
 			"Reported a failed update install to the renderer",
+			LogFileType.UPDATE_SERVICE,
+		);
+	}
+
+	/**
+	 * Deliver a refusal found at start-up once the renderer can hear it.
+	 *
+	 * Same shape as the failure's delivery, for the same measured reason: the
+	 * refusal is produced while the window is loading (the service is constructed
+	 * as the window is created), the panel subscribes from a React effect that can
+	 * run after `did-finish-load`, and `sendToRenderer` answers true for a push
+	 * that no subscriber saw. Unlike the failure it clears nothing on the way out -
+	 * this refusal is not tied to any on-disk state, and the pre-flight's own
+	 * direct push (`sendInstallBlock`) stays the path used when the window is
+	 * already up.
+	 */
+	private scheduleInstallBlockDelivery(block: InstallBlock): void {
+		this.pendingInstallBlock = block;
+		if (this.installBlockDelivered) return;
+		const deliver = () => this.deliverPendingInstallBlock();
+		const webContents = this.mainWindow?.webContents;
+		if (webContents && !webContents.isDestroyed()) {
+			webContents.once("did-finish-load", deliver);
+		}
+		setTimeout(deliver, 5000);
+	}
+
+	private deliverPendingInstallBlock(): void {
+		const block = this.pendingInstallBlock;
+		if (!block || this.installBlockDelivered) return;
+		if (
+			!this.sendToRenderer(
+				"update-install-blocked",
+				this.installBlockPayload(block, null),
+			)
+		) {
+			return;
+		}
+		this.installBlockDelivered = true;
+		logger.info(
+			"Reported a start-up refusal to the renderer",
 			LogFileType.UPDATE_SERVICE,
 		);
 	}
@@ -1063,24 +1207,80 @@ export class UpdateService {
 	 * backend. Those writes are `file added:` violations and deleting exactly
 	 * those files restores the seal (measured; see `healPythonBytecode`), where a
 	 * bundle broken any other way still gets the reinstall refusal below.
+	 *
+	 * The probe, the retry and the heal are `readBundleSeal` and `repairBundleSeal`
+	 * below, shared with the start-up repair pass: this method is the update-time
+	 * policy on top of them (an unanswerable probe proceeds, an unhealable bundle
+	 * refuses the install), and it must not grow a second copy of either.
 	 */
 	private async probeInstalledBundleSeal(
 		version?: string | null,
 	): Promise<InstallBlock | null> {
-		if (process.platform !== "darwin" || !app.isPackaged) return null;
+		const bundlePath = this.runningBundlePath();
+		if (!bundlePath) return null;
 
-		const bundlePath = appBundleFromExecutable(process.execPath);
-		if (!bundlePath) {
-			// Not a bundle layout we recognise (unpacked/dev run): nothing to
-			// verify, and refusing every install because the path did not parse
-			// would be worse than the risk it guards against.
+		const { seal, heal, block } = await this.repairBundleSeal(
+			bundlePath,
+			version,
+		);
+		if (seal.kind === "unavailable") {
+			// Proceeding is the conservative choice here: Squirrel validates the
+			// bundle itself, and the alternative is refusing an update for a
+			// reason we could not substantiate.
 			logger.warn(
-				`Could not derive an app bundle from ${process.execPath}; skipping the seal pre-flight.`,
+				`Seal check could not run twice, continuing with the install: ${seal.detail}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return null;
 		}
+		if (seal.kind === "sealed") {
+			logger.info(
+				heal
+					? `Installed bundle sealed again after removing ${heal.removed.length} added bytecode file(s); continuing with the install.`
+					: `Installed bundle passed its seal check: ${bundlePath}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+		return block;
+	}
 
+	/**
+	 * The `.app` this process runs from, or null when it is not a bundle layout.
+	 *
+	 * Shared by the pre-flight and the start-up repair pass so both ask about the
+	 * same bundle, and so the "unpacked or dev run" answer is stated once: not a
+	 * bundle we recognise means nothing to verify, and refusing every install
+	 * because the path did not parse would be worse than the risk it guards
+	 * against.
+	 */
+	private runningBundlePath(): string | null {
+		if (process.platform !== "darwin" || !app.isPackaged) return null;
+		const bundlePath = appBundleFromExecutable(process.execPath);
+		if (!bundlePath) {
+			logger.warn(
+				`Could not derive an app bundle from ${process.execPath}; skipping the seal checks.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		return bundlePath;
+	}
+
+	/**
+	 * One `codesign --verify` of `bundlePath`, retried once when it could not run.
+	 *
+	 * The retry lives here rather than at either caller because "did not complete"
+	 * is a fact about the probe, not about the install being offered: measured on
+	 * macOS 26.5, a 1 GiB bundle answers in 6.1 s warm, and a timeout or a probe
+	 * that died silently used to arrive as exit code 1 - which the pre-flight read
+	 * as "codesign rejected this bundle" and turned into a permanent reinstall
+	 * message (review R5). `probe` is returned beside the verdict because the
+	 * heal reads the violations out of the raw stdout, and a second probe for them
+	 * would be a second answer about one bundle.
+	 */
+	private async readBundleSeal(
+		bundlePath: string,
+	): Promise<{ seal: SealVerdict; probe: SealProbe }> {
 		const probeBundle = () =>
 			runCommand(
 				"/usr/bin/codesign",
@@ -1098,23 +1298,37 @@ export class UpdateService {
 			probe = await probeBundle();
 			seal = evaluateBundleSeal(probe);
 		}
-		if (seal.kind === "unavailable") {
-			// Proceeding is the conservative choice here: Squirrel validates the
-			// bundle itself, and the alternative is refusing an update for a
-			// reason we could not substantiate.
-			logger.warn(
-				`Seal check could not run twice, continuing with the install: ${seal.detail}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return null;
-		}
-		if (seal.kind === "sealed") {
-			logger.info(
-				`Installed bundle passed its seal check: ${bundlePath}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return null;
-		}
+		return { seal, probe };
+	}
+
+	/**
+	 * Probe the bundle, heal the one break we cause, and probe again.
+	 *
+	 * The whole mechanism, run identically by the update pre-flight and by the
+	 * start-up pass: a sealed bundle is returned untouched, an unsealed one is
+	 * healed only when the plan says the break is ours (`planPythonBytecodeHeal`),
+	 * and the verdict that follows the heal is a fresh probe rather than an
+	 * assumption about what a deletion did. `block` is the refusal to show when the
+	 * bundle cannot be put back together, and it carries the version the caller was
+	 * asked about (null at start-up, where no update is being offered yet).
+	 *
+	 * Why start-up also runs this: the break is introduced by the app running, not
+	 * by the update, so by the time an install is attempted the bundle may already
+	 * have been refused by macOS at launch - measured on 2026-09-14, a bundle
+	 * signed at 09:31:53 with one added
+	 * `lib/python3.12/__pycache__/webbrowser.cpython-312.pyc` at 10:11:29, and no
+	 * packaged instance ever came back to report it.
+	 */
+	private async repairBundleSeal(
+		bundlePath: string,
+		version?: string | null,
+	): Promise<{
+		seal: SealVerdict;
+		heal: BytecodeHealResult | null;
+		block: InstallBlock | null;
+	}> {
+		const { seal, probe } = await this.readBundleSeal(bundlePath);
+		if (seal.kind !== "unsealed") return { seal, heal: null, block: null };
 
 		logger.error(
 			`Installed bundle failed its seal check: ${seal.detail}`,
@@ -1131,7 +1345,11 @@ export class UpdateService {
 				`Installed bundle is not healable in place: ${heal.reason}`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			return installedBundleSealBlock(bundlePath, seal.detail, version);
+			return {
+				seal,
+				heal,
+				block: installedBundleSealBlock(bundlePath, seal.detail, version),
+			};
 		}
 
 		logger.info(
@@ -1148,23 +1366,153 @@ export class UpdateService {
 		 * could not prevent either - the writer would go on writing. The one place
 		 * the answer can be trusted is here, seconds before the decision it feeds.
 		 */
-		const healed = evaluateBundleSeal(await probeBundle());
+		const { probe: healedProbe } = await this.readBundleSeal(bundlePath);
+		const healed = evaluateBundleSeal(healedProbe);
 		if (healed.kind === "sealed") {
-			logger.info(
-				`Installed bundle sealed again after removing ${heal.removed.length} added bytecode file(s); continuing with the install.`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return null;
+			return { seal: healed, heal, block: null };
 		}
 
 		logger.error(
 			`Installed bundle still fails its seal check after healing: ${healed.detail}`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		return installedBundleSealBlock(bundlePath, healed.detail, version);
+		return {
+			seal: healed,
+			heal,
+			block: installedBundleSealBlock(bundlePath, healed.detail, version),
+		};
 	}
 
-	/** File names the updater's metadata knows this update by. */
+	/**
+	 * Repair the seal of every bundle this instance can reach, and say so.
+	 *
+	 * Two kinds of bundle, and the difference is what may be done to each:
+	 *
+	 * - the bundle THIS instance runs from, when it is a packaged app. It is
+	 *   reported the way the pre-flight reports it, refusal panel included, because
+	 *   "this install can no longer be replaced in place" is a fact about the app
+	 *   the user is looking at.
+	 * - the bundle a python THIS instance can run resolves its stdlib from - the
+	 *   app-managed venv's `pyvenv.cfg` `home`, which is inside an installed `.app`
+	 *   whenever the venv was created by the bundled interpreter (measured on the
+	 *   operator's machine: `home =
+	 *   /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin`).
+	 *   That bundle can be a different one from the running app - an unpackaged
+	 *   instance shares the packaged app's venv on a machine that has not been
+	 *   split yet - and healing it is what repairs an installed app from a dev
+	 *   instance, which is where the field damage came from.
+	 *
+	 * Healing a bundle this instance does not run from is deliberately limited to
+	 * the heal, and never the seal: the seal is applied to the bundle an app ships
+	 * (its own), and a process putting access-control entries on an app it is not
+	 * running is a change to somebody else's install. Deleting bytecode that
+	 * `codesign` reports as `file added:` under our own interpreter trees is the
+	 * other half - it is the damage this class of instance causes, it is refused
+	 * unless it is exactly that class, and the install it repairs is one macOS will
+	 * otherwise refuse to open at all.
+	 */
+	private async repairReachableBundleSeals(): Promise<void> {
+		const running = this.runningBundlePath();
+		if (running) await this.repairRunningBundleSeal(running);
+		for (const bundle of this.reachableForeignBundles(running)) {
+			await this.healForeignBundleSeal(bundle);
+		}
+	}
+
+	/**
+	 * The `.app` bundles this instance's pythons resolve their stdlib from, other
+	 * than the one it runs from.
+	 *
+	 * Both venv names are named, not only this instance's: an unpackaged instance
+	 * that has not set up its own environment yet is still running the packaged
+	 * app's venv, and that is the state in which it writes into the installed
+	 * bundle. `venvInterpreterBundle` answers null for a venv built on a system or
+	 * uv-managed python, which is the ordinary case for a dev machine with a global
+	 * `local-operator`.
+	 */
+	private reachableForeignBundles(running: string | null): string[] {
+		const paths: string[] = [];
+		for (const packaged of [true, false]) {
+			const venv = managedVenvPath({
+				platform: process.platform,
+				// `app.getPath("home")`, the same answer `managedVenvPath`'s callers
+				// in the backend classes pass: one home, so this cannot look for a venv
+				// beside the one the app actually built.
+				home: app.getPath("home"),
+				appDataPath: app.getPath("userData"),
+				packaged,
+			});
+			const bundle = venvInterpreterBundle(venv);
+			if (bundle && bundle !== running) paths.push(bundle);
+		}
+		return [...new Set(paths)];
+	}
+
+	/**
+	 * Heal a bundle this instance does not run from, and never seal it.
+	 *
+	 * The heal is the same one the pre-flight and the start-up pass run
+	 * (`repairBundleSeal`), so there is one heuristic and one refusal rule; what
+	 * this method adds is only the decision that the outcome is a log line rather
+	 * than a panel, because the panel speaks about the app the user is looking at.
+	 */
+	private async healForeignBundleSeal(bundlePath: string): Promise<void> {
+		const { seal, heal } = await this.repairBundleSeal(bundlePath, null);
+		if (seal.kind === "sealed" && heal) {
+			logger.info(
+				`Start-up seal repair: the app-managed venv's interpreter lives in ${bundlePath}, removed ${heal.removed.length} bytecode file(s) our own interpreter had written into it, and it verifies again.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		if (seal.kind === "unsealed") {
+			logger.warn(
+				`Start-up seal check: ${bundlePath} (the app-managed venv's interpreter bundle) is still not a sealed code object: ${seal.detail}. Replacing it by hand is the remedy; this instance does not write access-control entries on an app it is not running from.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+	}
+
+	/**
+	 * Repair this bundle's seal at start-up, and say so either way.
+	 *
+	 * What this catches: a bundle that already carries bytecode its own interpreter
+	 * wrote after it was signed. macOS refuses such a bundle at launch
+	 * ("damaged and can't be opened") and ShipIt refuses the next in-place update
+	 * with -67028, so a break found here is repaired before either can happen, and
+	 * one that cannot be repaired is reported with the same refusal/remedy panel
+	 * the pre-flight uses - the user has to replace the app by hand, and finding
+	 * that out at the next update is worse than being told now.
+	 *
+	 * Nothing is reported when the bundle is sealed, which is every ordinary
+	 * start: the log line is the evidence that the pass ran at all.
+	 */
+	private async repairRunningBundleSeal(bundlePath: string): Promise<void> {
+		const { seal, heal, block } = await this.repairBundleSeal(bundlePath, null);
+		if (seal.kind === "sealed") {
+			logger.info(
+				heal
+					? `Start-up seal repair: removed ${heal.removed.length} bytecode file(s) our interpreter had written into ${bundlePath}, and the bundle verifies again.`
+					: `Start-up seal check: ${bundlePath} is a sealed code object.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		if (seal.kind === "unavailable") {
+			// Not a refusal: a probe that could not run has no verdict to act on and
+			// the next launch will ask again.
+			logger.warn(
+				`Start-up seal check could not run: ${seal.detail}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		if (block) this.scheduleInstallBlockDelivery(block);
+	}
+
+	/**
+	 * File names the updater's metadata knows this update by.
+	 */
 	private stagedArtifactCandidates(info: UpdateInfo | null): string[] {
 		const names = new Set<string>();
 		if (info?.path) names.add(basename(info.path));
@@ -1885,6 +2233,21 @@ export class UpdateService {
 			if (this.installPreflightInFlight) {
 				logger.info(
 					"Ignoring a second install request while the pre-flight is still running.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				return false;
+			}
+
+			/*
+			 * An unpackaged instance never starts an install, and stating it here is what
+			 * makes that more than a detail: the marker below goes into the shared
+			 * userData the packaged app reads, so one written here would tell the
+			 * packaged app an install was in flight for a bundle nothing was installing
+			 * (see `recoverPendingInstall`, which is the reader's half of this rule).
+			 */
+			if (!app.isPackaged) {
+				logger.info(
+					"Refusing to start an update install: this instance is unpackaged, so it is not the bundle an install replaces.",
 					LogFileType.UPDATE_SERVICE,
 				);
 				return false;
