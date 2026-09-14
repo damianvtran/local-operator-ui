@@ -25,6 +25,13 @@ import {
  * `canonical.frontend`. It must never read `agents.*` or `env.mcp_*` from the
  * payload: those are `LiveState()` defaults, and rendering them would paint a
  * confident zero for a backend that never attached a session.
+ *
+ * The route settles the argument by shipping them as `null`
+ * (`_unmeasure_live_half`), and the fields this file DOES read out of that block
+ * — `env.approval_mode`, `env.skills` — are nulled too, so they render §8's
+ * unknown rather than a default. Everything else it reads (`agents.profiles`,
+ * the session registry, `env.guides`, the install/process probes) is a real
+ * reading of this machine and stays one.
  */
 
 /** A label/value row in a two-column facts table. */
@@ -355,6 +362,15 @@ export function conversationRows(
 }
 
 export type McpSummary = {
+	/**
+	 * Whether a live renderer copy was there to read at all.
+	 *
+	 * `false` is NOT "none configured": with no `canonical.frontend` this panel
+	 * has no MCP reading, and reporting `0 of 0 connected` would answer a question
+	 * nobody asked of a source that does not exist — the same defect the route's
+	 * own nulls prevent on the fields beside it.
+	 */
+	measured: boolean;
 	configured: number;
 	connected: number;
 	failed: number;
@@ -377,6 +393,7 @@ export type McpSummary = {
 export function mcpSummary(frontend: InfoFrontend | null): McpSummary {
 	const servers = frontend?.mcp_servers ?? [];
 	return {
+		measured: frontend !== null,
 		configured: servers.length,
 		connected: servers.filter((server) => server.status === "connected").length,
 		failed: servers.filter(
@@ -406,20 +423,37 @@ export function environmentRows(
 		{
 			key: "mcp",
 			label: "MCP servers",
-			value:
-				mcp.configured === 0
+			/*
+			 * Three different facts, three spellings: no live copy to read at all
+			 * (`—`), a copy that lists nothing ("none configured"), and a copy with
+			 * servers. Folding the first into the second is the mistake the route's own
+			 * nulls exist to prevent on the fields beside this one.
+			 */
+			value: !mcp.measured
+				? UNKNOWN
+				: mcp.configured === 0
 					? "none configured"
 					: `${formatCount(mcp.connected)} of ${formatCount(mcp.configured)} connected`,
 			/*
 			 * Reporting "1 of 3 up" mid-handshake is how a user files a bug about
 			 * a server that came up a second later.
 			 */
-			note: mcp.settling ? "still connecting deferred servers" : undefined,
+			note:
+				mcp.measured && mcp.settling
+					? "still connecting deferred servers"
+					: undefined,
 		},
 		{
 			key: "approval",
 			label: "Approval mode",
-			value: env.approval_mode,
+			/*
+			 * `null` is the desktop's NORMAL payload here (no session is attached to
+			 * this read), and it is a different fact from an empty approval mode: one
+			 * is "nothing measured this", the other is a mode with no name. Blank was
+			 * worse than either — the row vanished under `omitEmpty` and the reader
+			 * could not tell the fact existed.
+			 */
+			value: env.approval_mode ?? UNKNOWN,
 			mono: true,
 		},
 		{
@@ -439,7 +473,17 @@ export function environmentRows(
 		{
 			key: "guides",
 			label: "Guides and skills",
-			value: `${formatCount(env.guides)} guides · ${formatCount(env.skills)} skills`,
+			/*
+			 * `guides` is a real count of this install's files; `skills` is nulled on
+			 * this route, because a skill is discovered with a session attached. Both
+			 * halves are stated because the row is one fact per half — but the nulled
+			 * half says so, instead of `formatCount(null)`'s confident "0 skills"
+			 * about a machine that was never asked (backend QA round, cross-repo
+			 * finding).
+			 */
+			value: `${formatCount(env.guides)} guides · ${
+				env.skills === null ? UNKNOWN : `${formatCount(env.skills)} skills`
+			}`,
 		},
 		{
 			key: "credentials",
