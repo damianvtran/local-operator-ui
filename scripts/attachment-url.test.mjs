@@ -87,8 +87,7 @@ function useState(initial) {
 	const instance = current;
 	const slot = instance.hookIndex++;
 	if (!(slot in instance.states)) {
-		instance.states[slot] =
-			typeof initial === "function" ? initial() : initial;
+		instance.states[slot] = typeof initial === "function" ? initial() : initial;
 	} else if (instance.probing && typeof initial === "function") {
 		// StrictMode's second pass re-runs the initializer and DISCARDS the
 		// result. An initializer with a side effect therefore lands twice, which
@@ -96,7 +95,8 @@ function useState(initial) {
 		initial();
 	}
 	const setState = (value) => {
-		const next = typeof value === "function" ? value(instance.states[slot]) : value;
+		const next =
+			typeof value === "function" ? value(instance.states[slot]) : value;
 		if (Object.is(next, instance.states[slot])) return;
 		instance.states[slot] = next;
 		if (!instance.unmounted) instance.render();
@@ -382,7 +382,11 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 	const stale = mountImage(durable(digest));
 	requests.pop().resolve({ kind: "error", message: "transient relay failure" });
 	await tick();
-	assert.equal(stale.value, null, "the first row is left showing BrokenAttachment");
+	assert.equal(
+		stale.value,
+		null,
+		"the first row is left showing BrokenAttachment",
+	);
 
 	// A second row asks for the same digest and gets a FRESH inflight record.
 	const waiting = mountImage(durable(digest));
@@ -398,7 +402,11 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 		waiting.value?.startsWith("blob:"),
 		"the row still on screen is handed the bytes that arrived for it",
 	);
-	assert.equal(blobs.live.size, 1, "and they are not revoked out from under it");
+	assert.equal(
+		blobs.live.size,
+		1,
+		"and they are not revoked out from under it",
+	);
 	waiting.unmount();
 	assert.equal(blobs.live.size, 0, "the last holder leaving still revokes");
 });

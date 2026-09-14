@@ -302,6 +302,17 @@ export const STORIES = [
 	["chat-session-status-strip--context-tooltip", 860, 400],
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
+	/* The draft's three readings, which only exist on a session-less pane. Its
+	   frames are declared here rather than left to the live app because the
+	   preview op they need ships on a different branch: what a story can judge is
+	   the RENDERING rule (no cost chip, an empty ring, inert labels), and that is
+	   the part this set owns. The box is 900 - the composer's own width in the
+	   live frames - rather than the 720 its siblings use, so the draft and the
+	   populated session can be compared at one width. The tooltip story needs
+	   room for the panel above the trigger. */
+	["chat-session-status-strip--draft", 1000, 400],
+	["chat-session-status-strip--draft-tooltip", 1000, 520],
+	["chat-session-status-strip--commands-off", 1000, 300],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap

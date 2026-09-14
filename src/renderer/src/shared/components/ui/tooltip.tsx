@@ -88,10 +88,43 @@ export const TooltipContent = forwardRef<
 >(({ className, sideOffset = 6, ...props }, ref) => (
 	<TooltipPrimitive.Content
 		ref={ref}
+		// The hook `styles/index.css` uses to disable the POSITIONER Radix wraps
+		// this in. The panel's own `pointer-events-none` below is not enough: the
+		// wrapper has the same box and takes the pointer itself, which is what
+		// made the composer's readings unclickable under a tooltip (QA round 2,
+		// Q1). An attribute rather than a class because the rule must match the
+		// wrapper's CHILD, and a utility class on this element would still leave
+		// the selector needing something stable to look for.
+		data-lo-tooltip-panel=""
 		sideOffset={sideOffset}
 		className={cn(
 			"z-50 max-w-64 rounded-sm border border-hairline bg-elevated px-2 py-1",
 			"text-meta text-ink shadow-overlay",
+			/*
+			 * NEVER a pointer target.
+			 *
+			 * A tooltip describes the thing under the pointer; it is not itself
+			 * something to point at, and Radix already closes it on any pointer
+			 * move that leaves the trigger. Without this the panel is a live hit
+			 * target floating over whatever it covers, and `elementFromPoint`
+			 * returns the TOOLTIP for a control the user can plainly see: the
+			 * working-directory chip's panel sat over the composer's readings and
+			 * swallowed clicks on the model reading at every width below the wrap
+			 * threshold (UX round 2, U6), and over the message field's first line,
+			 * where a click left `activeElement` on `body` instead of placing the
+			 * caret (U7).
+			 *
+			 * This is the fix rather than another `side`, because a side is a
+			 * guess about what is nearby: `side="right"` covered the readings,
+			 * `side="top"` covered them at the wrapped widths, and the next layout
+			 * change moves the collision again. A panel that cannot be clicked
+			 * cannot swallow a click on ANY side, so it closes round 1's U3 and
+			 * round 2's U6 by the same property instead of trading one for the
+			 * other. Nothing inside a tooltip is interactive in this app - the
+			 * primitive has no affordance for it, and Radix's own guidance is
+			 * that a tooltip's content must not be.
+			 */
+			"pointer-events-none",
 			/*
 			 * No entrance animation. See the note at the top of this file: an
 			 * overlay whose `from` keyframe is invisible can be left invisible.

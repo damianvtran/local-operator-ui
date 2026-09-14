@@ -37,7 +37,9 @@ ws.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
+		msg.error
+			? reject(new Error(JSON.stringify(msg.error)))
+			: resolve(msg.result);
 	}
 };
 await new Promise((r) => (ws.onopen = r));
@@ -57,7 +59,9 @@ async function evaluate(expression) {
 		returnByValue: true,
 	});
 	if (res.exceptionDetails)
-		throw new Error(JSON.stringify(res.exceptionDetails.exception?.description));
+		throw new Error(
+			JSON.stringify(res.exceptionDetails.exception?.description),
+		);
 	return res.result.value;
 }
 

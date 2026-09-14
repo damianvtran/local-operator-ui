@@ -367,3 +367,38 @@ html .Mui-focusVisible {
  * moved there programmatically and a ring would be noise. Both cases are a
  * component-level decision that has to be visible in the component.
  */
+
+/*
+ * A tooltip's POSITIONER must not be a hit target either.
+ *
+ * `pointer-events-none` on the tooltip panel (see `ui/tooltip.tsx`) stops the
+ * panel itself intercepting a click, but Radix renders every floating surface
+ * inside a positioner wrapper it owns —
+ * `[data-radix-popper-content-wrapper]`, `position: fixed`, `pointer-events:
+ * auto` — and that wrapper has the SAME box as the panel. So the click landed
+ * on the wrapper instead: `elementFromPoint` at the model reading's centre
+ * returned the wrapper, and the composer's readings were unclickable at a 550
+ * or 600 box and at 500 with the canvas open, where the working-directory
+ * chip's panel covers the wrapped readings line (QA round 2, Q1).
+ *
+ * Scoped to tooltips through `:has()` rather than applied to every popper,
+ * which is the part that makes this safe: Radix shares this wrapper class with
+ * the dropdown menu, select, popover and dialog, whose contents ARE
+ * interactive and whose wrappers must keep taking the pointer. The selector
+ * only matches a wrapper whose own child is a tooltip panel.
+ *
+ * The invariant it depends on, stated so it can be re-checked rather than
+ * assumed: nothing in this app renders an interactive control inside a tooltip
+ * panel. All 112 `<Tooltip` call sites pass text or a `TooltipLines` block,
+ * the primitive has no affordance for anything else, and Radix's own guidance
+ * is that tooltip content must not be interactive because it is unreachable by
+ * keyboard and absent on touch. If a tooltip ever does need a control, it is
+ * the wrong primitive — use a popover, whose wrapper this rule does not touch.
+ *
+ * Unlayered for the same reason as the focus ring above: Radix sets
+ * `pointer-events: auto` inline on the wrapper element, and only an unlayered
+ * `!important` outranks an inline style.
+ */
+[data-radix-popper-content-wrapper]:has(> [data-lo-tooltip-panel]) {
+	pointer-events: none !important;
+}
