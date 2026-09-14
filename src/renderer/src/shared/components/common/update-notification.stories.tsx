@@ -345,7 +345,13 @@ const mockUpdaterApi = () => {
 					message:
 						"The update to version 0.19.5 was cancelled because Local Operator was opened while the update was installing. Version 0.19.4 is still running.",
 					remedy: {
-						text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app - and leave it closed until the update finishes.",
+						// The em dash, verbatim from `installFailurePayload`: this fixture is the
+						// payload the main process sends, not a paraphrase of it, and a plain
+						// hyphen here put copy into the committed frame that the app cannot
+						// produce (reviews R6, D9). `update-robustness.test.mjs` asserts both
+						// new states' fixture strings against their producers so it cannot
+						// drift again.
+						text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app — and leave it closed until the update finishes.",
 						url: "https://local-operator.com/download",
 					},
 					detail:

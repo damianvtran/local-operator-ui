@@ -94,17 +94,42 @@ export const WATCHDOG_TIMEOUT_SECONDS = 600;
 export const WATCHDOG_HARD_TIMEOUT_SECONDS = 1800;
 
 /**
+ * How much later than the watchdog's hard bound a marker stops describing a
+ * live install.
+ *
+ * The two bounds must not be the same instant, which is what they were: the
+ * watchdog's hard bound is where it gives up holding and STARTS THE APP, and
+ * recovery's recency bound is where the app it just started decides the install
+ * was a failure. With both at 1800 s and an inclusive test, the app the
+ * watchdog opens at the hard bound reads a marker that is already past it and
+ * tells the user "the last update didn't finish" - seconds after the watchdog
+ * told them it is still installing - and clears the marker and the install's
+ * job for an install that is demonstrably still loaded. Two decisions about the
+ * same install, pointing opposite ways, is the defect the recency rule exists
+ * to remove (UX U5).
+ *
+ * The margin is what the app needs to start and evaluate before the marker ages
+ * out from under it: a cold start of this app, plus the first evaluation, with
+ * room for an installing machine at load. 300 s is generous against the seconds
+ * a start actually takes. It is also the whole cost of the margin: a genuinely
+ * failed install whose job Squirrel never unloaded is treated as live for five
+ * minutes longer before the user is told, which is inside the same sitting.
+ */
+export const PENDING_INSTALL_RECENCY_MARGIN_SECONDS = 300;
+
+/**
  * How recent a pending-install marker must be to describe a live install.
  *
  * The marker alone cannot say "an install is running": a failed install leaves
  * its marker AND its launchd job behind (the 0.17.0 failure respawned for hours,
  * runs=3114), and start-up recovery must not treat that leftover as an install
  * it is forbidden to touch. Recency is what separates the two, and the line is
- * the watchdog's own hard bound: an install this app would still be waiting on
- * is live, while anything older is a job Squirrel left behind - a failure to
- * clean up rather than an install to keep hands off.
+ * the watchdog's own hard bound plus the margin above: an install this app would
+ * still be waiting on is live, while anything older is a job Squirrel left
+ * behind - a failure to clean up rather than an install to keep hands off.
  */
-export const PENDING_INSTALL_RECENCY_SECONDS = WATCHDOG_HARD_TIMEOUT_SECONDS;
+export const PENDING_INSTALL_RECENCY_SECONDS =
+	WATCHDOG_HARD_TIMEOUT_SECONDS + PENDING_INSTALL_RECENCY_MARGIN_SECONDS;
 
 /**
  * How long the watchdog's on-disk version read may take before it is killed.
@@ -1059,8 +1084,10 @@ export function pendingInstallAgeSeconds(
  * loaded until it was removed by hand), so treating a loaded job as an install
  * would leave the app forbidden to clean up a failure forever. The marker alone
  * is what produced the false failure on 2026-09-13. Recency is what separates a
- * live install from a leftover job, and it is deliberately generous: the
- * watchdog itself holds an install for `WATCHDOG_HARD_TIMEOUT_SECONDS`.
+ * live install from a leftover job, and it is deliberately generous: it outlives
+ * the watchdog's own hold (see `PENDING_INSTALL_RECENCY_SECONDS`), so the app
+ * the watchdog starts at its hard bound cannot read the same install as a
+ * failure before it has drawn a panel.
  *
  * A marker with no readable `startedAt` is NOT current: the honest reading of
  * an undated marker is that nothing can say it is live, and the failure path -

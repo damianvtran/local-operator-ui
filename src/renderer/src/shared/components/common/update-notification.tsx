@@ -1,5 +1,6 @@
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
+import { withPathBreaks } from "@shared/lib/path-breaks";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
@@ -201,41 +202,6 @@ export const UpdateHeading = ({
 		{children}
 	</h2>
 );
-
-/**
- * A path separator that may take a line break: a `/` whose next character is not
- * a digit.
- *
- * The digit guard keeps the rule inside the value it was written for. A details
- * line is not always a path - the same field carries the locale start time,
- * `13/09/2026, 09:39:00` - and a break opportunity after `13/` would let that
- * date split across two lines, which is the same mid-token break this rule
- * exists to remove, moved from the path to the date. Nothing is lost by
- * refusing it: a date fits on a line, and a path segment that does begin with a
- * digit keeps the separators on either side of it.
- *
- * Hoisted rather than inline, which is also what this tree's lint rule asks of
- * a regex in a function body.
- */
-const BREAKABLE_SEPARATOR = /\/(?=\D|$)/g;
-
-/**
- * Break opportunities inside a machine value that has no spaces to break at.
- *
- * A path is one word to the line breaker, so once it runs out of room the
- * browser splits it wherever that lands - the captured frame read
- * `/Users/operator/Library/Cach` / `es/local-operator-ui-`, a break inside a path
- * segment that looks like a typo in exactly the string the copy button exists
- * for (review D7). A zero-width space after each path separator gives the line a
- * break opportunity at every segment boundary, which is where a person would
- * break it.
- *
- * The value itself is untouched: the copy button, the clipboard and the label
- * all read `detail`, never this render, so nothing copied out of the panel gains
- * an invisible character.
- */
-const withPathBreaks = (value: string) =>
-	value.replace(BREAKABLE_SEPARATOR, "/\u200B");
 
 /**
  * Machine voice at the bottom of a panel, labelled and copyable.

@@ -481,6 +481,17 @@ if (windowLaunch.mode !== "normal") {
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
 
+/*
+ * The update service of the most recent window, kept here rather than in the
+ * window's own scope for one reason: the two app-level decisions that need it
+ * (`window-all-closed` below, and `before-quit`) run after the window's `closed`
+ * handler has already disposed that service. Deliberately not nulled there - the
+ * question "is an update installing" is about the machine, not about a window,
+ * and it must still be answerable in the instant between the last window going
+ * and the app deciding what to do about it. A new window replaces it.
+ */
+let activeUpdateService: UpdateService | null = null;
+
 // Define zoom functions for before-input-event, ensuring mainWindow is available
 const zoomInFromEvent = () => {
 	if (mainWindow) {
@@ -1063,6 +1074,7 @@ app
 
 			// Initialize the update service with a reference to the backend service
 			updateService = new UpdateService(mainWindow, backendService);
+			activeUpdateService = updateService;
 
 			// Clean up update service and mainWindow reference when the window is closed
 			mainWindow.on("closed", () => {
@@ -1137,6 +1149,20 @@ app
 app.on("window-all-closed", () => {
 	// On macOS, keep the app active in the dock
 	if (process.platform === "darwin") {
+		/*
+		 * One close is not an ordinary close. A window closed while an update
+		 * install is in flight leaves this process running with no window, and a
+		 * running instance of this app is exactly what Squirrel's last validation
+		 * aborts the install on - so the user has cancelled their update by the
+		 * most familiar gesture on the platform while believing the app is closed,
+		 * and nothing tells them otherwise (UX U1). The panel's own button quits
+		 * for the install; this makes the red button mean the same thing while an
+		 * install is known, which is the only window in which it does.
+		 */
+		if (activeUpdateService?.quitForInFlightInstall("last window closed")) {
+			app.quit();
+			return;
+		}
 		logger.info(
 			"All windows closed, but keeping app active (macOS platform)",
 			LogFileType.BACKEND,
@@ -1389,6 +1415,18 @@ app.on("before-quit", () => {
 	logger.info("App is about to quit", LogFileType.BACKEND);
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
+	/*
+	 * Any quit, not only the panel's button.
+	 *
+	 * The relaunch promise used to belong to one control: quitting any other way
+	 * while an install was in flight left it resting on whatever watchdog the
+	 * install still happened to have, and on nothing at all once that watchdog's
+	 * bounds had run out (UX U2). A quit is a quit for the install either way, so
+	 * the app that is going away makes sure something will bring it back - and
+	 * `window-all-closed` above is the same call, which is why the work is done
+	 * once per quit.
+	 */
+	activeUpdateService?.quitForInFlightInstall("app quit");
 });
 
 // Add a failsafe to ensure child processes are terminated when the app exits
