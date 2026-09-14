@@ -7,10 +7,22 @@
  * no reason to open during a run. The panel is the live view over the session, so
  * a server whose sign-in has expired belongs on it.
  *
- * **The panel is a VIEW, not a control.** There is no connect, no reload, no
- * reauth button here — those live in `settings/components/mcp-management-section.tsx`,
- * which owns the configuration, and a second place to press them is a second
- * place to get the confirmation, the scope and the error copy wrong. What this
+ * **The remedy is actionable in place, and this panel still does not own
+ * configuration.** A problem row's remedy is a control where this surface can
+ * carry it out — a browser sign-in, a reconnect, and `cancel` for a grant already
+ * running — because those three are operations the BACKEND owns and runs. The
+ * panel starts them, watches them in the read it already polls (`mcp.list`
+ * returns `operations`) and cancels one; it never writes configuration, and no
+ * add, remove, reload, scope or credential entry appears here. Every state this
+ * control cannot fix keeps its sentence and names the surface that owns the
+ * configuration (`settings/components/mcp-management-section.tsx`).
+ *
+ * The rule the old refusal protected is kept rather than repealed: there is still
+ * ONE place that owns the confirmation, the scope and the error copy — the
+ * confirmation is the shared `ConfirmationModal`, held once here rather than per
+ * row, and both surfaces speak the same control words. What was refused before
+ * was a second PLACE to get those facts wrong; what changed is that this section
+ * now holds the same place's copy rather than a copy of its own. What this
  * section owes the reader instead is the REMEDY in words on the row that needs
  * it, because the two problem states need different actions and the word alone
  * does not say which.
@@ -263,11 +275,13 @@ const McpRow = ({
 	 */
 	return (
 		/*
-		 * No hover ground, and not a control: a row that lit up under the cursor
-		 * would promise an action this surface deliberately does not have. The
-		 * roster's rows DO take one now (`§ 4`), because they open a page; these do
-		 * not, and a list that lit up because its neighbour did would be the
-		 * inheritance the design round is asked to watch for.
+		 * No hover ground, and the ROW is still not a control: it holds two possible
+		 * actions (grant, reconnect) and a status, so "click anywhere" would have no
+		 * single meaning, and a row that lit up would promise one. The remedy is its
+		 * own link on the second line (`§ 7.2` amended) — Tab reaches it, the row
+		 * does not. The roster's rows DO take a hover ground (`§ 4`), because they
+		 * open a page; these do not, and a list that lit up because its neighbour did
+		 * would be the inheritance the design round is asked to watch for.
 		 */
 		<li className={cn("flex min-h-8 gap-2 px-3 py-1.5")}>
 			<span className={cn("pt-0.5")}>
