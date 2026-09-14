@@ -18,6 +18,7 @@ import {
 	useBrowserChrome,
 } from "../hooks/use-browser-chrome";
 import { BrowserConsentBar } from "./browser-consent-bar";
+import { BrowserExtensionsSheet } from "./browser-extensions-sheet";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserSitesSheet } from "./browser-sites-sheet";
 import { BrowserTabStrip } from "./browser-tab-strip";
@@ -80,6 +81,7 @@ export const BrowserPage: FC = () => {
 	const suppressedBy = useSuppressedOverlayIds();
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	const [sitesOpen, setSitesOpen] = useState(false);
+	const [extensionsOpen, setExtensionsOpen] = useState(false);
 	const [handOverTab, setHandOverTab] = useState<BrowserTabView | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [blockedPopup, setBlockedPopup] = useState<{
@@ -201,6 +203,7 @@ export const BrowserPage: FC = () => {
 				onReload={() => void chrome.reload()}
 				onStop={() => void chrome.stop()}
 				onOpenSites={() => setSitesOpen(true)}
+				onOpenExtensions={() => setExtensionsOpen(true)}
 				approvalCount={
 					state?.approvals.filter((row) => row.scope !== "deny").length ?? 0
 				}
@@ -320,6 +323,10 @@ export const BrowserPage: FC = () => {
 				)}
 			</div>
 
+			<BrowserExtensionsSheet
+				open={extensionsOpen}
+				onOpenChange={setExtensionsOpen}
+			/>
 			<BrowserSitesSheet
 				open={sitesOpen}
 				onOpenChange={setSitesOpen}

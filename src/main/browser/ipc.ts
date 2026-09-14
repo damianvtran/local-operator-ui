@@ -1,5 +1,6 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "../desktop-transport";
+import type { BrowserExtensionManager } from "./extensions";
 import type { BrowserHost } from "./host";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
@@ -37,6 +38,7 @@ export interface RegisterBrowserIpcOptions {
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
 	host: () => BrowserHost | null;
+	extensions?: BrowserExtensionManager;
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
 	clearData: (what: ClearWhat) => Promise<void>;
@@ -45,6 +47,11 @@ export interface RegisterBrowserIpcOptions {
 
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
+	"browser-extensions-list",
+	"browser-extensions-install",
+	"browser-extensions-set-enabled",
+	"browser-extensions-remove",
+	"browser-extensions-popup",
 	"browser-state",
 	"browser-new-tab",
 	"browser-close-tab",
@@ -80,6 +87,43 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		if (!host) throw new Error("The browser host is not running.");
 		return host;
 	}
+
+	function extensionManager(
+		event: IpcMainInvokeEvent,
+	): BrowserExtensionManager {
+		authorize(event);
+		if (!options.extensions)
+			throw new Error("Extension management is unavailable.");
+		return options.extensions;
+	}
+	function extensionKey(value: unknown): string {
+		if (typeof value !== "string" || !value || value.length > 128)
+			throw new Error("An extension registration key is required.");
+		return value;
+	}
+	// No IPC operation accepts a filesystem path. Only the native directory
+	// chooser can supply one, and loading always follows native user confirmation.
+	ipcMain.handle("browser-extensions-list", (event) =>
+		extensionManager(event).list(),
+	);
+	ipcMain.handle("browser-extensions-install", (event) =>
+		extensionManager(event).install(),
+	);
+	ipcMain.handle(
+		"browser-extensions-set-enabled",
+		(event, key: unknown, enabled: unknown) => {
+			const manager = extensionManager(event);
+			if (typeof enabled !== "boolean")
+				throw new Error("Enabled must be a boolean.");
+			return manager.setEnabled(extensionKey(key), enabled);
+		},
+	);
+	ipcMain.handle("browser-extensions-remove", (event, key: unknown) =>
+		extensionManager(event).remove(extensionKey(key)),
+	);
+	ipcMain.handle("browser-extensions-popup", (event, key: unknown) =>
+		extensionManager(event).openPopup(extensionKey(key)),
+	);
 
 	ipcMain.handle("browser-state", (event) => authorize(event).chromeState());
 
