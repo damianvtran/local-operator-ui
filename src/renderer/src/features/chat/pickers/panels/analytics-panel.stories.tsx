@@ -67,6 +67,24 @@ const provider = (calls: number, tokens: number, cost: number) =>
 		cost_known_calls: calls,
 	});
 
+/**
+ * `days` consecutive local buckets ending on the fixture's own last day.
+ *
+ * Arithmetic on the date STRING is how a fixture ends up printing `Sep 32` — a
+ * frame of a date that does not exist reads as a defect in the panel's
+ * formatter, so the buckets come off a real `Date` walk. Local, like the panel's
+ * own window rule: a UTC walk would disagree with the axis near midnight.
+ */
+const buckets = (days: number): string[] =>
+	Array.from({ length: days }, (_, index) => {
+		const date = new Date(
+			NOW.getFullYear(),
+			NOW.getMonth(),
+			NOW.getDate() - (days - 1 - index),
+		);
+		return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+	});
+
 const DAILY = [
 	["2026-09-07", 210_000, 3_120_000],
 	["2026-09-08", 340_500, 5_480_000],
@@ -252,18 +270,16 @@ export const ThirtyDays: Story = {
 		metric: "spend",
 		data: {
 			...populated,
-			daily: daily([
-				...Array.from({ length: 23 }, (_, index) => {
-					const day = String(index + 15).padStart(2, "0");
-					const period = index + 15 <= 31 ? `2026-08-${day}` : `2026-09-${day}`;
-					return [
-						period,
-						120_000 + index * 9_000,
-						2_100_000 + index * 140_000,
-					] as const;
-				}),
-				...DAILY,
-			]),
+			daily: daily(
+				buckets(30).map(
+					(period, index) =>
+						[
+							period,
+							120_000 + index * 9_000,
+							2_100_000 + index * 140_000,
+						] as const,
+				),
+			),
 		},
 		loading: false,
 		refreshing: false,
@@ -378,18 +394,14 @@ export const Dense: Story = {
 				),
 			}),
 			daily: daily(
-				Array.from({ length: 30 }, (_, index) => {
-					const day = index + 1;
-					const period =
-						day <= 31 - 13
-							? `2026-08-${String(day + 1).padStart(2, "0")}`
-							: `2026-09-${String(day - 30).padStart(2, "0")}`;
-					return [
-						period,
-						380_000 + index * 42_000,
-						6_250_000 + index * 510_000,
-					] as const;
-				}),
+				buckets(30).map(
+					(period, index) =>
+						[
+							period,
+							380_000 + index * 42_000,
+							6_250_000 + index * 510_000,
+						] as const,
+				),
 			),
 			daily_scope: "all_sessions",
 			session_names: Object.fromEntries(
