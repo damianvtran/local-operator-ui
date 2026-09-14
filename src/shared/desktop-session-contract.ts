@@ -558,6 +558,40 @@ export type DesktopSessionFrame =
 				job_trajectory_replacements: never[];
 			}
 	  >
+	/**
+	 * The desktop-only REPLACEMENT of the painted projection (remediation contract
+	 * § C), published synchronously by the bridge when an ACCEPTED move installs
+	 * local facade state.
+	 *
+	 * Deliberately not an `event` (a typed canonical AgentEvent the transcript
+	 * reducer paints) and deliberately not a `frontend.update`. A move changes the
+	 * facade's cwd WITHOUT touching the owner's clock, so a delta would carry the
+	 * owner's UNCHANGED epoch and sequence - and the shipped reducer rejects a
+	 * same-sequence update as stale, which is the measured defect this frame exists
+	 * to fix: a mounted viewer stayed on the old directory while the receipt said
+	 * the move had landed (backend review R4).
+	 *
+	 * It is ordered by the BRIDGE's own outer `seq` instead, and it carries no
+	 * `history` field: its job is replacing the frontend PAINT projection, not
+	 * resetting the conversation, so it neither creates a history gap nor
+	 * invalidates a history cursor. The `frontend` field is the whole bounded
+	 * `FrontendSync` (not just its `snapshot`) so the consumer also gets the owner's
+	 * true epoch and sequence, and it keeps the same shape as the bootstrap
+	 * snapshot's field.
+	 *
+	 * Additive and replay-exempt for the same reason `notification` is: an older
+	 * renderer negotiates no `frontend_replace` (see `acceptFrontendReplace`), the
+	 * backend refuses to move while such a viewer is mounted, and a frame that
+	 * somehow arrived anyway falls through every branch of an older frame loop and
+	 * paints nothing.
+	 */
+	| Receipt<
+			"frontend.replace",
+			{
+				frontend: CanonicalFrontendSync;
+				cold: boolean;
+			}
+	  >
 	| Receipt<"event", { type: string; [key: string]: unknown }>
 	// Additive and replay-exempt: an older renderer falls through every branch
 	// of the frame loop, advances its receipt cursor on `seq`, and paints
@@ -635,6 +669,51 @@ export type DesktopFeedFrame =
 			type: "gap";
 			payload: { reason: string; subscription_id: string };
 	  };
+
+/** The outer bridge cursor a desktop frame carries, as the client records it. */
+export type DesktopStreamCursor = { epoch: string; seq: number };
+
+/**
+ * Whether a live `frontend.replace` may be applied over the painted projection.
+ *
+ * Four questions, and every one of them is a way a replacement must NOT land.
+ * Exported as a pure predicate rather than left inline in `use-canonical-session`
+ * because a predicate that exists only inside a React effect is a predicate no
+ * test can falsify, and this one is the whole acceptance rule of a contract seam
+ * (remediation contract § C, "Consumer").
+ *
+ *  - **Identity, on both halves of the wire.** The receipt names the session and
+ *    so does the `FrontendSync.snapshot` inside it. A replacement is a full
+ *    projection, so a payload belonging to another session would replace this
+ *    session's entire paint - the one mutation a mismatched frame must never make.
+ *  - **The cursor BEFORE this frame.** `priorCursor` is the outer bridge cursor
+ *    as it stood before the generic receipt branch advanced it. Comparing against
+ *    the value this very frame just wrote would reject every replacement, which is
+ *    why the caller reads it first; comparing it is what makes the frame ordered
+ *    against the deltas around it, since both ride one monotonically increasing
+ *    bridge cursor.
+ *  - **The outer epoch matches the active stream.** An epoch the current
+ *    subscription never served is a frame from a stream that has been replaced,
+ *    and its sequence says nothing about what this viewer has seen.
+ *  - **Strictly newer.** Equal or lower is a duplicate or an out-of-order
+ *    replay, and applying one would roll the paint back to an older projection.
+ *
+ * A replacement that arrives during the pre-snapshot replay needs no rule here:
+ * the call site only consults this predicate once the bootstrap snapshot has been
+ * applied, so a replayed frame stays subordinate to that snapshot, exactly as
+ * every other replayed frame does.
+ */
+export function acceptFrontendReplace(
+	priorCursor: DesktopStreamCursor | null | undefined,
+	sessionId: string,
+	frame: Extract<DesktopSessionFrame, { type: "frontend.replace" }>,
+): boolean {
+	if (frame.session_id !== sessionId) return false;
+	if (frame.payload.frontend.snapshot.session_id !== sessionId) return false;
+	if (!priorCursor) return false;
+	return priorCursor.epoch === frame.epoch && frame.seq > priorCursor.seq;
+}
+
 export type DesktopAdmission = {
 	status: "admitted";
 	command_id: string;

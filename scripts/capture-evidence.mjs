@@ -780,45 +780,40 @@ export const STORIES = [
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
 
-	/* `/move`: the desktop's move-a-live-session surface, in two sets.
-
-	   The CHIP states are the composer's working-directory chip. Four of them are
-	   unreachable by hand in a reasonable time: `readonly-older-backend` needs an
-	   OLD backend underneath the app (and is the only frame a user who never uses
-	   this feature ever sees of it, which is why the copy change gets one of its
-	   own), `pending` lasts until a successor runtime has bound (1-3 s of a real
-	   spawn), and `unset` needs a staged cwd that is empty. 1000x520 is the
-	   composer's shape, and the chip reads a CONTAINER QUERY at 750px - a narrower
-	   viewport would photograph the icon-only floor rather than the chip.
-
-	   `pending` shows the SECOND of the chip's two pending sentences, because a
-	   mounted story is photographed well past the 600 ms escalation; the first
-	   ("Moving to `~/x`…") is caught in the live-app pair on the PR, where the
-	   shutter can be inside that window.
-
-	   `chat-cwd-move--unset` is deliberately NOT here, and the reason is the rig's
-	   own readiness test rather than the frame's worth: a chip with no directory
-	   is ONE button, which is fewer than the ten elements the capture waits for
-	   before it will photograph a story, so the run never starts. The state is
-	   pre-existing behaviour this feature does not touch and it stays reviewable as
-	   a story; what it cannot be is a swept frame.
-
-	   The PICKER states are `/move` itself: resting, and inert against a backend
-	   without the route. Its in-flight and refusal states are NOT here, and the
-	   reason is measured rather than a preference: both need the chip's directory
-	   menu to be chosen from, and a `play` cannot drive that menu in a BUILT
-	   preview (a Radix `DropdownMenu` inside a modal `Dialog` - the dialog takes
-	   focus back, the menu never opens, and the rig photographs the resting state
-	   under the name `refused` however the play is written).
-	   `docs/evidence/chat-move-picker/README.md` records what reaching them takes.
-	   Same dialog, so the same viewport as the model picker. */
-	["chat-cwd-move--editable", 1000, 520],
-	["chat-cwd-move--menu-open", 1000, 620],
-	["chat-cwd-move--pending", 1000, 520],
-	["chat-cwd-move--readonly-older-backend", 1000, 520],
-	["chat-cwd-move--truncated-path", 1000, 520],
-	["chat-move-picker--idle", 900, 620],
-	["chat-move-picker--unavailable", 900, 620],
+	/*
+	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
+	 * branch's evidence rather than an oversight.
+	 *
+	 * The five chip states and the two picker states this block used to declare
+	 * were withdrawn together with their committed frames - 84 `.webp`. Two
+	 * reasons, and the second is the one that decides it:
+	 *
+	 *  1. They were taken by driving a scripted browser (this script, over CDP),
+	 *     which is not an acceptable method for this feature's visual evidence.
+	 *  2. They photograph the PRE-remediation UI. The chip gained a spinner for
+	 *     the in-flight state, an at-rest chevron, a fixed path column, a
+	 *     measured-overflow tooltip and a new refusal/announcement path; the menu
+	 *     gained a bounded scrollable body. Frames of the old pixels under these
+	 *     filenames would describe a superseded control, whatever their
+	 *     provenance - which is why they were deleted rather than retained with a
+	 *     disclosure.
+	 *
+	 * The replacement frames were to be captured with the Local Operator browser
+	 * extension against an isolated live backend, which is the method the
+	 * operator's rules require for page interaction and screenshots. That capture
+	 * is BLOCKED: the extension's worker stopped answering this session and no
+	 * frame could be taken without substituting a script, which the same rules
+	 * forbid. The whole visual surface of this remediation is therefore
+	 * unphotographed, and it is recorded as blocked on PR #173 rather than
+	 * papered over with a picture of the code that was replaced. When the browser
+	 * tool is reachable the set belongs under `docs/evidence/chat-cwd-move-live/`
+	 * as a declared supplementary set, with its own `source` and `why`.
+	 *
+	 * The picker states are GONE rather than merely unphotographed, and that is a
+	 * product change: `/move` no longer mounts a dialog that hosts the chip (it
+	 * focuses the composer's own chip), so there is no picker left to photograph
+	 * and no story file left to sweep.
+	 */
 
 	/* The band's own half of U1: the model reading painted from the user's pick
 	   before the owner's frame confirms it. Two frames in one story, so the

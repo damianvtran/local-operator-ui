@@ -52,16 +52,25 @@ import {
 } from "./destination-pickers";
 import { McpPicker } from "./mcp-picker";
 
+type ArgsBehavior = {
+	argsBehavior?: "present" | "execute";
+	runArgs?: (context: MoveRunContext) => Promise<void>;
+};
+
 export type DestinationEntry =
-	| {
+	| ({
 			kind: "picker";
 			component: FC<PickerContext>;
 			inline?: InlineArgumentSource;
-			argsBehavior?: "present" | "execute";
-			runArgs?: (context: MoveRunContext) => Promise<void>;
-	  }
-	| { kind: "navigate"; route: (args: string, sessionId: string) => string }
-	| { kind: "direct"; action: "clear" | "exit" | "focus-cwd-chip" };
+	  } & ArgsBehavior)
+	| ({
+			kind: "navigate";
+			route: (args: string, sessionId: string) => string;
+	  } & ArgsBehavior)
+	| ({
+			kind: "direct";
+			action: "clear" | "exit" | "focus-cwd-chip";
+	  } & ArgsBehavior);
 
 /**
  * One argument list's rows, and how they may be acted on.
@@ -144,12 +153,20 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"session.rename": { kind: "picker", component: RenamePicker },
 	"session.fork": { kind: "picker", component: ForkPicker },
 	/*
-	 * The one destination whose ARGUMENTS are the action: `/move ~/x` moves the
-	 * session, and only the bare form opens anything. See `argsBehavior` above.
+	 * `/move`: the one destination that presents by focusing an EXISTING control.
+	 *
+	 * It used to be a picker that hosted the composer's own chip in a modal dialog,
+	 * and inside that dialog the chip's menu opened 620px tall at `y=-192` with
+	 * `overflow-y: hidden` - two of the three ways to choose were unreachable by
+	 * pointer and the focused row was off-screen (UX U2). The control the user
+	 * already has does not have that problem, so the bare form focuses it and opens
+	 * its menu in place (design § 5.2's alternative), while `/move <path>` still
+	 * executes directly - one destination, one write path, and no popper inside a
+	 * dialog.
 	 */
 	"session.move": {
-		kind: "picker",
-		component: MovePicker,
+		kind: "direct",
+		action: "focus-cwd-chip",
 		argsBehavior: "execute",
 		runArgs: runMoveSessionFromDispatch,
 	},

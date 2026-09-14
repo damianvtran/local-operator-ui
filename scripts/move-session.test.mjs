@@ -51,6 +51,10 @@ const bundle = await build({
 				pendingAfterStream,
 				runMoveSession,
 				transcriptRanEval,
+				evalLatchAfterObserving,
+				evalLatchHolds,
+				updatePendingMoves,
+				runMoveSessionFromDispatch,
 			} from "./src/renderer/src/features/chat/move-session";
 			export { errors } from "desktop-api-move-fixture";
 		`,
@@ -124,12 +128,17 @@ const {
 	pendingAfterStream,
 	runMoveSession,
 	transcriptRanEval,
+	evalLatchAfterObserving,
+	evalLatchHolds,
+	updatePendingMoves,
+	runMoveSessionFromDispatch,
 	errors: fixtureErrors,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const SESSION = "123456abcdef";
 const OTHER_SESSION = "ffffffffffff";
+const REQUEST = "12345678-1234-4234-8234-123456789abc";
 
 /** Requests the write path issued, and the notes it posted. */
 const requests = [];
@@ -161,6 +170,7 @@ test("a successful move posts the op once, with the path as typed", async () => 
 	reset(receipt());
 	const answer = await runMoveSession({
 		sessionId: SESSION,
+		requestId: REQUEST,
 		cwd: "~/moved",
 		note,
 		evalUsed: false,
@@ -179,7 +189,13 @@ test("a successful move posts the op once, with the path as typed", async () => 
 		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
 		"the receipt key is a real uuid, because the route journals on it and replays rather than retiring twice",
 	);
-	assert.deepEqual(answer?.cwd, "/Users/me/moved");
+	assert.equal(answer.kind, "settled");
+	assert.equal(answer.receipt.cwd, "/Users/me/moved");
+	assert.equal(
+		request.requestId,
+		REQUEST,
+		"the operation retains the caller's identity",
+	);
 	assert.deepEqual(notes, [{ text: "moved to ~/moved", error: false }]);
 });
 
@@ -222,11 +238,12 @@ test("a refusal is the backend's own sentence, not a generic error", async () =>
 		reset(error);
 		const answer = await runMoveSession({
 			sessionId: SESSION,
+			requestId: REQUEST,
 			cwd: "~/nope",
 			note,
 			evalUsed: false,
 		});
-		assert.equal(answer, null, "a refusal reports no receipt");
+		assert.deepEqual(answer, { kind: "refused", sentence: expected });
 		assert.deepEqual(notes, [{ text: expected, error: true }]);
 	}
 });
@@ -235,11 +252,15 @@ test("a failure nobody authored is not quoted at the user", async () => {
 	reset(fixtureErrors.raw);
 	const answer = await runMoveSession({
 		sessionId: SESSION,
+		requestId: REQUEST,
 		cwd: "~/moved",
 		note,
 		evalUsed: false,
 	});
-	assert.equal(answer, null);
+	assert.deepEqual(answer, {
+		kind: "refused",
+		sentence: "The working directory was not changed.",
+	});
 	assert.equal(notes.length, 1);
 	assert.equal(notes[0].error, true);
 	assert.ok(
@@ -250,21 +271,22 @@ test("a failure nobody authored is not quoted at the user", async () => {
 });
 
 test("the optimistic value is dropped by a refusal and held until the stream agrees", () => {
-	const committed = pendingAfterCommit(SESSION, "~/moved");
+	const committed = pendingAfterCommit(SESSION, REQUEST, "~/moved");
 	assert.deepEqual(committed, {
 		sessionId: SESSION,
+		requestId: REQUEST,
 		path: "~/moved",
 		target: null,
 	});
 
 	// Rule 2: a refusal reverts the chip to the stream's value.
-	assert.equal(pendingAfterFailure(committed, SESSION), null);
+	assert.equal(pendingAfterFailure(committed, REQUEST), null);
 
 	// Rule 3: the resolved directory is what the stream has to agree with, and a
 	// frame that still carries the OLD cwd is expected after a `rebound` - the
 	// retiring runtime's last words name the directory it started in - so it must
 	// not be read as agreement.
-	const confirmed = pendingAfterReceipt(committed, SESSION, "/Users/me/moved");
+	const confirmed = pendingAfterReceipt(committed, REQUEST, "/Users/me/moved");
 	assert.equal(
 		pendingAfterStream(confirmed, SESSION, "/Users/me/old"),
 		confirmed,
@@ -287,7 +309,7 @@ test("the optimistic value is dropped by a refusal and held until the stream agr
 });
 
 test("a pending value belongs to ONE session", () => {
-	const mine = pendingAfterCommit(SESSION, "~/moved");
+	const mine = pendingAfterCommit(SESSION, REQUEST, "~/moved");
 	// A conversation switch mid-move, in both directions: the other session's
 	// chip must not paint this value, and this session's refusal/frames must not
 	// clear it. Keyed by id rather than a bare boolean for exactly this reason.
@@ -347,23 +369,54 @@ const chatPageSource = read(
 	"src/renderer/src/features/chat/components/chat-page.tsx",
 );
 
+/*
+ * The hook body, for the pins that are about `useSessionMove` alone.
+ *
+ * `useSessionMove` is the file's LAST export, so the body runs to the end of the
+ * file. It used to be sliced up to a following `useSessionMoveCapability`,
+ * which this remediation removed: `indexOf` then returned -1, `slice(from, -1)`
+ * silently returned nearly the whole file, and the pins below kept passing while
+ * measuring something other than the hook (agent review n1's class of defect,
+ * in the one place a stale boundary is invisible).
+ */
+const hookBody = moveSource.slice(
+	moveSource.indexOf("export function useSessionMove("),
+);
+assert.ok(hookBody.length > 0, "the hook body must be found to be pinned");
+
 test("no request is issued at all without the session_move capability", () => {
-	// (a) The gate is asked of the capability the feature is keyed on, and the
-	// commit path returns before it can spend a round trip learning 404.
+	// (a) The gate is asked of the move CONTRACT - `session_move` at 2 plus the
+	// `frontend_replace` frame - through the one predicate that states that pair.
+	// A version-only check here would enable a move against a backend whose
+	// replacement frame this renderer cannot consume, which is a move that is
+	// accepted and then never painted. The commit path still returns before it can
+	// spend a round trip learning 404.
 	assert.match(
 		moveSource,
-		/const enabled = desktopFeatureEnabled\(input\.capabilities, "session_move"\)/,
+		/const enabled = sessionMoveEnabled\(input\.capabilities\)/,
 	);
 	assert.match(
 		moveSource,
-		/if \(!enabled \|\| !sessionId\) return;/,
+		/desktopFeatureEnabled\(capabilities, "session_move", 2\)/,
+		"the exclusivity fence is version 2, not presence",
+	);
+	assert.match(
+		moveSource,
+		/desktopFeatureEnabled\(capabilities, "frontend_replace"\)/,
+		"the replacement contract is required as well as the route",
+	);
+	assert.match(
+		moveSource,
+		/if \(!enabled \|\| !sessionId\) return \{ kind: "unavailable" \};/,
 		"the commit path must be gated, not merely the chip's render",
 	);
 	// The chip's editability is the same question, asked once at the place that
 	// owns the session identity.
-	assert.match(
+	assert.match(chatPageSource, /sessionMoveEnabled\(capabilities\.data\)/);
+	assert.doesNotMatch(
 		chatPageSource,
 		/desktopFeatureEnabled\(capabilities\.data, "session_move"\)/,
+		"no surface may enable a move on a weaker check than the hook's",
 	);
 	// And the sentence that stands in for the missing route, which is the whole
 	// degradation story for an older backend.
@@ -376,15 +429,13 @@ test("no request is issued at all without the session_move capability", () => {
 test("a commit issues exactly one request", () => {
 	// (b) `moveTo` is the hook's only writer of the pending latch and its only
 	// await of the write path, so one commit cannot become two retirements of the
-	// runtime. Counted inside the hook rather than in the module, because the
-	// module legitimately has a SECOND call site: the registry's argument runner,
-	// which is a one-liner over the same write path and is the reason a typed
-	// `/move <path>` and the chip cannot drift apart.
-	const hookBody = moveSource.slice(
-		moveSource.indexOf("export function useSessionMove("),
-		moveSource.indexOf("export function useSessionMoveCapability("),
+	// runtime. Both the chip and the typed command use this controller: a second
+	// raw transport caller would bypass its one-operation-per-settle latch.
+	assert.doesNotMatch(
+		moveSource,
+		/useSessionMoveCapability/,
+		"the removed capability hook must not be referenced by source or by this pin",
 	);
-	assert.ok(hookBody.length > 0, "the hook body must be found to be pinned");
 	assert.equal(
 		(hookBody.match(/await runMoveSession\(/g) ?? []).length,
 		1,
@@ -397,8 +448,8 @@ test("a commit issues exactly one request", () => {
 	);
 	assert.equal(
 		(moveSource.match(/await runMoveSession\(/g) ?? []).length,
-		2,
-		"the module's only call sites are the chip's commit and the registry's runner",
+		1,
+		"the shared session controller is the only raw move transport caller",
 	);
 });
 
@@ -428,18 +479,115 @@ test("the destination table keys the move on the backend's own destination name"
 	// than render nothing when a user types `/move`.
 	assert.match(
 		registrySource,
-		/"session\.move": \{\s*kind: "picker",\s*component: MovePicker,\s*argsBehavior: "execute",\s*runArgs: runMoveSessionFromDispatch,/,
+		/"session\.move": \{\s*kind: "direct",\s*action: "focus-cwd-chip",\s*argsBehavior: "execute",\s*runArgs: runMoveSessionFromDispatch,/,
 	);
 });
 
-test("the eval latch is keyed by session, not by a bare boolean", () => {
-	// (f) The TUI hit this exact bug and solved it with a set of ids: a boolean
-	// carries one conversation's `eval` into the next one's receipt.
-	assert.match(moveSource, /const seen = useRef<Set<string>>\(new Set\(\)\)/);
-	assert.match(moveSource, /seen\.current\.has\(sessionId\)/);
-	assert.match(moveSource, /seen\.current\.add\(sessionId\)/);
-	assert.ok(
-		!moveSource.includes("const seen = useRef(false)"),
-		"a bare boolean latch is the defect this pins",
+test("stale request receipts and failures cannot settle a newer move", () => {
+	const newer = pendingAfterCommit(SESSION, "new-request", "~/new");
+	assert.equal(pendingAfterReceipt(newer, REQUEST, "/old"), newer);
+	assert.equal(pendingAfterFailure(newer, REQUEST), newer);
+	const confirmed = pendingAfterReceipt(newer, "new-request", "/new", 1000);
+	assert.equal(confirmed.settleBy, 1000 + MOVE_SETTLE_TIMEOUT_MS);
+	assert.equal(
+		pendingAfterReceipt(confirmed, "new-request", "/new", 9000).settleBy,
+		confirmed.settleBy,
+	);
+	assert.equal(pendingAfterStream(confirmed, SESSION, "/new"), null);
+});
+
+test("two pending sessions retain independent identities and original deadlines", () => {
+	const a = pendingAfterReceipt(
+		pendingAfterCommit(SESSION, REQUEST, "~/a"),
+		REQUEST,
+		"/a",
+		1000,
+	);
+	const b = pendingAfterCommit(OTHER_SESSION, "request-b", "~/b");
+	const moves = new Map([
+		[SESSION, a],
+		[OTHER_SESSION, b],
+	]);
+	const unchanged = updatePendingMoves(moves, SESSION, (value) =>
+		pendingAfterFailure(value, "stale"),
+	);
+	assert.equal(unchanged, moves);
+	const completedB = updatePendingMoves(moves, OTHER_SESSION, (value) =>
+		pendingAfterFailure(value, "request-b"),
+	);
+	assert.equal(completedB.size, 1);
+	assert.equal(completedB.get(SESSION), a);
+	assert.equal(completedB.get(SESSION).settleBy, 1000 + MOVE_SETTLE_TIMEOUT_MS);
+	assert.equal(
+		moves.size,
+		2,
+		"updates must not mutate the previous React state",
+	);
+});
+
+test("typed move uses the composer's controller instead of a second transport path", async () => {
+	reset();
+	const paths = [];
+	await runMoveSessionFromDispatch({
+		cwd: "../next",
+		note,
+		moveTo: async (path) => {
+			paths.push(path);
+			return { kind: "in-flight" };
+		},
+	});
+	assert.deepEqual(paths, ["../next"]);
+	assert.equal(requests.length, 0);
+	assert.deepEqual(notes, [
+		{ text: "A working-directory move is already in progress.", error: true },
+	]);
+});
+
+test("the eval latch belongs to each session and survives transcript paging", () => {
+	const original = new Set();
+	const seen = evalLatchAfterObserving(original, SESSION, [
+		{ kind: "tool", toolName: "eval" },
+	]);
+	assert.equal(original.size, 0, "latch updates are immutable");
+	assert.equal(evalLatchHolds(seen, SESSION), true);
+	assert.equal(evalLatchHolds(seen, OTHER_SESSION), false);
+	assert.equal(evalLatchHolds(seen, undefined), false);
+	assert.equal(evalLatchAfterObserving(seen, SESSION, []), seen);
+	assert.equal(
+		evalLatchAfterObserving(seen, OTHER_SESSION, [
+			{ kind: "tool", toolName: "bash" },
+		]),
+		seen,
+	);
+});
+
+test("the hook stores and reads the latch through the keyed predicate", () => {
+	/*
+	 * Agent review n1: this used to be pinned by a single source regex -
+	 * `!includes("const seen = useRef(false)")` - which a `useState(false)` or
+	 * `useRef<boolean>(false)` rewrite sailed straight past. The behavioural half
+	 * above proves WHAT the latch answers; this pins that the hook actually asks
+	 * that predicate rather than a boolean of its own, and the negative covers
+	 * every spelling of the bare boolean in one go.
+	 */
+	assert.match(moveSource, /useRef<EvalLatch>\(EMPTY_EVAL_LATCH\)/);
+	assert.match(
+		moveSource,
+		/evalLatchAfterObserving\(latch\.current, sessionId, records\)/,
+	);
+	assert.match(
+		moveSource,
+		/return evalLatchHolds\(latch\.current, sessionId\)/,
+	);
+	/*
+	 * The negative is scoped to the HOOK BODY, not the file: the module's own
+	 * docblock names the old `useState(false)` spelling when it explains what
+	 * this latch replaced, and a file-wide regex would fail on that prose
+	 * rather than on code.
+	 */
+	assert.doesNotMatch(
+		hookBody,
+		/use(?:Ref|State)(?:<boolean>)?\(false\)/,
+		"a branch-global boolean cannot key a per-session latch",
 	);
 });
