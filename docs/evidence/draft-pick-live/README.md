@@ -37,42 +37,33 @@ in the run:
 geometry and whether the backend advertised `draft_selection` — read out of the
 live DOM at shutter time rather than restated here.
 
+## The effort reading, after the backend fix
+
+`sessions.preview` used to answer a spec the first turn did not agree with: the
+ladder was empty on a fresh draft, so the chip was hidden and the picker was
+unreachable. PR #1110 fixed that, and the released build it produced (0.54.46)
+answers the model's own ladder. Observed against the isolated run this set was
+re-taken on, for the draft the harness opens:
+
+```
+reasoning: true | reasoning_efforts: ['none','low','medium','high','xhigh'] | reasoning_effort: null
+```
+
+So the level the first turn will use is now on the pane, from the backend's own
+resolution, and the chip can open the effort picker. Nothing in the renderer was
+changed to make that happen — the fix was the backend's, which is where the
+defect was.
+
 ## What is NOT here, and why (this matters more than what is)
 
-- **`model-picked`.** The driver picks a catalogue row and waits for the reading
-  to change; on this isolated backend it never did, so the driver REFUSED to
-  photograph the pane (a frame there would show the default model under a picked
-  name). The observed cause is in the backend's own log for the run: every row
-  this backend lists is credential-less (`openai, no credential`), and the
-  preview answers for those models do not resolve, so the pick is refused and the
-  reading correctly stays. With a credentialed provider — the operator's real
-  machine — the same click is expected to resolve; that cell needs a backend
-  whose catalogue offers a model it can actually resolve.
-- **`effort-picker-open` / `effort-picked`.** Not merely uncaptured: on this
-  backend head the effort reading is ABSENT on a draft, by design of the code
-  under review. `sessions.preview` skips the account-metadata step a cold
-  session runs, so the spec it answers carries `reasoning: false`,
-  `reasoning_effort: null`, `reasoning_efforts: []`, `context_metadata_resolved:
-  false` — observed directly against the running backend for both `model_name:
-  mock` and `model_name: gpt-5`. `session-model.ts`'s `effortState` then takes
-  its `metadataAbsent` branch (`knownLadder: false`), the strip's chip gate
-  (`{effort && (!draft || effort.levelKnown) && …`) hides the chip, and
-  `openEffort`'s `knownLadder` gate leaves the picker unreachable. That is a
-  backend defect in this feature — the preview answering a specification the
-  first turn does not agree with — and it is being fixed in PR #1110. No
-  renderer-side gate, fallback or default rung was added to make a reading
-  appear, because a fabricated level is worse than an absent one (R19/R21).
-  The verification to re-run once the fix lands: a fresh draft renders an effort
-  LEVEL from the preview's own ladder, the chip opens the effort picker, and a
-  picked rung is followed by the pane's own reading.
-- **`after-send` / `first-turn`.** Both depend on a successful pick, so they wait
-  on the two cells above.
-
-### The negative control is still owed
-
-The same page against a backend WITHOUT `draft_selection` (the shell's inert
-state) is specified in the driver (`inert` mode, which asserts no picker opens)
-and runnable with `DRAFT_PICK_EVIDENCE_PORT=5205` against any pre-#1110 backend;
-it was not run in this pass. The capability-off render is pinned by tests
-(`composer-readings.test.mjs`), but tests are not the photograph the design round
-asked for.
+- **`model-picked`.** The driver picks catalogue rows in turn and waits for the
+  reading to change; on this isolated run none of them changed it, so the driver
+  REFUSED to photograph the pane rather than show the default model under a
+  picked name. The rows are the app catalogue's own, and the isolated root has
+  no provider the resolution will accept, so a pick does not resolve there. It
+  needs a backend whose catalogue offers a model it can resolve — the operator's
+  own machine has one; an isolated root with `hosting: test` does not. Everything
+  downstream of the pick (`effort-picked`, `after-send`, `first-turn`) waits on
+  it, and the driver still refuses rather than faking it.
+- **The negative control** (`inert` mode, which asserts no picker opens) is
+  implemented and not yet run: it needs a backend without `draft_selection`.

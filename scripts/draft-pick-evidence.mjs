@@ -198,8 +198,8 @@ const click = async (selector) =>
 
 await send("Page.navigate", { url: `${ORIGIN}/draft-pick-evidence.html` });
 await waitFor(
-	`[...document.querySelectorAll("button,a")].some((x) => (x.getAttribute("aria-label") || x.textContent.trim()) === "New chat")`,
-	"the shell's New chat control",
+	`[...document.querySelectorAll("button,a")].some((x) => /^New chat( with .+)?$/.test(x.getAttribute("aria-label") || x.textContent.trim()))`,
+	"a New chat control in the shell",
 );
 const harnessError = await ev(
 	`(() => window.__HARNESS_ERROR__ || (document.body.innerText.trim().length ? "" : "no text rendered"))()`,
@@ -213,9 +213,16 @@ if (harnessError) throw new Error(`the harness page did not render: ${harnessErr
  * and the pane it opens is the one the operator's report is about. Clicking it
  * rather than routing to a URL keeps this the app's own path there.
  */
-await ev(
-	`(() => { const el = [...document.querySelectorAll("button,a")].find((x) => (x.getAttribute("aria-label") || x.textContent.trim()) === "New chat"); if (el) el.click(); return !!el; })()`,
+/*
+ * Either the plain control or an agent's — the sidebar offers whichever the
+ * shell decides, and both reach a draft. Which one is used is recorded, because
+ * only the plain one reaches the state with NO resolved model.
+ */
+const opened = await ev(
+	`(() => { const all = [...document.querySelectorAll("button,a")]; const label = (x) => x.getAttribute("aria-label") || x.textContent.trim(); const el = all.find((x) => label(x) === "New chat") ?? all.find((x) => /^New chat with .+$/.test(label(x))); if (!el) return null; el.click(); return label(el); })()`,
 );
+if (!opened) throw new Error("no New chat control in the shell");
+const plainNewChat = opened === "New chat";
 await waitFor(`!!document.querySelector("textarea")`, "the composer to mount");
 
 /*
@@ -230,7 +237,7 @@ await waitFor(
 	`(() => { const s = document.querySelector("[data-lo-session-strip]"); return !!s && s.hasAttribute("data-lo-session-strip-draft") && !!s.querySelector("button[aria-label^='Model:']"); })()`,
 	"the new conversation's readings",
 );
-if (MODE === "actionable") {
+if (MODE === "actionable" && plainNewChat) {
 	await shot(
 		"draft-no-model",
 		"a NEW conversation with nothing chosen yet: no model is resolved, and the reading offered is the pick (design D3)",
@@ -254,8 +261,6 @@ await waitFor(
 	45_000,
 );
 
-const capability = await ev(`fetch("/__desktop", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request_id: crypto.randomUUID(), operation: "capabilities.read" }) }).then((r) => r.json()).then((j) => JSON.stringify(j.body?.features ?? j.features ?? {}))`);
-numbers.capabilities = capability;
 
 if (MODE === "inert") {
 	await ev(`(() => { const el = [...document.querySelectorAll("button,a")].find((x) => /^New chat with /.test(x.getAttribute("aria-label") || "")); if (el) el.click(); return !!el; })()`);
