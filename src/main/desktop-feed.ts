@@ -127,6 +127,15 @@ export type DesktopFeedOptions = {
 	 * app can raise a banner but cannot be displaying anything.
 	 */
 	/**
+	 * The floor the backend's cadence is clamped to, in seconds.
+	 *
+	 * A test seam, not a preference: the production floor is
+	 * `MIN_HEARTBEAT_SECONDS`, and a harness that wants to reach the three-missed-
+	 * beat watchdog quickly has to be able to lower it — a floor it cannot get
+	 * under would let the watchdog's own test silently stop testing the watchdog.
+	 */
+	heartbeatFloorSeconds?: number;
+	/**
 	 * How often the presence lease is renewed.
 	 *
 	 * Injectable so a test can reach a SECOND beat without waiting out the
@@ -410,7 +419,10 @@ export class DesktopFeedRelay {
 				this.heartbeatMs =
 					Math.min(
 						MAX_HEARTBEAT_SECONDS,
-						Math.max(MIN_HEARTBEAT_SECONDS, frame.payload.heartbeat_seconds),
+						Math.max(
+							this.options.heartbeatFloorSeconds ?? MIN_HEARTBEAT_SECONDS,
+							frame.payload.heartbeat_seconds,
+						),
 					) * 1000;
 			}
 			this.startPresence();
