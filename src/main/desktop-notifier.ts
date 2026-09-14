@@ -152,6 +152,19 @@ function gateBody(kind: string, gateTitle: string, gateDetail: string): string {
 }
 
 /**
+ * Whether a frame is a BURST DIGEST rather than one conversation's completion.
+ *
+ * Read from the fields, never from the title: the backend caps per-tick banners
+ * and composes ONE frame for the remainder with `burst_count` and `session_ids`
+ * on it (`_digest_payload`), and `session_id` is set to the last overflow member
+ * only because a session frame must name a session. Matching on the strings
+ * would make this routing decision depend on wording the backend owns.
+ */
+function isBurstDigest(n: DesktopNotification): boolean {
+	return (n.burst_count ?? 0) > 1 || (n.session_ids?.length ?? 0) > 1;
+}
+
+/**
  * The collaborators a caller gets by saying nothing.
  *
  * Named rather than inlined so the one place that accepts "no host" is
@@ -223,8 +236,12 @@ export type DesktopNotifierHost = {
 	 * raises directly, because the renderer is already mounted and can take the
 	 * message. Recreation lives in the app because it owns `createWindow` and the
 	 * readiness handshake that makes a click-created window safe to show (B3).
+	 *
+	 * `null` is a real target and not a missing value: it is the catalogue. A
+	 * burst digest names a COUNT of conversations, so the click has no single
+	 * conversation to open and must land where all of them are listed.
 	 */
-	reopen: (sessionId: string) => void;
+	reopen: (sessionId: string | null) => void;
 };
 
 export class DesktopNotifier {
@@ -624,7 +641,21 @@ export class DesktopNotifier {
 		// absent from a backend that predates the flag, which falls through to the
 		// bare body it rendered before the flag existed rather than throwing.
 		this.show(
-			sessionId,
+			/*
+			 * A BURST DIGEST is not about one conversation (R1-2). The backend
+			 * caps per-tick banners and publishes ONE frame for the remainder,
+			 * carrying `burst_count` and `session_ids` and setting `session_id`
+			 * to the LAST overflow member — it must name something for the frame
+			 * to be a valid session frame at all. Routing its click to that id
+			 * opened one arbitrary member of the burst, which is the "the click
+			 * did not land where I expected" defect this change exists to
+			 * remove, so a digest opens the catalogue instead.
+			 *
+			 * Detected on the fields themselves rather than on a title string:
+			 * the strings are the backend's to word, and a surface that matched
+			 * on them would route a re-worded digest to a random conversation.
+			 */
+			isBurstDigest(n) ? null : sessionId,
 			n.title,
 			n.status,
 			n.body,
@@ -694,6 +725,59 @@ export class DesktopNotifier {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * What this app can say about itself for the machine-wide presence claim.
+	 *
+	 * The claim is not "a desktop is connected" - the backend already knows that
+	 * from the socket. It is the two answers only the app has, and both are
+	 * read by the delivery ladder: `session_id` + `window` decide `attended`
+	 * (rung 1's "a watching surface already has it"), and a MISSING window is not
+	 * a missing value - it means this app is watching nothing, which is the
+	 * correct answer for the operator's own windowless case and the wrong answer
+	 * for a window that is merely minimised.
+	 *
+	 * `sessionId` comes from this notifier's own heartbeat map rather than from
+	 * the renderer, so it cannot disagree with the completion gate above: the
+	 * same value that suppresses a banner is the value that tells the backend
+	 * not to raise someone else's. An app that names a conversation it is not
+	 * showing suppresses the banner for a conversation nobody can see.
+	 *
+	 * Dead windows answer "no window" rather than "last known window": a
+	 * destroyed window has no `is*()` to read, and reporting its stale state
+	 * would advertise a surface that cannot display anything.
+	 */
+	presence(): {
+		sessionId: string;
+		window: {
+			exists: boolean;
+			focused: boolean;
+			visible: boolean;
+			minimized: boolean;
+		};
+	} {
+		const window = this.window();
+		if (!window || window.isDestroyed()) {
+			return {
+				sessionId: "",
+				window: {
+					exists: false,
+					focused: false,
+					visible: false,
+					minimized: false,
+				},
+			};
+		}
+		return {
+			sessionId: this.windows.get(window.id)?.session ?? "",
+			window: {
+				exists: true,
+				focused: window.isFocused(),
+				visible: window.isVisible(),
+				minimized: window.isMinimized(),
+			},
+		};
 	}
 
 	/**
@@ -840,7 +924,12 @@ export class DesktopNotifier {
 	 * unaffected either way.
 	 */
 	private show(
-		sessionId: string,
+		/*
+		 * Where the click lands: a conversation id, or `null` for the catalogue.
+		 * A digest banner names several conversations and has no single one to
+		 * open, so the honest target is the list they are all in.
+		 */
+		sessionId: string | null,
 		title: string,
 		status: string,
 		body: string,

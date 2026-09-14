@@ -725,7 +725,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 		}));
 
-		const isInputDisabled = unavailable || Boolean(isLoading && currentJobId);
+		/*
+		 * Two reasons a composer refuses input, kept apart (design review round
+		 * 1, D3). `unavailable` is a conversation this machine does not have, and
+		 * the two used to share one placeholder, so the composer's only text read
+		 * "Agent is busy" over a session that does not exist - a false statement
+		 * about the state, in the one place the user is looking to find out what
+		 * to do about it. They still share the disabled BEHAVIOUR (typing into a
+		 * conversation that is gone is not a thing that can work); only the
+		 * sentence differs.
+		 */
+		const isBusy = Boolean(isLoading && currentJobId);
+		const isInputDisabled = unavailable || isBusy;
 
 		/*
 		 * Grow with the draft up to `max-h`, then scroll. Runs on every value
@@ -1507,21 +1518,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							className={cn(
 								"w-full resize-none overflow-y-auto bg-transparent",
 								"text-ink outline-none placeholder:text-ink-dim",
+								// The disabled state STEPS COLOUR rather than fading
+								// (branding: disabled changes colour, never opacity), and
+								// without this the only signal was `cursor: not-allowed`
+								// after the user had already typed into a field that will
+								// not accept anything.
+								"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
 								isSmallView
 									? "max-h-24 px-1.5 py-1 text-body-sm"
 									: "max-h-28 px-2 py-1.5 text-body",
 							)}
 							placeholder={
-								isInputDisabled
-									? "Agent is busy"
-									: awaitingAnswer
-										? // Names the thing the box is now for, without restating
-											// the question card or the waiting line (§ 7 keeps one
-											// liveness statement per turn, and the card owns it).
-											"Answer the question above"
-										: awaitingReply
-											? "Waiting for the agent"
-											: "Ask me for help"
+								/*
+								 * The gone-state sentence is checked FIRST, ahead of the busy one, and
+								 * that order is the whole point: `isInputDisabled` is true for a missing
+								 * conversation too, so a reader of a conversation this machine does not have
+								 * would be told "Agent is busy" about a turn nobody is running (design
+								 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+								 */
+								unavailable
+																? "This conversation is gone"
+																: isInputDisabled
+																								? "Agent is busy"
+																								: awaitingAnswer
+																																? // Names the thing the box is now for, without restating
+																																								// the question card or the waiting line (§ 7 keeps one
+																																								// liveness statement per turn, and the card owns it).
+																																								"Answer the question above"
+																																: awaitingReply
+																																								? "Waiting for the agent"
+																																								: "Ask me for help"
 							}
 							value={newMessage}
 							onChange={(e) => {

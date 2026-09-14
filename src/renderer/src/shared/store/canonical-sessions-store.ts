@@ -785,6 +785,33 @@ function launchSession(): string | null {
 		return null;
 	}
 }
+/**
+ * The launch argument OUTRANKS the persisted conversation.
+ *
+ * Main was asked for this conversation BY NAME, and the window exists to show
+ * it; the persisted id is merely what the user last read, which on a
+ * click-created window is exactly the wrong one. Overriding here rather than in
+ * an effect is what makes it true of the FIRST render — a layout effect would
+ * already have committed the wrong conversation to the DOM, and any effect
+ * after paint is the flash this exists to prevent (B3).
+ *
+ * Named and exported rather than inlined in the store's `persist` options
+ * because it is the rule B3 rests on: hydration is what would otherwise put the
+ * persisted id back, and no test can reach that path without a browser's
+ * storage. Called by `persist` exactly as before.
+ */
+export function mergePersistedSession(
+	persisted: unknown,
+	current: CanonicalSessionsState,
+): CanonicalSessionsState {
+	const merged = {
+		...current,
+		...(persisted as Partial<CanonicalSessionsState> | undefined),
+	};
+	const launch = launchSession();
+	return launch ? { ...merged, activeSessionId: launch } : merged;
+}
+
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
@@ -1277,25 +1304,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
-			merge: (persisted, current) => {
-				/*
-				 * The launch argument OUTRANKS the persisted conversation.
-				 *
-				 * Main was asked for this conversation BY NAME, and the window exists to
-				 * show it; the persisted id is merely what the user last read, which on
-				 * a click-created window is exactly the wrong one. Overriding here
-				 * rather than in an effect is what makes it true of the FIRST render —
-				 * a layout effect would already have committed the wrong conversation
-				 * to the DOM, and any effect after paint is the flash this exists to
-				 * prevent.
-				 */
-				const merged = {
-					...current,
-					...(persisted as Partial<CanonicalSessionsState> | undefined),
-				};
-				const launch = launchSession();
-				return launch ? { ...merged, activeSessionId: launch } : merged;
-			},
+			merge: mergePersistedSession,
 			partialize: (state) => ({
 				sessionByAgent: state.sessionByAgent,
 				activeSessionId: state.activeSessionId,

@@ -1645,4 +1645,118 @@ test("a dot-only key is refused by the contract and never addressed", () => {
 			`/v1/desktop/sessions/${SESSION}/variables/${encodeURIComponent(key)}`,
 		);
 	}
+	});
+test("sessions.presence claims the kinds and the window the delivery lease reads", async () => {
+	// B1. The lease is what makes rung 2 eligible, and it reads three fields
+	// beside `can_notify`: the kinds this app can deliver, the conversation a
+	// window is displaying, and that window's own state. A claim that omits them
+	// is not a weaker claim, it is a claim to NOTHING - the backend defaults
+	// `can_notify_kinds` to empty (so every completion falls to the runtime's own
+	// banner, whose claim advances the read watermark and leaves this app nothing
+	// to compose) and `window` to all-false (so `attended` is false and a
+	// completion in the conversation ON SCREEN is bannered). Both are the
+	// operator's reported symptom, so the body is asserted here rather than
+	// trusted to the call site that builds it.
+	const sessionId = "123456abcdef";
+	const count = seen.length;
+	const response = await requestDesktop(
+		{
+			op: "sessions.presence",
+			subscriptionId: "c".repeat(32),
+			canNotify: true,
+			canNotifyKinds: ["complete", "error"],
+			sessionId,
+			window: {
+				exists: true,
+				focused: true,
+				visible: true,
+				minimized: false,
+			},
+		},
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(seen.length, count + 1, "exactly one request reached HTTP");
+	const last = seen.at(-1);
+	assert.equal(last.path, "/v1/desktop/presence");
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	assert.deepEqual(JSON.parse(last.body), {
+		subscription_id: "c".repeat(32),
+		can_notify: true,
+		can_notify_kinds: ["complete", "error"],
+		session_id: sessionId,
+		window: {
+			exists: true,
+			focused: true,
+			visible: true,
+			minimized: false,
+		},
+	});
+
+	// A windowless app is a real state and must still name its window object as
+	// all-false with an empty session: the backend discards a session id that
+	// arrives without a window, and a stale id here would suppress the banner for
+	// a conversation nobody can see.
+	const windowless = await requestDesktop(
+		{
+			op: "sessions.presence",
+			subscriptionId: "d".repeat(32),
+			canNotify: true,
+			canNotifyKinds: ["complete", "error"],
+			sessionId: "",
+			window: {
+				exists: false,
+				focused: false,
+				visible: false,
+				minimized: false,
+			},
+		},
+		url,
+		token,
+	);
+	assert.equal(windowless.status, 200);
+	assert.deepEqual(JSON.parse(seen.at(-1).body), {
+		subscription_id: "d".repeat(32),
+		can_notify: true,
+		can_notify_kinds: ["complete", "error"],
+		session_id: "",
+		window: { exists: false, focused: false, visible: false, minimized: false },
+	});
+
+	// The vocabulary stays closed: a partial window object would let the
+	// renderer's assumptions about which fields the backend reads drift silently.
+	for (const bad of [
+		{ op: "sessions.presence", subscriptionId: "c".repeat(32), canNotify: true },
+		{
+			op: "sessions.presence",
+			subscriptionId: "c".repeat(32),
+			canNotify: true,
+			canNotifyKinds: ["complete"],
+			sessionId,
+			window: { exists: true, focused: true, visible: true },
+		},
+		{
+			op: "sessions.presence",
+			subscriptionId: "c".repeat(32),
+			canNotify: true,
+			// A kind the feed cannot compose is not a kind this app may claim.
+			canNotifyKinds: ["complete", "ask"],
+			sessionId,
+			window: { exists: true, focused: true, visible: true, minimized: false },
+		},
+	]) {
+		const refused = await requestDesktop(bad, url, token);
+		assert.equal(
+			refused.status,
+			422,
+			`${JSON.stringify(bad)} must not reach HTTP`,
+		);
+	}
+	assert.equal(
+		seen.length,
+		count + 2,
+		"no malformed presence beat reached the network",
+	);
 });

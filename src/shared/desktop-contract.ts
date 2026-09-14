@@ -563,6 +563,41 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.presence"),
 			subscriptionId: z.string().regex(/^[a-f0-9]{1,64}$/),
 			canNotify: z.boolean(),
+			/*
+			 * WHY THE CLAIM CARRIES MORE THAN "a desktop is connected".
+			 *
+			 * The backend's delivery lease answers two separate questions from
+			 * this one beat, and a claim that names neither is a claim that
+			 * delivers NOTHING:
+			 *
+			 * - `can_notify_kinds` is what `delivers(kind)` reads. Empty (the
+			 *   default for a client that forgot) means rung 2 is never eligible
+			 *   for any completion, so rung 4 raises the runtime's own banner —
+			 *   earlier, and its claim advances the read watermark, so the
+			 *   clickable banner this app exists to raise never composes.
+			 *   The backend's own test for this is
+			 *   `test_a_claim_with_no_kinds_claims_nothing`: an app that does not
+			 *   advertise must not win the rung.
+			 * - `window` (with `session_id`) is what `attended` reads. Without it
+			 *   this app counts as watching NOTHING, so a completion in the
+			 *   conversation on screen raises a banner — the inverse of rung 1,
+			 *   and a regression against the per-session flag it replaces.
+			 *
+			 * `window` is sent even when there is no window: a windowless app
+			 * (macOS, alive in the dock) can still raise a banner but cannot be
+			 * displaying anything, which is why `session_id` must be "" there
+			 * rather than the last conversation the closed window held.
+			 */
+			canNotifyKinds: z.array(z.enum(["complete", "error"])).max(4),
+			sessionId: z.string().regex(/^([a-f0-9]{12})?$/),
+			window: z
+				.object({
+					exists: z.boolean(),
+					focused: z.boolean(),
+					visible: z.boolean(),
+					minimized: z.boolean(),
+				})
+				.strict(),
 		})
 		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
@@ -1576,6 +1611,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					subscription_id: request.subscriptionId,
+					// The three fields the delivery lease reads beside it. Sent
+					// snake_case like the route's own model, and always sent: a
+					// defaulted claim is what made this app ineligible.
+					can_notify_kinds: request.canNotifyKinds,
+					session_id: request.sessionId,
+					window: request.window,
 					// `can_notify` means "can ATTEMPT delivery", never "the user will
 					// be reached": `Notification.isSupported()` knows nothing about
 					// macOS Focus/DND, Windows Focus Assist or a denied permission.

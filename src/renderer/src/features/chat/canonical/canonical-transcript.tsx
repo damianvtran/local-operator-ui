@@ -1242,9 +1242,54 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 
 	return (
+		/*
+		 * The pane COLUMN, and the scroll box is one child of it.
+		 *
+		 * Why the extra level: the stale caption has to sit OUTSIDE the scrolling
+		 * content (design review round 1, D1). It used to be the first child of the
+		 * measured content box inside a bottom-anchored `flex-col-reverse` scroller,
+		 * which put it at the visual TOP of the content - measured on a 36-row stale
+		 * transcript at 1280x600, its rect was top -2028 in a 560px viewport, i.e.
+		 * 2028px above the fold and unreachable without scrolling the whole
+		 * conversation. The cache is written on unmount, so it only ever holds
+		 * conversations taller than the pane, which makes that the COMMON case
+		 * rather than an edge, and the affordance M2 exists for (the pane is
+		 * distinguishable by being wrong) was invisible exactly when it was needed.
+		 *
+		 * `@container/chatcol` moves here with it: the caption uses the shared
+		 * measure, whose variants are written against this container, and a caption
+		 * that sat outside its own container would simply not see them.
+		 *
+		 * `collapsed` still owns the pane's height, one level down, and the wrapper
+		 * collapses with it so a collapsed pane cannot leave the caption behind as
+		 * a row of its own.
+		 */
 		<div
-			ref={containerRef}
-			data-lo-canonical-transcript={true}
+			className={cn(
+				CHAT_COLUMN_CONTAINER,
+				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
+			)}
+		>
+			{stale && (
+				/*
+				 * Pinned to the pane's top edge, in the flow rather than over it: it
+				 * takes its own row and no row of the conversation is ever painted
+				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
+				 * the same horizontal inset as the scroller's own padding so the two
+				 * share a centre.
+				 */
+				<p
+					className={cn(
+						"shrink-0 px-4 pt-4 text-ink-dim text-meta",
+						CHAT_MEASURE,
+					)}
+				>
+					Showing the last saved view — checking for newer messages.
+				</p>
+			)}
+			<div
+				ref={containerRef}
+				data-lo-canonical-transcript={true}
 			/*
 			 * The transcript is a tab stop, and that is an accessibility fix rather
 			 * than a nicety.
@@ -1300,7 +1345,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				// Reserving the gutter on both edges restores a symmetric content
 				// box: measured in the running app, the centre delta goes 4px -> 0.
 				// `stable` alone would reserve only the right edge and keep it.
-				CHAT_COLUMN_CONTAINER,
 				"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 				collapsed
 					? "h-0 grow-0 overflow-hidden p-0"
@@ -1339,7 +1383,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
 				    The caption above already says the view is not authoritative. */}
-				{transcript.records.length > 0 && !stale && (
+				{transcript.records.length > 0 && !stale && !missing && (
 					<OlderHistorySlot
 						state={slotState}
 						hiddenRows={hidden}
@@ -1583,11 +1627,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    start it -- two empty states for one empty state (design D6).
 				    The composer's version wins because it offers the action; this
 				    one only described the situation. */}
-				{lastRecord && (
+				{/* Gated on `missing` for the same reason as the history slot: the
+				    failure path keeps the cached rows, so an ungated footer left a bare
+				    timestamp floating bottom-right under a state that says this
+				    conversation does not exist here (design review round 1, D2). */}
+				{lastRecord && !missing && (
 					<div className="mt-1 flex justify-end">
 						<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
 					</div>
 				)}
+			</div>
 			</div>
 		</div>
 	);
