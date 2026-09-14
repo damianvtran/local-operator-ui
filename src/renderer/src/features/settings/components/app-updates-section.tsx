@@ -50,6 +50,30 @@ export const AppUpdatesSection: FC = () => {
 
 		const fetchServerVersion = async () => {
 			try {
+				/*
+				 * The version of the daemon that is actually serving, read from MAIN.
+				 *
+				 * This used to be a `/health` fetch made here, from the packaged app's
+				 * `file://` document - which is the divergence the version row was
+				 * reporting in the first place (the app's bundled venv answered while the
+				 * operator's `lop` served). Main reads the daemon it identity-matched,
+				 * sends no Origin, and holds the bearer, so the number here describes the
+				 * daemon the app is actually talking to.
+				 */
+				const bridge = window.api?.backend;
+				if (bridge) {
+					const snapshot = await bridge.getStatus();
+					if (isMounted) {
+						setServerVersion(
+							snapshot.state === "detached"
+								? "Unavailable"
+								: snapshot.version || "Unknown (update required)",
+						);
+					}
+					return;
+				}
+				// No desktop bridge (Storybook, browser dev server): the direct probe,
+				// which is the weaker answer this row used to rely on everywhere.
 				const healthResponse: HealthCheckResponse = await HealthApi.healthCheck(
 					apiConfig.baseUrl,
 				);

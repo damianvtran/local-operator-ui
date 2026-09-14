@@ -7,9 +7,10 @@
  */
 
 import { HealthApi } from "@shared/api/local-operator/health-api";
-import { apiConfig } from "@shared/config";
-import { useQuery } from "@tanstack/react-query";
+import { apiConfig, setDiscoveredBackendUrl } from "@shared/config";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { isServerReachable } from "../../../../shared/backend-status";
 import { useConfig } from "./use-config";
 
 /**
@@ -25,13 +26,53 @@ export const internetConnectivityQueryKey = ["internet-connectivity"];
 /**
  * Hook for checking if the server is online
  *
+ * The answer comes from the MAIN process (`window.api.backend`), not from a
+ * fetch made here. The renderer used to read `/health` itself, from the
+ * packaged app's `file://` document, which made a CORS decision - and, on a
+ * claimed daemon, the origin allowlist - into a liveness signal: a change in
+ * the backend's origin handling reported a healthy server as down, which is the
+ * failure the daemon-discovery change exists to remove. Main sends no Origin
+ * and holds the bearer, and it is the only process that knows whether the
+ * daemon it attached to is still the daemon it attached to.
+ *
+ * A push subscription invalidates this query, so a state change is reflected
+ * immediately instead of at the next poll; the interval stays as the safety net.
+ *
+ * The direct probe is kept as the FALLBACK for hosts with no desktop bridge
+ * (Storybook, the browser dev server). It is a weaker answer - it cannot tell a
+ * gated route from a dead server - and it is only reachable where there is no
+ * main process to ask.
+ *
  * @param refetchInterval - Interval in milliseconds to refetch health status (default: 5000 - 5 seconds)
  * @returns Query result with server health status
  */
 export const useServerHealth = (refetchInterval = 5000) => {
+	const queryClient = useQueryClient();
+
+	useEffect(() => {
+		const subscribe = window.api?.backend?.onStatusChange;
+		if (!subscribe) return;
+		return subscribe((snapshot) => {
+			// Keep every direct renderer client on the daemon main is attached to:
+			// discovery may have moved the app off the configured origin (that is
+			// the point), and a renderer still dialling the old port would be a
+			// second client of a second server.
+			setDiscoveredBackendUrl(snapshot.url);
+			void queryClient.invalidateQueries({ queryKey: serverHealthQueryKey });
+		});
+	}, [queryClient]);
+
 	return useQuery({
 		queryKey: serverHealthQueryKey,
 		queryFn: async () => {
+			const bridge = window.api?.backend;
+			if (bridge) {
+				const snapshot = await bridge.getStatus();
+				setDiscoveredBackendUrl(snapshot.url);
+				// `degraded` is still a connection: one or two missed probes on a
+				// daemon that is there. Only `detached` is offline.
+				return isServerReachable(snapshot.state);
+			}
 			try {
 				await HealthApi.healthCheck(apiConfig.baseUrl);
 				return true; // Server is online
