@@ -25,6 +25,7 @@ import type { BackendServiceManager } from "./backend/backend-service";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { managedVenvPath, venvInterpreter } from "./backend/venv-paths";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
 	type BytecodeHealResult,
@@ -1400,8 +1401,40 @@ export class UpdateService {
 	/** Inspect only the app this process runs from. An unpackaged instance must
 	 * never traverse, heal, seal or otherwise mutate another installed bundle. */
 	private async repairReachableBundleSeals(): Promise<void> {
+		this.reportLegacyVenvInterpreters();
 		const running = this.runningBundlePath();
 		if (running) await this.repairRunningBundleSeal(running);
+	}
+
+	/**
+	 * Say what the pre-split environments resolve to, and change nothing.
+	 *
+	 * An install from before this change has a venv whose `pyvenv.cfg` `home` is
+	 * inside an `.app`, and one whose bundle is already gone is a state this
+	 * machine has actually been in. Both are reported because they explain the log
+	 * a support conversation reads - "this venv belongs to a bundle that is not
+	 * here any more" and "this venv is still built on the installed app's
+	 * interpreter" are different facts, and silence makes them look like the same
+	 * healthy one. Neither is repaired: those environments are left byte-identical,
+	 * deliberately, so a rollback to an older build still finds what it built.
+	 */
+	private reportLegacyVenvInterpreters(): void {
+		for (const packaged of [true, false]) {
+			const venv = managedVenvPath({
+				platform: process.platform,
+				home: app.getPath("home"),
+				appDataPath: app.getPath("userData"),
+				packaged,
+			});
+			const resolution = venvInterpreter(venv);
+			if (resolution.kind === "none") continue;
+			logger.info(
+				resolution.kind === "missing"
+					? `The pre-split environment at ${venv} names an interpreter bundle that is not on disk (${resolution.bundle}); it is left exactly as it is.`
+					: `The pre-split environment at ${venv} is built on the interpreter inside ${resolution.bundle}; it is left exactly as it is, and this instance does not use it.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
 	}
 
 	/**
