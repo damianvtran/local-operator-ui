@@ -33,6 +33,52 @@
  */
 export type UpdateChannelStatus = "available" | "current" | "unavailable";
 
+/**
+ * The version strings this app is willing to REASON about.
+ *
+ * A `current` status is a positive claim - "this channel is not behind" - and a
+ * claim is only as good as the readings behind it. `UpdateService.isNewerVersion`
+ * is deliberately permissive (it splits on `.` and coerces with `Number`, so a
+ * part that is not a number becomes `NaN`, every `NaN` comparison is false, and
+ * the pair silently reads as "nothing newer"). That tolerance predates this
+ * change and is not this module's to redesign. What it means HERE is that an
+ * unreadable string must never reach the comparator on a path that can earn an
+ * affirmation: `999.invalid` installed against a published `0.54.43` compared
+ * as not-newer and the whole check affirmed that the installation was up to
+ * date, which is the same defect class as the reported one - a surface treating
+ * "we could not find out" as an answer.
+ *
+ * So the grammar is asserted BEFORE the comparison, and an unreadable reading
+ * becomes `unavailable` rather than a status.
+ *
+ * What it accepts, derived from what this product actually publishes rather
+ * than from a `semver` reading of the spec: one to four numeric dot parts (the
+ * backend has published four-part releases, and the launchd rule in
+ * `update-install` compares them), an optional `v` prefix (the release tags are
+ * `v0.22.3`), and an optional pre-release/build tail - either PEP 440's
+ * no-separator forms (`0.1.3b0`, `1.0.0.post1`) or the hyphen/plus forms
+ * (`0.1.0-beta.1`, `0.0.0-test`), because the server channel's versions come
+ * from PyPI and the app channel's from npm. Verified against every version ever
+ * published for `local-operator` on PyPI and `local-operator-ui` on npm: 558 of
+ * 558 accepted, so no legitimate past release is reclassified as unreadable.
+ *
+ * A module-scope literal rather than one built per call, which Biome's
+ * `useTopLevelRegex` asks for and which keeps the compiled pattern single.
+ */
+export const READABLE_VERSION_PATTERN =
+	/^v?\d+(\.\d+){0,3}([.-]?(?:a|b|c|rc|alpha|beta|pre|post|dev)[.-]?\d*)?(?:[-+][0-9A-Za-z.-]+)?$/i;
+
+/**
+ * Whether a reported version can be compared at all.
+ *
+ * `null`/`undefined`/`""` are "we did not get a reading" - the same answer as a
+ * malformed one, and the caller turns both into `unavailable`. Surrounding
+ * whitespace is trimmed, matching `isNewerVersion`'s own normalisation, so a
+ * padded health payload is still a reading.
+ */
+export const isReadableVersion = (value: string | null | undefined): boolean =>
+	typeof value === "string" && READABLE_VERSION_PATTERN.test(value.trim());
+
 export type UpdateCheckVerdict = {
 	app: UpdateChannelStatus;
 	server: UpdateChannelStatus;

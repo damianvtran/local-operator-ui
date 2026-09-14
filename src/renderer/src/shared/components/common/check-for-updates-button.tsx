@@ -6,7 +6,7 @@ import {
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Component that shows a button to manually check for updates.
@@ -55,6 +55,83 @@ export const CheckForUpdatesButton = () => {
 	 */
 	const manualCheckRef = useRef(false);
 
+	/**
+	 * Whether the message on screen right now is the whole-check affirmation.
+	 *
+	 * Q1 (QA round 1): the affirmation is a claim about the WHOLE installation at
+	 * one moment, and nothing ever took it back. A check that earned it left the
+	 * green sentence up for its six seconds regardless of what happened next, so
+	 * the NEXT check - finding a server release to offer - put the offer panel and
+	 * "The application and server are up to date" on screen together: the same
+	 * contradiction as the reported defect, one step later. Reading the verdict's
+	 * `affirmation` while never invalidating its predecessor is what makes this a
+	 * lifetime question rather than a copy question, so the lifetime lives in a
+	 * ref: it is read inside callbacks and subscriptions that must not be
+	 * re-created when it changes, and it must be readable synchronously by the
+	 * next check, which the check's own `seq` guard below depends on.
+	 */
+	const showingAffirmationRef = useRef(false);
+
+	/**
+	 * Which check this component is currently answering.
+	 *
+	 * A check's verdict is only allowed to paint if it is still the newest check
+	 * by the time it resolves. `checking` disables the button, but a background
+	 * check's offer can land while a manual one is in flight, and a slow first
+	 * check can resolve after a second one has already run - and an older
+	 * affirmation arriving last would reintroduce exactly the stale claim the
+	 * invalidation above removes. Counting check STARTS is what makes "newest"
+	 * an order rather than a guess, and the counter is compared, never reset, so
+	 * an out-of-order resolve cannot be mistaken for the current one.
+	 */
+	const checkSeqRef = useRef(0);
+
+	/**
+	 * Show a message that is NOT the affirmation, retiring any affirmation first.
+	 *
+	 * Every message path goes through here or `showAffirmation` so the ref cannot
+	 * drift from what is on screen: a message that merely replaced the text while
+	 * leaving the ref true would let a later offer CLOSE an error toast it has
+	 * nothing to do with.
+	 */
+	const showMessage = useCallback(
+		(message: string, severity: "success" | "info" | "warning" | "danger") => {
+			showingAffirmationRef.current = false;
+			setSnackbarMessage(message);
+			setSnackbarSeverity(severity);
+			setSnackbarOpen(true);
+		},
+		[],
+	);
+
+	const showAffirmation = useCallback((message: string) => {
+		showingAffirmationRef.current = true;
+		setSnackbarMessage(message);
+		setSnackbarSeverity("success");
+		setSnackbarOpen(true);
+	}, []);
+
+	/**
+	 * Take back a displayed affirmation.
+	 *
+	 * Called from three places that each make the claim false or unproven: the
+	 * start of a new check (its result is not in yet), a check that did not earn
+	 * the sentence, and an offer from either channel arriving outside the manual
+	 * window. An offer is the strongest signal of the three - whatever a previous
+	 * check concluded, there is now something to update - and it is the one the
+	 * original defect turned into a contradiction.
+	 *
+	 * It clears ONLY the affirmation: an info or error message is not a statement
+	 * about whether the installation is current, so an unrelated offer must not
+	 * dismiss it.
+	 */
+	const dismissAffirmation = useCallback(() => {
+		if (!showingAffirmationRef.current) return;
+		showingAffirmationRef.current = false;
+		setSnackbarOpen(false);
+		setSnackbarMessage(null);
+	}, []);
+
 	// Access the deferred updates store to clear deferred updates when manually checking
 	const { clearDeferredUpdate } = useDeferredUpdatesStore();
 
@@ -83,12 +160,18 @@ export const CheckForUpdatesButton = () => {
 							"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
 						command: "",
 					});
+					/*
+					 * The affirmation's TEXT is retired here, not just its severity:
+					 * this path leaves `snackbarOpen` true so the manual panel above can
+					 * show, and a stored success message would then be re-rendered as a
+					 * warning - the up-to-date sentence in warning ink.
+					 */
+					showingAffirmationRef.current = false;
+					setSnackbarMessage(null);
 					setSnackbarSeverity("warning");
 					setSnackbarOpen(true);
 				} else if (!isSuppressed) {
-					setSnackbarMessage(message);
-					setSnackbarSeverity("danger");
-					setSnackbarOpen(true);
+					showMessage(message, "danger");
 				}
 			},
 		);
@@ -110,16 +193,38 @@ export const CheckForUpdatesButton = () => {
 		const removeBackendUpdateDevModeListener =
 			window.api.updater.onBackendUpdateDevMode((message) => {
 				if (!manualCheckRef.current) return;
-				setSnackbarMessage(message);
-				setSnackbarSeverity("info");
-				setSnackbarOpen(true);
+				showMessage(message, "info");
 			});
+
+		/*
+		 * An offer from ANY channel retires the affirmation, whether the check that
+		 * raised it was the user's or the periodic one. These events carry no
+		 * "manual" marker and do not need one: `available` on either channel makes
+		 * the whole-installation sentence false, which is the one thing that must
+		 * never be on screen beside an offer. The periodic check is exactly how
+		 * QA reproduced the second half of Q1 - a background `{silent:true}` server
+		 * check emits `backend-update-available` with no button involved at all.
+		 *
+		 * The three channels are listed separately because they are three events:
+		 * a future fourth channel must add itself here rather than inherit a rule
+		 * nobody stated.
+		 */
+		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
+			() => dismissAffirmation(),
+		);
+		const removeNpxUpdateAvailableListener =
+			window.api.updater.onUpdateNpxAvailable(() => dismissAffirmation());
+		const removeBackendUpdateAvailableListener =
+			window.api.updater.onBackendUpdateAvailable(() => dismissAffirmation());
 
 		return () => {
 			removeUpdateErrorListener();
 			removeBackendUpdateDevModeListener();
+			removeUpdateAvailableListener();
+			removeNpxUpdateAvailableListener();
+			removeBackendUpdateAvailableListener();
 		};
-	}, []);
+	}, [dismissAffirmation, showMessage]);
 
 	// The durable record of the last failed install: read on mount, and re-read
 	// when this start turns out to have one.
@@ -146,13 +251,22 @@ export const CheckForUpdatesButton = () => {
 	// Check for updates
 	const checkForUpdates = async () => {
 		if (isDevelopmentMode()) {
-			setSnackbarMessage(
+			showMessage(
 				"Updates are not checked in development mode. This feature is only available in production builds.",
+				"info",
 			);
-			setSnackbarSeverity("info");
-			setSnackbarOpen(true);
 			return;
 		}
+
+		/*
+		 * Claim this check's order BEFORE the await, and take the previous verdict
+		 * back in the same breath: from here on, nothing the last check concluded is
+		 * still known to be true. A check that earned the sentence and is followed
+		 * by one that offers an update must not leave both on screen - which is the
+		 * reported contradiction, reproduced one check later.
+		 */
+		const seq = ++checkSeqRef.current;
+		dismissAffirmation();
 		try {
 			setChecking(true);
 			manualCheckRef.current = true;
@@ -177,25 +291,44 @@ export const CheckForUpdatesButton = () => {
 				manual: true,
 			});
 
+			// A superseded check paints nothing, in either direction: the newer
+			// check owns the screen, and its own outcome has already been applied.
+			if (seq !== checkSeqRef.current) return;
+
 			if (result?.affirmation) {
-				setSnackbarMessage(result.affirmation);
-				setSnackbarSeverity("success");
-				setSnackbarOpen(true);
+				showAffirmation(result.affirmation);
+			} else {
+				/*
+				 * A check that did not earn the sentence retires the one before it.
+				 * It is redundant with the dismissal at the top of this function when
+				 * the check ran once, and it is NOT redundant in the case that matters:
+				 * the verdict is read through the same `seq` gate, so a check whose
+				 * predecessor resolved late - after this check started and stopped - is
+				 * the one case where the start-of-check dismissal could have been
+				 * undone by an older verdict, and taking the affirmation back here
+				 * closes it.
+				 */
+				dismissAffirmation();
 			}
 
 			// The UpdateNotification component handles the panels an available
 			// update puts on screen; this component owns the manual check's own
 			// confirmation and error messages.
 		} catch (error) {
-			setSnackbarMessage(
+			if (seq !== checkSeqRef.current) return;
+			showMessage(
 				`Error checking for updates: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
+				"danger",
 			);
-			setSnackbarSeverity("danger");
-			setSnackbarOpen(true);
 		} finally {
-			setChecking(false);
+			/*
+			 * Only the newest check owns the button's busy state: a slow earlier one
+			 * finishing late must not re-enable the control in the middle of the
+			 * check the user can see running.
+			 */
+			if (seq === checkSeqRef.current) setChecking(false);
 			// Reset manual check flag after a short delay to allow event handlers to fire
 			setTimeout(() => {
 				manualCheckRef.current = false;
@@ -205,6 +338,9 @@ export const CheckForUpdatesButton = () => {
 
 	// Handle snackbar close
 	const handleSnackbarClose = () => {
+		// Dismissal by the user or by the timer is also the end of the claim: a
+		// later offer must not try to take back something nobody is showing.
+		showingAffirmationRef.current = false;
 		setSnackbarOpen(false);
 		setSnackbarMessage(null);
 	};
