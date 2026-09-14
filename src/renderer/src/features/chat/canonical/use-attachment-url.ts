@@ -66,13 +66,6 @@ export type AttachmentScope = {
 };
 
 /**
- * digest -> { url, refs }. Module-level because the point is to survive a row
- * unmounting: two rows showing the same screenshot, and the same row scrolled
- * out and back, must not each pay a round trip.
- */
-const cache = new Map<string, { url: string; refs: number }>();
-
-/**
  * Digests whose fetch is in flight, so N mounts make one request.
  *
  * The value carries `holders` alongside the promise because the RESULT needs an

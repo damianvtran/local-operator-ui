@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot, FileText } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useEffect, useRef } from "react";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
 
@@ -30,6 +30,16 @@ type ChatHeaderProps = {
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
 	/**
+	 * How many files the conversation has been seen to mention.
+	 *
+	 * The header carries it because it is the only surface visible before the
+	 * canvas is ever opened: with 32 files on screen-worth of conversation the
+	 * feature used to announce itself nowhere, so a user had to already know the
+	 * canvas existed to find them. Not "unseen" - there is no read receipt here -
+	 * just "this conversation has files".
+	 */
+	fileCount?: number;
+	/**
 	 * The session's configured MCP servers, for the trigger's attention dot.
 	 *
 	 * Threaded through the header rather than fetched inside the trigger for the
@@ -56,6 +66,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	description = "Your on-device AI assistant",
 	onOpenOptions,
 	runDetails = null,
+	fileCount = 0,
 	mcpServers = [],
 	listOnScreen = false,
 	readerChildId = null,
