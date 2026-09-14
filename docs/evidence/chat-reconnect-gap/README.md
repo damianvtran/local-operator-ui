@@ -97,13 +97,20 @@ The reconcile reads back at most `RECONCILE_WALK_MAX_ROWS` (500) durable rows,
 walking backwards a page at a time until a fetched page overlaps a row the
 snapshot painted. That walk is the shape for the case where SOMETHING was
 painted: with nothing on screen no fetched page can ever overlap, so the read
-stops after the single page its own snapshot justified — the cold or cursor-less
-snapshot, an attention frame naming an unpainted anchor, and a label-gap retry
-all take that branch, and the rule lives in `reconcileTail`'s docstring with a
-test per path. An absence wider than the bound cannot be closed through this
-route, which has no forward cursor — the complete answer for a very wide
-absence is a snapshot whose page is not bounded by a stale cursor, which is the
-backend half of this defect and is being fixed separately.
+stops after the single page its own snapshot justified. Three batches reach that
+state — a cold or cursor-less snapshot, an attention frame naming an unpainted
+anchor, and a label-gap retry whose seed paints no message id — and the rule
+lives in `reconcileTail`'s docstring. **Two of the three are asserted**
+(`reconnect-page-gap.test.mjs`: the attention anchor and the cold snapshot, each
+on a transcript long enough for a walk to reach its bound); the label-gap
+variant is not driven by a test, because the guard it would exercise is the same
+one those two cover — the branch keys on the painted set, not on which frame
+asked — and the test file says so where it lists them.
+
+An absence wider than the bound cannot be closed through this route, which has no
+forward cursor — the complete answer for a very wide absence is a snapshot whose
+page is not bounded by a stale cursor, which is the backend half of this defect
+and is being fixed separately.
 
 The read is one shot at snapshot time, so a row that becomes durable *after* the
 read and whose live event was missed while away is recovered by a later trigger
