@@ -435,6 +435,29 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: "inkDim",
 	},
+	/*
+	 * The panel share meter's fill, drawn inside the same `border-control` track
+	 * `/usage` uses (its geometry is a port of that meter, one primitive instead
+	 * of one per panel). It is a fill that carries meaning — the length IS the
+	 * datum — so it sits on the graphic-object floor rather than being read as
+	 * decoration.
+	 */
+	{
+		name: "panel proportion fill (accent)",
+		on: ["sunken"],
+		fg: "accent",
+	},
+	/*
+	 * The one chart hue. The frame draws bars on the panel's own ground (a chart
+	 * is a region, not a card), and `accent` is the only series colour the design
+	 * permits: a second series colour would need a semantic the contract has no
+	 * row for, which is why breakdowns are many rows of single-hue bars.
+	 */
+	{
+		name: "panel chart bar (accent)",
+		on: ["surface"],
+		fg: "accent",
+	},
 ];
 
 /**

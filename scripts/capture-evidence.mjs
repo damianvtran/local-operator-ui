@@ -570,6 +570,88 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/*
+	 * The five read-only diagnostic panels (`/analytics`, `/session`, `/info`,
+	 * `/context`, `/failovers`).
+	 *
+	 * One viewport family, because the panel shell is one geometry: `max-w-5xl`
+	 * (1024px) plus the scrim, so 1140 is the narrowest viewport in which the
+	 * dialog is its own shipped width rather than a responsive fallback. The
+	 * heights are sized PER STATE, and that is the same call `/usage`'s states
+	 * make: at a fixed 1100 tall, `empty`, `loading` and `gated` are mostly scrim
+	 * and cross `check-evidence`'s uniformity ceiling, which is that guard
+	 * working rather than a frame to argue with. `dense` is the one frame that
+	 * has to overhang: it exists to show the fold rule and the 20px fade over a
+	 * body that really does continue.
+	 *
+	 * `narrow` is 720 for the reason `/usage`'s is: the picker host is
+	 * portal-rendered and viewport-fixed, so the VIEWPORT is the only thing that
+	 * can produce the narrow layout. Every other entry is the dialog's own size.
+	 */
+	["panels-analytics--populated", 1140, 980],
+	["panels-analytics--refreshing", 1140, 980],
+	["panels-analytics--thirty-days", 1140, 1020],
+	["panels-analytics--this-session-only", 1140, 980],
+	["panels-analytics--unpriced", 1140, 980],
+	["panels-analytics--partial-cost", 1140, 980],
+	["panels-analytics--no-daily-rows", 1140, 980],
+	["panels-analytics--unnamed-sessions", 1140, 980],
+	["panels-analytics--empty", 1140, 460],
+	["panels-analytics--loading", 1140, 460],
+	["panels-analytics--unavailable", 1140, 400],
+	["panels-analytics--dense", 1140, 1100],
+	["panels-analytics--narrow", 720, 980],
+
+	["panels-session--populated", 1140, 1000],
+	["panels-session--tree-cost", 1140, 1000],
+	["panels-session--tree-cost-unmeasured", 1140, 1000],
+	["panels-session--no-tool-calls", 1140, 1000],
+	["panels-session--zero-samples", 1140, 1000],
+	["panels-session--unpriced", 1140, 1000],
+	["panels-session--empty", 1140, 520],
+	["panels-session--unavailable", 1140, 400],
+	["panels-session--loading", 1140, 460],
+	["panels-session--gated", 1140, 400],
+	["panels-session--dense", 1140, 1150],
+	["panels-session--narrow", 720, 1000],
+
+	["panels-info--populated", 1140, 1040],
+	["panels-info--behind", 1140, 1040],
+	["panels-info--never-checked", 1140, 1040],
+	["panels-info--build-skew", 1140, 1040],
+	["panels-info--roster-unread", 1140, 1040],
+	["panels-info--no-memory", 1140, 1040],
+	["panels-info--registry-unavailable", 1140, 1040],
+	["panels-info--nothing-read", 1140, 1040],
+	["panels-info--remote-host", 1140, 1040],
+	["panels-info--mcp-settling", 1140, 1040],
+	["panels-info--many-sessions", 1140, 1100],
+	["panels-info--dense", 1140, 1100],
+	["panels-info--unavailable", 1140, 760],
+	["panels-info--loading", 1140, 460],
+	["panels-info--gated", 1140, 400],
+	["panels-info--narrow", 720, 1040],
+
+	["panels-context--populated", 1140, 640],
+	["panels-context--no-numbers", 1140, 640],
+	["panels-context--frontend-unmeasured", 1140, 640],
+	["panels-context--estimated", 1140, 640],
+	["panels-context--dense", 1140, 700],
+	["panels-context--breakdown-unavailable", 1140, 520],
+	["panels-context--empty", 1140, 460],
+	["panels-context--loading", 1140, 400],
+	["panels-context--unavailable", 1140, 400],
+	["panels-context--narrow", 720, 640],
+
+	["panels-failovers--populated", 1140, 580],
+	["panels-failovers--failover-in-force", 1140, 580],
+	["panels-failovers--empty-chain", 1140, 620],
+	["panels-failovers--no-chains", 1140, 500],
+	["panels-failovers--empty", 1140, 500],
+	["panels-failovers--dense", 1140, 700],
+	["panels-failovers--loading", 1140, 400],
+	["panels-failovers--unavailable", 1140, 400],
+	["panels-failovers--narrow", 720, 580],
 ];
 
 /**
