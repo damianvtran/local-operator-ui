@@ -54,6 +54,16 @@ import { build } from "esbuild";
 
 const HOME = mkdtempSync(join(tmpdir(), "session-stream-token-"));
 
+/*
+ * Discovery reads the rendezvous records under the config root, and the
+ * operator's machine has one daemon record per process they have run there. A
+ * test that read that directory would attach to (or reap) a real daemon's
+ * record, so the root is isolated here: no records means discovery finds
+ * nothing and the manager takes the deprecated pre-record path, which is the
+ * path these four cases were written against.
+ */
+process.env.LOCAL_OPERATOR_CONFIG_DIR = HOME;
+
 /**
  * The fixture's state, shared with the bundled module.
  *
@@ -81,7 +91,7 @@ globalThis.__backendTestState = state;
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL, streamFailureNotice } from "./src/shared/desktop-stream-notice.ts";',
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL, streamFailureNotice } from "./src/shared/desktop-stream-notice.ts"; export { DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -165,8 +175,19 @@ const bundle = await build({
  const onceOnly = new Map();
  const listeners = new Map([["persistent", persistent], ["once", onceOnly]]);
 										return {
-											pid: 4242,
- exitCode: null, signalCode: null,
+											/*
+											 * A pid that is genuinely ALIVE, because the manager
+											 * checks liveness before it probes: a fixed pretend pid
+											 * (4242) is usually nobody, and the manager would read
+											 * that as "the daemon's process is gone" and detach on
+											 * every tick - the fixture would be testing its own
+											 * honesty about pids rather than the watchdog.
+											 */
+											pid: process.pid,
+											// Real ChildProcess fields stay null until exit; undefined
+											// would model a malformed fixture rather than a live child.
+											exitCode: null,
+											signalCode: null,
 											stdout: null,
 											stderr: null,
 											killed: [],
@@ -385,6 +406,7 @@ const {
 	DesktopStreamRelay,
 	DESKTOP_STREAM_DETAIL,
 	streamFailureNotice,
+	DEGRADED_AFTER_FAILURES,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -501,11 +523,16 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 		let samples = 0;
 		manager.checkHealth = async () => {
 			samples += 1;
-			return samples === 1 ? false : realCheckHealth();
+			return samples <= DEGRADED_AFTER_FAILURES ? false : realCheckHealth();
 		};
 
 		const execsBefore = state.execs.length;
-		await manager.checkUnhealthyBackend();
+		// Three failing probes: the threshold before the state is `detached` and
+		// recovery is allowed to act. One sample is `degraded`, which never
+		// restarts anything - that is the point of the change.
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			await manager.checkBackendHealth();
+		}
 
 		assert.deepEqual(
 			stopIntents,
@@ -639,13 +666,43 @@ test("adoption never probes an origin other than the one the app was configured 
 		/localhost:1111|altUrl/,
 		"no hardcoded fallback origin: a configured rig must never adopt a server on a different port",
 	);
-	// The configured origin is the only one the adoption path names.
+	/*
+	 * The configured origin is the only address the adoption path may DIAL
+	 * without a record to answer for it, and even there it must prove the
+	 * daemon is the one a record described. Adoption is: enumerate the records,
+	 * require `/health` to report the record's own `instance_id`, require a
+	 * bearer the daemon accepts, and only then rotate onto it.
+	 */
 	const adoption = source.slice(
-		source.indexOf("async checkExistingBackend"),
-		source.indexOf("async start("),
+		source.indexOf("async discoverAndAttach"),
+		source.indexOf("private async authenticatesAgainst("),
 	);
-	assert.match(adoption, /\$\{this\.backendUrl\}\/health/);
-	assert.doesNotMatch(adoption, /https?:\/\/[a-z0-9.:]+/i);
+	assert.match(
+		adoption,
+		/probe|discoverDaemons/,
+		"adoption must go through discovery, never a fetch of its own",
+	);
+	assert.doesNotMatch(
+		adoption,
+		/fetch\(/,
+		"the adoption path must not fetch an origin directly: identity comes from the record, through the probe",
+	);
+	assert.doesNotMatch(adoption, /https?:\/\/[a-z0-9.:]+/i, "no literal origin to fall back to");
+	// The identity half of the rule, from the module that owns it.
+	const discoverySource = await readFile(
+		new URL("../src/main/backend/discovery.ts", import.meta.url),
+		"utf8",
+	);
+	assert.match(
+		discoverySource,
+		/identity\.instanceId !== expectedInstanceId/,
+		"a 200 is not identification: the answering instance must BE the recorded one",
+	);
+	assert.match(
+		discoverySource,
+		/process\.kill\(pid, 0\)/,
+		"pid liveness is checked before any probe, so a dead daemon is never dialled",
+	);
 });
 
 /*
@@ -678,7 +735,11 @@ test("a backend child that exited is restored by the watchdog (Q-2)", async () =
 		);
 
 		const spawnsBefore = state.spawns.length;
-		await manager.checkUnhealthyBackend();
+		// The detach threshold, then the recovery it authorises: three failed
+		// probes, not one.
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			await manager.checkBackendHealth();
+		}
 
 		assert.equal(
 			state.spawns.length,
