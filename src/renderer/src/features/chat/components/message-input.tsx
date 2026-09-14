@@ -4,6 +4,7 @@ import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { useMediaQuery } from "@shared/hooks/use-media-query";
 import {
 	SEND_HELD,
 	type SendOutcome,
@@ -303,6 +304,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * agent record is the fallback so the old backend path keeps its chip.
 		 */
 		const cwdToShow = cwd ?? agentData?.current_working_directory;
+		/*
+		 * Reduced motion turns the loading skeleton into a static bar: the pulse is
+		 * capped by `styles/index.css`, and the bar's resting fill against the
+		 * ground measures ~1.05:1 (design round 1, D7) - in an otherwise empty pane
+		 * that is very nearly nothing. The words below already exist in the
+		 * accessible tree; this reads the same media query the stylesheet honours so
+		 * they can carry the message when the animation cannot. Read in JS rather
+		 * than through `motion-reduce:` because the decision is which CLASS the text
+		 * gets, and a `sr-only`/`not-sr-only` pair in one `cn` call is exactly the
+		 * kind of collision this repo routes through `cn` to avoid.
+		 */
+		const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -1685,7 +1698,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							aria-label="Loading conversation"
 						>
 							<Skeleton className="h-7 w-64" />
-							<span className="sr-only">Loading conversation…</span>
+							<span
+								className={cn(
+									reduceMotion ? "text-body-sm text-ink-dim" : "sr-only",
+								)}
+							>
+								Loading conversation…
+							</span>
 						</output>
 						{inputContent}
 					</div>

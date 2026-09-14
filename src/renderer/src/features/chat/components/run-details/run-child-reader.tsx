@@ -539,7 +539,18 @@ export const RunChildReader = ({
 						 */
 						isSmallView={false}
 						status="live"
-						error={null}
+						failure={null}
+						/*
+						 * A child page has no session handle to re-arm: its read is the
+						 * child-scoped route, re-run when the child next beats (`pulse`),
+						 * and `useChildTranscript` exposes no reconnect of its own. The
+						 * prop is required by `CanonicalTranscript` so the live chat
+						 * surface can never paint a notice without its action; this
+						 * reader paints no notice (`failure` is null and its own
+						 * unavailable states are rendered by the page's foot), so the
+						 * handler is unreachable rather than an inert control.
+						 */
+						onReconnect={() => {}}
 						attachmentScope={attachmentScope}
 					/>
 				)}

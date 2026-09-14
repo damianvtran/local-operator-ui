@@ -55,6 +55,11 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
+import {
+	HISTORY_UNREADABLE,
+	type SessionFailureNotice,
+	streamFailureNotice,
+} from "../../../../shared/desktop-stream-notice";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
@@ -84,14 +89,31 @@ export type CanonicalSessionView = {
 	history: DesktopHistoryPage | null;
 	cold: boolean;
 	subscriptionId: string | null;
+	/**
+	 * Whether this session's durable history has been PROVEN loaded.
+	 *
+	 * The difference between "this conversation is empty" and "we do not know
+	 * yet", which the UI cannot otherwise tell apart: an empty record list looks
+	 * identical either way, and the app asserted the greeting over conversations
+	 * whose hundreds of rows had simply not arrived. True only when an
+	 * authoritative page has been applied for this session (a snapshot that
+	 * carried one, or a settled `/history` reconcile), false for everything else
+	 * - including a stream that failed, because a failure is not an answer.
+	 */
+	hydrated: boolean;
 	/** Owner frontend epoch — answers to pending gates are addressed by it. */
 	ownerEpoch: string | null;
 	/** HTTP receipt cursor for reconnects (epoch + after_seq). */
 	receipt: { epoch: string; seq: number } | null;
 	/** Terminal event observed for the current turn; clears the wait latch. */
 	terminal: string | null;
-	/** Set on an unrecoverable stream failure. */
-	error: string | null;
+	/**
+	 * Set on an unrecoverable stream failure: the ONE sentence the reader sees,
+	 * and the one action that helps. A structured notice rather than a transport
+	 * `detail` string, because the two transports name the same failure in
+	 * different words and neither belongs on screen (design round 1, D1).
+	 */
+	failure: SessionFailureNotice | null;
 	/** The painted conversation, durable and live, oldest first. */
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
@@ -151,6 +173,17 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * command's answer lands where the user typed it.
 	 */
 	addNote: (text: string, level?: "info" | "warning" | "error") => void;
+	/**
+	 * Re-arm this session's stream and history read.
+	 *
+	 * The action behind the failure state's Retry, and the reason that state is
+	 * actionable rather than terminal: the transport failures this hook recovers
+	 * from are almost always a backend being replaced underneath it, so the same
+	 * subscription that just failed is expected to succeed a moment later. Does
+	 * nothing when the session has no stream owner (a different session was
+	 * opened, or this one unmounted).
+	 */
+	retry: () => void;
 };
 
 const TERMINAL_EVENTS = new Set([
@@ -172,6 +205,52 @@ const TERMINAL_EVENTS = new Set([
  * the present that stops being true the moment the wait it describes is over.
  */
 const PENDING_MODEL_TIMEOUT_MS = 15_000;
+
+/**
+ * How many times a stream that cannot be (re)established is retried, and the
+ * delay before each one.
+ *
+ * WHY a schedule this wide, when the previous code retried ONCE. The failure
+ * this replaces was a desktop token rotation during an IN-PLACE backend
+ * restart: the relay is rebuilt by main, so a retry is the entire recovery -
+ * but the old code only retried when it already held a receipt cursor, and a
+ * stream that never opened has none, so the consumer sat at "connecting"
+ * forever and the only cure was restarting the app.
+ *
+ * The budget has to outlast the restart it is racing. `restart()` disposes the
+ * old relay, waits up to 10s for the process to exit, sleeps 2s, and only then
+ * starts a backend that reports healthy after another ~1-4s, so the stream can
+ * be refused for ~12-16s. These six delays sum to 23.5s plus per-attempt
+ * latency, which covers it with room to spare; they are capped at 8s so the
+ * last probes do not walk out to a minute. Exhausting them is not a silent
+ * stop: the view lands on `unavailable` with the reason and a Retry the user
+ * can press.
+ */
+const STREAM_RETRY_DELAYS_MS = [500, 1000, 2000, 4000, 8000, 8000];
+const STREAM_MAX_ATTEMPTS = STREAM_RETRY_DELAYS_MS.length;
+
+/**
+ * Delay before retry number `attempt` (1-based). Past the end of the schedule
+ * the last delay repeats, so a caller that counts wrong cannot wait forever.
+ */
+export function streamRetryDelayMs(attempt: number): number {
+	const index = Math.max(1, Math.min(attempt, STREAM_RETRY_DELAYS_MS.length));
+	return STREAM_RETRY_DELAYS_MS[index - 1] ?? 8000;
+}
+
+/**
+ * How many times a failed `/history` reconcile is retried before it is
+ * surfaced.
+ *
+ * A failed reconcile is survivable while durable rows are painted - they stay
+ * correct - which is why the old code discarded the rejection. It is NOT
+ * survivable on an empty transcript: that is precisely the case where the
+ * history read is the only thing that can tell an empty conversation from one
+ * whose rows are still in flight, and the read failing left the app asserting
+ * "empty" over a conversation with hundreds of rows. So the retry is bounded
+ * and its failure is published rather than swallowed.
+ */
+const HISTORY_RECONCILE_ATTEMPTS = 3;
 
 /** Flush cadence when no animation frame arrives (hidden window). */
 const HIDDEN_FLUSH_MS = 250;
@@ -474,7 +553,7 @@ export function useCanonicalSessionStream(
 		ownerEpoch: null,
 		receipt: null,
 		terminal: null,
-		error: null,
+		failure: null,
 		/*
 		 * SEEDED, and only here. A panel mounted while its own echo is already
 		 * buffered must paint that echo in its FIRST frame: on the New-chat path
@@ -491,6 +570,19 @@ export function useCanonicalSessionStream(
 		// No child has been heard from yet: the snapshot that follows seeds the
 		// counter from its own `live_events`.
 		subagentPulses: {},
+		/*
+		 * NOT hydrated, even when the initial transcript above was seeded from a
+		 * pending echo. The two are different claims: an echo is this renderer's own
+		 * optimistic paint of a message it just sent, while `hydrated` means an
+		 * AUTHORITATIVE page for this session has been applied. A seeded echo is
+		 * therefore no evidence at all about whether the conversation is empty - it
+		 * is evidence that we sent something - and the panel still waits for the
+		 * snapshot or the `/history` reconcile before the composer may say the
+		 * conversation has nothing in it. (#118's seeding does not need hydration for
+		 * what it is for: the echo makes `transcript.records` non-empty on the first
+		 * frame, which is what suppresses the greeting and paints the message.)
+		 */
+		hydrated: false,
 	}));
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
@@ -517,14 +609,42 @@ export function useCanonicalSessionStream(
 	const labelGapRef = useRef<Map<string, number>>(new Map());
 	const receiptRef = useRef<{ epoch: string; seq: number } | null>(null);
 	const reconnectRef = useRef<{ epoch?: string; afterSeq?: number }>({});
+	/**
+	 * The user-visible Retry, owned by the effect that holds the stream.
+	 *
+	 * A ref rather than a callback returned from the effect because the action
+	 * has to be reachable from the published view while the effect stays the
+	 * only thing that opens a subscription: the handle's `retry` reads this at
+	 * call time, so it always names the CURRENT session's recovery or nothing at
+	 * all.
+	 */
+	const retryRef = useRef<(() => void) | null>(null);
 	const generationRef = useRef(0);
 
 	useEffect(() => {
 		if (!sessionId || !enabled) return;
 		const generation = ++generationRef.current;
 		let dispose: (() => void) | null = null;
+		/*
+		 * True while WE are the reason the stream is being torn down.
+		 *
+		 * The two transports disagree about what an `end` means, and this hook has
+		 * to survive both: Electron's relay says nothing when a subscription is
+		 * dropped, while the browser EventSource path emits `end` from its own
+		 * dispose (see `subscribeDesktopStream`). Treated as a failure, that
+		 * self-inflicted `end` consumed a second retry attempt per failure AND
+		 * re-entered `connect()` from inside the teardown - so the budget was spent
+		 * at double rate and two subscriptions raced, which is the opposite of the
+		 * bounded recovery this exists for.
+		 */
+		let closingIntentionally = false;
 		let raf = 0;
 		let fallback = 0;
+		/** Failed connection attempts since the last snapshot; see
+		 * `STREAM_RETRY_DELAYS_MS` for the budget this counts against. */
+		let attempt = 0;
+		let retryTimer = 0;
+		let reconcileTimer = 0;
 
 		/**
 		 * Read the durable tail back and merge it, walking further back until the
@@ -574,10 +694,23 @@ export function useCanonicalSessionStream(
 			generation: number,
 			painted: ReadonlySet<string>,
 			missingCalls: number,
+			/**
+			 * Which attempt this is on the NOTHING-PAINTED failure path below, 1-based so
+			 * it names a delay in `STREAM_RETRY_DELAYS_MS` directly. A parameter rather
+			 * than a local because the retry re-enters this function: a counter inside it
+			 * would reset to the first delay on every re-entry, which is a backoff that
+			 * never backs off. Callers that are not retrying (`flush`, `reopen`) omit it.
+			 */
+			historyAttempt = 1,
 		) => {
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
 			let rows = 0;
+			/**
+			 * The painted path's own budget: one immediate retry, then a quiet stand-down
+			 * (see the failure arm). Counted here rather than passed because this path
+			 * never re-enters the function.
+			 */
 			let failures = 0;
 			while (rows < RECONCILE_WALK_MAX_ROWS) {
 				let page: DesktopHistoryPage;
@@ -590,19 +723,50 @@ export function useCanonicalSessionStream(
 					});
 				} catch {
 					/*
-					 * ONE retry, then stand down. The shape is the stream's own error
-					 * path (`connect`'s single automatic reconnect), and the reason is
-					 * stronger here: this read is the only thing on the client side
-					 * that can close the reported gap, so a transient refusal at the
-					 * exact re-subscribe moment must not leave the symptom on screen
-					 * waiting for an unrelated trigger to arrive. A second failure
-					 * stands down silently, as before this change: the painted rows
-					 * are correct and the stream keeps delivering, and a backend that
-					 * is genuinely down leaves nothing to merge — blanking the
-					 * conversation would be worse than the rows that are missing.
+					 * The failure arm, where this branch's hardening meets #152's walk, and the
+					 * two cases here are not the same case:
+					 *
+					 *  - ROWS ARE PAINTED, the common one. A failed read costs nothing: the
+					 *    rows on screen are correct and the stream keeps delivering, so one
+					 *    immediate retry and then a quiet stand-down, exactly as #152 reasoned
+					 *    it - blanking the conversation would be worse than the rows that are
+					 *    missing.
+					 *  - NOTHING IS PAINTED. This read is the ONLY thing that can tell an empty
+					 *    conversation from one whose rows have not arrived, so a failure here
+					 *    must not be swallowed: it is retried on the stream's own backoff
+					 *    schedule and then PUBLISHED, because a view that claims "empty" over
+					 *    a conversation holding hundreds of rows is the defect this branch is
+					 *    about. It is also the arm that puts `Retry` on screen while a stream
+					 *    retry is still pending. `hydrated` stays false throughout, so the
+					 *    composer cannot offer the greeting while this is being tried.
 					 */
-					if (failures++ > 0) return;
-					continue;
+					if (viewRef.current.transcript.records.length > 0) {
+						if (failures++ > 0) return;
+						continue;
+					}
+					if (historyAttempt < HISTORY_RECONCILE_ATTEMPTS) {
+						reconcileTimer = window.setTimeout(() => {
+							reconcileTimer = 0;
+							if (generationRef.current !== generation) return;
+							void reconcileTail(
+								generation,
+								painted,
+								missingCalls,
+								historyAttempt + 1,
+							);
+						}, streamRetryDelayMs(historyAttempt));
+						return;
+					}
+					// Nothing is painted and nothing could be read: this conversation is
+					// unreachable, and saying so with a way back is the only honest state
+					// left. `hydrated` stays false, so the composer may not claim the
+					// conversation is empty either.
+					setView((state) => ({
+						...state,
+						status: "unavailable",
+						failure: HISTORY_UNREADABLE,
+					}));
+					return;
 				}
 				if (generationRef.current !== generation) return;
 				const oldest = page.entries[0];
@@ -611,6 +775,11 @@ export function useCanonicalSessionStream(
 				// by id, so a repeat is free and a partial one is completed.
 				setView((state) => ({
 					...state,
+					// A page that RESOLVED is the proof hydration was waiting for,
+					// applied-or-empty alike: the backend answered with this session's
+					// durable tail, so the view may now speak about the conversation at
+					// all - which is what lets the composer offer the greeting.
+					hydrated: true,
 					transcript: applyHistoryPage(state.transcript, page),
 				}));
 				// Nothing on screen means nothing to connect TO: every further page
@@ -859,7 +1028,14 @@ export function useCanonicalSessionStream(
 								history: snapshot.history,
 								cold: snapshot.cold,
 								ownerEpoch: snapshot.frontend.epoch,
-								error: null,
+								failure: null,
+								// A page that was APPLIED is proof, and its absence is not: with
+								// `cursor_missing` the snapshot deliberately carries no usable
+								// page, so the answer is still owed to the `/history` reconcile
+								// this batch fires (see `reconcileTail`). `next.hydrated` is
+								// OR-ed in so a later snapshot cannot un-prove what an earlier
+								// page already established.
+								hydrated: next.hydrated || !snapshot.history.cursor_missing,
 								transcript,
 							};
 							snapshotted = true;
@@ -968,6 +1144,26 @@ export function useCanonicalSessionStream(
 			}
 		};
 
+		/**
+		 * Tear the current subscription down, marking it as OUR decision so the
+		 * browser transport's `end` is not mistaken for a dead stream.
+		 */
+		const closeStream = () => {
+			const closing = dispose;
+			dispose = null;
+			if (!closing) return;
+			closingIntentionally = true;
+			// Cleared in `finally`, not left standing: the browser transport emits its
+			// `end` SYNCHRONOUSLY from inside this call, while Electron's says nothing
+			// at all - so a flag that outlived the call would swallow the NEXT real
+			// failure's retry on the native path.
+			try {
+				closing();
+			} finally {
+				closingIntentionally = false;
+			}
+		};
+
 		const connect = () => {
 			dispose = subscribeDesktopStream(
 				{
@@ -977,39 +1173,86 @@ export function useCanonicalSessionStream(
 				},
 				(event) => {
 					if (generationRef.current !== generation) return;
-					if (event.kind === "end") return;
-					if (event.kind === "error") {
-						// One automatic reconnect with the retained receipt cursor; a
-						// second failure is surfaced, not retried forever.
-						setView((current) => {
-							if (current.status === "reconnecting") {
-								return {
-									...current,
-									status: "unavailable",
-									error: event.detail ?? "The event stream failed.",
-								};
-							}
-							return { ...current, status: "reconnecting" };
-						});
-						dispose?.();
-						dispose = null;
+					// `end` and `error` are the same event for this consumer: the stream
+					// is gone. `end` is not ignorable, because the only paths that end a
+					// stream we did not ask to end are a transport failure or main's relay
+					// being disposed under a backend restart - and an intentionally
+					// disposed subscription carries a bumped generation, so anything that
+					// reaches here was NOT ours. Ignoring it was half of the reported bug:
+					// the renderer got a dead stream and no reason to do anything about
+					// it.
+					if (event.kind === "error" || event.kind === "end") {
+						// Our own teardown's `end`, not a dead stream: nothing to recover
+						// from and nothing to report.
+						if (closingIntentionally) return;
+						closeStream();
+						const detail =
+							event.kind === "error"
+								? (event.detail ?? "The event stream failed.")
+								: "The event stream closed unexpectedly.";
+						// The subscription the watch lease names died with the stream. Held,
+						// it makes the lease keep posting a subscription id the backend no
+						// longer holds (the 422 the operator's log shows), so it is dropped
+						// here and re-established by the next `open` frame.
+						setView((current) => ({ ...current, subscriptionId: null }));
+						if (attempt >= STREAM_MAX_ATTEMPTS) {
+							setView((current) => ({
+								...current,
+								status: "unavailable",
+								// The transport's detail is machine register and differs per
+								// transport; the reader gets the product sentence for that
+								// condition instead (D1).
+								failure: streamFailureNotice(detail),
+							}));
+							return;
+						}
+						attempt += 1;
+						/*
+						 * The retry below is a WINDOW WITH NO SUBSCRIPTION, and that is a fact
+						 * #118's `useWarmSession` depends on - so it is recorded here rather
+						 * than left to be discovered. That hook's precondition is that the warm
+						 * is issued from inside the panel holding this subscription, because
+						 * the desktop bridge is reference-counted and DETACHING CANCELS AN
+						 * IN-FLIGHT WARM; a warm sent while this effect is between attempts
+						 * therefore loses its head start and the send engages inline, which is
+						 * the degraded case that hook documents as "exactly today's behaviour,
+						 * never worse" - nothing on the send path waits on warm state. The
+						 * alternative was the state this replaces (no subscription ever came
+						 * back, so every send paid the cold engage until the app was
+						 * restarted), so the gap is strictly the smaller cost. Do not "fix" it
+						 * by holding a stream open across the backoff: a refused subscription
+						 * does not hold the bridge either.
+						 */
+						// The receipt cursor still bounds what a reconnect has to replay, so
+						// it is retained when there is one - but a retry no longer REQUIRES
+						// one. A stream that never opened has no receipt, and gating on it is
+						// what left the consumer waiting forever.
 						const receipt = receiptRef.current;
 						if (receipt) {
 							reconnectRef.current = {
 								epoch: receipt.epoch,
 								afterSeq: receipt.seq,
 							};
-							setView((current) => {
-								if (current.status === "unavailable") return current;
-								connect();
-								return current;
-							});
 						}
+						setView((current) =>
+							current.status === "unavailable" && attempt > 1
+								? current
+								: { ...current, status: "reconnecting", failure: null },
+						);
+						retryTimer = window.setTimeout(() => {
+							retryTimer = 0;
+							if (generationRef.current !== generation) return;
+							connect();
+						}, streamRetryDelayMs(attempt));
 						return;
 					}
 					if (event.data === undefined) return;
 					try {
 						const frame = JSON.parse(event.data) as DesktopSessionFrame;
+						// Reaching a snapshot is the only proof the stream really works: an
+						// authenticated `open` can still be followed by an immediate close,
+						// and resetting the budget there would let that pair retry forever.
+						if (frame.type === "snapshot") attempt = 0;
 						pending.current.push(frame);
 						// One flush per animation frame while the window paints. A
 						// hidden or backgrounded window stops delivering animation
@@ -1025,13 +1268,74 @@ export function useCanonicalSessionStream(
 			);
 		};
 
+		/*
+		 * The user's own way back, published on the handle as `retry`.
+		 *
+		 * Deliberately re-arms BOTH halves rather than only the stream: the state
+		 * that offers this action is "we could not reach this conversation", and
+		 * which half failed (the stream, the history read, or both) is not
+		 * something the reader can tell or should have to. Resetting the counters
+		 * first matters - otherwise a Retry after exhaustion would immediately
+		 * exhaust its budget again and do nothing visible.
+		 */
+		const reopen = () => {
+			attempt = 0;
+			/*
+			 * Cancel the pending retries BEFORE re-arming both halves.
+			 *
+			 * A timer armed before this press fires AFTER it and calls `connect()` a
+			 * second time, overwriting the single `dispose` closure - so the
+			 * subscription this press opens can never be disposed and keeps delivering
+			 * frames until the panel unmounts (R1-1). The effect owns exactly one
+			 * subscription and one outstanding read, and this is where that is
+			 * enforced; the backoff's own timer clears before it re-arms for the same
+			 * reason.
+			 */
+			if (retryTimer) {
+				// `window.clearTimeout`, symmetric with the `window.setTimeout` that
+				// armed it: the two have to name the same timer host, and the harness
+				// that drives this hook substitutes `window` to prove a queued retry
+				// was really cancelled.
+				window.clearTimeout(retryTimer);
+				retryTimer = 0;
+			}
+			if (reconcileTimer) {
+				window.clearTimeout(reconcileTimer);
+				reconcileTimer = 0;
+			}
+			setView((current) => ({
+				...current,
+				failure: null,
+				status:
+					current.status === "unavailable" ? "connecting" : current.status,
+			}));
+			if (!viewRef.current.hydrated) {
+				// The painted set comes from the VIEW here, not from a batch of frames:
+				// a Retry arrives with no frames in hand, and what the walk's connection
+				// test needs is what is on screen now.
+				void reconcileTail(
+					generation,
+					new Set(viewRef.current.transcript.index.keys()),
+					reconcileLimit(0),
+				);
+			}
+			if (dispose) return;
+			connect();
+		};
+
 		connect();
+		// Non-null only while this effect owns the stream, so a Retry pressed after
+		// the session changed (or after unmount) cannot re-open the old session.
+		retryRef.current = reopen;
 
 		return () => {
 			generationRef.current += 1;
+			retryRef.current = null;
 			dispose?.();
 			if (raf) cancelAnimationFrame(raf);
 			if (fallback) clearTimeout(fallback);
+			if (retryTimer) clearTimeout(retryTimer);
+			if (reconcileTimer) clearTimeout(reconcileTimer);
 			pending.current = [];
 		};
 	}, [sessionId, enabled]);
@@ -1058,6 +1362,10 @@ export function useCanonicalSessionStream(
 			// A different session's children are different children, and a pulse
 			// carried across is a counter no reader can match to a job.
 			subagentPulses: {},
+			// And this session's history is unknown again: the previous session's
+			// page proves nothing about this one, so the composer must not state
+			// that this conversation is empty until its own page lands.
+			hydrated: false,
 			// Belt to the early return's braces: whatever a superseded page in
 			// flight does, a freshly opened session is not loading older rows.
 			loadingOlder: false,
@@ -1158,6 +1466,10 @@ export function useCanonicalSessionStream(
 		}));
 	}, []);
 
+	const retry = useCallback(() => {
+		retryRef.current?.();
+	}, []);
+
 	const addNote = useCallback(
 		(text: string, level: "info" | "warning" | "error" = "info") => {
 			setView((current) => ({
@@ -1232,7 +1544,16 @@ export function useCanonicalSessionStream(
 			addNote,
 			paintPendingModel,
 			clearPendingModel,
+			retry,
 		}),
-		[view, loadOlder, clearView, addNote, paintPendingModel, clearPendingModel],
+		[
+			view,
+			loadOlder,
+			clearView,
+			addNote,
+			paintPendingModel,
+			clearPendingModel,
+			retry,
+		],
 	);
 }
