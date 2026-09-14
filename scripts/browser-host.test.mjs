@@ -729,6 +729,63 @@ test("nothing is reachable by default, and a decision is what opens it", () => {
 	assert.equal(store.pendingEntries().length, 0, "the answered request is no longer pending");
 });
 
+// The two tests below are the BROAD-grant half of the gate. Every other
+// assertion in this file grants the exact origin, which is exactly how the
+// vendored `storedOriginAllowed(origins, url, hostGrants?, siteGrants?)` came to
+// be called with `siteGrants` in the third slot: the call still compiled (the
+// slot is `unknown` and optional), the stored grant was still counted by
+// `status`, and nothing here asked the gate a question the bug could answer
+// differently.
+
+test('a stored loopback "host" grant opens the gate, so the user is not asked twice', () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-host-grant") });
+	const url = safeHttpUrl("http://127.0.0.1:54321/page");
+	const entry = store.requestAccess(url.href, "session:a", "async", "req-1");
+	assert.deepEqual(entry.broad, { scope: "host", key: "127.0.0.1" }, "loopback gets the host option");
+	assert.equal(store.respond(entry.entry_id, "domain").scope, "host");
+	assert.equal(store.describe().broad_grants, 1, "the user's answer WAS stored");
+	assert.equal(store.originAllowed(url), true, "and the gate has to honour it");
+	assert.equal(store.ensureTopLevelAccess(url, "session:a").allowed, true);
+	// A host grant is host-wide by definition: another port of the same loopback
+	// host is covered, so a second session is answered from the grant rather than
+	// being handed `{"state":"none"}` and a fresh prompt.
+	const anotherPort = safeHttpUrl("http://127.0.0.1:59999/");
+	assert.equal(store.originAllowed(anotherPort), true);
+	assert.equal(store.accessStateFor(anotherPort.href, "session:b").state, "allowed", "no re-prompt");
+	// Host-wide, not blanket: an unrelated origin is still refused.
+	assert.equal(store.originAllowed(safeHttpUrl("https://example.com/")), false);
+	assert.throws(
+		() => store.ensureTopLevelAccess(safeHttpUrl("https://example.com/"), "session:b"),
+		(error) => error.code === "origin_not_allowed",
+	);
+});
+
+test('a stored broad "domain" grant opens the whole registrable domain, and only it', () => {
+	configurePslRules("com\n");
+	try {
+		const store = new ApprovalStore({ dir: join(root, "approvals-domain-grant") });
+		const url = safeHttpUrl("https://news.example.com/story");
+		const entry = store.requestAccess(url.href, "session:a", "async", "req-1");
+		assert.deepEqual(entry.broad, { scope: "domain", key: "example.com" });
+		assert.equal(store.respond(entry.entry_id, "domain").scope, "domain");
+		assert.equal(store.originAllowed(url), true);
+		// The sibling host is the whole point of a domain grant.
+		const sibling = safeHttpUrl("https://shop.example.com/");
+		assert.equal(store.originAllowed(sibling), true);
+		assert.equal(store.ensureTopLevelAccess(sibling, "session:a").allowed, true);
+		assert.equal(store.accessStateFor(sibling.href, "session:b").state, "allowed");
+		// A different registrable domain is not covered by it.
+		const unrelated = safeHttpUrl("https://example.org/");
+		assert.equal(store.originAllowed(unrelated), false);
+		assert.throws(
+			() => store.ensureTopLevelAccess(unrelated, "session:a"),
+			(error) => error.code === "origin_not_allowed",
+		);
+	} finally {
+		configurePslRules(null);
+	}
+});
+
 test("a one-shot grant is spendable once, by the requester who earned it", () => {
 	const store = new ApprovalStore({ dir: join(root, "approvals-once") });
 	const url = safeHttpUrl("https://once.example/");

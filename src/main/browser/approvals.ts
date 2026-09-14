@@ -169,10 +169,22 @@ export class ApprovalStore {
 	 * or nothing. A persisted DENY for the exact origin wins over any broader
 	 * grant: the user's most specific statement about a site is the one that
 	 * counts, and a deny that a domain grant could override would make the deny
-	 * button a lie. */
+	 * button a lie.
+	 *
+	 * The signature is the VENDORED one — `(origins, url, hostGrants?, siteGrants?)`
+	 * — and the `hostGrants` slot is passed `undefined` for the same reason
+	 * `grantScopeFor` does: that slot reads the extension's legacy 0.1.4-0.1.7
+	 * loopback shape, which this host never wrote. Passing `siteGrants` there
+	 * instead compiles (the slot is `unknown` and optional) and silently drops
+	 * every broad grant, which is why the call spells the order out. */
 	originAllowed(url: URL): boolean {
 		if (this.store.origins[url.origin] === "deny") return false;
-		return storedOriginAllowed(this.store.origins, url, this.store.siteGrants);
+		return storedOriginAllowed(
+			this.store.origins,
+			url,
+			undefined,
+			this.store.siteGrants,
+		);
 	}
 
 	/** Why the URL is refused, for the refusal's `data` — a sentence the model can
