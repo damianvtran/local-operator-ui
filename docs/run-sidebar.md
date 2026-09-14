@@ -253,10 +253,10 @@ when `canonical.frontend` exists and passes `null` on the legacy path
 canonical session*, which is the state every session this surface can describe is
 in — and a legacy chat grows no button, exactly as it does not today.
 
-**Icon: `Activity`, unchanged.** The old reasoning still holds: `Users` and
-`ListChecks` already mean a specific tool in this app
-(`trace/tool-glyphs.ts:54-79`) and a header button wearing one would read as that
-tool.
+**Icon: `Info`, not `Activity`** — see `docs/composer-status-tabs.md` § 6. The
+surviving half of the old reasoning still holds: `Users` and `ListChecks` already
+mean a specific tool in this app (`trace/tool-glyphs.ts:54-79`) and a header
+button wearing one would read as that tool.
 
 **Behaviour: a toggle.** Clicking it when the pane is closed opens the run panel
 and closes the canvas; clicking it when the pane is open closes the panel. It is
