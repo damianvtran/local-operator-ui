@@ -12,25 +12,36 @@ the commit this branch is rebased onto. It used to claim the branch sat on
 `6950d0bf3` (`0.19.5`) and that the measurement below came back **empty**; both
 were stale, and the second was the load-bearing one, because emptiness was the
 whole proof. Measured against the base this branch actually has —
-`git merge-base HEAD origin/main`, `c0570ea60` at the time of writing — the
-command is **not** empty:
+`git merge-base HEAD origin/main`, `73977340a` (v0.21.0) at the time of writing
+— the command returns **ten** files, not five:
 
 ```sh
-git diff --name-only 54bf411e0..c0570ea60 -- \
+git diff --name-only 54bf411e0..73977340a -- \
   'src/renderer/src/features/chat/canonical/**' \
   'src/renderer/src/features/chat/components/trace/**' \
   'src/renderer/src/features/chat/components/message-item/**'
+# src/renderer/src/features/chat/canonical/mentioned-files-scan.ts
+# src/renderer/src/features/chat/canonical/mentioned-files.ts
 # src/renderer/src/features/chat/canonical/tool-row.stories.tsx
 # src/renderer/src/features/chat/canonical/transcript-reducer.ts
 # src/renderer/src/features/chat/canonical/transcript-rows.ts
+# src/renderer/src/features/chat/canonical/use-attachment-url.ts
+# src/renderer/src/features/chat/canonical/use-mentioned-files.ts
+# src/renderer/src/features/chat/components/message-item/index.tsx
 # src/renderer/src/features/chat/components/trace/tool-row.tsx
 # src/renderer/src/features/chat/components/trace/trace-group.tsx
 ```
 
-Every one of those is inside the path set that sentence named as its proof, and
-the work that added them is the trace tier (#127's 2px hairline and the
-clear-search reducer work). **Why the frames still hold anyway, stated as a
-reason rather than as a diff:** the story behind every frame in this set
+All ten are inside the path set that sentence named as its proof. Five are the
+trace tier (#127's 2px hairline, plus #118's one-frame submit seam in
+`transcript-reducer.ts`); the other five are #128's mentioned-file rebuild
+(`mentioned-files.ts`, `mentioned-files-scan.ts`, `use-mentioned-files.ts`,
+`use-attachment-url.ts`, `message-item/index.tsx`), which the correction before
+this one folded into the trace tier and should not have — the count moved from
+five to ten with the same command against the same path set, because `main`
+moved under it twice more (code review round 3, m2). **Why the frames still
+hold anyway, stated as a reason rather than as a diff:** the story behind every
+frame in this set
 fixtures exactly one record, `{kind: "user"}`, and no trace tier at all — so the
 code #127 moved is not exercised by any of the 96 frames here, nor by any frame
 in the `chat-ask-options/` twin. The provenance is: baseline from `54bf411e0`,
@@ -96,6 +107,16 @@ pnpm storybook --port 6018 --no-open --quiet &
 node scripts/capture-evidence.mjs http://localhost:6018 \
   --only=chat-ask-options --allow-backend
 ```
+
+Boot that Storybook with `reactDocgen: false` in your own checkout. The shipped
+`.storybook/main.ts` sets `reactDocgen: "react-docgen-typescript"` while
+`package.json` pins `typescript ^7.0.2` (both as `origin/main` has them, from
+#140), and that pair cannot build the preview at all: it throws `Cannot read
+properties of undefined (reading 'React')` inside the docgen parser before a
+single frame is taken. Rewriting the option locally changes how the preview is
+BUILT and nothing about what is photographed — measured, not argued: the whole
+set re-captured under it comes back byte-identical to the committed frames
+(design round 3, D12).
 
 `--allow-backend` is correct here and is not a loosened guard: it is accepted
 only on a NARROWED run, and these stories render from literal
