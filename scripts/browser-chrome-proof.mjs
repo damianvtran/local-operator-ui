@@ -1333,10 +1333,20 @@ async function main() {
 		 * as the agent's, and composited at the same reported rectangle.
 		 */
 		const agentRect = await contentRect();
-		const slowLoad = rpc(state, "goto", {
-			tab: agentToken,
-			url: `${origin()}/slow`,
-		});
+		/*
+		 * The loading frame is driven by TYPING, not by the agent's `goto`, and that is a
+		 * measurement rather than a preference: a tab's command lane is held for the
+		 * whole of a `goto` (that is what makes the lane a lane), so the page layer
+		 * cannot be captured while the agent's own load is in flight — the first version
+		 * of this frame came back `busy`. The user's navigation holds no lane, which is
+		 * also the fastest way to show the takeover case: the person acts in a tab the
+		 * agent owns, and the agent's next action simply reads the live page (11.8).
+		 */
+		check(
+			"the user can drive a tab the AGENT created (takeover), and the agent's handle keeps working on it",
+			(await typeAddress(`${origin()}/slow`)) === "typed",
+			"typed a URL into the address bar while the agent's tab was active",
+		);
 		await waitFor(
 			async () => ((await chromeState()).loading ? true : null),
 			"the agent's tab to be loading",
@@ -1350,11 +1360,19 @@ async function main() {
 			agentRect,
 		);
 		say(`frame: ${join(OUT_DIR, "13-surface-loading-agent-tab.png")}`);
-		const slowResult = await slowLoad;
+		await waitFor(
+			async () => ((await chromeState()).loading ? null : true),
+			"the typed load to finish",
+			30_000,
+		);
+		const agentGoto = await rpc(state, "goto", {
+			tab: agentToken,
+			url: `${origin()}/second`,
+		});
 		check(
-			"the agent's goto settles on the page it reached",
-			slowResult.json?.ok && slowResult.json.result?.url?.endsWith("/slow"),
-			JSON.stringify(slowResult.json?.result?.url),
+			"the agent's goto still drives that tab after the user took over, and settles on what it reached",
+			agentGoto.json?.ok && agentGoto.json.result?.url?.endsWith("/second"),
+			JSON.stringify(agentGoto.json?.result?.url ?? agentGoto.json?.error),
 		);
 		const agentPopulatedFrame = await captureRenderer("14-surface-populated-agent-tab");
 		const agentPageShot = await capturePage(state, agentToken, "agent-populated");
