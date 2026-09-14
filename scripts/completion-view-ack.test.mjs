@@ -91,7 +91,7 @@ const contract = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const { useCompletionView } = contract;
-const receiptSettled = (...args) => contract.receiptSettled(...args);
+const receiptSettled = (...args) => contract.receiptSettled(...args, TOKEN);
 const isSupersededReceipt = (...args) => contract.isSupersededReceipt(...args);
 
 const SESSION = "abcdef123456";
@@ -112,7 +112,12 @@ function attention(extra = {}) {
 }
 
 function frontend(extra = {}) {
-	return { session_id: SESSION, streaming: false, attention: attention(), ...extra };
+	return {
+		session_id: SESSION,
+		streaming: false,
+		attention: attention(),
+		...extra,
+	};
 }
 
 /**
@@ -121,7 +126,13 @@ function frontend(extra = {}) {
  */
 function mount(transport, { covered = null } = {}) {
 	const element = {
-		getBoundingClientRect: () => ({ left: 0, top: 100, width: 200, height: 200, bottom: 300 }),
+		getBoundingClientRect: () => ({
+			left: 0,
+			top: 100,
+			width: 200,
+			height: 200,
+			bottom: 300,
+		}),
 		contains: (node) => node === element,
 	};
 	const checks = [];
@@ -135,7 +146,8 @@ function mount(transport, { covered = null } = {}) {
 		   overlay that hides the row (a modal scrim). */
 		elementFromPoint: (x) => {
 			if (covered === "all") return { notTheRow: true };
-			if (covered === "centre" && Math.abs(x - 100) < 1) return { notTheRow: true };
+			if (covered === "centre" && Math.abs(x - 100) < 1)
+				return { notTheRow: true };
 			return element;
 		},
 	};
@@ -162,7 +174,7 @@ function mount(transport, { covered = null } = {}) {
 		},
 		/** One interval tick, then let the answer's microtasks run. */
 		tick: async () => {
-			await checks[0]();
+			await checks.at(-1)();
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		},
 	};
@@ -223,12 +235,16 @@ test("a superseded refusal is retried flat, then bounded and logged", async () =
 		for (let attempt = 0; attempt < 3; attempt += 1) await harness.tick();
 		assert.equal(calls.length, 3, "the flat window before the bound changed");
 		for (let attempt = 0; attempt < 2; attempt += 1) await harness.tick();
-		assert.equal(calls.length, 3, "a superseded refusal was retried past its bound");
+		assert.equal(
+			calls.length,
+			3,
+			"a superseded refusal was retried past its bound",
+		);
 	} finally {
 		console.warn = warn;
 	}
 	assert.equal(
-		warnings.filter((line) => line.includes("superseded completion")).length,
+		warnings.filter((line) => line.includes("receipt unresolved")).length,
 		1,
 		"the bound was not recorded, or was recorded more than once",
 	);
@@ -251,7 +267,11 @@ test("a superseded refusal that the answer then settles is not delayed", async (
 	});
 	harness.start();
 	for (let attempt = 0; attempt < 4; attempt += 1) await harness.tick();
-	assert.equal(calls.length, 3, "the settled answer did not arrive on the third attempt");
+	assert.equal(
+		calls.length,
+		3,
+		"the settled answer did not arrive on the third attempt",
+	);
 });
 
 test("a control covering the row's centre does not refuse a visible result", async () => {
@@ -270,7 +290,11 @@ test("a control covering the row's centre does not refuse a visible result", asy
 	);
 	harness.start();
 	await harness.tick();
-	assert.equal(calls.length, 1, "a floating control over the row's centre refused the receipt");
+	assert.equal(
+		calls.length,
+		1,
+		"a floating control over the row's centre refused the receipt",
+	);
 });
 
 test("a row hidden by an overlay is still refused", async () => {
@@ -287,7 +311,11 @@ test("a row hidden by an overlay is still refused", async () => {
 	);
 	harness.start();
 	await harness.tick();
-	assert.equal(calls.length, 0, "a row covered by an overlay was receipted anyway");
+	assert.equal(
+		calls.length,
+		0,
+		"a row covered by an overlay was receipted anyway",
+	);
 });
 
 test("the refusal code is pinned to the backend's documented wire value", () => {
@@ -331,7 +359,11 @@ test("a real failure still backs off, so a wedged backend is not hammered", asyn
 	for (let attempt = 0; attempt < 5; attempt += 1) await harness.tick();
 	// Three attempts, then the ceiling: the contrast with the superseded case
 	// above, which makes all five.
-	assert.equal(calls.length, 3, "an unreachable backend was retried past its ceiling");
+	assert.equal(
+		calls.length,
+		3,
+		"an unreachable backend was retried past its ceiling",
+	);
 });
 
 test("the verdict is read from the state, not from the call resolving", () => {
@@ -346,18 +378,26 @@ test("the verdict is read from the state, not from the call resolving", () => {
 		"a state without a verdict settled the attempt",
 	);
 	assert.equal(
-		receiptSettled(attention({ unseen: false, conversation_id: "session/other" }), SESSION),
+		receiptSettled(
+			attention({ unseen: false, conversation_id: "session/other" }),
+			SESSION,
+		),
 		false,
 	);
 	assert.equal(
 		isSupersededReceipt(
-			Object.assign(new Error("superseded"), { code: "superseded_completion_token" }),
+			Object.assign(new Error("superseded"), {
+				code: "superseded_completion_token",
+			}),
 		),
 		true,
 	);
 	// Everything else keeps the backed-off cadence.
 	for (const other of [
-		Object.assign(new Error("unknown completion token"), { code: undefined, status: 409 }),
+		Object.assign(new Error("unknown completion token"), {
+			code: undefined,
+			status: 409,
+		}),
 		Object.assign(new Error("not running"), { status: 503 }),
 		Object.assign(new Error("unreachable"), { status: null }),
 		new Error("bare"),
@@ -368,3 +408,41 @@ test("the verdict is read from the state, not from the call resolving", () => {
 		assert.equal(isSupersededReceipt(other), false, String(other));
 	}
 });
+
+for (const outcome of ["unread", "wrong-token", "alternating"]) {
+	test(`all unresolved ${outcome} answers share a retry budget and new tokens reset it`, async () => {
+		let calls = 0;
+		const warnings = [];
+		let now = 0;
+		const originalNow = Date.now;
+		const originalWarn = console.warn;
+		Date.now = () => now;
+		console.warn = (...args) => warnings.push(args);
+		try {
+			const harness = mount(async () => {
+				calls += 1;
+				if (outcome === "alternating" && calls % 2) throw new Error("refused");
+				return attention({
+					unseen: outcome !== "wrong-token",
+					completion_token: outcome === "wrong-token" ? "other" : TOKEN,
+				});
+			});
+			harness.start();
+			for (let tick = 0; tick < 240; tick++) {
+				now += 500;
+				await harness.tick();
+			}
+			assert.ok(calls <= 10, `${calls} attempts escaped the 120s bound`);
+			assert.equal(warnings.length, 1);
+			const previous = calls;
+			harness.start(
+				frontend({ attention: attention({ completion_token: "fresh" }) }),
+			);
+			await harness.tick();
+			assert.equal(calls, previous + 1, "new token inherited old retry budget");
+		} finally {
+			Date.now = originalNow;
+			console.warn = originalWarn;
+		}
+	});
+}
