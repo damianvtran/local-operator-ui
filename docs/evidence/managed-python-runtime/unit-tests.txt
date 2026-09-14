@@ -1,0 +1,21 @@
+desktop tests: 1 file, concurrency 2 (memory budget 0.5 GB of 3.5 GB available at 192 MB per worker; cpu share would allow 7)
+✔ runtime identity binds final file bytes, names, modes and internal link targets (11.165083ms)
+✔ new external caches are harmless but signed source modifications still fail identity (1.451792ms)
+✔ external branding aliases preserve readiness but modified immutable bytes do not (2.080792ms)
+✔ seed traversal rejects escaping links, hardlinks, special roots and invalid architecture (2.689583ms)
+✔ packaged/dev selections are disjoint and missing readiness never adopts an executable (2.379584ms)
+✔ legacy PATH launchers and shebang aliases cannot bypass migration (2.277708ms)
+✔ final app gate rejects legacy aliases even if they are dangling (3.849625ms)
+✔ metadata validation refuses bytes changed after release metadata was generated (16.914375ms)
+✔ a container's filename architecture is cross-checked against the app inside it (314.531ms)
+✔ the container gate refuses a legacy interpreter alias and a seed for the wrong architecture (241.055833ms)
+✔ the container gate names an archive with no application rather than passing (23.550459ms)
+✔ the disk image path is exercised by mounting the real image, not by assertion (20378.661084ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21144.751375
