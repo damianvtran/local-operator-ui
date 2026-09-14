@@ -146,24 +146,33 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 	agents: {
 		profiles: 6,
 		teams: 2,
-		tree: [],
-		running: 0,
-		queued: 0,
-		settled: 0,
+		/*
+		 * The live half is `null` in every fixture here, because that is what the
+		 * wire always carries: `info.get` calls `_unmeasure_live_half`, so these are
+		 * the dataclass defaults of a state with no session attached, shipped as the
+		 * unknown rather than as a confident `0`. Typing them as numbers is how the
+		 * panel came to state a measured "0 skills" nobody measured (backend QA
+		 * round on the sibling PR), so the fixtures now carry the shape the desktop
+		 * actually receives.
+		 */
+		tree: null,
+		running: null,
+		queued: null,
+		settled: null,
 		max_running: null,
-		at_capacity: false,
-		max_depth: 0,
-		deeper: 0,
-		cross_session_known: false,
-		roster_unread: false,
+		at_capacity: null,
+		max_depth: null,
+		deeper: null,
+		cross_session_known: null,
+		roster_unread: null,
 	},
 	env: {
-		mcp_configured: 0,
-		mcp_connected: 0,
-		mcp_failed: 0,
-		mcp_settling: false,
-		mcp_failures: [],
-		approval_mode: "",
+		mcp_configured: null,
+		mcp_connected: null,
+		mcp_failed: null,
+		mcp_settling: null,
+		mcp_failures: null,
+		approval_mode: null,
 		theme: "localOperatorDark",
 		terminal_size: null,
 		term: "",
@@ -182,7 +191,7 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 			"LOCAL_OPERATOR_DESKTOP_TOKEN",
 		],
 		guides: 5,
-		skills: 12,
+		skills: null,
 	},
 	degraded: [],
 	captured_at: 1_789_000_000,
@@ -225,6 +234,26 @@ type Story = StoryObj<typeof InfoPanel>;
 
 /** The default state: install, host, sessions, this conversation, environment. */
 export const Populated: Story = { args: { ...base, data: info(), frontend } };
+
+/**
+ * The desktop's own shape: host half measured, live half NULL, nothing bound.
+ *
+ * This is the payload `info.get` always sends — `_unmeasure_live_half` nulls the
+ * agent counters and `env.mcp_*`/`approval_mode`/`skills` because `LiveState()`
+ * carries no session — and with no conversation in front of the app there is no
+ * `canonical.frontend` either. So the panel has to say "not measured" in three
+ * places at once, and must not say `0 skills`, `none configured` or a blank
+ * approval mode: three false readings of a machine nobody asked. It is a story
+ * of its own rather than a comment on `Populated` because the difference is the
+ * whole point of the cross-repo finding (backend QA round), and because a frame
+ * is the only thing that shows it.
+ */
+export const LiveHalfUnmeasured: Story = {
+	args: { ...base, data: info(), frontend: null },
+	/* The unknown spellings are the Environment section's rows, and that section
+	   is below the fold of every `/info` frame (D2). */
+	play: () => scrollPanelToSection("Environment"),
+};
 
 /** A newer release is known: the badge, and the version takes the warning tone. */
 export const Behind: Story = {
