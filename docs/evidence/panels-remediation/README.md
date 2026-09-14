@@ -127,6 +127,7 @@ this round's own defects, and none of the checks was weakened to clear them:
    `chat-run-panel` sets, which this branch neither captured nor modified.
 
 No frame was deleted, no ceiling relaxed, and no check edited.
+The re-run on the corrected head **`00b45363a`** held: `Evidence holds: 2279 frames are pictures of their own theme (worst ΔE00 18.1, docs/evidence/chat-model-picker/busy/localOperatorLight.webp).`
 
 ## Conflict-only convergence and history-preserving publication
 
@@ -158,36 +159,3 @@ the original published feature lineage is integrated as an additional merge
 parent without changing that candidate's tree. Publication is an ordinary
 fast-forward push of the existing PR branch. Both histories survive; this is
 not a PR merge or release. The final PR comment records ancestry/tree checks.
-
-## The full evidence gate, its real first result, and how it was answered
-
-`pnpm check-evidence` was run in full at head `0c3591791` (`MAGICK_THREAD_LIMIT=1`,
-`nice -n 10`, one heavy job at a time) and **failed: 27 of 2,279 frames**. All 27
-were this round's own defects, and no check was weakened to clear them:
-
-1. **25 frames were "a ground with nothing on it" (98.70-98.73% one colour,
-   ceiling 98.50%).** The browser tool captures the whole 2880x1634 viewport and
-   the settings story's subject occupies only its top ~35%, so the shipped frames
-   were mostly bare canvas — the design round's D18 in its extreme form. The fix
-   is the one D18 asks for: each shipped frame is now the **rendered content
-   region** of its capture, a deterministic crop at the content bounding box
-   (rows/columns carrying more than 1% non-ground pixels) plus a 24px margin.
-   Nothing was resampled, rescaled or recoloured; all 25 were re-checked with the
-   gate's own exported `assertFramePaints` (**25 checked, 0 failures**); and every
-   full-viewport source PNG is retained under `originals/` with its sha256 and
-   crop box in `crop-index.json`. The originals are `.png`, which the walker
-   deliberately does not enumerate.
-2. **`supplementary[panels-remediation]` had no `capturedAt`** — a real omission
-   in a set declared this round. It now carries the pass's capture window,
-   `2026-09-14T19:36:59Z`-`19:49:41Z`, read from the source screenshots.
-3. **`partialCapture.refreshedFrames` claimed 96 against a measured 290.** The
-   field is one-sided and measures every non-supplementary `.webp` that moved
-   between the pass start and this tree, and reconciling this branch onto `main`
-   folded `main`'s own evidence passes into that same range. It is now the
-   measured **290**, with the decomposition stated: **96** retaken by this pass
-   and **194** that arrived with `main`'s `chat-ask-options`,
-   `chat-composer-status-row` and `chat-run-panel` sets, which this branch neither
-   captured nor modified.
-
-No frame was deleted, no ceiling relaxed, and no check edited. The re-run's result
-is reported on the PR rather than asserted here.
