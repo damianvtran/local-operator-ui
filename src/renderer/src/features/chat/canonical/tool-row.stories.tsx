@@ -30,6 +30,7 @@ import {
 	streamFailureNotice,
 } from "../../../../../shared/desktop-stream-notice";
 import "../../../styles/index.css";
+import { peerFields } from "../components/trace/receipt-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
 import {
@@ -100,6 +101,7 @@ const Frame = ({
 	 */
 	hydrated = true,
 	openRows = false,
+	keepClosed,
 }: {
 	records: TranscriptRecord[];
 	width?: string;
@@ -140,16 +142,31 @@ const Frame = ({
 	 * if the trigger stopped reaching the body, they would come out collapsed.
 	 */
 	openRows?: boolean;
+	/**
+	 * The row positions `openRows` leaves CLOSED, in paint order.
+	 *
+	 * The receipt stories need both states of the same row type in one frame — a
+	 * collapsed peer row beside an expanded one, which is the pair that shows what
+	 * the disclosure is FOR (the collapsed row is the sender and a preview; the
+	 * expansion is the pid, the model and the whole message). Two separate stories
+	 * would show the two states and not the contrast, and the contrast is the
+	 * review question.
+	 */
+	keepClosed?: number[];
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		if (!openRows) return;
-		for (const trigger of containerRef.current?.querySelectorAll<HTMLButtonElement>(
-			'button[aria-expanded="false"]',
-		) ?? []) {
+		const triggers = Array.from(
+			containerRef.current?.querySelectorAll<HTMLButtonElement>(
+				'button[aria-expanded="false"]',
+			) ?? [],
+		);
+		for (const [position, trigger] of triggers.entries()) {
+			if (keepClosed?.includes(position)) continue;
 			trigger.click();
 		}
-	}, [openRows]);
+	}, [openRows, keepClosed]);
 	return (
 		<div
 			className="overflow-y-auto p-6"
@@ -1628,5 +1645,610 @@ export const DiffBodyNarrow: Story = {
 export const DiffBodyNarrowWrappedCap: Story = {
 	render: () => (
 		<Frame height={830} openRows records={[WRAPPED_CAPPED_WRITE_ROW]} />
+	),
+};
+
+/* ------------------------------------------- expanded detail and receipts */
+
+/*
+ * The operator's report, and what these stories are evidence about:
+ *
+ *   "Expanded tool rows render JSON.stringify(args) in one bordered box and the
+ *   output in a second; an inbound peer message renders its own card whose body
+ *   is the raw `<peer-session-message …>` envelope."
+ *
+ * So the review question is a reading question, and these frames are the only
+ * way to answer it: does an expansion read as ONE pane on one ground, does a
+ * receipt read as a row on the same ledger as the calls beside it, and can a
+ * capped section hide the result it was opened for? What they do NOT show is
+ * asserted instead — that no JSON punctuation reaches the pane, that no envelope
+ * reaches the record, and that a hostile sender field cannot reorder a label —
+ * in the sections of `scripts/tool-row.test.mjs` and
+ * `scripts/transcript-reducer.test.mjs`, because an absence is invisible on a
+ * screenshot.
+ *
+ * Every one of them renders the PRODUCTION `CanonicalTranscript` from real
+ * `TranscriptRecord`s and reaches its bodies through the row's own disclosure,
+ * so what is judged is what ships. The one exception is deliberate and is
+ * stated where it is used: the hostile-sender fixture is built through
+ * `peerFields`, because a hand-built sender would bypass the sanitiser and the
+ * frame would then be a picture of an input the app cannot produce.
+ */
+
+/** A receipt's sender, in the shape the reducer projects off the wire. */
+const PEER_SENDER = {
+	pid: "92064",
+	conversationName: "review-agent",
+	cwd: "/Users/damian/local-operator-ui",
+	sessionId: "01J8ZQ4K7XABCDEF",
+	modelLabel: "deepseek/deepseek-flash",
+};
+
+/**
+ * One peer message. `sender: null` is a delivery with no identity at all, which
+ * the row has to survive: the fallback vocabulary is "another session" rather
+ * than a blank column.
+ */
+const peer = (
+	over: Partial<Extract<TranscriptRecord, { kind: "peer" }>> & { id: string },
+): Extract<TranscriptRecord, { kind: "peer" }> => ({
+	kind: "peer",
+	ts: TS,
+	body: "",
+	sender: PEER_SENDER,
+	...over,
+});
+
+/** One wake delivery, envelope and all — the headline is derived from it. */
+const wake = (
+	over: Partial<Extract<TranscriptRecord, { kind: "wake" }>> & { id: string },
+): Extract<TranscriptRecord, { kind: "wake" }> => ({
+	kind: "wake",
+	ts: TS,
+	text: '(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})',
+	...over,
+});
+
+/**
+ * The expansion of an ordinary call: one pane, a labelled block per argument,
+ * then the result.
+ *
+ * Three cases, because they are the three the old rendering made unreadable in
+ * different ways. `bash` is the one the operator screenshotted — a command and a
+ * wall of stdout, which the pane separates by a LABEL rather than by a second
+ * box. `read` is the case where the arguments and the result look alike (a path
+ * and file contents), which is exactly when two boxes were load-bearing and a
+ * label has to do the work instead. The MCP row is the JSON case: `params` used
+ * to print as `{"filter": {"status": "open"}}` and now prints as
+ * `params.filter.status: open`.
+ */
+export const ExpandedDetail: Story = {
+	render: () => (
+		<Frame
+			height={760}
+			openRows
+			records={[
+				tool({
+					id: "tool:bash",
+					toolName: "bash",
+					args: { command: "pnpm test:desktop 2>&1 | tail -3" },
+					output: "ℹ tests 40\nℹ pass 40\nℹ fail 0\n",
+					durationS: 92.4,
+				}),
+				tool({
+					id: "tool:read",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/components/trace/tool-row.tsx",
+						offset: 100,
+						limit: 40,
+					},
+					output:
+						'const ROW_HEIGHT = "min-h-5 py-0";\n\nexport type ToolRowProps = {\n\t/** Wire name. Drives the glyph and the category ink. */\n\ttoolName: string;',
+					durationS: 0.04,
+				}),
+				tool({
+					id: "tool:mcp",
+					toolName: "mcp__linear__create_issue",
+					args: {
+						team: "core",
+						title: "Expanded tool rows leak machine syntax",
+						params: {
+							filter: { status: "open", assignee: "damianvtran" },
+							tags: ["ui", "trace"],
+						},
+						dry_run: false,
+					},
+					output: "Created ENG-1284",
+					durationS: 1.21,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * A result that IS JSON, and one that only looks like it.
+ *
+ * The rule is narrow on purpose: a result is structured only when it parses
+ * cleanly AND its root is an object or an array. Object, array and non-JSON side
+ * by side, so the boundary is visible — `exit code: 0` is not JSON and must stay
+ * byte-for-byte, and a bare `200` in a result body is a value the tool chose to
+ * print, not a record.
+ */
+export const ExpandedJsonResult: Story = {
+	render: () => (
+		<Frame
+			height={760}
+			openRows
+			records={[
+				tool({
+					id: "tool:json-object",
+					toolName: "mcp__linear__list_issues",
+					args: { team: "core", state: "open" },
+					output: JSON.stringify(
+						{
+							items: [
+								{
+									id: "ENG-1284",
+									title: "Expanded tool rows leak machine syntax",
+									labels: ["ui"],
+								},
+								{
+									id: "ENG-1290",
+									title: "Peer messages render an envelope",
+									labels: ["trace"],
+								},
+							],
+							total: 2,
+							has_more: false,
+						},
+						null,
+						2,
+					),
+					durationS: 0.88,
+				}),
+				tool({
+					id: "tool:json-array",
+					toolName: "glob",
+					args: { pattern: "src/**/*.stories.tsx" },
+					output: JSON.stringify(
+						["tool-row.stories.tsx", "trace.stories.tsx"],
+						null,
+						2,
+					),
+					durationS: 0.11,
+				}),
+				tool({
+					id: "tool:plain",
+					toolName: "grep",
+					args: { pattern: "peer-session-message", path: "src" },
+					output: "no matches",
+					durationS: 0.07,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * A failed call: the arguments stay beside the error.
+ *
+ * The TUI's rule (`tool_card.py`, the `elif self._output:` branch): a settled
+ * SUCCESSFUL `write`/`edit` with a diff expands to the diff alone, because the
+ * arguments are the same change stated twice — but a failure produced no diff,
+ * and there the inputs are the only account of what was attempted. The error
+ * only makes sense next to them, so the pane shows both, with the result in the
+ * danger ink and its label reading `Error`.
+ */
+export const ExpandedFailedEdit: Story = {
+	render: () => (
+		<Frame
+			height={420}
+			openRows
+			records={[
+				tool({
+					id: "tool:failed-edit",
+					toolName: "edit",
+					args: {
+						path: "src/renderer/src/features/chat/canonical/transcript-reducer.ts",
+						old_text: "const SILENT_CUSTOM_TYPES = new Set([",
+						new_text: "const SILENT_CUSTOM_TYPES = new Set<string>([",
+					},
+					output: "Error: old_text did not match the file at line 543",
+					isError: true,
+					durationS: 0.03,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * A realistic deploy script, and the build log a verification run prints.
+ *
+ * Both are the SHAPE of the operator's own calls rather than a repeat of one line
+ * N times: a script whose lines differ in length and indent is what the wrap rule
+ * and the cap are judged against, and a log at the real column widths is what
+ * tells a reader the pane is printing byte-for-byte rather than reflowing.
+ */
+const LONG_SCRIPT = [
+	"set -euo pipefail",
+	'cd "$(git rev-parse --show-toplevel)"',
+	"git fetch origin main --quiet",
+	"git rebase origin/main || { git rebase --abort; exit 1; }",
+	"pnpm install --frozen-lockfile",
+	"pnpm lint",
+	"pnpm check-types",
+	"pnpm check-themes",
+	"pnpm check-evidence",
+	"pnpm test:desktop",
+	"pnpm bundle-size",
+	"pnpm startup-closure",
+	"pnpm build",
+	"for job in out/main/index.js out/preload/index.js; do",
+	'  test -s "$job" || { echo "missing $job"; exit 1; }',
+	"done",
+	"git status --short > /tmp/status.txt",
+	"wc -l < /tmp/status.txt",
+	'echo "deploy ready"',
+].join("\n");
+
+const BUILD_LOG = [
+	"vite v7.1.5 building for production...",
+	"✓ 1840 modules transformed.",
+	"renderer/index.html                     0.62 kB │ gzip:  0.38 kB",
+	"assets/index-Dd9kj2.css               142.18 kB │ gzip: 18.44 kB",
+	"assets/index-B7xq1P.js                412.55 kB │ gzip: 118.02 kB",
+	"assets/desktop-B1mQ8a.js            2,318.44 kB │ gzip: 604.77 kB",
+	"✓ built in 13.58s",
+	"",
+	"pnpm test:desktop › scripts/tool-row.test.mjs",
+	"ℹ tests 43",
+	"ℹ pass 43",
+	"ℹ fail 0",
+	"",
+	"pnpm test:desktop › scripts/transcript-reducer.test.mjs",
+	"ℹ tests 42",
+	"ℹ pass 42",
+	"ℹ fail 0",
+	"",
+	"pnpm test:desktop › scripts/chat-search.test.mjs",
+	"ℹ tests 31",
+	"ℹ pass 31",
+	"ℹ fail 0",
+].join("\n");
+
+/**
+ * A pane whose INPUT overflows, and one where the input AND the result both do.
+ *
+ * This is the frame the earlier set could not produce, and that is exactly why the
+ * defect survived it: every committed pane had `scrollHeight == clientHeight`, so
+ * the cap was never exercised and nothing showed that a long argument list pushed
+ * the `Output` label and the whole result below the pane's own bottom edge
+ * (design round 1, D1 — the label's top edge measured y=416 against a pane bottom
+ * of 408, and an ordinary three-line result was sliced through its own glyphs).
+ *
+ * The two rows are the two shapes that reach it. The first is a realistic deploy
+ * script in `command` — long enough to cap — with a short result under it, which
+ * is the case that used to hide the result. The second is long on BOTH sides, so
+ * the input and the result each spend their own ceiling and neither can take the
+ * other's.
+ *
+ * What to read in the frames: the result's label and its first lines are visible
+ * with the input capped above them, and each capped section prints the terminal's
+ * own `… N more line(s)` under itself rather than leaving a scroll region's
+ * overflow to be discovered.
+ *
+ * Two stories rather than one story at two widths, which is the diff body's own
+ * precedent: at 560 the same script WRAPS, so the input block grows to a height
+ * the wide frame does not need, and a frame sized for the narrow pass would be
+ * mostly empty ground at 1280 while one sized for the wide pass would clip the
+ * narrow one. Both share the records below; only the viewport and the Frame's
+ * height differ.
+ */
+const OVERFLOW_RECORDS: TranscriptRecord[] = [
+	tool({
+		id: "tool:long-script",
+		toolName: "bash",
+		args: { command: LONG_SCRIPT, timeout_ms: 600_000 },
+		output: "deploy ready\n",
+		durationS: 128.6,
+	}),
+	tool({
+		id: "tool:long-both",
+		toolName: "mcp__linear__list_issues",
+		args: {
+			query: "expanded rows leak machine syntax into the transcript",
+			params: {
+				filter: {
+					status: "open",
+					assignee: "damianvtran",
+					labels: ["ui", "trace"],
+				},
+				order: { field: "updated", direction: "descending" },
+				include: { comments: true, attachments: false },
+			},
+			limit: 25,
+			cursor: "eyJvZmZzZXQiOjI1LCJxdWVyeSI6InByb2ZpbGUgbGVhayJ9",
+			dry_run: false,
+		},
+		output: BUILD_LOG,
+		durationS: 3.4,
+	}),
+];
+
+export const ExpandedOverflow: Story = {
+	render: () => <Frame height={1100} openRows records={OVERFLOW_RECORDS} />,
+};
+
+/**
+ * The same two calls in a 560px column, where the same script WRAPS.
+ *
+ * The pane is the same HEIGHT here — each section is capped, so a narrower
+ * column does not make the expansion taller, it makes the same arguments occupy
+ * more rows. What changes is what fits inside the two ceilings: a wrapped `key:
+ * value` line puts its value under its key, so fewer arguments fit in the input
+ * block and the report under it counts more of them. That is the case worth
+ * looking at, because it is the one where a reader has to be able to tell that
+ * the block continues.
+ */
+export const ExpandedOverflowNarrow: Story = {
+	render: () => <Frame height={1100} openRows records={OVERFLOW_RECORDS} />,
+};
+
+/**
+ * The results that hold nothing, and the row that holds nothing to disclose.
+ *
+ * Three shapes that all used to put something on screen that should not be
+ * there. An empty container (`{}`, `{"items": []}`) is what a "no rows found" API
+ * returns, and the pane used to fall back to printing the raw braces under its
+ * own `Output` label — the JSON punctuation this pane exists to keep out
+ * (reviewer F4). It now prints `(empty)`, the word the producer itself writes for
+ * a section that held nothing.
+ *
+ * The third row is the disclosure gate. Its arguments are an all-empty container
+ * and it printed no result, so `argumentLines` yields nothing — and the row used
+ * to OFFER a disclosure anyway, opening onto a bordered, padded, empty `sunken`
+ * box (reviewer F2, QA Q-2, photographed empty in the running app). It is a
+ * STATIC row here: no chevron, no hover, nothing to open. That is the readable
+ * half of the fix — the gate agreeing with the pane.
+ */
+export const ExpandedEmptyResult: Story = {
+	render: () => (
+		<Frame
+			height={420}
+			openRows
+			records={[
+				tool({
+					id: "tool:empty-object",
+					toolName: "read",
+					args: { path: "docs/ledger.md" },
+					output: "{}",
+					durationS: 0.02,
+				}),
+				tool({
+					id: "tool:empty-rows",
+					toolName: "mcp__linear__list_issues",
+					args: { team: "core", state: "open" },
+					output: JSON.stringify({ items: [] }, null, 2),
+					durationS: 0.41,
+				}),
+				tool({
+					id: "tool:no-detail",
+					toolName: "mcp__linear__list_issues",
+					args: { params: {} },
+					output: "",
+					durationS: 0.38,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The two receipt rows, and the row that has nothing to disclose.
+ *
+ * A peer message and a wake delivery are LEDGER rows — the TUI draws both
+ * (`PeerMessageBlock`, `WakeBlock`) and the phone's fold agrees — so a note that
+ * arrived mid-run belongs to the run rather than floating as a card.
+ *
+ * Four cases, and the first pair is the one that needs both states in ONE frame:
+ * a collapsed peer row is the sender and a preview, and the expansion is the
+ * pid, the model and the whole message. The third has no body at all and must
+ * still paint, because the identity is what the disclosure is for; the fourth is
+ * the wake receipt, whose headline is `w-9 (1, every 6h)` rather than the
+ * `(alarm) … — cancel with wake({op:"cancel",id:"w-9"})` markup the model reads.
+ */
+export const ReceiptRows: Story = {
+	render: () => (
+		<Frame
+			height={560}
+			openRows
+			keepClosed={[0]}
+			records={[
+				peer({
+					id: "peer:1",
+					body: "can you look at the flaky test in warm-session?",
+				}),
+				peer({
+					id: "peer:2",
+					body: "PR #154 is ready for review.\n\nThe peer envelope was still leaking onto the row, so the receipt now projects details.body and details.sender instead.\n\nNo rush — the gate is green either way.",
+				}),
+				peer({
+					id: "peer:3",
+					body: "",
+					sender: {
+						...PEER_SENDER,
+						conversationName: "",
+						cwd: "",
+						sessionId: "",
+					},
+				}),
+				wake({
+					id: "wake:1",
+					text: '(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})\n\ncheck the deploy finished before you answer',
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The hostile sender: what the row's sanitiser does with a name that fights back.
+ *
+ * The sender fields cross a process boundary from another session, so a
+ * conversation name is free text the peer chose, and three of the hazards have
+ * been reproduced on this row (reviewer F1, QA Q-1): an unterminated `U+202E`
+ * reverses every glyph after it — including the pid printed beside the name, the
+ * one field a reader uses to address the peer back — and a control sequence
+ * re-inks whatever it is painted into.
+ *
+ * The fixture is built through `peerFields` rather than by hand, and that is the
+ * point of it: `peerFields` is the one constructor of a `PeerSender` (the reducer
+ * projects every wire row through it), so this story runs the REAL sanitiser over
+ * the REAL wire shape. A hand-built sender would bypass the sanitiser and the
+ * frame would then be a picture of an input the app cannot produce.
+ *
+ * Three rows, one collapsed: the collapsed summary is where the scrambled name
+ * used to read `… rednes eltioth a morf ydob A`, the expanded identity line is
+ * where the pid sat beside it, and the third row is the SIZE hazard — a name
+ * bounded rather than allowed to own the row.
+ */
+export const ReceiptHostileSender: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			openRows
+			keepClosed={[0]}
+			records={[
+				peer({
+					id: "peer:bidi",
+					// A newline, a tab and an RTL override in ONE name: the shape
+					// hazard and the rendering hazard together, which is how the
+					// reported frame read.
+					...peerFields({
+						body: "the flaky test is in warm-session.test.mjs — can you take it?",
+						sender: {
+							pid: 7780000001234,
+							conversation_name:
+								"first line\nsecond line\ttabbed\u202eRTL override",
+							cwd: "/Users/damian/local-operator-ui-worktrees/tool-trace-legibility",
+							session_id: "01J8ZQ4K7XABCDEFGHJKMNPQRS",
+							model_label: "anthropic/claude-opus-5",
+						},
+					}),
+				}),
+				peer({
+					id: "peer:control",
+					// A CSI colour and an OSC window title, the two sequence forms the
+					// 7-bit-only pattern used to leave behind.
+					...peerFields({
+						body: "",
+						sender: {
+							pid: 92064,
+							conversation_name: "a\u001b[31mred\u001b]0;pwned\u0007agent",
+							model_label: "deepseek/deepseek-flash",
+						},
+					}),
+				}),
+				peer({
+					id: "peer:long",
+					...peerFields({
+						body: "",
+						sender: {
+							pid: 48213,
+							conversation_name: `malformed-${"overlong-conversation-name-".repeat(
+								8,
+							)}ui`,
+							model_label: "openai/gpt-5",
+						},
+					}),
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * ONE run, both row KINDS: three tool calls with a peer message and a wake
+ * delivery between them.
+ *
+ * The gap this closes was stated rather than hidden in round 2 (design, §
+ * "Checked and NOT filed"): every committed frame carried one kind at a time, so
+ * "the receipt rows share the ledger's own name column" rested on the mechanism
+ * (`ledgerName` feeds the single `toolNameColumn` measurement) plus a round-1
+ * mixed-list frame that predates the receipt projection — not on a picture taken
+ * at the head it was claimed of. A measurement is what makes the claim true, and
+ * a frame is what makes it checkable by a reader who was not here.
+ *
+ * What to read in it, in the order the rows are stacked:
+ *
+ * - ONE rail and ONE name column across both kinds. `bash`, `read`, `write` and
+ *   the receipts' `peer` / `wake` names start at the same x and take the same
+ *   `ink-muted`, because the column is sized once for the longest name visible
+ *   in the transcript and every kind takes part in that one measurement. A run
+ *   that had two spines — a tool column and a receipt column — would show two
+ *   left edges here and nowhere else, which is exactly why one kind per frame
+ *   could not settle it.
+ * - The expanded pane's argument text and the expanded receipt's body sit on the
+ *   SAME rail to within the pane's own hairline (design round 1, D2: 1px, and it
+ *   is the border). Both are in shot above and below each other.
+ * - A note that arrived mid-run belongs to the run: the peer row is a ledger row
+ *   between two calls rather than a card floating over them, and the wake
+ *   delivery reads `w-9 (1, every 6h)` rather than the `(alarm) … — cancel with
+ *   wake({…})` markup the model reads.
+ *
+ * Every row is opened through its own trigger, which is why the collapsed
+ * states are not the subject here — `receipt-rows` carries that pair.
+ */
+export const MixedRun: Story = {
+	render: () => (
+		<Frame
+			height={830}
+			openRows
+			records={[
+				tool({
+					id: "tool:mixed-bash",
+					toolName: "bash",
+					args: {
+						command: "pnpm test:desktop 2>&1 | tail -3",
+						timeout_ms: 600_000,
+					},
+					output: "ℹ tests 820\nℹ pass 816\nℹ fail 4\n",
+					durationS: 92.4,
+				}),
+				peer({
+					id: "peer:mixed",
+					body: "the receipts and the tool rows share one name column now — can you check a run that has both?",
+				}),
+				tool({
+					id: "tool:mixed-read",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+						offset: 108,
+						limit: 20,
+					},
+					output:
+						'const ledgerName = (record: TranscriptRecord) =>\n\trecord.kind === "peer" || record.kind === "wake"\n\t\t? displayName(record.kind)\n\t\t: toolDisplayName(record.toolName);',
+					durationS: 0.04,
+				}),
+				wake({
+					id: "wake:mixed",
+					text: '(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})\n\ncheck the deploy finished before you answer',
+				}),
+				tool({
+					id: "tool:mixed-write",
+					toolName: "write",
+					args: {
+						path: "scripts/tool-row.test.mjs",
+						content: "// the mixed-run case, pinned rather than photographed",
+					},
+					output: "Written 1 line to scripts/tool-row.test.mjs",
+					durationS: 0.03,
+				}),
+			]}
+		/>
 	),
 };
