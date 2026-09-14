@@ -27,10 +27,10 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 
 /**
  * The dialog's props, typed by what the SESSION surface accepts.
@@ -364,8 +364,10 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						aria-describedby={
 							// An id LIST, not a class name: `cn()` collapses falsy entries
 							// to an empty string, which is an attribute that says nothing.
-							[isJsonValue && "variable-value-hint",
-							 refusalField === "value" && "variable-value-refusal"]
+							[
+								isJsonValue && "variable-value-hint",
+								refusalField === "value" && "variable-value-refusal",
+							]
 								.filter(Boolean)
 								.join(" ") || undefined
 						}

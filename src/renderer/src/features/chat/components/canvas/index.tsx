@@ -583,7 +583,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 				 * - see the prop's own note. Undefined is a draft, which the panel has
 				 * honest copy for and no call to make.
 				 */
-				<CanvasVariablesViewer sessionId={sessionId} turnTerminal={turnTerminal} />
+				<CanvasVariablesViewer
+					sessionId={sessionId}
+					turnTerminal={turnTerminal}
+				/>
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}
 			{(currentView === "files" || currentView === "variables") &&
