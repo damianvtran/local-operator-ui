@@ -95,6 +95,10 @@ const {
 	desktopRequestSchema,
 	DesktopControlError,
 	UNCONFIRMED_SEND_CODE,
+	LEADING_SLASH_CODE,
+	LEADING_SLASH_MESSAGE,
+	SESSION_UNVALIDATED_CODE,
+	withholdsRetryHint,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -845,6 +849,75 @@ test("typed repair failures retain the canonical draft and error category", asyn
 	assert.equal(store.getState().drafts[key].errorCode, "unresolved_attachment");
 	assert.equal(store.getState().drafts[key].submittedText, input.text);
 	assert.equal(store.getState().drafts[key].sessionId, "222222222222");
+});
+
+/*
+ * The backend's own policy (`desktop_sessions.py:170`) refuses any message whose
+ * text lstrip-starts with "/", and it answers with a 422 whose `detail` is the
+ * transport's SHARED sentence. The composer rendered that sentence and then
+ * "Send it again." — an instruction that can never succeed, because the same
+ * bytes meet the same rule forever (UX round 2, U13). The refusal carries no
+ * code of its own on the wire, so the store classifies it from the payload it
+ * sent, which is the one thing that identifies it.
+ */
+test("a leading-slash refusal is classified, and says what the user can do", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const text = "/usage\nhello from line two";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text }, "222222222222"),
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
+	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	// A validation refusal is decided before anything is admitted, so the draft
+	// is not held and the text is back in the composer — where the fix the
+	// sentence names can actually be carried out.
+	assert.equal(draft.admissionAttempted, false);
+	assert.equal(draft.submittedText, text);
+	// The composer's generic retry hint is withheld for exactly the refusals a
+	// resend cannot answer, and kept for every other one. `UNCONFIRMED_SEND_CODE`
+	// is the contrast that matters here: its remedy is Restore, not a resend, but
+	// it is not this rule's business either.
+	assert.equal(withholdsRetryHint(draft.errorCode), true);
+	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), true);
+	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), false);
+	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
+	assert.equal(withholdsRetryHint(undefined), false);
+});
+
+test("the same 422 without a leading slash keeps the transport's own sentence", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "a message with no command in it" }),
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(draft.errorCode, undefined);
+	assert.equal(draft.error, "The request has invalid fields.");
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
 });
 
 test("latest candidate open wins and a failed open retains outgoing session", async () => {

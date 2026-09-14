@@ -24,6 +24,7 @@ import {
 	isSessionUnvalidated,
 	panelIdentityFor,
 	useCanonicalSessionsStore,
+	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1113,14 +1114,16 @@ function SessionPanel({
 					// unreachable registry needs the agents page. Any other code has no
 					// specific remedy, so it offers none rather than a generic button.
 					/*
-					 * The read window's refusal carries its own "what to do" half, so the
-					 * composer's generic retry hint is withheld for it: the notice lives
-					 * exactly as long as the window does, and the window refuses the retry for
-					 * that same span, which makes "Send it again" an instruction to do the one
-					 * thing that cannot succeed yet (UX round 3, U9). The sentence states the
-					 * wait and its end instead.
+					 * The composer's generic retry hint is withheld for the refusals a resend
+					 * cannot answer, which is what `withholdsRetryHint` names. Both carry their
+					 * own "what to do" half instead: the read window's notice lives exactly as
+					 * long as the window does and the window refuses the retry for that same
+					 * span (UX round 3, U9), and the leading-slash policy refuses this text
+					 * forever (UX round 2, U13). The predicate rather than a call-site list of
+					 * codes, because a second place for that rule is a second place for it to
+					 * drift.
 					 */
-					withholdRetryHint: activeErrorCode === SESSION_UNVALIDATED_CODE,
+					withholdRetryHint: withholdsRetryHint(activeErrorCode),
 					actions:
 						// The unconfirmed-send guard's remedies are Restore and the abandon
 						// control, both rendered by the composer from `heldText`. It must

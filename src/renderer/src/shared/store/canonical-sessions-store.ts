@@ -135,6 +135,76 @@ export const SESSION_UNVALIDATED_MESSAGE =
 	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
 
 /**
+ * A send refused because its text STARTS WITH A SLASH.
+ *
+ * The backend's own policy: `local_operator/server/routes/desktop_sessions.py`
+ * refuses any message whose text `lstrip().startswith("/")`, because a leading
+ * slash means "command" and a command travels on a different endpoint. A
+ * multi-line draft the planner correctly classified as PROSE (`/usage` on line
+ * one, the message on line two, caret at the end) therefore reaches the messages
+ * endpoint carrying that first line and is refused there — and no amount of
+ * resending can make it work: the same bytes meet the same rule forever (UX
+ * round 2, U13).
+ *
+ * A code rather than a match on the refusal's copy, for the same reason the two
+ * above are: the sentence is the transport's shared 422 string ("...invalid
+ * fields."), used by refusals this does not describe, and prose is expected to
+ * be reworded. The condition that identifies THIS refusal is the payload the
+ * store sent, which the store holds.
+ */
+export const LEADING_SLASH_CODE = "leading_slash_message";
+
+/**
+ * What a send refused for its leading slash says, in the composer's own row.
+ *
+ * The refusal's own copy is the transport's sentence about a malformed request,
+ * which names a cause the user cannot act on, and the composer's generic retry
+ * hint ("Send it again") points at the one action that can never succeed here.
+ * What is true is that the user's draft is still in the composer and has two
+ * fixes, both in front of them — so the sentence names them (branding section 8:
+ * what happened, what it means, what to do).
+ */
+export const LEADING_SLASH_MESSAGE =
+	"A message can't start with / — that is a command. Move it below your text, or send it on its own.";
+
+/**
+ * Whether a refused send is the leading-slash policy refusal.
+ *
+ * Keyed on the PAYLOAD the store sent rather than on the refusal's copy: the 422
+ * carries the transport's shared sentence, and matching prose would silently
+ * stop matching when it is reworded. `trimStart` mirrors the backend's `lstrip`.
+ * Restricted to 422 because that is the only status the policy raises — a
+ * leading-slash draft that failed for some OTHER reason (a lost response, a dead
+ * owner) has admitted nothing and may well succeed on a resend, so it must keep
+ * the generic hint.
+ */
+export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 422 &&
+		text.trimStart().startsWith("/")
+	);
+}
+
+/**
+ * Whether a refusal's remedy is anything OTHER than "send it again".
+ *
+ * The composer's generic retry hint is the alert's "what to do" half, and it is
+ * only ever rendered where it is true. Two refusals cannot be answered by
+ * resending the same bytes: the read window refuses every send for as long as
+ * its own notice is on screen, and the leading-slash policy refuses this text
+ * forever. Each carries its own statement of what to do instead, and the
+ * composer withholds the hint for both (UX round 3, U9; UX round 2, U13).
+ *
+ * One function rather than two call-site comparisons, so the composer reads the
+ * rule instead of listing the codes, and so `scripts/canonical-chat.test.mjs`
+ * can execute it against the store that raises them.
+ */
+export function withholdsRetryHint(code: string | undefined): boolean {
+	return code === SESSION_UNVALIDATED_CODE || code === LEADING_SLASH_CODE;
+}
+
+/**
  * The one place a composer value becomes a send PAYLOAD.
  *
  * The unchanged-payload guard compares byte-for-byte, because a retry of a
@@ -513,6 +583,7 @@ export async function admitChatDraft(
 		// actionable one (it sits on the text that failed and carries the
 		// remedies), so the send takes the message over and clears the other.
 		useCanonicalSessionsStore.setState({ error: null });
+		const leadingSlash = isLeadingSlashRefusal(error, text);
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
@@ -549,13 +620,22 @@ export async function admitChatDraft(
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
 			...(refusedBeforeAdmission ? { admissionAttempted: false } : {}),
-			errorCode:
-				error instanceof Error &&
-				"code" in error &&
-				typeof error.code === "string"
+			/*
+			 * A leading-slash refusal has no code of its own on the wire (the 422's
+			 * `detail` is a plain string), so it is classified from the payload we
+			 * sent, and it carries the product's own sentence rather than the
+			 * transport's. Every other refusal states itself as before.
+			 */
+			errorCode: leadingSlash
+				? LEADING_SLASH_CODE
+				: error instanceof Error &&
+						"code" in error &&
+						typeof error.code === "string"
 					? error.code
 					: undefined,
-			error: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
+			error: leadingSlash
+				? LEADING_SLASH_MESSAGE
+				: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
 		});
 		throw error;
 	}
