@@ -113,6 +113,15 @@ const App: FC = () => {
 	useEffect(() => {
 		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
 			(sessionId) => {
+				/*
+				 * The START of the latency trace the design asks to report rather than
+				 * to describe: the sibling mark is at the first painted transcript row
+				 * (`canonical-transcript.tsx`), and the measure between them is the
+				 * click-to-visible number. Marked HERE rather than in the transcript
+				 * because this is the process's first knowledge of the click, which is
+				 * the only honest beginning: everything after it is ours to lose.
+				 */
+				performance.mark("lop:open:requested");
 				setActiveSession(sessionId);
 				navigate("/chat");
 			},
