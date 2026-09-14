@@ -47,7 +47,6 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import { mcpKeys } from "@shared/api/local-operator/mcp-list";
-import { credentialsQueryKey } from "@shared/hooks/use-credentials";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { DesktopMcpState } from "../../../../../../shared/desktop-control-contract";
@@ -66,7 +65,8 @@ export type McpRefusal = "not-oauth" | "refused";
 /** What the section needs to render and start a remedy. */
 export type McpRemedyControls = {
 	/** Start the row's remedy. The GRANT is confirmed by the caller first. */
-	press: (row: McpServerRow) => void;
+	sessionId?: string | null;
+	press: (row: McpServerRow, action?: "login" | "reauth") => void;
 	/**
 	 * Write the row's credentials and reconnect it (the key remedy).
 	 *
@@ -77,6 +77,7 @@ export type McpRemedyControls = {
 	pressKey: (
 		row: McpServerRow,
 		values: Record<string, string>,
+		confirmedReplace?: string[],
 	) => Promise<boolean>;
 	/** Cancel a running grant by operation id. */
 	cancel: (operationId: string) => void;
@@ -167,7 +168,7 @@ export function useMcpRemedy({
 	);
 
 	const press = useCallback(
-		(row: McpServerRow) => {
+		(row: McpServerRow, action: "login" | "reauth" = "reauth") => {
 			if (!sessionId || !row.remedy) return;
 			// `key` is the dialog's path (`pressKey`), and `words` is not an action: this
 			// function starts the two ONE-OP remedies and nothing else.
@@ -205,13 +206,20 @@ export function useMcpRemedy({
 					await desktopResult({
 						op: "mcp.control",
 						sessionId,
-						control: { action: "reauth", name: row.name, confirmed: true },
+						control: { action, name: row.name, confirmed: true },
 					});
 					// Instant feedback only: the backend's own operation state arrives
 					// through the poll, so this surface never renders a grant it has
 					// started as anything the backend has not said.
 					void queryClient.invalidateQueries({ queryKey: key });
 				} catch (cause) {
+					setKeyErrors((previous) => ({
+						...previous,
+						[row.name]: userFacingMessage(
+							cause,
+							"Sign-in was not started. Retry or check this server's setup.",
+						),
+					}));
 					if (cause instanceof DesktopControlError) {
 						await explain(row, cause);
 					}
@@ -236,10 +244,21 @@ export function useMcpRemedy({
 					void queryClient.invalidateQueries({
 						queryKey: mcpKeys.list(sessionId),
 					});
-				} catch {
-					// Nothing to report here that the read will not report better: the
-					// operation is either still running (and still shown) or gone, and the
-					// row's own line is the surface for both.
+				} catch (cause) {
+					const state = queryClient.getQueryData<DesktopMcpState>(
+						mcpKeys.list(sessionId),
+					);
+					const name = state?.operations?.find(
+						(op) => op.id === operationId,
+					)?.name;
+					if (name)
+						setKeyErrors((previous) => ({
+							...previous,
+							[name]: userFacingMessage(
+								cause,
+								"Cancellation was not confirmed. Retry or check the operation status.",
+							),
+						}));
 				}
 			})();
 		},
@@ -247,14 +266,21 @@ export function useMcpRemedy({
 	);
 
 	/**
-	 * Write the row's credentials, then reconnect.
+	 * Write the row's declared credentials to the encrypted store, then reconnect.
 	 *
 	 * Two operations, in this order, and the order is the point: the credential has
-	 * to exist before the reconnect builds a transport from it. The credential path
-	 * is the owner store's own (`credentials.update`, the op Settings → API
-	 * credentials writes through), because the server's config holds a `${NAME}`
-	 * reference rather than a value — see `mcp-key-dialog.tsx` for what that means
-	 * against a backend that cannot resolve one yet.
+	 * to exist before the reconnect builds a transport from it.
+	 *
+	 * The write is `mcp.credentials.store` — a DEDICATED transport, not
+	 * `credentials.update`. There are three reasons it is its own op, and each one
+	 * was a real defect (review R2-3): `credentials.update` writes the legacy
+	 * plaintext `credentials.env` that the MCP resolver no longer consults, it is
+	 * the PROVIDER credential surface (so an MCP key there is advertised to every
+	 * provider list), and its route accepts any key name, which is how the form
+	 * ended up writing a config field name — `Authorization` — as a store ID
+	 * (R2-2). The owner validates every submitted ID against the server's own
+	 * declared references BEFORE writing anything, so an unknown or undeclared ID
+	 * is refused with a code rather than half-applied.
 	 *
 	 * The reconnect is the `connect` control, whose response is the new snapshot —
 	 * and the SUCCESS of this call is read off that snapshot's own row rather than
@@ -264,15 +290,19 @@ export function useMcpRemedy({
 	 * with the row still `auth-required`, and that is what the dialog has to say
 	 * (code review round 1, finding 3).
 	 *
-	 * The write is per field and it names the field that failed: the loop stops at
-	 * the first refusal, and the sentence says which value was not saved, because
-	 * "the key could not be saved" over a two-field form is a sentence the reader
-	 * cannot act on (finding 6).
+	 * **A save is never reported as a success on its own.** The caller closes the
+	 * form only on a `connected` row, and every other outcome — a partial write, a
+	 * refused write, an unconfirmed replacement, a live-but-unauthenticated
+	 * reconnect — keeps the form MOUNTED with the values still in it and the
+	 * backend's own sentence beside it, so a refusal never discards what the user
+	 * typed and never claims a connection nobody verified (R2-5). The values are
+	 * component state only: never cached, never in history, never in a URL.
 	 */
 	const pressKey = useCallback(
 		async (
 			row: McpServerRow,
 			values: Record<string, string>,
+			confirmedReplace: string[] = [],
 		): Promise<boolean> => {
 			if (!sessionId) return false;
 			setPendingName(row.name);
@@ -281,29 +311,47 @@ export function useMcpRemedy({
 				return rest;
 			});
 			const key = mcpKeys.list(sessionId);
-			const fields = Object.entries(values);
-			for (const [index, [field, value]] of fields.entries()) {
-				try {
-					await desktopResult({ op: "credentials.update", key: field, value });
-				} catch (cause) {
-					// Authored copy only: a runtime exception's message is a stack-trace
-					// fragment, and this line is read by someone who just typed a secret in.
-					const why = userFacingMessage(cause, "It could not be saved.");
-					// The fields before it DID land, and not saying so would send the reader
-					// to re-enter a secret that is already stored.
-					const earlier = index > 0 ? " The ones above it were saved." : "";
+			try {
+				const stored = await desktopResult<{
+					data: { code: string; saved_ids: string[]; failed_ids: string[] };
+				}>({
+					op: "mcp.credentials.store",
+					sessionId,
+					name: row.name,
+					values,
+					confirmedReplace,
+				});
+				if (stored.data?.code !== "saved") {
+					const result = stored.data;
+					const why =
+						result?.code === "replace_confirmation_required"
+							? "Confirm replacement of the existing shared keys before saving."
+							: `Not saved: ${(result?.failed_ids ?? Object.keys(values)).join(", ")}. Unlock or repair the encrypted store, then retry.`;
 					setKeyErrors((previous) => ({
 						...previous,
-						[row.name]: `${field}: ${why}${earlier}`,
+						[row.name]:
+							why +
+							(result?.saved_ids.length
+								? ` Saved: ${result.saved_ids.join(", ")}.`
+								: ""),
 					}));
 					setPendingName(null);
 					return false;
 				}
+			} catch (cause) {
+				setKeyErrors((previous) => ({
+					...previous,
+					[row.name]: userFacingMessage(
+						cause,
+						"The keys were not saved. Retry secure MCP key entry.",
+					),
+				}));
+				setPendingName(null);
+				return false;
 			}
 			try {
 				// The credentials surface reads its own key, so a key entered here must not
 				// leave that list one edit behind.
-				void queryClient.invalidateQueries({ queryKey: credentialsQueryKey });
 				const envelope = await desktopResult<{ data: DesktopMcpState }>({
 					op: "mcp.control",
 					sessionId,
@@ -314,24 +362,16 @@ export function useMcpRemedy({
 					const updated = envelope.data.servers?.find(
 						(server) => server.name === row.name,
 					);
-					if (updated && updated.status === "auth-required") {
-						// True under BOTH backends, which is the point: the credential is
-						// stored, and this read says the server still wants a sign-in. A
-						// runtime that resolves the reference lands `connected` here and the
-						// dialog closes.
-						setKeyErrors((previous) => ({
-							...previous,
-							[row.name]:
-								"The key was saved, but the server still needs sign-in.",
-						}));
-						return false;
-					}
+					if (updated?.status === "connected") return true;
 				} else {
-					// No document to judge: the credential is stored and the row's own next
-					// read is the statement, so this does not claim an outcome either way.
 					void queryClient.invalidateQueries({ queryKey: key });
 				}
-				return true;
+				setKeyErrors((previous) => ({
+					...previous,
+					[row.name]:
+						"The keys were saved, but this server is not connected. Check the credentials and server setup, then retry.",
+				}));
+				return false;
 			} catch (cause) {
 				setKeyErrors((previous) => ({
 					...previous,
@@ -359,6 +399,7 @@ export function useMcpRemedy({
 	);
 
 	return {
+		sessionId,
 		press,
 		pressKey,
 		cancel,

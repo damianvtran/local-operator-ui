@@ -852,6 +852,37 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
 	z
 		.object({
+			op: z.literal("mcp.credentials.store"),
+			sessionId,
+			name: z.string().min(1).max(256),
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// Field-level on purpose: a `.refine()` on the OBJECT would make this
+				// member a `ZodEffects`, which a discriminated union cannot take — it
+				// needs the `op` shape to discriminate on, so refining the whole
+				// object silently collapsed `DesktopRequest` to `unknown` and broke
+				// every `switch (request.op)` in this file.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					// Mirrors the owner's own bound (`local_operator/mcp/credentials.py`),
+					// so an oversized paste is refused as a sentence rather than
+					// serialized into a request the control budget rejects as an
+					// opaque 413.
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
+		})
+		.strict(),
+	z
+		.object({
 			op: z.literal("mcp.control"),
 			sessionId,
 			control: z
@@ -1907,6 +1938,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "GET",
+			};
+		case "mcp.credentials.store":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp/credentials`,
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					confirmed_replace: request.confirmedReplace,
+				},
 			};
 		case "mcp.control":
 			return {

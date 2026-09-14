@@ -2540,6 +2540,7 @@ test("a server that declares credential fields gets the key remedy, and one that
 			status: "auth-required",
 			transport: "stdio",
 			environment_keys: ["GOOGLE_CLIENT_SECRET"],
+			secret_refs: [{id: "GOOGLE_CLIENT_SECRET", bindings: [{field: "env", key: "GOOGLE_CLIENT_SECRET"}]}],
 		}).remedy,
 		{ kind: "key" },
 	);
@@ -2549,6 +2550,7 @@ test("a server that declares credential fields gets the key remedy, and one that
 			transport: "http",
 			transport_oauth_supported: false,
 			header_keys: ["Authorization"],
+			secret_refs: [{id: "SERVICE_TOKEN", bindings: [{field: "headers", key: "Authorization"}]}],
 		}).remedy,
 		{ kind: "key" },
 	);
@@ -2576,29 +2578,44 @@ test("a server that declares credential fields gets the key remedy, and one that
 	);
 });
 
-test("a row's credential field names are the payload's, deduped and never values", () => {
+test("a row's key fields are the backend's secret-reference IDs, never config field names", () => {
 	const [row] = deriveMcpServers([
 		{
 			name: "slack",
 			status: "auth-required",
 			transport: "http",
+			// R2-2: these two are the CONFIG MAP KEYS. They are informational only,
+			// and writing `Authorization` as a store ID is exactly the defect that
+			// left `${HUBSPOT_TOKEN}` unresolved after a "successful" save.
 			environment_keys: ["TOKEN", "SHARED"],
 			header_keys: ["Authorization", "SHARED"],
+			secret_refs: [{id: "TOKEN"}, {id: "SHARED"}, {id: "TOKEN"}, {id: "SERVICE_TOKEN"}],
 		},
 	]);
-	// Environment first, then headers, one entry per name: a form must not offer
-	// the same field twice because one name is declared in both maps.
-	assert.deepEqual(row.keyNames, ["TOKEN", "SHARED", "Authorization"]);
+	// Declared order, deduped by ID: one field per referenced secret, and never a
+	// destination field name (`Authorization` is absent).
+	assert.deepEqual(row.keyNames, ["TOKEN", "SHARED", "SERVICE_TOKEN"]);
 
-	// A payload that says nothing, or says something that is not a list of strings,
-	// offers no field rather than a field named `[object Object]`.
+	// A payload that declares no references offers no field at all: a form built
+	// from guessed header bindings is the dishonest setup this replaces.
 	const [bare] = deriveMcpServers([{ name: "bare", status: "connected" }]);
 	assert.deepEqual(bare.keyNames, []);
+	const [legacyOnly] = deriveMcpServers([
+		{
+			name: "legacy",
+			status: "auth-required",
+			transport: "http",
+			// An older backend sends the map keys and NO `secret_refs`. It must not
+			// be turned into a form that writes a wrong ID.
+			header_keys: ["Authorization"],
+		},
+	]);
+	assert.deepEqual(legacyOnly.keyNames, []);
 	const [odd] = deriveMcpServers([
 		{
 			name: "odd",
 			status: "connected",
-			environment_keys: [{ name: "nope" }, "  ", 7],
+			secret_refs: [{ id: { name: "nope" } }, { id: "  " }, { id: 7 }, "TOKEN"],
 		},
 	]);
 	assert.deepEqual(odd.keyNames, []);

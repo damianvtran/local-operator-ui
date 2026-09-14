@@ -31,7 +31,6 @@
  * user configured.
  */
 
-import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
@@ -43,7 +42,7 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
-import { McpKeyDialog } from "./mcp-key-dialog";
+import { McpAuthDialog } from "./mcp-auth-dialog";
 import {
 	type McpServerRow,
 	mcpServersAreCold,
@@ -209,7 +208,7 @@ const McpActionLine = ({
 			disabled={disabled}
 			data-mcp-remedy="key"
 			className="self-start"
-			onClick={() => onPress(row)}
+			onClick={() => onPress({ ...row, remedy: { kind: "key" } })}
 		>
 			{MCP_CONTROL_WORD.key}
 		</Button>
@@ -481,26 +480,7 @@ export const RunDetailMcp = ({
 	 */
 	remedy: McpRemedyControls;
 }) => {
-	/*
-	 * The confirmation is ONE dialog for the pane, held here rather than per row,
-	 * and that is the part of the old refusal that still holds (§ 7.2 amended):
-	 * there is one place that owns the confirmation, the scope and the error copy.
-	 *
-	 * The grant is the only remedy that confirms, because the backend's `reauth` is
-	 * destructive before it is constructive — `run_grant` deletes the stored row and
-	 * disconnects before it re-consents (`mcp/grants.py:193-211`), and the control
-	 * refuses without `confirmed: true` (`mcp/desktop.py:59-60`). It is deliberately
-	 * NOT danger-styled: the operation is recoverable by completing the consent, and
-	 * `DangerButton` is for the destructive-without-remedy class.
-	 */
-	const [confirmTarget, setConfirmTarget] = useState<McpServerRow | null>(null);
-	/*
-	 * The key popout's target, held here beside the confirmation so this section is
-	 * still the ONE place that owns a dialog over these rows. It is a separate state
-	 * from `confirmTarget` because the two answer different questions and only one
-	 * of them is destructive.
-	 */
-	const [keyTarget, setKeyTarget] = useState<McpServerRow | null>(null);
+	const [authTarget, setAuthTarget] = useState<McpServerRow | null>(null);
 	if (servers.length === 0) return null;
 	const cold = mcpServersAreCold(servers);
 	/*
@@ -513,12 +493,8 @@ export const RunDetailMcp = ({
 	const disabledFor = (row: McpServerRow) =>
 		grantRunning && row.grant?.status !== "running";
 	const start = (row: McpServerRow) => {
-		if (row.remedy?.kind === "grant") {
-			setConfirmTarget(row);
-			return;
-		}
-		if (row.remedy?.kind === "key") {
-			setKeyTarget(row);
+		if (row.remedy?.kind === "grant" || row.remedy?.kind === "key") {
+			setAuthTarget(row);
 			return;
 		}
 		remedy.press(row);
@@ -579,51 +555,14 @@ export const RunDetailMcp = ({
 					/>
 				))}
 			</ul>
-			{/*
-			 * `Grant account access`, not `Confirm`: the button says what it does, and
-			 * the message states both consequences — the browser opens, and a stored
-			 * credential is replaced — because both are facts the reader would otherwise
-			 * discover afterwards.
-			 *
-			 * A navigation NEVER lands here on its own (`§ 3.2`): the deep link reveals
-			 * the row and stops, because opening a confirm dialog and a browser tab is an
-			 * action nobody asked for.
-			 */}
-			<ConfirmationModal
-				open={confirmTarget !== null}
-				title={`Grant account access to ${confirmTarget?.name ?? ""}?`}
-				message="Your browser opens to approve access. A stored credential for this server is replaced."
-				confirmText="Grant account access"
-				onConfirm={() => {
-					if (confirmTarget) remedy.press(confirmTarget);
-					setConfirmTarget(null);
-				}}
-				onCancel={() => setConfirmTarget(null)}
-			/>
-			{/*
-			 * The key popout closes only on a save the backend ACCEPTED (`pressKey`
-			 * resolves true), so a refused credential write leaves the form and the
-			 * backend's own sentence on screen rather than a dialog that vanished over an
-			 * error nobody saw.
-			 */}
-			<McpKeyDialog
-				open={keyTarget !== null}
-				target={
-					keyTarget
-						? { name: keyTarget.name, keyNames: keyTarget.keyNames }
-						: null
-				}
-				saving={keyTarget !== null && remedy.pendingName === keyTarget.name}
-				error={keyTarget ? remedy.keyErrorFor(keyTarget.name) : null}
-				onCancel={() => setKeyTarget(null)}
-				onSave={(values) => {
-					const row = keyTarget;
-					if (!row) return;
-					void remedy.pressKey(row, values).then((saved) => {
-						if (saved) setKeyTarget(null);
-					});
-				}}
-			/>
+			{authTarget ? (
+				<McpAuthDialog
+					row={authTarget}
+					action="reauth"
+					remedy={remedy}
+					onClose={() => setAuthTarget(null)}
+				/>
+			) : null}
 		</section>
 	);
 };

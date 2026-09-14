@@ -993,7 +993,8 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
 |---|---|---|---|---|
 | `connected` | `Check` | `connected` | no | — |
 | `connecting` | `LoaderCircle`, `motion-safe:animate-spin` | `connecting` | no | — |
-| `auth-required` | `CircleAlert` | `auth-required` | **yes** | one of three forms, by what the transport can do: `Grant account access` (a link) when it can complete a browser sign-in; `Enter API key` when it cannot but the config DECLARES credential fields (`environment_keys`/`header_keys`); otherwise `— Manage this server's credentials in Settings`. The canonical projection's own error text goes on the line below when it carries one |
+| `auth-required` | `CircleAlert` | `auth-required` | **yes** | one of three forms, by what the transport can do: `Grant account access` (a link) when it can complete a browser sign-in; `Enter API key` when it cannot but the config DECLARES secret references (`secret_refs`); otherwise `— Manage this server's credentials in Settings`. The canonical projection's own error text goes on the line below when it carries one |
+| `disconnected` | `CircleDashed` | `disconnected` | **yes** | `Enter API key` where the config DECLARES secret references AND is known not to do OAuth (`transport_oauth_supported: false`, or a stdio transport), otherwise `Reconnect`. A real 401/403 or a failed stdio initialize reports `disconnected`, not `auth-required`, so judging the status word first offered Reconnect — and only Reconnect — to exactly the rows a key would fix (R2-4). An unknown-OAuth http row that also declares a reference keeps `Reconnect`: the SHARED flow re-probes the named server and starts whichever transition the backend actually reports, so the row never promises a flow the press will not run |
 | `disconnected` | `X` | `disconnected` | **yes** | `Reconnect` (a link), with the canonical projection's own error text on the line below when it carries one |
 | `cold` | — (the section's own state, below) | — | no | — |
 | anything else | `CircleHelp` | the wire's own word | **yes** | none — a fix for a word this build cannot name would be a guess |
@@ -1037,13 +1038,24 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   names that surface for every state this control cannot fix.
 
   The rule the old refusal protected is kept, not repealed: **there is still one
-  place that owns the confirmation, the scope and the error copy.** The
-  confirmation is the shared `ConfirmationModal`, held once at the section rather
-  than per row, and both surfaces' controls speak the same control vocabulary
-  (`Grant account access`, `Reconnect`) so one state cannot acquire two
-  spellings. What was refused before was a second PLACE to get those facts wrong;
-  what changed is that the panel now holds the same place's copy, not a copy of
-  its own.
+  place that owns the confirmation, the scope and the error copy.** As of the
+  integration round that place is the SHARED flow
+  (`run-details/mcp-auth-dialog.tsx`), opened from here, from `/mcp login|reauth
+  <name>` and from Settings — one transition owner, which is what stops a stale
+  derived remedy from starting a browser grant when the server's real answer is a
+  key (R2-6). Both surfaces' controls speak the same control vocabulary
+  (`Grant account access`, `Reconnect`, `Enter API key`) so one state cannot
+  acquire two spellings. What was refused before was a second PLACE to get those
+  facts wrong; what changed is that the panel opens the same place the other two
+  entry points do, rather than holding a modal of its own.
+
+  **The shared flow re-probes the named server before it acts.** That is one
+  extra round trip on a press, and it is the honest price of the single owner:
+  the row's status word cannot answer "does this server do OAuth, and which
+  reference IDs does it declare", which is why the answer comes from the backend
+  (`probe`, with `transport_oauth_supported`, `secret_refs`,
+  `credential_state` and `key_submission_supported`) instead of from the row's
+  own derived remedy.
 
   The remedy is a `link`-variant control on the row's second line, never a
   clickable row and never hover ground: the row still takes no hover step (§ 4),
@@ -1287,7 +1299,8 @@ section at `run-detail-mcp.tsx`, with the derivation in `run-detail-model.ts`
 Already satisfied and hereby ratified — no change wanted: presence and order; the
 mark/word encoding with `aria-hidden` marks and colour spent only on failure; no
 hover ground on the row; the remedy is a link control under § 7.2's amended rule,
-and the confirmation is the shared modal, held once at the section; a scope
+and the confirmation is the shared flow's, opened once from the section rather
+than held as a modal here; a scope
 qualifier; name-only rows for a nameless payload row; sorting by name so the list
 does not reorder across refetches; one query sharing the Settings cache key so a
 screen with both surfaces open has one answer; and stop conditions 1-4 of § 7.4.
@@ -1354,7 +1367,7 @@ exact steps inside a stated range are the implementation's to choose.
 | Roster area | `bg-surface`, rows hover `bg-elevated`, scroll region = the rest of the panel | A list panel's ground; `elevated` is the hovered-row role (`branding.md` § 2). |
 | Reader body | `bg-canvas` | The main transcript's ground (`chat-content.tsx:349`), so the child's conversation resolves against the same plane as the parent's — the "reads like the parent transcript" requirement is partly a *ground* requirement. |
 | Between sections | one `hairline` rule | Unchanged from `docs/run-details.md` § 5. |
-| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, up to 80px when the diagnosis wraps** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them, and the measured worst case is 6 + 20 + 16 + 32 + 6 = **80px** — 64px was the row without the second diagnosis line), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. |
+| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, 80px with the diagnosis, and up to ~104px when a cancelled-with-removed-credential grant line WRAPS above a two-line diagnosis at the pane's 320px floor** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them, and the measured worst case is 6 + 20 + 16 + 32 + 6 = **80px** — 64px was the row without the second diagnosis line), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. **The ~104px figure is a design-review round-2 correction (D5) and is stated as a range on purpose**: the grant line can hold three things (state word, the credential-removal sentence, and its control), so at 320px it takes a second line and the wrapping container's `gap-2` adds an 8px band between the two action lines — 6 + 20 + (16 + 8 + 16) + 32 + 6 = 104px. It is the *narrow* worst case only (the pane floor, a cancelled grant whose credential was removed, and a diagnosis that wraps to two lines simultaneously), it wraps rather than ellipsising, and no `§ 8` ceiling is met by pretending otherwise. The remedy is a smaller `row-gap` token if that band is unwanted, deliberately NOT taken here: it is a visual change to a surface two review rounds have already measured. |
 | MCP row segments | mark 16px (the roster's own box), name truncating with an ellipsis, then the status word, tool count and scope as non-truncating qualifiers | The roster's segment grammar, so the two lists read as one panel. The name is the only segment allowed to shrink: the numbers rule of § 9 forbids truncating a value mid-figure, and a name has a `title` to state it whole. |
 | MCP section | last in the panel's scroll region; its own section header with the tally; no separate scroll container, no hover ground, no cap | § 7.2's fixed order; the panel's single scroll region (the `Scroll owner` row below) is the roster's, so a section with its own container would put two scrollbars in one pane. |
 | Scroll owner | the roster area in the roster view; the transcript in the reader view — never both | Two nested scroll containers is the defect the old doc's `min(60vh, 480px)` ceiling existed to avoid; with a full-height pane the roster scrolls in the pane, and the cap that used to be a popover artefact is gone. |
@@ -1878,7 +1891,7 @@ The backend PR takes the review round alone.
 | The failure REASON on a panel MCP row | `mcp.list` carries no error field (`mcp/desktop.py:127-152` sends none), and the only source on the wire is the canonical projection's startup-failure map (`frontend_state.py:4385-4387`) — a BOOT snapshot that `mcp_status.py:47-49` explicitly says cannot describe a server that dropped later. Adding it to the route is a backend change, and a reason that is right for a startup failure and wrong for the reported case is worse than no reason. |
 | A human spelling for the wire status words (`auth-required`) | The string is the wire's and the backend's docstring makes rendering it directly the contract between surfaces (`mcp/manager.py:1331-1335`); re-spelling it in one renderer is the divergence § 7.2 refuses. A friendlier word is a backend vocabulary change with its own review. |
 | A push channel for MCP status (a frame, or a delta at every manager transition) | It would close the residue § 7.4 accepts — a transport that dies while the app is idle — but it is a backend change to fix a gap in the PUBLISH, not the observation, and the poll already makes the indication exist. Worth doing if the 15 s latency proves too coarse. |
-| The key-entry popout's WRITE PATH, which no action on the wire can reach | The popout ships (it is the `key` remedy on a row whose transport cannot do OAuth), and its write is the owner credential store — the same path Settings' API credentials use. What it depends on is `damianvtran/local-operator` **PR #1125**: `${NAME}` references in MCP `env` and `headers` values must resolve from that store at transport-build time, with an unresolved whole-value reference refused by name. Today nothing expands a `${NAME}` in the MCP path (`mcp/manager.py:747` merges the map into the child's environment values verbatim). The COUPLING is therefore in the copy rather than in silence: the dialog promises only what it does ("Saved to your credential manager, then this server is reconnected"), and the outcome is derived from the read — the returned snapshot's own row, because `manager.reconnect_server` swallows failures and returns `None` (`manager.py:1671-1679`) — so a backend without the resolver says "The key was saved, but the server still needs sign-in" and keeps the form open. |
+| The key-entry popout's WRITE PATH, which no action on the wire can reach | The popout ships (it is the `key` remedy on a row whose transport cannot do OAuth), and its write is the DEDICATED encrypted-store op `mcp.credentials.store` (`POST /v1/desktop/sessions/{id}/mcp/credentials`), whose backend half is `damianvtran/local-operator` **PR #1125**: `${NAME}` references in MCP `env` and `headers` resolve at transport-build time, an unresolved whole-value reference is refused BY NAME, and each server row publishes the reference IDs its config declares (`secret_refs`). The COUPLING is in the copy rather than in silence: the dialog promises only what it does ("Saved to the encrypted secret store, then this server is reconnected"), the fields come from the payload's own declared IDs, and the outcome is derived from the read — the returned snapshot's own row, because `manager.reconnect_server` swallows failures and returns `None` (`manager.py:1671-1679`) — so a store write that does not authenticate leaves the form open and says so. Against a backend without the op, the surface offers no key form and says to update the backend for secure MCP key entry; it never falls back to a plaintext write. |
 
 ---
 

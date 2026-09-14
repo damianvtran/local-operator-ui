@@ -69,6 +69,7 @@ export type DesktopMcpOperation = {
 	action: "login" | "logout" | "reauth";
 	status: "running" | "complete" | "cancelled" | "failed";
 	created_at: number;
+	message?: string;
 	credential_removed: boolean;
 };
 export type DesktopMcpState = {
@@ -93,6 +94,11 @@ export type DesktopMcpState = {
 		 */
 		environment_keys?: string[];
 		header_keys?: string[];
+		/** Actual encrypted-store IDs. Map keys above are informational only. */
+		secret_refs?: {
+			id: string;
+			bindings: { field: "env" | "headers"; key: string }[];
+		}[];
 		tool_count?: number;
 		setup?: { kind: "session_prompt"; text: string };
 	}[];
