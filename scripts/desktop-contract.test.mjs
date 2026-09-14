@@ -323,7 +323,12 @@ test("canonical session operations preserve identity, arguments and main-owned a
 		{ op: "subagents.transcript", sessionId: "../config", childId },
 		{ op: "subagents.transcript", sessionId, childId, limit: 501 },
 		{ op: "subagents.transcript", sessionId, childId, limit: 0 },
-		{ op: "subagents.transcript", sessionId, childId, beforeId: "e".repeat(129) },
+		{
+			op: "subagents.transcript",
+			sessionId,
+			childId,
+			beforeId: "e".repeat(129),
+		},
 		{ op: "subagents.transcript", sessionId, childId, path: "/etc/passwd" },
 	])
 		assert.equal((await requestDesktop(input, url, token)).status, 422);
@@ -777,7 +782,13 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 	const beforeRefusals = seen.length;
 	for (const operation of [
 		{ op: "sessions.variables.delete", sessionId, key: "../../v1/credentials" },
-		{ op: "sessions.variables.update", sessionId, key: "a/b", value: "1", type: "int" },
+		{
+			op: "sessions.variables.update",
+			sessionId,
+			key: "a/b",
+			value: "1",
+			type: "int",
+		},
 		{
 			op: "sessions.variables.create",
 			sessionId,
@@ -990,8 +1001,11 @@ test("a picker reopens where the last one of its kind landed", () => {
 
 	// An explicit defaultPath from the caller wins.
 	assert.equal(
-		withRememberedDirectory("picker-test-file", { defaultPath: "/elsewhere" }, fallback)
-			.defaultPath,
+		withRememberedDirectory(
+			"picker-test-file",
+			{ defaultPath: "/elsewhere" },
+			fallback,
+		).defaultPath,
 		"/elsewhere",
 	);
 
@@ -1028,7 +1042,11 @@ test("a picker reopens where the last one of its kind landed", () => {
 	// The options the caller passed are preserved, and the caller's object is not
 	// mutated -- the renderer's own options object crosses the IPC boundary.
 	const options = { properties: ["openFile"], title: "Select File" };
-	const returned = withRememberedDirectory("picker-test-file", options, fallback);
+	const returned = withRememberedDirectory(
+		"picker-test-file",
+		options,
+		fallback,
+	);
 	assert.deepEqual(returned.properties, ["openFile"]);
 	assert.equal(returned.title, "Select File");
 	assert.equal(options.defaultPath, undefined);
@@ -1567,7 +1585,11 @@ test("the shallow envelope - the shape this PR shipped against - does not resolv
 
 test("a dot-only key is refused by the contract and never addressed", () => {
 	for (const key of [".", "..", "...", "", "a".repeat(129), "bad\u0007name"]) {
-		assert.equal(isWritableVariableKey(key), false, `${key} must not be addressable`);
+		assert.equal(
+			isWritableVariableKey(key),
+			false,
+			`${key} must not be addressable`,
+		);
 		const parsed = desktopRequestSchema.safeParse({
 			op: "sessions.variables.delete",
 			sessionId: SESSION,
@@ -1596,12 +1618,19 @@ test("a dot-only key is refused by the contract and never addressed", () => {
 	// name, and a dunder - the reason this is a denylist rather than an
 	// identifier regex.
 	for (const key of ["outstanding total", "a.b", "__builtins__"]) {
-		assert.equal(isWritableVariableKey(key), true, `${key} must stay addressable`);
+		assert.equal(
+			isWritableVariableKey(key),
+			true,
+			`${key} must stay addressable`,
+		);
 		const { path } = rendererDesktopEndpoint({
 			op: "sessions.variables.delete",
 			sessionId: SESSION,
 			key,
 		});
-		assert.equal(new URL(path, "http://127.0.0.1:1111").pathname, `/v1/desktop/sessions/${SESSION}/variables/${encodeURIComponent(key)}`);
+		assert.equal(
+			new URL(path, "http://127.0.0.1:1111").pathname,
+			`/v1/desktop/sessions/${SESSION}/variables/${encodeURIComponent(key)}`,
+		);
 	}
 });

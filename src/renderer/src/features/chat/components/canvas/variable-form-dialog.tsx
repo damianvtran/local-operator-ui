@@ -1,13 +1,13 @@
+import {
+	DesktopControlError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	SessionVariable,
 	VariableType,
 	VariableWrite,
 } from "@shared/api/local-operator/session-variables-api";
 import { VARIABLE_TYPES } from "@shared/api/local-operator/session-variables-api";
-import {
-	DesktopControlError,
-	userFacingMessage,
-} from "@shared/api/local-operator/desktop-api";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -206,11 +206,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 					isSubmitting ? <Spinner /> : <Save size={18} aria-hidden="true" />
 				}
 			>
-				{isSubmitting
-					? "Saving…"
-					: isEditMode
-						? "Save"
-						: "Create"}
+				{isSubmitting ? "Saving…" : isEditMode ? "Save" : "Create"}
 			</PrimaryButton>
 		</>
 	);

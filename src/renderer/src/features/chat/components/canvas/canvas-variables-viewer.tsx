@@ -1,3 +1,4 @@
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -9,8 +10,6 @@ import type {
 } from "@shared/api/local-operator/session-variables-api";
 import { isSessionVariablesMissing } from "@shared/api/local-operator/session-variables-api";
 import { isSessionVariablesSessionMissing } from "@shared/api/local-operator/session-variables-api";
-import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
@@ -39,6 +38,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 import { VariableFormDialog } from "./variable-form-dialog";
 
 type CanvasVariablesViewerProps = {
@@ -490,8 +490,8 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 					 */}
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
 						This app can read code memory; the backend it is running against is
-						older than that. Settings, then Application updates and info, installs
-						the newer one.
+						older than that. Settings, then Application updates and info,
+						installs the newer one.
 					</p>
 				</CenteredState>
 			);
@@ -611,8 +611,8 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						</p>
 						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
 							This chat keeps a value that is bigger than the whole panel budget
-							on its own, so nothing could be listed. It is still in the session and
-							the next cell can use it.
+							on its own, so nothing could be listed. It is still in the session
+							and the next cell can use it.
 						</p>
 					</CenteredState>
 				);
