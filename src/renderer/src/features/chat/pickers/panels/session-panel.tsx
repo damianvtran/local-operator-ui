@@ -238,11 +238,13 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 		? scopeSpan(report)
 		: { first: "unknown", last: "unknown" };
 	/*
-	 * A shape the panel cannot draw, named before any section renders: a `.map`
-	 * over a keyed group-by throws inside the render pass, which unmounts the
-	 * panel to the app's error boundary and loses the ledger facts that WERE
-	 * readable. This is an `unavailable`, not an `empty` — the answer exists, it
-	 * is written to a different contract.
+	 * A shape the panel cannot draw. Section-scoped, not whole-body — § 8 makes
+	 * `unavailable` replace the affected section's content, and § 6.2 reserves a
+	 * whole-body state for `available === false` and the capability gate. On the
+	 * payload this was found with, sections 1-3 and 5-9 parsed perfectly, so a
+	 * body-level notice would have been one sentence where a panel of readable
+	 * facts belongs: the error stays visible, it just stays where it belongs
+	 * (review round 1, R3).
 	 */
 	const shapeProblem = report ? reportShapeProblem(report) : null;
 	return (
@@ -254,15 +256,27 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 			description="What this session has used, from one read of the local ledger."
 			toolbar={
 				showSections ? (
-					<PickerSegment
-						label="Metric"
-						value={metric}
-						onChange={(value) => onMetricChange(value as SessionMetric)}
-						options={[
-							{ value: "tokens", label: "Tokens" },
-							{ value: "cost", label: "Cost" },
-						]}
-					/>
+					/*
+					 * Wrapped in a flex row for the reason `/analytics` wraps its own: the
+					 * shell's toolbar slot is a block container, and `PickerSegment`'s root is
+					 * a block-level `fieldset`, so a bare segment stretches to the dialog's
+					 * full width and paints ~950px of empty `sunken` track beside its two
+					 * pills — an empty well as a panel's first impression, in every state
+					 * (design round 1, D3). The wrapper is local rather than a `w-fit` on the
+					 * primitive: other surfaces pass a segment into a flex row that already
+					 * sizes it, and a segment that cannot stretch would change them too.
+					 */
+					<div className={cn("flex flex-wrap items-center gap-4")}>
+						<PickerSegment
+							label="Metric"
+							value={metric}
+							onChange={(value) => onMetricChange(value as SessionMetric)}
+							options={[
+								{ value: "tokens", label: "Tokens" },
+								{ value: "cost", label: "Cost" },
+							]}
+						/>
+					</div>
 				) : undefined
 			}
 			body={
@@ -291,8 +305,6 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 						kind="unavailable"
 						text="Could not read local usage records. Close and reopen to try again."
 					/>
-				) : shapeProblem ? (
-					<PanelNotice kind="unavailable" text={shapeProblem} />
 				) : (
 					<PanelStack>
 						<div className={cn("flex flex-col gap-0.5")}>
@@ -345,7 +357,14 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 								<ProportionBar
 									fraction={measured}
 									size="gauge"
-									className={cn("w-full max-w-96")}
+									/*
+									 * The gauge keeps its capped width — a bar the width of the panel
+									 * would read as a progress bar for the whole report — and the number
+									 * moves to the panel's own number edge, where every table value on
+									 * this panel is right-aligned. Inline after the bar it was the one
+									 * number sitting mid-row (design round 1, D9).
+									 */
+									className={cn("min-w-0 max-w-96 flex-1")}
 									srLabel={
 										measured === null
 											? "Context window: not measured"
@@ -354,7 +373,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 								/>
 								<p
 									className={cn(
-										"shrink-0 font-mono text-body-sm tabular-nums",
+										"ml-auto shrink-0 font-mono text-body-sm tabular-nums",
 										measured === null ? "text-ink-dim" : "text-ink",
 									)}
 								>
@@ -380,14 +399,18 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 									/>
 								</PanelSection>
 								<PanelSection title="By purpose">
-									<BarTable
-										label="Usage by purpose in this session"
-										firstHeader="Purpose"
-										rows={purposeRows(report, metric)}
-										withCalls
-										empty="No purpose rows recorded for this session."
-										metric={metric}
-									/>
+									{shapeProblem ? (
+										<PanelNotice kind="unavailable" text={shapeProblem} />
+									) : (
+										<BarTable
+											label="Usage by purpose in this session"
+											firstHeader="Purpose"
+											rows={purposeRows(report, metric)}
+											withCalls
+											empty="No purpose rows recorded for this session."
+											metric={metric}
+										/>
+									)}
 								</PanelSection>
 								<PanelSection
 									title="Where input went"

@@ -69,6 +69,29 @@ export const isShadowedInstall = (
 	install: DesktopInfoData["install"],
 ): boolean => install.import_path_foreign && install.kind !== "editable";
 
+/**
+ * Section 1's meta: the interpreter, the platform, and the architecture.
+ *
+ * § 6.3 asks this line for the Python version, the platform and the machine.
+ * The platform string usually already ENDS in the machine — the collected
+ * `macOS-26.0-arm64` does — so printing both is one fact twice, which is what
+ * the panel did (`macOS-26.0-arm64 · arm64`, design round 1, D10). The machine is
+ * therefore stated only when the platform does not already say it, and the
+ * Python version moves onto the line the contract asks it for rather than living
+ * only inside the interpreter card.
+ */
+export function installMeta(install: DesktopInfoData["install"]): string {
+	const python = install.python_version
+		? `Python ${install.python_version}`
+		: "";
+	const platform = install.platform || "unknown platform";
+	const machine =
+		install.machine && !platform.endsWith(install.machine)
+			? install.machine
+			: "";
+	return [python, platform, machine].filter(Boolean).join(" · ");
+}
+
 export function installFacts(
 	install: DesktopInfoData["install"],
 ): InstallFacts {
@@ -77,10 +100,19 @@ export function installFacts(
 	 * `never checked` is a different fact from `up to date`: an install whose
 	 * latest PyPI answer was never written to disk has no opinion, and calling
 	 * that "up to date" is a claim nobody measured.
+	 *
+	 * When a newer version IS known the note must not be where that version is
+	 * stated. It used to read `0.22.0 available` on a card whose badge, 40px
+	 * below, reads `v0.22.0 available — /update` — one fact, two statements, one
+	 * of them missing the `v` — and § 6.3 gives the version to the badge, which
+	 * is the copy that carries the action (design round 1, D11). So the note takes
+	 * the fact the badge cannot: how stale the answer is.
 	 */
 	const versionNote =
 		install.behind && install.latest_known
-			? `${install.latest_known} available`
+			? install.latest_age_s === null
+				? "update available"
+				: `checked ${formatDuration(install.latest_age_s)} ago`
 			: install.latest_known === null
 				? "never checked"
 				: "up to date";
@@ -140,8 +172,14 @@ export function hostRows(process: DesktopInfoData["process"]): InfoRow[] {
 			 * A duration and its direction belong in ONE cell. Split as label +
 			 * "ago" the row read `Started  ago   3h 26m`, which is two halves of a
 			 * sentence on either side of a column gap and a value in the middle.
+			 *
+			 * Mono, because a duration is machine voice here: every neighbour in this
+			 * table is mono (a pid, ids, a path, a model id) and `Conversation` is
+			 * the only prose column, so a sans duration was the odd one out in a
+			 * column of monospace values (design round 1, D13).
 			 */
 			value: `${formatDuration(process.uptime_s)} ago`,
+			mono: true,
 		},
 		{
 			key: "cwd",

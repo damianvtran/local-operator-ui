@@ -19,6 +19,7 @@ import {
 	environmentRows,
 	hostRows,
 	installFacts,
+	installMeta,
 	mcpSummary,
 	sessionLineRows,
 	terminalRows,
@@ -234,11 +235,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 					<PanelStack>
 						<PanelSection
 							title="Install"
-							meta={
-								data
-									? `${data.install.platform || "unknown platform"} · ${data.install.machine || UNKNOWN_MACHINE}`
-									: undefined
-							}
+							meta={data ? installMeta(data.install) : undefined}
 						>
 							{hostBody() ?? (
 								<>
@@ -474,8 +471,6 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 		/>
 	);
 };
-
-const UNKNOWN_MACHINE = "unknown machine";
 
 /** The adapter the registry mounts: owns the read and the capability gate. */
 export const InfoView: FC<PickerContext> = ({

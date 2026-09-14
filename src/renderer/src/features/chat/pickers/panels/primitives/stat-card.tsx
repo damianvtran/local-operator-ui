@@ -1,6 +1,6 @@
 import { Card } from "@shared/components/ui/card";
 import { cn } from "@shared/lib/utils";
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 import { formatPercent } from "../formatters";
 import { ProportionBar } from "./proportion-bar";
 
@@ -46,12 +46,37 @@ const TONE_CLASS: Record<NonNullable<Stat["tone"]>, string> = {
 	danger: "text-danger",
 };
 
-/** Four ~236px cells at 1024px: `$128.40` plus a note fits without wrapping. */
-export const StatGrid = ({ children }: { children: ReactNode }) => (
-	<div className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-4")}>
-		{children}
-	</div>
-);
+/**
+ * One row of stat cards, as wide as the number of cards it was given.
+ *
+ * The column count follows the count rather than sitting at a fixed four: three
+ * cards under a full-width heading left a whole empty cell, which reads as a
+ * hole in the layout rather than as whitespace somebody chose (design round 1,
+ * D7 — `/info`'s Install section). Two cells on a narrow viewport, then one
+ * column per card up to the four-across cap that `$128.40` plus a note measured.
+ *
+ * The count is therefore the number of TOP-LEVEL children: every call site
+ * passes its `StatCard`s directly, and a caller that wrapped them in a fragment
+ * would count as one card. A variable holding the cards is the way to pass a
+ * computed list.
+ */
+export const StatGrid = ({ children }: { children: ReactNode }) => {
+	const count = Children.count(children);
+	return (
+		<div
+			className={cn(
+				"grid gap-3 sm:grid-cols-2",
+				count >= 4
+					? "lg:grid-cols-4"
+					: count === 3
+						? "lg:grid-cols-3"
+						: "lg:grid-cols-2",
+			)}
+		>
+			{children}
+		</div>
+	);
+};
 
 export const StatCard = ({
 	label,
@@ -61,7 +86,14 @@ export const StatCard = ({
 	fraction,
 	tone = "neutral",
 }: StatCardProps) => (
-	<Card variant="surface" padding="md">
+	/*
+	 * A column that fills its grid cell, so the note can be bottom-anchored.
+	 * Cards in one grid row are equal height already (the grid stretches them),
+	 * but their contents flow from the top, so a card carrying a bar pushed its
+	 * note ~20px below a neighbour's and a 4-up row read as misaligned (design
+	 * round 1, D4).
+	 */
+	<Card variant="surface" padding="md" className={cn("flex h-full flex-col")}>
 		<p className={cn("text-ink-dim text-meta")}>{label}</p>
 		<p className={cn("font-mono text-title tabular-nums", TONE_CLASS[tone])}>
 			{value}
@@ -80,7 +112,14 @@ export const StatCard = ({
 			/>
 		) : null}
 		{note ? (
-			<p className={cn("text-balance text-ink-dim text-meta")}>{note}</p>
+			/*
+			 * `mt-auto` is what makes the captions share a baseline: whatever the card
+			 * above it grew by — a bar, a wrapped value — the note sits on the cell's
+			 * floor rather than after the last thing that happened to be there.
+			 */
+			<p className={cn("mt-auto text-balance text-ink-dim text-meta")}>
+				{note}
+			</p>
 		) : null}
 	</Card>
 );

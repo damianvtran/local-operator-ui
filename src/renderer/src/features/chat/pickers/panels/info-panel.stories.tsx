@@ -24,6 +24,7 @@ import type { DesktopInfoData } from "../../../../../../shared/desktop-contract"
 import "../../../../styles/index.css";
 import type { InfoFrontend } from "./info-model";
 import { InfoPanel } from "./info-panel";
+import { scrollPanelToSection } from "./story-scroll";
 
 const noop = () => {};
 
@@ -257,6 +258,9 @@ export const BuildSkew: Story = {
 		}),
 		frontend,
 	},
+	/* The notice is in section 3, and section 3 is below the fold: without this
+	   the frame is the populated one (D2). */
+	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
 export const RosterUnread: Story = {
@@ -268,6 +272,7 @@ export const RosterUnread: Story = {
 		}),
 		frontend,
 	},
+	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
 /** Memory probes returned nothing: one line under the table, no column of `—`. */
@@ -287,6 +292,9 @@ export const NoMemory: Story = {
 		}),
 		frontend,
 	},
+	/* The line under the table is the whole state, and the table is below the
+	   fold (D2). */
+	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
 /** The registry scan failed: section 3 says so, sections 4 and 5 still render. */
@@ -298,6 +306,7 @@ export const RegistryUnavailable: Story = {
 		}),
 		frontend,
 	},
+	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
 /**
@@ -392,6 +401,7 @@ export const RemoteHost: Story = {
 };
 
 /** MCP mid-handshake: `Still connecting`, never "1 of 3 up" during a handshake. */
+/** Settling counts are in section 5, below the fold (D2). */
 export const McpSettling: Story = {
 	args: {
 		...base,
@@ -405,27 +415,32 @@ export const McpSettling: Story = {
 			],
 		},
 	},
+	play: () => scrollPanelToSection("Environment"),
 };
 
-/** Every session is ours to show, including a detached TUI on an older build. */
+/**
+ * Every session is ours to show, including a detached TUI on an older build:
+ * twelve rows, the table's own cap, so `+N more` never fires here.
+ */
+const manySessionLines = (): DesktopInfoData["sessions"]["lines"] =>
+	Array.from({ length: 12 }, (_, index) => ({
+		...info().sessions.lines[index % 3],
+		pid: 83_412 + index * 60,
+		session_id: `${index}f3a4b5c6d7`.slice(-12).padStart(12, "0"),
+		conversation_name:
+			index % 3 === 0 ? "" : `Session ${index} on build 0.2${index % 4}.0`,
+		state: (index % 4 === 3 ? "stale" : "live") as "live" | "stale",
+		busy: index % 5 === 0,
+		pending: index % 7 === 0 ? "approval" : null,
+	}));
+
 export const ManySessions: Story = {
 	args: {
 		...base,
 		data: info({
 			sessions: {
 				...info().sessions,
-				lines: Array.from({ length: 12 }, (_, index) => ({
-					...info().sessions.lines[index % 3],
-					pid: 83_412 + index * 60,
-					session_id: `${index}f3a4b5c6d7`.slice(-12).padStart(12, "0"),
-					conversation_name:
-						index % 3 === 0
-							? ""
-							: `Session ${index} on build 0.2${index % 4}.0`,
-					state: (index % 4 === 3 ? "stale" : "live") as "live" | "stale",
-					busy: index % 5 === 0,
-					pending: index % 7 === 0 ? "approval" : null,
-				})),
+				lines: manySessionLines(),
 				total: 12,
 				live: 9,
 				stale: 3,
@@ -433,10 +448,81 @@ export const ManySessions: Story = {
 		}),
 		frontend,
 	},
+	/* Twelve rows live in section 3; unscrolled, this story is the populated
+	   image, which is what the design round found (D2). */
+	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
-/** The largest legal payload: every section at its cap on one body. */
-export const Dense: Story = { args: { ...ManySessions.args, ...base } };
+/**
+ * The largest legal payload: every section at its cap on one body.
+ *
+ * It was `{ ...ManySessions.args, ...base }` — the same args object, so the two
+ * stories shipped one image and only `many-sessions` was ever looked at (D2).
+ * Everything added here is a branch the panel has and no other fixture reaches:
+ * paths long enough to wrap, the full credential list (§ 6.3 wraps it), a failed
+ * MCP server beside connected ones, and a populated `degraded` section.
+ */
+export const Dense: Story = {
+	args: {
+		...base,
+		frontend: {
+			...frontend,
+			mcp_servers: [
+				{ name: "linear", status: "connected" },
+				{ name: "notion", status: "connected" },
+				{
+					name: "slack",
+					status: "auth-required",
+					error: "OAuth token expired",
+				},
+				{
+					name: "postgres-observability",
+					status: "failed",
+					error: "spawn ENOENT",
+				},
+			],
+		},
+		data: info({
+			install: {
+				...info().install,
+				prefix: "~/.local/share/uv/tools/local-operator-with-a-longer-name",
+				import_path:
+					"~/.local/share/uv/tools/local-operator-with-a-longer-name/lib/python3.14/site-packages/local_operator",
+			},
+			process: {
+				...info().process,
+				cwd: "~/oss/oh-my-pi/packages/coding-agent/src/very/deep/tree",
+			},
+			sessions: {
+				...info().sessions,
+				lines: manySessionLines(),
+				total: 12,
+				live: 9,
+			},
+			env: {
+				...info().env,
+				mcp_configured: 4,
+				mcp_connected: 2,
+				mcp_failed: 1,
+				credential_keys: [
+					"ANTHROPIC_API_KEY",
+					"OPENAI_API_KEY",
+					"DEEPSEEK_API_KEY",
+					"GEMINI_API_KEY",
+					"GITLAB_TOKEN",
+					"GITHUB_TOKEN",
+					"LOCAL_OPERATOR_DESKTOP_TOKEN",
+				],
+			},
+			degraded: [
+				["agents", "the session roster could not be read"],
+				["sessions.fleet_trajectories", "the registry answered late"],
+				["process.memory", "the memory probe timed out"],
+			],
+		}),
+	},
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
 
 /** 720px: the value column wraps and the markers stack. */
 export const Narrow: Story = { args: { ...base, data: info(), frontend } };

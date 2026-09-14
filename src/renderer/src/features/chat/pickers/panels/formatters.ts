@@ -142,6 +142,32 @@ export function formatCount(n: number): string {
 }
 
 /**
+ * Python's `round()`: half to EVEN, not half away from zero.
+ *
+ * `Math.round` moves every `.5` up, so the port disagreed with the terminal it
+ * was ported from on exactly the values a reader is most likely to check by
+ * hand: `1/8` rendered `13%` here against `12%` in
+ * `analytics_panel.py::format_percent`, and `5/8` rendered `63%` against `62%`
+ * — 292 divergent `n/d` pairs at `d <= 500`, all of them at an exactly
+ * representable half (review round 1, R2). A cache-hit rate of one eighth is an
+ * ordinary reading, and this file's premise is one spelling per quantity across
+ * the terminal and the desktop, so the seam is closed here rather than argued.
+ *
+ * The halves are tested as `fraction === 0.5` rather than through a modulo:
+ * every value these callers produce at a half is exactly representable, and a
+ * floating-point remainder would reintroduce the error it is meant to remove.
+ * Negative halves land on the even value the same way Python's do (`-0.5` →
+ * `-0`, `-1.5` → `-2`), because the tie-break is on the FLOOR's parity.
+ */
+const roundHalfEven = (value: number): number => {
+	const floor = Math.floor(value);
+	const fraction = value - floor;
+	if (fraction > 0.5) return floor + 1;
+	if (fraction < 0.5) return floor;
+	return floor % 2 === 0 ? floor : floor + 1;
+};
+
+/**
  * One measurement in milliseconds: `840 ms` / `1.2 s` / `12.4 s`
  * (`session_panel.py` `_milliseconds`, extended past a second where the raw
  * `1,240 ms` stops being readable at a glance).
@@ -153,7 +179,7 @@ export function formatCount(n: number): string {
 export function formatMs(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN_WORD;
 	if (Math.abs(value) < 1000) {
-		return `${new Intl.NumberFormat("en-US").format(Math.round(value))} ms`;
+		return `${new Intl.NumberFormat("en-US").format(roundHalfEven(value))} ms`;
 	}
 	return `${(value / 1000).toFixed(1)} s`;
 }
@@ -164,6 +190,11 @@ export function formatMs(value: number | null | undefined): string {
  *
  * Time of day only: a session report's rows are a tail of one session, so the
  * date repeats on every row and would spend the label column saying nothing.
+ * That remark is the Python's about the DATE, and the other half of this port
+ * is a deliberate subtraction: the Python renders `%H:%M:%S` and § 4.7 of the
+ * design contract specifies `HH:MM` for this column, because a report's rows
+ * are seconds apart at most and the seconds were the widest thing in a column
+ * whose job is telling one row from the next.
  */
 export function formatClock(tsMs: number | null | undefined): string {
 	if (tsMs === null || tsMs === undefined) return UNKNOWN_WORD;
@@ -223,7 +254,7 @@ export function formatPercent(fraction: number | null | undefined): string {
 	if (fraction === null || fraction === undefined) return UNKNOWN;
 	const pct = fraction * 100;
 	if (pct > 99 && pct < 100) return "99%";
-	return `${Math.round(pct)}%`;
+	return `${roundHalfEven(pct)}%`;
 }
 
 /**
@@ -236,7 +267,7 @@ export function formatPercent(fraction: number | null | undefined): string {
 export function formatBytes(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN;
 	if (value >= 1 << 30) return `${(value / (1 << 30)).toFixed(1)} GB`;
-	return `${Math.round(value / (1 << 20))} MB`;
+	return `${roundHalfEven(value / (1 << 20))} MB`;
 }
 
 /**

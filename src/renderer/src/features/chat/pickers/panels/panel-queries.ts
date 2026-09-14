@@ -50,7 +50,17 @@ export const sessionReportQueryOptions = (
 	sessionId: string,
 	recentLimit = 12,
 ) => ({
-	queryKey: ["desktop", "session-report", sessionId] as const,
+	queryKey: [
+		"desktop",
+		"session-report",
+		sessionId,
+		/*
+		 * The limit is part of the request, so it is part of the identity: two
+		 * callers asking for different tails of the same session are two answers,
+		 * and a key without it would serve one to the other (review round 1, N4).
+		 */
+		recentLimit,
+	] as const,
 	queryFn: () =>
 		desktopResult<{ data: DesktopSessionReport }>({
 			op: "sessions.report",
