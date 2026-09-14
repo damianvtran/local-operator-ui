@@ -462,7 +462,35 @@ type CanonicalSessionsState = {
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
 	sessionByAgent: Record<string, string>;
-	pendingSessionId: string | null;
+	/**
+	 * The session whose guard read (`sessions.get`) has not answered yet.
+	 *
+	 * This is the one job the removed `pendingSessionId` still had that the view
+	 * needs: it is what refuses a send addressed to a session the app has NOT yet
+	 * confirmed exists. The read window used to be gated that way, and commit-first
+	 * moved the read behind the commit without moving the target's validation, so
+	 * the guarantee has to survive the reordering.
+	 *
+	 * It is a FACT and not an affordance: nothing renders it, which is why there is
+	 * no banner, spinner or Escape handler on this path any more. Re-basing the
+	 * old "Opening chat…/Cancel" chrome on this field would paint that banner over
+	 * a panel that has already switched - the wait it named is the panel's own
+	 * hydration now - and the sidebar row's selected state is the acknowledgement.
+	 */
+	validatingSessionId: string | null;
+	/**
+	 * A failure of the user's own NAVIGATION, held apart from `error`, which is the
+	 * CATALOGUE's health.
+	 *
+	 * While both were one field the rollback's failure sentence was invisible: a
+	 * failed switch rolls `activeSessionId` back, which re-fires the page's
+	 * `fetchSessions` effect, and `fetchSessions` clears `error` when it starts
+	 * (`:553`). Measured, the sentence was written and erased 4.5-8.1 ms later, and
+	 * 0 of ~1,100 sampled frames contained it - so the switch's own safety net
+	 * reported a failure to nobody. A five-second poll may clear the catalogue's
+	 * health; only the user can clear this, by navigating again.
+	 */
+	navigationError: string | null;
 	loading: boolean;
 	truncated: boolean;
 	error: string | null;
@@ -476,7 +504,6 @@ type CanonicalSessionsState = {
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
-	cancelOpen: () => void;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	finishDraft: (key: string, sessionId: string) => void;
@@ -542,7 +569,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			activeDraftKey: null,
 			drafts: {},
 			sessionByAgent: {},
-			pendingSessionId: null,
+			validatingSessionId: null,
+			navigationError: null,
 			loading: false,
 			truncated: false,
 			error: null,
@@ -608,7 +636,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			setActiveSession: (activeSessionId) => {
 				++navigationGeneration;
-				set({ activeSessionId, activeDraftKey: null, pendingSessionId: null });
+				set({
+					activeSessionId,
+					activeDraftKey: null,
+					validatingSessionId: null,
+					navigationError: null,
+				});
 			},
 			openSession: async (sessionId) => {
 				const generation = ++navigationGeneration;
@@ -640,17 +673,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * - The generation guard, in both directions. A second click bumps
 				 *   `navigationGeneration`, so a slow first read neither clears the
 				 *   newer switch's state nor rolls it back when it fails.
-				 * - The pending flag is no longer needed for the wait it was invented
-				 *   for, and holding it would paint "Opening chat…" over a panel that has
-				 *   already switched, beside the hydration skeleton that says the same
-				 *   thing honestly. The sidebar row's own selected state is the immediate
-				 *   acknowledgement now, and it is a property of the commit rather than
-				 *   of a timer.
+				 * - The pending BANNER is gone, and with it the three sites that could no
+				 *   longer render once this path stopped setting a pending id: the
+				 *   "Opening chat…/Cancel" row over the panel, its Escape handler and the
+				 *   sidebar row's spinner. Holding that banner would paint "Opening chat…"
+				 *   over a panel that has already switched, beside the panel's own
+				 *   hydration placeholder that says the same thing honestly; the sidebar
+				 *   row's own selected state is the immediate acknowledgement, and it is a
+				 *   property of the commit rather than of a timer.
 				 *
-				 * The composer is enabled during hydration here, exactly as it already
-				 * was: clearing `pendingSessionId` at the commit used to happen one round
-				 * trip BEFORE the transcript arrived, so that window is not new, it just
-				 * starts earlier.
+				 * - What the pending id ALSO did is kept, under its real name. It gated a
+				 *   send for the duration of the read, and commit-first moved the read
+				 *   behind the commit rather than removing it, so `validatingSessionId`
+				 *   carries that half: while the target's existence is unverified a send
+				 *   addressed to it is refused (the composer keeps the text) instead of
+				 *   being issued at a session that may be gone. Nothing paints it, so no
+				 *   unreachable affordance comes back with it.
+				 *
+				 * The composer is enabled during HYDRATION, exactly as it already was:
+				 * clearing the pending flag at the commit used to happen one round trip
+				 * BEFORE the transcript arrived, so that window is not new, it just starts
+				 * earlier. The READ window is the one that was gated, and that gate is the
+				 * `validatingSessionId` refusal rather than a disabled composer, because
+				 * the panel has already told the user they are in the target and the two
+				 * can only disagree for one round trip.
 				 */
 				const previous = {
 					activeSessionId: get().activeSessionId,
@@ -659,7 +705,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set({
 					activeSessionId: sessionId,
 					activeDraftKey: null,
-					pendingSessionId: null,
+					validatingSessionId: sessionId,
+					navigationError: null,
 					error: null,
 				});
 				try {
@@ -676,6 +723,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * the same rule, not a second one.
 					 */
 					if (generation !== navigationGeneration) return false;
+					// The read answered for THIS intent, so the target is no longer
+					// unverified - and only this intent may clear the flag: a late success
+					// must not vouch for a newer target nobody has read yet.
+					if (get().validatingSessionId === sessionId)
+						set({ validatingSessionId: null });
 					return true;
 				} catch (error) {
 					// Only the latest intent may roll back: a user who has already
@@ -684,19 +736,64 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					// avoid.
 					if (generation === navigationGeneration)
 						set({
-							...previous,
-							pendingSessionId: null,
-							error:
+							/*
+							 * RE-VALIDATE THE SNAPSHOT AGAINST THE STORE IT IS WRITTEN INTO.
+							 *
+							 * `previous` was captured at the click and the guard read is an
+							 * arbitrary window, so anything the user did inside it has already
+							 * happened by the time this runs. The one thing that can happen to
+							 * the OUTGOING draft is that it FINISHES: a send in flight when the
+							 * row was clicked lands, `finishDraft` deletes the row and moves
+							 * `activeSessionId` only while the view is still on that draft -
+							 * which the commit above has just made false. Restoring the key
+							 * verbatim then leaves the view on a draft row that no longer
+							 * exists (`drafts[key]` undefined, the panel keyed on a dead draft),
+							 * and a send from it mints a FRESH `createRequestId` (`:281-285`)
+							 * and opens a SECOND session for a conversation that already has
+							 * one - with the first now unreachable from the view. The identical
+							 * interleaving on the pre-change store ended coherently, so that is
+							 * a regression this path introduced rather than an inherited quirk.
+							 *
+							 * So the snapshot is a candidate, not an instruction: the draft half
+							 * is restored only if its row survived. The SESSION half is restored
+							 * unconditionally, because the read only ever disproved the TARGET -
+							 * nothing happened to where the user came from.
+							 *
+							 * The alternative fix - bumping `navigationGeneration` in
+							 * `finishDraft`/`discardDraft` so a stale rollback cannot win - is
+							 * wrong for every caller of this guard, not merely this one. That
+							 * counter means "a newer navigation owns the view", and it is ALSO
+							 * what suppresses the URL rewrite on success (`select` navigates
+							 * only on a `true`). A send landing mid-read would therefore make a
+							 * successful switch report `false` and leave `/chat/<old>` in the
+							 * address bar while the panel showed the new chat; and on failure it
+							 * would skip this rollback entirely, leaving the user on a target
+							 * the read has just proved is gone. Re-validating the write is the
+							 * fix that is correct for every caller.
+							 *
+							 * Deliberately NOT done: rebinding to whatever session the finished
+							 * draft materialised. That id is passed to `finishDraft` and dropped
+							 * with the row, so reading it here would need a second channel from
+							 * `finishDraft` back into navigation - a field whose only writer is
+							 * this rare interleaving. The fallback is coherent instead: with no
+							 * draft and no previous session the page renders its "Start a chat"
+							 * landing, and the session the send created is in the catalogue the
+							 * sidebar is already re-reading.
+							 */
+							activeSessionId: previous.activeSessionId,
+							activeDraftKey:
+								previous.activeDraftKey !== null &&
+								get().drafts[previous.activeDraftKey] !== undefined
+									? previous.activeDraftKey
+									: null,
+							validatingSessionId: null,
+							navigationError:
 								error instanceof Error
 									? error.message
 									: "Chat could not open. Retry.",
 						});
 					return false;
 				}
-			},
-			cancelOpen: () => {
-				++navigationGeneration;
-				set({ pendingSessionId: null });
 			},
 			stageDraft: (target, fresh = false) => {
 				++navigationGeneration;
@@ -707,7 +804,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				const existing = get().drafts[key];
 				set((state) => ({
 					activeDraftKey: key,
-					pendingSessionId: null,
+					validatingSessionId: null,
+					navigationError: null,
 					error: null,
 					drafts: {
 						...state.drafts,

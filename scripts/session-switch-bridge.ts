@@ -60,7 +60,7 @@ export type TranscriptStep =
  * subscription takes to deliver its snapshot. Milliseconds.
  */
 export type BridgeLatency = {
-	"capabilities"?: number;
+	capabilities?: number;
 	"sessions.list"?: number;
 	"sessions.get"?: number;
 	"sessions.history"?: number;
@@ -128,7 +128,10 @@ const now = () => performance.now();
  * take a branch the app never takes for a real session, which is how a
  * measurement turns into a fiction.
  */
-function frontendState(sessionId: string, title: string): CanonicalFrontendState {
+function frontendState(
+	sessionId: string,
+	title: string,
+): CanonicalFrontendState {
 	return {
 		state_version: 1,
 		session_id: sessionId,

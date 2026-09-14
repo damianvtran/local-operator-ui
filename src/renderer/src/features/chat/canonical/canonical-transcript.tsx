@@ -94,6 +94,7 @@ import {
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
@@ -680,19 +681,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const hidden = total - visible.length;
 
 	/*
-	 * An empty transcript must not claim the column's free space.
+	 * An empty transcript must not claim the column's free space - UNLESS the
+	 * transcript is on its way.
 	 *
-	 * This scroller carries `grow` so it absorbs the leftover height between
-	 * the header and the composer. With rows in it that is the whole point.
-	 * With NO rows it is an empty box that still votes for all the free space,
-	 * and the composer band below -- which renders the greeting, the composer
-	 * and the suggestion chips on exactly that condition -- is left pinned to
-	 * the bottom under a large dark void.
+	 * This scroller carries `grow` so it absorbs the leftover height between the
+	 * header and the composer. With rows in it that is the whole point. With NO
+	 * rows it is an empty box that still votes for all the free space, and the
+	 * composer band below -- which renders the greeting, the composer and the
+	 * suggestion chips on exactly that condition -- is left pinned to the bottom
+	 * under a large dark void.
 	 *
-	 * So the two are decided by one fact: when there is nothing to scroll, this
-	 * element collapses out of the vertical layout and the band grows into the
-	 * column and centres its group instead. `records` rather than `rows`
-	 * because a record that renders to no row is still nothing to scroll.
+	 * The ONE non-empty zero-record state is `connecting`: no rows yet and a
+	 * transcript still coming. Collapsing there is what made a switch land in the
+	 * app's EMPTY-CHAT shape and then re-shape when the snapshot arrived
+	 * (measured: composer top edge 468px -> 736px, box 112px -> 148px). An empty
+	 * layout is a claim -- "there is nothing here" -- and `connecting` is the
+	 * state that does not know yet, so it keeps the filled geometry and holds
+	 * `TranscriptPlaceholder` at the anchor the rows will occupy.
 	 *
 	 * THE EXCEPTION IS A TRANSCRIPT THAT CANNOT BE READ, which is not an empty
 	 * one, or one that is being waited through. While the pane has something of
@@ -707,11 +712,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * decision, and the composer band asks it the same question before it claims
 	 * the free height for a greeting.
 	 *
-	 * The legacy twin (`MessagesView`) already does this with its `collapsed`
-	 * branch; the two paths change together so neither keeps the defect.
+	 * The two holds are separate facts and both are live: `connecting` is a
+	 * transcript on its way, where this branch's placeholder has to keep the
+	 * rows' geometry, and `canonicalTranscriptSpeaks` is a transcript whose own
+	 * statement must not be clipped. Neither state implies the other - no hold
+	 * on the `connecting` side ever sees a failure notice, and a `reconnecting`
+	 * pane is never `connecting` - so the collapse stands down for both.
+	 *
+	 * `records` rather than `rows` because a record that renders to no row is
+	 * still nothing to scroll. The legacy twin (`MessagesView`) already does this
+	 * with its `collapsed` branch; the two paths change together so neither keeps
+	 * the defect.
 	 */
+	const holdPlaceholder =
+		status === "connecting" && transcript.records.length === 0;
 	const collapsed =
 		transcript.records.length === 0 &&
+		!holdPlaceholder &&
 		!canonicalTranscriptSpeaks({ status, failure });
 
 	// Both growth paths now go through one policy. The local window used to
@@ -865,7 +882,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * `role="log"` with a name is what makes the stop explicable when it is
 			 * announced, instead of an unlabelled group the reader has to probe.
 			 */
-			tabIndex={collapsed ? -1 : 0}
+			tabIndex={collapsed || holdPlaceholder ? -1 : 0}
 			role="log"
 			aria-label="Conversation transcript"
 			// Only the `windowed` branch renders that id, so the description has to
@@ -910,6 +927,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				data-lo-transcript-content
 				className={cn("flex flex-col", CHAT_MEASURE)}
 			>
+				{/* The state this element exists for: no rows yet, and the stream is
+				    still bringing them. Rendered inside the content column so it lands
+				    at the same inset and the same bottom anchor the rows will, rather
+				    than at the pane's centre in the composer band. */}
+				{holdPlaceholder && <TranscriptPlaceholder isSmallView={isSmallView} />}
 				{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
 				    row can never shift the conversation under the reader.

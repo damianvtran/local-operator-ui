@@ -105,7 +105,8 @@ function reset() {
 		activeDraftKey: null,
 		drafts: {},
 		sessionByAgent: {},
-		pendingSessionId: null,
+		validatingSessionId: null,
+		navigationError: null,
 		error: null,
 	});
 }

@@ -31,8 +31,8 @@ import "./session-switch.css";
  * than of the product. */
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -117,10 +117,6 @@ type Run = {
 	target: string;
 	/** Click dispatched. */
 	clickAt: number;
-	/** The store's `pendingSessionId` became the target. */
-	pendingAt: number | null;
-	/** First frame in which the pending affordance was on screen. */
-	pendingPaintedAt: number | null;
 	/** The `sessions.get` for the target settled. */
 	getSettledAt: number | null;
 	/** The stream subscription for the target opened, and snapshotted. */
@@ -157,23 +153,92 @@ type Probe = {
 		outgoing: string;
 		pendingIndicator: boolean;
 	};
-	record: () => {
-		entries: Array<{
-			t: number;
-			active: string | null;
-			error: string | null;
-			shown: boolean;
-		}>;
-		stop: () => void;
+	/** What a CAPTURE has to read back before its bytes may be written. */
+	frame: () => {
+		active: string | null;
+		target: string;
+		outgoing: string;
+		pendingIndicator: boolean;
+		placeholder: boolean;
+		placeholderOpacity: number | null;
+		content: boolean;
+		rowInView: boolean;
 	};
+	record: () => RecordHandle;
+};
+
+type RecordStats = {
+	frames: number;
+	shownFrames: number;
+	firstShownAt: number | null;
+	lastShownAt: number | null;
+	shownAtEnd: boolean;
+	recorded: boolean;
+	maxSurfaces: number;
+	transitions: Array<{
+		t: number;
+		active: string | null;
+		shown: boolean;
+		surfaces: number;
+		error: string | null;
+		navigation: string | null;
+	}>;
+};
+type RecordHandle = {
+	stats: () => RecordStats;
+	stop: () => void;
 };
 
 const pendingIndicator = () =>
 	document.querySelector('[aria-label="Opening chat"]') !== null;
+/*
+ * Whether the transcript has ROWS in it.
+ *
+ * The placeholder renders inside this same content box (it stands where the rows
+ * will be), so its caption is text in here and a plain textContent read turned
+ * every hydrating frame into a settled one - which is the state the whole
+ * harness exists to tell apart. The placeholder's own subtree is removed from
+ * the copy first, so this answers the question it is asked.
+ */
 const transcriptHasContent = () => {
 	const content = document.querySelector("[data-lo-transcript-content]");
-	return (content?.textContent ?? "").trim().length > 0;
+	if (!(content instanceof HTMLElement)) return false;
+	const copy = content.cloneNode(true) as HTMLElement;
+	copy.querySelector('[aria-label="Loading conversation"]')?.remove();
+	return (copy.textContent ?? "").trim().length > 0;
 };
+const placeholderPresent = () =>
+	document.querySelector('[aria-label="Loading conversation"]') !== null;
+/**
+ * The placeholder bar's rendered opacity - the pulse's phase, as painted.
+ *
+ * Read off the FIRST bar of the live region rather than off the animation's
+ * bookkeeping: a frame captured at the maximum pulse trough has to be a picture
+ * of a nearly-transparent bar (design D2), and this is the number that says
+ * whether the shutter landed there.
+ */
+const placeholderOpacity = () => {
+	const bar = document.querySelector(
+		'[aria-label="Loading conversation"]',
+	)?.firstElementChild;
+	if (!(bar instanceof HTMLElement)) return null;
+	return Math.round(Number(getComputedStyle(bar).opacity) * 100) / 100;
+};
+const rowInView = (el: Element | null) => {
+	if (!(el instanceof HTMLElement)) return false;
+	const rect = el.getBoundingClientRect();
+	return rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight;
+};
+/*
+ * How many surfaces state the failure sentence. One is the contract (U3): it
+ * used to be painted in the sidebar under a `Retry refresh` that refreshes the
+ * chat LIST - a remedy that cannot re-open a chat - beside the panel's own copy
+ * of the same words.
+ */
+const errorSurfaces = () =>
+	Array.from(document.querySelectorAll('[role="alert"]')).filter((surface) =>
+		(surface.textContent ?? "").includes("Unknown session"),
+	).length;
 const rowFor = (id: string) => {
 	const title = sessions.find((row) => row.id === id)?.name ?? "";
 	return document.querySelector<HTMLButtonElement>(
@@ -252,8 +317,6 @@ const api: Probe = {
 				label,
 				target: id,
 				clickAt: performance.now(),
-				pendingAt: null,
-				pendingPaintedAt: null,
 				getSettledAt: null,
 				streamSubscribedAt: null,
 				streamOpenedAt: null,
@@ -270,12 +333,6 @@ const api: Probe = {
 			const store = useCanonicalSessionsStore;
 			const unsubscribe = store.subscribe((state, previous) => {
 				if (
-					run.pendingAt === null &&
-					state.pendingSessionId === id &&
-					previous.pendingSessionId !== id
-				)
-					run.pendingAt = performance.now();
-				if (
 					run.committedAt === null &&
 					state.activeSessionId === id &&
 					previous.activeSessionId !== id
@@ -289,19 +346,20 @@ const api: Probe = {
 			const observer = new PerformanceObserver((list) => {
 				for (const entry of list.getEntries()) {
 					if (entry.name !== "lop:transcript:render") continue;
-					const rows = (entry as PerformanceEntry & { detail?: { rows?: number } })
-						.detail?.rows;
+					const rows = (
+						entry as PerformanceEntry & { detail?: { rows?: number } }
+					).detail?.rows;
 					if (!rows) continue;
 					/* `startTime >= run.committedAt` matters: the observer is created
-						* before the click and `buffered: true` replays marks from earlier in
-						* the page's life, so without the guard the settled view's own render
-						* reads as this switch's first row (measured: a negative
-						* `committed → rows` phase). */
-						if (
+					 * before the click and `buffered: true` replays marks from earlier in
+					 * the page's life, so without the guard the settled view's own render
+					 * reads as this switch's first row (measured: a negative
+					 * `committed → rows` phase). */
+					if (
 						run.committedAt !== null &&
 						entry.startTime >= run.committedAt &&
 						run.firstRowAt === null
-						)
+					)
 						run.firstRowAt = entry.startTime;
 				}
 			});
@@ -314,28 +372,13 @@ const api: Probe = {
 			 */
 			const deadlineTimer = setTimeout(() => finish(true), 20_000);
 			const deadline = performance.now() + 20_000;
-			/*
-			 * The pending phase is satisfied EITHER by seeing it painted or by a
-			 * commit that arrived without one: a switch that commits optimistically
-			 * may never paint a pending state at all, and a harness that waited for
-			 * one would report that as a timeout rather than as the improvement it
-			 * is.
-			 */
-			const pendingPhaseDone = () =>
-				run.pendingPaintedAt !== null ||
-				(run.committedAt !== null && run.pendingAt === null);
 			const tick = () => {
 				const time = performance.now();
-				if (run.pendingAt !== null && run.pendingPaintedAt === null) {
-					if (pendingIndicator()) run.pendingPaintedAt = time;
-				}
 				if (run.firstRowAt !== null && run.transcriptPaintedAt === null) {
 					if (transcriptHasContent()) run.transcriptPaintedAt = time;
 				}
 				const done =
-					run.committedAt !== null &&
-					run.transcriptPaintedAt !== null &&
-					pendingPhaseDone();
+					run.committedAt !== null && run.transcriptPaintedAt !== null;
 				if (done || time > deadline) {
 					finish(!done);
 					return;
@@ -398,7 +441,14 @@ const api: Probe = {
 	 */
 	view: () => ({
 		activeSessionId: useCanonicalSessionsStore.getState().activeSessionId,
-		errorState: useCanonicalSessionsStore.getState().error,
+		/*
+		 * The NAVIGATION failure, which is the one a switch can produce. It was
+		 * the shared `error` field until the split, and reading the shared one
+		 * here would report a switch failure that the catalogue's own poll had
+		 * already erased - the exact confusion this harness was rewritten to
+		 * stop making.
+		 */
+		errorState: useCanonicalSessionsStore.getState().navigationError,
 		selectedRow:
 			document
 				.querySelector('[data-chat-row][aria-current="page"]')
@@ -416,27 +466,102 @@ const api: Probe = {
 		pendingIndicator: pendingIndicator(),
 	}),
 	/**
+	 * The reads a CAPTURE refuses to write without; see the driver's `shoot`.
+	 *
+	 * Separate from `view()` because these are facts about a FRAME rather than
+	 * about the flow: whether the row carrying the selection is actually on
+	 * screen (design D5 - it is below the fold in a 24-row list, and no still
+	 * says so by itself), and what the placeholder bar's opacity is at the
+	 * moment the shutter lands (design D6 - the state that has no frame is the
+	 * slow hydration, i.e. the one that reaches the pulse trough).
+	 */
+	frame: () => ({
+		active: useCanonicalSessionsStore.getState().activeSessionId,
+		target: INCOMING,
+		outgoing: OUTGOING,
+		pendingIndicator: pendingIndicator(),
+		placeholder: placeholderPresent(),
+		placeholderOpacity: placeholderOpacity(),
+		content: transcriptHasContent(),
+		rowInView: rowInView(rowFor(INCOMING)),
+	}),
+	/**
 	 * Every state transition the rollback makes, so a reader can tell "the
 	 * error was never set" from "it was set and something cleared it".
 	 */
 	record: () => {
-		const entries: Array<{
-			t: number;
-			active: string | null;
-			error: string | null;
-			shown: boolean;
-		}> = [];
-		const unsubscribe = useCanonicalSessionsStore.subscribe((state) => {
-			entries.push({
-				t: Math.round(performance.now() * 10) / 10,
-				active: state.activeSessionId,
-				error: state.error,
-				shown: document.body.innerText.includes("Unknown session"),
-			});
-		});
+		/*
+		 * A DIGEST, not a dump of samples.
+		 *
+		 * The observation window is longer than the catalogue's own five-second
+		 * poll - about 400 frames - and a raw entry per frame buries the two
+		 * facts anyone reads out of it (was the sentence ever PAINTED, and was it
+		 * still there at the end) in a thousand lines of JSON. So this keeps the
+		 * counts, the first and last frame that showed it, and one entry per
+		 * CHANGE between frames.
+		 */
+		const stats: RecordStats = {
+			frames: 0,
+			shownFrames: 0,
+			firstShownAt: null,
+			lastShownAt: null,
+			shownAtEnd: false,
+			recorded: false,
+			maxSurfaces: 0,
+			transitions: [],
+		};
+		let running = true;
+		let previous = { active: null as string | null, shown: false };
+		/*
+		 * PER FRAME, not per store notification.
+		 *
+		 * This used to push an entry from a `store.subscribe` callback, so the
+		 * `shown` it recorded was true AT AN INSTANT NO BROWSER EVER PAINTED.
+		 * On this head the rollback wrote the failure sentence and the catalogue
+		 * refetch its own rollback triggers cleared it 4.5-8.1 ms later: the
+		 * subscription saw both, and the verdict built on it ("the failure
+		 * sentence reached the screen") was therefore a claim about the store's
+		 * history rather than about the screen. An `rAF` callback runs
+		 * immediately BEFORE that frame is painted, so a sample taken here states
+		 * what the frame about to be shown contains - which is the only reading
+		 * the word "shown" may be built on.
+		 */
+		const tick = () => {
+			const state = useCanonicalSessionsStore.getState();
+			const t = Math.round(performance.now() * 10) / 10;
+			const shown = document.body.innerText.includes("Unknown session");
+			const surfaces = errorSurfaces();
+			stats.frames += 1;
+			if (shown) {
+				stats.shownFrames += 1;
+				stats.firstShownAt ??= t;
+				stats.lastShownAt = t;
+			}
+			stats.shownAtEnd = shown;
+			stats.maxSurfaces = Math.max(stats.maxSurfaces, surfaces);
+			if (state.navigationError !== null) stats.recorded = true;
+			if (
+				shown !== previous.shown ||
+				state.activeSessionId !== previous.active
+			) {
+				stats.transitions.push({
+					t,
+					active: state.activeSessionId,
+					shown,
+					surfaces,
+					error: state.error,
+					navigation: state.navigationError,
+				});
+				previous = { active: state.activeSessionId, shown };
+			}
+			if (running) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
 		return {
-			entries,
-			stop: unsubscribe,
+			stats: () => stats,
+			stop: () => {
+				running = false;
+			},
 		};
 	},
 };

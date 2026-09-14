@@ -4,8 +4,11 @@
   against the scripted owner in `session-switch-bridge.ts`.
 
   `scripts/session-switch.vite.mjs` serves it and
-  `scripts/session-switch-latency.mjs` drives it. Nothing here is committed as
-  evidence; the evidence surface is the Storybook story of the same states.
+  `scripts/session-switch-latency.mjs` drives it. The frames it writes under
+  `docs/evidence/session-switch/` ARE committed evidence - one directory per
+  state a switch can put on screen, declared as a supplementary set in
+  `docs/evidence/manifest.json` - and each one is refused unless it is a picture
+  of the state it claims (see `shoot` in the driver).
 
   The store is persisted (`canonical-sessions-storage`), so the previous run's
   active session would otherwise decide where this one starts. It is cleared in

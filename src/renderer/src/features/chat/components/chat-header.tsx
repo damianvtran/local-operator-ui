@@ -1,4 +1,10 @@
-import { Avatar, AvatarFallback, Button, Tooltip } from "@shared/components/ui";
+import {
+	Avatar,
+	AvatarFallback,
+	Button,
+	Skeleton,
+	Tooltip,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot, FileText } from "lucide-react";
@@ -27,6 +33,18 @@ import { RunDetailsTrigger } from "./run-details";
 type ChatHeaderProps = {
 	agentName?: string;
 	description?: string;
+	/**
+	 * The panel is mounted on a target whose identity is not known yet, and the
+	 * catalogue names no agent or team for it either.
+	 *
+	 * Then the slot is HELD rather than filled. The fallback chain below used to
+	 * render its last-resort sentence ("Canonical chat") in the frame after a
+	 * click and replace it with the real agent name once the stream arrived, so
+	 * the panel's only text in the wait was a placeholder wearing the clothes of
+	 * a fact (design D3). A skeleton says "not known yet" and is not a claim;
+	 * the identity replaces it the moment anybody knows it.
+	 */
+	descriptionPending?: boolean;
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
 	/**
@@ -64,6 +82,7 @@ type ChatHeaderProps = {
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	description = "Your on-device AI assistant",
+	descriptionPending = false,
 	onOpenOptions,
 	runDetails = null,
 	fileCount = 0,
@@ -155,12 +174,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * for section and dialog titles and states that a desktop app has no
 				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
 				<h2 className={cn("truncate text-heading text-ink")}>{agentName}</h2>
-				<span
-					className={cn("truncate text-ink-muted text-body-sm")}
-					title={description}
-				>
-					{description}
-				</span>
+				{descriptionPending ? (
+					/* `bg-elevated` for the same measured reason the transcript
+					 * placeholder takes it: the header's ground is `canvas`, where the
+					 * Skeleton default `sunken` is the system's weakest adjacent pair
+					 * (deltaE00 1.89 in the dark brand palette, 1.25 in obsidian). The
+					 * height matches the `text-body-sm` line it stands in, so holding
+					 * the slot holds the row's height too. */
+					<Skeleton className={cn("h-3 w-24 bg-elevated")} />
+				) : (
+					<span
+						className={cn("truncate text-ink-muted text-body-sm")}
+						title={description}
+					>
+						{description}
+					</span>
+				)}
 			</div>
 
 			{/*
