@@ -371,9 +371,15 @@ const api = {
 			ipcRenderer.invoke("browser-revoke-hand-over", tabId),
 		respondToConsent: (
 			entryId: string,
-			decision: "once" | "site" | "domain" | "deny",
+			decision: "once" | "session" | "site" | "domain" | "deny",
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-consent-respond", entryId, decision),
+		revokeApproval: (origin: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-revoke-approval", origin),
+		revokeAllApprovals: (): Promise<unknown> =>
+			ipcRenderer.invoke("browser-revoke-all-approvals"),
+		forgetSite: (origin: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-forget-site", origin),
 		clearData: (what: "cookies" | "cache" | "everything"): Promise<unknown> =>
 			ipcRenderer.invoke("browser-clear-data", what),
 		onStateChanged: (callback: () => void): (() => void) => {
@@ -388,6 +394,21 @@ const api = {
 			ipcRenderer.on("browser-consent-changed", handler);
 			return () => {
 				ipcRenderer.removeListener("browser-consent-changed", handler);
+			};
+		},
+		/** A consent banner was clicked. Navigation only — it never raises the
+		 * window, because `window-raise.ts` is the only module that may. */
+		onConsentAttention: (
+			callback: (payload: { entryId: string }) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, payload: { entryId?: unknown }) => {
+				if (typeof payload?.entryId === "string") {
+					callback({ entryId: payload.entryId });
+				}
+			};
+			ipcRenderer.on("browser-consent-attention", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-consent-attention", handler);
 			};
 		},
 		onPopupBlocked: (

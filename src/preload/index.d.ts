@@ -39,13 +39,19 @@ declare global {
 				revokeHandOver: (tabId: number) => Promise<unknown>;
 				respondToConsent: (
 					entryId: string,
-					decision: "once" | "site" | "domain" | "deny",
+					decision: "once" | "session" | "site" | "domain" | "deny",
 				) => Promise<unknown>;
+				revokeApproval: (origin: string) => Promise<unknown>;
+				revokeAllApprovals: () => Promise<unknown>;
+				forgetSite: (origin: string) => Promise<unknown>;
 				clearData: (
 					what: "cookies" | "cache" | "everything",
 				) => Promise<unknown>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
+				onConsentAttention: (
+					callback: (payload: { entryId: string }) => void,
+				) => () => void;
 				onPopupBlocked: (
 					callback: (payload: { tabId: number; url: string }) => void,
 				) => () => void;
