@@ -16,6 +16,17 @@
  * that hides in one theme is still a defect. A hand-taken screenshot set
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
+ *
+ * The Storybook it reads has to BUILD first, and on the tree as it stands the
+ * shipped `.storybook/main.ts` cannot build its preview: it sets
+ * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
+ * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
+ * undefined (reading 'React')` inside the docgen parser before a single frame
+ * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
+ * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
+ * rather than argued: the whole `chat-ask-options` set re-captured under it came
+ * back byte-identical to the committed frames, so it changes how the preview is
+ * BUILT and nothing about what is photographed (design round 3, D12).
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -1488,6 +1499,17 @@ const main = async () => {
 	 * the COMMITTED tree, so if the capture ran over dirty or staged source it
 	 * names something these frames did not come from. Read `dirtyWorkingTree`
 	 * first; a tree hash from a dirty run is a hash of the wrong thing.
+	 *
+	 * A REBASE IS WHERE THESE STAMPS GO WRONG, and there is a test for it now.
+	 * Resolving `manifest.json` by keeping upstream's top-level stamp block while
+	 * the branch's own delta rewrites a neighbouring key produces a file that
+	 * certifies the committed frames against somebody else's tree - and git reports
+	 * no conflict, so nothing local notices; at the round-3 head both tree hashes
+	 * and `surfaces` named `origin/main` while the branch's own `STORIES` list had
+	 * moved nine entries (round 3, M1). `scripts/evidence-manifest.test.mjs` binds
+	 * the shipped manifest's stamps against `HEAD`'s trees inside `test:desktop`,
+	 * so that resolution fails CI rather than shipping, and the expected aftermath
+	 * of any rebase that touches this file is a re-stamp before the suite is green.
 	 */
 	const treeHash = (path) =>
 		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })
