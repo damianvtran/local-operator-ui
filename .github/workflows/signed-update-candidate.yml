@@ -1,0 +1,124 @@
+name: Signed update candidate (nonpublishing)
+
+# Registration on the default branch needs its own reviewed change before the
+# first dispatch. This workflow never calls publish.yml or creates a release.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_source_sha:
+        description: 'Explicitly reviewed candidate full commit SHA; manager approval required before dispatch'
+        required: true
+        type: string
+      incumbent_tag:
+        description: 'Exact existing signed release to upgrade from'
+        required: true
+        default: 'v0.22.2'
+        type: string
+
+permissions:
+  contents: read
+concurrency:
+  group: signed-update-candidate-${{ inputs.expected_source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Keep the signing definition on the independently reviewed default branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_source_sha }}
+          persist-credentials: false
+      - name: Refuse unpinned or different source before accessing signing secrets
+        env:
+          EXPECTED: ${{ inputs.expected_source_sha }}
+        run: |
+          [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare job-local signing keychain
+        env:
+          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          CSC_KEYCHAIN="$RUNNER_TEMP/candidate.keychain-db"
+          echo "CSC_KEYCHAIN=$CSC_KEYCHAIN" >> "$GITHUB_ENV"
+          CERTIFICATE="$RUNNER_TEMP/candidate.p12"
+          trap 'rm -f "$CERTIFICATE"' EXIT
+          printf '%s' "$CSC_CONTENT" | base64 --decode > "$CERTIFICATE"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          security default-keychain -s "$CSC_KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          security set-keychain-settings "$CSC_KEYCHAIN"
+          security import "$CERTIFICATE" -k "$CSC_KEYCHAIN" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+      - run: pnpm setup-python
+      - name: Build signed candidate without publishing or version changes
+        env:
+          NOTARIZE: 'true'
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          pnpm build
+          pnpm exec electron-builder --mac --arm64 --x64 --publish never -c.forceCodeSigning=true
+          pnpm notarize-dmg
+          pnpm verify-macos-artifacts
+          node scripts/check-packaged-closure.mjs --dist dist
+          git diff --exit-code package.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-update-candidate-${{ inputs.expected_source_sha }}
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/*-mac*.yml
+          if-no-files-found: error
+          retention-days: 7
+
+  exact-update:
+    needs: build
+    # A fresh hosted VM: no signing keychain, Apple/API secrets, live installation
+    # or user sessions. The harness refuses self-hosted and local execution.
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_source_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-update-candidate-${{ inputs.expected_source_sha }}
+          path: candidate
+      - name: Exercise unmodified incumbent updater against exact candidate bytes
+        env:
+          INCUMBENT_TAG: ${{ inputs.incumbent_tag }}
+        run: node scripts/verify-signed-update.mjs --candidate-dir candidate --incumbent-tag "$INCUMBENT_TAG"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: signed-update-proof-${{ inputs.expected_source_sha }}
+          path: signed-update-evidence
+          if-no-files-found: error
+          retention-days: 14
