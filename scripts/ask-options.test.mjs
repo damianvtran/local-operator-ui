@@ -52,7 +52,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, lostAnswerMessage, shouldTabIntoAnswerOptions, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, lostAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { buildSendPayload } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
@@ -98,6 +98,7 @@ const {
 	answerValue,
 	lostAnswerMessage,
 	shouldTabIntoAnswerOptions,
+	composerFocusIsOurs,
 	createSendLock,
 	answerGateOption,
 	errorCodeOf,
@@ -433,16 +434,63 @@ test("the gate branch resolves the TYPED text at the call site the app ships", (
 		"src/renderer/src/features/chat/components/chat-page.tsx",
 		"utf8",
 	);
+	/*
+	 * A text match is satisfiable by text that is not code, so the source is
+	 * stripped of its comments before it is matched: a comment quoting the
+	 * expression would otherwise leave the guard green through a revert that left
+	 * the quotation behind (code review round 4, n5). The block-comment strip is
+	 * non-greedy and the line-comment strip skips `://`, so a URL inside a string
+	 * does not swallow the rest of its line.
+	 */
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 	assert.match(
-		source,
-		/value:\s*answerValue\(\s*gate,\s*typed,\s*content,?\s*\)/,
-		"the ask branch must build its value as answerValue(gate, typed, content) - the typed text second, never the composed payload",
+		code,
+		/value:\s*answerValue\(\s*gate,\s*typed,\s*content,?\s*\),\s*\n\s*questionIndex:/,
+		"the ask branch must build its value as answerValue(gate, typed, content) - the typed text second, never the composed payload - and it must do so where the request body is built, beside questionIndex",
 	);
 	assert.equal(
-		(source.match(/resolveNumericAnswer\(/g) ?? []).length,
+		(code.match(/resolveNumericAnswer\(/g) ?? []).length,
 		0,
 		"the ordinal rule is reached through answerValue rather than called directly on a payload",
 	);
+});
+
+test("the gate's focus restore refuses a composer the user has taken", () => {
+	/*
+	 * The delta's one new decision, and the one it added the hard way: handing
+	 * focus to the composer at the press is what fixed U12, and the same hand-off
+	 * is indistinguishable from a user CLICKING into an empty box unless the
+	 * pointer interaction is tracked. Two measured failures came out of that
+	 * (UX round 4): the restore stole the caret and the next `Space` answered the
+	 * NEXT question for them (U13), and whether it moved at all depended on which
+	 * of two asynchronous paths landed first (U14).
+	 *
+	 * It is a pure predicate over exactly those inputs - the box, what holds focus,
+	 * and whether a pointer has landed since the hand-off - for the same reason
+	 * `shouldTabIntoAnswerOptions` is: the DOM-reading caller cannot be asserted
+	 * here, so the decision is lifted out of it (code review round 4, n6). Every
+	 * row below is a state the rig produced, and the last one is the state it must
+	 * MOVE in, so a predicate that always refused would fail here rather than pass.
+	 */
+	const box = (over = {}) => ({ value: "", ...over });
+	const other = { value: "" };
+	const focused = box();
+
+	// The press's own hand-off: focused, empty, untouched. The restore moves.
+	assert.equal(composerFocusIsOurs(focused, focused, false), true);
+	// No composer in the tree at all.
+	assert.equal(composerFocusIsOurs(null, null, false), false);
+	// Focus is somewhere else entirely.
+	assert.equal(composerFocusIsOurs(box(), other, false), false);
+	// A follow-up typed during the hold - the case round 3's guard caught.
+	assert.equal(composerFocusIsOurs(box({ value: "follow up" }), focused, false), false);
+	// Whitespace is content: the user is in the box, whatever they typed.
+	assert.equal(composerFocusIsOurs(box({ value: "   " }), focused, false), false);
+	// U13: clicked into during the hold, still empty, still focused. The caret is
+	// theirs, so the restore must leave it alone.
+	assert.equal(composerFocusIsOurs(focused, focused, true), false);
 });
 
 test("forward Tab moves into the options only when the composer is done with", () => {

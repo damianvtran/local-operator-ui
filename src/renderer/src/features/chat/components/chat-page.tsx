@@ -724,10 +724,23 @@ function SessionPanel({
 		 * control the draft was headed for. When the gate instead ADVANCES to its
 		 * next question, the layout effect below still takes focus to that question's
 		 * first option, because it treats a focused empty composer as ours to move
-		 * (see `composerHoldsFocusUntouched`): a user who has typed a follow-up has
-		 * taken focus back and keeps it.
+		 * (see `composerHoldsFocusUntouched`): a user who has typed a follow-up, or
+		 * simply CLICKED into the box, has taken focus back and keeps it.
+		 *
+		 * The restore is ARMED here, at the press, and not after the POST settles
+		 * where it used to be. The effect that spends this flag fires on the GATE
+		 * KEY change, so setting it on the response left two asynchronous paths
+		 * racing - whichever landed first decided where focus went, and a
+		 * two-question gate moved focus to its next question on three traced runs
+		 * out of five and left it in the composer on the other two (UX round 4,
+		 * U14). Arming at the press makes the trigger independent of that race. The
+		 * effect clears the flag as it spends it, so an answer that is refused or
+		 * fails cannot leave a restore armed for a later gate.
 		 */
-		if (fromKeyboard) input.current?.focusInput();
+		if (fromKeyboard) {
+			restoreFocus.current = true;
+			input.current?.focusInput();
+		}
 		setAdmitting(true);
 		setAnswerState({ key, sending: true, refused: null });
 		setSendError(null);
@@ -830,7 +843,6 @@ function SessionPanel({
 			return;
 		}
 		setAnswerState({ key, sending: false, refused: null });
-		if (fromKeyboard) restoreFocus.current = true;
 	};
 	/*
 	 * Put focus back after a keyboard answer.
@@ -858,8 +870,9 @@ function SessionPanel({
 	 * browser drops focus to the body for, and the press itself now hands focus to
 	 * the composer so the body is not left holding it for the whole request (UX
 	 * round 3, U12). Both halves are still `ours` rather than the user's - a
-	 * composer the user has TYPED into is not, which is what keeps the restore from
-	 * moving focus off a follow-up they are writing during the hold.
+	 * composer the user has TYPED into or CLICKED into is not, which is what keeps
+	 * the restore from moving focus off a follow-up they are writing, or off a
+	 * caret they placed with a pointer, during the hold (UX round 4, U13).
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the gate key is the trigger, not a value read in the body
 	useLayoutEffect(() => {

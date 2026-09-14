@@ -47,7 +47,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import { shouldTabIntoAnswerOptions } from "../ask-answer";
+import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
@@ -260,26 +260,56 @@ const firstLiveAnswerOption = (): HTMLElement | null =>
 	);
 
 /**
- * Whether the composer holds focus with an untouched (empty) box.
+ * The composer's textarea, as the reader below finds it.
+ *
+ * Queried rather than read from a ref because the one caller
+ * (`composerHoldsFocusUntouched`) runs from `chat-page.tsx`'s layout effect,
+ * outside this component's render, and `aria-label="Message"` is the same
+ * handle the answer options are found by.
+ */
+const composerBox = (): HTMLTextAreaElement | null =>
+	document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]');
+
+/**
+ * Whether the user has POINTED at the composer since it was last handed focus.
+ *
+ * A press on an option hands focus here (`chat-page.tsx`), which makes "the
+ * composer holds focus" ambiguous between "we put it there" and "the user moved
+ * on". Typing resolves that ambiguity on its own - a box with content is not
+ * ours - but a CLICK into an empty box does not, and an ask gate advances on its
+ * own schedule: the caret is taken, the characters typed next reach nothing, and
+ * the following `Space` presses the option that stole focus and posts it as the
+ * user's answer to the NEXT question (UX round 4, U13).
+ *
+ * Module scope rather than component state because the reader is called from
+ * `chat-page.tsx`, outside this component. It is set by the textarea's own
+ * `onPointerDown` - the interaction that says "I am about to type here" - and
+ * cleared wherever this component hands focus over itself, so the flag means
+ * "the user has taken it since we last gave it" rather than "the user has ever
+ * touched it". Clearing at the hand-off rather than at the press is deliberate:
+ * `focusInput` is the single place focus is given, including the press's own
+ * hand-off, so a new call site cannot forget to reset it.
+ */
+let composerPointerTouched = false;
+
+/**
+ * Whether the composer holds focus with a box the user has neither typed in nor
+ * pointed at.
  *
  * `chat-page.tsx` hands focus HERE at a keyboard press on an option, because the
  * pressed option is `disabled` the moment the press lands and a disabled control
  * cannot hold focus: the browser drops it to the document body, where it stays
- * for the whole request (UX round 3, U12). That makes "the composer holds focus"
- * ambiguous between "we put it there" and "the user moved on" - and the gate's
- * focus restore must not steal focus from a user who typed a follow-up while the
- * answer was out (the composer stays usable during the hold, by design).
- *
- * An untouched box resolves it in the safe direction: a user who has typed has
- * taken focus back, a user who has only clicked in has not, and the restore at
- * worst moves focus to the question they are being asked.
+ * for the whole request (UX round 3, U12). The decision itself - focus, an empty
+ * box, and no pointer interaction since the hand-off - is `composerFocusIsOurs`
+ * in `ask-answer.ts`, where it can be asserted without a DOM; this is only the
+ * DOM read that feeds it.
  */
-export const composerHoldsFocusUntouched = (): boolean => {
-	const el = document.querySelector<HTMLTextAreaElement>(
-		'textarea[aria-label="Message"]',
+export const composerHoldsFocusUntouched = (): boolean =>
+	composerFocusIsOurs(
+		composerBox(),
+		document.activeElement,
+		composerPointerTouched,
 	);
-	return el !== null && document.activeElement === el && el.value.length === 0;
-};
 
 /**
  * Type for the imperative handle to expose focusInput method
@@ -574,6 +604,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
+				/*
+				 * Handing focus over is the moment the box becomes ours again, so a
+				 * pointer interaction from BEFORE this call stops counting as the
+				 * user's. See `composerPointerTouched`.
+				 */
+				composerPointerTouched = false;
 				textareaRef.current?.focus();
 			},
 		}));
@@ -1335,6 +1371,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								setCaret((e.target as HTMLTextAreaElement).selectionStart)
 							}
 							onKeyDown={handleComposerKeyDown}
+							onPointerDown={() => {
+								/*
+								 * "I am about to type here." An ask gate can advance while the
+								 * user is on their way into this box, and the restore must not
+								 * move them off it: the characters they type would reach
+								 * nothing and the next `Space` would answer the next question
+								 * (UX round 4, U13).
+								 */
+								composerPointerTouched = true;
+							}}
 							onPaste={handlePaste}
 							rows={1}
 							disabled={isInputDisabled}

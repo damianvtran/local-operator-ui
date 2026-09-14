@@ -289,8 +289,9 @@ const shaReaders = (git) => ({
  * ## The stamp half, in its own words
  *
  * It answers "do these stamps describe the tree the frames ship in": two tree
- * hashes and the two counts the manifest states about itself, all read from
- * `HEAD`'s trees and the capturer's own lists, with no history needed.
+ * hashes and the three counts the manifest states about itself, read from
+ * `HEAD`'s trees, the capturer's own lists and the committed frames themselves,
+ * with no history needed.
  */
 export const stampFailures = (manifest, git = gitOut) => {
 	const out = [];
@@ -346,6 +347,40 @@ export const stampFailures = (manifest, git = gitOut) => {
 		if (declared > 0 && declared !== manifest.themes)
 			out.push(
 				`manifest.json: \`themes\` is ${manifest.themes} but capture-evidence.mjs declares ${declared} themes - a narrowed run carried the old value forward`,
+			);
+	}
+
+	/*
+	 * `frames` must equal the frames on disk OUTSIDE every declared set.
+	 *
+	 * The fourth stamp question, and until now the one only `main()` asked - a
+	 * job no CI workflow runs, so a manifest could carry a stale swept count past
+	 * a full green `test:desktop`. Reproduced: with the trees AND `surfaces`
+	 * correct and `frames` set back to the previous sweep's `824`, the bound case
+	 * stayed 14/14 green (code review round 4, m4).
+	 *
+	 * It is the same check `main()` makes, asked here with the same exclusion, so
+	 * the two cannot drift: a supplementary set is exactly the reason a frame is
+	 * NOT part of the sweep, and the whole point of the count is that the sweep
+	 * answers for everything no set claimed. Only the frames are walked - no
+	 * image is read - which is why this belongs in the fast half rather than
+	 * behind the ImageMagick loop: the declaration side can go wrong (a doubled
+	 * `supplementary` entry, a set's frames re-counted) while the trees and the
+	 * story list stay right, and that is a provenance failure, not a cosmetic one.
+	 *
+	 * Skipped when the manifest carries no count, so a fixture built for the other
+	 * checks is not asked about a tree it does not describe.
+	 */
+	if (typeof manifest.frames === "number") {
+		const declaredDirs = (manifest.supplementary ?? [])
+			.filter((set) => typeof set.path === "string" && set.path.length > 0)
+			.map((set) => join(EVIDENCE, set.path));
+		const swept = frames(EVIDENCE).filter(
+			(file) => !declaredDirs.some((dir) => file.startsWith(`${dir}/`)),
+		).length;
+		if (manifest.frames !== swept)
+			out.push(
+				`manifest.json: \`frames\` is ${manifest.frames} but ${swept} frames are on disk outside every declared supplementary set - re-derive the swept count from \`docs/evidence\` rather than carrying the previous pass's value forward`,
 			);
 	}
 
