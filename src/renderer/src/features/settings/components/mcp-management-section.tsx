@@ -59,6 +59,13 @@ import type { FC, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
 import { foreignMcpConfigOrigin } from "../../../../../shared/mcp-foreign-config-origin";
+import { McpAuthDialog } from "../../chat/components/run-details/mcp-auth-dialog";
+import {
+	type McpServerRow,
+	deriveMcpServers,
+} from "../../chat/components/run-details/run-detail-model";
+import { useMcpRemedy } from "../../chat/components/run-details/use-mcp-remedy";
+import { parseMcpIntent } from "../../chat/pickers/mcp-command";
 import { SettingsSection } from "./settings-section";
 
 /**
@@ -110,7 +117,6 @@ type MCPAction =
 
 /** Both separators, at module level: a regex literal inside the function would
  * be rebuilt per call, which is the lint rule this satisfies (`useTopLevelRegex`). */
-const WHITESPACE = /\s+/;
 
 /**
  * The server a `/mcp <argument>` deep link names, or why nothing matched.
@@ -151,23 +157,10 @@ export const resolveMcpServerTarget = (
 ): McpTarget => {
 	const asked = raw?.trim();
 	if (!asked) return null;
-	const configured = new Set(names);
-	if (configured.has(asked)) {
-		return { kind: "matched", name: asked, unresolved: null };
-	}
-	const tokens = asked.split(WHITESPACE);
-	const last = tokens[tokens.length - 1] ?? "";
-	for (let index = tokens.length - 1; index >= 0; index -= 1) {
-		const token = tokens[index];
-		if (token && configured.has(token)) {
-			return {
-				kind: "matched",
-				name: token,
-				unresolved: token === last ? null : last || null,
-			};
-		}
-	}
-	return { kind: "miss", asked };
+	const intent = parseMcpIntent(asked, names);
+	return intent.kind === "auth"
+		? { kind: "matched", name: intent.name, unresolved: null }
+		: { kind: "miss", asked };
 };
 
 /**
@@ -391,6 +384,11 @@ export const McpManagementSection: FC<{
 	const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [showAdd, setShowAdd] = useState(false);
+	const [authTarget, setAuthTarget] = useState<{
+		row: McpServerRow;
+		sessionId: string;
+	} | null>(null);
+	const remedy = useMcpRemedy({ sessionId: readSessionId });
 	const [filter, setFilter] = useState("");
 
 	// Only when the roster has nothing to borrow: an empty roster on a page opened
@@ -831,29 +829,19 @@ export const McpManagementSection: FC<{
 										{/* OAuth grant login only where the transport can do it;
 										    stdio servers get the setup-prompt offer instead of a
 										    browser login that would fail against a local process. */}
-										{canGrantAccountAccess ? (
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => void control("login", server.name)}
-											>
-												Grant account access
-											</Button>
-										) : server.setup?.text ? (
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => {
-													// The setup action is a prompt the user reviews and
-													// submits normally; it is never auto-sent.
-													void navigator.clipboard
-														.writeText(server.setup?.text ?? "")
-														.catch(() => undefined);
-												}}
-											>
-												Copy setup prompt
-											</Button>
-										) : null}
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => {
+												const row = deriveMcpServers(
+													listQuery.data?.servers ?? [],
+												).find((row) => row.name === server.name);
+												if (row)
+													setAuthTarget({ row, sessionId: readSessionId });
+											}}
+										>
+											Sign in
+										</Button>
 										{/* Removal is a scoped write into the file that owns the server,
 										    and only two of the eight config sources are this app's to
 										    write. A server imported from another tool's config has a
@@ -910,6 +898,14 @@ export const McpManagementSection: FC<{
 						})}
 					</ul>
 				)}
+				{authTarget?.sessionId === readSessionId ? (
+					<McpAuthDialog
+						key={readSessionId}
+						row={authTarget.row}
+						remedy={remedy}
+						onClose={() => setAuthTarget(null)}
+					/>
+				) : null}
 				{showAdd ? (
 					<AddServerForm
 						sessionId={readSessionId}

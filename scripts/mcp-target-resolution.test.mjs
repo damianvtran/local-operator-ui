@@ -2,25 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
-/*
- * `/mcp <argument>` — what the deep link resolves to, and what it says when it
- * resolves to nothing.
- *
- * The argument arrives as one opaque string (`picker-registry.tsx` builds
- * `/settings?section=integrations&mcp=<encoded argument>` and
- * `slash-dispatch.ts` navigates BEFORE any backend call, so nothing validates
- * it), and the surface used to compare the whole string against a server name.
- * The operator's own remedy line, `/mcp reauth hubspot`, therefore matched
- * nothing and the reveal effect returned in SILENCE.
- *
- * The rule this pins is resolution against the LOADED list rather than against
- * the backend's subcommand vocabulary: the renderer holds no copy of
- * `MCP_SUBCOMMANDS`, and `docs/desktop-controls.md` forbids authoring one. The
- * verb is simply a token that is not a server name.
- *
- * The module is a React component file, and it is bundled as one: the rule being
- * pinned is the one the shipped component calls, not a copy of it.
- */
+/* Named auth grammar rejects ambiguous/unknown targets; no last-token guesses. */
 
 const bundle = await build({
 	stdin: {
@@ -64,7 +46,7 @@ test("the operator's own remedy line resolves to the server it names", () => {
 	for (const argument of [
 		"reauth hubspot",
 		"login notion",
-		"list slack",
+		"auth slack",
 		"reauth  hubspot",
 	]) {
 		assert.deepEqual(
@@ -81,47 +63,17 @@ test("the operator's own remedy line resolves to the server it names", () => {
 	}
 });
 
-test("the LAST token that is a configured server wins", () => {
-	// The last token is itself a configured name, so it is the resolution and there
-	// is nothing to explain.
-	assert.deepEqual(resolveMcpServerTarget("hubspot notion", NAMES), {
-		kind: "matched",
-		name: "notion",
-		unresolved: null,
-	});
-	// A verb after the name is a token that is not a server, so the name before it
-	// still resolves — the rule is "last configured token", not "last token" — and
-	// the argument now CARRIES the token it could not use, so the section can state
-	// which server it landed on.
-	assert.deepEqual(resolveMcpServerTarget("hubspot reauth", NAMES), {
-		kind: "matched",
-		name: "hubspot",
-		unresolved: "reauth",
-	});
+test("unknown verbs and extra targets cannot select a configured token", () => {
+	for (const asked of ["hubspot notion", "hubspot reauth", "future hubspot", "login hubspot notion"]) {
+		assert.deepEqual(resolveMcpServerTarget(asked, NAMES), {kind: "miss", asked});
+	}
 });
 
-/**
- * The residual the rule cannot fix, and the reason the match says what it did.
- *
- * With a server named `login`, `/mcp login hubspo` (a typo) matches `login` and
- * would reveal an unrelated row in silence (code review round 1, finding 4). No verb
- * list may exist in this renderer, so the honest fix is on the statement side: the
- * match that needed a token other than the last one reports the last one back.
- */
-test("a server named like a verb cannot masquerade as the intended target in silence", () => {
+test("a typo cannot target a server named like a verb", () => {
 	const names = [...NAMES, "login"];
-	assert.deepEqual(resolveMcpServerTarget("login hubspo", names), {
-		kind: "matched",
-		name: "login",
-		unresolved: "hubspo",
-	});
-	// And when the intended server IS configured, the same argument resolves cleanly
-	// with nothing to explain — which is the operator's own `reauth hubspot` case.
-	assert.deepEqual(resolveMcpServerTarget("login hubspot", names), {
-		kind: "matched",
-		name: "hubspot",
-		unresolved: null,
-	});
+	assert.deepEqual(resolveMcpServerTarget("login hubspo", names), {kind: "miss", asked: "login hubspo"});
+	assert.deepEqual(resolveMcpServerTarget("login hubspot", names), {kind: "matched", name: "hubspot", unresolved: null});
+	assert.deepEqual(resolveMcpServerTarget("login", names), {kind: "matched", name: "login", unresolved: null});
 });
 
 test("an argument that names nothing is a stated miss, not a silent no-op", () => {

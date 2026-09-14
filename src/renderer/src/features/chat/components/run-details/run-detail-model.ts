@@ -473,10 +473,6 @@ const wireNumber = (value: unknown): number | null => {
  * stringified, so a backend that changed the shape cannot turn a name into
  * `"[object Object]"` in a form field.
  */
-const wireNames = (value: unknown): string[] =>
-	Array.isArray(value)
-		? value.map((entry) => wireText(entry)).filter(Boolean)
-		: [];
 
 /**
  * Flatten model-written text to one line.
@@ -1592,12 +1588,29 @@ export function deriveMcpServers(
 				typeof row.transport_oauth_supported === "boolean"
 					? row.transport_oauth_supported
 					: null;
-			// Names only, deduped, env before headers: one key can be declared by both a
-			// child's environment and a header map, and a form must not offer it twice.
-			const keyNames = [
-				...wireNames(row.environment_keys),
-				...wireNames(row.header_keys),
-			].filter((name, index, all) => all.indexOf(name) === index);
+			/*
+			 * The SECRET-REFERENCE IDs, deduped, in the backend's declared order —
+			 * never `environment_keys`/`header_keys`, which are the config map keys
+			 * (the destination field a value is bound INTO).
+			 *
+			 * `headers: {"Authorization": "Bearer ${HUBSPOT_TOKEN}"}` must store
+			 * `HUBSPOT_TOKEN`. Seeding the form from the map keys wrote
+			 * `Authorization` instead, so the resolver still reported the reference
+			 * missing after a save the dialog called successful (review R2-2), and a
+			 * shared wrong ID could overwrite an unrelated server's credential. One ID
+			 * can be bound into several fields, so the dedupe is by ID.
+			 *
+			 * An older backend sends no `secret_refs` at all: that yields NO fields
+			 * rather than a guessed binding, because a form that writes an invented ID
+			 * is worse than one honest sentence about needing a newer backend.
+			 */
+			const keyNames = (Array.isArray(row.secret_refs) ? row.secret_refs : [])
+				.map((ref) =>
+					wireText(
+						ref && typeof ref === "object" && "id" in ref ? ref.id : null,
+					),
+				)
+				.filter((name, index, all) => name && all.indexOf(name) === index);
 			return {
 				name,
 				status,
@@ -1650,38 +1663,76 @@ const PATH_SEPARATORS = /[\\/]/;
  * The remedy this surface can carry out for one problem state, or the sentence
  * for the states it cannot (`§ 3.3`).
  *
- * The decision is made from the ROW'S OWN PAYLOAD, in this order, with no new
- * backend op:
+ * The decision is made from the ROW'S OWN PAYLOAD, in this order:
  *
- * 1. `disconnected` is transport-level, and the shipped control for it is
- *    `connect` (`manager.reconnect_server`), so it gets a Reconnect.
- * 2. `auth-required` on a transport that cannot do OAuth — a stdio child, or a
+ * 1. **A declared secret reference wins over the status word**, for every
+ *    not-working state (`disconnected`, `auth-required`) on a server whose config
+ *    DECLARES it cannot do OAuth. This ordering IS the fix for review R2-4: a
+ *    server whose key is missing or wrong does not report `auth-required` at
+ *    all. Isolated loopback servers answering a real 401 and a real 403, and a
+ *    real failed stdio initialize, each produced `disconnected` — so judging
+ *    `disconnected` first offered Reconnect, and only Reconnect, to precisely
+ *    the rows a key would fix.
+ *
+ *    The OAuth half is a KNOWN-IMPOSSIBLE test — `transport_oauth_supported ===
+ *    false`, which `public_server_config` publishes for a config that rejects
+ *    OAuth (`mcp/desktop.py:115`), plus the stdio transport — and deliberately
+ *    NOT "not known to be supported". An unknown-OAuth http server that also
+ *    declares a reference is genuinely ambiguous, and claiming `Enter API key`
+ *    on the row while the dialog's own probe then opens the browser would put
+ *    two labels on one press. Unknown therefore keeps the grant, and the SHARED
+ *    dialog resolves the real answer from its probe.
+ *
+ *    `cold` is deliberately NOT here: a cold read is the facade saying it could
+ *    not reach a live runtime, so it is not a problem row at all
+ *    (`MCP_NOT_A_PROBLEM`) and this function is never asked about one. Offering
+ *    a key control there would claim a diagnosis nobody made. The first-run
+ *    case the operator asked for — `/mcp login <name>` on a server that has
+ *    never started — is served instead by the shared dialog, which probes the
+ *    NAMED server itself and opens the key popout on its answer rather than on
+ *    a row's status word.
+ * 2. `disconnected` with nothing declared is transport-level, and the shipped
+ *    control for it is `connect` (`manager.reconnect_server`), so: Reconnect.
+ * 3. `auth-required` on a transport that cannot do OAuth — a stdio child, or a
  *    config that declares another `auth.type` (`server_rejects_oauth`) — can
- *    never complete a browser flow, so it keeps words and points at the surface
- *    that owns the credentials.
- * 3. every other `auth-required` gets the grant. `transport_oauth_supported` is
+ *    never complete a browser flow, and by (1) has no reference to offer, so it
+ *    keeps words and points at the surface that owns the configuration.
+ * 4. every other `auth-required` gets the grant. `transport_oauth_supported` is
  *    `null` for an http server in the normal case (`§ 1.5`: the backend
  *    publishes `False` only for a definite refusal), so "unknown" must be
  *    offered the control rather than treated as a refusal.
- * 4. an unrecognised word gets nothing: a fix for a word this build cannot name
+ * 5. an unrecognised word gets nothing: a fix for a word this build cannot name
  *    would be a guess.
+ *
+ * The remedy chooses which control the row offers. It never decides the outcome:
+ * the shared dialog re-probes the named server and resolves the real transition
+ * there (`mcp-auth-dialog.tsx`), so a stale remedy cannot start the wrong flow
+ * (R2-6).
  */
 export const mcpRemedyFor = (server: {
 	status: string;
 	transport: string | null;
 	oauthSupported: boolean | null;
 	/**
-	 * The credential field names the config declares, if any.
+	 * The secret-reference IDs this server's config declares, if any.
 	 *
-	 * A stdio child's `env` and an HTTP server's `headers` hold `$ {NAME}`
-	 * references, and the VALUES live in the owner credential store
-	 * (`~/.local-operator/credentials.json`, the same store Settings' API
-	 * credentials write). So a server whose transport cannot do OAuth is not
-	 * unfixable from here: where the config names a field, this surface can write
-	 * that credential and reconnect.
+	 * A stdio child's `env` and an HTTP server's `headers` hold `${NAME}`
+	 * references; the VALUES live in the ENCRYPTED secret store, which the owner
+	 * writes through its own bounded MCP credential op. So a server whose
+	 * transport cannot do OAuth is not unfixable from here: where the backend
+	 * publishes a reference, this surface can write that secret and reconnect.
+	 *
+	 * Empty means the backend declared nothing (or is too old to publish
+	 * references), and then no key control is offered at all.
 	 */
 	keyNames: readonly string[];
 }): McpRemedy | null => {
+	if (
+		["disconnected", "auth-required"].includes(server.status) &&
+		server.keyNames.length > 0 &&
+		(server.oauthSupported === false || server.transport === "stdio")
+	)
+		return { kind: "key" };
 	if (server.status === "disconnected") return { kind: "reconnect" };
 	if (server.status !== "auth-required") return null;
 	if (server.transport === "stdio" || server.oauthSupported === false) {

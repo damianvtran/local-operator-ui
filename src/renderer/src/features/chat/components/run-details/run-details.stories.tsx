@@ -1550,17 +1550,33 @@ export const McpGrantLocked: Story = {
 };
 
 /**
- * The confirmation, reached by pressing the row's own grant link.
+ * The grant confirmation, reached by pressing the row's own grant link.
  *
  * Interactive rather than pre-opened, and the shutter is held with
  * `data-capture-pending` until the dialog is on screen: a frame of a modal the
  * story opened by hand would be a frame of a state the app reaches by a
- * different route. Both consequences are stated because both are facts the reader
- * would otherwise discover afterwards — the browser opens, and a stored
- * credential is replaced.
+ * different route.
+ *
+ * **The confirmation is the SHARED flow as of the integration round**
+ * (`mcp-auth-dialog.tsx`), not a modal this section owns. That is the point of
+ * the change rather than a detail of it: the button that reaches this state is
+ * the row's own control, and the decision about WHICH transition to start is
+ * made by one owner that re-probes the named server, so a stale derived remedy
+ * can no longer start a browser grant for a server whose answer is a key
+ * (review R2-6). The frame therefore shows that flow's own confirmation step —
+ * the same one `/mcp reauth <name>` and Settings open — and the grant facts it
+ * states (the browser opens; a stored credential is replaced) are the reasons
+ * it still confirms at all.
  */
 const GrantConfirmGround = () => {
 	useClickAndWait('[data-mcp-remedy="grant"]', '[role="dialog"]');
+	/*
+	 * The dialog resolves the transition from a live `probe`, so this story needs
+	 * the desktop bridge the capture environment provides — the same requirement
+	 * its sibling frames already have. In Storybook without a backend the dialog
+	 * honestly shows its "could not check this server" state, which is itself a
+	 * state worth seeing rather than one to fake.
+	 */
 	return (
 		<ChatColumn
 			details={deriveRunDetails(fixtures.bothInFlight())}

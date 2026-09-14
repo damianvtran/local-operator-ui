@@ -404,12 +404,37 @@ popout is in this PR, in its own final commit so it can be split off. What
 follows is what actually ships, then the original reasoning, which is still the
 reason the write path is a dependency rather than a detail.
 
-**What ships** (`run-details/mcp-key-dialog.tsx`, `use-mcp-remedy.pressKey`):
-one password field per credential field the PAYLOAD declares
-(`environment_keys` / `header_keys` — names only, never a value,
-`mcp/desktop.py:92-116`), written through the owner credential store's own op
-(`credentials.update`, the same one Settings → API credentials writes), then the
-server reconnects through `mcp.control {action: "connect"}`.
+**What ships** (`run-details/mcp-key-dialog.tsx`,
+`use-mcp-remedy.pressKey`, opened by the shared flow in `mcp-auth-dialog.tsx`):
+one password field per **secret-reference ID the backend declares**
+(`secret_refs: [{id, bindings}]`, `mcp/desktop.py` — metadata only, never a value
+and never a template), written through a DEDICATED owner op
+(`mcp.credentials.store` → `POST /v1/desktop/sessions/{id}/mcp/credentials`) into
+the **encrypted secret store**, then the server reconnects through
+`mcp.control {action: "connect"}`.
+
+**Two corrections to what this document first described**, both from the
+integration review round:
+
+1. The fields are the reference IDs, not `environment_keys`/`header_keys`. Those
+two are the config MAP KEYS — the destination a value is bound INTO — so a form
+seeded from them wrote `Authorization` while the resolver read
+`${HUBSPOT_TOKEN}`, and the save looked successful while the reference stayed
+unresolved (R2-2). `secret_refs` is deduped by ID, and a backend that sends no
+refs yields NO fields rather than a guessed binding.
+2. The write is `mcp.credentials.store`, not `credentials.update`. The latter is
+the PROVIDER credential surface, it writes the legacy plaintext
+`credentials.env`, and it accepts any key name — which is precisely how the wrong
+ID above could be stored at all (R2-3). The MCP op validates every submitted ID
+against the server's own declared references BEFORE writing anything, requires
+explicit confirmation to replace an existing (possibly shared) value, and the
+legacy file is read-only compatibility for MCP references rather than a write
+target.
+
+**A save is never reported as a connection.** The sheet closes only on a
+`connected` row; a refused, partial, unconfirmed or merely-saved-but-unauthenticated
+outcome keeps the form mounted with the user's input intact and the backend's own
+sentence beside it (R2-5).
 
 **What it does NOT do:** it writes no configuration. No `add`, no `env`/`headers`
 map, no scope — the panel's rule (`§ 7.2` amended) holds, and the op that a popout
@@ -428,13 +453,15 @@ parallel backend change that enables it is `damianvtran/local-operator` **PR
 #1125**.
 
 Because that PR may land after this one, the surface claims nothing it cannot
-keep: the dialog's line promises what it DOES ("Saved to your credential manager,
-then this server is reconnected"), and the OUTCOME is derived from the read —
-`pressKey` judges the returned snapshot's own row rather than the request's status
-(`manager.reconnect_server` swallows failures and returns `None`,
-`manager.py:1671-1679`), so a backend without the resolver says "The key was saved,
-but the server still needs sign-in" and the dialog stays open. `run-sidebar.md` §
-13 carries the same coupling.
+keep: the dialog's line promises what it DOES ("Saved to the encrypted secret
+store, then this server is reconnected"), and the OUTCOME is derived from the read
+— `pressKey` judges the returned snapshot's own row rather than the request's
+status (`manager.reconnect_server` swallows failures and returns `None`,
+`manager.py:1671-1679`), so a backend that cannot resolve the reference says the
+key was saved but the server is not connected, and the dialog stays open. A
+backend too old to publish `secret_refs` and `mcp_auth` offers no key form at all
+and says to update the backend for secure key entry, rather than falling back to
+a plaintext write. `run-sidebar.md` § 13 carries the same coupling.
 
 ---
 

@@ -1,37 +1,9 @@
 /**
- * The key-entry popout for an MCP server the run panel cannot grant.
- *
- * ## Why this exists, and what it depends on
- *
- * The operator asked for "a popout to enter in the API key" beside the grant, and
- * it is the honest remedy for the third case: a server whose transport cannot
- * complete a browser sign-in (a stdio child, or a config declaring another
- * `auth.type`) is not unfixable — its config holds `${NAME}` REFERENCES and the
- * value belongs in the owner credential store, which is the same store Settings →
- * API credentials writes through `credentials.update`.
- *
- * **It depends on a backend change that is not in `main` yet.** Today nothing
- * expands a `${NAME}` reference in the MCP path: the child is built as
- * `get_default_environment() | CHILD_QUIET_ENV | dict(cfg.env or {})`
- * (`mcp/manager.py:747`), so `{"TOKEN": "${TOKEN}"}` reaches the child as that
- * literal string. The parallel backend change resolves `${NAME}` from the owner
- * credential store at transport-build time and refuses an unresolved whole-value
- * reference BY NAME rather than passing it through. Against a backend without it,
- * this dialog stores the credential and the reconnect still fails — which is said
- * in the PR body rather than implied by a form that looks like it worked.
- *
- * ## What it does NOT do
- *
- * It does not write configuration. It writes the CREDENTIAL the configuration
- * already references, which is why it belongs on this surface at all: the panel's
- * rule is that it never touches `mcp.json` (no add, no remove, no scope), and
- * every field offered here comes from the payload's own `environment_keys` /
- * `header_keys` — the names the config declares, and never a value
- * (`public_server_config`, `mcp/desktop.py:92-116`).
- *
- * Fields are password inputs and their values are never logged, never put in a
- * frame, and cleared when the dialog closes: the store they land in is the
- * encrypted one the credential manager owns.
+ * Masked MCP key entry for declared secret IDs, never header/environment field
+ * names. The owner writes its encrypted store through a dedicated off-record
+ * operation. No provider API, config mutation, browser history, or key cache.
+ * Values survive refusal in this mounted form and are cleared on close/target
+ * change; connection success, not persistence alone, is the closing condition.
  */
 
 import {
@@ -65,7 +37,7 @@ export type McpKeyDialogProps = {
 	 * place that starts operations, and a second writer here would be a second place
 	 * for the reconnect and the cache write to drift.
 	 */
-	onSave: (values: Record<string, string>) => void;
+	onSave: (values: Record<string, string>, confirmedReplace?: string[]) => void;
 };
 
 /** One id per field, named once and shared by label, control and help text. */
@@ -80,6 +52,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 	onSave,
 }) => {
 	const [values, setValues] = useState<Record<string, string>>({});
+	const [replace, setReplace] = useState(false);
 	const keyNames = target?.keyNames ?? [];
 
 	/*
@@ -90,6 +63,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: open/target are the reset triggers, not read values
 	useEffect(() => {
 		setValues({});
+		setReplace(false);
 	}, [open, target?.name]);
 
 	const filled = keyNames.every(
@@ -110,7 +84,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 				<>
 					<SecondaryButton onClick={onCancel}>Cancel</SecondaryButton>
 					<PrimaryButton
-						onClick={() => onSave(values)}
+						onClick={() => onSave(values, replace ? [...keyNames] : [])}
 						disabled={!filled || saving}
 					>
 						{saving ? "Saving…" : "Save and reconnect"}
@@ -139,7 +113,8 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 						 * returned snapshot and says the server still needs sign-in when it does,
 						 * which is true against a backend with the resolver and one without it.
 						 */}
-						Saved to your credential manager, then this server is reconnected.
+						Saved to the encrypted secret store, then this server is
+						reconnected. These keys may be shared by other servers and sessions.
 					</p>
 					{keyNames.map((name) => (
 						<div key={name} className="flex flex-col gap-1">
@@ -160,7 +135,19 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 							/>
 						</div>
 					))}
-					{error ? <p className="text-body-sm text-danger">{error}</p> : null}
+					<label className="flex items-start gap-2 text-body-sm">
+						<input
+							type="checkbox"
+							checked={replace}
+							onChange={(event) => setReplace(event.target.checked)}
+						/>
+						Replace existing values for these shared keys.
+					</label>
+					{error ? (
+						<p className="text-body-sm text-danger" role="alert">
+							{error}
+						</p>
+					) : null}
 				</div>
 			</DialogDescription>
 		</BaseDialog>
