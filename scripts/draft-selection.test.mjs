@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 
 const ROOT = process.cwd();
 
@@ -61,12 +62,14 @@ const bundle = await build({
 			export {
 				NO_DRAFT_TARGET,
 				draftPreviewKey,
+				draftPreviewQuery,
 				fetchDraftPreview,
 				selectionFromModel,
 				selectionSelector,
 			} from "./src/renderer/src/features/chat/draft-selection";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
-			export { effortLadder } from "./src/renderer/src/features/chat/session-status/session-model";
+			export { bandReadings, effortLadder, specUnresolved } from "./src/renderer/src/features/chat/session-status/session-model";
+			export { errorText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
 			export {
 				admitChatDraft,
 				useCanonicalSessionsStore,
@@ -100,13 +103,17 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	NO_DRAFT_TARGET,
 	admitChatDraft,
+	bandReadings,
 	desktopEndpoint,
 	desktopRequestSchema,
 	draftPreviewKey,
+	draftPreviewQuery,
 	effortLadder,
+	errorText,
 	fetchDraftPreview,
 	selectionFromModel,
 	selectionSelector,
+	specUnresolved,
 	useCanonicalSessionsStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -409,10 +416,9 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	// A model pick replaces the selection, rung included: the previous model's
 	// rung is not a level the new model agreed to.
 	assert.match(picker, /model_id: modelId, reasoning_effort: null/);
-	// An effort pick keeps the model and changes only the rung.
-	assert.match(picker, /\{ \.\.\.draftPick\.selection, reasoning_effort: value \}/);
-	// ...and passes null when there is no model to hang it on (R6).
-	assert.match(picker, /draftPick\.selection\s*\?\s*\{ \.\.\.draftPick\.selection/);
+	// Candidate behaviour is exercised below through the actual hook/adapter.
+	// A regex here previously required the very null branch that broke effort-first
+	// picks on a resolved default, while every source assertion stayed green (R7).
 
 	// Draft mode never reaches the session command path.
 	assert.doesNotMatch(
@@ -507,4 +513,260 @@ test("create and preview accept the same selection shape, and refuse anything el
 			);
 		}
 	}
+});
+
+/* ---- execute the shipped hook and effort adapter, not a source regex ----- */
+
+/*
+ * The old wiring assertions passed while an offered effort-first pick made no
+ * request at all (R7). Transpile the actual hook/adapter bodies and invoke the
+ * PickerHost callback they return, including another render after each receipt.
+ *
+ * This follows attachment-url.test.mjs's bounded hook-runtime pattern: the repo
+ * has no DOM/test-renderer dependency. Only React state/query seams and the host
+ * boundary are substituted; selection, precedence, options, refusal and receipt
+ * control flow are the shipped code. Explicit renders preserve hook state, but
+ * do NOT prove React scheduling, pointer events, browser focus or visible paint.
+ * Those remain the blocked browser-tool acceptance matrix, not these tests.
+ */
+const pickerSource = readFileSync(
+	join(ROOT, "src/renderer/src/features/chat/pickers/destination-pickers.tsx"),
+	"utf8",
+);
+const hookStart = pickerSource.indexOf("function useDraftPick(");
+const hookEnd = pickerSource.indexOf("export const ModelPicker:");
+const effortStart = pickerSource.indexOf("export const EffortPicker:");
+const effortEnd = pickerSource.indexOf("export const ThemePicker:");
+assert.ok(hookStart >= 0 && hookEnd > hookStart);
+assert.ok(effortStart >= 0 && effortEnd > effortStart);
+const pickerCode = await transform(
+	`${pickerSource.slice(hookStart, hookEnd)}\n${pickerSource.slice(effortStart, effortEnd)}\nexport { useDraftPick };`,
+	{ loader: "tsx", jsx: "automatic", format: "cjs" },
+);
+let activePicker;
+const pickerDependencies = {
+	NO_DRAFT_TARGET,
+	draftPreviewQuery,
+	selectionFromModel,
+	bandReadings,
+	effortLadder,
+	specUnresolved,
+	errorText,
+	PickerHost: () => null,
+	useEntities: () => ({}),
+	useSessionCommand: () => ({
+		run: () => assert.fail("a draft must not issue a session command"),
+	}),
+	useQueryClient: () => activePicker.client,
+	useCallback: (callback) => callback,
+	useMemo: (compute) => compute(),
+	useState: (initial) => {
+		const instance = activePicker;
+		const index = instance.index++;
+		if (!(index in instance.states))
+			instance.states[index] =
+				typeof initial === "function" ? initial() : initial;
+		return [
+			instance.states[index],
+			(value) => {
+				instance.states[index] =
+					typeof value === "function" ? value(instance.states[index]) : value;
+			},
+		];
+	},
+	useQuery: (query) => {
+		activePicker.lastPreviewKey = query.queryKey;
+		return {
+			data: activePicker.preview(query.queryKey),
+			isLoading: false,
+			isError: false,
+		};
+	},
+};
+const pickerModule = { exports: {} };
+new Function(
+	"require",
+	"module",
+	...Object.keys(pickerDependencies),
+	pickerCode.code,
+)(
+	createRequire(import.meta.url),
+	pickerModule,
+	...Object.values(pickerDependencies),
+);
+const { EffortPicker: ExecutedEffortPicker, useDraftPick: executedDraftPick } =
+	pickerModule.exports;
+
+function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
+	const instance = {
+		states: [],
+		index: 0,
+		requests: [],
+		selections: [],
+		notes: [],
+		reject: false,
+		lastPreviewKey: null,
+		preview: (key) => {
+			if (!key[5]) return resolved;
+			const slash = key[5].indexOf("/");
+			return frame({
+				...SPEC,
+				provider: key[5].slice(0, slash),
+				model_id: key[5].slice(slash + 1),
+				reasoning_effort: key[6],
+			});
+		},
+	};
+	instance.client = {
+		fetchQuery: async (query) => {
+			instance.requests.push(query.queryKey);
+			if (instance.reject) throw new Error("The candidate was refused.");
+			return instance.preview(query.queryKey);
+		},
+	};
+	instance.draft = {
+		target: { cwd: CWD, model: initial },
+		select: (selection) => instance.selections.push(selection),
+	};
+	const note = (...args) => instance.notes.push(args);
+	const run = (callback) => {
+		activePicker = instance;
+		instance.index = 0;
+		return callback();
+	};
+	instance.hook = () => run(() => executedDraftPick(instance.draft, note));
+	instance.render = () =>
+		run(
+			() =>
+				ExecutedEffortPicker({
+					sessionId: "",
+					canonical: {},
+					onClose: () => {},
+					draft: instance.draft,
+					note,
+				}).props,
+		);
+	instance.pick = async (value) => {
+		instance.render().onPick(value);
+		await new Promise(setImmediate);
+		return instance.render();
+	};
+	return instance;
+}
+
+test("effort first on an unpicked resolved draft previews and records its default model", async () => {
+	const picker = pickerHarness();
+	assert.deepEqual(
+		picker.render().options.map((row) => row.value),
+		SPEC.reasoning_efforts,
+	);
+	const settled = await picker.pick("high");
+	assert.equal(picker.requests.length, 1);
+	assert.deepEqual(picker.selections, [PICKED_RUNG]);
+	assert.equal(settled.result.tone, "success");
+	assert.equal(settled.busy, false);
+	assert.equal(settled.options.find((row) => row.current)?.value, "high");
+	assert.deepEqual(picker.notes, []);
+	assert.equal(
+		picker.draft.target.model,
+		null,
+		"the opened-on prop stays frozen",
+	);
+});
+
+test("model first then effort retains the explicit model while changing only its rung", async () => {
+	const selected = {
+		provider: "openai",
+		model_id: "gpt-5",
+		reasoning_effort: "low",
+	};
+	const picker = pickerHarness({ initial: selected });
+	await picker.pick("high");
+	assert.deepEqual(picker.selections, [
+		{ ...selected, reasoning_effort: "high" },
+	]);
+	assert.equal(picker.requests.length, 1);
+});
+
+test("a remembered successful effort pick survives a later refusal on the same open adapter", async () => {
+	const picker = pickerHarness();
+	await picker.pick("high");
+	const successfulKey = picker.lastPreviewKey;
+	picker.reject = true;
+	const refused = await picker.pick("low");
+	assert.equal(picker.requests.length, 2);
+	assert.deepEqual(picker.selections, [PICKED_RUNG]);
+	assert.deepEqual(picker.lastPreviewKey, successfulKey);
+	assert.equal(refused.options.find((row) => row.current)?.value, "high");
+	assert.equal(refused.result.tone, "error");
+	assert.match(refused.result.text, /The candidate was refused/);
+	assert.deepEqual(picker.notes, [[refused.result.text, true]]);
+	assert.equal(refused.busy, false);
+});
+
+test("the actual draft hook remembers a successful model candidate across a refused candidate", async () => {
+	const picker = pickerHarness();
+	const reading = {
+		describe: () => "Chosen model.",
+		refused: "The model was not changed.",
+	};
+	await picker.hook().pick(PICKED, reading);
+	assert.deepEqual(picker.hook().selection, PICKED);
+	picker.reject = true;
+	await picker
+		.hook()
+		.pick(
+			{ provider: "openai", model_id: "gpt-5", reasoning_effort: null },
+			reading,
+		);
+	assert.deepEqual(picker.hook().selection, PICKED);
+	assert.deepEqual(picker.hook().target.model, PICKED);
+	assert.deepEqual(picker.selections, [PICKED]);
+	assert.equal(picker.hook().busy, false);
+	assert.equal(picker.hook().result.tone, "error");
+});
+
+test("effort options, identity and default fallback follow the strip's effective-first spec", async () => {
+	const effective = {
+		...SPEC,
+		provider: "openai",
+		model_id: "gpt-5",
+		reasoning_efforts: ["low", "high"],
+		reasoning_effort: "low",
+	};
+	const resolved = frame(SPEC);
+	resolved.snapshot.effective_model = effective;
+	const picker = pickerHarness({ resolved });
+	const initial = picker.render();
+	assert.deepEqual(
+		initial.options.map((row) => row.value),
+		["low", "high"],
+	);
+	assert.match(initial.description, /openai\/gpt-5 supports/);
+	assert.equal(initial.options.find((row) => row.current)?.value, "low");
+	await picker.pick("high");
+	assert.deepEqual(picker.selections, [
+		{ provider: "openai", model_id: "gpt-5", reasoning_effort: "high" },
+	]);
+});
+
+test("a truly unresolved draft offers no rungs and refuses a forced candidate without a preview", async () => {
+	const picker = pickerHarness({ resolved: frame(null) });
+	assert.deepEqual(picker.render().options, []);
+	const refused = await picker.pick("high");
+	assert.deepEqual(picker.requests, []);
+	assert.deepEqual(picker.selections, []);
+	assert.match(refused.result.text, /has not resolved a model to change/);
+});
+
+test("a resolved ladderless model stays honestly non-adjustable and makes no request", () => {
+	const picker = pickerHarness({
+		resolved: frame({ ...SPEC, reasoning: false, reasoning_efforts: [] }),
+	});
+	const view = picker.render();
+	assert.deepEqual(view.options, []);
+	assert.match(view.description, /has no adjustable effort/);
+	assert.equal(view.emptyText, "Effort is not adjustable on this model.");
+	assert.deepEqual(picker.requests, []);
+	assert.deepEqual(picker.selections, []);
 });

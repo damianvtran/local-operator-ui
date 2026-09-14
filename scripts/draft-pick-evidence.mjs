@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 /**
- * Photograph a DRAFT pane's pick on a backend that can honour it.
+ * HISTORICAL / UNVALIDATED capture driver — not a supported validation recipe.
  *
- *     node scripts/draft-pick-evidence.mjs <origin> <out-dir> [actionable|inert]
+ * PR #154 QA found that the model-row path below calls HTMLElement.click(),
+ * whereas PickerRow selects on onMouseDown. Its unchanged-reading result proves
+ * no backend refusal: it never submitted the row selection. Do not fix or run
+ * this driver to obtain this recovery's evidence. All new page interactions and
+ * screenshots require the approved browser tool; missing approval is BLOCKED.
+ * The prose below describes the original intent, not completed evidence.
  *
  * Why this set cannot be a story. The claim is not about the strip's markup; it
  * is that a pick made on a pane with NO session behind it is resolved by the
@@ -14,10 +19,12 @@
  *
  * `actionable` runs against a backend advertising `features.draft_selection: 1`;
  * `inert` runs the same steps against one that does not, and asserts the chips
- * stay inert and no picker opens. The pair is the gate photographed rather than
- * asserted.
+ * stay inert and no picker opens. Neither the successful pick/send sequence nor
+ * that negative-control pair was completed; the retained PNGs stop at the open
+ * model picker. See docs/evidence/draft-pick-live/README.md for the exact limits.
  *
- * Every number in `numbers.json` is read out of the live DOM at the moment the
+ * A completed run intended to write `numbers.json`; no such file is committed
+ * with the historical PNGs. The intended number source is the live DOM when the
  * frame beside it was taken: the readings' own `aria-label`s (which carry the
  * window, the ladder and the level the backend resolved), their geometry across
  * the send, and the picker's own rows. The model and level that served the

@@ -53,6 +53,7 @@ import {
 	type DraftSelectionTarget,
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
+	selectionFromModel,
 } from "../draft-selection";
 import {
 	bandReadings,
@@ -803,9 +804,7 @@ export const EffortPicker: FC<PickerContext> = ({
 		enabled: Boolean(draft),
 	});
 	const draftModel = draft
-		? (draftPreview.data?.snapshot.selected_model ??
-			draftPreview.data?.snapshot.effective_model ??
-			null)
+		? bandReadings(draftPreview.data?.snapshot, null).effort
 		: null;
 	const model = draft ? draftModel : canonical.frontend?.selected_model;
 	const rungs = draft
@@ -892,17 +891,17 @@ export const EffortPicker: FC<PickerContext> = ({
 					return;
 				}
 				/*
-				 * The rung rides the pane's OWN selection: the model stays what it is and
-				 * only the effort changes. It is the hook's selection — seeded from the pane,
-				 * advanced by every confirmed pick — rather than the prop, so an effort picked
-				 * after a model pick rides the model actually in force. A pane that has
-				 * resolved no model has nothing to hang a rung on, and `pick` says so in the
-				 * dialog rather than swallowing the click (review round 1, R6).
+				 * A confirmed pick outranks the dialog's opened-on snapshot. Before ANY
+				 * pick, however, a null draft selection means "use the resolved default",
+				 * not "no model exists" (R7). Seed an effort-first candidate from the same
+				 * effective-first spec that supplies the strip and this dialog's rungs;
+				 * only a genuinely unnamed model reaches the hook's explicit refusal.
+				 * Keep that fallback local to the candidate: merely opening the picker
+				 * must not turn an unpicked draft into an explicit model selection.
 				 */
+				const selection = draftPick.selection ?? selectionFromModel(draftModel);
 				void draftPick.pick(
-					draftPick.selection
-						? { ...draftPick.selection, reasoning_effort: value }
-						: null,
+					selection ? { ...selection, reasoning_effort: value } : null,
 					{
 						describe: () => `Effort for the first message: ${value}.`,
 						refused: "The effort was not changed.",
