@@ -1,8 +1,8 @@
 {
   "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
   "headNote": "Recovery integration: normal merge of origin/main 8d019993eb8b54913d89fa5288aafbaf88f293d3 (#175) into c1ae238376eb64e046187998d4e9bc3dd3db35bf (#158). Only this manifest conflicted; capture-evidence.mjs auto-merged its additive STORIES entries. The top-level srcTree/scriptsTree stamps describe the integrated source, not a new capture. No image was captured or modified by the integration, and capturedAt/head/partialCapture retain upstream historical capture provenance rather than inventing a new run. The full prior trace capture record remains at c1ae238376eb64e046187998d4e9bc3dd3db35bf:docs/evidence/manifest.json (twenty frames reported at merge 9ca9fd021, with its existing limitations); its supplementary trace-legibility-baseline declaration is preserved here alongside every upstream declaration. Upstream partialCapture remains unchanged, including its own range and previousRefresh; it does not claim a newly executed trace pass. The countsMean fields are re-derived from the merged tree. Browser-tool recovery on c1ae23837 is recorded in PR #158 comment 5669894601, not relabeled as visual validation of this newer integrated source. The shared disclosure upstream changes require a separate bounded convergence check; no feature behavior is authored in this resolution. package.json keeps upstream version 0.22.3.",
-  "srcTree": "2fbb126f57789e8c708535bba5b36e89fd1e767d",
-  "scriptsTree": "1e44e55f8b606e6aa715a7f3bd5d1c3f6ab56a5f",
+  "srcTree": "25f7c928c68e3e69d65ca8e23bd9f0de7bdd40b9",
+  "scriptsTree": "b568c4d55cb8aa24f6c79d7e032d4ab6ebf02323",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
   "frames": 1948,
@@ -125,7 +125,8 @@
       "retakes": 96,
       "note": "The 96 changed-surface retakes and their content-region composition are recorded in docs/evidence/panels-remediation/README.md, capture-index.json and crop-index.json."
     },
-    "refreshedFramesNote": "`refreshedFrames` is one-sided by design and measures every non-supplementary `.webp` that moved between the pass start and this tree. Since this branch's evidence pass began, two upstream merges (#175, #158) landed their own sets in the same range, so the number now counts their frames as well as this branch's. THIS BRANCH'S OWN CONTRIBUTION IS 96 RETAKES, listed in `remediationRecord.thisPassRetakes` and itemised under `docs/evidence/panels-remediation/`; the remainder arrived with `main` and was neither captured nor modified here."
+    "refreshedFramesNote": "`refreshedFrames` is one-sided by design and measures every non-supplementary `.webp` that moved between the pass start and this tree. Since this branch's evidence pass began, two upstream merges (#175, #158) landed their own sets in the same range, so the number now counts their frames as well as this branch's. THIS BRANCH'S OWN CONTRIBUTION IS 96 RETAKES, listed in `remediationRecord.thisPassRetakes` and itemised under `docs/evidence/panels-remediation/`; the remainder arrived with `main` and was neither captured nor modified here.",
+    "d19Recapture": "The D19 re-capture replaced the wire-environment frame in place and is declared in docs/evidence/panels-live/wire-environment/d19-recapture.json; it is one of the frames counted by refreshedFrames."
   },
   "supplementary": [
     {

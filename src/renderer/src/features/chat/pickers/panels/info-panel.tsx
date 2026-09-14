@@ -57,6 +57,26 @@ export type InfoPanelProps = {
 	gated: boolean;
 };
 
+/**
+ * What a facts row's value cell shows, as the DECISION rather than as markup.
+ *
+ * Exported so a test can bind the choice the view actually makes: the empty
+ * case here is not a rendering detail, it is the difference between "no
+ * credentials are recorded" and "this row has nothing to say".
+ *
+ * `length > 0` rather than a bare truthiness check, and that is the whole
+ * reason this is a function: an EMPTY array is TRUTHY, so `row.names` alone
+ * took the names branch for a host with no stored credentials and rendered
+ * `[].join(", ")` — a blank cell where the row's computed answer is `none`
+ * (design round 3, D19).
+ */
+export const factValue = (
+	row: InfoRow,
+): { kind: "names" | "value"; text: string } =>
+	row.names?.length
+		? { kind: "names", text: row.names.join(", ") }
+		: { kind: "value", text: row.value };
+
 /** Two columns, label and value. The shape every facts table here shares. */
 const FactsTable: FC<{ label: string; rows: InfoRow[] }> = ({
 	label,
@@ -83,10 +103,12 @@ const FactsTable: FC<{ label: string; rows: InfoRow[] }> = ({
 		{
 			key: "value",
 			header: "Value",
-			cell: (row) =>
-				row.names ? (
+			/* One decision, taken by `factValue` above; the cell only styles it. */
+			cell: (row) => {
+				const value = factValue(row);
+				return value.kind === "names" ? (
 					<span className={cn("font-mono text-ink-muted text-mono-sm")}>
-						{row.names.join(", ")}
+						{value.text}
 					</span>
 				) : (
 					<span
@@ -96,9 +118,10 @@ const FactsTable: FC<{ label: string; rows: InfoRow[] }> = ({
 							row.tone === "warning" ? "text-warning" : "text-ink",
 						)}
 					>
-						{row.value}
+						{value.text}
 					</span>
-				),
+				);
+			},
 		},
 	];
 	return (

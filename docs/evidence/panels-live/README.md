@@ -70,3 +70,16 @@ and a panel frame for each of the five commands.
   and this rig's session recorded none, so the panel fits its box and there is
   nothing below the fold to scroll to. Reaching those sections in the app needs a
   session whose turns recorded usage, which the mock provider does not do.
+
+## Round 3 follow-up — D19, the zero-credential cell
+
+`wire-environment/localOperatorDark.webp` was re-captured through the `browser`
+tool after the value cell learned to fall through to its computed answer: the
+row now reads `Stored credentials → names only · values are never read | none`
+instead of a blank cell. The frame is 2880x1634 like its predecessor (a full
+viewport capture, not a crop), unnamed-resampled, and its source PNG, sha256 and
+the superseded frame's dimensions are recorded in
+`wire-environment/d19-recapture.json`. The panel body is the production
+`InfoPanel` rendering a real HTTP 200 from the isolated diagnostic backend on
+`127.0.0.1:6052`; the read-back of the rendered page is what confirms the row's
+text, and the frame is the same claim in pixels.
