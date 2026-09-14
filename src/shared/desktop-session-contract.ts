@@ -79,9 +79,17 @@ export type CompletionAttention = {
  * repositories -- each side's tests pin its own literal, so a change on one side
  * lands green on the other. What makes that a maintenance step rather than a
  * silent break is that this literal is asserted against the documented wire value
- * in `scripts/completion-view-ack.test.mjs`, next to the refusal it decides: a
- * change here fails a test that names the backend's value instead of quietly no
- * longer recognising the refusal.
+ * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
+ * names the backend's value.
+ *
+ * Nothing in the renderer FORKS on this code, and that is deliberate rather than
+ * an omission: `use-completion-view.ts` sends every rejection -- this 409
+ * included -- to the one shared retry ladder, so a superseded token costs its
+ * attempt like any other failure and the re-arm comes from the projection naming
+ * a NEW token, not from a special case here. It is kept because it is part of
+ * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
+ * a client that does need to tell the refusal apart must not have to spell the
+ * string itself.
  */
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
 
@@ -110,23 +118,6 @@ export function receiptSettled(
 	);
 }
 
-/**
- * Whether a refused receipt means "this token was replaced" rather than "this
- * call failed".
- *
- * The distinction decides whether to back off. A superseded token is expected --
- * and the refusal carries no state, only the reason, so the caller re-reads its
- * OWN attention state and acknowledges the token that names -- so treating it as
- * a failure would only delay the re-arm. Everything else (an unreachable
- * transport, an unknown token, a backend that predates the route) keeps the
- * backed-off cadence.
- */
-export function isSupersededReceipt(error: unknown): boolean {
-	if (!error || typeof error !== "object") return false;
-	return (
-		(error as { code?: unknown }).code === SUPERSEDED_COMPLETION_TOKEN_CODE
-	);
-}
 export function mergeCompletionAttention(
 	current: CompletionAttention | undefined,
 	incoming: CompletionAttention | undefined,
