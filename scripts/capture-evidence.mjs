@@ -428,6 +428,16 @@ export const STORIES = [
 	// remedy, and the next start admitting the install did not take.
 	["common-updatenotification--install-blocked", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
+	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
+	// back (not a failure, and the one state whose action decides whether the
+	// install lives), and the failure afterwards that names the relaunch as what
+	// cancelled it. Both are states the operator saw the hard way.
+	["common-updatenotification--install-in-flight", 1280, 900],
+	[
+		"common-updatenotification--install-failed-cancelled-by-relaunch",
+		1280,
+		900,
+	],
 	// A server the app does not own, with the command that fits how it was
 	// installed (the pip line the operator was shown is gone) - from both
 	// producers of that state: one the app installed itself, and one it merely

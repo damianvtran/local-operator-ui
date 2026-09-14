@@ -121,6 +121,15 @@ const api = {
 			ipcRenderer.invoke("update-backend", targetVersion),
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
 		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
+		/**
+		 * Quit so an install that is already running can finish.
+		 *
+		 * Separate from `quitAndInstall`, which runs the pre-flight and starts a new
+		 * install: this one only gets the app out of the way of the install already
+		 * in flight, because Squirrel cancels that install while an instance of the
+		 * app is running.
+		 */
+		quitForUpdateInstall: () => ipcRenderer.invoke("quit-for-update-install"),
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("update-available", handler);
@@ -263,6 +272,26 @@ const api = {
 			ipcRenderer.on("update-progress", handler);
 			return () => {
 				ipcRenderer.removeListener("update-progress", handler);
+			};
+		},
+		/**
+		 * An install that is running right now, found when the app started.
+		 *
+		 * Its own event rather than an error: nothing has failed. The app came back
+		 * while Squirrel was still installing, and the panel it feeds exists to say
+		 * so and to offer the one action that can still let the install finish.
+		 */
+		onUpdateInstallInFlight: (
+			callback: (info: {
+				targetVersion: string;
+				message: string;
+				detail: string;
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-in-flight", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-in-flight", handler);
 			};
 		},
 		onBeforeQuitForUpdate: (callback: () => void) => {
