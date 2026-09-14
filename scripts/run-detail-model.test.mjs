@@ -308,7 +308,12 @@ test("failure, cancellation and interruption keep their own words", () => {
 
 test("a figure the wire did not report is absent, not zero", () => {
 	const [row] = derive([
-		job({ start_time: 0, usage: null, context_window: null, direct_cost: null }),
+		job({
+			start_time: 0,
+			usage: null,
+			context_window: null,
+			direct_cost: null,
+		}),
 	]).subagents;
 	assert.equal(row.elapsedLabel, null); // epoch zero is not a launch time
 	assert.equal(row.contextLabel, null);
@@ -375,7 +380,10 @@ test("elapsed measures a settled child against its own settle time", () => {
 
 test("the activity line belongs to live work only", () => {
 	const running = derive([
-		job({ status: "running", latest_details: { progress: "Running pytest -q" } }),
+		job({
+			status: "running",
+			latest_details: { progress: "Running pytest -q" },
+		}),
 	]).subagents[0];
 	assert.equal(running.activity, "Running pytest -q");
 
@@ -432,24 +440,27 @@ test("the roster orders by what needs attention, ties to the newest", () => {
 		job({ id: "done-2", status: "done", start_time: 300, settled_at: 400 }),
 		job({ id: "failed", status: "failed", start_time: 500, settled_at: 600 }),
 		job({ id: "running", status: "running", start_time: 1_000 }),
-		job({ id: "interrupted", status: "interrupted", start_time: 700, settled_at: 800 }),
+		job({
+			id: "interrupted",
+			status: "interrupted",
+			start_time: 700,
+			settled_at: 800,
+		}),
 		job({ id: "done-3", status: "done", start_time: 900, settled_at: 950 }),
 		job({ id: "queued", status: "running", queued: true, start_time: 990 }),
-		job({ id: "cancelled", status: "cancelled", start_time: 810, settled_at: 820 }),
+		job({
+			id: "cancelled",
+			status: "cancelled",
+			start_time: 810,
+			settled_at: 820,
+		}),
 	]).subagents;
 	// running/queued, failed, interrupted, then settled — and within the last rank
 	// the newest settled child, not the last one in the array.
 	const visible = visibleSubagents(rows);
 	assert.deepEqual(
 		visible.rows.map((row) => row.id),
-		[
-			"running",
-			"queued",
-			"failed",
-			"interrupted",
-			"done-3",
-			"cancelled",
-		],
+		["running", "queued", "failed", "interrupted", "done-3", "cancelled"],
 	);
 	assert.equal(visible.hidden, 2);
 });
@@ -474,31 +485,37 @@ test("a rank's ties fall to the child's own clock, not to its array index", () =
 		visibleSubagents(derive(jobs).subagents).rows.map((row) => row.id);
 
 	// Chronological, which the index rule happens to get right.
-	assert.deepEqual(ids([settled("oldest", 100, 150), settled("middle", 200, 250), settled("newest", 300, 350)]), [
-		"newest",
-		"middle",
-		"oldest",
-	]);
+	assert.deepEqual(
+		ids([
+			settled("oldest", 100, 150),
+			settled("middle", 200, 250),
+			settled("newest", 300, 350),
+		]),
+		["newest", "middle", "oldest"],
+	);
 	// The same three rows in the OPPOSITE array order. The index rule returns
 	// `oldest, middle, newest` here — the oldest completion on screen and the
 	// newest one hidden — and this is the assertion that fails on it.
-	assert.deepEqual(ids([settled("newest", 300, 350), settled("oldest", 100, 150), settled("middle", 200, 250)]), [
-		"newest",
-		"middle",
-		"oldest",
-	]);
+	assert.deepEqual(
+		ids([
+			settled("newest", 300, 350),
+			settled("oldest", 100, 150),
+			settled("middle", 200, 250),
+		]),
+		["newest", "middle", "oldest"],
+	);
 	// A settled row is ranked by when it SETTLED, so a child that started last
 	// but finished first is the older completion.
-	assert.deepEqual(ids([settled("late-start", 900, 950), settled("early-start", 100, 990)]), [
-		"early-start",
-		"late-start",
-	]);
+	assert.deepEqual(
+		ids([settled("late-start", 900, 950), settled("early-start", 100, 990)]),
+		["early-start", "late-start"],
+	);
 	// Simultaneous rows have no “newest” to fall to, so they keep the wire's
 	// order: any rule here would be a claim the timestamps do not support.
-	assert.deepEqual(ids([settled("first", 100, 150), settled("second", 100, 150)]), [
-		"first",
-		"second",
-	]);
+	assert.deepEqual(
+		ids([settled("first", 100, 150), settled("second", 100, 150)]),
+		["first", "second"],
+	);
 	// And a row with no clock at all — a child that never launched, so
 	// `start_time` is epoch zero — has nothing to be newest BY and sorts after
 	// every row that does.
@@ -537,7 +554,11 @@ test("a failed child is never shed, however many are running", () => {
 	const rows = derive([
 		job({ id: "failed", status: "failed", start_time: 100, settled_at: 200 }),
 		...Array.from({ length: 6 }, (_, index) =>
-			job({ id: `running-${index}`, status: "running", start_time: 900 + index }),
+			job({
+				id: `running-${index}`,
+				status: "running",
+				start_time: 900 + index,
+			}),
 		),
 	]).subagents;
 	const visible = visibleSubagents(rows);
@@ -661,17 +682,20 @@ test("the subagents tally sheds whole segments", () => {
 });
 
 test("the to-dos tally says resolved, and names dropped work inside it", () => {
-	const details = derive([], [
-		{
-			name: "Plan",
-			items: [
-				{ text: "a", status: "done" },
-				{ text: "b", status: "done" },
-				{ text: "c", status: "pending" },
-				{ text: "d", status: "dropped" },
-			],
-		},
-	]);
+	const details = derive(
+		[],
+		[
+			{
+				name: "Plan",
+				items: [
+					{ text: "a", status: "done" },
+					{ text: "b", status: "done" },
+					{ text: "c", status: "pending" },
+					{ text: "d", status: "dropped" },
+				],
+			},
+		],
+	);
 	// `resolved` is closure — done OR dropped — and it is the same notion the
 	// phase headers count. `2 of 4 done` above a header reading `3/4` was two
 	// notions of closure under two spellings, with nothing saying which was which.
@@ -684,7 +708,10 @@ test("the to-dos tally says resolved, and names dropped work inside it", () => {
 /* ------------------------------------------------------------------ */
 
 const plan = (statuses) => [
-	{ name: "Plan", items: statuses.map((status, index) => ({ text: `item ${index}`, status })) },
+	{
+		name: "Plan",
+		items: statuses.map((status, index) => ({ text: `item ${index}`, status })),
+	},
 ];
 
 test("ten item rows are shown, the OLDEST closed rows go first, open ones never do", () => {
@@ -714,7 +741,11 @@ test("ten item rows are shown, the OLDEST closed rows go first, open ones never 
 	const shown = visible.phases.flatMap((phase) => phase.items);
 	assert.equal(shown.length, 10);
 	assert.equal(visible.hidden, 4);
-	assert.equal(visible.phases[0].hidden, 4, "the phase's own hidden count is not attributed");
+	assert.equal(
+		visible.phases[0].hidden,
+		4,
+		"the phase's own hidden count is not attributed",
+	);
 	// The tail survives whole: indices 4..13 are exactly the ten rows on screen.
 	assert.deepEqual(
 		shown.map((item) => item.text),
@@ -740,7 +771,9 @@ test("a phase whose rows were all shed keeps its header and discloses them itsel
 	// to start at phase two is a plan lying about its own size, and the header
 	// above the gap is then accountable to nothing. This is the state `§6.3`
 	// describes and no earlier fixture reached.
-	const visible = visibleTodoPhases(deriveRunDetails(fixtures.todosOnly()).todos);
+	const visible = visibleTodoPhases(
+		deriveRunDetails(fixtures.todosOnly()).todos,
+	);
 	assert.deepEqual(
 		visible.phases.map((phase) => [phase.name, phase.hidden]),
 		[
@@ -756,10 +789,7 @@ test("a phase whose rows were all shed keeps its header and discloses them itsel
 });
 
 test("more open items than the cap shows every one of them", () => {
-	const details = derive(
-		[],
-		plan(Array.from({ length: 12 }, () => "pending")),
-	);
+	const details = derive([], plan(Array.from({ length: 12 }, () => "pending")));
 	const visible = visibleTodoPhases(details.todos);
 	assert.equal(
 		visible.phases.flatMap((phase) => phase.items).length,
@@ -776,7 +806,10 @@ test("more open items than the cap shows every one of them", () => {
 test("a flat plan renders headerless, a phased one keeps its headers", () => {
 	// The flat case is ONE phase carrying no name of its own, which is what a
 	// bare `init` produces.
-	const flat = derive([], plan(["pending"]).map((phase) => ({ ...phase, name: "" })));
+	const flat = derive(
+		[],
+		plan(["pending"]).map((phase) => ({ ...phase, name: "" })),
+	);
 	assert.equal(flat.todos[0].name, null);
 
 	const phased = derive(
@@ -787,7 +820,10 @@ test("a flat plan renders headerless, a phased one keeps its headers", () => {
 
 	// A single phase deliberately NAMED "Todos" is the implicit default, so it
 	// is the flat case rather than a plan someone named.
-	const implicit = derive([], plan(["pending"]).map((phase) => ({ ...phase, name: "Todos" })));
+	const implicit = derive(
+		[],
+		plan(["pending"]).map((phase) => ({ ...phase, name: "Todos" })),
+	);
 	assert.equal(implicit.todos[0].name, null);
 
 	// Two phases: the second keeps its name whatever the first is called.
@@ -861,7 +897,13 @@ test("opening acknowledges the failures that were on screen, and only those", ()
 	// snapshot is the only thing consulted, and it was taken at the open.
 	const whileOpen = acknowledgedOnOpen(["failed-1"], opened);
 	assert.equal(whileOpen, opened, "an unchanged snapshot must not churn state");
-	assert.equal(hasUnseenFailure(derive([job({ id: "failed-2", status: "failed" })]), whileOpen), true);
+	assert.equal(
+		hasUnseenFailure(
+			derive([job({ id: "failed-2", status: "failed" })]),
+			whileOpen,
+		),
+		true,
+	);
 	// A failure acknowledged BEFORE stays acknowledged, so a roster that sheds a
 	// row for a frame and republishes it cannot re-light a dot already read.
 	const later = acknowledgedOnOpen(["failed-2"], opened);
@@ -877,8 +919,18 @@ test("closing acknowledges the failures the panel showed, and not the ones it hi
 	 * cost an extra open/close cycle.
 	 */
 	const details = derive([
-		job({ id: "seen-onscreen", status: "failed", start_time: 100, settled_at: 200 }),
-		job({ id: "arrived-later", status: "failed", start_time: 100, settled_at: 300 }),
+		job({
+			id: "seen-onscreen",
+			status: "failed",
+			start_time: 100,
+			settled_at: 200,
+		}),
+		job({
+			id: "arrived-later",
+			status: "failed",
+			start_time: 100,
+			settled_at: 300,
+		}),
 	]);
 	// Opened with one failure on screen, the second arriving while it was open:
 	// both rows were in the slice at some point during the open period, which is
@@ -1009,7 +1061,11 @@ test("the open period accumulates the slices it showed, and keeps the set's iden
 		"the slice must have dropped it, or this asserts nothing",
 	);
 	const seenTwice = accumulateSeen(seenOnce, displaced);
-	assert.equal(seenTwice.has("in-view"), true, "a row that was read stays read");
+	assert.equal(
+		seenTwice.has("in-view"),
+		true,
+		"a row that was read stays read",
+	);
 
 	// The identity guarantee the ref relies on, for the reason that is true of the
 	// caller (`setSeen`): a re-render that adds nothing hands back the same set, so
@@ -1129,10 +1185,20 @@ test("the clock ticks only for a child that has a running clock", () => {
 	// claim is asserted rather than described: a settled child is measured
 	// against its own `settled_at` and a child with no launch time shows no
 	// duration, so neither can go stale and neither can pay for a timer.
-	assert.equal(hasLiveChildClock(derive([job({ status: "running" })]).subagents), true);
-	assert.equal(hasLiveChildClock(derive([job({ status: "running", queued: true })]).subagents), true);
 	assert.equal(
-		hasLiveChildClock(derive([job({ status: "done", settled_at: 1_050 })]).subagents),
+		hasLiveChildClock(derive([job({ status: "running" })]).subagents),
+		true,
+	);
+	assert.equal(
+		hasLiveChildClock(
+			derive([job({ status: "running", queued: true })]).subagents,
+		),
+		true,
+	);
+	assert.equal(
+		hasLiveChildClock(
+			derive([job({ status: "done", settled_at: 1_050 })]).subagents,
+		),
 		false,
 	);
 	assert.equal(
@@ -1144,7 +1210,9 @@ test("the clock ticks only for a child that has a running clock", () => {
 	);
 	// Epoch zero is not a launch time, so it is not a clock to tick.
 	assert.equal(
-		hasLiveChildClock(derive([job({ status: "running", start_time: 0 })]).subagents),
+		hasLiveChildClock(
+			derive([job({ status: "running", start_time: 0 })]).subagents,
+		),
 		false,
 	);
 	assert.equal(hasLiveChildClock([]), false);
@@ -1165,16 +1233,25 @@ test("the tooltip carries counts, pluralised honestly", () => {
 	);
 
 	const one = derive([job({ id: "a" })], plan(["pending"]));
-	assert.equal(runDetailTriggerLabel(one), "Run details — 1 subagent running, 1 to-do open");
+	assert.equal(
+		runDetailTriggerLabel(one),
+		"Run details — 1 subagent running, 1 to-do open",
+	);
 
 	const children = derive([job({ id: "a" }), job({ id: "b" })]);
-	assert.equal(runDetailTriggerLabel(children), "Run details — 2 subagents running");
+	assert.equal(
+		runDetailTriggerLabel(children),
+		"Run details — 2 subagents running",
+	);
 
 	const todos = derive([], plan(["pending", "pending", "pending"]));
 	assert.equal(runDetailTriggerLabel(todos), "Run details — 3 to-dos open");
 
 	const failed = derive([job({ id: "a", status: "failed" })]);
-	assert.equal(runDetailTriggerLabel(failed), "Run details — 1 subagent failed");
+	assert.equal(
+		runDetailTriggerLabel(failed),
+		"Run details — 1 subagent failed",
+	);
 });
 
 test("the tooltip sheds whole clauses, never half of one", () => {
@@ -1290,10 +1367,12 @@ test("the fixtures cover the flat plan, the failure line and both overflows", ()
 			phase.items.map((item) => item.status),
 		),
 	);
-	assert.deepEqual(
-		[...statuses].sort(),
-		["blocked", "done", "dropped", "pending"],
-	);
+	assert.deepEqual([...statuses].sort(), [
+		"blocked",
+		"done",
+		"dropped",
+		"pending",
+	]);
 	// The failure's first line survives derivation.
 	const failed = deriveRunDetails(fixtures.failure()).subagents.find(
 		(row) => row.status === "failed",

@@ -51,3 +51,11 @@ resources/python_aarch64
 
 *storybook.log
 node_modules
+
+# The built Storybook. `pnpm build-storybook` writes it so a capture run can be
+# served from a static tree rather than a dev server, which is the cheap way to
+# capture on a loaded machine. It is a build artifact of `src/` - nothing reads
+# it, `capture-evidence.mjs` takes an origin and does not care how it is served,
+# and committing it put 327 files and ~67k lines of vendored bundle in a docs
+# commit (review round 3, MAJOR 1).
+storybook-static/

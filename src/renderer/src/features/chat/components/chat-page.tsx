@@ -28,6 +28,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import type { CanonicalFrontendSync } from "../../../../../shared/desktop-session-contract";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
@@ -257,6 +258,60 @@ function SessionPanel({
 			queryKey: ["desktop", "entities", sessionId, "effort", ""],
 		});
 	}, [sessionId, resolvedModel, queryClient]);
+	const capabilities = useDesktopCapabilities();
+	/*
+	 * The readings a NEW conversation WILL start with, resolved by the backend
+	 * without creating anything.
+	 *
+	 * A draft pane has no session, so the canonical stream has nothing to say and
+	 * the strip used to be withheld until the first send. The identity the first
+	 * turn will use is real and knowable before then — from the same backend
+	 * resolution a session gets, which is the point: composing it here from
+	 * `config.get` + the model catalogue would move model resolution into the
+	 * renderer and report nothing when the catalogue lacks the pair.
+	 *
+	 * `enabled` is the whole gate. A draft with no staged directory has nothing to
+	 * preview; a backend that does not advertise `draft_preview` gets no strip in a
+	 * draft, exactly as it used to (fail-closed, per `desktopFeatureEnabled`); and
+	 * once the first send creates the session the stream takes over and this query
+	 * switches off, so there is one source for the readings at any moment.
+	 *
+	 * The payload goes to the STRIP ONLY. It is never written into the canonical
+	 * sessions store: that store's rows are sessions, and this is a projection of a
+	 * configuration that has no session behind it (`snapshot.session_id` is empty).
+	 */
+	const preview = useQuery({
+		// Keyed on the identity the answer depends on: the directory and the bound
+		// profile. A draft re-staged onto another agent is a different question, and a
+		// key that ignored the target would answer it with the previous agent's model.
+		queryKey: [
+			"desktop",
+			"session-preview",
+			cwd,
+			draft?.target?.kind ?? null,
+			draft?.target?.name ?? null,
+		],
+		queryFn: () =>
+			desktopResult<{ frontend: CanonicalFrontendSync }>({
+				op: "sessions.preview",
+				requestId: crypto.randomUUID(),
+				cwd,
+				...(draft?.target ? { target: draft.target } : {}),
+			}),
+		// A pure read, and only for a pane that has no session: once the first send
+		// creates one, the canonical stream is the only source and this query stops.
+		// The empty cwd is refused rather than sent: the contract requires 1..4096
+		// characters and a draft whose directory is not settled has nothing to
+		// preview ("known and empty" is a legal staged cwd - see the chip's notes).
+		enabled:
+			!sessionId &&
+			cwd.length > 0 &&
+			desktopFeatureEnabled(capabilities.data, "draft_preview"),
+		// The resolution is config state: it changes when the default model changes,
+		// not between two paints of one pane.
+		staleTime: 30_000,
+		retry: false,
+	});
 	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
 		sessionId,
 		canonical,
@@ -785,11 +840,15 @@ function SessionPanel({
 					 * what keeps `/model` typed and `/model` clicked on one path:
 					 * there is no second way to open a picker in this app.
 					 *
-					 * A draft has no session yet, so it has no readings and no owner
-					 * to ask - `dispatch` itself answers "/model needs an open
-					 * conversation" in that state, which is a worse way to learn it
-					 * than not offering the control, so the strip is withheld until
-					 * the session exists.
+					 * A DRAFT pane has no session, so its readings come from
+					 * `sessions.preview` instead — the same backend resolution the
+					 * session will get, rendered inert (`draft: true`) because
+					 * there is no session for a chip to command: `dispatch` itself
+					 * answers "/model needs an open conversation" in that state,
+					 * which is a worse way to learn it than a label that says so
+					 * (R22). No `onCommand` is passed, and the strip is told which
+					 * of the two reasons applies rather than inferring it from the
+					 * absence.
 					 */
 					sessionStatus={
 						sessionId
@@ -817,7 +876,20 @@ function SessionPanel({
 									 */
 									effortEntities: effortEntities.data?.entities,
 								}
-							: undefined
+							: preview.data
+								? {
+										/*
+										 * `snapshot`, because the strip reads the canonical STATE
+										 * and the preview answers in the wire shape the stream
+										 * publishes (`CanonicalFrontendSync`). No `onCommand`,
+										 * and `draft` so the strip knows WHY: a command needs a
+										 * session to address, and a missing dispatcher alone
+										 * already means a backend with commands off (R22).
+										 */
+										frontend: preview.data.frontend.snapshot,
+										draft: true,
+									}
+								: undefined
 					}
 					currentJobId={null}
 					onCancelJob={stop}

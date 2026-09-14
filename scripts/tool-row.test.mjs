@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
-import { after, before, test } from "node:test";
+import { createServer } from "node:http";
 import { resolve } from "node:path";
+import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -747,10 +747,10 @@ const EDIT_DIFF = [
 	"@@ -18,7 +18,8 @@ export function diffCounts(details: unknown) {",
 	" \tconst source = (details ?? {}) as Record<string, unknown>;",
 	"-\tconst count = (value: unknown) =>",
-	"-\t\ttypeof value === \"number\" && value > 0 ? value : 0;",
+	'-\t\ttypeof value === "number" && value > 0 ? value : 0;',
 	"+\tconst count = (value: unknown) =>",
-	"+\t\ttypeof value === \"number\" && Number.isInteger(value) && value > 0;",
-	' \treturn { added: count(source.added), removed: count(source.removed) };',
+	'+\t\ttypeof value === "number" && Number.isInteger(value) && value > 0;',
+	" \treturn { added: count(source.added), removed: count(source.removed) };",
 	" }",
 ];
 
@@ -968,7 +968,9 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 	// glyph already carries the outcome, and a non-zero exit is what turns that
 	// glyph into a cross.
 	assert.equal(
-		outputFallbackLine("exit code: 0\n--- stdout ---\n=== downloads ===\nLO.app"),
+		outputFallbackLine(
+			"exit code: 0\n--- stdout ---\n=== downloads ===\nLO.app",
+		),
 		"… === downloads ===",
 		"the status line and the section marker both step aside",
 	);
@@ -978,13 +980,18 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 	);
 	// Observed in a real transcript: a killed call writes the marker without a
 	// number at all, and an indented one.
-	assert.equal(outputFallbackLine("      exit code\n--- stdout ---\nreal"), "… real");
+	assert.equal(
+		outputFallbackLine("      exit code\n--- stdout ---\nreal"),
+		"… real",
+	);
 
 	// The marker is what keeps a line of the RESULT from reading as the call's
 	// own object in that column — the design round's D1. Every line that reaches
 	// the column through this path carries it.
 	assert.ok(
-		outputFallbackLine("exit code: 0\n--- stdout ---\n=== x ===").startsWith("… "),
+		outputFallbackLine("exit code: 0\n--- stdout ---\n=== x ===").startsWith(
+			"… ",
+		),
 	);
 
 	// The producer's shape for a call that printed nothing, verbatim
@@ -1016,7 +1023,10 @@ test("the stand-in line skips the harness wiring a result opens with", () => {
 		outputFallbackLine("exit code: 0 and then some"),
 		"… exit code: 0 and then some",
 	);
-	assert.equal(outputFallbackLine("200 match(es) for 'wake'"), "… 200 match(es) for 'wake'");
+	assert.equal(
+		outputFallbackLine("200 match(es) for 'wake'"),
+		"… 200 match(es) for 'wake'",
+	);
 
 	// Nothing to offer is `null`, not an empty string: the row must be able to
 	// tell "there was no stand-in" from "the stand-in is blank".

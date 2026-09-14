@@ -65,6 +65,14 @@ export type DesktopFeature =
 	// search version would hide a working surface because a newer one is
 	// missing. A caller that cannot negotiate it searches names only.
 	| "session_search"
+	/**
+	 * `sessions.preview`: the readings a new-conversation pane can show before a
+	 * session exists (`POST /v1/desktop/sessions/preview`). Its own key rather
+	 * than a bump of `session_catalogue`: the draft strip must be gated
+	 * separately, and a bump here would collide with any in-flight PR that has
+	 * already claimed the next `session_catalogue` version.
+	 */
+	| "draft_preview"
 	| "lifecycle"
 	| "mcp"
 	| "radient";

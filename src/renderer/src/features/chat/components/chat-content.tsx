@@ -131,6 +131,8 @@ type ChatContentProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/** A draft pane's readings, which have no session behind them. */
+		draft?: boolean;
 	};
 	/**
 	 * Present when the conversation is a canonical backend session: the

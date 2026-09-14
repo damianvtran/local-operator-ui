@@ -127,7 +127,44 @@ const TRIGGER_PATH_TRUNCATES_AT = 28;
  * kept its full width and hung 97px past the column's right edge, clipped
  * mid-path (design round 2, D11).
  */
-const CHIP_WRAPPER = "ml-2 flex min-w-0 shrink items-center";
+const CHIP_WRAPPER =
+	"ml-2 flex min-w-0 shrink items-center @min-[750px]/chatcol:shrink-0";
+
+/**
+ * The chip at the composer's own floor: the glyph, and nothing else.
+ *
+ * Below `CHAT_CHIP_ICON_ONLY_PX` (240) of column the chip's 96px floor and the
+ * session's readings cannot
+ * share the row. Measured at the 220px floor (the canvas-open column): the row
+ * is 202px, the readings take their own line, and the button line then needs
+ * 28 + 12 + 96 + 8 + 60 = 204 of it - two pixels over, so the controls broke to
+ * a THIRD line and the composer grew from the 143.5px it had before the
+ * readings moved into the row to 179.5px (design round 1, D1). One of the four
+ * things on that line has to give up width, and the chip is the only one whose
+ * content exists somewhere else: the path stays in the tooltip, in the
+ * `aria-label` and in the menu, while a reading has no second place to be.
+ *
+ * 240 is measured, not chosen. The full form first fits at ~222 (row = container
+ * - 18 below 750, so 220 -> 202 and 272 -> 254), and 240 leaves ~18px of slack
+ * there plus room for the 28px `icon-sm` control step below 550. The icon form
+ * measures 44px, leaving ~50px of slack at the floor.
+ *
+ * `min-w-11` overrides the 96px `min-w-24` floor rather than sitting beside it:
+ * the floor exists to keep truncation meaningful, and at this width the chip is
+ * not truncating, it is yielding.
+ */
+const CHIP_FLOOR =
+	"@max-[240px]/chatcol:w-11 @max-[240px]/chatcol:min-w-11 @max-[240px]/chatcol:justify-center @max-[240px]/chatcol:px-0";
+
+/**
+ * The chip's two text spans at that floor.
+ *
+ * `sr-only` and never `hidden`: the spans keep their place in the accessibility
+ * tree, so a screen-reader user still hears "Working directory: /Users/damian"
+ * and only the pixels change. `hidden` would strip the chip of the value it is
+ * named after.
+ */
+const CHIP_TEXT_AT_FLOOR = "@max-[240px]/chatcol:sr-only";
 
 /**
  * The chip's box, shared by all three states so they differ only where they
@@ -155,9 +192,10 @@ const CHIP_WRAPPER = "ml-2 flex min-w-0 shrink items-center";
  * 96px keeps a readable leading fragment plus the ellipsis, and the full path
  * stays reachable through the chip's `aria-label` and its menu.
  */
-const CHIP_BOX =
-	"inline-flex h-8 max-w-65 min-w-24 shrink items-center gap-1.5 rounded-sm px-3 text-body-sm";
-
+const CHIP_BOX = cn(
+	"inline-flex h-8 max-w-65 min-w-24 shrink items-center gap-1.5 rounded-sm px-3 text-body-sm",
+	CHIP_FLOOR,
+);
 /**
  * The same box for the two states that really are buttons.
  *
@@ -177,9 +215,10 @@ const CHIP_BOX =
  * pair to be visibly tighter than the space around it; shrink-wrapping the
  * box is what makes the 6px gap the eye actually sees.
  */
-const CHIP_BOX_INTERACTIVE =
-	"w-fit max-w-65 min-w-24 shrink cursor-pointer justify-start gap-1.5";
-
+const CHIP_BOX_INTERACTIVE = cn(
+	"w-fit max-w-65 min-w-24 shrink cursor-pointer justify-start gap-1.5",
+	CHIP_FLOOR,
+);
 /**
  * The word the deleted full-width bar used to carry.
  *
@@ -191,8 +230,13 @@ const CHIP_BOX_INTERACTIVE =
  * cannot, so a narrow composer degrades to what it rendered before rather
  * than truncating the path to make room for its own label.
  */
-const CHIP_LABEL =
-	"hidden shrink-0 whitespace-nowrap text-ink-muted @min-[620px]/chatcol:inline";
+const CHIP_LABEL = cn(
+	"hidden shrink-0 whitespace-nowrap text-ink-muted @min-[620px]/chatcol:inline",
+	// See `CHIP_FLOOR`: the word is already `hidden` below 620px, so this only
+	// states the rule at the floor rather than relying on one breakpoint being
+	// narrower than the other.
+	CHIP_TEXT_AT_FLOOR,
+);
 
 /**
  * Maps directory names to appropriate icons
@@ -541,7 +585,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 				data-lo-cwd-chip="readonly"
 				data-lo-cwd-path={currentWorkingDirectory || ""}
 			>
-				<Tooltip content={readOnlyReason ?? shown} side="right">
+				<Tooltip content={readOnlyReason ?? shown} side="top">
 					{/*
 					 * A real `button` with `aria-disabled`, and deliberately NOT the
 					 * `Button` primitive.
@@ -572,7 +616,11 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 					>
 						<FolderOpen aria-hidden="true" className={cn("size-4 shrink-0")} />
 						<span className={cn(CHIP_LABEL)}>Working directory:</span>
-						<span className={cn("min-w-0 truncate", PATH_TYPE)}>{shown}</span>
+						<span
+							className={cn("min-w-0 truncate", PATH_TYPE, CHIP_TEXT_AT_FLOOR)}
+						>
+							{shown}
+						</span>
 					</button>
 				</Tooltip>
 				{readOnlyReason && (
@@ -594,7 +642,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
 			<div className={cn(CHIP_WRAPPER)} data-lo-cwd-chip="unset">
-				<Tooltip content="Click to set the working directory" side="right">
+				<Tooltip content="Click to set the working directory" side="top">
 					<Button
 						ref={triggerRef}
 						variant="ghost"
@@ -652,7 +700,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 									? shown
 									: "Click to change the working directory"
 						}
-						side="right"
+						side="top"
 					>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -671,7 +719,13 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 							>
 								<FolderOpen aria-hidden="true" />
 								<span className={cn(CHIP_LABEL)}>Working directory:</span>
-								<span className={cn("min-w-0 truncate", PATH_TYPE)}>
+								<span
+									className={cn(
+										"min-w-0 truncate",
+										PATH_TYPE,
+										CHIP_TEXT_AT_FLOOR,
+									)}
+								>
 									{shown}
 								</span>
 							</Button>
