@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FC, ReactNode } from "react";
+import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
@@ -66,6 +67,20 @@ type CanvasProps = {
 	 * The conversation ID for the current chat context
 	 */
 	conversationId?: string;
+
+	/**
+	 * How many files the conversation has mentioned, for the Files segment's
+	 * accessible name. The count comes from the store rather than from a render
+	 * of the grid, because the segment is visible while the grid is not.
+	 */
+	fileCount?: number;
+
+	/**
+	 * The completeness state of the Files panel's scan, plus its retry action.
+	 * Passed through to the grid, which is the only surface that can say what was
+	 * and was not searched.
+	 */
+	scan?: MentionScanHandle | null;
 };
 
 /**
@@ -113,7 +128,8 @@ const VIEWS: {
 const ViewSwitcher: FC<{
 	current: CanvasViewMode;
 	onChange: (view: CanvasViewMode) => void;
-}> = ({ current, onChange }) => (
+	fileCount: number;
+}> = ({ current, onChange, fileCount }) => (
 	// A `fieldset` rather than a div with `role="group"`: the element already
 	// means "these controls belong together", and it is the only way the group
 	// gets an accessible name without inventing ARIA for it. Its UA border and
@@ -128,12 +144,23 @@ const ViewSwitcher: FC<{
 		<legend className={cn("sr-only")}>Canvas view</legend>
 		{VIEWS.map(({ value, label, tourTag, Icon }) => {
 			const isActive = current === value;
+			/*
+			 * The count rides the Files segment's name, not a badge. This is where a
+			 * user who already knows the canvas exists looks for "is there anything
+			 * here", and the segment is the one control that is on screen in every
+			 * view; a number rendered inside a 24px icon button would either clip or
+			 * push the row apart.
+			 */
+			const name =
+				value === "files" && fileCount > 0
+					? `${label} view, ${fileCount} ${fileCount === 1 ? "file" : "files"}`
+					: `${label} view`;
 			return (
-				<Tooltip key={value} content={`${label} view`}>
+				<Tooltip key={value} content={name}>
 					<button
 						type="button"
 						aria-pressed={isActive}
-						aria-label={`${label} view`}
+						aria-label={name}
 						data-tour-tag={tourTag}
 						onClick={() => onChange(value)}
 						className={cn(
@@ -206,6 +233,8 @@ const CanvasComponent: FC<CanvasProps> = ({
 	conversationId,
 	agentId,
 	currentWorkingDirectory,
+	fileCount = 0,
+	scan = null,
 }) => {
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
@@ -250,12 +279,40 @@ const CanvasComponent: FC<CanvasProps> = ({
 				event.preventDefault();
 				setCreateFileDialogOpen(true);
 			}
+			/*
+			 * Escape leaves the document and returns to the list. A viewer was a room
+			 * with no door: the canvas answered only the two ⌘ shortcuts, so a user
+			 * who opened a file had to find the segment control to go back. The tab
+			 * stays open - this closes the VIEWER, not the document.
+			 *
+			 * Skipped when the event came from inside an open dialog, menu or listbox:
+			 * Escape there closes that surface, and a `role="dialog"` that dismissed
+			 * itself while the canvas also switched views would be two things
+			 * happening on one key.
+			 */
+			if (event.key === "Escape" && conversationId) {
+				const target = event.target as HTMLElement | null;
+				if (
+					target?.closest?.(
+						'[role="dialog"], [role="menu"], [role="listbox"], [role="alertdialog"]',
+					)
+				)
+					return;
+				const current = useCanvasStore.getState().conversations[conversationId];
+				if (
+					(current?.viewMode ?? "documents") === "documents" &&
+					current?.selectedTabId
+				) {
+					event.preventDefault();
+					setViewMode(conversationId, "files");
+				}
+			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [handleOpenFile]);
+	}, [handleOpenFile, conversationId, setViewMode]);
 
 	const handleCreateFile = async (
 		details: {
@@ -387,7 +444,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
 				)}
 			>
-				<ViewSwitcher current={currentView} onChange={setCurrentView} />
+				<ViewSwitcher
+					current={currentView}
+					onChange={setCurrentView}
+					fileCount={fileCount}
+				/>
 				<div className={cn("flex shrink-0 items-center gap-0.5")}>
 					<Tooltip content={`New file (${modifierKey} + N)`}>
 						<Button
@@ -485,6 +546,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 				<CanvasFileViewer
 					conversationId={conversationId}
 					onSwitchToDocumentView={handleSwitchToDocumentView}
+					scan={scan}
 				/>
 			)}
 			{currentView === "variables" && conversationId && (

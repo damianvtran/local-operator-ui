@@ -24,6 +24,7 @@ import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
@@ -111,6 +112,34 @@ def outstanding(frame: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
     return open_rows.sort_values("days_late", ascending=False).head(20)
 `;
 
+/*
+ * The Files view's fixture, and every state the grid has rules about.
+ *
+ * A tile's layout depends on more than its own document: the second line
+ * appears only when two VISIBLE tiles share a basename, and the missing receipt
+ * only for a document whose probe said the bytes are gone. So the fixture has
+ * to carry a collision, a deletion and one of each viewer kind, or the story
+ * renders the easy case and proves nothing about the other three.
+ *
+ * - two `summary.md` in different directories: the basename-collision line, and
+ *   the pair the old grid silently merged into one tile. This is also the only
+ *   committed frame of `displayParent`: the line is shortened from the LEFT, so
+ *   the segment that tells the two apart survives at the tile's width (design
+ *   round 1, D1). The scan-state stories render this same fixture, so theirs show
+ *   the line too.
+ * - `february.csv` with `availability: "missing"`: the receipt, and a tile that
+ *   must keep its place rather than being filtered out.
+ * - `q1-invoice-review.pdf`, `dashboard.png`, `todo.txt`: a PDF (its own new
+ *   viewer), an image, and a `.txt` - the type the app used to refuse and hand
+ *   to the OS instead of opening in its own editor.
+ *
+ * One caveat for whoever captures frames from this story: the image tile's
+ * thumbnail comes from the backend's static route, as every image thumbnail in
+ * this panel does, so with no backend listening the PNG tile renders its name,
+ * its directory line and a broken image box. That is a fixture artifact, not
+ * the panel's behaviour - which is why the design's PDF and image frames come
+ * from the real app rather than from the storybook sweep.
+ */
 const DOCUMENTS: CanvasDocument[] = [
 	{
 		id: "/Users/dana/work/reports/march-invoice-review.md",
@@ -153,6 +182,56 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/q1-summary.md",
 		content: "# Q1 summary\n",
 		type: "markdown",
+	},
+	{
+		id: "/Users/dana/work/reports/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/reports/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/archive/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/archive/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/invoices/february.csv",
+		title: "february.csv",
+		path: "/Users/dana/work/invoices/february.csv",
+		content: "",
+		type: "spreadsheet",
+		availability: "missing",
+	},
+	{
+		id: "/Users/dana/work/reports/q1-invoice-review.pdf",
+		title: "q1-invoice-review.pdf",
+		path: "/Users/dana/work/reports/q1-invoice-review.pdf",
+		content: "",
+		type: "pdf",
+		availability: "present",
+		sizeBytes: 348_512,
+	},
+	{
+		id: "/Users/dana/work/shots/dashboard.png",
+		title: "dashboard.png",
+		path: "/Users/dana/work/shots/dashboard.png",
+		content: "",
+		type: "image",
+		availability: "present",
+		sizeBytes: 96_204,
+	},
+	{
+		id: "/Users/dana/work/notes/todo.txt",
+		title: "todo.txt",
+		path: "/Users/dana/work/notes/todo.txt",
+		content: "",
+		type: "text",
+		availability: "present",
 	},
 ];
 
@@ -349,10 +428,26 @@ const CanvasFrame = ({
 	view,
 	activeId,
 	width = 720,
+	scan = null,
+	mentionedFiles = DOCUMENTS,
 }: {
 	view: "documents" | "files" | "variables";
 	activeId: string;
 	width?: number;
+	/**
+	 * The completeness state of the Files scan, for the stories that exist to show
+	 * what the panel head says while it is paging, when it stops short, and when it
+	 * stops short having found nothing.
+	 */
+	scan?: MentionScanHandle | null;
+	/**
+	 * What the Files grid holds, for the one state it holds nothing in: a scan that
+	 * stopped short with no file mention inside the messages it read. The panel
+	 * must still render its head there - the count of what was searched and the one
+	 * action that reads the rest - so the story has to be able to seed an empty grid
+	 * (`canvas-file-viewer`'s empty-state guard, round 2 R2-1).
+	 */
+	mentionedFiles?: CanvasDocument[];
 }) => {
 	// Seeded before first paint so the panel never renders an empty frame.
 	useMemo(() => {
@@ -362,7 +457,7 @@ const CanvasFrame = ({
 				[CONVERSATION_ID]: {
 					isOpen: true,
 					files: DOCUMENTS,
-					mentionedFiles: DOCUMENTS,
+					mentionedFiles,
 					openTabs: DOCUMENTS.map((doc) => ({ id: doc.id, title: doc.title })),
 					selectedTabId: activeId,
 					viewMode: view,
@@ -370,7 +465,7 @@ const CanvasFrame = ({
 				},
 			},
 		}));
-	}, [view, activeId]);
+	}, [view, activeId, mentionedFiles]);
 
 	return (
 		<SplitFrame>
@@ -384,6 +479,7 @@ const CanvasFrame = ({
 					initialDocuments={DOCUMENTS}
 					conversationId={CONVERSATION_ID}
 					agentId="story-agent"
+					scan={scan}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -598,5 +694,364 @@ export const EditPrompt: Story = {
 				</div>
 			</div>
 		</SplitFrame>
+	),
+};
+
+/* ------------------------------------------------------------------ */
+/* The four media viewers                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Bytes for the four media viewers, so their stories are REVIEWABLE.
+ *
+ * The three viewers that read over IPC cannot render in Storybook without a
+ * `readFileBytes` answer, and a viewer story that shows only its "Opening…"
+ * state is a story nobody can judge. The bytes are built here rather than
+ * committed as assets: a one-page PDF, a 2s 440Hz WAV and a canvas-drawn PNG are
+ * each a dozen lines and none of them is a binary blob in the repository that a
+ * reviewer has to trust.
+ *
+ * This is a FIXTURE, not a claim about the app: in the app the bytes come from
+ * the main process, and the frames that prove the real read path are live-app
+ * frames. `preview.tsx`'s global mock is installed by the decorator, which runs
+ * after this module is imported, so the stub is installed per render rather than
+ * at import time (an import-time install would be overwritten by the decorator).
+ */
+const VIEWER_CONVERSATION_ID = "story-viewer-conversation";
+
+/** A minimal but valid one-page PDF, with its xref offsets computed as it is built. */
+const pdfBytes = (): Uint8Array => {
+	const chunks: string[] = [];
+	const offsets: number[] = [];
+	const push = (text: string) => {
+		chunks.push(text);
+	};
+	const startObject = () => {
+		offsets.push(chunks.join("").length);
+	};
+	// `%PDF-1.4` and a binary comment line, which tell a viewer this is a PDF.
+	push("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+
+	const object = (body: string) => {
+		startObject();
+		push(body);
+	};
+
+	object("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+	object("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+	object(
+		"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 420 220] " +
+			"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n",
+	);
+	const content =
+		"BT /F1 18 Tf 40 140 Td (Local Operator) Tj ET\n" +
+		"BT /F1 12 Tf 40 110 Td (Files panel - PDF viewer) Tj ET\n" +
+		"0.2 0.4 0.9 rg 40 60 340 12 re f\n";
+	object(
+		`4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+	);
+	object(
+		"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+	);
+
+	const xrefOffset = chunks.join("").length;
+	push("xref\n0 6\n0000000000 65535 f \n");
+	for (const offset of offsets)
+		push(`${String(offset).padStart(10, "0")} 00000 n \n`);
+	push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+
+	const text = chunks.join("");
+	const out = new Uint8Array(text.length);
+	for (let i = 0; i < text.length; i += 1) out[i] = text.charCodeAt(i) & 0xff;
+	return out;
+};
+
+/** A 320x200 PNG, drawn here so the frame shows a picture rather than a box. */
+const pngBytes = (): Uint8Array => {
+	const canvas = document.createElement("canvas");
+	canvas.width = 320;
+	canvas.height = 200;
+	const context = canvas.getContext("2d");
+	if (!context) return new Uint8Array();
+	const gradient = context.createLinearGradient(0, 0, 320, 200);
+	gradient.addColorStop(0, "#1f6feb");
+	gradient.addColorStop(1, "#7ee787");
+	context.fillStyle = gradient;
+	context.fillRect(0, 0, 320, 200);
+	context.fillStyle = "rgba(255,255,255,0.92)";
+	context.font = "16px sans-serif";
+	context.fillText("dashboard.png", 16, 32);
+	const base64 = canvas.toDataURL("image/png").split(",")[1] ?? "";
+	return base64ToBytes(base64);
+};
+
+/** Two seconds of 440Hz, as a real RIFF/WAVE file the audio element can decode. */
+const wavBytes = (): Uint8Array => {
+	const sampleRate = 8000;
+	const samples = sampleRate * 2;
+	const buffer = new ArrayBuffer(44 + samples * 2);
+	const view = new DataView(buffer);
+	const ascii = (offset: number, text: string) => {
+		for (let i = 0; i < text.length; i += 1)
+			view.setUint8(offset + i, text.charCodeAt(i));
+	};
+	ascii(0, "RIFF");
+	view.setUint32(4, 36 + samples * 2, true);
+	ascii(8, "WAVE");
+	ascii(12, "fmt ");
+	view.setUint32(16, 16, true);
+	view.setUint16(20, 1, true);
+	view.setUint16(22, 1, true);
+	view.setUint32(24, sampleRate, true);
+	view.setUint32(28, sampleRate * 2, true);
+	view.setUint16(32, 2, true);
+	view.setUint16(34, 16, true);
+	ascii(36, "data");
+	view.setUint32(40, samples * 2, true);
+	for (let i = 0; i < samples; i += 1)
+		view.setInt16(
+			44 + i * 2,
+			Math.round(Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 12000),
+			true,
+		);
+	return new Uint8Array(buffer);
+};
+
+const base64ToBytes = (base64: string): Uint8Array => {
+	const binary = atob(base64);
+	const out = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
+	return out;
+};
+
+/** One stub, answering by extension, installed once per render. */
+const installViewerBytes = () => {
+	const api = (window as unknown as { api?: Record<string, unknown> }).api;
+	if (!api) return;
+	const cache = new Map<string, Uint8Array>();
+	const bytesFor = (path: string): Uint8Array | null => {
+		const key = path.endsWith(".pdf")
+			? "pdf"
+			: path.endsWith(".png")
+				? "png"
+				: path.endsWith(".wav")
+					? "wav"
+					: null;
+		if (!key) return null;
+		const cached = cache.get(key);
+		if (cached) return cached;
+		const built =
+			key === "pdf" ? pdfBytes() : key === "png" ? pngBytes() : wavBytes();
+		cache.set(key, built);
+		return built;
+	};
+	api.readFileBytes = async (path: string) => {
+		const bytes = bytesFor(path);
+		if (!bytes)
+			return { success: false, code: "not-found", error: `No file at ${path}` };
+		return { success: true, data: bytes, sizeBytes: bytes.byteLength };
+	};
+};
+
+const viewerDocument = (
+	path: string,
+	title: string,
+	type: CanvasDocument["type"],
+	sizeBytes: number,
+): CanvasDocument => ({
+	id: path,
+	title,
+	path,
+	content: "",
+	type,
+	availability: "present",
+	sizeBytes,
+	lastAgentModified: 1_760_000_000_000,
+});
+
+const PDF_DOCUMENT = viewerDocument(
+	"/Users/dana/work/reports/q1-invoice-review.pdf",
+	"q1-invoice-review.pdf",
+	"pdf",
+	1024,
+);
+const IMAGE_DOCUMENT = viewerDocument(
+	"/Users/dana/work/shots/dashboard.png",
+	"dashboard.png",
+	"image",
+	3200,
+);
+const AUDIO_DOCUMENT = viewerDocument(
+	"/Users/dana/work/audio/tone.wav",
+	"tone.wav",
+	"audio",
+	32_044,
+);
+const VIDEO_DOCUMENT = viewerDocument(
+	"/Users/dana/work/clips/clip.mp4",
+	"clip.mp4",
+	"video",
+	48_000,
+);
+
+/**
+ * One document, opened, in the dock at its real width.
+ *
+ * A separate frame from `CanvasFrame` because these stories are about the VIEWER
+ * surface rather than the panel: the tabs hold one document, the view is
+ * `documents`, and the file list is the same one entry so a reviewer sees what a
+ * user sees after clicking a tile.
+ */
+const ViewerFrame = ({ document }: { document: CanvasDocument }) => {
+	useMemo(() => {
+		installViewerBytes();
+		useCanvasStore.setState((state) => ({
+			conversations: {
+				...state.conversations,
+				[VIEWER_CONVERSATION_ID]: {
+					isOpen: true,
+					files: [document],
+					mentionedFiles: [document],
+					openTabs: [{ id: document.id, title: document.title }],
+					selectedTabId: document.id,
+					viewMode: "documents",
+					spreadsheetData: {},
+				},
+			},
+		}));
+	}, [document]);
+
+	return (
+		<SplitFrame>
+			<ChatColumnMock />
+			<div
+				style={{ width: 720, minWidth: 720 }}
+				className="h-full overflow-hidden border-l border-hairline"
+			>
+				<Canvas
+					activeDocumentId={document.id}
+					initialDocuments={[document]}
+					conversationId={VIEWER_CONVERSATION_ID}
+					agentId="story-agent"
+					onChangeActiveDocument={() => {}}
+					onClose={() => {}}
+					onCloseDocument={() => {}}
+				/>
+			</div>
+		</SplitFrame>
+	);
+};
+
+/**
+ * PDF, in Chromium's viewer over a blob URL, under our own name bar.
+ *
+ * Proof that the frame is real rather than an empty blob: the page counter is
+ * gone by design (`#toolbar=0`, see `pdf-preview`), so the document itself -
+ * heading, subheading and the accent rule - is drawn by Chromium from the bytes.
+ */
+export const PdfViewer: Story = {
+	render: () => <ViewerFrame document={PDF_DOCUMENT} />,
+};
+
+/** Image, with the name bar every media viewer now carries. */
+export const ImageViewer: Story = {
+	render: () => <ViewerFrame document={IMAGE_DOCUMENT} />,
+};
+
+/** Audio: a real 2s waveform the platform player can seek and play. */
+export const AudioViewer: Story = {
+	render: () => <ViewerFrame document={AUDIO_DOCUMENT} />,
+};
+
+/**
+ * Video, in the one state this harness can honestly produce.
+ *
+ * The video viewer is the viewer that reads over the BACKEND's Range route
+ * rather than over IPC (a blob would pull a whole video through structured
+ * clone before the first frame), so with no backend listening it shows its own
+ * failure state. That state is part of the surface - the chrome bar, the name,
+ * the `Open in default app` action and the sentence - so it is captured; the
+ * playable frame comes from the live app.
+ */
+export const VideoViewer: Story = {
+	render: () => <ViewerFrame document={VIDEO_DOCUMENT} />,
+};
+
+/**
+ * The Files panel mid-scan.
+ *
+ * The panel pages the conversation's own older history when it opens, and this
+ * is what that reads as: the count that is already known, and a line saying that
+ * earlier messages are still being read. Sized to the panel, not a picture of an
+ * empty grid.
+ */
+export const FilesScanning: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			scan={{
+				active: true,
+				scanned: 1180,
+				hasMore: true,
+				paging: true,
+				stopped: false,
+				resume: () => {},
+			}}
+		/>
+	),
+};
+
+/**
+ * The Files panel stopped at its scan budget.
+ *
+ * The honest end of the scan: the head states which messages were searched, and
+ * the action that searches the rest sits beside it. Nothing is dropped silently
+ * - this frame and the one above it are the difference between a bound that is
+ * disclosed and a bound that lies.
+ */
+export const FilesScanStopped: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			scan={{
+				active: true,
+				scanned: 2400,
+				hasMore: true,
+				paging: false,
+				stopped: true,
+				resume: () => {},
+			}}
+		/>
+	),
+};
+
+/**
+ * The Files panel stopped at its scan budget with nothing to show.
+ *
+ * The state the panel used to lie about: no file mention inside the messages the
+ * scan read, and earlier messages it never reached. The grid is empty and the
+ * head is the whole surface - which is the point, because the head is where the
+ * count of what was searched and the only `Search earlier messages` action live.
+ * An empty grid here is NOT "no files yet": that line belongs to a conversation
+ * whose transcript has been read, and it carries no route to the rest of it
+ * (round 2, R2-1).
+ */
+export const FilesScanStoppedEmpty: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			mentionedFiles={[]}
+			scan={{
+				active: true,
+				scanned: 2400,
+				hasMore: true,
+				paging: false,
+				stopped: true,
+				resume: () => {},
+			}}
+		/>
 	),
 };

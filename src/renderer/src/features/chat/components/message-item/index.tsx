@@ -28,13 +28,10 @@ import {
 } from "@shared/api/local-operator";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { apiConfig } from "@shared/config";
-import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { type FC, memo, useCallback, useEffect } from "react";
-import type { CanvasDocument } from "../../types/canvas";
+import { type FC, memo, useCallback } from "react";
 import type { Message } from "../../types/message";
-import { getFileTypeFromPath } from "../../utils/file-types";
 import { getFileName } from "../../utils/get-file-name";
 import { isMessageHidden } from "../../utils/message-grouping";
 import {
@@ -181,43 +178,28 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		isSmallView,
 		isTurnStart = false,
 	}) => {
-		const addMentionedFilesBatch = useCanvasStore(
-			(s) => s.addMentionedFilesBatch,
-		);
 		const showAgentReasoning = useUiPreferencesStore(
 			(state) => state.showAgentReasoning,
 		);
 
-		useEffect(() => {
-			if (message.files && message.files.length > 0 && conversationId) {
-				const canvasDocuments = message.files
-					.map((fileString): CanvasDocument | null => {
-						if (fileString.startsWith("data:")) {
-							return null;
-						}
-
-						const title = getFileName(fileString);
-						const fileType = getFileTypeFromPath(fileString);
-						const normalizedPath = fileString.startsWith("file://")
-							? fileString.substring(7)
-							: fileString;
-						const id = normalizedPath;
-
-						return {
-							id,
-							title,
-							path: normalizedPath,
-							content: normalizedPath, // Placeholder
-							type: fileType,
-						};
-					})
-					.filter(Boolean) as CanvasDocument[];
-
-				if (canvasDocuments.length > 0) {
-					addMentionedFilesBatch(conversationId, canvasDocuments);
-				}
-			}
-		}, [message.files, conversationId, addMentionedFilesBatch]);
+		/*
+		 * There used to be an effect here that mapped `message.files` into
+		 * `addMentionedFilesBatch`. It could never run: `ChatContent` is mounted
+		 * only by `SessionPanel`, which passes `canonical` unconditionally, so
+		 * the `MessagesView` branch that renders this component is unreachable —
+		 * and an old backend reaches the "Update the backend" panel instead. It
+		 * was a live writer until the canonical cutover orphaned it (the
+		 * `addMentionedFilesBatch` action arrived in 0b6b13c11, the canonical
+		 * transcript in #83).
+		 *
+		 * Deleted rather than left in place, because a dead writer that looks
+		 * live is what someone "fixes" next time the panel comes up empty. Its
+		 * intent moved to two live producers: the transcript scan in
+		 * `canonical/use-mentioned-files.ts`, and the composer's own attachments
+		 * at the send site in `chat-page.tsx` (which is the only place they
+		 * exist, since a canonical content block carries text or image and never
+		 * a file list).
+		 */
 
 		// Get the URL for an attachment
 		const getUrl = useCallback(

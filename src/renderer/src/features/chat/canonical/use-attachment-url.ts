@@ -34,15 +34,15 @@
  */
 
 import { desktopMedia } from "@shared/api/local-operator/desktop-api";
+import {
+	createBlobUrl,
+	peek,
+	publish,
+	release,
+	retain,
+} from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
 import type { TranscriptImage } from "./transcript-reducer";
-
-/**
- * digest -> { url, refs }. Module-level because the point is to survive a row
- * unmounting: two rows showing the same screenshot, and the same row scrolled
- * out and back, must not each pay a round trip.
- */
-const cache = new Map<string, { url: string; refs: number }>();
 
 /**
  * Digests whose fetch is in flight, so N mounts make one request.
@@ -57,37 +57,14 @@ const inflight = new Map<
 	{ promise: Promise<string | null>; holders: number }
 >();
 
-/**
- * The cached URL without taking a reference — a READ, safe in a render.
- *
- * Separate from `retain` because a `useState` initializer must be pure and
- * React deliberately double-invokes it under `StrictMode`. Peeking lets a warm
- * mount paint the picture on its first frame (the common case when scrolling
- * back over a screenshot) while the refcount stays owned entirely by the
- * effect, which is the only place that can also pay it back.
+/*
+ * `peek`, `retain` and `release` come from `shared/lib/blob-url-cache`, keyed by
+ * the attachment DIGEST: a digest is content-addressed and immutable, so two
+ * rows showing the same screenshot, and the same row scrolled out and back,
+ * share one entry instead of paying a round trip each. The refcount discipline
+ * and its StrictMode note live in that module, because the canvas viewers need
+ * the same discipline for a different key.
  */
-function peek(digest: string): string | null {
-	return cache.get(digest)?.url ?? null;
-}
-
-function retain(digest: string): string | null {
-	const entry = cache.get(digest);
-	if (!entry) return null;
-	entry.refs += 1;
-	return entry.url;
-}
-
-function release(digest: string) {
-	const entry = cache.get(digest);
-	if (!entry) return;
-	entry.refs -= 1;
-	if (entry.refs > 0) return;
-	// Last holder gone. The bytes are immutable and cheap to refetch, and
-	// keeping every screenshot of a long conversation alive in memory is the
-	// larger cost, so the URL is revoked rather than parked.
-	URL.revokeObjectURL(entry.url);
-	cache.delete(digest);
-}
 
 /**
  * Fetch one digest's bytes, collapsing N concurrent mounts onto one request.
@@ -120,16 +97,14 @@ function fetchAttachment(
 				null,
 			);
 			if (result.kind !== "bytes") return null;
-			const url = URL.createObjectURL(
-				new Blob([result.data as BlobPart], { type: result.mimeType }),
-			);
+			const url = createBlobUrl(result.data as BlobPart, result.mimeType);
 			if (record.holders <= 0) {
 				// Everyone who asked for this is gone. Publishing it would strand an
 				// entry no unmount can ever release, so it is revoked here instead.
 				URL.revokeObjectURL(url);
 				return null;
 			}
-			cache.set(digest, { url, refs: 0 });
+			publish(digest, url);
 			return url;
 		} catch {
 			// Never throw: the caller's contract is that an unresolvable image is
