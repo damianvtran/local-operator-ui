@@ -108,6 +108,19 @@ export type CanonicalSessionView = {
 	/** Terminal event observed for the current turn; clears the wait latch. */
 	terminal: string | null;
 	/**
+	 * How many terminal events this viewer has applied, ever.
+	 *
+	 * A COUNTER rather than the event's own name, because the name repeats: every
+	 * turn ends in the same `turn.completed`, so a consumer that wants to re-read
+	 * something once per turn - the code-memory panel, whose sentences describe
+	 * the namespace as it was (`canvas-variables-viewer.tsx`) - cannot key on
+	 * `terminal` and needs this. It counts what this viewer has SEEN, so a viewer
+	 * that joins late starts where it joined; that is the right shape for "one
+	 * re-read per turn after this point" and the wrong one for "everything that
+	 * ever happened", which is what `history` is for.
+	 */
+	turnsCompleted: number;
+	/**
 	 * Set on an unrecoverable stream failure: the ONE sentence the reader sees,
 	 * and the one action that helps. A structured notice rather than a transport
 	 * `detail` string, because the two transports name the same failure in
@@ -553,6 +566,7 @@ export function useCanonicalSessionStream(
 		ownerEpoch: null,
 		receipt: null,
 		terminal: null,
+		turnsCompleted: 0,
 		failure: null,
 		/*
 		 * SEEDED, and only here. A panel mounted while its own echo is already
@@ -1120,7 +1134,13 @@ export function useCanonicalSessionStream(
 					if (frame.type === "event") {
 						const eventType = String(frame.payload.type ?? "");
 						if (TERMINAL_EVENTS.has(eventType)) {
-							next = { ...next, terminal: eventType };
+							next = {
+								...next,
+								terminal: eventType,
+								// Counted here rather than derived from `terminal`, whose
+								// value repeats turn to turn (see the field's note).
+								turnsCompleted: next.turnsCompleted + 1,
+							};
 						}
 						const transcript = applyEvent(next.transcript, frame.payload, now);
 						if (transcript !== next.transcript) {
@@ -1390,6 +1410,15 @@ export function useCanonicalSessionStream(
 			pendingModel: null,
 			history: null,
 			terminal: null,
+			/*
+			 * The completion counter shares the transcript's lifetime, so it is kept
+			 * under the same rule. It is a monotonic count the code-memory panel
+			 * compares against its own last reading, and resetting it on a remount
+			 * that deliberately keeps the transcript would describe a turn this
+			 * viewer never saw end. A genuine session change still restarts it — the
+			 * previous conversation's endings say nothing about the new one.
+			 */
+			turnsCompleted: sameSession ? current.turnsCompleted : 0,
 			transcript: sameSession ? current.transcript : EMPTY_TRANSCRIPT,
 			status: "connecting",
 			// A different session's children are different children, and a pulse

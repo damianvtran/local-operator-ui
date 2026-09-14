@@ -50,6 +50,16 @@ export const useSessionVariables = (
 		enabled: enabled && Boolean(sessionId),
 		refetchInterval: (query) =>
 			query.state.data?.state === "busy" ? 1500 : false,
+		/*
+		 * Always re-read when the panel is opened, whatever the cache thinks.
+		 *
+		 * The app's default `staleTime` is five minutes, and a namespace is the
+		 * one thing on this surface that a turn changes without any client
+		 * action: opening the panel is the user asking "what is in there now",
+		 * and answering it from a five-minute-old read is how the panel came to
+		 * say "Nothing stored yet" about five values (UX round 2, U1). One GET.
+		 */
+		refetchOnMount: "always",
 		retry: false,
 	});
 

@@ -1438,6 +1438,7 @@ function SessionPanel({
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
 					agentId={identity}
+					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to
 					 * `sessions.create`. Live: the directory the session actually runs

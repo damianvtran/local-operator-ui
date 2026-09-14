@@ -27,6 +27,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -73,13 +74,20 @@ const isVariableType = (type: string): type is VariableType =>
 const REFUSAL_FIELD: Record<string, "key" | "value"> = {
 	already_exists: "key",
 	reserved_name: "key",
-	invalid_name: "key",
 	invalid_value: "value",
 	too_large: "value",
 };
 
-/** The refusal the dialog is currently showing, if any. */
-type Refusal = { code?: string; message: string };
+/**
+ * The refusal the dialog is currently showing, if any.
+ *
+ * `field` is for refusals this layer makes itself, which carry no backend
+ * `code`: the key rules are enforced here too (see `isWritableVariableKey`), and
+ * a refusal that arrives form-level when the Name control is the thing to fix is
+ * the same defect the backend's `code` mapping exists to prevent (review round 2,
+ * C-07).
+ */
+type Refusal = { code?: string; field?: "key" | "value"; message: string };
 
 const refusalOf = (error: unknown): Refusal => ({
 	code: error instanceof DesktopControlError ? error.code : undefined,
@@ -151,8 +159,25 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 	}, [open, initialData]);
 
 	const handleSubmit = async () => {
-		setIsSubmitting(true);
 		setRefusal(null);
+		/*
+		 * The renderer's own key rule first, so it is the Name control that says
+		 * so. The contract refuses a name this layer would send (empty, over 128
+		 * characters, a control character, or only dots) before any request is
+		 * built, and that refusal arrives with no backend `code` - which used to
+		 * put "Invalid desktop operation." in the form's footer, away from the
+		 * field it is about. Same predicate the contract uses, so the two cannot
+		 * disagree about which names are sendable.
+		 */
+		if (!isWritableVariableKey(formData.key)) {
+			setRefusal({
+				field: "key",
+				message:
+					"This name cannot be sent. Use up to 128 characters, without control characters, and not only dots.",
+			});
+			return;
+		}
+		setIsSubmitting(true);
 		try {
 			const variableToSubmit: VariableWrite = {
 				key: formData.key,
@@ -179,7 +204,8 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 		}
 	};
 
-	const refusalField = refusal?.code ? REFUSAL_FIELD[refusal.code] : undefined;
+	const refusalField =
+		refusal?.field ?? (refusal?.code ? REFUSAL_FIELD[refusal.code] : undefined);
 
 	/*
 	 * One vocabulary for the whole surface: the panel says "Code memory" and lists
@@ -273,7 +299,15 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						<p
 							id="variable-key-refusal"
 							role="alert"
-							className={cn("text-body-sm text-danger")}
+							/*
+							 * `ink`, not `danger`: this sentence sits on the dialog's `elevated`
+							 * ground, where the danger ink is under the text floor in three palettes
+							 * (monokai 3.76, dracula 3.81, neon 4.43 against 4.5). The error is
+							 * carried by the control's own border and `aria-invalid`, which the
+							 * field marker draws; the sentence only has to be readable (design
+							 * round 2, D3).
+							 */
+							className={cn("text-body-sm text-ink")}
 						>
 							{refusal?.message}
 						</p>
@@ -327,10 +361,14 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						required
 						disabled={isSubmitting}
 						rows={isJsonValue ? 5 : 2}
-						aria-describedby={cn(
-							isJsonValue && "variable-value-hint",
-							refusalField === "value" && "variable-value-refusal",
-						)}
+						aria-describedby={
+							// An id LIST, not a class name: `cn()` collapses falsy entries
+							// to an empty string, which is an attribute that says nothing.
+							[isJsonValue && "variable-value-hint",
+							 refusalField === "value" && "variable-value-refusal"]
+								.filter(Boolean)
+								.join(" ") || undefined
+						}
 						aria-invalid={refusalField === "value"}
 						className={cn(refusalField === "value" && "border-danger")}
 						placeholder={
@@ -355,14 +393,16 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						<p
 							id="variable-value-refusal"
 							role="alert"
-							className={cn("text-body-sm text-danger")}
+							// `ink` for the same reason as the key marker above.
+							className={cn("text-body-sm text-ink")}
 						>
 							{refusal?.message}
 						</p>
 					)}
 				</div>
 				{refusal && !refusalField && (
-					<p role="alert" className={cn("text-body-sm text-danger")}>
+					// Same ground, same reason as the field sentences above.
+					<p role="alert" className={cn("text-body-sm text-ink")}>
 						{refusal.message}
 					</p>
 				)}

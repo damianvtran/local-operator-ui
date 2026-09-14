@@ -424,6 +424,14 @@ const observed = (
 type DesktopAnswers = {
 	list: () => DesktopAnswer;
 	features?: Record<string, number>;
+	/**
+	 * Answer the capabilities query with a transport failure instead of a map.
+	 *
+	 * A rejection and not a shape: this is the panel's FIRST question failing, so
+	 * the panel cannot yet know whether the backend is old or absent, and the
+	 * sentence it shows has to come from the transport (design round 2, D4).
+	 */
+	featuresError?: boolean;
 	write?: (op: string, request: Record<string, unknown>) => DesktopAnswer;
 };
 
@@ -450,6 +458,9 @@ const installFetchStub = () => {
 				op?: string;
 			};
 			if (request.op === "capabilities") {
+				if (desktopAnswers.featuresError) {
+					throw new TypeError("Failed to fetch");
+				}
 				return respond(
 					ok({
 						// The wire shape `DesktopCapabilities` declares, all four
@@ -855,10 +866,19 @@ export const VariablesDraft: Story = {
  * A cell is running, so the namespace cannot be read this instant.
  *
  * This is not an error state and must never look like one: the reading is
- * simply not available yet. The frame shows the quiet affordance with no list
- * to keep, which is the state a session reaches before it has ever been read;
- * the "keep the previous list while it re-reads" half needs a live session and
- * is photographed in the app, not here.
+ * simply not available yet. What these twelve frames show is the FIRST-READ
+ * arrangement - the quiet affordance with no list to keep, which is the state a
+ * session reaches before it has ever been read. They cannot show the other half
+ * of the frozen row, "keeps the previously rendered list", which is a property
+ * of a query that already held a reading when the next answer is `busy`.
+ *
+ * That half is photographed from the running app, not here:
+ * `docs/evidence/session-code-memory/live-busy/` (the live panel with ten rows
+ * still on screen beside the affordance) and `live-populated/`, taken by the
+ * independent QA round against a real backend with a resident kernel. A story
+ * cannot stand in for them - a fixture that starts `busy` has no previous
+ * reading to keep - which is why the pair is declared separately in the
+ * manifest rather than counted with this set.
  */
 export const VariablesBusy: Story = {
 	render: () => (
@@ -929,22 +949,28 @@ export const VariablesBackendTooOld: Story = {
  * hook, not a hand-drawn toast.
  */
 export const VariablesWriteRefused: Story = {
-	render: () => (
-		<CanvasFrame
-			view="variables"
-			activeId={DOCUMENTS[0].id}
-			variables={{
-				features: { session_variables: 1 },
-				list: () => observed(VARIABLES),
-				write: () =>
-					refused(
-						409,
-						"reserved_name",
-						"'secrets' is a name the session keeps for its own tools.",
-					),
-			}}
-		/>
-	),
+	render: () => {
+		// Held from the RENDER, not from the play: the capturer can find the story
+		// prepared before the play function's first statement runs, and a frame
+		// taken in that window is the empty panel this story exists to replace.
+		holdShutter();
+		return (
+			<CanvasFrame
+				view="variables"
+				activeId={DOCUMENTS[0].id}
+				variables={{
+					features: { session_variables: 1 },
+					list: () => observed(VARIABLES),
+					write: () =>
+						refused(
+							409,
+							"reserved_name",
+							"'secrets' is a name the session keeps for its own tools.",
+						),
+				}}
+			/>
+		);
+	},
 	play: async ({ canvasElement }) => {
 		// Held from the first line: the whole point of this story is the state
 		// AFTER the refusal, and the capturer must not photograph the dialog
@@ -978,6 +1004,26 @@ export const VariablesWriteRefused: Story = {
 		// half of UX round 1's U3: the same sentence, beside the control the user
 		// has to change, instead of only in a toast that floats past.
 		await screen.findByText(REFUSAL_SENTENCE, { selector: "p" });
+		/*
+			 * Then keep it alive, and only then let the shutter go.
+			 *
+			 * The first version released the shutter as soon as the toast was up and
+			 * relied on the caption's 4000 ms lifetime outlasting the capturer's own
+			 * work - which it does on an idle host and does not on a loaded one: design
+			 * round 2 reproduced the state twice and lost the toast in two themes each
+			 * time, in a different pair each run, while the field marker (which does not
+			 * expire) was present every time. Re-driving the same refusal every two
+			 * seconds means a toast is always inside its lifetime whenever the shutter
+			 * lands, whatever the host is doing; sonner collapses the repeats because
+			 * `showErrorToast` keys them by the message. The timer is stopped after a
+			 * minute so a story left open in the browser is not clicking forever.
+			 */
+		const keepAlive = window.setInterval(() => {
+			void userEvent.click(
+				screen.getByRole("button", { name: "Create" }),
+			);
+		}, 2000);
+		window.setTimeout(() => window.clearInterval(keepAlive), 60_000);
 		releaseShutter();
 	},
 };
@@ -996,6 +1042,26 @@ export const VariablesWriteRefused: Story = {
  * (`VariablesBackendTooOld`), and a frame cannot tell the two apart if both
  * stories answer with the same status.
  */
+/**
+ * The panel's FIRST question - "does this backend have the surface at all" -
+ * never answered.
+ *
+ * Distinct from the story below, which is the read failing: there the panel
+ * knows the backend has the surface and the read went wrong; here it knows
+ * nothing yet, and the only honest sentence is the transport's. The two share
+ * one fallback sentence by construction (`BACKEND_SILENT`), so the pair of
+ * frames shows the difference is in the question, not in the words.
+ */
+export const VariablesCapabilitiesUnreachable: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{ featuresError: true, list: () => observed(VARIABLES) }}
+		/>
+	),
+};
+
 export const VariablesBackendUnreachable: Story = {
 	render: () => (
 		<CanvasFrame
@@ -1047,7 +1113,9 @@ export const VariablesTruncated: Story = {
  * and Delete controls drawn beside the value they act on.
  */
 export const VariablesRowActions: Story = {
-	render: () => (
+	render: () => {
+		holdShutter();
+		return (
 		<CanvasFrame
 			view="variables"
 			activeId={DOCUMENTS[0].id}
@@ -1056,7 +1124,8 @@ export const VariablesRowActions: Story = {
 				list: () => observed(VARIABLES),
 			}}
 		/>
-	),
+		);
+	},
 	play: async ({ canvasElement }) => {
 		holdShutter();
 		const canvas = within(canvasElement);
@@ -1084,7 +1153,9 @@ export const VariablesRowActions: Story = {
  * removed.
  */
 export const VariablesUneditableRow: Story = {
-	render: () => (
+	render: () => {
+		holdShutter();
+		return (
 		<CanvasFrame
 			view="variables"
 			activeId={DOCUMENTS[0].id}
@@ -1093,7 +1164,8 @@ export const VariablesUneditableRow: Story = {
 				list: () => observed(VARIABLES),
 			}}
 		/>
-	),
+		);
+	},
 	play: async ({ canvasElement }) => {
 		holdShutter();
 		const canvas = within(canvasElement);
@@ -1117,7 +1189,9 @@ export const VariablesUneditableRow: Story = {
  * app ships, not a mock of it.
  */
 export const VariablesDeleteConfirm: Story = {
-	render: () => (
+	render: () => {
+		holdShutter();
+		return (
 		<CanvasFrame
 			view="variables"
 			activeId={DOCUMENTS[0].id}
@@ -1126,7 +1200,8 @@ export const VariablesDeleteConfirm: Story = {
 				list: () => observed(VARIABLES),
 			}}
 		/>
-	),
+		);
+	},
 	play: async ({ canvasElement }) => {
 		holdShutter();
 		const canvas = within(canvasElement);

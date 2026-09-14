@@ -9,6 +9,7 @@ import type {
 	VariableWrite,
 } from "@shared/api/local-operator/session-variables-api";
 import { isSessionVariablesMissing } from "@shared/api/local-operator/session-variables-api";
+import { sessionVariablesQueryKey } from "@shared/api/local-operator/session-variables-api";
 import { isSessionVariablesSessionMissing } from "@shared/api/local-operator/session-variables-api";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { Spinner } from "@shared/components/common/spinner";
@@ -20,6 +21,7 @@ import {
 	useUpdateSessionVariable,
 } from "@shared/hooks/use-session-variables";
 import { cn } from "@shared/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	ChevronDown,
 	ChevronRight,
@@ -41,6 +43,23 @@ import {
 import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 import { VariableFormDialog } from "./variable-form-dialog";
 
+/**
+ * What the panel says when the backend did not answer at all.
+ *
+ * ONE sentence shared by the two branches that can hit it - the capabilities
+ * query that never answered, and the read that failed - because the user is in
+ * one situation either way. The heading above it says WHICH question went
+ * unanswered; the sentence says what that means for this chat. Two sentences
+ * saying the same thing in different tenses read as two different problems
+ * (design round 2, D4).
+ *
+ * Both branches still prefer the transport's own sentence where there is one:
+ * the transport is what knows whether the socket was refused or the bearer was
+ * wrong, and neither of those is anything this constant can say.
+ */
+const BACKEND_SILENT =
+	"The backend did not answer, so this chat's code memory could not be read. Nothing was changed. Try again in a moment.";
+
 type CanvasVariablesViewerProps = {
 	/**
 	 * The canonical session whose code memory this panel shows, or `undefined`
@@ -56,6 +75,25 @@ type CanvasVariablesViewerProps = {
 	 * namespace", and the backend can only answer it for a real session id.
 	 */
 	sessionId?: string;
+	/**
+	 * The canonical stream's terminal event for the session's last turn, or null
+	 * before one has ended.
+	 *
+	 * The panel's sentences are all statements about the namespace as it was
+	 * when it was read ("Nothing stored yet", "No code memory yet. It fills in
+	 * when code runs in this chat."), and this is what makes them true again
+	 * after a cell runs: a turn's end is when the namespace has changed, so the
+	 * reading is re-taken then (see the invalidation below).
+	 *
+	 * A REAL signal rather than another poll, because the panel cannot poll for
+	 * this: `refetchInterval` only ticks once an answer was already `busy`
+	 * (`use-session-variables.ts`), which is a state the panel only reaches if it
+	 * happened to be watching while a cell ran. A user who opens the panel, sends
+	 * a message and watches it - the tour's own instruction - saw the sentence
+	 * from before the cell and no way to refresh it short of leaving the view,
+	 * because the app's default `staleTime` is five minutes (UX round 2, U1).
+	 */
+	turnTerminal?: number;
 };
 
 /**
@@ -106,7 +144,16 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 		 * the same table the value is coerced with, so "the panel offers an edit"
 		 * and "the write path accepts it" cannot drift apart.
 		 */
-		const isEditable = variable.editable && isWritableVariableKey(variable.key);
+		const isWritable = isWritableVariableKey(variable.key);
+		const isEditable = variable.editable && isWritable;
+		/*
+		 * Delete is gated on the same predicate as Edit, and the reason is the one
+		 * C-03 exists for: a name the routes cannot address cannot be deleted
+		 * either - the schema refuses the DELETE before any request is built, and
+		 * the user gets "Invalid desktop operation." on a control that looked
+		 * available. Copy stays: reading a name never had to address it.
+		 */
+		const isDeletable = isWritable;
 		/*
 		 * ...and a name this renderer could not write is not editable however the
 		 * backend feels about its type. `editable` answers "could this value be
@@ -269,7 +316,17 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 							 * swallows pointer events, and the tooltip is the only place
 							 * the reason is stated.
 							 */
-							<Tooltip content="This variable can't be edited because its type is not yet supported for editing.">
+							<Tooltip
+								content={
+									// Two reasons, and they must not be swapped: the type gate is
+									// the backend saying it cannot coerce this value back, the
+									// name gate is this panel saying the row cannot be
+									// addressed at all (review round 2, C-06).
+									isWritable
+										? "This variable can't be edited because its type is not yet supported for editing."
+										: "This variable's name can't be edited from here. Copy it to the session under a new name if you need to change it."
+								}
+							>
 								<Button
 									variant="ghost"
 									size="icon-sm"
@@ -287,17 +344,19 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						 * Neutral at rest, danger on hover. A red glyph on every row
 						 * spends the danger role on a state where nothing is wrong.
 						 */}
-						<Tooltip content="Delete variable">
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								onClick={handleDelete}
-								aria-label="Delete variable"
-								className={cn("hover:bg-danger-wash hover:text-danger")}
-							>
-								<Trash2 />
-							</Button>
-						</Tooltip>
+						{isDeletable && (
+							<Tooltip content="Delete variable">
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onClick={handleDelete}
+									aria-label="Delete variable"
+									className={cn("hover:bg-danger-wash hover:text-danger")}
+								>
+									<Trash2 />
+								</Button>
+							</Tooltip>
+						)}
 					</div>
 				</div>
 				{expanded ? (
@@ -318,7 +377,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 VariableRow.displayName = "VariableRow";
 
 export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
-	({ sessionId }) => {
+	({ sessionId, turnTerminal }) => {
 		const [isFormOpen, setIsFormOpen] = useState(false);
 		const [editingVariable, setEditingVariable] =
 			useState<SessionVariable | null>(null);
@@ -344,6 +403,38 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			sessionId,
 			supported,
 		);
+
+		/*
+		 * Re-take the reading when a turn ends.
+		 *
+		 * The panel's four sentences are claims about the namespace at the moment
+		 * it was read, and the one moment the namespace is guaranteed to have
+		 * changed is the end of a turn. Without this, a reading taken before the
+		 * cell ran stays on screen - "No code memory yet. It fills in when code
+		 * runs in this chat." rendered AFTER the chat ran code - because the app's
+		 * default `staleTime` is five minutes, so nothing re-asks on its own until
+		 * a write happens to invalidate this key (UX round 2, U1).
+		 *
+		 * Keyed on the turn COUNT rather than on the terminal event's name, which
+		 * repeats turn to turn, and rather than on a timer: the re-read happens
+		 * once per turn, and the mount case is already covered by
+		 * `refetchOnMount: "always"` on the read itself.
+		 */
+		const queryClient = useQueryClient();
+		const turnsSeen = useRef(turnTerminal);
+		useEffect(() => {
+			const previous = turnsSeen.current;
+			turnsSeen.current = turnTerminal;
+			// A turn that ended while this panel was open, and only that: a panel
+			// mounted after the turn has nothing to refresh, and the surface must be
+			// one the backend can answer about at all.
+			if (previous === undefined || turnTerminal === undefined) return;
+			if (turnTerminal <= previous) return;
+			if (!sessionId || !supported) return;
+			void queryClient.invalidateQueries({
+				queryKey: sessionVariablesQueryKey(sessionId),
+			});
+		}, [turnTerminal, sessionId, supported, queryClient]);
 
 		const createVariableMutation = useCreateSessionVariable();
 		const updateVariableMutation = useUpdateSessionVariable();
@@ -466,10 +557,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						Could not reach the backend
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						{userFacingMessage(
-							capabilities.error,
-							"The backend did not answer, so this chat's code memory cannot be read yet.",
-						)}
+						{userFacingMessage(capabilities.error, BACKEND_SILENT)}
 					</p>
 				</CenteredState>
 			);
@@ -567,8 +655,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						Could not load variables
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						The backend did not answer, so this chat's code memory could not be
-						read. Nothing was changed. Try again in a moment.
+						{BACKEND_SILENT}
 					</p>
 				</CenteredState>
 			);
@@ -610,9 +697,8 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							Too large to show here
 						</p>
 						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-							This chat keeps a value that is bigger than the whole panel budget
-							on its own, so nothing could be listed. It is still in the session
-							and the next cell can use it.
+							This chat keeps a value bigger than this panel can list, so nothing
+							is shown here. It is still there for the next step.
 						</p>
 					</CenteredState>
 				);

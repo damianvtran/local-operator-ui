@@ -81,6 +81,17 @@ type CanvasProps = {
 	 * the panel ask the agent registry about a session id.
 	 */
 	sessionId?: string;
+	/**
+	 * How many turns the canonical stream has seen end for this pane.
+	 *
+	 * Passed straight through to the code-memory panel, which re-reads when the
+	 * count grows: a reading taken before a cell ran is otherwise never revisited,
+	 * and the panel's sentences are all statements about the namespace as it was
+	 * (`canvas-variables-viewer.tsx`). A COUNT rather than the terminal event's
+	 * own name, because every turn ends with the same name and only the count
+	 * tells one end from the next.
+	 */
+	turnTerminal?: number;
 
 	/**
 	 * How many files the conversation has mentioned, for the Files segment's
@@ -246,6 +257,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onCloseDocument,
 	conversationId,
 	sessionId,
+	turnTerminal,
 	agentId,
 	currentWorkingDirectory,
 	fileCount = 0,
@@ -571,7 +583,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 				 * - see the prop's own note. Undefined is a draft, which the panel has
 				 * honest copy for and no call to make.
 				 */
-				<CanvasVariablesViewer sessionId={sessionId} />
+				<CanvasVariablesViewer sessionId={sessionId} turnTerminal={turnTerminal} />
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}
 			{(currentView === "files" || currentView === "variables") &&
