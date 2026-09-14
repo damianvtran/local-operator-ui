@@ -45,6 +45,7 @@ const {
 	matchChoices,
 	phaseLabel,
 	pointerPickRuns,
+	rowId,
 	slashKeyIntent,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -129,7 +130,10 @@ function pickRuns(id) {
 	return pointerPickRuns(id, registryEntry(id));
 }
 
-const commandRow = { kind: "command" };
+/* A command row carries its matched label because the listbox id does:
+   `rowId` renders `cmd-<label>`, and that id is also the row's identity in the
+   candidate set (round 2, R6). */
+const commandRow = { kind: "command", label: "model" };
 const argumentRow = (value, over = {}) => ({
 	kind: "argument",
 	row: { value, ...over },
@@ -307,6 +311,12 @@ test("an explicit arrow choice survives the same list and only the same list", (
 	// Enter run the highlighted row, including a fuzzy survivor the user never
 	// moved to. The TUI retires it when the candidate SET changes
 	// (`command_picker.py:1728`).
+	//
+	// The key IS the listbox id: `candidateKey` is `rows.map(rowId)`, the same
+	// function `slash-commands.tsx` renders its rows with and computes its
+	// `matchKey` from, so this block exercises the shipped comparison rather than
+	// a second one beside it (round 2, R6: until then the helper had no caller
+	// under `src/` and keyed every command row on the literal "command").
 	const before = candidateKey([argumentRow("delivery"), argumentRow("ops")]);
 	const after = candidateKey([argumentRow("delivery"), argumentRow("ops")]);
 	const narrowed = candidateKey([argumentRow("delivery")]);
@@ -323,6 +333,27 @@ test("an explicit arrow choice survives the same list and only the same list", (
 	assert.equal(chosenByHandSurvives(before, grown), false);
 	// Compare ids, not counts: `[a, b] → [a, b, c]` is a different list.
 	assert.notEqual(before, grown);
+
+	// The key is the id the listbox renders, spelled out: an argument row on its
+	// value, a command row on the label that matched.
+	assert.equal(
+		candidateKey([argumentRow("delivery"), commandRow]),
+		[rowId(argumentRow("delivery")), rowId(commandRow)].join("\n"),
+	);
+	assert.equal(
+		candidateKey([argumentRow("delivery"), commandRow]),
+		["arg-delivery", "cmd-model"].join("\n"),
+	);
+	// Two DIFFERENT command sets are different lists. Keying every command row on
+	// the literal "command" made these the same key, which is the comparison bug
+	// R6 found in the unreferenced helper.
+	assert.notEqual(
+		candidateKey([commandRow, { kind: "command", label: "theme" }]),
+		candidateKey([
+			{ kind: "command", label: "usage" },
+			{ kind: "command", label: "team" },
+		]),
+	);
 });
 
 test("the phase label names the list's subject", () => {

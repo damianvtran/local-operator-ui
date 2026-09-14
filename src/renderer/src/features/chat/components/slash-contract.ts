@@ -21,9 +21,16 @@
 import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
 
-/** The minimum a row must say for routing and copy to be decided. */
+/**
+ * The minimum a row must say for routing, copy and list identity to be decided.
+ *
+ * `label` is here because identity needs it: the candidate-set key below is the
+ * row's listbox id, and a command row's id is the label that matched. Keying
+ * every command row on the literal `"command"` made `[model, theme]` and
+ * `[usage, team]` the same list (round 2, R6).
+ */
 export type RoutableRow =
-	| { kind: "command" }
+	| { kind: "command"; label: string }
 	| { kind: "argument"; row: { value: string; alert?: boolean } };
 
 /** What a key does to the list. `pass` hands the event back to the composer. */
@@ -238,6 +245,23 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 }
 
 /**
+ * Stable listbox ids. Command rows key on the matched label; argument rows on
+ * the value, sanitised because a selector carries `/` and `.` is fine but a
+ * space is not.
+ *
+ * This is the ONE definition of a row's identity, used both for the DOM ids the
+ * popup renders (`id={`${listId}-${rowId(row)}`}` in `slash-commands.tsx`) and for
+ * the candidate-set key below. The two were derived separately until round 2
+ * (R6), which is how the reviewed helper came to key every command row on the
+ * literal `"command"` while the shipped component keyed on the label.
+ */
+export function rowId(row: RoutableRow): string {
+	return row.kind === "command"
+		? `cmd-${row.label}`
+		: `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
+}
+
+/**
  * Identity of a candidate SET: the rows, in order, by the id the listbox renders.
  *
  * A new query can leave the same rows in a different arrangement, and the TUI
@@ -245,13 +269,13 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
  * (`command_picker.py:1728`: "the row the user arrowed onto is gone"). Comparing
  * ids rather than counting rows is the difference between "the list changed" and
  * "a row was added": `[a, b] → [a, b, c]` is a different list.
+ *
+ * `slash-commands.tsx` computes its `matchKey` with this function, so the set the
+ * suite pins below and the set the component compares are the same string — the
+ * property R6 found missing when this helper had no caller under `src/`.
  */
 export function candidateKey(rows: readonly RoutableRow[]): string {
-	return rows
-		.map((row) =>
-			row.kind === "command" ? "command" : `argument:${row.row.value}`,
-		)
-		.join("\n");
+	return rows.map(rowId).join("\n");
 }
 
 /**
