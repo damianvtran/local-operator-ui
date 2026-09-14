@@ -144,6 +144,16 @@ export type PickerHostProps = {
 	busyLabel?: string;
 	/** Widen for data views (usage, analytics). */
 	wide?: boolean;
+	/**
+	 * The dialog's size class. `dialog` is today's geometry, byte for byte:
+	 * `max-w-xl` body, `max-h-[min(60vh,520px)]` scroll box.
+	 *
+	 * `panel` is the data-view geometry: `max-w-5xl` and a taller scroll box, so a
+	 * chart plus its table fit above the fold at 1024px and the panel is not a
+	 * peephole onto its own content. It supersedes `wide`; pass one or the other,
+	 * never both, and panels pass only this.
+	 */
+	shell?: "dialog" | "panel";
 	/** Rendered above the list, below the search (a scope toggle, a filter). */
 	toolbar?: ReactNode;
 	/** Rendered instead of the list when set (data views). */
@@ -174,6 +184,18 @@ const TONE_CLASS: Record<PickerResult["tone"], string> = {
 	warning: "border-warning-border bg-warning-wash text-ink",
 	error: "border-danger-border bg-danger-wash text-ink",
 };
+
+/**
+ * What a panel's scroll region is called in the accessibility tree.
+ *
+ * Deliberately NOT the dialog's title: named for the screen it sits on, a
+ * screen reader announces "Analytics region" inside the "Analytics dialog" and
+ * the tab stop says nothing about where focus landed. Panels put all of their
+ * content in this one region, so the name describes the region rather than one
+ * of the things in it (`/usage` names its inner list "Report list" for the
+ * same reason).
+ */
+const PANEL_BODY_LABEL = "Panel content";
 
 type PickerRowProps = {
 	id: string;
@@ -486,6 +508,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	busyText,
 	busyLabel = "Applying the change",
 	wide = false,
+	shell = "dialog",
 	toolbar,
 	body,
 	bodyScrolls = false,
@@ -536,6 +559,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * transition that creates the overflow.
 	 */
 	const cleanupBodyBox = useRef<(() => void) | null>(null);
+	const bodyRegionRef = useRef<HTMLDivElement | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `body` is deliberately a dependency though the callback never reads it. Changing the body replaces the observed child nodes, and a stable callback identity would leave React holding the original attachment with a `ResizeObserver` still watching detached nodes — so the growth that creates the overflow is never seen. The new identity IS the re-subscription.
 	const bodyBoxRef = useCallback(
 		(box: HTMLDivElement | null) => {
@@ -574,6 +598,25 @@ export const PickerHost: FC<PickerHostProps> = ({
 		// against the new content.
 		[body],
 	);
+
+	/*
+	 * The body box, kept reachable for the panel shell's initial focus.
+	 *
+	 * A second callback rather than a second ref on the element: React calls one
+	 * ref per node, and the measurement above MUST stay on the node itself. The
+	 * wrapper still re-subscribes whenever `bodyBoxRef` changes identity, which
+	 * is the property the comment above depends on.
+	 */
+	const attachBodyBox = useCallback(
+		(box: HTMLDivElement | null) => {
+			bodyRegionRef.current = box;
+			bodyBoxRef(box);
+		},
+		[bodyBoxRef],
+	);
+
+	/* The footer's Close button: the fallback focus target when no body is mounted. */
+	const closeButtonRef = useRef<HTMLButtonElement>(null);
 
 	const hasList = options !== undefined;
 	const filtered = useMemo(() => {
@@ -752,12 +795,25 @@ export const PickerHost: FC<PickerHostProps> = ({
 			<DialogContent
 				className={cn(
 					"gap-0 p-0",
-					wide ? "max-w-3xl" : "max-w-xl",
+					shell === "panel" ? "max-w-5xl" : wide ? "max-w-3xl" : "max-w-xl",
 					// The dialog is a frame: 14px radius, content clipped to it.
 					"overflow-hidden rounded-lg",
 				)}
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
+					/*
+					 * A panel has no list to focus, and the search input is not rendered at
+					 * all, so Radix's prevented default would leave focus on the trigger
+					 * behind the dialog. The body scroll region is the panel's own tab stop
+					 * (it is `tabIndex={0}` below), so focus lands where a keyboard user can
+					 * immediately PageDown through the content; with no body mounted, the
+					 * footer's Close button is the only control there is.
+					 */
+					if (shell === "panel") {
+						bodyRegionRef.current?.focus();
+						if (!bodyRegionRef.current) closeButtonRef.current?.focus();
+						return;
+					}
 					inputRef.current?.focus();
 				}}
 			>
@@ -923,10 +979,22 @@ export const PickerHost: FC<PickerHostProps> = ({
 					 */
 					<div className={cn(bodyOverflows && "border-control border-b")}>
 						<div
-							ref={bodyBoxRef}
+							ref={attachBodyBox}
+							/* biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a panel's content sits below the fold and a keyboard user has to be able to reach it. */
+							role={shell === "panel" ? "region" : undefined}
+							aria-label={shell === "panel" ? PANEL_BODY_LABEL : undefined}
+							tabIndex={shell === "panel" ? 0 : undefined}
 							className={cn(
-								"max-h-[min(60vh,520px)] overflow-y-auto px-5 pt-3",
-								bodyScrolls && "[scrollbar-gutter:stable]",
+								"overflow-y-auto px-5 pt-3",
+								shell === "panel"
+									? "max-h-[min(76vh,760px)] pb-4"
+									: "max-h-[min(60vh,520px)]",
+								// Unconditional for a panel, for the reason the flag exists:
+								// reserving the scrollbar column only when the bar appears slides
+								// every right-aligned number sideways the moment content overflows,
+								// and a panel is the surface with columns of numbers.
+								(bodyScrolls || shell === "panel") &&
+									"[scrollbar-gutter:stable]",
 								// The last 20px of a CONTINUING list fade out, so a row cut
 								// through its glyphs reads as "there is more" rather than as a
 								// rendering defect. Clipping to a row boundary instead is not
@@ -1023,7 +1091,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 * for-one-action row D15 filed, where the hint beside it read "Esc
 						 * closes".
 						 */}
-						<Button variant="ghost" size="sm" type="button" onClick={onClose}>
+						<Button
+							ref={closeButtonRef}
+							variant="ghost"
+							size="sm"
+							type="button"
+							onClick={onClose}
+						>
 							{pickerPrimaryLabel({ busy, result })}
 						</Button>
 						{onSubmit && (
