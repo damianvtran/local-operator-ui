@@ -327,6 +327,17 @@ export class UpdateService {
 	private installInFlightTimer: NodeJS.Timeout | null = null;
 
 	/**
+	 * True once a quit following an in-flight install has made sure the app will
+	 * come back.
+	 *
+	 * The two callers are the same quit seen twice - `window-all-closed` decides
+	 * and `before-quit` runs as it goes through - so without this the launchd
+	 * probe, the `ps` read and the "no watchdog is running" log all happen twice
+	 * for one quit.
+	 */
+	private inFlightQuitWatchdogEnsured = false;
+
+	/**
 	 * True while `quit-and-install` is running its pre-flight.
 	 *
 	 * The pre-flight can take seconds over a large bundle and artifact, and the
@@ -769,6 +780,21 @@ export class UpdateService {
 	}
 
 	/**
+	 * A substituted answer to "is this app's install job loaded", or null.
+	 *
+	 * The production answer is the launchd probe in `shipItInstallJobLoaded`, and
+	 * it asks about a label read from the RUNNING BUNDLE (`shipItJob`). A test or a
+	 * harness process that is not that bundle has no label to ask about, so the
+	 * whole in-flight path - recovery's reading, the re-check, and the quit below -
+	 * is otherwise unreachable from a suite. This is the same shape as the
+	 * watchdog's own probe, which is invoked by name precisely so a harness can
+	 * substitute it: one seam for the whole answer, so what a test drives is the
+	 * rule production uses rather than a second copy of it. Production never sets
+	 * it.
+	 */
+	public installJobLoadedProbe: (() => boolean) | null = null;
+
+	/**
 	 * Whether this app's ShipIt install job is loaded, right now.
 	 *
 	 * This is the machine's own answer to "is an install in flight", and the only
@@ -779,6 +805,7 @@ export class UpdateService {
 	 * version-only there, exactly as it is today.
 	 */
 	private shipItInstallJobLoaded(): boolean {
+		if (this.installJobLoadedProbe) return this.installJobLoadedProbe();
 		// The command comes from the same place the watchdog's own probe does, so
 		// there is one answer to "which command asks launchd about this job" and
 		// the two cannot disagree. It is invoked by name, exactly as the script
@@ -904,6 +931,62 @@ export class UpdateService {
 				: "No relaunch watchdog is running for the install in flight and none could be started; the app will need starting by hand after it quits.",
 			LogFileType.UPDATE_SERVICE,
 		);
+	}
+
+	/**
+	 * The pending-install marker, if the machine says an install is live now.
+	 *
+	 * The marker is read first, because the ordinary answer to "is an update
+	 * installing" is no and a file read answers it; the launchd probe behind it is
+	 * a process spawn and is only worth paying for when there is a marker to ask
+	 * about.
+	 */
+	private livePendingInstallMarker(): PendingInstallMarker | null {
+		const marker = readPendingInstallMarker(this.markerDir());
+		if (!marker) return null;
+		return isInstallInFlight({
+			marker,
+			jobLoaded: this.shipItInstallJobLoaded(),
+		})
+			? marker
+			: null;
+	}
+
+	/**
+	 * Treat a quit as a quit for an install that is in flight, and make sure
+	 * something will start the app again.
+	 *
+	 * Two gestures reach this, and a user believes both are harmless: the macOS
+	 * close-the-last-window close, and any ordinary quit (Cmd+Q, the dock, the
+	 * menu). `window-all-closed` on macOS deliberately leaves the app running with
+	 * no window, which is right for every ordinary close - but a running instance
+	 * of this app is exactly what Squirrel's final validation aborts an install on,
+	 * so a user who closes the window during an install has cancelled their update
+	 * without being told, and reached the incident this whole change exists to
+	 * remove by the platform's most familiar gesture (UX U1). The relaunch promise
+	 * was also button-shaped: a plain quit while an install was in flight left it
+	 * resting on whatever watchdog the install happened to still have (UX U2).
+	 *
+	 * The probe is the machine's answer rather than the renderer's, so this holds
+	 * even when the panel was never drawn - the app can come back mid-install and
+	 * have its last window closed before the renderer has heard anything.
+	 *
+	 * Returns true when an install was in flight, so a caller that is deciding
+	 * whether to quit knows the close was taken over. Nothing here touches the
+	 * marker, the install's job or the failure record: this only gets the app out
+	 * of Squirrel's way and makes sure it comes back.
+	 */
+	public quitForInFlightInstall(context: string): boolean {
+		const marker = this.livePendingInstallMarker();
+		if (!marker) return false;
+		if (this.inFlightQuitWatchdogEnsured) return true;
+		this.inFlightQuitWatchdogEnsured = true;
+		logger.info(
+			`Quitting so the in-flight update install can finish (${context}).`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.ensureWatchdogAfterInFlightQuit(marker);
+		return true;
 	}
 
 	/**

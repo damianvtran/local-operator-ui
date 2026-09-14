@@ -53,6 +53,7 @@ const {
 	INSTALL_DISK_SLACK_BYTES,
 	PLIST_READ_TIMEOUT_SECONDS,
 	PENDING_INSTALL_MARKER_FILE,
+	PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
 	PENDING_INSTALL_RECENCY_SECONDS,
 	WATCHDOG_HARD_TIMEOUT_SECONDS,
 	WATCHDOG_TOKEN,
@@ -799,10 +800,30 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 			.kind,
 		"failed",
 	);
-	// Recency is the line between a live install and a leftover job, and it is the
-	// watchdog's own hard bound - so the two constants cannot drift apart, and an
-	// install the watchdog would still be holding is still an install here.
-	assert.equal(PENDING_INSTALL_RECENCY_SECONDS, WATCHDOG_HARD_TIMEOUT_SECONDS);
+	// Recency is the line between a live install and a leftover job, and it must
+	// sit ABOVE the watchdog's hard bound - at that bound the watchdog starts the
+	// app, and the app it starts must not read the same install as a failure
+	// before it has drawn a panel (UX U5). The margin is the gap between the two,
+	// so the relationship is asserted rather than the two numbers.
+	assert.equal(
+		PENDING_INSTALL_RECENCY_SECONDS,
+		WATCHDOG_HARD_TIMEOUT_SECONDS + PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
+	);
+	assert.ok(
+		PENDING_INSTALL_RECENCY_SECONDS > WATCHDOG_HARD_TIMEOUT_SECONDS,
+		"recovery must outlive the watchdog's hold, or the two disagree at its bound",
+	);
+	// The overlap the margin removes, stated as the case that produced it: a
+	// marker exactly at the hard bound is STILL an install here, where the two
+	// constants being equal made it a failure.
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobLoaded: true,
+			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
+		}),
+		true,
+	);
 	assert.equal(
 		isInstallInFlight({
 			marker,
@@ -1019,6 +1040,116 @@ test("a failure after an install was in flight names the relaunch as the cause",
 	// default for a failure nobody watched run.
 	assert.match(generic.message, /didn't finish/);
 	assert.equal(generic.cancelledByRelaunch, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// What the renderer shows, pinned against what the main process sends
+// ---------------------------------------------------------------------------
+
+/**
+ * The Storybook fixtures must carry the producer's strings verbatim.
+ *
+ * The committed evidence frames are captured from these fixtures, so a fixture
+ * that drifts from its producer puts copy into the artefact the reviews sign off
+ * on that the app cannot produce. That is what happened: the
+ * cancelled-by-relaunch fixture kept the ` - ` the payload had already lost, so
+ * the three committed frames rendered a sentence the app does not ship (reviews
+ * R6 and D9; R1 for the same drift in the in-flight fixture). The frames cannot
+ * be checked against the payload by a test because they are pixels - the
+ * fixtures can, and the frames are a function of them.
+ */
+test("the story fixtures carry the payload strings verbatim", () => {
+	const stories = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.stories.tsx",
+		),
+		"utf8",
+	);
+	const marker = {
+		targetVersion: "0.19.5",
+		artifactPath:
+			"/Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip",
+		startedAt: "2026-09-13T09:39:00.991Z",
+		watchdogPid: 32413,
+	};
+	const inFlight = installInFlightPayload(marker, "0.19.4");
+	const cancelled = installFailurePayload(marker, "0.19.4", {
+		cancelledByRelaunch: true,
+	});
+	for (const [what, text] of [
+		["the in-flight message", inFlight.message],
+		["the cancelled-by-relaunch message", cancelled.message],
+		["the cancelled-by-relaunch remedy", cancelled.remedy.text],
+	]) {
+		assert.ok(
+			stories.includes(text),
+			`${what} is not in the story fixtures verbatim - the fixture has drifted from the payload the app sends:\n  expected: ${text}`,
+		);
+	}
+	// The exact drift the rounds caught, named so a regression reads as itself
+	// rather than as a generic mismatch.
+	assert.ok(
+		!stories.includes("from the app - and leave it closed"),
+		"the cancelled-by-relaunch fixture carries the hyphen the payload replaced with an em dash",
+	);
+});
+
+/**
+ * A details line breaks at segment boundaries, and never inside a scheme or the
+ * locale date.
+ *
+ * Both were reachable under the guard the round-2 frames were captured with: the
+ * digit guard alone lets `//` through, so a URL or a UNC path got a break
+ * opportunity between the two slashes - one a person would never choose - and a
+ * break opportunity inside `13/09/2026` is the mid-token break the digit guard
+ * exists to remove (review N4). The rule is bundled from the shipped module, so
+ * this is a test of the code that renders rather than of a copy of it.
+ */
+test("a details line breaks at segment boundaries, never inside a scheme or the date", async () => {
+	const bundled = await build({
+		stdin: {
+			contents:
+				'export * from "./src/renderer/src/shared/lib/path-breaks";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const { withPathBreaks } = await import(
+		`data:text/javascript;base64,${Buffer.from(
+			bundled.outputFiles[0].text,
+		).toString("base64")}`,
+	);
+	const zwsp = "\u200B";
+
+	// A URL: the opportunities are after `https://` and after each segment
+	// separator - never between the two slashes of the scheme.
+	assert.equal(
+		withPathBreaks("https://local-operator.com/download"),
+		`https://${zwsp}local-operator.com/${zwsp}download`,
+	);
+	// A UNC-shaped path: the same at the double slash.
+	assert.equal(
+		withPathBreaks("//Volumes/Installers/x.zip"),
+		`//${zwsp}Volumes/${zwsp}Installers/${zwsp}x.zip`,
+	);
+	// The locale date stays whole: a separator followed by a digit is not an
+	// opportunity anywhere in the string, not only where the date is.
+	assert.equal(withPathBreaks("13/09/2026, 09:39:00"), "13/09/2026, 09:39:00");
+	// A digit-leading segment keeps the separators on either side of it.
+	assert.equal(
+		withPathBreaks("/Caches/0.19.5/x.zip"),
+		`/${zwsp}Caches/0.19.5/${zwsp}x.zip`,
+	);
+	// What the copy button hands to the clipboard is the value untouched: the
+	// inserted characters exist for the render only.
+	assert.equal(
+		withPathBreaks("a/b").replaceAll(zwsp, ""),
+		"a/b",
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -5064,6 +5195,107 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), false);
 	} finally {
 		if (interval) clearInterval(interval);
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * A quit while an install is in flight is a quit for the install, and an
+ * ordinary quit stays ordinary.
+ *
+ * The macOS window close used to leave the app running with no window, which is
+ * exactly the instance Squirrel's final validation aborts an install on - so the
+ * red button cancelled the update silently, by the gesture every macOS user
+ * reaches for first (UX U1). The relaunch promise was also button-shaped: only
+ * the panel's own action ensured a watchdog (UX U2). Both are decided from the
+ * machine - a current marker plus the install's launchd job - rather than from
+ * what the renderer was told, so the decision holds when no panel was ever drawn.
+ *
+ * This pins the decision, not the wiring: that `window-all-closed` and
+ * `before-quit` call it is `src/main/index.ts`, and the live-app run in the PR
+ * exercises the gesture against a real process.
+ */
+test("a quit during an in-flight install takes the close over, and only then", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+
+	// The window the service is built around is inert here, and that is the point
+	// rather than a shortcut: this decision reads the machine - the marker on disk
+	// and the install's launchd job - and never a panel. No marker exists while
+	// these are built, so none of them runs start-up recovery over one.
+	const buildService = () => {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					once: () => {},
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		updateService.backendUrl = "http://127.0.0.1:9";
+		return updateService;
+	};
+	const intervals = [];
+	const withService = (jobLoaded) => {
+		const updateService = buildService();
+		intervals.push(updateService.updateCheckInterval);
+		updateService.installJobLoadedProbe = () => jobLoaded;
+		return updateService;
+	};
+	const idle = withService(true);
+	const live = withService(true);
+	const leftover = withService(false);
+	const aged = withService(true);
+	const writeMarker = (startedAt) =>
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.19.5",
+			artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+			startedAt,
+			watchdogPid: null,
+		});
+
+	try {
+		// No marker at all: this is the ordinary close, and macOS keeps its
+		// behaviour of leaving the app in the dock.
+		assert.equal(idle.quitForInFlightInstall("last window closed"), false);
+
+		// A current marker with the install's job loaded: the close is taken over,
+		// so the caller can quit rather than leave a window-less instance running
+		// into Squirrel's validation.
+		writeMarker(new Date().toISOString());
+		assert.equal(live.quitForInFlightInstall("last window closed"), true);
+		// The same quit arriving twice - the window close, then `before-quit` - is
+		// still one takeover, and must not start a second watchdog.
+		assert.equal(live.quitForInFlightInstall("app quit"), true);
+		// Nothing was cleared to make the promise true: the marker is the record of
+		// the install that is still running.
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
+
+		// A marker the job probe answers no for is not an install. A FAILED install
+		// leaves its launchd job loaded for hours (0.17.0: runs=3114), which is the
+		// leftover the probe and the recency rule exist to tell apart.
+		assert.equal(leftover.quitForInFlightInstall("last window closed"), false);
+
+		// And a marker older than the recency bound is a failure's leftover too, so
+		// the ordinary close behaviour stands there.
+		writeMarker(
+			new Date(
+				Date.now() - (PENDING_INSTALL_RECENCY_SECONDS + 60) * 1000,
+			).toISOString(),
+		);
+		assert.equal(aged.quitForInFlightInstall("last window closed"), false);
+	} finally {
+		for (const interval of intervals) {
+			if (interval) clearInterval(interval);
+		}
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
