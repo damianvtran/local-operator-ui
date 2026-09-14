@@ -343,6 +343,57 @@ export function enterFooter(input: EnterFooterInput): string | null {
 	return `Enter runs ${command}${input.value}.`.trim();
 }
 
+export type ClickFooterInput = {
+	phase: "command" | "argument";
+	/** The command word whose argument list is up, without its slash. */
+	command: string | null;
+	/** The active COMMAND row's matched label (the alias that matched). */
+	label: string;
+	nameThenMessage: boolean;
+	/**
+	 * Whether a pointer pick of the ACTIVE row RUNS it. For a command row that is
+	 * `pointerPickRuns` of its destination, for an argument row the list's own
+	 * `runs`. Passed in rather than resolved here because both live in the
+	 * destination table this module deliberately does not import.
+	 */
+	runs: boolean;
+	/** The active row's value, and whether there is an active row at all. */
+	value: string;
+	matched: boolean;
+};
+
+/**
+ * One line saying what a CLICK does in the state the user is looking at.
+ *
+ * The pointer became a second way to act on this list when a pick of a command
+ * row started RUNNING its destination, and nothing on screen said so: rows are
+ * `cursor-default`, the one per-row column reads the registry's `arguments`
+ * field (which states what the TUI's KEYBOARD offers and is orthogonal to
+ * whether a click acts), and the footer named Enter alone. Two rows that look
+ * identical therefore did different things on the same gesture with no way to
+ * predict which (UX round 2, U10).
+ *
+ * Same instrument as `enterFooter`, for the same reason: the decision is a pure
+ * function of the state, so the two lines are read off the one active row and
+ * cannot disagree about what that row is. It says what the gesture will DO — a
+ * row whose pick only completes says so — and the states where the pointer
+ * cannot act at all (a destination that opens an inline list, a NAME+message
+ * row, the three protected ids) are covered by that same word rather than by a
+ * promise the pointer does not keep.
+ */
+export function clickFooter(input: ClickFooterInput): string | null {
+	// No row to act on: the empty state's own copy names the route it offers.
+	if (!input.matched) return null;
+	if (input.phase === "command")
+		return input.runs
+			? `Click runs /${input.label}.`
+			: `Click completes /${input.label}.`;
+	if (input.nameThenMessage) return "Click chooses this name.";
+	if (!input.runs) return "Click completes this value.";
+	const command = input.command ? `/${input.command} ` : "";
+	return `Click runs ${command}${input.value}.`.trim();
+}
+
 /**
  * The minimum the empty copy reads, named structurally for the same reason
  * `RoutableRow` is: `SlashArgumentListState` lives in `slash-commands.tsx`,

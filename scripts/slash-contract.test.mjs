@@ -41,6 +41,7 @@ const {
 	argumentRows,
 	candidateKey,
 	chosenByHandSurvives,
+	clickFooter,
 	enterFooter,
 	matchChoices,
 	phaseLabel,
@@ -401,6 +402,148 @@ test("the footer says what Enter will do, in each state", () => {
 	assert.equal(enterFooter({ ...base, matched: false }), null);
 });
 
+	/*
+ * The click footer's claim has to be the one the gesture KEEPS. Both the copy
+ * and the pick read the same two inputs — a command row's destination rule
+ * (`pointerPickRuns`) and an argument list's own `runs` — so the cases below
+ * derive the rule from the REAL registry entries and assert the line tracks it.
+ * A table edit that made `/analytics` list-bearing, or removed `session.compact`
+ * from the protected set, turns this red rather than leaving the copy promising
+ * a run the row no longer performs (UX round 2, U10).
+ */
+test("the click footer says what a click will do, in each state", () => {
+	const base = {
+		phase: "argument",
+		command: "model",
+		label: "model",
+		nameThenMessage: false,
+		runs: true,
+		value: "openai/gpt-5",
+		matched: true,
+	};
+	assert.equal(
+		clickFooter({ ...base, phase: "command" }),
+		"Click runs /model.",
+	);
+	assert.equal(
+		clickFooter({ ...base, phase: "command", runs: false }),
+		"Click completes /model.",
+	);
+	assert.equal(
+		clickFooter({ ...base, nameThenMessage: true, runs: false }),
+		"Click chooses this name.",
+	);
+	assert.equal(clickFooter(base), "Click runs /model openai/gpt-5.");
+	assert.equal(
+		clickFooter({ ...base, runs: false }),
+		"Click completes this value.",
+	);
+	// No row: the empty list's own copy names the route, so a pointer line here
+	// would describe a gesture aimed at nothing.
+	assert.equal(clickFooter({ ...base, matched: false }), null);
+});
+
+test("the click footer never claims a run the pick does not perform", () => {
+	const states = [
+		// Panel and navigate destinations: the pick IS the gesture.
+		["analytics", "analytics"],
+		["usage", "usage"],
+		// The two REQUIRED-argument commands, a deliberate deviation.
+		["auth.login", "login"],
+		["auth.logout", "logout"],
+		// List-bearing: completing the word opens the list, so the pointer
+		// cannot run. `/theme` is the one whose inline list has no run either.
+		["session.model", "model"],
+		["session.effort", "effort"],
+		["session.approvals", "approvals"],
+		["appearance", "theme"],
+		// NAME+message rows: a name is chosen, then the message is typed.
+		["session.team", "team"],
+		["session.agent", "agent"],
+		// The three protected ids: a stray click must not detach the app, wipe
+		// the transcript view or spend a compaction pass.
+		["window.close", "exit"],
+		["transcript.clear", "clear"],
+		["session.compact", "compact"],
+	];
+	for (const [id, label] of states) {
+		const runs = pickRuns(id);
+		const line = clickFooter({
+			phase: "command",
+			command: null,
+			label,
+			nameThenMessage: false,
+			runs,
+			value: "",
+			matched: true,
+		});
+		assert.equal(
+			line.includes("runs"),
+			runs,
+			`${id} runs on a pick: ${runs}, and the footer says: ${line}`,
+		);
+	}
+	// A NAME+message row is the state a user cannot see through: its `runs` is
+	// false for a reason the row does not show, and the pointer line must say
+	// what it does rather than promise a run.
+	const name = clickFooter({
+		phase: "argument",
+		command: "team",
+		label: "team",
+		nameThenMessage: true,
+		runs: false,
+		value: "delivery",
+		matched: true,
+	});
+	assert.equal(name, "Click chooses this name.");
+	assert.equal(name.includes("runs"), false);
+});
+
+/*
+ * The two lines describe the same row, so they cannot describe two different
+ * rows: whatever Enter's line says about ACTING, the pointer's line is read off
+ * the same `runs` input. The property asserted here is the one the manager's
+ * brief names — a state where the pointer cannot act must not be described as
+ * if it can.
+ */
+test("the two footer lines cannot disagree about the active row", () => {
+	const rows = [
+		{ phase: "command", command: null, label: "usage", runs: true },
+		{ phase: "command", command: null, label: "model", runs: false },
+		{ phase: "argument", command: "model", label: "model", runs: true },
+		{ phase: "argument", command: "theme", label: "theme", runs: false },
+	];
+	for (const row of rows) {
+		const click = clickFooter({
+			...row,
+			nameThenMessage: false,
+			value: "v",
+			matched: true,
+		});
+		assert.ok(click, `${row.label} has a pointer line`);
+		// "Acting" is the word `runs`: it appears in the pointer line exactly when
+		// the pick runs, and the Enter line never claims a run in the command
+		// phase, where Enter only ever completes.
+		assert.equal(click.includes("runs"), row.runs, `${row.label}: ${click}`);
+		if (row.phase === "command") {
+			assert.equal(
+				enterFooter({
+					phase: "command",
+					command: null,
+					nameThenMessage: false,
+					runs: true,
+					value: "",
+					matched: true,
+					unambiguous: true,
+				}).includes("runs"),
+				false,
+				"Enter never runs a command row, so it cannot say it does",
+			);
+		}
+	}
+});
+
+/** Test of the empty copy, kept below the two footer blocks. */
 test("the empty copy names which of the four causes it is", () => {
 	const list = { rows: [], loading: false, error: null, needsSession: false };
 	// An `effort` cold owner reports nothing rather than "this model has none"

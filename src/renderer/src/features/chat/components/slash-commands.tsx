@@ -54,6 +54,7 @@ import {
 } from "react";
 import { useEntities } from "../pickers/destination-pickers";
 import {
+	DESTINATIONS,
 	type InlineArgumentSource,
 	inlineArgumentFor,
 } from "../pickers/picker-registry";
@@ -66,8 +67,10 @@ import {
 	argumentEmptyCopy,
 	candidateKey,
 	chosenByHandSurvives,
+	clickFooter,
 	enterFooter,
 	phaseLabel,
+	pointerPickRuns,
 	rowId,
 	slashDestructive,
 	slashKeyIntent,
@@ -642,6 +645,30 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				})
 			: false,
 	});
+	/*
+	 * Whether a click on the active row RUNS it, from the one function that
+	 * decides it. A command row's answer is its DESTINATION's (`pointerPickRuns`,
+	 * the same rule `message-input.tsx` acts on), an argument row's is its own
+	 * list's `runs` — the two kinds answer from different places on purpose, and
+	 * reading either off the row's rendered hint column is exactly the defect
+	 * U10 measured.
+	 */
+	const pickRuns =
+		activeRow?.kind === "command"
+			? pointerPickRuns(
+					activeRow.command.destination,
+					DESTINATIONS[activeRow.command.destination],
+				)
+			: (state.inline?.runs ?? false);
+	const click = clickFooter({
+		phase: argument ? "argument" : "command",
+		command: state.argumentCommand,
+		label: activeRow?.kind === "command" ? activeRow.label : "",
+		nameThenMessage: state.inline?.nameThenMessage ?? false,
+		runs: pickRuns,
+		value: activeArgument?.value ?? "",
+		matched: Boolean(activeRow),
+	});
 
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -689,12 +716,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					<ul>
 						{state.matches.map((row, index) => (
 							/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */
+							/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option — arrows, Enter and Escape are the composer's, and the click below is the pointer's own gesture on the row the marker is on. */
 							<li
 								key={rowId(row)}
 								id={`${listId}-${rowId(row)}`}
 								ref={index === state.active ? activeRef : null}
 								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
-								// biome-ignore lint/a11y/useKeyWithClickEvents: arrows, Enter and Escape are handled on the textarea, not on the option.
 								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
 								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
 								role="option"
@@ -721,11 +748,17 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 										: "bg-transparent",
 								)}
 								onMouseDown={(event) => {
-									// mousedown, not click: a click would blur the textarea before
-									// the pick handler ran and drop the draft's caret position.
+									// Focus, not the pick. Preventing the default here keeps the
+									// textarea's caret and draft position, which a focus change to
+									// the row would drop before the handler could read them.
 									event.preventDefault();
+								}}
+								onClick={() => {
+									// A COMPLETED click, not pointer-down: a press the user
+									// aborts by dragging off the row must not act, and the acting
+									// set includes destinations that leave the chat (U11).
 									// A click names one exact row with a pointer, which is not the
-									// guess the keyboard ambiguity gate protects against — so a
+									// guess the keyboard's ambiguity gate protects against — so a
 									// pointer pick of a runnable row runs it (`editor.py:8040`).
 									onPick(row, { run: true });
 								}}
@@ -739,11 +772,18 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					</ul>
 				)}
 			</div>
-			{footer ? (
+			{(footer || click) && (
+				/*
+				 * One bordered strip, two lines: Enter's meaning on the first, the
+				 * pointer's on the second. Both are read off the same active row, so
+				 * the pair cannot describe two different rows, and the pointer line is
+				 * ABSENT whenever there is no row to act on (an empty argument list).
+				 */
 				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
-					{footer}
+					{footer ? <p>{footer}</p> : null}
+					{click ? <p>{click}</p> : null}
 				</div>
-			) : null}
+			)}
 		</div>
 	);
 };
