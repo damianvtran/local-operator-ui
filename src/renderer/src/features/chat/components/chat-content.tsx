@@ -334,7 +334,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 		const setFiles = useCanvasStore((s) => s.setFiles);
 
-		const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+		/*
+		 * `isCanvasOpen` is read once, above, by the Files view's own predicate; the run
+		 * pane reads the same store field, so the rebase's duplicate of that line is
+		 * dropped here rather than shadowing it (both sides had added the declaration
+		 * for their own reason, which is what a union of the two sides has to settle).
+		 */
 		const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
 		const runPanelWidth = useUiPreferencesStore((s) => s.runPanelWidth);
 		const setRunPanelWidth = useUiPreferencesStore((s) => s.setRunPanelWidth);
@@ -494,6 +499,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							description={description}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
+							fileCount={mentionedFileCount}
 							mcpServers={mcpServers}
 							listOnScreen={listOnScreen}
 							readerChildId={readerChildId}
