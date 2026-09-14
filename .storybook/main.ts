@@ -25,7 +25,20 @@ const config: StorybookConfig = {
 		autodocs: "tag",
 	},
 	typescript: {
-		reactDocgen: "react-docgen-typescript",
+		/*
+		 * `react-docgen`, not `react-docgen-typescript`, because the latter
+		 * cannot run against the TypeScript 7 toolchain this repo moved to in
+		 * #140: requiring it throws
+		 * `TypeError: Cannot read properties of undefined (reading 'React')`
+		 * inside its own parser and Storybook reports "Failed to build the
+		 * preview", so no story renders and `scripts/capture-evidence.mjs` can
+		 * produce no frame at all. Storybook's own `react-docgen` parses the
+		 * source without loading the TypeScript compiler, which is the whole of
+		 * what this generator is used for here (the props tables on docs pages),
+		 * and it is the recommended default. Revisit only if a prop table needs
+		 * something react-docgen's parser cannot express.
+		 */
+		reactDocgen: "react-docgen",
 	},
 	viteFinal: async (config) => {
 		// Add JSX runtime configuration
