@@ -2220,3 +2220,44 @@ test("the wake-arming clause is only stripped from a wake row", () => {
 	assert.ok(hub.headline.includes("cancel with wake("));
 	assert.ok(!hub.headline.startsWith("This is a note"));
 });
+
+test("a wake keeps its own preamble, and its goal loses the bullet it was listed under", () => {
+	// D8: the rule must fire on the ARMING line only. A payload that opens with
+	// its own preamble keeps it — the preamble is more informative than the
+	// generated line below it.
+	const preamble = "Session resumed after a restart.\n(alarm) Scheduled wake w1 (1/1).\n\nGet the release out.";
+	const [kept] = replay([custom("w", "wake_prompt", { text: preamble })]);
+	assert.equal(kept.headline, "Session resumed after a restart.");
+
+	// U15: 79 real rows put their goal in a list, and the bullet is markup.
+	const [bullet] = replay([
+		custom("w2", "wake_prompt", {
+			text: "(alarm) Scheduled wake w1 (1/1).\n\n- w1 (due 11:20): missed while the session was down.",
+		}),
+	]);
+	assert.equal(bullet.headline, "w1 (due 11:20): missed while the session was down.");
+});
+
+test("a relayed row whose headline is its whole payload discloses nothing", () => {
+	// U16: once a heading is joined to its outcome, a two-line body IS the
+	// headline, and a chevron that reveals the same two lines promises material
+	// it does not add. Same rule the notice register needed (U14).
+	const [job] = replay([
+		custom("j", "job_result", {
+			text: "background job 'design849' failed:\n[Errno 28] No space left on device",
+		}),
+	]);
+	assert.equal(
+		job.headline,
+		"background job 'design849' failed: [Errno 28] No space left on device",
+	);
+	assert.equal(job.detail, null, "nothing left to disclose");
+
+	// A payload with more to say still keeps its body behind the disclosure.
+	const [long] = replay([
+		custom("j2", "job_result", {
+			text: "background job 'design849' failed:\n[Errno 28] No space left on device\nRetry once the volume is clear.",
+		}),
+	]);
+	assert.ok(long.detail?.includes("Retry once the volume is clear."));
+});
