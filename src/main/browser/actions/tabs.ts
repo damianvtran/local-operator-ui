@@ -101,8 +101,19 @@ export async function open(
 					"the handed-over tab has no approved HTTP document",
 				);
 			const token = surfaceToken(record) ?? "";
+			// `documentEpoch`, NOT `epoch`: the receipt this consults was minted with
+			// `record.documentEpoch` (below, and in `host.ts`), while `epoch` is also
+			// bumped by in-page navigations. Passing `epoch` therefore made the two
+			// disagree after any same-document history change, the receipt missed, and
+			// a re-adopt fell into `admit()` and threw `origin_not_allowed` for a
+			// document the session could still read (review round 1, R1).
 			if (
-				!ctx.approvals.documentAllowed(token, current, requester, record.epoch)
+				!ctx.approvals.documentAllowed(
+					token,
+					current,
+					requester,
+					record.documentEpoch,
+				)
 			) {
 				const permission = ctx.approvals.admit(current, requester);
 				ctx.approvals.rememberDocument(

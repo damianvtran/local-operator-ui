@@ -17,7 +17,7 @@ import {
 	installBrowserSessionHandlers,
 	resolveBrowserSession,
 } from "./profile";
-import { TabRegistry } from "./registry";
+import { TabRegistry, surfaceToken } from "./registry";
 import { type RpcServer, startRpcServer } from "./rpc";
 import { permittedScheme } from "./settle";
 import {
@@ -397,9 +397,18 @@ export async function startBrowserHost(
 
 		// A webContents that dies on its own (a renderer crash, a close from
 		// elsewhere) must not leave a tab record pointing at nothing: the handle has
-		// to fail closed, which means the record has to go.
+		// to fail closed, which means the record has to go. The document receipt the
+		// record's token was granted goes with it — this is the third path that ends a
+		// token (the ownership close and the chrome's close button are the others),
+		// and a receipt outliving its token is unbounded growth in a long-lived app
+		// (review round 1, N1). Read both BEFORE `forget`, which is what clears them.
 		contents.on("destroyed", () => {
-			if (registry.get(tabId)) registry.forget(tabId);
+			const record = registry.get(tabId);
+			if (record) {
+				const token = surfaceToken(record);
+				if (token) approvals.forgetDocument(token);
+				registry.forget(tabId);
+			}
 			// The same release the registry's own close performs. A view that is
 			// already destroyed makes the detach's own `try` a no-op and the child-view
 			// removal a no-op too, so this is safe to run on a death we did not ask for.
