@@ -22,6 +22,7 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { finalContainerChecks, finalMetadataChecks, privatePythonSeedCheck } from "./python-artifact-layout.mjs";
 
 const CODESIGN = "/usr/bin/codesign";
 const SPCTL = "/usr/sbin/spctl";
@@ -105,7 +106,7 @@ export function artifactChecks({ appPath, dmgPath }) {
 }
 
 /** The directory names the two bundled interpreters occupy, in app resources. */
-const BUNDLED_PYTHON_TREES = ["python", "python_aarch64"];
+const BUNDLED_PYTHON_TREES = ["python-runtime-seed/x64", "python-runtime-seed/arm64"];
 
 /**
  * The bundled-interpreter trees a packaged app actually carries.
@@ -123,7 +124,7 @@ export function bundledPythonTrees(appPath, { listDir = readdirSync } = {}) {
 	if (!existsSync(resources)) return [];
 	let entries = [];
 	try {
-		entries = listDir(resources);
+		entries = listDir(join(resources, "python-runtime-seed")).map((name) => `python-runtime-seed/${name}`);
 	} catch {
 		return [];
 	}
@@ -140,7 +141,7 @@ const LIPO = "/usr/bin/lipo";
  * case where the answer should be someone looking at this file rather than a
  * guess that happens to pass.
  */
-const INTERPRETER_BY_ARCH = { arm64: "python_aarch64", x86_64: "python" };
+const INTERPRETER_BY_ARCH = { arm64: "python-runtime-seed/arm64", x86_64: "python-runtime-seed/x64" };
 
 /**
  * The architecture a packaged app runs as, read from the bundle itself.
@@ -282,195 +283,18 @@ export function bundledBytecodeCheck(appPath, options = {}) {
 	};
 }
 
-const SEAL_PROBE_NAME = ".local-operator-seal-probe";
-
-/**
- * The interpreter trees' seal, asserted by the write it refuses.
- *
- * Why a write probe rather than a read of the access-control entry: the property
- * the release has to have is "nothing can add a file to this tree", and the only
- * question that answers it without a second opinion about what the entry means is
- * the write itself. It also refuses to pass vacuously - a tree with no directory
- * probed is a failure, so a walker that silently finds nothing cannot report a
- * sealed bundle.
- *
- * The measurements behind it: the shipped 0.22.2 artifact, copied out of the
- * signed DMG, carries no access-control entry at all - a bare mode line on
- * `Contents/Resources/python_aarch64` and on `.../lib/python3.12` - so this check
- * would have created a file in the interpreter's own stdlib directory. The seal
- * the app applies at runtime (`src/main/python-bytecode-cache.ts`) is what makes
- * the same probe answer EACCES, and `scripts/after-pack.mjs` is what puts it
- * there before signing; this is the check that a build cannot skip either.
- *
- * Two paths, one property: a directory must refuse a NEW file
- * (`everyone deny add_file,add_subdirectory`, which is the `__pycache__` a
- * bytecode write needs), and every `.pyc`/`.pyo` the build still ships must
- * refuse a REWRITE (`everyone deny write,append`) - that second class is the
- * `file modified:` violation no update-time heal can undo. Shipping any bytecode
- * at all fails `app-no-bundled-bytecode`; this is the assertion that whatever
- * slipped through cannot be rewritten inside a signed bundle.
- *
- * A probe answers EROFS on a read-only volume, which is not a fact about the
- * bundle: that is reported as unprobeable rather than as a pass, because a
- * mounted disk image is read-only and "nothing could be written" there says
- * nothing about the app inside it. Copy the app out of the image first.
+/*
+ * The bundled-interpreter seal check that used to live here is gone with the
+ * mechanism it asserted. It was a write probe over `Contents/Resources/python
+ * [/_aarch64]`, and it could not hold: `ditto` carries an access-control entry
+ * but the ZIP Squirrel stages does not, so the bundle a user updates *into* is
+ * unsealed by construction. The invariant that replaces it is structural and
+ * checkable on any container - the interpreter ships as inert data under
+ * `python-runtime-seed/<arch>` and no legacy resource name exists beside it
+ * (`privatePythonSeedCheck` in `python-artifact-layout.mjs`), so there is no
+ * tree in the bundle for a venv to resolve into.
  */
-export function findUnsealedBundledPaths(
-	appPath,
-	{
-		listDirs = defaultListDirectories,
-		listBytecode = findBundledBytecode,
-		// Injectable so the read-only-volume and vanished-path answers can be
-		// driven: a probe whose only real subject is a filesystem is otherwise
-		// untestable in the arms that matter most.
-		probeNew = probeNewFile,
-		probeExisting = probeAppend,
-	} = {},
-) {
-	const unsealed = [];
-	const unprobeable = [];
-	let checked = 0;
-	for (const name of BUNDLED_PYTHON_TREES) {
-		const root = join(appPath, "Contents", "Resources", name);
-		if (!existsSync(root)) continue;
-		// Absolute paths throughout: the walker answers paths relative to `root`,
-		// and a probe that resolved those against the process's own working
-		// directory would write into the checkout rather than into the artifact.
-		const dirs = [root, ...listDirs(root).map((relative) => join(root, relative))];
-		for (const dir of dirs) {
-			checked += 1;
-			const verdict = probeNew(join(dir, SEAL_PROBE_NAME));
-			if (verdict === "accepted") unsealed.push(dir);
-			else if (verdict === "unprobeable") unprobeable.push(dir);
-		}
-	}
-	for (const path of listBytecode(appPath)) {
-		checked += 1;
-		const verdict = probeExisting(path);
-		if (verdict === "accepted") unsealed.push(path);
-		else if (verdict === "unprobeable") unprobeable.push(path);
-	}
-	return { checked, unsealed, unprobeable };
-}
 
-/** Every directory under `root`, relative to it. */
-function defaultListDirectories(root, relative = "") {
-	const dirs = [];
-	for (const entry of readdirSync(join(root, relative), {
-		withFileTypes: true,
-	})) {
-		const child = relative ? join(relative, entry.name) : entry.name;
-		if (!entry.isDirectory()) continue;
-		dirs.push(child, ...defaultListDirectories(root, child));
-	}
-	return dirs;
-}
-
-/**
- * Try to create a file, and report what the filesystem did.
- *
- * `wx` rather than `w`: this must never truncate an existing file, and an
- * existing probe left by an interrupted run is removed first - the seal grants
- * `delete_child` precisely so the app (and this) can still unlink.
- */
-function probeNewFile(path) {
-	try {
-		rmSync(path, { force: true });
-		const handle = openSync(path, "wx");
-		closeSync(handle);
-		rmSync(path, { force: true });
-		return "accepted";
-	} catch (error) {
-		return writeProbeVerdict(error);
-	}
-}
-
-/** Try to open a file for appending, which is the rewrite the seal denies. */
-function probeAppend(path) {
-	try {
-		const handle = openSync(path, "a");
-		closeSync(handle);
-		return "accepted";
-	} catch (error) {
-		return writeProbeVerdict(error);
-	}
-}
-
-/**
- * What a failed write means.
- *
- * EACCES/EPERM are the seal answering - the access-control entry denies the
- * right to everyone, the owner included. EROFS is the volume answering, which is
- * not evidence about the bundle, and ENOENT means the path moved under the walk.
- * Anything else is rethrown: a permission model this code does not understand
- * must not be reported as a sealed tree - which is the property exported here
- * rather than left implicit, because it is the one that decides whether a check
- * that could not run reports `unprobeable` or fails loudly.
- */
-export function writeProbeVerdict(error) {
-	const code = error.code;
-	if (code === "EACCES" || code === "EPERM") return "refused";
-	if (code === "EROFS" || code === "ENOENT") return "unprobeable";
-	throw error;
-}
-
-/** The seal as a release check, in the same shape as the others. */
-export function pythonTreeSealCheck(
-	appPath,
-	{ platform = process.platform, ...options } = {},
-) {
-	const describe = (output, passed) => ({
-		id: "app-python-trees-sealed",
-		scope: "app",
-		target: appPath,
-		description: "the bundled python trees refuse bytecode writes",
-		passed,
-		output,
-	});
-	/*
-	 * macOS only, and stated rather than passed silently: the mechanism is an
-	 * access-control entry (`everyone deny add_file,add_subdirectory`), which is
-	 * what `sealPythonInterpreterTrees` applies and only where a code seal exists
-	 * to break (see that function's docstring). Every other platform returns
-	 * `supported: false`, so a check that demanded the entry there would fail a
-	 * build this repository does not seal - and the exit is named, so a reader can
-	 * tell "verified sealed" from "not asked".
-	 */
-	if (platform !== "darwin") {
-		return describe(
-			`not macOS (${platform}): the seal is an access-control entry the app applies only where a code seal exists to break, so there is nothing to assert here`,
-			true,
-		);
-	}
-	const { checked, unsealed, unprobeable } = findUnsealedBundledPaths(
-		appPath,
-		options,
-	);
-	const fail = (output) => describe(output, false);
-	if (unprobeable.length > 0) {
-		return fail(
-			`${unprobeable.length} path(s) could not be probed (read-only volume or a path that moved): ${unprobeable.slice(0, 4).join(", ")}${unprobeable.length > 4 ? ` (and ${unprobeable.length - 4} more)` : ""}. Copy the app off the mounted image and re-run, so the probe answers about the bundle rather than about the volume it sits on.`,
-		);
-	}
-	if (unsealed.length > 0) {
-		return fail(
-			`${unsealed.length} of ${checked} path(s) accept a new file: ${unsealed.slice(0, 4).join(", ")}${unsealed.length > 4 ? ` (and ${unsealed.length - 4} more)` : ""}. The build must leave every directory under Contents/Resources/python[/_aarch64] refusing add_file/add_subdirectory and any .pyc it ships refusing write/append - scripts/after-pack.mjs is the step that does it, and it runs before signing.`,
-		);
-	}
-	if (checked === 0) {
-		return fail(
-			"no bundled interpreter tree was found under Contents/Resources, so no write was probed; the app this check is asked about is not one the app can resolve an interpreter from",
-		);
-	}
-	return {
-		id: "app-python-trees-sealed",
-		scope: "app",
-		target: appPath,
-		description: "the bundled python trees refuse bytecode writes",
-		passed: true,
-		output: `${checked} path(s) under Contents/Resources/python[/_aarch64] refuse a write`,
-	};
-}
 /** Run each check with the given runner and judge it. */
 export function runChecks({ appPath, dmgPath, run }) {
 	return artifactChecks({ appPath, dmgPath }).map((check) => {
@@ -512,6 +336,7 @@ export function summarize(results) {
 export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 	const apps = [];
 	const dmgs = [];
+	const zips = [];
 	const errors = [];
 	if (!existsSync(distDir)) return { apps, dmgs, errors };
 
@@ -524,6 +349,7 @@ export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 	}
 
 	for (const entry of entries) {
+		if (entry.endsWith(".zip")) { zips.push(join(distDir, entry)); continue; }
 		if (entry.endsWith(".dmg")) {
 			dmgs.push(join(distDir, entry));
 			continue;
@@ -548,7 +374,7 @@ export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 			errors.push(`${candidate}: ${error.message ?? String(error)}`);
 		}
 	}
-	return { apps, dmgs, errors };
+	return { apps, dmgs, zips, errors };
 }
 
 /** The first packaged app inside a `dist` directory, if the build produced one. */
@@ -609,6 +435,10 @@ export function verifyArtifacts({
 	 * having been asked the questions a user's Gatekeeper asks.
 	 */
 	const results = [];
+	const checkApp = (path) => [
+		...runChecks({ appPath: path, dmgPath: null, run }),
+		bundledBytecodeCheck(path), bundledPythonCheck(path, { run }), privatePythonSeedCheck(path),
+	];
 	for (const appPath of appPaths) {
 		if (!existsSync(appPath)) {
 			log(`No packaged app at ${appPath}`);
@@ -621,7 +451,7 @@ export function verifyArtifacts({
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
-		results.push(pythonTreeSealCheck(appPath));
+		results.push(privatePythonSeedCheck(appPath));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -630,6 +460,12 @@ export function verifyArtifacts({
 		}
 		log(`Checking disk image: ${dmgPath}`);
 		results.push(...runChecks({ appPath: null, dmgPath, run }));
+		results.push(...finalContainerChecks(dmgPath, { run, checkApp }));
+	}
+	for (const zip of discovered.zips ?? []) results.push(...finalContainerChecks(zip, { run, checkApp }));
+	if (!app && !dmg) {
+		if (!(discovered.zips?.length)) results.push({ id: "final-zip-required", passed: false, description: "in-app update ZIP exists", output: "No ZIP found" });
+		results.push(...finalMetadataChecks(dist, [...dmgPaths, ...(discovered.zips ?? [])]));
 	}
 
 	for (const result of results) {
@@ -659,14 +495,6 @@ export function verifyArtifacts({
 		if (interpreters) {
 			log(
 				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
-			);
-		}
-		const seal = failures.find(
-			(result) => result.id === "app-python-trees-sealed",
-		);
-		if (seal) {
-			log(
-				`The app can still write into its own bundled interpreter trees: ${seal.output}. A bundle that gains a __pycache__/*.pyc there after signing is one macOS refuses to open and Squirrel refuses to update in place, so this is a release blocker rather than a warning.`,
 			);
 		}
 	}

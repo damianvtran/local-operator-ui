@@ -69,7 +69,7 @@
     "check-types:main": "tsc --noEmit -p tsconfig.node.json",
     "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
     "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
-    "test:desktop": "node scripts/run-desktop-tests.mjs scripts/linux-sandbox.test.mjs scripts/capture-evidence.test.mjs scripts/desktop-contract.test.mjs scripts/transcript-reducer.test.mjs scripts/transcript-paging.test.mjs scripts/provider-state.test.mjs scripts/stale-agent.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/desktop-proxy.test.mjs scripts/session-stream-token.test.mjs scripts/session-load-recovery.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/settings-time-to-error.test.mjs scripts/backend-error-surfaces.test.mjs scripts/canonical-chat.test.mjs scripts/session-switch.test.mjs scripts/chat-search.test.mjs scripts/run-detail-model.test.mjs scripts/subagent-pulse.test.mjs scripts/chat-title.test.mjs scripts/clear-search.test.mjs scripts/tool-row.test.mjs scripts/attachment-url.test.mjs scripts/desktop-notifier.test.mjs scripts/python-bytecode-cache.test.mjs scripts/update-robustness.test.mjs scripts/prune-python-resource.test.mjs scripts/seal-python-resource.test.mjs scripts/usage-view.test.mjs scripts/usage-container.test.mjs scripts/session-status.test.mjs scripts/composer-readings.test.mjs scripts/composer-tabs.test.mjs scripts/ask-options.test.mjs scripts/window-mode.test.mjs scripts/evidence-manifest.test.mjs scripts/desktop-test-concurrency.test.mjs scripts/run-desktop-tests.test.mjs scripts/mcp-foreign-config-origin.test.mjs scripts/mentioned-files.test.mjs scripts/picker-feedback.test.mjs scripts/warm-session.test.mjs scripts/submit-latency.test.mjs scripts/echo-delivery.test.mjs scripts/check-runtime-deps.test.mjs scripts/new-chat-row.test.mjs scripts/new-chat-row-evidence.test.mjs scripts/reconnect-page-gap.test.mjs scripts/browser-host.test.mjs scripts/check-vendored.test.mjs",
+    "test:desktop": "node scripts/run-desktop-tests.mjs scripts/linux-sandbox.test.mjs scripts/capture-evidence.test.mjs scripts/desktop-contract.test.mjs scripts/transcript-reducer.test.mjs scripts/transcript-paging.test.mjs scripts/provider-state.test.mjs scripts/stale-agent.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/desktop-proxy.test.mjs scripts/session-stream-token.test.mjs scripts/session-load-recovery.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/settings-time-to-error.test.mjs scripts/backend-error-surfaces.test.mjs scripts/canonical-chat.test.mjs scripts/session-switch.test.mjs scripts/chat-search.test.mjs scripts/run-detail-model.test.mjs scripts/subagent-pulse.test.mjs scripts/chat-title.test.mjs scripts/clear-search.test.mjs scripts/tool-row.test.mjs scripts/attachment-url.test.mjs scripts/desktop-notifier.test.mjs scripts/python-bytecode-cache.test.mjs scripts/update-robustness.test.mjs scripts/prune-python-resource.test.mjs scripts/usage-view.test.mjs scripts/usage-container.test.mjs scripts/session-status.test.mjs scripts/composer-readings.test.mjs scripts/composer-tabs.test.mjs scripts/ask-options.test.mjs scripts/window-mode.test.mjs scripts/evidence-manifest.test.mjs scripts/desktop-test-concurrency.test.mjs scripts/run-desktop-tests.test.mjs scripts/mcp-foreign-config-origin.test.mjs scripts/mentioned-files.test.mjs scripts/picker-feedback.test.mjs scripts/warm-session.test.mjs scripts/submit-latency.test.mjs scripts/echo-delivery.test.mjs scripts/check-runtime-deps.test.mjs scripts/new-chat-row.test.mjs scripts/new-chat-row-evidence.test.mjs scripts/reconnect-page-gap.test.mjs scripts/browser-host.test.mjs scripts/check-vendored.test.mjs",
     "check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs",
     "check-vendored": "node scripts/check-vendored.mjs",
     "check-evidence": "node scripts/check-evidence.mjs",
@@ -228,25 +228,25 @@
       "output": "dist",
       "buildResources": "build"
     },
-    "extraResources": [
+    "afterSign": "scripts/notarize.js",
+    "afterPack": "scripts/after-pack.mjs",
+    "mac": {
+      "extraResources": [
       {
         "from": "resources/python",
-        "to": "python",
+        "to": "python-runtime-seed/x64",
         "filter": [
           "**/*"
         ]
       },
       {
         "from": "resources/python_aarch64",
-        "to": "python_aarch64",
+        "to": "python-runtime-seed/arm64",
         "filter": [
           "**/*"
         ]
       }
     ],
-    "afterSign": "scripts/notarize.js",
-    "afterPack": "scripts/after-pack.mjs",
-    "mac": {
       "notarize": false,
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
@@ -291,6 +291,22 @@
       }
     },
     "win": {
+    "extraResources": [
+      {
+        "from": "resources/python",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/python_aarch64",
+        "to": "python_aarch64",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
       "target": [
         {
           "target": "nsis",
@@ -311,6 +327,22 @@
       "multiLanguageInstaller": true
     },
     "linux": {
+    "extraResources": [
+      {
+        "from": "resources/python",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/python_aarch64",
+        "to": "python_aarch64",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
       "category": "ArtificialIntelligence",
       "icon": "build/",
       "target": [

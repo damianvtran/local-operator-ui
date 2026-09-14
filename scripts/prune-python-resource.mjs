@@ -41,8 +41,8 @@ import { join } from "node:path";
  * one map so a third spelling cannot appear beside them.
  */
 export const PYTHON_RESOURCE_DIRS = {
-	arm64: "python_aarch64",
-	x64: "python",
+	arm64: "python-runtime-seed/arm64",
+	x64: "python-runtime-seed/x64",
 };
 
 /**
