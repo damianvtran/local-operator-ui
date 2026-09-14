@@ -48,16 +48,54 @@ mkdirSync(dataDir, { recursive: true });
 
 /* ---- chrome, raw CDP, nothing installed -------------------------------- */
 
-const chrome = spawn(CHROME, [
+const chrome = spawn(
+	CHROME,
+	[
+		/* `detached` puts the browser in its own process group, so the sweep below
+		   can kill the whole tree rather than the parent and its orphans. */
+
 	"--headless=new",
 	"--no-sandbox",
 	"--disable-gpu",
 	"--hide-scrollbars",
 	"--window-size=1440,1000",
 	`--user-data-dir=${dataDir}`,
-	"--remote-debugging-port=0",
-	"about:blank",
-]);
+		"--remote-debugging-port=0",
+		"about:blank",
+	],
+	{ detached: true },
+);
+
+/*
+ * Every exit path frees the profile and the browser.
+ *
+ * The first version killed Chrome only on the success path, and 36 of its
+ * helpers were still running when the next person looked — an evidence rig that
+ * leaks a browser per failed run is a defect in the rig, not in the run. `exit`
+ * covers the throws (the driver's own `waitFor` failures and the refusals that
+ * are deliberately errors), `uncaughtException`/`unhandledRejection` cover the
+ * async ones, and this remains `mktemp`-scoped, so it can never touch another
+ * session's Chrome.
+ */
+const cleanup = () => {
+	try {
+		process.kill(-chrome.pid, "SIGKILL");
+	} catch {}
+	try {
+		rmSync(dataDir, { recursive: true, force: true });
+	} catch {}
+};
+process.on("exit", cleanup);
+process.on("uncaughtException", (error) => {
+	console.error(error);
+	cleanup();
+	process.exit(1);
+});
+process.on("unhandledRejection", (error) => {
+	console.error(error);
+	cleanup();
+	process.exit(1);
+});
 
 /** Chrome prints the DevTools websocket on stderr; there is no other handle. */
 const wsUrl = await new Promise((resolve, reject) => {
