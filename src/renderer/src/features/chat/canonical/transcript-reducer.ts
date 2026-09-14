@@ -32,6 +32,12 @@ import type {
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 import {
+	type PeerSender,
+	peerFields,
+	sameSender,
+	wakeIsCatchup,
+} from "../components/trace/receipt-row-model";
+import {
 	diffFromDetails,
 	preferDiff,
 } from "../components/trace/tool-row-model";
@@ -170,6 +176,41 @@ export type TranscriptRecord =
 			/** Human-readable body when the custom row carries one. */
 			text: string;
 			attribution: "user" | "agent" | "system";
+	  }
+	| {
+			/**
+			 * An inbound cross-session message (`lop send` between live sessions).
+			 *
+			 * Its own kind rather than a `custom` row, because what a `custom` row
+			 * paints is `details.text` and a peer delivery's `details.text` is the
+			 * MODEL-FACING provenance envelope. `peerFields` is what keeps it out of
+			 * the record.
+			 */
+			kind: "peer";
+			id: string;
+			ts: number;
+			/** The message as the peer wrote it. Never the envelope. */
+			body: string;
+			/** Advisory identity of the sender; any field may be empty. */
+			sender: PeerSender;
+	  }
+	| {
+			/**
+			 * A scheduled-wake delivery receipt.
+			 *
+			 * A RECEIPT, not a call: a wake fires with no user keystroke, and before
+			 * this kind the transcript showed the agent simply starting to work with
+			 * nothing recording which wake caused it (the TUI's `WakeBlock`).
+			 */
+			kind: "wake";
+			id: string;
+			ts: number;
+			/**
+			 * The delivery verbatim: `<envelope>\n\n<prompt>`. The headline and the
+			 * prompt are DERIVED from it at paint time (`receipt-row-model`), so the
+			 * state holds what arrived rather than one rendering of it.
+			 */
+			text: string;
 	  }
 	| {
 			kind: "compaction";
@@ -508,6 +549,17 @@ const SILENT_CUSTOM_TYPES = new Set([
 	"prune",
 ]);
 
+/**
+ * The two custom types that are receipts rather than conversation.
+ *
+ * Both arrive as `custom` rows whose `details.text` is model-facing markup, and
+ * both have a human-facing field beside it — which is why they are projected
+ * rather than painted (see `receipt-row-model`). They are matched by the wire
+ * names the harness writes (`session/peer.py`, `harness/wake.py`).
+ */
+const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
+const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -551,6 +603,39 @@ function durableRecord(
 		const customType = String(payload.custom_type ?? "");
 		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
 		const details = (payload.details ?? {}) as Record<string, unknown>;
+		// The receipts come before the generic branch, which would paint
+		// `details.text` — the model-facing envelope for both of them.
+		//
+		// A peer row is projected from `details.body` + `details.sender`, the two
+		// fields the UIs are supposed to render (the phone's fold does exactly
+		// that). The envelope is parsed rather than required, because a row from an
+		// older producer may carry only it; either way no envelope reaches the
+		// view.
+		if (customType === PEER_MESSAGE_CUSTOM_TYPE) {
+			const { body, sender } = peerFields(details);
+			return {
+				kind: "peer",
+				id: entry.id,
+				ts,
+				body,
+				// Reused by reference when a replayed page teaches nothing new, or
+				// `shallowEqual` reports this row as changed on every re-read (the same
+				// bargain `extractImages` strikes for `images`).
+				sender:
+					previous?.kind === "peer" && sameSender(previous.sender, sender)
+						? previous.sender
+						: sender,
+			};
+		}
+		// A wake receipt is the delivery verbatim; the headline and the prompt are
+		// derived at paint time. The CATCH-UP is not a receipt — see
+		// `wakeIsCatchup` for the two surfaces that skip it and why.
+		if (customType === WAKE_PROMPT_CUSTOM_TYPE) {
+			if (wakeIsCatchup(details)) return null;
+			const text = String(details.text ?? "");
+			if (!text.trim()) return null;
+			return { kind: "wake", id: entry.id, ts, text };
+		}
 		const text = String(details.text ?? details.detail ?? "");
 		if (!text) return null;
 		return {

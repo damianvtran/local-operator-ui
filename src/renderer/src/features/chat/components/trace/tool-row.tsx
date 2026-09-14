@@ -65,7 +65,26 @@ import {
 	toolCategory,
 } from "./tool-row-model";
 
-export type ToolRowOutcome = "running" | "success" | "error" | "interrupted";
+export type ToolRowOutcome =
+	| "running"
+	| "success"
+	| "error"
+	| "interrupted"
+	/**
+	 * A RECEIPT: a ledger row that reports an event rather than a call — an
+	 * inbound peer message, a wake delivery.
+	 *
+	 * It exists because the two alternatives are both wrong. A receipt has no
+	 * outcome to report, so `success` would paint a tick on a peer's words — a
+	 * claim that something was accomplished — and the empty status column alone
+	 * would read as "still running" (that is the whole reason a running row's
+	 * column is empty). Naming the state is what keeps those three apart, and it
+	 * costs nothing on screen: like `running`, it draws no glyph and no duration,
+	 * and the slot stays reserved so a receipt in a run of calls does not move the
+	 * column. The TUI's receipt blocks draw neither either
+	 * (`PeerMessageBlock._build_row`, `WakeBlock._build_row`).
+	 */
+	| "receipt";
 
 /**
  * The ledger row's own height, overriding the shared disclosure default.
@@ -224,6 +243,10 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	success: "succeeded",
 	error: "failed",
 	interrupted: "interrupted",
+	// Nothing to report: a receipt is not an action, so it has no outcome to
+	// announce. Silence here is not the running row's silence — that one is
+	// covered by the working line, which names the running phase in turn.
+	receipt: "",
 };
 
 /** The row's clock ticks at 1Hz because it shows whole seconds (`CLOCK_INTERVAL_S`). */
