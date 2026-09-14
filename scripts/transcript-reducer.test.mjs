@@ -2141,9 +2141,13 @@ test("a statement splits at the sentence end, not at an abbreviation or a list m
 	}
 });
 
-test("the wake-arming clause is only stripped from a wake row", () => {
-	// Round 2's R9: applying the strip to every relay would edit a hub message
-	// that happened to quote the phrase. Its words are the payload's own.
+test("a relayed payload keeps its own words, a quoted wake-arming clause included", () => {
+	// Round 2's R9 scoped the wake-arming strip to a wake row so it could not edit
+	// a hub message that quoted the phrase. Round 7's R33 deleted the strip
+	// outright, because a wake row is upstream's receipt now and nothing this path
+	// paints is a wake's own words — so this pins the property the scoping existed
+	// for, which is the stronger one: the payload's words survive and the
+	// channel's manners above them do not.
 	const [hub] = replay([
 		custom("h", "hub_message", {
 			text: '<parent-message>\nThis is a note, not a question. No reply is needed unless it changes what you should do.\n\nWe cancelled w1 — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n</parent-message>',
