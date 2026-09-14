@@ -20,6 +20,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect, useState } from "react";
 import type { DesktopInfoData } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
 import type { InfoFrontend } from "./info-model";
@@ -550,7 +551,51 @@ export const Dense: Story = {
 			],
 		}),
 	},
-	play: () => scrollPanelToSection("Sessions on this machine"),
+	play: () => scrollPanelToSection("Environment"),
+};
+
+/**
+ * A real HTTP wire adapter for isolated evidence, NOT native Electron/preload or
+ * slash-dispatch coverage. Start the documented disposable backend first. The
+ * token is a public synthetic fixture, never a credential for an operator store.
+ * This story is deliberately excluded from the unattended fixture sweep.
+ */
+const WireEnvironmentPanel = () => {
+	const [data, setData] = useState<DesktopInfoData | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	useEffect(() => {
+		const abort = new AbortController();
+		fetch("http://127.0.0.1:6052/v1/desktop/info", {
+			headers: { Authorization: "Bearer synthetic-storybook-evidence" },
+			signal: abort.signal,
+		})
+			.then(async (response) => {
+				if (!response.ok)
+					throw new Error(`Isolated backend returned HTTP ${response.status}`);
+				const body = await response.json();
+				setData(body.result.data);
+			})
+			.catch((failure: Error) => {
+				if (!abort.signal.aborted) setError(failure.message);
+			});
+		return () => abort.abort();
+	}, []);
+	useEffect(() => {
+		if (data) scrollPanelToSection("Environment");
+	}, [data]);
+	return (
+		<InfoPanel
+			{...base}
+			data={data}
+			error={error}
+			loading={!data && !error}
+			frontend={null}
+		/>
+	);
+};
+
+export const WireEnvironment: Story = {
+	render: () => <WireEnvironmentPanel />,
 };
 
 /** 720px: the value column wraps and the markers stack. */

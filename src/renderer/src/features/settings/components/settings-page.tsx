@@ -1,8 +1,4 @@
-import {
-	formatDayBucket,
-	formatTokens,
-} from "@features/chat/pickers/panels/formatters";
-import { ChartFrame } from "@features/chat/pickers/panels/primitives/chart-frame";
+import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
@@ -54,7 +50,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
-import { Line, LineChart } from "recharts";
+
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 
@@ -63,6 +59,7 @@ import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
+import { SettingsUsageChart } from "./settings-usage-chart";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
 
@@ -229,30 +226,7 @@ const UsageInfo: FC = () => {
 				 * `title=""` because this section already has a heading row, and that row
 				 * carries the metric toggle the frame has no slot for.
 				 */
-				<ChartFrame
-					title=""
-					heightClassName="h-62"
-					yAxisWidth={48}
-					unit={dataType === "credits" ? "credits" : "tokens"}
-					srSummary={`${dataType === "credits" ? "Credits consumed" : "Tokens used"} over the last 30 days, plotted per day across ${chartData.length} days.`}
-					xTickFormatter={(value) => value}
-					yTickFormatter={(value) =>
-						dataType === "credits"
-							? `$${value.toFixed(2)}`
-							: formatTokens(value)
-					}
-				>
-					<LineChart data={chartData}>
-						<Line
-							type="monotone"
-							dataKey="value"
-							strokeWidth={2}
-							dot={false}
-							activeDot={{ r: 4, strokeWidth: 0 }}
-							name={dataType === "credits" ? "Credits consumed" : "Tokens used"}
-						/>
-					</LineChart>
-				</ChartFrame>
+				<SettingsUsageChart metric={dataType} data={chartData} />
 			)}
 			{!isLoading && !error && (!usageData || chartData.length === 0) && (
 				<p className="text-body-sm text-ink-muted">

@@ -26,10 +26,12 @@
  *   sentence, never `$0.00`.
  */
 
+import { Button } from "@shared/components/ui";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
 import type { DesktopUsageAggregate } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
-import type { AnalyticsData } from "./analytics-model";
+import type { AnalyticsData, AnalyticsMetric } from "./analytics-model";
 import { AnalyticsPanel } from "./analytics-panel";
 
 /* A fixed LOCAL noon, so the window's own arithmetic is stable everywhere: the
@@ -170,6 +172,53 @@ export const Populated: Story = {
 		error: null,
 	},
 };
+
+/**
+ * Presentation-flow evidence, not backend/transport evidence. Unlike the still
+ * fixtures, these callbacks change real React state, so metric/window/scope and
+ * close/reopen can be reviewed with the browser tool. Remounting on reopen
+ * resets the same controls the production AnalyticsView owns per open.
+ */
+const InteractiveAnalytics = ({ onClose }: { onClose: () => void }) => {
+	const [windowDays, setWindowDays] = useState(7);
+	const [metric, setMetric] = useState<AnalyticsMetric>("tokens");
+	const [thisSessionOnly, setThisSessionOnly] = useState(false);
+	const scoped = thisSessionOnly ? ThisSessionOnly.args?.data : populated;
+	const data = {
+		...(scoped ?? populated),
+		daily: daily(
+			buckets(windowDays).map((day) => [day, 120_000, 150_000] as const),
+		),
+	};
+	return (
+		<AnalyticsPanel
+			{...base}
+			data={data}
+			loading={false}
+			refreshing={false}
+			error={null}
+			windowDays={windowDays}
+			metric={metric}
+			thisSessionOnly={thisSessionOnly}
+			onWindowChange={setWindowDays}
+			onMetricChange={setMetric}
+			onThisSessionChange={setThisSessionOnly}
+			onClose={onClose}
+		/>
+	);
+};
+
+const InteractionHarness = () => {
+	const [open, setOpen] = useState(false);
+	return (
+		<>
+			<Button onClick={() => setOpen(true)}>Open analytics</Button>
+			{open && <InteractiveAnalytics onClose={() => setOpen(false)} />}
+		</>
+	);
+};
+
+export const Interactive: Story = { render: () => <InteractionHarness /> };
 
 /** A refetch over data that is already on screen: the body does not move. */
 export const Refreshing: Story = {
