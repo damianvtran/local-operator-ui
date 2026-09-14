@@ -26,7 +26,12 @@
  *   run pane at its To-dos section and leaves focus where it is. It carries no
  *   `aria-pressed` and no pressed ground, because a control that closed the pane
  *   when pressed while looking for the plan is the "one control, two meanings"
- *   defect this codebase's review history keeps catching.
+ *   defect this codebase's review history keeps catching. It carries the header
+ *   trigger's own `Info` mark for the same reason the trigger carries it: one
+ *   glyph should mean "this opens the run pane" on both surfaces, and the count
+ *   alone was plain muted text a reader had no way to tell from prose (design
+ *   review round 1, D1 — the choice and the rejected alternatives are argued at
+ *   the mark's own site below).
  *
  * Both are gated on a VALUE, never on a session: a session with no goal, a fresh
  * draft, and a legacy non-canonical chat all take the same branch and render
@@ -40,9 +45,10 @@ import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { useState } from "react";
+import { Info } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
-import { CHAT_MEASURE } from "../chat-measure";
+import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import { READING_BUTTON as CHIP_CONTROL } from "../session-status/session-status-strip";
 import { LABEL_SEAM, type RunDetails, todoClause } from "./run-details";
 
@@ -59,6 +65,23 @@ const GOAL_NAME = "the session goal";
 
 /** The plan chip's action, leading its tooltip and its accessible name. */
 const PLAN_ACTION = "Open the plan in run details";
+
+/**
+ * The row's first-chip rule, owned by the ROW.
+ *
+ * Whichever chip renders first cancels its own 6px padding, so the thing that
+ * lands on the row's content edge is the chip's INK rather than its box — the
+ * device § 2.2 records for the goal chip, which is where the alert's own first
+ * character sits. It used to live on the goal chip alone, and the two states the
+ * row can be in therefore disagreed about where the row starts: with the goal
+ * showing, its chevron box sat at x=34 (box edge, padding cancelled) while the
+ * plan chip alone put its TEXT at x=47 (box at the content edge, `READING_BUTTON`'s
+ * padding intact) — a 6px difference invisible at rest and obvious the moment a
+ * hover ground paints the box edge (design review round 1, D5). The rule is the
+ * row's because the row is what has a first slot; a chip cannot know whether it
+ * is first.
+ */
+const FIRST_CHIP = "-ml-1.5";
 
 /**
  * At and below this much column, the row stacks.
@@ -177,6 +200,32 @@ export const ComposerStatusRow = ({
 	 */
 	const showPlan = Boolean(runDetails && runDetails.totalTodos > 0);
 
+	/*
+	 * The mirror FOLLOWS the control it describes, and this is what keeps that true
+	 * across a hide.
+	 *
+	 * The chip renders only while there is a goal (`showGoal && <Disclosure>`), so a
+	 * goal that is cleared and then set again — `/goal`, then `clear`, then a new
+	 * goal, a backend-driven change with no remount of the composer — destroys the
+	 * primitive's state and mounts a FRESH CLOSED disclosure. The mirror is this
+	 * component's state and would survive it, so the trigger would announce
+	 * "Collapse the session goal — <the new goal>" over a closed chip with no body:
+	 * copy that contradicts the control it names (agent review round 1, M1, from the
+	 * state machine — a session with a plan keeps this component mounted).
+	 *
+	 * Keying the `Disclosure` on `goal`, the reviewer's other suggestion, fixes the
+	 * same sequence by remounting on every goal REVISION, which would snap an open
+	 * body shut whenever the backend updates the text mid-run; reading it is what the
+	 * expansion is for, so the reset belongs on the hide and not on the edit.
+	 *
+	 * Declared here rather than beside the `useState` above because `showGoal` is
+	 * derived below it: an effect that reads it from there throws on the temporal
+	 * dead zone rather than returning early.
+	 */
+	useEffect(() => {
+		if (!showGoal) setGoalOpen(false);
+	}, [showGoal]);
+
 	if (!showGoal && !showPlan) return null;
 
 	const goalLabel = goalDisclosureLabel(goal, goalOpen);
@@ -243,7 +292,10 @@ export const ComposerStatusRow = ({
 					 * both controls have to be one species or the goal reads as the inert one.
 					 */
 					triggerClassName={cn(
-						"w-fit max-w-full -ml-1.5 text-ink-muted hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!",
+						"w-fit max-w-full text-ink-muted hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!",
+						// The row's first-chip rule, applied by the row to whichever chip renders
+						// first; see FIRST_CHIP. The goal renders first whenever it is present.
+						FIRST_CHIP,
 					)}
 					triggerLabel={goalLabel}
 					triggerTooltip={goalLabel}
@@ -251,15 +303,26 @@ export const ComposerStatusRow = ({
 					summary={
 						<span className={cn("flex min-w-0 items-center gap-1")}>
 							{/*
-							 * At the column floor the label takes itself out of the pixels
-							 * and stays in the accessibility tree — `sr-only`, never
-							 * `hidden` — which is what lets the chip shrink to its chevron
-							 * so the count is never squeezed. The working-directory chip's
-							 * own device, for its reason.
+							 * The label is VISIBLE in every arrangement, and this is a change the frames
+							 * argued for rather than against the record.
+							 *
+							 * It used to go `sr-only` at the column floor, on the record's § 4.2
+							 * reasoning that hiding it "is what lets the goal chip shrink to its
+							 * chevron so the count is never squeezed". That reasoning does not hold in
+							 * the arrangement the same rule is paired with: at the floor the row is a
+							 * COLUMN, so the count has a line to itself with the whole width available
+							 * — measured, a 92px chip in a 156px content box — and cannot be squeezed by
+							 * a word on the line above it. What the hidden label did cost was the row's
+							 * only identifying word: line one read `> Reconcile the March I…` with
+							 * nothing saying what it was, one line above the user's composer (design
+							 * review round 1, D4).
+							 *
+							 * `shrink-0` is the other half of the statement, and it is what makes the
+							 * yield order hold in the band where both chips share a line: the label is
+							 * ~37px and never deforms, the snippet is `min-w-0 truncate` and yields
+							 * first, and the count is `shrink-0` so it is never cut mid-figure.
 							 */}
-							<span className={cn("@max-[240px]/chatcol:sr-only")}>
-								{GOAL_LABEL}
-							</span>
+							<span className={cn("shrink-0")}>{GOAL_LABEL}</span>
 							{/*
 							 * CSS truncation, never a computed cell count: the browser
 							 * measures the real advance at the real font, size, zoom and
@@ -294,7 +357,8 @@ export const ComposerStatusRow = ({
 						tabIndex={0}
 						data-status-goal-body=""
 						className={cn(
-							"max-h-32 overflow-y-auto font-sans text-body-sm text-ink-muted leading-5 whitespace-pre-wrap break-words",
+							"font-sans text-body-sm text-ink-muted whitespace-pre-wrap break-words",
+							CAPPED_BLOCK,
 						)}
 					>
 						{goal}
@@ -316,8 +380,46 @@ export const ComposerStatusRow = ({
 						data-status-plan=""
 						aria-label={planLabel}
 						onClick={() => revealPlan("todos")}
-						className={CHIP_CONTROL}
+						className={cn(CHIP_CONTROL, showGoal ? undefined : FIRST_CHIP)}
 					>
+						{/*
+						 * The run pane's own mark, shared with the header trigger so ONE glyph
+						 * means "this opens the run pane" on both surfaces.
+						 *
+						 * Why a mark at all: without one the count was plain muted text in the
+						 * same ink as the goal's snippet, with the pointer cursor and the tooltip
+						 * as its whole affordance — neither of which exists in a still, and
+						 * neither of which a reader consults before pressing. At the floor it was
+						 * worse than neutral: the stacked row put `3 to-dos open` on the line under
+						 * a truncated goal sentence, in the goal's ink, where it read as the
+						 * sentence's wrapped remainder rather than as a second control, and
+						 * `0 to-dos open` read as a completion statement (design review round 1,
+						 * D1). The mark LEADS the count so the stacked line opens with a glyph
+						 * rather than with a digit.
+						 *
+						 * `size-3.5` is the disclosure chevron's own size, so the two chips in this
+						 * row carry same-size marks and stay one species.
+						 *
+						 * The alternatives, and why each was rejected:
+						 *
+						 * - the goal chip's CHEVRON, the designer's first option: it is the app's
+						 *   mark for "expands in place", and these two chips sit on one line. Two
+						 *   chevrons would say both controls do the same thing, which is the
+						 *   opposite of the distinction D1 asks for — this one navigates to a
+						 *   region rather than revealing its own.
+						 * - `PanelRight` / `PanelRightClose`: the pane's own chrome control, and
+						 *   `docs/composer-status-tabs.md` § 6.1 already refuses an open/close pair
+						 *   that differs by one small arrow with both on screen at once.
+						 * - `ArrowUpRight` / `ExternalLink`: they mean leaving this surface, and
+						 *   the pane is a sibling region of the same window.
+						 * - `ListChecks`: the ledger's glyph for the todo TOOL
+						 *   (`trace/tool-glyphs.ts`) — the same collision § 6.1 refuses.
+						 * - no mark (the incumbent): the state D1 is about.
+						 *
+						 * The accessible name already states the action in words, so the mark is
+						 * `aria-hidden` — a decorative repetition, not a second label.
+						 */}
+						<Info aria-hidden={true} className={cn("size-3.5 shrink-0")} />
 						{todoClause(runDetails.openTodos)}
 					</button>
 				</Tooltip>

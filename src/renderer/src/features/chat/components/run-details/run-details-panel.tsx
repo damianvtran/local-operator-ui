@@ -104,6 +104,23 @@ export const RunDetailsPanel = ({
 			),
 		});
 	}
+	/*
+	 * The PHASE count here and the ITEM count at the composer's plan chip are two
+	 * spellings of one rule, and they are deliberately different.
+	 *
+	 * The pane is about phases: it renders their headers, their items and their
+	 * `+N more`, so it appears whenever there is a phase to render - including a
+	 * named phase with no items, which is a real state the backend publishes (the
+	 * checkpoint arrives with `todos: [{ name: "Foundation", items: [] }]`).
+	 * The chip is about work: `totalTodos` is the item count, so a plan that
+	 * arrived as an empty phase prints nothing at all rather than `0 to-dos open`,
+	 * which reads as a finished plan.
+	 *
+	 * `totalTodos > 0` implies `todos.length > 0`, so the two cannot disagree in a
+	 * reachable state; the note is here because this PR is what made the
+	 * distinction load-bearing, and "unifying" the two spellings would put the
+	 * chip back to claiming a plan it cannot count (agent review, round 1, N2).
+	 */
 	if (details.todos.length > 0) {
 		sections.push({
 			key: "todos",
