@@ -104,7 +104,7 @@ const bundle = await build({
 						loader: "js",
 						contents: `
 					export const consoleInterpreter = () => "/fixture/python";
-					export const ownedServeLaunch = async (python, port) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", python, "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)] });
+					export const ownedServeLaunch = async (python, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", python, "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
 				`,
 					}),
 				);

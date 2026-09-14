@@ -799,6 +799,9 @@ export class BackendServiceManager {
 
 		// No external backend, start our own
 		this.desktopToken = randomBytes(32).toString("hex");
+		// The generation THIS start creates, retained so a failure below cleans up
+		// its own child: by then `this.ownedServe` may name a successor.
+		let captured: OwnedServe | null = null;
 		try {
 			const globalInstall = await this.checkLocalOperatorExists();
 			const env = this.backendSpawnEnv();
@@ -831,10 +834,13 @@ export class BackendServiceManager {
 			const child = spawn(launch.command, launch.args, {
 				detached: false,
 				stdio: "pipe",
-				env,
+				// The plan owns the environment it proved: a Windows venv's base
+				// interpreter needs the venv's import paths, added there and not here.
+				env: launch.env,
 				windowsHide: true,
 			});
 			const generation = this.captureServe(child);
+			captured = generation;
 
 			// Log output
 			if (child.stdout) {
@@ -884,7 +890,32 @@ export class BackendServiceManager {
 
 			return false;
 		} catch (error) {
-			if (this.ownedServe) await this.stopGeneration(this.ownedServe, false);
+			/*
+			 * Clean up the generation this start created, not whatever manager state
+			 * names: `this.ownedServe` can already hold a replacement (the watchdog
+			 * spawns one) and stopping that would kill a live backend.
+			 *
+			 * `stopGeneration` memoises one promise per generation, so a cleanup whose
+			 * own attempt already failed throws the SAME rejection here. Awaiting it
+			 * unguarded rethrows past the dialog below and turns this method into a
+			 * rejection - and `start()` is awaited by `checkUnhealthyBackend`, which
+			 * runs from a void'd `setInterval`, so under Node's default
+			 * `--unhandled-rejections=throw` the app died of an exception raised while
+			 * reporting that it could not stop its own child (review round 1, F3).
+			 * An unconfirmed cleanup is a fact to report, not a reason to lose the
+			 * report.
+			 */
+			if (captured) {
+				try {
+					await this.stopGeneration(captured, false);
+				} catch (cleanupError) {
+					logger.error(
+						"Owned backend cleanup after a failed start did not confirm exit",
+						LogFileType.BACKEND,
+						cleanupError,
+					);
+				}
+			}
 			logger.error(
 				"Error starting backend service:",
 				LogFileType.BACKEND,

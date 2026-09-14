@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { EventEmitter, once } from "node:events";
 import {
 	chmodSync,
@@ -7,6 +7,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:net";
@@ -77,50 +78,64 @@ def main():
     http.server.HTTPServer(('127.0.0.1', port), Handler).serve_forever()
 `,
 );
-const bundle = await build({
-	stdin: {
-		contents:
-			'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/owned-serve-launch";',
-		resolveDir: process.cwd(),
+/** The entry every fixture bundle builds: the manager and the launch plan under
+ * test, with `electron`, `logger` and `config` replaced by stubs. */
+const FIXTURE_ENTRY =
+	'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/owned-serve-launch";';
+
+/**
+ * The one substitution set the whole file shares.
+ *
+ * `dialogStub` is the only part tests vary: most of the suite needs the error
+ * box to merely not raise, while the failure-path tests read what it was shown.
+ * A stub is deliberate here rather than a rendered dialog - this suite proves
+ * process ownership, and no test in it claims the visual surface.
+ */
+const isolatedMain = (dialogStub = "()=>{}") => ({
+	name: "isolated-main",
+	setup(b) {
+		b.onResolve({ filter: /^electron$/ }, () => ({
+			path: "electron",
+			namespace: "fixture",
+		}));
+		b.onResolve({ filter: /^\.\/(logger|config)$/ }, (a) =>
+			a.importer.endsWith("backend-service.ts")
+				? { path: a.path, namespace: "fixture" }
+				: undefined,
+		);
+		b.onLoad({ filter: /.*/, namespace: "fixture" }, (a) => ({
+			loader: "js",
+			contents:
+				a.path === "electron"
+					? `export const app={getPath:()=>${JSON.stringify(home)}}; export const dialog={showErrorBox:${dialogStub}};`
+					: a.path === "./logger"
+						? 'export const logger={info(){},warn(){},error(){}}; export const LogFileType={BACKEND:"backend"};'
+						: 'export const backendConfig={VITE_DISABLE_BACKEND_MANAGER:"false",VITE_LOCAL_OPERATOR_API_URL:"http://127.0.0.1:1111"};',
+		}));
 	},
-	bundle: true,
-	format: "cjs",
-	platform: "node",
-	write: false,
-	plugins: [
-		{
-			name: "isolated-main",
-			setup(b) {
-				b.onResolve({ filter: /^electron$/ }, () => ({
-					path: "electron",
-					namespace: "fixture",
-				}));
-				b.onResolve({ filter: /^\.\/(logger|config)$/ }, (a) =>
-					a.importer.endsWith("backend-service.ts")
-						? { path: a.path, namespace: "fixture" }
-						: undefined,
-				);
-				b.onLoad({ filter: /.*/, namespace: "fixture" }, (a) => ({
-					loader: "js",
-					contents:
-						a.path === "electron"
-							? `export const app={getPath:()=>${JSON.stringify(home)}}; export const dialog={showErrorBox:()=>{}};`
-							: a.path === "./logger"
-								? 'export const logger={info(){},warn(){},error(){}}; export const LogFileType={BACKEND:"backend"};'
-								: 'export const backendConfig={VITE_DISABLE_BACKEND_MANAGER:"false",VITE_LOCAL_OPERATOR_API_URL:"http://127.0.0.1:1111"};',
-				}));
-			},
-		},
-	],
 });
-const module = { exports: {} };
-new Function("require", "module", "exports", bundle.outputFiles[0].text)(
-	createRequire(import.meta.url),
-	module,
-	module.exports,
-);
-const { BackendServiceManager, ownedServeLaunch, consoleInterpreter } =
-	module.exports;
+
+/** Build the fixture entry with the given plugins and evaluate it in-process. */
+async function buildFixture(plugins) {
+	const built = await build({
+		stdin: { contents: FIXTURE_ENTRY, resolveDir: process.cwd() },
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		write: false,
+		plugins,
+	});
+	const module = { exports: {} };
+	new Function("require", "module", "exports", built.outputFiles[0].text)(
+		createRequire(import.meta.url),
+		module,
+		module.exports,
+	);
+	return module.exports;
+}
+
+const bundle = await buildFixture([isolatedMain()]);
+const { BackendServiceManager, ownedServeLaunch, consoleInterpreter } = bundle;
 BackendServiceManager.prototype.loadShellEnvironment = async () => {};
 const managers = [];
 const children = [];
@@ -163,12 +178,41 @@ async function manager(mode = "") {
 	m.checkLocalOperatorExists = async () => true;
 	return m;
 }
+/**
+ * A backend this app does NOT own - the fixture that has to survive an exit.
+ *
+ * Its command line deliberately carries the text the pre-fix cleanup swept on.
+ * `pkill -f "local-operator serve"` matched a process's whole command line, so
+ * a fixture only discriminates against that regression if its real command line
+ * contains the string: the reviewer reinstated the exact pre-fix sweep and this
+ * suite stayed green, because no fixture's argv carried it (review round 1, F4).
+ * The marker therefore rides in an argument, which is what `ps` and `pkill -f`
+ * read, and the assertion below pins the premise instead of trusting it.
+ */
 async function sentinel() {
 	const port = await freePort();
 	const plan = await ownedServeLaunch(python, port, env);
-	const child = spawn(plan.command, plan.args, { env, stdio: "ignore" });
+	// The marker rides in an ARGUMENT rather than argv[0]: a macOS framework
+	// python rewrites its own argv[0] to the resolved interpreter path, so an
+	// `exec -a` spelling is not what the process table ends up showing. `ps` and
+	// `pkill -f` read the joined argument list, and this is that list.
+	const child = spawn(plan.command, [...plan.args, "local-operator serve"], {
+		env: plan.env,
+		stdio: "ignore",
+	});
 	children.push(child);
 	await ready(port);
+	const cmdline = execFileSync(
+		"ps",
+		["-o", "command=", "-p", String(child.pid)],
+		{ encoding: "utf8", env },
+	).trim();
+	assert.match(
+		cmdline,
+		/local-operator serve/,
+		"the survivor fixture must look like a name sweep's target",
+	);
+	console.log(`sentinel pid=${child.pid} argv=${cmdline}`);
 	return { port, child };
 }
 after(async () => {
@@ -316,13 +360,21 @@ test("stale exit/timer and reused PID never clear or signal replacement", async 
 	m.shutdownTimeoutMs = { normal: 15, restart: 15, force: 15 };
 	const a = fakeChild();
 	const ga = m.captureServe(a);
-	const staleExit = a.listeners("exit")[0];
+	// The predecessor is signalled but its exit is NOT delivered yet, so the
+	// replacement is captured while the predecessor's death is still
+	// unconfirmed. That is the ordering the late-exit guard exists for: the
+	// reviewer deleted the guard and this suite stayed green, because emitting
+	// the predecessor's exit first made the second call a no-op behind `exited`
+	// and the line the title names was never reached (review round 1, F2).
 	const stopping = m.stopGeneration(ga, true);
+	assert.deepEqual(a.signals, ["SIGTERM"]);
+	const b = fakeChild(a.pid);
+	const gb = m.captureServe(b);
+	assert.equal(m.process, b);
 	a.exitCode = 0;
 	a.emit("exit", 0, null);
-	const b = fakeChild(a.pid);
-	m.captureServe(b);
-	staleExit(0, null);
+	assert.equal(m.process, b, "a retired generation's late exit is not authority");
+	assert.equal(m.ownedServe, gb, "manager ownership still names the replacement");
 	await stopping;
 	await new Promise((r) => setTimeout(r, 40));
 	assert.equal(m.process, b);
@@ -332,6 +384,27 @@ test("stale exit/timer and reused PID never clear or signal replacement", async 
 	b.emit("exit", 0, null);
 	m.emergencyStopOwned();
 	assert.deepEqual(b.signals, []);
+});
+
+test("a handle the OS already reaped is never signalled, however its number is reused", async () => {
+	const m = await manager();
+	m.shutdownTimeoutMs = { normal: 10, restart: 10, force: 10 };
+	const c = fakeChild();
+	const gc = m.captureServe(c);
+	// `exitCode` set with no `exit` event is what a handle looks like once the OS
+	// has reaped the process: the number may already name something else and Node
+	// still accepts a `kill()` on it. `canSignal` is the only thing between that
+	// handle and a signal to a stranger - the reviewer reduced it to
+	// `return true` and the suite stayed green (review round 1, F2), so this pins
+	// it behaviourally rather than in a comment.
+	c.exitCode = 0;
+	await assert.rejects(
+		m.stopGeneration(gc, true),
+		/unconfirmed/,
+		"a reaped handle cannot confirm an exit",
+	);
+	assert.deepEqual(c.signals, [], "a reaped handle is not a termination authority");
+	assert.equal(m.process, c, "fail-closed cleanup keeps ownership");
 });
 
 test("unconfirmed cleanup rejects and retains owner; no replacement starts", async () => {
@@ -370,7 +443,10 @@ test("healthy endpoint replacement after owned exit is not termination authority
 	assert.equal(await m.start(), true);
 	await m.stop(true);
 	const plan = await ownedServeLaunch(python, m.port, env);
-	const replacement = spawn(plan.command, plan.args, { env, stdio: "ignore" });
+	const replacement = spawn(plan.command, plan.args, {
+		env: plan.env,
+		stdio: "ignore",
+	});
 	children.push(replacement);
 	await ready(m.port);
 	await m.stop(true);
@@ -522,53 +598,57 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 	}
 });
 
-test("Windows launch verifies direct interpreter and refuses venv redirectors", async () => {
-	const b = await build({
-		stdin: {
-			contents: 'export * from "./src/main/backend/owned-serve-launch";',
-			resolveDir: process.cwd(),
-		},
-		bundle: true,
-		format: "cjs",
-		platform: "node",
-		write: false,
-		plugins: [
-			{
-				name: "interpreter-probe",
-				setup(builder) {
-					builder.onResolve({ filter: /^node:child_process$/ }, () => ({
-						path: "probe",
-						namespace: "probe",
-					}));
-					builder.onLoad({ filter: /.*/, namespace: "probe" }, () => ({
-						loader: "js",
-						contents:
-							"export function execFile(command,args,options,callback){globalThis.__ownedProbeArgs=args;callback(null,{stdout:JSON.stringify(globalThis.__ownedProbeIdentity)});}",
-					}));
-				},
-			},
+/**
+ * The only way this suite can hold a Windows identity: there is no Windows host
+ * here, so the launch plan is asserted rather than observed. What that proves is
+ * the DECISION (which interpreter, with which environment, and which refusal),
+ * not the platform - that a real Windows redirector reaches serve this way is
+ * reasoned from CPython's documented venv layout and remains unverified without
+ * a Windows host, as the PR thread says.
+ */
+const probeStub = {
+	name: "interpreter-probe",
+	setup(builder) {
+		// Only `execFile` is replaced, and only for the modules under test: every
+		// other child_process export keeps working, so the bundle stays real.
+		builder.onResolve({ filter: /^node:child_process$/ }, (args) =>
+			args.namespace === "probe"
+				? { path: "node:child_process", external: true }
+				: { path: "probe", namespace: "probe" },
+		);
+		builder.onLoad({ filter: /.*/, namespace: "probe" }, () => ({
+			loader: "js",
+			contents:
+				'export { exec, spawn, spawnSync } from "node:child_process"; export function execFile(command,args,options,callback){globalThis.__probeCalls.push({command,args,options});const next=globalThis.__probeResults.shift();callback(next instanceof Error?next:null,{stdout:JSON.stringify(next),stderr:""});}',
+		}));
+	},
+};
+
+test("Windows launch spawns the venv's base interpreter, and refuses one that is not direct", async () => {
+	const fixture = await buildFixture([isolatedMain(), probeStub]);
+	globalThis.__probeCalls = [];
+	// `Scripts\python.exe` inside any venv - a `uv`/`pipx` tool env and the
+	// bundled venv alike - is a redirector that starts the base interpreter as
+	// its own child. Owning the redirector would not own serve, and reaching the
+	// child is a process-tree sweep, so the plan must name the BASE interpreter
+	// with the venv's own import paths, and prove the base reported itself
+	// (review round 1, F1).
+	globalThis.__probeResults = [
+		[
+			"/venv/Scripts/python.exe",
+			"/base/python.exe",
+			true,
+			["/venv/Lib/site-packages"],
 		],
-	});
-	const fixture = { exports: {} };
-	new Function("require", "module", "exports", b.outputFiles[0].text)(
-		createRequire(import.meta.url),
-		fixture,
-		fixture.exports,
-	);
-	// Absolute POSIX paths keep this contract portable on the macOS/Linux test
-	// runners; the injected platform exercises Windows' direct-spawn decision.
-	globalThis.__ownedProbeIdentity = [
-		"/python/python.exe",
-		"/python/python.exe",
-		true,
+		["/base/python.exe", "/base/python.exe", true, ["/base/Lib/site-packages"]],
 	];
-	const plan = await fixture.exports.ownedServeLaunch(
-		"/python/python.exe",
+	const plan = await fixture.ownedServeLaunch(
+		"/venv/Scripts/python.exe",
 		12345,
 		env,
 		"win32",
 	);
-	assert.equal(plan.command, "/python/python.exe");
+	assert.equal(plan.command, "/base/python.exe");
 	assert.deepEqual(plan.args, [
 		"-c",
 		"from local_operator.cli import main; main()",
@@ -577,20 +657,181 @@ test("Windows launch verifies direct interpreter and refuses venv redirectors", 
 		"12345",
 	]);
 	assert.match(
-		globalThis.__ownedProbeArgs[1],
+		globalThis.__probeCalls[0].args[1],
 		/from local_operator.cli import main/,
 	);
-	globalThis.__ownedProbeIdentity = [
-		"/venv/python.exe",
+	assert.equal(globalThis.__probeCalls[1].command, "/base/python.exe");
+	assert.equal(
+		plan.env.PYTHONPATH,
+		`/venv/Lib/site-packages;${env.PYTHONPATH}`,
+		"the base is told where the venv's own packages are, before any existing path",
+	);
+	assert.equal(
+		globalThis.__probeCalls[1].options.env.PYTHONPATH,
+		plan.env.PYTHONPATH,
+		"the base was probed with the environment it will be spawned with",
+	);
+
+	// An interpreter that already IS the base needs no second probe and no
+	// environment change - one code path, decided from the interpreter's report.
+	globalThis.__probeCalls = [];
+	globalThis.__probeResults = [
+		["/base/python.exe", "/base/python.exe", true, ["/base/Lib/site-packages"]],
+	];
+	const direct = await fixture.ownedServeLaunch(
 		"/base/python.exe",
-		true,
+		12345,
+		env,
+		"win32",
+	);
+	assert.equal(direct.command, "/base/python.exe");
+	assert.equal(direct.env, env, "a direct interpreter needs no environment change");
+	assert.equal(globalThis.__probeCalls.length, 1);
+
+	// The base must report ITSELF, or the PID captured would not be serve.
+	globalThis.__probeResults = [
+		["/venv/Scripts/python.exe", "/base/python.exe", true, ["/venv/Lib"]],
+		["/other/python.exe", "/other/python.exe", true, []],
 	];
 	await assert.rejects(
-		fixture.exports.ownedServeLaunch("/venv/python.exe", 12345, env, "win32"),
-		/redirector/,
+		fixture.ownedServeLaunch("/venv/Scripts/python.exe", 12345, env, "win32"),
+		/reported itself as \/other\/python\.exe/,
 	);
-	delete globalThis.__ownedProbeIdentity;
-	delete globalThis.__ownedProbeArgs;
+
+	// A base that cannot import the CLI even with the venv's paths is refused in
+	// the terms a user can act on, rather than the app being unusable.
+	globalThis.__probeResults = [
+		["/venv/Scripts/python.exe", "/base/python.exe", true, ["/venv/Lib"]],
+		["/base/python.exe", "/base/python.exe", false, []],
+	];
+	await assert.rejects(
+		fixture.ownedServeLaunch("/venv/Scripts/python.exe", 12345, env, "win32"),
+		/cannot import local_operator\.cli even with the venv's own import paths/,
+	);
+
+	// POSIX is unchanged: the same plan shape, and the environment untouched.
+	globalThis.__probeCalls = [];
+	globalThis.__probeResults = [
+		["/python/python", "/python/python", true, ["/python/lib"]],
+	];
+	const posix = await fixture.ownedServeLaunch("/python/python", 12345, env);
+	assert.equal(posix.command, "bash");
+	assert.equal(posix.env, env, "the POSIX plan passes its environment through");
+	delete globalThis.__probeResults;
+	delete globalThis.__probeCalls;
+});
+
+test("a slow first probe is retried, and a stuck interpreter is reported not swallowed", async () => {
+	const fixture = await buildFixture([isolatedMain(), probeStub]);
+	const timedOut = () =>
+		Object.assign(new Error("Command failed: identity probe"), {
+			killed: true,
+			signal: "SIGTERM",
+		});
+	// The probe pays a cold import of the CLI. Failing closed on the first slow
+	// attempt turned a loaded machine's first run into a blocking modal with no
+	// retry in that launch (QA round 2, observation 2), so a timeout is retried
+	// once - the attempt that timed out warmed the bytecode cache.
+	globalThis.__probeCalls = [];
+	globalThis.__probeResults = [
+		timedOut(),
+		["/python/python", "/python/python", true, []],
+	];
+	const plan = await fixture.ownedServeLaunch("/python/python", 4321, env);
+	assert.equal(globalThis.__probeCalls.length, 2, "a timeout is retried once");
+	assert.deepEqual(plan.args.slice(-2), ["--port", "4321"]);
+
+	globalThis.__probeCalls = [];
+	globalThis.__probeResults = [timedOut(), timedOut()];
+	await assert.rejects(
+		fixture.ownedServeLaunch("/python/python", 4321, env),
+		/did not answer an identity probe within 30000 ms on 2 attempts: \/python\/python/,
+	);
+	assert.equal(
+		globalThis.__probeCalls.length,
+		2,
+		"a stuck interpreter is not retried forever",
+	);
+	delete globalThis.__probeResults;
+	delete globalThis.__probeCalls;
+});
+
+test("a start whose own cleanup cannot confirm exit reports instead of rejecting", async () => {
+	// The only path on which a start fails AFTER capturing a child, and the one the
+	// watchdog reaches through a void'd `setInterval`. The catch used to await the
+	// memoised, already-rejected stop promise, so the rethrow skipped this
+	// handler's dialog and `start()` rejected unhandled (review round 1, F3).
+	const processStub = {
+		name: "child-process-stub",
+		setup(builder) {
+			builder.onResolve({ filter: /^node:child_process$/ }, () => ({
+				path: "child-process",
+				namespace: "stub",
+			}));
+			builder.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
+				loader: "js",
+				contents: `
+export function exec(command, options, callback) { const done = typeof options === "function" ? options : callback; done(null, { stdout: "", stderr: "" }); }
+export function execFile(command, args, options, callback) { globalThis.__probeCalls.push({ command, args, options }); const next = globalThis.__probeResults.shift(); callback(next instanceof Error ? next : null, { stdout: JSON.stringify(next), stderr: "" }); }
+export function spawn(command, args, options) { globalThis.__spawnCalls.push({ command, args, options }); return globalThis.__spawned; }
+export function spawnSync() { return { status: 0, stdout: "" }; }
+`,
+			}));
+		},
+	};
+	const { BackendServiceManager: Manager } = await buildFixture([
+		isolatedMain("(title,message)=>{globalThis.__dialog.push([title,message]);}"),
+		processStub,
+	]);
+	Manager.prototype.loadShellEnvironment = async () => {};
+	globalThis.__dialog = [];
+	globalThis.__spawnCalls = [];
+	globalThis.__probeCalls = [];
+	globalThis.__probeResults = [
+		["/fixture/bin/python", "/fixture/bin/python", true, []],
+	];
+	const m = new Manager();
+	m.shellEnv = { ...env };
+	m.isDisabled = false;
+	m.port = await freePort();
+	m.backendUrl = `http://127.0.0.1:${m.port}`;
+	m.checkExistingBackend = async () => false;
+	// No PATH console script, so this takes the bundled-venv branch: it needs no
+	// launcher file and still runs the real launch plan.
+	m.checkLocalOperatorExists = async () => false;
+	m.checkHealth = async () => false;
+	m.shutdownTimeoutMs = { normal: 10, restart: 10, force: 10 };
+	const child = fakeChild();
+	globalThis.__spawned = child;
+	const original = globalThis.setTimeout;
+	globalThis.setTimeout = (fn, ms, ...args) =>
+		original(fn, ms === 1000 ? 1 : ms, ...args);
+	let started;
+	try {
+		started = await m.start();
+	} finally {
+		globalThis.setTimeout = original;
+	}
+	assert.equal(
+		started,
+		false,
+		"a failed cleanup is reported, not thrown at the watchdog",
+	);
+	assert.equal(globalThis.__dialog.length, 1, "the failure still reaches the user");
+	assert.match(
+		globalThis.__dialog[0][1],
+		/Error starting the Local Operator backend service/,
+	);
+	assert.deepEqual(
+		child.signals,
+		["SIGTERM", "SIGKILL"],
+		"the failed start cleaned up its own child",
+	);
+	delete globalThis.__dialog;
+	delete globalThis.__spawned;
+	delete globalThis.__probeResults;
+	delete globalThis.__probeCalls;
+	delete globalThis.__spawnCalls;
 });
 
 test("fatal and synchronous exit use owned manager without selecting processes", async () => {
