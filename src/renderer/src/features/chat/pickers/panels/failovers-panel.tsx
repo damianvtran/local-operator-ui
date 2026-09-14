@@ -178,7 +178,13 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 								</div>
 							)}
 						</PanelSection>
-						<PanelSection title="Scope" meta="read from your settings file">
+						<PanelSection title="Scope">
+							{/*
+							 * No meta. § 6.5 and `panel-frame.tsx`'s own rule reserve the slot for
+							 * something the section does not already say; "read from your settings
+							 * file" restated the body's first clause twenty pixels below it, on a
+							 * three-line section (design round 1, D12).
+							 */}
 							<p className={cn("text-body-sm text-ink-muted")}>
 								Chains are configuration read from your settings file. What is
 								actually serving is the live value above.

@@ -74,10 +74,10 @@ absorbed: §5.2 of `docs/design/panel-views.md` types it as
 `Array<{purpose, aggregate}>` and the route converts the other two group-bys for
 the same reason (a `dict` reaches JSON keyed and cannot be ordered). A view
 written strictly against that type would throw on the real payload, so
-`session-report-model.ts`'s `reportShapeProblem` turns it into the panel's own
-`unavailable` sentence instead of a crash — the same state a user would see if
-the field were missing. The fix belongs upstream (the route converts it) and was
-taken there.
+`session-report-model.ts`'s `reportShapeProblem` turns it into section 4's own
+`unavailable` notice — the rest of the report still renders, which is what § 8's
+section-scoped state asks for and what review round 1's R3 required — instead of a
+crash. The fix belongs upstream (the route converts it) and was taken there.
 
 ## Why no frame was taken
 
@@ -97,3 +97,18 @@ credential the isolated backend did not have): the app opens the chat, the
 composer carries a real `sessionId`, and the five commands dispatch. That is
 what `scripts/mentioned-files-app-proof.mjs` does for the Files panel against a
 live backend, and it is the shape this set needs.
+
+### The dispatch gate is the leading candidate for this result
+
+Review round 1 traced the same behaviour to a rule in the app rather than to the
+rig. `slash-dispatch.ts` refuses to run a command when no conversation is open,
+and `/info` and `/analytics` are the two commands whose op needs no session id at
+all: they read the host and the ledger, so a seeded session is exactly what they
+do not require — which is why this file can name a dispatched command as the only
+missing ingredient and still see the row accept text instead of opening a panel.
+The reviewer ruled that gate a real defect for those two commands and **not this
+PR's to fix**: it is pre-existing behaviour this change neither introduces nor
+claims, and changing it moves dispatch semantics shared by every command, which
+needs its own review and QA. It is recorded on PR #165 as
+`deferred — follow-up PR`, and it is the explanation to test first when the rig
+grows the session-with-history seeding this file asks for.

@@ -1,4 +1,7 @@
-import { formatTokens } from "@features/chat/pickers/panels/formatters";
+import {
+	formatDayBucket,
+	formatTokens,
+} from "@features/chat/pickers/panels/formatters";
 import { ChartFrame } from "@features/chat/pickers/panels/primitives/chart-frame";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
@@ -158,7 +161,14 @@ const UsageInfo: FC = () => {
 		 * quantities.
 		 */
 		return sortedDataPoints.map((point) => ({
-			bucket: format(parseISO(point.timestamp), "MMM dd"),
+			/*
+			 * The SHARED formatter rather than `date-fns`' own `MMM dd`: an axis day is
+			 * the same quantity as a panel's day bucket, and one quantity gets one
+			 * spelling ("Sep 7", never "Sep 07" — review round 1, N2). The formatter
+			 * takes the ledger's `YYYY-MM-DD` bucket, so the wire's timestamp is
+			 * reduced to its date first.
+			 */
+			bucket: formatDayBucket(format(parseISO(point.timestamp), "yyyy-MM-dd")),
 			value:
 				dataType === "credits"
 					? Number.parseFloat(point.total_cost.toFixed(2))

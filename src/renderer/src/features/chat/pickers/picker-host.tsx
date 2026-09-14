@@ -541,6 +541,27 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const [bodyHasMoreBelow, setBodyHasMoreBelow] = useState(false);
 
 	/*
+	 * Whether the ring the global `:focus-visible` rule draws is suppressed right
+	 * now, because the focus it would decorate is the OPEN focus rather than the
+	 * user's.
+	 *
+	 * Chromium matches `:focus-visible` for a programmatically focused scroll
+	 * region, so `onOpenAutoFocus` below — which focuses the body so a keyboard
+	 * user can PageDown straight into the content — painted a 2px accent outline
+	 * around the whole body. The dialog's own `overflow-hidden` clips its left and
+	 * right segments, so what reached the screen was two full-bleed accent rules
+	 * across the panel, absent in every state whose body overflows and loudest in
+	 * the quietest ones; the design round read them, reasonably, as decoration
+	 * (D1). Deleting the outline instead would take the ring off the keyboard user
+	 * it exists for, so it is suppressed only until that user's own first event:
+	 * a Tab onto the region or a click into it clears the mark, and every later
+	 * focus gets the ring again. Suppression rides Tailwind's `outline-none` — the
+	 * token route the rule in `styles/index.css` documents — rather than adding a
+	 * second focus rule beside the one that already owns this decision.
+	 */
+	const [suppressOpenFocusRing, setSuppressOpenFocusRing] = useState(true);
+
+	/*
 	 * Measurement is attached by a REF CALLBACK rather than by an effect over a
 	 * ref object, and that is load-bearing here.
 	 *
@@ -984,11 +1005,27 @@ export const PickerHost: FC<PickerHostProps> = ({
 							role={shell === "panel" ? "region" : undefined}
 							aria-label={shell === "panel" ? PANEL_BODY_LABEL : undefined}
 							tabIndex={shell === "panel" ? 0 : undefined}
+							/*
+							 * Detached rather than always-attached with an early return: these fire on
+							 * every keystroke and every pointer event inside a scrollable panel body,
+							 * and the mark only ever needs to fall once.
+							 */
+							onKeyDown={
+								shell === "panel" && suppressOpenFocusRing
+									? () => setSuppressOpenFocusRing(false)
+									: undefined
+							}
+							onPointerDown={
+								shell === "panel" && suppressOpenFocusRing
+									? () => setSuppressOpenFocusRing(false)
+									: undefined
+							}
 							className={cn(
 								"overflow-y-auto px-5 pt-3",
 								shell === "panel"
 									? "max-h-[min(76vh,760px)] pb-4"
 									: "max-h-[min(60vh,520px)]",
+								shell === "panel" && suppressOpenFocusRing && "outline-none",
 								// Unconditional for a panel, for the reason the flag exists:
 								// reserving the scrollbar column only when the bar appears slides
 								// every right-aligned number sideways the moment content overflows,
