@@ -59,8 +59,33 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	// Content search over past conversations. Its own feature rather than part
+	// of `session_catalogue`: a client renders the catalogue perfectly well
+	// against a backend without the search route, so gating the list on the
+	// search version would hide a working surface because a newer one is
+	// missing. A caller that cannot negotiate it searches names only.
+	| "session_search"
+	/**
+	 * `sessions.preview`: the readings a new-conversation pane can show before a
+	 * session exists (`POST /v1/desktop/sessions/preview`). Its own key rather
+	 * than a bump of `session_catalogue`: the draft strip must be gated
+	 * separately, and a bump here would collide with any in-flight PR that has
+	 * already claimed the next `session_catalogue` version.
+	 */
+	| "draft_preview"
 	| "lifecycle"
 	| "mcp"
+	/**
+	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
+	 *
+	 * The reader is the ONE part of that panel that needs a route older backends
+	 * do not have, so it is the part that negotiates: the roster, the plan, the
+	 * swap and the attention dot all ship with the renderer and work against any
+	 * backend the app can talk to. Absent here means `§ 10.2`'s honest degraded
+	 * state — rows that are visible and deliberately not openable — rather than a
+	 * reader that fails silently when a row is clicked.
+	 */
+	| "subagent_transcript"
 	| "radient";
 
 /**

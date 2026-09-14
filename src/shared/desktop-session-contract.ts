@@ -18,6 +18,46 @@ export type SessionCatalogueRow = {
 	binding: SessionBinding;
 	attention?: CompletionAttention;
 };
+/**
+ * One hit from `sessions.search`, returned by the `session_search` capability
+ * version 1.
+ *
+ * A hit rather than a `SessionCatalogueRow`: it carries the two facts only the
+ * search can know. `rank` is the relevance tier the row matched in (0 name,
+ * 1 id, 2 body, 3 soft — see the backend's `session.session_search`), and
+ * `body_match` says the CONVERSATION is why the row surfaced, so the sidebar
+ * can mark it instead of showing a highlighted row with no visible reason for
+ * being there. `name`/`mtime` ride along so a hit for a session this client has
+ * never listed can still be rendered and opened — which is the difference
+ * between a search over the whole store and one silently capped at the
+ * client's page.
+ *
+ * `forked` mirrors the catalogue's own field for clients that draw a fork mark.
+ * The sidebar does NOT consume it — it renders the marker from `body_match` and
+ * the row's binding — so it is carried because the wire is the backend's
+ * (`SessionSearchRow` in `server/models/desktop_sessions.py`), and a client that
+ * wanted it should not have to ask for a second route. The earlier version of
+ * this comment listed it among the fields "we need to render a hit", which was
+ * a claim the renderer contradicted (review round 2, R15).
+ */
+export type SessionSearchHit = {
+	id: CanonicalSessionId;
+	name: string;
+	mtime: number;
+	forked: boolean;
+	rank: number;
+	body_match: boolean;
+};
+/**
+ * The search answer. `query` is ECHOED rather than assumed: keystrokes are
+ * debounced and their requests can complete out of order, so the only thing
+ * that says which question a set of hits answers is the response itself.
+ */
+export type SessionSearchResult = {
+	sessions: SessionSearchHit[];
+	query: string;
+	limit: number;
+};
 export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;
@@ -251,6 +291,29 @@ export type CanonicalFrontendState = {
 		input_tokens?: number | null;
 		output_tokens?: number | null;
 	} | null;
+	/**
+	 * Seconds the agent has spent WORKING in this conversation, banked.
+	 *
+	 * Mirrors `FrontendSessionState.active_duration_s`: it accrues between
+	 * `agent_start` and `agent_end`, so it is neither wall-clock time since the
+	 * session opened nor time the user spent reading. Declared rather than
+	 * reached through the index signature for the same reason as `last_usage`
+	 * above — `active_duration_s === 0` is exactly what decides whether the
+	 * duration reading renders at all, and an `as never` cast at the call site
+	 * would let a rename on the wire pass type-checking silently.
+	 */
+	active_duration_s?: number | null;
+	/**
+	 * When the turn currently in flight began, as an epoch in SECONDS, or
+	 * `null` between turns.
+	 *
+	 * Mirrors `FrontendSessionState.activity_started_at`. The pair is what lets
+	 * a reading tick without the stream repainting at 1 Hz: `active_duration_s`
+	 * is the banked truth and this is the open edge to add to it. Null means
+	 * there is no edge, so the banked figure is the whole answer and no timer
+	 * should run.
+	 */
+	activity_started_at?: number | null;
 	// Canonical runtime fields are additive; preserve unknown fields rather
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;
@@ -297,6 +360,22 @@ export type DesktopHistoryPage = {
 	}>;
 	has_more: boolean;
 	cursor_missing: boolean;
+};
+/**
+ * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 10.1).
+ *
+ * The parent's envelope plus one field, and the field is derived rather than
+ * carried: the two ABSENCES are different facts and only the filesystem can tell
+ * them apart. `pending` means the child's directory exists but
+ * `transcript.jsonl` does not yet — the child has not reached its first append —
+ * and it is re-probed; `gone` means the directory itself is missing, so the
+ * absence is final. `ready` with an empty `entries` is a legal state of its own.
+ *
+ * A reader that conflated them would either say "gone" about a child that has
+ * not written yet, or promise a transcript that will never appear.
+ */
+export type DesktopChildTranscriptPage = DesktopHistoryPage & {
+	state: "ready" | "pending" | "gone";
 };
 export type DesktopSnapshot = {
 	frontend: CanonicalFrontendSync;

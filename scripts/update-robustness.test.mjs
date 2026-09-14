@@ -8,6 +8,7 @@ import {
 	readFileSync,
 	realpathSync,
 	readdirSync,
+	rmdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -52,6 +53,9 @@ const {
 	INSTALL_DISK_SLACK_BYTES,
 	PLIST_READ_TIMEOUT_SECONDS,
 	PENDING_INSTALL_MARKER_FILE,
+	PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
+	PENDING_INSTALL_RECENCY_SECONDS,
+	WATCHDOG_HARD_TIMEOUT_SECONDS,
 	WATCHDOG_TOKEN,
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
@@ -64,20 +68,27 @@ const {
 	evaluatePendingInstall,
 	healPythonBytecode,
 	installFailurePayload,
+	installInFlightPayload,
+	installStartedText,
 	installedBundleSealBlock,
+	isInstallInFlight,
 	isPythonBytecodePath,
 	lastInstallAttemptPath,
+	launchdJobLoaded,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
 	parseSealViolations,
+	pendingInstallAgeSeconds,
 	pendingInstallMarkerPath,
 	planPythonBytecodeHeal,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
 	reapFailedInstall,
+	reapStagedTree,
 	recordInstallFailure,
+	removeStagedTree,
 	requiredDiskBytes,
 	resolveDistributionMarkers,
 	resolveGlobalInstallPlan,
@@ -743,6 +754,166 @@ test("a superseded marker is stale, not a failed update", () => {
 	assert.equal(compareVersions("unknown", "0.18.0"), null);
 });
 
+/**
+ * The incident of 2026-09-13 at the decision itself.
+ *
+ * The app came back 4:40 into its own install, so it was running the OLD version
+ * while the marker named a newer one - and that is indistinguishable from a
+ * failure to a version comparison. It used to be read as one: the marker was
+ * cleared, the live install's launchd job was removed, and the user was told the
+ * update had not completed, two seconds before ShipIt aborted the install on its
+ * own final check.
+ */
+test("an install still in flight is not a failure, and a loaded job alone is not an install", () => {
+	const started = "2026-09-13T09:39:00.991Z";
+	const marker = {
+		targetVersion: "0.19.5",
+		artifactPath:
+			"/Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip",
+		startedAt: started,
+		watchdogPid: 32413,
+	};
+	// The 2026-09-13 relaunch, to the second: 4:40 after the marker was written.
+	const now = Date.parse(started) + 280 * 1000;
+
+	assert.equal(isInstallInFlight({ marker, jobLoaded: true, now }), true);
+	assert.equal(
+		evaluatePendingInstall({
+			marker,
+			runningVersion: "0.19.4",
+			installInFlight: true,
+		}).kind,
+		"in-flight",
+	);
+
+	// Every fact is needed, and each one alone is wrong. A job with no marker, a
+	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
+	// runs=3114) are all decided by the version: that is a failure.
+	assert.equal(isInstallInFlight({ marker: null, jobLoaded: true, now }), false);
+	assert.equal(isInstallInFlight({ marker, jobLoaded: false, now }), false);
+	assert.equal(
+		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
+		"failed",
+	);
+	assert.equal(
+		evaluatePendingInstall({ marker, runningVersion: "0.19.4", installInFlight: false })
+			.kind,
+		"failed",
+	);
+	// Recency is the line between a live install and a leftover job, and it must
+	// sit ABOVE the watchdog's hard bound - at that bound the watchdog starts the
+	// app, and the app it starts must not read the same install as a failure
+	// before it has drawn a panel (UX U5). The margin is the gap between the two,
+	// so the relationship is asserted rather than the two numbers.
+	assert.equal(
+		PENDING_INSTALL_RECENCY_SECONDS,
+		WATCHDOG_HARD_TIMEOUT_SECONDS + PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
+	);
+	assert.ok(
+		PENDING_INSTALL_RECENCY_SECONDS > WATCHDOG_HARD_TIMEOUT_SECONDS,
+		"recovery must outlive the watchdog's hold, or the two disagree at its bound",
+	);
+	// The overlap the margin removes, stated as the case that produced it: a
+	// marker exactly at the hard bound is STILL an install here, where the two
+	// constants being equal made it a failure.
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobLoaded: true,
+			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
+		}),
+		true,
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobLoaded: true,
+			now: Date.parse(started) + PENDING_INSTALL_RECENCY_SECONDS * 1000,
+		}),
+		true,
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobLoaded: true,
+			now: Date.parse(started) + (PENDING_INSTALL_RECENCY_SECONDS + 1) * 1000,
+		}),
+		false,
+	);
+	assert.equal(pendingInstallAgeSeconds(marker, now), 280);
+	// A marker whose start time cannot be read cannot claim to be live either: the
+	// failure path reports rather than hides, which is the safe way to be wrong.
+	assert.equal(pendingInstallAgeSeconds({ ...marker, startedAt: "" }, now), null);
+	assert.equal(
+		isInstallInFlight({ marker: { ...marker, startedAt: "" }, jobLoaded: true, now }),
+		false,
+	);
+
+	// The order at the decision: the swap landing beats a loaded job, because a
+	// running version that has reached the target IS the install finishing; and a
+	// superseded marker beats both.
+	assert.equal(
+		evaluatePendingInstall({
+			marker,
+			runningVersion: "0.19.5",
+			installInFlight: true,
+		}).kind,
+		"succeeded",
+	);
+	assert.equal(
+		evaluatePendingInstall({
+			marker: { ...marker, targetVersion: "0.19.3" },
+			runningVersion: "0.19.4",
+			installInFlight: true,
+		}).kind,
+		"stale",
+	);
+
+	// What the user is told while it is still running: this is not a failure, and
+	// the action that can still save the install is to quit. The message has to
+	// name the COST of the other action - Squirrel abandons the install when an
+	// instance of the app is running, so "the update can't finish while Local
+	// Operator is open" alone reads as "quit later and it will finish", and the
+	// panel's secondary action forfeits the install (review D1). It also no longer
+	// opens by restating the panel's heading (review D4).
+	const payload = installInFlightPayload(marker, "0.19.4");
+	assert.equal(payload.targetVersion, "0.19.5");
+	assert.match(payload.message, /Version 0\.19\.5 can't finish installing/);
+	assert.match(payload.message, /keeping it open cancels the install/);
+	assert.match(payload.message, /Quit and leave it closed/);
+	assert.doesNotMatch(payload.message, /still being installed/);
+	assert.match(payload.detail, /0\.19\.5-universal\.zip/);
+	assert.match(payload.detail, /while version 0\.19\.4 was running/);
+	// The Details line is read by a person and copied into a support thread, so it
+	// carries the locale form of the start time rather than the marker's raw
+	// ISO-8601 stamp - the same helper the failure payload uses, pinned by identity
+	// instead of by re-deriving the locale string (review R1).
+	assert.ok(payload.detail.includes(installStartedText(marker)));
+	assert.doesNotMatch(payload.detail, /\d{4}-\d{2}-\d{2}T/);
+});
+
+/**
+ * The job probe is launchd's exit status and nothing else.
+ *
+ * `launchctl list <label>` exits 0 while the job is loaded and 113 when it is
+ * not, and "the probe could not run" has to read as not loaded: refusing to act
+ * on a machine whose launchd is unreachable would strand the marker and the job
+ * nobody ever clears.
+ */
+test("the install job probe reads launchd's exit status, and cannot run reads as not loaded", () => {
+	const asked = [];
+	const probe = (label) => {
+		asked.push(label);
+		return 0;
+	};
+	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", probe), true);
+	assert.deepEqual(asked, ["com.local-operator.ShipIt"]);
+	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", () => 113), false);
+	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", () => null), false);
+	// No job label means nothing to ask, which is not the same as asking.
+	assert.equal(launchdJobLoaded(null, () => 0), false);
+});
+
 test("the failed install is recorded so a dismiss is not the end of the record", () => {
 	const dir = tempDir("lo-attempt-");
 	assert.equal(readLastInstallAttempt(dir), null);
@@ -758,25 +929,49 @@ test("the failed install is recorded so a dismiss is not the end of the record",
 
 	const first = recordInstallFailure(dir, {
 		payload,
+		// The version the caller is running, which the panel above already named:
+		// the record used to carry the PREVIOUS record's version forward and wrote
+		// "unknown" on a first failure while the panel said "Version 0.17.0 is still
+		// running" (QA Q1). Pinned here because Settings renders this field.
+		runningVersion: "0.17.0",
 		startedAt: marker.startedAt,
 		detectedAt: "2026-09-12T00:00:00.000Z",
 	});
 	assert.equal(first.attempts, 1);
+	assert.equal(first.runningVersion, "0.17.0");
 	const second = recordInstallFailure(dir, {
 		payload,
+		// A later failure on a newer running version replaces it rather than
+		// inheriting the first failure's.
+		runningVersion: "0.17.1",
 		startedAt: marker.startedAt,
 		detectedAt: "2026-09-12T01:00:00.000Z",
 	});
 	assert.equal(second.attempts, 2);
+	assert.equal(second.runningVersion, "0.17.1");
 	assert.deepEqual(readLastInstallAttempt(dir), second);
 
 	// A different target is a new record, not a third attempt at this one.
 	const other = recordInstallFailure(dir, {
 		payload: { ...payload, targetVersion: "0.19.0" },
+		runningVersion: "0.17.1",
 		startedAt: null,
 		detectedAt: "2026-09-12T02:00:00.000Z",
 	});
 	assert.equal(other.attempts, 1);
+
+	// The fallback stays honest about what it does not know: with nothing running
+	// to name and nothing earlier to fall back on, the record says so.
+	const blank = tempDir("lo-attempt-blank-");
+	assert.equal(
+		recordInstallFailure(blank, {
+			payload,
+			runningVersion: "",
+			startedAt: null,
+			detectedAt: "2026-09-12T03:00:00.000Z",
+		}).runningVersion,
+		"unknown",
+	);
 
 	// A corrupt record reads as "nothing recorded" rather than throwing.
 	writeFileSync(lastInstallAttemptPath(dir), "{not json", "utf8");
@@ -804,6 +999,157 @@ test("the install-failure payload names the manual download page", () => {
 	assert.equal(payload.attempts, 3);
 	assert.doesNotMatch(payload.detail, /\d{4}-\d{2}-\d{2}T/);
 	assert.match(payload.detail, /local-operator-ui-0\.18\.0-arm64\.zip/);
+});
+
+/**
+ * The failure that names its cause.
+ *
+ * An install this process watched run and then not finish, on a machine whose
+ * app was open for part of it, was cancelled by that relaunch: Squirrel's last
+ * validation asks whether any instance of the target app is running, and the
+ * 2026-09-13 install (App Still Running, SQRLInstallerErrorDomain -9) died on
+ * the app the operator opened from Spotlight. "The update didn't finish" there
+ * sends the user back to retry the one thing that cannot work.
+ */
+test("a failure after an install was in flight names the relaunch as the cause", () => {
+	const marker = {
+		targetVersion: "0.19.5",
+		artifactPath:
+			"/Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip",
+		startedAt: "2026-09-13T09:39:00.991Z",
+		watchdogPid: 32413,
+	};
+	const generic = installFailurePayload(marker, "0.19.4");
+	const cancelled = installFailurePayload(marker, "0.19.4", {
+		cancelledByRelaunch: true,
+	});
+	assert.equal(cancelled.cancelledByRelaunch, true);
+	assert.match(
+		cancelled.message,
+		/cancelled because Local Operator was opened while the update was installing/,
+	);
+	assert.match(cancelled.message, /0\.19\.4 is still running/);
+	assert.match(cancelled.detail, /Squirrel cancels an install when an instance/);
+	assert.doesNotMatch(cancelled.detail, /\d{4}-\d{2}-\d{2}T/);
+	// The remedy is still the download page: a user whose install will not settle
+	// needs a working app, and telling them how to leave it closed is the only
+	// thing that makes the retry different this time.
+	assert.equal(cancelled.remedy.url, "https://local-operator.com/download");
+	assert.match(cancelled.remedy.text, /leave it closed until the update finishes/);
+	// The generic sentence is what the flag exists to replace, and it stays the
+	// default for a failure nobody watched run.
+	assert.match(generic.message, /didn't finish/);
+	assert.equal(generic.cancelledByRelaunch, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// What the renderer shows, pinned against what the main process sends
+// ---------------------------------------------------------------------------
+
+/**
+ * The Storybook fixtures must carry the producer's strings verbatim.
+ *
+ * The committed evidence frames are captured from these fixtures, so a fixture
+ * that drifts from its producer puts copy into the artefact the reviews sign off
+ * on that the app cannot produce. That is what happened: the
+ * cancelled-by-relaunch fixture kept the ` - ` the payload had already lost, so
+ * the three committed frames rendered a sentence the app does not ship (reviews
+ * R6 and D9; R1 for the same drift in the in-flight fixture). The frames cannot
+ * be checked against the payload by a test because they are pixels - the
+ * fixtures can, and the frames are a function of them.
+ */
+test("the story fixtures carry the payload strings verbatim", () => {
+	const stories = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.stories.tsx",
+		),
+		"utf8",
+	);
+	const marker = {
+		targetVersion: "0.19.5",
+		artifactPath:
+			"/Users/operator/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.19.5-universal.zip",
+		startedAt: "2026-09-13T09:39:00.991Z",
+		watchdogPid: 32413,
+	};
+	const inFlight = installInFlightPayload(marker, "0.19.4");
+	const cancelled = installFailurePayload(marker, "0.19.4", {
+		cancelledByRelaunch: true,
+	});
+	for (const [what, text] of [
+		["the in-flight message", inFlight.message],
+		["the cancelled-by-relaunch message", cancelled.message],
+		["the cancelled-by-relaunch remedy", cancelled.remedy.text],
+	]) {
+		assert.ok(
+			stories.includes(text),
+			`${what} is not in the story fixtures verbatim - the fixture has drifted from the payload the app sends:\n  expected: ${text}`,
+		);
+	}
+	// The exact drift the rounds caught, named so a regression reads as itself
+	// rather than as a generic mismatch.
+	assert.ok(
+		!stories.includes("from the app - and leave it closed"),
+		"the cancelled-by-relaunch fixture carries the hyphen the payload replaced with an em dash",
+	);
+});
+
+/**
+ * A details line breaks at segment boundaries, and never inside a scheme or the
+ * locale date.
+ *
+ * Both were reachable under the guard the round-2 frames were captured with: the
+ * digit guard alone lets `//` through, so a URL or a UNC path got a break
+ * opportunity between the two slashes - one a person would never choose - and a
+ * break opportunity inside `13/09/2026` is the mid-token break the digit guard
+ * exists to remove (review N4). The rule is bundled from the shipped module, so
+ * this is a test of the code that renders rather than of a copy of it.
+ */
+test("a details line breaks at segment boundaries, never inside a scheme or the date", async () => {
+	const bundled = await build({
+		stdin: {
+			contents:
+				'export * from "./src/renderer/src/shared/lib/path-breaks";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const { withPathBreaks } = await import(
+		`data:text/javascript;base64,${Buffer.from(
+			bundled.outputFiles[0].text,
+		).toString("base64")}`,
+	);
+	const zwsp = "\u200B";
+
+	// A URL: the opportunities are after `https://` and after each segment
+	// separator - never between the two slashes of the scheme.
+	assert.equal(
+		withPathBreaks("https://local-operator.com/download"),
+		`https://${zwsp}local-operator.com/${zwsp}download`,
+	);
+	// A UNC-shaped path: the same at the double slash.
+	assert.equal(
+		withPathBreaks("//Volumes/Installers/x.zip"),
+		`//${zwsp}Volumes/${zwsp}Installers/${zwsp}x.zip`,
+	);
+	// The locale date stays whole: a separator followed by a digit is not an
+	// opportunity anywhere in the string, not only where the date is.
+	assert.equal(withPathBreaks("13/09/2026, 09:39:00"), "13/09/2026, 09:39:00");
+	// A digit-leading segment keeps the separators on either side of it.
+	assert.equal(
+		withPathBreaks("/Caches/0.19.5/x.zip"),
+		`/${zwsp}Caches/0.19.5/${zwsp}x.zip`,
+	);
+	// What the copy button hands to the clipboard is the value untouched: the
+	// inserted characters exist for the render only.
+	assert.equal(
+		withPathBreaks("a/b").replaceAll(zwsp, ""),
+		"a/b",
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -884,6 +1230,22 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(plan.script, /decided\(\) \{/);
 	assert.match(plan.script, /while :; do\n\tif decided; then break; fi/);
 	assert.equal(plan.timeoutSeconds, 600);
+	/*
+	 * The second bound and the hold in front of it: the soft bound ends the wait
+	 * only when there is no loaded job answering for the install, so a launch at
+	 * 600 s cannot abort an install that is still working (2026-09-13). The hold
+	 * waits on the same job signal the rest of the script does, and the notifier it
+	 * uses is osascript - the app is dead, so there is nothing else to use.
+	 */
+	assert.equal(plan.hardTimeoutSeconds, WATCHDOG_HARD_TIMEOUT_SECONDS);
+	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
+	assert.match(plan.script, /&& shipit_loaded; then\n\t\t\tholding=1/);
+	assert.match(plan.script, /if \[ "\$holding" -eq 1 \]; then/);
+	assert.match(plan.script, /notify\(\) \{/);
+	assert.match(plan.script, /osascript -e 'on run argv'/);
+	// Backgrounded with its status dropped, so a notifier that fails, hangs or
+	// does not exist cannot decide anything or hold the script open.
+	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
 
 	const bounded = buildWatchdogPlan({
 		appBundlePath: "/Applications/Local Operator.app",
@@ -901,6 +1263,9 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(bounded.script, /appear_deadline=\$\(\( \$\(now\) \+ 2 \)\)/);
 	assert.match(bounded.script, /-ge 7 \]; then/);
 	assert.match(bounded.script, /sleep 1/);
+	// The hard bound is carried whatever the job label says, because a platform
+	// with no label still has a launch path to reach.
+	assert.match(bounded.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
 	// Without a label there is no job to ask about, and the script still waits on
 	// the pid alone rather than falling back to a name.
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB, "");
@@ -1058,11 +1423,34 @@ tr -d '\\n\\t' < "$plist" | sed -n 's|.*<key>CFBundleShortVersionString</key><st
 `,
 		"utf8",
 	);
+	/*
+	 * The notifier, substituted rather than used for real.
+	 *
+	 * The app is dead while the watchdog runs, so osascript is the only way it has
+	 * to speak - and the platform's own is a GUI call that posts a banner on
+	 * whoever's screen the suite is running on, which is exactly the thing an
+	 * agent-driven run may not do. The script calls it by name (like `open`), so
+	 * the shim catches it; the text travels as its own argument, so the log holds
+	 * the whole notification. The exit status is the test's hand on the
+	 * "notification failure changes nothing" path.
+	 */
+	const notifyLog = join(dir, "notifications.log");
+	const notifierShim = join(binDir, "osascript");
+	const setNotifierExit = (exitCode = 0) => {
+		writeFileSync(
+			notifierShim,
+			`#!/bin/sh\necho "$*" >> "${notifyLog}"\nexit ${exitCode}\n`,
+			"utf8",
+		);
+	};
+	setNotifierExit();
+
 	spawnSync("/bin/chmod", [
 		"+x",
 		openShim,
 		launchctlShim,
 		plistReaderShim,
+		notifierShim,
 		executable,
 	]);
 
@@ -1074,7 +1462,13 @@ tr -d '\\n\\t' < "$plist" | sed -n 's|.*<key>CFBundleShortVersionString</key><st
 		// calls the command the plan names, and the plan is the platform's.
 		probes: { jobProbe: launchctlShim, plistReader: plistReaderShim },
 		launchLog: log,
+		notifyLog,
+		setNotifierExit,
 		setVersion,
+		notifications: () =>
+			existsSync(notifyLog)
+				? readFileSync(notifyLog, "utf8").trim().split("\n").filter(Boolean)
+				: [],
 		launches: () =>
 			existsSync(log)
 				? readFileSync(log, "utf8").trim().split("\n").filter(Boolean)
@@ -1117,6 +1511,9 @@ test("the watchdog relaunches a real process tree and never exits without trying
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
+		// The announcement is a few seconds in production; here it only has to be
+		// observable, because every case below asserts the decision, not the wait.
+		announceSeconds: 1,
 	};
 	const planFor = (pid, overrides = {}) =>
 		buildWatchdogPlan({
@@ -1166,12 +1563,16 @@ test("the watchdog relaunches a real process tree and never exits without trying
 		assert.equal(await waitForLaunches(fixture, before + 1), true);
 	}
 
-	// 3. The hung install: the job never goes away. The watchdog must still try at
-	//    its deadline rather than exiting with the user left with no app (Q1).
+	// 3. The hung install: the job never goes away. The hard bound is where the
+	//    watchdog still tries rather than exiting with the user left with no app
+	//    (Q1) - and it is now the SECOND bound, because a launch at the first is
+	//    what aborts a live install (2026-09-13). The hold this case passes
+	//    through is asserted in its own test below; here it must still end in a
+	//    relaunch.
 	{
 		writeFileSync(fixture.stateFile, "loaded\n", "utf8");
 		const app = startProcess("/bin/sleep", ["30"]);
-		const plan = planFor(app.pid);
+		const plan = planFor(app.pid, { hardTimeoutSeconds: 6 });
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
 		app.kill();
@@ -1229,6 +1630,7 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 			intervalSeconds: 1,
 			settleSeconds: 1,
 			appearSeconds: 1,
+			announceSeconds: 1,
 			...overrides,
 		});
 
@@ -1254,14 +1656,17 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 	}
 
 	// 2. The swap has NOT landed and the job is still loaded: nothing is launched
-	//    into a live install, even past the point where the swap check would fire.
+	//    into a live install, even past the point where the swap check would fire -
+	//    and, since 2026-09-13, nothing is launched at the soft bound either. The
+	//    script holds (telling the user the update is still going) until the hard
+	//    bound, which stands in for an install that never settles.
 	{
 		fixture.setVersion("0.17.0");
 		writeFileSync(fixture.stateFile, "loaded\n", "utf8");
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid, { timeoutSeconds: 4 }),
+			plan: planFor(app.pid, { timeoutSeconds: 4, hardTimeoutSeconds: 6 }),
 			binDir: fixture.binDir,
 		});
 		app.kill();
@@ -1336,6 +1741,240 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		assert.equal(await waitForLaunches(fixture, before + 1), true);
 		assert.ok(elapsed < 10000, `expected no appear window, took ${elapsed}ms`);
 	}
+});
+
+/**
+ * The hold, and the notifications that go with it.
+ *
+ * This is the 2026-09-13 incident as a test. The install's job is loaded at the
+ * soft bound, so the install is alive - ShipIt was still moving and
+ * code-verifying a ~1 GiB bundle on a host at load ~95 - and an `open -a` at
+ * that moment is what Squirrel answers with `App Still Running Error`
+ * (SQRLInstallerErrorDomain -9), i.e. our own watchdog was the cause of the
+ * failure the user was then told about. So the script must NOT launch while the
+ * job is loaded, must tell the user what is going on at both moments, and must
+ * still start the app at the hard bound rather than leave them with nothing.
+ *
+ * The notifications are asserted through the shim because that is what the user
+ * gets in production: the app is dead by then, so osascript is the only channel
+ * the watchdog has, and the copy is the part of this fix the operator asked for
+ * ("nothing says don't reopen it").
+ */
+test("the watchdog holds while an install is loaded, says so, and starts the app at the hard bound", async () => {
+	const dir = tempDir("lo-watchdog-hold-");
+	const fixture = makeWatchdogFixture(dir);
+	// The job stays loaded for the whole case: an install that never settles.
+	writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+	const app = startProcess("/bin/sleep", ["30"]);
+	const held = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 3,
+		hardTimeoutSeconds: 6,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan: held, binDir: fixture.binDir });
+	app.kill();
+
+	/*
+	 * Past the soft bound with the job loaded: still no launch, and the HOLD is
+	 * the fact asserted rather than a clock margin.
+	 *
+	 * This used to sleep a fixed 4.2 s and assert afterwards, and that is a race
+	 * under the suite's own concurrency rather than a margin: the script reaches
+	 * the soft bound only after several of its own forks - `date`, the launchctl
+	 * shim, the osascript shim - and on a loaded host that stretch can carry the
+	 * still-installing notification past any constant a test could pick, so the
+	 * case failed for being slow rather than for the script deciding wrongly.
+	 * Widening the constant does not fix that; it only moves the load at which
+	 * it breaks, because the quantity is the host's scheduling and not the
+	 * script's own bound.
+	 *
+	 * The notification IS the decision, so it is what this waits for: the script
+	 * writes it on exactly one path - the soft bound taken with the install's job
+	 * still loaded (`holding=1`) - and the negation of that decision is a launch.
+	 * So poll for the decision to become observable, failing the moment a launch
+	 * appears instead of at the end of a fixed window, and let the hard bound's
+	 * own launch below be the other end of the assertion. The 60 s ceiling is
+	 * only a bound on the wait, not the thing being asserted: the script's own
+	 * hard bound is 6 s here, so a hold that never becomes observable and never
+	 * launches is a hang, not a slow machine.
+	 */
+	const decisionDeadline = Date.now() + 60000;
+	/*
+	 * The still-installing notice, matched by its OWN sentence rather than by the
+	 * phrase it shares with other copy. The hard bound's notice names the panel's
+	 * instruction ("if it says the update is still installing, quit it and leave
+	 * it closed"), so a bare /still installing/ counts two notices where this
+	 * case is about there being exactly one (UX U10). The sentence is what the
+	 * script writes on exactly one path, which is also what makes it the right
+	 * thing to count.
+	 */
+	const stillInstalling = /The update is still installing\./;
+	let holding = false;
+	while (Date.now() < decisionDeadline) {
+		assert.equal(
+			fixture.launches().length,
+			before,
+			"the soft bound launched into a loaded install job",
+		);
+		holding = fixture.notifications().some((line) => stillInstalling.test(line));
+		if (holding) break;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+	const holdingNotes = fixture.notifications();
+	assert.ok(
+		holdingNotes.some((line) => stillInstalling.test(line)),
+		`expected a still-installing notification, got ${JSON.stringify(holdingNotes)}`,
+	);
+
+	// The hard bound is the last resort: it starts the app, and says so.
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	/*
+	 * Exactly one launch, not "at least one". `waitForLaunches` is a `>=` wait,
+	 * so it cannot tell one launch from two - and two is what a hold whose
+	 * decision is taken twice would produce: the soft bound's path and the hard
+	 * bound's are the same question asked at two moments (review R13). The
+	 * no-hold case above asserts the same equality on its own bound.
+	 */
+	assert.equal(fixture.launches().length, before + 1);
+	const notes = fixture.notifications();
+	// The first notification is the one the operator never got: the app has just
+	// vanished, and this is the only warning that reopening it cancels the install.
+	assert.ok(
+		notes.some((line) => /Keep Local Operator closed until it opens again/.test(line)),
+		`expected the stay-closed notification, got ${JSON.stringify(notes)}`,
+	);
+	assert.ok(
+		notes.some((line) => /taking longer than expected/.test(line)),
+		`expected the hard-bound notification, got ${JSON.stringify(notes)}`,
+	);
+	// Once each, and named as this app: a banner the user cannot attribute is
+	// worse than no banner.
+	assert.equal(
+		notes.filter((line) => stillInstalling.test(line)).length,
+		1,
+	);
+	assert.ok(notes.every((line) => /Local Operator/.test(line)));
+
+	// The plan carries both bounds, so the caller's log can promise both.
+	assert.equal(held.hardTimeoutSeconds, 6);
+	assert.equal(held.timeoutSeconds, 3);
+	assert.equal(
+		buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: 1,
+			shipItJob: null,
+		}).hardTimeoutSeconds,
+		WATCHDOG_HARD_TIMEOUT_SECONDS,
+	);
+});
+
+/**
+ * A probe that cannot answer is not an install that has ended.
+ *
+ * `launchctl list <label>` exits 0 for a loaded job and 113 for one launchd has
+ * never heard of; every other status - the tool missing from `PATH`, a transient
+ * launchd error - is not an answer at all. Read as "not loaded" it decided the
+ * install was over, which is the relaunch direction the hold exists to prevent:
+ * a probe that failed for an unrelated reason would start the app into a live
+ * install and abort it, the 2026-09-13 defect through a different door (review
+ * N3). So the unanswerable case holds, and the hard bound is still where a
+ * genuinely hung install gives the user their app back - an unanswered probe
+ * costs time, not the install.
+ */
+test("an unanswerable job probe holds rather than starting the app into the install", async () => {
+	const dir = tempDir("lo-watchdog-probe-error-");
+	const fixture = makeWatchdogFixture(dir);
+	// A probe that fails for its own reasons rather than answering `113`: what the
+	// fixture's own shim would say is beside the point here.
+	const erroringProbe = join(fixture.binDir, "launchctl-error");
+	writeFileSync(erroringProbe, "#!/bin/sh\nexit 64\n", "utf8");
+	spawnSync("/bin/chmod", ["+x", erroringProbe]);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		platform: "darwin",
+		signals: { jobProbe: erroringProbe, plistReader: fixture.probes.plistReader },
+		timeoutSeconds: 3,
+		hardTimeoutSeconds: 6,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	app.kill();
+
+	// Past the soft bound: no launch, because a probe error is not evidence that
+	// the install's job has gone.
+	await new Promise((resolve) => setTimeout(resolve, 4200));
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"a probe that could not answer was read as the install being over",
+	);
+
+	// The bound is unchanged as the last resort, so the safe direction costs time
+	// rather than leaving the user with no app.
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+/**
+ * A notification that cannot be delivered changes nothing.
+ *
+ * osascript can be blocked by policy, and a muted Notification Center discards
+ * what it is sent - neither may turn into a different decision, a retry that does
+ * not happen, or a non-zero exit the app's log would report as a failed watch.
+ * The shim fails every call here (a missing notifier is the same case, since the
+ * script drops the status either way) and the relaunch still happens.
+ */
+test("a failed notification does not change the watchdog's decision or its exit status", async () => {
+	const dir = tempDir("lo-watchdog-notify-");
+	const fixture = makeWatchdogFixture(dir);
+	// No job: the first path, where the app is started as soon as it is gone.
+	fixture.setNotifierExit(1);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	app.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	assert.ok(
+		fixture.notifications().length > 0,
+		"the failing notifier was never called, so this proves nothing",
+	);
 });
 
 /**
@@ -1447,7 +2086,10 @@ test("a failed install's job and staging tree are reaped, and nothing else", () 
 		},
 		exists: (candidate) => existsSync(candidate),
 		listDir: (dir) => readdirSync(dir),
-		removeDir: (dir) => rmSync(dir, { recursive: true, force: true }),
+		// The removal the service really performs, retry and all: a copy of it here
+		// would let a fix for the staged tree pass this suite and still leave ~1 GiB
+		// on the user's disk.
+		removeDir: reapStagedTree,
 		log: (message) => logs.push(message),
 	});
 
@@ -1510,6 +2152,104 @@ test("a failed install's job and staging tree are reaped, and nothing else", () 
 	});
 	assert.equal(refused.errors.length, 1);
 	assert.match(refused.errors[0], /Operation not permitted/);
+
+	// A staged tree that will not go is reported rather than passed over. This is
+	// the run the operator's log carried as a confusing warning, and until it is
+	// retried the user's disk is paying for ~1 GiB of staged update.
+	mkdirSync(join(cacheDir, "update.ghi"), { recursive: true });
+	const stubborn = reapFailedInstall({
+		bundleId,
+		cacheRoot,
+		removeJob: () => ({ notFound: true, output: "" }),
+		exists: (candidate) => existsSync(candidate),
+		listDir: (dir) => readdirSync(dir),
+		removeDir: () => {
+			throw new Error("ENOTDIR: not a directory, rmdir '.../app.asar'");
+		},
+		log: () => {},
+	});
+	assert.equal(stubborn.errors.length, 1);
+	assert.match(stubborn.errors[0], /ENOTDIR/);
+	assert.equal(existsSync(join(cacheDir, "update.ghi")), true);
+});
+
+/**
+ * The staged tree really goes, including through the race that beat `rmSync`.
+ *
+ * On 2026-09-13 the reap logged `ENOTDIR: not a directory, rmdir
+ * '.../update.tsRsfCm/Local Operator.app/Contents/Resources/app.asar'` and left
+ * the tree behind: ShipIt was moving that same tree into place at that instant
+ * (the reap ran two seconds before the install aborted), so the path readdir had
+ * just reported as a directory was a file by the time rmdir reached it. Node's
+ * `rmSync` retries EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM and not ENOTDIR, so a
+ * single call cannot remove a tree the install is working on.
+ */
+test("a staged update tree is removed through the ENOTDIR race, and a tree that will not go is reported", () => {
+	const dir = tempDir("lo-staged-");
+	const staged = join(dir, "update.tsRsfCm");
+	const asar = join(
+		staged,
+		"Local Operator.app",
+		"Contents",
+		"Resources",
+		"app.asar",
+	);
+	mkdirSync(dirname(asar), { recursive: true });
+	writeFileSync(asar, "staged update bytes\n", "utf8");
+
+	let attempts = 0;
+	const sleeps = [];
+	const racy = (path) => {
+		attempts += 1;
+		// The real call, on the real shape: a file where a directory was read.
+		if (attempts === 1) rmdirSync(asar);
+		rmSync(path, { recursive: true, force: true });
+	};
+	const removal = removeStagedTree({
+		path: staged,
+		remove: racy,
+		exists: (candidate) => existsSync(candidate),
+		sleep: (ms) => sleeps.push(ms),
+	});
+	assert.equal(removal.removed, true);
+	assert.equal(removal.error, null);
+	assert.equal(removal.attempts, 2);
+	assert.equal(existsSync(staged), false);
+	assert.deepEqual(sleeps, [250]);
+
+	// Already gone is a removal, not a failure: the install may have consumed the
+	// tree it staged, and calling that a failure is the warning the operator's log
+	// carried while the disk was in fact clean.
+	let goneAttempts = 0;
+	const consumed = removeStagedTree({
+		path: join(dir, "update.consumed"),
+		remove: () => {
+			goneAttempts += 1;
+		},
+		exists: () => false,
+		sleep: () => {},
+	});
+	assert.equal(consumed.removed, true);
+	assert.equal(consumed.attempts, 1);
+	assert.equal(goneAttempts, 1);
+
+	// A tree that survives every attempt is reported with the real error, and the
+	// attempts stop - a retry loop that never ends is a start-up that never ends.
+	let stubbornAttempts = 0;
+	const stubborn = removeStagedTree({
+		path: "/tmp/lo-staged-stubborn",
+		remove: () => {
+			stubbornAttempts += 1;
+			throw new Error("ENOTDIR: not a directory, rmdir '.../app.asar'");
+		},
+		exists: () => true,
+		attempts: 2,
+		sleep: () => {},
+	});
+	assert.equal(stubborn.removed, false);
+	assert.equal(stubborn.attempts, 2);
+	assert.equal(stubbornAttempts, 2);
+	assert.match(stubborn.error, /ENOTDIR/);
 });
 
 test("a recorded watchdog is only reaped when it is really ours and the install worked", () => {
@@ -3401,33 +4141,20 @@ test("a version read that never answers is killed, not left running", () => {
 });
 
 /**
- * The remedy the compatibility banner produces names the release the last check
- * read.
+ * The shipped update service, bundled with Electron stubbed rather than launched.
  *
- * This is the one defect class this change was reviewed for three times: a value
- * the code looks like it sets that never reaches the payload on the path that
- * matters (review U17). The panel's version sentence renders from
- * `latestVersion`, the banner's remedy calls `updateBackend()` with no target at
- * all, and the fallback to the published release the last check read is the
- * whole fix. It only had coverage through the real banner path, so a regression
- * in the fallback would look exactly like the original defect: a panel with no
- * version sentence on the path most users take.
+ * Extracted from the case that first needed it so a second one can drive the same
+ * module: what both are about is behaviour inside `UpdateService`, not the window
+ * it runs in. The bundled module graph IS the app's main process, so the fixtures
+ * below cover every surface it touches at import time - `app.getPath` for the
+ * logger and the pending-install marker, `electron-log`'s transports, and the
+ * autoUpdater object the constructor configures.
  *
- * Driven against the SHIPPED main process, bundled the way the rest of this file
- * bundles its modules - but with Electron stubbed instead of launched, because
- * what is under test is one function's payload rather than a window. Every path
- * the module reads or writes is redirected into a temp dir and the health probe
- * is pointed at a closed port, so nothing of the operator's own install, state
- * or running server is touched.
+ * Returns the module and the directory it was written to. The import has to run
+ * from a real path rather than a `data:` URL, because the Electron fixture needs
+ * an `import.meta.url` that `createRequire` can resolve.
  */
-test("the banner's remedy names the release the last check read", async () => {
-	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
-	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
-	// The bundled module graph is the app's main process, so the fixtures have to
-	// cover every surface it touches at import time: `app.getPath` for the logger
-	// and the pending-install marker, `electron-log`'s transports, and the
-	// autoUpdater object the constructor configures.
+const loadUpdateServiceModule = async () => {
 	const fixture = (contents) => ({ contents, loader: "js" });
 	const bundle = await build({
 		stdin: {
@@ -3475,7 +4202,21 @@ test("the banner's remedy names the release the last check read", async () => {
 									requestSingleInstanceLock: () => true,
 									releaseSingleInstanceLock: () => {},
 								};
-								export const ipcMain = { handle: () => {}, on: () => {}, once: () => {}, removeHandler: () => {}, removeAllListeners: () => {} };
+								export const ipcMain = {
+									/*
+									 * handle() RECORDS as well as drops. Nothing in this fixture ever
+									 * invokes a handler - this process is not Electron - but a test
+									 * that needs to drive a path the app reaches only through IPC (the
+									 * quit an in-flight panel offers, UX U8) has to be able to call
+									 * the function the app would call, and a fixture that swallows
+									 * them leaves that path unassertable.
+									 */
+									handle: (channel, fn) => { (globalThis.__loIpcHandlers ??= {})[channel] = fn; },
+									on: () => {},
+									once: () => {},
+									removeHandler: (channel) => { delete (globalThis.__loIpcHandlers ?? {})[channel]; },
+									removeAllListeners: () => {},
+								};
 								export class BrowserWindow {
 									constructor() {
 										this.webContents = { send: () => {}, isDestroyed: () => false, on: () => {}, once: () => {}, setWindowOpenHandler: () => {} };
@@ -3529,9 +4270,34 @@ test("the banner's remedy names the release the last check read", async () => {
 	const serviceDir = mkdtempSync(join(tmpdir(), "lo-service-bundle-"));
 	const serviceFile = join(serviceDir, "update-service.mjs");
 	writeFileSync(serviceFile, bundle.outputFiles[0].text);
-	// Imported from a real path rather than a `data:` URL: the banner shim above
-	// needs an `import.meta.url` that `createRequire` can resolve.
-	const service = await import(serviceFile);
+		return { service: await import(serviceFile), serviceDir };
+};
+
+/**
+ * The remedy the compatibility banner produces names the release the last check
+ * read.
+ *
+ * This is the one defect class this change was reviewed for three times: a value
+ * the code looks like it sets that never reaches the payload on the path that
+ * matters (review U17). The panel's version sentence renders from
+ * `latestVersion`, the banner's remedy calls `updateBackend()` with no target at
+ * all, and the fallback to the published release the last check read is the
+ * whole fix. It only had coverage through the real banner path, so a regression
+ * in the fallback would look exactly like the original defect: a panel with no
+ * version sentence on the path most users take.
+ *
+ * Driven against the SHIPPED main process, bundled the way the rest of this file
+ * bundles its modules - but with Electron stubbed instead of launched, because
+ * what is under test is one function's payload rather than a window. Every path
+ * the module reads or writes is redirected into a temp dir and the health probe
+ * is pointed at a closed port, so nothing of the operator's own install, state
+ * or running server is touched.
+ */
+test("the banner's remedy names the release the last check read", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
 	try {
@@ -4401,5 +5167,317 @@ test("without the block maps a release offers, the updater transfers the whole f
 		);
 	} finally {
 		run.close();
+	}
+});
+
+/**
+ * A failure found on a re-check is delivered through the scheduler, and the
+ * state it supersedes waits for that delivery.
+ *
+ * The re-check used to push the notice itself and stop there. A push is not a
+ * delivery here: `sendToRenderer` answers true for any live `webContents`, so a
+ * notice sent before the renderer's React effect subscribes still set
+ * `installFailureDelivered` and nothing ever sent it again - while the branch had
+ * already dropped the in-flight payload and cleared the marker, leaving a panel
+ * that claims an install is still running for one that has failed (review R2).
+ *
+ * What this pins is that shape rather than the wording: the re-check itself
+ * pushes nothing, the marker is still on disk while the notice is unsent, and
+ * both the notice and the cleanup arrive when the scheduler's fallback fires.
+ */
+test("a re-check failure goes out through the delivery scheduler, not a bare push", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: (channel, payload) => sent.push({ channel, payload }),
+					isDestroyed: () => false,
+					// A no-op window: the load event must not be what delivers the notice
+					// here, so the case can only pass on the scheduler's own fallback.
+					once: () => {},
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		updateService.backendUrl = "http://127.0.0.1:9";
+
+		// A marker for an install the running version never reached: the failure
+		// this re-check reports once ShipIt's job has gone. Written AFTER the
+		// constructor, which runs its own start-up recovery on an empty directory.
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.19.5",
+			artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+			startedAt: new Date(Date.now() - 60_000).toISOString(),
+			watchdogPid: null,
+		});
+		// The in-flight reading that makes this a re-check rather than a start-up:
+		// the panel is up, and the process has already told the renderer so.
+		updateService.installWasInFlight = true;
+		updateService.installInFlightDelivered = true;
+		sent.length = 0;
+
+		updateService.recoverPendingInstall();
+
+		// Nothing is pushed by the re-check itself: delivery is the scheduler's.
+		assert.deepEqual(
+			sent.filter(({ channel }) => channel === "update-install-failed"),
+			[],
+		);
+		// And the marker is still there to be re-reported until it is heard.
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
+
+		// The scheduler's fallback - `did-finish-load` cannot fire on a stub - is
+		// what delivers it, and only then does the superseded state go.
+		await new Promise((resolve) => setTimeout(resolve, 5300));
+		const failures = sent.filter(
+			({ channel }) => channel === "update-install-failed",
+		);
+		assert.equal(failures.length, 1, JSON.stringify(sent));
+		assert.match(
+			failures[0].payload.detail,
+			/local-operator-ui-0\.19\.5-universal\.zip/,
+		);
+		assert.equal(failures[0].payload.cancelledByRelaunch, true);
+		// The durable record names the version the panel named, read from
+		// `app.getVersion()` on this same pass - not the previous record's version
+		// carried forward, which is what made a first failure say "unknown" while the
+		// panel said otherwise (QA Q1). The harness stubs `getVersion` at
+		// "0.0.0-test", so this is the service's own field reaching disk.
+		assert.equal(readLastInstallAttempt(userData).runningVersion, "0.0.0-test");
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), false);
+	} finally {
+		if (interval) clearInterval(interval);
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * A quit while an install is in flight is a quit for the install, and an
+ * ordinary quit stays ordinary.
+ *
+ * The macOS window close used to leave the app running with no window, which is
+ * exactly the instance Squirrel's final validation aborts an install on - so the
+ * red button cancelled the update silently, by the gesture every macOS user
+ * reaches for first (UX U1). The relaunch promise was also button-shaped: only
+ * the panel's own action ensured a watchdog (UX U2). Both are decided from the
+ * machine - a current marker plus the install's launchd job - rather than from
+ * what the renderer was told, so the decision holds when no panel was ever drawn.
+ *
+ * This pins the decision, not the wiring: that `window-all-closed` and
+ * `before-quit` call it is `src/main/index.ts`, and the live-app run in the PR
+ * exercises the gesture against a real process.
+ */
+test("a quit during an in-flight install takes the close over, and only then", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+
+	// The window the service is built around is inert here, and that is the point
+	// rather than a shortcut: this decision reads the machine - the marker on disk
+	// and the install's launchd job - and never a panel. No marker exists while
+	// these are built, so none of them runs start-up recovery over one.
+	const buildService = () => {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					once: () => {},
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		updateService.backendUrl = "http://127.0.0.1:9";
+		return updateService;
+	};
+	const intervals = [];
+	const withService = (jobLoaded) => {
+		const updateService = buildService();
+		intervals.push(updateService.updateCheckInterval);
+		updateService.installJobLoadedProbe = () => jobLoaded;
+		return updateService;
+	};
+	const idle = withService(true);
+	const live = withService(true);
+	const leftover = withService(false);
+	const aged = withService(true);
+	const writeMarker = (startedAt) =>
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.19.5",
+			artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+			startedAt,
+			watchdogPid: null,
+		});
+
+	try {
+		// No marker at all: this is the ordinary close, and macOS keeps its
+		// behaviour of leaving the app in the dock.
+		assert.equal(idle.quitForInFlightInstall("last window closed"), false);
+
+		// A current marker with the install's job loaded: the close is taken over,
+		// so the caller can quit rather than leave a window-less instance running
+		// into Squirrel's validation.
+		writeMarker(new Date().toISOString());
+		assert.equal(live.quitForInFlightInstall("last window closed"), true);
+		// The same quit arriving twice - the window close, then `before-quit` - is
+		// still one takeover, and must not start a second watchdog.
+		assert.equal(live.quitForInFlightInstall("app quit"), true);
+		// Nothing was cleared to make the promise true: the marker is the record of
+		// the install that is still running.
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
+
+		// A marker the job probe answers no for is not an install. A FAILED install
+		// leaves its launchd job loaded for hours (0.17.0: runs=3114), which is the
+		// leftover the probe and the recency rule exist to tell apart.
+		assert.equal(leftover.quitForInFlightInstall("last window closed"), false);
+
+		// And a marker older than the recency bound is a failure's leftover too, so
+		// the ordinary close behaviour stands there.
+		writeMarker(
+			new Date(
+				Date.now() - (PENDING_INSTALL_RECENCY_SECONDS + 60) * 1000,
+			).toISOString(),
+		);
+		assert.equal(aged.quitForInFlightInstall("last window closed"), false);
+	} finally {
+		for (const interval of intervals) {
+			if (interval) clearInterval(interval);
+		}
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * One quit is one decision, whichever gesture asked for it.
+ *
+ * There are two ways into this decision and the user believes both are the same
+ * act: the panel's own "Quit and let the update finish", which goes through the
+ * `quit-for-update-install` IPC handler, and the window close / ordinary quit,
+ * which go through `quitForInFlightInstall`. The app runs the second one again
+ * on the way out, because `before-quit` asks the same question. So the handler
+ * has to RECORD its decision exactly as the other path does - without that, one
+ * quit is answered twice and the second answer starts a second relaunch
+ * watchdog for one install, where the panel's gesture and the window gesture
+ * would leave different numbers of watchdogs behind (UX U8).
+ *
+ * What is pinned is the service's own property, measured where the two paths
+ * meet: the number of watchdogs ensured per quit. The gesture-to-handler wiring
+ * lives in `src/main/index.ts` and `src/preload/index.ts`, and the live-app run
+ * in the PR drives the gestures themselves.
+ */
+test("a quit through the panel's own handler decides once and ensures one watchdog", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const intervals = [];
+
+	try {
+		// A current marker with the install's job loaded: the machine says an
+		// install is in flight, so both gestures are the take-over case.
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.19.5",
+			artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+			startedAt: new Date().toISOString(),
+			watchdogPid: null,
+		});
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					once: () => {},
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		intervals.push(updateService.updateCheckInterval);
+		updateService.backendUrl = "http://127.0.0.1:9";
+		updateService.installJobLoadedProbe = () => true;
+		/*
+		 * The seam is `launchWatchdog`, substituted rather than run for real.
+		 *
+		 * It is where an ensure ends (the marker carries no watchdog pid, so
+		 * `watchdogIsOurs` answers no and every ensure starts one), so counting
+		 * these calls is counting the watchdogs a quit would leave running - which
+		 * is the thing a second decision produces a second of. Substituted rather
+		 * than delegated because the real one spawns a detached process on a
+		 * packaged darwin app, and a test must not leave a watchdog on the
+		 * operator's machine; its own behaviour is driven against a real process
+		 * tree by the cases above.
+		 */
+		const ensures = [];
+		updateService.launchWatchdog = (targetVersion) => {
+			ensures.push(targetVersion);
+			return 4242;
+		};
+
+		updateService.setupIpcHandlers();
+		const handler = globalThis.__loIpcHandlers?.["quit-for-update-install"];
+		assert.equal(
+			typeof handler,
+			"function",
+			"the panel's own quit must have a handler to reach the decision",
+		);
+
+		// The panel's gesture: one decision, one watchdog.
+		assert.equal(handler(), true);
+		assert.equal(ensures.length, 1);
+
+		// And the app's own quit on the way out asks the same question again -
+		// which is the whole reason the handler had to record its answer.
+		assert.equal(updateService.quitForInFlightInstall("app quit"), true);
+		assert.equal(ensures.length, 1);
+
+		// The window-close gesture then behaves identically, so the two gestures
+		// cannot drift apart again: same one decision, same one watchdog.
+		const fromWindowClose = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false, once: () => {} },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		intervals.push(fromWindowClose.updateCheckInterval);
+		fromWindowClose.backendUrl = "http://127.0.0.1:9";
+		fromWindowClose.installJobLoadedProbe = () => true;
+		const windowEnsures = [];
+		fromWindowClose.launchWatchdog = (targetVersion) => {
+			windowEnsures.push(targetVersion);
+			return 4243;
+		};
+		assert.equal(fromWindowClose.quitForInFlightInstall("last window closed"), true);
+		assert.equal(fromWindowClose.quitForInFlightInstall("app quit"), true);
+		assert.equal(windowEnsures.length, 1);
+
+		// Nothing was cleared to make either promise true: the marker is the
+		// record of the install that is still running.
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
+	} finally {
+		for (const interval of intervals) {
+			if (interval) clearInterval(interval);
+		}
+		delete globalThis.__loTestPaths;
+		delete globalThis.__loIpcHandlers;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
 	}
 });

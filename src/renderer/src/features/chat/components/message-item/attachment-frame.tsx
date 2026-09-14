@@ -55,8 +55,40 @@ export const AttachmentFrame = ({
 export type BrokenAttachmentProps = {
 	/** Shown so the reader knows *which* attachment failed. */
 	name: string;
+	/**
+	 * The sentence after the name.
+	 *
+	 * A parameter because the two callers know different amounts, and a single
+	 * sentence cannot be true for both. `BrokenAttachment`'s original caller is
+	 * the LEGACY message view, which reads image FILE PATHS off disk: for it, a
+	 * failed read really is usually a name that moved, so `ATTACHMENT_MOVED_COPY`
+	 * is the honest default. A canonical image is not a path at all — it is a
+	 * digest in a content-addressed store — and asserting the moved/renamed/
+	 * deleted cause there is asserting something the reader cannot know (the
+	 * store is written by the app and pruned by the app; a missing digest means
+	 * a pruned or never-written entry, and the route's 404 does not say which).
+	 * That is why the canonical caller overrides it.
+	 */
+	detail?: string;
 	className?: string;
 };
+
+/**
+ * The default sentence: the cause a legacy on-disk path usually has.
+ */
+export const ATTACHMENT_MOVED_COPY =
+	"could not be displayed. It may have been moved, renamed, or deleted.";
+
+/**
+ * What a digest-backed row can honestly say when its bytes do not arrive.
+ *
+ * It states the fact (the read failed) and stops, because the two causes the
+ * wire can produce — an entry the store never held and one it pruned — are
+ * indistinguishable from a 404, and no third-party "may have" clause makes a
+ * cause this code cannot observe honest.
+ */
+export const ATTACHMENT_UNAVAILABLE_COPY =
+	"could not be displayed. Its stored copy is not available to this reader.";
 
 /**
  * What the reader sees instead of a torn-page glyph.
@@ -69,6 +101,7 @@ export type BrokenAttachmentProps = {
  */
 export const BrokenAttachment = ({
 	name,
+	detail = ATTACHMENT_MOVED_COPY,
 	className,
 }: BrokenAttachmentProps) => (
 	<div
@@ -80,7 +113,7 @@ export const BrokenAttachment = ({
 		<ImageOff className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 		<span className="min-w-0 text-body-sm text-ink-muted">
 			<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
-			{" could not be displayed. It may have been moved, renamed, or deleted."}
+			{` ${detail}`}
 		</span>
 	</div>
 );

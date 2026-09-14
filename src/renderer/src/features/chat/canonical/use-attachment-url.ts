@@ -45,6 +45,27 @@ import { useEffect, useState } from "react";
 import type { TranscriptImage } from "./transcript-reducer";
 
 /**
+ * Which conversation's rows a transcript image belongs to.
+ *
+ * A durable image is a digest in a content-addressed store, and the route that
+ * serves those bytes is scoped to the transcript that REFERENCES them — so
+ * resolving one needs to know not just which session it was read through but
+ * which conversation inside that session the row came from. A child's page is a
+ * conversation of its own: its rows reference the same shared store, and the
+ * parent's route refuses them (a child session is not a user session), so
+ * `childId` is what selects the child-scoped twin.
+ *
+ * `childId: null` is the parent conversation. It is a value rather than an
+ * optional field because "no child" is the ordinary case and the two callers
+ * that pass it (`canonical-transcript.tsx`, both halves of the live session)
+ * should have to say so.
+ */
+export type AttachmentScope = {
+	sessionId: string;
+	childId: string | null;
+};
+
+/**
  * Digests whose fetch is in flight, so N mounts make one request.
  *
  * The value carries `holders` alongside the promise because the RESULT needs an
@@ -78,7 +99,7 @@ const inflight = new Map<
  * discards a result nobody is left to hold.
  */
 function fetchAttachment(
-	sessionId: string,
+	scope: AttachmentScope,
 	digest: string,
 ): Promise<string | null> {
 	const existing = inflight.get(digest);
@@ -93,7 +114,18 @@ function fetchAttachment(
 	record.promise = (async () => {
 		try {
 			const result = await desktopMedia(
-				{ op: "sessions.attachment", sessionId, digest },
+				scope.childId
+					? {
+							op: "subagents.attachment",
+							sessionId: scope.sessionId,
+							childId: scope.childId,
+							digest,
+						}
+					: {
+							op: "sessions.attachment",
+							sessionId: scope.sessionId,
+							digest,
+						},
 				null,
 			);
 			if (result.kind !== "bytes") return null;
@@ -134,7 +166,7 @@ function abandonFetch(digest: string) {
  */
 export function useAttachmentUrl(
 	image: TranscriptImage,
-	sessionId: string | null,
+	scope: AttachmentScope | null,
 ): string | null {
 	// An inline image needs no state at all: the URI is a pure function of the
 	// bytes already in memory, so it is correct on the very first render and
@@ -151,10 +183,23 @@ export function useAttachmentUrl(
 	const [resolved, setResolved] = useState<string | null>(() =>
 		image.attachment ? peek(image.attachment) : null,
 	);
+	/*
+	 * The scope's two ids as PRIMITIVES, read once.
+	 *
+	 * The effect below must depend on the ids rather than on `scope`: callers
+	 * build the object per render, so its identity is not stable and depending on
+	 * it would refetch on every render. Reading them into locals also keeps the
+	 * dependency list a list of values rather than of member expressions —
+	 * `useExhaustiveDependencies` refuses `scope?.sessionId` for the same reason
+	 * it exists, and the alternative (silencing it) would hide a real drift if
+	 * this hook ever grew a dependency it forgot to name.
+	 */
+	const scopeSessionId = scope?.sessionId ?? null;
+	const scopeChildId = scope?.childId ?? null;
 
 	useEffect(() => {
 		const digest = image.attachment;
-		if (inline || !digest || !sessionId) return;
+		if (inline || !digest || !scopeSessionId) return;
 		let live = true;
 		const cached = retain(digest);
 		if (cached) {
@@ -179,7 +224,13 @@ export function useAttachmentUrl(
 		// transport failure with `{kind:"error"}`, which resolves `null` without
 		// throwing and leaves the row mounted on `BrokenAttachment`.
 		let joined = true;
-		void fetchAttachment(sessionId, digest).then((url) => {
+		// Rebuilt from the two primitives rather than closed over: the effect
+		// references nothing that is not in its dependency list, which is what the
+		// hook rule is for.
+		void fetchAttachment(
+			{ sessionId: scopeSessionId, childId: scopeChildId },
+			digest,
+		).then((url) => {
 			joined = false;
 			if (!live || !url) return;
 			// Retain AFTER the fetch, so the count reflects holders rather than
@@ -197,7 +248,7 @@ export function useAttachmentUrl(
 			if (joined) abandonFetch(digest);
 			release(digest);
 		};
-	}, [image.attachment, inline, sessionId]);
+	}, [image.attachment, inline, scopeSessionId, scopeChildId]);
 
 	return inline ?? resolved;
 }

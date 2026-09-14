@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 /**
  * Assert that the macOS release artifacts are actually installable.
  *
@@ -20,7 +21,6 @@
  */
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const CODESIGN = "/usr/bin/codesign";
@@ -238,10 +238,7 @@ export function bundledPythonCheck(appPath, options = {}) {
  * A filesystem walk rather than `codesign` output on purpose: this has to fail
  * on the artifact as built, before it is signed, and it has to name the paths.
  */
-export function findBundledBytecode(
-	appPath,
-	{ walk = defaultWalk } = {},
-) {
+export function findBundledBytecode(appPath, { walk = defaultWalk } = {}) {
 	const found = [];
 	for (const name of BUNDLED_PYTHON_TREES) {
 		const root = join(appPath, "Contents", "Resources", name);
@@ -346,7 +343,7 @@ export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 		const candidate = join(distDir, entry);
 		try {
 			if (!statSync(candidate).isDirectory()) continue;
-		for (const inner of listDir(candidate)) {
+			for (const inner of listDir(candidate)) {
 				if (!inner.endsWith(".app")) continue;
 				const appPath = join(candidate, inner);
 				// statSync, not existsSync: a dangling symlink where a bundle should be
@@ -406,7 +403,8 @@ export function verifyArtifacts({
 	const dmgPaths = dmg ? [dmg] : discovered.dmgs;
 
 	const problems = [];
-	if (appPaths.length === 0) problems.push(`No packaged app found under ${dist}`);
+	if (appPaths.length === 0)
+		problems.push(`No packaged app found under ${dist}`);
 	if (dmgPaths.length === 0) problems.push(`No disk image found under ${dist}`);
 	for (const error of discovered.errors) {
 		problems.push(`An artifact under ${dist} could not be read: ${error}`);

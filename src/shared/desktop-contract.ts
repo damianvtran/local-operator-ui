@@ -12,6 +12,22 @@ const settingKey = z
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
 const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+/**
+ * The wire shape of a canonical stream subscription id.
+ *
+ * Exported because three parties have to agree on it and only one of them can
+ * see the schema below: this request schema, the renderer's watch lease, and
+ * main's `desktop-watch-heartbeat` handler - which is the last gate before an
+ * authenticated POST and the only one Electron actually passes through.
+ *
+ * They disagreed. The renderer's lease tested its id for truthiness and main
+ * tested it for `typeof === "string"`, so an empty `subscription_id` reached
+ * `POST /v1/desktop/sessions/{id}/watch` and the backend answered 422 (its own
+ * `Watch.subscription_id` is `Field(pattern=r"^[a-f0-9]{32}$")`). A lease for
+ * a subscription that does not exist is not a lease, so the shape is checked
+ * at every hop instead of being assumed from the id's presence.
+ */
+export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
 const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
@@ -35,6 +51,37 @@ const sessionImage = z
  * so the two ceilings bind on different inputs and neither implies the other.
  */
 export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
+
+/**
+ * Longest chat-search query the desktop search op accepts, in CHARACTERS.
+ *
+ * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
+ * and the renderer's input cannot exceed it by typing — but a paste can, and a
+ * query is a sentence a user typed rather than data to be stored, so the bound
+ * belongs at both ends: here so the refusal names the field, there so a
+ * hand-rolled request cannot project an unbounded string into every digest
+ * comparison in the store.
+ *
+ * The sidebar is the consumer that makes "refused by name" true of a USER's
+ * surface rather than only of the schema: the schema's refusal is the
+ * transport's generic 422, which names neither field nor length, and the one
+ * branch that rendered it offered a Retry that re-sent the same characters
+ * forever (QA round 1, Q1). `searchQueryExceedsLimit` reads this constant, and
+ * the notice it drives names the number — so the bound is stated in one place
+ * and the copy cannot drift from it.
+ */
+export const SESSION_SEARCH_MAX_CHARS = 256;
+
+/**
+ * How many search hits one query may return.
+ *
+ * A page-sized cap, not the scan's: the search still looks at every session
+ * (`session_search.search_store` documents why a scan cap makes a session
+ * unfindable), and this only bounds the ANSWER. A sidebar renders a screenful,
+ * and a ranked list whose tail nobody can see is the same list as a shorter
+ * one.
+ */
+export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
 
 /**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
@@ -185,7 +232,53 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
+			// Content search over the store: name, id, exact conversation body, and
+			// a bounded soft tier. `q` is capped at the backend's own 256-character
+			// bound so an over-long query is refused here, by name, rather than by
+			// the backend's generic "invalid fields" 422.
+			op: z.literal("sessions.search"),
+			// `.min(1)`: an EMPTY query is not a search. The backend answers one by
+			// listing the whole store (documented there, and used by the phone's web
+			// client), but this surface has that list already — its box is a filter
+			// over the catalogue — so an empty `q` here would ask the server to send
+			// back everything the client is holding. Refusing it by name is how the
+			// closed vocabulary stays closed: no caller can send a request whose
+			// answer it would have to discard.
+			q: z.string().min(1).max(SESSION_SEARCH_MAX_CHARS),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	z
+		.object({
 			op: z.literal("sessions.create"),
+			requestId,
+			cwd: z.string().min(1).max(4096),
+			target: target.optional(),
+		})
+		.strict(),
+	/*
+	 * What a NEW conversation's readings would be, without creating anything.
+	 *
+	 * The composer's status strip needs a model, an effort ladder and a window
+	 * BEFORE a session exists, and every honest way to get them was rejected: a
+	 * `sessions.create` on pane open writes a directory and a marker, so every
+	 * abandoned new-chat pane would leave a visible empty row in the sidebar,
+	 * and composing it in the renderer from `config.get` + `models.catalogue`
+	 * moves model RESOLUTION (Python policy) into the app and reports nothing
+	 * when the pair is absent from the catalogue. This op runs the backend's own
+	 * cold resolution and returns the same canonical projection a cold session
+	 * publishes, so the strip keeps one arithmetic path and the draft cannot
+	 * disagree with the session the first send creates.
+	 *
+	 * Body and response mirror `sessions.create` deliberately: same `cwd`, same
+	 * optional `target`, same 422 for an unresolvable profile. The response is a
+	 * `CanonicalFrontendSync` — the wire shape `sessions.watch` streams — whose
+	 * `snapshot.session_id` is EMPTY, because there is no session. The renderer
+	 * passes it to the strip and never into the canonical sessions store.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.preview"),
 			requestId,
 			cwd: z.string().min(1).max(4096),
 			target: target.optional(),
@@ -196,6 +289,29 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.history"),
 			sessionId,
+			beforeId: id.optional(),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	/*
+	 * One child's durable transcript, for the run panel's reader
+	 * (`docs/run-sidebar.md` § 10.1, § 10.3).
+	 *
+	 * Both ids are the same `^[a-f0-9]{12}$` the whole desktop surface already
+	 * validates on, and NEITHER is a path: the child directory is resolved by the
+	 * route from the id and from the parent's own roster, so the renderer cannot
+	 * name a directory at all. That containment is the route's, not the caller's —
+	 * a schema that accepted a path here would be the whole boundary.
+	 *
+	 * `beforeId` is an entry id (max 128 chars, the `id` shape) rather than an
+	 * offset, matching `sessions.history`: file compaction replaces the JSONL
+	 * atomically, so offsets become lies while ids stay meaningful.
+	 */
+	z
+		.object({
+			op: z.literal("subagents.transcript"),
+			sessionId,
+			childId: sessionId,
 			beforeId: id.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
 		})
@@ -258,7 +374,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.watch"),
 			sessionId,
-			subscriptionId: z.string().regex(/^[a-f0-9]{32}$/),
+			subscriptionId: z.string().regex(SUBSCRIPTION_ID_PATTERN),
 			visible: z.boolean(),
 			canNotify: z.boolean(),
 		})
@@ -910,7 +1026,29 @@ export type DesktopMediaRequest =
 	// payload stripped, and the JSON transport's envelope has nowhere to put
 	// bytes — which is what puts a screenshot fetch on this relay rather than
 	// beside the other session operations.
-	| { op: "sessions.attachment"; sessionId: string; digest: string };
+	| { op: "sessions.attachment"; sessionId: string; digest: string }
+	/*
+	 * The same fetch, scoped to a CHILD of the named session.
+	 *
+	 * The parent's op above cannot serve a child's rows: its route resolves the
+	 * digest against the session whose transcript holds the reference, and a
+	 * child session is not a user session, so the parent's path refuses it. The
+	 * backend ships the child-scoped twin
+	 * (`/v1/desktop/sessions/{id}/children/{child}/attachments/{digest}`) in the
+	 * same window as its `transcript` sibling, so the reader that already reads
+	 * a child's page from that route family resolves that page's images through
+	 * this one.
+	 *
+	 * Both ids are the same `^[a-f0-9]{12}$` the rest of the desktop surface
+	 * validates on and neither is a path: main owns the URL, as it does for
+	 * every op here.
+	 */
+	| {
+			op: "subagents.attachment";
+			sessionId: string;
+			childId: string;
+			digest: string;
+	  };
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -1097,9 +1235,32 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}`,
 				method: "GET",
 			};
+		case "sessions.search": {
+			// `encodeURIComponent` rather than interpolation: a query is whatever
+			// the user typed, and `&`, `#` or a space in it would otherwise change
+			// the request's meaning (or truncate it) instead of being searched for.
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? SESSION_SEARCH_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/sessions/search?${query}`,
+				method: "GET",
+			};
+		}
 		case "sessions.create":
 			return {
 				path: "/v1/desktop/sessions",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					cwd: request.cwd,
+					...(request.target ? { target: request.target } : {}),
+				},
+			};
+		case "sessions.preview":
+			return {
+				path: "/v1/desktop/sessions/preview",
 				method: "POST",
 				body: {
 					request_id: request.requestId,
@@ -1119,6 +1280,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.beforeId) query.set("before_id", request.beforeId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
+				method: "GET",
+			};
+		}
+		case "subagents.transcript": {
+			const query = new URLSearchParams({
+				limit: String(request.limit ?? 100),
+			});
+			if (request.beforeId) query.set("before_id", request.beforeId);
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
 				method: "GET",
 			};
 		}

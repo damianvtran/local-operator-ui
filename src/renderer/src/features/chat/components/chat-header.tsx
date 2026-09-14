@@ -3,7 +3,8 @@ import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot, FileText } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
-import { type RunDetails, RunDetailsTrigger } from "./run-details";
+import type { McpServerRow, RunDetails } from "./run-details";
+import { RunDetailsTrigger } from "./run-details";
 
 /**
  * ChatHeaderProps
@@ -38,6 +39,26 @@ type ChatHeaderProps = {
 	 * just "this conversation has files".
 	 */
 	fileCount?: number;
+	/**
+	 * The session's configured MCP servers, for the trigger's attention dot.
+	 *
+	 * Threaded through the header rather than fetched inside the trigger for the
+	 * reason `docs/run-sidebar.md` § 3.4 gives: the dot's rule is "while the panel
+	 * is open, what the panel RENDERS is acknowledged", so the trigger and the
+	 * panel have to answer from ONE list. An empty list is what a caller passes
+	 * when the MCP section is not on screen, which is what makes an unrendered
+	 * section acknowledge nothing.
+	 */
+	mcpServers?: readonly McpServerRow[];
+	/**
+	 * Whether the pane is showing its list, and which child's reader is open.
+	 *
+	 * Both are the pane's own view state, reported up by `chat-content.tsx` because
+	 * the dot's rule is about what is ON SCREEN (`§ 3.4`) and this is the only place
+	 * that renders both the trigger and the pane.
+	 */
+	listOnScreen?: boolean;
+	readerChildId?: string | null;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
@@ -46,6 +67,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onOpenOptions,
 	runDetails = null,
 	fileCount = 0,
+	mcpServers = [],
+	listOnScreen = false,
+	readerChildId = null,
 }) => {
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
@@ -140,20 +164,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			</div>
 
 			{/*
-			 * The header's action cluster: the run-details trigger, then the canvas
+			 * The header's action cluster: the run-panel trigger, then the canvas
 			 * button, as one group at the end of the bar. The cluster carries the
 			 * `ml-auto` the canvas button used to carry, so the two actions sit 8px
 			 * apart instead of being pinned to opposite ends of whatever else the bar
 			 * happens to hold.
 			 *
-			 * The canvas button keeps its own gate exactly as it was
-			 * (`onOpenOptions && !isCanvasOpen`). The trigger's gate is inside
-			 * `RunDetailsTrigger`, and it returns `null` when it has nothing to show —
-			 * so with an idle session this cluster is 8px of nothing and the header is
-			 * pixel-for-pixel what it is today.
+			 * These two ARE the right pane's two choices, and they are mutually
+			 * exclusive in the STORE rather than here: each setter clears the other, so
+			 * this cluster never has to know which pane is up. The canvas button keeps
+			 * its own hide-when-open rule (`onOpenOptions && !isCanvasOpen`), because a
+			 * button that re-opens the pane already on screen is a no-op with a
+			 * tooltip; the run trigger stays, because it is a TOGGLE with an
+			 * `aria-pressed` ground and that is exactly what makes the swap reversible.
 			 */}
 			<div className={cn("ml-auto flex items-center gap-2")}>
-				<RunDetailsTrigger details={runDetails} />
+				<RunDetailsTrigger
+					details={runDetails}
+					mcpServers={mcpServers}
+					listOnScreen={listOnScreen}
+					readerChildId={readerChildId}
+				/>
 				{onOpenOptions && !isCanvasOpen && (
 					<Tooltip
 						content={

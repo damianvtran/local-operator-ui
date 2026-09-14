@@ -87,8 +87,7 @@ function useState(initial) {
 	const instance = current;
 	const slot = instance.hookIndex++;
 	if (!(slot in instance.states)) {
-		instance.states[slot] =
-			typeof initial === "function" ? initial() : initial;
+		instance.states[slot] = typeof initial === "function" ? initial() : initial;
 	} else if (instance.probing && typeof initial === "function") {
 		// StrictMode's second pass re-runs the initializer and DISCARDS the
 		// result. An initializer with a side effect therefore lands twice, which
@@ -96,7 +95,8 @@ function useState(initial) {
 		initial();
 	}
 	const setState = (value) => {
-		const next = typeof value === "function" ? value(instance.states[slot]) : value;
+		const next =
+			typeof value === "function" ? value(instance.states[slot]) : value;
 		if (Object.is(next, instance.states[slot])) return;
 		instance.states[slot] = next;
 		if (!instance.unmounted) instance.render();
@@ -256,11 +256,21 @@ const durable = (digest) => ({
 	mimeType: "image/png",
 });
 
-/** Mount the hook for one image, exactly as `CanonicalImage` does. */
-const mountImage = (image, options) =>
+/**
+ * Mount the hook for one image, exactly as `CanonicalImage` does.
+ *
+ * The scope is a parameter because it is what selects the OP: a child's
+ * conversation resolves its digests through the child-scoped route, and a test
+ * that could only express the parent scope could not tell the two apart.
+ */
+const mountImage = (
+	image,
+	options,
+	scope = { sessionId: "8ca681d7aa73", childId: null },
+) =>
 	mount(
-		({ image: img, sessionId }) => useAttachmentUrl(img, sessionId),
-		{ image, sessionId: "8ca681d7aa73" },
+		({ image: img, scope: imageScope }) => useAttachmentUrl(img, imageScope),
+		{ image, scope },
 		options,
 	);
 
@@ -382,7 +392,11 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 	const stale = mountImage(durable(digest));
 	requests.pop().resolve({ kind: "error", message: "transient relay failure" });
 	await tick();
-	assert.equal(stale.value, null, "the first row is left showing BrokenAttachment");
+	assert.equal(
+		stale.value,
+		null,
+		"the first row is left showing BrokenAttachment",
+	);
 
 	// A second row asks for the same digest and gets a FRESH inflight record.
 	const waiting = mountImage(durable(digest));
@@ -398,7 +412,11 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 		waiting.value?.startsWith("blob:"),
 		"the row still on screen is handed the bytes that arrived for it",
 	);
-	assert.equal(blobs.live.size, 1, "and they are not revoked out from under it");
+	assert.equal(
+		blobs.live.size,
+		1,
+		"and they are not revoked out from under it",
+	);
 	waiting.unmount();
 	assert.equal(blobs.live.size, 0, "the last holder leaving still revokes");
 });
@@ -424,5 +442,57 @@ test("an image that fails to resolve reports null rather than throwing", async (
 	await tick();
 	assert.equal(row.value, null, "the view renders BrokenAttachment from this");
 	assert.equal(blobs.created, 0, "a failure creates no blob");
+	row.unmount();
+});
+
+test("a child's row fetches through the child-scoped op, with both ids", async () => {
+	// The reader's rows belong to a CHILD conversation: its digests live in the
+	// same store but the parent's route refuses them (a child session is not a
+	// user session), so the op and both identifiers are the whole claim. Pinning
+	// the op name matters more than it looks: main maps it to a path, and a
+	// renderer that asked for the parent's op would be refused at runtime with
+	// no test failing.
+	reset();
+	const digest = digestFor(5);
+	const row = mountImage(durable(digest), undefined, {
+		sessionId: "8ca681d7aa73",
+		childId: "e571dc19fa5a",
+	});
+	assert.equal(requests.length, 1, "one fetch for the mount");
+	assert.deepEqual(requests[0].request, {
+		op: "subagents.attachment",
+		sessionId: "8ca681d7aa73",
+		childId: "e571dc19fa5a",
+		digest,
+	});
+	settleLast();
+	await tick();
+	assert.equal(typeof row.value, "string", "and the picture paints");
+	row.unmount();
+});
+
+test("the parent's rows keep the parent-scoped op", async () => {
+	reset();
+	const digest = digestFor(6);
+	const row = mountImage(durable(digest));
+	assert.deepEqual(requests[0].request, {
+		op: "sessions.attachment",
+		sessionId: "8ca681d7aa73",
+		digest,
+	});
+	requests.pop().resolve({ kind: "error", message: "gone" });
+	await tick();
+	row.unmount();
+});
+
+test("a null scope issues no request at all", async () => {
+	// The panel hands a scope only when the `subagent_transcript` capability
+	// negotiated AND the row has both ids; without one, a digest row waits for a
+	// reader that never comes rather than fetching on faith.
+	reset();
+	const row = mountImage(durable(digestFor(7)), undefined, null);
+	await tick();
+	assert.equal(requests.length, 0, "no request without a scope");
+	assert.equal(row.value, null, "and the row renders the unavailable note");
 	row.unmount();
 });
