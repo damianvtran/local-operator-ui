@@ -1,3 +1,4 @@
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { cn } from "@shared/lib/utils";
 import { type VariantProps, cva } from "class-variance-authority";
 import { X } from "lucide-react";
@@ -48,7 +49,26 @@ const sheetVariants = cva(
 	},
 );
 
-export const Sheet = SheetPrimitive.Root;
+/**
+ * The sheet root, wrapped so the overlay policy can see whether it is OPEN.
+ *
+ * WHY THIS WRAPPER EXISTS, and it is the fix for a measured bug: Radix's
+ * `Dialog.Root` renders its children unconditionally — the mount gate lives inside
+ * `Dialog.Portal`/`Dialog.Content`, not in the root — so a component placed inside a
+ * CLOSED `<Sheet>` still runs its body. Registering the browser view's suppression
+ * from `SheetContent` therefore registered on every render of every always-present
+ * `<Sheet open={false}>`, and the browser page stayed paused with no sheet on screen
+ * (found with the `data-suppressed-by` attribute the paused state publishes, which
+ * named `sheet:` while the DOM had no dialog at all). `open` is the thing the policy
+ * needs, and this is the only component in the tree that has it.
+ */
+export const Sheet = ({
+	open,
+	...props
+}: ComponentPropsWithoutRef<typeof SheetPrimitive.Root>) => {
+	useSuppressBrowserView(open === true, "sheet");
+	return <SheetPrimitive.Root open={open} {...props} />;
+};
 export const SheetTrigger = SheetPrimitive.Trigger;
 export const SheetClose = SheetPrimitive.Close;
 export const SheetPortal = SheetPrimitive.Portal;

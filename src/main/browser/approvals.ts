@@ -85,11 +85,33 @@ export interface ApprovalStoreFile {
 
 export interface ApprovalRecord {
 	origin: string;
-	scope: "origin" | "domain" | "host" | "deny";
+	scope: "origin" | "domain" | "host" | "deny" | "session";
 	/** The requester that earned the grant; "" for a grant made outside a request
 	 * (a settings toggle). */
 	requester: string;
 	grantedAt: number;
+}
+
+/**
+ * The decisions the consent bar offers: the vendored four plus `session`.
+ *
+ * `session` is a host-local EXTENSION of the shared vocabulary, and it stays
+ * host-local on purpose (design 9.3): the extension has no persistent jar, so a
+ * grant that dies with the process is exactly what its `site` scope already is.
+ * With a persistent jar the same behaviour is a different thing worth naming —
+ * "approve this origin just for this run" — because a `site` grant that died
+ * with the process would make the user re-approve on every launch, which is the
+ * friction that pushes people to a dangerous allow-all switch. Adding a fifth
+ * member to the vendored union would be editing a shared module for a
+ * distinction the other consumer cannot have.
+ */
+export type ConsentDecision = OriginDecision | "session";
+
+/** What a consent answer did, as the bar and the tests see it. */
+export interface ConsentOutcome {
+	origin: string;
+	state: "allowed" | "denied";
+	scope: "once" | "session" | "origin" | "domain" | "host" | "deny";
 }
 
 export const APPROVALS_FILENAME = "approvals.json";
@@ -139,6 +161,18 @@ export class ApprovalStore {
 	private results: AccessResults = {};
 	/** Unspent "Allow once" grants, keyed by origin. */
 	private onceGrants: OnceGrants = {};
+	/**
+	 * "Allow for this session" grants: exact origins, in memory only.
+	 *
+	 * NOT written to the store, and that is the scope's definition (design 9.3:
+	 * `session` is "until the app quits, in-memory"). It cannot be: a durable
+	 * version of it would be indistinguishable from `site`, which is the scope
+	 * that means "keep this".
+	 */
+	private sessionGrants = new Set<string>();
+	/** The provenance rows for the session grants, so the approvals list can show
+	 * them beside the durable ones without a second source of truth. */
+	private sessionRecords: ApprovalRecord[] = [];
 	/** Receipts for displaced requesters (see `access-flow.ts`). */
 	private tombstones: AccessTombstones = {};
 	/** Consumed once grants authorize one committed document, not every future
@@ -185,6 +219,13 @@ export class ApprovalStore {
 	 * instead compiles (the slot is `unknown` and optional) and silently drops
 	 * every broad grant, which is why the call spells the order out. */
 	originAllowed(url: URL): boolean {
+		// A session grant is the user's most recent statement about this exact
+		// origin, so it is consulted before the durable verdicts: approving for this
+		// run is a decision to let the agent in now, and honouring an older `deny`
+		// over it would make the session button a lie. It is exact-origin only — a
+		// session grant never widens to a domain, because "just this run" is not a
+		// statement about a whole registrable domain.
+		if (this.sessionGrants.has(url.origin)) return true;
 		if (this.store.origins[url.origin] === "deny") return false;
 		return storedOriginAllowed(
 			this.store.origins,
@@ -486,7 +527,7 @@ export class ApprovalStore {
 	 */
 	respond(
 		entryId: string,
-		decision: OriginDecision,
+		decision: ConsentDecision,
 		requester = "",
 	): Record<string, unknown> {
 		const entry = this.queue.find((candidate) => candidate.entryId === entryId);
@@ -515,7 +556,32 @@ export class ApprovalStore {
 			this.onChanged();
 			return { origin: entry.origin, state: "allowed", scope: "once" };
 		}
+		if (decision === "session") {
+			// A session grant REPLACES any exact-origin verdict for the run, in both
+			// directions: approving for this run must undo an earlier durable deny, and
+			// the reverse (a deny arriving after a session grant) is handled by the
+			// `deny` arm below clearing this set. Neither writes to the store, so the
+			// durable verdicts are exactly as the user left them after a restart.
+			this.sessionGrants.add(entry.origin);
+			this.sessionRecords.push({
+				origin: entry.origin,
+				scope: "session",
+				requester: requester || entry.requester,
+				grantedAt: now,
+			});
+			this.results[resultKey(entry.entryId, entry.requester)] = receiptFor(
+				entry,
+				"allowed",
+				now,
+			);
+			this.onChanged();
+			return { origin: entry.origin, state: "allowed", scope: "session" };
+		}
 		if (decision === "deny") {
+			this.sessionGrants.delete(entry.origin);
+			this.sessionRecords = this.sessionRecords.filter(
+				(record) => record.origin !== entry.origin,
+			);
 			this.store.origins[entry.origin] = "deny";
 			this.store.records.push({
 				origin: entry.origin,
@@ -583,9 +649,72 @@ export class ApprovalStore {
 		};
 	}
 
-	/** The decisions still in force, for the approvals list. */
+	/** The decisions still in force, for the approvals list.
+	 *
+	 * The session grants are merged in rather than kept apart, because the question
+	 * the list answers is "which sites can an agent act on as me right now?"
+	 * (design 9.3) and a `session` grant is a yes to that question. They carry
+	 * `scope: "session"`, which is how the list says "until the app quits". */
 	grants(): ApprovalRecord[] {
-		return [...this.store.records];
+		return [...this.store.records, ...this.sessionRecords];
+	}
+
+	/**
+	 * Revoke one origin's approvals: the exact-origin verdict, a session grant, and
+	 * any BROAD grant that covers it.
+	 *
+	 * A broad grant is revoked too, and that is the honest reading of a per-origin
+	 * revoke: the user pointed at a site and said "not this one". Leaving a domain
+	 * grant in place would let the agent reach the very origin just revoked, which
+	 * is the failure mode where a revoke button appears to do nothing.
+	 *
+	 * Deliberately does NOT touch cookies (design 9.4): revoking approvals does not
+	 * log the user out, and clearing cookies does not restore the deny state.
+	 *
+	 * Returns how many records were dropped, so the caller can say what happened
+	 * rather than reporting a click.
+	 */
+	revokeOrigin(rawOrigin: string): number {
+		let removed = 0;
+		let origin = rawOrigin;
+		try {
+			origin = new URL(rawOrigin).origin;
+		} catch {
+			// Already an origin, or something a caller assembled: match it verbatim.
+		}
+		if (this.store.origins[origin] !== undefined) {
+			delete this.store.origins[origin];
+			removed += 1;
+		}
+		if (this.sessionGrants.delete(origin)) removed += 1;
+		const before = this.store.records.length;
+		this.store.records = this.store.records.filter(
+			(record) => record.origin !== origin,
+		);
+		removed += before - this.store.records.length;
+		const beforeSession = this.sessionRecords.length;
+		this.sessionRecords = this.sessionRecords.filter(
+			(record) => record.origin !== origin,
+		);
+		removed += beforeSession - this.sessionRecords.length;
+		// Broad grants: the key is derived by the SAME vendored helper that computed
+		// it when the grant was offered, so "revoke" removes every grant that could
+		// have admitted this origin. Re-deriving the key here with a local suffix
+		// rule would be the second implementation of one policy, and the two would
+		// disagree the first time the PSL data changed.
+		try {
+			const broad = broadGrantFor(new URL(origin));
+			if (broad && this.store.siteGrants.grants[broad.key] !== undefined) {
+				delete this.store.siteGrants.grants[broad.key];
+				removed += 1;
+			}
+		} catch {
+			// A caller that passed something `new URL` cannot parse has nothing more
+			// to revoke: the exact-origin work above is all of it.
+		}
+		this.persist();
+		this.onChanged();
+		return removed;
 	}
 
 	/**
@@ -597,18 +726,22 @@ export class ApprovalStore {
 	 * in the copy rather than left to look like a bug.
 	 */
 	revokeAll(): number {
-		const removed = this.store.records.length;
+		const removed = this.store.records.length + this.sessionRecords.length;
 		this.store.origins = {};
 		this.store.siteGrants = { version: 1, grants: {} };
 		this.store.records = [];
 		this.resetPending();
+		this.sessionGrants.clear();
+		this.sessionRecords = [];
 		this.persist();
 		this.onChanged();
 		return removed;
 	}
 
 	/** Drop everything about the pending flow. Used by the host-off toggle, which
-	 * tears the state file down so discovery is honest. */
+	 * tears the state file down so discovery is honest. Deliberately keeps the
+	 * grants: turning the host off leaves the approvals inspectable and revocable
+	 * (design 9.4), it does not silently withdraw them. */
 	resetPending(): void {
 		this.revision += 1;
 		this.documents.clear();
