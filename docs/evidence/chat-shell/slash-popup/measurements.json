@@ -1,0 +1,302 @@
+{
+ "what": "R1: the composer band's overflow-y-auto clipped the unportaled slash-command popup.",
+ "method": "Real Electron renderer (electron-vite dev) against an isolated `local-operator serve`, driven over CDP under Emulation.setFocusEmulationEnabled. Text inserted with Input.dispatchKeyEvent type `char` alone (bare keyDown+keyUp inserts nothing; keyDown+char+keyUp double-inserts). Composer clear verified by read-back before typing, and the typed value asserted before any reading was recorded. Origin asserted on every frame. The transcript state is reproduced by hiding the greeting block, because the isolated backend has no model provider -- the band height is what decides the defect, not the conversation.",
+ "before": {
+  "head": "28f3b3a08 band shape (max-h-[70%] + overflow-y-auto)",
+  "readings": [
+   {
+    "state": "greeting",
+    "viewport": "1380x872",
+    "query": "/",
+    "bandHeight": 384,
+    "popupRect": {
+     "top": 223,
+     "bottom": 559,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 2,
+    "escapesBandTop": true,
+    "popupClippedBy": [
+     "DIV.@container/chatcol flex max-h-[70%] w-full shrink-0 flex-col items-cen"
+    ],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 384,
+     "clientHeight": 384
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "transcript",
+    "viewport": "1380x872",
+    "query": "/",
+    "bandHeight": 334,
+    "popupRect": {
+     "top": 223,
+     "bottom": 559,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 0,
+    "escapesBandTop": true,
+    "popupClippedBy": [
+     "DIV.@container/chatcol flex max-h-[70%] w-full shrink-0 flex-col items-cen"
+    ],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 334,
+     "clientHeight": 334
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "greeting",
+    "viewport": "1024x673",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 244,
+     "bottom": 580,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 0,
+    "escapesBandTop": true,
+    "popupClippedBy": [
+     "DIV.@container/chatcol flex max-h-[70%] w-full shrink-0 flex-col items-cen"
+    ],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "transcript",
+    "viewport": "1024x673",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 244,
+     "bottom": 580,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 0,
+    "escapesBandTop": true,
+    "popupClippedBy": [
+     "DIV.@container/chatcol flex max-h-[70%] w-full shrink-0 flex-col items-cen"
+    ],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "greeting",
+    "viewport": "1024x500",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 71,
+     "bottom": 407,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 0,
+    "escapesBandTop": true,
+    "popupClippedBy": [
+     "DIV.@container/chatcol flex max-h-[70%] w-full shrink-0 flex-col items-cen"
+    ],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "transcript",
+    "viewport": "1024x500",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 71,
+     "bottom": 407,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 0,
+    "escapesBandTop": true,
+    "popupClippedBy": [
+     "DIV.@container/chatcol flex max-h-[70%] w-full shrink-0 flex-col items-cen"
+    ],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   }
+  ]
+ },
+ "after": {
+  "head": "round-2 remediation (bound moved onto the previews)",
+  "readings": [
+   {
+    "state": "greeting",
+    "viewport": "1380x872",
+    "query": "/",
+    "bandHeight": 422,
+    "popupRect": {
+     "top": 186,
+     "bottom": 522,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 9,
+    "escapesBandTop": true,
+    "popupClippedBy": [],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 422,
+     "clientHeight": 422
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "transcript",
+    "viewport": "1380x872",
+    "query": "/",
+    "bandHeight": 372,
+    "popupRect": {
+     "top": 186,
+     "bottom": 522,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 9,
+    "escapesBandTop": true,
+    "popupClippedBy": [],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 372,
+     "clientHeight": 372
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "greeting",
+    "viewport": "1024x673",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 244,
+     "bottom": 580,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 8,
+    "escapesBandTop": true,
+    "popupClippedBy": [],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "transcript",
+    "viewport": "1024x673",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 244,
+     "bottom": 580,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 9,
+    "escapesBandTop": true,
+    "popupClippedBy": [],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "greeting",
+    "viewport": "1024x500",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 71,
+     "bottom": 407,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 8,
+    "escapesBandTop": true,
+    "popupClippedBy": [],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   },
+   {
+    "state": "transcript",
+    "viewport": "1024x500",
+    "query": "/",
+    "bandHeight": 92,
+    "popupRect": {
+     "top": 71,
+     "bottom": 407,
+     "h": 336
+    },
+    "rows": 38,
+    "hitTestableRows": 9,
+    "escapesBandTop": true,
+    "popupClippedBy": [],
+    "bandScroll": {
+     "wrote": 9999,
+     "readBack": 0,
+     "scrollHeight": 92,
+     "clientHeight": 92
+    },
+    "arrowMovesActiveDescendant": true,
+    "sendControlsOnScreen": true
+   }
+  ]
+ }
+}

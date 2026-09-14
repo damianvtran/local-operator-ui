@@ -1,0 +1,23 @@
+/*
+ * The stylesheet entry for the diff-body evidence harness.
+ *
+ * `@import "@renderer/styles/index.css"` is the app's own stylesheet — the same
+ * one Storybook and the app load, so nothing about the palette or the type
+ * scale can differ between this surface and the shipped one.
+ *
+ * `@source` is the part that is easy to omit and fails SILENTLY. Tailwind v4
+ * detects candidate class names by scanning source files, and a vite root
+ * outside the renderer tree (`scripts/`, here) leaves the renderer's own
+ * classes OUT of that scan: the harness then renders with no `sr-only`, no
+ * `text-success`, no `text-danger` and no `bg-sunken`, and every one of those
+ * failures looks like a component bug rather than a missing utility. Measured
+ * on this harness before the directive was added: the outcome label's readable
+ * text ("succeeded") sat in the row because `sr-only` compiled as nothing, and
+ * the diff's `+`/`-` markers painted in the ordinary body ink instead of the
+ * success and danger roles — a frame that would have shown a diff with NO
+ * colour at all. `docs/evidence/tool-rows/README.md` records the same trap from
+ * the first real-conversation surface.
+ */
+@import "@renderer/styles/index.css";
+
+@source "../src/renderer/src";

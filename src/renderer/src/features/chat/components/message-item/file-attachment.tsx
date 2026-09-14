@@ -1,0 +1,412 @@
+import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { cn } from "@shared/lib/utils";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { File } from "lucide-react";
+import type { FC } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
+import { getFileTypeFromPath } from "../../utils/file-types";
+import { isCanvasSupported } from "../../utils/is-canvas-supported";
+import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
+/**
+ * Props for the FileAttachment component (base)
+ */
+type BaseFileAttachmentProps = {
+	file: string;
+	onClick: (file: string) => void;
+};
+
+type FileAttachmentProps = BaseFileAttachmentProps & {
+	conversationId: string;
+};
+
+const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
+
+/**
+ * Extracts the filename from a path
+ * @param path - The file path or URL
+ * @returns The extracted filename
+ */
+const PATH_SEPARATOR_REGEX = /[/\\]/;
+const getFileName = (path: string): string => {
+	if (path.startsWith("data:image/")) {
+		// Attempt to get a name from the data URI if it's there (e.g., from a download attribute)
+		// This is a basic heuristic and might not always work.
+		const nameMatch = path.match(RESOURCE_NAME_REGEX);
+		if (nameMatch?.[1]) {
+			try {
+				return decodeURIComponent(nameMatch[1]);
+			} catch (_) {
+				// Fallback if decoding fails
+				return "Pasted image";
+			}
+		}
+		return "Pasted image";
+	}
+	if (path.startsWith("data:")) {
+		const nameMatch = path.match(RESOURCE_NAME_REGEX);
+		if (nameMatch?.[1]) {
+			try {
+				return decodeURIComponent(nameMatch[1]);
+			} catch (_) {
+				return "Pasted file";
+			}
+		}
+		return "Pasted file";
+	}
+	// Handle both local paths and URLs
+	const parts = path.split(PATH_SEPARATOR_REGEX);
+	return parts[parts.length - 1];
+};
+
+/**
+ * A file the conversation carries: a named card for anything with a path, and
+ * the same reserved picture frame as `image-attachment` for a pasted image.
+ */
+export const FileAttachment: FC<FileAttachmentProps> = memo(
+	({ file, onClick, conversationId }) => {
+		const [hasError, setHasError] = useState(false);
+		const [isLoaded, setIsLoaded] = useState(false);
+		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
+		// Access canvas store methods directly via getState() if needed for click, or pass them down if they vary
+		// For this refactor, setFiles, setOpenTabs, setSelectedTab are part of the click handler,
+		// which is specific to this component's interaction, not the passive metadata collection.
+		// addMentionedFile is removed as its functionality is centralized.
+
+		const { setViewMode } = useCanvasStore(); // Add setViewMode from canvas store
+
+		const handleSpreadsheetClick = useCallback(
+			async (file: string) => {
+				const title = getFileName(file);
+				if (isSpreadsheetFile(title)) {
+					const { setFiles, setOpenTabs, setSelectedTab } =
+						useCanvasStore.getState();
+					const normalizedPath = file.startsWith("file://")
+						? file.substring(7)
+						: file;
+					try {
+						const result = await window.api.readFile(normalizedPath, "base64");
+						if (result.success) {
+							const docId = normalizedPath;
+							const newDoc = {
+								id: docId,
+								title,
+								path: normalizedPath,
+								content: result.data,
+								type: getFileTypeFromPath(file),
+							};
+
+							const state = useCanvasStore.getState();
+							const conversationCanvasState =
+								state.conversations?.[conversationId];
+							const filesInState = conversationCanvasState?.files ?? [];
+							const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+							const updatedFiles = (() => {
+								const idx = filesInState.findIndex((d) => d.id === docId);
+								if (idx !== -1) {
+									return [
+										...filesInState.slice(0, idx),
+										newDoc,
+										...filesInState.slice(idx + 1),
+									];
+								}
+								return [...filesInState, newDoc];
+							})();
+							setFiles(conversationId, updatedFiles);
+
+							const existsTab = openTabsInState.some((t) => t.id === docId);
+							const updatedTabs = existsTab
+								? openTabsInState
+								: [...openTabsInState, { id: docId, title }];
+							setOpenTabs(conversationId, updatedTabs);
+							setSelectedTab(conversationId, docId);
+							setCanvasOpen(true);
+							setViewMode(conversationId, "documents");
+						}
+					} catch (error) {
+						console.error("Error processing spreadsheet file:", error);
+					}
+				}
+			},
+			[conversationId, setCanvasOpen, setViewMode],
+		);
+
+		useEffect(() => {
+			const autoUpdateOpenFile = async () => {
+				const state = useCanvasStore.getState();
+				const conversationCanvasState = state.conversations?.[conversationId];
+				if (!conversationCanvasState) return;
+
+				const openTabs = conversationCanvasState.openTabs ?? [];
+				const filesInState = conversationCanvasState.files ?? [];
+				const title = getFileName(file);
+				const normalizedPath = file.startsWith("file://")
+					? file.substring(7)
+					: file;
+				const docId = file.startsWith("data:") ? file : normalizedPath;
+
+				const isFileOpen = openTabs.some((tab) => tab.id === docId);
+				if (!isFileOpen) return;
+
+				// File is open, so we need to refresh its content
+				if (file.startsWith("data:")) {
+					const newDoc = {
+						id: docId,
+						title,
+						path: docId,
+						content: file,
+						type: getFileTypeFromPath(file),
+						lastAgentModified: Date.now(),
+					};
+					const fileIndex = filesInState.findIndex((f) => f.id === docId);
+					if (fileIndex !== -1) {
+						const updatedFiles = [...filesInState];
+						updatedFiles[fileIndex] = newDoc;
+						state.setFiles(conversationId, updatedFiles);
+					}
+				} else {
+					try {
+						const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
+
+						const result = await window.api.readFile(normalizedPath, encoding);
+						if (result.success) {
+							const newDoc = {
+								id: docId,
+								title,
+								path: normalizedPath,
+								content: result.data,
+								type: getFileTypeFromPath(file),
+								lastAgentModified: Date.now(),
+							};
+							const fileIndex = filesInState.findIndex((f) => f.id === docId);
+							if (fileIndex !== -1) {
+								const updatedFiles = [...filesInState];
+								updatedFiles[fileIndex] = newDoc;
+								state.setFiles(conversationId, updatedFiles);
+							}
+						}
+					} catch (error) {
+						console.error(
+							`Failed to auto-refresh file in canvas: ${normalizedPath}`,
+							error,
+						);
+					}
+				}
+			};
+
+			autoUpdateOpenFile();
+		}, [file, conversationId]);
+
+		// Handle click on the file attachment
+		const handleClick = useCallback(async () => {
+			if (isSpreadsheetFile(file)) {
+				await handleSpreadsheetClick(file);
+				return;
+			}
+			const title = getFileName(file); // This will be "Pasted image" for image data URIs
+			const fallbackAction = (err?: string) => {
+				if (err) console.error("Error processing file:", err);
+				onClick(file); // Pass the original file string (path or data URI)
+			};
+
+			const { setFiles, setOpenTabs, setSelectedTab } =
+				useCanvasStore.getState();
+
+			if (file.startsWith("data:")) {
+				// Handle base64 data URI
+				if (isCanvasSupported(title)) {
+					const docId = file; // Use the data URI itself as a unique ID
+					const newDoc = {
+						id: docId,
+						title,
+						path: docId, // Store data URI as path for consistency if needed
+						content: file, // The content is the data URI itself
+						type: getFileTypeFromPath(file), // Ensure type is included
+					};
+
+					const state = useCanvasStore.getState();
+					const conversationCanvasState = state.conversations?.[conversationId];
+					const filesInState = conversationCanvasState?.files ?? [];
+					const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+					const updatedFiles = (() => {
+						const idx = filesInState.findIndex((d) => d.id === docId);
+						if (idx !== -1) {
+							return [
+								...filesInState.slice(0, idx),
+								newDoc,
+								...filesInState.slice(idx + 1),
+							];
+						}
+						return [...filesInState, newDoc];
+					})();
+					setFiles(conversationId, updatedFiles);
+
+					const existsTab = openTabsInState.some((t) => t.id === docId);
+					const updatedTabs = existsTab
+						? openTabsInState
+						: [...openTabsInState, { id: docId, title }];
+					setOpenTabs(conversationId, updatedTabs);
+					setSelectedTab(conversationId, docId);
+					setCanvasOpen(true);
+					setViewMode(conversationId, "documents"); // Switch canvas view to documents
+				} else {
+					// Not canvas supported, but it's a data URI.
+					// The server will handle it. For client-side, just call onClick.
+					onClick(file);
+				}
+			} else {
+				// Handle file path
+				const normalizedPath = file.startsWith("file://")
+					? file.substring(7)
+					: file;
+				try {
+					const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
+					const result = await window.api.readFile(normalizedPath, encoding);
+
+					if (result.success && isCanvasSupported(title)) {
+						const docId = normalizedPath;
+						const newDoc = {
+							id: docId,
+							title,
+							path: normalizedPath,
+							content: result.data,
+							type: getFileTypeFromPath(file), // Ensure type is included
+						};
+
+						const state = useCanvasStore.getState();
+						const conversationCanvasState =
+							state.conversations?.[conversationId];
+						const filesInState = conversationCanvasState?.files ?? [];
+						const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+						const updatedFiles = (() => {
+							const idx = filesInState.findIndex((d) => d.id === docId);
+							if (idx !== -1) {
+								return [
+									...filesInState.slice(0, idx),
+									newDoc,
+									...filesInState.slice(idx + 1),
+								];
+							}
+							return [...filesInState, newDoc];
+						})();
+						setFiles(conversationId, updatedFiles);
+
+						const existsTab = openTabsInState.some((t) => t.id === docId);
+						const updatedTabs = existsTab
+							? openTabsInState
+							: [...openTabsInState, { id: docId, title }];
+						setOpenTabs(conversationId, updatedTabs);
+						setSelectedTab(conversationId, docId);
+						setCanvasOpen(true);
+						setViewMode(conversationId, "documents"); // Switch canvas view to documents
+						return;
+					}
+
+					const errorMessage =
+						!result.success && result.error
+							? result.error instanceof Error
+								? result.error.message
+								: String(result.error)
+							: "Unknown error reading file";
+					return fallbackAction(errorMessage);
+				} catch (error: unknown) {
+					const message =
+						error instanceof Error
+							? error.message
+							: String(error ?? "Unknown error reading file");
+					return fallbackAction(message);
+				}
+			}
+		}, [
+			file,
+			onClick,
+			setCanvasOpen,
+			setViewMode,
+			conversationId,
+			handleSpreadsheetClick,
+		]);
+
+		const isPastedImage = file.startsWith("data:image/");
+		const isLocalFile = !file.startsWith("data:") && !file.startsWith("http");
+		const normalizedPath = file.startsWith("file://")
+			? file.substring(7)
+			: file;
+		// A pasted image is a picture, so it renders as one: same reserved frame
+		// and same failure copy as any other image. It used to render as a bare
+		// `<img>` inside a 200px card with no minimum, which is how an 8x6 pasted
+		// PNG turned into an 8px speck at the top of a message.
+		if (isPastedImage) {
+			return (
+				<div className="group relative inline-block max-w-full">
+					{hasError ? (
+						<BrokenAttachment name={getFileName(file)} />
+					) : (
+						<button
+							type="button"
+							className="block max-w-full cursor-pointer"
+							onClick={handleClick}
+							title={`Click to open ${getFileName(file)}`}
+						>
+							<AttachmentFrame>
+								<img
+									src={file}
+									alt={getFileName(file)}
+									className={cn(
+										"max-h-[240px] max-w-full object-contain",
+										isLoaded ? "opacity-100" : "opacity-0",
+									)}
+									onLoad={() => setIsLoaded(true)}
+									onError={() => setHasError(true)}
+								/>
+							</AttachmentFrame>
+						</button>
+					)}
+				</div>
+			);
+		}
+
+		return (
+			<div
+				className={cn(
+					"group relative flex w-fit max-w-full items-center gap-2.5 rounded-sm",
+					"border border-hairline bg-surface px-3 py-2",
+					"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+				)}
+			>
+				{/* The card is a real button holding only the content; the actions
+				 * menu is a sibling, because nesting a button in a button is
+				 * invalid HTML. */}
+				<button
+					type="button"
+					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+					onClick={handleClick}
+					title={`Click to open ${getFileName(file)}`}
+				>
+					{/* Neutral, not accent. A conversation can carry a dozen of these
+					 * and § 2 budgets the accent at about three spends per screen —
+					 * the file glyph is identification, not an action. */}
+					<File className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+					<span className="truncate text-body-sm text-ink">
+						{getFileName(file)}
+					</span>
+				</button>
+				{isLocalFile && (
+					<div className="file-actions-menu invisible opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
+						<FileActionsMenu
+							filePath={normalizedPath}
+							tooltip="File actions"
+							aria-label="File actions"
+							onShowInCanvas={handleClick}
+						/>
+					</div>
+				)}
+			</div>
+		);
+	},
+);
+
+FileAttachment.displayName = "FileAttachment";

@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  Evidence harness for the backend-error surfaces (issue #89, PR #92).
+
+  Mounts the SHIPPED components behind a REAL desktop bridge -- an injected
+  `window.api.desktop` -- so `desktopRequest` takes the Electron IPC branch that
+  actually ships rather than the browser-dev `/__desktop` HTTP branch, which
+  never calls `withDeadline` and classifies its failures differently.
+
+  Two things this defeats, both of which blocked capturing these frames before:
+   - the fault is injected AT the bridge, so the shipped transport builds the
+     error and attaches its status;
+   - `visibilityState` is reported as "visible", so React Query does not pause
+     the capture tab's refetches.
+
+  Not part of the app or the test suite: a capture surface, run by hand with
+  `pnpm vite --config scripts/backend-error-evidence.vite.mjs`.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Backend error surfaces</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./backend-error-evidence.tsx"></script>
+	</body>
+</html>

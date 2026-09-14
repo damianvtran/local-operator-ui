@@ -1,0 +1,10 @@
+### SecStaticCodeCreateWithPath probe (mirrors ShipIt's SQRLCodeSignature call)
+-67068 = errSecCSStaticCodeNotFound (path has no code object, e.g. absent bundle)
+-67028 = errSecCSBadBundleFormat   (path is not a valid bundle)
+   -67068  /nonexistent/Whatever.app
+   -67028  /tmp
+        0  /usr/bin/python3
+   -67028  /Users/damian/workspace/lo-update-audit/probe/plaindir
+        0  /Users/damian/Library/Caches/com.local-operator.ShipIt/update.ctfjaw5/Local Operator.app
+   -67068  /Users/damian/workspace/lo-update-audit/probe/signed.app
+partial bundle (Contents/MacOS/Local Operator removed): 0

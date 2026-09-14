@@ -1,0 +1,442 @@
+/*
+ * Prose styling for rendered markdown, plus the streaming text fade.
+ *
+ * This was an Emotion `styled(Box)` carrying ~180 lines of nested selectors and
+ * a dozen `alpha(theme.palette.grey[...])` calls. Emotion re-evaluates that
+ * function on every theme read and, worse, none of those greys were theme
+ * roles, so the twelve palettes all rendered markdown against the same handful
+ * of hardcoded neutrals.
+ *
+ * It lives in a plain stylesheet rather than Tailwind utilities because
+ * react-markdown emits bare `<p>`, `<pre>`, `<table>` — there is no element to
+ * hang a class on. Descendant rules are the honest way to style that, and
+ * `[&_p]:mt-2 [&_pre]:rounded-sm …` forty times over is the same CSS with worse
+ * ergonomics. Every colour is a role variable, so a theme swap still costs
+ * nothing.
+ *
+ * The two knobs callers actually set — font size and line height — arrive as
+ * custom properties instead of Emotion props, so changing them does not
+ * re-serialise a stylesheet.
+ */
+
+.lo-markdown {
+	font-size: var(--md-font-size, var(--text-body));
+	line-height: var(--md-line-height, 1.6);
+	/* Overridable like the two above it. Prose is the answer's register by
+	   default, but markdown also renders in places that must not compete with
+	   an answer - the reasoning panel most of all, where full-strength ink at
+	   body size made the agent's private thinking look exactly like its reply
+	   to you. Setting `--md-ink` steps it down without a second stylesheet. */
+	color: var(--md-ink, var(--lo-ink));
+	word-break: break-word;
+	overflow-wrap: break-word;
+}
+
+.lo-markdown p {
+	margin: 0.5rem 0;
+}
+
+.lo-markdown p:first-child {
+	margin-top: 0;
+}
+
+.lo-markdown p:last-child {
+	margin-bottom: 0;
+}
+
+/*
+ * Inline code carries no fill, no padding and no radius - the monospace face
+ * is the whole signal.
+ *
+ * This app spends monospace on machine voice as a system decision (§ 4) and
+ * renders every path, count, flag and timestamp in it, so a box around the
+ * same fragment is a second signal for something the face already says. The
+ * fill also cost more than it looked: 4px of chip padding sat between the last
+ * glyph and any following punctuation - a word space here is about 4px, so a
+ * sentence ending in code put its full stop a space and a half away, and that
+ * reads as a typo rather than as a style.
+ *
+ * Measured before removing it: `sunken` against `canvas` is 1.135:1 at best
+ * (sage) and 1.049:1 at worst (neon), with five dark palettes at or below
+ * 1.06. Where the fill is visible the eye attributes the padding to the box
+ * and it reads acceptably; where it is not - which is most of the dark themes
+ * - all that remained was the gap. Tuning the padding would have improved it
+ * where it was not broken and left the void everywhere else.
+ *
+ * GitHub and Slack keep the fill because their inline code is set in the SAME
+ * family as the surrounding prose, so the box is the only signal that a
+ * fragment is literal. That is not this app.
+ *
+ * The accepted cost: multi-word inline code loses its extent delimiter. Here
+ * inline code is overwhelmingly single tokens, so the trade is worth it.
+ *
+ * `pre` keeps its ground and border - a code block has left the flow.
+ */
+.lo-markdown code {
+	font-family: var(--font-mono);
+	font-size: var(--text-mono);
+	color: var(--lo-ink);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.lo-markdown pre {
+	background-color: var(--lo-sunken);
+	border: 1px solid var(--lo-hairline);
+	border-radius: var(--radius-sm);
+	padding: 0.75rem;
+	margin: 0.75rem 0;
+	max-width: 100%;
+	overflow-x: auto;
+	font-family: var(--font-mono);
+	font-size: var(--text-mono);
+}
+
+/* The <pre> already carries the ground and the boundary; a second one on the
+   nested <code> paints a box inside a box.
+
+   Both font sizes used to be `0.875em`, and they multiplied: react-markdown
+   emits `<pre><code>` for a fenced block, so the most-read machine text in
+   the product rendered at 0.875 x 0.875 x 14 = 10.72px, and 9.95px in the
+   13px small view. Naming the same ramp step on both makes the nesting
+   inert. */
+.lo-markdown pre code {
+	background-color: transparent;
+	padding: 0;
+	border-radius: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/*
+ * Headings are the app's type steps, not a scale of their own.
+ *
+ * These were `em` multiples - 1.4 / 1.22 / 1.08 / 1 - computing to 19.6 /
+ * 17.08 / 15.12 / 14 against the 14px body and 18.2 / 15.86 / 14.04 / 13
+ * against the 13px one. Not one of those seven numbers is on § 4's ramp, and
+ * 17.08px exists nowhere else in the product. The rendered answer is the
+ * most-read text in the app and it was the one surface running a second,
+ * undocumented type system.
+ *
+ * The `em` was not buying nesting safety, which is the reason it looks
+ * load-bearing. Nothing between `.lo-markdown` and a heading changes
+ * `font-size` - not `li`, `ul`, `blockquote`, `td` - so a heading inside a
+ * list item computed to exactly the same size as one at the top level
+ * (measured: 15.12px both ways). What the multiplier actually tracked was the
+ * block's own base, which callers set to `--text-body` or `--text-body-sm`,
+ * and a heading does not need to shrink because the paragraph under it did.
+ *
+ * The ramp has two steps above body and prose has six heading levels, so h3
+ * down to h6 share the body step and separate by space and weight. That is
+ * honest rather than lossy: h3 and h4 already differed by 1.12px, which no
+ * reader can see. h5 and h6 were not styled here at all, so Tailwind's
+ * preflight reset left them identical to a paragraph - an agent writing
+ * `##### Note` got no structure whatsoever.
+ */
+.lo-markdown h1,
+.lo-markdown h2,
+.lo-markdown h3,
+.lo-markdown h4,
+.lo-markdown h5,
+.lo-markdown h6 {
+	font-weight: 600;
+	color: var(--lo-ink);
+}
+
+.lo-markdown h1 {
+	font-size: var(--text-title);
+	line-height: var(--text-title--line-height);
+	letter-spacing: var(--text-title--letter-spacing);
+	margin: 1.5rem 0 0.5rem;
+	padding-bottom: 0.25rem;
+	border-bottom: 1px solid var(--lo-hairline);
+}
+
+.lo-markdown h2 {
+	font-size: var(--text-heading);
+	line-height: var(--text-heading--line-height);
+	letter-spacing: var(--text-heading--letter-spacing);
+	margin: 1rem 0 0.5rem;
+}
+
+.lo-markdown h3 {
+	font-size: var(--text-body);
+	line-height: var(--text-body--line-height);
+	margin: 0.75rem 0 0.25rem;
+}
+
+.lo-markdown h4,
+.lo-markdown h5,
+.lo-markdown h6 {
+	font-size: var(--text-body);
+	line-height: var(--text-body--line-height);
+	margin: 0.5rem 0 0.25rem;
+}
+
+/* Inline code is one ramp step below whatever it sits in, and that is the one
+   thing the `em` scale was genuinely buying: a heading like "## Fixing
+   useEffect" with the identifier in code must not drop to body-size mono
+   inside a 20px heading. Naming the step preserves that and keeps it
+   checkable - a multiplier cannot be grepped against § 4. h3 through h6 are
+   already at the body step, so the base rule serves them. */
+.lo-markdown h1 code {
+	font-size: var(--text-heading);
+}
+
+.lo-markdown h2 code {
+	font-size: var(--text-body);
+}
+
+.lo-markdown > :is(h1, h2, h3, h4, h5, h6):first-child {
+	margin-top: 0;
+}
+
+.lo-markdown ul,
+.lo-markdown ol {
+	padding-left: 1.5rem;
+	margin: 0.5rem 0;
+}
+
+.lo-markdown ul {
+	list-style: disc;
+}
+
+.lo-markdown ol {
+	list-style: decimal;
+}
+
+.lo-markdown li {
+	margin: 0.25rem 0;
+}
+
+.lo-markdown a {
+	color: var(--lo-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
+	transition: color var(--duration-fast) var(--ease-out-quart);
+}
+
+.lo-markdown a:hover {
+	color: var(--lo-accent-hover);
+}
+
+.lo-markdown strong {
+	font-weight: 600;
+	color: var(--lo-ink);
+}
+
+.lo-markdown em {
+	font-style: italic;
+}
+
+.lo-markdown blockquote {
+	border-left: 2px solid var(--lo-hairline);
+	background-color: var(--lo-sunken);
+	border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+	color: var(--lo-ink-muted);
+	padding: 0.5rem 0.75rem;
+	margin: 0.75rem 0;
+}
+
+.lo-markdown hr {
+	border: 0;
+	border-top: 1px solid var(--lo-hairline);
+	margin: 1rem 0;
+}
+
+.lo-markdown table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 0.75rem 0;
+}
+
+.lo-markdown th,
+.lo-markdown td {
+	border: 1px solid var(--lo-hairline);
+	padding: 0.5rem 0.75rem;
+	text-align: left;
+}
+
+/* The header ground plus the cell hairlines carry the structure. Zebra striping
+   on top of both was a third redundant signal, and it was the only rule in this
+   file that needed a fourth neutral. */
+.lo-markdown th {
+	background-color: var(--lo-sunken);
+	font-weight: 600;
+}
+
+.lo-markdown .math-display {
+	margin: 0.75rem 0;
+	padding: 0.5rem 0;
+	overflow-x: auto;
+}
+
+.lo-markdown .katex {
+	font-size: 1.05em;
+}
+
+/*
+ * Reading measure — the USER ASIDE's box, and nothing else's.
+ *
+ * This rule used to apply to agent answers too, capping them at 62 characters
+ * and then centring them with `margin-inline: auto`. It no longer does, and
+ * the reason is a direct operator instruction that outranks the measure
+ * argument this comment used to make: agent prose must share the LEFT EDGE and
+ * the WIDTH of the tool rows it sits among.
+ *
+ * ## Why tool-row parity beats the reading measure here
+ *
+ * The transcript is not a reading pane. It is a ledger the reader scans, and
+ * an agent turn interleaves two registers in one row content box — prose to
+ * the user, and tool rows recording what was done. The operator's report is
+ * about the seam between them: "the agent messages ... have too much left
+ * padding and are not the same width in the view as the tool calls", naming
+ * both prose BETWEEN tool rows and a final answer.
+ *
+ * The cap and the centring each produced one half of that. Measured in
+ * Storybook at 1024x620 (`chat-tool-rows--prose-tool-alignment`), the tool row
+ * spanned 102..962 and the answer 258.6..805.4: `margin-inline: auto` pushed
+ * its left edge 156.6px inboard of the ledger's, and the 62ch cap — 546.7px at
+ * the body step — stopped it 156.6px short of the ledger's right edge. Two
+ * left rails in one column, which the eye reads as a mistake rather than as a
+ * decision, and at 1440x900 the same two numbers because the cap binds harder
+ * the more room there is.
+ *
+ * So the measure is now a property of the thing that IS an aside. A user turn
+ * is a quotation of the reader's own words: it takes a bubble, a right
+ * alignment and a narrower box, and that box is what makes the agent's answer
+ * read as the document. Agent output takes the full row content box instead,
+ * which is the same box the ledger resolves against — one edge, structurally,
+ * rather than two that have to be kept in agreement.
+ *
+ * ## What the removal costs, stated rather than deleted
+ *
+ * This comment used to justify the cap with a measurement — "at 900px a
+ * paragraph runs past 100 characters a line" — and that measurement is still
+ * TRUE, so answering it is better than deleting it. Measured at the 14px body
+ * step (design review round 1, D2): 98.1 characters a line at 1024, 1440 AND
+ * 1920, and 66.6 at 700. Above the 45-75 the typographic guidance cites.
+ *
+ * Two facts make the trade acceptable, and both are why the number is recorded
+ * here instead of being argued again next round:
+ *
+ *  - **98.1 is a CEILING, not a slope.** The column is capped at 900px by
+ *    `CHAT_MEASURE` (`chat-measure.ts`), so the line length stops growing with
+ *    the window — 1920 reads exactly as 1024 does. The failure mode a reading
+ *    cap exists to prevent, prose stretching across a wide display, cannot
+ *    happen on this surface.
+ *  - **This is a ledger, not a reading pane** (branding.md § 7). The reader
+ *    scans it and matches an answer against the rows that produced it, so the
+ *    two registers sharing one pair of edges is worth more than a comfortable
+ *    measure on one of them.
+ *
+ * If a measure is ever wanted back, the ONLY version that survives this is one
+ * that narrows the whole row content box — prose and ledger together, i.e.
+ * `CHAT_MEASURE` — never one applied to prose alone, which puts the second
+ * left edge straight back. That rule is in branding.md § 7 as contract.
+ *
+ * DO NOT reinstate `margin-inline: auto` or a max-width on agent prose. The
+ * centring was itself a fix for an earlier report (design round 2, D4) that
+ * the prose looked "shoved left" when the cap left 40px on one side and 245px
+ * on the other — but the asymmetry it balanced was CREATED by the cap, and
+ * removing the cap removes both the symptom and the need for the remedy. A
+ * future change that restores either one re-opens this report.
+ *
+ * ## Why the rule stays on the `.lo-markdown` ROOT
+ *
+ * Unchanged, and still load-bearing for the user bubble. Two rounds of review
+ * established that a measure applied anywhere smaller than the whole rendered
+ * answer breaks alignment inside it:
+ *
+ *  - On each block, `62ch` resolves against that block's OWN font, so it is a
+ *    different pixel width per type step — 546.7px at the body step, 624.8px
+ *    at the heading step, 781px at the title — and centring each block
+ *    independently gave each one a different left edge: h2 hung 39.1px left
+ *    of its own body text, h1 117.1px, dragging its full-width border-bottom
+ *    off-axis with it (code review round 3, R1).
+ *  - Excluding `<pre>`/`<table>` from the cap left them on the column edge
+ *    while the prose centred, so one mixed message started its code block
+ *    122.6px left of the paragraph around it at 1380, and the column showed
+ *    four different left edges (design round 3, D13).
+ *
+ * On the root, `ch` resolves ONCE against the root's own body-size font, so
+ * headings, prose, lists, blockquotes, code and tables inherit one box and
+ * therefore one left edge at every type step.
+ *
+ * ## Why `margin-inline: auto` stays here, given the warning above
+ *
+ * It is INERT on the user branch, and that is the point. The bubble
+ * shrink-wraps its capped content, so there is almost nothing for the centring
+ * to distribute: measured at 1440 with a long user message, the frame is
+ * 589.3..1170 and the markdown 606.3..1153, leaving 1.0px of slack on each
+ * side (design review round 1, D3). It survives as the second half of the pair
+ * that makes `62ch` mean "this box is 62ch wide" rather than "this box is at
+ * most 62ch wide, aligned however the flow happens to leave it".
+ *
+ * So the declaration the paragraph above forbids on AGENT prose is still
+ * present on the USER bubble, and that is not a contradiction: on a
+ * shrink-wrapped aside it moves a pixel, while on a full-width answer it moved
+ * 156.6px and created the second rail. The rule is about the box it lands on,
+ * not about the property.
+ *
+ * The class is applied by `canonical-transcript.tsx` and `message-paper.tsx`,
+ * on their USER branches only.
+ */
+.lo-measured .lo-markdown {
+	max-width: 62ch;
+	margin-inline: auto;
+}
+
+/*
+ * The in-flight block.
+ *
+ * Rendered `pre-wrap` so the raw source keeps its line structure while it is
+ * still plain text, and sized identically to a paragraph so that promoting it
+ * to parsed markup a moment later does not move the text.
+ */
+.lo-stream-tail {
+	white-space: pre-wrap;
+	margin: 0.5rem 0;
+}
+
+.lo-stream-tail:first-child {
+	margin-top: 0;
+}
+
+/*
+ * Text arrival.
+ *
+ * One span per rendered frame, each holding exactly the characters that arrived
+ * in that frame, each mounted once and never re-rendered. That is what keeps
+ * already-painted text from re-animating: the animation is a mount-time
+ * property of an element whose content never changes again.
+ *
+ * `both` is load-bearing. Under `prefers-reduced-motion` the base layer caps
+ * every animation to 0.01ms, so this runs to completion instantly and the fill
+ * holds the `to` frame — fully opaque. The span's resting opacity is the
+ * initial value 1, so if the animation never runs at all the text is still
+ * visible. There is no state in which this leaves content at `opacity: 0`.
+ */
+@keyframes lo-stream-chunk-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.lo-stream-chunk {
+	animation: lo-stream-chunk-in var(--duration-slow) var(--ease-out-quart) both;
+}
+
+/*
+ * Inline code inside a tinted callout needs no special case any more.
+ *
+ * This block used to strip the fill that `.lo-markdown code` applied, because
+ * a neutral fill on a tinted ground reads as a hole punched through the
+ * callout. That argument turned out to be about the FILL, not about the
+ * callout - it holds identically on canvas - so the fill is gone everywhere
+ * and this override has nothing left to undo.
+ */

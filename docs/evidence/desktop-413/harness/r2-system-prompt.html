@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  Evidence harness for R2 (review round 3, PR #102).
+
+  R2: the system-prompt pre-flight throws to refuse an oversize prompt, but
+  `system-prompt-settings.tsx` caught that throw WITHOUT rethrowing, so
+  `EditableField` read the resolved promise as SUCCESS -- it exited edit mode and
+  displayed the rejected text as if it had saved. The user's edit was then lost
+  on the next refetch. That is the Q-7 defect (a refusal that retires the draft)
+  one surface over.
+
+  A unit test can pin `systemPromptBudgetRefusal`, but the defect lives in the
+  seam between three files -- the hook that throws, the settings component that
+  swallowed, and the widget that owns the edit state. Only a mounted render of
+  all three proves they agree, which is why this harness exists rather than
+  another assertion.
+
+  Mounts the SHIPPED `SystemPromptSettings` behind an injected
+  `window.api.desktop`, the same technique as `scripts/backend-error-evidence.html`,
+  so the renderer takes the Electron IPC branch that ships. Run by hand:
+  `pnpm vite --config docs/evidence/desktop-413/harness/r2-system-prompt.vite.mjs`.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>R2: a refused system prompt keeps the user's text</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./r2-system-prompt.tsx"></script>
+	</body>
+</html>

@@ -1,0 +1,506 @@
+{
+ "empty-1380": {
+  "doc": {
+   "delta": 0,
+   "overflowY": "visible"
+  },
+  "win": {
+   "w": 1380,
+   "h": 872
+  },
+  "boxes": [
+   {
+    "label": "chat column :261",
+    "rect": {
+     "x": 480,
+     "y": 0,
+     "w": 900,
+     "h": 872
+    },
+    "right": 1380,
+    "centre": 930,
+    "clientH": 872,
+    "scrollH": 872,
+    "overflowY": "hidden",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "1",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "ChatHeader",
+    "rect": {
+     "x": 480,
+     "y": 0,
+     "w": 900,
+     "h": 56
+    },
+    "right": 1380,
+    "centre": 930,
+    "clientH": 55,
+    "scrollH": 55,
+    "overflowY": "visible",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "transcript",
+    "rect": {
+     "x": 480,
+     "y": 104,
+     "w": 900,
+     "h": 421.8
+    },
+    "right": 1380,
+    "centre": 930,
+    "clientH": 422,
+    "scrollH": 422,
+    "overflowY": "auto",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "1",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 16
+   },
+   {
+    "label": "composer band",
+    "rect": {
+     "x": 496,
+     "y": 533.8,
+     "w": 868,
+     "h": 322.2
+    },
+    "right": 1364,
+    "centre": 930,
+    "clientH": 322,
+    "scrollH": 322,
+    "overflowY": "visible",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "composer box",
+    "rect": {
+     "x": 512,
+     "y": 599.8,
+     "w": 836,
+     "h": 111.7
+    },
+    "right": 1348,
+    "centre": 930,
+    "clientH": 110,
+    "scrollH": 110,
+    "overflowY": "visible",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 2
+   },
+   {
+    "label": "agent name",
+    "rect": {
+     "x": 540,
+     "y": 6.5,
+     "w": 324.3,
+     "h": 22.4
+    },
+    "right": 864.3,
+    "centre": 702.2,
+    "clientH": 22,
+    "scrollH": 22,
+    "overflowY": "hidden",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "16px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "header avatar",
+    "rect": {
+     "x": 496,
+     "y": 11.5,
+     "w": 32,
+     "h": 32
+    },
+    "right": 528,
+    "centre": 512,
+    "clientH": 32,
+    "scrollH": 32,
+    "overflowY": "hidden",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "agent prose 62ch",
+    "missing": true
+   }
+  ],
+  "cwd": {
+   "chipPresent": true,
+   "legacyBarPresent": false,
+   "chipText": "~"
+  }
+ },
+ "empty-1000": {
+  "doc": {
+   "delta": 0,
+   "overflowY": "visible"
+  },
+  "win": {
+   "w": 1000,
+   "h": 800
+  },
+  "boxes": [
+   {
+    "label": "chat column :261",
+    "rect": {
+     "x": 480,
+     "y": 0,
+     "w": 520,
+     "h": 800
+    },
+    "right": 1000,
+    "centre": 740,
+    "clientH": 800,
+    "scrollH": 800,
+    "overflowY": "hidden",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "1",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "ChatHeader",
+    "rect": {
+     "x": 480,
+     "y": 0,
+     "w": 520,
+     "h": 56
+    },
+    "right": 1000,
+    "centre": 740,
+    "clientH": 55,
+    "scrollH": 55,
+    "overflowY": "visible",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "transcript",
+    "rect": {
+     "x": 480,
+     "y": 104,
+     "w": 520,
+     "h": 604.5
+    },
+    "right": 1000,
+    "centre": 740,
+    "clientH": 605,
+    "scrollH": 605,
+    "overflowY": "auto",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "1",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 16
+   },
+   {
+    "label": "composer band",
+    "rect": {
+     "x": 480,
+     "y": 708.5,
+     "w": 520,
+     "h": 91.5
+    },
+    "right": 1000,
+    "centre": 740,
+    "clientH": 92,
+    "scrollH": 92,
+    "overflowY": "visible",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "composer box",
+    "rect": {
+     "x": 484,
+     "y": 710.5,
+     "w": 512,
+     "h": 85.5
+    },
+    "right": 996,
+    "centre": 740,
+    "clientH": 84,
+    "scrollH": 84,
+    "overflowY": "visible",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 2
+   },
+   {
+    "label": "agent name",
+    "rect": {
+     "x": 540,
+     "y": 6.5,
+     "w": 324.3,
+     "h": 22.4
+    },
+    "right": 864.3,
+    "centre": 702.2,
+    "clientH": 22,
+    "scrollH": 22,
+    "overflowY": "hidden",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "16px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "header avatar",
+    "rect": {
+     "x": 496,
+     "y": 11.5,
+     "w": 32,
+     "h": 32
+    },
+    "right": 528,
+    "centre": 512,
+    "clientH": 32,
+    "scrollH": 32,
+    "overflowY": "hidden",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "agent prose 62ch",
+    "missing": true
+   }
+  ],
+  "cwd": {
+   "chipPresent": true,
+   "legacyBarPresent": false,
+   "chipText": "~"
+  }
+ },
+ "empty-760": {
+  "doc": {
+   "delta": 0,
+   "overflowY": "visible"
+  },
+  "win": {
+   "w": 760,
+   "h": 800
+  },
+  "boxes": [
+   {
+    "label": "chat column :261",
+    "rect": {
+     "x": 480,
+     "y": 0,
+     "w": 280,
+     "h": 800
+    },
+    "right": 760,
+    "centre": 620,
+    "clientH": 800,
+    "scrollH": 800,
+    "overflowY": "hidden",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "1",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "ChatHeader",
+    "rect": {
+     "x": 480,
+     "y": 0,
+     "w": 280,
+     "h": 56
+    },
+    "right": 760,
+    "centre": 620,
+    "clientH": 55,
+    "scrollH": 55,
+    "overflowY": "visible",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "transcript",
+    "rect": {
+     "x": 480,
+     "y": 104,
+     "w": 280,
+     "h": 604.5
+    },
+    "right": 760,
+    "centre": 620,
+    "clientH": 605,
+    "scrollH": 605,
+    "overflowY": "auto",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "1",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 16
+   },
+   {
+    "label": "composer band",
+    "rect": {
+     "x": 480,
+     "y": 708.5,
+     "w": 280,
+     "h": 91.5
+    },
+    "right": 760,
+    "centre": 620,
+    "clientH": 92,
+    "scrollH": 92,
+    "overflowY": "visible",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "composer box",
+    "rect": {
+     "x": 497.6,
+     "y": 710.5,
+     "w": 244.8,
+     "h": 85.5
+    },
+    "right": 742.4,
+    "centre": 620,
+    "clientH": 84,
+    "scrollH": 84,
+    "overflowY": "visible",
+    "minHeight": "0px",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgb(30, 26, 20)",
+    "fontSize": "14px",
+    "scrollbarW": 2
+   },
+   {
+    "label": "agent name",
+    "rect": {
+     "x": 540,
+     "y": 6.5,
+     "w": 160,
+     "h": 22.4
+    },
+    "right": 700,
+    "centre": 620,
+    "clientH": 22,
+    "scrollH": 22,
+    "overflowY": "hidden",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "1",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "16px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "header avatar",
+    "rect": {
+     "x": 496,
+     "y": 11.5,
+     "w": 32,
+     "h": 32
+    },
+    "right": 528,
+    "centre": 512,
+    "clientH": 32,
+    "scrollH": 32,
+    "overflowY": "hidden",
+    "minHeight": "auto",
+    "flexBasis": "auto",
+    "flexShrink": "0",
+    "flexGrow": "0",
+    "bg": "rgba(0, 0, 0, 0)",
+    "fontSize": "14px",
+    "scrollbarW": 0
+   },
+   {
+    "label": "agent prose 62ch",
+    "missing": true
+   }
+  ],
+  "cwd": {
+   "chipPresent": true,
+   "legacyBarPresent": false,
+   "chipText": "~"
+  }
+ }
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<!--
+  Evidence harness: the shipped `/usage` view against a REAL provider report.
+
+  Every other frame in `docs/evidence/chat-usage/` is a story rendering
+  fixtures, which is the only way to photograph a state that needs an OAuth
+  grant to die or a weekly window to run out. This one answers the question a
+  fixture cannot: does the shipped view render the shape the real backend
+  actually sends, on a machine with real accounts signed in.
+
+  It mounts the SAME `UsageDialog` the app mounts, behind an injected
+  `window.api.desktop` bridge that replays ONE cached `usage.get` response
+  captured from the local backend. Replayed rather than fetched live so the
+  capture is deterministic and so no credential is needed at render time: the
+  payload is passed in on `window.__USAGE_FIXTURE__` by the capture script,
+  never written to a file and never committed.
+
+  Not part of the app or the test suite -- a capture surface, run by hand.
+  See docs/evidence/chat-usage/README.md.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Provider usage — real data</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./usage-real-evidence.tsx"></script>
+	</body>
+</html>

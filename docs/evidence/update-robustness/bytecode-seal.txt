@@ -1,0 +1,244 @@
+# The bytecode seal break: 0.17.x unseals itself, and why the update was refused
+
+Measured on this machine, 2026-09-12, on the installed **0.17.3** and against the
+shipped **0.17.0** image mounted read-only at `/Volumes/Local Operator
+0.17.0-universal` (source `~/Downloads/local-operator-ui-0.17.0-universal.dmg`).
+Every number below is a command and its actual output, run in this order.
+
+This is the failure the operator hit: the in-app update to 0.18.0 was refused
+with "This app can't update itself … a sealed resource is missing or invalid:
+file added: /Applications/Local Operator.app/Contents/Resources/python_aarch64/
+lib/python3.12/encodings/__pycache__/*.pyc". The refusal was the app's own
+pre-flight (`probeInstalledBundleSeal`) working as designed — it declined to hand
+ShipIt a bundle ShipIt would reject with `-67028
+errSecCSBadBundleFormat`. The bug was upstream of it: something had already
+broken the seal, and it was us.
+
+## 1. What the installed app looks like
+
+```
+$ codesign --verify --deep --verbose=4 "/Applications/Local Operator.app" | awk '{print $1" "$2}' | sort | uniq -c
+ 308 file added:
+   3 file modified:
+```
+
+All 311 entries are `.pyc`, all inside a `__pycache__/`, all under
+`Contents/Resources/python_aarch64` — checked rather than assumed, by counting
+the lines that fail each condition over the 311 paths:
+
+```
+$ codesign --verify --deep --verbose=4 "/Applications/Local Operator.app" 2>/dev/null \
+    | sed 's/^file added: //; s/^file modified: //' > /tmp/install-violations.txt
+$ wc -l < /tmp/install-violations.txt
+311
+$ grep -vc "Contents/Resources/python_aarch64" /tmp/install-violations.txt
+0
+$ grep -vc "\.pyc$" /tmp/install-violations.txt
+0
+$ grep -vc "__pycache__/" /tmp/install-violations.txt
+0
+```
+
+The three `modified` ones are the interpreter's own startup imports, and they are
+the three `.pyc` the 0.17.0 bundle actually shipped:
+
+```
+$ codesign --verify --deep --verbose=4 "/Applications/Local Operator.app" | grep "file modified:"
+file modified: .../python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc
+file modified: .../python_aarch64/lib/python3.12/encodings/__pycache__/aliases.cpython-312.pyc
+file modified: .../python_aarch64/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc
+```
+
+The count grows with use — one entry per module the process has imported so far.
+It was 305 when the audit was taken the day before; it is 308 now. That shape is
+the shape of a cache, not of corruption.
+
+Two consequences of the same break, which is why this is worse than "the update
+path is fussy":
+
+```
+$ spctl -a -vvv -t exec "/Applications/Local Operator.app"
+/Applications/Local Operator.app: a sealed resource is missing or invalid
+$ xcrun stapler validate "/Applications/Local Operator.app"
+The validate action worked!
+```
+
+Gatekeeper's own assessment of the installed app now fails. The app still
+launches here only because its assessment was cached from install time. This is
+the same class as the "damaged and can't be opened" report the 0.17.0 audit
+chased.
+
+## 2. The shipped bundle, and why its three `.pyc` are stale by construction
+
+The pristine app inside the mounted image verifies:
+
+```
+$ codesign --verify --deep "/Volumes/Local Operator 0.17.0-universal/Local Operator.app"; echo $?
+0
+$ find ".../Contents/Resources/python_aarch64" -name '*.pyc' | wc -l
+3
+$ find ".../Contents/Resources" -name '*.pyc' | wc -l
+3
+```
+
+Reading the recorded source mtime out of each `.pyc` header and comparing it with
+the source beside it:
+
+```
+__init__ pyc mtime=1748584453 (2025-05-30 01:54:13) pyc size=5884 src mtime=1789072763 (2026-09-10 16:39:23) src size=5884
+aliases  pyc mtime=1748584453 (2025-05-30 01:54:13) pyc size=15677 src mtime=1789072763 (2026-09-10 16:39:23) src size=15677
+utf_8    pyc mtime=1748584453 (2025-05-30 01:54:13) pyc size=1005  src mtime=1789072763 (2026-09-10 16:39:23) src size=1005
+```
+
+The sizes match and the mtimes do not: packaging and installing reset `.py`
+mtimes, so CPython considers the shipped bytecode invalid and rewrites it on the
+user's first launch. The three files are stale at the moment they are built, and
+one of the rewrites is a `file modified:` violation.
+
+That distinction decides whether a broken bundle can be repaired at all, see § 4.
+It is why `scripts/setup-python-resource.sh` now strips every `__pycache__` (and
+fails the build if any remain) and why `scripts/verify-macos-artifacts.mjs` fails
+on any `.pyc` under the bundled interpreter trees.
+
+## 3. The reproduction, on the real interpreter tree
+
+A copy of the shipped tree (`cp -R`, 47 MB, its relative symlinks intact) driven
+by the real binary. The three runs are `--version`, `-c "import json, logging,
+xml.etree.ElementTree"` and `-m venv --help`:
+
+```
+A. without a prefix
+   pyc in the shipped tree: 3
+   pyc after three interpreter runs, no prefix: 55
+
+B. with PYTHONPYCACHEPREFIX set by the shipped helper
+   withPythonBytecodeCache(env, userDataDir) -> <userData>/python-bytecode-cache
+     (userDataDir contains ".app"? false)
+   files hashed: 1821
+   files changed or added: 0
+   pyc left in the tree: 3
+   pyc cached under the prefix: 582
+   venv python runs the bundled tree: <the copied tree>
+```
+
+Section B is exercised through the shipped module rather than through a
+hand-written environment: the run bundles `src/main/python-bytecode-cache.ts`
+with esbuild, calls `withPythonBytecodeCache({...process.env}, userDataDir)`,
+and spawns the interpreter with exactly the environment that returns. The tree
+is byte-for-byte identical afterwards (1821 files, content-hashed) and the cache
+still works — 582 `.pyc` under the prefix, and a venv created by that
+interpreter runs on the bundled tree as before.
+
+Two values of the variable that do **not** protect the bundle, measured the same
+way (and the reason the helper treats them as unset):
+
+```
+$ PYTHONPYCACHEPREFIX=      ./bin/python3 -c "import json"   -> pyc 3 -> 20
+$ PYTHONPYCACHEPREFIX=" "   ./bin/python3 -c "import json"   -> pyc 3 -> 23
+```
+
+An empty or whitespace-only prefix falls back to writing in place.
+
+## 4. Which violations can be healed, and which cannot
+
+Measured on ad-hoc-signed fixture bundles with the real `/usr/bin/codesign`:
+
+```
+$ ditto Fixture.app OnlyAdded.app
+$ printf 'p1\n' > "OnlyAdded.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc"
+$ codesign --verify --deep --verbose=2 OnlyAdded.app
+file added: .../encodings/__pycache__/aliases.cpython-312.pyc
+file added: .../encodings/__pycache__/utf_8.cpython-312.pyc
+exit 1
+
+# removing exactly the two reported files
+$ codesign --verify --deep --verbose=2 OnlyAdded.app
+OnlyAdded.app: valid on disk
+OnlyAdded.app: satisfies its Designated Requirement
+exit 0
+
+# removing the whole __pycache__ directory instead, which also holds the sealed
+# __init__ pyc that shipped in 0.17.0
+$ codesign --verify --deep --verbose=2 OnlyAdded.app
+file missing: .../encodings/__pycache__/__init__.cpython-312.pyc
+exit 1
+```
+
+So: a `file added:` path can be deleted and the seal comes back; a `file
+modified:` path cannot be repaired by deleting it (that turns it into `file
+missing:`, which still fails), and deleting a whole `__pycache__` directory can
+destroy a *sealed* file and make a healable bundle unhealable. Both facts are
+constraints on the heal, not incidental: it removes exactly the paths codesign
+reported as added, one file at a time, and nothing else.
+
+An added *directory* is not a violation: after the files are removed, an empty
+`__pycache__` left behind still verifies (`valid on disk`, exit 0). The heal
+therefore leaves the directories alone.
+
+## 5. The round trip on a real bundle, both ways
+
+Two ad-hoc-signed bundles whose `Contents/Resources/python_aarch64` is the real
+shipped tree. One is built the way `setup-python-resource.sh` now leaves it (no
+`.pyc` at all), the other the way 0.17.0 shipped (3 `.pyc`). Both verify as built;
+then one real interpreter run is made inside each, and the real probe and the
+real heal are run against it:
+
+```
+C1: bundle built with no bytecode at all
+  sealed before any interpreter run: sealed
+  pyc written into the sealed bundle by one interpreter run: 33
+  probe exit 1 (a sealed resource is missing or invalid); violations {"added":33}
+  verdict unsealed
+  heal healable=true removed=33 reason="33 bytecode file(s) added after signing"
+  probe after heal -> exit 0 (valid on disk / satisfies its Designated Requirement) verdict sealed
+
+C2: bundle built the way 0.17.0 shipped (3 stale .pyc inside the tree)
+  sealed as built: sealed
+  probe exit 1 (a sealed resource is missing or invalid); violations {"added":30,"modified":3}
+  verdict unsealed
+  heal healable=false removed=0 reason="unhealable violation class(es) present: modified"
+  probe after heal -> exit 1 (a sealed resource is missing or invalid) verdict unsealed
+  the sealed encodings pyc still exists after the refusal: true
+```
+
+C1 is the fix and the safety net working: a bundle that ships no bytecode takes
+`file added:` damage, and the pre-flight heals it and proceeds with the install.
+C2 is the operator's install, reproduced: the 3 rewritten sealed `.pyc` cannot be
+undone, so the heal correctly refuses and the reinstall remedy stands. **That is
+the honest limit of this change: every 0.17.x/0.18.0 install already on a disk
+needs one manual reinstall.** What the change buys is that no install built from
+here on can reach that state, and that a stray write into a sealed bundle can no
+longer strand a user whose install never shipped bytecode.
+
+## 6. What the release gate would have caught
+
+`scripts/verify-macos-artifacts.mjs` now also fails on any `.pyc`/`.pyo` under
+the bundled interpreter trees, run against the real artifacts:
+
+```
+shipped 0.17.0     -> FAIL | 3 stale bytecode file(s): .../python_aarch64/lib/python3.12/encodings/__pycache__/{__init__,aliases,utf_8}.cpython-312.pyc
+operator installed -> FAIL | 311 stale bytecode file(s): .../python_aarch64/lib/python3.12/__pycache__/__future__.cpython-312.pyc, ...
+```
+
+A release build that ran `pnpm verify-macos-artifacts` would have failed before
+upload, with the paths. The three app checks (codesign, `spctl`, `stapler`)
+passed on the release users could not update — which is exactly why they did not
+catch it.
+
+## What could not be produced here, and where it is covered
+
+- There is no Developer ID identity on this machine (`security find-identity -v
+  -p codesigning` → `0 valid identities found`), so the fixtures above are
+  ad-hoc signed. Ad-hoc and Developer ID signatures verify identically for the
+  purpose of these checks — the seal is what is being measured, not the trust
+  chain — and the positive direction on real release artifacts runs in CI.
+- The install scripts' own defaulting of `PYTHONPYCACHEPREFIX` is exercised as a
+  syntax check (`bash -n`) plus the defaulting region executed from the shipped
+  file text. A full run of either script installs the backend from the network
+  into the operator's real application-support directory, which is the app's own
+  install path and not something to do to this machine.
+- The end-to-end claim that matters most for the next release — a real 0.18.x
+  build, installed, running its backend, then updated in place — can only be
+  made on a signed build. Everything above it (the interpreter's behaviour, the
+  probe's verdict, the heal, the gate) is reproduced here against the real
+  interpreter and the real `codesign`.

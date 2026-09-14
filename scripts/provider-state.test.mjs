@@ -1,0 +1,391 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+// The two modules are pure TypeScript with no React or DOM imports, so they
+// bundle in memory the same way `transcript-reducer.test.mjs` does. The
+// fixture is a VERBATIM `GET /v1/auth/providers` body from a local-operator
+// 0.50.0 backend with nine providers signed in, captured for the 0.15.1
+// defect report in which onboarding showed "Needs sign-in" over a signed-in
+// census. It carries no credential values -- the census never does.
+const bundle = await build({
+	stdin: {
+		contents: [
+			'export * from "./src/renderer/src/features/providers/provider-labels";',
+			'export * from "./src/renderer/src/shared/hooks/first-time-user";',
+		].join("\n"),
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "neutral",
+	write: false,
+	tsconfig: "tsconfig.web.json",
+});
+const {
+	providerReadiness,
+	decideFirstTimeUser,
+	hasConnectedProvider,
+	hostingProviderSelectable,
+	readyHostingIds,
+	selectableHostingProviders,
+	hostingCensusStateFrom,
+	hostingCensusFailureHelperText,
+	providerLoadErrorMessage,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+
+const census = JSON.parse(
+	readFileSync(
+		new URL("./fixtures/auth-providers-0.50.0.json", import.meta.url),
+	),
+).result.providers;
+
+test("real 0.50.0 census renders 'Signed in' for every provider with a credential", () => {
+	const labels = Object.fromEntries(
+		census.map((provider) => [provider.id, providerReadiness(provider).label]),
+	);
+	assert.deepEqual(labels, {
+		openai: "Signed in",
+		anthropic: "Signed in",
+		kimi: "Signed in",
+		xai: "Signed in",
+		deepseek: "Signed in",
+		zai: "Signed in",
+		google: "Needs sign-in",
+		mistral: "Needs sign-in",
+		lmstudio: "No key needed",
+		ollama: "No key needed",
+		vllm: "No key needed",
+		llamacpp: "No key needed",
+		"openai-compatible": "No key needed",
+		openrouter: "Signed in",
+		radient: "Signed in",
+		alibaba: "Needs sign-in",
+		"alibaba-token-plan": "Signed in",
+	});
+	// The short local label keeps its full statement reachable.
+	assert.equal(
+		providerReadiness(census.find((p) => p.id === "ollama")).detail,
+		"No key needed - needs a running server",
+	);
+	// Signed in is the only success tone; a local server is not a connection.
+	for (const provider of census) {
+		const readiness = providerReadiness(provider);
+		assert.equal(readiness.tone === "success", readiness.label === "Signed in");
+	}
+});
+
+test("a credential in the environment alone still reads as signed in", () => {
+	// `has_credential` folds in `resolve_env_key`, so a provider keyed only
+	// through the environment arrives as has_credential: true with zero stored
+	// credentials. Grouping on the count would mislabel it.
+	const label = providerReadiness({
+		local: false,
+		credential_optional: false,
+		configured: true,
+		has_credential: true,
+		stored_credentials: 0,
+	}).label;
+	assert.equal(label, "Signed in");
+});
+
+test("first-time decision: all configured -> returning, no onboarding", () => {
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "ready", providers: census },
+			legacy: { status: "ready", keys: [] },
+		}),
+		"returning",
+	);
+});
+
+test("first-time decision: only local providers configured -> first time", () => {
+	const none = census.map((provider) => ({
+		...provider,
+		configured: provider.local,
+		has_credential: false,
+	}));
+	assert.equal(hasConnectedProvider(none), false);
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "ready", providers: none },
+			// The legacy list is IGNORED once the census has answered: on a real
+			// machine it held Google/AWS/Radient keys and still meant nothing
+			// about model providers.
+			legacy: {
+				status: "ready",
+				keys: ["GOOGLE_ACCESS_TOKEN", "AWS_ACCESS_KEY_ID"],
+			},
+		}),
+		"first_time",
+	);
+});
+
+test("first-time decision: loading -> nothing decided yet", () => {
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "loading" },
+			legacy: { status: "ready", keys: [] },
+		}),
+		"pending",
+	);
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "unavailable" },
+			legacy: { status: "loading" },
+		}),
+		"pending",
+	);
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "unavailable" },
+			legacy: { status: "error" },
+		}),
+		"pending",
+	);
+});
+
+test("first-time decision: older backend falls back to the legacy key list", () => {
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "unavailable" },
+			legacy: { status: "ready", keys: [] },
+		}),
+		"first_time",
+	);
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "unavailable" },
+			legacy: { status: "ready", keys: ["OPENAI_API_KEY"] },
+		}),
+		"returning",
+	);
+});
+
+test("first-time decision: advertised census that 5xx'd stays pending", () => {
+	// MINOR-1: empty keys must not invent first_time when the census was
+	// offered and then failed. That is a new backend, not an unmanaged one.
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "failed" },
+			legacy: { status: "ready", keys: [] },
+		}),
+		"pending",
+	);
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "failed" },
+			legacy: { status: "error" },
+		}),
+		"pending",
+	);
+});
+
+test("hosting picker agrees with the census, not the env-file key list", () => {
+	const ready = readyHostingIds(census);
+	assert.equal(ready.has("anthropic"), true);
+	assert.equal(ready.has("openai"), true);
+	assert.equal(ready.has("google"), false);
+	assert.equal(ready.has("ollama"), true);
+	// Env-only credential (has_credential, nothing stored) is still selectable.
+	assert.equal(
+		hostingProviderSelectable({
+			local: false,
+			credential_optional: false,
+			configured: true,
+			has_credential: true,
+		}),
+		true,
+	);
+	assert.equal(
+		hostingProviderSelectable({
+			local: false,
+			credential_optional: false,
+			configured: false,
+			has_credential: false,
+		}),
+		false,
+	);
+});
+
+// The manifest rows the picker filters. Only `id` is read, so the three ids
+// below stand for "selectable", "not selectable" and "local" in the fixture.
+const manifest = [
+	{ id: "anthropic" },
+	{ id: "openai" },
+	{ id: "google" },
+	{ id: "ollama" },
+];
+const ids = (rows) => rows.map((row) => row.id);
+
+test("hosting picker: a LOADING census suppresses filtering", () => {
+	// The one state in which an unfiltered list is correct: the answer is
+	// moments away and blanking a populated control reads as it breaking.
+	assert.deepEqual(
+		ids(selectableHostingProviders(manifest, { status: "loading" })),
+		["anthropic", "openai", "google", "ollama"],
+	);
+});
+
+test("hosting picker: a READY census filters to what the grid calls ready", () => {
+	assert.deepEqual(
+		ids(
+			selectableHostingProviders(manifest, {
+				status: "ready",
+				providers: census,
+			}),
+		),
+		// google is "Needs sign-in" in the fixture; ollama is a local server.
+		["anthropic", "openai", "ollama"],
+	);
+});
+
+test("hosting picker: a FAILED census offers nothing, not everything", () => {
+	// Issue 93. The failed and loading states used to be one branch, so a
+	// census that 5xx'd offered every provider on no evidence -- "we could not
+	// find out" rendered as "yes", the same defect the onboarding gate fixed
+	// by resolving a failed census to pending rather than first_time.
+	assert.deepEqual(
+		ids(selectableHostingProviders(manifest, { status: "failed" })),
+		[],
+	);
+	// Stated as the three-way distinction the fix is about, so a regression
+	// that re-merges failure into either neighbour fails here by name.
+	const loading = ids(
+		selectableHostingProviders(manifest, { status: "loading" }),
+	);
+	const ready = ids(
+		selectableHostingProviders(manifest, {
+			status: "ready",
+			providers: census,
+		}),
+	);
+	const failed = ids(
+		selectableHostingProviders(manifest, { status: "failed" }),
+	);
+	assert.notDeepEqual(failed, loading);
+	assert.notDeepEqual(failed, ready);
+	assert.equal(loading.length > ready.length, true);
+	assert.equal(failed.length, 0);
+});
+
+test("hosting picker: the failure line is the grid's sentence, verbatim", () => {
+	// The picker must not go silent on failure -- an empty control with no
+	// reason is a dead end -- and it must not invent a fourth wording for the
+	// backend being unreachable. Asserting by string equality against the
+	// selector the grid renders is what makes the two surfaces provably agree.
+	for (const error of [
+		new Error("boom"),
+		Object.assign(new Error("stalled"), { status: null }),
+		Object.assign(new Error("refused"), { status: 503 }),
+	]) {
+		assert.equal(
+			hostingCensusFailureHelperText(error),
+			providerLoadErrorMessage(error),
+		);
+	}
+	// And it is a real sentence, not an empty string that would render as no
+	// helper text at all.
+	assert.match(
+		hostingCensusFailureHelperText(new Error("boom")),
+		/^Providers could not be loaded\./,
+	);
+});
+
+test("hosting picker: a failed REFETCH keeps the cached census, it does not blank", () => {
+	// Issue 92's shape, in the state no single-flag test reaches: react-query
+	// sets `data` and `isError` TOGETHER when a refetch fails over a successful
+	// query. Reading `isError` first resolves that to `failed`, which empties a
+	// fully-loaded picker the moment a background poll 5xx's -- a control that
+	// was working blanking itself while the user looks at it.
+	//
+	// This is the assertion that fails when the two checks in
+	// `hostingCensusStateFrom` are swapped. Before it existed, that swap kept
+	// every test in this repo green.
+	const refetchFailed = hostingCensusStateFrom({
+		data: census,
+		isError: true,
+	});
+	assert.equal(refetchFailed.status, "ready");
+	assert.deepEqual(
+		ids(selectableHostingProviders(manifest, refetchFailed)),
+		// Identical to a clean READY census: the failure changes nothing, because
+		// the cached answer is still the best evidence we have.
+		["anthropic", "openai", "ollama"],
+	);
+
+	// The other two states, so a regression cannot satisfy the above by
+	// collapsing everything to `ready`.
+	assert.equal(
+		hostingCensusStateFrom({ data: undefined, isError: true }).status,
+		"failed",
+	);
+	assert.equal(
+		hostingCensusStateFrom({ data: undefined, isError: false }).status,
+		"loading",
+	);
+	assert.equal(
+		hostingCensusStateFrom({ data: census, isError: false }).status,
+		"ready",
+	);
+});
+
+test("hosting picker: the component routes BOTH decisions through the shared selectors", async () => {
+	// Round-1 MAJOR-1: the three tests above assert the selectors, and test 12
+	// compares a one-line forwarder against the function it forwards to -- true
+	// by construction, for every input. None of that notices the PICKER dropping
+	// the selectors and hardcoding its own answer, which is precisely the drift
+	// this PR claims to prevent. Mutation-proved: hardcoding the helper string in
+	// `hosting-select.tsx` left 22/22 passing before this assertion existed.
+	//
+	// Same shape as the guard on the grid side in
+	// `provider-grid-error-copy.test.mjs`, which is already proven to fail under
+	// the equivalent mutation. Asserted on the source because the alternative --
+	// rendering the React component -- needs a DOM these node:test files do not
+	// have, and the property under test is which function the component calls.
+	const picker = await readFile(
+		"src/renderer/src/shared/components/hosting/hosting-select.tsx",
+		"utf8",
+	);
+	assert.ok(
+		picker.includes("hostingCensusFailureHelperText(census.error)"),
+		"hosting-select no longer routes its failure copy through hostingCensusFailureHelperText, so it can drift from the grid's sentence",
+	);
+	assert.ok(
+		picker.includes("selectableHostingProviders(all, censusState)"),
+		"hosting-select no longer routes its option list through selectableHostingProviders, so it can drift from the grid's readiness predicate",
+	);
+	assert.ok(
+		picker.includes("hostingCensusStateFrom("),
+		"hosting-select no longer derives its census state through hostingCensusStateFrom, so the data-before-isError ordering is unguarded again",
+	);
+	// The failure sentence must not be restated as a literal beside the call.
+	assert.ok(
+		!picker.includes("Providers could not be loaded"),
+		"hosting-select hardcodes the grid's failure sentence instead of calling the shared selector",
+	);
+});
+
+test("first-time decision: a completed onboarding is never reopened", () => {
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: true,
+			census: { status: "ready", providers: [] },
+			legacy: { status: "ready", keys: [] },
+		}),
+		"returning",
+	);
+});

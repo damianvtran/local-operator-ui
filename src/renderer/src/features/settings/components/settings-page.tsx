@@ -1,0 +1,1179 @@
+import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
+import { ProviderGrid } from "@features/providers/provider-grid";
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import type { ConfigUpdate } from "@shared/api/local-operator/types";
+import { EditableField } from "@shared/components/common/editable-field";
+import { PageHeader } from "@shared/components/common/page-header";
+import { RadientMark } from "@shared/components/common/radient-mark";
+import { SliderSetting } from "@shared/components/common/slider-setting";
+import { Spinner } from "@shared/components/common/spinner";
+import { ToggleSetting } from "@shared/components/common/toggle-setting";
+import { HostingSelect } from "@shared/components/hosting/hosting-select";
+import { ModelSelect } from "@shared/components/hosting/model-select";
+import { Alert, Button, Skeleton } from "@shared/components/ui";
+import { useConfig } from "@shared/hooks/use-config";
+import { useCredentials } from "@shared/hooks/use-credentials";
+import { useCreditBalance } from "@shared/hooks/use-credit-balance";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { useModels } from "@shared/hooks/use-models";
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
+import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useUserStore } from "@shared/store/user-store";
+import {
+	formatCalendarDate,
+	formatCalendarDateTime,
+} from "@shared/utils/date-utils";
+import { format, formatRFC3339, parseISO, subDays } from "date-fns";
+import {
+	ChartLine,
+	CirclePlay,
+	CirclePlus,
+	Contrast,
+	CreditCard,
+	Database,
+	ExternalLink,
+	History,
+	Info,
+	Key,
+	List,
+	MessagesSquare,
+	Plug,
+	Settings,
+	SlidersHorizontal,
+	User,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FC, RefObject } from "react";
+import { useLocation } from "react-router-dom";
+import {
+	CartesianGrid,
+	Line,
+	LineChart,
+	Tooltip as RechartsTooltip,
+	ResponsiveContainer,
+	XAxis,
+	YAxis,
+} from "recharts";
+import { AppUpdatesSection } from "./app-updates-section";
+import { BackendSettingsSection } from "./backend-settings-section";
+
+import { Credentials } from "./credentials";
+import { McpManagementSection } from "./mcp-management-section";
+import { RadientAccountSection } from "./radient-account-section";
+import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
+import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
+import { SystemPrompt } from "./system-prompt";
+import { ThemeSelector } from "./theme-selector";
+
+const BillingInfo: FC = () => {
+	const {
+		data: creditData,
+		isLoading,
+		error,
+	} = useCreditBalance({ enabled: true });
+
+	return (
+		<div>
+			{/*
+			 * `h3`, not the shared `SectionTitle`: billing and usage are subsections
+			 * of the Radient section's own `h2`, and `SectionTitle` renders an `h2`
+			 * with no way to pick a level. A heading that lies about its depth is
+			 * worse than four lines of markup.
+			 */}
+			<h3 className="mb-3 flex items-center gap-2 text-heading text-ink">
+				<CreditCard size={16} className="shrink-0 text-ink-dim" />
+				Radient Pass
+			</h3>
+			{isLoading && <Skeleton className="h-6 w-36" />}
+			{error && (
+				<Alert variant="warning">
+					Could not load your credit balance. {error.message}
+				</Alert>
+			)}
+			{creditData && !isLoading && !error && (
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+					<p className="flex-1 text-body-sm text-ink-muted">
+						Available credits{" "}
+						<span className="font-medium text-ink">
+							{creditData.balance.toFixed(2)}
+						</span>
+					</p>
+					<Button variant="secondary" size="sm" asChild>
+						<a
+							href="https://console.radienthq.com/dashboard/billing"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<CirclePlus />
+							Add credits
+						</a>
+					</Button>
+				</div>
+			)}
+		</div>
+	);
+};
+
+type UsageMetric = "credits" | "tokens";
+
+const USAGE_METRICS: { id: UsageMetric; label: string }[] = [
+	{ id: "credits", label: "Credits" },
+	{ id: "tokens", label: "Tokens" },
+];
+
+/**
+ * The usage chart's own tooltip.
+ *
+ * Recharts' default panel is configured with `contentStyle` / `itemStyle` /
+ * `labelStyle` objects, which take literal colours and cannot read a role. A
+ * custom renderer is the only way to theme it, and it also lets the panel use
+ * the same anatomy as every other overlay in the app: `elevated` ground,
+ * `shadow-overlay`, and monospace for the number because a number is machine
+ * voice.
+ */
+const UsageTooltip: FC<{
+	active?: boolean;
+	label?: string;
+	payload?: { value?: number | string; name?: string }[];
+	unit: string;
+}> = ({ active, label, payload, unit }) => {
+	if (!active || !payload?.length) return null;
+
+	return (
+		<div className="rounded-md border border-hairline bg-elevated px-3 py-2 shadow-overlay">
+			<p className="text-meta text-ink-dim">{label}</p>
+			<p className="text-mono text-ink">
+				{payload[0]?.value} {unit}
+			</p>
+		</div>
+	);
+};
+
+const UsageInfo: FC = () => {
+	const [dataType, setDataType] = useState<UsageMetric>("credits");
+
+	const usageParams = useMemo(() => {
+		const endDate = new Date();
+		const startDate = subDays(endDate, 30);
+		return {
+			start_date: formatRFC3339(startDate),
+			end_date: formatRFC3339(endDate),
+			rollup: "daily" as const,
+		};
+	}, []);
+
+	const {
+		data: usageData,
+		isLoading,
+		error,
+	} = useUsageRollup(usageParams, { enabled: true });
+
+	const chartData = useMemo(() => {
+		if (!usageData?.data_points) return [];
+		const sortedDataPoints = [...usageData.data_points].sort(
+			(a, b) =>
+				parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime(),
+		);
+		return sortedDataPoints.map((point) => ({
+			date: format(parseISO(point.timestamp), "MMM dd"),
+			credits: Number.parseFloat(point.total_cost.toFixed(2)),
+			tokens: point.total_tokens,
+		}));
+	}, [usageData]);
+
+	return (
+		<div>
+			<div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<h3 className="flex items-center gap-2 text-heading text-ink">
+					<ChartLine size={16} className="shrink-0 text-ink-dim" />
+					Usage (last 30 days)
+				</h3>
+				{/*
+				 * A segmented pair rather than `Tabs`: the two options change which
+				 * series the one chart plots, they do not swap panels, and Radix's
+				 * `TabsTrigger` would point `aria-controls` at a `TabsContent` that
+				 * does not exist. `aria-pressed` describes what these actually are.
+				 */}
+				<fieldset className="m-0 w-fit border-0 p-0">
+					<legend className="sr-only">Usage metric</legend>
+					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+						{USAGE_METRICS.map(({ id, label }) => (
+							<Button
+								key={id}
+								variant="ghost"
+								size="sm"
+								aria-pressed={dataType === id}
+								onClick={() => setDataType(id)}
+								className={cn(
+									dataType === id && "bg-surface text-ink hover:bg-surface",
+								)}
+							>
+								{label}
+							</Button>
+						))}
+					</div>
+				</fieldset>
+			</div>
+
+			{isLoading && <Skeleton className="h-62 w-full" />}
+			{error && (
+				<Alert variant="warning">
+					Could not load your usage data. {error.message}
+				</Alert>
+			)}
+			{!isLoading && !error && usageData && chartData.length > 0 && (
+				/*
+				 * Recharts is styled from here, by descendant selector, rather than
+				 * through its colour props. Those props land as SVG presentation
+				 * attributes, which cannot take a `var()`, so a themed chart would
+				 * otherwise have to read palette hexes through `useTheme` — the one
+				 * thing this port is removing. A CSS rule beats a presentation
+				 * attribute, so these win, and the class names are recharts' own
+				 * documented ones.
+				 */
+				<div
+					className={cn(
+						"h-62 w-full",
+						"[&_.recharts-cartesian-grid_line]:stroke-hairline",
+						"[&_.recharts-cartesian-axis-tick-value]:fill-ink-dim [&_.recharts-cartesian-axis-tick-value]:text-meta",
+						"[&_.recharts-line-curve]:stroke-accent",
+						"[&_.recharts-active-dot_circle]:fill-accent",
+						"[&_.recharts-tooltip-cursor]:stroke-hairline",
+					)}
+				>
+					<ResponsiveContainer width="100%" height="100%">
+						<LineChart
+							data={chartData}
+							margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+						>
+							<CartesianGrid strokeDasharray="3 3" />
+							<XAxis dataKey="date" tickLine={false} axisLine={false} />
+							<YAxis tickLine={false} axisLine={false} width={48} />
+							<RechartsTooltip
+								content={
+									<UsageTooltip
+										unit={dataType === "credits" ? "credits" : "tokens"}
+									/>
+								}
+							/>
+							<Line
+								type="monotone"
+								dataKey={dataType}
+								strokeWidth={2}
+								dot={false}
+								activeDot={{ r: 4, strokeWidth: 0 }}
+								name={
+									dataType === "credits" ? "Credits consumed" : "Tokens used"
+								}
+							/>
+						</LineChart>
+					</ResponsiveContainer>
+				</div>
+			)}
+			{!isLoading && !error && (!usageData || chartData.length === 0) && (
+				<p className="text-body-sm text-ink-muted">
+					No usage recorded in the last 30 days.
+				</p>
+			)}
+		</div>
+	);
+};
+
+/**
+ * The Radient section's heading, which carries the console link beside the
+ * title. Supplied through `titleComponent` because the link belongs to the
+ * heading row, not to the section body.
+ *
+ * It matches `SettingsSection`'s own heading exactly — `text-heading`, a 16px
+ * mark, `gap-2`. It used to be `text-title` with a 32px logo, so one section on
+ * the page shouted a step louder than its five siblings and the eye read the
+ * page as having two levels of grouping where it has one. A brand mark is not
+ * a reason to leave the type scale.
+ */
+const RadientSectionTitle: FC = () => (
+	<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<h2 className="flex items-center gap-2 text-heading text-ink">
+			<RadientMark size={16} className="shrink-0 text-ink-dim" />
+			Radient account
+		</h2>
+		<Button
+			variant="secondary"
+			size="sm"
+			className="self-start sm:self-center"
+			asChild
+		>
+			<a
+				href="https://console.radienthq.com"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				Go to Radient console
+				<ExternalLink />
+			</a>
+		</Button>
+	</div>
+);
+
+export const SettingsPage: FC = () => {
+	const showAgentReasoning = useUiPreferencesStore(
+		(state) => state.showAgentReasoning,
+	);
+	const setShowAgentReasoning = useUiPreferencesStore(
+		(state) => state.setShowAgentReasoning,
+	);
+	const {
+		data: config,
+		isLoading: isConfigLoading,
+		isFetching: isConfigFetching,
+		error: configError,
+		refetch,
+	} = useConfig();
+	const updateConfigMutation = useUpdateConfig();
+	const [savingField, setSavingField] = useState<string | null>(null);
+	const userStore = useUserStore();
+	// Only the signed-in bit is needed here: the profile fields go read-only
+	// when the backend resolves a Radient account. The query hook is the
+	// backend-proxy source of that fact; the wrapper hook additionally syncs
+	// the user store, which this page does not need.
+	const { isAuthenticated, isLoading: isAuthLoading } = useRadientUserQuery();
+	const activeSessionId = useCanonicalSessionsStore(
+		(state) => state.activeSessionId,
+	);
+	const [activeSection, setActiveSection] = useState<string>("general");
+	const [isScrolling, setIsScrolling] = useState(false);
+	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const contentContainerRef = useRef<HTMLDivElement>(null);
+	const { startTour: startOnboardingTour } = useOnboardingTour();
+	const location = useLocation();
+
+	const { data: credentialsData, refetch: refetchCredentials } =
+		useCredentials();
+	const { refreshModels } = useModels();
+
+	// Memoize the credential keys to avoid unnecessary effect triggers
+	const credentialKeys = useMemo(
+		() => (credentialsData?.keys ? [...credentialsData.keys].sort() : []),
+		[credentialsData?.keys],
+	);
+
+	// Only refresh models if credential keys or hosting have actually changed
+	const lastRefreshRef = useRef<{ keys: string; hosting: string | undefined }>({
+		keys: "",
+		hosting: undefined,
+	});
+	useEffect(() => {
+		const keysString = credentialKeys.join(",");
+		const hosting = config?.values?.hosting;
+		if (
+			lastRefreshRef.current.keys !== keysString ||
+			lastRefreshRef.current.hosting !== hosting
+		) {
+			lastRefreshRef.current = { keys: keysString, hosting };
+			refreshModels().catch((err) => {
+				console.error(
+					"Failed to refresh models after credentials or hosting change:",
+					err,
+				);
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [credentialKeys, config?.values?.hosting, refreshModels]);
+
+	// Refs for scrolling to sections
+	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
+		general: useRef<HTMLDivElement>(null),
+		radient: useRef<HTMLDivElement>(null),
+		integrations: useRef<HTMLDivElement>(null),
+		appearance: useRef<HTMLDivElement>(null),
+		credentials: useRef<HTMLDivElement>(null),
+		providers: useRef<HTMLDivElement>(null),
+		backend: useRef<HTMLDivElement>(null),
+		updates: useRef<HTMLDivElement>(null),
+	}).current;
+
+	// A /settings deep link carries either ?section= for one of the sidebar
+	// sections or ?setting=<key> to reveal and focus one registry row inside
+	// the searchable backend settings section.
+	const settingFocusKey = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("setting");
+	}, [location.search]);
+	const settingsSearchFilter = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("filter") ?? "";
+	}, [location.search]);
+	// `/mcp <name>` deep-links to one configured server. The picker has always
+	// emitted this; nothing read it until now.
+	const mcpTarget = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("mcp") ?? undefined;
+	}, [location.search]);
+	// `/login <provider>` deep-links straight into that provider's methods.
+	const providerFromQuery = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("provider");
+	}, [location.search]);
+
+	// Handle section selection from sidebar
+	const handleSelectSection = useCallback(
+		(sectionId: string) => {
+			setActiveSection(sectionId); // Update state immediately for visual feedback
+			setIsScrolling(true); // Prevent scroll listener from interfering
+
+			const ref = sectionRefs[sectionId];
+			const contentContainer = contentContainerRef.current;
+
+			if (ref?.current && contentContainer) {
+				// Two separate defects lived in the old
+				// `contentContainer.scrollTo(ref.current.offsetTop - 80)`:
+				//
+				// 1. `offsetTop` is relative to the nearest POSITIONED ancestor,
+				//    not to the scroll container, so it reported a section's offset
+				//    inside the centred content wrapper -- a number tens of pixels
+				//    from zero for sections that sit screens down the page.
+				// 2. It assumed this container is the scroller. Which element
+				//    actually scrolls depends on how the shell is sized, and when
+				//    it is the window instead, scrolling the div is a silent no-op.
+				//
+				// Together they are why every deep link, and even a plain sidebar
+				// click, stopped on User profile (UX U3).
+				//
+				// Whichever element is actually the scroller gets scrolled.
+				//
+				// The content div carries `overflow-y-auto` and is the scroller in
+				// the packaged app, where the shell's `h-screen` gives it a bounded
+				// height. That is not guaranteed: if the height chain is not
+				// bounded the div grows to fit its content and the DOCUMENT scrolls
+				// instead, and a scroll aimed at the div is then a silent no-op.
+				//
+				// So: measure the distance once, and move whichever box can move.
+				// This also replaces the original `offsetTop` read, which was
+				// relative to the centred content wrapper rather than to the
+				// scroller and so under-reported every section's position -- the
+				// two together are why deep links stopped on User profile (UX U3).
+				const HEADER_ROOM = 80;
+				const delta =
+					ref.current.getBoundingClientRect().top -
+					contentContainer.getBoundingClientRect().top;
+				const containerScrolls =
+					contentContainer.scrollHeight > contentContainer.clientHeight;
+
+				if (containerScrolls) {
+					contentContainer.scrollTo({
+						top: Math.max(0, contentContainer.scrollTop + delta - HEADER_ROOM),
+						behavior: "smooth",
+					});
+				} else {
+					window.scrollTo({
+						top: Math.max(
+							0,
+							ref.current.getBoundingClientRect().top +
+								window.scrollY -
+								HEADER_ROOM,
+						),
+						behavior: "smooth",
+					});
+				}
+
+				// No guard: clearing is a no-op on a missing handle. `?? undefined`
+				// only because the Node timer types accept `undefined` and not `null`.
+				clearTimeout(scrollTimeoutRef.current ?? undefined);
+
+				// Set a timeout to re-enable scroll listening after the smooth scroll finishes
+				scrollTimeoutRef.current = setTimeout(() => {
+					setIsScrolling(false);
+					scrollTimeoutRef.current = null;
+				}, 800); // Slightly longer timeout to ensure smooth scroll completes
+			} else {
+				// Fallback if container or ref not found
+				setIsScrolling(false);
+			}
+		},
+		[sectionRefs],
+	);
+
+	// Update active section based on scroll position
+	useEffect(() => {
+		// Use a small delay to ensure DOM is ready
+		const timer = setTimeout(() => {
+			const contentContainer = contentContainerRef.current;
+
+			if (!contentContainer) {
+				return;
+			}
+
+			const handleScroll = () => {
+				// If programmatic scrolling is active, ignore scroll events
+				if (isScrolling) {
+					return;
+				}
+
+				const containerRect = contentContainer.getBoundingClientRect();
+				const viewportHeight = containerRect.height;
+
+				// Find the section that is most visible in the viewport
+				let bestSection = "";
+				let bestVisibility = 0;
+
+				for (const [sectionId, ref] of Object.entries(sectionRefs)) {
+					if (ref.current) {
+						const elementRect = ref.current.getBoundingClientRect();
+						const containerTop = containerRect.top;
+
+						// Calculate the element's position relative to the container
+						const elementTop = elementRect.top - containerTop;
+						const elementBottom = elementRect.bottom - containerTop;
+						const elementHeight = elementRect.height;
+
+						// Calculate how much of the element is visible in the viewport
+						const visibleTop = Math.max(0, elementTop);
+						const visibleBottom = Math.min(viewportHeight, elementBottom);
+						const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+						const visibilityRatio = visibleHeight / elementHeight;
+
+						// Prefer sections that are more visible, with a bias towards sections near the top
+						const score =
+							visibilityRatio + (elementTop < viewportHeight * 0.3 ? 0.1 : 0);
+
+						if (score > bestVisibility && visibilityRatio > 0.1) {
+							bestVisibility = score;
+							bestSection = sectionId;
+						}
+					}
+				}
+
+				// Update state only if the active section has changed
+				if (bestSection && bestSection !== activeSection) {
+					setActiveSection(bestSection);
+				}
+			};
+
+			// Initial call to set the correct section on mount
+			handleScroll();
+
+			contentContainer.addEventListener("scroll", handleScroll, {
+				passive: true,
+			});
+
+			return () => {
+				contentContainer.removeEventListener("scroll", handleScroll);
+				clearTimeout(scrollTimeoutRef.current ?? undefined);
+			};
+		}, 100);
+
+		return () => clearTimeout(timer);
+	}, [sectionRefs, activeSection, isScrolling]);
+
+	// Effect to handle initial section scrolling from URL query parameter
+	useEffect(() => {
+		const queryParams = new URLSearchParams(location.search);
+		const sectionFromQuery = queryParams.get("section");
+		// A ?setting= deep link lives inside the backend settings section.
+		const targetSection = queryParams.get("setting")
+			? "backend"
+			: sectionFromQuery;
+
+		const ref = targetSection ? sectionRefs[targetSection] : undefined;
+		if (!targetSection || !ref) return undefined;
+
+		// Deep links used to fire behind a fixed 100ms timer, reading
+		// `offsetTop` before this very long page had laid out. The section was
+		// still near the top of an unfinished layout, so EVERY deep link landed
+		// on User profile while the sidebar highlighted the section the user
+		// asked for (UX U3).
+		//
+		// Layout-aware instead of longer: a ResizeObserver on the scroll content
+		// fires whenever the page's height changes, so we re-scroll as sections
+		// mount and settle rather than guessing when they have. It stops at the
+		// first frame whose target offset repeats -- that is what "laid out"
+		// means here -- and a deadline bounds the case where something animates
+		// forever.
+		let settled = false;
+		let lastOffset = Number.NaN;
+		let frame = 0;
+		// A page that never stops resizing must still take the user where they
+		// asked, so the deadline scrolls rather than merely giving up.
+		const deadline = window.setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			observer.disconnect();
+			handleSelectSection(targetSection);
+		}, 2000);
+
+		const attempt = () => {
+			if (settled) return;
+			const element = ref.current;
+			// Not mounted YET is the normal first frame on a lazily-loaded page,
+			// not a reason to give up: keep waiting, bounded by the deadline
+			// below. Returning without rescheduling here killed the loop before
+			// the section existed, which is the whole mechanism.
+			if (!element) {
+				frame = requestAnimationFrame(attempt);
+				return;
+			}
+			// The section's distance from the top of the document: stable once the
+			// page above it has finished laying out, and independent of which
+			// element ends up being the scroller.
+			const offset = Math.round(
+				element.getBoundingClientRect().top + window.scrollY,
+			);
+			// Scroll ONCE, when the target has stopped moving -- never on every
+			// frame. A smooth scroll re-issued each frame is cancelled and
+			// restarted before it can advance, so the view never actually
+			// travels: the fix for a race must not become a busy loop that
+			// defeats the animation it is waiting for.
+			if (offset === lastOffset && offset > 0) {
+				settled = true;
+				observer.disconnect();
+				window.clearTimeout(deadline);
+				handleSelectSection(targetSection);
+				return;
+			}
+			lastOffset = offset;
+			frame = requestAnimationFrame(attempt);
+		};
+
+		const observer = new ResizeObserver(() => {
+			if (settled) return;
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(attempt);
+		});
+		if (contentContainerRef.current) {
+			observer.observe(contentContainerRef.current);
+		}
+		frame = requestAnimationFrame(attempt);
+
+		return () => {
+			settled = true;
+			cancelAnimationFrame(frame);
+			observer.disconnect();
+			window.clearTimeout(deadline);
+		};
+	}, [location.search, sectionRefs, handleSelectSection]); // Rerun when URL search params change or refs are updated
+
+	// Handle updating a specific config field
+	const handleUpdateField = async (
+		field: keyof ConfigUpdate,
+		value: string | number | boolean,
+	) => {
+		setSavingField(field);
+		try {
+			await updateConfigMutation.mutateAsync({ [field]: value });
+			await refetch(); // Refetch config after successful update
+		} catch (error) {
+			console.error(`Error updating ${field}:`, error);
+			// Consider adding user feedback here (e.g., toast notification)
+		} finally {
+			setSavingField(null);
+		}
+	};
+
+	// Combine loading states
+	const isLoading = isConfigLoading || isAuthLoading;
+	// Well inside the transport's 30s deadline, so the explanation appears while
+	// the user is still deciding whether the app is stuck rather than after they
+	// have concluded it is.
+	const isSlowLoad = useElapsedSince(isLoading, 4000);
+
+	// The error branch below is only reachable if the config query actually
+	// settles. The renderer transport now bounds every desktop control, so a
+	// stalled request rejects instead of pending forever -- but the spinner is
+	// still the LAST state a user sees when something upstream of it stalls, and
+	// an unrecoverable spinner leaves them with nothing to do but relaunch. So
+	// the error state is preferred over the spinner once the config query has
+	// failed, rather than being gated behind it: `isAuthLoading` alone must not
+	// hold the page on a spinner when the settings it is loading can no longer
+	// arrive. That ordering is what makes the recovery affordance reachable.
+	if (configError) {
+		return (
+			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
+				{/* `warning`, matching the providers grid: one fault must not render
+				    at two severities depending on which screen reports it, and a
+				    failure with a Retry beside it has cost the user nothing. The rule
+				    is stated beside the shared copy in `backend-error.ts`. */}
+				<Alert variant="warning" className="w-full max-w-xl">
+					<div className="flex items-center justify-between gap-3">
+						{/* Classified from the SAME error the banner above reads, so this
+						    page can no longer say the server "may not be running" while
+						    the banner says it is offline -- or tell a 401 user to wait for
+						    a server that is already running and refusing this app's
+						    bearer. The raw exception ("Get config request failed: 503")
+						    used to render here; it names a function, a transport verb and
+						    an integer, none of which change what the user does next, so it
+						    stays on `error.message` for logs and support and out of the
+						    sentence. */}
+						<span>
+							{backendLoadErrorMessage(
+								"Your settings could not be loaded.",
+								configError,
+							)}
+						</span>
+						{/* Same recovery the providers grid offers: re-ask the server in
+						    place, so a transient stall does not cost a relaunch.
+
+						    `isFetching`, not `isLoading`: refetching an ERRORED query
+						    leaves `status: "error"`, so `isLoading` stays false and this
+						    branch keeps rendering for the transport's whole 30s deadline.
+						    Without a pending state the frame is pixel-identical after the
+						    click -- issue 89's own "I cannot tell whether this is working
+						    or hung", one click downstream of its fix. */}
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => void refetch()}
+							disabled={isConfigFetching}
+						>
+							{isConfigFetching ? "Retrying" : "Retry"}
+						</Button>
+					</div>
+				</Alert>
+			</div>
+		);
+	}
+
+	if (isLoading) {
+		return (
+			/*
+			 * One live region around the whole waiting stack, so the caption IS the
+			 * announcement when it appears.
+			 *
+			 * The caption previously sat outside the spinner's own `role="status"`,
+			 * so a screen-reader user heard "Loading settings" once at mount and
+			 * then nothing for up to 30s -- while a sighted user got a visible state
+			 * change at 4s telling them the app was alive. Under
+			 * `prefers-reduced-motion` the global cap freezes the ring, so that user
+			 * had no liveness signal at all. The text whose entire purpose is "you
+			 * cannot tell waiting from hung" was reaching only the users who could
+			 * already tell.
+			 *
+			 * `label` drops off the `Spinner` once the caption paints, per the
+			 * component's own contract: standalone spinner -> pass `label`; spinner
+			 * beside its own caption -> omit it, or the same fact is announced
+			 * twice.
+			 */
+			// biome-ignore lint/a11y/useSemanticElements: there is no semantic element for a polite live region; role=status on the container is the pattern.
+			<div
+				role="status"
+				className="flex h-full w-full flex-col items-center justify-center gap-3 bg-canvas"
+			>
+				<Spinner
+					size="lg"
+					label={isSlowLoad ? undefined : "Loading settings"}
+				/>
+				{/* A bounded wait is still a silent one. Until the deadline expires
+				    this spinner is pixel-identical to the unrecoverable spinner of
+				    issue 89, so a user cannot tell "waiting" from "hung" and gives
+				    up before the error state they were promised can render. Only
+				    after the threshold: on a healthy load this never paints.
+
+				    The copy states an event in the user's terms and what they get,
+				    rather than narrating the app's control flow ("This will stop and
+				    offer a retry"), which made the machinery the subject. */}
+				{isSlowLoad && (
+					<p className="max-w-sm text-center text-body-sm text-ink-muted">
+						The Local Operator server is taking longer than usual to answer. If
+						it does not respond, you will be able to retry from here.
+					</p>
+				)}
+			</div>
+		);
+	}
+
+	if (!config) {
+		return (
+			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
+				{/* Settled with no error and no config: nothing classified it, so
+				    there is no status to advise on and no remedy to assert. Same
+				    discipline as the classifier's `unknown` -- state the failure and
+				    stop rather than guessing an action that may not fix it. */}
+				<Alert variant="warning" className="w-full max-w-xl">
+					Your settings could not be loaded.
+				</Alert>
+			</div>
+		);
+	}
+
+	/* No `max-md:` set on the container or the rail below.
+
+	   Not because the width is unreachable - the window's minWidth of 800 is in
+	   device pixels and page zoom divides the CSS viewport, so one Zoom In press
+	   at the floor lands at 727px, inside the range those five utilities
+	   described. The reason is that the page renders correctly there without
+	   them: measured at exactly 727px, the icon rail stays a 48px column beside
+	   a 459px content column, all six nav items present, no horizontal
+	   overflow. A second layout that only a zoomed-in user ever sees is a
+	   second layout nobody tests; if the stacked rail is wanted it is its own
+	   change, with its own frame. Deleting these also leaves the renderer with
+	   no `max-*` breakpoint utilities at all, which is how the rest of the app
+	   is written. */
+	return (
+		<div className="flex h-full w-full overflow-hidden bg-canvas">
+			{/*
+			 * The rail's edge lives here rather than on the nav, because only the
+			 * container knows which way the layout is running: the same hairline has
+			 * to be a right edge beside the content and a bottom edge above it.
+			 *
+			 * Two widths, and the `min-[1040px]:` step is paired with the
+			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
+			 * swaps the rows between labels and icons-with-tooltips. Changing one
+			 * without the other leaves labels clipped in a 48px column or a 220px
+			 * column of bare marks. 1040 is where this rail and the 220px app rail
+			 * beside it still leave 600px of content.
+			 *
+			 * There is no intermediate width because there is no useful one:
+			 * "Application updates" measures 121px of text and needs a 186px rail
+			 * to render whole, so anything between 48 and 220 buys a few pixels of
+			 * content in exchange for an ellipsis on a destination's name.
+			 */}
+			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55">
+				<SettingsSidebar
+					activeSection={activeSection}
+					onSelectSection={handleSelectSection}
+					sections={DEFAULT_SETTINGS_SECTIONS}
+				/>
+			</div>
+
+			<div
+				ref={contentContainerRef}
+				data-settings-content
+				data-tour-tag="settings-general-section"
+				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
+			>
+				{/*
+				 * One measured column, centred, rather than two.
+				 *
+				 * The two-column grid this replaces made the eye zig-zag to find a
+				 * setting, left the right-hand column ending in a void wherever the
+				 * two ran to different heights, and broke the rail's meaning: the
+				 * scroll-spy highlights whichever section is most visible, which is
+				 * not a question with one answer when two sections are side by side.
+				 *
+				 * 896px is the widest the content actually wants — three theme
+				 * previews, or a four-column info grid — and it is narrow enough that
+				 * a section description is not a 1300px line. Every settings surface
+				 * worth copying does this: Linear, Notion, GitHub and macOS System
+				 * Settings all cap the detail pane and none of them column it.
+				 */}
+				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
+					<PageHeader title="Settings" icon={Settings} />
+					<div className="flex flex-col gap-8">
+						<div ref={sectionRefs.general} className="flex flex-col gap-8">
+							<SettingsSection
+								title="User profile"
+								icon={User}
+								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
+							>
+								{/*
+								 * Neither field carries a glyph. The section heading is
+								 * already a person, and a second person glyph 60px under it
+								 * on "Display name" was the same picture twice for two
+								 * different things. `Mail` goes with it rather than being
+								 * kept alone: one indented label beside one flush label is a
+								 * ragged column, and "Display name" and "Email address" are
+								 * not words that need a picture to be told apart.
+								 */}
+								<div className="flex flex-col gap-4">
+									<EditableField
+										value={userStore.profile.name}
+										label="Display name"
+										placeholder="Enter your name..."
+										isSaving={savingField === "user_name"}
+										onSave={async (value) => {
+											setSavingField("user_name");
+											try {
+												userStore.updateName(value);
+											} finally {
+												setSavingField(null);
+											}
+										}}
+										readOnly={isAuthenticated}
+									/>
+									<EditableField
+										value={userStore.profile.email}
+										label="Email address"
+										placeholder="Enter your email..."
+										isSaving={savingField === "user_email"}
+										onSave={async (value) => {
+											setSavingField("user_email");
+											try {
+												userStore.updateEmail(value);
+											} finally {
+												setSavingField(null);
+											}
+										}}
+										readOnly={isAuthenticated}
+									/>
+								</div>
+							</SettingsSection>
+
+							<SettingsSection
+								title="Application tour"
+								description="Missed the application onboarding tour or want a refresher? Start it again here."
+							>
+								<Button
+									variant="secondary"
+									onClick={() => {
+										startOnboardingTour({ forceModalCompleted: true });
+									}}
+								>
+									<CirclePlay />
+									Take the tour
+								</Button>
+							</SettingsSection>
+
+							{/* `SlidersHorizontal`, not `Cpu`: this section sets defaults for
+							    two things, and `Cpu` is the Model select's own glyph a few
+							    rows below it. One picture, one meaning. */}
+							<SettingsSection
+								title="Model settings"
+								icon={SlidersHorizontal}
+								description="Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You can override these settings for individual agents in the agent settings."
+							>
+								<div className="flex flex-col gap-4">
+									<HostingSelect
+										value={config.values.hosting}
+										isSaving={savingField === "hosting"}
+										onSave={(value) => handleUpdateField("hosting", value)}
+										filterByCredentials={true}
+										allowCustom={true}
+										allowDefault={false}
+										/* This IS Settings, so the default copy would send the
+										   reader to the page they are already on. */
+										emptyHelperText="No hosting providers available. Add one in API credentials, in the list on the left."
+									/>
+									<ModelSelect
+										value={config.values.model_name}
+										hostingId={config.values.hosting}
+										isSaving={savingField === "model_name"}
+										onSave={(value) => handleUpdateField("model_name", value)}
+										allowCustom={true}
+										allowDefault={false}
+									/>
+									<Alert
+										variant="neutral"
+										icon={<Info className="size-4" aria-hidden="true" />}
+									>
+										You need a Radient account or your own API keys to reach
+										cloud providers. If you don't see more hosting providers and
+										models here, add credentials or sign in to Radient.
+									</Alert>
+								</div>
+							</SettingsSection>
+
+							<SystemPrompt />
+
+							<SettingsSection
+								title="History settings"
+								icon={History}
+								description="Configure how much conversation history is retained and displayed. These are tools to help balance cost and performance by controlling the amount of data used by the agents."
+							>
+								<div className="flex flex-col gap-4">
+									<SliderSetting
+										value={config.values.conversation_length}
+										label="Maximum conversation history"
+										description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run. Recommended: 100"
+										min={10}
+										max={500}
+										step={10}
+										unit="msgs"
+										// `MessagesSquare`, not `History`: the section heading is
+										// the history, this slider is a count of messages. Its two
+										// siblings keep `List` and `Database`, so the label column
+										// stays even.
+										icon={MessagesSquare}
+										isSaving={savingField === "conversation_length"}
+										onChange={(value) =>
+											handleUpdateField("conversation_length", value)
+										}
+									/>
+									<SliderSetting
+										value={config.values.detail_length}
+										label="Detail view length"
+										description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages. Recommended: 15"
+										min={10}
+										max={500}
+										step={5}
+										unit="msgs"
+										icon={List}
+										isSaving={savingField === "detail_length"}
+										onChange={(value) =>
+											handleUpdateField("detail_length", value)
+										}
+									/>
+									<SliderSetting
+										value={config.values.max_learnings_history}
+										label="Maximum learnings history"
+										description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization. This setting controls the maximum number of learning items to retain. More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run. Recommended: 50"
+										min={10}
+										max={200}
+										step={10}
+										unit="notes"
+										icon={Database}
+										isSaving={savingField === "max_learnings_history"}
+										onChange={(value) =>
+											handleUpdateField("max_learnings_history", value)
+										}
+									/>
+								</div>
+							</SettingsSection>
+
+							<SettingsSection
+								title="Configuration information"
+								icon={Info}
+								description="System information about the current configuration."
+							>
+								<InfoGrid>
+									<InfoItem
+										label="Version"
+										value={
+											<span className="text-mono-sm">{config.version}</span>
+										}
+									/>
+									<InfoItem
+										label="Created"
+										value={formatCalendarDate(config.metadata.created_at)}
+									/>
+									<InfoItem
+										label="Last modified"
+										value={formatCalendarDateTime(
+											config.metadata.last_modified,
+										)}
+									/>
+									<InfoItem
+										label="Description"
+										value={
+											config.metadata.description || "No description available"
+										}
+									/>
+								</InfoGrid>
+							</SettingsSection>
+						</div>
+
+						<SettingsSection
+							title="Appearance"
+							icon={Contrast}
+							description="Customize the look and feel of Local Operator"
+							sectionRef={sectionRefs.appearance}
+							dataTourTag="settings-appearance-section"
+						>
+							<div className="flex flex-col gap-4">
+								<ThemeSelector />
+								{/*
+								 * The reasoning preference's only control.
+								 *
+								 * The preference, the grouping rule that honours it and the
+								 * panel that renders it all shipped in this refactor without
+								 * anything that could turn it on, so a complete feature was
+								 * unreachable and its default was the whole of its
+								 * behaviour. Appearance rather than a chat menu, because it
+								 * changes what every conversation shows rather than acting
+								 * on the one in front of you.
+								 *
+								 * `ToggleSetting` rather than a hand-rolled row. This was
+								 * a `Label htmlFor` over a `Switch id` first, which cannot
+								 * work: the switch renders as a `button`, `htmlFor` only
+								 * associates with labelable elements, and the helper
+								 * sentence was announced to nobody. That component solves
+								 * exactly this and had no callers, which is the only reason
+								 * the row got written twice.
+								 */}
+								<ToggleSetting
+									value={showAgentReasoning}
+									label="Show agent reasoning"
+									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one."
+									onChange={async (next) => setShowAgentReasoning(next)}
+								/>
+							</div>
+						</SettingsSection>
+
+						<SettingsSection
+							title="Radient account"
+							titleComponent={<RadientSectionTitle />}
+							description="Manage your Radient account, Radient Pass details, and credits."
+							sectionRef={sectionRefs.radient}
+							dataTourTag="settings-radient-account-section"
+						>
+							{/*
+							 * Account, billing and usage were separated by `Divider`s. They are
+							 * three groups inside one grouping, so the section tier gap says
+							 * the same thing without drawing two more lines on a page that
+							 * already has enough.
+							 */}
+							<div className="flex flex-col gap-8">
+								<RadientAccountSection
+									onAfterCredentialUpdate={() => {
+										refreshModels();
+										refetchCredentials();
+									}}
+								/>
+
+								{isAuthenticated && (
+									<>
+										<BillingInfo />
+										<UsageInfo />
+									</>
+								)}
+							</div>
+						</SettingsSection>
+
+						{/*
+						 * The provider grid is the same component onboarding uses: one
+						 * place for a provider's sign-in methods, states and stored
+						 * credentials. `/provider`, `/login` and `/logout` land here.
+						 */}
+						<SettingsSection
+							title="Providers"
+							icon={Plug}
+							description="Model providers, how you sign in to each, and which are connected."
+							sectionRef={sectionRefs.providers}
+						>
+							<ProviderGrid initialProviderId={providerFromQuery} />
+						</SettingsSection>
+
+						<SettingsSection
+							title="Backend settings"
+							icon={Settings}
+							description="Every setting the backend registry owns, searchable, with typed editors and scopes."
+							sectionRef={sectionRefs.backend}
+						>
+							<BackendSettingsSection
+								focusKey={settingFocusKey}
+								initialFilter={settingsSearchFilter}
+							/>
+						</SettingsSection>
+
+						{/*
+						 * MCP management replaced the Google OIDC cards: the section
+						 * negotiates the `mcp` capability itself and reads the active
+						 * canonical session, so it renders unconditionally here.
+						 */}
+						<McpManagementSection
+							sessionId={activeSessionId ?? undefined}
+							sectionRef={sectionRefs.integrations}
+							highlightServer={mcpTarget}
+						/>
+
+						<SettingsSection
+							title="API credentials"
+							icon={Key}
+							description="Manage your API keys for various services and integrations"
+							sectionRef={sectionRefs.credentials}
+							dataTourTag="settings-api-credentials-section"
+						>
+							<Credentials />
+						</SettingsSection>
+
+						<div ref={sectionRefs.updates}>
+							<AppUpdatesSection />
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+};

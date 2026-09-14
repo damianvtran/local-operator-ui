@@ -1,0 +1,327 @@
+name: Pre-Release CI Testing
+
+on:
+  push:
+    branches:
+      - main
+      - 'dev-*'
+  # Pull requests run this workflow so the runtime-dependency guard below fires
+  # before the merge: GitHub cannot run a single job from a workflow whose
+  # trigger excludes the event, and a guard that only fires on `push` fires
+  # after the merge, which is too late to stop an unvetted dependency shipping.
+  # The rest of the job set riding along is the cost of that, not the reason.
+  pull_request:
+
+# Pull-request runs supersede each other, so the older one is cancelled rather
+# than queued; pushes to `main` are left alone so a merge is never interrupted
+# mid-flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # pnpm is pinned here, and the pin is load-bearing rather than a preference:
+      # pnpm 10.29.3 through at least 10.34.x drops dependency edges from
+      # `pnpm list --prod --json --depth Infinity` - the command electron-builder
+      # runs to decide what to copy into app.asar - so the packaged app can ship
+      # without a module it needs. Measured on this repo, same tree, only pnpm
+      # changed: 10.30.3 reports the `debug` node reached through
+      # electron-updater -> builder-util-runtime without its `ms` dependency, so
+      # the packager copies 43 packages / 5.2 MB and the built app dies at
+      # launch with `Cannot find module 'ms'` from
+      # app.asar/node_modules/debug/src/common.js; 10.29.2 reports that edge,
+      # copies 96 packages / 6.0 MB, and the app starts.
+      # Upstream: pnpm/pnpm#10601 (last known good 10.29.2). Do not raise this
+      # pin without re-measuring that command; see the pnpm section in AGENTS.md.
+      - name: Install pnpm
+        # pinned: see the pnpm note above this step
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Biome lint
+        run: pnpm lint
+
+  runtime-deps:
+    # What the packaged app ships as node_modules is decided entirely by
+    # package.json `dependencies`: electron-vite's externalizeDepsPlugin()
+    # externalises exactly that set and electron-builder copies it wholesale into
+    # Resources/app.asar, while Vite has already bundled the renderer into
+    # out/renderer. A renderer-only or build-only package that sits in that
+    # section therefore ships to every user - at v0.19.6 the 65 declared
+    # production dependencies put ~470 MB of never-loaded node_modules into a
+    # 1.0 GB install. This job fails on any production dependency the allowlist
+    # in scripts/check-runtime-deps.mjs has not vetted. It deliberately has no
+    # install step: the check reads package.json and nothing else.
+    name: Runtime Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check the runtime dependency allowlist
+        run: node scripts/check-runtime-deps.mjs
+
+  check-types:
+    name: Type Checking
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check TypeScript types
+        run: pnpm check-types
+
+      - name: Check CodeMirror insertion previews
+        run: pnpm check-edit-diffs
+
+      # The release-contract scripts: the immutable-recovery pair, the publish
+      # workflow's graph and inline gates, and the version-bump guard that keeps
+      # a feature PR from consuming a version number nobody released. A guard
+      # nothing runs is indistinguishable from no guard, which is why the last of
+      # those is executed here as well as in its own PR-triggered workflow.
+      - name: Check release contracts
+        run: |
+          node scripts/test-validate-release.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
+
+  test:
+    # The desktop test suite -- the regression guards for issues 87, 92 and 93,
+    # every one of which is the same defect class (a surface treating "we could
+    # not find out" as an answer).
+    #
+    # This job exists because until it did, `pnpm test:desktop` ran in NO
+    # workflow: the whole suite was local-only, so three consecutive fixes in
+    # one defect class landed with their guards unenforced on every subsequent
+    # PR. A guard nothing runs is indistinguishable from no guard, which is the
+    # failure this suite is largely about.
+    #
+    # `--frozen-lockfile` is what keeps the invocation CI-safe. Running
+    # `pnpm test:desktop` on a cold tree makes pnpm resolve first, and that
+    # resolution is what writes an `allowBuilds:` block into
+    # `pnpm-workspace.yaml`; installing explicitly and frozen beforehand means
+    # the test step only runs node, and pnpm fails loudly rather than mutating
+    # the lockfile if either file is out of date.
+    name: Desktop Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run desktop tests
+        run: pnpm test:desktop
+
+      # A job that silently runs zero tests is the same vacuous check this job
+      # was added to undo, and it is the likeliest way this one rots: a renamed
+      # script or a glob that matches nothing still exits 0. Assert the suite
+      # actually executed a plausible number of tests, and that none failed.
+      - name: Assert the suite actually ran
+        run: |
+          pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log
+          PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}')
+          FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}')
+          echo "desktop suite: pass=$PASS fail=$FAIL"
+          if [ -z "$PASS" ] || [ "$PASS" -lt 60 ]; then
+            echo "Desktop suite reported $PASS passing tests; expected at least 60."
+            echo "Either tests were dropped or the runner matched no files."
+            exit 1
+          fi
+          if [ "$FAIL" != "0" ]; then
+            echo "Desktop suite reported $FAIL failing tests."
+            exit 1
+          fi
+
+      # The suite must not mutate tracked files. `pnpm test:desktop` on a cold
+      # tree has been observed writing an `allowBuilds:` block into
+      # pnpm-workspace.yaml via pnpm's own resolution, which would land in a
+      # later commit as unexplained churn.
+      - name: Assert the run left the tree clean
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Desktop tests modified tracked files:"
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+          echo "Working tree clean after the desktop suite."
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        run: |
+          if [[ $(pnpm audit --json | grep '"severity":"critical"' | wc -l | tr -d ' ') -gt 0 ]]; then
+            echo "Critical vulnerability found"
+            exit 1
+          else
+            echo "No critical vulnerabilities"
+            exit 0
+          fi
+
+  npx-sanity-check:
+    # Packs and asserts on both runners; only macOS LAUNCHES the app.
+    #
+    # Issue #88 only reproduced on macOS ARM, because the failure depends on
+    # which Electron the consuming environment resolves and on the arch of the
+    # bytecode we shipped; the previous Linux-only check never saw it.
+    #
+    # The launch step stays macOS-only, and issue #91 did NOT change that. The
+    # reason is specific and worth stating, because #91 does fix the Linux npm
+    # channel for the way users actually install it.
+    #
+    # #91 restores the setuid bit on Electron's chrome-sandbox helper from the
+    # package's postinstall, which works whenever the install has the privilege
+    # to do it -- i.e. the ordinary `sudo npm install -g`. Verified end to end in
+    # node:22-bookworm: helper lands root:root 4755 and the app reaches
+    # LOCAL_OPERATOR_UI_READY as a non-root user with the sandbox ENABLED.
+    #
+    # This job does not install that way. scripts/npx-smoke-test.mjs runs `npx`
+    # as the unprivileged runner user, so the postinstall's chown/chmod is
+    # correctly refused and the helper stays 0755 -- the one case #91 explicitly
+    # cannot repair. Measured on that exact path: the launcher now exits non-zero
+    # with the chown/chmod commands instead of a Chromium FATAL, which is the
+    # intended behaviour and still a failed launch. Whether it could launch
+    # anyway depends on the runner kernel permitting the unprivileged
+    # user-namespace sandbox, which Ubuntu 24.04 restricts by default via
+    # AppArmor and which was not verifiable from this machine.
+    #
+    # So enabling this leg would assert one of two dishonest things: that an
+    # unprivileged npx install is the supported Linux path (it is not -- the
+    # supported path is a privileged global install), or a green light bought
+    # with --no-sandbox / ELECTRON_DISABLE_SANDBOX. The second is the vacuous
+    # check this whole job exists to undo, and turning the Chromium sandbox off
+    # is a security-posture decision we do not make for users.
+    #
+    # To cover Linux honestly this leg would need to install the tarball with
+    # sudo and launch as a non-root user under xvfb, which is a different shape
+    # from `npx` and is left as follow-up work rather than bolted on here.
+    name: NPX Sanity Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    needs:
+      - lint
+      - check-types
+      - audit
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Build and pack
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+        # npm pack triggers the prepack script, which builds the npm-channel
+        # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
+        # here: it would emit bytecode that prepack then overwrites, which is
+        # exactly the ambiguity that let the broken artifact ship.
+        run: |
+          pnpm install --frozen-lockfile
+          npm pack
+
+      # Inspects the tarball only, so it is platform-independent and stays on
+      # both legs even though only macOS launches the app.
+      - name: Assert the tarball ships no V8 bytecode
+        run: |
+          if tar tzf local-operator-ui-*.tgz | grep -q '\.jsc$'; then
+            echo 'Tarball contains .jsc bytecode, which only loads under the exact Electron that built it.'
+            tar tzf local-operator-ui-*.tgz | grep '\.jsc$'
+            exit 1
+          fi
+          echo 'No .jsc files in the npm tarball.'
+
+      # macOS only: see the note on this job for why the Linux launch is still
+      # excluded after #91 rather than forced green with --no-sandbox.
+      - name: Install and run with npx
+        if: runner.os == 'macOS'
+        run: |
+          TARBALL=$(ls local-operator-ui-*.tgz)
+          node scripts/npx-smoke-test.mjs "$TARBALL"
+

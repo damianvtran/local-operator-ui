@@ -1,0 +1,35 @@
+The failed 0.17.0 install left more than a staged update: it left a launchd job
+in a respawn loop. Recorded on 2026-09-12 during round 1 of the review, on the
+operator's machine; QA's round-1 report measured the loop, and the job was
+removed by hand at the end of that round (the product does it now).
+
+$ launchctl list com.local-operator.ShipIt        # while the loop was running
+Program=/Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Resources/ShipIt
+OnDemand=true
+LastExitStatus=256          # every attempt failed the same way
+runs=3114                  # ~respawn every 2.5 s since the 0.17.0 attempt
+
+$ ls -la ~/Library/Caches/com.local-operator.ShipIt/
+total 6832
+drwxr-xr-x@   5 damian  staff      160 Sep 11 23:04 .
+drwx------@ 156 damian  staff     4992 Sep 12 02:28 ..
+-rw-r--r--    1 damian  staff  3491078 Sep 12 01:53 ShipIt_stderr.log
+-rw-r--r--    1 damian  staff        0 Sep  9 19:32 ShipIt_stdout.log
+-rw-r--r--@   1 damian  staff      296 Sep 11 22:36 ShipItState.plist.failed-20260911
+
+$ wc -c ~/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log
+ 3491078 /Users/damian/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log
+
+$ head -3 ~/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log
+2026-09-09 19:32:01.275 ShipIt[13464:117223527] Detected this as an install request
+2026-09-09 19:32:06.057 ShipIt[13464:117223559] Beginning installation
+2026-09-09 19:34:20.007 ShipIt[13464:117229223] Installation error: Error Domain=NSOSStatusErrorDomain Code=-67062 "(null)"
+
+$ launchctl list com.local-operator.ShipIt        # after the manual removal, and after
+                                                  # this branch's reap was exercised
+Could not find service "com.local-operator.ShipIt" in domain for port
+exit=113
+
+The staging directories Squirrel unpacks into are named 'update.*' under that
+cache directory (SQRLInstaller), which is the pattern the app deletes - the
+ShipIt logs beside them are kept, because they are the record of the failure.

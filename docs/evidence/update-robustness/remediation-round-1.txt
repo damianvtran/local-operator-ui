@@ -1,0 +1,137 @@
+Every gate on the review remediation, run from the PR branch worktree on
+2026-09-12. Raw commands and their real output.
+
+==============================================================================
+$ pnpm lint
+==============================================================================
+  
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 4.
+Checked 410 files in 237ms. No fixes applied.
+Found 24 warnings.
+exit=0
+
+==============================================================================
+$ pnpm check-types
+==============================================================================
+
+> local-operator-ui@0.17.0 check-types:main /Users/damian/local-operator-ui-worktrees/update-robustness
+> tsc --noEmit -p tsconfig.node.json
+
+
+> local-operator-ui@0.17.0 check-types:renderer /Users/damian/local-operator-ui-worktrees/update-robustness
+> tsc --noEmit -p tsconfig.app.json
+
+exit=0
+
+==============================================================================
+$ pnpm check-themes
+==============================================================================
+> node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs
+
+themes.generated.css is up to date (12 themes).
+Contrast contract holds: 1910 assertions across 12 themes, 0 pinned exception(s).
+exit=0
+
+==============================================================================
+$ pnpm test:desktop
+==============================================================================
+ℹ tests 219
+ℹ suites 0
+ℹ pass 219
+ℹ fail 0
+ℹ skipped 0
+exit=0
+
+==============================================================================
+$ pnpm check-evidence
+==============================================================================
+> node scripts/check-evidence.mjs
+
+Evidence holds: 506 frames are pictures of their own theme (worst ΔE00 18.1, docs/evidence/command-palette-commandpalette/default/localOperatorLight.webp).
+exit=0
+
+==============================================================================
+$ pnpm build
+==============================================================================
+
+> local-operator-ui@0.17.0 postbuild /Users/damian/local-operator-ui-worktrees/update-robustness
+> chmod +x ./bin/local-operator-ui.js
+
+exit=0
+
+==============================================================================
+$ node scripts/verify-macos-artifacts.mjs --app '/Volumes/Local Operator 0.17.0-universal/Local Operator.app' --dmg ~/Downloads/local-operator-ui-0.17.0-universal.dmg
+==============================================================================
+Checking app: /Volumes/Local Operator 0.17.0-universal/Local Operator.app
+Checking disk image: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg
+PASS app-codesign: codesign --verify --deep --strict on the app
+PASS app-spctl: spctl -a -vvv -t exec on the app
+PASS app-stapler: stapler validate on the app
+FAIL dmg-spctl: spctl -a -vvv -t open on the disk image -> /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg: rejected | source=no usable signature
+FAIL dmg-stapler: stapler validate on the disk image -> Processing: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg | local-operator-ui-0.17.0-universal.dmg does not have a ticket stapled to it.
+
+2 of 5 artifact checks failed. The release must not be published until the disk image is signed, notarized and stapled.
+exit=1
+
+==============================================================================
+$ node scripts/verify-macos-artifacts.mjs --app '/Applications/Local Operator.app' --dmg ~/Downloads/local-operator-ui-0.17.0-universal.dmg
+==============================================================================
+Checking app: /Applications/Local Operator.app
+Checking disk image: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg
+PASS app-codesign: codesign --verify --deep --strict on the app
+PASS app-spctl: spctl -a -vvv -t exec on the app
+PASS app-stapler: stapler validate on the app
+FAIL dmg-spctl: spctl -a -vvv -t open on the disk image -> /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg: rejected | source=no usable signature
+FAIL dmg-stapler: stapler validate on the disk image -> Processing: /Users/damian/Downloads/local-operator-ui-0.17.0-universal.dmg | local-operator-ui-0.17.0-universal.dmg does not have a ticket stapled to it.
+
+2 of 5 artifact checks failed. The release must not be published until the disk image is signed, notarized and stapled.
+exit=1
+
+==============================================================================
+$ node --input-type=module -e '<runChecks over /Applications/Local Operator.app only>'
+==============================================================================
+PASS app-codesign: codesign --verify --deep --strict on the app
+PASS app-spctl: spctl -a -vvv -t exec on the app
+PASS app-stapler: stapler validate on the app
+summary ok = true checks = 3
+exit=0
+
+==============================================================================
+The environment the classification is decided in (this machine)
+==============================================================================
+$ which local-operator
+/Users/damian/.local/bin/local-operator
+$ realpath "$(which local-operator)"
+/Users/damian/.local/share/uv/tools/local-operator/bin/local-operator
+$ head -1 "$(which local-operator)"   # the shim is a script, so its shebang names the interpreter that owns it
+#!/Users/damian/.local/share/uv/tools/local-operator/bin/python3
+$ node -e 'console.log("/Users/damian/.local/bin/local-operator".includes("/uv/tools/"))'
+false
+$ uv tool list
+local-operator v0.54.20
+- local-operator
+- lop
+py-spy v0.4.2
+
+==============================================================================
+The leftover a failed install leaves (see leftover-shipit-job.txt)
+==============================================================================
+$ launchctl list com.local-operator.ShipIt
+Could not find service "com.local-operator.ShipIt" in domain for port
+exit=113
+$ ls -d ~/Library/Caches/com.local-operator.ShipIt/update.* 2>&1   # the pattern the reap deletes
+ls: /Users/damian/Library/Caches/com.local-operator.ShipIt/update.*: No such file or directory
+exit=1
+
+==============================================================================
+The app's classifier and the server's own, on the same machine
+==============================================================================
+$ ~/.local/share/uv/tools/local-operator/bin/python -c 'from local_operator.update import install_kind; print(install_kind())'
+uv-tool
+
+The app's own classifier reads the same environment - the shim's resolved target,
+the shim's shebang, uv's receipt - and answers the same (`pnpm test:desktop`,
+'the operator's own install is classified rather than told to use pip', which
+reads this machine's real `which local-operator`).
