@@ -796,19 +796,28 @@ export const STORIES = [
 	   ("Moving to `~/x`…") is caught in the live-app pair on the PR, where the
 	   shutter can be inside that window.
 
-	   The PICKER states are `/move` itself: resting, in flight (a transport that
-	   never settles, so the state can be held still), refused by a mid-turn session
-	   (the refusal a user actually meets), and inert against a backend without the
-	   route. Same dialog, so the same viewport as the model picker. */
+	   `chat-cwd-move--unset` is deliberately NOT here, and the reason is the rig's
+	   own readiness test rather than the frame's worth: a chip with no directory
+	   is ONE button, which is fewer than the ten elements the capture waits for
+	   before it will photograph a story, so the run never starts. The state is
+	   pre-existing behaviour this feature does not touch and it stays reviewable as
+	   a story; what it cannot be is a swept frame.
+
+	   The PICKER states are `/move` itself: resting, and inert against a backend
+	   without the route. Its in-flight and refusal states are NOT here, and the
+	   reason is measured rather than a preference: both need the chip's directory
+	   menu to be chosen from, and a `play` cannot drive that menu in a BUILT
+	   preview (a Radix `DropdownMenu` inside a modal `Dialog` - the dialog takes
+	   focus back, the menu never opens, and the rig photographs the resting state
+	   under the name `refused` however the play is written).
+	   `docs/evidence/chat-move-picker/README.md` records what reaching them takes.
+	   Same dialog, so the same viewport as the model picker. */
 	["chat-cwd-move--editable", 1000, 520],
 	["chat-cwd-move--menu-open", 1000, 620],
 	["chat-cwd-move--pending", 1000, 520],
 	["chat-cwd-move--readonly-older-backend", 1000, 520],
-	["chat-cwd-move--unset", 1000, 520],
 	["chat-cwd-move--truncated-path", 1000, 520],
 	["chat-move-picker--idle", 900, 620],
-	["chat-move-picker--busy", 900, 620],
-	["chat-move-picker--refused", 900, 700],
 	["chat-move-picker--unavailable", 900, 620],
 
 	/* The band's own half of U1: the model reading painted from the user's pick

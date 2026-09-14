@@ -22,7 +22,7 @@
  * CONTAINER QUERY (`@min-[750px]/chatcol`), so a story that mounted it in a bare
  * div would photograph the 240px-column variant - the icon-only floor - and
  * every reviewer would be looking at a state the composer does not show at this
- * width. The container, its width and the `border-control bg-surface` frame are
+ * width. The container, its width and the `border-control bg-surface` ground are
  * copied from `message-input.tsx`'s own root for that reason.
  *
  * Two limits, stated rather than hidden:
@@ -87,11 +87,32 @@ type FrameProps = {
  * threshold, which is where the composer shows the label, the path and the
  * `border-control` frame together.
  */
+/**
+ * One frame: the chip inside the composer's own container, on its ground.
+ *
+ * Two load-bearing details, both learned from a failed first capture of these
+ * frames rather than reasoned out:
+ *
+ *   - `@container/chatcol` on the OUTER element, because the chip's wide form is
+ *     behind `@min-[750px]/chatcol`. Without the container the chip renders at
+ *     its icon-only floor, and the first capture photographed a 20px box with a
+ *     folder glyph in it and called it the editable state.
+ *   - a column that fills the viewport with the chip row at its BOTTOM, which is
+ *     where the composer sits. A hugging wrapper put ~99.5% of the frame on the
+ *     ground, which `check-evidence` refuses (a frame that shows the ground and
+ *     nothing else is not evidence), and the widths are the chat column's own so
+ *     the chip is laid out as it is in the app rather than at a story-only size.
+ */
 const Frame: FC<FrameProps> = (props) => (
-	<div className={cn("@container/chatcol", "w-full bg-canvas p-6")}>
+	<div
+		className={cn(
+			"@container/chatcol",
+			"flex min-h-screen w-full justify-center bg-canvas",
+		)}
+	>
 		<div
 			className={cn(
-				"mx-auto flex w-full flex-col border border-control bg-surface p-3",
+				"flex h-screen w-[880px] flex-col justify-end border-x border-hairline bg-surface p-3",
 			)}
 		>
 			<div className={cn("flex min-w-0 items-center gap-2")}>
@@ -109,7 +130,10 @@ const Frame: FC<FrameProps> = (props) => (
 const meta: Meta<typeof DirectoryIndicator> = {
 	title: "chat-cwd-move",
 	component: DirectoryIndicator,
-	parameters: { layout: "centered" },
+	// Fullscreen rather than centered: the wrapper above fills the viewport, and a
+	// centering layout would size it to its content - which is the collapsed chip
+	// the first capture of these frames came back with.
+	parameters: { layout: "fullscreen" },
 };
 export default meta;
 type Story = StoryObj<typeof DirectoryIndicator>;
