@@ -1188,6 +1188,51 @@ export const mcpGrantCancelledRemoved = (): McpWireOperation[] => [
 	{ ...mcpGrantRunning()[0], status: "cancelled", credential_removed: true },
 ];
 
+/**
+ * Two operations the backend FINISHED earlier in this session.
+ *
+ * The case the fold has to refuse: settled operations stay in `mcp.list` for the
+ * rest of the session (the backend evicts only at 64), so these sit beside servers
+ * that are problems AGAIN — `hubspot`'s credential expired after a successful
+ * grant, `slack`'s transport dropped after a successful connect. Neither settled
+ * op may be rendered as the row's state, and neither may delete the row's remedy
+ * (code review round 1, finding 1).
+ */
+export const mcpGrantSettled = (): McpWireOperation[] => [
+	{
+		...mcpGrantRunning()[0],
+		id: "2".repeat(32),
+		name: "hubspot",
+		status: "complete",
+		created_at: 1_760_000_100,
+	},
+	{
+		...mcpGrantRunning()[0],
+		id: "3".repeat(32),
+		name: "slack",
+		action: "connect",
+		status: "complete",
+		created_at: 1_760_000_200,
+	},
+];
+
+/** The two servers those completed operations were about, problem again. */
+export const mcpProblemAgain = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{
+		name: "hubspot",
+		status: "auth-required",
+		transport: "http",
+		owned_scope: "global",
+	},
+	{
+		name: "slack",
+		status: "disconnected",
+		transport: "http",
+		owned_scope: "global",
+	},
+];
+
 export const mcpDisconnected = (): McpWireRow[] => [
 	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
 	{ name: "playwright", status: "disconnected", source: "~/.claude.json" },

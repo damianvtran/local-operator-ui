@@ -270,6 +270,34 @@ export const DeepLinkVerbHit: Story = {
 };
 
 /**
+ * The residual the resolution rule cannot fix, stated rather than hidden.
+ *
+ * A server may be NAMED like a verb, and no verb list may exist in this renderer:
+ * with a server called `login` configured, `/mcp login hubspo` (a typo) matches
+ * `login` — the last token that IS configured wins — and would reveal an unrelated
+ * row in silence (code review round 1, finding 4). So a match the last token does
+ * not explain says which server it resolved to, and the frame carries that line
+ * beside the revealed row.
+ */
+export const DeepLinkVerbShadowed: Story = {
+	render: () =>
+		mount({
+			highlight: "login hubspo",
+			servers: [
+				...SERVERS,
+				{
+					name: "login",
+					source: "~/.local-operator/mcp.json",
+					owned_scope: "global",
+					status: "connected",
+					transport: "http",
+					tool_count: 4,
+				},
+			],
+		}),
+};
+
+/**
  * An argument that names nothing: stated, with the list intact below it.
  *
  * This is the state the old effect reached with a silent `return` — no scroll, no

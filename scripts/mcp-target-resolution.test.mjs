@@ -48,11 +48,13 @@ test("an exact server name resolves to itself", () => {
 	assert.deepEqual(resolveMcpServerTarget("hubspot", NAMES), {
 		kind: "matched",
 		name: "hubspot",
+		unresolved: null,
 	});
 	// Padding is not part of the name.
 	assert.deepEqual(resolveMcpServerTarget("  hubspot  ", NAMES), {
 		kind: "matched",
 		name: "hubspot",
+		unresolved: null,
 	});
 });
 
@@ -67,22 +69,58 @@ test("the operator's own remedy line resolves to the server it names", () => {
 	]) {
 		assert.deepEqual(
 			resolveMcpServerTarget(argument, NAMES),
-			{ kind: "matched", name: argument.trim().split(/\s+/).pop() },
+			{
+				kind: "matched",
+				name: argument.trim().split(/\s+/).pop(),
+				// The LAST token IS the match, so nothing is left unexplained and the
+				// section says nothing beyond revealing the row.
+				unresolved: null,
+			},
 			argument,
 		);
 	}
 });
 
 test("the LAST token that is a configured server wins", () => {
+	// The last token is itself a configured name, so it is the resolution and there
+	// is nothing to explain.
 	assert.deepEqual(resolveMcpServerTarget("hubspot notion", NAMES), {
 		kind: "matched",
 		name: "notion",
+		unresolved: null,
 	});
-	// A verb after the name is a token that is not a server, so the name before
-	// it still resolves — the rule is "last configured token", not "last token".
+	// A verb after the name is a token that is not a server, so the name before it
+	// still resolves — the rule is "last configured token", not "last token" — and
+	// the argument now CARRIES the token it could not use, so the section can state
+	// which server it landed on.
 	assert.deepEqual(resolveMcpServerTarget("hubspot reauth", NAMES), {
 		kind: "matched",
 		name: "hubspot",
+		unresolved: "reauth",
+	});
+});
+
+/**
+ * The residual the rule cannot fix, and the reason the match says what it did.
+ *
+ * With a server named `login`, `/mcp login hubspo` (a typo) matches `login` and
+ * would reveal an unrelated row in silence (code review round 1, finding 4). No verb
+ * list may exist in this renderer, so the honest fix is on the statement side: the
+ * match that needed a token other than the last one reports the last one back.
+ */
+test("a server named like a verb cannot masquerade as the intended target in silence", () => {
+	const names = [...NAMES, "login"];
+	assert.deepEqual(resolveMcpServerTarget("login hubspo", names), {
+		kind: "matched",
+		name: "login",
+		unresolved: "hubspo",
+	});
+	// And when the intended server IS configured, the same argument resolves cleanly
+	// with nothing to explain — which is the operator's own `reauth hubspot` case.
+	assert.deepEqual(resolveMcpServerTarget("login hubspot", names), {
+		kind: "matched",
+		name: "hubspot",
+		unresolved: null,
 	});
 });
 

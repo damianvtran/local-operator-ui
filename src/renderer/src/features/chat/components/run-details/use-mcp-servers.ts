@@ -78,7 +78,11 @@ import { fetchMcpList, mcpKeys } from "@shared/api/local-operator/mcp-list";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { type McpServerRow, deriveMcpServers } from "./run-detail-model";
+import {
+	type McpServerRow,
+	deriveMcpServers,
+	mcpGrantInFlight,
+} from "./run-detail-model";
 
 /** The closed-panel cadence: the dot's own freshness while nobody is looking. */
 const CLOSED_INTERVAL_MS = 15_000;
@@ -138,7 +142,17 @@ export function useRunPanelMcpServers({
 	sessionId: string | null | undefined;
 	accelerator: string | null;
 	errors?: Readonly<Record<string, string>>;
-}): McpServerRow[] {
+}): {
+	servers: McpServerRow[];
+	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * Named for what it locks rather than for what it is: one grant per session
+	 * (`mcp/desktop.py`), so any running operation disables every other row's
+	 * control. See the return below for why it comes off the document.
+	 */
+	grantRunning: boolean;
+} {
 	const capabilities = useDesktopCapabilities();
 	const enabled =
 		Boolean(sessionId) &&
@@ -204,5 +218,19 @@ export function useRunPanelMcpServers({
 	// The document's own `operations` ride along into the derivation (`§ 3.2`): the
 	// row's in-flight grant is read from THIS poll rather than from a second query,
 	// so the two facts cannot disagree on screen and the pane adds no timer.
-	return deriveMcpServers(query.data?.servers, errors, query.data?.operations);
+	//
+	// The session's grant LOCK is read off the same document rather than off the
+	// folded rows, and they are not the same question: a row exists only where the
+	// read carries a server, so an operation for a server that was removed or
+	// renamed still holds the backend's one-grant lock while no row would show it
+	// (code review round 1, finding 5). Returned as a second value so the section
+	// takes one prop instead of re-deriving the read.
+	return {
+		servers: deriveMcpServers(
+			query.data?.servers,
+			errors,
+			query.data?.operations,
+		),
+		grantRunning: mcpGrantInFlight(query.data?.operations),
+	};
 }
