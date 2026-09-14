@@ -59,7 +59,10 @@ function startOwned(executable, args, label, env = safeEnv()) { const log = crea
 try {
 	if (process.platform !== "darwin" || process.env.GITHUB_ACTIONS !== "true" || process.env.RUNNER_ENVIRONMENT !== "github-hosted") blocked("This proof may run only on a fresh GitHub-hosted macOS VM, never a user's machine or self-hosted runner");
 	if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error("Incumbent must be an exact release tag");
-	if (["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID", "CSC_CONTENT", "CSC_KEY_PASSWORD", "GH_TOKEN", "GITHUB_TOKEN"].some((name) => process.env[name])) throw new Error("Signing/API credentials must not reach the test VM process");
+	// BLOCKED rather than FAIL: a VM that carries signing or API credentials is
+	// misconfigured, and calling that a product failure would send a reader to the
+	// candidate's code. Nothing below this line runs when it fires.
+	if (["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID", "CSC_CONTENT", "CSC_KEY_PASSWORD", "GH_TOKEN", "GITHUB_TOKEN"].some((name) => process.env[name])) blocked("Signing/API credentials reached the test VM. The exact-update job must have no secrets.");
 	try { await command("/bin/launchctl", ["print", `gui/${process.getuid()}`]); } catch { blocked("The hosted runner lacks a native GUI launchd session; Squirrel/native relaunch cannot be validated here"); }
 	const support = join(homedir(), "Library", "Application Support", "Local Operator");
 	if (existsSync(support) || existsSync(join(homedir(), ".local-operator"))) blocked("Runner home is not pristine; refusing to overwrite pre-existing application state");
