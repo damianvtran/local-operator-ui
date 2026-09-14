@@ -22,7 +22,7 @@
  * falsified now. `pnpm check-evidence`.
  */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,7 +126,7 @@ export const frames = (dir) => {
  * the header is the mode. Reading it out of `magick` rather than decoding webp
  * here keeps this script to one job.
  */
-const modalColour = (file) => {
+const modalColour = (file, lockFd) => {
 	/*
 	 * A failed read must not be reported as a verdict about the picture.
 	 *
@@ -142,7 +142,16 @@ const modalColour = (file) => {
 		out = execFileSync(
 			"magick",
 			[file, "-format", "%c", "-depth", "8", "histogram:info:-"],
-			{ maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] },
+			{
+				maxBuffer: 256 * 1024 * 1024,
+				// Keep admission occupied if the sweep dies during image decoding.
+				stdio: [
+					"ignore",
+					"pipe",
+					"pipe",
+					...(lockFd === undefined ? [] : [lockFd]),
+				],
+			},
 		).toString();
 	} catch (err) {
 		throw new Error(`${file}: could not read the image - ${err.message}`);
@@ -529,7 +538,9 @@ export const provenanceFailures = (manifest, git = gitOut) => [
 	...citationFailures(manifest, git),
 ];
 
-const main = () => {
+// Exported only for the admitted worker's import; ordinary imports still never
+// sweep frames (capture-evidence imports the single-frame predicates).
+export const main = (lockFd) => {
 	if (!existsSync(EVIDENCE)) {
 		console.error(`No evidence at ${EVIDENCE}`);
 		process.exit(1);
@@ -547,7 +558,7 @@ const main = () => {
 			failures.push(`${relative(ROOT, file)}: no palette named \`${theme}\``);
 			continue;
 		}
-		const mode = modalColour(file);
+		const mode = modalColour(file, lockFd);
 		if (!mode) {
 			failures.push(`${relative(ROOT, file)}: no pixels`);
 			continue;
@@ -760,5 +771,27 @@ const main = () => {
 	);
 };
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1])
-	main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+	// A fixed host path shares capacity across worktrees and isolated HOME/TMPDIR
+	// runs. Never unlink this file: flock, not its contents or PID, owns admission.
+	// Python's stdlib supplies nonblocking flock on both macOS and Linux without
+	// installing a native Node dependency. No locking support means no sweep.
+	const result = spawnSync(
+		"python3",
+		[
+			join(ROOT, "scripts", "evidence-run-guard.py"),
+			"/tmp/local-operator-ui-check-evidence.lock",
+			process.execPath,
+			"--input-type=module",
+			"--eval",
+			`const { main } = await import(${JSON.stringify(import.meta.url)}); main(3);`,
+		],
+		{ stdio: "inherit" },
+	);
+	if (result.error || result.signal) {
+		console.error(
+			`Evidence check BLOCKED: guarded worker failed: ${result.error?.message ?? result.signal}. Python 3 with POSIX flock is required.`,
+		);
+	}
+	process.exitCode = result.status ?? 1;
+}
