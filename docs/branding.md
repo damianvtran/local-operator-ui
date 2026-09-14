@@ -498,3 +498,37 @@ idiom" - and they disagreed. The cause was structural: the canonical component
 was buried in `features/chat/components/trace/`, so no other feature could
 import it even when its author wanted to. A shared idiom has to live in the
 shared layer or it is not one.
+
+### A view that is not the newest one
+
+Three states where the app is showing something other than the owner's current
+answer, and each has one idiom because inventing a second at the call site is
+how a system ends up with two ways to say the same thing.
+
+**A caption, not a treatment.** A stale paint — rows read back from this
+window's own memory while the snapshot is still in flight — stays at full
+`ink`. No dimming, no scrim, and **no opacity**, which is banned as a state
+signal here for the reason § 6 gives: it is unreadable on some grounds and
+invisible on others. What says "this may be behind" is one sentence in the
+transcript's existing status slot (the slot `Reconnecting` already uses),
+`text-meta text-ink-dim`, sentence case, no spinner, no icon tile, no border,
+no shadow. It is present from the first painted frame and removed in the same
+commit as the reconciled rows, so the two never disagree.
+
+**A loading state is not an empty state.** "There are no messages" is a claim
+about the conversation, and making it before the transcript resolves is how the
+app once flashed "no messages yet" at a populated chat. While a conversation is
+being fetched and nothing has been painted, the pane shows a skeleton: three
+`aria-hidden` bars on `sunken` and an `<output>` reading `Loading conversation…`.
+Never a skeleton **over** painted rows, and never the empty state — the skeleton
+is the honest shape of not knowing.
+
+**An arrival must not move anything.** The unseen mark used to be
+`font-semibold` on a row whose title is `flex-1 truncate`, so the marking event
+rewrote the visible string and re-truncated text under the reader's cursor. It
+now lands in the reserved status slot as an **ink step on the existing glyph**:
+the resting ring takes `text-accent`. A glyph carrying its own meaning —
+`danger` for a failed turn, `warning` for a parked approval — keeps it, since
+an unread arrival must not erase information the user needs; the unread
+semantic travels in the accessible name for every row. Layout never changes,
+which is the whole point: the mark is a state, not a redraw.

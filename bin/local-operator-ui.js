@@ -146,7 +146,17 @@ if (!fs.existsSync(appPath)) {
 }
 
 // Launch the Electron app
-const child = spawn(electronPath, [appPath], {
+//
+// `process.argv.slice(2)` is forwarded so the CLI can carry the arguments the
+// notification click's third rung passes (`--open-session <id>`), and so the
+// app's own launch flags (`--window-mode=`, `--window-size=`) reach it through
+// this entry point too. Electron treats everything after the app path as the
+// app's argv, which is exactly what the main process and the preload read.
+//
+// The slice, not the whole vector: argv[0] is node and argv[1] is this script,
+// and passing those through would hand the app two paths it would then have to
+// recognise as "not mine".
+const child = spawn(electronPath, [appPath, ...process.argv.slice(2)], {
 	stdio: "inherit",
 	windowsHide: false,
 });

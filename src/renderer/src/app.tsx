@@ -99,6 +99,14 @@ const App: FC = () => {
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
+	//
+	// `setActiveSession` and nothing else: deliberately NO validating
+	// `sessions.get` round trip here. `openSession` does that for a sidebar row,
+	// where ~1.5 s against a click the user already committed to is the right
+	// trade; on the notification path it is latency in front of the only thing
+	// the user asked for, and the panel's own paint cache plus the stream's
+	// snapshot answer the same questions. A conversation that turns out not to
+	// exist lands on the transcript's named state instead (M6).
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);

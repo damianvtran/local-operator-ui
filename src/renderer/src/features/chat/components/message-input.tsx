@@ -255,6 +255,16 @@ type MessageInputProps = {
 	 */
 	isHydrating?: boolean;
 	/**
+	 * The conversation is not on this machine (M6), so nothing typed here could
+	 * be sent anywhere.
+	 *
+	 * A separate gate from `isHydrating`, which is about not knowing yet: this
+	 * one is a known answer, and it is the one state where leaving the composer
+	 * writable invites a doomed action. The transcript above it names the state
+	 * and offers the way out; this only refuses the keystroke.
+	 */
+	unavailable?: boolean;
+	/**
 	 * The session's own readings — model, effort, context, spend — and the way
 	 * to open each one's picker.
 	 *
@@ -455,6 +465,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			onChangeCwd,
 			isSmallView = false,
 			isHydrating = false,
+			unavailable = false,
 			sessionStatus,
 			runDetails,
 		},
@@ -714,7 +725,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 		}));
 
-		const isInputDisabled = Boolean(isLoading && currentJobId);
+		const isInputDisabled = unavailable || Boolean(isLoading && currentJobId);
 
 		/*
 		 * Grow with the draft up to `max-h`, then scroll. Runs on every value

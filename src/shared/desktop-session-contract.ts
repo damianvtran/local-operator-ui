@@ -139,6 +139,27 @@ export function mergeCompletionAttention(
 			incoming.revision[1] < current.revision[1])
 	)
 		return current;
+	// `supported` is OPTIONAL and its ABSENCE is not a value.
+	//
+	// Two producers reach this merge with different attention payloads. A
+	// session stream's attention comes from the live owner and carries
+	// `supported` (false = "this owner has not negotiated completion receipts");
+	// the catalogue's comes from `state_many`, which builds the state from the
+	// durable store alone and therefore never sets it. Replacing wholesale —
+	// which is what this merge is for, so a newer revision always wins — then
+	// DELETED the flag, and `useCompletionView` requires
+	// `attention.supported === true` before it will acknowledge a read. A
+	// catalogue refetch arriving after a snapshot silently disabled the read
+	// receipt for the conversation on screen, and nothing repainted the flag
+	// until the next snapshot: a completion stayed unread no matter how long
+	// the user looked at it.
+	//
+	// So an omitted flag INHERITS the last one we were actually told, and a
+	// present one is the producer's own answer and always wins — including an
+	// explicit `false`, which is the whole point of sending it.
+	if (incoming.supported === undefined && current?.supported !== undefined) {
+		return { ...incoming, supported: current.supported };
+	}
 	return incoming;
 }
 
@@ -494,6 +515,75 @@ export type DesktopSessionFrame =
 	// is a field delta of persistent state — a notification is a one-shot edge.
 	| Receipt<"notification", DesktopNotification>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
+
+/**
+ * The machine-wide feed's frame family (`GET /v1/desktop/events`).
+ *
+ * It is a SECOND envelope rather than a reuse of `DesktopSessionFrame`, because
+ * the two streams answer different questions and the differences are the ones a
+ * careless alias would hide:
+ *
+ * - A feed frame is not scoped to one session. `session_id` is present only on
+ *   the types that concern one conversation (`attention`, `notification`), and
+ *   absent on `catalogue`, `heartbeat` and `gap` — so the session frame's
+ *   `Receipt` (which requires it) cannot describe them.
+ * - `open` carries no `gap` flag: there is no replay to gap on. A feed
+ *   subscription takes a BASELINE and announces nothing that predates it,
+ *   because the notification edge's whole value is timeliness. The feed's
+ *   `gap` is therefore an overflow signal on a live connection, not a hole in
+ *   a replay.
+ * - `attention.payload` is the same `CompletionAttention` the session stream
+ *   carries, and `notification.payload` is the SAME payload the bridge composes
+ *   — verbatim, including `dedupe_key`. That is what lets main's notifier
+ *   observe either source with one code path and one local dedupe map, so a
+ *   completion that reaches the app twice produces one banner.
+ *
+ * `seq` is a receipt cursor exactly as the session stream's is: monotonic per
+ * connection, and only meaningful for dedupe — never for deciding what is
+ * newer paint state.
+ */
+export type DesktopFeedFrame =
+	| {
+			epoch: string;
+			seq: number;
+			type: "open";
+			payload: {
+				subscription_id: string;
+				/** The backend's own beat cadence, which sizes the silence watchdog. */
+				heartbeat_seconds: number;
+				/** Presence lease the heartbeat must beat inside. */
+				lease_seconds: number;
+				watch_ttl_seconds: number;
+				catalogue_revision: number;
+			};
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "attention";
+			session_id: CanonicalSessionId;
+			payload: CompletionAttention;
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "notification";
+			session_id: CanonicalSessionId;
+			payload: DesktopNotification;
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "catalogue";
+			payload: { revision: number };
+	  }
+	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	| {
+			epoch: string;
+			seq: number;
+			type: "gap";
+			payload: { reason: string; subscription_id: string };
+	  };
 export type DesktopAdmission = {
 	status: "admitted";
 	command_id: string;

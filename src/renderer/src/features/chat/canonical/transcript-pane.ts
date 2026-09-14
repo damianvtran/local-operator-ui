@@ -108,13 +108,12 @@ export type CanonicalTranscriptStatus =
  * the user is waiting through has to be visible, and it has to stop the band
  * from offering the greeting over a conversation nobody has read.
  */
-export function canonicalTranscriptSpeaks(view: {
-	status: CanonicalTranscriptStatus;
-	failure: SessionFailureNotice | null;
-}): boolean {
+export function canonicalTranscriptSpeaks(view: TranscriptPaneView): boolean {
 	return (
 		view.status === "reconnecting" ||
-		(view.status === "unavailable" && Boolean(view.failure))
+		(view.status === "unavailable" && Boolean(view.failure)) ||
+		Boolean(view.missing) ||
+		Boolean(view.stale)
 	);
 }
 
@@ -140,6 +139,20 @@ export type TranscriptPaneView = {
 	 * pixel at t+13.8 s - the dead air the operator reported).
 	 */
 	admittedSend: boolean;
+	/*
+	 * The two states a notification click can paint with no authoritative answer
+	 * in hand. Both are statements the pane makes about ITSELF, which is why they
+	 * live in this view rather than as guards at the render site: the hold and
+	 * the collapse are the same question asked twice, and one of them reading a
+	 * proxy for it is how a row-less pane ended up collapsed with its own
+	 * sentence clipped.
+	 *
+	 * Optional, and deliberately: a caller that knows neither is a caller for
+	 * which neither is true, which is the behaviour every decision here had
+	 * before these states existed (a draft conversation, the legacy twin).
+	 */
+	missing?: boolean;
+	stale?: boolean;
 };
 
 /**

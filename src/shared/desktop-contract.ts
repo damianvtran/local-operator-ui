@@ -1,4 +1,7 @@
 import { z } from "zod";
+// The feed's frame family lives beside the session stream's, so the two cannot
+// drift into disagreeing about the envelope they deliberately share.
+import type { DesktopFeedFrame } from "./desktop-session-contract";
 
 const id = z
 	.string()
@@ -539,6 +542,27 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.variables.delete"),
 			sessionId,
 			key: variableKey,
+		})
+		.strict(),
+	// Machine-wide desktop presence. NOT a watch lease and deliberately not
+	// shaped like one: it names no session, because the fact it carries is
+	// "somebody is at this machine's screen and this app can raise a banner",
+	// which is a property of the app rather than of any conversation. The
+	// backend reads it to decide whether a BACKGROUND completion is worth a
+	// banner here at all (a session runtime with no surface to present on
+	// otherwise toasts on its own host, where nobody may be).
+	//
+	// `subscription_id` is the LIVE feed subscription the presence belongs to,
+	// not a per-session watch subscription: the server holds the lease against
+	// that socket, so a dropped feed revokes the claim without waiting for a
+	// heartbeat to go stale. That is the whole reason presence is a route on the
+	// feed rather than a local file - a desktop paired to a backend on another
+	// host cannot write to that host's disk.
+	z
+		.object({
+			op: z.literal("sessions.presence"),
+			subscriptionId: z.string().regex(/^[a-f0-9]{1,64}$/),
+			canNotify: z.boolean(),
 		})
 		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
@@ -1141,7 +1165,32 @@ export type DesktopStreamEvent = {
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
+	/**
+	 * The HTTP status that refused this stream, when one did.
+	 *
+	 * A REFUSAL is not a transport failure and the difference is user-visible:
+	 * the desktop plane answers 404 for a session this machine does not have, and
+	 * the one path that reaches it without validating the id first is the
+	 * notification click (which deliberately does NOT spend a `sessions.get`
+	 * round trip on the latency path). Without the code, that case fell into the
+	 * generic `unavailable` branch and the reader got "The event stream was
+	 * refused (404)." — transport text, saying what happened and neither what it
+	 * means nor what to do.
+	 *
+	 * Optional because not every emitter has one: a socket that died mid-stream
+	 * and a frame-budget overflow are failures, not refusals.
+	 */
+	status?: number;
 };
+
+/**
+ * Whether the machine-wide feed socket is live, as the sidebar needs it.
+ *
+ * It lives in the contract rather than in `desktop-feed.ts` because it is a
+ * RENDERER-visible shape: the sidebar renders the disconnected line from it, so
+ * it travels over IPC and belongs with the other wire types.
+ */
+export type DesktopFeedState = { connected: boolean };
 
 export type DesktopStreamSubscription = {
 	streamId: Promise<string>;
@@ -1226,6 +1275,33 @@ export type DesktopAPI = {
 			onEvent: (event: DesktopStreamEvent) => void,
 		) => DesktopStreamSubscription;
 	};
+	/**
+	 * The machine-wide desktop feed, held by MAIN and not by this window.
+	 *
+	 * Absent in browser development, where there is no relay and no native
+	 * delivery to be told about — a renderer with no `feed` must keep the polling
+	 * behaviour it has today rather than waiting for a stream that cannot exist.
+	 *
+	 * Subscribe is a VIEW subscription and nothing more: main opens the feed on
+	 * its own (gated on the backend's capability) and stays subscribed with no
+	 * window at all, which is the state the operator reported — app alive in the
+	 * dock, nothing on screen, and a completion announced to nobody.
+	 */
+	feed?: {
+		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
+		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
+	};
+	/**
+	 * The conversation main was launched to display, or null.
+	 *
+	 * A VALUE rather than an event, and that is the point (B3): the initial
+	 * session has to be readable before the renderer's first paint, because a
+	 * recreated window rehydrates its persisted `activeSessionId` and paints THAT
+	 * conversation first. Delivering the id as a post-load IPC instead showed the
+	 * user the wrong conversation and then swapped it, which reads as a click
+	 * that landed on the wrong row.
+	 */
+	initialSession?: string | null;
 };
 
 export type DesktopCapabilities = {
@@ -1491,6 +1567,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					subscription_id: request.subscriptionId,
 					visible: request.visible,
+					can_notify: request.canNotify,
+				},
+			};
+		case "sessions.presence":
+			return {
+				path: "/v1/desktop/presence",
+				method: "POST",
+				body: {
+					subscription_id: request.subscriptionId,
+					// `can_notify` means "can ATTEMPT delivery", never "the user will
+					// be reached": `Notification.isSupported()` knows nothing about
+					// macOS Focus/DND, Windows Focus Assist or a denied permission.
+					// The backend's suppression reads it as eligibility to try, and a
+					// claim never advances the read watermark, so a suppressed banner
+					// still leaves the durable unseen mark intact.
 					can_notify: request.canNotify,
 				},
 			};
