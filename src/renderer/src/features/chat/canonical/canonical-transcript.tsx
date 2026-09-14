@@ -105,7 +105,13 @@ import {
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
-import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import {
+	GAP,
+	type Row,
+	buildRows,
+	paintsSomething,
+	splitFirstLine,
+} from "./transcript-rows";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
 
@@ -500,7 +506,10 @@ const NoticeRow = memo(function NoticeRow({
 						   thread. Indenting the paragraph further put it at x270, off
 						   the edge it already shared. */
 						record.detail ? (
-							<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
+							// `break-words` for the same reason the notice's tail carries
+							// it: `pre-wrap` alone leaves `overflow-wrap: normal`, and an
+							// errno string or a socket path is one unbreakable run.
+							<p className="whitespace-pre-wrap break-words text-body-sm text-ink-muted">
 								{record.detail}
 							</p>
 						) : undefined
@@ -532,28 +541,38 @@ const NoticeRow = memo(function NoticeRow({
 	// chevron: a notice the user must ACT on should not require a click to
 	// read, and collapsing it merely trades a clipped sentence for an invisible
 	// one. The disclosure is kept for text that is actually bulky.
-	const long = record.text.length > 400 || record.text.includes("\n");
+	//
+	// And the disclosure carries the REST of the notice, never the notice again:
+	// `details={record.text}` disclosed a verbatim duplicate of the row above it
+	// whenever the opening line was the whole text (a long single-line notice) and
+	// re-read the first line whenever it was not (round 2's D7/Q5/R11/U14). A
+	// notice whose first line IS the whole text now has nothing to disclose and
+	// paints through the static branch, which is the honest affordance: a chevron
+	// that reveals the same bytes promises material it does not add.
+	const { headline, rest } = splitFirstLine(record.text);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
 				// Same column as the tool rows, so the same pitch: a notice must not
 				// be the row that makes a run look ragged.
-				dense={!long}
+				dense={!rest}
 				// The row states the notice's OWN opening line, not the word
 				// "Notice": a bulky notice used to render as the literal type name
 				// with the whole body behind the chevron, which is the defect the
-				// operator reported one register down. The body stays behind the
-				// disclosure, because what makes a notice long is that it is bulky.
-				verbOverride={long ? firstLine(record.text) : record.text}
+				// operator reported one register down.
+				verbOverride={headline}
 				failed={level === "error"}
-				// The row carries the whole message when it is not collapsed, so
-				// it must not be clipped to the rail width.
+				// The row carries the whole opening line when it is not collapsed,
+				// so it must not be clipped to the rail width.
 				wrap
 				glyph={<Icon />}
 				details={
-					long ? (
-						<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
-							{record.text}
+					rest ? (
+						// `break-words` as well as `pre-wrap`: a notice's own tail can be
+						// an unbreakable run (D7 measured `scrollWidth` 2773 in an 840px
+						// box), and `pre-wrap` alone leaves `overflow-wrap: normal`.
+						<p className="whitespace-pre-wrap break-words text-body-sm text-ink-muted">
+							{rest}
 						</p>
 					) : undefined
 				}
@@ -561,13 +580,6 @@ const NoticeRow = memo(function NoticeRow({
 		</MessageContainer>
 	);
 });
-
-/** The first line of a body, for a row that discloses the rest of it. */
-const firstLine = (text: string): string =>
-	text
-		.split("\n")
-		.map((line) => line.trim())
-		.find((line) => line.length > 0) ?? text.trim();
 
 // ---------------------------------------------------------------- list
 
