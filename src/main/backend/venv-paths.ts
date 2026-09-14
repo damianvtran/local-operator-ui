@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readManagedSelection } from "./managed-python";
 
 /**
  * Where the interpreter environment this app builds and runs lives.
@@ -36,6 +37,20 @@ import { join } from "node:path";
 export const PACKAGED_VENV_DIR_NAME = "local-operator-venv";
 export const DEV_VENV_DIR_NAME = "local-operator-venv-dev";
 
+/**
+ * The variable the app hands its resolved venv path to the install scripts in.
+ *
+ * The scripts cannot derive it: they run as a subprocess with no view of
+ * `app.isPackaged`, and a standalone run of one has no app at all - so their own
+ * default stays the packaged name (what every install on a disk today has), and
+ * the app overrides it when the instance is not packaged. Without this the
+ * separation above exists only in the app: a review measured the shipped macOS
+ * script creating `.../local-operator-venv` with the app's own decision for that
+ * instance reading `.../local-operator-venv-dev`, so a dev run still created,
+ * pip-installed into and `rm -rf`ed the packaged app's environment.
+ */
+export const VENV_PATH_ENV = "LOCAL_OPERATOR_VENV_PATH";
+
 /** `home = <path>` in a venv's `pyvenv.cfg`, as `venv` writes it. */
 const PYVENV_HOME = /^\s*home\s*=\s*(.+?)\s*$/;
 
@@ -70,55 +85,79 @@ export function managedVenvPath(input: {
 		return join(input.appDataPath, name);
 	}
 	if (input.platform === "darwin") {
-		// Hardcoded rather than `appDataPath`: that is what every install on this
-		// platform has on disk today (`~/Library/Application Support/Local
-		// Operator`), and the app must find the environment it built rather than
-		// one Electron would name after the bundle when it is unpackaged.
-		return join(
+		const support = join(
 			input.home,
 			"Library",
 			"Application Support",
 			"Local Operator",
-			name,
 		);
+		try {
+			return (
+				readManagedSelection({
+					support,
+					resources: "",
+					packaged: input.packaged,
+					arch: process.arch,
+				})?.venv ??
+				join(
+					support,
+					"managed-python",
+					input.packaged ? "packaged" : "dev",
+					"unprepared",
+				)
+			);
+		} catch {
+			// Readiness reports a corrupt selection through setup's error UI. A
+			// constructor must not crash before that UI can explain what happened.
+			return join(
+				support,
+				"managed-python",
+				input.packaged ? "packaged" : "dev",
+				"unprepared",
+			);
+		}
 	}
 	return join(input.home, ".config", "local-operator", name);
 }
 
 /**
- * The `.app` bundle the interpreter of `venvPath` resolves its stdlib from, or
- * null when it is not built on one.
+ * What an app-managed venv's interpreter resolves its stdlib from.
  *
- * Read from the venv's own `pyvenv.cfg`, because that file is the record of what
- * the environment was created from: `home` is the interpreter's `bin`, and a
- * `home` inside `Contents/Resources/python[_aarch64]` means every module that
- * environment imports has its source inside that bundle. That is the only way a
- * process running *this* instance can know another bundle is part of its own
- * failure surface - measured on this machine, the app-managed venv's `home` is
- * `/Applications/Local Operator.app/Contents/Resources/python_aarch64/bin` - and
- * it is what lets an unpackaged instance repair the installed app its shared
- * environment writes into (see `repairReachableBundleSeals` in `update-service`).
- *
- * Only a `Contents/Resources/python*` home counts: a venv built on a system or
- * uv-managed python has no bundle to protect here, and the `.app` component is
- * required so a checkout's `resources/python_aarch64/bin` (the unpackaged case)
- * is not reported as one.
+ * Three answers rather than `string | null`, because the two nulls were not the
+ * same fact and the caller could not tell them apart: a venv built on a system
+ * python or on the checkout's own interpreter tree names no bundle at all
+ * (`none`), while a venv whose `pyvenv.cfg` names a bundle that is no longer on
+ * disk (`missing`) is the state this machine is actually in - `/Applications/
+ * Local Operator.app` does not exist here while the operator's venv still names
+ * it. The second one used to be silent, so the start-up repair had nothing to say
+ * about the one venv it exists to repair; it now names the path it could not find
+ * (review/QA R3/Q3).
  */
-export function venvInterpreterBundle(venvPath: string): string | null {
+export type VenvInterpreter =
+	/** Nothing to resolve: no venv, no `home`, or an interpreter outside a bundle. */
+	| { kind: "none" }
+	/** A bundle this venv's interpreter resolves from, present on disk. */
+	| { kind: "bundled"; bundle: string }
+	/** A bundle the venv names that is not on disk any more. */
+	| { kind: "missing"; bundle: string };
+
+export function venvInterpreter(venvPath: string): VenvInterpreter {
 	let config: string;
 	try {
 		config = readFileSync(join(venvPath, "pyvenv.cfg"), "utf8");
 	} catch {
 		// No venv, or one whose config this cannot read: nothing to resolve.
-		return null;
+		return { kind: "none" };
 	}
 	const home = config
 		.split("\n")
 		.map((line) => line.match(PYVENV_HOME))
 		.find((match) => match != null)?.[1];
-	if (!home) return null;
+	if (!home) return { kind: "none" };
 	const resourceMarked = home.match(BUNDLED_INTERPRETER_HOME);
-	if (!resourceMarked) return null;
+	if (!resourceMarked) return { kind: "none" };
 	const bundle = resourceMarked[1];
-	return existsSync(bundle) ? bundle : null;
+	return existsSync(bundle)
+		? { kind: "bundled", bundle }
+		: { kind: "missing", bundle };
 }

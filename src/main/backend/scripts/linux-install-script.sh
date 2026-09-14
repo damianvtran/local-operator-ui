@@ -16,6 +16,13 @@ VENV_PATH="${APP_DATA_DIR}/${VENV_NAME}"
 LOG_FILE="${APP_DATA_DIR}/backend-install.log"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 
+# Which environment this installs into - the app's decision, handed in. See the
+# macOS script for why the script must not re-derive it (a packaged and an
+# unpackaged instance use different environments, and only the app knows which
+# it is); `LOCAL_OPERATOR_VENV_PATH` is set from `managedVenvPath`.
+: "${LOCAL_OPERATOR_VENV_PATH:=$VENV_PATH}"
+VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"
+
 # Keep CPython's bytecode cache out of the application directory.
 #
 # Same reason as the macOS script: an interpreter writing __pycache__/*.pyc

@@ -36,6 +36,7 @@ import { requestDesktop } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
+import { isLegacyManagedCommand } from "./managed-python";
 import { managedVenvPath } from "./venv-paths";
 
 const execPromise = promisify(exec);
@@ -540,6 +541,24 @@ export class BackendServiceManager {
 			const { stdout } = await execPromise(command);
 
 			if (stdout.trim()) {
+				if (
+					process.platform === "darwin" &&
+					isLegacyManagedCommand(
+						stdout.trim().split("\n")[0],
+						join(
+							app.getPath("home"),
+							"Library",
+							"Application Support",
+							"Local Operator",
+						),
+					)
+				) {
+					logger.info(
+						"The PATH command belongs to a legacy managed environment; preparing a separate backend instead",
+						LogFileType.BACKEND,
+					);
+					return false;
+				}
 				logger.info(
 					`local-operator command found at: ${stdout.trim()}`,
 					LogFileType.BACKEND,
@@ -718,6 +737,14 @@ export class BackendServiceManager {
 		// No external backend, start our own
 		this.desktopToken = randomBytes(32).toString("hex");
 		try {
+			// Installation can select a new generation after this manager is built.
+			// Once started, this instance pins that generation until its next start.
+			this.venvPath = managedVenvPath({
+				platform: process.platform,
+				home: app.getPath("home"),
+				appDataPath: this.appDataPath,
+				packaged: app.isPackaged,
+			});
 			// Check if local-operator command exists globally
 			if (await this.checkLocalOperatorExists()) {
 				logger.info(

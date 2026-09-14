@@ -7,9 +7,22 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Configuration
 APP_NAME="Local Operator"
 VENV_NAME="local-operator-venv"
-APP_DATA_DIR="$HOME/Library/Application Support/$APP_NAME"
+APP_DATA_DIR="${LOCAL_OPERATOR_SUPPORT_PATH:-$HOME/Library/Application Support/$APP_NAME}"
 VENV_PATH="$APP_DATA_DIR/$VENV_NAME"
 LOG_FILE="$APP_DATA_DIR/backend-install.log"
+
+# Which environment this installs into. The path is the app's decision, not this
+# script's: a packaged install and an unpackaged one must not share an
+# environment (the venv is built on whatever interpreter the instance resolves,
+# and the installed bundle's stdlib lives inside the code-sealed .app), and only
+# the app knows which one it is. The app passes its answer in
+# (`LOCAL_OPERATOR_VENV_PATH`, set from `managedVenvPath` in
+# src/main/backend/venv-paths.ts); the default above is what a standalone run -
+# one nobody's app started - installs into, which is the packaged name because
+# that is what every install on a disk today has.
+
+: "${LOCAL_OPERATOR_VENV_PATH:?Pass the resolved managed environment path}"
+VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"
 
 # Keep CPython's bytecode cache out of the application bundle.
 #
@@ -60,54 +73,13 @@ else
 fi
 echo "Detected CPU architecture: $ARCH, using Python directory name: $PYTHON_DIR_NAME"
 
-# Check if PYTHON_BIN is already set by the installer
-if [[ -n "$PYTHON_BIN" ]]; then
-  echo "Using Python executable provided by installer: $PYTHON_BIN"
-else
-  # Get the path to the bundled Python based on architecture
-  # Try multiple possible locations to find Python
-  POSSIBLE_PYTHON_PATHS=(
-    # From environment variable (set by the installer)
-    "$ELECTRON_RESOURCE_PATH/$PYTHON_DIR_NAME/bin/python3"
-    # Absolute paths for packaged app
-    "/Applications/Local Operator.app/Contents/Resources/$PYTHON_DIR_NAME/bin/python3"
-    "$HOME/Applications/Local Operator.app/Contents/Resources/$PYTHON_DIR_NAME/bin/python3"
-    # Development paths
-    "$(dirname "$0")/../../../resources/$PYTHON_DIR_NAME/bin/python3"
-    "$(pwd)/resources/$PYTHON_DIR_NAME/bin/python3"
-    # System Python as last resort (less ideal as it might not be the version we tested with)
-    "/usr/bin/python3"
-  )
-
-  # Find the first Python that exists
-  PYTHON_BIN=""
-  echo "Searching for Python in the following locations for $PYTHON_ARCH_NAME architecture (using directory $PYTHON_DIR_NAME):"
-  for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
-    echo "  - Checking $path"
-    if [[ -f "$path" && -x "$path" ]]; then
-      PYTHON_BIN="$path"
-      echo "Found Python at $path"
-      break
-    else
-      echo "    Not found or not executable."
-    fi
-  done
-
-  # If we couldn't find Python, try to use the system Python
-  if [[ -z "$PYTHON_BIN" ]]; then
-    echo "Bundled Python for $PYTHON_ARCH_NAME not found in directory $PYTHON_DIR_NAME. Attempting to use system Python..."
-    if command -v python3 &>/dev/null; then
-      PYTHON_BIN=$(command -v python3)
-      echo "Warning: Using system Python at $PYTHON_BIN. This may lead to unexpected behavior."
-    else
-      echo "Error: Could not find a suitable Python executable. Tried the following paths for $PYTHON_ARCH_NAME (expected in $PYTHON_DIR_NAME):"
-      for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
-        echo "  - $path (failed)"
-      done
-      exit 1
-    fi
-  fi
-fi
+# The app prepares a complete external runtime before invoking this script.
+# Searching /Applications here would reintroduce legacy-bundle execution during
+# migration. Standalone callers must make the same explicit path decision.
+: "${PYTHON_BIN:?Pass an external prepared Python executable}"
+case "$PYTHON_BIN" in
+  *.app/*) echo "Refusing to execute Python inside an application bundle" >&2; exit 1 ;;
+esac
 
 # Create app data directory if it doesn't exist
 mkdir -p "$APP_DATA_DIR"
@@ -175,7 +147,6 @@ if [ ! -f "$PYTHON_BIN" ]; then
 fi
 
 # Make sure Python binary is executable
-chmod +x "$PYTHON_BIN"
 echo "Using bundled Python: $PYTHON_BIN"
 "$PYTHON_BIN" --version
 
@@ -194,10 +165,11 @@ echo "venv module is available"
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_PATH" ]; then
   echo "Creating virtual environment at $VENV_PATH..."
-  # Remove any potentially corrupted virtual environment
-  if [ -e "$VENV_PATH" ]; then
-    echo "Removing existing but potentially corrupted venv directory..."
-    rm -rf "$VENV_PATH"
+  # Never repair a path we did not create. Preparation allocates a fresh final
+  # pathname; a collision is evidence to preserve, not a reason to delete it.
+  if [ -e "$VENV_PATH" ] || [ -L "$VENV_PATH" ]; then
+    echo "Refusing to replace an existing environment path: $VENV_PATH" >&2
+    exit 1
   fi
   
   # Make sure parent directory exists and is writable

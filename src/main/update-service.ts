@@ -25,7 +25,6 @@ import type { BackendServiceManager } from "./backend/backend-service";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
-import { managedVenvPath, venvInterpreterBundle } from "./backend/venv-paths";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
 	type BytecodeHealResult,
@@ -35,6 +34,7 @@ import {
 	type InstallInFlightPayload,
 	type LastInstallAttempt,
 	type PendingInstallMarker,
+	type SealBlockContext,
 	type SealProbe,
 	type SealVerdict,
 	type UpdateFileMetadata,
@@ -1322,6 +1322,10 @@ export class UpdateService {
 	private async repairBundleSeal(
 		bundlePath: string,
 		version?: string | null,
+		/// Who is asking: the pre-flight (an update was stopped) or the start-up pass
+		/// (this copy is damaged and no update was on the table). See
+		/// `SealBlockContext`.
+		context: SealBlockContext = "update",
 	): Promise<{
 		seal: SealVerdict;
 		heal: BytecodeHealResult | null;
@@ -1348,7 +1352,12 @@ export class UpdateService {
 			return {
 				seal,
 				heal,
-				block: installedBundleSealBlock(bundlePath, seal.detail, version),
+				block: installedBundleSealBlock(
+					bundlePath,
+					seal.detail,
+					version,
+					context,
+				),
 			};
 		}
 
@@ -1379,98 +1388,20 @@ export class UpdateService {
 		return {
 			seal: healed,
 			heal,
-			block: installedBundleSealBlock(bundlePath, healed.detail, version),
+			block: installedBundleSealBlock(
+				bundlePath,
+				healed.detail,
+				version,
+				context,
+			),
 		};
 	}
 
-	/**
-	 * Repair the seal of every bundle this instance can reach, and say so.
-	 *
-	 * Two kinds of bundle, and the difference is what may be done to each:
-	 *
-	 * - the bundle THIS instance runs from, when it is a packaged app. It is
-	 *   reported the way the pre-flight reports it, refusal panel included, because
-	 *   "this install can no longer be replaced in place" is a fact about the app
-	 *   the user is looking at.
-	 * - the bundle a python THIS instance can run resolves its stdlib from - the
-	 *   app-managed venv's `pyvenv.cfg` `home`, which is inside an installed `.app`
-	 *   whenever the venv was created by the bundled interpreter (measured on the
-	 *   operator's machine: `home =
-	 *   /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin`).
-	 *   That bundle can be a different one from the running app - an unpackaged
-	 *   instance shares the packaged app's venv on a machine that has not been
-	 *   split yet - and healing it is what repairs an installed app from a dev
-	 *   instance, which is where the field damage came from.
-	 *
-	 * Healing a bundle this instance does not run from is deliberately limited to
-	 * the heal, and never the seal: the seal is applied to the bundle an app ships
-	 * (its own), and a process putting access-control entries on an app it is not
-	 * running is a change to somebody else's install. Deleting bytecode that
-	 * `codesign` reports as `file added:` under our own interpreter trees is the
-	 * other half - it is the damage this class of instance causes, it is refused
-	 * unless it is exactly that class, and the install it repairs is one macOS will
-	 * otherwise refuse to open at all.
-	 */
+	/** Inspect only the app this process runs from. An unpackaged instance must
+	 * never traverse, heal, seal or otherwise mutate another installed bundle. */
 	private async repairReachableBundleSeals(): Promise<void> {
 		const running = this.runningBundlePath();
 		if (running) await this.repairRunningBundleSeal(running);
-		for (const bundle of this.reachableForeignBundles(running)) {
-			await this.healForeignBundleSeal(bundle);
-		}
-	}
-
-	/**
-	 * The `.app` bundles this instance's pythons resolve their stdlib from, other
-	 * than the one it runs from.
-	 *
-	 * Both venv names are named, not only this instance's: an unpackaged instance
-	 * that has not set up its own environment yet is still running the packaged
-	 * app's venv, and that is the state in which it writes into the installed
-	 * bundle. `venvInterpreterBundle` answers null for a venv built on a system or
-	 * uv-managed python, which is the ordinary case for a dev machine with a global
-	 * `local-operator`.
-	 */
-	private reachableForeignBundles(running: string | null): string[] {
-		const paths: string[] = [];
-		for (const packaged of [true, false]) {
-			const venv = managedVenvPath({
-				platform: process.platform,
-				// `app.getPath("home")`, the same answer `managedVenvPath`'s callers
-				// in the backend classes pass: one home, so this cannot look for a venv
-				// beside the one the app actually built.
-				home: app.getPath("home"),
-				appDataPath: app.getPath("userData"),
-				packaged,
-			});
-			const bundle = venvInterpreterBundle(venv);
-			if (bundle && bundle !== running) paths.push(bundle);
-		}
-		return [...new Set(paths)];
-	}
-
-	/**
-	 * Heal a bundle this instance does not run from, and never seal it.
-	 *
-	 * The heal is the same one the pre-flight and the start-up pass run
-	 * (`repairBundleSeal`), so there is one heuristic and one refusal rule; what
-	 * this method adds is only the decision that the outcome is a log line rather
-	 * than a panel, because the panel speaks about the app the user is looking at.
-	 */
-	private async healForeignBundleSeal(bundlePath: string): Promise<void> {
-		const { seal, heal } = await this.repairBundleSeal(bundlePath, null);
-		if (seal.kind === "sealed" && heal) {
-			logger.info(
-				`Start-up seal repair: the app-managed venv's interpreter lives in ${bundlePath}, removed ${heal.removed.length} bytecode file(s) our own interpreter had written into it, and it verifies again.`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return;
-		}
-		if (seal.kind === "unsealed") {
-			logger.warn(
-				`Start-up seal check: ${bundlePath} (the app-managed venv's interpreter bundle) is still not a sealed code object: ${seal.detail}. Replacing it by hand is the remedy; this instance does not write access-control entries on an app it is not running from.`,
-				LogFileType.UPDATE_SERVICE,
-			);
-		}
 	}
 
 	/**
@@ -1488,11 +1419,15 @@ export class UpdateService {
 	 * start: the log line is the evidence that the pass ran at all.
 	 */
 	private async repairRunningBundleSeal(bundlePath: string): Promise<void> {
-		const { seal, heal, block } = await this.repairBundleSeal(bundlePath, null);
+		const { seal, heal, block } = await this.repairBundleSeal(
+			bundlePath,
+			null,
+			"startup",
+		);
 		if (seal.kind === "sealed") {
 			logger.info(
 				heal
-					? `Start-up seal repair: removed ${heal.removed.length} bytecode file(s) our interpreter had written into ${bundlePath}, and the bundle verifies again.`
+					? `Start-up seal repair: removed ${heal.removed.length} added bytecode file(s) from ${bundlePath}, and the bundle verifies again.`
 					: `Start-up seal check: ${bundlePath} is a sealed code object.`,
 				LogFileType.UPDATE_SERVICE,
 			);
