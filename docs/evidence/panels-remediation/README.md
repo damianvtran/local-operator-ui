@@ -1,0 +1,97 @@
+# Panel remediation — browser evidence, round 3
+
+## What this pass proves
+
+Source milestone: `642e6934d9e7c566ddaf3dd220381c557f2bb2f4`.
+Capture base: `ef4f76905c202c2f10e3e8d43bbe6c093016434e`, with uncommitted
+D14/D15/D17 edits. **These were dirty-working-tree captures, not captures of a
+clean ref.** The interaction and real-wire stories were added after the 96
+existing-story captures; they do not change those existing story renders. The
+final `replaceAll` → `split/join` spelling only restores the supported TypeScript
+target and has identical output for the pictured scope value.
+
+All new page navigation, interaction and screenshots used the Local Operator
+`browser` tool against the existing Storybook preview at `http://localhost:6051`.
+No raw CDP, Playwright, private Chromium, Electron scripting, or
+`capture-evidence.mjs` was run for this pass. The local preview disables docgen
+in the pre-existing untracked `.storybook-local` config; no production behavior
+is mocked by that setting. Theme selection uses `args=theme:<theme>`, not globals.
+
+The browser's actual PNG dimensions are **2880 × 1634**. They are preserved
+without resizing/cropping in the lossless WebPs. These replace historical
+smaller-viewport frames only for the explicitly listed changed surfaces. They
+are not evidence at the old capturer's viewport dimensions. In particular, the
+historical `panels-failovers/narrow/*` frames are retained as narrow-layout
+evidence at their original revision; their old scope copy is not a claim about
+the new revision. Current copy is evidenced by the five retaken failover states
+in every theme.
+
+| Finding | Captures and actual result |
+|---|---|
+| D14 | `panels-settings/usage-chart-{tokens,credits}/*.webp`: 24 frames, all twelve themes. Both the production settings page and story now mount `SettingsUsageChart`, including `formatTokens`, `h-62`, Y width 48, unit, name and active-dot props. Tokens show `1.8M / 1.4M / 900k / 450k / 0`, not `1800k / 0k`. The chart contract test executes the real component's returned props. |
+| D15 | `panels-info/dense/*.webp`: 12 frames, Environment and Could not be read visible. The full credential-name list, failed MCP rows and three diagnostic rows distinguish Dense from ManySessions. |
+| D17 | `panels-failovers/{populated,failover-in-force,empty-chain,no-chains,dense}/*.webp`: 60 frames, all twelve themes. Meta says `configured defaults · not live routing state`. |
+| D16 | `panels-live/wire-environment/localOperatorDark.webp`: real production InfoPanel over an actual isolated backend HTTP response. `Guides and skills` shows `11 guides · —`; `Approval mode` shows `—`. See the real-wire boundary below. |
+| Interaction gap | `analytics-scoped-spend/localOperatorDark.webp` and `analytics-reopened/localOperatorDark.webp`: actual control clicks in the stateful `panels-analytics--interactive` story. 30 days → Spend → This session only changes the headings/selected controls; Close → Open analytics resets 7 days/Tokens/all sessions. This is presentation-flow evidence, not transport/slash-dispatch evidence. |
+
+The before-frame in `settings-before/localOperatorDark.webp` was captured before
+the production-chart extraction, through the same browser and viewport. The
+corresponding after-frame is `../panels-settings/usage-chart-tokens/localOperatorDark.webp`.
+The browser-visible before/after frames were actually viewed, as were both brand
+palettes of the corrected chart, Dense Info, failover scope, the real-wire Info
+frame and the Analytics control-transition frame. The capture index lists all
+96 replaced story frames, URLs, source PNG hashes and actual dimensions.
+
+## The real-wire boundary (D16)
+
+The backend is the production diagnostic router from backend PR #1117 at
+`bb90ab88bf0c0d03da9c7f41dd6a1acec29129e6`, on a disposable HOME/config root.
+It is not the operator's backend or store. `serve-wire.py` next to the native
+frames is a reproducible runner. From that backend checkout:
+
+```sh
+.venv/bin/python -c 'import runpy; runpy.run_path("<ui-checkout>/docs/evidence/panels-live/serve-wire.py", run_name="__main__")'
+```
+
+Open (with the browser tool):
+
+```text
+http://localhost:6051/iframe.html?id=panels-info--wire-environment&viewMode=story&args=theme:localOperatorDark
+```
+
+The adapter fetches `http://127.0.0.1:6052/v1/desktop/info` with a public synthetic
+test bearer. The isolated backend explicitly allowlists only the preview's
+origin and applies CORS for that origin. The first browser request was correctly
+refused with 403 before that explicit allowlist was configured; no origin guard
+was bypassed. The successful response is HTTP 200, with `env.guides = 11`,
+`env.skills = null`, `env.approval_mode = null`, and an empty credential-key list.
+The actual production InfoPanel renders that response, not a copied JSON fixture.
+
+**This is a browser HTTP adapter, not native Electron, preload IPC, the assembled
+app's session routing, or slash-dispatch coverage.** The original ten native-app
+PNGs remain untouched for those earlier claims. Each now has a lossless
+`<state>/localOperatorDark.webp` companion, with decoded RGBA bytes checked equal
+to its PNG. Conversion does not change its original capture date or source.
+
+## R8 — inventory and prior provenance
+
+The four failures in `/tmp/panels-ce3.log` were real, not contention:
+wrong source stamp, 251 rather than 215 capture-list surfaces, ten declared
+native PNGs invisible to the WebP walker, and 1562 rather than 1812 sweep frames.
+The manifest now uses the shared exported `frames` walker and the gate's story
+list parser. Before the required convergence rebase, the measured inventory is
+2051 WebPs: **1812 outside supplementary sets + 239 supplementary**. The original
+ten PNGs remain in addition to this inventory, not secretly counted by it.
+
+The older 756-frame pass committed at `2f2d111ec` ran against the dirty stylesheet
+import correction later committed as `ef4f76905`; it was not a clean capture at
+`74316ba98`. `git diff 74316ba98..ef4f76905 -- src` shows that one import-depth
+change. Only the 96 explicitly retaken frames are newly captured here. The other
+frames retain their earlier provenance and limitations. `capturedAt` still names
+the previous full sweep, and the old partial-capture/head-note records are kept
+under `previousPartialCapture`/`previousHeadNote`, explicitly historical rather
+than current claims. No whole-theme/full-surface sweep was run.
+
+The checker itself is unchanged. The full gate result and convergence accounting
+are recorded with the evidence commit/PR remediation, not inferred from the
+cheap inventory check.
