@@ -64,8 +64,11 @@ import {
 } from "./slash-argument-rows";
 import {
 	argumentEmptyCopy,
+	candidateKey,
+	chosenByHandSurvives,
 	enterFooter,
 	phaseLabel,
+	rowId,
 	slashDestructive,
 	slashKeyIntent,
 	slashRunAllowed,
@@ -116,15 +119,6 @@ export type CompletionRow =
 	 */
 	| { kind: "command"; command: SlashCommandMeta; label: string }
 	| { kind: "argument"; row: ArgumentRow };
-
-/** Stable listbox ids. Command rows key on the matched label; argument rows on
- *  the value, sanitised because a selector carries `/` and `.` is fine but a
- *  space is not. */
-function rowId(row: CompletionRow): string {
-	return row.kind === "command"
-		? `cmd-${row.label}`
-		: `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
-}
 
 /**
  * The registry row a typed word names, primary or alias.
@@ -504,7 +498,7 @@ export function useSlashCompletion({
 	 * to (round 1 R1). Criterion 10's "hand-moved" means moved onto THIS row in
 	 * THIS list.
 	 */
-	const matchKey = matches.map(rowId).join("\n");
+	const matchKey = candidateKey(matches);
 	const lastMatchKey = useRef<string>(matchKey);
 
 	useEffect(() => {
@@ -512,7 +506,7 @@ export function useSlashCompletion({
 		const changed = lastPhaseKey.current !== phaseKey;
 		lastPhaseKey.current = phaseKey;
 		// A different candidate set re-arms the ambiguity gate.
-		if (lastMatchKey.current !== matchKey) {
+		if (!chosenByHandSurvives(lastMatchKey.current, matchKey)) {
 			lastMatchKey.current = matchKey;
 			setChosenByHand(false);
 		}
