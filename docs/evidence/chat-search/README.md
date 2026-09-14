@@ -41,7 +41,10 @@ nested content 224.0 / titles 120.0 and 103.0 / statement slots 76.04 and 92.75
 unclipped at 280, content 184.0 / titles 80.0 and 63.3 at the clamp, the binding
 slot at 115/256 = **44.9%** of its content box — because the code that draws the
 rows is this branch's and the sync did not touch it. What differs between the two
-bases is the FIELD above the rows, and only the field. Re-shooting the five
+bases is outside those rows: the FIELD above them (#136's clear control) and the
+`New chat` row's border, which #139 removed and which `after-clipped` still shows
+in its older, bordered form (design round 8, D28). No row this set photographs
+changed between the bases. Re-shooting the five
 remaining `after-*` frames and the `before-*` halves against 0.20.1 is the
 **open follow-up**.
 
