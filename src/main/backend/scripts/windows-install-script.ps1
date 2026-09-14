@@ -23,6 +23,11 @@ if (-not $env:PYTHONPYCACHEPREFIX) {
     $env:PYTHONPYCACHEPREFIX = "$AppDataDir\\python-bytecode-cache"
 }
 
+# The refusal half of the same pair, kept in step with the app's
+# `withPythonBytecodeCache`: CPython reads the flag before its first import, so
+# nothing this script runs can write a __pycache__ at all.
+$env:PYTHONDONTWRITEBYTECODE = "1"
+
 # Create app data directory if it doesn't exist
 if (-not (Test-Path $AppDataDir)) {
     New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null

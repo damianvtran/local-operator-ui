@@ -36,6 +36,7 @@ import { requestDesktop } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
+import { managedVenvPath } from "./venv-paths";
 
 const execPromise = promisify(exec);
 
@@ -216,26 +217,15 @@ export class BackendServiceManager {
 			);
 		}
 
-		// Set platform-specific virtual environment path
-		if (process.platform === "win32") {
-			this.venvPath = join(this.appDataPath, "local-operator-venv");
-		} else if (process.platform === "darwin") {
-			this.venvPath = join(
-				app.getPath("home"),
-				"Library",
-				"Application Support",
-				"Local Operator",
-				"local-operator-venv",
-			);
-		} else {
-			// Linux
-			this.venvPath = join(
-				app.getPath("home"),
-				".config",
-				"local-operator",
-				"local-operator-venv",
-			);
-		}
+		// The app-managed venv for THIS instance - a packaged install and an
+		// unpackaged one must not share it, or the dev instance's backend imports its
+		// stdlib out of the installed, code-sealed bundle (see `managedVenvPath`).
+		this.venvPath = managedVenvPath({
+			platform: process.platform,
+			home: app.getPath("home"),
+			appDataPath: this.appDataPath,
+			packaged: app.isPackaged,
+		});
 
 		// Load shell environment variables
 		this.loadShellEnvironment();
