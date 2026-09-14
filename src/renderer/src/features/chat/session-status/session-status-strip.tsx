@@ -162,11 +162,26 @@ const READING_BOX =
 	"inline-flex h-6 min-w-0 shrink-0 items-center gap-1.5 rounded-sm px-1.5 text-meta";
 
 /**
- * The interactive form. Hover is a colour step and nothing else — no lift, no
- * scale (§ 5). `cursor-pointer` follows the working-directory chip's rule: a
- * control that opens a menu takes the pointer, an inert row does not.
+ * The readings' control box, and the interactive form of it.
+ *
+ * Two paragraphs were stacked here and are merged because they are one argument:
+ * the box's own rules, and the fact that a second chip species now shares it.
+ * Read as two, a reader could take the first as still standing alone and the
+ * second as an amendment to it (agent review, round 1, N1).
+ *
+ * Hover is a colour step and nothing else - no lift, no scale (§ 5).
+ * `cursor-pointer` follows the working-directory chip's rule: a control that
+ * opens a menu takes the pointer, an inert row does not. No border and no fill at
+ * rest (§ 5.1): four bounded chips above the composer's own bounded box is three
+ * boxes too many, so these read as text until you reach for one.
+ *
+ * EXPORTED because `docs/composer-status-tabs.md` § 5.1 fixes the composer's plan
+ * count as "the readings' own control", and a restated class string is how two
+ * chips over one box drift into two hover grounds and two focus offsets. The name
+ * stays the readings' because that is where the box was authored; what is shared
+ * is the box, not the readings.
  */
-const READING_BUTTON = cn(
+export const READING_BUTTON = cn(
 	READING_BOX,
 	"cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart",
 	"hover:bg-accent-wash hover:text-ink",

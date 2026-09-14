@@ -15,9 +15,23 @@
  * `jobs`/`todos` stream to show. `chat-page.tsx` passes `null` on that path and
  * a legacy chat grows no button — exactly as it did before.
  *
- * **Icon: `Activity`, unchanged.** `Users` and `ListChecks` already mean a
- * specific tool in this app (`trace/tool-glyphs.ts:54-79`) and a header button
- * wearing one would read as that tool rather than as the view over both.
+ * **Icon: `Info`, not `Activity`.** The old glyph was a heartbeat, and a
+ * heartbeat says *liveness* — the one thing this pane is not: it holds a
+ * roster, a plan and the servers the session is connected to, and nothing in it
+ * pulses. `Info` is this app's own word for "there is more to read here": it is
+ * the mark on the transcript's info notice
+ * (`canonical/canonical-transcript.tsx:476`), on the error block's information
+ * line (`message-item/error-block.tsx:112`), and on the settings rows that open
+ * a section (`generation-settings-section.tsx:94`,
+ * `model-hosting-section.tsx:83`). It is also the one candidate that collides
+ * with nothing: the table in `trace/tool-glyphs.ts:54-79` is the tool glyphs,
+ * `CircleHelp` is the roster's own mark for a child whose state is unknown
+ * (`run-detail-row-parts.tsx:51`), the four squares are the plan's state marks
+ * (`run-detail-todos.tsx:34-39`), `FileText` is the canvas button beside this
+ * one (`chat-header.tsx:212`), and `PanelRight`/`PanelRightClose` are the
+ * pane's own close control in its chrome bar (`run-panel.tsx:628`) — an open
+ * glyph one small arrow away from a close glyph, on screen at the same time as
+ * the close control, is the one pairing worse than the heartbeat was.
  *
  * **No count badge.** A badge that ticks from 2 to 3 draws the eye to something
  * the user is not going to act on, and the counts are the first thing the
@@ -30,7 +44,7 @@
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Activity } from "lucide-react";
+import { Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
 	type McpServerRow,
@@ -251,7 +265,7 @@ export const RunDetailsTrigger = ({
 				 */
 				data-run-panel-trigger=""
 			>
-				<Activity aria-hidden={true} />
+				<Info aria-hidden={true} />
 				{attention && (
 					/*
 					 * A single 8px `danger` dot at the button's top-right corner. It is
