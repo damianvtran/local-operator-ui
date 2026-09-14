@@ -25,10 +25,19 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import type { CanonicalFrontendSync } from "../../../../../shared/desktop-session-contract";
+import {
+	type AnswerOutcome,
+	type SendLock,
+	answerGateOption,
+	answerValue,
+	createSendLock,
+	errorCodeOf,
+	lostAnswerMessage,
+} from "../ask-answer";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
@@ -40,7 +49,10 @@ import {
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
-import type { MessageInputHandle } from "./message-input";
+import {
+	type MessageInputHandle,
+	composerHoldsFocusUntouched,
+} from "./message-input";
 import {
 	deriveRunDetails,
 	mcpErrorTexts,
@@ -49,6 +61,18 @@ import {
 import { useSlashDispatch } from "./slash-dispatch";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
+
+/**
+ * Which gate a press belongs to.
+ *
+ * `request_id` alone is not enough: a multi-question ask advances through its
+ * questions under ONE request id, and the second question is a fresh thing to
+ * answer even though the id is unchanged. Both fields together are what an
+ * answer addresses, so both together are what the card's own state is keyed by.
+ */
+const gateKeyOf = (gate: { request_id: string; question_index: number }) =>
+	`${gate.request_id}:${gate.question_index}`;
+
 const IMAGE_MIME_BY_EXT: Record<
 	string,
 	"image/png" | "image/jpeg" | "image/gif" | "image/webp"
@@ -143,7 +167,48 @@ function SessionPanel({
 	const cwd = useCanonicalSessionsStore((state) => state.cwd);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
 	const [admitting, setAdmitting] = useState(false);
-	const sendLock = useRef(false);
+	/*
+	 * The lock is created lazily and held in a ref, not in state: it has to be
+	 * read and written synchronously in one run, and `useMemo` guarantees nothing
+	 * about recomputation — a lock that a re-render may replace is not a lock.
+	 */
+	const sendLockRef = useRef<SendLock | null>(null);
+	sendLockRef.current ??= createSendLock();
+	const sendLock = sendLockRef.current;
+	/* Set when an answer was pressed from the keyboard, so focus can be returned
+	 * once the gate moves. See the effect below `answerWithOption`. */
+	const restoreFocus = useRef(false);
+	/*
+	 * What this panel knows about the gate it just pressed, from the press on.
+	 *
+	 * Held here rather than in the store because it is true of this panel's
+	 * session, not of the session: `pending_gate` on the wire is written only by
+	 * the main process notifier, so it stays live for the round trip after the
+	 * owner has already taken an answer. Without this the options come back
+	 * enabled against an answered gate and a second press posts a second answer
+	 * for a one-shot question (code review round 1, R-MINOR). Keyed by the gate
+	 * itself, so the next gate or the next question clears it by construction.
+	 */
+	const [answerState, setAnswerState] = useState<{
+		key: string;
+		sending: boolean;
+		refused: string | null;
+	} | null>(null);
+	/*
+	 * The gate this panel is showing, and this panel's own record of having
+	 * pressed it.
+	 *
+	 * Derived rather than reconciled: keying the record by the gate means the next
+	 * gate — or the next question of a multi-question ask — clears the hold by
+	 * construction, with no effect that has to notice the change and no window in
+	 * which a stale hold disables a card that is genuinely answerable.
+	 */
+	const pendingGate = canonical.frontend?.pending_gate ?? null;
+	const gateKey = pendingGate ? gateKeyOf(pendingGate) : null;
+	const answerForThisGate =
+		pendingGate && answerState?.key === gateKey
+			? { sending: answerState.sending, refused: answerState.refused }
+			: null;
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [sendErrorCode, setSendErrorCode] = useState<string | undefined>();
@@ -418,6 +483,21 @@ function SessionPanel({
 		canonical.frontend?.active_agent,
 		canonical.frontend?.active_team,
 	]);
+	/**
+	 * The composer's ONE error surface.
+	 *
+	 * Both paths that can fail a send - typed text and a pressed option - report
+	 * through this, because they were two hand-copied catches that disagreed: the
+	 * typed path read `error.code` and the click path did not, so
+	 * `activeErrorCode` (the composer alert's own switch for remedies such as
+	 * "Restore it", and for self-clearing the `unresolved_attachment` notice)
+	 * could never see a failure that came from pressing an option (code review
+	 * round 1, R-MINOR).
+	 */
+	const reportFailure = (error: unknown, fallback: string) => {
+		setSendError(userFacingMessage(error, fallback));
+		setSendErrorCode(errorCodeOf(error));
+	};
 	const send = async (
 		content: string,
 		attachments: string[],
@@ -430,6 +510,12 @@ function SessionPanel({
 		 * U1/U3.
 		 */
 		onEchoPainted?: () => void,
+		/*
+		 * What the user typed, before any staged-reply prefix. Defaults to
+		 * `content` for the callers that compose no prefix (the suggestion grid),
+		 * so the gate path reads one value whichever door the text came through.
+		 */
+		typed?: string,
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		// Same identity the view reads, so a send can never address a different
@@ -437,9 +523,28 @@ function SessionPanel({
 		const key = draftIdentityFor(draftKey, sessionId);
 		if (!key) return false;
 		const previous = store.drafts[key];
-		if (pendingNavigation || sendLock.current || previous?.pending)
+		if (pendingNavigation || previous?.pending) return false;
+		if (!sendLock.tryAcquire()) {
+			/*
+			 * A send attempted while an answer (or another send) is in flight used to
+			 * return false with no surface at all: the text stayed in the composer,
+			 * nothing was sent, and no error appeared. The UX round measured a user
+			 * typing a follow-up during a 9.1s answer, pressing Enter, and getting
+			 * absolutely nothing back — indistinguishable from a broken key (UX round
+			 * 1, U2).
+			 *
+			 * Refusing in language costs one sentence and keeps the text where the
+			 * user can send it a moment later. The gate wording is specific because
+			 * that is the case the user can see a reason for: the question above is
+			 * visibly mid-answer.
+			 */
+			setSendError(
+				canonical.frontend?.pending_gate
+					? "Waiting for the answer to the question above. Your message was not sent — send it again in a moment."
+					: "Still sending your last message. Your message was not sent — send it again in a moment.",
+			);
 			return false;
-		sendLock.current = true;
+		}
 		setAdmitting(true);
 		setSendError(null);
 		setSendErrorCode(undefined);
@@ -473,7 +578,15 @@ function SessionPanel({
 						sessionId,
 						epoch: canonical.ownerEpoch,
 						requestId: gate.request_id,
-						value: content,
+						// A bare `1`-`9` typed against an options list is a pick, not a
+						// literal answer: the card shows those numerals, so typing one is
+						// the answer it invites. `answerValue` resolves it against the
+						// TYPED text, never `content` — with a staged reply `content` is
+						// already wrapped in `<reply-to>`, which is not a bare ordinal, so
+						// resolving there sent the model the wrapped numeral as its answer.
+						// It lives in `ask-answer.ts` so the decision is assertable in
+						// every one of its three states (code review round 2, F1).
+						value: answerValue(gate, typed, content),
 						questionIndex: gate.question_index,
 					});
 				return true;
@@ -539,14 +652,7 @@ function SessionPanel({
 			// runtime exception is a stack-trace fragment - with the backend
 			// stopped this line rendered "TypeError: fetch failed" inside the
 			// alert's own prose. See `userFacingMessage`.
-			setSendError(userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE));
-			setSendErrorCode(
-				error instanceof Error &&
-					"code" in error &&
-					typeof error.code === "string"
-					? error.code
-					: undefined,
-			);
+			reportFailure(error, SEND_UNCONFIRMED_MESSAGE);
 			/*
 			 * TWO failures, and the composer acts differently on each.
 			 *
@@ -565,10 +671,224 @@ function SessionPanel({
 			 */
 			return isRefusedBeforeAdmission(error) ? false : SEND_HELD;
 		} finally {
-			sendLock.current = false;
+			sendLock.release();
 			setAdmitting(false);
 		}
 	};
+	/**
+	 * Answer the pending `ask` gate by pressing one of its options.
+	 *
+	 * This is `send`'s gate branch reached from a click instead of from the
+	 * composer, and it deliberately reuses that path's machinery rather than
+	 * growing a second one: the same `sendLock` (so a click and a typed send
+	 * cannot both post an answer for one question), the same `admitting` flag
+	 * (which is what disables the options and the composer together while one is
+	 * in flight), and the same error-reporting helper (so a failed answer is
+	 * reported with the same authored copy and the same error code as a failed
+	 * send, instead of inventing a second error affordance on the card).
+	 *
+	 * The transport call itself lives in `answerGateOption`, which is where the
+	 * one-answer-in-flight property and the request body are asserted - neither
+	 * could be reached by a test while they lived inside this component (code
+	 * review round 1). What stays here is what needs React: the busy flag, the
+	 * card's own hold, and the two places a refusal can land.
+	 */
+	const answerWithOption = async (label: string) => {
+		const gate = canonical.frontend?.pending_gate;
+		if (!gate || gate.kind !== "ask" || !canonical.ownerEpoch || !sessionId)
+			return;
+		// The lock is checked here only to keep the busy flag honest; the claim
+		// itself is `answerGateOption`'s, and between this read and that claim
+		// there is no `await` for a handler to interleave in.
+		if (pendingNavigation || sendLock.held) return;
+		const key = gateKeyOf(gate);
+		/*
+		 * Whether the press came from the keyboard, so focus can be put back where
+		 * a keyboard user left it. See the effect below.
+		 */
+		const fromKeyboard =
+			document.activeElement instanceof HTMLElement &&
+			document.activeElement.closest('[aria-label="Answer options"]') !== null;
+		/*
+		 * The pressed option is `disabled` the moment this press lands, and a
+		 * disabled control cannot hold focus: the browser drops it to the document
+		 * body, where it then stays for the WHOLE request, because the card is held
+		 * mounted with every option disabled until the gate itself moves. Measured
+		 * on the rig: `after-press: BODY`, and the body in 12/12 samples of an
+		 * in-flight answer, so the keyboard user loses the focus ring everywhere and
+		 * the next Tab restarts at the top of the app (UX round 3, U12).
+		 *
+		 * Handing focus to the composer instead is where the restore below puts it
+		 * anyway when the gate CLEARS, and it is the one control this user can act in
+		 * while they wait - the composer stays usable through a hold, so this is the
+		 * control the draft was headed for. When the gate instead ADVANCES to its
+		 * next question, the layout effect below still takes focus to that question's
+		 * first option, because it treats a focused empty composer as ours to move
+		 * (see `composerHoldsFocusUntouched`): a user who has typed a follow-up, or
+		 * simply CLICKED into the box, has taken focus back and keeps it.
+		 *
+		 * The restore is ARMED here, at the press, and not after the POST settles
+		 * where it used to be. The effect that spends this flag fires on the GATE
+		 * KEY change, so setting it on the response left two asynchronous paths
+		 * racing - whichever landed first decided where focus went, and a
+		 * two-question gate moved focus to its next question on three traced runs
+		 * out of five and left it in the composer on the other two (UX round 4,
+		 * U14). Arming at the press makes the trigger independent of that race. The
+		 * effect clears the flag as it spends it, so an answer that is refused or
+		 * fails cannot leave a restore armed for a later gate.
+		 */
+		if (fromKeyboard) {
+			restoreFocus.current = true;
+			input.current?.focusInput();
+		}
+		setAdmitting(true);
+		setAnswerState({ key, sending: true, refused: null });
+		setSendError(null);
+		setSendErrorCode(undefined);
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await answerGateOption(
+				{
+					gate,
+					sessionId,
+					epoch: canonical.ownerEpoch,
+					label,
+					lock: sendLock,
+				},
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		/*
+		 * The gate this press belonged to is still on screen, so the card owns the
+		 * outcome: it is where the action was, it is still in view, and holding it
+		 * disabled is what stops a second press repeating the same refusal (QA
+		 * round 1, Q3). A gate that is gone cannot show anything, so that case falls
+		 * through to the composer below.
+		 */
+		const currentGate = canonical.frontend?.pending_gate;
+		const stillThisGate = currentGate != null && gateKeyOf(currentGate) === key;
+		const cardOnScreen =
+			document.querySelector('[aria-label="Answer options"]') !== null;
+		/*
+		 * Whether the press could still be the answer the ask took.
+		 *
+		 * Two halves, because neither alone is the user's situation:
+		 *
+		 * - **The card this press was made on is still on screen.** This is the
+		 *   condition the report is about, and it has to be read from the DOM rather
+		 *   than from `pending_gate`: on the wire that field is written by the
+		 *   notifier and survives the round trip after the owner has taken an answer
+		 *   (which is exactly why the card holds itself with `answerState`), so a
+		 *   store-only test says "still pending" while the user is looking at a
+		 *   transcript with no card on it. Measured on the committed rig: with the
+		 *   store test alone the losing-answer race stayed silent, because the
+		 *   `failed` branch wrote its refusal into a card that was no longer
+		 *   rendered.
+		 * - **The ask is still this ask.** A gate that has advanced to its next
+		 *   question carries the same `request_id`, and that is what our own answer to
+		 *   question N looks like, so it counts as the press having landed. Only a
+		 *   gate that is gone, or one belonging to a different ask, means the press
+		 *   lost.
+		 */
+		const pressStillStands =
+			cardOnScreen &&
+			currentGate != null &&
+			(stillThisGate || currentGate.request_id === gate.request_id);
+		if (outcome.status === "refused") {
+			// Nothing was sent and nothing is wrong: either the lock was already
+			// held by a typed send, or this answer lost a race to another front
+			// end. The lock holder reports; this path stays quiet rather than
+			// stacking a second message about the same question.
+			setAnswerState(null);
+			return;
+		}
+		/*
+		 * The card owns the outcome only while the card is still ON SCREEN. Holding
+		 * it disabled is what stops a repeat press, and the refusal belongs on the
+		 * surface the press was made on — but a card that has already gone cannot
+		 * show anything, and writing the refusal into `answerState` for it is how
+		 * the losing-answer race lost its sentence: the state was set on a gate the
+		 * panel no longer rendered, and nothing said so (QA round 2, F-A).
+		 */
+		if (outcome.status === "failed" && stillThisGate && cardOnScreen) {
+			setAnswerState({
+				key,
+				sending: false,
+				// Outcome first, cause second: the user's press did not take
+				// effect, and that is the sentence they need before the reason.
+				refused: `Your answer was not sent. ${userFacingMessage(
+					outcome.error,
+					"The request could not be completed.",
+				)}`,
+			});
+			return;
+		}
+		/*
+		 * Everything still open is an answer this press did not get to make, on a
+		 * gate that had already moved: a rejection for a question no longer pending,
+		 * or — the case that used to say nothing at all — a 200 for an answer
+		 * another front end had already given. The card it referred to is gone, so
+		 * the report goes to the composer, in the outcome's language rather than the
+		 * backend's (UX round 1, U4; UX round 2, U9; QA round 2, F-A).
+		 */
+		const lost = lostAnswerMessage(outcome, pressStillStands);
+		if (lost) {
+			setAnswerState(null);
+			setSendError(lost);
+			setSendErrorCode(
+				outcome.status === "failed" ? errorCodeOf(outcome.error) : undefined,
+			);
+			return;
+		}
+		setAnswerState({ key, sending: false, refused: null });
+	};
+	/*
+	 * Put focus back after a keyboard answer.
+	 *
+	 * The pressed option unmounts when the gate clears, so focus falls to the
+	 * document body and the next Tab starts at the top of the app — a user who
+	 * wanted to follow their answer with "actually, do it differently" had to
+	 * traverse the whole sidebar again (UX round 1, U3). This runs on the gate
+	 * KEY rather than on the response, because the card is deliberately held
+	 * mounted until the gate itself moves; at that point a gate that advanced to
+	 * the next question takes focus, and a gate that cleared hands it back to the
+	 * composer.
+	 *
+	 * A LAYOUT effect, not a passive one. Measured on the rig (UX round 2, U8;
+	 * re-measured for this round): the disabled option loses focus at the press,
+	 * and a passive effect leaves a window — up to a quarter of a second, and a
+	 * whole painted frame — in which the card has gone and `document.activeElement`
+	 * is the BODY. That window is what the reviewer sampled. Layout effects run
+	 * in the commit that removes the card, before the browser paints, so no frame
+	 * ever shows focus on the body.
+	 *
+	 * Guarded on the body being active so a keyboard user's focus is restored and
+	 * nobody else's is moved. The guard passes after the press either way: the
+	 * pressed option is `disabled` the moment the press lands, which is what the
+	 * browser drops focus to the body for, and the press itself now hands focus to
+	 * the composer so the body is not left holding it for the whole request (UX
+	 * round 3, U12). Both halves are still `ours` rather than the user's - a
+	 * composer the user has TYPED into or CLICKED into is not, which is what keeps
+	 * the restore from moving focus off a follow-up they are writing, or off a
+	 * caret they placed with a pointer, during the hold (UX round 4, U13).
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the gate key is the trigger, not a value read in the body
+	useLayoutEffect(() => {
+		if (!restoreFocus.current) return;
+		restoreFocus.current = false;
+		if (
+			document.activeElement !== document.body &&
+			!composerHoldsFocusUntouched()
+		)
+			return;
+		const next = document.querySelector<HTMLElement>(
+			'[aria-label="Answer options"] button:not([disabled])',
+		);
+		if (next) next.focus();
+		else input.current?.focusInput();
+	}, [gateKey]);
 	const stop = () => {
 		if (sessionId)
 			void desktopResult({
@@ -968,6 +1288,8 @@ function SessionPanel({
 						busy,
 						admitting: admitting || pendingNavigation,
 						onStop: stop,
+						onAnswer: (label: string) => void answerWithOption(label),
+						answer: answerForThisGate,
 					}}
 				/>
 			</div>

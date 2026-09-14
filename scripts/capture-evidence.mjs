@@ -16,6 +16,17 @@
  * that hides in one theme is still a defect. A hand-taken screenshot set
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
+ *
+ * The Storybook it reads has to BUILD first, and on the tree as it stands the
+ * shipped `.storybook/main.ts` cannot build its preview: it sets
+ * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
+ * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
+ * undefined (reading 'React')` inside the docgen parser before a single frame
+ * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
+ * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
+ * rather than argued: the whole `chat-ask-options` set re-captured under it came
+ * back byte-identical to the committed frames, so it changes how the preview is
+ * BUILT and nothing about what is photographed (design round 3, D12).
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -214,6 +225,24 @@ export const STORIES = [
 	   function of the content rather than of the wide layout. */
 	["chat-tool-rows--expanded-overflow", 1280, 1100],
 	["chat-tool-rows--expanded-overflow-narrow", 560, 1100],
+	/* The same narrow story with every capped section parked at its own END, the
+	   state the round-3 pages were measured at: 0.203px of the first section's last
+	   line and 0.469px of the second's stay outside the box at this width, because
+	   a non-composited scroller saturates on an integer offset, and the count read
+	   that residue as a whole line. It is a SECOND entry for one story rather than
+	   a second story because the difference is a scroll position, which is browser
+	   state a story cannot set — the reason `scrollToEnd` exists above. The at-rest
+	   frames stay in their own directory: the pair is the point, since the fix is
+	   that the count goes QUIET here while the box does not move. */
+	[
+		"chat-tool-rows--expanded-overflow-narrow",
+		560,
+		1100,
+		{
+			dir: "expanded-overflow-narrow-end",
+			scrollToEnd: "[data-detail-section] > div",
+		},
+	],
 	/* The two results that hold nothing, and the row that holds nothing to
 	   disclose. The third row is the readable half of the gate fix: a call whose
 	   arguments are an all-empty container and which printed nothing is a STATIC
@@ -453,6 +482,40 @@ export const STORIES = [
 	   against a 700px story padded the frame with 257px of empty ground that
 	   no reviewer is meant to read (design review round 2, D9). */
 	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 800],
+	/* The `ask` gate's options, which became real controls rather than an inert
+	   numbered list. Swept because these states are slow and awkward to hold
+	   open live — a gate ends the moment anyone answers, and eight options, a
+	   wrapping label, a multi-question ask and a secret ask (no options at all)
+	   are not states a live session offers on demand.
+
+	   Each height MATCHES its story's own `Frame height`: the capture floors at
+	   the declared viewport, so declaring more than the story renders pads the
+	   frame with empty ground and crosses `check-evidence`'s uniformity
+	   ceiling. 1024 wide is the chat column at a realistic desktop width, where
+	   the 900px measure cap actually binds. */
+	["chat-ask-options--options", 1024, 470],
+	["chat-ask-options--single-option", 1024, 380],
+	/* The app's own default window is 1380x900, which leaves this pane about
+	   617px once the header and the composer band come out. Captured here rather
+	   than at the story's old 820 because 820 was chosen to fit the content, and
+	   a viewport sized to fit cannot show that the content does not fit (design
+	   round 1, D1). */
+	["chat-ask-options--many-options", 1024, 620],
+	/* Two widths, because the label only wraps below ~900px: at 1024 the story
+	   photographed an unwrapped label while claiming to exercise wrapping (design
+	   round 1, D5). 760 was the second width and it did NOT wrap the label either —
+	   the label box there measures one 19.5px line (its single-line measure is
+	   ~581px against a 616px button interior) and the thing that dropped to a
+	   second line was the `Recommended` mark, so the committed pair showed the
+	   ordinal pinned to a wrapped MARK, not to a wrapped label (design round 2,
+	   D9). 560 puts the button interior under the label's own measure, which is
+	   where the property this story exists for actually happens. */
+	["chat-ask-options--wrapping-labels", 1024, 620],
+	["chat-ask-options--wrapping-labels", 560, 620],
+	["chat-ask-options--multi-question", 1024, 450],
+	["chat-ask-options--answer-in-flight", 1024, 470],
+	["chat-ask-options--secret-ask", 1024, 360],
+	["chat-ask-options--approval-unchanged", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
@@ -1387,6 +1450,42 @@ const main = async () => {
 					pointerType: "mouse",
 				});
 			}
+			/*
+			 * A SCROLL POSITION, for the frame whose claim is a section's END.
+			 *
+			 * Like `:hover` above, this is browser state rather than story state: no
+			 * story can scroll its own scroller, and a story that faked an offset
+			 * would be evidence about the fake. So the rig sets each matched element to
+			 * its own end before the shutter — `scrollTop = scrollHeight`, which the
+			 * browser clamps to the real maximum, so the frame holds the state a reader
+			 * reaches by scrolling rather than an offset this script chose.
+			 *
+			 * Two things THROW, for the hover's reason (the resting state and the
+			 * scrolled one are indistinguishable in a directory listing): a selector
+			 * that matches nothing, and a selector whose matches all sit at offset 0 —
+			 * which is a resting frame filed under a name that claims an end.
+			 */
+			if (options?.scrollToEnd) {
+				const { result: scrolled } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const els = [...document.querySelectorAll(${JSON.stringify(options.scrollToEnd)})];
+						for (const el of els) el.scrollTop = el.scrollHeight;
+						return els.map((el) => el.scrollTop);
+					})()`,
+				});
+				const offsets = scrolled.value ?? [];
+				if (offsets.length === 0) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollToEnd selector \`${options.scrollToEnd}\` matched nothing`,
+					);
+				}
+				if (!offsets.some((top) => top > 0)) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollToEnd selector \`${options.scrollToEnd}\` matched ${offsets.length} element(s) and none of them scrolls — the frame would be the resting state under a name that claims an end`,
+					);
+				}
+			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
@@ -1401,11 +1500,25 @@ const main = async () => {
 			 * so a sweep does not overwrite itself. Single-width stories keep the
 			 * plain path, which keeps every existing frame reference valid.
 			 */
-			const widths = STORIES.filter(([s]) => s === story);
+			/*
+			 * A story captured at several widths writes one directory per width,
+			 * so a sweep does not overwrite itself. Single-width stories keep the
+			 * plain path, which keeps every existing frame reference valid.
+			 *
+			 * An entry may name its own directory instead (`dir`), which is how a
+			 * story is captured in a SECOND state — a scroll position, where the
+			 * state is partial in a way the viewport cannot describe. Those entries
+			 * are excluded from the width count above, or adding one would rename
+			 * the frames of the state that was already there.
+			 */
+			const widths = STORIES.filter(
+				([s, , , entryOptions]) => s === story && !entryOptions?.dir,
+			);
 			const leaf =
-				widths.length > 1
+				options?.dir ??
+				(widths.length > 1
 					? `${story.split("--")[1]}@${width}`
-					: story.split("--")[1];
+					: story.split("--")[1]);
 			const dir = join(OUT, story.split("--")[0], leaf);
 			/*
 			 * Whether this directory existed BEFORE the run, recorded before
@@ -1505,6 +1618,17 @@ const main = async () => {
 	 * the COMMITTED tree, so if the capture ran over dirty or staged source it
 	 * names something these frames did not come from. Read `dirtyWorkingTree`
 	 * first; a tree hash from a dirty run is a hash of the wrong thing.
+	 *
+	 * A REBASE IS WHERE THESE STAMPS GO WRONG, and there is a test for it now.
+	 * Resolving `manifest.json` by keeping upstream's top-level stamp block while
+	 * the branch's own delta rewrites a neighbouring key produces a file that
+	 * certifies the committed frames against somebody else's tree - and git reports
+	 * no conflict, so nothing local notices; at the round-3 head both tree hashes
+	 * and `surfaces` named `origin/main` while the branch's own `STORIES` list had
+	 * moved nine entries (round 3, M1). `scripts/evidence-manifest.test.mjs` binds
+	 * the shipped manifest's stamps against `HEAD`'s trees inside `test:desktop`,
+	 * so that resolution fails CI rather than shipping, and the expected aftermath
+	 * of any rebase that touches this file is a re-stamp before the suite is green.
 	 */
 	const treeHash = (path) =>
 		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })

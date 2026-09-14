@@ -204,7 +204,33 @@ const PALETTES = new Map(loadPalettes().map((p) => [p.id, p.palette]));
    module for `assertFramePaints` must not trigger it. */
 
 /**
- * Whether the manifest's stated provenance resolves to the tree under review.
+ * The two questions every sha citation in this file is asked, defined once so
+ * the stamp and citation halves cannot drift apart.
+ *
+ * REACHABLE, not merely resolvable. `rev-parse --verify` says yes to a dangling
+ * object, which is precisely the sha that shipped: a pre-amend `wip:` commit
+ * still resolves in the clone that created it and nowhere else. The property
+ * that makes a citation durable is being reachable from a ref, because that is
+ * what survives `git gc` and what a fresh clone can look up. `--all` covers
+ * branches, remotes and tags; a sha reachable from none of them is one this
+ * repository will forget.
+ */
+const shaReaders = (git) => ({
+	resolves: (sha) =>
+		git(["rev-parse", "--quiet", "--verify", `${sha}^{commit}`]) !== null,
+	reachable: (sha) =>
+		git(["merge-base", "--is-ancestor", sha, "HEAD"]) !== null ||
+		(git([
+			"for-each-ref",
+			"--count=1",
+			"--contains",
+			sha,
+			"--format=%(refname)",
+		]) ?? "") !== "",
+});
+
+/**
+ * The manifest's provenance verdict, in two halves.
  *
  * ## Why this exists
  *
@@ -221,73 +247,54 @@ const PALETTES = new Map(loadPalettes().map((p) => [p.id, p.palette]));
  * which is how it went one round stale". A self-description nothing checks is a
  * comment, not a record.
  *
- * ## What it checks, and what it deliberately does not
- *
- * Three things, all cheap and all local:
- *
- * 1. `head` must RESOLVE to a commit, and be REACHABLE from a ref. An
- *    unreachable sha is the failure that cannot be recovered from later,
- *    because the object goes away.
- * 2. `srcTree` / `scriptsTree` must equal the CURRENT `HEAD:src` / `HEAD:scripts`.
- *    This is the real staleness question - a docs-only commit moves `head` but
- *    not the trees, and frames stay valid across it. Comparing trees rather
- *    than commits is what the capture script's own comment argues for.
- * 3. Every OTHER head citation in the manifest is held to (1)'s bar:
- *    `supplementary[].capturedAtHead`, and `partialCapture`'s `addedAtHead` and
- *    `refreshedAtHead`. They name the commits a narrowed pass added or
- *    refreshed frames at, a reader checks frames against them exactly as they
- *    check `head`, and nothing checked them until round 4: `addedAtHead`
- *    carried a pre-force-push sha that no ref reached while this gate reported
- *    the manifest clean, and `refreshedAtHead` carried the same orphan in the
- *    commit that shipped it. A citation nothing verifies is worse than no
- *    citation, because it rots twice before anyone notices.
- *
  * It does NOT require `head` to equal the current HEAD. A tree-clean manifest
  * whose `head` is an older ancestor is honest and common: docs commits land
  * after a capture all the time, and forcing a re-stamp for them would train
  * people to re-stamp without re-capturing, which is the habit that produced
  * the defect in the first place.
  *
- * Returns a list of failure strings so the caller can report them beside the
- * frame failures; exported so `evidence-manifest.test.mjs` binds the shipped
- * function rather than a copy of its reasoning (round 2, R7).
+ * ## The two halves, and why the split is where it is
+ *
+ * `stampFailures` answers "does this file describe the tree under review":
+ * `srcTree`/`scriptsTree` against the CURRENT `HEAD:src`/`HEAD:scripts`, and
+ * `surfaces`/`themes` against the capturer's own lists. That is the staleness
+ * question, and comparing TREES rather than commits is what the capture script's
+ * own comment argues for - a docs-only commit moves `head` but not the trees,
+ * and frames stay valid across it.
+ *
+ * `citationFailures` answers "does every commit this file cites still exist, and
+ * is it still reachable": `head`, `supplementary[].capturedAtHead`, and
+ * `partialCapture`'s `addedAtHead`/`refreshedAtHead`. An unreachable sha is the
+ * failure that cannot be recovered from later, because the object goes away.
+ *
+ * The boundary is what a REBASE corrupts on one side and what a squash-merge
+ * leaves dangling on the other, and the two halves have different dependencies,
+ * which is why the split is there rather than for readability. A rebase that
+ * keeps upstream's top-level block while the branch's delta rewrites the
+ * neighbouring `partialCapture` leaves a file certifying frames against a tree
+ * they did not come from - and git reports NO conflict, so nothing local notices
+ * (round 3, M1: both tree hashes and `surfaces` named `origin/main`, and only
+ * the full `pnpm check-evidence` sweep could see it, because that gate's image
+ * loop runs over every committed frame and outran the reviewer's whole budget).
+ * The stamp half needs nothing but `HEAD`'s trees, so `test:desktop` binds it
+ * against the SHIPPED manifest in under a second, and that class is now caught
+ * on every pull request. The citation half needs the cited commits to be present
+ * in the clone, which a shallow CI checkout does not guarantee, so it keeps its
+ * own tests on synthetic manifests.
+ *
+ * `provenanceFailures` is both halves in the order a reader reads them, and is
+ * what the gate reports. Exported so `evidence-manifest.test.mjs` binds the
+ * shipped functions rather than a copy of their reasoning (round 2, R7).
+ *
+ * ## The stamp half, in its own words
+ *
+ * It answers "do these stamps describe the tree the frames ship in": two tree
+ * hashes and the three counts the manifest states about itself, read from
+ * `HEAD`'s trees, the capturer's own lists and the committed frames themselves,
+ * with no history needed.
  */
-export const provenanceFailures = (manifest, git = gitOut) => {
+export const stampFailures = (manifest, git = gitOut) => {
 	const out = [];
-	/*
-	 * REACHABLE, not merely resolvable.
-	 *
-	 * `rev-parse --verify` says yes to a dangling object, which is precisely the
-	 * sha that shipped: a pre-amend `wip:` commit still resolves in the clone
-	 * that created it and nowhere else. The property that makes a citation
-	 * durable is being reachable from a ref, because that is what survives
-	 * `git gc` and what a fresh clone can look up. `--all` covers branches,
-	 * remotes and tags; a sha reachable from none of them is one this repository
-	 * will forget.
-	 */
-	const reachable = (sha) =>
-		git(["merge-base", "--is-ancestor", sha, "HEAD"]) !== null ||
-		(git([
-			"for-each-ref",
-			"--count=1",
-			"--contains",
-			sha,
-			"--format=%(refname)",
-		]) ?? "") !== "";
-	const resolves = (sha) =>
-		git(["rev-parse", "--quiet", "--verify", `${sha}^{commit}`]) !== null;
-
-	if (typeof manifest.head !== "string" || manifest.head.length < 7) {
-		out.push("manifest.json: `head` is missing or not a sha");
-	} else if (!resolves(manifest.head)) {
-		out.push(
-			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} resolves to no commit in this repository`,
-		);
-	} else if (!reachable(manifest.head)) {
-		out.push(
-			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} (${git(["log", "-1", "--format=%s", manifest.head]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
-		);
-	}
 
 	for (const [field, path] of [
 		["srcTree", "src"],
@@ -343,6 +350,76 @@ export const provenanceFailures = (manifest, git = gitOut) => {
 			);
 	}
 
+	/*
+	 * `frames` must equal the frames on disk OUTSIDE every declared set.
+	 *
+	 * The fourth stamp question, and until now the one only `main()` asked - a
+	 * job no CI workflow runs, so a manifest could carry a stale swept count past
+	 * a full green `test:desktop`. Reproduced: with the trees AND `surfaces`
+	 * correct and `frames` set back to the previous sweep's `824`, the bound case
+	 * stayed 14/14 green (code review round 4, m4).
+	 *
+	 * It is the same check `main()` makes, asked here with the same exclusion, so
+	 * the two cannot drift: a supplementary set is exactly the reason a frame is
+	 * NOT part of the sweep, and the whole point of the count is that the sweep
+	 * answers for everything no set claimed. Only the frames are walked - no
+	 * image is read - which is why this belongs in the fast half rather than
+	 * behind the ImageMagick loop: the declaration side can go wrong (a doubled
+	 * `supplementary` entry, a set's frames re-counted) while the trees and the
+	 * story list stay right, and that is a provenance failure, not a cosmetic one.
+	 *
+	 * Skipped when the manifest carries no count, so a fixture built for the other
+	 * checks is not asked about a tree it does not describe.
+	 */
+	if (typeof manifest.frames === "number") {
+		const declaredDirs = (manifest.supplementary ?? [])
+			.filter((set) => typeof set.path === "string" && set.path.length > 0)
+			.map((set) => join(EVIDENCE, set.path));
+		const swept = frames(EVIDENCE).filter(
+			(file) => !declaredDirs.some((dir) => file.startsWith(`${dir}/`)),
+		).length;
+		if (manifest.frames !== swept)
+			out.push(
+				`manifest.json: \`frames\` is ${manifest.frames} but ${swept} frames are on disk outside every declared supplementary set - re-derive the swept count from \`docs/evidence\` rather than carrying the previous pass's value forward`,
+			);
+	}
+
+	return out;
+};
+
+/**
+ * Whether every commit the manifest cites still exists and is still reachable.
+ *
+ * The other half of `provenanceFailures`, and the half a squash-merge leaves
+ * behind: a branch commit that a citation names goes dangling the moment the
+ * branch is deleted, so the citation has to be re-pointed at the commit that
+ * carries the same content onto `main` (see the `addedAtHeadNote` convention).
+ * Split out so the stamp half above can be asserted against the real tree by
+ * `test:desktop` without this half's dependency on what a clone happens to
+ * contain - a shallow CI checkout has every stamp and not necessarily every
+ * cited branch commit.
+ */
+export const citationFailures = (manifest, git = gitOut) => {
+	const out = [];
+	const { resolves, reachable } = shaReaders(git);
+
+	/*
+	 * `head` first: it is the citation every other one is read beside, and the
+	 * one a squash-merge leaves dangling when it names a commit of the branch
+	 * that carried the frames.
+	 */
+	if (typeof manifest.head !== "string" || manifest.head.length < 7) {
+		out.push("manifest.json: `head` is missing or not a sha");
+	} else if (!resolves(manifest.head)) {
+		out.push(
+			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} resolves to no commit in this repository`,
+		);
+	} else if (!reachable(manifest.head)) {
+		out.push(
+			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} (${git(["log", "-1", "--format=%s", manifest.head]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
+		);
+	}
+
 	for (const set of manifest.supplementary ?? []) {
 		const sha = set.capturedAtHead;
 		if (typeof sha !== "string" || sha.length < 7) continue;
@@ -385,6 +462,72 @@ export const provenanceFailures = (manifest, git = gitOut) => {
 	}
 	return out;
 };
+
+/**
+ * Whether the citations a REBASE moves still name commits in this history.
+ *
+ * `citationFailures` above asks whether a cited sha still exists and is
+ * reachable from some ref. That bar is what a squash-merge needs, and it is
+ * deliberately loose: it also passes a sha kept alive by a local backup branch
+ * or a peer's scratch branch, none of which a reader of the pull request has.
+ * So a rebase that replays this branch's commits onto a new base leaves the
+ * manifest citing the PRE-rebase spellings - every one of which still resolves
+ * on the machine that did the rebase (the backup ref the rebase left) and none
+ * of which exists in what a reviewer fetches. Three rebases in a row broke this
+ * file that way: the stamp half in round 3, `head` and
+ * `partialCapture.addedAtHead` orphaned by a force-push in round 5, and both at
+ * once on the v0.22.1 rebase. Each was found by a reviewer, by eye, and none by
+ * a gate the author runs.
+ *
+ * This is the bar that catches it. The three citations a rebase moves must lie
+ * in the history the branch carries, i.e. be ancestors of `HEAD` - which is
+ * exactly the question a reader asks of them, "which tree did these pixels come
+ * from, and can I fetch it".
+ *
+ * WHY ONLY THESE THREE. They are the fields whose meaning is "a commit of this
+ * branch's own work": the pass that ran at `head`, the pass that added a set's
+ * frames, the pass that re-took them. `supplementary[].capturedAtHead` is
+ * deliberately not included, because main's own sets legitimately cite the
+ * branch commit that landed their frames - which is not an ancestor of this
+ * branch while the PR that landed it is still open (chat-run-panel-live cites
+ * `9ad6a4274` from `design/129-r2` that way). A check that failed on main's
+ * evidence, on every branch, is one everyone learns to skip.
+ *
+ * NOT reachable from CI, where the checkout is one commit deep and no ancestor
+ * is present: `evidence-manifest.test.mjs` skips it on a shallow clone. It fires
+ * on the machine the rebase happens on, which is where the defect is made.
+ */
+export const citationAncestryFailures = (manifest, git = gitOut) => {
+	const out = [];
+	const inHistory = (sha) =>
+		git(["merge-base", "--is-ancestor", sha, "HEAD"]) !== null;
+	for (const [field, sha] of [
+		["head", manifest.head],
+		["partialCapture.addedAtHead", manifest.partialCapture?.addedAtHead],
+		[
+			"partialCapture.refreshedAtHead",
+			manifest.partialCapture?.refreshedAtHead,
+		],
+	]) {
+		if (typeof sha !== "string" || sha.length < 7) continue;
+		if (inHistory(sha)) continue;
+		out.push(
+			`manifest.json: \`${field}\` ${sha.slice(0, 9)} is not an ancestor of HEAD - it is a pre-rebase spelling of this branch's own work, still resolvable through a local ref that a reviewer does not have, so re-point it at the commit this lineage carries that change in`,
+		);
+	}
+	return out;
+};
+
+/**
+ * The manifest's whole provenance verdict, in the order a reader reads it: the
+ * stamps that must describe the tree under review, then the citations that must
+ * still resolve. Kept as one function because `check-evidence.mjs` reports it as
+ * one list, and split internally so `test:desktop` can bind either half.
+ */
+export const provenanceFailures = (manifest, git = gitOut) => [
+	...stampFailures(manifest, git),
+	...citationFailures(manifest, git),
+];
 
 const main = () => {
 	if (!existsSync(EVIDENCE)) {
