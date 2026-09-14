@@ -1447,6 +1447,14 @@ function SessionPanel({
 					 * live session, so an editable chip there would always fail.
 					 */
 					cwd={draftKey ? cwd : canonical.frontend?.cwd}
+					/*
+					 * The session the code-memory panel reads, passed as the identity the
+					 * backend knows. It is NOT the same as `agentId` above, which is
+					 * `identity` - a canvas-store key that is the draft key until the
+					 * session exists - and the two must not be swapped: asking about code
+					 * memory by draft key or by agent id is the bug this fixes.
+					 */
+					sessionId={sessionId}
 					onChangeCwd={
 						draftKey && !draft?.sessionId && !admitting ? setCwd : undefined
 					}

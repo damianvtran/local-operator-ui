@@ -134,6 +134,14 @@ type ChatContentProps = {
 	onComposerInput?: () => void;
 	/** Working directory for this conversation, shown on the composer's chip. */
 	cwd?: string;
+	/**
+	 * The canonical session this pane is showing, or undefined for a draft.
+	 *
+	 * Threaded, not derived: the canvas's `conversationId` is its store key (the
+	 * draft key before the session exists), while the code-memory panel needs
+	 * the identity a backend route can resolve. See `CanvasProps.sessionId`.
+	 */
+	sessionId?: string;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
 	onChangeCwd?: (cwd: string) => void;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
@@ -320,6 +328,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		refetch,
 		messageInputRef,
 		cwd,
+		sessionId,
 		onChangeCwd,
 		sendError,
 		sessionStatus,
@@ -850,6 +859,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialDocuments={files}
 								conversationId={conversationId}
 								agentId={agentId}
+								sessionId={sessionId}
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								scan={filesScan}

@@ -1,4 +1,9 @@
-import type { ExecutionVariable } from "@shared/api/local-operator/types";
+import type {
+	SessionVariable,
+	VariableType,
+	VariableWrite,
+} from "@shared/api/local-operator/session-variables-api";
+import { VARIABLE_TYPES } from "@shared/api/local-operator/session-variables-api";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -18,58 +23,59 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-const VARIABLE_TYPES: ExecutionVariable["type"][] = [
-	"string",
-	"int",
-	"float",
-	"bool",
-	"dict",
-	"list",
-];
-
+/**
+ * The dialog's props, typed by what the SESSION surface accepts.
+ *
+ * `VariableWrite` is the transport's own shape, and `VARIABLE_TYPES` is the
+ * transport's own table - both imported rather than restated, because the
+ * table this form used to hold named `string`, `boolean`, `object` and
+ * `array` while the write path could coerce none of the four: every value the
+ * select defaulted to was refused by the worker, and nothing said so until the
+ * user pressed Create.
+ */
 type VariableFormDialogProps = {
 	open: boolean;
 	onClose: () => void;
-	onSubmit: (data: ExecutionVariable) => Promise<void>;
-	initialData?: ExecutionVariable | null;
+	onSubmit: (data: VariableWrite) => Promise<void>;
+	initialData?: SessionVariable | null;
 };
 
 // Represents the form state.
-type FormDataType = Omit<ExecutionVariable, "value" | "type"> & {
+type FormDataType = {
+	key: string;
 	value: string; // Store value as string initially for text input
-	type: ExecutionVariable["type"];
+	type: VariableType;
 };
 
+const isVariableType = (type: string): type is VariableType =>
+	(VARIABLE_TYPES as readonly string[]).includes(type);
+
 const getDefaultFormState = (
-	initialData?: ExecutionVariable | null,
+	initialData?: SessionVariable | null,
 ): FormDataType => {
 	if (initialData) {
-		let valueString: string;
-		if (initialData.type === "object" || initialData.type === "array") {
-			try {
-				valueString = JSON.stringify(initialData.value, null, 2);
-			} catch {
-				valueString = String(initialData.value); // Fallback
-			}
-		} else if (initialData.type === "boolean") {
-			valueString = String(initialData.value);
-		} else {
-			valueString = String(initialData.value);
-		}
+		const type = isVariableType(initialData.type) ? initialData.type : "str";
+		/*
+		 * A `list` or `dict` is read back as a Python repr (`{'late_days': 7}`),
+		 * which JSON cannot parse - and the write path parses exactly JSON. So
+		 * those two types start empty, with the field's own hint asking for the
+		 * structure, rather than pre-filled with text the form would then have to
+		 * refuse. The scalar types round-trip as the text they were read as.
+		 */
+		const structured = type === "list" || type === "dict";
 		return {
 			key: initialData.key,
-			type: initialData.type,
-			value: valueString,
+			type,
+			value: structured ? "" : String(initialData.value),
 		};
 	}
 	return {
 		key: "",
-		type: "string",
+		type: "str",
 		value: "",
 	};
 };
@@ -110,7 +116,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		try {
-			const variableToSubmit: ExecutionVariable = {
+			const variableToSubmit: VariableWrite = {
 				key: formData.key,
 				type: formData.type,
 				value: formData.value,
@@ -119,10 +125,14 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 			await onSubmit(variableToSubmit);
 			onClose(); // Success toast is handled by the mutation hooks
 		} catch (error) {
+			/*
+			 * No toast here. The mutation hook owns the sentence, because the
+			 * refusal's reason (a reserved name, a value the type cannot coerce, a
+			 * kernel that is busy) is written by the backend that knows it - and a
+			 * second toast from this layer said the same thing twice, in weaker
+			 * words. The dialog simply stays open, which is where the fix is.
+			 */
 			console.error("Failed to submit variable:", error);
-			showErrorToast(
-				`Failed to save variable: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -159,18 +169,18 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 
 	const valueFieldLabel = useMemo(() => {
 		switch (formData.type) {
-			case "object":
+			case "dict":
 				return "Value (JSON object)";
-			case "array":
+			case "list":
 				return "Value (JSON array)";
-			case "boolean":
+			case "bool":
 				return "Value (true/false)";
 			default:
 				return "Value";
 		}
 	}, [formData.type]);
 
-	const isJsonValue = formData.type === "object" || formData.type === "array";
+	const isJsonValue = formData.type === "dict" || formData.type === "list";
 
 	return (
 		<BaseDialog
@@ -219,16 +229,26 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 					</Label>
 					<Select
 						value={formData.type}
-						onValueChange={(type) => setFormData((prev) => ({ ...prev, type }))}
+						onValueChange={(type) => {
+							// Radix hands back a plain string; every item comes from
+							// `VARIABLE_TYPES`, so a value outside it can only be a mistake in
+							// this file - and the selection is typed by the contract's table.
+							if (!isVariableType(type)) return;
+							setFormData((prev) => ({ ...prev, type }));
+						}}
 						disabled={isSubmitting}
 					>
 						<SelectTrigger id="variable-type-select">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
+							{/* The backend's own names, un-prettified: `str`, not
+							    "String". The list column beside this form prints the
+							    same names back, so the vocabulary a user picks here is
+							    the vocabulary they then read there. */}
 							{VARIABLE_TYPES.map((type) => (
 								<SelectItem key={type} value={type}>
-									{type.charAt(0).toUpperCase() + type.slice(1)}
+									{type}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -251,11 +271,11 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						rows={isJsonValue ? 5 : 2}
 						aria-describedby={isJsonValue ? "variable-value-hint" : undefined}
 						placeholder={
-							formData.type === "object"
+							formData.type === "dict"
 								? `{ "example_key": "example_value" }`
-								: formData.type === "array"
+								: formData.type === "list"
 									? `[ "item1", "item2" ]`
-									: formData.type === "boolean"
+									: formData.type === "bool"
 										? "true or false"
 										: "Enter variable value"
 						}

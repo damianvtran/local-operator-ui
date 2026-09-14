@@ -69,6 +69,20 @@ type CanvasProps = {
 	conversationId?: string;
 
 	/**
+	 * The canonical session this panel is showing, or undefined for a staged
+	 * draft.
+	 *
+	 * Deliberately separate from `conversationId`, even though both are called
+	 * "the current chat": `conversationId` is the canvas STORE's key, so it is
+	 * the draft key until the session exists and the session id afterwards,
+	 * while `sessionId` is the identity the backend can answer about. The
+	 * code-memory panel addresses the backend by session, so it needs the
+	 * second, and deriving it from the first is exactly the mistake that made
+	 * the panel ask the agent registry about a session id.
+	 */
+	sessionId?: string;
+
+	/**
 	 * How many files the conversation has mentioned, for the Files segment's
 	 * accessible name. The count comes from the store rather than from a render
 	 * of the grid, because the segment is visible while the grid is not.
@@ -231,6 +245,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onClose,
 	onCloseDocument,
 	conversationId,
+	sessionId,
 	agentId,
 	currentWorkingDirectory,
 	fileCount = 0,
@@ -550,7 +565,13 @@ const CanvasComponent: FC<CanvasProps> = ({
 				/>
 			)}
 			{currentView === "variables" && conversationId && (
-				<CanvasVariablesViewer conversationId={conversationId} />
+				/*
+				 * `sessionId`, not `conversationId`: the panel asks the backend what is
+				 * in a session's namespace, and only a real session id can be answered
+				 * - see the prop's own note. Undefined is a draft, which the panel has
+				 * honest copy for and no call to make.
+				 */
+				<CanvasVariablesViewer sessionId={sessionId} />
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}
 			{(currentView === "files" || currentView === "variables") &&
