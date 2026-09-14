@@ -489,7 +489,19 @@ export class TabRegistry {
 		if (!record) return undefined;
 		this.tabs.delete(tabId);
 		if (this.activeTabId === tabId) {
-			this.activeTabId = this.list().at(-1)?.tabId ?? null;
+			// The successor must be a USER tab, for the same reason `create` only ever
+			// activates one (see above): `list().at(-1)` with no owner filter handed the
+			// presented surface to an AGENT tab as soon as the user closed their own
+			// active tab — active AND `presented`, laid out with the content rect — which
+			// is exactly the state the rule on `create` names as the bug (review round 1,
+			// R3). "Last" keeps the previous preference (most recently created) and the
+			// filter narrows it to the tabs that may hold presentation at all; with no
+			// user tab left nothing is presented and every agent tab stays a bounded
+			// background view.
+			this.activeTabId =
+				this.list()
+					.filter((candidate) => candidate.owner === "user")
+					.at(-1)?.tabId ?? null;
 		}
 		this.applyLayout();
 		this.onChanged();

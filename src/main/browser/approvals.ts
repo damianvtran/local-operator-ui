@@ -282,6 +282,17 @@ export class ApprovalStore {
 		requester: string,
 		epoch: number,
 	): boolean {
+		// An explicit DENY outranks a live receipt, and this line is the whole of that
+		// rule. `originAllowed` already answers false for a denied origin, but its
+		// false is only the first term below: the receipt check that follows would
+		// answer TRUE anyway, so a user pressing Deny left the agent reading the very
+		// document it had just been refused — the "authority the user withdrew is
+		// still live" class this host exists to close (review round 1, R2). The check
+		// is keyed on the exact origin because that is exactly the scope a receipt can
+		// authorise; bumping the global `revision` here instead (the other route the
+		// review offered) would make one denied site invalidate receipts for unrelated
+		// approved origins, refusing a read the user never withdrew.
+		if (this.store.origins[url.origin] === "deny") return false;
 		if (this.originAllowed(url)) return true;
 		const receipt = this.documents.get(token);
 		return (

@@ -139,10 +139,6 @@ class FakeWebContents extends EventEmitter {
 		return false;
 	}
 
-	/** Electron's own capture, which is the path a hidden view must use. Counted
-	 * so a test can prove WHICH path a background capture took rather than only
-	 * that some PNG came back. */
-
 	reload() {}
 
 	stop() {}
@@ -1378,6 +1374,101 @@ test("current unapproved document refuses every driven read and input after auto
 	}
 });
 
+test("a document round trip cannot return the unapproved document's text", async () => {
+	// Review round 1, R4: entry and return each compare only the URL CURRENT at
+	// that instant, so a page that leaves for an unapproved origin and comes
+	// straight back is invisible to both while the result in hand came from the
+	// other document. The epoch is the fact that proves "the same document
+	// throughout", so the call is held to the one it started on.
+	const { host, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	assert.equal(
+		(await host.dispatch("read", { ...params, tab: opened.tab }, "ok")).url,
+		"https://approved.example/",
+	);
+
+	// The page leaves and comes back while the read's own isolated-world call is
+	// in flight: at the return check the URL is the approved one again.
+	record.view.webContents.executeJavaScriptInIsolatedWorld = async () => {
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+		record.view.webContents.url = "https://approved.example/";
+		return "FORBIDDEN-SECRET-MARKER";
+	};
+	await assert.rejects(
+		() => host.dispatch("read", { ...params, tab: opened.tab }, "round-trip"),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "changed",
+	);
+});
+
+test("the per-hop gate is armed for the actions that can navigate, and only those", async () => {
+	// Review round 1, R5, as a RULING: `Fetch.enable` intercepts the page's own
+	// Document-stage loads too, so arming it around an action that cannot change
+	// which document is current fails third-party frames on the page the user is
+	// watching for no consent gain. It stays for the pair that navigates because
+	// the PAGE decides to, and `open`/`goto` arm it from the navigation itself.
+	// The two other actions are not in this list because they are not
+	// document-scoped at all.
+	const { host, cdp, registry } = makeHost();
+	// The three DOM answers the click/type/selector-scroll paths need and the
+	// shared fixture does not provide; supplying them here keeps the fixture
+	// untouched for every other test.
+	const answers = {
+		"DOM.getDocument": { root: { nodeId: 1 } },
+		"DOM.querySelector": { nodeId: 2 },
+		"DOM.resolveNode": { object: { objectId: "obj-1" } },
+	};
+	const send = cdp.send;
+	cdp.send = async (contents, method, params) => {
+		if (method in answers) {
+			cdp.calls.push({ method, params });
+			return answers[method];
+		}
+		return send(contents, method, params);
+	};
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	registry.requireSurface(opened.tab).view.webContents.isolatedResult = "hello";
+	const armed = () =>
+		cdp.calls.filter((call) => call.method === "Fetch.enable").length;
+	assert.equal(armed(), 1, "the navigation armed the gate exactly once");
+
+	const cases = [
+		["read", { selector: "body" }],
+		["snapshot", {}],
+		["screenshot", {}],
+		["scroll", { direction: "down" }],
+		["logs", {}],
+	];
+	for (const [method, extra] of cases) {
+		const before = armed();
+		await host.dispatch(method, { ...params, tab: opened.tab, ...extra }, method);
+		assert.equal(armed(), before, `${method} armed the navigation gate`);
+	}
+	for (const method of ["click", "type"]) {
+		const before = armed();
+		await host.dispatch(
+			method,
+			{ ...params, tab: opened.tab, selector: "body", text: "x" },
+			method,
+		);
+		assert.equal(armed(), before + 1, `${method} did not arm the navigation gate`);
+	}
+});
+
 test("native handover grants only its requester a fenced owner allocation", async () => {
 	const { host, registry } = makeHost();
 	await host.newTab();
@@ -1431,6 +1522,103 @@ test("native handover grants only its requester a fenced owner allocation", asyn
 	);
 });
 
+test("re-adopting a handed-over tab after an in-page navigation still reads its document", async () => {
+	// Review round 1, R1: the adopt-without-URL pre-check passed `record.epoch`
+	// where every writer and every other reader uses `record.documentEpoch`. Both
+	// are bumped by a top-level navigation, but only `epoch` is bumped by an
+	// in-page one, so after any same-document history change the two disagreed,
+	// the live receipt missed, and the call fell into `admit()` — which, with the
+	// once grant already spent, threw `origin_not_allowed` for a document the
+	// session could still read. The field the RECEIPT was minted with is the one
+	// that has to be compared, so this pins that the re-adopt keeps working.
+	const { host, registry } = makeHost();
+	await host.newTab();
+	await host.navigateActive("https://approved.example/");
+	const user = registry.activeTab;
+	host.handOver(user.tabId, "alice");
+	const tab = surfaceToken(user);
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "in-page-a",
+		tab,
+	};
+	// `request_access` carries no `tab`: it is not a surface command, and the
+	// ownership gate would check the handle against an allocation that does not
+	// exist until the adoption journals one.
+	await host.dispatch(
+		"request_access",
+		{ requester: owner.requester, url: "https://approved.example/" },
+		"request",
+	);
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
+	assert.equal((await host.dispatch("open", owner, "adopt")).tab, tab);
+
+	// An in-page navigation: `epoch` moves, `documentEpoch` does not.
+	registry.bumpEpoch(registry.requireSurface(tab).tabId, false);
+	assert.equal(
+		(await host.dispatch("read", owner, "after-in-page")).url,
+		"https://approved.example/",
+	);
+	assert.equal((await host.dispatch("open", owner, "re-adopt")).tab, tab);
+});
+
+test("a token that ends drops the document receipt it was granted", async () => {
+	// Review round 1, N1: a receipt is bounded by the life of its TOKEN, and the
+	// chrome's close and the hand-over's nonce re-mint both ended one without
+	// dropping it. The store has no public reader for the map, and the property
+	// under test IS "the store was told", so the drop is observed at its call.
+	// The third path — a webContents that dies on its own — is the same one-line
+	// call in `index.ts:wiredestroyed`, which needs Electron and so is verified by
+	// reading rather than here.
+	const { host, registry } = makeHost();
+	await host.newTab();
+	await host.navigateActive("https://approved.example/");
+	const user = registry.activeTab;
+	host.handOver(user.tabId, "alice");
+	const tab = surfaceToken(user);
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "drop-a",
+		tab,
+	};
+	// `request_access` carries no `tab`: it is not a surface command, and the
+	// ownership gate would check the handle against an allocation that does not
+	// exist until the adoption journals one.
+	await host.dispatch(
+		"request_access",
+		{ requester: owner.requester, url: "https://approved.example/" },
+		"request",
+	);
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
+	await host.dispatch("open", owner, "adopt");
+
+	const dropped = [];
+	const forget = host.approvals.forgetDocument.bind(host.approvals);
+	host.approvals.forgetDocument = (token) => {
+		dropped.push(token);
+		forget(token);
+	};
+	// A nonce re-mint orphans the receipt the old handle was granted.
+	host.revokeHandOver(user.tabId);
+	assert.deepEqual(dropped, [tab], "the hand-over revocation dropped nothing");
+
+	// And the chrome's own close button, on a tab that still holds a handle. The
+	// hand-over is enough: `closeTab` drops whatever token the record holds, with
+	// no allocation needed to reach the path.
+	dropped.length = 0;
+	await host.newTab();
+	const fresh = registry.activeTab;
+	host.handOver(fresh.tabId, "bob");
+	const freshToken = surfaceToken(fresh);
+	assert.ok(freshToken, "a handed-over tab has a handle");
+	host.closeTab(fresh.tabId);
+	assert.deepEqual(dropped, [freshToken], "the chrome's close dropped nothing");
+});
+
 test("allow once authorizes one requester document until navigation or revocation", async () => {
 	const { host, registry } = makeHost();
 	const owner = {
@@ -1469,6 +1657,42 @@ test("allow once authorizes one requester document until navigation or revocatio
 				owner.requester,
 			),
 		{ code: "origin_not_allowed" },
+	);
+});
+
+test("an explicit deny stops a live receipt immediately", async () => {
+	// Review round 1, R2: `documentAllowed` short-circuited on `originAllowed` and
+	// then accepted a matching receipt WITHOUT consulting an explicit deny, and the
+	// deny arm of `respond` did not invalidate anything — so a user pressing Deny
+	// left the agent reading the very document it had just been refused, which is
+	// the "authority the user withdrew is still live" class this host exists to
+	// close. Reproduced with the reviewer's shape: a once grant admits the
+	// document, a SECOND requester's prompt for the same origin is denied, and the
+	// first requester's live receipt must stop working.
+	const { host } = makeHost();
+	const owner = { requester: "session:alice", url: "https://approved.example/" };
+	await host.dispatch("request_access", owner, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
+	const opened = await host.dispatch("open", owner, "open");
+	assert.equal(
+		(await host.dispatch("read", { ...owner, tab: opened.tab }, "read")).url,
+		"https://approved.example/",
+	);
+
+	// A different requester asks for the same origin; the user says no.
+	const second = await host.dispatch(
+		"request_access",
+		{ requester: "session:bob", url: "https://approved.example/other" },
+		"second",
+	);
+	assert.equal(second.state, "pending", "the second requester is prompted");
+	host.respondToConsent(second.entry_id, "deny");
+
+	// The live receipt is for the denied origin, so it is dead now — for its own
+	// drafter as much as for anyone else.
+	await assert.rejects(
+		() => host.dispatch("read", { ...owner, tab: opened.tab }, "denied"),
+		(error) => error.code === "origin_not_allowed" && error.data.reason === "denied",
 	);
 });
 
@@ -1514,9 +1738,36 @@ test("background agent views keep bounded render area away from the browser rout
 	assert.equal(user.view.visibility.at(-1), false);
 	registry.setContentRect({ x: 0, y: 10, width: 800, height: 600 });
 	registry.destroy(user.tabId);
-	assert.equal(registry.activeTab, agent);
-	assert.equal(agent.view.visibility.at(-1), true);
-	assert.equal(agent.view.getBounds().width, 800);
+	// The user's tab going away hands presentation to NOBODY. Activating the agent
+	// tab here was the defect review round 1 (R3) found: it became `active` AND
+	// `presented`, laid out with the content rect — the very state `create`'s own
+	// rule forbids (only a USER tab may be active). With no user tab left there is
+	// no surface for the user to be looking at, so nothing is presented and the
+	// agent tab keeps its bounded background viewport.
+	assert.equal(registry.activeTab, null);
+	assert.equal(agent.view.visibility.at(-1), false);
+	assert.ok(agent.view.getBounds().width <= 1920);
+});
+
+test("a closed active user tab hands presentation to the last USER tab, or to nothing", async () => {
+	// Review round 1, R3, from the other side: with user tabs on both sides of an
+	// agent tab, the successor is the last USER one — `list().at(-1)` would have
+	// picked the agent tab created after it.
+	const { registry } = makeRegistry();
+	const first = registry.create({ owner: "user" });
+	const agent = registry.create({ owner: "agent", sessionId: "alice" });
+	const last = registry.create({ owner: "user" });
+	registry.setContentRect({ x: 0, y: 0, width: 800, height: 600 });
+	assert.equal(registry.activeTab, last);
+
+	registry.destroy(last.tabId);
+	assert.equal(registry.activeTab, first);
+	assert.equal(first.view.visibility.at(-1), true);
+	assert.equal(agent.view.visibility.at(-1), false);
+
+	registry.destroy(first.tabId);
+	assert.equal(registry.activeTab, null);
+	assert.equal(agent.view.visibility.at(-1), false);
 });
 
 test("an agent open on an unapproved origin is refused before the page is touched", async () => {
