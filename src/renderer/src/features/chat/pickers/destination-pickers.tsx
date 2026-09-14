@@ -47,6 +47,7 @@ import type {
 import { messageText } from "../canonical/transcript-reducer";
 import { formatPricePair } from "../components/slash-argument-rows";
 import type { SlashCommandMeta } from "../components/slash-commands";
+import type { SlashCommandInvocation } from "../components/slash-submit";
 import { modelSelector, specUnresolved } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
 import { catalogueListing } from "./model-catalogue-listing";
@@ -76,8 +77,14 @@ export type PickerContext = {
 	onClose: () => void;
 	/** Post a system line into the transcript area (view-only). */
 	note: (text: string, error?: boolean) => void;
-	/** Re-dispatch a slash line (help -> pick a command). */
-	dispatch: (text: string) => void;
+	/**
+	 * Re-dispatch a slash command the user picked (help -> pick a command).
+	 *
+	 * An `SlashCommandInvocation`, not a line: the dispatcher does not parse
+	 * text at all — see `slash-dispatch.ts` for why a second parser used to
+	 * overrule the composer's planner on a multi-line draft.
+	 */
+	dispatch: (invocation: SlashCommandInvocation) => void;
 	/** Switch the agent's bound canonical session (resume/fork/new). */
 	rebind: (sessionId: string) => void;
 };
@@ -2314,7 +2321,7 @@ export const HelpPalette: FC<PickerContext> = ({
 			searchPlaceholder="Search commands"
 			onPick={(value) => {
 				onClose();
-				dispatch(`/${value}`);
+				dispatch({ name: value, args: "" });
 			}}
 		/>
 	);
