@@ -23,7 +23,7 @@ import { type ChildProcess, exec, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DesktopResponse } from "../../shared/desktop-contract";
@@ -37,10 +37,46 @@ import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
 
+import { consoleInterpreter, ownedServeLaunch } from "./owned-serve-launch";
+
 const execPromise = promisify(exec);
 
 // Regex for parsing environment variable lines (moved to top-level for performance)
 const ENV_VAR_REGEX = /^([^=]+)=(.*)$/;
+const LINE_BREAK = /\r?\n/;
+
+/**
+ * One managed `serve` lifetime: the handle this app actually spawned, plus the
+ * state that decides its shutdown.
+ *
+ * WHY a per-generation record rather than fields on the manager. Every
+ * shutdown hazard here was a late callback acting on mutable manager state: a
+ * predecessor's exit handler clearing the successor's `process`, an escalation
+ * timer firing after a replacement had started, a stop resolving because
+ * *something* exited. Anchoring exit state, the stop operation and its timers
+ * to the captured child makes a stale generation structurally unable to reach
+ * its successor - it holds a reference to its own record, which nothing else
+ * consults once `ownedServe` has moved on.
+ *
+ * Ownership is the child handle and nothing else. A PID is not ownership (it
+ * is reused), a responding port is not ownership (anyone may bind it), and a
+ * matching process name is not ownership (other tools run backends too).
+ */
+interface OwnedServe {
+	child: ChildProcess;
+	exited: boolean;
+	/** Resolves on the observed `exit` event - the only evidence of termination
+	 * this class accepts. A delivered signal is a request, not a result. */
+	exit: Promise<void>;
+	resolveExit: () => void;
+	/** Non-null once a stop is in flight, which makes it the shared promise every
+	 * concurrent quit/restart/update caller awaits instead of starting a second
+	 * termination sequence against the same child. */
+	stop: Promise<void> | null;
+	/** Escalation timers, held so this generation's exit cancels them; a timer
+	 * that outlives its generation is how a replacement used to get killed. */
+	timers: Set<NodeJS.Timeout>;
+}
 
 /**
  * Backend Service Manager class
@@ -58,8 +94,18 @@ export class BackendServiceManager {
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
 	private healthCheckInterval: NodeJS.Timeout | null = null;
-	private exitPromise: Promise<void> | null = null;
-	private exitResolve: (() => void) | null = null;
+	/** The only process this manager may terminate. Null means it owns nothing,
+	 * which is a reason to report "nothing to stop" - never to go looking. */
+	private ownedServe: OwnedServe | null = null;
+	/** In-flight start, so a stop can await the resolver/readiness work that has
+	 * not yet produced a child. Without it, cleanup can return before a spawn
+	 * that was already committed, and the caller installs over a live serve. */
+	private startPromise: Promise<boolean> | null = null;
+	private restartPromise: Promise<boolean> | null = null;
+	/** Bumped by every stop. A start that began under an older epoch cannot
+	 * report success or adopt its child: the cancellation happened after it
+	 * checked, and this is what it re-checks across each await. */
+	private startEpoch = 0;
 	private shellEnv: Record<string, string | undefined> = {};
 	// External/dev backends may be explicitly paired through main's environment.
 	// Managed starts always rotate this; it is never exposed by preload or logs.
@@ -690,13 +736,37 @@ export class BackendServiceManager {
 		return false;
 	}
 
+	/** Keep PATH discovery authoritative; `ownedServeLaunch` proves the identity
+	 * of what it found rather than trusting the name it was resolved under. */
+	private async resolveGlobalConsole(env: NodeJS.ProcessEnv): Promise<string> {
+		const { stdout } = await execPromise(
+			process.platform === "win32"
+				? "where local-operator"
+				: "which local-operator",
+			{ env, timeout: 5000 },
+		);
+		return stdout.trim().split(LINE_BREAK)[0];
+	}
+
 	/**
 	 * Start the backend service
 	 * @returns Promise resolving to true if the backend was started successfully, false otherwise
 	 */
-	async start(): Promise<boolean> {
-		// Reset the isAppClosing flag when starting the service
-		this.isAppClosing = false;
+	start(): Promise<boolean> {
+		// `stop(false)` is terminal by design: the app is going away or handing the
+		// installation over, and a spawn racing that hand-off is the double-serve
+		// case. A restart asks for `stop(true)`, which leaves this flag alone.
+		if (this.isAppClosing) return Promise.resolve(false);
+		if (this.startPromise) return this.startPromise;
+		this.startPromise = this.startOwned(this.startEpoch).finally(() => {
+			this.startPromise = null;
+		});
+		return this.startPromise;
+	}
+
+	private async startOwned(epoch: number): Promise<boolean> {
+		if (this.ownedServe?.stop) return false;
+		if (this.ownedServe) return this.isRunning;
 
 		if (this.isDisabled) {
 			logger.info(
@@ -708,7 +778,9 @@ export class BackendServiceManager {
 		}
 
 		// First check if an external backend is already running
-		if (await this.checkExistingBackend()) {
+		const existing = await this.checkExistingBackend();
+		if (epoch !== this.startEpoch || this.isAppClosing) return false;
+		if (existing) {
 			this.isRunning = true;
 			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
 			this.startHealthCheck();
@@ -728,165 +800,64 @@ export class BackendServiceManager {
 		// No external backend, start our own
 		this.desktopToken = randomBytes(32).toString("hex");
 		try {
-			// Check if local-operator command exists globally
-			if (await this.checkLocalOperatorExists()) {
-				logger.info(
-					"Using globally installed local-operator command",
-					LogFileType.BACKEND,
-				);
-
-				// Set startup mode to global install
+			const globalInstall = await this.checkLocalOperatorExists();
+			const env = this.backendSpawnEnv();
+			let python: string;
+			if (globalInstall) {
 				this.startupMode = LocalOperatorStartupMode.GLOBAL_INSTALL;
-
-				// Run local-operator serve directly
-				const cmd = process.platform === "win32" ? "cmd.exe" : "bash";
-				const args =
+				const executable = await this.resolveGlobalConsole(env);
+				python =
 					process.platform === "win32"
-						? ["/c", `local-operator serve --port ${this.port}`]
-						: ["-c", `local-operator serve --port ${this.port}`];
-
-				logger.info(
-					`Starting backend service with global command: ${cmd} ${args.join(" ")}`,
-					LogFileType.BACKEND,
-				);
-
-				// Create the process with proper options to ensure it terminates with the parent
-				this.process = spawn(cmd, args, {
-					detached: false, // Ensure process is not detached from parent
-					stdio: "pipe",
-					env: this.backendSpawnEnv(),
-					// On Windows, we need to create a new process group to ensure proper termination
-					...(process.platform === "win32" ? { windowsHide: true } : {}),
-				});
+						? join(dirname(executable), "python.exe")
+						: consoleInterpreter(executable);
 			} else {
-				// Local-operator not found globally, use virtual environment
-				logger.info(
-					"Global local-operator not found, using virtual environment",
-					LogFileType.BACKEND,
-				);
-
-				// Set startup mode to app bundled venv
 				this.startupMode = LocalOperatorStartupMode.APP_BUNDLED_VENV;
-
-				// Platform-specific activation of virtual environment
-				let cmd: string;
-				let args: string[];
-
-				if (process.platform === "win32") {
-					// Windows - try direct executable first
-					const localOperatorExe = join(
-						this.venvPath,
-						"Scripts",
-						"local-operator.exe",
-					);
-					if (fs.existsSync(localOperatorExe)) {
-						cmd = localOperatorExe;
-						args = ["serve", "--port", this.port.toString()];
-					} else {
-						// Fallback to Python module execution
-						const pythonExe = join(this.venvPath, "Scripts", "python.exe");
-						if (fs.existsSync(pythonExe)) {
-							cmd = pythonExe;
-							args = [
-								"-m",
-								"local_operator",
-								"serve",
-								"--port",
-								this.port.toString(),
-							];
-						} else {
-							// Last resort - use PowerShell activation
-							const activateScript = join(
-								this.venvPath,
-								"Scripts",
-								"Activate.ps1",
-							);
-							cmd = "powershell.exe";
-							args = [
-								"-ExecutionPolicy",
-								"Bypass",
-								"-Command",
-								`"& '${activateScript}'; local-operator serve --port ${this.port}"`,
-							];
-						}
-					}
-				} else {
-					// macOS or Linux
-					const activateScript = join(this.venvPath, "bin", "activate");
-					cmd = "bash";
-					args = [
-						"-c",
-						`. "${activateScript}" && local-operator serve --port ${this.port}`,
-					];
-				}
-
-				logger.info(
-					`Starting backend service with venv: ${cmd} ${args.join(" ")}`,
-					LogFileType.BACKEND,
+				const bin = join(
+					this.venvPath,
+					process.platform === "win32" ? "Scripts" : "bin",
 				);
-
-				// Create the process with proper options to ensure it terminates with the parent
-				this.process = spawn(cmd, args, {
-					detached: false, // Ensure process is not detached from parent
-					stdio: "pipe",
-					env: this.backendSpawnEnv(),
-					// On Windows, we need to create a new process group to ensure proper termination
-					...(process.platform === "win32" ? { windowsHide: true } : {}),
-				});
+				python = join(
+					bin,
+					process.platform === "win32" ? "python.exe" : "python",
+				);
+				// Preserve activation's environment without leaving an activation
+				// shell between the ChildProcess handle and the actual HTTP server.
+				env.VIRTUAL_ENV = this.venvPath;
+				env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${env.PATH ?? ""}`;
+				env.PYTHONHOME = undefined;
 			}
+			const launch = await ownedServeLaunch(python, this.port, env);
+			if (epoch !== this.startEpoch || this.isAppClosing) return false;
+			const child = spawn(launch.command, launch.args, {
+				detached: false,
+				stdio: "pipe",
+				env,
+				windowsHide: true,
+			});
+			const generation = this.captureServe(child);
 
 			// Log output
-			if (this.process.stdout) {
-				this.process.stdout.on("data", (data) => {
+			if (child.stdout) {
+				child.stdout.on("data", (data) => {
 					logger.info(`Backend stdout: ${data}`, LogFileType.BACKEND);
 				});
 			}
 
-			if (this.process.stderr) {
-				this.process.stderr.on("data", (data) => {
+			if (child.stderr) {
+				child.stderr.on("data", (data) => {
 					logger.error(`Backend stderr: ${data}`, LogFileType.BACKEND);
 				});
 			}
-
-			// Handle process exit
-			this.process.on("exit", (code) => {
-				logger.info(
-					`Backend process exited with code ${code}`,
-					LogFileType.BACKEND,
-				);
-				this.isRunning = false;
-				this.process = null;
-
-				// Resolve the exit promise if it exists
-				if (this.exitResolve) {
-					this.exitResolve();
-					this.exitResolve = null;
-				}
-
-				// Show error dialog if the process exited unexpectedly
-				// Skip showing the dialog if:
-				// 1. We're on Windows AND the app is closing AND the exit code is 1 (expected on Windows)
-				// 2. OR if the code is 0 or null (normal exit)
-				// 3. OR if we're in the middle of an autoupdate operation
-				const isExpectedWindowsExit =
-					process.platform === "win32" &&
-					(this.isAppClosing || this.isAutoUpdating) &&
-					code === 1;
-
-				if (code !== 0 && code !== null && !isExpectedWindowsExit) {
-					electronDialog.showErrorBox(
-						"Backend Error",
-						`The Local Operator backend service exited unexpectedly with code ${code}. Please restart the application.`,
-					);
-				}
-			});
 
 			// Wait for backend to be healthy
 			let attempts = 0;
 			const maxAttempts = 30; // 30 seconds timeout
 
 			while (attempts < maxAttempts) {
-				if (await this.checkHealth()) {
+				const healthy = await this.checkHealth();
+				if (epoch !== this.startEpoch || generation.exited || generation.stop)
+					break;
+				if (healthy) {
 					this.isRunning = true;
 					this.startHealthCheck();
 					this.notifyBackendReady();
@@ -898,6 +869,8 @@ export class BackendServiceManager {
 				attempts++;
 			}
 
+			await this.stopGeneration(generation, false);
+			if (epoch !== this.startEpoch) return false;
 			logger.error(
 				"Failed to start backend service after multiple attempts",
 				LogFileType.BACKEND,
@@ -911,6 +884,7 @@ export class BackendServiceManager {
 
 			return false;
 		} catch (error) {
+			if (this.ownedServe) await this.stopGeneration(this.ownedServe, false);
 			logger.error(
 				"Error starting backend service:",
 				LogFileType.BACKEND,
@@ -928,321 +902,166 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Stop the backend service
-	 * @param isRestart - Whether this stop is part of a restart operation
-	 * @returns Promise resolving when the backend has been stopped
+	 * Stop only the captured serve generation, including failed startups. A port
+	 * or process name is not ownership. Unconfirmed exit blocks replacement.
 	 */
 	async stop(isRestart = false): Promise<void> {
-		// Mark that we're closing the app if this is not a restart
-		if (!isRestart) {
-			this.isAppClosing = true;
-		}
-		// The relay authenticates with the token of the process this call is
-		// about to stop, so it dies with it. Leaving it standing (whatever the
-		// early returns below do) is the stale-token 401 the caller is trying to
-		// escape: `start()` mints a new token, the URL is unchanged, and a relay
-		// that survived the stop would never be rebuilt.
+		this.startEpoch++;
+		if (!isRestart) this.isAppClosing = true;
 		this.disposeStreamRelay();
-		// Stop health check
-		if (this.healthCheckInterval) {
-			clearInterval(this.healthCheckInterval);
-			this.healthCheckInterval = null;
-		}
+		this.stopHealthCheck();
+		const generation = this.ownedServe;
+		if (generation) await this.stopGeneration(generation, isRestart);
+		// Resolver/readiness work must observe cancellation before an installer
+		// is allowed to replace files, even when stop arrived before spawn.
+		await this.startPromise;
+	}
 
-		if (this.isDisabled || this.isExternalBackend) {
-			logger.info(
-				"Skipping backend stop (disabled or external backend)",
-				LogFileType.BACKEND,
-			);
-			return;
-		}
-
-		if (this.process && this.isRunning) {
-			logger.info(
-				`Stopping backend service... (isRestart: ${isRestart})`,
-				LogFileType.BACKEND,
-			);
-
-			// Create a promise that resolves when the process exits
-			// Store this promise so it can be awaited from outside
-			this.exitPromise = new Promise<void>((resolve) => {
-				this.exitResolve = resolve;
-
-				if (!this.process) {
-					if (this.exitResolve) {
-						this.exitResolve();
-						this.exitResolve = null;
-					}
-					return;
-				}
-
-				this.process.once("exit", () => {
-					logger.info("Backend process exited", LogFileType.BACKEND);
-					this.process = null;
-					this.isRunning = false;
-
-					// Resolve the exit promise
-					if (this.exitResolve) {
-						this.exitResolve();
-						this.exitResolve = null;
-					}
-				});
-			});
-
-			// Gracefully terminate the process
-			try {
-				// Store the process ID before attempting to terminate
-				const pid = this.process.pid;
-
-				if (process.platform === "win32") {
-					// Windows: send CTRL+C signal via taskkill
-					if (pid) {
-						logger.info(
-							`Terminating Windows process with PID ${pid}`,
-							LogFileType.BACKEND,
-						);
-						spawn("taskkill", ["/pid", pid.toString(), "/t"]);
-					}
-				} else {
-					// Unix: send SIGTERM
-					logger.info(
-						"Sending SIGTERM to backend process",
-						LogFileType.BACKEND,
-					);
-					this.process.kill("SIGTERM");
-				}
-
-				// Create a variable to store the timeout ID so we can clear it if needed
-				let forceKillTimeoutId: NodeJS.Timeout | null = null;
-
-				// Wait for process to exit with timeout
-				const timeoutPromise = new Promise<void>((resolve) => {
-					// Determine which timeout to use based on the operation type
-					const timeoutMs = isRestart
-						? this.shutdownTimeoutMs.restart
-						: this.shutdownTimeoutMs.normal;
-
-					logger.info(
-						`Setting shutdown timeout to ${timeoutMs}ms for ${isRestart ? "restart" : "normal"} operation`,
-						LogFileType.BACKEND,
-					);
-
-					forceKillTimeoutId = setTimeout(() => {
-						if (this.process) {
-							logger.info(
-								`Backend process did not exit within ${timeoutMs}ms, force killing`,
-								LogFileType.BACKEND,
-							);
-							try {
-								// Force kill the process
-								if (process.platform === "win32" && this.process.pid) {
-									// On Windows, use taskkill with /F for force
-									spawn("taskkill", [
-										"/pid",
-										this.process.pid.toString(),
-										"/f",
-										"/t",
-									]);
-
-									// Also try to kill any child processes by process name
-									try {
-										// Use taskkill to find and kill python processes that might be running the backend
-										execPromise(
-											'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-										).catch((error) => {
-											logger.warn(
-												"Error terminating python processes:",
-												LogFileType.BACKEND,
-												error,
-											);
-										});
-
-										// Also try to kill any local-operator.exe processes directly
-										execPromise("taskkill /f /im local-operator.exe /t").catch(
-											(error) => {
-												logger.warn(
-													"Error terminating local-operator processes:",
-													LogFileType.BACKEND,
-													error,
-												);
-											},
-										);
-									} catch (taskkillError) {
-										logger.warn(
-											"Error executing taskkill command:",
-											LogFileType.BACKEND,
-											taskkillError,
-										);
-									}
-								} else if (this.process) {
-									// On Unix, use SIGKILL
-									this.process.kill("SIGKILL");
-
-									// Also try to kill any processes with the same command line
-									// pattern - but ONLY on a final shutdown. On a restart this
-									// pattern is machine-wide (no pid, no process group), so it
-									// would take down peer sessions' servers and other running
-									// instances' backends along with the one process we are
-									// actually replacing; a restart means "our process is going",
-									// never "this machine is done with local-operator".
-									if (!isRestart) {
-										try {
-											execPromise('pkill -f "local-operator serve"').catch(
-												(error) => {
-													logger.warn(
-														"Error killing processes by pattern:",
-														LogFileType.BACKEND,
-														error,
-													);
-												},
-											);
-										} catch (pkillError) {
-											logger.warn(
-												"Error executing pkill command:",
-												LogFileType.BACKEND,
-												pkillError,
-											);
-										}
-									}
-
-									// Set a final force kill timeout in case SIGKILL doesn't work
-									setTimeout(() => {
-										if (this.process) {
-											logger.warn(
-												`Process still exists after SIGKILL, attempting more aggressive termination after ${this.shutdownTimeoutMs.force}ms`,
-												LogFileType.BACKEND,
-											);
-											try {
-												// Machine-wide, so a shutdown only - see the pkill above.
-												if (!isRestart) {
-													execPromise(
-														'pkill -9 -f "local-operator serve"',
-													).catch(() => {});
-												}
-
-												// Even if these fail, mark the process as stopped
-												this.process = null;
-												this.isRunning = false;
-
-												if (this.exitResolve) {
-													this.exitResolve();
-													this.exitResolve = null;
-												}
-											} catch (finalError) {
-												logger.error(
-													"Error during final force kill attempt:",
-													LogFileType.BACKEND,
-													finalError,
-												);
-											}
-										}
-									}, this.shutdownTimeoutMs.force);
-								}
-							} catch (error) {
-								logger.error(
-									"Error force killing process:",
-									LogFileType.BACKEND,
-									error,
-								);
-							}
-
-							// Even if force kill fails, mark process as stopped
-							this.process = null;
-							this.isRunning = false;
-
-							// Resolve the exit promise
-							if (this.exitResolve) {
-								this.exitResolve();
-								this.exitResolve = null;
-							}
-						}
-						resolve();
-					}, timeoutMs);
-				});
-
-				// Wait for either the process to exit or the timeout
-				await Promise.race([this.exitPromise, timeoutPromise]);
-
-				// Clear the timeout if it's still active
-				if (forceKillTimeoutId) {
-					clearTimeout(forceKillTimeoutId);
-					forceKillTimeoutId = null;
-				}
-
-				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated.
-				//
-				// DANGEROUS AND DELIBERATELY NARROW. The Unix branch below kills by
-				// COMMAND LINE PATTERN, machine-wide: every `local-operator serve` on
-				// the box, whoever it belongs to. That is why the gate is a genuine app
-				// shutdown and nothing else - a restart, a watchdog recovery or an
-				// update must pass `isRestart: true`, because each of those means "one
-				// process of ours is being replaced", not "this machine is done with
-				// local-operator". Firing it on an ordinary restart took down peer
-				// sessions' servers and other running instances' backends (the operator's
-				// log at 10:53:38-10:53:40 is exactly that), and those instances have no
-				// way to know why their backend vanished.
-				if (!isRestart) {
-					logger.info(
-						"Performing additional cleanup for final shutdown",
-						LogFileType.BACKEND,
-					);
-
-					try {
-						if (process.platform === "win32") {
-							// On Windows, use taskkill to find and kill python and local-operator processes
-							await execPromise(
-								'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-							).catch(() => {
-								// Ignore errors, this is a best-effort cleanup
-							});
-
-							await execPromise("taskkill /f /im local-operator.exe /t").catch(
-								() => {
-									// Ignore errors, this is a best-effort cleanup
-								},
-							);
-						} else {
-							// On Unix systems, look for processes with "local-operator serve" in the command line
-							await execPromise('pkill -f "local-operator serve"').catch(() => {
-								// Ignore errors, this is a best-effort cleanup
-							});
-
-							// Give processes a moment to terminate gracefully before force killing
-							await new Promise((resolve) => setTimeout(resolve, 1000));
-
-							// Force kill any remaining processes
-							await execPromise('pkill -9 -f "local-operator serve"').catch(
-								() => {
-									// Ignore errors, this is a best-effort cleanup
-								},
-							);
-						}
-					} catch (cleanupError) {
-						logger.warn(
-							"Error during additional cleanup (this may be normal if processes were already terminated):",
-							LogFileType.BACKEND,
-							cleanupError,
-						);
-					}
-				}
-			} catch (error) {
-				logger.error(
-					"Error stopping backend process:",
-					LogFileType.BACKEND,
-					error,
+	private captureServe(child: ChildProcess): OwnedServe {
+		let resolveExit = () => {};
+		const generation: OwnedServe = {
+			child,
+			exited: false,
+			exit: new Promise<void>((resolve) => {
+				resolveExit = resolve;
+			}),
+			resolveExit: () => resolveExit(),
+			stop: null,
+			timers: new Set(),
+		};
+		this.ownedServe = generation;
+		this.process = child;
+		const exited = (code?: number | null) => {
+			if (generation.exited) return;
+			generation.exited = true;
+			// This generation's escalation timers die with it, so a SIGKILL armed
+			// for a process that has already gone cannot fire at a successor that
+			// took its place in the meantime.
+			for (const timer of generation.timers) clearTimeout(timer);
+			generation.timers.clear();
+			generation.resolveExit();
+			// A LATE exit from a retired generation stops here. Everything below
+			// writes manager-wide state, and a predecessor writing it is how a live
+			// replacement used to be recorded as gone (and then re-spawned over).
+			if (this.ownedServe !== generation) return;
+			this.ownedServe = null;
+			this.process = null;
+			this.isRunning = false;
+			// Only an exit nobody asked for is an error worth interrupting the user
+			// for. `generation.stop` covers the deliberate kills - including the
+			// Windows exit code 1 that a terminated serve reports, which the previous
+			// code had to special-case by platform because it could not tell a
+			// requested termination from a crash.
+			if (
+				code != null &&
+				code !== 0 &&
+				!generation.stop &&
+				!this.isAppClosing &&
+				!this.isAutoUpdating
+			) {
+				electronDialog.showErrorBox(
+					"Backend Error",
+					`The Local Operator backend service exited unexpectedly with code ${code}. Please restart the application.`,
 				);
-				// Ensure process is marked as stopped even if there was an error
-				this.process = null;
-				this.isRunning = false;
+			}
+		};
+		child.once("exit", exited);
+		child.on("error", (error) => {
+			logger.error("Owned backend process error", LogFileType.BACKEND, error);
+			// Spawn failure has no process. A signal error with a PID does not
+			// prove exit and must retain ownership for fail-closed cleanup.
+			if (child.pid === undefined) exited();
+		});
+		return generation;
+	}
 
-				// Resolve the exit promise
-				if (this.exitResolve) {
-					this.exitResolve();
-					this.exitResolve = null;
+	/** Signals may only be sent while the handle itself still reports a live
+	 * process. Node keeps `kill()` callable on a reaped child, and on a PID the
+	 * OS has since recycled that call reaches whatever now holds the number. */
+	private canSignal(generation: OwnedServe): boolean {
+		return (
+			!generation.exited &&
+			generation.child.exitCode === null &&
+			generation.child.signalCode === null
+		);
+	}
+
+	/**
+	 * The one termination sequence: SIGTERM, wait out the grace, SIGKILL, wait
+	 * again, and throw if the process never reported exit.
+	 *
+	 * Failing rather than returning is the point. Callers use a resolved stop as
+	 * permission to replace the backend - install over it, spawn a successor - so
+	 * "we signalled it and moved on" would authorise exactly the double-serve
+	 * this class exists to prevent. An unconfirmed exit keeps ownership, and the
+	 * caller reports failure instead of proceeding.
+	 */
+	private stopGeneration(
+		generation: OwnedServe,
+		isRestart: boolean,
+	): Promise<void> {
+		if (generation.stop) return generation.stop;
+		generation.stop = (async () => {
+			const waitForExit = (ms: number) =>
+				new Promise<boolean>((resolve) => {
+					if (generation.exited) {
+						resolve(true);
+						return;
+					}
+					const timer = setTimeout(() => {
+						generation.timers.delete(timer);
+						resolve(false);
+					}, ms);
+					generation.timers.add(timer);
+					void generation.exit.then(() => {
+						clearTimeout(timer);
+						generation.timers.delete(timer);
+						resolve(true);
+					});
+				});
+			if (this.canSignal(generation)) generation.child.kill("SIGTERM");
+			const grace = isRestart
+				? this.shutdownTimeoutMs.restart
+				: this.shutdownTimeoutMs.normal;
+			if (!(await waitForExit(grace))) {
+				if (this.canSignal(generation)) generation.child.kill("SIGKILL");
+				if (!(await waitForExit(this.shutdownTimeoutMs.force))) {
+					throw new Error(
+						"Owned backend exit is unconfirmed; refusing replacement",
+					);
 				}
 			}
+			if (!isRestart && !this.ownedServe)
+				this.startupMode = LocalOperatorStartupMode.NOT_STARTED;
+			logger.info("Owned backend generation stopped", LogFileType.BACKEND);
+		})();
+		return generation.stop;
+	}
 
-			logger.info("Backend service stopped", LogFileType.BACKEND);
+	private stopHealthCheck(): void {
+		if (this.healthCheckInterval) clearInterval(this.healthCheckInterval);
+		this.healthCheckInterval = null;
+	}
+
+	/** Whether a quit may proceed. `will-quit` cannot await a listener, so it
+	 * prevents the first quit, runs cleanup, and asks this on the retry. */
+	isOwnedCleanupComplete(): boolean {
+		return this.isAppClosing && !this.ownedServe && !this.startPromise;
+	}
+
+	/** Synchronous exit cannot await cleanup. Canonical runtimes deliberately
+	 * outlive their HTTP server, so neither PID rediscovery nor descent is safe. */
+	emergencyStopOwned(): void {
+		this.startEpoch++;
+		this.isAppClosing = true;
+		const generation = this.ownedServe;
+		if (
+			generation &&
+			!generation.exited &&
+			generation.child.exitCode === null &&
+			generation.child.signalCode === null
+		) {
+			generation.child.kill("SIGKILL");
 		}
 	}
 
@@ -1297,8 +1116,15 @@ export class BackendServiceManager {
 	 * assertable without waiting out a 30s interval.
 	 */
 	private async checkUnhealthyBackend(): Promise<void> {
+		const epoch = this.startEpoch;
 		const isHealthy = await this.checkHealth();
-
+		if (
+			epoch !== this.startEpoch ||
+			this.isAppClosing ||
+			this.isAutoUpdating ||
+			this.isDisabled
+		)
+			return;
 		if (isHealthy) return;
 
 		logger.info("Backend health check failed", LogFileType.BACKEND);
@@ -1339,22 +1165,7 @@ export class BackendServiceManager {
 			return;
 		}
 
-		// Our backend is no longer healthy, try to restart it.
-		//
-		// `true` is LOAD-BEARING, not tidiness. `stop()`'s no-argument form is the
-		// FINAL-SHUTDOWN path, and that path runs a machine-wide
-		// `pkill -f "local-operator serve"` (then `pkill -9`) with no `--pid` and
-		// no process-group filter. Invoked here it killed every local-operator
-		// server on the box, not just this app's: the operator's own log shows a
-		// watchdog restart at 10:53:38 announcing "Stopping backend service...
-		// (isRestart: false)" -> "Performing additional cleanup for final
-		// shutdown", and seconds later other running instances started reporting
-		// "Server is offline. Please check your connection" because their
-		// backends had been shot out from under them. This is a RECOVERY for one
-		// unhealthy process; only a genuine app shutdown may clean up
-		// machine-wide.
-		await this.stop(true);
-		await this.start();
+		await this.restart();
 	}
 
 	/**
@@ -1411,75 +1222,21 @@ export class BackendServiceManager {
 	 * timeouts from the stop operation don't affect the newly started process
 	 * @returns Promise resolving to true if the restart was successful, false otherwise
 	 */
-	async restart(): Promise<boolean> {
-		logger.info("Restarting backend service...", LogFileType.BACKEND);
-
-		// Reset the isAppClosing flag since we're restarting, not closing
-		this.isAppClosing = false;
-
-		// Stop the service with the isRestart flag to use a longer timeout
-		await this.stop(true);
-
-		// Wait a bit to ensure any cleanup processes have completed
-		await new Promise((resolve) => setTimeout(resolve, 2000));
-
-		// Verify the process is actually stopped
-		if (this.process) {
-			logger.warn(
-				"Process still exists after stop, attempting to force terminate",
-				LogFileType.BACKEND,
-			);
-
-			// Force terminate the process
+	restart(): Promise<boolean> {
+		if (this.restartPromise) return this.restartPromise;
+		this.restartPromise = (async () => {
 			try {
-				if (process.platform === "win32" && this.process.pid) {
-					// On Windows, use taskkill with /F for force
-					await promisify(exec)(`taskkill /pid ${this.process.pid} /f /t`);
-				} else if (this.process) {
-					// On Unix, use SIGKILL
-					this.process.kill("SIGKILL");
-				}
-
-				// Wait for the process to exit
-				await new Promise((resolve) => {
-					if (!this.process) {
-						resolve(null);
-						return;
-					}
-
-					this.process.once("exit", () => {
-						resolve(null);
-					});
-
-					// Timeout in case the process doesn't exit
-					setTimeout(resolve, 1000);
-				});
-
-				// Clear the process reference
-				this.process = null;
-				this.isRunning = false;
+				await this.stop(true);
+				if (this.isAppClosing) return false;
+				return await this.start();
 			} catch (error) {
-				logger.error(
-					"Error force killing process during restart:",
-					LogFileType.BACKEND,
-					error,
-				);
+				logger.error("Backend restart refused", LogFileType.BACKEND, error);
+				return false;
 			}
-		}
-
-		// Start the service again
-		const success = await this.start();
-
-		if (success) {
-			logger.info(
-				"Backend service restarted successfully",
-				LogFileType.BACKEND,
-			);
-		} else {
-			logger.error("Failed to restart backend service", LogFileType.BACKEND);
-		}
-
-		return success;
+		})().finally(() => {
+			this.restartPromise = null;
+		});
+		return this.restartPromise;
 	}
 }
 
