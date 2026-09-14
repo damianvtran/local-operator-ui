@@ -94,6 +94,7 @@ import {
 } from "./transcript-reducer";
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
 import { useScrollPaging } from "./use-scroll-paging";
+import { deriveWorkingLine } from "./working-line-model";
 
 /**
  * Opts the USER bubble into the reading measure defined in `markdown.css`.
@@ -114,6 +115,17 @@ export type CanonicalTranscriptProps = {
 	gate: PendingDesktopGate | null;
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
+	/**
+	 * A send from this conversation has been admitted and produced nothing yet.
+	 *
+	 * The one input here that is the APP's fact rather than the owner's: it is
+	 * true from the moment an admission request is issued. It exists because a
+	 * cold send spends seconds inside that request and the transcript used to
+	 * show the user's own bubble and then nothing, which reads as the message
+	 * having been dropped. See `working-line-model.ts` for the copy rule this
+	 * branch is held to.
+	 */
+	starting: boolean;
 	loadingOlder: boolean;
 	/**
 	 * Fetch the next durable page. Resolving `false` rather than rejecting is
@@ -510,6 +522,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	transcript,
 	gate,
 	waiting,
+	starting,
 	loadingOlder,
 	onLoadOlder,
 	containerRef,
@@ -682,57 +695,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	const lastRecord = transcript.records[transcript.records.length - 1];
 
-	// What the working line says, and which phase it is timing.
-	//
-	// Every branch is a fact the backend actually sent. `intent` rides
-	// `tool_execution_start` and is already on the tool record; a streaming
-	// assistant record IS what "responding" means; and `thinking` is the default
-	// for a model call in flight with nothing on the ledger to show for it. The
-	// vocabulary is the harness's own (`harness/intent.py`), so a reader who
-	// learned it in the terminal does not learn it again here.
-	//
-	// The PHASE is coarser than the label on purpose: a batch of three calls is
-	// one phase however many times its phrase is re-derived as calls settle, so
-	// the clock keeps counting instead of resetting to `0s` under the reader.
-	const working = useMemo(() => {
-		if (!waiting || gate) return null;
-		const runningTools = transcript.records.filter(
-			(record) => record.kind === "tool" && record.phase === "running",
-		) as Extract<TranscriptRecord, { kind: "tool" }>[];
-		if (runningTools.length > 0) {
-			// One call states its own purpose; a batch states a COUNT. Presenting
-			// one call's intent as the whole batch's activity is a claim the rows
-			// above it immediately contradict, and the count is the one fact this
-			// line has that appears nowhere else on screen.
-			const activity =
-				runningTools.length === 1
-					? (runningTools[0].intent ??
-						`running ${displayName(runningTools[0].toolName)}`)
-					: `running ${runningTools.length} tools`;
-			return { activity, phase: "running" };
-		}
-		const composing = transcript.records.filter(
-			(record) => record.kind === "tool" && record.phase === "composing",
-		).length;
-		if (composing > 0) {
-			// The tool's NAME is deliberately absent: it arrives in fragments, and
-			// `composing wr` reads as a typo rather than as a state.
-			return {
-				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
-				phase: "composing",
-			};
-		}
-		const tail = transcript.records[transcript.records.length - 1];
-		if (tail?.kind === "assistant" && tail.streaming) {
-			// Only once prose is ACTUALLY streaming. `message_start` fires from a
-			// placeholder at the top of every provider call, before the first
-			// token, so flipping on it would claim the model is writing for the
-			// whole of every turn — which is why the record's own `text` is the
-			// trigger here, not its existence.
-			if (tail.text) return { activity: "responding", phase: "responding" };
-		}
-		return { activity: "thinking", phase: "thinking" };
-	}, [waiting, gate, transcript.records]);
+	// What the working line says, and which phase it is timing. The derivation
+	// (and its copy contract, including the one branch this app drives from its
+	// own admitted send rather than from a frame) lives in
+	// `working-line-model.ts`; this is only the memo that keeps it off the
+	// per-token path.
+	const working = useMemo(
+		() =>
+			deriveWorkingLine({
+				waiting,
+				starting,
+				gate: Boolean(gate),
+				// The transcript renders the error itself in this state, so the line
+				// must not claim work beside it.
+				unavailable: status === "unavailable" || Boolean(error),
+				records: transcript.records,
+			}),
+		[waiting, starting, gate, status, error, transcript.records],
+	);
 
 	return (
 		<div

@@ -1045,3 +1045,182 @@ test("the dictation counter is spelled at a glance", () => {
 	assert.equal(formatBytes(1024 * 1024), "1.0 MB");
 	assert.equal(formatBytes(2_097_152), "2.0 MB");
 });
+
+/* ------------------------------------------------------ the working line */
+
+/*
+ * The aggregate working line's ladder, and the one rung on it the app drives
+ * from its own state rather than from a frame the owner sent.
+ *
+ * That rung covers the operator's own report: an accepted send on a cold
+ * session spends seconds inside the message request spawning its runtime, and
+ * until the first frame landed the transcript painted the user's own bubble and
+ * then nothing at all. So the rung must exist, must sit on the ladder's own
+ * phase (one wait, one clock), and — the half a story cannot pin — must CLEAR.
+ * A line that lingers is a claim that outlives the work it names, so every
+ * clear is asserted here rather than eyeballed in a frame.
+ *
+ * The module is pure (its only imports are types), so this needs no React and
+ * no aliases beyond the renderer root.
+ */
+const workingLineBundle = await build({
+	stdin: {
+		contents:
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { deriveWorkingLine, ADMITTED_SEND_ACTIVITY } = await import(
+	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
+);
+
+const userRow = (id, text) => ({ kind: "user", id, ts: 1, text, images: [] });
+const assistantRow = (id, text) => ({
+	kind: "assistant",
+	id,
+	ts: 1,
+	text,
+	streaming: true,
+	stopReason: null,
+	error: false,
+});
+const runningToolRow = (id) => ({
+	kind: "tool",
+	id,
+	ts: 1,
+	toolCallId: id,
+	toolName: "bash",
+	intent: null,
+	args: null,
+	phase: "running",
+	argumentBytes: 0,
+	output: null,
+	isError: false,
+	durationS: null,
+	startedAt: 1,
+	images: [],
+	added: 0,
+	removed: 0,
+	diff: null,
+	stopped: false,
+});
+
+const admitted = (records, over = {}) =>
+	deriveWorkingLine({
+		waiting: false,
+		starting: true,
+		gate: false,
+		unavailable: false,
+		records,
+		...over,
+	});
+
+test("an admitted send that has painted nothing yet says the app is waiting", () => {
+	// The echo IS the transcript at this point: the user's own row, and no
+	// assistant or tool row after it. Before this rung the frame showed the
+	// bubble and then dead air for the length of the cold engage.
+	assert.deepEqual(admitted([userRow("u1", "go")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+});
+
+test("the wait sits on the ladder's own phase, so one wait keeps one clock", () => {
+	// Phases are what the clock is keyed to (`working-line.tsx`). A phase of its
+	// own would restart the count at 0s the moment the first frame arrived,
+	// which is the "restarting the clock on every label change" defect the line
+	// is documented against — the engage and the model call that follows are one
+	// wait to the reader.
+	const plainWaiting = deriveWorkingLine({
+		waiting: true,
+		starting: false,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.equal(admitted([userRow("u1", "go")]).phase, plainWaiting.phase);
+});
+
+test("the first content clears the wait", () => {
+	// Prose and a tool row are both the owner having produced something.
+	assert.equal(
+		admitted([userRow("u1", "go"), assistantRow("a1", "Here is the answer")]),
+		null,
+	);
+	assert.equal(
+		admitted([userRow("u1", "go"), runningToolRow("t1")]),
+		null,
+	);
+});
+
+test("a provider call that has painted nothing does not clear it", () => {
+	// `message_start` opens an assistant record before a token exists, and that
+	// record deliberately paints no row (`paintsSomething`). Clearing on it
+	// would take the only liveness element off screen at exactly the moment the
+	// user is still waiting for the first word.
+	assert.deepEqual(
+		admitted([userRow("u1", "go"), assistantRow("a1", "")]),
+		{
+			activity: ADMITTED_SEND_ACTIVITY,
+			phase: "thinking",
+		},
+	);
+});
+
+test("a question for the user outranks the wait, and a dead stream ends it", () => {
+	// Branding § 7: a pending question is the only thing on screen that needs a
+	// decision, so the working line yields to it — the same rule the ladder's
+	// own branches obey.
+	assert.equal(
+		admitted([userRow("u1", "go")], { gate: true }),
+		null,
+	);
+	// An unrecoverable stream renders the error in the transcript; a working
+	// line beside it would claim progress the transport is not making.
+	assert.equal(
+		admitted([userRow("u1", "go")], { unavailable: true }),
+		null,
+	);
+});
+
+test("the rung only shows when nothing the owner drove has taken over", () => {
+	// A turn the owner IS generating still reads the ladder, with the admitted
+	// send true alongside it: the first frame wins as soon as it arrives.
+	assert.deepEqual(
+		admitted([userRow("u1", "go"), runningToolRow("t1")], { waiting: true }),
+		{ activity: "running bash", phase: "running" },
+	);
+	assert.deepEqual(
+		admitted([userRow("u1", "go"), assistantRow("a1", "Streaming")], {
+			waiting: true,
+		}),
+		{ activity: "responding", phase: "responding" },
+	);
+	// And with no send in flight at all, nothing is claimed.
+	assert.equal(
+		deriveWorkingLine({
+			waiting: false,
+			starting: false,
+			gate: false,
+			unavailable: false,
+			records: [userRow("u1", "go")],
+		}),
+		null,
+	);
+});
+
+test("the admitted-send copy claims nothing the renderer cannot check", () => {
+	// The one rung that is not a fact the owner sent, so it is held to the
+	// weaker rule: name the waiting, never the mechanism. The renderer cannot
+	// tell a session whose runtime is still spawning from one that is warm and
+	// merely slow to answer, so "starting the session" (considered, and
+	// rejected) or the ladder's own `thinking` — which means "a model call is in
+	// flight" — would assert something it has no way to check. If a later change
+	// wants a mechanism word here, it has to make it checkable first.
+	assert.equal(ADMITTED_SEND_ACTIVITY, "waiting for the agent");
+	assert.doesNotMatch(ADMITTED_SEND_ACTIVITY, /runtime|model|session|start|think/i);
+});
