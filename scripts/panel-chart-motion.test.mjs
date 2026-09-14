@@ -61,6 +61,7 @@ const bundleInto = async (name, contents) => {
 		alias: {
 			"@shared": resolve("src/renderer/src/shared"),
 			"@renderer": resolve("src/renderer/src"),
+			"@features": resolve("src/renderer/src/features"),
 		},
 		write: false,
 	});
@@ -76,6 +77,48 @@ const { withoutMotion } = await bundleInto(
 );
 
 const frameSource = readFileSync(join(ROOT, FRAME), "utf8");
+
+const SETTINGS = "src/renderer/src/features/settings/components";
+const { SettingsUsageChart } = await bundleInto(
+	"settings-usage-chart",
+	`export { SettingsUsageChart } from "./${SETTINGS}/settings-usage-chart";`,
+);
+
+test("settings story and page share the production chart, including ticks and tooltip", () => {
+	for (const metric of ["tokens", "credits"]) {
+		const data = [{ bucket: "Sep 14", value: 1_800_000 }];
+		const chart = SettingsUsageChart({ metric, data });
+		assert.equal(chart.props.heightClassName, "h-62");
+		assert.equal(chart.props.yAxisWidth, 48);
+		assert.equal(chart.props.unit, metric);
+		assert.equal(
+			chart.props.yTickFormatter(0),
+			metric === "tokens" ? "0" : "$0.00",
+		);
+		assert.equal(
+			chart.props.yTickFormatter(1_800_000),
+			metric === "tokens" ? "1.8M" : "$1800000.00",
+		);
+		assert.equal(chart.props.children.props.data, data);
+		const mark = chart.props.children.props.children;
+		assert.equal(mark.props.dot, false);
+		assert.deepEqual(mark.props.activeDot, { r: 4, strokeWidth: 0 });
+		assert.equal(
+			mark.props.name,
+			metric === "tokens" ? "Tokens used" : "Credits consumed",
+		);
+	}
+	// A fixture importing only ChartFrame can silently drift again while these
+	// prop checks stay green. Both consumers must mount the shared component.
+	for (const file of [
+		`${SETTINGS}/settings-page.tsx`,
+		"src/renderer/src/features/chat/pickers/panels/settings-usage-chart.stories.tsx",
+	]) {
+		const source = readFileSync(join(ROOT, file), "utf8");
+		assert.match(source, /<SettingsUsageChart /);
+		assert.doesNotMatch(source, /<ChartFrame[\s>]/);
+	}
+});
 
 test("recharts reads isAnimationActive on the mark, never on the chart", () => {
 	/*
