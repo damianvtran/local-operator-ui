@@ -487,6 +487,15 @@ export const STORIES = [
 	["settings-integrations--filtered", 1000, 860],
 	["settings-integrations--filtered-empty", 1000, 860],
 	["settings-integrations--no-servers", 1000, 860],
+	/*
+	 * And the state this list deliberately does NOT carry, so the omission is a
+	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
+	 * section asked the roster and there is nothing to borrow), so it never clears
+	 * the ≥8-element "prepared" count this file asserts before a shutter, and the
+	 * paint guard below it would refuse a frame of one sentence on ground anyway.
+	 * Both guards are right. The story stays for review and QA; the frame would be
+	 * padding, so it is absent and this comment says why.
+	 */
 	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
 	   `usage_panel.py`. Swept for the states that cannot be produced on demand
 	   live — an OAuth grant has to die, a provider has to go idle past its
