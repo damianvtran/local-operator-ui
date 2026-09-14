@@ -16,9 +16,18 @@ export function parseMcpIntent(
 	names: readonly string[],
 ): McpIntent {
 	const text = (raw ?? "").trim();
-	if (!text || text === "list") return { kind: "list", action: "login" };
+	if (!text) return { kind: "list", action: "login" };
+	/*
+	 * A server's own name is checked BEFORE the bare-list form, so the promise in the
+	 * paragraph above holds for `list` too: a server literally named `list` is
+	 * reachable by its bare name, exactly as `login` and `reauth` are. Testing the
+	 * reserved word first made `list` the one configured name the bare form could not
+	 * reach, which is the opposite of what the doc comment claimed (code review round
+	 * 3, m1).
+	 */
 	if (names.includes(text))
 		return { kind: "auth", name: text, action: "login" };
+	if (text === "list") return { kind: "list", action: "login" };
 	const [verb, name, ...extra] = text.split(SPACE);
 	if (verb !== "login" && verb !== "reauth" && verb !== "auth") {
 		return {

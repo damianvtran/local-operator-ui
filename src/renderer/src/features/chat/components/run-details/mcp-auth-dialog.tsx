@@ -1,12 +1,13 @@
-import {
-	desktopResult,
-	userFacingMessage,
-} from "@shared/api/local-operator/desktop-api";
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { fetchMcpList, mcpKeys } from "@shared/api/local-operator/mcp-list";
+import {
+	fetchMcpList,
+	fetchMcpProbe,
+	mcpKeys,
+} from "@shared/api/local-operator/mcp-list";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -18,11 +19,6 @@ import { McpKeyDialog } from "./mcp-key-dialog";
 import type { McpServerRow } from "./run-detail-model";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 
-type Probe = {
-	transport_oauth_supported: boolean | null;
-	secret_refs?: { id: string }[];
-	key_submission_supported?: boolean;
-};
 type Transition =
 	| { kind: "probing" }
 	| { kind: "notice"; message: string }
@@ -61,11 +57,7 @@ export function McpAuthDialog({
 		if (!sessionId || capabilities.isLoading) return;
 		let active = true;
 		setState({ kind: "probing" });
-		void desktopResult<Probe>({
-			op: "mcp.control",
-			sessionId,
-			control: { action: "probe", name: row.name },
-		})
+		void fetchMcpProbe(sessionId, row.name)
 			.then((probe) => {
 				if (!active) return;
 				if (probe.transport_oauth_supported === true) {

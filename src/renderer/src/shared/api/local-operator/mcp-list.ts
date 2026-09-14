@@ -31,6 +31,13 @@
  * read the SAME level, which is the whole point of the module; the readers below
  * are exported so a consumer states "the servers out of the shared document"
  * rather than re-deriving that from an envelope it would have to unwrap first.
+ *
+ * `mcp.control`'s `probe` answer rides the SAME wrapping (`desktop_lifecycle.py`
+ * replies `{"data": …}`), so its read lives here too rather than in each of the
+ * surfaces that asks for it: three call sites want this route's envelope, and a
+ * site that types the payload at the top level compares `undefined` against both
+ * `true` and `false` and silently takes its "could not determine" branch for
+ * every server and every verb (code review round 3, B1).
  */
 
 import type {
@@ -61,6 +68,38 @@ export const fetchMcpList = async (
 	const envelope = await desktopResult<McpListEnvelope>({
 		op: "mcp.list",
 		sessionId,
+	});
+	return envelope.data;
+};
+
+/** The `mcp.control {action:"probe"}` answer, as the backend authors it. */
+export type McpProbe = {
+	/** `true`/`false` when the backend knows, `null`/absent when it does not. */
+	transport_oauth_supported?: boolean | null;
+	/** The reference IDs the server's own config declares, never a value. */
+	secret_refs?: { id: string }[];
+	/** Whether this backend accepts a key write for this server at all. */
+	key_submission_supported?: boolean;
+};
+
+/**
+ * Ask what a named server can do, unwrapped like the document above.
+ *
+ * The `Probe` shape is TYPED here rather than asserted at the call site, which is
+ * the half of the defect that type-checks: `desktopResult<McpProbe>` promises the
+ * payload at the envelope's own level, so `probe.transport_oauth_supported` is
+ * `boolean | null | undefined` to the checker and reads `undefined` at runtime.
+ * `desktopResult` returns `envelope.result`, which for this route family is
+ * `{data}`, so the payload is one level down and the type must say so.
+ */
+export const fetchMcpProbe = async (
+	sessionId: string,
+	name: string,
+): Promise<McpProbe> => {
+	const envelope = await desktopResult<DesktopControlResult<McpProbe>>({
+		op: "mcp.control",
+		sessionId,
+		control: { action: "probe", name },
 	});
 	return envelope.data;
 };

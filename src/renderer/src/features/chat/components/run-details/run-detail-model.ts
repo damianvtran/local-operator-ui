@@ -466,15 +466,6 @@ const wireNumber = (value: unknown): number | null => {
 };
 
 /**
- * A list of NAMES off the wire (`environment_keys` / `header_keys`).
- *
- * `toWireList` is for record lists and would drop these: the payload publishes an
- * array of strings here, and anything that is not one is dropped rather than
- * stringified, so a backend that changed the shape cannot turn a name into
- * `"[object Object]"` in a form field.
- */
-
-/**
  * Flatten model-written text to one line.
  *
  * The activity string is a model's own sentence and may arrive with newlines or
@@ -1495,13 +1486,20 @@ export type McpServerRow = {
 	 */
 	transport: string | null;
 	/**
-	 * The credential field names the config declares: `environment_keys` for a stdio
-	 * child, `header_keys` for an HTTP server, in that order.
+	 * The credential REFERENCE IDs the server's own config declares — `secret_refs[].id`,
+	 * deduped, and never `environment_keys`/`header_keys`.
 	 *
-	 * The payload publishes NAMES only — `public_server_config`
-	 * (`mcp/desktop.py:92-116`) never sends a value — which is exactly what a
-	 * key-entry form needs: one field per name, no value to pre-fill and none to
-	 * leak into a frame.
+	 * Those two are the config MAP KEYS, i.e. the destination a value is bound INTO
+	 * (`Authorization`, `API_KEY`), not the name the resolver looks up: seeding a form
+	 * from them wrote `Authorization` while `#1125` read `${HUBSPOT_TOKEN}`, and the save
+	 * looked successful while the reference stayed unresolved (code review round 2,
+	 * R2-2). `public_secret_refs` publishes `{id, bindings}` from pristine config, so the
+	 * ID here is the one the store and the resolver share; a backend that sends no refs
+	 * yields NO fields rather than a guessed binding.
+	 *
+	 * The payload publishes IDs and bindings only — never a value and never a
+	 * template — which is exactly what a key-entry form needs: one field per
+	 * declared ID, no value to pre-fill and none to leak into a frame.
 	 */
 	keyNames: string[];
 	/**
