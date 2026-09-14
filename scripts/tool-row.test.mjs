@@ -1060,13 +1060,14 @@ test("the dictation counter is spelled at a glance", () => {
  * A line that lingers is a claim that outlives the work it names, so every
  * clear is asserted here rather than eyeballed in a frame.
  *
- * The module is pure (its only imports are types), so this needs no React and
- * no aliases beyond the renderer root.
+ * The module imports two runtime values (`displayName`, `paintsSomething`)
+ * besides its types, so this bundle is not free — it is small and side-effect
+ * free, which is why the assertions can live here rather than in a browser.
  */
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1074,7 +1075,12 @@ const workingLineBundle = await build({
 	platform: "node",
 	write: false,
 });
-const { deriveWorkingLine, ADMITTED_SEND_ACTIVITY } = await import(
+const {
+	deriveWorkingLine,
+	ADMITTED_SEND_ACTIVITY,
+	admittedSendFor,
+	ownerAnswered,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -1108,14 +1114,24 @@ const runningToolRow = (id) => ({
 	diff: null,
 	stopped: false,
 });
+const noticeRow = (id) => ({
+	kind: "notice",
+	id,
+	ts: 1,
+	text: "Cleared the conversation",
+	level: "info",
+});
 
+/** A send this pane admitted, with its echo painted under the anchor id. */
+const ECHO = "admission-1";
 const admitted = (records, over = {}) =>
 	deriveWorkingLine({
 		waiting: false,
 		starting: true,
+		startingAfterId: ECHO,
 		gate: false,
 		unavailable: false,
-		records,
+		records: [userRow(ECHO, "go"), ...records],
 		...over,
 	});
 
@@ -1123,7 +1139,7 @@ test("an admitted send that has painted nothing yet says the app is waiting", ()
 	// The echo IS the transcript at this point: the user's own row, and no
 	// assistant or tool row after it. Before this rung the frame showed the
 	// bubble and then dead air for the length of the cold engage.
-	assert.deepEqual(admitted([userRow("u1", "go")]), {
+	assert.deepEqual(admitted([]), {
 		activity: ADMITTED_SEND_ACTIVITY,
 		phase: "thinking",
 	});
@@ -1142,61 +1158,76 @@ test("the wait sits on the ladder's own phase, so one wait keeps one clock", () 
 		unavailable: false,
 		records: [],
 	});
-	assert.equal(admitted([userRow("u1", "go")]).phase, plainWaiting.phase);
+	assert.equal(admitted([]).phase, plainWaiting.phase);
 });
 
-test("the first content clears the wait", () => {
-	// Prose and a tool row are both the owner having produced something.
+test("a painted answer after the echo ends the wait, wherever it sits", () => {
+	// The clear sweeps EVERY record after the send's own echo, which is the rule
+	// `buildRows` and `AssistantRow` use. Scoped to the tail (the first cut) it
+	// re-asserted the rung over an answer already on screen whenever the last
+	// record happened to paint nothing — measured: painted prose followed by an
+	// empty `message_start` placeholder (review round 1, R3).
+	assert.equal(admitted([assistantRow("a1", "Here is the answer")]), null);
+	assert.equal(admitted([runningToolRow("t1")]), null);
 	assert.equal(
-		admitted([userRow("u1", "go"), assistantRow("a1", "Here is the answer")]),
+		admitted([assistantRow("a1", "Here is the answer"), assistantRow("a2", "")]),
 		null,
+		"a placeholder after the answer must not bring the rung back",
 	);
-	assert.equal(
-		admitted([userRow("u1", "go"), runningToolRow("t1")]),
-		null,
-	);
+	// A placeholder on its own is not an answer: `message_start` opens one at
+	// the top of every provider call, before a token exists, and that record
+	// paints no row.
+	assert.deepEqual(admitted([assistantRow("a1", "")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+	// A notice is not the agent answering either — it is the app's own receipt
+	// sitting at the foot of the column.
+	assert.deepEqual(admitted([noticeRow("n1")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
 });
 
-test("a provider call that has painted nothing does not clear it", () => {
-	// `message_start` opens an assistant record before a token exists, and that
-	// record deliberately paints no row (`paintsSomething`). Clearing on it
-	// would take the only liveness element off screen at exactly the moment the
-	// user is still waiting for the first word.
-	assert.deepEqual(
-		admitted([userRow("u1", "go"), assistantRow("a1", "")]),
-		{
-			activity: ADMITTED_SEND_ACTIVITY,
-			phase: "thinking",
-		},
-	);
+test("records BEFORE the echo are another turn's business", () => {
+	// An existing conversation's own history sits above the send. Anchored on
+	// the echo, none of it can pass for an answer to this send — which the tail
+	// rule could read as one whenever the echo had not painted yet.
+	const records = [
+		userRow("u-old", "earlier question"),
+		assistantRow("a-old", "earlier answer"),
+		userRow(ECHO, "go"),
+	];
+	assert.deepEqual(admitted([], { records }), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
 });
 
-test("a question for the user outranks the wait, and a dead stream ends it", () => {
+test("a question for the user outranks the wait, and a dead stream suspends it", () => {
 	// Branding § 7: a pending question is the only thing on screen that needs a
 	// decision, so the working line yields to it — the same rule the ladder's
 	// own branches obey.
-	assert.equal(
-		admitted([userRow("u1", "go")], { gate: true }),
-		null,
-	);
+	assert.equal(admitted([], { gate: true }), null);
 	// An unrecoverable stream renders the error in the transcript; a working
 	// line beside it would claim progress the transport is not making.
-	assert.equal(
-		admitted([userRow("u1", "go")], { unavailable: true }),
-		null,
-	);
+	assert.equal(admitted([], { unavailable: true }), null);
 });
 
 test("the rung only shows when nothing the owner drove has taken over", () => {
 	// A turn the owner IS generating still reads the ladder, with the admitted
 	// send true alongside it: the first frame wins as soon as it arrives.
 	assert.deepEqual(
-		admitted([userRow("u1", "go"), runningToolRow("t1")], { waiting: true }),
+		admitted([runningToolRow("t1")], {
+			waiting: true,
+			records: [userRow(ECHO, "go"), runningToolRow("t1")],
+		}),
 		{ activity: "running bash", phase: "running" },
 	);
 	assert.deepEqual(
-		admitted([userRow("u1", "go"), assistantRow("a1", "Streaming")], {
+		admitted([], {
 			waiting: true,
+			records: [userRow(ECHO, "go"), assistantRow("a1", "Streaming")],
 		}),
 		{ activity: "responding", phase: "responding" },
 	);
@@ -1211,6 +1242,64 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 		}),
 		null,
 	);
+});
+
+/* ------------------------------------------- which send is "admitted" */
+
+/*
+ * The one rule that decides whether the rung appears at all (`chat-page.tsx`).
+ *
+ * It is a derivation over the store's draft row, so it is asserted here the way
+ * `draftIdentityFor` and `panelIdentityFor` are: swapping it for the composer's
+ * local `admitting` state, or dropping the `sessionId` conjunct, restores the
+ * operator's dead-air report while every other test stays green. The row's own
+ * lifetime is pinned against the real store in `canonical-chat.test.mjs`.
+ */
+test("a send is admitted only when the request was actually issued", () => {
+	const row = {
+		pending: true,
+		admissionAttempted: true,
+		admissionRequestId: ECHO,
+	};
+	assert.deepEqual(admittedSendFor("111111111111", row), { requestId: ECHO });
+
+	// Before admission there is nothing to wait on: the composer still holds
+	// the user's text, and the store has not issued a request it cannot take
+	// back. On that hop the pane is legitimately empty.
+	assert.equal(
+		admittedSendFor("111111111111", { ...row, admissionAttempted: false }),
+		null,
+	);
+	// A settled or failed send: the request is no longer in flight.
+	assert.equal(admittedSendFor("111111111111", { ...row, pending: false }), null);
+	// No session yet: the New-chat hop, where the create has not returned and
+	// the owner has no conversation to answer on.
+	assert.equal(admittedSendFor(undefined, row), null);
+	// A row with no identity cannot anchor a clear, so it cannot carry a rung.
+	assert.equal(
+		admittedSendFor("111111111111", { ...row, admissionRequestId: undefined }),
+		null,
+	);
+	assert.equal(admittedSendFor("111111111111", undefined), null);
+});
+
+test("the anchored clear is the transcript's own predicate, swept", () => {
+	assert.equal(ownerAnswered([userRow(ECHO, "go")], ECHO), false);
+	assert.equal(
+		ownerAnswered([userRow(ECHO, "go"), assistantRow("a1", "hi")], ECHO),
+		true,
+	);
+	assert.equal(
+		ownerAnswered(
+			[userRow(ECHO, "go"), assistantRow("a1", "hi"), assistantRow("a2", "")],
+			ECHO,
+		),
+		true,
+	);
+	// Without an anchor in the list — an evicted echo, a transcript replaced by
+	// `/clear` — the fallback withholds the clear rather than inventing one.
+	assert.equal(ownerAnswered([assistantRow("a1", "hi")], "missing-anchor"), true);
+	assert.equal(ownerAnswered([userRow("u1", "go")], "missing-anchor"), false);
 });
 
 test("the admitted-send copy claims nothing the renderer cannot check", () => {

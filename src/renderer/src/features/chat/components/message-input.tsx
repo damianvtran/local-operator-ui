@@ -119,6 +119,22 @@ type MessageInputProps = {
 		onEchoPainted?: () => void,
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
+	/**
+	 * A send this composer made has been admitted and the owner has not answered
+	 * it yet.
+	 *
+	 * Its own prop rather than a reuse of `isLoading`, because the two mean
+	 * different things here and only one of them may change what the user can
+	 * DO. `isInputDisabled` (below) is `isLoading && currentJobId` and it is what
+	 * disables the box and swaps Send for Stop; a canonical turn deliberately
+	 * keeps the composer live, because typing during a turn steers it and a
+	 * pending gate is answered here. So this one changes the PLACEHOLDER only -
+	 * the empty box says why pressing Enter does nothing instead of inviting a
+	 * message it will refuse - and it gates no send: a send that would have gone
+	 * through before still goes through (QA round 1 verified exactly that for
+	 * the disabled Send control, and this prop adds no second gate).
+	 */
+	awaitingReply?: boolean;
 	conversationId?: string;
 	messages: Message[];
 	currentJobId?: string | null;
@@ -271,6 +287,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		{
 			onSendMessage,
 			isLoading,
+			awaitingReply = false,
 			conversationId,
 			messages,
 			currentJobId,
@@ -1208,7 +1225,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									: "max-h-28 px-2 py-1.5 text-body",
 							)}
 							placeholder={
-								isInputDisabled ? "Agent is busy" : "Ask me for help"
+								isInputDisabled
+									? "Agent is busy"
+									: awaitingReply
+										? "Waiting for the agent"
+										: "Ask me for help"
 							}
 							value={newMessage}
 							onChange={(e) => {

@@ -126,6 +126,15 @@ export type CanonicalTranscriptProps = {
 	 * branch is held to.
 	 */
 	starting: boolean;
+	/**
+	 * The record this send painted, which the wait's clears measure from.
+	 *
+	 * Passed rather than looked up here because the anchor is the app's own
+	 * memory of its send, not a property of the transcript: see
+	 * `ownerAnswered` for why a clear scoped to the tail of the list is a
+	 * different (and wrong) rule.
+	 */
+	startingAfterId?: string | null;
 	loadingOlder: boolean;
 	/**
 	 * Fetch the next durable page. Resolving `false` rather than rejecting is
@@ -523,6 +532,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	gate,
 	waiting,
 	starting,
+	startingAfterId,
 	loadingOlder,
 	onLoadOlder,
 	containerRef,
@@ -611,10 +621,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * column and centres its group instead. `records` rather than `rows`
 	 * because a record that renders to no row is still nothing to scroll.
 	 *
+	 * AN ADMITTED SEND IS THE EXCEPTION, and it is the whole point of the rung
+	 * this file renders at the foot. The wait for a cold session's first frame is
+	 * a real state with a real thing to say, and it has no records in it at all:
+	 * on the New-chat path the identity flip happens before the owner's first
+	 * frame, and the optimistic echo is not durable history either, so for the
+	 * whole engage the record list is legitimately empty. Collapsed on `records`
+	 * alone, this element is a zero-height clipping box through that entire
+	 * window - the rung was in the DOM at t+258 ms and painted its first pixel at
+	 * t+13.8 s (QA round 1, Q1), which is exactly the dead air the operator
+	 * reported. So a send this pane has admitted holds the column open, and the
+	 * predicate is the same one `chat-content.tsx` uses to stop calling the pane
+	 * empty.
+	 *
 	 * The legacy twin (`MessagesView`) already does this with its `collapsed`
 	 * branch; the two paths change together so neither keeps the defect.
 	 */
-	const collapsed = transcript.records.length === 0;
+	const collapsed = transcript.records.length === 0 && !starting;
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -705,13 +728,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			deriveWorkingLine({
 				waiting,
 				starting,
+				startingAfterId,
 				gate: Boolean(gate),
 				// The transcript renders the error itself in this state, so the line
 				// must not claim work beside it.
 				unavailable: status === "unavailable" || Boolean(error),
 				records: transcript.records,
 			}),
-		[waiting, starting, gate, status, error, transcript.records],
+		[
+			waiting,
+			starting,
+			startingAfterId,
+			gate,
+			status,
+			error,
+			transcript.records,
+		],
 	);
 
 	return (
