@@ -238,7 +238,14 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 *
 	 *   - `enabled`/`sessionId` are "there is a stream that owes us a page". A
 	 *     draft has neither, and a caller that holds the stream off on purpose
-	 *     must not strand the composer in a wait that can never end.
+	 *     must not strand the composer in a wait that can never end. That trade
+	 *     is deliberate and it runs the OTHER way too: a disabled stream means
+	 *     "nothing owed", including for a session that already has rows, so a
+	 *     caller that backgrounds a stream it could resume must not read this
+	 *     field as "there is nothing here" and paint the empty-conversation band
+	 *     over rows that had simply not arrived. Both call sites pass
+	 *     `Boolean(sessionId)` today, so no caller is in that state - the
+	 *     sentence is here for the one that would be.
 	 *   - `hydrated` stays false for a session whose stream failed, so a real
 	 *     conversation whose cold history is in flight (or whose read failed)
 	 *     keeps waiting instead of asserting it is empty over rows that had
