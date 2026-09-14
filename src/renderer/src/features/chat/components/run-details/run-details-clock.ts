@@ -13,25 +13,58 @@
  * ninety seconds. The TUI re-derives its own roster at 1Hz for the same reason,
  * and this is that decision, in the same place.
  *
- * Scoped to the panel rather than hoisted, exactly as the tool row's clock is
- * scoped to its own `StatusCluster` (`trace/tool-row.tsx`): a ticker in a parent
- * repaints every memoised row — and the transcript beside it — once a second to
- * move one number. The panel is the only surface that draws an elapsed value at
- * all (the trigger's tooltip carries counts, not durations), and it mounts only
- * while the popover is open, which the trigger gates on there being work to
- * show. So an idle session, a settled panel and the legacy path — which has no
+ * Scoped to the surface that draws a number rather than hoisted, exactly as the
+ * tool row's clock is scoped to its own `StatusCluster` (`trace/tool-row.tsx`):
+ * a ticker in a parent repaints every memoised row — and the transcript beside
+ * it — once a second to move one number. There are two such surfaces in this
+ * pane and one clock between them: the roster's rows (`useRunDetailsClock`) and
+ * the reader's own header (`useChildRowClock`), which the pane mounts in place of
+ * the roster rather than beside it, so only one interval is ever running. The
+ * panel is the only surface that draws an elapsed value at all (the trigger's
+ * tooltip carries counts, not durations), and it mounts only while the pane is
+ * open. So an idle session, a settled panel and the legacy path — which has no
  * canonical stream and therefore no model — hold no timer.
  */
 
 import { useEffect, useState } from "react";
 import {
 	type RunDetails,
+	type SubagentRow,
 	hasLiveChildClock,
+	retimeChildRow,
 	retimeRunDetails,
 } from "./run-detail-model";
 
 /** 1Hz: the label it moves carries whole seconds, so a faster clock is churn. */
 const CLOCK_MS = 1000;
+
+/**
+ * The interval BOTH clocks share: one 1Hz tick, alive only while the figure it
+ * moves is on screen.
+ *
+ * Extracted rather than written twice because the two consumers are the two
+ * halves of one rule (`§ 5.1`, `§ 5.3`): the roster's rows and the reader's own
+ * header draw the same elapsed value from the same model, and a second interval
+ * with its own seed and its own cleanup is how the two would come to disagree
+ * about when a clock is live.
+ *
+ * The seed is the instant the model was MEASURED at rather than `Date.now()`: a
+ * story pins `nowMs` so its frames are reproducible, and a tick seeded from the
+ * wall clock would print the months between for such a fixture. It is also why
+ * the caller adds `(tickMs - measuredAtRealMs)` to `measuredAtMs` rather than
+ * reading the clock directly.
+ */
+const useClockTick = (active: boolean, seedRealMs: number): number => {
+	const [tickMs, setTickMs] = useState(seedRealMs);
+	useEffect(() => {
+		if (!active) return;
+		const read = () => setTickMs(Date.now());
+		read();
+		const timer = window.setInterval(read, CLOCK_MS);
+		return () => window.clearInterval(timer);
+	}, [active]);
+	return tickMs;
+};
 
 export function useRunDetailsClock(details: RunDetails): RunDetails {
 	/*
@@ -48,21 +81,7 @@ export function useRunDetailsClock(details: RunDetails): RunDetails {
 	 * exercised against the running panel rather than asserted here.
 	 */
 	const ticking = hasLiveChildClock(details.subagents);
-	/*
-	 * Seeded with the instant the model was measured at, not with `Date.now()`:
-	 * until the first tick the two are the same thing, and seeding from the
-	 * model means the first frame after a new wire delta shows that delta's own
-	 * labels rather than a value re-derived against a clock the model has not
-	 * caught up with.
-	 */
-	const [tickMs, setTickMs] = useState(() => details.measuredAtRealMs);
-	useEffect(() => {
-		if (!ticking) return;
-		const read = () => setTickMs(Date.now());
-		read();
-		const timer = window.setInterval(read, CLOCK_MS);
-		return () => window.clearInterval(timer);
-	}, [ticking]);
+	const tickMs = useClockTick(ticking, details.measuredAtRealMs);
 	if (!ticking) return details;
 	/*
 	 * Real time since the model was measured, added to the model's OWN instant.
@@ -73,5 +92,43 @@ export function useRunDetailsClock(details: RunDetails): RunDetails {
 	return retimeRunDetails(
 		details,
 		details.measuredAtMs + (tickMs - details.measuredAtRealMs),
+	);
+}
+
+/**
+ * The READER's clock: the same tick, for the one row a reader's header draws.
+ *
+ * The reader is mounted by the pane rather than by the roster's body, so it is
+ * not on `useRunDetailsClock`'s path — and a running child's header sat on the
+ * label the wire last published for it while the roster beside it ticked (round
+ * 1, Q3: six samples of `running 3s` over 20 s, and `2m3s` only once the child
+ * settled). It reuses the same model rule and the same interval rather than a
+ * second clock of its own: `retimeChildRow` is the one-row half of
+ * `retimeRunDetails`, and the predicate below is the row-level form of
+ * `hasLiveChildClock`.
+ *
+ * ONE ticker is alive at a time in practice, which is why this is not the
+ * "ticker in a parent" this file's docstring refuses: the pane renders the
+ * reader OR the roster, never both, so the two hooks never run together.
+ * Rendering the reader from a retimed list up at the pane would instead repaint
+ * the child's whole transcript once a second to move one number.
+ */
+export function useChildRowClock(
+	row: SubagentRow,
+	/**
+	 * The instants the model was measured at, from the pane's `RunDetails`. They
+	 * are the reader's only tie to the model's clock: the row's own `startSeconds`
+	 * is epoch seconds off the wire, and a story's `nowMs` is pinned, so a label
+	 * derived from `Date.now()` alone would be right for a live session and wrong
+	 * for every frame of the set.
+	 */
+	anchors: { measuredAtMs: number; measuredAtRealMs: number },
+): SubagentRow {
+	const ticking = row.startSeconds !== null && row.settledSeconds === null;
+	const tickMs = useClockTick(ticking, anchors.measuredAtRealMs);
+	if (!ticking) return row;
+	return retimeChildRow(
+		row,
+		anchors.measuredAtMs + (tickMs - anchors.measuredAtRealMs),
 	);
 }

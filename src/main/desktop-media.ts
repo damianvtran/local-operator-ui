@@ -74,6 +74,21 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// The child-scoped twin of the op above, for the run panel's reader: a
+	// child's durable rows reference attachments in the same content-addressed
+	// store, and the parent's route takes the session whose transcript holds the
+	// reference — which a child session is not, so it refuses. `childId` is
+	// shape-constrained here for the same reason `sessionId` is: the path is
+	// built in main, and an unvalidated id would be renderer-controlled path
+	// text.
+	z
+		.object({
+			op: z.literal("subagents.attachment"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			childId: z.string().regex(/^[a-f0-9]{12}$/),
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -101,6 +116,11 @@ function endpoint(request: DesktopMediaRequest): {
 		case "sessions.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}`,
+				method: "GET",
+			};
+		case "subagents.attachment":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/attachments/${request.digest}`,
 				method: "GET",
 			};
 	}
@@ -135,7 +155,11 @@ export async function requestDesktopMedia(
 
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
-	if (request.op === "agent.export" || request.op === "sessions.attachment") {
+	if (
+		request.op === "agent.export" ||
+		request.op === "sessions.attachment" ||
+		request.op === "subagents.attachment"
+	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {

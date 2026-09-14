@@ -6,6 +6,7 @@ import type {
 	DesktopMediaRequest,
 	DesktopRequest,
 } from "../shared/desktop-contract";
+import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 
 // Custom APIs for renderer
 const api = {
@@ -42,9 +43,36 @@ const api = {
 					detail?: string;
 				}) => void,
 			): { streamId: Promise<string>; dispose: () => void } => {
-				const streamIdPromise = ipcRenderer
+				/*
+				 * `settled` is the ONLY handle anything here waits on, and the reason
+				 * is that a bare rejection is invisible: `streamId` is returned to
+				 * the renderer but nothing awaits it before `dispose`, and the frame
+				 * handler below is the only thing that would ever have read the
+				 * error. A refused subscription therefore left the consumer at
+				 * "connecting" forever - no `open` frame, no error, no retry - which
+				 * is what turned a refused stream into an apparently empty
+				 * conversation.
+				 *
+				 * So the rejection is converted into the contract's own error frame,
+				 * on the same callback the consumer already handles, and `null` is
+				 * the "no stream to scope frames to" sentinel for the two paths
+				 * below. Main emits its own refusal frames for the cases it can name
+				 * (see `DesktopStreamRelay.subscribe`); this is the backstop for
+				 * everything else an invoke can reject with, and its copy is generic
+				 * for the same reason the relay's is fixed - an arbitrary exception
+				 * string can carry a URL.
+				 */
+				const settled = ipcRenderer
 					.invoke("desktop-stream-subscribe", args)
-					.then((handle: { streamId: string }) => handle.streamId);
+					.then((handle: { streamId: string }) => handle.streamId)
+					.catch(() => {
+						onEvent({
+							streamId: "",
+							kind: "error",
+							detail: DESKTOP_STREAM_DETAIL.openFailed,
+						});
+						return null;
+					});
 				const handler = (
 					_event: unknown,
 					frame: {
@@ -56,18 +84,20 @@ const api = {
 				) => {
 					// Frames are scoped to their own subscription: a late frame from
 					// a dead stream must not land on a new one's consumer.
-					void streamIdPromise.then((streamId) => {
-						if (frame.streamId === streamId) onEvent(frame);
+					void settled.then((streamId) => {
+						if (streamId !== null && frame.streamId === streamId)
+							onEvent(frame);
 					});
 				};
 				ipcRenderer.on("desktop-stream-event", handler);
 				return {
-					streamId: streamIdPromise,
+					streamId: settled.then((streamId) => streamId ?? ""),
 					dispose: () => {
 						ipcRenderer.removeListener("desktop-stream-event", handler);
-						void streamIdPromise.then((streamId) =>
-							ipcRenderer.invoke("desktop-stream-unsubscribe", streamId),
-						);
+						void settled.then((streamId) => {
+							if (streamId !== null)
+								ipcRenderer.invoke("desktop-stream-unsubscribe", streamId);
+						});
 					},
 				};
 			},
@@ -121,6 +151,15 @@ const api = {
 			ipcRenderer.invoke("update-backend", targetVersion),
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
 		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
+		/**
+		 * Quit so an install that is already running can finish.
+		 *
+		 * Separate from `quitAndInstall`, which runs the pre-flight and starts a new
+		 * install: this one only gets the app out of the way of the install already
+		 * in flight, because Squirrel cancels that install while an instance of the
+		 * app is running.
+		 */
+		quitForUpdateInstall: () => ipcRenderer.invoke("quit-for-update-install"),
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("update-available", handler);
@@ -263,6 +302,26 @@ const api = {
 			ipcRenderer.on("update-progress", handler);
 			return () => {
 				ipcRenderer.removeListener("update-progress", handler);
+			};
+		},
+		/**
+		 * An install that is running right now, found when the app started.
+		 *
+		 * Its own event rather than an error: nothing has failed. The app came back
+		 * while Squirrel was still installing, and the panel it feeds exists to say
+		 * so and to offer the one action that can still let the install finish.
+		 */
+		onUpdateInstallInFlight: (
+			callback: (info: {
+				targetVersion: string;
+				message: string;
+				detail: string;
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-in-flight", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-in-flight", handler);
 			};
 		},
 		onBeforeQuitForUpdate: (callback: () => void) => {

@@ -25,7 +25,18 @@ const config: StorybookConfig = {
 		autodocs: "tag",
 	},
 	typescript: {
-		reactDocgen: "react-docgen-typescript",
+		/*
+		 * `react-docgen-typescript` cannot run on TypeScript 7: it reads a
+		 * compiler-internal namespace the 7.0 move removed, and `storybook build`
+		 * dies with `Cannot read properties of undefined (reading 'React')` before
+		 * a single story renders (#140 moved the desktop toolchain to Electron 44
+		 * / TypeScript 7). That takes the whole evidence pipeline with it, because
+		 * `scripts/capture-evidence.mjs` drives Storybook. The built-in
+		 * `react-docgen` extracts props from the JSX rather than from the type
+		 * checker, which costs only the types-driven prop tables on the docs pages:
+		 * no story renders differently, and every committed frame is a story.
+		 */
+		reactDocgen: "react-docgen",
 	},
 	viteFinal: async (config) => {
 		// Add JSX runtime configuration

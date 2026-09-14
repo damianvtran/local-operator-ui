@@ -43,6 +43,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				minWidth={240}
 				maxWidth={360}
 				onDoubleClick={restoreDefaultSidebarWidth}
+				label="Resize chat sidebar"
 			/>
 			<div className="h-full grow overflow-hidden">{content}</div>
 		</div>

@@ -67,10 +67,25 @@ export class BackendServiceManager {
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
 
 	/** Authenticated SSE relay for canonical session events. Recreated when the
-	 * backend URL rotates (external-backend discovery) so streams cannot pin a
-	 * stale origin. */
+	 * backend URL rotates (external-backend discovery) or the desktop token does
+	 * (every managed start mints one), and dropped outright by `stop()`.
+	 *
+	 * WHY the token is part of the cache key. A URL-only key was the bug behind
+	 * "every conversation opens empty": an in-place restart - the health-check
+	 * watchdog, or "Update server" - keeps `backendUrl` at
+	 * `http://127.0.0.1:1111` and rotates ONLY the token, so the cached relay
+	 * went on authenticating with the credential of the process that had just
+	 * been killed. Each `GET /v1/desktop/sessions/{id}/events` was refused 401
+	 * while `sessions?limit=500` and `sessions.get` stayed 200 (those read the
+	 * live token at call time), the renderer never received an `open` frame, and
+	 * with no receipt its single auto-reconnect was skipped - so the transcript
+	 * stayed empty until the app itself was restarted. */
 	private streamRelay: DesktopStreamRelay | null = null;
 	private streamRelayUrl = "";
+	/** The token `streamRelay` was built with. Tracked beside the URL, not
+	 * derived from it: the rotation above is exactly a case where the URL is
+	 * unchanged and the token is not. */
+	private streamRelayToken: string | null = null;
 	/** Survives relay recreation so notifications never silently detach
 	 * when the backend URL rotates. */
 	private streamObserver: ((sessionId: string, data: string) => void) | null =
@@ -107,7 +122,11 @@ export class BackendServiceManager {
 	}
 
 	getStreamRelay(): DesktopStreamRelay {
-		if (!this.streamRelay || this.streamRelayUrl !== this.backendUrl) {
+		if (
+			!this.streamRelay ||
+			this.streamRelayUrl !== this.backendUrl ||
+			this.streamRelayToken !== this.desktopToken
+		) {
 			this.streamRelay?.dispose();
 			this.streamRelay = new DesktopStreamRelay(
 				this.backendUrl,
@@ -115,8 +134,28 @@ export class BackendServiceManager {
 			);
 			this.streamRelay.observe(this.streamObserver);
 			this.streamRelayUrl = this.backendUrl;
+			this.streamRelayToken = this.desktopToken;
 		}
 		return this.streamRelay;
+	}
+
+	/**
+	 * Drop the relay and its streams.
+	 *
+	 * Called from `stop()` so an in-place restart cannot leave a stream bound to
+	 * the token of the process being stopped - the open streams are aborted
+	 * deliberately, which the renderer sees as a stream `end` and recovers from
+	 * with a bounded retry rather than waiting for a frame that will never come.
+	 *
+	 * `streamRelayToken` is cleared rather than left at the retired value: the
+	 * next `getStreamRelay()` must not be able to answer "already built" for a
+	 * token whose relay no longer exists.
+	 */
+	private disposeStreamRelay(): void {
+		this.streamRelay?.dispose();
+		this.streamRelay = null;
+		this.streamRelayUrl = "";
+		this.streamRelayToken = null;
 	}
 
 	observeStream(
@@ -528,8 +567,57 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Check if an external backend is already running
-	 * @returns Promise resolving to true if an external backend is running, false otherwise
+	 * True when this app holds a desktop credential for the configured backend.
+	 *
+	 * This is the RELAY's own `available` fact, asked here rather than re-derived,
+	 * so that adopting a backend and streaming from it agree on what "we can talk
+	 * to this server" means. A server this app holds no token for is one it can
+	 * never authenticate to: adopting it attaches the renderer to a backend that
+	 * refuses every session list and every stream - the empty-conversation
+	 * outcome this whole subsystem exists to remove.
+	 */
+	private canAuthenticate(): boolean {
+		return this.getStreamRelay().available;
+	}
+
+	/**
+	 * Ask the answering backend whether it will accept this app's bearer.
+	 *
+	 * A `/health` 200 proves a process is listening, not that it is OURS. The
+	 * desktop vocabulary answers 401/403 for a bearer it does not hold, so one
+	 * authenticated read is what separates a legitimate paired backend from a
+	 * stranger that happens to occupy the port.
+	 */
+	private async authenticatesAgainstBackend(): Promise<boolean> {
+		try {
+			const result = await this.requestDesktop({
+				op: "sessions.list",
+				limit: 1,
+			});
+			return result.status >= 200 && result.status < 300;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Check if an external backend is already running AND usable by this app.
+	 *
+	 * WHY the pairing gate. A liveness probe alone made adoption a decision this
+	 * app was not entitled to: `checkExistingBackend()` fired against the
+	 * CONFIGURED origin, so an app pointed at one port could still adopt whatever
+	 * answered a hardcoded fallback on another one, with no desktop token - i.e.
+	 * it attached itself to a backend it could never authenticate to, and every
+	 * conversation opened empty. The old code even rotated `backendUrl` onto that
+	 * fallback origin, so a rig configured for an isolated port silently became a
+	 * client of the operator's live server (QA round 1, Q-1).
+	 *
+	 * Two rules replace it: the probe only ever targets the configured origin, and
+	 * a healthy answer is only adopted when this app can authenticate to it.
+	 * Declining is not a failure - `start()` spawns our own backend exactly as it
+	 * would have on a cold start.
+	 *
+	 * @returns Promise resolving to true if a paired external backend is running
 	 */
 	async checkExistingBackend(): Promise<boolean> {
 		if (this.isDisabled) {
@@ -538,6 +626,14 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 			return true;
+		}
+
+		if (!this.canAuthenticate()) {
+			logger.info(
+				"No desktop pairing token for the configured backend; not adopting an external backend.",
+				LogFileType.BACKEND,
+			);
+			return false;
 		}
 
 		try {
@@ -564,8 +660,15 @@ export class BackendServiceManager {
 			);
 
 			if (response.ok) {
+				if (!(await this.authenticatesAgainstBackend())) {
+					logger.info(
+						"A backend answered health but refused this app's desktop token; starting our own instead.",
+						LogFileType.BACKEND,
+					);
+					return false;
+				}
 				logger.info(
-					"External backend detected and healthy",
+					"External backend detected, healthy and paired",
 					LogFileType.BACKEND,
 				);
 				this.isExternalBackend = true;
@@ -573,53 +676,6 @@ export class BackendServiceManager {
 				return true;
 			}
 		} catch (error) {
-			// Try alternative URL with localhost if the first attempt failed
-			try {
-				if (this.backendUrl.includes("127.0.0.1")) {
-					const altUrl = "http://localhost:1111";
-					logger.info(
-						`Trying alternative URL: ${altUrl}/health`,
-						LogFileType.BACKEND,
-					);
-
-					const controller = new AbortController();
-					const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-					const response = await fetch(`${altUrl}/health`, {
-						method: "GET",
-						headers: { Accept: "application/json" },
-						signal: controller.signal,
-					});
-
-					clearTimeout(timeoutId);
-
-					logger.info(
-						`Alternative URL health check response status: ${response.status}`,
-						LogFileType.BACKEND,
-					);
-
-					if (response.ok) {
-						// Update the URL for future requests
-						this.backendUrl = altUrl;
-						logger.info(
-							"External backend detected and healthy using alternative URL",
-							LogFileType.BACKEND,
-						);
-						this.isExternalBackend = true;
-						// Fired AFTER the URL rotates, so a consumer re-reading
-						// capabilities queries the address the app actually uses.
-						this.notifyBackendReady();
-						return true;
-					}
-				}
-			} catch (altError) {
-				logger.error(
-					"Error checking alternative backend URL:",
-					LogFileType.BACKEND,
-					altError,
-				);
-			}
-
 			logger.error(
 				"Error checking external backend:",
 				LogFileType.BACKEND,
@@ -881,6 +937,12 @@ export class BackendServiceManager {
 		if (!isRestart) {
 			this.isAppClosing = true;
 		}
+		// The relay authenticates with the token of the process this call is
+		// about to stop, so it dies with it. Leaving it standing (whatever the
+		// early returns below do) is the stale-token 401 the caller is trying to
+		// escape: `start()` mints a new token, the URL is unchanged, and a relay
+		// that survived the stop would never be rebuilt.
+		this.disposeStreamRelay();
 		// Stop health check
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
@@ -1016,23 +1078,31 @@ export class BackendServiceManager {
 									// On Unix, use SIGKILL
 									this.process.kill("SIGKILL");
 
-									// Also try to kill any processes with the same command line pattern
-									try {
-										execPromise('pkill -f "local-operator serve"').catch(
-											(error) => {
-												logger.warn(
-													"Error killing processes by pattern:",
-													LogFileType.BACKEND,
-													error,
-												);
-											},
-										);
-									} catch (pkillError) {
-										logger.warn(
-											"Error executing pkill command:",
-											LogFileType.BACKEND,
-											pkillError,
-										);
+									// Also try to kill any processes with the same command line
+									// pattern - but ONLY on a final shutdown. On a restart this
+									// pattern is machine-wide (no pid, no process group), so it
+									// would take down peer sessions' servers and other running
+									// instances' backends along with the one process we are
+									// actually replacing; a restart means "our process is going",
+									// never "this machine is done with local-operator".
+									if (!isRestart) {
+										try {
+											execPromise('pkill -f "local-operator serve"').catch(
+												(error) => {
+													logger.warn(
+														"Error killing processes by pattern:",
+														LogFileType.BACKEND,
+														error,
+													);
+												},
+											);
+										} catch (pkillError) {
+											logger.warn(
+												"Error executing pkill command:",
+												LogFileType.BACKEND,
+												pkillError,
+											);
+										}
 									}
 
 									// Set a final force kill timeout in case SIGKILL doesn't work
@@ -1043,10 +1113,12 @@ export class BackendServiceManager {
 												LogFileType.BACKEND,
 											);
 											try {
-												// Try more aggressive methods
-												execPromise('pkill -9 -f "local-operator serve"').catch(
-													() => {},
-												);
+												// Machine-wide, so a shutdown only - see the pkill above.
+												if (!isRestart) {
+													execPromise(
+														'pkill -9 -f "local-operator serve"',
+													).catch(() => {});
+												}
 
 												// Even if these fail, mark the process as stopped
 												this.process = null;
@@ -1097,7 +1169,18 @@ export class BackendServiceManager {
 					forceKillTimeoutId = null;
 				}
 
-				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated
+				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated.
+				//
+				// DANGEROUS AND DELIBERATELY NARROW. The Unix branch below kills by
+				// COMMAND LINE PATTERN, machine-wide: every `local-operator serve` on
+				// the box, whoever it belongs to. That is why the gate is a genuine app
+				// shutdown and nothing else - a restart, a watchdog recovery or an
+				// update must pass `isRestart: true`, because each of those means "one
+				// process of ours is being replaced", not "this machine is done with
+				// local-operator". Firing it on an ordinary restart took down peer
+				// sessions' servers and other running instances' backends (the operator's
+				// log at 10:53:38-10:53:40 is exactly that), and those instances have no
+				// way to know why their backend vanished.
 				if (!isRestart) {
 					logger.info(
 						"Performing additional cleanup for final shutdown",
@@ -1202,26 +1285,76 @@ export class BackendServiceManager {
 		}
 
 		// Start new interval
-		this.healthCheckInterval = setInterval(async () => {
-			const isHealthy = await this.checkHealth();
-
-			if (!isHealthy) {
-				logger.info("Backend health check failed", LogFileType.BACKEND);
-
-				if (this.isExternalBackend) {
-					// External backend is no longer healthy
-					this.isExternalBackend = false;
-					this.isRunning = false;
-
-					// Try to start our own backend
-					await this.start();
-				} else if (this.process) {
-					// Our backend is no longer healthy, try to restart it
-					await this.stop();
-					await this.start();
-				}
-			}
+		this.healthCheckInterval = setInterval(() => {
+			void this.checkUnhealthyBackend();
 		}, 30000); // Check every 30 seconds
+	}
+
+	/**
+	 * The watchdog's action for one unhealthy sample.
+	 *
+	 * A method rather than a closure body so the restart INTENT below is
+	 * assertable without waiting out a 30s interval.
+	 */
+	private async checkUnhealthyBackend(): Promise<void> {
+		const isHealthy = await this.checkHealth();
+
+		if (isHealthy) return;
+
+		logger.info("Backend health check failed", LogFileType.BACKEND);
+
+		if (this.isExternalBackend) {
+			// External backend is no longer healthy
+			this.isExternalBackend = false;
+			this.isRunning = false;
+
+			// Try to start our own backend
+			await this.start();
+			return;
+		}
+
+		/*
+		 * A child that EXITED is not covered by the restart below: its `exit` handler
+		 * nulls `this.process`, and this method used to return early on that fact, so
+		 * nothing ever brought the backend back. The renderer's Retry could re-arm
+		 * the stream but could never succeed, and the failure it showed named the
+		 * stream instead of the missing server (QA round 1, Q-2). The watchdog is the
+		 * only thing in the app that owns the process lifecycle, so the recovery
+		 * lives here; `start()` re-runs its own adoption check and spawns a
+		 * replacement.
+		 *
+		 * The guards are the states in which a spawn would fight the user or another
+		 * actor: a disabled manager never owns a process, a closing app is going
+		 * away, and an update is mid-handoff to the new version - `update-service`
+		 * restarts the backend itself there. Without them a shutdown could race a
+		 * spawn it just killed.
+		 */
+		if (!this.process) {
+			if (this.isDisabled || this.isAppClosing || this.isAutoUpdating) return;
+			logger.info(
+				"Backend process is gone; starting a replacement",
+				LogFileType.BACKEND,
+			);
+			await this.start();
+			return;
+		}
+
+		// Our backend is no longer healthy, try to restart it.
+		//
+		// `true` is LOAD-BEARING, not tidiness. `stop()`'s no-argument form is the
+		// FINAL-SHUTDOWN path, and that path runs a machine-wide
+		// `pkill -f "local-operator serve"` (then `pkill -9`) with no `--pid` and
+		// no process-group filter. Invoked here it killed every local-operator
+		// server on the box, not just this app's: the operator's own log shows a
+		// watchdog restart at 10:53:38 announcing "Stopping backend service...
+		// (isRestart: false)" -> "Performing additional cleanup for final
+		// shutdown", and seconds later other running instances started reporting
+		// "Server is offline. Please check your connection" because their
+		// backends had been shot out from under them. This is a RECOVERY for one
+		// unhealthy process; only a genuine app shutdown may clean up
+		// machine-wide.
+		await this.stop(true);
+		await this.start();
 	}
 
 	/**

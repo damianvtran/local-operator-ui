@@ -5,6 +5,7 @@ import {
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	MAX_DESKTOP_ENVELOPE_BYTES,
 } from "../../src/shared/desktop-contract";
+import { DESKTOP_STREAM_DETAIL } from "../../src/shared/desktop-stream-notice";
 
 /** Browser-only development uses the same typed vocabulary as Electron IPC.
  * The token is read by this Node process, never by Vite's client env machinery.
@@ -123,7 +124,7 @@ export function desktopProxyPlugin(): Plugin {
 							res.setHeader("Content-Type", "application/json");
 							res.end(
 								JSON.stringify({
-									detail: "The event stream was refused.",
+									detail: DESKTOP_STREAM_DETAIL.refusedWithoutStatus,
 								}),
 							);
 							return;
@@ -135,12 +136,42 @@ export function desktopProxyPlugin(): Plugin {
 							res.write(chunk);
 						}
 						res.end();
-					} catch {
+					} catch (error) {
+						/*
+						 * `ECONNREFUSED` is the one failure that tells the reader something it
+						 * did not know - NOTHING is listening on the backend's origin, i.e. the
+						 * managed backend is not running - and it is the same rule main's relay
+						 * applies to its own fetch (`transportFailureDetail` in
+						 * `src/main/desktop-stream.ts`); every other exception stays generic
+						 * because an exception string can carry the URL. This block used to
+						 * invent its own sentence, so browser development and the packaged app
+						 * described one condition in two registers (design round 2, D9). The
+						 * sentence is machine vocabulary and lives in ONE list.
+						 *
+						 * Headers already written mean the stream was mid-flight when it died, and
+						 * then there is no status line left to write: setting one throws
+						 * `ERR_HTTP_HEADERS_SENT` inside a middleware whose returned promise
+						 * connect does not await, so the throw surfaces as an unhandled rejection
+						 * and exits the whole dev-server process - a dead stub backend took the
+						 * Vite server down with it. The renderer cannot be told anything at this
+						 * point, and it does not need to be: dropping the socket is what the
+						 * browser transport already reads as a lost stream, the same `ended`
+						 * detail it emits for any dropped connection, so the shared vocabulary is
+						 * reached by closing rather than by a sentence that cannot be delivered.
+						 */
+						if (res.headersSent) {
+							res.destroy();
+							return;
+						}
 						res.statusCode = 503;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
-								detail: "The backend stream could not be reached.",
+								detail:
+									(error as { cause?: { code?: unknown } } | null)?.cause
+										?.code === "ECONNREFUSED"
+										? DESKTOP_STREAM_DETAIL.serverDown
+										: DESKTOP_STREAM_DETAIL.connectionFailed,
 							}),
 						);
 					}

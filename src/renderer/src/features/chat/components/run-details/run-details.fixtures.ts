@@ -15,6 +15,7 @@
  * the cap sheds.
  */
 
+import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import type { RunDetailsInput } from "./run-detail-model";
 
 /** The instant every fixture is measured against, so frames are reproducible. */
@@ -37,6 +38,10 @@ type JobSpec = {
 	progress?: string;
 	/** `error_text`, on a failure. */
 	error?: string;
+	/** `result_text`, on a normal settle — the reader's success outcome (`§ 5.1`). */
+	result?: string;
+	/** `session_id`, the reader's key. `null` is a job the runtime has not given one. */
+	sessionId?: string | null;
 	/** The child's own model, when it differs from the parent's. */
 	model?: string;
 	tokens?: number;
@@ -70,7 +75,15 @@ const child = (spec: JobSpec): Record<string, unknown> => ({
 	agent_role: spec.role ?? "task",
 	latest_details: spec.progress ? { progress: spec.progress } : null,
 	error_text: spec.error ?? "",
-	result_text: "",
+	/*
+	 * `result_text` is EMPTY unless a spec supplies one, and that default was a
+	 * defect in the first cut of this fixture: `reader-settled` claimed an outcome
+	 * block its own frame could not contain, because no story could set the field.
+	 * A settled child's outcome is a state `§ 5.7` names, so the fixture has to be
+	 * able to carry it.
+	 */
+	result_text: spec.result ?? "",
+	session_id: spec.sessionId === undefined ? "a1b2c3d4e5f6" : spec.sessionId,
 	model_label: spec.model ?? "claude-sonnet-4-5",
 	context_window: spec.window ?? null,
 	usage: spec.tokens === undefined ? null : { context_tokens: spec.tokens },
@@ -266,6 +279,60 @@ export const todosOnly = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
 	jobs: [],
 	todos: longPlan(),
+});
+
+/**
+ * The swap pair's own subject — deliberately NOT `bothInFlight()`.
+ *
+ * The pair's claim is about the SLOT: the canvas in it, then the run pane in it
+ * (`swap-canvas-open` -> `swap-run-open`). Both frames used to be rendered from
+ * `bothInFlight()`, which made `swap-run-open` byte-identical to
+ * `both-in-flight`. Those two exist to prove different things — the two sections
+ * coexisting, versus which pane owns the slot — and a frame that is a
+ * byte-for-byte copy of another proves nothing about the state it is named for
+ * (design review round 2, D2-3). One child and one open item is all the slot
+ * claim needs; the both-sections frame keeps its own subject.
+ */
+export const swapSlot = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		child({
+			id: "job-slot",
+			label: "Re-check the pending rows against the ledger",
+			role: "reviewer",
+			status: "running",
+			startedSecondsAgo: 96,
+			progress: "Running pytest tests/unit/server -q",
+			tokens: 23_100,
+			window: 200_000,
+			cost: 0.08,
+		}),
+	],
+	todos: [
+		phase("Reconcile", [
+			item("Compare the March export with ledger/q1.csv", "running"),
+			item("List every row where the two disagree", "pending"),
+		]),
+	],
+});
+
+/**
+ * ONE section, and the plan that arrived with no phases of its own.
+ *
+ * The `todos-only` half of `§ 11.3`'s `roster-only / todos-only` row is "one
+ * section, no empty heading", so this fixture pairs the flat `init` shape
+ * (`flat`) with an empty roster: the plan renders headerless with no section
+ * heading above it.
+ *
+ * It exists because `todos-only` and `todos-phased` were BYTE-IDENTICAL frames —
+ * both stories rendered `todosOnly()` — which made two of the set's rows describe
+ * the same picture and left the flat/no-heading claim unframed. `todos-phased`
+ * keeps the phased plan; this is the other half.
+ */
+export const todosFlat = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: flat(),
 });
 
 /**
@@ -647,3 +714,408 @@ export const restoredAndUnrecognised = (): RunDetailsInput => ({
 	// push the third row toward the panel's floor.
 	todos: [],
 });
+
+/* ------------------------------------------------------------------ */
+/* The pane's own states                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A canonical session with nothing at all in flight.
+ *
+ * The state the OLD design could not photograph, because its trigger did not
+ * exist in it: the button was gated on `hasRunDetails`, so a session with no
+ * children, no plan and no failure had no button and therefore no panel. `§ 3.3`
+ * inverts that — the trigger is a data gate (`details !== null`), not a work gate
+ * — so `trigger-idle` photographs the icon that is on screen with nothing to
+ * report, and `panel-empty` photographs what it opens onto.
+ */
+export const idle = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+});
+
+/**
+ * Every child settled and the plan closed: `hasRunDetails` is false, so the
+ * panel's quiet state says "nothing in flight" over a roster of history.
+ *
+ * Distinct from `idle` in the one way that matters to the panel's copy: there IS
+ * a run here and it is finished, where `idle` has no run at all.
+ */
+export const settledHistory = settled;
+
+/**
+ * The plan that produced § 6.1's finding (2) AND round 1's U1-5: an implicit
+ * phase beside a named one, in the order an unphased `add` produces after a
+ * phase was already named.
+ *
+ * The backend lazily creates `Todos` when `add` is called before any phase was
+ * named, and the wire cannot distinguish that from a phase an agent genuinely
+ * named `Todos` — so a plan holding both rendered a `To-dos` section directly
+ * above a phase headed `Todos`, one plan named twice. The fold is per PHASE now,
+ * and this is the fixture the frame exists for.
+ *
+ * The NAMED phase comes FIRST and the untitled group second, deliberately: that
+ * is the shape the fold got wrong, because it assumed the untitled group leads.
+ * Its rows landed at the named phase's indent under that phase's header, with
+ * nothing between them and the phase above (round 1, Q9/U1-5, measured live at
+ * 420px and at the 320px floor), and the per-phase counts this change removed
+ * were the only other signal. The LEADING fold is `todosFlat()`'s single
+ * unnamed phase, and its frame is `todos-only`.
+ */
+export const mixedImplicitPhase = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [
+		phase("Publish", [
+			item("Write reports/unpaid-march.md", "done"),
+			item("Send the summary", "blocked", "waiting on the totals"),
+		]),
+		phase("Todos", [
+			item("Read invoices/march.csv", "done"),
+			item("Total the unpaid rows", "pending"),
+		]),
+	],
+});
+
+/** A brief long enough to fold: the reader's expander and its hidden count. */
+const LONG_BRIEF = [
+	"You are the reviewer for the March reconciliation.",
+	"",
+	"Read invoices/march.csv and group the unpaid rows by customer.",
+	"Treat anything not marked paid as outstanding, and say so explicitly",
+	"rather than inferring it. Then check the totals against ledger/q1.csv",
+	"and report every row where the two disagree, with both numbers.",
+	"",
+	"Do not write the report yourself; hand the findings back.",
+].join("\n");
+
+/**
+ * One TOOL job, in the shape `frontend.jobs` really carries one.
+ *
+ * `comms.job_rows()` snapshots the ROOT session's job manager AND every live
+ * child's (`harness/comms.py:799-815`), so the list a session publishes holds
+ * the children's own tool calls beside the children themselves. Every one of
+ * those rows is typed `bash`, NOT named after the tool that ran: `JobType` is
+ * exactly `Literal["bash", "task"]` (`harness/jobs.py:216`), a background `eval`
+ * registers as `bash` on purpose (`tools/eval.py:938-945`), and a foreground
+ * `read` never gets a row at all. The label carries the distinction
+ * (`bash: <command>`, `tools/builtin.py:2187`).
+ *
+ * So `type` is an argument with a default rather than something derived from the
+ * label: a helper that read the prefix would let a fixture claim a `read` row the
+ * runtime cannot mint, which is what round 3's R3-1 found (it did exactly that).
+ *
+ * QA's live capture read `c1ccfe6839cb bash running "bash: sleep 150 ; echo
+ * child-done"` beside the one real delegated child and the roster painted both
+ * (round 1, Q1/U1-4). This is that row, in that shape.
+ */
+const toolJob = (spec: {
+	id: string;
+	label: string;
+	/** `JobType` — `bash` for every tool row; `task` would be a child. */
+	type?: "bash" | "task";
+	status?: string;
+	/** `start_time` in epoch seconds, for a row that is still running. */
+	startedSecondsAgo?: number;
+}): Record<string, unknown> => ({
+	id: spec.id,
+	type: spec.type ?? "bash",
+	status: spec.status ?? "running",
+	queued: false,
+	label: spec.label,
+	agent: "core",
+	agent_role: null,
+	latest_details: null,
+	error_text: "",
+	result_text: "",
+	session_id: null,
+	model_label: null,
+	context_window: null,
+	usage: null,
+	direct_cost: null,
+	start_time:
+		spec.startedSecondsAgo === undefined ? 0 : at(spec.startedSecondsAgo),
+	settled_at: null,
+});
+
+/**
+ * The wire that produces the roster's membership question (`§ 4`).
+ *
+ * Five rows, four of which are NOT top-level children: two `bash` tool jobs (the
+ * root session's own, and the running child's own), and one nested `task` row
+ * (`parent_job_id: "job-audit"`) that the child launched itself. The
+ * roster must paint exactly the two members — `job-audit` and `job-summarise` —
+ * and count only those.
+ *
+ * The shapes are the live ones: the tool rows came off the wire in QA's capture,
+ * and the nested row is the shape `frontend_state._with_lineage` mints for a
+ * launch from inside a child (`comms.job_rows()` resolves the parent through the
+ * shared graph).
+ */
+export const rosterMembers = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		child({
+			id: "job-audit",
+			label: "Audit the March invoices against the ledger export",
+			role: "reviewer",
+			status: "running",
+			startedSecondsAgo: 150,
+			progress: "bash: sleep 150 ; echo child-done",
+			model: "claude-sonnet-4-5",
+			tokens: 92_000,
+			window: 200_000,
+			cost: 0.31,
+		}),
+		// The running child's OWN tool call, and the row the roster used to paint as
+		// a peer sub-agent — sorted above the child it belongs to.
+		toolJob({
+			id: "c1ccfe6839cb",
+			label: "bash: sleep 150 ; echo child-done",
+			startedSecondsAgo: 131,
+		}),
+		child({
+			id: "job-summarise",
+			label: "Summarise the findings",
+			role: "writer",
+			status: "running",
+			startedSecondsAgo: 18,
+			progress: "Drafting the summary",
+			tokens: 12_400,
+			window: 200_000,
+			cost: 0.02,
+		}),
+		// A GRANDCHILD: launched from inside `job-audit`, so its parent is a job row
+		// that IS on the wire. It belongs to the child's own `1 child` control rather
+		// than to the top level (`§ 4`, `§ 5.5`).
+		{
+			...child({
+				id: "job-verify",
+				label: "Verify the totals",
+				role: "task",
+				status: "done",
+				startedSecondsAgo: 120,
+				settledSecondsAgo: 40,
+				sessionId: "bb11cc22dd33",
+			}),
+			parent_job_id: "job-audit",
+		},
+		// The ROOT session's own tool job, which is on the same list and is no more a
+		// sub-agent than the child's bash call is. Typed `bash` like every tool row:
+		// the runtime has no other word for one (`harness/jobs.py:216`), and a
+		// fixture that named the tool here would be describing a wire that does not
+		// exist (round 3, R3-1).
+		toolJob({
+			id: "7a41d0e2f9c3",
+			label: "bash: wc -l invoices/march.csv",
+			status: "succeeded",
+			startedSecondsAgo: 240,
+		}),
+	],
+	todos: [],
+});
+
+/**
+ * One child with a durable launch turn, a brief long enough to fold, and a name
+ * taken from the launch map.
+ *
+ * `launch_prompts` carries the CONCISE authored prompt against the launch
+ * turn's entry id, so the reader can replace the durable row — which holds the
+ * full role/team/system preamble — instead of opening on a wall of wrapper text
+ * (`§ 5.1`). `launch_message_id` is the launch turn in the REAL transcript file
+ * the reader fetches; a story's fixture page carries that id.
+ */
+export const readerChild = (
+	over: Partial<JobSpec> = {},
+): Record<string, unknown> => ({
+	/*
+	 * `session_id` comes from `child()` and can be overridden to `null` through
+	 * `over.sessionId` — the row the wire leaves unaddressable, which the roster
+	 * must not offer to open and the reader must not sit on `Loading…` for.
+	 */
+	...child({
+		id: "job-reader",
+		label: "Re-check the pending rows against the ledger",
+		role: "reviewer",
+		status: "running",
+		startedSecondsAgo: 96,
+		progress: "Running pytest tests/unit/server -q",
+		tokens: 23_100,
+		window: 200_000,
+		cost: 0.08,
+		...over,
+	}),
+	prompt: LONG_BRIEF,
+	launch_message_id: "subagent-launch:job-reader",
+	launch_prompts: {
+		"subagent-launch:job-reader":
+			"Re-check the pending rows against the ledger.",
+	},
+});
+
+/** One durable transcript entry, in the wire's own shape. */
+const entry = (
+	id: string,
+	ts: number,
+	role: "user" | "assistant" | "tool",
+	text: string,
+	extra: Record<string, unknown> = {},
+): DesktopChildTranscriptPage["entries"][number] => ({
+	id,
+	ts: FIXTURE_NOW_MS / 1000 - ts,
+	type: "message",
+	payload: {
+		kind: "message",
+		role,
+		id,
+		content: text ? [{ type: "text", text }] : [],
+		tool_calls: [],
+		...extra,
+	},
+});
+
+/**
+ * A child's transcript page, as the reader's route answers one (`§ 10.1`).
+ *
+ * The story set needs these because a fixture cannot prove the PULSE, but it can
+ * and must prove every rendering of a page: the reader's own loader is exercised
+ * against a real backend in the live frame, and the STATES are photographed from
+ * here so they are reproducible without one.
+ */
+export const childPage = ({
+	state = "ready",
+	launchTurn = false,
+	includeTool = false,
+	includeImage = false,
+}: {
+	state?: "ready" | "pending" | "gone";
+	launchTurn?: boolean;
+	includeTool?: boolean;
+	includeImage?: boolean;
+} = {}): DesktopChildTranscriptPage => ({
+	state,
+	has_more: false,
+	cursor_missing: false,
+	entries: [
+		...(launchTurn
+			? [
+					entry(
+						"subagent-launch:job-reader",
+						400,
+						"user",
+						"ROLE: reviewer\nTEAM: core\nSYSTEM: You are a subagent of the Local Operator harness…\n\nRe-check the pending rows against the ledger.",
+					),
+				]
+			: []),
+		entry("c-u1", 380, "user", "Continue the reconciliation."),
+		entry(
+			"c-a1",
+			360,
+			"assistant",
+			"The March export has four rows whose status is not `paid`. I am checking them against the ledger before I total anything.",
+		),
+		...(includeTool
+			? [
+					entry("c-a2", 340, "assistant", "", {
+						tool_calls: [
+							{
+								id: "c-tool-1",
+								name: "bash",
+								arguments: { command: "wc -l invoices/march.csv" },
+							},
+						],
+					}),
+					entry("c-tool-1", 330, "tool", "412 invoices/march.csv", {
+						tool_name: "bash",
+						tool_call_id: "c-tool-1",
+					}),
+				]
+			: []),
+		...(includeImage
+			? [
+					entry("c-u2", 320, "user", "", {
+						/*
+						 * An IMAGE CONTENT BLOCK, which is where a message keeps its
+						 * pictures — not a top-level `images` key. The encoder dumps with
+						 * `exclude_defaults=True`, so `type` is absent on durable rows
+						 * and the reducer identifies an image by the `attachment` key
+						 * (`isImageBlock`, `transcript-reducer.ts:305-318`). The first
+						 * cut of this block had both of those wrong (a `kind`/`digest`
+						 * object on an `images` key), which renders as a text-less user
+						 * row with NO image at all — unnoticed because no story used the
+						 * fixture until `reader-image` did.
+						 *
+						 * The digest is what the row carries and the bytes come back over
+						 * the media relay, scoped to THIS child (`subagents.attachment`,
+						 * `§ 10.3`): the reader hands `CanonicalTranscript` an attachment
+						 * scope naming the child, so this row resolves through the
+						 * child-scoped route rather than the parent's, which refuses it
+						 * because a child session is not a user session.
+						 */
+						content: [
+							{
+								attachment: "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+								mime_type: "image/png",
+							},
+						],
+					}),
+				]
+			: []),
+		entry(
+			"c-a3",
+			300,
+			"assistant",
+			"Three of the four match the ledger. The fourth has no counterpart, so I cannot confirm it from this export alone.",
+		),
+	],
+});
+
+/**
+ * One row of an `mcp.list` payload, in the WIRE's own field names.
+ *
+ * `owned_scope` and `tool_count` rather than the model's `scope`/`toolCount`: the
+ * fixtures are payloads and the model folds them, which is what keeps the story
+ * set honest about the one part of this section that has a wire contract (`§ 10`).
+ */
+type McpWireRow = Record<string, unknown>;
+
+/** The MCP server sets `§ 11.3` asks for, in the wire's own field names. */
+export const mcpAllConnected = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{
+		name: "notion",
+		status: "connected",
+		tool_count: 24,
+		owned_scope: "project",
+	},
+	{ name: "linear", status: "connected", tool_count: 7, source: "~/mcp.json" },
+];
+
+export const mcpAuthRequired = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "notion", status: "auth-required", owned_scope: "project" },
+];
+
+export const mcpDisconnected = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "playwright", status: "disconnected", source: "~/.claude.json" },
+];
+
+/** A word this build has never been taught, beside one it has. */
+export const mcpUnknownStatus = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "homeassistant", status: "reticulating", owned_scope: "global" },
+];
+
+/** The cold facade's payload: `cold` on every row, no runtime attached. */
+export const mcpCold = (): McpWireRow[] => [
+	{ name: "files", status: "cold", owned_scope: "global" },
+	{ name: "notion", status: "cold", owned_scope: "project" },
+];
+
+/** One server coming up, which is not a problem and must not light the dot. */
+export const mcpConnecting = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "notion", status: "connecting", owned_scope: "project" },
+];

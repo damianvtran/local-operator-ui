@@ -75,6 +75,12 @@ declare global {
 				// biome-ignore lint/suspicious/noExplicitAny: Return type from electron-updater is complex
 				downloadUpdate: () => Promise<any[]>;
 				quitAndInstall: () => Promise<boolean>;
+				/**
+				 * Quit so an install that is already running can finish, rather than
+				 * starting a new one: Squirrel cancels an install while an instance of
+				 * the app is running, and this is the app getting out of its way.
+				 */
+				quitForUpdateInstall: () => Promise<boolean>;
 				onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
 				onUpdateNotAvailable: (
 					callback: (info: UpdateInfo) => void,
@@ -148,6 +154,16 @@ declare global {
 						detail: string;
 						/** How many times this target has failed here. */
 						attempts?: number;
+						/** True when opening the app is what cancelled the install. */
+						cancelledByRelaunch?: boolean;
+					}) => void,
+				) => () => void;
+				/** An install that is still running right now, found on this start. */
+				onUpdateInstallInFlight: (
+					callback: (info: {
+						targetVersion: string;
+						message: string;
+						detail: string;
 					}) => void,
 				) => () => void;
 				onUpdateProgress: (
