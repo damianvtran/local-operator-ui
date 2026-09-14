@@ -907,6 +907,106 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	assert.equal(withholdsRetryHint(undefined), false);
 });
 
+/*
+ * R13, the same boundary read in the OTHER direction, against the same shipped
+ * store and the real `desktopRequestSchema`.
+ *
+ * `admitChatDraft` creates a session inside the same try as message admission,
+ * so an error raised while CREATING was classified by the draft's text alone. A
+ * leading-slash draft therefore turned a bad-`cwd` 422 into
+ * `leading_slash_message`: copy instructing the user to move a command that had
+ * never been sent anywhere, over a request whose ops were `['sessions.create']`.
+ * That is the app confidently naming the wrong cause - the defect U13 exists to
+ * remove - so reaching the message request is the precondition of the
+ * classification, and the draft's shape is not it.
+ */
+test("a session-creation refusal keeps its own code and copy, even for a leading-slash draft", async () => {
+	reset();
+	// A coded 422 is realistic on this path: `desktopResult` reads `detail.code`
+	// off the backend's envelope, so a specific refusal the transport already
+	// classified must not be overwritten by this general one either.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return Promise.reject(
+				new DesktopControlError(
+					422,
+					"The working directory does not exist.",
+					undefined,
+					"invalid_cwd",
+				),
+			);
+		return {
+			session_id: "222222222222",
+			binding: { agent: "reviewer", team: null },
+		};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const text = "/usage\ncreate-stage refusal is not the slash policy";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, cwd: "/definitely/not/here" }),
+		(error) => {
+			// The caller's catch is the surface the composer renders from, so the
+			// preserved classification has to cross that boundary too.
+			assert.ok(error instanceof DesktopControlError);
+			assert.equal(error.status, 422);
+			assert.equal(error.code, "invalid_cwd");
+			assert.equal(error.message, "The working directory does not exist.");
+			return true;
+		},
+	);
+	// Nothing dispatched a message, so no request could have carried the text to
+	// the leading-slash policy in the first place.
+	assert.deepEqual(
+		[...new Set(calls.map((request) => request.op))],
+		["sessions.create"],
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(draft.errorCode, "invalid_cwd");
+	assert.equal(draft.error, "The working directory does not exist.");
+	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
+	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	// The generic retry hint is KEPT: a create refusal is not one of the two a
+	// resend cannot answer, and withholding it would be the same
+	// mis-attribution in the opposite direction.
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
+	// U13's retention behaviour is unchanged and stands for its own reason - a
+	// pre-admission refusal leaves the text where the fix can be made.
+	assert.equal(draft.admissionAttempted, false);
+	assert.equal(draft.submittedText, text);
+});
+
+test("a create payload the shipped schema rejects is not relabelled as a slash refusal", async () => {
+	reset();
+	// The reviewer's exact reproduction, and the shape nearest the live one:
+	// `cwd: ""` is refused by the REAL `desktopRequestSchema`, so the transport
+	// answers 422 with its plain-string detail and NO code - which is precisely
+	// the shape the un-gated classifier could not tell from the slash policy.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") {
+			assert.equal(desktopRequestSchema.safeParse(request).success, false);
+			return Promise.reject(
+				new DesktopControlError(422, "Invalid desktop operation."),
+			);
+		}
+		return {
+			session_id: "222222222222",
+			binding: { agent: "reviewer", team: null },
+		};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const text = "/usage\ninvalid cwd under a leading-slash draft";
+	const wire = admitChatDraft(key, { ...input, text, cwd: "" });
+	await assert.rejects(wire);
+	const draft = store.getState().drafts[key];
+	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
+	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.error, "Invalid desktop operation.");
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
+	assert.equal(draft.submittedText, text);
+});
+
 test("the same 422 without a leading slash keeps the transport's own sentence", async () => {
 	reset();
 	globalThis.__canonicalRequest = async (request) => {
