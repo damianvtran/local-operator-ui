@@ -49,7 +49,10 @@ import {
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
-import type { MessageInputHandle } from "./message-input";
+import {
+	type MessageInputHandle,
+	composerHoldsFocusUntouched,
+} from "./message-input";
 import {
 	deriveRunDetails,
 	mcpErrorTexts,
@@ -706,6 +709,25 @@ function SessionPanel({
 		const fromKeyboard =
 			document.activeElement instanceof HTMLElement &&
 			document.activeElement.closest('[aria-label="Answer options"]') !== null;
+		/*
+		 * The pressed option is `disabled` the moment this press lands, and a
+		 * disabled control cannot hold focus: the browser drops it to the document
+		 * body, where it then stays for the WHOLE request, because the card is held
+		 * mounted with every option disabled until the gate itself moves. Measured
+		 * on the rig: `after-press: BODY`, and the body in 12/12 samples of an
+		 * in-flight answer, so the keyboard user loses the focus ring everywhere and
+		 * the next Tab restarts at the top of the app (UX round 3, U12).
+		 *
+		 * Handing focus to the composer instead is where the restore below puts it
+		 * anyway when the gate CLEARS, and it is the one control this user can act in
+		 * while they wait - the composer stays usable through a hold, so this is the
+		 * control the draft was headed for. When the gate instead ADVANCES to its
+		 * next question, the layout effect below still takes focus to that question's
+		 * first option, because it treats a focused empty composer as ours to move
+		 * (see `composerHoldsFocusUntouched`): a user who has typed a follow-up has
+		 * taken focus back and keeps it.
+		 */
+		if (fromKeyboard) input.current?.focusInput();
 		setAdmitting(true);
 		setAnswerState({ key, sending: true, refused: null });
 		setSendError(null);
@@ -831,15 +853,23 @@ function SessionPanel({
 	 * ever shows focus on the body.
 	 *
 	 * Guarded on the body being active so a keyboard user's focus is restored and
-	 * nobody else's is moved. The guard still passes after the press: the pressed
-	 * option is `disabled` the moment the press lands, which is what the browser
-	 * drops focus to the body for.
+	 * nobody else's is moved. The guard passes after the press either way: the
+	 * pressed option is `disabled` the moment the press lands, which is what the
+	 * browser drops focus to the body for, and the press itself now hands focus to
+	 * the composer so the body is not left holding it for the whole request (UX
+	 * round 3, U12). Both halves are still `ours` rather than the user's - a
+	 * composer the user has TYPED into is not, which is what keeps the restore from
+	 * moving focus off a follow-up they are writing during the hold.
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the gate key is the trigger, not a value read in the body
 	useLayoutEffect(() => {
 		if (!restoreFocus.current) return;
 		restoreFocus.current = false;
-		if (document.activeElement !== document.body) return;
+		if (
+			document.activeElement !== document.body &&
+			!composerHoldsFocusUntouched()
+		)
+			return;
 		const next = document.querySelector<HTMLElement>(
 			'[aria-label="Answer options"] button:not([disabled])',
 		);

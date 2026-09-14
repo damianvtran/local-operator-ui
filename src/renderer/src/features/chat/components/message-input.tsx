@@ -260,6 +260,28 @@ const firstLiveAnswerOption = (): HTMLElement | null =>
 	);
 
 /**
+ * Whether the composer holds focus with an untouched (empty) box.
+ *
+ * `chat-page.tsx` hands focus HERE at a keyboard press on an option, because the
+ * pressed option is `disabled` the moment the press lands and a disabled control
+ * cannot hold focus: the browser drops it to the document body, where it stays
+ * for the whole request (UX round 3, U12). That makes "the composer holds focus"
+ * ambiguous between "we put it there" and "the user moved on" - and the gate's
+ * focus restore must not steal focus from a user who typed a follow-up while the
+ * answer was out (the composer stays usable during the hold, by design).
+ *
+ * An untouched box resolves it in the safe direction: a user who has typed has
+ * taken focus back, a user who has only clicked in has not, and the restore at
+ * worst moves focus to the question they are being asked.
+ */
+export const composerHoldsFocusUntouched = (): boolean => {
+	const el = document.querySelector<HTMLTextAreaElement>(
+		'textarea[aria-label="Message"]',
+	);
+	return el !== null && document.activeElement === el && el.value.length === 0;
+};
+
+/**
  * Type for the imperative handle to expose focusInput method
  */
 export type MessageInputHandle = {

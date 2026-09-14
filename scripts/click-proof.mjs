@@ -36,7 +36,7 @@
  * found in this file (its `names` array carried "2.Popup is not open…").
  */
 
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -352,11 +352,52 @@ try {
 	const after = await shoot("after-click");
 	record.frames.after = `${after.theme}.webp`;
 
-	writeFileSync(join(OUT, "click-result.json"), `${JSON.stringify(record, null, 2)}\n`);
-	console.log(
-		`click-proof: ${resolved ? "the gate resolved" : "the gate did NOT resolve"} at ${aim.x},${aim.y} -> ${aim.label}`,
-	);
-	if (!resolved) process.exitCode = 1;
+	if (resolved) {
+		writeFileSync(
+			join(OUT, "click-result.json"),
+			`${JSON.stringify(record, null, 2)}\n`,
+		);
+		console.log(
+			`click-proof: the gate resolved at ${aim.x},${aim.y} -> ${aim.label}`,
+		);
+	} else {
+		/*
+		 * A RUN WHOSE PRESS DID NOT CLEAR THE GATE IS NOT EVIDENCE, for the same
+		 * reason the catch below gives: `click-result.json` is the record the
+		 * committed live pair is read against, and a run that could not resolve the
+		 * gate must not replace it with `resolved: false` (code review round 3,
+		 * n2). The run reports itself in the diagnostic beside it instead, which is
+		 * the shape the failure path already uses.
+		 *
+		 * The two frames go back with it. They are pictures of a run that did not
+		 * resolve - and, worse, `after-click/` holds a card that never cleared, next
+		 * to a committed `after-click/` that did. Leaving modern frames behind to be
+		 * read as evidence is the round-1 incident this file's own comments exist
+		 * for, and a third frame in a set the manifest declares as two also fails
+		 * the evidence gate. A path git knows is restored to what the tree holds; one
+		 * it does not is removed.
+		 */
+		record.error = `the gate did not resolve: nothing cleared the pending gate within 30s of the press at ${aim.x},${aim.y} (${aim.label})`;
+		record.pageProblems = pageProblems;
+		record.frames.restored = [];
+		for (const shot of [before, after]) {
+			try {
+				execFileSync("git", ["checkout", "--", shot.path]);
+				record.frames.restored.push(shot.path);
+			} catch {
+				rmSync(shot.path, { force: true });
+			}
+		}
+		mkdirSync(OUT, { recursive: true });
+		writeFileSync(
+			join(OUT, "click-result.diagnostic.json"),
+			`${JSON.stringify(record, null, 2)}\n`,
+		);
+		console.error(
+			`click-proof FAILED: ${record.error} The committed record and frames were left alone.`,
+		);
+		process.exitCode = 1;
+	}
 } catch (error) {
 	/*
 	 * A FAILED RUN IS NOT EVIDENCE, so it does not overwrite the record the

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -410,6 +411,38 @@ test("a reply-wrapped payload is not an ordinal, and is not rewritten", () => {
 	// A payload-only caller holding a genuinely bare ordinal still resolves: that
 	// is what the suggestion grid's two-argument call relies on.
 	assert.equal(answerValue(g, undefined, "1"), OPTIONS[0].label);
+});
+
+test("the gate branch resolves the TYPED text at the call site the app ships", () => {
+	/*
+	 * The `answerValue` guard above is not the whole MAJOR: reverting the CALL
+	 * SITE is the cheaper regression, and it left this file 17/17 green, because
+	 * neither `chat-page.tsx` nor `message-input.tsx` is reachable from the entry
+	 * points this bundle builds — esbuild walks only what those imports pull in,
+	 * and the component that composes the answer is not one of them (code review
+	 * round 3, m3).
+	 *
+	 * A rendered-component test would need a DOM this repo carries no jsdom for, so
+	 * the call site is pinned the way `window-mode.test.mjs` pins the window-raise
+	 * policy: by reading the shipped source and asserting the one expression that
+	 * carries the decision. That is deliberately a pin on THIS expression rather
+	 * than a general rule, so a rewrite of the gate branch has to come here and say
+	 * what replaced it instead of quietly dropping the guard.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/value:\s*answerValue\(\s*gate,\s*typed,\s*content,?\s*\)/,
+		"the ask branch must build its value as answerValue(gate, typed, content) - the typed text second, never the composed payload",
+	);
+	assert.equal(
+		(source.match(/resolveNumericAnswer\(/g) ?? []).length,
+		0,
+		"the ordinal rule is reached through answerValue rather than called directly on a payload",
+	);
 });
 
 test("forward Tab moves into the options only when the composer is done with", () => {
