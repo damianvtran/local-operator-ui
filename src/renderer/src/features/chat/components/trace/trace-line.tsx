@@ -26,6 +26,7 @@
 
 import type { ActionType } from "@shared/api/local-operator/types";
 import { Disclosure, FIRST_LINE_MARK } from "@shared/components/ui/disclosure";
+import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { cn } from "@shared/lib/utils";
 import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
@@ -151,16 +152,16 @@ const TraceRow = ({
 			)}
 		>
 			{/*
-			 * `data-text-surface` marks the parts of a row that ARE text, and
+			 * `TEXT_SURFACE_PROPS` marks the parts of a row that ARE text, and
 			 * `select-text` opts them out of the trigger's `select-none`. Both spans
 			 * carry it, so a drag across a row copies the whole row — including the
 			 * label that says what it is, which a drag used to drop because the label
 			 * was the one span that was not selectable (round 3's U17). The marker is
-			 * also what the trigger's click guard reads, so the guard stays scoped to
-			 * text surfaces rather than to whatever `user-select` computes to.
+			 * also what the trigger's click guard reads, and it comes from one shared
+			 * constant for exactly that reason (round 4's R22).
 			 */}
 			<span
-				data-text-surface="true"
+				{...TEXT_SURFACE_PROPS}
 				className={cn(
 					"select-text font-mono text-mono-sm",
 					running ? "text-ink-muted" : "text-ink-dim",
@@ -179,7 +180,7 @@ const TraceRow = ({
 				 * the row would be the one fact on it that cannot be copied).
 				 */
 				<span
-					data-text-surface="true"
+					{...TEXT_SURFACE_PROPS}
 					className="select-text font-mono text-ink-muted text-mono-sm"
 				>
 					{" "}
@@ -196,7 +197,7 @@ const TraceRow = ({
 				 * mouseup from toggling the row it was selecting.
 				 */
 				<span
-					data-text-surface="true"
+					{...TEXT_SURFACE_PROPS}
 					className="select-text text-body-sm text-ink-muted"
 				>
 					{" "}

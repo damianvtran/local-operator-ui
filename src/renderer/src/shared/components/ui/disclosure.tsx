@@ -29,6 +29,7 @@
  *   column from growing another vertical edge.
  */
 
+import { TEXT_SURFACE_ATTR } from "@shared/components/ui/text-surface";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
@@ -179,19 +180,26 @@ export const Disclosure = ({
 	 *
 	 * The gesture decides, not the selection:
 	 *
-	 * - A press on text the summary keeps SELECTABLE (TraceLine's narration is
-	 *   the only one today) that ends with a selection live was the user dragging
-	 *   across the message or pressing inside a selection they had already made.
-	 *   The row is not what they clicked, so that click does not toggle it.
-	 * - A click on the chrome around that text — chevron, label, gutter — IS a row
-	 *   action and toggles with the selection live: a reader who has just copied a
-	 *   message has to be able to collapse the row under it.
+	 * - A press on a TEXT SURFACE the summary marked that ends with a selection
+	 *   live was the user dragging across the message or pressing inside a
+	 *   selection they had already made. The row is not what they clicked, so that
+	 *   click does not toggle it. Every part of a summary that reads as text is
+	 *   marked — the narration, the `object` slot and the verb label — so a drag
+	 *   across a row is suppressed throughout it (round 3's U17).
+	 * - A click on the chrome around that text — chevron, gutter — IS a row action
+	 *   and toggles with the selection live: a reader who has just copied a message
+	 *   has to be able to collapse the row under it. The LABEL is text now, not
+	 *   chrome, so it behaves like the narration: a press on it with a selection
+	 *   live is suppressed. That is the trade U17 took to make the row copy whole.
 	 * - The FIRST click of a double-click cannot be told from a single click at the
-	 *   moment it fires, so it toggles, and the `dblclick` that follows takes that
-	 *   back — which leaves the row exactly as it was, and the word the gesture
-	 *   selected selected, because the narration node does not move. A
-	 *   double-click that is NOT on text is two ordinary toggles that cancel out
-	 *   on their own, so it is left alone.
+	 *   moment it fires, so it toggles, and the SECOND PRESS takes that back
+	 *   (`onMouseDown`, where `detail > 1`) — which leaves the row exactly as it
+	 *   was, and the word the gesture selected selected, because the narration node
+	 *   does not move. It is the press and not the `dblclick` because Chrome
+	 *   dispatches the press even when the release lands outside this trigger,
+	 *   which `dblclick` never does (round 4's R12). A double-click that is NOT on
+	 *   a text surface is two ordinary toggles that cancel out on their own, so it
+	 *   is left alone.
 	 * - The keyboard path is not gated at all (below): a reader with a selection
 	 *   had a row that ignored the mouse AND Enter, with no way out.
 	 *
@@ -230,7 +238,7 @@ export const Disclosure = ({
 			node && node !== buttonRef.current;
 			node = node.parentElement
 		) {
-			if (node.hasAttribute("data-text-surface")) return true;
+			if (node.hasAttribute(TEXT_SURFACE_ATTR)) return true;
 		}
 		return false;
 	};
