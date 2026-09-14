@@ -44,6 +44,8 @@ import {
 	type AdmittedSend,
 	admittedSendFor,
 	ownerAnswered,
+	stoppedAfterAdmission,
+	turnStopped,
 } from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
@@ -257,7 +259,23 @@ function SessionPanel({
 	 */
 	const admittedNow = admittedSendFor(sessionId, draft);
 	const admitted = useRef<AdmittedSend | null>(null);
-	if (admittedNow) admitted.current = admittedNow;
+	const outcomeAtAdmission = useRef<{
+		requestId: string;
+		anchor: string | null;
+	} | null>(null);
+	if (admittedNow) {
+		// Keep the baseline after retirement too: the receipt may lag the
+		// completion frame, leaving this same draft pending for another render.
+		// Re-snapshotting then would turn the just-finished outcome into "old"
+		// history and resurrect the wait we just cleared.
+		if (outcomeAtAdmission.current?.requestId !== admittedNow.requestId) {
+			outcomeAtAdmission.current = {
+				requestId: admittedNow.requestId,
+				anchor: canonical.frontend?.attention?.anchor_id ?? null,
+			};
+		}
+		admitted.current = admittedNow;
+	}
 	/*
 	 * What ends the wait, and what deliberately does not.
 	 *
@@ -283,7 +301,13 @@ function SessionPanel({
 		canonical.transcript.records,
 		admitted.current?.requestId,
 	);
-	if (admitted.current && (answered || Boolean(draft?.error)))
+	const stopped =
+		turnStopped(canonical.transcript.records, admitted.current?.requestId) ||
+		stoppedAfterAdmission(
+			canonical.frontend?.attention,
+			outcomeAtAdmission.current?.anchor ?? null,
+		);
+	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
 		admitted.current = null;
 	const starting = admitted.current !== null;
 	/*

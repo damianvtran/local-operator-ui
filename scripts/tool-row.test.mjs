@@ -1151,7 +1151,7 @@ test("the dictation counter is spelled at a glance", () => {
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1165,11 +1165,37 @@ const {
 	admittedSendFor,
 	ownerAnswered,
 	turnStopped,
+	stoppedAfterAdmission,
 	workingLineClaimed,
 	workingLineInputFor,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
 );
+
+test("frame-only stopped outcomes retire only the send they follow", () => {
+	// The real refusal frame may contain no completion_attention transcript
+	// entry at all. The pane synthesizes its visible incident from this record;
+	// a fixture containing only a raw notice cannot cover that production path.
+	for (const kind of ["error", "interrupted"]) {
+		const attention = { anchor_id: "completion-new", kind, unseen: true };
+		assert.equal(stoppedAfterAdmission(attention, null), true);
+		assert.equal(stoppedAfterAdmission(attention, "completion-old"), true);
+		assert.equal(
+			stoppedAfterAdmission({ ...attention, unseen: false }, null),
+			true,
+		);
+		assert.equal(stoppedAfterAdmission(attention, "completion-new"), false);
+	}
+	assert.equal(stoppedAfterAdmission(null, null), false);
+	assert.equal(stoppedAfterAdmission({ kind: "error" }, null), false);
+	assert.equal(
+		stoppedAfterAdmission(
+			{ anchor_id: "completion-new", kind: "success" },
+			null,
+		),
+		false,
+	);
+});
 
 const userRow = (id, text) => ({ kind: "user", id, ts: 1, text, images: [] });
 const assistantRow = (id, text) => ({
