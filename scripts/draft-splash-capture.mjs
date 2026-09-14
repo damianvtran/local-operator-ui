@@ -46,9 +46,10 @@
  * incident `new-chat-row-evidence.mjs` exists for). So the run FAILS rather
  * than writes a frame when: an error surface is on screen, the draft state was
  * never entered, the band disagrees with what the label says it should show,
- * the band or its suggestion stack runs past the pane it is in, a row of chips
- * is cut through its glyphs, `src/` is dirty against the commit the readback
- * records, or the admission flip never painted. The frames are only written
+ * anything OUTSIDE the band claims to be loading (or the band claims more than
+ * its own one), the band or its suggestion stack runs past the pane it is in, a
+ * row of chips is cut through its glyphs, `src/` is dirty against the commit the
+ * readback records, or the admission flip never painted. The frames are only written
  * once the readings behind them hold.
  */
 
@@ -684,7 +685,8 @@ async function main() {
 				 * was photographed.
 				 */
 				await sleep(600);
-				settled = (await readProbe(send)).bandNow;
+				const staged = await readProbe(send);
+				settled = staged.bandNow;
 
 				problems = containmentProblems(size, settled);
 				for (const field of ["greeting", "skeleton", "chips"]) {
@@ -706,6 +708,46 @@ async function main() {
 			if (problems.length > 0)
 				throw new Error(`${size.id}: ${problems.join("; ")}`);
 
+			/*
+			 * The whole page, once the band's own reading has settled.
+			 *
+			 * The band's three counts above are blind to the transcript pane's
+			 * placeholder: it renders in the transcript region, outside
+			 * `[data-lo-composer-band]`, and after #150 the pane holds one on a
+			 * row-less unread conversation. A New chat's draft is one, so the pane
+			 * painted `Loading conversation…` and its shimmer directly above the
+			 * splash this branch restored and every assertion this driver had passed
+			 * anyway - the contradictory pair was photographed without being read.
+			 *
+			 * The expectation is what the tree is entitled to paint: the before tree's
+			 * one claim IS its band's own skeleton (`ef40c81e2` predates #150, so its
+			 * pane has no placeholder at all), and the fixed tree is expected to paint
+			 * none anywhere - the acceptance bar for the operator's report in both of
+			 * its surfaces. Read before the shutters, so a run that would prove
+			 * nothing fails instead of writing frames.
+			 */
+			const claims = (await readProbe(send)).loadingClaims;
+			if (!claims)
+				throw new Error(
+					`${size.id}: the page published no loading-claim reading, so this run cannot say whether anything outside the band claims to be loading`,
+				);
+			if (claims.outsideBand !== 0)
+				throw new Error(
+					`${size.id}: ${claims.outsideBand} loading claim(s) outside the composer band - the pane's own placeholder was on screen above the band's claim, which is the contradictory pair this state is not allowed to show`,
+				);
+			if (claims.placeholders !== expected.skeleton)
+				throw new Error(
+					`${size.id}: the document paints ${claims.placeholders} loading placeholder(s) and this tree at this size is expected to paint ${expected.skeleton} (the band's own)`,
+				);
+			if (claims.shimmerBars !== claims.placeholders * 3)
+				throw new Error(
+					`${size.id}: ${claims.shimmerBars} shimmer bar(s) against ${claims.placeholders} placeholder(s) - the placeholder's own three bars are the only ones allowed`,
+				);
+			if (claims.captionVisible !== claims.placeholders > 0)
+				throw new Error(
+					`${size.id}: the visible text ${claims.captionVisible ? "reads" : "does not read"} \"Loading conversation\" with ${claims.placeholders} placeholder(s) painted`,
+				);
+
 			if (expected.chips > 0) {
 				const labels = settled.chipLabels;
 				if (labels.length !== expected.chips)
@@ -723,6 +765,7 @@ async function main() {
 			console.log(
 				`${size.id}: draft settled - band ${settled.bandHeight}px, ` +
 					`greeting ${settled.greeting}, skeleton ${settled.skeleton}, chips ${settled.chips}, ` +
+					`loading claims in the document ${claims.placeholders} (${claims.outsideBand} outside the band, ${claims.shimmerBars} shimmer bars), ` +
 					`stack rows ${settled.stack?.visibleRows ?? 0}/${settled.stack?.rowCount ?? 0} visible in ${settled.stack?.height ?? 0}px ` +
 					`(content ${settled.stack?.contentHeight ?? 0}px, room ${settled.stack?.room ?? 0}px)`,
 			);
@@ -858,6 +901,7 @@ async function main() {
 				 * per-animation-frame trace is a megabyte of JSON that says the same
 				 * thing four times.
 				 */
+				loadingClaimsAtDraft: claims,
 				afterSend: {
 					bandNow: afterSend.bandNow,
 					frames:

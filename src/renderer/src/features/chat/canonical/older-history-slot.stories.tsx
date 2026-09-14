@@ -261,11 +261,10 @@ const InTranscript = ({
 				failure={null}
 				/*
 				 * A fixture of a conversation that has been read: the rows are handed in
-				 * rather than fetched, so the reader's question is answered `true`. The
-				 * hold cannot fire here (it needs zero records) and nothing here is a
-				 * claim about the read.
+				 * rather than fetched, so no page is still owed. The hold cannot fire here
+				 * (it needs zero records) and nothing here is a claim about the read.
 				 */
-				hydrated={true}
+				awaitingHydration={false}
 				onReconnect={() => {}}
 			/>
 		</div>

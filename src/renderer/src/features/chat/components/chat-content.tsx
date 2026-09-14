@@ -710,13 +710,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											status={canonical.view.status}
 											failure={canonical.view.failure}
 											/*
-											 * The reader's own question, and the same property the band
+											 * The reader's own question, and the same value the band
 											 * below reads as `isHydrating`: the pane's hold and the
 											 * band's claim are one decision with two readers, so
-											 * they are handed one value rather than each deriving its
-											 * own.
+											 * they are handed one value rather than deriving it
+											 * twice. `hydrated` is deliberately NOT that value: it
+											 * answers "has a page been applied", which is false
+											 * forever for a session-less draft - the pane held
+											 * `Loading conversation…` over the splash that way.
 											 */
-											hydrated={canonical.view.hydrated}
+											awaitingHydration={canonical.view.awaitingHydration}
 											onReconnect={canonical.view.retry}
 											onAnswer={canonical.onAnswer}
 											// The composer's own in-flight flag, reused: one

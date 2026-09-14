@@ -124,8 +124,12 @@ function Panel({
 				 * The reader's question, not the transport's: a cached paint or a
 				 * vanished conversation both arrive BEFORE any authoritative page, and
 				 * the pane's hold/statement rules read this rather than `status`.
+				 *
+				 * `awaitingHydration`, not the raw field: the rules read the composed
+				 * question (a stream is open for this session and no page has been
+				 * applied), which is `!hydrated` on a session-backed story.
 				 */
-				hydrated={false}
+				awaitingHydration={true}
 				gate={null}
 				waiting={false}
 				/*

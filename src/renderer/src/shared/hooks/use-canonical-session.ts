@@ -224,14 +224,16 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	/**
 	 * Whether an authoritative page for THIS session is still owed.
 	 *
-	 * The composed fact the composer's loading state is a claim about, and
-	 * neither half of the view states it alone. `hydrated` answers "has a page
-	 * been applied for this session", which a pane with NO session answers "no"
-	 * to forever: a New chat is a staged DRAFT, the stream is deliberately off
-	 * until the user's first send creates a session, so that answer describes a
-	 * wait that is not happening and the composer waited on it permanently -
-	 * the band showed the hydration skeleton in place of the greeting and the
-	 * suggestion chips.
+	 * The composed fact the composer band's loading state and the transcript
+	 * pane's own hold are both claims about, and neither half of the view states
+	 * it alone. `hydrated` answers "has a page been applied for this session",
+	 * which a pane with NO session answers "no" to forever: a New chat is a
+	 * staged DRAFT, the stream is deliberately off until the user's first send
+	 * creates a session, so that answer describes a wait that is not happening.
+	 * Both readers waited on it: the band showed the hydration skeleton in place
+	 * of the greeting and the suggestion chips, and the pane held
+	 * `Loading conversation…` and its shimmer above the splash the band had
+	 * restored - two contradictory claims on one screen.
 	 *
 	 * Both terms are this hook's own inputs, which is why the rule is here and
 	 * said once:

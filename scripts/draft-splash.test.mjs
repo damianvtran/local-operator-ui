@@ -43,7 +43,18 @@ import { build } from "esbuild";
  *      compared to source text, so a semantics-preserving reformat does not
  *      redden it (code review round 1, N4).
  *
- *   3. OUT OF SCOPE HERE: the composer band's suggestion STACK and its
+ *   3. The PANE's half of the same screen, on the same two instruments and for
+ *      the same reason. `transcript-pane.ts`'s hold was keyed on `hydrated`,
+ *      which a pane with NO session answers "no" to forever, so a New chat held
+ *      `Loading conversation…` and its shimmer rows above the splash this branch
+ *      restores - two contradictory claims on one screen, and the half the
+ *      operator would still read as a stuck loader that was never fixed. The
+ *      rule now takes the handle's composed fact too, so this file runs the same
+ *      probe twice: once as the composer's prop expression, once as the value
+ *      handed to the pane's own rule, with the SHIPPED functions deciding what
+ *      the pane then claims.
+ *
+ *   4. OUT OF SCOPE HERE: the composer band's suggestion STACK and its
  *      containment (design round 1, D1) is asserted in
  *      `suggestion-stack.test.mjs`. A separate file on purpose: these four cases
  *      are red on the tree before this branch, which is what makes them a guard,
@@ -238,3 +249,154 @@ test("the composer is given the composed fact, not the raw one", () => {
 });
 
 
+
+/*
+ * THE PANE'S HALF OF THE SAME SCREEN.
+ *
+ * The composer band and the transcript pane sit above and below one another, and
+ * after this branch's band fix a New chat showed BOTH claims at once: the
+ * restored greeting and its chips from the band, and `Loading conversation…` with
+ * its shimmer rows from the pane. The pane's rule asked `hydrated`, which a pane
+ * with no session answers "no" to forever, so it held for as long as a New chat
+ * was open - the same defect the band had, in the other half of the column.
+ *
+ * Same two instruments, aimed at the pane: the shipped `handleFor` above for the
+ * composition, and the SHIPPED rule functions for what the pane then claims. The
+ * rule's own matrix (every combination of status, failure, owed and records) is
+ * `session-switch.test.mjs`; what is asserted here is the pair of facts that
+ * matrix cannot see - that the composed value for a session-less draft is
+ * `false`, and that `chat-content.tsx` hands the pane that value rather than the
+ * raw field.
+ */
+const paneBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/canonical/transcript-pane";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { transcriptPaneCollapses, transcriptPaneHoldsPlaceholder } = await import(
+	`data:text/javascript;base64,${Buffer.from(paneBundle.outputFiles[0].text).toString("base64")}`
+);
+
+test("a New chat's draft leaves the pane with nothing to claim", () => {
+	// The acceptance bar, on the SHIPPED handle feeding the SHIPPED rule: a
+	// session-less draft owes no page, so nothing above the composer may claim to
+	// be loading - no placeholder, and the pane yields the column to the band.
+	const draft = handleFor(undefined, false);
+	const view = {
+		status: "connecting",
+		failure: null,
+		awaitingHydration: waits(draft),
+		recordCount: 0,
+	};
+
+	assert.equal(
+		view.awaitingHydration,
+		false,
+		"a draft has no stream, so no page is ever owed for it",
+	);
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(view),
+		false,
+		"the pane held `Loading conversation…` over the splash the band had restored - the operator's report in its second surface",
+	);
+	assert.equal(
+		transcriptPaneCollapses(view),
+		true,
+		"the pane kept the column's free height, so the splash could not have it",
+	);
+});
+
+test("a cold session whose page is in flight still holds the pane, and stops holding when its rows land", () => {
+	// The other half of the same rule, unchanged by this repair (design D7), read
+	// off the SHIPPED handle so the two claims are one line apart: the segment a
+	// real cold session is entitled to, and the row that ends it.
+	const cold = handleFor(SESSION, true);
+	const owed = waits(cold);
+	const paneView = (recordCount) => ({
+		status: "live",
+		failure: null,
+		awaitingHydration: owed,
+		recordCount,
+	});
+
+	assert.equal(owed, true, "a cold session's page has not landed yet");
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(paneView(0)),
+		true,
+		"an unread conversation with nothing to paint must keep its loading claim, or the screen says nothing at all while the read is in flight",
+	);
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(paneView(2)),
+		false,
+		"rows are the conversation's own content; the hold must end on them",
+	);
+	assert.equal(
+		transcriptPaneCollapses(paneView(2)),
+		false,
+		"a pane with rows never collapses out of the layout",
+	);
+});
+
+test("the pane is given the composed fact, not the raw one", () => {
+	// `chat-content.tsx`'s own prop expression, EVALUATED against handle-shaped
+	// probes rather than compared to source text, for the reason the composer's
+	// guard above records. A draft's `hydrated` and `awaitingHydration` disagree,
+	// which is what makes the first probe able to fail the old expression.
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	const prop = source.match(/awaitingHydration=\{([\s\S]*?)\}/);
+	assert.ok(
+		prop,
+		"chat-content.tsx no longer passes `awaitingHydration` to the transcript pane at all - this guard is aimed at that expression",
+	);
+	const expression = prop[1];
+
+	const probes = [
+		// A New chat staged as a draft: no page applied, and none owed.
+		{ view: { hydrated: false, awaitingHydration: false } },
+		// A cold session whose page is still in flight (design D7): still waits.
+		{ view: { hydrated: false, awaitingHydration: true } },
+		// A settled conversation: nothing owed.
+		{ view: { hydrated: true, awaitingHydration: false } },
+	];
+	/*
+	 * No null probe here, unlike the composer's: that prop is written as a ternary
+	 * because the band renders on the canonical path AND the legacy one, while this
+	 * pane is rendered only inside the `canonical ?` branch of the same JSX. A null
+	 * probe would assert a state the call site cannot reach, and would invite a
+	 * defensive `canonical?.` that hides a real regression.
+	 */
+	const expected = probes.map(
+		(probe) => probe?.view?.awaitingHydration ?? false,
+	);
+
+	let actual;
+	try {
+		actual = probes.map((probe) =>
+			runInNewContext(`(${expression})`, { canonical: probe }),
+		);
+	} catch (error) {
+		assert.fail(
+			`the pane's \`awaitingHydration\` expression could not be evaluated with only a \`canonical\` handle in scope (${error.message}) - this guard reads that expression off the source, so it has to be re-aimed at whatever now carries the fact`,
+		);
+	}
+
+	assert.deepEqual(
+		actual,
+		expected,
+		"the pane's hold is the session handle's own claim that a page is owed, the same value the band below it reads; feeding it the raw `hydrated` field is how a New chat came to hold a loader over its own splash",
+	);
+	assert.doesNotMatch(
+		expression,
+		/\.hydrated\b/,
+		"`hydrated` answers 'has an authoritative page been applied for this session', which is false forever on a pane that has no session - the pane must not read it directly (use the handle's composed field). Asserted on the prop's own expression, not file-wide.",
+	);
+});
