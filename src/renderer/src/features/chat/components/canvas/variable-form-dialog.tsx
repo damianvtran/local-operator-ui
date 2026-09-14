@@ -5,6 +5,10 @@ import type {
 } from "@shared/api/local-operator/session-variables-api";
 import { VARIABLE_TYPES } from "@shared/api/local-operator/session-variables-api";
 import {
+	DesktopControlError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
+import {
 	BaseDialog,
 	PrimaryButton,
 	SecondaryButton,
@@ -53,6 +57,37 @@ type FormDataType = {
 
 const isVariableType = (type: string): type is VariableType =>
 	(VARIABLE_TYPES as readonly string[]).includes(type);
+
+/**
+ * Which control a refusal is asking the user to change.
+ *
+ * A refusal already says WHY it refused, in the backend's own words, and it
+ * reached the user as a floating toast - which names the reason but not the
+ * field it is about, so for `already_exists` the user had to work out which of
+ * three controls the sentence meant. The backend's `code` is the part that
+ * knows, so it is mapped here once. Every code not listed is about the write as
+ * a whole (no kernel, a busy cell, a cold session) or about a name the panel
+ * did not offer to write; those stay a form-level sentence rather than being
+ * blamed on a field that is not wrong.
+ */
+const REFUSAL_FIELD: Record<string, "key" | "value"> = {
+	already_exists: "key",
+	reserved_name: "key",
+	invalid_name: "key",
+	invalid_value: "value",
+	too_large: "value",
+};
+
+/** The refusal the dialog is currently showing, if any. */
+type Refusal = { code?: string; message: string };
+
+const refusalOf = (error: unknown): Refusal => ({
+	code: error instanceof DesktopControlError ? error.code : undefined,
+	message: userFacingMessage(
+		error,
+		"The variable could not be saved. Try again.",
+	),
+});
 
 const getDefaultFormState = (
 	initialData?: SessionVariable | null,
@@ -104,17 +139,20 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 		getDefaultFormState(initialData),
 	);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [refusal, setRefusal] = useState<Refusal | null>(null);
 
 	const isEditMode = !!initialData;
 
 	useEffect(() => {
 		if (open) {
 			setFormData(getDefaultFormState(initialData));
+			setRefusal(null);
 		}
 	}, [open, initialData]);
 
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
+		setRefusal(null);
 		try {
 			const variableToSubmit: VariableWrite = {
 				key: formData.key,
@@ -130,17 +168,27 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 			 * refusal's reason (a reserved name, a value the type cannot coerce, a
 			 * kernel that is busy) is written by the backend that knows it - and a
 			 * second toast from this layer said the same thing twice, in weaker
-			 * words. The dialog simply stays open, which is where the fix is.
+			 * words. The dialog stays open AND repeats that same sentence beside the
+			 * control it is about, which is where the fix is: a toast floats past,
+			 * the field it names is still on screen when the user looks back.
 			 */
 			console.error("Failed to submit variable:", error);
+			setRefusal(refusalOf(error));
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	const dialogTitle = isEditMode
-		? "Edit execution variable"
-		: "Create execution variable";
+	const refusalField = refusal?.code ? REFUSAL_FIELD[refusal.code] : undefined;
+
+	/*
+	 * One vocabulary for the whole surface: the panel says "Code memory" and lists
+	 * "variables", so the dialog says "New variable" / "Edit variable" and its
+	 * buttons say "Create" / "Save". The dialog previously titled itself "Create
+	 * execution variable" - the backend's term for the legacy agent-scoped
+	 * surface this PR deletes, and a word the tour never uses.
+	 */
+	const dialogTitle = isEditMode ? "Edit variable" : "New variable";
 
 	const dialogActions = (
 		<>
@@ -159,10 +207,10 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 				}
 			>
 				{isSubmitting
-					? "Saving..."
+					? "Saving…"
 					: isEditMode
-						? "Save changes"
-						: "Create variable"}
+						? "Save"
+						: "Create"}
 			</PrimaryButton>
 		</>
 	);
@@ -219,7 +267,21 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						required
 						disabled={isSubmitting || isEditMode} // Key is not editable
 						placeholder="e.g., my_variable_name"
+						aria-invalid={refusalField === "key"}
+						aria-describedby={
+							refusalField === "key" ? "variable-key-refusal" : undefined
+						}
+						className={cn(refusalField === "key" && "border-danger")}
 					/>
+					{refusalField === "key" && (
+						<p
+							id="variable-key-refusal"
+							role="alert"
+							className={cn("text-body-sm text-danger")}
+						>
+							{refusal?.message}
+						</p>
+					)}
 				</div>
 
 				<div className={cn("flex flex-col gap-1.5")}>
@@ -269,7 +331,12 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						required
 						disabled={isSubmitting}
 						rows={isJsonValue ? 5 : 2}
-						aria-describedby={isJsonValue ? "variable-value-hint" : undefined}
+						aria-describedby={cn(
+							isJsonValue && "variable-value-hint",
+							refusalField === "value" && "variable-value-refusal",
+						)}
+						aria-invalid={refusalField === "value"}
+						className={cn(refusalField === "value" && "border-danger")}
 						placeholder={
 							formData.type === "dict"
 								? `{ "example_key": "example_value" }`
@@ -288,7 +355,21 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 							Enter a valid JSON structure.
 						</p>
 					)}
+					{refusalField === "value" && (
+						<p
+							id="variable-value-refusal"
+							role="alert"
+							className={cn("text-body-sm text-danger")}
+						>
+							{refusal?.message}
+						</p>
+					)}
 				</div>
+				{refusal && !refusalField && (
+					<p role="alert" className={cn("text-body-sm text-danger")}>
+						{refusal.message}
+					</p>
+				)}
 			</div>
 		</BaseDialog>
 	);
