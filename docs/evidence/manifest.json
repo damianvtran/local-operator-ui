@@ -1,8 +1,8 @@
 {
-  "head": "2a24d3fafbd7ab3ab4b7c3cc966c029b2b139883",
-  "headNote": "Retained predecessor capture at 2a24d3fafbd7ab3ab4b7c3cc966c029b2b139883 (U10/U11/U13 remediation). The 180 slash-story frames were already dirty when recovery began; they were preserved, not recaptured by the recovery agent. The predecessor used capture-evidence.mjs against its private Storybook on port 6070, contrary to the required browser-tool-only capture procedure. Its log reports 180 frames at this SHA and the image timestamps agree. This is attributed historical evidence, not a claim of browser-tool capture or independent QA. srcTree/scriptsTree identify those capture inputs; no claim is made that unrelated historical frames were refreshed.",
-  "srcTree": "c3cb02262810f1fe2c9b1f0539a3f7db928655a2",
-  "scriptsTree": "0af86e73ec4b088e5143c7fb35b6cc34eb55ac0c",
+  "head": "aad5accb134ab342cca952218f590d1f023f212a",
+  "headNote": "Retained predecessor capture at 2a24d3fafbd7ab3ab4b7c3cc966c029b2b139883 (U10/U11/U13 remediation). The 180 slash-story frames were already dirty when recovery began; they were preserved, not recaptured by the recovery agent. The predecessor used capture-evidence.mjs against its private Storybook on port 6070, contrary to the required browser-tool-only capture procedure. Its log reports 180 frames at this SHA and the image timestamps agree. This is attributed historical evidence, not a claim of browser-tool capture or independent QA. srcTree/scriptsTree identify those capture inputs; no claim is made that unrelated historical frames were refreshed. Required rebase: GitHub reported DIRTY. Replayed once onto 915928a18a1d55fbe501c41cf6f68e6b8daa60ad. head/srcTree/scriptsTree now identify the post-rebase verification tree, NOT a new 180-frame capture: range-diff maps 2a24d3faf to 692b33fe5 with =; branch src/scripts +/- line sequences are byte-identical before/after replay; all 52 regenerated slash-story closure files including the stylesheet are byte-identical to the capture input. Two representative new PNGs were captured using the browser tool at this post-rebase tree (RECOVERY.md). refreshedAtHead names the equivalent reachable remediation commit; the original capture SHA remains recorded in this note. Non-slash historical sets were not refreshed. Final live correction aad5accb1: a real browser send revealed that the composer catch replaced the classified store copy with the generic transport sentence. This commit propagates the classified DesktopControlError, retaining status 422 and original cause; its regression failed before and passed after. Top-level stamps identify this verified source. The only slash-story closure delta since e8e8b8ad1 is the store error propagation, not the fixture popup DOM or stylesheet; the historical WebPs and the two popup PNGs remain attributed to their earlier capture inputs. Live refusal was recaptured via browser tool after a full reload, and its final actionable copy and retained full draft were read directly. No full set recapture is claimed.",
+  "srcTree": "7a32031d7b5816ac673ddfc6691f19e4b2698883",
+  "scriptsTree": "222b6696c8de7dcc11ae7ae35f0b7a5392315811",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
   "frames": 1344,
@@ -57,7 +57,7 @@
       "note": "The capture that ADDED this branch's twelve picker/band surfaces. Recorded here because the remediation round's own narrowed capture overwrites `addedFrames`/`addedSurfaces` in place, and an addition that disappears from the manifest reads as though the stories had always been swept."
     },
     "refreshedAt": "2026-09-14T18:26:08.132Z",
-    "refreshedAtHead": "2a24d3fafbd7ab3ab4b7c3cc966c029b2b139883",
+    "refreshedAtHead": "692b33fe5b014c8a05e39d1902412ae2fa08ed08",
     "refreshedFromHead": "0149548b407a357120d5031a690f542aa80e8ec6",
     "refreshedFrames": 180,
     "refreshedStories": [
