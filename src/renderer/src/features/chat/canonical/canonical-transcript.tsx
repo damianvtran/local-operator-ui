@@ -68,22 +68,28 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
-import { ErrorBlock } from "../components/message-item/error-block";
 import {
 	AGENT_GUTTER,
 	MessageContainer,
 } from "../components/message-item/message-container";
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
-import { OutputBlock } from "../components/message-item/output-block";
 import {
 	AgentQuestion,
 	AskOptions,
 	DiffBlock,
 	TraceLine,
 } from "../components/trace";
+import {
+	peerHasDetail,
+	peerIdentityLine,
+	peerSummary,
+	wakePromptBody,
+	wakeReceiptHeadline,
+} from "../components/trace/receipt-row-model";
+import { ToolDetail } from "../components/trace/tool-detail";
+import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	displayName,
 	formatBytes,
 	isBareToolName,
 	isDiffBodyRow,
@@ -106,7 +112,20 @@ import {
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
-import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import {
+	GAP,
+	type Row,
+	buildRows,
+	ledgerName,
+	paintsSomething,
+} from "./transcript-rows";
+/*
+ * Both sides edited this import block: this branch added `ledgerName` to the
+ * row-projection import (receipt rows take part in the shared name column) and
+ * `main` added `AttachmentScope` for the attachment-URL reader. Nothing here
+ * chooses between them - the two changes are independent, so the resolution is
+ * the union.
+ */
 import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
 import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
@@ -401,24 +420,12 @@ const ToolRow = memo(function ToolRow({
 		// and the error only makes sense beside them.
 		isDiffBodyRow(record) ? (
 			<DiffBlock diff={record.diff} />
-		) : record.output || record.args ? (
-			<>
-				{record.args && (
-					<pre
-						className={cn(
-							"mb-3 max-h-[240px] overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm",
-						)}
-					>
-						{JSON.stringify(record.args, null, 2)}
-					</pre>
-				)}
-				{record.output &&
-					(record.isError ? (
-						<ErrorBlock error={record.output} isUser={false} />
-					) : (
-						<OutputBlock output={record.output} isUser={false} />
-					))}
-			</>
+		) : hasDetail(record.args, record.output) ? (
+			<ToolDetail
+				args={record.args}
+				output={record.output}
+				isError={record.isError}
+			/>
 		) : undefined;
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
@@ -534,6 +541,173 @@ const NoticeRow = memo(function NoticeRow({
 	);
 });
 
+// ------------------------------------------------------------- receipts
+
+/**
+ * An inbound cross-session message (`lop send` from another session).
+ *
+ * A ledger row rather than a card, because that is what the TUI draws
+ * (`PeerMessageBlock`, `tui/widgets/transcript.py`) and the mobile fold agrees
+ * (`mobile/projection.py`): `peer` in the shared name column, the inbound glyph,
+ * the sender as the summary. What it replaced was its own card type whose body
+ * was the model-facing envelope verbatim — `<peer-session-message from_pid=92064
+ * …>` and all.
+ *
+ * `peer` has no entry in `tool-row-model.CATEGORIES`, which is deliberate: the
+ * `plain` fallback gives the name column `text-ink-muted`, the same ink the
+ * TUI's own peer row paints it in. Giving it `meta` would buy it the accent and
+ * make a receipt louder than the calls around it.
+ *
+ * The disclosure is offered only when the expansion carries a fact the collapsed
+ * row cannot (`peerHasDetail`): a body, or the pid/model the identity line adds
+ * to the one-line summary. The TUI's `can_expand()` is unconditional, but it also
+ * states the rule this follows — an expansion that delivers nothing is worse than
+ * no expansion — and its sibling here already rules the same case static (a wake
+ * with no prompt). An all-absent sender used to expand to `another session`: the
+ * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
+ */
+const PeerRow = memo(function PeerRow({
+	record,
+	isSmallView,
+	showAvatar,
+	nameColumn,
+}: {
+	record: Extract<TranscriptRecord, { kind: "peer" }>;
+	isSmallView: boolean;
+	showAvatar: boolean;
+	nameColumn: number;
+}) {
+	const detail = peerHasDetail(record.sender, record.body);
+	if (!detail) {
+		return (
+			<MessageContainer
+				isUser={false}
+				isSmallView={isSmallView}
+				showAvatar={showAvatar}
+			>
+				<ToolLedgerRow
+					toolName="peer"
+					summary={peerSummary(record.sender, record.body)}
+					outcome="receipt"
+					durationS={null}
+					nameColumn={nameColumn}
+				/>
+			</MessageContainer>
+		);
+	}
+	return (
+		<MessageContainer
+			isUser={false}
+			isSmallView={isSmallView}
+			showAvatar={showAvatar}
+		>
+			<ToolLedgerRow
+				toolName="peer"
+				summary={peerSummary(record.sender, record.body)}
+				outcome="receipt"
+				durationS={null}
+				nameColumn={nameColumn}
+				details={
+					// `px-3` puts this body on the SAME text rail as the pane above it:
+					// a tool expansion's border sits on the glyph rail and its text is
+					// inset by the pane's own padding, so a receipt body left flush sat
+					// 11px left of every other expanded body in the ledger (design D2:
+					// 262 vs 251 at 1280, 112 vs 101 at 560). § 7: one left rail.
+					<div className={cn("flex flex-col gap-2 px-3")}>
+						{/*
+						 * Identity FIRST, body under it — the TUI's order, and it is the
+						 * header that justifies the expansion. `text-ink-muted` is the middle
+						 * step of the TUI's ramp for it (summary `dim` -> identity `muted` ->
+						 * body `fg`); at `dim` it was the same ink as the summary row above it
+						 * and read as a dimmer continuation of the headline rather than as the
+						 * header of the block below.
+						 */}
+						<p className={cn("text-body-sm text-ink-muted")}>
+							{peerIdentityLine(record.sender)}
+						</p>
+						{/*
+						 * The message as the peer wrote it: real newlines, prose ink, selectable
+						 * (nothing in this subtree sets `select-none`). Not rendered at all for
+						 * an empty body — the TUI drops trailing blanks and refuses to paint a
+						 * separator with nothing under it, because an expansion that promises
+						 * detail and delivers whitespace is worse than one that shows the
+						 * addressing facts alone.
+						 */}
+						{record.body ? (
+							<p
+								className={cn(
+									"whitespace-pre-wrap break-words text-body-sm text-ink",
+								)}
+							>
+								{record.body}
+							</p>
+						) : null}
+					</div>
+				}
+			/>
+		</MessageContainer>
+	);
+});
+
+/**
+ * A scheduled-wake delivery receipt.
+ *
+ * The row exists because a wake fires with no user keystroke: before it, a
+ * resumed session showed the agent answering a wake with no sign the wake ever
+ * fired. `wake` is already a `meta` category (it shares the TUI's clock glyph),
+ * and the headline is the TUI's `WakeBlock` headline — the delivery's envelope
+ * with the `(alarm)` marker, the `Scheduled wake` prefix and the cancel how-to
+ * stripped, so what the reader gets is WHICH wake fired (`w-9 (1, every 6h)`)
+ * rather than instructions addressed to the model.
+ *
+ * The disclosure is offered only when a prompt came with it. The TUI's blocks
+ * return `can_expand() == true` unconditionally, but it also has a stated rule
+ * against an expansion that delivers nothing (see `PeerMessageBlock`'s empty-body
+ * comment), and here the headline already carries every addressing fact there is
+ * — a wake id and its schedule — so an empty expansion would hold nothing at all.
+ */
+const WakeRow = memo(function WakeRow({
+	record,
+	isSmallView,
+	showAvatar,
+	nameColumn,
+}: {
+	record: Extract<TranscriptRecord, { kind: "wake" }>;
+	isSmallView: boolean;
+	showAvatar: boolean;
+	nameColumn: number;
+}) {
+	const prompt = wakePromptBody(record.text);
+	return (
+		<MessageContainer
+			isUser={false}
+			isSmallView={isSmallView}
+			showAvatar={showAvatar}
+		>
+			<ToolLedgerRow
+				toolName="wake"
+				summary={wakeReceiptHeadline(record.text)}
+				outcome="receipt"
+				durationS={null}
+				nameColumn={nameColumn}
+				details={
+					prompt ? (
+						// `px-3`: the same content rail as every other expanded body in the
+						// ledger — see `PeerRow` above for the measurement.
+						<p
+							className={cn(
+								"whitespace-pre-wrap break-words px-3 text-body-sm text-ink-dim",
+							)}
+						>
+							{prompt}
+						</p>
+					) : undefined
+				}
+			/>
+		</MessageContainer>
+	);
+});
+
 // ---------------------------------------------------------------- list
 
 /** Development row-render counter; read by the perf readout below. */
@@ -576,6 +750,26 @@ const TranscriptRow = memo(function TranscriptRow({
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 					scope={scope}
+				/>
+			);
+			break;
+		case "peer":
+			body = (
+				<PeerRow
+					record={record}
+					isSmallView={isSmallView}
+					showAvatar={row.showAvatar}
+					nameColumn={nameColumn}
+				/>
+			);
+			break;
+		case "wake":
+			body = (
+				<WakeRow
+					record={record}
+					isSmallView={isSmallView}
+					showAvatar={row.showAvatar}
+					nameColumn={nameColumn}
 				/>
 			);
 			break;
@@ -847,18 +1041,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return () => window.clearInterval(timer);
 	}, [visible.length]);
 
-	// The shared name column: sized to the longest tool name ON SCREEN, between
+	// The shared name column: sized to the longest ledger name ON SCREEN, between
 	// the TUI's 8ch floor and 24ch ceiling. Derived from the visible window
 	// rather than the whole transcript, so scrolling to a run of `bash` rows
 	// does not keep paying for an `mcp__…` name a thousand rows back.
+	//
+	// A receipt row (`peer`, `wake`) is part of that measurement, not exempt from
+	// it: it sits on the same spine as the calls around it, and a name left out
+	// of the set would shift every other row's summary rail when it scrolled into
+	// view. `ledgerName` is the one place that decides which records have a name
+	// column at all.
 	const nameColumn = useMemo(
 		() =>
 			toolNameColumn(
-				visible
-					.map((row) =>
-						row.record.kind === "tool" ? displayName(row.record.toolName) : "",
-					)
-					.filter(Boolean),
+				visible.map((row) => ledgerName(row.record)).filter(Boolean),
 			),
 		[visible],
 	);

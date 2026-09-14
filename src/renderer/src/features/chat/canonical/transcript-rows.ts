@@ -9,6 +9,7 @@
  * keep it uniform.
  */
 
+import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 export type Row = {
@@ -121,8 +122,33 @@ export function isTraceLike(record: TranscriptRecord): boolean {
 		record.kind === "tool" ||
 		record.kind === "notice" ||
 		record.kind === "compaction" ||
-		record.kind === "custom"
+		record.kind === "custom" ||
+		// A peer message and a wake delivery are receipts on the same ledger as
+		// the calls around them (the TUI draws both as ledger rows —
+		// `PeerMessageBlock` and `WakeBlock` in `tui/widgets/transcript.py`), so
+		// they take the ledger's gap tier rather than prose's air. A note that
+		// arrived mid-run belongs to the run.
+		record.kind === "peer" ||
+		record.kind === "wake"
 	);
+}
+
+/**
+ * The name this record paints in the ledger's shared name column, or `""` for a
+ * record that has no ledger row at all.
+ *
+ * The column is sized to the longest name ON SCREEN, so a `peer` or `wake` row
+ * that kept its name out of that set would break the column for every row around
+ * it. Its own name is its kind — the record carries no `toolName`, because these
+ * are not tool calls and a field that only ever repeats the kind would be a
+ * second way of saying one thing.
+ */
+export function ledgerName(record: TranscriptRecord): string {
+	if (record.kind === "tool") return displayName(record.toolName);
+	if (record.kind === "peer" || record.kind === "wake") {
+		return displayName(record.kind);
+	}
+	return "";
 }
 
 /**
