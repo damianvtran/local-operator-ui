@@ -4171,9 +4171,10 @@ async function loRunUpdate({
 		 * leaving the fixture feed listening on 127.0.0.1 for the life of this
 		 * process. `node --test` waits for a file's process to exit, so the whole
 		 * desktop suite then never returns at all: measured in CI, `Desktop Tests`
-		 * silent for 43 minutes and then killed by the next push, and reproduced in
-		 * a Linux container where this file alone never exits and leaves five
-		 * listeners behind.
+		 * silent for tens of minutes (43 in the first job I read, 185 in the
+		 * longest) until the next push cancelled it, and reproduced in a Linux
+		 * container where this file alone never exits and leaves five listeners
+		 * behind.
 		 *
 		 * The defect is not that these tests can fail - they do, on a host whose
 		 * channel file is not the one MacUpdater asks for - it is that failing
@@ -4195,16 +4196,18 @@ async function loRunUpdate({
  *
  * The subject is MacUpdater: the feed these tests build is a mac release (per-arch
  * zips and `latest-mac.yml`), and off darwin the updater asks for that platform's
- * own channel file instead. Measured failing on Linux two different ways, which is
- * worth stating because only one of them is about the updater: on the Ubuntu runner
- * the six bodies below failed with `Cannot find module 'app-builder-bin'` from the
- * scenario builder - they never got as far as serving a feed - while in a `node:22`
- * container with that dependency present they failed with `Cannot find channel
+ * own channel file instead. They are red on Linux, and the mode depends on the
+ * head rather than on the platform: job 103777903178 (run 34777397403, the last
+ * `Desktop Tests` ever to complete) failed all six with `Cannot find module
+ * 'app-builder-bin'` from the scenario builder it had then, before any feed
+ * existed, while on this head - which builds its fixtures through `buildBlockMap`
+ * - a `node:22` container fails them with `Cannot find channel
  * "latest-linux.yml"`, a 404 from the fixture. Six red tests on the only platform
- * this suite runs on is also what USED to hang `Desktop Tests` for 45 minutes at a
- * time, because the failure path left the fixture feed listening (`loRunUpdate`);
- * that leak is fixed separately, and this gate is what makes this file honest about
- * where it is evidence.
+ * this suite runs on is also what USED to leave `Desktop Tests` silent for tens of
+ * minutes (43 in the first job I read, 185 in the longest) until the next push
+ * cancelled it, because the failure path left the fixture feed listening
+ * (`loRunUpdate`). That leak is fixed separately; this gate is what makes this
+ * file honest about where it is evidence.
  *
  * Returns true when the caller must return immediately.
  */
