@@ -4111,18 +4111,26 @@ async function loRunUpdate({
 			);
 		}
 	}
-	const port = await state.listen();
-	const cacheRoot = join(scenario.dir, "cache");
-	const updateCache = loWriteUpdateConfig(cacheRoot, port);
-	if (cachedOld) {
-		mkdirSync(updateCache, { recursive: true });
-		writeFileSync(
-			join(updateCache, "update.zip"),
-			cacheBase ?? scenario.previous(arch),
-		);
-	}
-
 	try {
+		/*
+		 * INSIDE the try, all of it: `listen()` starts the leak this catch exists
+		 * for, and the writes below can throw (mkdirSync, writeFileSync, and the
+		 * `scenario.previous(arch)` read behind them). Opening the try after them -
+		 * which is what this looked like on the first pass - left the feed
+		 * listening on any throw in between, which is the same hang by a narrower
+		 * door.
+		 */
+		const port = await state.listen();
+		const cacheRoot = join(scenario.dir, "cache");
+		const updateCache = loWriteUpdateConfig(cacheRoot, port);
+		if (cachedOld) {
+			mkdirSync(updateCache, { recursive: true });
+			writeFileSync(
+				join(updateCache, "update.zip"),
+				cacheBase ?? scenario.previous(arch),
+			);
+		}
+
 		const result = await loAsArch(arch, async () => {
 			const { updater, lines } = loMakeUpdater({
 				cacheRoot,
@@ -4171,25 +4179,43 @@ async function loRunUpdate({
 		 * channel file is not the one MacUpdater asks for - it is that failing
 		 * HANGS the run, which is the one outcome a test must never have.
 		 */
-		state.close();
+		try {
+			state.close();
+		} catch {
+			// A close failure must not replace the error on its way out: the
+			// assertion the reader needs is the original one, and a close that
+			// throws has nothing to add to it.
+		}
 		throw error;
 	}
 }
 
+/**
+ * Skip a body that asserts MacUpdater behaviour when it is not running on macOS.
+ *
+ * The subject is MacUpdater: the feed these tests build is a mac release (per-arch
+ * zips and `latest-mac.yml`), and off darwin the updater asks for that platform's
+ * own channel file instead. Measured failing on Linux two different ways, which is
+ * worth stating because only one of them is about the updater: on the Ubuntu runner
+ * the six bodies below failed with `Cannot find module 'app-builder-bin'` from the
+ * scenario builder - they never got as far as serving a feed - while in a `node:22`
+ * container with that dependency present they failed with `Cannot find channel
+ * "latest-linux.yml"`, a 404 from the fixture. Six red tests on the only platform
+ * this suite runs on is also what USED to hang `Desktop Tests` for 45 minutes at a
+ * time, because the failure path left the fixture feed listening (`loRunUpdate`);
+ * that leak is fixed separately, and this gate is what makes this file honest about
+ * where it is evidence.
+ *
+ * Returns true when the caller must return immediately.
+ */
+function skipUnlessDarwin(t) {
+	if (process.platform === "darwin") return false;
+	t.skip("macOS only");
+	return true;
+}
+
 test("the updater resolves the channel file, and both architectures are listed", async (t) => {
-	if (process.platform !== "darwin") {
-		// The subject is MacUpdater: the feed below is a mac release (per-arch
-		// zips and `latest-mac.yml`), and on any other platform the updater asks
-		// for its own channel file, gets a 404 and fails the assertion - measured
-		// on the Ubuntu runner and in a node:22 container, where these six bodies
-		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
-		// siblings skipped. Failing here is also what USED to hang the suite,
-		// because the failure path left the fixture feed listening (see
-		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
-		// this file honest on the only platform CI runs it.
-		t.skip("macOS only");
-		return;
-	}
+	if (skipUnlessDarwin(t)) return;
 
 	const scenario = await loUpdateScenario();
 	const state = loServe(scenario.next.web);
@@ -4230,19 +4256,7 @@ for (const [arch, own, other] of [
 	["x64", "local-operator-ui-0.19.7-x64.zip", "local-operator-ui-0.19.7-arm64.zip"],
 ]) {
 	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async (t) => {
-	if (process.platform !== "darwin") {
-		// The subject is MacUpdater: the feed below is a mac release (per-arch
-		// zips and `latest-mac.yml`), and on any other platform the updater asks
-		// for its own channel file, gets a 404 and fails the assertion - measured
-		// on the Ubuntu runner and in a node:22 container, where these six bodies
-		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
-		// siblings skipped. Failing here is also what USED to hang the suite,
-		// because the failure path left the fixture feed listening (see
-		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
-		// this file honest on the only platform CI runs it.
-		t.skip("macOS only");
-		return;
-	}
+		if (skipUnlessDarwin(t)) return;
 
 		const run = await loRunUpdate({ arch });
 		try {
@@ -4293,19 +4307,7 @@ for (const [arch, own, other] of [
 }
 
 test("a build that changed across most of the file transfers most of it", async (t) => {
-	if (process.platform !== "darwin") {
-		// The subject is MacUpdater: the feed below is a mac release (per-arch
-		// zips and `latest-mac.yml`), and on any other platform the updater asks
-		// for its own channel file, gets a 404 and fails the assertion - measured
-		// on the Ubuntu runner and in a node:22 container, where these six bodies
-		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
-		// siblings skipped. Failing here is also what USED to hang the suite,
-		// because the failure path left the fixture feed listening (see
-		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
-		// this file honest on the only platform CI runs it.
-		t.skip("macOS only");
-		return;
-	}
+	if (skipUnlessDarwin(t)) return;
 
 	// The honest counterpart to the delta above, and the reason the PR body does
 	// not claim routine updates are small: the mechanism transfers the blocks
@@ -4333,19 +4335,7 @@ test("a build that changed across most of the file transfers most of it", async 
 });
 
 test("the first update off a universal build falls back to a full download", async (t) => {
-	if (process.platform !== "darwin") {
-		// The subject is MacUpdater: the feed below is a mac release (per-arch
-		// zips and `latest-mac.yml`), and on any other platform the updater asks
-		// for its own channel file, gets a 404 and fails the assertion - measured
-		// on the Ubuntu runner and in a node:22 container, where these six bodies
-		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
-		// siblings skipped. Failing here is also what USED to hang the suite,
-		// because the failure path left the fixture feed listening (see
-		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
-		// this file honest on the only platform CI runs it.
-		t.skip("macOS only");
-		return;
-	}
+	if (skipUnlessDarwin(t)) return;
 
 	// The state every existing macOS user is in for exactly one release: they run
 	// a universal 0.19.6 whose zip sits in the cache as the diff base, and this
@@ -4385,19 +4375,7 @@ test("the first update off a universal build falls back to a full download", asy
 });
 
 test("without the block maps a release offers, the updater transfers the whole file", async (t) => {
-	if (process.platform !== "darwin") {
-		// The subject is MacUpdater: the feed below is a mac release (per-arch
-		// zips and `latest-mac.yml`), and on any other platform the updater asks
-		// for its own channel file, gets a 404 and fails the assertion - measured
-		// on the Ubuntu runner and in a node:22 container, where these six bodies
-		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
-		// siblings skipped. Failing here is also what USED to hang the suite,
-		// because the failure path left the fixture feed listening (see
-		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
-		// this file honest on the only platform CI runs it.
-		t.skip("macOS only");
-		return;
-	}
+	if (skipUnlessDarwin(t)) return;
 
 	// The world every release up to now lived in: electron-builder built a block
 	// map for each archive and the publish job dropped it, so the first block-map
