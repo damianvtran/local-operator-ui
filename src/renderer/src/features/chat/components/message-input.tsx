@@ -48,6 +48,7 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
 import {
+	CAPPED_BLOCK,
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
@@ -56,8 +57,10 @@ import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
+import { ComposerStatusRow } from "./composer-status-row";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ReplyPreview } from "./reply-preview";
+import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import {
 	type SlashCommandMeta,
@@ -272,6 +275,16 @@ type MessageInputProps = {
 		 */
 		draft?: boolean;
 	};
+	/**
+	 * The run's derived model, for the status row's plan count.
+	 *
+	 * Passed in rather than derived here, and that is the point of the prop: the
+	 * counts on this composer and the counts in the run pane have to be ONE
+	 * derivation (`deriveRunDetails`), because a second call here is a second tally
+	 * free to disagree with the pane's. `null` on every path with no canonical
+	 * session, which is also what keeps the status row off a legacy pane.
+	 */
+	runDetails?: RunDetails | null;
 };
 
 /**
@@ -426,6 +439,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			isHydrating = false,
 			sessionStatus,
+			runDetails,
 		},
 		ref,
 	) => {
@@ -1060,8 +1074,46 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * draw. The variant owns the size; the call sites no longer claim to.
 		 */
 
+		/*
+		 * Whether the empty-chat prompt belongs in the band.
+		 *
+		 * Derived here rather than written into the JSX so the wrapper below does not
+		 * have to repeat the condition three times: the wrapper is always rendered and
+		 * only the prompt's presence is conditional. See the wrapper's own comment for
+		 * why that matters (QA round 1, Q4 - focus dropped to `<body>` when a press on
+		 * the plan chip narrowed the column across `isSmallView`).
+		 */
+		const showEmptyChatPrompt =
+			messages.length === 0 && !isHydrating && !isSmallView;
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
+				{/*
+				 * The session's status row, ABOVE the alert and therefore above the box:
+				 * `docs/composer-status-tabs.md` § 2.1. The alert is a transient failure
+				 * that points at the composer; this row is persistent ambient context, so
+				 * it sits outboard of the transient one. Band order, top to bottom: row,
+				 * alert, box.
+				 *
+				 * KEYED ON THE CONVERSATION, and that is a requirement rather than
+				 * tidiness: the composer is not remounted on a session switch, so a goal
+				 * expanded in one conversation would arrive expanded in the next. The
+				 * goal's expansion is deliberately not persisted (spec § 3.3), and this
+				 * key is the whole reset mechanism.
+				 *
+				 * It returns null when the session has neither a goal nor a plan, so a
+				 * legacy pane and a fresh draft reserve no height at all. It renders inside
+				 * an error boundary with an empty fallback for the readings' own reason: a
+				 * crash in metadata must not cost the ability to type.
+				 */}
+				<ErrorBoundary fallback={null}>
+					<ComposerStatusRow
+						key={conversationId}
+						frontend={sessionStatus?.frontend}
+						runDetails={runDetails}
+						isSmallView={isSmallView}
+					/>
+				</ErrorBoundary>
 				{(abandonNotice ||
 					(!sendError && heldNotice) ||
 					(sendError && (composerAlert.message || composerAlert.showHeld))) && (
@@ -1097,7 +1149,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						role="alert"
 						className={cn(
 							CHAT_MEASURE,
-							"flex max-h-32 flex-col gap-1 overflow-y-auto text-body-sm text-danger",
+							"flex flex-col gap-1 text-body-sm text-danger",
+							/*
+							 * The composer's whole-line cap, shared with the status row's goal body.
+							 * Both blocks grow and then cap themselves, and both used `max-h-32`, which
+							 * at the composer's own leading lands 8px into a seventh line - letter tops
+							 * under a complete line, which reads as a rendering accident (design review
+							 * round 1, D2). One device, decided once, in `chat-measure.ts`.
+							 */
+							CAPPED_BLOCK,
 							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 						)}
 					>
@@ -1913,16 +1973,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 				data-lo-composer-band={true}
 			>
-				{messages.length === 0 && !isHydrating && !isSmallView ? (
-					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
+				{/*
+				 * ONE wrapper at every state, and only its CLASSES change.
+				 *
+				 * This was a ternary between a centred `<div>` holding the greeting and
+				 * `inputContent` bare, and the branch keys on `!isSmallView` - a COLUMN
+				 * measurement (`chat-content.tsx`, <550px). So opening the run pane or the
+				 * canvas narrows the column across that threshold and swaps the element
+				 * TYPE at this position, which React resolves by unmounting the old subtree
+				 * and mounting a new one. The status row lives inside `inputContent`, so a
+				 * press on its plan chip - a control whose whole job is to narrow the column
+				 * - replaced the very node the user had just pressed, and focus went to
+				 * `<body>` (QA round 1, Q4: `focusout` with no following `focusin`, and the
+				 * chip's dataset mark gone). On a populated transcript the node survives and
+				 * nothing is dropped, which is why only the empty-transcript case failed.
+				 *
+				 * Rendering the wrapper always and moving the difference into its classes is
+				 * the fix at the source: the subtree is never replaced, so no control inside
+				 * it can be torn out from under a press. `w-full` in the non-prompt state is
+				 * what keeps this neutral - the band is a centred flex COLUMN, and a plain
+				 * unwidthed wrapper would shrink to its content instead of filling the column
+				 * the way `inputContent`'s own `w-full` did.
+				 */}
+				<div
+					className={cn(
+						showEmptyChatPrompt
+							? "flex w-full flex-col items-center justify-center gap-6 py-4"
+							: "w-full",
+					)}
+				>
+					{showEmptyChatPrompt ? (
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
 						</h2>
-						{inputContent}
-					</div>
-				) : (
-					inputContent
-				)}
+					) : null}
+					{inputContent}
+				</div>
 				<ScrollToBottomButton
 					visible={isFarFromBottom}
 					onClick={scrollToBottom}
