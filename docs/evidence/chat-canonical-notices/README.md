@@ -333,12 +333,12 @@ the fact that its `mouseup` detail varies run to run (R15); "194 declared" and
 reports were written against (U18, Q10). Both terms move with main's own evidence
 activity — this branch's manifest at its final head declares **227** frames across
 25 supplementary sets out of 1,289 on disk, which is the arithmetic to check
-against the file itself rather than against this paragraph.
-and the tool-row claim, which is true of the trigger rather than of the row
-(Q13). **`pnpm test:desktop` at this head is `tests 752, pass 748, fail 4`**: the
-three uv/pip install-layout tests plus `submit-latency.test.mjs`'s
-`M1/M2/M3: the warm removes the engage from the send…`, which fails at the
-pre-branch base too (Q12). **Deferred with reasons:** D10 (the joined job headline
+against the file itself rather than against this paragraph. The tool-row claim is
+true of the trigger rather than of the row (Q13). **`pnpm test:desktop` at the
+final head is `tests 772, pass 768, fail 4`**: the three uv/pip install-layout
+tests plus `submit-latency.test.mjs`'s `M1/M2/M3: the warm removes the engage from
+the send…`, which fails in isolation at this head and at the pre-branch base
+(Q12). **Deferred with reasons:** D10 (the joined job headline
 repeats the derived label's word "job" — copy is the design stream's lane and it
 recorded the nit as not asked for in this round) and R16 (the sentence scan still
 cannot separate `Step one: 1. Do the thing.` or `Dr. Smith` from a sentence end;
