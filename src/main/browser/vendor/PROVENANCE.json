@@ -1,0 +1,31 @@
+{
+  "source_repo": "damianvtran/local-operator",
+  "source_ref": "98df4c2c7278f7da765b7165904bce56f2f43f51",
+  "proto_version": 1,
+  "app_proto_version": 1,
+  "inputs_sha256": "717547cc9c8ff63c4e2adc932f6dcbf628b3864c004954cc0bff9c57e33f5e4a",
+  "generator": "scripts/sync-vendored.mjs",
+  "patches": [
+    {
+      "file": "driver/origin-policy.ts",
+      "id": "psl-injection",
+      "marker": "export function configurePslRules(",
+      "reason": "the vendored module imports the full generated PSL (`./psl.gen`), which this host does not ship. The rules are injected once at host start instead, and an absent rule set fails CLOSED: no `domain` option is offered and no stored `domain` grant matches. Exact-origin, loopback-host and one-shot grants are unaffected, and `status.domain_scope` reports which state the host is in."
+    }
+  ],
+  "not_vendored": [
+    {
+      "file": "extension/src/driver/psl.gen.ts",
+      "reason": "the 157 KB generated public-suffix data. The app does not ship it: a generated blob copied by hand is an artifact with no generator and no check, and this host injects the rules through configurePslRules() instead (fail-closed when absent). See PROVENANCE.patches."
+    }
+  ],
+  "files": {
+    "driver/access-flow.ts": "1e67838920d293f04c6397e3c71cff5df0359d6f704eeac496561576dfc152c3",
+    "driver/access-queue.ts": "a76b311212393d6c2d43b45fb3ef75c42fc77a6000a20d0490932f49230b9c18",
+    "driver/ax-compact.ts": "3152510cca3f0c24570aef28a9e269cbef74766bad51af8f5aaf16df276876d6",
+    "driver/deadline.ts": "d007136da79c75afeabbda217f928761067fcfa62b734c0f6d531fd7c8f409d8",
+    "driver/errors.ts": "7465167cbc0b285b5d813ff458b74eeb43ad96a359cd07ed9602245d1feb80dd",
+    "driver/origin-policy.ts": "9806b21e532b96c6307478a4705c5e98301d09162355fe7aa136f204853409c4",
+    "driver/scroll-expressions.ts": "1ec22ec38898030f228a5adcfd4d1d2a81150d4acefe0ec99104ba7e3b7c46f5"
+  }
+}

@@ -17,8 +17,17 @@
  */
 
 import assert from "node:assert/strict";
+import { connect } from "node:net";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { networkInterfaces } from "node:os";
+import {
+	chmodSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -34,7 +43,12 @@ const bundle = await build({
 			'export * from "./src/main/browser/approvals";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
-			'export * from "./src/main/browser/policy/origin-policy";',
+			'export * from "./src/main/browser/settle";',
+			'export * from "./src/main/browser/log-capture";',
+			'export * from "./src/main/browser/actions/gate";',
+			// The vendored driver modules. Their app-side counterparts live in
+			// `policy/adapter.ts`, which this bundle reaches through `host`.
+			'export * from "./src/main/browser/vendor/driver/origin-policy";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -74,6 +88,8 @@ const {
 	domainScopeAvailable,
 	registrableDomain,
 	safeHttpUrl,
+	navigateView,
+	settle,
 } = mod;
 
 /** A fake `WebContentsView` with the shape the registry and the driver read. */
@@ -88,7 +104,7 @@ class FakeWebContents extends EventEmitter {
 		this.worlds = [];
 		this.isolatedResult = "";
 		this.debugger = new FakeDebugger(this);
-		this.navigationHistory = {
+		this.#history = {
 			canGoBack: () => false,
 			canGoForward: () => false,
 			goBack: () => {},
@@ -97,11 +113,28 @@ class FakeWebContents extends EventEmitter {
 		};
 	}
 
+	#history;
+
 	isDestroyed() {
 		return this.destroyed;
 	}
 
+	/**
+	 * Electron throws `Object has been destroyed` from every accessor on a dead
+	 * WebContents. Reproduced here because it is exactly what the guards under
+	 * test exist for: a fake that answers politely cannot fail a missing guard.
+	 */
+	#assertAlive() {
+		if (this.destroyed) throw new Error("Object has been destroyed");
+	}
+
+	get navigationHistory() {
+		this.#assertAlive();
+		return this.#history;
+	}
+
 	isLoading() {
+		this.#assertAlive();
 		return false;
 	}
 
@@ -110,10 +143,12 @@ class FakeWebContents extends EventEmitter {
 	stop() {}
 
 	getURL() {
+		this.#assertAlive();
 		return this.url;
 	}
 
 	getTitle() {
+		this.#assertAlive();
 		return this.title;
 	}
 
@@ -263,12 +298,18 @@ test("the state file is 0600 under 0700 and publishes the port and key", () => {
 	);
 	writer.start(51234, sessionKey);
 	const stat = statSync(path);
-	assert.equal(stat.mode & 0o777, STATE_FILE_MODE, "the record is 0600");
+	// The LITERALS, deliberately, not the exported constants: comparing the file
+	// against `STATE_FILE_MODE` made the assertion unable to fail — mutating the
+	// constant to 0o644 kept the suite green while the message still claimed 0600
+	// (R4). The constants are asserted separately, as intent.
+	assert.equal(stat.mode & 0o777, 0o600, "the record is 0600");
 	assert.equal(
 		statSync(join(root, "run", "ui-browser")).mode & 0o777,
-		STATE_DIR_MODE,
+		0o700,
 		"the directory is 0700",
 	);
+	assert.equal(STATE_FILE_MODE, 0o600);
+	assert.equal(STATE_DIR_MODE, 0o700);
 	const body = JSON.parse(readFileSync(path, "utf8"));
 	assert.equal(body.host, "ui");
 	assert.equal(body.proto, PROTO_VERSION);
@@ -295,6 +336,39 @@ test("the state file is 0600 under 0700 and publishes the port and key", () => {
 		0,
 		"clearing removes the record, so discovery is honest",
 	);
+});
+
+test("a record whose mode was widened is repaired on the next write", () => {
+	const path = stateFilePath(root);
+	const writer = new BrowserStateWriter(
+		path,
+		() => ({ tabs: 0, agentTabs: 0, profileDir: "/scratch/profile" }),
+		{ appVersion: "0.21.0" },
+	);
+	writer.start(51235, sessionKey);
+	// `writeFileSync`'s mode applies only at creation, and `mkdirSync`'s is subject
+	// to the umask and does nothing to a directory that already exists — so a
+	// record or a directory that arrived world-readable (a restore, an older
+	// build, a different umask) would stay that way forever without the repair the
+	// write path performs. Both halves are asserted, because the file's happens to
+	// be re-created by the staged rename while the directory's is only the chmod.
+	const dir = join(root, "run", "ui-browser");
+	chmodSync(path, 0o644);
+	chmodSync(dir, 0o755);
+	assert.equal(statSync(path).mode & 0o777, 0o644);
+	assert.equal(statSync(dir).mode & 0o777, 0o755);
+	writer.publishNow();
+	assert.equal(
+		statSync(path).mode & 0o777,
+		0o600,
+		"the next write re-asserts the mode the code intends",
+	);
+	assert.equal(
+		statSync(dir).mode & 0o777,
+		0o700,
+		"and the directory it lives in, which nothing else repairs",
+	);
+	writer.clear();
 });
 
 test("asking for the state path creates nothing", () => {
@@ -329,6 +403,50 @@ test("the listener answers only with the key, and never with CORS headers", asyn
 	const preflight = await fetch(rpcUrl(), { method: "OPTIONS" });
 	assert.equal(preflight.headers.get("access-control-allow-origin"), null);
 	assert.notEqual(preflight.status, 200);
+});
+
+test("the listener binds loopback only, and nothing else on this machine can reach it", async () => {
+	// Design 11.7 rule 1, and the only one of the four rules that had NO assertion
+	// anywhere: mutating the bind to `0.0.0.0` left the whole suite at 40 pass / 0
+	// fail (R3). An agent-driving endpoint on every interface is a remote-control
+	// surface for the operator's authenticated jar, so the address the OS resolved
+	// is asserted here rather than left to a reader of `rpc.ts`.
+	assert.equal(
+		server.address,
+		"127.0.0.1",
+		"the resolved bind address, not the argument the code passed",
+	);
+
+	// The refusal is measured, not inferred: connect to a NON-loopback address of
+	// this machine. A host with no non-loopback IPv4 (a container, a machine with
+	// only lo up) cannot run this probe, and says so rather than passing silently.
+	const lan = Object.values(networkInterfaces())
+		.flat()
+		.find((entry) => entry && entry.family === "IPv4" && !entry.internal);
+	if (!lan) {
+		// eslint-disable-next-line no-console
+		console.error(
+			"NOTE: no non-loopback IPv4 on this machine, so the off-host refusal was not measured here",
+		);
+		return;
+	}
+	const refused = await new Promise((resolve) => {
+		const socket = connect({ host: lan.address, port: server.port, timeout: 2_000 });
+		socket.once("connect", () => {
+			socket.destroy();
+			resolve("CONNECTED");
+		});
+		socket.once("error", (error) => resolve(error.code ?? String(error)));
+		socket.once("timeout", () => {
+			socket.destroy();
+			resolve("TIMEOUT");
+		});
+	});
+	assert.notEqual(
+		refused,
+		"CONNECTED",
+		`a connection to ${lan.address}:${server.port} must be refused (got ${refused})`,
+	);
 });
 
 test("malformed envelopes are refused at the boundary, not half-interpreted", async () => {
@@ -1081,4 +1199,268 @@ test("the URL bar's own navigation is refused for a non-http scheme", async () =
 	);
 	const state = await host.navigateActive("example.com");
 	assert.equal(state.url, "https://example.com/");
+});
+
+// ---- the navigation wait: the settle's event mapping (R1) and its budget (Q1)
+
+/**
+ * A debugger the test can drive: `Debugger` is an EventEmitter in Electron, and
+ * the listener count on it is the property R2 is about, so the fake has to be
+ * one too.
+ */
+class EmittingDebugger extends EventEmitter {
+	constructor() {
+		super();
+		this.attached = false;
+	}
+
+	attach() {
+		this.attached = true;
+	}
+
+	detach() {
+		this.attached = false;
+	}
+
+	isAttached() {
+		return this.attached;
+	}
+
+	async sendCommand() {
+		return {};
+	}
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+test("settle follows the REAL Electron event shapes: a sub-frame in-page navigation does not settle the wait", async () => {
+	const contents = new FakeWebContents(901);
+	let outcome = null;
+	const done = settle(contents, 5_000).then(
+		() => {
+			outcome = "resolved";
+		},
+		(error) => {
+			outcome = error;
+		},
+	);
+	// The real signature (electron.d.ts:16907-16911, Electron 44.3.0):
+	// (event, url, isMainFrame, frameProcessId, frameRoutingId). A hash change
+	// inside an embedded frame must NOT settle the main frame's wait — binding the
+	// url as `isMainFrame` is the R1 defect, and it made this line resolve.
+	contents.emit("did-navigate-in-page", {}, "https://page.example/#ad-frame", false, 2, 7);
+	await tick();
+	assert.equal(outcome, null, "a SUB-FRAME's in-page navigation must not settle a navigation");
+	contents.emit("did-navigate-in-page", {}, "https://page.example/#main", true, 1, 3);
+	await done;
+	assert.equal(outcome, "resolved", "the MAIN frame's in-page navigation settles it");
+});
+
+test("settle types a main-frame load failure, and ignores a sub-frame's or an aborted one", async () => {
+	const subFrame = new FakeWebContents(902);
+	let subOutcome = null;
+	const subDone = settle(subFrame, 5_000).then(
+		() => {
+			subOutcome = "resolved";
+		},
+		(error) => {
+			subOutcome = error;
+		},
+	);
+	// An ad iframe that fails to load must not abort a navigation that in fact
+	// succeeded; ABORTED (-3) is Chromium reporting a navigation the page itself
+	// superseded, which is normal on any site that redirects client-side.
+	subFrame.emit("did-fail-load", {}, -105, "NAME_NOT_RESOLVED", "https://ad.example/", false);
+	subFrame.emit("did-fail-load", {}, -3, "ERR_ABORTED", "https://page.example/", true);
+	await tick();
+	assert.equal(subOutcome, null, "neither a sub-frame failure nor ERR_ABORTED is a failure");
+	subFrame.emit("did-finish-load");
+	await subDone;
+	assert.equal(subOutcome, "resolved");
+
+	const mainFrame = new FakeWebContents(903);
+	const failed = settle(mainFrame, 5_000);
+	failed.catch(() => {});
+	setImmediate(() =>
+		mainFrame.emit(
+			"did-fail-load",
+			{},
+			-105,
+			"NAME_NOT_RESOLVED",
+			"https://nope.example/",
+			true,
+		),
+	);
+	await assert.rejects(failed, (error) => {
+		assert.equal(error.code, "nav_failed", "a main-frame net error is typed, not a timeout");
+		assert.equal(error.data.error_code, -105);
+		return true;
+	});
+});
+
+test("a hung page ends as the typed nav_timeout inside the published budget", async () => {
+	const contents = new FakeWebContents(904);
+	// A server that accepts the connection and never answers: Electron's `loadURL`
+	// promise never settles for it, which is why the settle (not a deadline around
+	// the load) has to be the thing that reports the failure.
+	contents.loadURL = () => new Promise(() => {});
+	const ctx = {
+		cdp: { send: async () => ({}), subscribe: () => () => {} },
+		log: () => {},
+	};
+	const started = Date.now();
+	await assert.rejects(
+		() =>
+			navigateView(
+				ctx,
+				{ webContents: contents },
+				new URL("http://127.0.0.1:9/slow"),
+				"session:a",
+				() => true,
+				120,
+			),
+		(error) => {
+			assert.equal(error.code, "nav_timeout", "the typed code, not `internal` + data.stalled");
+			assert.equal(error.data.timeout_ms, 120);
+			return true;
+		},
+	);
+	const elapsed = Date.now() - started;
+	assert.ok(
+		elapsed < 1_000,
+		`the wait is the settle's own ceiling, not a second one stacked on top (took ${elapsed}ms)`,
+	);
+});
+
+// ---- the debugger attachment (R2) ------------------------------------------
+
+test("re-attaching after a devtools detach delivers every event exactly once", async () => {
+	// Bundled on their own, like the test above: `CdpPool` is not exported from the
+	// main bundle, and the log ring buffer is module state, so the driver and the
+	// reader have to come from the SAME copy of the module.
+	const { CdpPool, drainLogs } = await import(
+		`data:text/javascript;base64,${Buffer.from(
+			(
+				await build({
+					stdin: {
+						contents:
+							'export * from "./src/main/browser/cdp";\nexport * from "./src/main/browser/log-capture";',
+						resolveDir: process.cwd(),
+					},
+					bundle: true,
+					format: "esm",
+					platform: "node",
+					write: false,
+				})
+			).outputFiles[0].text,
+		).toString("base64")}`
+	);
+	const pool = new CdpPool();
+	const contents = new FakeWebContents(905);
+	contents.debugger = new EmittingDebugger();
+	const events = [];
+	const unsubscribe = pool.subscribe(contents.id, (method) => events.push(method));
+	const consoleLine = (value) => {
+		contents.debugger.emit("message", {}, "Runtime.consoleAPICalled", {
+			type: "log",
+			args: [{ type: "string", value }],
+		});
+	};
+
+	await pool.attach(contents);
+	consoleLine("hello");
+	assert.deepEqual(events, ["Runtime.consoleAPICalled"], "one line, one delivery");
+
+	// The DevTools case (design 10.6), which this PR's own transcript contains:
+	// Electron DETACHES the session rather than refusing the attach.
+	contents.debugger.emit("detach", {}, "target closed");
+	assert.equal(pool.isAttached(contents.id), false);
+	await pool.attach(contents);
+	assert.equal(pool.isAttached(contents.id), true);
+
+	consoleLine("hello");
+	assert.equal(
+		contents.debugger.listenerCount("message"),
+		1,
+		"one `message` listener, not one per attach cycle",
+	);
+	assert.deepEqual(
+		events,
+		["Runtime.consoleAPICalled", "Runtime.consoleAPICalled"],
+		"the subscriber is called once per event, not once per stale listener",
+	);
+	assert.equal(
+		drainLogs(contents.id).filter((entry) => entry.text === "hello").length,
+		2,
+		"`logs` returns each console line once",
+	);
+	unsubscribe();
+	await pool.detach(contents.id);
+	assert.equal(
+		contents.debugger.listenerCount("message"),
+		0,
+		"a detached view keeps no listeners at all",
+	);
+});
+
+// ---- the tab registry's cap and the strip's projection (N2, N3) -------------
+
+test("a hand-over cannot push the agent-owned count past the cap", () => {
+	const { registry } = makeRegistry();
+	for (let index = 0; index < MAX_AGENT_TABS; index += 1) {
+		registry.create({ owner: "agent", sessionId: "a", url: "https://example.com/" });
+	}
+	const userTab = registry.create({ owner: "user", url: "https://example.com/" });
+	assert.equal(registry.agentTabCount(), MAX_AGENT_TABS);
+	assert.throws(
+		() => registry.handOver(userTab.tabId, "session:a"),
+		(error) => error.code === "tab_limit",
+		"the cap `open` enforces is the cap `status` reports",
+	);
+	// Re-handing an ALREADY agent-owned tab does not change the count, so the cap
+	// must not refuse the one hand-over that adds no agent tab.
+	const agentTab = registry.list().find((record) => record.owner === "agent");
+	registry.handOver(agentTab.tabId, "session:b");
+	assert.equal(registry.agentTabCount(), MAX_AGENT_TABS);
+});
+
+test("the strip's projection survives an active tab whose view has died", async () => {
+	const { host, registry } = makeHost();
+	await host.newTab();
+	const activeId = registry.activeTab.tabId;
+	// Destroyed WITHOUT going through the registry: the window in which
+	// `chromeState()` used to throw "Object has been destroyed" out of an IPC
+	// handler and blank the whole strip (N2).
+	registry.activeTab.view.webContents.destroyed = true;
+	const state = host.chromeState();
+	assert.equal(state.activeTabId, activeId, "the tab is still named, so the strip can drop it");
+	assert.equal(state.url, "");
+	assert.equal(state.canGoBack, false);
+});
+
+// ---- the ownership refusal (Q2) --------------------------------------------
+
+test("owner_* without a proof is refused with the extension's own answer", async () => {
+	const { host } = makeHost();
+	for (const method of ["owner_recover", "owner_retain", "owner_finish", "owner_release"]) {
+		await assert.rejects(
+			() => host.dispatch(method, { requester: "session:qa" }, "req-q2"),
+			(error) => {
+				assert.equal(error.code, "owner_refused", `${method} must not answer \`internal\``);
+				assert.match(error.message, /missing private browser ownership proof/);
+				return true;
+			},
+		);
+	}
+	// The legitimate path is untouched: a well-formed proof with no prior scope.
+	const recovered = await host.dispatch(
+		"owner_recover",
+		{
+			requester: "session:qa",
+			owner_proof: "p".repeat(43),
+			owner_generation: "g1",
+		},
+		"req-q2b",
+	);
+	assert.deepEqual(recovered, { ownership_version: 1, state: "unresolved" });
 });

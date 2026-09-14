@@ -1,11 +1,11 @@
 import { BrowserHostError } from "../errors";
-import { safeHttpUrl } from "../policy/origin-policy";
 import {
 	MAX_AGENT_TABS,
 	type TabRecord,
 	redactToken,
 	surfaceToken,
 } from "../registry";
+import { safeHttpUrl } from "../vendor/driver/origin-policy";
 import {
 	type BrowserActionContext,
 	requesterOf,
@@ -258,7 +258,7 @@ export async function tabs(
  * `profile_dir` is the resolved `ses.getStoragePath()`, published so "where are
  * my logins kept" is one command rather than a document (design 5.3), and
  * `domain_scope` exists so "why is there no broad-domain option" has an answer
- * instead of being an unexplained absence (see `policy/origin-policy.ts`).
+ * instead of being an unexplained absence (see `vendor/driver/origin-policy.ts`).
  */
 export async function status(
 	ctx: BrowserActionContext,

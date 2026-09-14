@@ -54,6 +54,13 @@ type Params = Record<string, unknown>;
  * and the extension enforces. Kept as the same shape so one client serves both. */
 const PROOF_SHAPE = /^[a-zA-Z0-9_-]{32,}$/;
 
+/** The one sentence a proof-less `owner_*` call is refused with. Named so the
+ * gate below and `identity()` cannot drift apart: the extension answers this
+ * exact string (`extension/src/ownership.ts` `identity()`), and QA round 1
+ * found the app answering an `internal` that named its own dispatcher instead
+ * (Q2). */
+const MISSING_PROOF_MESSAGE = "missing private browser ownership proof";
+
 export interface OwnershipHooks {
 	/** Close a tab by surface token, for `owner_finish`. Returns whether the close
 	 * completed; a close that did not is `pending`, which is a retryable
@@ -82,10 +89,7 @@ export class OwnershipLedger {
 			!session.startsWith("session:") ||
 			!generation
 		) {
-			throw new BrowserHostError(
-				"owner_refused",
-				"missing private browser ownership proof",
-			);
+			throw new BrowserHostError("owner_refused", MISSING_PROOF_MESSAGE);
 		}
 		return [proof, session, generation];
 	}
@@ -153,6 +157,15 @@ export class OwnershipLedger {
 		const previous = this.lanes.get(key) ?? Promise.resolve();
 		const operate = async (): Promise<Record<string, unknown>> => {
 			if (!params.owner_proof) {
+				// The four `owner_*` methods are refused HERE, before the legacy path:
+				// their proof IS their identity, and without one there is nothing to
+				// look a scope up by. Falling through to the dispatcher produced an
+				// `internal` naming this process's own lane — a state `host.ts`'s own
+				// comment called impossible, in a model-visible string (QA round 1, Q2).
+				// The answer is the extension's, byte for byte.
+				if (method.startsWith("owner_")) {
+					throw new BrowserHostError("owner_refused", MISSING_PROOF_MESSAGE);
+				}
 				// A legacy capability cannot bypass fencing for a modern allocation.
 				if (params.tab) {
 					const token = String(params.tab);

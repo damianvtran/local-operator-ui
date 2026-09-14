@@ -1,6 +1,6 @@
 import type { DriveableView } from "../electron-types";
 import { BrowserHostError } from "../errors";
-import { sleep } from "../policy/deadline";
+import { sleep } from "../policy/adapter";
 import type { TabRecord } from "../registry";
 import { settle } from "../settle";
 import { type BrowserActionContext, stringParam } from "./context";

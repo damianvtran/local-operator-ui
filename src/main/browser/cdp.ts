@@ -5,12 +5,12 @@ import {
 	startLogCapture,
 	stopLogCapture,
 } from "./log-capture";
+import { WEB_CONTENTS_DEADLINE_MS } from "./policy/adapter";
 import {
 	CDP_ATTACH_DEADLINE_MS,
 	CDP_DEADLINE_MS,
-	WEB_CONTENTS_DEADLINE_MS,
 	deadline,
-} from "./policy/deadline";
+} from "./vendor/driver/deadline";
 
 /**
  * The CDP driver: one `webContents.debugger` attachment per driven view.
@@ -75,11 +75,28 @@ export interface CdpContents {
 	loadURL(url: string): Promise<void>;
 }
 
+/** The debugger event handlers for ONE attachment.
+ *
+ * Held on the record rather than left anonymous in `attach()` because
+ * `Debugger` is the SAME object across a detach/re-attach cycle (the design's
+ * 10.6 DevTools case, which this PR's own evidence transcript contains): a
+ * second `attach()` that registered a second pair without removing the first
+ * left both live, so `logs` returned every console line twice and every
+ * `CdpPool.subscribe` consumer — the origin gate's `Fetch.requestPaused`
+ * handler included — was invoked once per stale listener (R2). */
+interface AttachmentListeners {
+	message: (event: unknown, method: string, params?: object) => void;
+	detach: (event: unknown, reason: string) => void;
+}
+
 interface Attachment {
 	contents: CdpContents;
 	/** Set when Electron detached us (DevTools took the target). `null` while the
 	 * attachment is ours and live. */
 	detachedReason: string | null;
+	/** The pair registered on this view's debugger, removed before the record is
+	 * replaced or dropped so the count never grows. */
+	listeners: AttachmentListeners;
 }
 
 const PROTOCOL_VERSION = "1.3";
@@ -169,6 +186,9 @@ export class CdpPool {
 		}
 		const existing = this.attachments.get(contents.id);
 		if (existing && existing.detachedReason === null) return;
+		// A detached record is being replaced: its listeners are still registered on
+		// this same `Debugger`, so they go first (see `AttachmentListeners`).
+		if (existing) this.releaseListeners(existing);
 
 		// Give the view a document BEFORE attaching.
 		//
@@ -211,16 +231,18 @@ export class CdpPool {
 			}
 		}
 
-		const attachment: Attachment = { contents, detachedReason: null };
-		this.attachments.set(contents.id, attachment);
-		contents.debugger.on("message", (_event, method, params) => {
+		const messageListener: AttachmentListeners["message"] = (
+			_event,
+			method,
+			params,
+		) => {
 			this.routeEvent(
 				contents.id,
 				method,
 				(params ?? {}) as Record<string, unknown>,
 			);
-		});
-		contents.debugger.on("detach", (_event, reason) => {
+		};
+		const detachListener: AttachmentListeners["detach"] = (_event, reason) => {
 			// Deliberately does NOT delete the attachment: the entry is what lets a
 			// later command explain itself ("DevTools took the target") instead of
 			// reporting a generic stall. It is removed by `detach`/`forget`.
@@ -228,7 +250,15 @@ export class CdpPool {
 			this.options.log?.(
 				`[browser] debugger detached from view ${contents.id}: ${reason}`,
 			);
-		});
+		};
+		const attachment: Attachment = {
+			contents,
+			detachedReason: null,
+			listeners: { message: messageListener, detach: detachListener },
+		};
+		this.attachments.set(contents.id, attachment);
+		contents.debugger.on("message", messageListener);
+		contents.debugger.on("detach", detachListener);
 
 		if (!hasLogCapture(contents.id)) startLogCapture(contents.id);
 		try {
@@ -321,9 +351,28 @@ export class CdpPool {
 		);
 	}
 
+	/** Remove this attachment's debugger listeners. Called before the record is
+	 * replaced by a re-`attach` and before it is dropped, so a view is never left
+	 * with a pair nobody owns — a stale one would deliver every event once per
+	 * attach cycle to `routeEvent` (and so to every subscriber). */
+	private releaseListeners(attachment: Attachment): void {
+		// `removeListener` is optional in `DebuggerLike` only because a test double
+		// need not implement it; the real `Debugger` (an EventEmitter) always does.
+		attachment.contents.debugger.removeListener?.(
+			"message",
+			attachment.listeners.message,
+		);
+		attachment.contents.debugger.removeListener?.(
+			"detach",
+			attachment.listeners.detach,
+		);
+	}
+
 	/** Drop the attachment record and its log buffer, without talking to the view.
 	 * Used when the view is already gone. */
 	forget(webContentsId: number): void {
+		const attachment = this.attachments.get(webContentsId);
+		if (attachment) this.releaseListeners(attachment);
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
 		stopLogCapture(webContentsId);
@@ -332,6 +381,7 @@ export class CdpPool {
 	/** Detach cleanly: release the debugger session and the log buffer. */
 	async detach(webContentsId: number): Promise<void> {
 		const attachment = this.attachments.get(webContentsId);
+		if (attachment) this.releaseListeners(attachment);
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
 		stopLogCapture(webContentsId);

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { PRIVATE_FILE_MODE, readJson, writeJsonAtomic } from "./atomic-json";
 import { BrowserHostError } from "./errors";
+import { nextSequence } from "./policy/adapter";
 import {
 	type AccessTombstones,
 	ONCE_GRANT_TTL_MS,
@@ -10,7 +11,7 @@ import {
 	consumableGrant,
 	receiptKey,
 	tombstoneFor,
-} from "./policy/access-flow";
+} from "./vendor/driver/access-flow";
 import {
 	ACCESS_QUEUE_CAP,
 	type AccessQueueEntry,
@@ -21,11 +22,10 @@ import {
 	findPending,
 	liveQueue,
 	newEntry,
-	nextSequence,
 	receiptFor,
 	receiptForRequester,
 	resultKey,
-} from "./policy/access-queue";
+} from "./vendor/driver/access-queue";
 import {
 	type BroadGrant,
 	type SiteGrantsState,
@@ -35,7 +35,7 @@ import {
 	matchingGrantScope,
 	safeHttpUrl,
 	storedOriginAllowed,
-} from "./policy/origin-policy";
+} from "./vendor/driver/origin-policy";
 
 /**
  * The origin gate, the pending-request slot, and the durable approval store.
@@ -49,7 +49,7 @@ import {
  * "the agent opened the user's bank" always passed through a human click on that
  * machine's screen.
  *
- * WHY the decision logic is in `policy/` rather than inline: design 9.2's
+ * WHY the decision logic is in the shared driver modules rather than inline: design 9.2's
  * argument is that reusing the extension's pure modules makes the semantics true
  * by construction rather than by review. `requestVerdict`/`accessState`/
  * `policyCovers`/`matchingGrantScope` below are those modules, and this file only
@@ -239,7 +239,7 @@ export class ApprovalStore {
 	/**
 	 * Raise a request, or report that one already covers this caller.
 	 *
-	 * The rules are `policy/access-flow.ts`'s, applied to the queue: a repeat
+	 * The rules are `vendor/driver/access-flow.ts`'s, applied to the queue: a repeat
 	 * request for the same origin by the same requester is idempotent with its
 	 * original TTL, a request for a different origin REPLACES the live one (with
 	 * a tombstone for the displaced requester), and a live deny receipt answers
@@ -613,8 +613,20 @@ export class ApprovalStore {
 	}
 
 	/** Whether a URL is covered by a stored grant, and by which scope (the
-	 * approvals list and the diagnostic path both want this). */
+	 * approvals list and the diagnostic path both want this).
+	 *
+	 * The vendored `matchingGrantScope` also reads the extension's LEGACY
+	 * `hostGrants` shape (0.1.4-0.1.7 loopback all-ports). This host passes
+	 * `undefined` for it deliberately: the store is new here, so there are no
+	 * legacy records to read, and the module's own schema check turns an absent
+	 * shape into "no legacy grant" rather than into a second grant model with no
+	 * data behind it. */
 	grantScopeFor(url: URL): string | null {
-		return matchingGrantScope(this.store.origins, url, this.store.siteGrants);
+		return matchingGrantScope(
+			this.store.origins,
+			undefined,
+			url,
+			this.store.siteGrants,
+		);
 	}
 }

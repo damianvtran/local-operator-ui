@@ -8,10 +8,6 @@ import { BrowserHost } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { OwnershipLedger } from "./ownership";
 import {
-	configurePslRules,
-	domainScopeAvailable,
-} from "./policy/origin-policy";
-import {
 	BROWSER_PARTITION,
 	type ClearWhat,
 	browserStoragePath,
@@ -29,6 +25,10 @@ import {
 	mintSessionKey,
 	stateFilePath,
 } from "./state-file";
+import {
+	configurePslRules,
+	domainScopeAvailable,
+} from "./vendor/driver/origin-policy";
 
 /**
  * The browser host: wiring, lifecycle, and the per-view security handlers.
@@ -138,14 +138,14 @@ export async function startBrowserHost(
 		log,
 	});
 
-	// The public-suffix rules the `domain` approval scope needs. They arrive with
-	// the vendored driver bundle (design 12.2) and are absent until that lands, so
-	// this reads an OPTIONAL file and reports the consequence instead of failing:
-	// without rules, no broad-domain option is offered and no stored domain grant
-	// is matched. Exact-origin behaviour is untouched — see
-	// `policy/origin-policy.ts`'s header for why this is fail-closed.
+	// The public-suffix rules the `domain` approval scope needs. The vendored
+	// `origin-policy` (design 12.2) takes them by injection rather than importing the
+	// generated table, so this reads an OPTIONAL file and reports the consequence
+	// instead of failing: without rules, no broad-domain option is offered and no
+	// stored domain grant is matched. Exact-origin behaviour is untouched — see
+	// `vendor/driver/origin-policy.ts`'s ADAPTED note (and PROVENANCE.json's
+	// `patches`) for why this is fail-closed.
 	configurePslRules(readOptionalPslRules(options.userDataDir, log));
-
 	const cdp = new CdpPool({ log });
 	/** Child views by tab id, so close and quit can release each one, and a
 	 * webContents that dies on its own can be matched back to its tab. */
@@ -164,15 +164,29 @@ export async function startBrowserHost(
 			wireView(view, tabId);
 			return view as unknown as DriveableView;
 		},
-		(tabId, webContentsId) => {
-			const view = views.get(tabId);
-			views.delete(tabId);
-			void cdp.detach(webContentsId).finally(() => {
-				releaseView(options.window, view);
-			});
-		},
+		releaseTab,
 		notifyChanged,
 	);
+
+	/**
+	 * Release everything one tab holds: its child view, its debugger session and
+	 * (through `cdp.detach`) its CDP subscribers and log ring buffer.
+	 *
+	 * THE one removal path. The registry's `onRemove` calls it for every close it
+	 * drives, and the `destroyed` handler calls it for a death this process did
+	 * not ask for, because a second copy of this sequence is exactly how one of
+	 * the three leaks: the destroyed path used to skip the debugger release, so a
+	 * renderer crash retained the `CdpPool` entry, its subscriber set and the
+	 * per-tab ring buffer until host stop while the ordinary close released all
+	 * three (R5).
+	 */
+	function releaseTab(tabId: number, webContentsId: number): void {
+		const view = views.get(tabId);
+		views.delete(tabId);
+		void cdp.detach(webContentsId).finally(() => {
+			releaseView(options.window, view);
+		});
+	}
 
 	const ownership = new OwnershipLedger({
 		closeTab: async (token) => {
@@ -253,7 +267,7 @@ export async function startBrowserHost(
 	});
 
 	log(
-		`[browser] host on 127.0.0.1:${server.port} (proto ${facts.proto}), profile ${profileDir || "(in-memory)"}, agent tabs ${registry.agentTabCount()}/${8}`,
+		`[browser] host on ${server.address}:${server.port} (proto ${facts.proto}), profile ${profileDir || "(in-memory)"}, agent tabs ${registry.agentTabCount()}/${8}`,
 	);
 
 	const handle: BrowserHostHandle = {
@@ -376,15 +390,10 @@ export async function startBrowserHost(
 		// to fail closed, which means the record has to go.
 		contents.on("destroyed", () => {
 			if (registry.get(tabId)) registry.forget(tabId);
-			const dying = views.get(tabId);
-			views.delete(tabId);
-			if (dying) {
-				try {
-					options.window.contentView.removeChildView(dying);
-				} catch {
-					// The window itself may be closing.
-				}
-			}
+			// The same release the registry's own close performs. A view that is
+			// already destroyed makes the detach's own `try` a no-op and the child-view
+			// removal a no-op too, so this is safe to run on a death we did not ask for.
+			releaseTab(tabId, contents.id);
 		});
 	}
 }
@@ -414,8 +423,8 @@ function releaseView(
 	}
 }
 
-/** The vendored public-suffix data, if present. Absent is a supported state: see
- * the call site and `policy/origin-policy.ts`. */
+/** The public-suffix data, if the install provides one. Absent is a supported
+ * state: see the call site and `vendor/driver/origin-policy.ts`'s ADAPTED note. */
 function readOptionalPslRules(
 	userDataDir: string,
 	log: (message: string) => void,

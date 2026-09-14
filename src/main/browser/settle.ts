@@ -28,11 +28,65 @@ import { BrowserHostError } from "./errors";
 /** Chromium's net error for a navigation its own renderer aborted. */
 const ERR_ABORTED = -3;
 
-/** The subset of `WebContents` this module needs. Structural, so the settle
- * logic is testable with a fake event emitter rather than a real browser. */
+/**
+ * The subset of `WebContents` this module needs.
+ *
+ * Structural, so the settle logic is testable with a fake event emitter rather
+ * than a real browser — but the listeners are declared PER EVENT, with the real
+ * Electron 44 argument lists (`node_modules/electron/electron.d.ts`,
+ * Electron 44.3.0: `did-navigate-in-page` at :16907-16911, `did-fail-load` at
+ * :16863-16883), rather than as one widened `(event: string, ...args: never[])`
+ * pair. The widening was a real defect: under it every listener had to be cast
+ * `as never` at its registration site, which type-erased the argument list and
+ * hid a mis-ordered `did-navigate-in-page` handler for a whole review round
+ * (R1). With the real signatures written down, a handler that names the URL it
+ * receives where Electron passes `isMainFrame` is a compile error.
+ */
 export interface SettleableContents {
-	on(event: string, listener: (...args: never[]) => void): unknown;
-	removeListener(event: string, listener: (...args: never[]) => void): unknown;
+	on(event: "did-finish-load", listener: () => void): unknown;
+	on(
+		event: "did-fail-load",
+		listener: (
+			event: unknown,
+			errorCode: number,
+			errorDescription: string,
+			url: string,
+			isMainFrame: boolean,
+		) => void,
+	): unknown;
+	on(
+		event: "did-navigate-in-page",
+		listener: (
+			event: unknown,
+			url: string,
+			isMainFrame: boolean,
+			frameProcessId: number,
+			frameRoutingId: number,
+		) => void,
+	): unknown;
+	on(event: "destroyed", listener: () => void): unknown;
+	removeListener(event: "did-finish-load", listener: () => void): unknown;
+	removeListener(
+		event: "did-fail-load",
+		listener: (
+			event: unknown,
+			errorCode: number,
+			errorDescription: string,
+			url: string,
+			isMainFrame: boolean,
+		) => void,
+	): unknown;
+	removeListener(
+		event: "did-navigate-in-page",
+		listener: (
+			event: unknown,
+			url: string,
+			isMainFrame: boolean,
+			frameProcessId: number,
+			frameRoutingId: number,
+		) => void,
+	): unknown;
+	removeListener(event: "destroyed", listener: () => void): unknown;
 	isDestroyed(): boolean;
 }
 
@@ -53,26 +107,35 @@ export function settle(
 			if (done) return;
 			done = true;
 			clearTimeout(timer);
-			contents.removeListener("did-finish-load", onFinish as never);
-			contents.removeListener("did-fail-load", onFail as never);
-			contents.removeListener("did-navigate-in-page", onInPage as never);
-			contents.removeListener("destroyed", onDestroyed as never);
+			contents.removeListener("did-finish-load", onFinish);
+			contents.removeListener("did-fail-load", onFail);
+			contents.removeListener("did-navigate-in-page", onInPage);
+			contents.removeListener("destroyed", onDestroyed);
 			if (error) reject(error);
 			else resolve();
 		};
 		const onFinish = (): void => finish();
-		const onInPage = (_event: unknown, isMainFrame?: boolean): void => {
-			if (isMainFrame === false) return;
+		// `did-navigate-in-page` fires "in ANY frame" (electron.d.ts:16901), so the
+		// guard is on the THIRD argument. Naming the second argument here instead
+		// was the R1 bug: it binds the url string, `url === false` is never true,
+		// and a sub-frame hash change settled a navigation whose main frame was
+		// still loading — the caller then reported a half-loaded page.
+		const onInPage = (
+			_event: unknown,
+			_url: string,
+			isMainFrame: boolean,
+		): void => {
+			if (!isMainFrame) return;
 			finish();
 		};
 		const onFail = (
 			_event: unknown,
-			errorCode?: number,
-			errorDescription?: string,
-			_url?: string,
-			isMainFrame?: boolean,
+			errorCode: number,
+			errorDescription: string,
+			_url: string,
+			isMainFrame: boolean,
 		): void => {
-			if (isMainFrame === false) return;
+			if (!isMainFrame) return;
 			if (errorCode === ERR_ABORTED) return;
 			finish(
 				new BrowserHostError(
@@ -101,10 +164,10 @@ export function settle(
 				),
 			timeoutMs,
 		);
-		contents.on("did-finish-load", onFinish as never);
-		contents.on("did-fail-load", onFail as never);
-		contents.on("did-navigate-in-page", onInPage as never);
-		contents.on("destroyed", onDestroyed as never);
+		contents.on("did-finish-load", onFinish);
+		contents.on("did-fail-load", onFail);
+		contents.on("did-navigate-in-page", onInPage);
+		contents.on("destroyed", onDestroyed);
 	});
 }
 

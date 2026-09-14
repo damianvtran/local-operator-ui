@@ -203,6 +203,14 @@ export class BrowserStateWriter {
 				mode: STATE_FILE_MODE,
 			});
 			renameSync(staged, this.path);
+			// `writeFileSync`'s mode applies only at CREATION, and the staged file is
+			// new each time while the target's mode survives a rename from the first
+			// write onward — so a record that arrived 0644 (restored from a backup, or
+			// written by a build that got this wrong) would stay world-readable while
+			// this code's own intent said 0600. Re-asserting both modes on every write
+			// is what makes the intent true of the file on disk (N1: this helper was
+			// exported and called from nowhere).
+			enforceStateFileModes(this.path);
 			this.written = true;
 		} catch (error) {
 			this.onError(error);
@@ -232,7 +240,8 @@ export class BrowserStateWriter {
  * Needed because `writeFileSync`'s mode applies only at creation: a record that
  * already exists keeps the mode it had, so a file that arrived 0644 (restored
  * from a backup, or written by a build that got this wrong) would stay readable
- * while this code's own intent said otherwise.
+ * while this code's own intent said otherwise. Called by `write()` on every
+ * write, including the ones that replace an existing record.
  */
 export function enforceStateFileModes(path: string): void {
 	try {

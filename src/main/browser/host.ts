@@ -142,11 +142,13 @@ export class BrowserHost implements BrowserActionContext {
 			case "owner_retain":
 			case "owner_release":
 				// Reaching here means the ownership lane ran the gate and produced no
-				// answer of its own, which cannot happen: every `owner_*` method returns
-				// from the gate. A typed refusal beats an undefined result.
+				// answer of its own. Every `owner_*` method returns from the gate, and a
+				// proof-less call is refused by the gate's own `owner_refused` (Q2), so
+				// this arm is a backstop for a future method added to the wire without a
+				// branch here — a typed refusal beats an undefined result.
 				throw new BrowserHostError(
-					"internal",
-					`${method} did not resolve in the ownership lane`,
+					"owner_refused",
+					`${method} is not answered by this host's ownership lane`,
 				);
 			default:
 				throw new BrowserHostError(
@@ -197,7 +199,17 @@ export class BrowserHost implements BrowserActionContext {
 	 * agent and has no reason to hold a capability (design 11.7).
 	 */
 	chromeState(): Record<string, unknown> {
-		const active = this.registry.activeTab;
+		// `active` is dropped when its webContents is already dead: `snapshot()`
+		// guards each read the same way, and a read that landed between destruction
+		// and the `destroyed` handler would otherwise throw "Object has been
+		// destroyed" out of an IPC handler and blank the strip instead of dropping
+		// the dead tab (N2). The strip still renders — from `tabs` — which is the
+		// honest projection: the tab is gone.
+		const activeRecord = this.registry.activeTab;
+		const active =
+			activeRecord && !activeRecord.view.webContents.isDestroyed()
+				? activeRecord
+				: null;
 		const navigation = active?.view.webContents.navigationHistory;
 		return {
 			tabs: this.registry.snapshot().map((entry) => ({
@@ -209,7 +221,7 @@ export class BrowserHost implements BrowserActionContext {
 				restored: entry.restored,
 				handedOver: entry.handedTo !== null,
 			})),
-			activeTabId: active?.tabId ?? null,
+			activeTabId: activeRecord?.tabId ?? null,
 			url: active ? active.view.webContents.getURL() : "",
 			title: active ? active.view.webContents.getTitle() : "",
 			loading: active ? active.view.webContents.isLoading() : false,

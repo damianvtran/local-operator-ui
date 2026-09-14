@@ -1,20 +1,19 @@
 import { BrowserHostError } from "../errors";
 import { drainLogs } from "../log-capture";
-import { type AXNode, compactAX } from "../policy/ax-compact";
+import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
+import type { LogEntry, ScrollResult } from "../protocol";
+import { type AXNode, compactAX } from "../vendor/driver/ax-compact";
 import {
 	CDP_DEADLINE_MS,
 	SCRIPTING_DEADLINE_MS,
 	deadline,
-	sleep,
-} from "../policy/deadline";
+} from "../vendor/driver/deadline";
 import {
-	SCROLL_DIRECTIONS,
 	SCROLL_INTO_VIEW_FN,
 	defaultScrollExpression,
 	deltaScrollExpression,
 	scrollExpressionFor,
-} from "../policy/scroll-expressions";
-import type { LogEntry, ScrollResult } from "../protocol";
+} from "../vendor/driver/scroll-expressions";
 import { type BrowserActionContext, numberParam, stringParam } from "./context";
 import { pageOf } from "./gate";
 
@@ -166,7 +165,7 @@ const METRICS_EXPRESSION = `(() => {
 /**
  * `scroll`: selector → explicit deltas → direction → one viewport down.
  *
- * Every movement goes through the FIXED expressions in `policy/scroll-
+ * Every movement goes through the FIXED expressions in `vendor/driver/scroll-
  * expressions.ts`, and every one of them pins `behavior:'instant'`: a smooth
  * scroll is a rAF-driven animation and Chromium throttles rAF to zero in a hidden
  * view, which is exactly what an agent-driven tab is.
