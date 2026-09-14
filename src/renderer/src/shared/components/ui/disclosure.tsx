@@ -213,28 +213,52 @@ export const Disclosure = ({
 	const heldSelection = useRef(false);
 	const undo = useRef<boolean | null>(null);
 
-	/** Whether a press landed on text this summary keeps selectable. */
-	const isSelectableText = (target: EventTarget | null): boolean => {
+	/**
+	 * Whether a press landed on a text surface the summary marked as such.
+	 *
+	 * `[data-text-surface]` rather than a `user-select` query, deliberately: the
+	 * question is "is this part of the summary something a reader can select and
+	 * copy?", and a computed style answers a different one — it said `text` for
+	 * the narration and `none` for the label beside it, which is how a drag
+	 * across a row came to copy everything except the label that says what the
+	 * row IS (round 3's U17). The marker is the summary's own statement of which
+	 * parts are text, so making the label selectable does not re-open U7.
+	 */
+	const isTextSurface = (target: EventTarget | null): boolean => {
 		for (
 			let node = target instanceof Element ? target : null;
 			node && node !== buttonRef.current;
 			node = node.parentElement
 		) {
-			if (window.getComputedStyle(node).userSelect === "text") return true;
+			if (node.hasAttribute("data-text-surface")) return true;
 		}
 		return false;
 	};
 
 	const onMouseDown = (event: ReactMouseEvent<HTMLButtonElement>) => {
-		pressOnText.current = isSelectableText(event.target);
+		pressOnText.current = isTextSurface(event.target);
 		heldSelection.current = Boolean(window.getSelection()?.toString());
 		/*
-		 * A press that STARTS a gesture invalidates any toggle an earlier one left
-		 * pending — otherwise a stray `dblclick` could take back a click from a
-		 * different gesture. A second press (`detail > 1`) is the continuation
-		 * whose `dblclick` may legitimately need it, so it is kept.
+		 * Where the toggle a multi-click has to take back is undone, and why it is
+		 * here rather than on `dblclick`:
+		 *
+		 * - a press that STARTS a gesture (`detail <= 1`) invalidates any toggle an
+		 *   earlier one left pending, so nothing stale is taken back later;
+		 * - a SECOND press on the same text (`detail > 1`) is that gesture's
+		 *   continuation, and Chrome dispatches this `mousedown` even when the
+		 *   release lands outside the trigger — the residual a `dblclick` handler
+		 *   cannot reach, because that event fires only when the whole gesture
+		 *   stays inside the trigger. Measured: the second press arrives with
+		 *   `detail` 2, and without this the row is left toggled.
 		 */
-		if (event.detail <= 1) undo.current = null;
+		if (event.detail <= 1) {
+			undo.current = null;
+			return;
+		}
+		if (pressOnText.current && undo.current !== null) {
+			setIsOpen(undo.current);
+			undo.current = null;
+		}
 	};
 
 	const onClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -250,35 +274,21 @@ export const Disclosure = ({
 		/*
 		 * `detail > 1` is the second or later click of a MULTI-click, and on text
 		 * that gesture is always a selection (a word, then a paragraph). The first
-		 * click of it could not be told from a single click when it fired, so the
-		 * row may have toggled: take that back here, and do not toggle again —
-		 * otherwise a double-click ends with one net toggle, which is what the
-		 * earlier round's guard did (measured: closed -> double-click -> open).
+		 * click of it cannot be told from a single click when it fires, so the row
+		 * may have toggled — `onMouseDown` has already taken that back — and this
+		 * click must not toggle again, or a double-click ends with one net toggle,
+		 * which is what the earlier round's guard did (measured: closed ->
+		 * double-click -> open).
 		 */
 		if (
 			!fromKeyboard &&
 			pressOnText.current &&
 			(selecting || event.detail > 1)
 		) {
-			if (event.detail > 1 && undo.current !== null) {
-				setIsOpen(undo.current);
-				undo.current = null;
-			}
 			return;
 		}
 		undo.current = isOpen;
 		setIsOpen((previous) => !previous);
-	};
-
-	/**
-	 * The belt to the braces above: a gesture whose second click never arrived as
-	 * a click on this trigger (the mouseup landed outside it) still says what it
-	 * was with `dblclick`, and the toggle the first click made is still pending.
-	 */
-	const onDoubleClick = () => {
-		if (!pressOnText.current || undo.current === null) return;
-		setIsOpen(undo.current);
-		undo.current = null;
 	};
 
 	/**
@@ -330,7 +340,6 @@ export const Disclosure = ({
 				ref={buttonRef}
 				onMouseDown={onMouseDown}
 				onClick={onClick}
-				onDoubleClick={onDoubleClick}
 				onKeyDown={onKeyDown}
 				className={cn(
 					ROW,
