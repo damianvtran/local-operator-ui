@@ -42,6 +42,12 @@ const twMerge = extendTailwindMerge({
 			// `frame` is ours.
 			rounded: [{ rounded: ["frame"] }],
 			duration: [{ duration: ["instant", "fast", "base", "slow"] }],
+			// `pulse-visible` is ours (see `index.css`): the placeholder's pulse,
+			// floored where the bar's step stays above the contract's perceptual
+			// aim. Unregistered it would not conflict with `Skeleton`'s own
+			// `animate-pulse`, and both would land - the survivor decided by
+			// stylesheet order rather than by the caller.
+			animate: [{ animate: ["pulse-visible"] }],
 			ease: [{ ease: ["out-quart", "out-expo", "in-out"] }],
 			shadow: [{ shadow: ["overlay"] }],
 		},

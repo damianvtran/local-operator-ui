@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  Switch-latency harness page: the shipped `ChatPage`, driven by real clicks,
+  against the scripted owner in `session-switch-bridge.ts`.
+
+  `scripts/session-switch.vite.mjs` serves it and
+  `scripts/session-switch-latency.mjs` drives it. The frames it writes under
+  `docs/evidence/session-switch/` ARE committed evidence - one directory per
+  state a switch can put on screen, declared as a supplementary set in
+  `docs/evidence/manifest.json` - and each one is refused unless it is a picture
+  of the state it claims (see `shoot` in the driver).
+
+  The store is persisted (`canonical-sessions-storage`), so the previous run's
+  active session would otherwise decide where this one starts. It is cleared in
+  the head, BEFORE the module graph loads, because zustand's `persist`
+  rehydrates when the store module is first evaluated - clearing it later, from
+  the app code, is a race the store always wins.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Session switch — latency harness</title>
+		<script>
+			localStorage.clear();
+			/*
+			 * The sidebar's "Previous chats" section is collapsed until the user opens
+			 * it, and a collapsed section renders no session rows at all - so a click
+			 * on a chat has nothing to land on. This is the state the operator is
+			 * actually in when they report the switch feeling slow: a list of
+			 * conversations on screen, and a click between two of them.
+			 */
+			localStorage.setItem(
+				"chat-sidebar-disclosures",
+				JSON.stringify({ previous: true }),
+			);
+		</script>
+	</head>
+	<body>
+		<!--
+		 * `#app`, not `#root`: `styles/index.css` pins the height chain on
+		 * `html, body, #app`, and the app's own entry mounts into `#app`. A
+		 * differently named node breaks that chain silently - the DOM is correct,
+		 * the text is laid out, and the screenshot is an empty column. Caught by
+		 * looking at the first frames rather than by asserting on them.
+		 -->
+		<div id="app"></div>
+		<script type="module" src="./session-switch.tsx"></script>
+	</body>
+</html>

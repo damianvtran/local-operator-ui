@@ -16,10 +16,12 @@ import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
+	SESSION_UNVALIDATED_CODE,
 	UNCONFIRMED_SEND_CODE,
 	admitChatDraft,
 	draftIdentityFor,
 	isRefusedBeforeAdmission,
+	isSessionUnvalidated,
 	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -142,12 +144,10 @@ function SessionPanel({
 	identity,
 	draftKey,
 	sessionId,
-	pendingNavigation,
 }: {
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
-	pendingNavigation: boolean;
 }) {
 	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
 	useDesktopWatchLease(sessionId, canonical.subscriptionId);
@@ -523,7 +523,24 @@ function SessionPanel({
 		const key = draftIdentityFor(draftKey, sessionId);
 		if (!key) return false;
 		const previous = store.drafts[key];
-		if (pendingNavigation || previous?.pending) return false;
+		/*
+		 * The read window's refusal is the STORE's, not this function's: a send
+		 * addressed to a session whose guard read has not answered is refused at
+		 * admission (`admitChatDraft`), so the rule holds for every caller rather
+		 * than for this screen's send button only.
+		 *
+		 * What this function owns is the ANSWER. The refusal arrives through the
+		 * catch below as copy in the composer's own alert row, which is the visible
+		 * half it never used to have - the user pressed Enter, nothing was sent, and
+		 * nothing said so (UX round 2, U8).
+		 *
+		 * `false` is the right answer for it because nothing reached the owner, so
+		 * the text belongs back in the box; `isRefusedBeforeAdmission` decides that,
+		 * and knows this refusal's code. The composer is deliberately NOT disabled:
+		 * the panel has already told the user they are in the target, and the two
+		 * can only disagree for a round trip.
+		 */
+		if (previous?.pending) return false;
 		if (!sendLock.tryAcquire()) {
 			/*
 			 * A send attempted while an answer (or another send) is in flight used to
@@ -700,7 +717,7 @@ function SessionPanel({
 		// The lock is checked here only to keep the busy flag honest; the claim
 		// itself is `answerGateOption`'s, and between this read and that claim
 		// there is no `await` for a handler to interleave in.
-		if (pendingNavigation || sendLock.held) return;
+		if (sendLock.held) return;
 		const key = gateKeyOf(gate);
 		/*
 		 * Whether the press came from the keyboard, so focus can be put back where
@@ -940,6 +957,25 @@ function SessionPanel({
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
 	/*
+	 * Nothing has named this session's identity yet, and the panel is waiting for
+	 * the stream that will.
+	 *
+	 * Both sources are exhausted above: the live frontend has not arrived, and the
+	 * catalogue row names no agent or team (a binding with both fields null is a
+	 * legal row). The chain at the `description` prop then falls through to its
+	 * last-resort sentence, which is what painted "Canonical chat" in the frame
+	 * after the click and "operator" once the snapshot landed - a fallback string
+	 * rendered as a fact, in front of the user, for the duration of the wait
+	 * (design D3). So the slot is HELD instead: a skeleton is not a claim, and the
+	 * identity replaces it the moment any source knows it.
+	 *
+	 * `connecting` rather than "no frontend": an `unavailable` stream never
+	 * arrives, and a header that stays a skeleton forever would be worse than one
+	 * that states what it has. `view` and not `canonical`, so this reads the same
+	 * status the panel below it renders from.
+	 */
+	const identityPending = !loaded && !draftKey && view.status === "connecting";
+	/*
 	 * The failed send, assembled for the composer.
 	 *
 	 * Local state first, store second: `sendError` is this attempt's outcome and
@@ -994,6 +1030,39 @@ function SessionPanel({
 			});
 	}, [attachmentResolved, draftIdentity]);
 	/*
+	 * The read window, and the notice that explains it.
+	 *
+	 * `validatingSessionId` is the one round trip after a switch during which the
+	 * target's existence is unconfirmed. The STORE owns the window and refuses a
+	 * send inside it; these two effects are the stream's half of that contract,
+	 * because the store cannot see the stream.
+	 *
+	 * - `confirmSessionLive` closes the window on a live frame from the session's
+	 *   own stream. That is the EARLIER bound: it opens the gate on the first
+	 *   proof rather than at the read's own end. The read is bounded too -
+	 *   `desktopResult` runs every desktop control under `withDeadline` at
+	 *   `DESKTOP_REQUEST_TIMEOUT_MS` (30 s), so a read that never answers ends in
+	 *   the rollback rather than in a panel that refuses sends forever - but
+	 *   thirty seconds of a panel that refuses every send is not a bound a user
+	 *   can use, so the live term is kept for what it adds, not because the
+	 *   alternative is unbounded.
+	 * - the refused send's notice retires on that same observable condition, the
+	 *   way `attachmentResolved` retires its own: a sentence explaining a refusal
+	 *   must not outlive the cause it names.
+	 */
+	useEffect(() => {
+		if (!sessionId || canonical.status !== "live") return;
+		useCanonicalSessionsStore.getState().confirmSessionLive(sessionId);
+	}, [sessionId, canonical.status]);
+	const readWindowOpen = useCanonicalSessionsStore((state) =>
+		isSessionUnvalidated(state.validatingSessionId, sessionId),
+	);
+	useEffect(() => {
+		if (readWindowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
+		setSendError(null);
+		setSendErrorCode(undefined);
+	}, [readWindowOpen, sendErrorCode]);
+	/*
 	 * The claim, and whether the user can currently see what it holds.
 	 *
 	 * `admissionAttempted` with a `submittedText` means the store will refuse
@@ -1034,6 +1103,15 @@ function SessionPanel({
 					// message. An unresolved attachment needs a profile chosen; an
 					// unreachable registry needs the agents page. Any other code has no
 					// specific remedy, so it offers none rather than a generic button.
+					/*
+					 * The read window's refusal carries its own "what to do" half, so the
+					 * composer's generic retry hint is withheld for it: the notice lives
+					 * exactly as long as the window does, and the window refuses the retry for
+					 * that same span, which makes "Send it again" an instruction to do the one
+					 * thing that cannot succeed yet (UX round 3, U9). The sentence states the
+					 * wait and its end instead.
+					 */
+					withholdRetryHint: activeErrorCode === SESSION_UNVALIDATED_CODE,
 					actions:
 						// The unconfirmed-send guard's remedies are Restore and the abandon
 						// control, both rendered by the composer from `heldText`. It must
@@ -1184,6 +1262,7 @@ function SessionPanel({
 							? "The session starts when you send your first message."
 							: canonical.frontend?.cwd || "Canonical chat")
 					}
+					descriptionPending={identityPending}
 					onOpenOptions={() => setOptions((value) => !value)}
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
@@ -1286,7 +1365,7 @@ function SessionPanel({
 					canonical={{
 						view,
 						busy,
-						admitting: admitting || pendingNavigation,
+						admitting,
 						onStop: stop,
 						onAnswer: (label: string) => void answerWithOption(label),
 						answer: answerForThisGate,
@@ -1312,8 +1391,18 @@ export function ChatPage() {
 	const draft = useCanonicalSessionsStore((state) =>
 		draftKey ? state.drafts[draftKey] : undefined,
 	);
-	const pending = useCanonicalSessionsStore((state) => state.pendingSessionId);
 	const error = useCanonicalSessionsStore((state) => state.error);
+	/*
+	 * The navigation failure is read here and not from `error`, which is the
+	 * CATALOGUE's health: the catalogue refreshes on its own timer, and
+	 * `fetchSessions` clears that field when it starts, so the rollback's own
+	 * refetch used to erase the switch's failure sentence 4.5-8.1 ms after the
+	 * rollback wrote it. The user's own navigation failing is not the list's
+	 * health, and it is the sentence that must survive long enough to read.
+	 */
+	const navigationError = useCanonicalSessionsStore(
+		(state) => state.navigationError,
+	);
 	const [routeError, setRouteError] = useState<string | null>(null);
 	useEffect(() => {
 		if (!enabled || !routeIdentity) return;
@@ -1331,19 +1420,14 @@ export function ChatPage() {
 		if (store.activeSessionId !== id || store.activeDraftKey)
 			void store.openSession(id);
 	}, [enabled, routeIdentity]);
-	useEffect(() => {
-		const keydown = (event: KeyboardEvent) => {
-			if (
-				event.key === "Escape" &&
-				useCanonicalSessionsStore.getState().pendingSessionId
-			) {
-				event.preventDefault();
-				useCanonicalSessionsStore.getState().cancelOpen();
-			}
-		};
-		window.addEventListener("keydown", keydown);
-		return () => window.removeEventListener("keydown", keydown);
-	}, []);
+	/*
+	 * The keyboard abort for a switch is gone with the pending banner it belonged
+	 * to. The switch has no cancellable phase to abort any more: the commit IS the
+	 * navigation, it lands in the click's own frame, and the only wait left is the
+	 * panel's own hydration. A second click is the latest-wins exit and the store
+	 * already implements it; an Escape that silently did nothing while looking
+	 * armed is what this removes.
+	 */
 	const stage = (target?: ChatTarget, fresh?: boolean) => {
 		useCanonicalSessionsStore.getState().stageDraft(target, fresh);
 		setRouteError(null);
@@ -1375,28 +1459,22 @@ export function ChatPage() {
 			}
 			content={
 				<div className={cn("flex h-full min-h-0 flex-col")}>
-					{pending && (
-						<p
-							aria-live="polite"
-							className={cn("px-4 py-2 text-body-sm text-info")}
-						>
-							Opening chat…{" "}
-							<button
-								type="button"
-								onClick={() =>
-									useCanonicalSessionsStore.getState().cancelOpen()
-								}
-							>
-								Cancel
-							</button>
-						</p>
-					)}
-					{(routeError || error) && (
+					{/*
+					 * ONE sentence, and it is the user's navigation that owns it. The
+					 * catalogue's own failure is rendered where the remedy is (the
+					 * sidebar's `Retry refresh`, which refreshes the LIST); a switch
+					 * that failed has no list to refresh, so it is stated here, above the
+					 * panel it failed to open, and holds until the user navigates again.
+					 * It is deliberately NOT also painted in the sidebar: the same
+					 * sentence in two places under a remedy that fixes neither is what
+					 * made a deep link to a deleted chat read as two different failures.
+					 */}
+					{(routeError || navigationError || error) && (
 						<p
 							role="alert"
 							className={cn("px-4 py-2 text-body-sm text-danger")}
 						>
-							{routeError || error}
+							{routeError || navigationError || error}
 						</p>
 					)}
 					{!enabled ? (
@@ -1421,7 +1499,6 @@ export function ChatPage() {
 								identity={identity}
 								draftKey={draftKey}
 								sessionId={id}
-								pendingNavigation={Boolean(pending)}
 							/>
 						</div>
 					) : (

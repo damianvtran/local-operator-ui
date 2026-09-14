@@ -659,6 +659,11 @@ test("the production transcript renders options as real controls", () => {
 			containerRef: { current: null },
 			isSmallView: false,
 			status: "live",
+			// Required by this branch's hold work, and `true` for these fixtures: a
+			// settled, empty conversation the reader has been told about. Without it the
+			// pane paints its placeholder, whose `<output>` would then sit in every state
+			// this file asserts about the answer card.
+			hydrated: true,
 			error: null,
 			onAnswer: () => {},
 		}),
@@ -708,6 +713,11 @@ test("an answer in flight says so, and the card holds itself after a press", () 
 		containerRef: { current: null },
 		isSmallView: false,
 		status: "live",
+		// Required by this branch's hold work, and `true` for these fixtures: a
+		// settled, empty conversation the reader has been told about. Without it the
+		// pane paints its placeholder, whose `<output>` would then sit in every state
+		// this file asserts about the answer card.
+		hydrated: true,
 		error: null,
 		onAnswer: () => {},
 	};

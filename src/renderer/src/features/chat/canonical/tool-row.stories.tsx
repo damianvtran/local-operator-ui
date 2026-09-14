@@ -132,6 +132,11 @@ const Frame = ({
 				isSmallView={false}
 				status="live"
 				failure={null}
+				/*
+				 * A fixture of rows handed in rather than read: the reader's question is
+				 * answered `true`, and the hold cannot fire here (it needs zero records).
+				 */
+				hydrated={true}
 				onReconnect={() => {}}
 			/>
 		</div>
