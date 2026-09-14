@@ -48,6 +48,10 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+import {
+	type DraftSelectionTarget,
+	draftPreviewQuery,
+} from "../draft-selection";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
@@ -492,25 +496,26 @@ function SessionPanel({
 	 * The payload goes to the STRIP ONLY. It is never written into the canonical
 	 * sessions store: that store's rows are sessions, and this is a projection of a
 	 * configuration that has no session behind it (`snapshot.session_id` is empty).
+	 *
+	 * The key and the fetch live in `draft-selection.ts`, because the pickers that
+	 * change this selection re-read the SAME entry through the same key: one
+	 * question about the pane, answered once, read by the strip and by both
+	 * dialogs. `placeholderData: keepPreviousData` (also there) is what keeps the
+	 * previous reading on screen while a pick is re-resolved, so the cluster never
+	 * unmounts and the composer's row never reflows under the click (R23).
+	 *
+	 * `draftTarget` carries the pane's MODEL as well as its directory and profile,
+	 * which is what makes "the readings for the first turn" mean the CHOSEN model's
+	 * once a chip has been used. Omitted when nothing was picked, so the request is
+	 * the one this pane always sent.
 	 */
+	const draftTarget: DraftSelectionTarget = {
+		cwd,
+		...(draft?.target ? { target: draft.target } : {}),
+		model: draft?.model ?? null,
+	};
 	const preview = useQuery({
-		// Keyed on the identity the answer depends on: the directory and the bound
-		// profile. A draft re-staged onto another agent is a different question, and a
-		// key that ignored the target would answer it with the previous agent's model.
-		queryKey: [
-			"desktop",
-			"session-preview",
-			cwd,
-			draft?.target?.kind ?? null,
-			draft?.target?.name ?? null,
-		],
-		queryFn: () =>
-			desktopResult<{ frontend: CanonicalFrontendSync }>({
-				op: "sessions.preview",
-				requestId: crypto.randomUUID(),
-				cwd,
-				...(draft?.target ? { target: draft.target } : {}),
-			}),
+		...draftPreviewQuery(draftTarget),
 		// A pure read, and only for a pane that has no session: once the first send
 		// creates one, the canonical stream is the only source and this query stops.
 		// The empty cwd is refused rather than sent: the contract requires 1..4096
@@ -520,18 +525,55 @@ function SessionPanel({
 			!sessionId &&
 			cwd.length > 0 &&
 			desktopFeatureEnabled(capabilities.data, "draft_preview"),
-		// The resolution is config state: it changes when the default model changes,
-		// not between two paints of one pane.
-		staleTime: 30_000,
-		retry: false,
 	});
-	const { dispatch, dispatchFromControl, picker } = useSlashDispatch({
-		sessionId,
-		canonical,
-		rebind,
-		addMessage: (message) => canonical.addNote(message.message ?? ""),
-		focusComposer: () => input.current?.focusInput(),
-	});
+	const draftPickable =
+		!sessionId &&
+		desktopFeatureEnabled(capabilities.data, "draft_selection") &&
+		desktopFeatureEnabled(capabilities.data, "commands") &&
+		desktopFeatureEnabled(capabilities.data, "catalogues");
+	/*
+	 * Whether a draft's chips may open their pickers.
+	 *
+	 * THREE things of the backend, and each is a real dependency rather than a
+	 * conservative bundling:
+	 *
+	 *   - `draft_selection` — the capability itself: `sessions.preview` and
+	 *     `sessions.create` accepting a `model`, so a pick can reach the session the
+	 *     first send creates. Without it the chips stay inert with today's copy; a
+	 *     control that opens a picker whose pick has nowhere to go is the dead
+	 *     affordance R20 forbids.
+	 *   - `commands` — the same gate a SESSION's chips already carry. The window,
+	 *     the ladder and the cost are actionable only where the app's command
+	 *     surface is on, and a draft pane must not behave differently from every
+	 *     live pane beside it.
+	 *   - `catalogues` — the picker's list. `models.catalogue` is where its rows come
+	 *     from, and a picker that opens onto an empty list is a dead control wearing
+	 *     a live one's clothes.
+	 */
+	const { dispatch, dispatchFromControl, picker, openDraftPicker } =
+		useSlashDispatch({
+			sessionId,
+			canonical,
+			rebind,
+			addMessage: (message) => canonical.addNote(message.message ?? ""),
+			focusComposer: () => input.current?.focusInput(),
+			/*
+			 * The pane's own selection, handed to the dispatcher only where a pick can
+			 * be honoured — and only once the preview has answered, because the
+			 * pickers read the selection the pane is showing rather than a second
+			 * resolution of their own.
+			 */
+			draftPicker:
+				draftPickable && draftIdentity && preview.data
+					? {
+							target: draftTarget,
+							select: (selection) =>
+								useCanonicalSessionsStore
+									.getState()
+									.setDraftModel(draftIdentity, selection),
+						}
+					: undefined,
+		});
 	useEffect(() => {
 		if (draftKey) input.current?.focusInput();
 	}, [draftKey]);
@@ -1450,9 +1492,17 @@ function SessionPanel({
 										 * and `draft` so the strip knows WHY: a command needs a
 										 * session to address, and a missing dispatcher alone
 										 * already means a backend with commands off (R22).
+										 *
+										 * The DRAFT opener is passed only where a pick can be
+										 * honoured (`draftPickable`), which is what leaves the two
+										 * readings inert with today's copy on a backend that cannot
+										 * birth a conversation on a choice.
 										 */
-										frontend: preview.data.frontend.snapshot,
+										frontend: preview.data.snapshot,
 										draft: true,
+										onOpenDraftPicker: draftPickable
+											? openDraftPicker
+											: undefined,
 									}
 								: undefined
 					}

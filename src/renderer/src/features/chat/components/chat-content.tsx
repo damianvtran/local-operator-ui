@@ -30,6 +30,7 @@ import {
 	workingLineClaimed,
 	workingLineInputFor,
 } from "../canonical/working-line-model";
+import type { DraftPickerDestination } from "../draft-selection";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -147,6 +148,14 @@ type ChatContentProps = {
 		pendingModel?: CanonicalModel | null;
 		/** A draft pane's readings, which have no session behind them. */
 		draft?: boolean;
+		/**
+		 * Open a model or effort picker for this DRAFT pane's own selection.
+		 *
+		 * Forwards to `SessionStatusStripProps["onOpenDraftPicker"]`, and is absent
+		 * unless the backend advertises the capability — which is what leaves the two
+		 * readings inert with today's copy on a backend that cannot honour a pick.
+		 */
+		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
 	};
 	/**
 	 * Present when the conversation is a canonical backend session: the

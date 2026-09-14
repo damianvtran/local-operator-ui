@@ -275,12 +275,45 @@ test("a session with the same unresolved spec keeps `unknown`, because there the
 	assert.match(html, /aria-label="Reasoning effort: unknown\./);
 });
 
-test("a draft without a resolved model renders nothing, never a row of dashes", () => {
+test("a draft without a resolved model renders nothing where the backend cannot select for it", () => {
 	const html = renderStrip({
 		frontend: { ...DRAFT, effective_model: null, context_window: null },
 		draft: true,
 	});
 	assert.equal(html, "");
+});
+
+test("a draft without a resolved model offers the pick, where it used to render nothing", () => {
+	// Design D3, and the operator's own report in its empty form: a pane whose
+	// resolution named no model showed nothing at all, so there was no way to give
+	// the first message one. With the capability it renders the ONE control that
+	// fixes it, in the position the value lands in once a pick resolves (R23).
+	const html = renderStrip({
+		frontend: { ...DRAFT, effective_model: null, context_window: null },
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+	});
+	assert.match(
+		html,
+		/<button type="button" aria-label="Model: none resolved yet\. Choose the model the first message will run on\."/,
+	);
+	assert.match(text(html), /Choose a model/);
+	assert.doesNotMatch(
+		html,
+		/<button type="button" aria-disabled="true" aria-label="Model:/,
+		"the model chip must not keep the unavailable-button form where it can open",
+	);
+	// The chip is the CONTROL form — it takes the pointer and carries the hover
+	// step — rather than the inert label the same reading wears without the
+	// capability. The tooltip panel is rendered on focus and so is not in the
+	// static markup; the accessible name carries the same sentence, and
+	// `--draft-actionable-tooltip` is the frame that photographs the panel.
+	assert.match(
+		html,
+		/<button type="button" aria-label="Model: none resolved yet[^"]*"[^>]*cursor-pointer[^>]*hover:bg-accent-wash[^>]*>\s*<span class="truncate">Choose a model<\/span>/,
+	);
+	// The empty ring is a draft's own, unchanged, and stays inert beside it.
+	assert.match(html, /aria-label="Context: nothing measured yet/);
 });
 
 /* ---- 2. D3: an inert reading never advertises a control ---------------- */
@@ -330,6 +363,136 @@ test("a session with a dispatcher keeps the copy that names its controls", () =>
 	assert.match(live, /Change it\./);
 	assert.match(live, /for the full breakdown/);
 	assert.doesNotMatch(live, /Slash commands are off/);
+});
+
+/* ---- 2b. the draft's chips are actionable where the backend can honour one - */
+
+/**
+ * The same draft, on a backend that CAN birth a conversation on a choice.
+ *
+ * `onOpenDraftPicker` is the whole capability: the strip is told nothing else,
+ * because a draft's chip needs no session id, no command and no second list —
+ * it opens the same two pickers a session's readings open, against the pane's
+ * own selection. What changes here is the AFFORDANCE and the copy, and only on
+ * the two readings that have something to open.
+ */
+test("a draft whose backend selects exposes model and effort as CONTROLS, in the session's voice", () => {
+	const html = renderStrip({
+		frontend: DRAFT,
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+	});
+
+	// THE MODEL: a real control, not the label form. No `aria-disabled`, so a
+	// screen reader is not told the chip is unavailable while it opens a dialog.
+	assert.match(
+		html,
+		/<button type="button" aria-label="Model: openrouter\/openai\/gpt-5\. Click to choose a different model"/,
+	);
+	assert.doesNotMatch(
+		html,
+		/<button type="button" aria-disabled="true" aria-label="Model: /,
+		"the model reading must not keep the unavailable-button form where it can open",
+	);
+
+	// THE EFFORT: offered because this spec carries a ladder, and the sentence is
+	// the session's — the control's nature is what the copy describes, and this
+	// control changes exactly the fact the session's does, one step earlier.
+	assert.match(
+		html,
+		/<button type="button" aria-label="Reasoning effort: high\. Change it\."/,
+	);
+
+	// The sentences a draft may no longer say where the chip CAN open (R21/R8 of
+	// the design): the old reason is a claim that the model cannot be chosen yet.
+	assert.doesNotMatch(text(html), /Change it once the conversation starts/);
+	assert.doesNotMatch(text(html), /Set once the conversation starts/);
+	assert.doesNotMatch(text(html), /Slash commands are off/);
+
+	// THE CONTEXT stays what it is: nothing has been measured, so there is no
+	// breakdown to open and no control to offer — the inert label form, which
+	// stays focusable so its explanation is reachable.
+	assert.match(
+		html,
+		/<button type="button" aria-disabled="true" aria-label="Context: /,
+	);
+});
+
+test("the draft keeps its fact-plus-reason copy wherever a chip cannot open", () => {
+	// The other half of the gate: same pane, no capability. Nothing gained an
+	// affordance it cannot honour, and every sentence still states the fact and
+	// the reason rather than naming a control.
+	const html = renderStrip({ frontend: DRAFT, draft: true });
+	assert.match(
+		html,
+		/<button type="button" aria-disabled="true" aria-label="Model: openrouter\/openai\/gpt-5\. The first message will use it\. Change it once the conversation starts\."/,
+	);
+	assert.match(
+		html,
+		/<button type="button" aria-disabled="true" aria-label="Reasoning effort: high\. Set once the conversation starts\."/,
+	);
+	assert.doesNotMatch(text(html), /Click to choose a different model/);
+	assert.doesNotMatch(text(html), /Change it\./);
+});
+
+test("a ladderless draft offers no effort control even where the model can be picked", () => {
+	// The same rule a session follows, with a stricter reason for the draft: a
+	// model that reasons without a reported ladder reads `reasoning`, and a draft's
+	// picker is a pure read of the preview, so it cannot offer a rung list this
+	// wire does not carry. The reading stays (it is a fact about the model), the
+	// control does not.
+	const html = renderStrip({
+		frontend: {
+			...DRAFT,
+			effective_model: {
+				...GPT_5,
+				reasoning_effort: null,
+				reasoning_efforts: [],
+			},
+		},
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+	});
+	// The model beside it IS a control: the gate is per reading, not per pane.
+	assert.match(
+		html,
+		/aria-label="Model: [^"]*\. Click to choose a different model"/,
+	);
+	const effort = readingClasses(html, "Reasoning effort:");
+	assert.equal(effort.label, "Reasoning effort: reasoning.");
+	assert.ok(
+		effort.classes.includes("cursor-default"),
+		"an effort reading with no ladder must not advertise an action",
+	);
+	assert.doesNotMatch(text(html), /Set once the conversation starts/);
+});
+
+test("the affordance and the sentence come from ONE decision, in both places it is printed", () => {
+	// The strip prints each reason twice — the aria-label and the tooltip's last
+	// line — and R21 requires them to say the same thing. They do because there is
+	// one call each, so this asserts the shape that makes drift impossible rather
+	// than two strings that happen to match today.
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+	const modelReasons = [
+		...strip.matchAll(/modelReason\(draft, Boolean\(openModel\)\)/g),
+	];
+	assert.equal(
+		modelReasons.length,
+		2,
+		"the model reason must be computed once and printed twice (label + tooltip)",
+	);
+	const effortReasons = [
+		...strip.matchAll(
+			/effortReason\(draft, effort\.adjustable, Boolean\(openEffort\)\)/g,
+		),
+	];
+	assert.equal(effortReasons.length, 1);
+	// Both openers are asked about the SAME affordance the reason is chosen from.
+	assert.match(strip, /onOpen=\{openModel\}/);
+	assert.match(strip, /onOpen=\{openEffort\}/);
 });
 
 /* ---- 3. the 220px column contract -------------------------------------- */
@@ -556,13 +719,29 @@ test("the preview payload never enters the canonical store", () => {
 	for (const read of reads) {
 		const rest = page.slice(read.index + "preview.data".length);
 		assert.ok(
-			rest.startsWith(".frontend.snapshot,") || /^\s*\n\s*\?/.test(rest),
+			// The strip's payload: the canonical STATE the strip reads.
+			rest.startsWith(".snapshot,") ||
+				// Or the gate on whether a draft's picker may open at all.
+				/^\s*\n\s*\?/.test(rest),
 			`the preview payload is used as \`preview.data${rest.slice(0, 24)}\`; it belongs to the strip only`,
 		);
 	}
-	// And nothing hands it to a store action: the canonical store's rows are
-	// sessions, and a preview has no session behind it.
-	assert.doesNotMatch(page, /useCanonicalSessionsStore[\s\S]{0,240}preview/);
+	// And the payload itself never reaches a store action: the canonical store's
+	// rows are sessions, and a preview has no session behind it. The pane's own
+	// draft CHIPS call `setDraftModel` — with the model the user picked, never
+	// with the payload that resolution produced.
+	for (const call of [
+		"setDraftModel",
+		"updateDraft",
+		"upsertSession",
+		"createSession",
+	]) {
+		assert.doesNotMatch(
+			page,
+			new RegExp(`${call}\\([^;]{0,200}preview\\.data`, "s"),
+			`${call} must not receive the preview payload`,
+		);
+	}
 	// Told it is a draft, so the copy can say why nothing opens (R22).
 	assert.match(page, /draft: true,/);
 });

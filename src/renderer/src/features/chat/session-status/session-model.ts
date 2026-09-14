@@ -213,6 +213,27 @@ export function bandReadings(
 	return { identity: pendingModel ?? inForce, effort: inForce };
 }
 
+/**
+ * The rungs a spec carries, in the spec's own order, or an empty list when it
+ * carries none.
+ *
+ * Deliberately NOT `effortState`: that answers "what does the chip read",
+ * including the metadata-absent branch that synthesises `unknown` for a cold
+ * snapshot. This answers "which rows can a picker offer", which for a DRAFT pane
+ * must be the wire's own list and nothing else — a draft's picker is a pure read
+ * of the preview, so it cannot offer a rung the resolution did not name (R5 of
+ * the wire contract). One definition, so the chip and the dialog agree about
+ * what the ladder is.
+ */
+export function effortLadder(
+	model: CanonicalModel | null | undefined,
+): string[] {
+	if (!Array.isArray(model?.reasoning_efforts)) return [];
+	return model.reasoning_efforts.filter(
+		(rung): rung is string => typeof rung === "string" && rung !== "",
+	);
+}
+
 export type EffortState = {
 	/** The word the chip prints. */
 	label: string;
