@@ -142,12 +142,62 @@ export function ownerAnswered(
 	const ownerPainted = (record: TranscriptRecord) =>
 		(record.kind === "tool" || record.kind === "assistant") &&
 		paintsSomething(record);
+	return recordsAfter(records, afterId).some(ownerPainted);
+}
+
+/**
+ * The records a clear has to sweep: everything after the send's own echo, or the
+ * tail when that anchor is not in the list.
+ *
+ * ONE COPY of the anchor rule, because the two clears below disagree about what
+ * ends a wait and must not disagree about WHEN to look. An anchor that is not in
+ * the list - an echo evicted from the buffer, a transcript replaced by `/clear`
+ * mid-send - falls back to the tail, whose only failure mode is to withhold the
+ * rung rather than to claim one.
+ */
+function recordsAfter(
+	records: TranscriptRecord[],
+	afterId: string | null | undefined,
+): TranscriptRecord[] {
 	if (afterId) {
 		const at = records.findIndex((record) => record.id === afterId);
-		if (at >= 0) return records.slice(at + 1).some(ownerPainted);
+		if (at >= 0) return records.slice(at + 1);
 	}
 	const tail = records[records.length - 1];
-	return tail !== undefined && ownerPainted(tail);
+	return tail === undefined ? [] : [tail];
+}
+
+/**
+ * Whether the turn a send admitted under `afterId` has STOPPED without painting
+ * anything.
+ *
+ * A DURABLE COMPLETION MARKER is the transcript's own record that the turn is
+ * over: the reducer writes `complete` on a `notice` for exactly two things, both
+ * of them an incident - "Stopped with an error" and "Interrupted" - and never
+ * for its own renderer notes (a harness recovery notice, a retry line, a subagent
+ * failure all omit it). That is why the test is the marker rather than the text:
+ * the copy is expected to be reworded, and matching on prose would silently stop
+ * matching.
+ *
+ * WHY A STOP HAS TO RETIRE THE WAIT. The rung is a claim about work in flight, and
+ * a turn that died before it painted anything leaves the transcript with no row
+ * of its own - so on the round-1 clear set (an answer, or a dead transport) the
+ * line stayed up SIGNIFICANTLY: measured in the live app at t+55s and still
+ * counting, `waiting for the agent 55s` beside `Stopped with an error` in danger
+ * ink, with the composer stuck on "Waiting for the agent" underneath. A stuck
+ * claim about work that has stopped and then failed is worse than the dead air
+ * this whole change removed (QA round 2, Q4).
+ *
+ * It is not a claim that the conversation is over: a later turn, or a retry, sets
+ * `waiting` and the ladder above speaks for that one instead.
+ */
+export function turnStopped(
+	records: TranscriptRecord[],
+	afterId: string | null | undefined,
+): boolean {
+	return recordsAfter(records, afterId).some(
+		(record) => record.kind === "notice" && record.complete === true,
+	);
 }
 
 export type WorkingLineInput = {
@@ -224,5 +274,59 @@ export function deriveWorkingLine({
 	if (!starting) return null;
 	if (unavailable) return null;
 	if (ownerAnswered(records, startingAfterId)) return null;
+	// The turn ended without painting: an incident is the app's own record that
+	// what this rung claims is in flight has stopped.
+	if (turnStopped(records, startingAfterId)) return null;
 	return { activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" };
+}
+
+/**
+ * Whether this pane is claiming work at all - the composer's hint, derived from
+ * the same expression that renders the transcript's line.
+ *
+ * ONE CLAIM, TWO SURFACES, ONE EXPRESSION. The composer used to test the latch
+ * itself (`awaitingReply={canonical.starting}`), so it kept saying "Waiting for
+ * the agent" in the states the line deliberately yields in - a pending question,
+ * and a dead transport whose own story says a line claiming progress would be
+ * claiming progress nobody is making - 46px above a pane that had already
+ * withdrawn the claim for a stated reason (review round 2, R2-3; design round 2,
+ * D5). Deriving it here means a gate, a failure, an answer or a stopped turn
+ * retire both surfaces together, and no second condition can drift from the
+ * first.
+ *
+ * THE STRING IS NOT A PHASE LABEL, which is why this asks whether the line is up
+ * rather than whether it is the admitted-send rung: the placeholder says "the
+ * agent is working and you are waiting for it", and it stays up through the
+ * hand-off from the wait to `thinking` exactly as it did before this change.
+ * Matching the rung's own phrase instead would swap a true sentence for
+ * "Ask me for help" while the agent is demonstrably writing.
+ */
+export function workingLineClaimed(input: WorkingLineInput): boolean {
+	return deriveWorkingLine(input) !== null;
+}
+
+/**
+ * The derivation's input, read off one pane's canonical state.
+ *
+ * Exported so the rung and the composer are handed the SAME FACTS rather than
+ * two constructions that can drift: the records are the list both of them render,
+ * and `unavailable` is the pane's own `canonicalTranscriptSpeaks`, so neither
+ * reader keeps a second copy of the rule that decides it.
+ */
+export function workingLineInputFor(pane: {
+	waiting: boolean;
+	starting: boolean;
+	startingAfterId?: string | null;
+	gate?: unknown;
+	unavailable: boolean;
+	records: TranscriptRecord[];
+}): WorkingLineInput {
+	return {
+		waiting: pane.waiting,
+		starting: pane.starting,
+		startingAfterId: pane.startingAfterId ?? null,
+		gate: Boolean(pane.gate),
+		unavailable: pane.unavailable,
+		records: pane.records,
+	};
 }

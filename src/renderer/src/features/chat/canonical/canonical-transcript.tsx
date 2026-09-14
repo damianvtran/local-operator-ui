@@ -109,7 +109,7 @@ import {
 import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
-import { deriveWorkingLine } from "./working-line-model";
+import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
 
 /**
  * Opts the USER bubble into the reading measure defined in `markdown.css`.
@@ -872,19 +872,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// per-token path.
 	const working = useMemo(
 		() =>
-			deriveWorkingLine({
-				waiting,
-				starting,
-				startingAfterId,
-				gate: Boolean(gate),
-				// One definition of "this pane is speaking for itself", shared with the
-				// band's own greeting decision rather than a second copy of "the
-				// transport is down": the failure notice and the reconnecting line are
-				// the only things on screen that say what happened, so the rung must
-				// not claim progress beside them.
-				unavailable: canonicalTranscriptSpeaks({ status, failure }),
-				records: transcript.records,
-			}),
+			// One input builder for this claim's two readers - this rung and the
+			// composer's hint - so the two cannot be handed different facts
+			// (`workingLineInputFor`, `working-line-model.ts`).
+			deriveWorkingLine(
+				workingLineInputFor({
+					waiting,
+					starting,
+					startingAfterId,
+					gate,
+					// One definition of "this pane is speaking for itself", shared with the
+					// band's own greeting decision rather than a second copy of "the
+					// transport is down": the failure notice and the reconnecting line are
+					// the only things on screen that say what happened, so the rung must
+					// not claim progress beside them.
+					unavailable: canonicalTranscriptSpeaks({ status, failure }),
+					records: transcript.records,
+				}),
+			),
 		[
 			waiting,
 			starting,

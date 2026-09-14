@@ -173,13 +173,19 @@ export function transcriptPaneHoldsPlaceholder(
  * Does the pane collapse out of the layout?
  *
  * Only when it has nothing to paint at all: no rows, no placeholder, no
- * statement. That is the single row where the band is allowed to take the free
- * height for the greeting, because it is the single row where the read has
- * proved the conversation empty.
+ * statement, and no send of this pane's in flight. That last term is not implied
+ * by the placeholder standing down - it is the INVERSE case, and reading it off
+ * the placeholder is how an earlier pass of this change collapsed the pane
+ * exactly while the wait line was being rendered into it, which is the dead air
+ * the term exists to remove (QA round 1's Q1, and again in the live app once
+ * this matrix was introduced). That is the single row where the band is allowed
+ * to take the free height for the greeting, because it is the single row where
+ * the read has proved the conversation empty and nothing is on its way.
  */
 export function transcriptPaneCollapses(view: TranscriptPaneView): boolean {
 	return (
 		view.recordCount === 0 &&
+		!view.admittedSend &&
 		!transcriptPaneHoldsPlaceholder(view) &&
 		!canonicalTranscriptSpeaks(view)
 	);

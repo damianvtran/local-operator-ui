@@ -32,11 +32,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import type { CanonicalFrontendSync } from "../../../../../shared/desktop-session-contract";
 import {
-	type AdmittedSend,
-	admittedSendFor,
-	ownerAnswered,
-} from "../canonical/working-line-model";
-import {
 	type AnswerOutcome,
 	type SendLock,
 	answerGateOption,
@@ -45,6 +40,11 @@ import {
 	errorCodeOf,
 	lostAnswerMessage,
 } from "../ask-answer";
+import {
+	type AdmittedSend,
+	admittedSendFor,
+	ownerAnswered,
+} from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
@@ -1325,7 +1325,25 @@ function SessionPanel({
 						// profile was in force.
 						loaded ||
 						(draftKey
-							? "The session starts when you send your first message."
+							? /*
+								 * While a send is ADMITTED the head stops instructing and
+								 * names what the send is being started with, which is the
+								 * draft's own bound target - the same durable identity the
+								 * header falls back to once the conversation is live. The
+								 * instruction was true only before the send: it sat over the
+								 * wait line telling the user to do the thing they had just
+								 * done, which is precisely the "did my send register" doubt
+								 * this change exists to remove (design round 2, D4; UX round
+								 * 2, U2).
+								 *
+								 * ONE line either way, so the slot's height does not move at
+								 * the instant of the send - the constraint the designer set on
+								 * this fix, since a second line that disappears at that moment
+								 * is a reflow the reader watches happen.
+								 */
+								starting
+								? (loadedTarget ?? "Starting the session")
+								: "The session starts when you send your first message."
 							: canonical.frontend?.cwd || "Canonical chat")
 					}
 					descriptionPending={identityPending}

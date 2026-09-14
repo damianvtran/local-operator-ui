@@ -165,18 +165,18 @@ const Frame = ({
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
-isSmallView={isSmallView}
+				isSmallView={isSmallView}
 				status={status}
 				failure={failure}
 				/*
-	 * The admitted-send stories pass `false` and the rest take the default:
+				 * The admitted-send stories pass `false` and the rest take the default:
 				 * see `Frame`'s own note. A row-less pane whose history has not been read
 				 * is the row where the wait line has to outrank the placeholder, and that
 				 * is the state the operator's New-chat report is in.
 				 */
-				 hydrated={hydrated}
-				 onReconnect={() => {}}
-				 />
+				hydrated={hydrated}
+				onReconnect={() => {}}
+			/>
 		</div>
 	);
 };
