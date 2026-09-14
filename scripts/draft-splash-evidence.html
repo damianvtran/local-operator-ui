@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  Evidence harness: the composer band on a NEW CHAT, in a browser.
+
+  What this exists to photograph: on a fresh New chat the band rendered the
+  hydration skeleton ("Loading conversation…") permanently, in place of the
+  greeting and the suggestion chips, because a session-less draft has no
+  authoritative page to wait for and the composer's wait was read off a flag
+  that only a session's stream can set. The claim is a frame-level one -- the
+  settled new-chat frame carries the greeting and the chips -- and a frame-level
+  claim needs a rendered frame.
+
+  Why the docs cannot be replaced by a component harness: the state under test
+  is a DRAFT (`activeDraftKey` set, `activeSessionId` null) staged through the
+  app's own store and rendered by `chat-page.tsx`, and the flag that decides the
+  band is derived one level above the composer. A story rendering `MessageInput`
+  against a hand-passed `isHydrating` would photograph the harness's own
+  decision rather than the app's.
+
+  So this mounts the SHIPPED `ChatPage` under a minimal shell and lets it run
+  the shipped store, the shipped `useCanonicalSessionStream` and the shipped
+  composer against a real `local-operator serve` behind the dev desktop proxy.
+  A human clicks the sidebar's own "New chat" row and looks at the band.
+
+  NOT Electron's window and NOT the packaged build: there is no main process
+  here and no IPC hop. See docs/evidence/draft-splash/README.md for exactly
+  what these frames do and do not prove.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Draft splash — real chat surface</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<!--
+		  The readback, outside the photographed viewport on purpose.
+
+		  The frame is the product surface and nothing else; the numbers a reader
+		  needs to trust it (which store state the pane is in, what the band's DOM
+		  actually holds, and the per-frame trace of the admission flip) are text,
+		  and text belongs beside the frame rather than painted over it. Off-canvas
+		  and rendered, so `innerText` still resolves and no scrollbar enters the
+		  layout being measured.
+		-->
+		<pre id="probe"></pre>
+		<script type="module" src="./draft-splash-evidence.tsx"></script>
+	</body>
+</html>

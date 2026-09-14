@@ -1,0 +1,1920 @@
+{
+  "label": "before",
+  "capturedAt": "2026-09-14T14:09:26.727Z",
+  "instrument": "scripts/draft-splash-capture.mjs - private headless Chrome over raw CDP driving scripts/draft-splash-evidence.html (the shipped ChatPage) against an isolated local-operator serve through the dev desktop proxy",
+  "url": "http://localhost:5212/draft-splash-evidence.html",
+  "viewport": "1380x872",
+  "theme": "localOperatorDark",
+  "expected": {
+    "greeting": 0,
+    "skeleton": 1,
+    "chips": 0
+  },
+  "chipList": "DEFAULT_MESSAGE_SUGGESTIONS (chat-content.tsx)",
+  "draft": {
+    "href": "http://localhost:5212/draft-splash-evidence.html",
+    "viewport": "1380x872",
+    "theme": "localOperatorDark",
+    "harnessError": null,
+    "store": {
+      "activeDraftKey": "draft:22b5c483-f0cd-4622-91f1-fec0231bd75e",
+      "activeSessionId": null,
+      "pendingSessionId": null
+    },
+    "bandNow": {
+      "at": 0,
+      "text": "Loading conversation… mock Working directory: ~",
+      "greeting": 0,
+      "skeleton": 1,
+      "chips": 0,
+      "chipLabels": [],
+      "bandHeight": 768,
+      "boxes": {
+        "band": {
+          "x": 280,
+          "y": 104,
+          "w": 1100,
+          "h": 768
+        },
+        "greeting": null,
+        "skeleton": {
+          "x": 304,
+          "y": 402,
+          "w": 1052,
+          "h": 28
+        },
+        "chipRow": null,
+        "composer": {
+          "x": 304,
+          "y": 454,
+          "w": 1052,
+          "h": 112
+        }
+      },
+      "transcriptPainted": false
+    },
+    "draftStreamView": {
+      "hydrated": false,
+      "status": "connecting",
+      "failed": false
+    },
+    "framesRead": 9,
+    "frames": [
+      {
+        "at": 15,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 16,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 142,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 335,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 350,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 474,
+        "text": "Loading conversation… Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 850,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 1483,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 2483,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      }
+    ]
+  },
+  "afterSend": {
+    "href": "http://localhost:5212/draft-splash-evidence.html",
+    "viewport": "1380x872",
+    "theme": "localOperatorDark",
+    "harnessError": null,
+    "store": {
+      "activeDraftKey": null,
+      "activeSessionId": "05a5247b85e1",
+      "pendingSessionId": null
+    },
+    "bandNow": {
+      "at": 0,
+      "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+      "greeting": 0,
+      "skeleton": 0,
+      "chips": 0,
+      "chipLabels": [],
+      "bandHeight": 136,
+      "boxes": {
+        "band": {
+          "x": 280,
+          "y": 736.3,
+          "w": 1100,
+          "h": 135.7
+        },
+        "greeting": null,
+        "skeleton": null,
+        "chipRow": null,
+        "composer": {
+          "x": 304,
+          "y": 744.3,
+          "w": 1052,
+          "h": 111.7
+        }
+      },
+      "transcriptPainted": true
+    },
+    "draftStreamView": {
+      "hydrated": false,
+      "status": "connecting",
+      "failed": false
+    },
+    "framesRead": 39,
+    "frames": [
+      {
+        "at": 15,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 16,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 142,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 335,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 350,
+        "text": "<no band in the document>",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 0,
+        "boxes": {},
+        "transcriptPainted": false
+      },
+      {
+        "at": 474,
+        "text": "Loading conversation… Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 850,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 1483,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 2483,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 3482,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 4202,
+        "text": "Loading conversation… mock Working directory: ~",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 4269,
+        "text": "Loading conversation… mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454,
+            "w": 1052,
+            "h": 112
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 4417,
+        "text": "Loading conversation… Working directory: /Users/damian Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402.2,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454.2,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 4419,
+        "text": "Loading conversation… Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 1,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": null,
+          "skeleton": {
+            "x": 304,
+            "y": 402.2,
+            "w": 1052,
+            "h": 28
+          },
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 454.2,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 4734,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 5416,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 6416,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 7418,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 8417,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 9418,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 10417,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 11417,
+        "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 12133,
+        "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 12358,
+        "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 12385,
+        "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 12403,
+        "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7,
+        "chipLabels": [
+          "Make me a research report on the latest trends in AI",
+          "Make me a space invaders game",
+          "What stocks are trending right now?",
+          "Do a technical analysis on NVDA over the last year",
+          "Organize my documents folder",
+          "Go to my downloads folder",
+          "Train a classifier on the MPG dataset"
+        ],
+        "bandHeight": 768,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 104,
+            "w": 1100,
+            "h": 768
+          },
+          "greeting": {
+            "x": 688.7,
+            "y": 338.9,
+            "w": 282.6,
+            "h": 26
+          },
+          "skeleton": null,
+          "chipRow": {
+            "x": 380,
+            "y": 524.6,
+            "w": 900,
+            "h": 104.5
+          },
+          "composer": {
+            "x": 304,
+            "y": 388.9,
+            "w": 1052,
+            "h": 240.2
+          }
+        },
+        "transcriptPainted": false
+      },
+      {
+        "at": 12421,
+        "text": "mock Working directory: /Users/damian Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12448,
+        "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12516,
+        "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12582,
+        "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12649,
+        "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12669,
+        "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12685,
+        "text": "mock <0.1%/128k 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12702,
+        "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12736,
+        "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12752,
+        "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 12987,
+        "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 13648,
+        "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      },
+      {
+        "at": 14640,
+        "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0,
+        "chipLabels": [],
+        "bandHeight": 136,
+        "boxes": {
+          "band": {
+            "x": 280,
+            "y": 736.3,
+            "w": 1100,
+            "h": 135.7
+          },
+          "greeting": null,
+          "skeleton": null,
+          "chipRow": null,
+          "composer": {
+            "x": 304,
+            "y": 744.3,
+            "w": 1052,
+            "h": 111.7
+          }
+        },
+        "transcriptPainted": true
+      }
+    ]
+  },
+  "flip": {
+    "framesWithEchoPainted": 13,
+    "tracedFrames": 39,
+    "firstPaintedBand": {
+      "at": 0,
+      "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+      "greeting": 0,
+      "skeleton": 0,
+      "chips": 0,
+      "chipLabels": [],
+      "bandHeight": 136,
+      "boxes": {
+        "band": {
+          "x": 280,
+          "y": 736.3,
+          "w": 1100,
+          "h": 135.7
+        },
+        "greeting": null,
+        "skeleton": null,
+        "chipRow": null,
+        "composer": {
+          "x": 304,
+          "y": 744.3,
+          "w": 1052,
+          "h": 111.7
+        }
+      },
+      "transcriptPainted": true
+    },
+    "bandAtSendClick": {
+      "at": 0,
+      "text": "Loading conversation… mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+      "greeting": 0,
+      "skeleton": 1,
+      "chips": 0,
+      "chipLabels": [],
+      "bandHeight": 768,
+      "boxes": {
+        "band": {
+          "x": 280,
+          "y": 104,
+          "w": 1100,
+          "h": 768
+        },
+        "greeting": null,
+        "skeleton": {
+          "x": 304,
+          "y": 402,
+          "w": 1052,
+          "h": 28
+        },
+        "chipRow": null,
+        "composer": {
+          "x": 304,
+          "y": 454,
+          "w": 1052,
+          "h": 112
+        }
+      },
+      "transcriptPainted": false
+    },
+    "bandAtFlipShot": {
+      "at": 0,
+      "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Make me a research report on the latest trends in AI Make me a space invaders game What stocks are trending right now? Do a technical analysis on NVDA over the last year Organize my documents folder Go to my downloads folder Train a classifier on the MPG dataset",
+      "greeting": 1,
+      "skeleton": 0,
+      "chips": 7,
+      "chipLabels": [
+        "Make me a research report on the latest trends in AI",
+        "Make me a space invaders game",
+        "What stocks are trending right now?",
+        "Do a technical analysis on NVDA over the last year",
+        "Organize my documents folder",
+        "Go to my downloads folder",
+        "Train a classifier on the MPG dataset"
+      ],
+      "bandHeight": 768,
+      "boxes": {
+        "band": {
+          "x": 280,
+          "y": 104,
+          "w": 1100,
+          "h": 768
+        },
+        "greeting": {
+          "x": 688.7,
+          "y": 338.9,
+          "w": 282.6,
+          "h": 26
+        },
+        "skeleton": null,
+        "chipRow": {
+          "x": 380,
+          "y": 524.6,
+          "w": 900,
+          "h": 104.5
+        },
+        "composer": {
+          "x": 304,
+          "y": 388.9,
+          "w": 1052,
+          "h": 240.2
+        }
+      },
+      "transcriptPainted": false
+    },
+    "bandStates": [
+      {
+        "at": 15,
+        "echo": false,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 16,
+        "echo": false,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 142,
+        "echo": false,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 335,
+        "echo": false,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 350,
+        "echo": false,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 474,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 850,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 1483,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 2483,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 3482,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 4202,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 4269,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 4417,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 4419,
+        "echo": false,
+        "greeting": false,
+        "skeleton": true,
+        "chips": false
+      },
+      {
+        "at": 4734,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 5416,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 6416,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 7418,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 8417,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 9418,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 10417,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 11417,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 12133,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 12358,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 12385,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 12403,
+        "echo": false,
+        "greeting": true,
+        "skeleton": false,
+        "chips": true
+      },
+      {
+        "at": 12421,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12448,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12516,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12582,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12649,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12669,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12685,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12702,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12736,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12752,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 12987,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 13648,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      },
+      {
+        "at": 14640,
+        "echo": true,
+        "greeting": false,
+        "skeleton": false,
+        "chips": false
+      }
+    ]
+  },
+  "frames": [
+    "docs/evidence/draft-splash/before-draft-1380x872-frame1.png",
+    "docs/evidence/draft-splash/before-draft-1380x872-frame2.png",
+    "docs/evidence/draft-splash/before-draft-band.png",
+    "docs/evidence/draft-splash/before-send-after-flip.png",
+    "docs/evidence/draft-splash/before-send-first-painted.png",
+    "docs/evidence/draft-splash/before-send-settled-frame1.png",
+    "docs/evidence/draft-splash/before-send-settled-frame2.png"
+  ]
+}
