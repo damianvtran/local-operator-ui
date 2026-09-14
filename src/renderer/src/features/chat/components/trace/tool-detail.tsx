@@ -42,15 +42,22 @@
  * 1. THE CAP IS PER SECTION. The input block and the result each get their own
  *    ceiling, so neither can spend the other's budget: a long argument list
  *    cannot push the result's label out of the pane.
- * 2. THE REMAINDER IS SPELLED. A section whose content does not fit prints
- *    `detailOverflowLabel` under itself — the terminal's own line, in the app's
- *    existing vocabulary for it (`diff-block.tsx` prints the same shape for a
- *    capped diff). It counts what is below the fold RIGHT NOW, so it is true at
- *    rest and stops being shown once the reader has scrolled to the end; a
- *    number that did not move would go on claiming lines the reader had already
- *    read. It sits OUTSIDE the scroller, which is what makes it visible at rest
- *    — macOS paints overlay scrollbars only while scrolling, so the scroll
- *    region's own overflow is otherwise invisible.
+ * 2. THE REMAINDER IS SPELLED, AND IT KEEPS ITS LINE. A section whose content
+ *    does not fit prints `detailOverflowLabel` under itself — the terminal's own
+ *    line, in the app's existing vocabulary for it (`diff-block.tsx` prints the
+ *    same shape for a capped diff). It counts what is below the fold RIGHT NOW,
+ *    so it is true at rest and stops claiming lines once the reader has scrolled
+ *    to the end; a number that did not move would go on counting lines the
+ *    reader had already read. At that point the line goes QUIET rather than
+ *    away. A block that leaves the flow takes its own 21.4px with it, and the
+ *    thing under a capped section is the `Output` label and the result — so the
+ *    reader's last wheel notch at the section's end moved all of it a line, the
+ *    next notch put it back, and the transcript netted zero progress over eight
+ *    notches of gesture (design round 2 D6, UX round 2 U5, QA round 2 Q-7). The
+ *    count is the reader's own unit, too: see `useSectionReport`. It sits
+ *    OUTSIDE the scroller, which is what makes it visible at rest — macOS paints
+ *    overlay scrollbars only while scrolling, so the scroll region's own
+ *    overflow is otherwise invisible.
  *
  * For the same reason the pane anchors its content to the TOP rather than to
  * the bottom the way `output-block.tsx` does (`flex-col-reverse`): the reader
@@ -152,38 +159,74 @@ const DetailLines: FC<{ lines: readonly DetailLine[]; label: string }> = ({
 );
 
 /**
- * How many rows of a scroll region sit below its visible box, right now.
+ * What a capped section owes its reader, right now: the LINES below the fold,
+ * and whether the section overflows at all.
  *
  * GEOMETRY rather than a line cap, because the section is a real scroll region
  * and the number has to stay true while the reader scrolls: a count of the lines
- * a cap hid would go on claiming rows the reader had already read. Two things
- * come out of the same arithmetic — the content's own row PITCH (`line-height`
- * plus `row-gap`, which is 4px for a block of argument lines and 0 for the
- * `<pre>` a raw result prints in) and how far the content extends past the box's
- * bottom edge.
+ * a cap hid would go on claiming lines the reader had already read. The count is
+ * the LINE BOXES whose bottom edge sits past the box's, which is the reader's own
+ * unit and `detailOverflowLabel`'s own contract — "the rows of the section that
+ * are not fully inside its box, so a wrapped value counts as the rows it
+ * occupies". Dividing the overflow by the block's ROW PITCH (line-height plus
+ * row-gap) answers a different question and gets a different number: the pitch is
+ * the ARGUMENT block's rhythm, so at a width where every value wraps it counts two
+ * text lines as one and printed `… 27 more lines` for the 33 a reader counts (QA
+ * round 2, Q-6). A row is walked as its line boxes (`Math.round(height /
+ * line-height)`) and each box is tested on its own bottom edge, so a wrapped value
+ * counts as the lines it occupies and a value between two others counts as one.
  *
- * The CONTENT is what the observer watches rather than the box: `max-h` fixes
- * the box's height, so a result streaming into an open pane grows the content and
- * resizes nothing the box itself could report.
+ * `overflowing` — content taller than box — is measured for the marker's LAYOUT
+ * rather than for its text, and it is deliberately not derived from `scrollTop`:
+ * anything the reader's own offset decides would let the marker's mount move the
+ * pane under them (see `Remainder`). `max-h` fixes the box's height, so this can
+ * only change when the CONTENT does — the CONTENT is what the observer watches
+ * rather than the box, because a result streaming into an open pane grows the
+ * content and resizes nothing the box itself could report.
  */
-function useRowsBelowFold(ref: RefObject<HTMLDivElement | null>): number {
-	const [rows, setRows] = useState(0);
+function useSectionReport(ref: RefObject<HTMLDivElement | null>): {
+	lines: number;
+	overflowing: boolean;
+} {
+	const [lines, setLines] = useState(0);
+	const [overflowing, setOverflowing] = useState(false);
 	// Deliberately no dependency array: the content is rebuilt on every render of
-	// an open row, and the effect is a couple of style reads and one subtraction.
-	// `setRows` with an unchanged value is a no-op in React, so it cannot loop.
+	// an open row, and the effect is a few style reads and one rect walk.
+	// `setState` with an unchanged value is a no-op in React, so it cannot loop.
 	useLayoutEffect(() => {
 		const box = ref.current;
 		if (!box) return;
 		const content = box.firstElementChild as HTMLElement | null;
 		const measure = () => {
-			const computed = content ? getComputedStyle(content) : null;
-			// `row-gap` is `normal` on a `<pre>`, which parses to NaN and reads as 0.
-			const line = Number.parseFloat(computed?.lineHeight ?? "");
-			const gap = Number.parseFloat(computed?.rowGap ?? "");
-			const pitch =
-				(Number.isFinite(line) ? line : 0) + (Number.isFinite(gap) ? gap : 0);
-			const below = box.scrollHeight - box.scrollTop - box.clientHeight;
-			setRows(pitch > 0 && below > 0 ? Math.ceil(below / pitch) : 0);
+			const target = content ?? box;
+			const lineHeight = Number.parseFloat(getComputedStyle(target).lineHeight);
+			if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+				setLines(0);
+				setOverflowing(false);
+				return;
+			}
+			const boxRect = box.getBoundingClientRect();
+			const contentRect = target.getBoundingClientRect();
+			// A half pixel of tolerance: the cap and the content are both rects, and
+			// a section that fits exactly is not an overflow.
+			setOverflowing(contentRect.height > boxRect.height + 0.5);
+			/*
+			 * The `<pre>` a raw result prints in holds its text as a text node rather
+			 * than as child elements, so it is walked as the one row it is and its own
+			 * newlines are the line boxes inside it.
+			 */
+			const rows =
+				target.children.length > 0 ? Array.from(target.children) : [target];
+			let below = 0;
+			for (const row of rows) {
+				const rect = row.getBoundingClientRect();
+				if (rect.height <= 0) continue;
+				const boxes = Math.max(1, Math.round(rect.height / lineHeight));
+				for (let index = 1; index <= boxes; index++) {
+					if (rect.top + index * lineHeight > boxRect.bottom) below++;
+				}
+			}
+			setLines(below);
 		};
 		measure();
 		box.addEventListener("scroll", measure, { passive: true });
@@ -194,7 +237,7 @@ function useRowsBelowFold(ref: RefObject<HTMLDivElement | null>): number {
 			observer.disconnect();
 		};
 	});
-	return rows;
+	return { lines, overflowing };
 }
 
 /**
@@ -203,11 +246,29 @@ function useRowsBelowFold(ref: RefObject<HTMLDivElement | null>): number {
  * OUTSIDE the scroller, which is the whole point: it has to be visible while the
  * reader is at rest, and a pinned row inside the region would be the reader's
  * own scroll position deciding whether the pane admits to holding more.
+ *
+ * ITS LINE STAYS IN THE FLOW while its section overflows, and the count at
+ * `lines === 0` is a non-breaking space rather than an absent row. The marker
+ * disappearing at the section's end is right — it must not go on claiming lines
+ * the reader has read — but a block that leaves the flow takes its 21.4px of
+ * layout with it, and what sits under a capped section is the `Output` label and
+ * the result. Measured before that rule: the label and everything below moved
+ * 21.4px at the section's end and back again on the way off it, and eight wheel
+ * notches of 120px left the transcript where it started — the reader's gesture
+ * spent on the marker's mount cycle instead of on scrolling (design round 2 D6,
+ * UX round 2 U5, QA round 2 Q-7).
+ *
+ * `overflowing` is what decides the box is there at all, and it is measured from
+ * the content's height rather than from the reader's scroll offset, so nothing
+ * the reader does can move it.
  */
-const Remainder: FC<{ rows: number }> = ({ rows }) =>
-	rows > 0 ? (
+const Remainder: FC<{ lines: number; overflowing: boolean }> = ({
+	lines,
+	overflowing,
+}) =>
+	overflowing ? (
 		<span className={cn("mt-1 block text-ink-dim")}>
-			{detailOverflowLabel(rows)}
+			{lines > 0 ? detailOverflowLabel(lines) : "\u00a0"}
 		</span>
 	) : null;
 
@@ -216,8 +277,8 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 	const structured = resultLines(output);
 	const inputRef = useRef<HTMLDivElement>(null);
 	const outputRef = useRef<HTMLDivElement>(null);
-	const inputHidden = useRowsBelowFold(inputRef);
-	const outputHidden = useRowsBelowFold(outputRef);
+	const inputBelow = useSectionReport(inputRef);
+	const outputBelow = useSectionReport(outputRef);
 
 	/*
 	 * Nothing to paint, so nothing is painted.
@@ -241,7 +302,10 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 					<div ref={inputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						<DetailLines lines={input} label="input" />
 					</div>
-					<Remainder rows={inputHidden} />
+					<Remainder
+						lines={inputBelow.lines}
+						overflowing={inputBelow.overflowing}
+					/>
 				</div>
 			)}
 			{output && (
@@ -281,7 +345,10 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 							</pre>
 						)}
 					</div>
-					<Remainder rows={outputHidden} />
+					<Remainder
+						lines={outputBelow.lines}
+						overflowing={outputBelow.overflowing}
+					/>
 				</div>
 			)}
 		</div>

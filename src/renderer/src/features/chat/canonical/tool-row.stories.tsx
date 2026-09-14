@@ -1987,3 +1987,86 @@ export const ReceiptHostileSender: Story = {
 		/>
 	),
 };
+
+/**
+ * ONE run, both row KINDS: three tool calls with a peer message and a wake
+ * delivery between them.
+ *
+ * The gap this closes was stated rather than hidden in round 2 (design, §
+ * "Checked and NOT filed"): every committed frame carried one kind at a time, so
+ * "the receipt rows share the ledger's own name column" rested on the mechanism
+ * (`ledgerName` feeds the single `toolNameColumn` measurement) plus a round-1
+ * mixed-list frame that predates the receipt projection — not on a picture taken
+ * at the head it was claimed of. A measurement is what makes the claim true, and
+ * a frame is what makes it checkable by a reader who was not here.
+ *
+ * What to read in it, in the order the rows are stacked:
+ *
+ * - ONE rail and ONE name column across both kinds. `bash`, `read`, `write` and
+ *   the receipts' `peer` / `wake` names start at the same x and take the same
+ *   `ink-muted`, because the column is sized once for the longest name visible
+ *   in the transcript and every kind takes part in that one measurement. A run
+ *   that had two spines — a tool column and a receipt column — would show two
+ *   left edges here and nowhere else, which is exactly why one kind per frame
+ *   could not settle it.
+ * - The expanded pane's argument text and the expanded receipt's body sit on the
+ *   SAME rail to within the pane's own hairline (design round 1, D2: 1px, and it
+ *   is the border). Both are in shot above and below each other.
+ * - A note that arrived mid-run belongs to the run: the peer row is a ledger row
+ *   between two calls rather than a card floating over them, and the wake
+ *   delivery reads `w-9 (1, every 6h)` rather than the `(alarm) … — cancel with
+ *   wake({…})` markup the model reads.
+ *
+ * Every row is opened through its own trigger, which is why the collapsed
+ * states are not the subject here — `receipt-rows` carries that pair.
+ */
+export const MixedRun: Story = {
+	render: () => (
+		<Frame
+			height={830}
+			openRows
+			records={[
+				tool({
+					id: "tool:mixed-bash",
+					toolName: "bash",
+					args: {
+						command: "pnpm test:desktop 2>&1 | tail -3",
+						timeout_ms: 600_000,
+					},
+					output: "ℹ tests 820\nℹ pass 816\nℹ fail 4\n",
+					durationS: 92.4,
+				}),
+				peer({
+					id: "peer:mixed",
+					body: "the receipts and the tool rows share one name column now — can you check a run that has both?",
+				}),
+				tool({
+					id: "tool:mixed-read",
+					toolName: "read",
+					args: {
+						path: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+						offset: 108,
+						limit: 20,
+					},
+					output:
+						'const ledgerName = (record: TranscriptRecord) =>\n\trecord.kind === "peer" || record.kind === "wake"\n\t\t? displayName(record.kind)\n\t\t: toolDisplayName(record.toolName);',
+					durationS: 0.04,
+				}),
+				wake({
+					id: "wake:mixed",
+					text: '(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})\n\ncheck the deploy finished before you answer',
+				}),
+				tool({
+					id: "tool:mixed-write",
+					toolName: "write",
+					args: {
+						path: "scripts/tool-row.test.mjs",
+						content: "// the mixed-run case, pinned rather than photographed",
+					},
+					output: "Written 1 line to scripts/tool-row.test.mjs",
+					durationS: 0.03,
+				}),
+			]}
+		/>
+	),
+};
