@@ -873,8 +873,8 @@ export const VariablesDraft: Story = {
  * of a query that already held a reading when the next answer is `busy`.
  *
  * That half is photographed from the running app, not here:
- * `docs/evidence/session-code-memory/live-busy/` (the live panel with ten rows
- * still on screen beside the affordance) and `live-populated/`, taken by the
+ * `docs/evidence/session-code-memory-live/live/busy/` (the live panel with ten
+ * rows still on screen beside the affordance) and its sibling `populated/`, taken by the
  * independent QA round against a real backend with a resident kernel. A story
  * cannot stand in for them - a fixture that starts `busy` has no previous
  * reading to keep - which is why the pair is declared separately in the
@@ -949,6 +949,10 @@ export const VariablesBackendTooOld: Story = {
  * hook, not a hand-drawn toast.
  */
 export const VariablesWriteRefused: Story = {
+	// Hold the real Sonner toast for this story's lifetime. The production
+	// cooldown suppresses identical errors rather than renewing their timers,
+	// so replaying writes cannot make delayed captures deterministic.
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () => {
 		// Held from the RENDER, not from the play: the capturer can find the story
 		// prepared before the play function's first statement runs, and a frame
@@ -1004,24 +1008,8 @@ export const VariablesWriteRefused: Story = {
 		// half of UX round 1's U3: the same sentence, beside the control the user
 		// has to change, instead of only in a toast that floats past.
 		await screen.findByText(REFUSAL_SENTENCE, { selector: "p" });
-		/*
-		 * Then keep it alive, and only then let the shutter go.
-		 *
-		 * The first version released the shutter as soon as the toast was up and
-		 * relied on the caption's 4000 ms lifetime outlasting the capturer's own
-		 * work - which it does on an idle host and does not on a loaded one: design
-		 * round 2 reproduced the state twice and lost the toast in two themes each
-		 * time, in a different pair each run, while the field marker (which does not
-		 * expire) was present every time. Re-driving the same refusal every two
-		 * seconds means a toast is always inside its lifetime whenever the shutter
-		 * lands, whatever the host is doing; sonner collapses the repeats because
-		 * `showErrorToast` keys them by the message. The timer is stopped after a
-		 * minute so a story left open in the browser is not clicking forever.
-		 */
-		const keepAlive = window.setInterval(() => {
-			void userEvent.click(screen.getByRole("button", { name: "Create" }));
-		}, 2000);
-		window.setTimeout(() => window.clearInterval(keepAlive), 60_000);
+		// Both refusal surfaces are ready. The story-scoped toaster duration
+		// keeps the toast mounted after this point without another write.
 		releaseShutter();
 	},
 };

@@ -228,7 +228,9 @@ const preview: Preview = {
 										<ThemeFrame theme={theme}>
 											<Story />
 										</ThemeFrame>
-										<ThemedToastContainer />
+										<ThemedToastContainer
+											duration={context.parameters.toastDuration}
+										/>
 									</MuiThemeProvider>
 								</AuthProviders>
 							</FeatureFlagProvider>

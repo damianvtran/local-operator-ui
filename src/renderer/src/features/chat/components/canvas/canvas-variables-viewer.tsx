@@ -415,10 +415,10 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 		 * default `staleTime` is five minutes, so nothing re-asks on its own until
 		 * a write happens to invalidate this key (UX round 2, U1).
 		 *
-		 * Keyed on the turn COUNT rather than on the terminal event's name, which
-		 * repeats turn to turn, and rather than on a timer: the re-read happens
-		 * once per turn, and the mount case is already covered by
-		 * `refetchOnMount: "always"` on the read itself.
+		 * Keyed on observed completion pulses (`turn_end` / `agent_end`) rather
+		 * than on an event name that repeats, or on a timer. A run can emit both
+		 * endings; this is not a unique-turn count. The mount case is already
+		 * covered by `refetchOnMount: "always"` on the read itself.
 		 */
 		const queryClient = useQueryClient();
 		const turnsSeen = useRef(turnTerminal);
