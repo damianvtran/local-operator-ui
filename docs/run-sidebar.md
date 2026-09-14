@@ -1024,17 +1024,16 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   attention`), which is the round-1 fix: the two surfaces read the same count in
   the same words, in one model function (`mcpTally`), because they said `1 need
   attention` and `1 MCP server needs attention` about the same server (U1-7/Q7).
-- **The DIAGNOSIS outranks the remedy**, and it is the one field of the canonical
-  projection this section renders (§ 7.4). `mcp.list` reports status, tool count
-  and configuration and no reason at all, so a server broken by its own command —
-  QA's `/nonexistent/definitely-not-a-binary` — got `Reconnect this server in
-  Settings`, which cannot fix a command that does not exist, and the runtime's own
-  `[Errno 2] No such file or directory: …` was rendered nowhere in the app (round
-  1, U1-8). The row's second line is now the canonical
-  `frontend.mcp_servers[].error` when the read carries one — machine voice,
-  verbatim, like every other exception this app prints — and the hint when it does
-  not. It is only ever taken for a row the RENDERED read already calls a problem,
-  so a startup failure cannot sit under a live `connected`.
+- **The REMEDY takes the second line and the DIAGNOSIS a third**, as the line table
+  above states and as `mcp-disconnected` renders: line 2 is `— Reconnect this
+  server in Settings` and line 3 the canonical `frontend.mcp_servers[].error` when
+  the read carries one — machine voice, verbatim, like every other exception this
+  app prints — clamped at two lines. This bullet used to say the diagnosis
+  OUTRANKED the remedy and stood in the hint's place; round 2's U2-2 replaced that
+  rule (a diagnosis alone leaves the operator's "what do I do about a broken one"
+  unanswered) and this line was left standing until D3-3. The diagnosis is only
+  ever taken for a row the RENDERED read already calls a problem, so a startup
+  failure cannot sit under a live `connected`.
 - **The cold state is the SECTION's, not the row's.** The route's cold branch
   hard-codes `"status": "cold"` for every configured server
   (`desktop_lifecycle.py:127`), so a per-row status column would print one jargon
@@ -1301,7 +1300,7 @@ exact steps inside a stated range are the implementation's to choose.
 | Roster area | `bg-surface`, rows hover `bg-elevated`, scroll region = the rest of the panel | A list panel's ground; `elevated` is the hovered-row role (`branding.md` § 2). |
 | Reader body | `bg-canvas` | The main transcript's ground (`chat-content.tsx:349`), so the child's conversation resolves against the same plane as the parent's — the "reads like the parent transcript" requirement is partly a *ground* requirement. |
 | Between sections | one `hairline` rule | Unchanged from `docs/run-details.md` § 5. |
-| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, up to 64px when the diagnosis wraps** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. |
+| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, up to 80px when the diagnosis wraps** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them, and the measured worst case is 6 + 20 + 16 + 32 + 6 = **80px** — 64px was the row without the second diagnosis line), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. |
 | MCP row segments | mark 16px (the roster's own box), name truncating with an ellipsis, then the status word, tool count and scope as non-truncating qualifiers | The roster's segment grammar, so the two lists read as one panel. The name is the only segment allowed to shrink: the numbers rule of § 9 forbids truncating a value mid-figure, and a name has a `title` to state it whole. |
 | MCP section | last in the panel's scroll region; its own section header with the tally; no separate scroll container, no hover ground, no cap | § 7.2's fixed order; the panel's single scroll region (the `Scroll owner` row below) is the roster's, so a section with its own container would put two scrollbars in one pane. |
 | Scroll owner | the roster area in the roster view; the transcript in the reader view — never both | Two nested scroll containers is the defect the old doc's `min(60vh, 480px)` ceiling existed to avoid; with a full-height pane the roster scrolls in the pane, and the cap that used to be a popover artefact is gone. |

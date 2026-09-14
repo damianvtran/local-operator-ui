@@ -87,7 +87,10 @@ named as such everywhere they are cited.
 | [`mcp-all-connected`](mcp-all-connected/) | Three servers up: the word, the tool count and the scope qualifier per row (`connected 12 tools global`), the `3 of 3 connected` tally, and no dot anywhere. Measured: the healthy rows sit on a **32px pitch** (consecutive mark clusters at y432, y464, y496 in the dark frame), which is `§ 8`'s pinned row height. |
 | [`mcp-auth-required-closed`](mcp-auth-required-closed/) | The dot with the pane SHUT: measured **21 danger-bound pixels in the dark theme and 52 in the light** inside an 8px box at the trigger's top-right (x398-405, y12-15), and nothing else red in the header band. |
 | [`mcp-auth-required`](mcp-auth-required/) | The same session with the pane open **on the list**: the same measurement returns **zero** danger-bound pixels, the `notion` row carries the wire's own word `auth-required` and its remedy line — `— Grant this server account access in Settings`, the blocked-row shape `§ 7.2` specifies (round 2's U2-2 put the dash back with it) — and the tally reads `1 of 2 connected · 1 needs attention` — the singular, which is round 1's Q7/U1-7 fix (`1 need attention` agreed with neither grammar nor the trigger's own `1 MCP server needs attention`). That pair is `§ 3.4`'s whole rule in two frames. |
-| [`mcp-disconnected`](mcp-disconnected/) | The transport state beside the auth state — the two words the operator reported being unable to tell apart, side by side and distinguishable — with the row's **remedy AND its diagnosis** (round 2's U2-2): line two reads `— Reconnect this server in Settings`, and line three carries the runtime's own text for a server whose command does not exist, `[Errno 2] No such file or directory: '/nonexistent/definitely-not-a-binary'`, wrapped to its own line and clipped at two (round 1's U1-8 asked for the diagnosis, and the round before this one had let it REPLACE the remedy, which left the operator's "what do I do about a broken one" unanswered). 48px with a remedy, 64px when the diagnosis wraps — `§ 8`'s row, corrected this round against the frame rather than the arithmetic. |
+| [`mcp-disconnected`](mcp-disconnected/) | The transport state beside the auth state — the two words the operator reported being unable to tell apart, side by side and distinguishable — with the row's **remedy AND its diagnosis** (round 2's U2-2): line two reads `— Reconnect this server in Settings`, and line three carries the runtime's own text for a server whose command does not exist, `[Errno 2] No such file or directory: '/nonexistent/definitely-not-a-binary'`, wrapped to its own line and clipped at two (round 1's U1-8 asked for the diagnosis, and the round before this one had let it REPLACE the remedy, which left the operator's "what do I do about a broken one" unanswered). 48px with a remedy, **80px when the diagnosis wraps** — `§ 8`'s row,
+corrected this round against the frame rather than the arithmetic (6 + 20 + 16 + 32
++ 6, measured live; the earlier 64px was the row without the second diagnosis
+line). |
 | [`mcp-unknown-status`](mcp-unknown-status/) | A word this build was not taught (`reticulating`): rendered verbatim in the quiet ink with the unknown mark and **no** remedy line — the refusal is never to claim the good state, and never to paint a `danger` failure the renderer cannot name. The pane is OPEN on the list, so the dot is off while it is shown, which is `§ 3.4` and not a refusal; the dot's own half of `§ 7.3` in a shut pane is `mcp-auth-required-closed`. (The row used to end by naming "the same frame's sibling `mcp-unknown-status`", i.e. itself — there is exactly one such story.) |
 | [`mcp-cold`](mcp-cold/) | The cold payload (no runtime attached): the section's one line in place of the tally, rows with name and qualifier only — no per-row `cold` word, no tool count, no dot. |
 | [`mcp-connecting`](mcp-connecting/) | A server coming up: not a problem, no dot, its own quiet word. |
@@ -99,23 +102,30 @@ named as such everywhere they are cited.
 
 A frame that is a byte-for-byte copy of another proves **nothing** about the
 state it is named for, so the set does not claim distinctness it does not have.
-`md5` over the 78 committed frames gives **73 byte-distinct pictures**; the five
-identities, and which of them is a defect and which is the point (re-computed
-with `md5` over the re-taken set — the identities are the same five and the same
-hashes, and only the frame count moved):
+`md5` over the 78 committed frames gives **75 byte-distinct pictures**, and THREE
+pairs are duplicated at this commit — re-derived from the files rather than
+carried forward, because the re-take moved it in both directions: the swap pair
+and the `mcp-dot-ack-acknowledged` pair stopped being byte-identical, and the
+`panel-empty`/`trigger-open-hover` pair appeared. The table says which pair is a
+defect and which is the point, and it keeps one former pair whose fix is the
+change's own fingerprint:
 
 | frames | md5 | what it means |
 | --- | --- | --- |
 | `both-in-flight` == `swap-run-open` | *was* `5d2b2a5085816a02ebc078e4171cb68a`, both themes | **This was a defect and it is fixed.** The two exist to prove different things — the two sections coexisting, versus which pane owns the slot — and the swap pair rendered the same fixture, so the "mirror" frame carried no picture of its own. `swap-canvas-open`/`swap-run-open` now render `fixtures.swapSlot()` (one child, one open to-do), and all four frames were re-taken. |
 | `trigger-open-hover` == `panel-empty` | `69e0e5aa2e` dark, `6d45582f90` light | **This one IS the claim.** `D2-1`'s fix says the pressed ground must not change under the pointer; a hover that still altered a pixel would be the defect. The pointer's arrival is proven by `trigger-hover`, which does move pixels against `trigger-idle`, and both hover frames are taken by the same rig option. |
-| `mcp-dot-ack-acknowledged` == `trigger-idle` | `69a3a84199` dark, `41926989f3` light | **Inherent, and stated rather than claimed.** An acknowledged dot and a never-broken one are the same pixels by definition — the ledger's hold is invisible, which is why it needs no affordance (`§ 3.4`). The rule that produces the hold is pinned in `scripts/run-detail-model.test.mjs`; the frame is kept as the sequence's endpoint, not as a distinct picture. |
-| `reduced-motion` == `mcp-connecting` | `170ac94459` dark (0 differing pixels); light differs in 2,570 scattered pixels (0.29%, single-pixel antialiasing in the pane) | **Inherent to the rig.** `capture-evidence.mjs` injects `animation:none; transition:none` before every shutter, so a still cannot differ by the motion media feature — a frame that faked the capped style would be evidence about the fake. The claim lives in the `@media (prefers-reduced-motion: reduce)` block in `styles/index.css`. |
+| `mcp-dot-ack-acknowledged` vs `trigger-idle` | no longer identical: **39,938** pixels differ dark, **38,882** light | **Measured at this commit, and the row is kept because the sequence ends here.** An acknowledged dot and a never-broken one are the same *dot* — the ledger's hold is invisible, which is why it needs no affordance (`§ 3.4`) — and what moved is the header around it: the trigger's focus ring and its tooltip over the column, which is what the note above this section already describes. The rule that produces the hold is pinned in `scripts/run-detail-model.test.mjs`, and the frame is the sequence's endpoint rather than a distinct picture. |
+| `reduced-motion` == `mcp-connecting` | `170ac94459` dark (0 differing pixels); light differs in 5,050 scattered pixels (0.56% of the 1280×700 frame, single-pixel antialiasing in the pane) | **Inherent to the rig.** `capture-evidence.mjs` injects `animation:none; transition:none` before every shutter, so a still cannot differ by the motion media feature — a frame that faked the capped style would be evidence about the fake. The claim lives in the `@media (prefers-reduced-motion: reduce)` block in `styles/index.css`. |
 
-Near-twins are not identities and are not listed above: `mcp-dot-ack` and
-`mcp-auth-required-closed` share identical dot measurements (21 danger px dark /
-52 light) and differ in 118 pixels of the chat column beside the header, which is
-the sequence's own point (a dot re-armed reads the same as a dot never cleared
-until the surface around it is compared).
+Near-twins are not identities. `mcp-dot-ack` and `mcp-auth-required-closed`
+measured **21** danger-bound pixels in dark (x398-403) and **42** in light
+(x398-404) against the closed frame's **21** and **52** (x398-405) — the trigger's
+focus ring covers the dot's corner in these crops — and the two frames differ by
+**40,063** pixels dark (5,129 of them in the header band's top 48 rows, the rest
+the tooltip below it) and **39,835** light (6,246 / 33,589). So the pair is not a
+near-twin either; what survives is the point the sequence makes — a dot re-armed
+and a dot never cleared read the same ON THE TRIGGER, and the surface around it is
+what differs.
 
 ## Measured comparisons
 
@@ -164,9 +174,20 @@ interaction harness in `run-details.stories.tsx` (`chat-run-panel--interactive-p
 deliberately not part of the sweep): focus lands in `Conversation transcript` when
 a reader opens, `Escape` on the trigger closes the pane, the ✕ leaves focus on the
 trigger rather than `<body>`, and Back from a grandchild lands on its parent's
-page. It is also why no frame in the set shows a FOCUS RING: the rig moves a
-pointer and cannot press a key, and `Emulation.setFocusEmulationEnabled` only
-makes the page believe it has the window — it focuses nothing. Round 1's
+page. It is also why the rig cannot *frame* focus: it moves a pointer and cannot
+press a key, and `Emulation.setFocusEmulationEnabled` only makes the page believe
+it has the window — it focuses nothing. Two frames do carry the trigger's focus
+ring, as a side effect of `main`'s own header behaviour rather than of anything
+this change draws (`mcp-dot-ack` and `mcp-dot-ack-acknowledged`, whose ring is
+exactly what the identity section records as their difference from `trigger-idle`),
+and no frame is taken FOR a focus state. Two states of this change's own subject
+are the same kind of gap and are declared rather than framed: a blocked reason long
+enough to reach the pane's two-line clamp (measured in
+`scripts/run-detail-model.test.mjs`, which pins the clamp), and a child's
+unresolvable attachment (the child path renders the PARENT's own receipt,
+`canonical-image.tsx:65`'s `BrokenAttachment` + `ATTACHMENT_UNAVAILABLE_COPY`, so
+no new copy is at risk — and the story relays a 404 for anything but its own
+digest, which makes a scope regression surface as that note). Round 1's
 remediation claimed the set covered hover and focus; hover it does for the
 trigger's four grounds (`trigger-idle`/`trigger-hover` and
 `panel-empty`/`trigger-open-hover`), focus it does not, and this paragraph is the
