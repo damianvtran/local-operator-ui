@@ -633,6 +633,28 @@ const WAKE_ARM_CLAUSE = /\s+—\s*cancel with wake\([^)]*\)[^.]*\.?/;
 /** The bracket the harness prefixes its statement texts with (`[model switch]`). */
 const STATEMENT_TAG = /^\[[^\]]{1,32}\]\s*/;
 
+/*
+ * The sentence scan's two conditions (round 2's R7). Module constants rather than
+ * literals in the loop: they would be re-created per character otherwise, which
+ * is the same reason this repository lints for it.
+ */
+/** A leading list marker: `1.`, `2.` — a bullet, not a sentence end. */
+const LEADING_ORDINAL = /^\d+\.$/;
+/** A capital, which is what an abbreviation's follower is not. */
+const CAPITAL = /[A-Z]/;
+
+/*
+ * The two wake shapes (round 2's U10, and D8/U15 the day after). A wake's arming
+ * line is generated: `(alarm) Scheduled wake w1 (1/16, every 1h30m) — …`. With no
+ * cadence it says nothing a reader wants, so the row quotes the goal out of the
+ * body instead — but ONLY when the line chosen IS that arming line, because a
+ * payload whose own preamble opens it must keep the preamble (D8), and that is
+ * the one-predicate difference between the two shapes.
+ */
+const WAKE_ARMING_LINE = /^\(alarm\)\s*Scheduled wake/;
+/** A markdown list bullet the body may lead with, which is markup, not words. */
+const LIST_BULLET = /^[-*•]\s+/;
+
 /**
  * A headline is a summary of the row, not the row's payload — `detail` is the
  * payload. Bounded so a single-paragraph relay cannot push the ledger out of
@@ -672,7 +694,7 @@ function customRow(
 			provider: null,
 			...(INLINE_CUSTOM_TYPES.has(customType)
 				? splitStatement(text.trim().replace(STATEMENT_TAG, ""))
-				: { headline: headlineOf(text, customType), detail: text }),
+				: relayRow(text, customType)),
 		};
 	}
 	return { level: "error", ...incidentRow(text, details) };
@@ -725,8 +747,8 @@ function firstSentenceEnd(text: string): number {
 	for (let i = 0; i < text.length - 1; i++) {
 		if (!".!?…".includes(text[i])) continue;
 		if (!/\s/.test(text[i + 1])) continue;
-		if (/^\d+\.$/.test(text.slice(0, i + 1))) continue;
-		if (!/[A-Z]/.test(text.slice(i + 1).trimStart()[0] ?? "")) continue;
+		if (LEADING_ORDINAL.test(text.slice(0, i + 1))) continue;
+		if (!CAPITAL.test(text.slice(i + 1).trimStart()[0] ?? "")) continue;
 		return i + 1;
 	}
 	return -1;
@@ -779,6 +801,29 @@ function incidentRow(
 }
 
 /**
+ * A relayed payload as a row: its headline, and the body behind the disclosure.
+ *
+ * `detail` is `null` when the headline IS the whole payload, because a disclosure
+ * that repeats what the row already says promises material it does not add — the
+ * same rule the notice register needed (round 2's U14), and the one 4 of the
+ * store's 38 job results hit once the colon join consumed their two-line body
+ * (U16). The comparison is on the flattened text, so it holds whether the join
+ * stitched lines together or the payload was one line to begin with.
+ */
+function relayRow(
+	text: string,
+	customType: string,
+): Pick<Extract<TranscriptRecord, { kind: "custom" }>, "headline" | "detail"> {
+	const headline = headlineOf(text, customType);
+	const flat = text
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.join(" ");
+	return { headline, detail: flat === headline ? null : text };
+}
+
+/**
  * The line of a relayed payload that says something, bounded to a headline.
  *
  * Three kinds of line are not the message and are stepped over:
@@ -824,10 +869,11 @@ function headlineOf(text: string, customType: string): string {
 
 	if (
 		customType === "wake_prompt" &&
-		chosen === substantive &&
+		WAKE_ARMING_LINE.test(chosen) &&
 		!/\bevery\b/.test(chosen)
 	) {
-		chosen = lines.find((line) => speaks(line) && line !== chosen) ?? chosen;
+		const goal = lines.find((line) => speaks(line) && line !== chosen);
+		if (goal) chosen = goal.replace(LIST_BULLET, "");
 	}
 
 	const at = lines.indexOf(chosen);
