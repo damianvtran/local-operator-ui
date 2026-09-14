@@ -21,8 +21,9 @@ carries the offer. This is the AFTER side — the offer stands, the notification
 own "a new server update is available" line is up, and **nothing affirms** that
 the installation is current.
 
-The same story, captured on a scratch worktree at the pre-fix commit the branch
-is cut from (`ef40c81e2`), is the report itself, and lives in
+The same story, captured on a scratch worktree at the pre-fix commit these frames
+were paired against (`ef40c81e2`, this branch's base before it was rebased onto
+`142e86904`), is the report itself, and lives in
 `docs/evidence/update-check-affirmation-before/` — the panel with "You are up to
 date" over it. The story contains no part of the fix, so the pair is one script
 on two trees rather than two scripts.
