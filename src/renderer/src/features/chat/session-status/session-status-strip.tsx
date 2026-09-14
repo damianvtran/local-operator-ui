@@ -6,11 +6,18 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import type { DraftPickerDestination } from "../draft-selection";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
-import { costTooltip, sessionCost } from "./session-cost";
+import {
+	type SessionCostInput,
+	costTooltip,
+	sessionCost,
+} from "./session-cost";
 import {
 	DURATION_EXPLANATION,
 	DURATION_LABEL_EXPLANATION,
@@ -138,6 +145,20 @@ export type SessionStatusStripProps = {
 	 */
 	draft?: boolean;
 	/**
+	 * Where a draft's resolution IS, while it has no reading of its own.
+	 *
+	 * Two states the pane used to render as a third: `pending` while
+	 * `sessions.preview` is in flight and `failed` once it has errored, neither of
+	 * which is "the backend resolved a spec that names no model". Handed in by the
+	 * pane from its own query, so the strip never infers a resolution state from
+	 * an absent value — the same rule `draft` itself is told under (UX U3).
+	 *
+	 * `failed` carries the retry, because the query is `retry: false`: nothing else
+	 * on the pane will ever ask again, and a resolution that failed silently stayed
+	 * failed until the user left and re-entered the pane.
+	 */
+	draftResolution?: DraftResolution;
+	/**
 	 * Open the picker for a reading on a DRAFT pane, whose pick becomes the first
 	 * turn's model or effort instead of a session's.
 	 *
@@ -206,6 +227,22 @@ export const READING_BUTTON = cn(
 
 /** The inert form, for a reading with nothing to open. */
 const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
+
+/**
+ * A snapshot that has measured nothing, for a pane that has no snapshot yet.
+ *
+ * `sessionCost` reads only these five fields, and this is what its own "nothing
+ * has been spent" answer is made of - the same one a resolved draft gets from
+ * the preview's zeros, so a pending or failed pane's spend segment is absent
+ * for the same reason rather than by a second rule.
+ */
+const NO_SPEND: SessionCostInput = {
+	cumulative_parent_cost: null,
+	child_costs: null,
+	subagent_cost: null,
+	subagent_cost_knowledge: null,
+	cost_knowledge: "unknown",
+};
 
 /** The duration reading ticks at 1Hz because it shows whole seconds. */
 const CLOCK_MS = 1000;
@@ -417,11 +454,24 @@ const COMMANDS_OFF =
  * with nothing to click still advertised a control. There are three ways to have
  * nothing to click and they need different sentences: a draft on a backend that
  * cannot select for it, where the model WILL be used and simply cannot be chosen
- * yet; a draft whose chip CAN open, where the sentence is the session's; and a
- * backend with commands off. `openable` is the affordance, never the value.
+ * yet; a draft whose chip CAN open, where the sentence is the control's plus the
+ * draft's scope; and a backend with commands off. `openable` is the affordance,
+ * never the value.
+ *
+ * UX U2 added the draft's own scope to the OPENABLE sentence rather than to the
+ * inert one. Before it, the scope was stated in exactly one place - the dialog's
+ * subtitle - and the moment a chip could open, the pane's sentence became the
+ * session's, so a pane whose pick is first-message-only stopped saying so the
+ * instant the pick existed. The fact does not stop being true because the chip
+ * became actionable: on a draft it is the only thing the control can affect, so
+ * the openable sentence carries it too, and "did I just change a global
+ * default?" is answerable without remembering a dialog.
  */
 function modelReason(draft: boolean, openable: boolean): string {
-	if (openable) return "Click to choose a different model";
+	if (openable)
+		return draft
+			? "Click to choose a different model. It applies to the first message."
+			: "Click to choose a different model";
 	if (draft)
 		return "The first message will use it. Change it once the conversation starts.";
 	return COMMANDS_OFF;
@@ -439,10 +489,11 @@ function modelReason(draft: boolean, openable: boolean): string {
  * unreported) ladder the first turn will not be able to set one either, so the
  * sentence would be the D3 lie in a draft's clothes.
  *
- * Once the chip CAN open, the sentence is the session's ("Change it.") whatever
+ * Once the chip CAN open, the sentence is the control's ("Change it.") whatever
  * the pane is — the control's nature is what the copy describes, and an openable
  * chip on a draft changes exactly the same fact the session's does, one step
- * earlier in the conversation.
+ * earlier in the conversation. On a draft it carries the scope clause for the
+ * reason `modelReason` gives: this control changes the FIRST MESSAGE only.
  */
 function effortReason(
 	draft: boolean,
@@ -450,7 +501,8 @@ function effortReason(
 	openable: boolean,
 ): string | null {
 	if (!adjustable) return null;
-	if (openable) return "Change it.";
+	if (openable)
+		return draft ? "Change it. It applies to the first message." : "Change it.";
 	if (draft) return DRAFT_EFFORT_LINE;
 	return COMMANDS_OFF;
 }
@@ -488,9 +540,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	pendingModel = null,
 	draft = false,
 	onOpenDraftPicker,
+	draftResolution,
 	className,
 }) => {
-	if (!frontend) return null;
+	/*
+	 * A draft with no snapshot is a pane whose resolution has not answered yet,
+	 * which is a STATE rather than nothing to say (UX U3): it renders the pending
+	 * treatment, or the failure with its retry. Every other pane still renders
+	 * nothing without a snapshot, which is honest about a session that has not
+	 * reported.
+	 */
+	if (!frontend && !(draft && draftResolution)) return null;
 
 	/*
 	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
@@ -531,12 +591,19 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	const model = readings.identity;
 	const identity = modelIdentity(model);
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
+	/*
+	 * The four readings that come off the snapshot, asked for a pane that has no
+	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
+	 * preview's own zeros answer, and `contextReading` of absent tokens is its
+	 * `no-reading` status — so a pending or failed draft shows the empty context
+	 * ring it already showed once resolved, rather than a number nobody measured.
+	 */
 	const reading = contextReading({
-		context_tokens: frontend.context_tokens,
-		context_window: frontend.context_window,
-		context_is_estimate: frontend.context_is_estimate,
+		context_tokens: frontend?.context_tokens,
+		context_window: frontend?.context_window,
+		context_is_estimate: frontend?.context_is_estimate,
 	});
-	const cost = sessionCost(frontend, frontend.last_usage);
+	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage);
 	/*
 	 * Active time: banked seconds plus the open turn, or `null` for a session
 	 * that has done nothing. A draft needs no branch here — its
@@ -545,8 +612,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * rather than a `0s` that claims a turn completed in under a second (D21).
 	 */
 	const duration = durationReading(
-		frontend.active_duration_s,
-		frontend.activity_started_at,
+		frontend?.active_duration_s ?? 0,
+		frontend?.activity_started_at ?? null,
 	);
 	const activeSeconds = useActiveSeconds(
 		duration?.banked ?? 0,
@@ -587,16 +654,18 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * the reading is the actionable register's version of "nothing resolved yet"
 	 * rather than a value with a reason.
 	 */
-	const chooseModel = !identity && Boolean(draftOpen);
+	const chooseModel = !identity && Boolean(draftOpen) && !draftResolution;
 	// Nothing known at all: a session that has connected but reported no model,
 	// no reading and no spend. An empty row is better than a row of dashes —
-	// unless this pane can be GIVEN the model it is missing.
+	// unless this pane can be GIVEN the model it is missing, or is still asking
+	// for it, which is a state worth a reading of its own.
 	if (
 		!identity &&
 		!effort &&
 		reading.status === "no-reading" &&
 		!cost.text &&
-		!chooseModel
+		!chooseModel &&
+		!draftResolution
 	)
 		return null;
 
@@ -716,14 +785,15 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				</Reading>
 			)}
 			{/*
-			 * The empty state's own control (design D3).
+			 * `chooseModel` is the RESOLVED-no-model state, and only that (UX U3).
 			 *
-			 * It sits exactly where the model reading sits, so the cluster stays
-			 * left-anchored after the directory chip and the first receipt lands in the
-			 * same place: the chip is REPLACED by the value a pick sets, not moved aside
-			 * by it (R23). The tooltip and the label say the same thing, and the sentence
-			 * is the actionable register's own — `modelReason`'s "Click to choose a
-			 * different model" would call a first choice a change.
+			 * It used to be `!identity && draftOpen`, which is true in three different
+			 * situations the render treated as one: the resolution is still in flight,
+			 * it failed, and the backend genuinely resolved a spec that names no model.
+			 * Only the third is a question for the user, and the first two are answered
+			 * below instead — a chip claiming "No model resolved yet" is a resolution
+			 * that has not happened, and the pane's own spinner is the app's idiom for
+			 * "not yet known".
 			 */}
 			{chooseModel && (
 				<Reading
@@ -740,6 +810,64 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					className="shrink-0"
 				>
 					<span className="truncate">Choose a model</span>
+				</Reading>
+			)}
+			{/*
+			 * The resolution ITSELF, for the window in which it has no answer (UX U3).
+			 *
+			 * In flight, the reading is dim with the same spinner the session's
+			 * switching chip uses and cannot be opened: there is nothing to choose
+			 * against yet, and the pickers read the resolution to build their lists.
+			 * Failed, it becomes a control, because nothing else on the pane will ask
+			 * again — the query is `retry: false` — and a resolution that failed used to
+			 * leave the whole cluster absent with no way back. It sits where the model
+			 * reading sits, like the empty state above, so a receipt lands in place
+			 * rather than moving the cluster (R23).
+			 */}
+			{draftResolution && !identity && (
+				<Reading
+					label={
+						draftResolution.status === "failed"
+							? "Model: the first message's model was not resolved. Retry."
+							: "Model: resolving the model the first message will run on."
+					}
+					tooltip={
+						<TooltipLines
+							lines={
+								draftResolution.status === "failed"
+									? [
+											"The first message's model was not resolved",
+											"The backend did not answer the preview",
+											"Retry",
+										]
+									: [
+											"Resolving",
+											"Asking the backend which model the first message will run on",
+										]
+							}
+						/>
+					}
+					onOpen={
+						draftResolution.status === "failed"
+							? draftResolution.retry
+							: undefined
+					}
+					className={cn(
+						"shrink-0",
+						draftResolution.status === "pending" && "text-ink-dim",
+					)}
+				>
+					<span className="truncate">
+						{draftResolution.status === "failed"
+							? "Retry"
+							: "Resolving the model"}
+					</span>
+					{draftResolution.status === "pending" && (
+						<Spinner
+							size="xs"
+							label="Resolving the model the first turn will run on"
+						/>
+					)}
 				</Reading>
 			)}
 			{/*
