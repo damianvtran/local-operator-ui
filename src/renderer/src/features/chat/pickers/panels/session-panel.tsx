@@ -84,14 +84,22 @@ export type SessionPanelProps = {
 /** A proportional section: rows of bars, ranked by the selected metric. */
 const BarTable: FC<{
 	label: string;
+	/**
+	 * The first column's header: `Model`, `Purpose`, `Component`, `Tool`.
+	 *
+	 * "Row" said nothing about what the labels below it are, which the header
+	 * row is the only place to say — the section heading names the grouping, not
+	 * the column.
+	 */
+	firstHeader: string;
 	rows: BarRow[];
 	/** `Calls` is a column only where the rows are aggregates of calls. */
 	withCalls: boolean;
 	empty: string;
 	metric: SessionMetric;
-}> = ({ label, rows, withCalls, empty, metric }) => {
+}> = ({ label, firstHeader, rows, withCalls, empty, metric }) => {
 	const columns: Column<BarRow>[] = [
-		{ key: "row", header: "Row", cell: (row) => row.label },
+		{ key: "row", header: firstHeader, cell: (row) => row.label },
 	];
 	if (withCalls) {
 		columns.push({
@@ -364,6 +372,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 								<PanelSection title="By model">
 									<BarTable
 										label="Usage by model in this session"
+										firstHeader="Model"
 										rows={modelRows(report, metric)}
 										withCalls
 										empty="No model rows recorded for this session."
@@ -373,6 +382,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 								<PanelSection title="By purpose">
 									<BarTable
 										label="Usage by purpose in this session"
+										firstHeader="Purpose"
 										rows={purposeRows(report, metric)}
 										withCalls
 										empty="No purpose rows recorded for this session."
@@ -385,6 +395,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 								>
 									<BarTable
 										label="Estimated context split by component"
+										firstHeader="Component"
 										rows={components.rows}
 										withCalls={false}
 										empty="No component split recorded for this session."

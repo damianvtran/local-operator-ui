@@ -65,7 +65,10 @@ type EstimateTableRow = {
 const ESTIMATE_COLUMNS: Column<EstimateTableRow>[] = [
 	{
 		key: "row",
-		header: "Row",
+		/* `Block`, not `Row`: the labels below are the system blocks the request
+		   is built from, and a header that names the table's shape instead of its
+		   content is a column nobody can read. */
+		header: "Block",
 		cell: (row) => row.label,
 	},
 	{
@@ -81,7 +84,7 @@ const OwnerRowsTable: FC<{ rows: [string, string][] }> = ({ rows }) => (
 	<DataTable<[string, string]>
 		label="Next request estimate"
 		columns={[
-			{ key: "row", header: "Row", cell: (row) => row[0] },
+			{ key: "row", header: "Block", cell: (row) => row[0] },
 			{
 				key: "tokens",
 				header: "Tokens",

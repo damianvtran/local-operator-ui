@@ -55,7 +55,14 @@ export const ProportionBar = ({
 	size = "row",
 }: ProportionBarProps) => {
 	const track = cn(
-		"overflow-hidden rounded-xs border border-control bg-sunken",
+		/*
+		 * `block` is load-bearing, not tidiness: an inline span ignores `height`
+		 * and `overflow`, and its block child then resolves `h-full` against a
+		 * line box — which drew a 40px slab in a stat card and a ONE-PIXEL tick
+		 * inside a table cell, where the intended geometry is a 6px rule whose
+		 * fill is a share of its width. The bar is a box; it has to say so.
+		 */
+		"block overflow-hidden rounded-xs border border-control bg-sunken",
 		size === "gauge" ? "h-2" : "h-1.5",
 	);
 	if (fraction === null || Number.isNaN(fraction)) {
