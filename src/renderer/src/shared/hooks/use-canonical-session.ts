@@ -108,16 +108,14 @@ export type CanonicalSessionView = {
 	/** Terminal event observed for the current turn; clears the wait latch. */
 	terminal: string | null;
 	/**
-	 * How many terminal events this viewer has applied, ever.
+	 * How many `turn_end` / `agent_end` events this viewer has applied.
 	 *
-	 * A COUNTER rather than the event's own name, because the name repeats: every
-	 * turn ends in the same `turn.completed`, so a consumer that wants to re-read
-	 * something once per turn - the code-memory panel, whose sentences describe
-	 * the namespace as it was (`canvas-variables-viewer.tsx`) - cannot key on
-	 * `terminal` and needs this. It counts what this viewer has SEEN, so a viewer
-	 * that joins late starts where it joined; that is the right shape for "one
-	 * re-read per turn after this point" and the wrong one for "everything that
-	 * ever happened", which is what `history` is for.
+	 * A counter rather than an event name because consecutive endings can have
+	 * the same name. The code-memory panel uses each observed ending to request
+	 * a fresh reading; these are completion pulses, not unique logical turns
+	 * (a run can emit both endings). Starts and steering only clear the wait
+	 * latch and must not trigger extra reads. A late join counts from that join,
+	 * not from the session's history.
 	 */
 	turnsCompleted: number;
 	/**
@@ -1137,10 +1135,12 @@ export function useCanonicalSessionStream(
 							next = {
 								...next,
 								terminal: eventType,
-								// Counted here rather than derived from `terminal`, whose
-								// value repeats turn to turn (see the field's note).
-								turnsCompleted: next.turnsCompleted + 1,
 							};
+						}
+						if (DURABLE_ROUND_ENDINGS.has(eventType)) {
+							// Separate from the wait latch: starts/steering end a wait,
+							// not a round whose namespace consumers need to re-read.
+							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
 						const transcript = applyEvent(next.transcript, frame.payload, now);
 						if (transcript !== next.transcript) {
