@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
-import { frames as frameFiles, provenanceFailures } from "./check-evidence.mjs";
+import {
+	citationAncestryFailures,
+	frames as frameFiles,
+	provenanceFailures,
+	stampFailures,
+} from "./check-evidence.mjs";
 
 /*
  * The evidence manifest's falsifiability, on a synthetic tree.
@@ -379,3 +385,90 @@ test("a pass that added no frames does not claim to have added them", () => {
 		addedAtHead: GOOD.head,
 	});
 });
+
+/* ---- the shipped manifest, against the tree it ships in ------------------ */
+
+/**
+ * The one case here that reads the REAL manifest rather than a synthetic tree.
+ *
+ * Every other test in this file pins what `check-evidence.mjs` CONCLUDES, on a
+ * fixture built for the purpose. This one exists because of what none of them
+ * could see: at the round-3 head `docs/evidence/manifest.json` carried
+ * `origin/main`'s `srcTree`, `scriptsTree` and `surfaces`, because a rebase kept
+ * upstream's top-level stamp block while the branch's delta rewrote the
+ * neighbouring `partialCapture`. The file therefore certified the committed
+ * frames against a tree they were not taken from, git reported no conflict, and
+ * only `pnpm check-evidence` could see it - a gate whose image loop runs over
+ * every committed frame and outran that round's whole review budget, so the
+ * defect survived a full review round (round 3, M1).
+ *
+ * `stampFailures` is the half of that verdict which needs nothing but `HEAD`'s
+ * trees and the capturer's own lists, so binding it here costs about a second
+ * and fails the moment a rebase re-stamps the file against somebody else's tree.
+ * Citation reachability is deliberately NOT asserted here: it needs the cited
+ * commits to be present, and a shallow CI checkout has no such guarantee.
+ */
+test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
+	const manifest = JSON.parse(readFileSync("docs/evidence/manifest.json", "utf8"));
+	assert.deepEqual(
+		stampFailures(manifest),
+		[],
+		"docs/evidence/manifest.json must describe HEAD's trees: re-derive srcTree/scriptsTree from `git rev-parse HEAD:src` / `HEAD:scripts`, and frames/surfaces from the tree, the way capture-evidence.mjs writes them",
+	);
+});
+
+/**
+ * Whether the checkout has history to ask the ancestry question against.
+ *
+ * A one-commit-deep clone - every CI checkout, `actions/checkout`'s default -
+ * has no ancestor of `HEAD` at all, so the citation test below would fail on
+ * every run for a reason that is about the clone and not about the manifest.
+ * A repository that cannot answer is not a repository that has found a defect,
+ * so the test says which it is and stands down.
+ */
+const SHALLOW = (() => {
+	try {
+		return (
+			execFileSync("git", ["rev-parse", "--is-shallow-repository"], {
+				stdio: ["ignore", "pipe", "ignore"],
+			})
+				.toString()
+				.trim() === "true"
+		);
+	} catch {
+		return false;
+	}
+})();
+
+/**
+ * The citation half of the same question, bound to the same shipped file.
+ *
+ * `stampFailures` above catches a rebase that re-stamps the file against
+ * somebody else's tree. Nothing caught the other half. A rebase replays this
+ * branch's commits onto a new base, which changes their SHAs, and the manifest
+ * keeps citing the old ones - and those old spellings still resolve in the clone
+ * that did the rebase, because the rebase left a backup ref beside the branch.
+ * `citationFailures` only asks whether SOME ref reaches a sha, so it stayed
+ * silent while the file shipped certifying its frames against commits no
+ * reviewer can fetch. Three rebases running broke it that way (round 3's stamp
+ * block, round 5's force-push orphans, and both at once on the v0.22.1 rebase),
+ * and in every case a reviewer found it by eye rather than a gate.
+ *
+ * Bound here rather than in `check-evidence.mjs`'s own sweep for the same reason
+ * the stamp test is: the question needs nothing but `HEAD`'s history, it costs
+ * about a second, and it has to be in the suite the author already runs.
+ */
+test(
+	"the SHIPPED manifest's head citations lie in the history it ships in",
+	{ skip: SHALLOW && "a shallow clone has no ancestor of HEAD to check" },
+	() => {
+		const manifest = JSON.parse(
+			readFileSync("docs/evidence/manifest.json", "utf8"),
+		);
+		assert.deepEqual(
+			citationAncestryFailures(manifest),
+			[],
+			"docs/evidence/manifest.json must cite commits THIS branch carries: `head`, `partialCapture.addedAtHead` and `partialCapture.refreshedAtHead` are the three a rebase re-spells, and each has to name the commit of this lineage that carries its work rather than the pre-rebase one",
+		);
+	},
+);
