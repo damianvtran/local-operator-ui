@@ -186,6 +186,42 @@ export const shouldTabIntoAnswerOptions = (
 };
 
 /**
+ * Whether the ask gate's focus restore may move focus off the composer.
+ *
+ * The composer is a legitimate way to answer an ask - the card's own hint says
+ * "type 1-9 and send" - so the restore moves a box only while it is still
+ * exactly where the press left it. Three things have to hold, and each is a way
+ * the user can have taken it back:
+ *
+ * - **The composer holds focus at all.** Otherwise the user has moved on, and
+ *   the gate has no business moving them.
+ * - **The box is empty.** A draft means they are writing, and the composer stays
+ *   usable through a hold by design; a focused box with content is a follow-up,
+ *   not an idle hand-off.
+ * - **No pointer has landed in it** since that hand-off. This is the half the
+ *   first two cannot see: a click into an EMPTY box leaves it empty and focused,
+ *   which is indistinguishable from the press's own hand-off. Without it, a
+ *   multi-question gate advancing on its own schedule takes the caret, the
+ *   characters the user then types reach nothing, and the next `Space` presses
+ *   the option that stole focus - posting it as their answer to the NEXT
+ *   question (UX round 4, U13).
+ *
+ * Pure over its inputs, and here rather than inside the component, so the
+ * decision can be asserted without a DOM - the same move `shouldTabIntoAnswerOptions`
+ * above makes and for the same reason (code review round 4, n6). `message-input.tsx`
+ * reads the live DOM and calls this; the test calls it with a stand-in object.
+ */
+export const composerFocusIsOurs = (
+	composer: HTMLTextAreaElement | null,
+	activeElement: Element | null,
+	pointerTouched: boolean,
+): boolean =>
+	composer !== null &&
+	activeElement === composer &&
+	composer.value.length === 0 &&
+	!pointerTouched;
+
+/**
  * One send-or-answer in flight at a time.
  *
  * ## Why this is an object and not the bare `useRef<boolean>` it replaces
