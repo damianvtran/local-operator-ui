@@ -8,6 +8,9 @@ import type {
 	VariableWrite,
 } from "@shared/api/local-operator/session-variables-api";
 import { isSessionVariablesMissing } from "@shared/api/local-operator/session-variables-api";
+import { isSessionVariablesSessionMissing } from "@shared/api/local-operator/session-variables-api";
+import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
@@ -69,10 +72,14 @@ const CenteredState: FC<{ children: ReactNode }> = ({ children }) => (
 	</div>
 );
 
-// Utility function to truncate text
+// Utility function to truncate text.
+//
+// One ellipsis form for the whole surface: the U+2026 this app's copy uses
+// (`Reading…`, `Saving…`), not the three ASCII periods a value used to be cut
+// with, so a truncated value and a truncated sentence read the same way.
 const truncateText = (text: string, maxLength: number): string => {
 	if (text.length <= maxLength) return text;
-	return `${text.substring(0, maxLength)}...`;
+	return `${text.substring(0, maxLength)}…`;
 };
 
 // Individual variable display component
@@ -99,7 +106,16 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 		 * the same table the value is coerced with, so "the panel offers an edit"
 		 * and "the write path accepts it" cannot drift apart.
 		 */
-		const isEditable = variable.editable;
+		const isEditable = variable.editable && isWritableVariableKey(variable.key);
+		/*
+		 * ...and a name this renderer could not write is not editable however the
+		 * backend feels about its type. `editable` answers "could this value be
+		 * coerced back in" - the question it should answer - and it cannot answer
+		 * "would the request leave": a name of dots is resolved away by `new URL`,
+		 * and an empty, over-long or control-character name is refused by the
+		 * schema after the click. Offering Edit there produces a refusal the user
+		 * cannot act on. See `isWritableVariableKey`.
+		 */
 
 		// Memoize string value conversion with truncation
 		const stringValue = useMemo(() => String(variable.value), [variable.value]);
@@ -433,11 +449,49 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			);
 		}
 
+		/*
+		 * The capabilities query is the panel's FIRST question, and it can fail as
+		 * well as answer. `desktopFeatureEnabled(undefined, …)` is false for both, so
+		 * a backend that never answered used to be told to update itself - advice
+		 * that cannot help when the real problem is that nothing is listening. The
+		 * chat pane draws the same three distinctions for its own gate
+		 * (`chat-page.tsx`); this mirrors it, and quotes the transport's own
+		 * sentence rather than inventing one, because the transport is what knows
+		 * whether it was a refused socket or a wrong bearer.
+		 */
+		if (capabilities.isError) {
+			return (
+				<CenteredState>
+					<p className={cn("text-heading text-ink")}>
+						Could not reach the backend
+					</p>
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						{userFacingMessage(
+							capabilities.error,
+							"The backend did not answer, so this chat's code memory cannot be read yet.",
+						)}
+					</p>
+				</CenteredState>
+			);
+		}
+
 		if (!supported) {
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
 						Update the backend to read code memory.
+					</p>
+					{/*
+					 * The gate is deliberately control-free (the frozen state table says
+					 * "none"), so the sentence has to carry the action itself: it names
+					 * WHERE the update happens, which is the half a user with an old backend
+					 * was left to guess. "Application updates and info" is the Settings
+					 * section that installs it (`app-updates-section.tsx`).
+					 */}
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						This app can read code memory; the backend it is running against is
+						older than that. Settings, then Application updates and info, installs
+						the newer one.
 					</p>
 				</CenteredState>
 			);
@@ -469,16 +523,40 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 
 		if (isError) {
 			/*
-			 * A 404 here is a STALE capabilities answer, not a missing session:
-			 * the gate above already established that this build advertises the
-			 * surface, so the route itself is what is absent. That is the same
-			 * family of sentence as the gate's, because it is the same fix.
+			 * Three different facts wear a 404, and the fix differs for each. The
+			 * route-absent one is a STALE capabilities answer - the gate above
+			 * established that this backend advertises the surface, so it is the same
+			 * sentence and the same fix as the gate's. The session-missing one is the
+			 * backend saying, in its own words, that it has no such session; that
+			 * sentence IS the actionable one and is quoted instead of argued with
+			 * (QA round 1, Q-5). Everything else is a failure this panel cannot
+			 * diagnose, and it no longer guesses ("check that Local Operator is
+			 * running" was false advice whenever the backend had answered at all).
 			 */
 			if (isSessionVariablesMissing(error)) {
 				return (
 					<CenteredState>
 						<p className={cn("text-heading text-ink")}>
 							Update the backend to read code memory.
+						</p>
+						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+							Settings, then Application updates and info, installs the newer
+							backend.
+						</p>
+					</CenteredState>
+				);
+			}
+			if (isSessionVariablesSessionMissing(error)) {
+				return (
+					<CenteredState>
+						<p className={cn("text-heading text-ink")}>
+							Could not load variables
+						</p>
+						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+							{userFacingMessage(
+								error,
+								"The backend does not have a chat with this session id.",
+							)}
 						</p>
 					</CenteredState>
 				);
@@ -489,8 +567,8 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						Could not load variables
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						The session's code memory could not be read. Check that Local
-						Operator is running, then try again.
+						The backend did not answer, so this chat's code memory could not be
+						read. Nothing was changed. Try again in a moment.
 					</p>
 				</CenteredState>
 			);
@@ -512,6 +590,30 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 					<CenteredState>
 						<Spinner size="sm" />
 						<p className={cn("text-body-sm text-ink-muted")}>Reading…</p>
+					</CenteredState>
+				);
+			}
+			/*
+			 * A reading can come back observed, empty and truncated at once, and the
+			 * frozen state table has no row for it: one name whose single value
+			 * exceeds the whole reading budget is dropped by the owner, which then
+			 * reports `truncated: true` with nothing to show for it. Rendering the
+			 * ordinary empty sentence there would state a fact the backend did not -
+			 * the namespace is not empty, it is unlistable - so it gets its own
+			 * sentence and no New control (the write behind that control is exactly
+			 * what the owner could not read).
+			 */
+			if (observed?.truncated && variables.length === 0 && !isBusy) {
+				return (
+					<CenteredState>
+						<p className={cn("text-heading text-ink")}>
+							Too large to show here
+						</p>
+						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+							This chat keeps a value that is bigger than the whole panel budget
+							on its own, so nothing could be listed. It is still in the session and
+							the next cell can use it.
+						</p>
 					</CenteredState>
 				);
 			}
@@ -585,7 +687,13 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 					</p>
 					<Button variant="ghost" size="sm" onClick={handleOpenCreateForm}>
 						<Plus aria-hidden="true" />
-						New
+						{/*
+						 * "New variable", not "New": the empty state's control and this one
+						 * submit the same form, so they are named the same way (design round 1,
+						 * D6). The header is one line; the two extra words fit and say what
+						 * appears.
+						 */}
+						New variable
 					</Button>
 				</div>
 				{/*

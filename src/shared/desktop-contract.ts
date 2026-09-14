@@ -170,6 +170,47 @@ const chains = z.record(z.array(z.string().max(1024)).max(100));
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
 const scheduleUnit = z.enum(["minutes", "hours", "days"]);
+
+/**
+ * Whether a code-memory key addresses the route it is built into.
+ *
+ * The denylist above refuses the separators, the control characters and NUL -
+ * the characters that would let a key name a route segment of its own. This is
+ * the one shape that survives that rule and STILL does not address what it looks
+ * like it addresses: the transport fetches `new URL(target.path, backendUrl)`, so
+ * `..` and `.` are resolved away by the URL parser before the request leaves, and
+ * a PATCH built for the name `..` reaches the collection instead. A namespace
+ * may legally hold such a name (`globals()[".."] = 1` is ordinary memory, which
+ * is why this is a denylist at all), so the rule has to live here rather than in
+ * the backend's naming policy.
+ *
+ * Nothing is exploitable while no route lives at the resolved path; what this
+ * protects is the invariant the surrounding comment claims - a key addresses a
+ * route this op was given - so the next route added under `/variables/` does not
+ * inherit the reach. Exported because the panel asks the same question before it
+ * offers an Edit: `editable` is the backend's answer about the VALUE, and it
+ * cannot answer this (review round 1, C-03).
+ */
+export function isAddressableVariableKey(key: string): boolean {
+	return !/^\.+$/.test(key);
+}
+
+/**
+ * Whether this renderer's contract would let a write for `key` leave at all.
+ *
+ * The schema, asked directly, rather than a second copy of its rules. The panel
+ * needs this because `editable` is the BACKEND's judgement about the VALUE -
+ * could this text be coerced back into that type - and it says nothing about
+ * whether this renderer's own contract would accept the name: a key that is
+ * empty, longer than 128 characters, or carrying a control character is
+ * advertised as editable and then rejected by `desktopRequestSchema` before any
+ * request is built, which surfaces as "Invalid desktop operation." - a refusal
+ * the user cannot act on and cannot tell apart from a bug (backend PR #1101's
+ * MINOR-1). Asking the schema keeps the panel's offer and the write path's rule
+ * from drifting apart.
+ */
+export const isWritableVariableKey = (key: string): boolean =>
+	variableKey.safeParse(key).success;
 /**
  * A session code-memory key.
  *
@@ -180,7 +221,8 @@ const scheduleUnit = z.enum(["minutes", "hours", "days"]);
  * not the identifier regex the legacy agent-variable ops used: the renderer
  * must refuse exactly the characters that would let it address a route it was
  * never given an operation for - the slash and backslash that separate route
- * segments, and the control characters and NUL no route can carry. The
+ * segments, the control characters and NUL no route can carry, and (below) the
+ * dot-only names `new URL()` would normalise out of the path. The
  * backend applies the same rule plus its reserved-name list, which is the half
  * that needs the namespace to answer.
  */
@@ -196,7 +238,8 @@ const variableKey = z
 				character !== "/" &&
 				character !== "\\",
 		),
-	);
+	)
+	.refine(isAddressableVariableKey);
 /**
  * The writable code-memory types, as one table.
  *

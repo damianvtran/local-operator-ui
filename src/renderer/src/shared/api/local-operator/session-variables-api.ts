@@ -78,6 +78,23 @@ export type SessionVariablesResult =
 	| { state: "busy" }
 	| { state: "unsupported" };
 
+/**
+ * The `data` wrapper the backend puts inside `result`.
+ *
+ * Every route on this surface answers `{status, message, result: {data: …}}`:
+ * the state object (or the write's `{state:"ok", variable}` ack) is one level
+ * BELOW what `desktopResult` hands back, because `desktopResult` returns
+ * `envelope.result` verbatim. Reading `result.state` therefore resolves to
+ * `undefined` for every answer, and every branch that keys on it falls through
+ * to its empty arm - a populated namespace rendering "Nothing stored yet" over
+ * values the backend had already sent, which is the exact defect this module
+ * exists to end (and it is how a fixture-stubbed panel can look right while the
+ * shipped one cannot). `sessions.credential` has always been read this way
+ * (`desktopResult<{data:{ok, credentials}}>` then `.data`); this is the same
+ * convention, named once so the four ops cannot drift from it separately.
+ */
+type SessionVariablesEnvelope<T> = { data: T; replayed?: boolean };
+
 /** The answer that actually carries a reading of the namespace. */
 export type SessionVariablesObserved = {
 	state: "observed";
@@ -95,10 +112,13 @@ export const sessionVariablesQueryKey = (sessionId: string | undefined) =>
 export async function listSessionVariables(
 	sessionId: string,
 ): Promise<SessionVariablesResult> {
-	return desktopResult<SessionVariablesResult>({
+	const envelope = await desktopResult<
+		SessionVariablesEnvelope<SessionVariablesResult>
+	>({
 		op: "sessions.variables.list",
 		sessionId,
 	});
+	return envelope.data;
 }
 
 /**
@@ -114,17 +134,16 @@ export async function createSessionVariable(
 	sessionId: string,
 	write: VariableWrite,
 ): Promise<SessionVariable> {
-	const result = await desktopResult<{
-		state: "ok";
-		variable: SessionVariable;
-	}>({
+	const envelope = await desktopResult<
+		SessionVariablesEnvelope<{ state: "ok"; variable: SessionVariable }>
+	>({
 		op: "sessions.variables.create",
 		sessionId,
 		key: write.key,
 		value: write.value,
 		type: write.type,
 	});
-	return result.variable;
+	return envelope.data.variable;
 }
 
 /** Replace an existing name's value and type. The key itself never changes. */
@@ -132,17 +151,16 @@ export async function updateSessionVariable(
 	sessionId: string,
 	write: VariableWrite,
 ): Promise<SessionVariable> {
-	const result = await desktopResult<{
-		state: "ok";
-		variable: SessionVariable;
-	}>({
+	const envelope = await desktopResult<
+		SessionVariablesEnvelope<{ state: "ok"; variable: SessionVariable }>
+	>({
 		op: "sessions.variables.update",
 		sessionId,
 		key: write.key,
 		value: write.value,
 		type: write.type,
 	});
-	return result.variable;
+	return envelope.data.variable;
 }
 
 /** Forget a name. The value disappears from the namespace the next cell sees. */
@@ -150,7 +168,7 @@ export async function deleteSessionVariable(
 	sessionId: string,
 	key: string,
 ): Promise<void> {
-	await desktopResult<{ state: "ok" }>({
+	await desktopResult<SessionVariablesEnvelope<{ state: "ok" }>>({
 		op: "sessions.variables.delete",
 		sessionId,
 		key,
@@ -167,6 +185,36 @@ export async function deleteSessionVariable(
  * same sentence the gate uses, because it is the same fix. Read from the typed
  * status rather than the message text, so a rewording cannot break it.
  */
+/**
+ * Whether a 404 means THIS BACKEND HAS NO SUCH ROUTE.
+ *
+ * A backend that predates the surface answers the transport's own 404 - the
+ * router's `{"detail":"Not Found"}` - which is exactly the state the
+ * capabilities gate exists to catch and a stale capabilities answer does not.
+ * This is the arm where "update the backend" is the actionable sentence.
+ */
 export function isSessionVariablesMissing(error: unknown): boolean {
-	return error instanceof DesktopControlError && error.status === 404;
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 404 &&
+		/^not found$/i.test(error.message.trim())
+	);
+}
+
+/**
+ * Whether a 404 means THE SESSION does not exist here (unknown id, or one that
+ * is not this backend's to answer for).
+ *
+ * The same status, a different fact, and a different agent for the fix: the
+ * backend is new enough to have the route and said, in its own words, that it
+ * has no such session. The panel used to tell this user to update their backend,
+ * which is advice that cannot help them and hides the sentence that can (QA
+ * round 1, Q-5).
+ */
+export function isSessionVariablesSessionMissing(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 404 &&
+		!isSessionVariablesMissing(error)
+	);
 }
