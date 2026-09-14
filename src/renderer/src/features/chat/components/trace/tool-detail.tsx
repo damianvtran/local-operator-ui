@@ -25,11 +25,33 @@
  * hairline around the whole pane is the neutral form of that edge; the second
  * box the operator reported is what comes off.
  *
- * The SCROLL REGION is the other half of the TUI port. The terminal caps each
- * block at `INPUT_MAX_LINES`/`EXPAND_MAX_LINES` and reports the remainder as
- * "… N more lines", because a fixed grid has nowhere to put the rest. A browser
- * does, so the bound moves to the container and nothing is truncated: a huge
- * `write` payload or a long `bash` result stays fully readable by scrolling.
+ * The SCROLL REGION is the other half of the TUI port, and it keeps the
+ * terminal's REPORT. The terminal caps each block at
+ * `INPUT_MAX_LINES`/`EXPAND_MAX_LINES` and reports the remainder as
+ * "… N more lines", because a fixed grid has nowhere to put the rest; a browser
+ * does, so the bound moves to the container and a huge `write` payload stays
+ * fully readable by scrolling. What did NOT move with it was the report, and that
+ * was a defect rather than a simplification (design round 1, D1): with the cap on
+ * the whole pane, a long argument list pushed the `Output` label and the entire
+ * result below the pane's own bottom edge — measured at label top y=416 against a
+ * pane bottom of 408 — and an ordinary ten-line result was sliced through its own
+ * glyphs, with nothing on screen saying more existed. Every committed frame had
+ * `scrollHeight == clientHeight`, so no frame could show it. Two things fix that,
+ * and both are visible in the frames this change committed:
+ *
+ * 1. THE CAP IS PER SECTION. The input block and the result each get their own
+ *    ceiling, so neither can spend the other's budget: a long argument list
+ *    cannot push the result's label out of the pane.
+ * 2. THE REMAINDER IS SPELLED. A section whose content does not fit prints
+ *    `detailOverflowLabel` under itself — the terminal's own line, in the app's
+ *    existing vocabulary for it (`diff-block.tsx` prints the same shape for a
+ *    capped diff). It counts what is below the fold RIGHT NOW, so it is true at
+ *    rest and stops being shown once the reader has scrolled to the end; a
+ *    number that did not move would go on claiming lines the reader had already
+ *    read. It sits OUTSIDE the scroller, which is what makes it visible at rest
+ *    — macOS paints overlay scrollbars only while scrolling, so the scroll
+ *    region's own overflow is otherwise invisible.
+ *
  * For the same reason the pane anchors its content to the TOP rather than to
  * the bottom the way `output-block.tsx` does (`flex-col-reverse`): the reader
  * opens the expansion to see the CALL, and a bottom-anchored pane would hide the
@@ -38,10 +60,17 @@
  */
 
 import { cn } from "@shared/lib/utils";
-import type { FC } from "react";
+import {
+	type FC,
+	type RefObject,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	type DetailLine,
 	argumentLines,
+	detailOverflowLabel,
 	resultLines,
 } from "./tool-detail-model";
 
@@ -54,6 +83,23 @@ import {
  * the one medium the app actually paints.
  */
 const NEST_STEP_PX = 8;
+
+/**
+ * How much of EACH section the pane shows before it reports the remainder.
+ *
+ * A shared ceiling rather than two tuned ones, because the two halves of a call
+ * are the same kind of thing and a reader should not have to learn two budgets.
+ * 240px is ~13 argument lines at `text-mono-sm`'s 17.4px line box plus the
+ * block's 4px row gap: taller than any ordinary call's arguments (the panes this
+ * replaced measured 129-223px for their whole content), short enough that a
+ * `write` carrying a whole file cannot push the result's label off the screen.
+ *
+ * It is spent as a LITERAL Tailwind class below rather than interpolated from a
+ * constant, because Tailwind compiles the utilities it can SEE in the source: a
+ * `max-h-[${n}px]` template is simply not one of them. The number lives here so
+ * there is one place to read it, and in `SECTION_MAX` so the two cannot drift.
+ */
+const SECTION_MAX = "max-h-[240px]";
 
 export type ToolDetailProps = {
 	/** The call's arguments, or `null` when the row has none to show. */
@@ -105,22 +151,110 @@ const DetailLines: FC<{ lines: readonly DetailLine[]; label: string }> = ({
 	</div>
 );
 
+/**
+ * How many rows of a scroll region sit below its visible box, right now.
+ *
+ * GEOMETRY rather than a line cap, because the section is a real scroll region
+ * and the number has to stay true while the reader scrolls: a count of the lines
+ * a cap hid would go on claiming rows the reader had already read. Two things
+ * come out of the same arithmetic — the content's own row PITCH (`line-height`
+ * plus `row-gap`, which is 4px for a block of argument lines and 0 for the
+ * `<pre>` a raw result prints in) and how far the content extends past the box's
+ * bottom edge.
+ *
+ * The CONTENT is what the observer watches rather than the box: `max-h` fixes
+ * the box's height, so a result streaming into an open pane grows the content and
+ * resizes nothing the box itself could report.
+ */
+function useRowsBelowFold(ref: RefObject<HTMLDivElement | null>): number {
+	const [rows, setRows] = useState(0);
+	// Deliberately no dependency array: the content is rebuilt on every render of
+	// an open row, and the effect is a couple of style reads and one subtraction.
+	// `setRows` with an unchanged value is a no-op in React, so it cannot loop.
+	useLayoutEffect(() => {
+		const box = ref.current;
+		if (!box) return;
+		const content = box.firstElementChild as HTMLElement | null;
+		const measure = () => {
+			const computed = content ? getComputedStyle(content) : null;
+			// `row-gap` is `normal` on a `<pre>`, which parses to NaN and reads as 0.
+			const line = Number.parseFloat(computed?.lineHeight ?? "");
+			const gap = Number.parseFloat(computed?.rowGap ?? "");
+			const pitch =
+				(Number.isFinite(line) ? line : 0) + (Number.isFinite(gap) ? gap : 0);
+			const below = box.scrollHeight - box.scrollTop - box.clientHeight;
+			setRows(pitch > 0 && below > 0 ? Math.ceil(below / pitch) : 0);
+		};
+		measure();
+		box.addEventListener("scroll", measure, { passive: true });
+		const observer = new ResizeObserver(measure);
+		observer.observe(content ?? box);
+		return () => {
+			box.removeEventListener("scroll", measure);
+			observer.disconnect();
+		};
+	});
+	return rows;
+}
+
+/**
+ * The line under a capped section that says how much of it is still below.
+ *
+ * OUTSIDE the scroller, which is the whole point: it has to be visible while the
+ * reader is at rest, and a pinned row inside the region would be the reader's
+ * own scroll position deciding whether the pane admits to holding more.
+ */
+const Remainder: FC<{ rows: number }> = ({ rows }) =>
+	rows > 0 ? (
+		<span className={cn("mt-1 block text-ink-dim")}>
+			{detailOverflowLabel(rows)}
+		</span>
+	) : null;
+
 export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 	const input = argumentLines(args);
 	const structured = resultLines(output);
+	const inputRef = useRef<HTMLDivElement>(null);
+	const outputRef = useRef<HTMLDivElement>(null);
+	const inputHidden = useRowsBelowFold(inputRef);
+	const outputHidden = useRowsBelowFold(outputRef);
+
+	/*
+	 * Nothing to paint, so nothing is painted.
+	 *
+	 * `hasDetail` is the CHEAP gate and this is the exact one, and they agree on
+	 * every input the pane can be handed — but the gate is bounded, and where its
+	 * bound runs out it answers optimistically. The reader must never pay for that
+	 * with a bordered, padded, empty `sunken` box, which is what QA's Q-2
+	 * photographed, so the pane refuses to draw one whatever it was asked.
+	 */
+	if (input.length === 0 && !output) return null;
+
 	return (
 		<div
 			className={cn(
-				"max-h-[300px] w-full overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
+				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
 			)}
 		>
-			{input.length > 0 && <DetailLines lines={input} label="input" />}
+			{input.length > 0 && (
+				<div data-detail-section="input">
+					<div ref={inputRef} className={cn(SECTION_MAX, "overflow-auto")}>
+						<DetailLines lines={input} label="input" />
+					</div>
+					<Remainder rows={inputHidden} />
+				</div>
+			)}
 			{output && (
 				// The section SEPARATOR is its label plus air, which is the TUI's own
 				// idiom and the reason the label survives at all: without it the
 				// result's first line reads as one more argument ("exit code: 0" under
-				// "command: …"), which is the one ambiguity two boxes did solve.
-				<div className={cn(input.length > 0 && "mt-3")}>
+				// "command: …"), which is the one ambiguity two boxes did solve. It is
+				// also the fact design round 1 measured as missing: the label is the
+				// thing a capped input block used to push off the pane.
+				<div
+					className={cn(input.length > 0 && "mt-3")}
+					data-detail-section="output"
+				>
 					<span
 						className={cn(
 							"mb-1 block text-meta",
@@ -129,22 +263,25 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 					>
 						{isError ? "Error" : "Output"}
 					</span>
-					{structured ? (
-						<DetailLines lines={structured} label="result-json" />
-					) : (
-						// Verbatim, and deliberately NOT wrapped: `whitespace-pre` keeps a
-						// shell result's own columns intact, which is the TUI's rule for an
-						// output body too ("one output line is one row … never reflows").
-						// The pane scrolls sideways instead of reflowing a table.
-						<pre
-							className={cn(
-								"whitespace-pre font-mono",
-								isError ? "text-danger" : "text-ink",
-							)}
-						>
-							{output}
-						</pre>
-					)}
+					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
+						{structured ? (
+							<DetailLines lines={structured} label="result-json" />
+						) : (
+							// Verbatim, and deliberately NOT wrapped: `whitespace-pre` keeps a
+							// shell result's own columns intact, which is the TUI's rule for an
+							// output body too ("one output line is one row … never reflows").
+							// The section scrolls sideways instead of reflowing a table.
+							<pre
+								className={cn(
+									"whitespace-pre font-mono",
+									isError ? "text-danger" : "text-ink",
+								)}
+							>
+								{output}
+							</pre>
+						)}
+					</div>
+					<Remainder rows={outputHidden} />
 				</div>
 			)}
 		</div>

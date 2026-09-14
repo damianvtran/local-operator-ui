@@ -73,6 +73,7 @@ import {
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { AgentQuestion, DiffBlock, TraceLine } from "../components/trace";
 import {
+	peerHasDetail,
 	peerIdentityLine,
 	peerSummary,
 	wakePromptBody,
@@ -448,12 +449,13 @@ const NoticeRow = memo(function NoticeRow({
  * TUI's own peer row paints it in. Giving it `meta` would buy it the accent and
  * make a receipt louder than the calls around it.
  *
- * Always expandable, unconditionally, as the TUI's `can_expand()` is: the
- * expansion is where the pid and the model live, and those are the fields a
- * reader needs in order to address the peer back. A one-word note still earns
- * it, and so does a body that is empty — the identity alone is the reason the
- * disclosure exists (§ 7: nothing to show is a static row, and this row always
- * has something).
+ * The disclosure is offered only when the expansion carries a fact the collapsed
+ * row cannot (`peerHasDetail`): a body, or the pid/model the identity line adds
+ * to the one-line summary. The TUI's `can_expand()` is unconditional, but it also
+ * states the rule this follows — an expansion that delivers nothing is worse than
+ * no expansion — and its sibling here already rules the same case static (a wake
+ * with no prompt). An all-absent sender used to expand to `another session`: the
+ * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
  */
 const PeerRow = memo(function PeerRow({
 	record,
@@ -466,6 +468,24 @@ const PeerRow = memo(function PeerRow({
 	showAvatar: boolean;
 	nameColumn: number;
 }) {
+	const detail = peerHasDetail(record.sender, record.body);
+	if (!detail) {
+		return (
+			<MessageContainer
+				isUser={false}
+				isSmallView={isSmallView}
+				showAvatar={showAvatar}
+			>
+				<ToolLedgerRow
+					toolName="peer"
+					summary={peerSummary(record.sender, record.body)}
+					outcome="receipt"
+					durationS={null}
+					nameColumn={nameColumn}
+				/>
+			</MessageContainer>
+		);
+	}
 	return (
 		<MessageContainer
 			isUser={false}
@@ -479,7 +499,12 @@ const PeerRow = memo(function PeerRow({
 				durationS={null}
 				nameColumn={nameColumn}
 				details={
-					<div className={cn("flex flex-col gap-2")}>
+					// `px-3` puts this body on the SAME text rail as the pane above it:
+					// a tool expansion's border sits on the glyph rail and its text is
+					// inset by the pane's own padding, so a receipt body left flush sat
+					// 11px left of every other expanded body in the ledger (design D2:
+					// 262 vs 251 at 1280, 112 vs 101 at 560). § 7: one left rail.
+					<div className={cn("flex flex-col gap-2 px-3")}>
 						{/*
 						 * Identity FIRST, body under it — the TUI's order, and it is the
 						 * header that justifies the expansion. `text-ink-muted` is the middle
@@ -558,9 +583,11 @@ const WakeRow = memo(function WakeRow({
 				nameColumn={nameColumn}
 				details={
 					prompt ? (
+						// `px-3`: the same content rail as every other expanded body in the
+						// ledger — see `PeerRow` above for the measurement.
 						<p
 							className={cn(
-								"whitespace-pre-wrap break-words text-body-sm text-ink-dim",
+								"whitespace-pre-wrap break-words px-3 text-body-sm text-ink-dim",
 							)}
 						>
 							{prompt}
