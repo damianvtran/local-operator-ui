@@ -105,7 +105,9 @@ lives in `reconcileTail`'s docstring. **Two of the three are asserted**
 on a transcript long enough for a walk to reach its bound); the label-gap
 variant is not driven by a test, because the guard it would exercise is the same
 one those two cover — the branch keys on the painted set, not on which frame
-asked — and the test file says so where it lists them.
+asked. The three-batch list above is `reconcileTail`'s own docstring in
+`use-canonical-session.ts`; the test file's comment counts two, and two is what
+it asserts.
 
 An absence wider than the bound cannot be closed through this route, which has no
 forward cursor — the complete answer for a very wide absence is a snapshot whose
