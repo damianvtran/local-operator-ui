@@ -154,6 +154,14 @@ export type PickerHostProps = {
 	 * never both, and panels pass only this.
 	 */
 	shell?: "dialog" | "panel";
+	/**
+	 * The name of the panel's body region, announced when focus lands there.
+	 *
+	 * § 9's precedent is `/usage`'s "Provider usage region": the name says WHERE
+	 * the reader is, so a panel passes its own ("Session diagnostics region") and
+	 * a dialog that never sets it keeps the generic fallback.
+	 */
+	bodyLabel?: string;
 	/** Rendered above the list, below the search (a scope toggle, a filter). */
 	toolbar?: ReactNode;
 	/** Rendered instead of the list when set (data views). */
@@ -194,6 +202,12 @@ const TONE_CLASS: Record<PickerResult["tone"], string> = {
  * content in this one region, so the name describes the region rather than one
  * of the things in it (`/usage` names its inner list "Report list" for the
  * same reason).
+ *
+ * It is a PROP rather than this constant, because a constant is the generic name
+ * this comment argues against: five panels shared the string "Panel content", so
+ * a screen-reader user tabbing into a panel could not tell `/session` from
+ * `/analytics` (QA round 1, Q4). The constant stays as the fallback for a caller
+ * that has not said where it is.
  */
 const PANEL_BODY_LABEL = "Panel content";
 
@@ -509,6 +523,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	busyLabel = "Applying the change",
 	wide = false,
 	shell = "dialog",
+	bodyLabel,
 	toolbar,
 	body,
 	bodyScrolls = false,
@@ -1003,7 +1018,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 							ref={attachBodyBox}
 							/* biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a panel's content sits below the fold and a keyboard user has to be able to reach it. */
 							role={shell === "panel" ? "region" : undefined}
-							aria-label={shell === "panel" ? PANEL_BODY_LABEL : undefined}
+							aria-label={
+								shell === "panel" ? (bodyLabel ?? PANEL_BODY_LABEL) : undefined
+							}
 							tabIndex={shell === "panel" ? 0 : undefined}
 							/*
 							 * Detached rather than always-attached with an early return: these fire on

@@ -1,3 +1,5 @@
+import { formatModelSpec } from "./formatters";
+
 /**
  * `/failovers` — the pure decisions.
  *
@@ -30,7 +32,14 @@ export function servingVerdict(
 	selected: FailoverModel | null | undefined,
 	effective: FailoverModel | null | undefined,
 ): ServingVerdict {
-	if (!selected || !effective) {
+	/*
+	 * "Nothing recorded" is a missing spec OR one that arrived with both halves
+	 * blank: comparing two empty joins called that pair "Same as selected", which
+	 * is a claim about two values nobody sent (QA round 1, Q3).
+	 */
+	const recorded = (model: FailoverModel | null | undefined): boolean =>
+		Boolean(model?.provider && model.model_id);
+	if (!recorded(selected) || !recorded(effective)) {
 		return { tone: "neutral", note: "No model recorded" };
 	}
 	if (modelLabel(selected) === modelLabel(effective)) {
@@ -39,10 +48,9 @@ export function servingVerdict(
 	return { tone: "warning", note: "Failover is in force" };
 }
 
-/** `provider/model_id`, or `none` when nothing was recorded. */
+/** `provider/model_id`; the unknown spelling when nothing was recorded. */
 export function modelLabel(model: FailoverModel | null | undefined): string {
-	if (!model) return "none";
-	return `${model.provider}/${model.model_id}`;
+	return formatModelSpec(model);
 }
 
 /** One configured chain, in a stable order so two frames of it agree. */

@@ -1,9 +1,11 @@
 import type { DesktopInfoData } from "../../../../../../shared/desktop-contract";
 import {
 	UNKNOWN,
+	UNKNOWN_WORD,
 	formatBytes,
 	formatCount,
 	formatDuration,
+	formatModelSpec,
 	formatPercent,
 	formatWindow,
 } from "./formatters";
@@ -185,7 +187,16 @@ export function hostRows(process: DesktopInfoData["process"]): InfoRow[] {
 			 * the only prose column, so a sans duration was the odd one out in a
 			 * column of monospace values (design round 1, D13).
 			 */
-			value: `${formatDuration(process.uptime_s)} ago`,
+			/*
+			 * `null` is "never measured", which is not a duration: the word takes no
+			 * unit, because `unknown ago` is an unknown spelling with a suffix glued on
+			 * and reads as a measurement that went wrong rather than one nobody took
+			 * (QA round 1, Q2).
+			 */
+			value:
+				process.uptime_s === null
+					? UNKNOWN_WORD
+					: `${formatDuration(process.uptime_s)} ago`,
 			mono: true,
 		},
 		{
@@ -315,12 +326,8 @@ export function conversationRows(
 	sessionId: string,
 ): InfoRow[] {
 	if (!frontend) return [];
-	const selected = frontend.selected_model
-		? `${frontend.selected_model.provider}/${frontend.selected_model.model_id}`
-		: "";
-	const effective = frontend.effective_model
-		? `${frontend.effective_model.provider}/${frontend.effective_model.model_id}`
-		: "";
+	const selected = formatModelSpec(frontend.selected_model);
+	const effective = formatModelSpec(frontend.effective_model);
 	const context =
 		frontend.context_tokens === null || !frontend.context_window
 			? UNKNOWN
@@ -353,7 +360,17 @@ export function conversationRows(
 			label: "Context",
 			value: context,
 			mono: true,
-			note: frontend.context_is_estimate === true ? "estimate" : "measured",
+			/*
+			 * The note follows the VALUE: over an unmeasured context it used to say
+			 * "measured" above a `—`, which the QA round read, correctly, as a
+			 * measurement claim over an unknown (Q3's `Contextmeasured` cell).
+			 */
+			note:
+				frontend.context_tokens === null || !frontend.context_window
+					? "not measured"
+					: frontend.context_is_estimate === true
+						? "estimate"
+						: "measured",
 		},
 		{ key: "cost", label: "Cost knowledge", value: frontend.cost_knowledge },
 		{ key: "active", label: "Active", value: active },
