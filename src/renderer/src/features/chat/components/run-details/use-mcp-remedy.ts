@@ -46,7 +46,7 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
-import { mcpKeys } from "@shared/api/local-operator/mcp-list";
+import { fetchMcpProbe, mcpKeys } from "@shared/api/local-operator/mcp-list";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { DesktopMcpState } from "../../../../../../shared/desktop-control-contract";
@@ -117,9 +117,6 @@ const refusalKey = (row: McpServerRow): string =>
 		row.keyNames.join(","),
 	].join("\u0000");
 
-/** The `probe` answer, narrowed to the one field this surface reads. */
-type ProbeResult = { transport_oauth_supported?: boolean | null };
-
 export function useMcpRemedy({
 	sessionId,
 }: {
@@ -142,11 +139,7 @@ export function useMcpRemedy({
 			if (refused.status !== 409 || mcpGrantInFlight(cached?.operations))
 				return;
 			try {
-				const probe = await desktopResult<ProbeResult>({
-					op: "mcp.control",
-					sessionId: sessionId as string,
-					control: { action: "probe", name: row.name },
-				});
+				const probe = await fetchMcpProbe(sessionId as string, row.name);
 				setRefusals((previous) => ({
 					...previous,
 					[refusalKey(row)]:

@@ -115,9 +115,6 @@ type MCPAction =
 	| "status"
 	| "cancel";
 
-/** Both separators, at module level: a regex literal inside the function would
- * be rebuilt per call, which is the lint rule this satisfies (`useTopLevelRegex`). */
-
 /**
  * The server a `/mcp <argument>` deep link names, or why nothing matched.
  *
@@ -826,9 +823,16 @@ export const McpManagementSection: FC<{
 											<RotateCw aria-hidden="true" />
 											Reload
 										</Button>
-										{/* OAuth grant login only where the transport can do it;
-										    stdio servers get the setup-prompt offer instead of a
-										    browser login that would fail against a local process. */}
+										{/*
+										 * One transition owner, reached from here, from the run panel and from
+										 * `/mcp login|reauth <name>`: the shared flow re-probes the named
+										 * server and starts whichever of grant/key the backend reports. That
+										 * is why this control is not conditioned on
+										 * `canGrantAccountAccess` any more — the row's own derived remedy
+										 * cannot answer "does this transport do OAuth, and which references
+										 * does it declare", and assuming it could is what started a browser
+										 * grant for a server whose answer was a key (R2-6).
+										 */}
 										<Button
 											variant="ghost"
 											size="sm"
@@ -842,6 +846,29 @@ export const McpManagementSection: FC<{
 										>
 											Sign in
 										</Button>
+										{/*
+										 * The server-supported setup action, wherever the backend sent
+										 * one. `docs/desktop-controls.md` obliges this surface to offer it,
+										 * the paragraph above the row names this control by name, and it is
+										 * not redundant with `Sign in`: the dialog's own answer for a
+										 * non-OAuth server can be "add explicit ${NAME} references", and
+										 * without this there is no way from this row to the setup an agent
+										 * walks the user through. A prompt the user REVIEWS and submits,
+										 * never an auto-send.
+										 */}
+										{server.setup?.text ? (
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => {
+													void navigator.clipboard
+														.writeText(server.setup?.text ?? "")
+														.catch(() => undefined);
+												}}
+											>
+												Copy setup prompt
+											</Button>
+										) : null}
 										{/* Removal is a scoped write into the file that owns the server,
 										    and only two of the eight config sources are this app's to
 										    write. A server imported from another tool's config has a
