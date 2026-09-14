@@ -43,12 +43,12 @@ import { build } from "esbuild";
  *      compared to source text, so a semantics-preserving reformat does not
  *      redden it (code review round 1, N4).
  *
- *   3. The suggestion stack's containment - how tall the band's chips may grow
- *      before they outgrow the pane (design round 1, D1) - asserted on the pure
- *      rule `message-input.tsx` measures its cap with. The RULE is what can be
- *      pinned here: the geometry it is fed comes from the live layout, and the
- *      frames under docs/evidence/draft-splash/ are where that geometry is
- *      photographed at the sizes the defect was measured at.
+ *   3. OUT OF SCOPE HERE: the composer band's suggestion STACK and its
+ *      containment (design round 1, D1) is asserted in
+ *      `suggestion-stack.test.mjs`. A separate file on purpose: these four cases
+ *      are red on the tree before this branch, which is what makes them a guard,
+ *      and a rule this branch ADDS would make that tree stop at resolution
+ *      instead of failing its assertions.
  *
  * ONE THING THIS TEST DOES NOT REACH: a real session whose page HAS landed, i.e.
  * the settled empty conversation, which is the other half of the composed rule
@@ -68,7 +68,6 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
-			export { suggestionStackCapFor } from "./src/renderer/src/features/chat/components/suggestion-stack";
 			/*
 			 * Renders the hook ONCE and hands back the handle it returned. The
 			 * probe renders nothing on purpose: the handle is the whole subject.
@@ -116,7 +115,7 @@ const bundle = await build({
 // has no base path for.
 const bundlePath = new URL("./_draft-splash.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { handleFor, suggestionStackCapFor } = await import(bundlePath.href);
+const { handleFor } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /**
@@ -238,62 +237,4 @@ test("the composer is given the composed fact, not the raw one", () => {
 	);
 });
 
-/*
- * The suggestion stack's containment (design round 1, D1).
- *
- * The stack is the one thing in the band that grows without a bound of its own,
- * so it is where the bound lives - and the bound has to land on a ROW boundary,
- * because a cap that lands inside a row cuts the chips' glyphs (the defect) and
- * a cap that lands past the room the band has is a cap that does nothing. Both
- * halves are arithmetic over the measured rows, so both are pinned here; the
- * measurement itself is photographed in docs/evidence/draft-splash/.
- */
-const rowOf = (top, height) => ({ top, bottom: top + height });
 
-test("the suggestion stack is only capped when it does not fit", () => {
-	const rows = [rowOf(0, 28), rowOf(36, 28), rowOf(72, 28)];
-
-	assert.equal(
-		suggestionStackCapFor(rows, 0, 200),
-		null,
-		"a stack with room to spare is not capped at all, which is what keeps the default window's approved frame untouched",
-	);
-	assert.equal(
-		suggestionStackCapFor(rows, 0, 80),
-		64,
-		"capped at the bottom edge of the last row that fits, so the boundary sits in the gap below it rather than through its glyphs",
-	);
-});
-
-test("a chip whose label wraps inside itself moves the boundary past its whole row", () => {
-	// Row two is a two-line chip - 28px of chip plus a second line - so a cap
-	// measured by the row PITCH would cut it; one measured by the rows on screen
-	// does not.
-	const rows = [rowOf(0, 28), rowOf(36, 46), rowOf(90, 28)];
-
-	assert.equal(
-		suggestionStackCapFor(rows, 0, 60),
-		28,
-		"the tall row is dropped whole rather than cut in half",
-	);
-	assert.equal(
-		suggestionStackCapFor(rows, 0, 82),
-		82,
-		"and its own bottom is the boundary as soon as its room is there",
-	);
-});
-
-test("a stack is never capped away entirely, and page coordinates do not leak in", () => {
-	const rows = [rowOf(400, 28), rowOf(436, 28)];
-
-	assert.equal(
-		suggestionStackCapFor(rows, 400, 4),
-		28,
-		"a pane with no room for even one row still shows the first: the alternative is a band that lost its suggestions rather than one that bounds them",
-	);
-	assert.equal(
-		suggestionStackCapFor([], 400, 0),
-		null,
-		"no chips is not a containment problem",
-	);
-});
