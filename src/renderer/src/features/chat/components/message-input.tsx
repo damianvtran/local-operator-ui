@@ -82,6 +82,19 @@ export type ComposerSendError = {
 	 * be able to see that something is being held.
 	 */
 	message?: string;
+	/**
+	 * Suppress the generic "Your message is still in the composer. Send it
+	 * again." hint for this failure.
+	 *
+	 * The hint is the alert's "what to do" half (branding section 8) and it is
+	 * only ever true when the next send would be ACCEPTED. The read window's
+	 * refusal is the case where it is not: the notice retires on the same
+	 * condition that closes the window, so the retry is refused by the same rule
+	 * for as long as the notice is on screen, and the sentence carries its own
+	 * statement of the wait rather than an instruction to retry now (UX round 3,
+	 * U9).
+	 */
+	withholdRetryHint?: boolean;
 	actions?: { label: string; onClick: () => void }[];
 	/**
 	 * The exact payload the store will hold the next send to, when it is holding
@@ -909,6 +922,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * into the very guard that is blocking them. It is also false with an
 				 * empty box, where there is nothing left to send.
 				 *
+				 * `withholdRetryHint` is the same rule stated by the failure that owns
+				 * it: the read window's refusal is refused AGAIN for as long as its
+				 * own notice is on screen, so its sender withholds this hint and the
+				 * sentence carries the wait instead (UX round 3, U9).
+				 *
 				 * `newMessage.trim()`, deliberately NOT `!boxEmpty`: this sentence
 				 * promises Enter will send, and the submit path guards on the raw
 				 * textarea (`use-message-input.ts`), which refuses a chip-only
@@ -920,6 +938,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				retryHint:
 					Boolean(sendError?.message) &&
+					!sendError?.withholdRetryHint &&
 					Boolean(newMessage.trim()) &&
 					(held === undefined || heldInBox),
 				// Only worth saying when the held message is not on screen; when it

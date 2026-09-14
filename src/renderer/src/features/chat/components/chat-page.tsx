@@ -1039,12 +1039,13 @@ function SessionPanel({
 	 *
 	 * - `confirmSessionLive` closes the window on a live frame from the session's
 	 *   own stream. That is the EARLIER bound: it opens the gate on the first
-	 *   proof rather than at the read's own end, and it is the only bound that
-	 *   arrives at all when the read never answers. The read is bounded too -
+	 *   proof rather than at the read's own end. The read is bounded too -
 	 *   `desktopResult` runs every desktop control under `withDeadline` at
-	 *   `DESKTOP_REQUEST_TIMEOUT_MS` (30 s) - but thirty seconds of a panel that
-	 *   refuses every send is not a bound a user can use, so the live term is
-	 *   kept for what it adds, not because the alternative is unbounded.
+	 *   `DESKTOP_REQUEST_TIMEOUT_MS` (30 s), so a read that never answers ends in
+	 *   the rollback rather than in a panel that refuses sends forever - but
+	 *   thirty seconds of a panel that refuses every send is not a bound a user
+	 *   can use, so the live term is kept for what it adds, not because the
+	 *   alternative is unbounded.
 	 * - the refused send's notice retires on that same observable condition, the
 	 *   way `attachmentResolved` retires its own: a sentence explaining a refusal
 	 *   must not outlive the cause it names.
@@ -1102,6 +1103,15 @@ function SessionPanel({
 					// message. An unresolved attachment needs a profile chosen; an
 					// unreachable registry needs the agents page. Any other code has no
 					// specific remedy, so it offers none rather than a generic button.
+					/*
+					 * The read window's refusal carries its own "what to do" half, so the
+					 * composer's generic retry hint is withheld for it: the notice lives
+					 * exactly as long as the window does, and the window refuses the retry for
+					 * that same span, which makes "Send it again" an instruction to do the one
+					 * thing that cannot succeed yet (UX round 3, U9). The sentence states the
+					 * wait and its end instead.
+					 */
+					withholdRetryHint: activeErrorCode === SESSION_UNVALIDATED_CODE,
 					actions:
 						// The unconfirmed-send guard's remedies are Restore and the abandon
 						// control, both rendered by the composer from `heldText`. It must

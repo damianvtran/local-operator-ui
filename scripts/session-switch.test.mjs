@@ -111,6 +111,23 @@ const MATERIALISED = "444444444444";
 const TARGET = "222222222222";
 const OTHER = "333333333333";
 
+/**
+ * Is this rejection the read window's own refusal?
+ *
+ * Asserted through a helper rather than written inline, because the comparison
+ * alone is not specific on the revision these cases are meant to fail on:
+ * `SESSION_UNVALIDATED_CODE` does not exist on the store at `df7f3fdb9`, so
+ * `error.code === SESSION_UNVALIDATED_CODE` there is `undefined === undefined` -
+ * satisfied by ANY rejection that carries no code, in the two cases that are
+ * this gate's only guard (reviewer N5). The `typeof` assertion makes the claim
+ * falsifiable on both revisions: the pre-change store fails on the constant it
+ * does not export, not on a coincidence about an absent field.
+ */
+function refusedByReadWindow(error) {
+	assert.equal(typeof SESSION_UNVALIDATED_CODE, "string");
+	return Boolean(error) && error.code === SESSION_UNVALIDATED_CODE;
+}
+
 function reset({ draft = null } = {}) {
 	calls.length = 0;
 	answer = async () => ({});
@@ -364,10 +381,12 @@ test("a superseded read reports false, so the URL is never rewritten back", asyn
  * Both halves are pinned here against the store that owns them. The refusal is
  * driven through the real admission path and named by its own code, and BOTH
  * bounds that open the window are driven: the read's answer, and a live frame
- * from the session's own stream (`confirmSessionLive`) - the bound that matters
- * when the read never answers at all. The message is asserted to have created no
- * echo, because "refused before admission" is the reason the composer puts the
- * text BACK rather than holding a claim (`isRefusedBeforeAdmission`).
+ * from the session's own stream (`confirmSessionLive`) - the bound that opens
+ * the gate on the session's own proof instead of making the user wait out the
+ * read's 30 s deadline, which is the only thing left when the read is slow. The
+ * message is asserted to have created no echo, because "refused before
+ * admission" is the reason the composer puts the text BACK rather than holding
+ * a claim (`isRefusedBeforeAdmission`).
  *
  * FAILS on `df7f3fdb9`, where the gate had no store-side existence: the first
  * assertion below gets an admission instead of a refusal.
@@ -394,7 +413,7 @@ test("a send inside the read window is refused, and the answer opens it", async 
 	// refusal carries the code the composer renders and reads back.
 	await assert.rejects(
 		admitChatDraft(SEND_KEY, SEND, TARGET),
-		(error) => error.code === SESSION_UNVALIDATED_CODE,
+		(error) => refusedByReadWindow(error),
 	);
 	assert.deepEqual(
 		calls.map((request) => request.op),
@@ -428,7 +447,7 @@ test("a live frame opens the read window before the read answers", async () => {
 	 */
 	await assert.rejects(
 		admitChatDraft(SEND_KEY, SEND, TARGET),
-		(error) => error.code === SESSION_UNVALIDATED_CODE,
+		(error) => refusedByReadWindow(error),
 	);
 	/*
 	 * A stale frame cannot vouch for a window it does not belong to - the guard
@@ -439,7 +458,7 @@ test("a live frame opens the read window before the read answers", async () => {
 	assert.equal(store.getState().validatingSessionId, TARGET);
 	await assert.rejects(
 		admitChatDraft(SEND_KEY, SEND, TARGET),
-		(error) => error.code === SESSION_UNVALIDATED_CODE,
+		(error) => refusedByReadWindow(error),
 	);
 
 	// The session's own stream is the earlier proof: it opens the gate while the
@@ -458,6 +477,76 @@ test("a live frame opens the read window before the read answers", async () => {
 	read.release({});
 	assert.equal(await pending, true);
 	assert.equal(store.getState().activeSessionId, TARGET);
+});
+
+/*
+ * RE-SELECTING THE ROW THE VIEW IS ALREADY ON, which is a click the sidebar
+ * accepts: the current row is not disabled and carries no second action.
+ *
+ * The window's live-frame bound is edge-triggered - `chat-page` reports a frame
+ * only when the session or its stream status CHANGES - so a second window opened
+ * for a session whose stream has already reported itself had one bound left,
+ * the read's, and refused sends for its whole latency with a notice the user
+ * could do nothing about. Driven here as the store sees it, because the store is
+ * where the window is opened and every caller is protected by where the rule
+ * lives rather than by one screen remembering it (reviewer N4).
+ */
+test("re-selecting the row the view is already on does not reopen the read window", async () => {
+	reset();
+	// An ordinary switch first: the read answers and closes the window it opened.
+	assert.equal(await store.getState().openSession(TARGET), true);
+	assert.equal(store.getState().validatingSessionId, null);
+	calls.length = 0;
+
+	// The re-click. No window, no second read: `true`, because the view, the
+	// draft and the URL are already where the click asked to go.
+	assert.equal(await store.getState().openSession(TARGET), true);
+	assert.equal(store.getState().validatingSessionId, null);
+	assert.deepEqual(calls, []);
+
+	// Which is the point: the next send is ADMITTED rather than refused.
+	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	assert.deepEqual(
+		calls.map((request) => request.op),
+		["sessions.message"],
+	);
+
+	// And a re-click inside an open window does not replace it either: the window
+	// that exists keeps its own read and closes on that read's answer.
+	const read = deferred();
+	answer = () => read.promise;
+	const pending = store.getState().openSession(OTHER);
+	assert.equal(store.getState().validatingSessionId, OTHER);
+	assert.equal(await store.getState().openSession(OTHER), true);
+	assert.deepEqual(
+		calls.map((request) => request.op),
+		["sessions.message", "sessions.get"],
+	);
+	read.release({});
+	assert.equal(await pending, true);
+	assert.equal(store.getState().validatingSessionId, null);
+});
+
+/**
+ * The same rule does NOT swallow a click that is a real move: a staged draft is
+ * a different view of the same session (the sidebar marks the row only when no
+ * draft is staged), so clicking that row has to leave the draft.
+ */
+test("re-selecting the active session still leaves a staged draft", async () => {
+	reset({ draft: DRAFT });
+	store.setState({ activeSessionId: TARGET });
+	calls.length = 0;
+
+	const pending = store.getState().openSession(TARGET);
+	assert.equal(store.getState().activeDraftKey, null);
+	assert.equal(store.getState().validatingSessionId, TARGET);
+	assert.deepEqual(
+		calls.map((request) => request.op),
+		["sessions.get"],
+	);
+	assert.equal(await pending, true);
+	assert.equal(store.getState().activeSessionId, TARGET);
+	assert.equal(store.getState().validatingSessionId, null);
 });
 
 /*
