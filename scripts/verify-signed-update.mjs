@@ -2,12 +2,33 @@
 /** Main-process Node inspector only: no renderer/page CDP, browser engine,
  * altered fuses, app-update.yml patches, re-signing, or quarantine bypass.
  * A missing native capability is BLOCKED, never a surrogate PASS.
+ *
+ * WHAT THIS CAN AND CANNOT DO, because a gate that overstates its own scope is
+ * worse than one that is missing:
+ *
+ *  - It CONSUMES artifacts that someone else signed and notarized. It never
+ *    signs, never re-signs, never patches a signature and never strips
+ *    quarantine, so the signed positive direction needs a candidate directory
+ *    produced by the `ci(mac)` candidate workflow (which holds the Developer ID
+ *    identity), not a build from this checkout.
+ *  - It needs a pristine GitHub-hosted macOS VM with a native GUI launchd
+ *    session, because it exercises the real Squirrel swap and the app's real
+ *    relaunch. It refuses to run anywhere else, and refuses a VM that carries
+ *    credentials as misconfigured rather than as a product failure.
+ *
+ * On a developer's machine neither input exists: this host has no Developer ID
+ * identity, so nothing it can build is a signed candidate; and it is not a
+ * disposable VM, so the swap must not be driven here at all. A local run
+ * therefore reports BLOCKED and names the capability it is missing. It must
+ * never reach the PASS records below and must never dress the missing capability
+ * up as a product FAIL. Exit codes: 0 = every record PASS, 1 = a real failure,
+ * 2 = nothing was exercised (BLOCKED).
  */
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { appendFileSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -15,13 +36,28 @@ import { promisify } from "node:util";
 import { finalContainerChecks, finalMetadataChecks, privatePythonSeedCheck } from "./python-artifact-layout.mjs";
 import { spawnRunner, runChecks, bundledPythonCheck, bundledBytecodeCheck } from "./verify-macos-artifacts.mjs";
 const execute = promisify(execFile);
-const evidence = resolve("signed-update-evidence"); mkdirSync(evidence, { recursive: true });
+/** One argument, or null. `null` rather than `undefined` so a missing flag is
+ * never silently `resolve(argv[0])` - the node binary, which is what the old
+ * spelling handed to `readdirSync` and what made a missing `--candidate-dir`
+ * look like a product failure instead of a usage error. */
+const argvValue = (name) => { const index = process.argv.indexOf(name); return index < 0 ? null : (process.argv[index + 1] ?? null); };
+const candidateDir = argvValue("--candidate-dir") ? resolve(argvValue("--candidate-dir")) : null;
+const tag = argvValue("--incumbent-tag");
+const USAGE = "Usage: node scripts/verify-signed-update.mjs --candidate-dir <dir> --incumbent-tag v<X.Y.Z> [--evidence <dir>]";
+/*
+ * The evidence root, and why it is an argument.
+ *
+ * The matrix and every command log belong to ONE run, and a run on a shared host
+ * must be able to put them somewhere disposable instead of the checkout it was
+ * launched from. CI passes an artifact directory; the default keeps the path the
+ * workflow and the release docs have always used. It is created on the first
+ * record, so a run that blocks before recording anything writes nothing.
+ */
+const evidence = resolve(argvValue("--evidence") ?? "signed-update-evidence");
 const rows = [];
-function record(surface, verdict, actual) { rows.push({ surface, verdict, actual }); writeFileSync(join(evidence, "matrix.json"), JSON.stringify(rows, null, 2)); console.log(`${verdict} ${surface}: ${actual}`); }
+let announcedEvidence = false;
+function record(surface, verdict, actual) { rows.push({ surface, verdict, actual }); mkdirSync(evidence, { recursive: true }); const matrix = join(evidence, "matrix.json"); writeFileSync(matrix, JSON.stringify(rows, null, 2)); if (!announcedEvidence) { announcedEvidence = true; console.log(`evidence: ${matrix}`); } console.log(`${verdict} ${surface}: ${actual}`); }
 function blocked(message) { record("Exact signed update", "BLOCKED", message); throw Object.assign(new Error(message), { blocked: true }); }
-const arg = (name) => process.argv[process.argv.indexOf(name) + 1];
-const candidateDir = resolve(arg("--candidate-dir"));
-const tag = arg("--incumbent-tag");
 const require = createRequire(import.meta.url);
 const builder = createRequire(require.resolve("electron-builder"));
 const { load } = createRequire(builder.resolve("app-builder-lib"))("js-yaml");
@@ -56,9 +92,38 @@ async function download(url, path) { const response = await fetch(url); if (!res
 function safeEnv(extra = {}) { return { PATH: "/usr/bin:/bin:/usr/sbin:/sbin", HOME: homedir(), LANG: "en_US.UTF-8", TERM: "xterm-256color", TMPDIR: tmpdir(), ...extra }; }
 function startOwned(executable, args, label, env = safeEnv()) { const log = createWriteStream(join(evidence, `${label}.log`)); const child = spawn(executable, args, { env, stdio: ["ignore", "pipe", "pipe"] }); child.stdout.pipe(log); child.stderr.pipe(log); owned.push(child); return child; }
 
+/** The check ids that ask about a signature rather than about what was assembled. */
+const SIGNATURE_CHECK_IDS = new Set(["app-codesign", "app-spctl", "app-stapler", "dmg-spctl", "dmg-stapler"]);
+
+/**
+ * A candidate whose signature checks failed is BLOCKED, not FAIL.
+ *
+ * This harness cannot produce the signature it is asking about: it has no
+ * Developer ID identity and never signs, re-signs or patches one. So on a host
+ * that cannot sign - every developer machine, and any VM the candidate workflow
+ * did not build - an unsigned candidate is a missing CAPABILITY, not a defect in
+ * the candidate's code, and recording it as FAIL would send a reader to the
+ * wrong place. An artifact from the signing job that fails these checks is still
+ * reported as a real failure by the `assert` above the assembly half, because
+ * then the identity existed and the artifact is genuinely wrong.
+ *
+ * The host's own identity list goes into the message so the claim is evidenced
+ * rather than asserted: an empty `security find-identity` is why this host cannot
+ * sign, and it is printed here.
+ */
+async function blockedUnsignedCandidate(path, broken) {
+	let identities = "";
+	try { identities = (await execute("/usr/bin/security", ["find-identity", "-v", "-p", "codesigning"], { timeout: 30_000 })).stdout.trim(); }
+	catch { identities = ""; }
+	blocked(
+		`${path} carries no valid release signature/notarization ticket (${broken.map((row) => `${row.id}: ${row.output}`).join("; ")}). This harness consumes artifacts signed by the ci(mac) candidate workflow and cannot sign one itself, so the signed positive direction is BLOCKED here. This host's code-signing identities: ${identities || "none"}.`,
+	);
+}
+
 try {
+	if (!/^v\d+\.\d+\.\d+$/.test(tag)) blocked(`${USAGE} - the incumbent must be an exact release tag, got ${JSON.stringify(tag)}`);
+	if (candidateDir == null || !existsSync(candidateDir) || !statSync(candidateDir).isDirectory()) blocked(`${USAGE} - --candidate-dir must name an existing directory of signed artifacts, got ${JSON.stringify(argvValue("--candidate-dir"))}`);
 	if (process.platform !== "darwin" || process.env.GITHUB_ACTIONS !== "true" || process.env.RUNNER_ENVIRONMENT !== "github-hosted") blocked("This proof may run only on a fresh GitHub-hosted macOS VM, never a user's machine or self-hosted runner");
-	if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error("Incumbent must be an exact release tag");
 	// BLOCKED rather than FAIL: a VM that carries signing or API credentials is
 	// misconfigured, and calling that a product failure would send a reader to the
 	// candidate's code. Nothing below this line runs when it fires.
@@ -71,13 +136,20 @@ try {
 	const sentinel = join(support, "synthetic-user-data.txt"); writeFileSync(sentinel, "signed-update synthetic user data\n");
 	const dataHash = createHash("sha256").update(readFileSync(sentinel)).digest("hex");
 	const artifacts = readdirSync(candidateDir).filter((name) => /\.(zip|dmg)$/.test(name)).map((name) => join(candidateDir, name));
+	if (artifacts.length === 0) blocked(`No .zip or .dmg candidate artifacts in ${candidateDir}; there is nothing to exercise`);
 	const metadataResults = finalMetadataChecks(candidateDir, artifacts);
 	assert.ok(metadataResults.length && metadataResults.every((row) => row.passed), JSON.stringify(metadataResults));
 	const candidateZip = artifacts.find((path) => path.endsWith(`-${process.arch}.zip`));
 	assert.ok(candidateZip, "No candidate ZIP for runner architecture");
 	for (const path of artifacts) {
-		const results = finalContainerChecks(path, { run: spawnRunner, checkApp: (app) => [...runChecks({ appPath: app, dmgPath: null, run: spawnRunner }), bundledPythonCheck(app), bundledBytecodeCheck(app), privatePythonSeedCheck(app)] });
-		assert.ok(results.every((row) => row.passed), JSON.stringify(results));
+		// The arch the container's filename claims is handed to every app check, so a
+		// `-x64.zip` carrying an arm64 app is refused here rather than shipped.
+		const results = finalContainerChecks(path, { run: spawnRunner, checkApp: (app, arch) => [...runChecks({ appPath: app, dmgPath: null, run: spawnRunner }), bundledPythonCheck(app, { expectArch: arch }), bundledBytecodeCheck(app), privatePythonSeedCheck(app, { expectArch: arch })] });
+		// What the build assembled must be right: those failures are the candidate's.
+		const assembly = results.filter((row) => !SIGNATURE_CHECK_IDS.has(row.id));
+		assert.ok(assembly.every((row) => row.passed), JSON.stringify(assembly));
+		// Whether it is signed is the host's capability question, not the candidate's.
+		await blockedUnsignedCandidate(path, results.filter((row) => SIGNATURE_CHECK_IDS.has(row.id) && !row.passed));
 	}
 	record("Delivered candidate ZIP/DMG", "PASS", "Every architecture verified after extraction/copy-out; exact metadata hashes and sizes match");
 	const release = await (await fetch(`https://api.github.com/repos/damianvtran/local-operator-ui/releases/tags/${tag}`)).json();
