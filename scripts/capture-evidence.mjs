@@ -470,6 +470,18 @@ export const STORIES = [
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
 	["chat-older-history-slot--transport-down", 900, 800],
+
+	/* The other half of the transcript's completeness: a reader who returns from
+	   another conversation, in the two states the fix is about. The claim is a
+	   COMPARISON — the same transcript with the rows written during the absence
+	   missing, then present — so the pair is what carries it, and both are built
+	   by the production reducer from wire-shaped frames (the way
+	   `chat-tool-rows--joined-mid-turn` is). Sized to their own content: the
+	   transcript is `overflow-auto` with `column-reverse`, so a viewport shorter
+	   than the rows photographs a scrolled corner of it and cuts off the oldest
+	   rows — which are exactly the ones in question. */
+	["chat-reconnect-gap--gap", 1024, 480],
+	["chat-reconnect-gap--restored", 1024, 560],
 ];
 
 /**
