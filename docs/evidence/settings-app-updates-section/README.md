@@ -43,6 +43,11 @@ affirmation: the sentence does not exist before the fix, which is why
 
 ## What produced these frames
 
+This section records the original capture, not a command to repeat during
+recovery. The rebase onto `915928a18` took no new frames; its continuity proof,
+reachable capture citations, and read-only review routes are in
+[RECOVERY.md](RECOVERY.md). Use the browser tool for any new capture.
+
 `CheckForUpdatesButton` refuses to check at all when `import.meta.env.DEV` is
 true ("Updates are not checked in development mode. This feature is only
 available in production builds."), which is the right thing for the product and
