@@ -3,11 +3,14 @@ import { requesterOf } from "./actions/context";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
+import type { ConsentDecision } from "./approvals";
 import { BrowserHostError } from "./errors";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
 import { redactToken, surfaceToken } from "./registry";
+import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
+import { safeHttpUrl } from "./vendor/driver/origin-policy";
 
 /**
  * The command dispatcher, and the operations the app's own chrome uses.
@@ -47,6 +50,10 @@ export interface BrowserHostOptions {
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
+	/** Clear one origin's browsing data, for "forget this site" (design 9.4).
+	 * Injected from the wiring that owns the session, so this module does not
+	 * depend on the session object. */
+	forgetSiteData: (origin: string) => Promise<void>;
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -57,6 +64,8 @@ export class BrowserHost implements BrowserActionContext {
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
+	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
+	private readonly forgetSiteData: (origin: string) => Promise<void>;
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
@@ -66,6 +75,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		this.facts = options.facts;
+		this.forgetSiteData = options.forgetSiteData;
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */
@@ -192,7 +202,6 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	// ---- operations the app's own chrome uses (design 11.2, 6.1) -------------
-
 	/**
 	 * The projection the renderer renders: the tab strip, the URL bar and the
 	 * per-tab ownership markers. It never carries a nonce — the renderer is not an
@@ -237,6 +246,20 @@ export class BrowserHost implements BrowserActionContext {
 				broad: entry.broad ?? null,
 				expiresAt: entry.expiresAt,
 			})),
+			// Which sites an agent may act on as the user RIGHT NOW (design 9.3's
+			// honesty requirement). Shipped in the same projection as the strip rather
+			// than behind a second channel: the answer is only useful next to the tabs
+			// it applies to, and one subscription is one thing that can go stale.
+			//
+			// The `requester` on a record is deliberately NOT projected. The vendored
+			// queue marks it "authority boundary only. Never render or include in
+			// ambient notifications", so the list says which SITE and which SCOPE —
+			// which is what the user's question is about — and never names a session.
+			approvals: this.approvals.grants().map((record) => ({
+				origin: record.origin,
+				scope: record.scope,
+				grantedAt: record.grantedAt,
+			})),
 		};
 	}
 
@@ -252,6 +275,78 @@ export class BrowserHost implements BrowserActionContext {
 
 	closeTab(tabId: number): Record<string, unknown> {
 		this.registry.destroy(tabId);
+		this.onChanged();
+		return this.chromeState();
+	}
+
+	/**
+	 * Re-create the tabs a previous run recorded (design 7).
+	 *
+	 * THE THREE RULES THIS ENFORCES, each of which has a section behind it:
+	 *
+	 * 1. **A restored tab is the user's, with a FRESH tabId and NO nonce** (7.3).
+	 *    That is `registry.create({owner: "user", restored: true})`, and it is why
+	 *    a session holding `ui:<oldTabId>:<oldNonce>` gets the ordinary `tab_closed`
+	 *    on its next action instead of silently reclaiming a tab whose authority
+	 *    came off a file in `userData`. No special-case code exists for that
+	 *    recovery, which is the point: the handle rule already produces it.
+	 * 2. **`navigationHistory.restore()` runs before anything navigates** (7.1):
+	 *    Electron documents it as "recommended to call this API before any
+	 *    navigation entries are created, so ideally before you call `loadURL()`".
+	 *    That ordering is load-bearing here because `cdp.attach` gives a document
+	 *    to any view that has never navigated — so attach runs AFTER the restore
+	 *    has put a document in, or the `<about:blank>` it would load would replace
+	 *    the restored stack with one blank entry.
+	 * 3. **Restoring does not steal the active tab** (11.4): the recorded active
+	 *    tab is activated once, at the end, so a background tab's restore cannot
+	 *    take the user's place.
+	 *
+	 * A restore that fails is logged and left as it is: the tab keeps whatever
+	 * Chromium managed to load, which is a blank tab rather than a broken one, and
+	 * blocking startup on a page that will not load is exactly what 7.2 forbids.
+	 */
+	async restoreTabs(tabs: PersistedTab[]): Promise<Record<string, unknown>> {
+		if (!tabs.length) return this.newTab();
+		const created: Array<{ tabId: number; recorded: PersistedTab }> = [];
+		await Promise.all(
+			tabs.map(async (recorded) => {
+				// `restored: true` is what makes the owner `user` and the nonce null, in
+				// the registry, for every restored tab regardless of what was written.
+				const record = this.registry.create({ owner: "user", restored: true });
+				created.push({ tabId: record.tabId, recorded });
+				const contents = record.view.webContents;
+				const history = contents.navigationHistory;
+				const entry = recorded.entries[recorded.activeIndex];
+				try {
+					if (history?.restore) {
+						await history.restore({
+							entries: recorded.entries,
+							index: recorded.activeIndex,
+						});
+					} else if (entry) {
+						// The honest degradation (see `NavigationHistoryLike`): a view with no
+						// history API still gets put back on the page it was showing, without its
+						// stack and its page state.
+						await contents.loadURL(entry.url);
+					}
+				} catch (error) {
+					this.log(
+						`[browser] could not restore tab ${record.tabId}: ${String(error)}`,
+					);
+				}
+				try {
+					await this.cdp.attach(contents);
+				} catch (error) {
+					this.log(
+						`[browser] could not attach to restored tab ${record.tabId}: ${String(error)}`,
+					);
+				}
+			}),
+		);
+		const wanted =
+			created.find((entry) => entry.recorded.active)?.tabId ??
+			created.at(-1)?.tabId;
+		if (wanted !== undefined) this.registry.activate(wanted);
 		this.onChanged();
 		return this.chromeState();
 	}
@@ -348,11 +443,46 @@ export class BrowserHost implements BrowserActionContext {
 	 * handler checks the sender first. */
 	respondToConsent(
 		entryId: string,
-		decision: "once" | "site" | "domain" | "deny",
+		decision: ConsentDecision,
 	): Record<string, unknown> {
 		const result = this.approvals.respond(entryId, decision);
 		this.onChanged();
 		return { ...result, ...this.chromeState() };
+	}
+
+	/** Revoke one origin's approvals (design 9.4). Separate from closing a tab and
+	 * separate from clearing cookies: "stop this agent" and "forget this site" are
+	 * different intentions. */
+	revokeApproval(origin: string): Record<string, unknown> {
+		const removed = this.approvals.revokeOrigin(origin);
+		this.onChanged();
+		return { removed, origin, ...this.chromeState() };
+	}
+
+	/** Revoke every site approval. Does not log the user out (design 9.4). */
+	revokeAllApprovals(): Record<string, unknown> {
+		const removed = this.approvals.revokeAll();
+		this.onChanged();
+		return { removed, ...this.chromeState() };
+	}
+
+	/**
+	 * "Forget this site" (design 9.4): withdraw the approval AND clear what this
+	 * app stored for that origin.
+	 *
+	 * Two effects in one affordance because they are one intention — the user
+	 * wanting the site gone from this app — while being explicit that they are two
+	 * mechanisms with two consequences: the revoke does not log them out, and the
+	 * storage clear does not restore a deny state. The confirmation in the chrome
+	 * says both rather than leaving the user to discover the second half.
+	 */
+	async forgetSite(rawOrigin: string): Promise<Record<string, unknown>> {
+		const origin = safeHttpUrl(rawOrigin).origin;
+		const removed = this.approvals.revokeOrigin(origin);
+		await this.forgetSiteData(origin);
+		this.log(`[browser] forgot ${origin}: ${removed} approval(s) revoked`);
+		this.onChanged();
+		return { origin, removed, ...this.chromeState() };
 	}
 
 	/** The registry's handles, for a diagnostic or the `tabs` listing. */

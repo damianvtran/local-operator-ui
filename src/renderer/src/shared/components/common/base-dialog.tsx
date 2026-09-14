@@ -1,3 +1,4 @@
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import {
 	Button,
 	type ButtonProps,
@@ -102,6 +103,21 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 	 */
 	const { className: dialogClassName, ...restDialogProps } =
 		dialogProps as Partial<ComponentPropsWithoutRef<typeof DialogContent>>;
+
+	/*
+	 * Every dialog registers with the browser view's overlay policy, and it does so
+	 * HERE rather than at each call site.
+	 *
+	 * WHY: a native `WebContentsView` paints above all DOM (design 11.3), so a
+	 * dialog opened over the browser route is invisible unless main hides the view.
+	 * One funnel covers the dialogs that exist, the dialogs this feature adds, and
+	 * the ones added next year — the alternative is a per-call-site rule that is
+	 * wrong the first time somebody forgets.
+	 *
+	 * The hook is keyed by React's own instance id, so two dialogs open at once are
+	 * two registrations rather than one that the inner close releases.
+	 */
+	useSuppressBrowserView(open, "dialog");
 
 	return (
 		<Dialog

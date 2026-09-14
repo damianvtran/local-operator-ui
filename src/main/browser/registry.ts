@@ -418,7 +418,14 @@ export class TabRegistry {
 
 	/** The renderer owns layout (design 11.2): it measures its content area and
 	 * reports it, and this applies it to the ACTIVE tab only. Every other tab
-	 * keeps its own bounds but is hidden, so one rect authority serves N views. */
+	 * keeps its own bounds but is hidden, so one rect authority serves N views.
+	 *
+	 * A NULL rect hides every view, and that is a correctness requirement rather
+	 * than a tidy-up: the browser surface is a ROUTE, so navigating away unmounts
+	 * the only thing that knows where the view belongs. Without this, the last rect
+	 * would stay applied and the native view would go on painting over the chat
+	 * route — the one failure mode that makes this feature look like a hijacked
+	 * window. Visiting the route again reports a fresh rect and restores it. */
 	setContentRect(rect: ContentRect | null): void {
 		this.contentRect = rect;
 		this.applyLayout();
@@ -443,7 +450,11 @@ export class TabRegistry {
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
 			const isActive = record === active;
-			record.view.setVisible(isActive && this.visible);
+			// `contentRect !== null` is the third conjunct and the route-away case:
+			// an unmounted surface has no rectangle, so there is nowhere to paint.
+			record.view.setVisible(
+				isActive && this.visible && this.contentRect !== null,
+			);
 			if (isActive && this.contentRect) record.view.setBounds(this.contentRect);
 		}
 	}

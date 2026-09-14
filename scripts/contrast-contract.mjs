@@ -261,6 +261,53 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The browser tab strip's agent marker: the one element that distinguishes a
+		 * tab an AGENT opened from one the user opened (design 6.1/11.8).
+		 *
+		 * The ink is `ink` rather than `accent` as the chip above uses, because this
+		 * chip's whole job is to be READ — "Agent" is the label the user is looking for
+		 * when they want to know who owns a tab — where the chip above is a pointer
+		 * mark. The edge is the accent border, which is what keeps it perceivable on a
+		 * tab whose own fill changes with the active state.
+		 */
+		name: "browser agent marker chip",
+		on: ["surface", "elevated"],
+		fill: "accentWash",
+		border: "accent",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The same chip in its waiting state: a tab parked on an origin with a pending
+		 * approval request (design 9.3). The warning WASH marks the state and
+		 * `border-control` is the edge, which is the contract's own answer rather than
+		 * a preference: `warningBorder` measures 2.51-2.98:1 against `elevated` in
+		 * seven palettes, so the semantic border cannot be the boundary of a chip
+		 * drawn on a tab whose fill moves with the active state. Measured, not
+		 * reasoned — this row failed with `warningBorder` before the change.
+		 */
+		name: "browser waiting marker chip",
+		on: ["surface", "elevated"],
+		fill: "warningWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The consent band: the surface the per-origin approval prompt renders on, in
+		 * the browser's chrome band. A control band rather than a callout, so its
+		 * boundary is `border-control` (design 11.2) and its ground is `surface` — see
+		 * the component for why the urgency is carried by an icon and words rather
+		 * than by a wash no palette assertion would cover.
+		 */
+		name: "browser consent band",
+		on: GROUNDS,
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The user's message bubble in the transcript.
 		 *
 		 * `on` names `canvas` because that is the ground the bubble is drawn on
