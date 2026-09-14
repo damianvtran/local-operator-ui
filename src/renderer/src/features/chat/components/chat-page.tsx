@@ -30,7 +30,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
-import type { CanonicalFrontendSync } from "../../../../../shared/desktop-session-contract";
 import {
 	type AnswerOutcome,
 	type SendLock,
