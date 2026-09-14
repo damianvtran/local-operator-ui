@@ -483,6 +483,17 @@
       "source": "headless Chrome over CDP, driven by `node scripts/diff-body-evidence.mjs`: the shipped `applyHistoryPage` reducer and the shipped `CanonicalTranscript` over a real durable history page read from one real session's `transcript.jsonl` in the local store (`--session` and `--anchor` are required arguments; the id is deliberately not committed)",
       "why": "The story renders a TranscriptRecord this repository built, so it proves the component. This set starts one layer earlier, at the bytes `/v1/desktop/sessions/{id}/history` serves \u2014 the stored rows, serialised verbatim by `read_transcript_page` \u2014 and runs them through the shipped reducer, which is what proves the payload reaches pixels: the durable row's own encoding, the extraction of `provider_payload.details.diff`, the identity gate and the args-drop rule. It cannot be re-derived by the sweep, and the payload itself is deliberately NOT committed: the harness writes it to a temp file and deletes it. Re-run with `node scripts/diff-body-evidence.mjs --session=<id> --anchor=<row id>` (see docs/evidence/write-edit-diff/README.md).",
       "capturedAt": "2026-09-12T09:20:00Z"
+    },
+    {
+      "path": "draft-pick-live",
+      "frames": 3,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures",
+      "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser.",
+      "capturedAtHead": "5a65d4af7ebb270b0def5311affdc90709e6f395",
+      "capturedAtHeadNote": "Rebased from e444c44a226b4585d01bb10418fffc085bae497b onto 915928a18a1d55fbe501c41cf6f68e6b8daa60ad; the live frame blobs are unchanged, not recaptured. Browser-tool-only validation of the pick and send cells is still outstanding.",
+      "note": "Live frames of a draft pane's pick against an isolated local-operator on the released backend carrying the preview fix; see the set's README for the cells that are absent and why."
     }
   ],
   "remediationRecord": {
