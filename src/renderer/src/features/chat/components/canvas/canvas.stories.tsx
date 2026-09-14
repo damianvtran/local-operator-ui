@@ -1005,23 +1005,21 @@ export const VariablesWriteRefused: Story = {
 		// has to change, instead of only in a toast that floats past.
 		await screen.findByText(REFUSAL_SENTENCE, { selector: "p" });
 		/*
-			 * Then keep it alive, and only then let the shutter go.
-			 *
-			 * The first version released the shutter as soon as the toast was up and
-			 * relied on the caption's 4000 ms lifetime outlasting the capturer's own
-			 * work - which it does on an idle host and does not on a loaded one: design
-			 * round 2 reproduced the state twice and lost the toast in two themes each
-			 * time, in a different pair each run, while the field marker (which does not
-			 * expire) was present every time. Re-driving the same refusal every two
-			 * seconds means a toast is always inside its lifetime whenever the shutter
-			 * lands, whatever the host is doing; sonner collapses the repeats because
-			 * `showErrorToast` keys them by the message. The timer is stopped after a
-			 * minute so a story left open in the browser is not clicking forever.
-			 */
+		 * Then keep it alive, and only then let the shutter go.
+		 *
+		 * The first version released the shutter as soon as the toast was up and
+		 * relied on the caption's 4000 ms lifetime outlasting the capturer's own
+		 * work - which it does on an idle host and does not on a loaded one: design
+		 * round 2 reproduced the state twice and lost the toast in two themes each
+		 * time, in a different pair each run, while the field marker (which does not
+		 * expire) was present every time. Re-driving the same refusal every two
+		 * seconds means a toast is always inside its lifetime whenever the shutter
+		 * lands, whatever the host is doing; sonner collapses the repeats because
+		 * `showErrorToast` keys them by the message. The timer is stopped after a
+		 * minute so a story left open in the browser is not clicking forever.
+		 */
 		const keepAlive = window.setInterval(() => {
-			void userEvent.click(
-				screen.getByRole("button", { name: "Create" }),
-			);
+			void userEvent.click(screen.getByRole("button", { name: "Create" }));
 		}, 2000);
 		window.setTimeout(() => window.clearInterval(keepAlive), 60_000);
 		releaseShutter();
@@ -1116,14 +1114,14 @@ export const VariablesRowActions: Story = {
 	render: () => {
 		holdShutter();
 		return (
-		<CanvasFrame
-			view="variables"
-			activeId={DOCUMENTS[0].id}
-			variables={{
-				features: { session_variables: 1 },
-				list: () => observed(VARIABLES),
-			}}
-		/>
+			<CanvasFrame
+				view="variables"
+				activeId={DOCUMENTS[0].id}
+				variables={{
+					features: { session_variables: 1 },
+					list: () => observed(VARIABLES),
+				}}
+			/>
 		);
 	},
 	play: async ({ canvasElement }) => {
@@ -1156,14 +1154,14 @@ export const VariablesUneditableRow: Story = {
 	render: () => {
 		holdShutter();
 		return (
-		<CanvasFrame
-			view="variables"
-			activeId={DOCUMENTS[0].id}
-			variables={{
-				features: { session_variables: 1 },
-				list: () => observed(VARIABLES),
-			}}
-		/>
+			<CanvasFrame
+				view="variables"
+				activeId={DOCUMENTS[0].id}
+				variables={{
+					features: { session_variables: 1 },
+					list: () => observed(VARIABLES),
+				}}
+			/>
 		);
 	},
 	play: async ({ canvasElement }) => {
@@ -1192,14 +1190,14 @@ export const VariablesDeleteConfirm: Story = {
 	render: () => {
 		holdShutter();
 		return (
-		<CanvasFrame
-			view="variables"
-			activeId={DOCUMENTS[0].id}
-			variables={{
-				features: { session_variables: 1 },
-				list: () => observed(VARIABLES),
-			}}
-		/>
+			<CanvasFrame
+				view="variables"
+				activeId={DOCUMENTS[0].id}
+				variables={{
+					features: { session_variables: 1 },
+					list: () => observed(VARIABLES),
+				}}
+			/>
 		);
 	},
 	play: async ({ canvasElement }) => {

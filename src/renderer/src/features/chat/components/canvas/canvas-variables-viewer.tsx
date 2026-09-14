@@ -697,8 +697,8 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							Too large to show here
 						</p>
 						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-							This chat keeps a value bigger than this panel can list, so nothing
-							is shown here. It is still there for the next step.
+							This chat keeps a value bigger than this panel can list, so
+							nothing is shown here. It is still there for the next step.
 						</p>
 					</CenteredState>
 				);
