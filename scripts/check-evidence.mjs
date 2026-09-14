@@ -464,6 +464,61 @@ export const citationFailures = (manifest, git = gitOut) => {
 };
 
 /**
+ * Whether the citations a REBASE moves still name commits in this history.
+ *
+ * `citationFailures` above asks whether a cited sha still exists and is
+ * reachable from some ref. That bar is what a squash-merge needs, and it is
+ * deliberately loose: it also passes a sha kept alive by a local backup branch
+ * or a peer's scratch branch, none of which a reader of the pull request has.
+ * So a rebase that replays this branch's commits onto a new base leaves the
+ * manifest citing the PRE-rebase spellings - every one of which still resolves
+ * on the machine that did the rebase (the backup ref the rebase left) and none
+ * of which exists in what a reviewer fetches. Three rebases in a row broke this
+ * file that way: the stamp half in round 3, `head` and
+ * `partialCapture.addedAtHead` orphaned by a force-push in round 5, and both at
+ * once on the v0.22.1 rebase. Each was found by a reviewer, by eye, and none by
+ * a gate the author runs.
+ *
+ * This is the bar that catches it. The three citations a rebase moves must lie
+ * in the history the branch carries, i.e. be ancestors of `HEAD` - which is
+ * exactly the question a reader asks of them, "which tree did these pixels come
+ * from, and can I fetch it".
+ *
+ * WHY ONLY THESE THREE. They are the fields whose meaning is "a commit of this
+ * branch's own work": the pass that ran at `head`, the pass that added a set's
+ * frames, the pass that re-took them. `supplementary[].capturedAtHead` is
+ * deliberately not included, because main's own sets legitimately cite the
+ * branch commit that landed their frames - which is not an ancestor of this
+ * branch while the PR that landed it is still open (chat-run-panel-live cites
+ * `9ad6a4274` from `design/129-r2` that way). A check that failed on main's
+ * evidence, on every branch, is one everyone learns to skip.
+ *
+ * NOT reachable from CI, where the checkout is one commit deep and no ancestor
+ * is present: `evidence-manifest.test.mjs` skips it on a shallow clone. It fires
+ * on the machine the rebase happens on, which is where the defect is made.
+ */
+export const citationAncestryFailures = (manifest, git = gitOut) => {
+	const out = [];
+	const inHistory = (sha) =>
+		git(["merge-base", "--is-ancestor", sha, "HEAD"]) !== null;
+	for (const [field, sha] of [
+		["head", manifest.head],
+		["partialCapture.addedAtHead", manifest.partialCapture?.addedAtHead],
+		[
+			"partialCapture.refreshedAtHead",
+			manifest.partialCapture?.refreshedAtHead,
+		],
+	]) {
+		if (typeof sha !== "string" || sha.length < 7) continue;
+		if (inHistory(sha)) continue;
+		out.push(
+			`manifest.json: \`${field}\` ${sha.slice(0, 9)} is not an ancestor of HEAD - it is a pre-rebase spelling of this branch's own work, still resolvable through a local ref that a reviewer does not have, so re-point it at the commit this lineage carries that change in`,
+		);
+	}
+	return out;
+};
+
+/**
  * The manifest's whole provenance verdict, in the order a reader reads it: the
  * stamps that must describe the tree under review, then the citations that must
  * still resolve. Kept as one function because `check-evidence.mjs` reports it as
