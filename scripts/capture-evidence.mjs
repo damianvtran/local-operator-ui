@@ -739,6 +739,12 @@ export const STORIES = [
 	   the backend's truncation edge, and the failure branch whose copy still
 	   carried the advice this PR retires). */
 	["canvas-workspace--variables-backend-unreachable", 1280, 900],
+	/*
+	 * The panel's FIRST question failing, as distinct from the read failing:
+	 * the capabilities query rejects, so the panel cannot say whether the
+	 * backend is old or absent and quotes the transport (design round 2, D4).
+	 */
+	["canvas-workspace--variables-capabilities-unreachable", 1280, 900],
 	["canvas-workspace--variables-truncated", 1280, 900],
 	["canvas-workspace--variables-row-actions", 1280, 900],
 	["canvas-workspace--variables-uneditable-row", 1280, 900],

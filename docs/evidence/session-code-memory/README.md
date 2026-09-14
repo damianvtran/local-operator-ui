@@ -13,7 +13,7 @@ GET /v1/agents/8fd6c6a40934/execution-variables
 
 The tour teaches the panel, so it stayed in the UI and never once rendered a
 namespace. The fix gives the backend four session-addressed ops backed by the
-session's live eval kernel and rewires the panel to them (see `#<pr>`); these
+session's live eval kernel and rewires the panel to them (see `#164`); these
 two frames are the before/after pair for the read path.
 
 ## The pair
@@ -32,15 +32,22 @@ the story's fetch stub answered a URL (`/execution-variables`) the transport had
 stopped calling. Nothing detected it: `check-evidence` asks whether a frame is a
 picture of the app, not whether it is a picture of the current code.
 
-What this branch does NOT do is change those twelve files, and review round 1
-(C-04) was right to point at the difference: they are byte-identical to the base.
-That is the finding, not an omission - with the stub re-pointed at the ops the
-panel really calls, the story renders the same populated list it always meant to
-show, and re-capturing the twelve reproduced them byte for byte (checked with
-`git diff --stat` after a full scoped re-capture: only `manifest.json` moved).
-So the frames were never wrong about the panel; they were wrong about which tree
-they belonged to, and the stamp is what had drifted. The manifest's `headNote`
-records the re-stamp; this README records that the refresh is a no-op in the diff.
+This branch DOES change those twelve files, and an earlier version of this
+paragraph said the opposite - that they were byte-identical to the base, "so the
+refresh is a no-op in the diff". It was written to answer review round 1's C-04
+and was wrong when written: the vocabulary pass (design round 1, D4) renamed the
+header control `New` -> `New variable`, which is inside those frames, and the
+commit that re-shot them is the same commit this paragraph rode in. Review round
+2 (C-05) found it, which is the lesson worth keeping: a claim about a diff is
+checkable by reading the diff, and prose written to close a finding is exactly
+where the next false claim hides.
+
+What IS true is narrower and still the point: those frames were not
+MIS-rendered, they were mis-STAMPED. With the story's stub re-pointed at the ops
+the panel really calls, the story renders the same populated list it always meant
+to show - same rows, same order, same values - and the pixel difference the
+re-capture produced is the label alone. The frames were never wrong about the
+panel; the stamp they carried named a tree whose story drew a different state.
 
 ## Reproducing them
 
@@ -72,11 +79,20 @@ first makes the same capture pass. A papercut, not a defect in the frames.
 
 ## What these frames do not prove
 
-- **Not a live session.** Both sets are Storybook: the transport is real, the
-  query cache is real, the component is real, and the answers are fixtures. The
-  live populated/busy path - a real turn whose cell leaves values in the
-  kernel, then the panel reading them - needs a backend from the backend PR and
-  a real turn, and is recorded as the one pending item in the PR.
-- **Two themes in the before pair, twelve in the sold set.** The pair exists to
-  state the failure, so it is captured in the two brand palettes; the swept set
-  carries all twelve.
+- **Not a live session.** Both sets here are Storybook: the transport is real,
+  the query cache is real, the component is real, and the answers are fixtures.
+  The live path is a THIRD set, `../session-code-memory-live/`, taken from the
+  real app by the independent QA round of this PR against a real backend with a
+  resident kernel (`live/populated/` - a real turn's eight names, read by the
+  panel; `live/busy/` - ten rows retained beside `Reading…` while a cell runs,
+  which is the one row of the frozen state table no fixture can render, because
+  retention is a property of a query that already held a reading).
+- **Two themes in the before pair, twelve in the swept set, one in the live
+  pair.** The before pair exists to state the failure, so it is captured in the
+  two brand palettes; the swept set carries all twelve; the live pair is the
+  app's default palette only, because it is the app rather than a themed
+  renderer, and it is a state no other palette would change.
+- **The live pair predates the design round's D3 repaint.** It was taken at head
+  `2df13979d`, so the field-level refusal sentence in `live/busy/` carries that
+  head's `text-danger`; the repaint to `ink` landed after it and is evidenced by
+  the re-captured Storybook refusal frames on the current head.
