@@ -200,6 +200,27 @@ export function turnStopped(
 	);
 }
 
+/**
+ * A stopped outcome need not have a raw transcript row: crash/refusal recovery
+ * can publish only frontend attention, which the transcript synthesizes for
+ * display. Compare its durable anchor with the one present at admission so an
+ * old failure cannot cancel a new send. `unseen` is deliberately irrelevant:
+ * acknowledging the outcome must not restart a wait for a turn that ended.
+ */
+export function stoppedAfterAdmission(
+	attention:
+		| { anchor_id?: string | null; kind?: string | null }
+		| null
+		| undefined,
+	previousAnchor: string | null,
+): boolean {
+	return Boolean(
+		attention?.anchor_id &&
+			attention.anchor_id !== previousAnchor &&
+			(attention.kind === "error" || attention.kind === "interrupted"),
+	);
+}
+
 export type WorkingLineInput = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
