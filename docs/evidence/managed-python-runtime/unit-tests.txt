@@ -1,4 +1,32 @@
-desktop tests: 1 file, concurrency 2 (memory budget 0.5 GB of 3.5 GB available at 192 MB per worker; cpu share would allow 7)
+# The gates and the desktop suite, raw
+
+$ pnpm lint
+Checked 507 files in 882ms. No fixes applied.
+Found 33 warnings.
+LINT_EXIT=0
+
+$ pnpm check-types
+> tsc --noEmit -p tsconfig.node.json
+> tsc --noEmit -p tsconfig.app.json
+TYPES_EXIT=0
+
+$ pnpm check-themes
+themes.generated.css is up to date (12 themes).
+Contrast contract holds: 2303 assertions across 12 themes, 0 pinned exception(s).
+THEMES_EXIT=0
+
+$ pnpm test:desktop
+ℹ tests 997
+ℹ pass 997
+ℹ fail 0
+ℹ duration_ms 293928.856208
+DESKTOP_EXIT=0
+
+# pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac --arm64 --publish never
+BUILD_EXIT=0
+PACK_EXIT=0
+
+# The managed-python suite on its own, so its cases are legible
 ✔ runtime identity binds final file bytes, names, modes and internal link targets (11.165083ms)
 ✔ new external caches are harmless but signed source modifications still fail identity (1.451792ms)
 ✔ external branding aliases preserve readiness but modified immutable bytes do not (2.080792ms)
@@ -11,11 +39,5 @@ desktop tests: 1 file, concurrency 2 (memory budget 0.5 GB of 3.5 GB available a
 ✔ the container gate refuses a legacy interpreter alias and a seed for the wrong architecture (241.055833ms)
 ✔ the container gate names an archive with no application rather than passing (23.550459ms)
 ✔ the disk image path is exercised by mounting the real image, not by assertion (20378.661084ms)
-ℹ tests 12
-ℹ suites 0
 ℹ pass 12
 ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 21144.751375
