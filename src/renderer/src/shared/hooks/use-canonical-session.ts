@@ -27,6 +27,7 @@
 
 import {
 	EMPTY_TRANSCRIPT,
+	RECONCILE_TAIL_MAX_ENTRIES,
 	type TranscriptImage,
 	type TranscriptState,
 	appendLocalNote,
@@ -186,6 +187,19 @@ const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
  * history page per turn for the rest of the conversation to learn nothing.
  */
 const LABEL_GAP_ATTEMPTS = 2;
+
+/**
+ * How many durable rows one reconcile is allowed to read back in total.
+ *
+ * The read walks BACKWARDS in pages until a fetched page overlaps the row the
+ * snapshot painted, so the bound is on the WALK rather than on one request: a
+ * page of `RECONCILE_TAIL_ENTRIES` rows that does not reach back to the
+ * snapshot's newest row is exactly the case a single read cannot close. Past
+ * this the reconcile stands down — the route has no forward cursor, so a wider
+ * absence cannot be closed from this side at all and is the owner's to fix in
+ * the snapshot it publishes.
+ */
+const RECONCILE_WALK_MAX_ROWS = RECONCILE_TAIL_MAX_ENTRIES;
 
 /**
  * Mounted transcripts, by session, that an optimistic echo can reach.
@@ -489,6 +503,114 @@ export function useCanonicalSessionStream(
 		let raf = 0;
 		let fallback = 0;
 
+		/**
+		 * Read the durable tail back and merge it, walking further back until the
+		 * page CONNECTS to a row the snapshot painted.
+		 *
+		 * WHY A SNAPSHOT ALONE BUYS THIS READ. A snapshot's history page is read
+		 * `through_id=<the owner's published history_cursor>`, so its newest entry
+		 * IS that cursor by construction — the two agree even when the cursor is
+		 * stale. That makes the page unverifiable from the frame: a page stopping
+		 * short of the durable tail (rows written after the cursor was captured,
+		 * e.g. while this reader was on another conversation) is non-empty and
+		 * reports `cursor_missing: false`, indistinguishable from a complete one.
+		 * Comparing `history.entries` against `frontend.snapshot.history_cursor`
+		 * therefore proves nothing — they are one value on two fields. The
+		 * unbounded route (`sessions.history`, no cursor) reads the tail whatever
+		 * cursor the owner published, and that is what makes it the read which
+		 * closes this: against an owner that still bounds its page by a stale
+		 * cursor it delivers the rows in between, and against one that publishes a
+		 * genuine page (the backend half of this defect, landing separately) it is
+		 * a redundant second read of rows already in hand — absorbed by the
+		 * reducer's id-keyed merge for the cost of one bounded page. Kept
+		 * unconditional because a client cannot tell the two owners apart from the
+		 * frame it was handed.
+		 *
+		 * THE BOUND, which is different in the two cases:
+		 *
+		 *  - something WAS painted (the common case): the first read is the tail,
+		 *    and it is the only one unless it does not reach back to a painted row —
+		 *    the walk then continues until it does, stopped by `has_more` or by
+		 *    `RECONCILE_WALK_MAX_ROWS` (500 rows, read in
+		 *    `RECONCILE_TAIL_ENTRIES`-sized pages). A snapshot whose page already
+		 *    reaches the tail costs exactly one page, which is what this path paid
+		 *    before the guard existed.
+		 *  - NOTHING was painted (a cold or cursor-less snapshot, an attention
+		 *    frame naming an unpainted anchor with no snapshot in the batch, a
+		 *    label-gap retry): no fetched page can ever satisfy the connection test,
+		 *    so a walk would run to its bound for nothing — five sequential reads,
+		 *    and five full file passes on the owner side, where one page is the
+		 *    whole coverage. One page, then out.
+		 *
+		 * `painted` is built from the FRAMES, not from the painted view: an
+		 * updater runs lazily, so at this point the view may not hold what this
+		 * very flush painted, and a connection test against a stale view would
+		 * walk back on every open.
+		 */
+		const reconcileTail = async (
+			generation: number,
+			painted: ReadonlySet<string>,
+			missingCalls: number,
+		) => {
+			const fetchedIds = new Set<string>();
+			let beforeId: string | undefined;
+			let rows = 0;
+			let failures = 0;
+			while (rows < RECONCILE_WALK_MAX_ROWS) {
+				let page: DesktopHistoryPage;
+				try {
+					page = await desktopResult<DesktopHistoryPage>({
+						op: "sessions.history",
+						sessionId,
+						...(beforeId ? { beforeId } : {}),
+						limit: reconcileLimit(missingCalls),
+					});
+				} catch {
+					/*
+					 * ONE retry, then stand down. The shape is the stream's own error
+					 * path (`connect`'s single automatic reconnect), and the reason is
+					 * stronger here: this read is the only thing on the client side
+					 * that can close the reported gap, so a transient refusal at the
+					 * exact re-subscribe moment must not leave the symptom on screen
+					 * waiting for an unrelated trigger to arrive. A second failure
+					 * stands down silently, as before this change: the painted rows
+					 * are correct and the stream keeps delivering, and a backend that
+					 * is genuinely down leaves nothing to merge — blanking the
+					 * conversation would be worse than the rows that are missing.
+					 */
+					if (failures++ > 0) return;
+					continue;
+				}
+				if (generationRef.current !== generation) return;
+				const oldest = page.entries[0];
+				rows += page.entries.length;
+				// Merged even when it is the page we already have: durable rows win
+				// by id, so a repeat is free and a partial one is completed.
+				setView((state) => ({
+					...state,
+					transcript: applyHistoryPage(state.transcript, page),
+				}));
+				// Nothing on screen means nothing to connect TO: every further page
+				// would be merged by the same test that cannot fire. One page is the
+				// coverage, and the walk past it is dead work on both sides of the
+				// wire — see the two bound cases above.
+				if (painted.size === 0) return;
+				const connected = page.entries.some(
+					(entry) => painted.has(entry.id) || fetchedIds.has(entry.id),
+				);
+				for (const entry of page.entries) fetchedIds.add(entry.id);
+				// No overlap, or nothing further back: the walk is over either way.
+				//
+				// No `beforeId`-progress clause belongs here. The reader's `before_id`
+				// is EXCLUSIVE (it breaks before appending the boundary row), so a page
+				// can never hand back its own boundary row as its oldest; and a
+				// transcript replaced under the walk is caught by the `fetchedIds`
+				// overlap test above, which sees the tail it hands back.
+				if (connected || !oldest || !page.has_more) return;
+				beforeId = oldest.id;
+			}
+		};
+
 		const flush = () => {
 			if (raf) cancelAnimationFrame(raf);
 			if (fallback) clearTimeout(fallback);
@@ -501,10 +623,16 @@ export function useCanonicalSessionStream(
 			// Decided here, from the frames, not inside the React updater: an
 			// updater runs lazily (and twice under StrictMode), so a side effect
 			// keyed off it would either never fire or fire on the discarded pass.
-			// A cold session (no live owner) snapshots with no history cursor and
-			// so an empty page; a replaced cursor reports cursor_missing. Both are
-			// the contract's "reconcile through /history" case: the authoritative
-			// tail is fetched once per snapshot and merged durable-wins.
+			//
+			// EVERY snapshot justifies the read. A cold session (no live owner)
+			// snapshots with no history cursor and so an empty page, and a replaced
+			// cursor reports cursor_missing — both are the contract's "reconcile
+			// through /history" case. What changed is the third one: a NON-empty
+			// page without cursor_missing used to be accepted as complete, and it
+			// cannot be known to be — see `reconcileTail`. On the two paths that
+			// painted nothing the read is one page and no more; on the path that did
+			// it is one page unless the tail does not reach it, which is the same
+			// page this path already paid for the other two.
 			// An attention frame only justifies a refetch when it names an anchor
 			// the transcript has not painted: the backend publishes one after
 			// every successful ACK, so reconciling on all of them spent a
@@ -514,14 +642,7 @@ export function useCanonicalSessionStream(
 			const needsReconcile = frames.some((frame) =>
 				frame.type === "attention"
 					? !paintedAnchor(frame.payload.anchor_id)
-					: frame.type === "snapshot" &&
-						((frame.payload.frontend.snapshot.attention?.completion_token !=
-							null &&
-							!paintedAnchor(
-								frame.payload.frontend.snapshot.attention?.anchor_id,
-							)) ||
-							frame.payload.history.cursor_missing ||
-							frame.payload.history.entries.length === 0),
+					: frame.type === "snapshot",
 			);
 			// The second reason to read back: a snapshot's live seed names calls that
 			// settled before this viewer arrived, and the seed carries no arguments for
@@ -539,14 +660,24 @@ export function useCanonicalSessionStream(
 				viewRef.current.transcript.argsByCall.keys(),
 			);
 			const seedEvents: Record<string, unknown>[] = [];
+			// Every id the frames in this batch put on screen. A durable entry id
+			// and a live message id are the same id space (that is why the reducer
+			// coalesces on it), which is what makes this the connection proof
+			// `reconcileTail` tests a fetched page against.
+			const paintedEntryIds = new Set<string>();
 			for (const frame of frames) {
 				if (frame.type !== "snapshot") continue;
 				for (const entry of frame.payload.history.entries) {
+					paintedEntryIds.add(entry.id);
 					const calls = entry.payload?.tool_calls;
 					if (!Array.isArray(calls)) continue;
 					for (const call of calls as Record<string, unknown>[]) {
 						if (call && typeof call.id === "string") labelled.add(call.id);
 					}
+				}
+				for (const data of frame.payload.frontend.snapshot.live_events ?? []) {
+					const message = (data as { message?: { id?: unknown } }).message;
+					if (typeof message?.id === "string") paintedEntryIds.add(message.id);
 				}
 				seedEvents.push(...(frame.payload.frontend.snapshot.live_events ?? []));
 			}
@@ -777,22 +908,7 @@ export function useCanonicalSessionStream(
 				return next;
 			});
 			if (needsReconcile || missingLabels.length > 0) {
-				void desktopResult<DesktopHistoryPage>({
-					op: "sessions.history",
-					sessionId,
-					limit: reconcileLimit(missingLabels.length),
-				})
-					.then((page) => {
-						if (generationRef.current !== generation) return;
-						setView((state) => ({
-							...state,
-							transcript: applyHistoryPage(state.transcript, page),
-						}));
-					})
-					.catch(() => {
-						// Painted rows stay; the stream keeps delivering. A failed
-						// reconcile is not a reason to blank the conversation.
-					});
+				void reconcileTail(generation, paintedEntryIds, missingLabels.length);
 			}
 		};
 
