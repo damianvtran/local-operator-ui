@@ -6,7 +6,7 @@ to A — and every row written after the steering message (the assistant rows an
 the tool calls between the steer and the return) was missing until new frames
 arrived.
 
-The pair here is the transcript itself, in the two states the fix is about:
+The frames here are the transcript itself, in the states the fix is about:
 
 - **`gap/`** — the transcript the client ended up with. The re-subscribe
   snapshot's history page is read `through_id=<the owner's published
@@ -15,7 +15,14 @@ The pair here is the transcript itself, in the two states the fix is about:
   rows after it are in neither the page nor the live seed, so the conversation
   jumps from the steer straight to the live tail.
 - **`restored/`** — the same transcript once the reconcile reads the unbounded
-  durable tail back and merges it by id.
+  durable tail back and merges it by id. Built the way the walk merges it: one
+  `applyHistoryPage` per page, newest page first, ending with the page behind
+  the tail — not as one page assembled by hand.
+- **`restored-running/`** (the two `localOperator` palettes) — the state the
+  report is about: the reader returns WHILE the turn is still running. The
+  restored stretch carries one call that succeeded and one that failed, and
+  below them the turn's own liveness line, the running call it names, and the
+  transport notice a reconnecting reader is looking at.
 
 ## What produced these frames
 
@@ -25,20 +32,44 @@ Storybook, through the repo's own `scripts/capture-evidence.mjs`:
 npx storybook dev -p 6017 --ci --quiet
 node scripts/capture-evidence.mjs http://localhost:6017 \
   --only=chat-reconnect-gap --allow-backend
+node scripts/capture-evidence.mjs http://localhost:6017 \
+  --only=restored-running --themes=localOperatorDark,localOperatorLight \
+  --allow-backend
 ```
 
 The stories (`Chat/Reconnect gap`, `reconnect-gap.stories.tsx`) render the
 production `CanonicalTranscript` from transcripts built by the PRODUCTION
-reducer (`applyHistoryPage` then `applyEvent`, the flush loop's own order) out of
-wire-shaped frames — the way `chat-tool-rows--joined-mid-turn` builds its rows.
-Nothing is hand-drawn, and the two frames differ only by the merge the fix
-adds. What the pair is here to catch is the SEAM that a merge can introduce: a
-duplicated row, a row out of order, or a row painted unlabelled. The id-set
-assertions in `scripts/reconnect-page-gap.test.mjs` cannot see any of those.
+reducer out of wire-shaped frames — the way `chat-tool-rows--joined-mid-turn`
+builds its rows. Nothing is hand-drawn, and the frames differ only by the merge
+the fix adds.
+
+What the pair is here to catch is the SEAM a merge can introduce, and the three
+shapes in it that a still can show:
+
+- a duplicated row (the walk's last read is a page it already holds, and the
+  merge is by id — a second copy of a row would be visible here),
+- a row out of order (the restored rows join the live tail at the ledger's own
+  pitch),
+- a row that has to be LABELLED by a page other than the one it came in on: the
+  tail page carries the tool results, while the assistant row holding their
+  arguments is one page further back, so a broken cross-page backfill paints the
+  object column with the output's first line instead of the call's arguments.
+  `restored/` exercises exactly that boundary, which is why the tail is split
+  across two pages here rather than passed as one.
+
+The id-set assertions in `scripts/reconnect-page-gap.test.mjs` cannot see any of
+those; they assert which rows are present, not what they look like.
+
+**The running frame is anchored to the capture's clock, not to the fixed instant
+the other two use.** A running row's elapsed counts up to the machine's clock,
+so a frame pinned to a past instant would photograph a call that started then as
+`100d+` — a fixture artefact rather than a state the app can produce. The same
+reason the tool-row stories pin `Date.now()` offsets. `gap/` and `restored/` stay
+on the fixed instant so they re-capture against the same conversation.
 
 `--allow-backend` is stated rather than implicit: the operator's own backend is
-listening on `127.0.0.1:1111`, and this story never talks to it — it renders
-fixture records and calls nothing. The flag exists for exactly this case and is
+listening on `127.0.0.1:1111`, and these stories never talk to it — they render
+fixture records and call nothing. The flag exists for exactly this case and is
 opt-in per narrowed run.
 
 ## Local scaffolding these frames needed, and why it is not committed
@@ -60,11 +91,22 @@ Because the docgen patch touches a file outside `src/` and `scripts/`, the
 manifest's `dirtyWorkingTree` records a dirty tree; the stamped `srcTree` and
 `scriptsTree` are the committed ones and are unaffected by it.
 
-## Known limit
+## Known limits
 
 The reconcile reads back at most `RECONCILE_WALK_MAX_ROWS` (500) durable rows,
 walking backwards a page at a time until a fetched page overlaps a row the
-snapshot painted. An absence wider than that cannot be closed through this
+snapshot painted. That walk is the shape for the case where SOMETHING was
+painted: with nothing on screen no fetched page can ever overlap, so the read
+stops after the single page its own snapshot justified — the cold or cursor-less
+snapshot, an attention frame naming an unpainted anchor, and a label-gap retry
+all take that branch, and the rule lives in `reconcileTail`'s docstring with a
+test per path. An absence wider than the bound cannot be closed through this
 route, which has no forward cursor — the complete answer for a very wide
 absence is a snapshot whose page is not bounded by a stale cursor, which is the
 backend half of this defect and is being fixed separately.
+
+The read is one shot at snapshot time, so a row that becomes durable *after* the
+read and whose live event was missed while away is recovered by a later trigger
+(another snapshot, an unpainted-anchor `attention` frame, a label-gap retry)
+rather than by this read re-running. Same family as the row bound, and closed by
+the same backend half.
