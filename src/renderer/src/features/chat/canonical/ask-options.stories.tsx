@@ -122,7 +122,18 @@ const Frame = ({
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"
-				error={null}
+				// Required by main's failure-notice work, and a no-op here for the
+				// same reason `onAnswer` is: this story renders no failure state,
+				// so nothing can reach the action. The other canonical stories
+				// pass an empty function too.
+				onReconnect={() => {}}
+				// `failure`, not the pre-rebase `error`: main's chat-failure work
+				// replaced the transcript's error slot with the published failure
+				// notice, and the rebase left this story naming a prop that no
+				// longer exists. Null is the honest value either way - these
+				// frames are about the pending gate, not about a failure - and
+				// every other story in this directory passes it the same way.
+				failure={null}
 				answering={answering}
 				// A no-op on purpose: these frames are about what the card LOOKS
 				// like, and a story has no session to answer. The click path is
