@@ -1738,18 +1738,19 @@ test("every MCP state the wire reports is folded explicitly, and carried verbati
 		rows.filter((row) => row.problem).map((row) => row.name),
 		["legacy", "notion", "odd"],
 	);
-	assert.match(byName.get("notion").hint, /Grant this server account access/);
-	assert.match(byName.get("legacy").hint, /Reconnect/);
+	assert.deepEqual(byName.get("notion").remedy, { kind: "grant" });
+	assert.deepEqual(byName.get("legacy").remedy, { kind: "reconnect" });
 
 	// `connecting` is not a failure — the same way a queued child is not one — and
 	// lighting for it would make a red lamp the normal boot.
 	assert.equal(byName.get("slack").problem, false);
 
-	// The unrecognised word takes attention and gets NO hint: the renderer must not
-	// claim a `danger` failure it cannot name, and a fix for a word it cannot name
-	// would be a guess. (The quiet INK is the component's, via `MCP_INK`'s fallback.)
+	// The unrecognised word takes attention and gets NO remedy: the renderer must
+	// not claim a `danger` failure it cannot name, and a fix for a word it cannot
+	// name would be a guess. (The quiet INK is the component's, via `MCP_INK`'s
+	// fallback.)
 	assert.equal(byName.get("odd").status, "reticulating");
-	assert.equal(byName.get("odd").hint, null);
+	assert.equal(byName.get("odd").remedy, null);
 
 	// The tool count is a connected server's reach, and nothing else's: a
 	// disconnected server's last-known count would claim tools it is not serving.
@@ -2294,10 +2295,10 @@ test("an MCP row's diagnosis is the canonical projection's, and only where it ap
 		"[Errno 2] No such file or directory: '/nonexistent/x'",
 		"the runtime's words, verbatim",
 	);
-	assert.equal(
-		byName.get("playwright").hint,
-		"Reconnect this server in Settings",
-		"the remedy is still carried, for a surface that wants it",
+	assert.deepEqual(
+		byName.get("playwright").remedy,
+		{ kind: "reconnect" },
+		"the remedy is still carried, and now as the kind the row acts on",
 	);
 	assert.equal(
 		byName.get("files").errorText,
@@ -2311,6 +2312,142 @@ test("an MCP row's diagnosis is the canonical projection's, and only where it ap
 			.errorText,
 		null,
 	);
+});
+
+/**
+ * The remedy decision, from the row's own payload (`§ 3.3`), and the grant state
+ * folded from the read's own `operations` (`§ 3.2`).
+ */
+test("the remedy is the one this surface can carry out, and words where it cannot", () => {
+	const remedy = (row) => deriveMcpServers([{ name: "s", ...row }])[0].remedy;
+
+	// `disconnected` is transport-level and `connect` is the shipped control.
+	assert.deepEqual(remedy({ status: "disconnected" }), { kind: "reconnect" });
+
+	// An http server with no explicit refusal is the NORMAL case — the backend
+	// publishes `False` only for a definite one (`mcp/desktop.py:104-116`) — so
+	// "unknown" is offered the grant rather than read as a refusal.
+	assert.deepEqual(
+		remedy({ status: "auth-required", transport: "http" }),
+		{ kind: "grant" },
+	);
+	assert.deepEqual(
+		remedy({
+			status: "auth-required",
+			transport: "http",
+			transport_oauth_supported: true,
+		}),
+		{ kind: "grant" },
+	);
+
+	// A stdio child, or a config that declares another `auth.type`, can never
+	// complete a browser flow: the row keeps words and points at the surface that
+	// owns the credentials.
+	for (const row of [
+		{ status: "auth-required", transport: "stdio" },
+		{
+			status: "auth-required",
+			transport: "http",
+			transport_oauth_supported: false,
+		},
+	]) {
+		assert.deepEqual(remedy(row), {
+			kind: "words",
+			label: "Manage this server's credentials in Settings",
+		});
+	}
+
+	// Nothing to offer on a healthy row, an unknown word, or a state this build
+	// cannot act on.
+	assert.equal(remedy({ status: "connected" }), null);
+	assert.equal(remedy({ status: "connecting" }), null);
+	assert.equal(remedy({ status: "reticulating" }), null);
+	assert.deepEqual(
+		remedy({ status: "auth-required", transport: "pipe" }),
+		{ kind: "grant" },
+		"an unknown transport is not a refusal",
+	);
+});
+
+test("a row's grant state is the newest operation the read carries", () => {
+	const servers = [{ name: "notion", status: "auth-required" }];
+	const rowFor = (operations, rows = servers) =>
+		deriveMcpServers(rows, {}, operations)[0];
+
+	// The running sign-in, the one state that must never be rendered as complete
+	// before the backend says so.
+	assert.deepEqual(
+		rowFor([
+			{
+				id: "op-1",
+				name: "notion",
+				action: "reauth",
+				status: "running",
+				created_at: 100,
+				credential_removed: true,
+			},
+		]).grant,
+		{
+			id: "op-1",
+			action: "reauth",
+			status: "running",
+			credentialRemoved: true,
+		},
+	);
+
+	// Newest by `created_at`, not by position: the backend keeps 64 operations and
+	// a name can hold a `failed` op beside a later `complete` one.
+	assert.equal(
+		rowFor([
+			{
+				id: "new",
+				name: "notion",
+				status: "failed",
+				created_at: 200,
+				credential_removed: false,
+			},
+			{
+				id: "old",
+				name: "notion",
+				status: "complete",
+				created_at: 100,
+				credential_removed: false,
+			},
+		]).grant?.id,
+		"new",
+	);
+
+	// A TERMINAL operation is only rendered while the row is still a problem: a
+	// `failed` op must not sit under a live `connected` row until the backend
+	// evicts it.
+	const healed = [{ name: "notion", status: "connected", tool_count: 3 }];
+	const terminal = [
+		{
+			id: "op-2",
+			name: "notion",
+			status: "cancelled",
+			created_at: 300,
+			credential_removed: true,
+		},
+	];
+	assert.equal(rowFor(terminal, healed).grant, null);
+	// ...but a RUNNING one is rendered whatever the row says, because it is a fact
+	// about a grant somebody started, not about this row's state.
+	assert.equal(
+		rowFor([{ ...terminal[0], status: "running" }], healed).grant?.status,
+		"running",
+	);
+
+	// An operation for another server is another row's, and an operation whose
+	// status this build has not been taught is dropped rather than folded to the
+	// nearest word.
+	assert.equal(rowFor([{ ...terminal[0], name: "elsewhere" }]).grant, null);
+	assert.equal(
+		rowFor([{ ...terminal[0], status: "reticulating" }]).grant,
+		null,
+	);
+	// No operations at all is no grant state, which is the story set's shape.
+	assert.equal(deriveMcpServers(servers)[0].grant, null);
 });
 
 /* ------------------------------------------------------------------ */

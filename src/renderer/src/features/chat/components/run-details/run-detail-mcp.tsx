@@ -72,6 +72,26 @@ const MCP_INK: Record<string, string> = {
 /** The mark for every word this build has not been taught. */
 const MCP_UNKNOWN_ICON = CircleHelp;
 
+/**
+ * The sentence a remedy renders as, for the two kinds the row cannot yet act on
+ * itself.
+ *
+ * The model now carries the remedy as a KIND (grant / reconnect / words) rather
+ * than as a pre-composed hint, because the panel's next change makes two of the
+ * three actionable; until then each kind renders the sentence it rendered before,
+ * in the app's own control vocabulary. `words` carries its own label — it is the
+ * state whose text is the whole answer, so it is not a table entry.
+ */
+const MCP_REMEDY_WORD = {
+	grant: "Grant this server account access in Settings",
+	reconnect: "Reconnect this server in Settings",
+} as const;
+
+const remedyWords = (remedy: McpServerRow["remedy"]): string | null => {
+	if (!remedy) return null;
+	return remedy.kind === "words" ? remedy.label : MCP_REMEDY_WORD[remedy.kind];
+};
+
 const iconFor = (status: string) =>
 	MCP_ICON[status as keyof typeof MCP_ICON] ?? MCP_UNKNOWN_ICON;
 
@@ -200,12 +220,12 @@ const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 				 * would be a guess, and a guess is worse than the quiet unknown row that does
 				 * still take attention.
 				 */}
-				{row.hint ? (
+				{remedyWords(row.remedy) ? (
 					<span
 						className={cn("truncate text-ink-muted text-meta leading-4")}
-						title={row.hint}
+						title={remedyWords(row.remedy) ?? undefined}
 					>
-						{`— ${row.hint}`}
+						{`— ${remedyWords(row.remedy)}`}
 					</span>
 				) : null}
 				{row.errorText ? (
