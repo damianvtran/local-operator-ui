@@ -134,6 +134,11 @@ const Frame = ({
 				// frames are about the pending gate, not about a failure - and
 				// every other story in this directory passes it the same way.
 				failure={null}
+				// Required by this branch's hold work: the pane keys its placeholder on
+				// whether the READER has been told what the conversation holds, so every
+				// call site states it. This story's transcript has rows, and the other
+				// canonical stories pass `true` for the same frames.
+				hydrated={true}
 				answering={answering}
 				// A no-op on purpose: these frames are about what the card LOOKS
 				// like, and a story has no session to answer. The click path is

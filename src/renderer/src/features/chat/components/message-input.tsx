@@ -1,10 +1,9 @@
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
-import { Button, Skeleton, Tooltip } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { useMediaQuery } from "@shared/hooks/use-media-query";
 import {
 	SEND_HELD,
 	type SendOutcome,
@@ -83,6 +82,19 @@ export type ComposerSendError = {
 	 * be able to see that something is being held.
 	 */
 	message?: string;
+	/**
+	 * Suppress the generic "Your message is still in the composer. Send it
+	 * again." hint for this failure.
+	 *
+	 * The hint is the alert's "what to do" half (branding section 8) and it is
+	 * only ever true when the next send would be ACCEPTED. The read window's
+	 * refusal is the case where it is not: the notice retires on the same
+	 * condition that closes the window, so the retry is refused by the same rule
+	 * for as long as the notice is on screen, and the sentence carries its own
+	 * statement of the wait rather than an instruction to retry now (UX round 3,
+	 * U9).
+	 */
+	withholdRetryHint?: boolean;
 	actions?: { label: string; onClick: () => void }[];
 	/**
 	 * The exact payload the store will hold the next send to, when it is holding
@@ -382,18 +394,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * agent record is the fallback so the old backend path keeps its chip.
 		 */
 		const cwdToShow = cwd ?? agentData?.current_working_directory;
-		/*
-		 * Reduced motion turns the loading skeleton into a static bar: the pulse is
-		 * capped by `styles/index.css`, and the bar's resting fill against the
-		 * ground measures ~1.05:1 (design round 1, D7) - in an otherwise empty pane
-		 * that is very nearly nothing. The words below already exist in the
-		 * accessible tree; this reads the same media query the stylesheet honours so
-		 * they can carry the message when the animation cannot. Read in JS rather
-		 * than through `motion-reduce:` because the decision is which CLASS the text
-		 * gets, and a `sr-only`/`not-sr-only` pair in one `cn` call is exactly the
-		 * kind of collision this repo routes through `cn` to avoid.
-		 */
-		const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -922,6 +922,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * into the very guard that is blocking them. It is also false with an
 				 * empty box, where there is nothing left to send.
 				 *
+				 * `withholdRetryHint` is the same rule stated by the failure that owns
+				 * it: the read window's refusal is refused AGAIN for as long as its
+				 * own notice is on screen, so its sender withholds this hint and the
+				 * sentence carries the wait instead (UX round 3, U9).
+				 *
 				 * `newMessage.trim()`, deliberately NOT `!boxEmpty`: this sentence
 				 * promises Enter will send, and the submit path guards on the raw
 				 * textarea (`use-message-input.ts`), which refuses a chip-only
@@ -933,6 +938,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				retryHint:
 					Boolean(sendError?.message) &&
+					!sendError?.withholdRetryHint &&
 					Boolean(newMessage.trim()) &&
 					(held === undefined || heldInBox),
 				// Only worth saying when the held message is not on screen; when it
@@ -1795,7 +1801,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
 					"flex w-full flex-col items-center justify-center",
-					messages.length === 0 ? "grow" : "shrink-0",
+					/*
+					 * The empty-chat band CLAIMS the column; every other state is natural
+					 * height at the bottom. `isHydrating` is the third case and the reason
+					 * this line is not simply `messages.length === 0`.
+					 *
+					 * A switch mounts this panel before the snapshot arrives, so the first
+					 * frames have no messages - and taking the empty-chat band put the
+					 * composer in the middle of the window (measured: composer top edge
+					 * 468px -> 736px, 30% of a 900px window, when the transcript landed).
+					 * "There is nothing here" is a CLAIM, and the hydration window is
+					 * exactly the state where the app does not know it yet; the composer is
+					 * therefore bottom-anchored at its settled geometry while hydrating, and
+					 * the placeholder that stands in for the transcript is rendered where the
+					 * transcript will be (`canonical-transcript.tsx`) rather than in this
+					 * band. A switch into a session that really is empty is the only case
+					 * that then moves, and that is the honest move.
+					 */
+					messages.length === 0 && !isHydrating ? "grow" : "shrink-0",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
@@ -1806,34 +1829,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 				data-lo-composer-band={true}
 			>
-				{messages.length === 0 && isHydrating && !isSmallView ? (
-					// Hydrating: we do not yet know whether this conversation is
-					// empty, so neither the greeting nor a transcript can be
-					// asserted. Suppressing the greeting alone left the pane BLANK
-					// (design D22) -- correct but mute, and on a slow or remote
-					// backend that blankness is the whole first impression. A
-					// skeleton in the greeting's own place says "loading" without
-					// claiming which of the two answers is coming.
-					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
-						{/* `<output>` rather than a div with role="status": it carries
-						 * the same implicit live-region semantics as a native element,
-						 * which is what the a11y lint asks for. */}
-						<output
-							className="flex w-full flex-col items-center gap-3"
-							aria-label="Loading conversation"
-						>
-							<Skeleton className="h-7 w-64" />
-							<span
-								className={cn(
-									reduceMotion ? "text-body-sm text-ink-dim" : "sr-only",
-								)}
-							>
-								Loading conversation…
-							</span>
-						</output>
-						{inputContent}
-					</div>
-				) : messages.length === 0 && !isSmallView ? (
+				{messages.length === 0 && !isHydrating && !isSmallView ? (
 					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?

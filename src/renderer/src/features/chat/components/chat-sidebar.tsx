@@ -146,7 +146,6 @@ export function ChatSidebar({
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
-	const pendingId = useCanonicalSessionsStore((s) => s.pendingSessionId);
 	const [query, setQuery] = useState("");
 	const [all, setAll] = useState(false);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -436,12 +435,6 @@ export function ChatSidebar({
 						</span>
 						<span className="sr-only">, matched in conversation</span>
 					</>
-				)}
-				{pendingId === row.session_id && (
-					<LoaderCircle
-						className="size-4 shrink-0 motion-safe:animate-spin"
-						aria-label="Opening chat"
-					/>
 				)}
 			</button>
 		);
