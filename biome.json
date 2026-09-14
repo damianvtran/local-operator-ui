@@ -11,7 +11,8 @@
 			"dist/**",
 			"out/**",
 			"node_modules/**",
-			"src/renderer/src/styles/themes.generated.css"
+			"src/renderer/src/styles/themes.generated.css",
+			"src/main/browser/vendor/**"
 		]
 	},
 	"formatter": {
