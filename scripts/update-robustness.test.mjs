@@ -4122,38 +4122,81 @@ async function loRunUpdate({
 		);
 	}
 
-	const result = await loAsArch(arch, async () => {
-		const { updater, lines } = loMakeUpdater({
-			cacheRoot,
-			version: "0.19.6",
-			feedUrl: `http://127.0.0.1:${port}/`,
+	try {
+		const result = await loAsArch(arch, async () => {
+			const { updater, lines } = loMakeUpdater({
+				cacheRoot,
+				version: "0.19.6",
+				feedUrl: `http://127.0.0.1:${port}/`,
+			});
+			try {
+				await updater.checkForUpdates();
+				const files = await updater.downloadUpdate();
+				return { updater, lines, files };
+			} finally {
+				// Not cleanup for its own sake: `updateDownloaded` starts the proxy
+				// server it would hand a zip to Squirrel.Mac with, and that listener
+				// would otherwise hold this process open after the last assertion.
+				//
+				// IN A `finally`, because the failure path leaked it: a throw from
+				// `checkForUpdates`/`downloadUpdate` used to skip this line, and the
+				// proxy then held the file's process open for good.
+				updater.closeServerIfExists();
+			}
 		});
-		await updater.checkForUpdates();
-		const files = await updater.downloadUpdate();
-		// Not cleanup for its own sake: `updateDownloaded` starts the proxy server
-		// it would hand a zip to Squirrel.Mac with, and that listener would
-		// otherwise hold this process open after the last assertion.
-		updater.closeServerIfExists();
-		return { updater, lines, files };
-	});
 
-	return {
-		scenario,
-		state,
-		updateCache,
-		...result,
-		close: () => state.close(),
-		downloadedPath: (name) => join(updateCache, "pending", name),
-	};
+		return {
+			scenario,
+			state,
+			updateCache,
+			...result,
+			close: () => state.close(),
+			downloadedPath: (name) => join(updateCache, "pending", name),
+		};
+	} catch (error) {
+		/*
+		 * THE FAILURE PATH MUST CLOSE THE FEED TOO, or one failing test hangs the
+		 * whole suite instead of reporting.
+		 *
+		 * `close()` is handed to the CALLER, so a throw from inside this function
+		 * means the caller never receives the object and its `finally` never runs -
+		 * leaving the fixture feed listening on 127.0.0.1 for the life of this
+		 * process. `node --test` waits for a file's process to exit, so the whole
+		 * desktop suite then never returns at all: measured in CI, `Desktop Tests`
+		 * silent for 43 minutes and then killed by the next push, and reproduced in
+		 * a Linux container where this file alone never exits and leaves five
+		 * listeners behind.
+		 *
+		 * The defect is not that these tests can fail - they do, on a host whose
+		 * channel file is not the one MacUpdater asks for - it is that failing
+		 * HANGS the run, which is the one outcome a test must never have.
+		 */
+		state.close();
+		throw error;
+	}
 }
 
-test("the updater resolves the channel file, and both architectures are listed", async () => {
+test("the updater resolves the channel file, and both architectures are listed", async (t) => {
+	if (process.platform !== "darwin") {
+		// The subject is MacUpdater: the feed below is a mac release (per-arch
+		// zips and `latest-mac.yml`), and on any other platform the updater asks
+		// for its own channel file, gets a 404 and fails the assertion - measured
+		// on the Ubuntu runner and in a node:22 container, where these six bodies
+		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
+		// siblings skipped. Failing here is also what USED to hang the suite,
+		// because the failure path left the fixture feed listening (see
+		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
+		// this file honest on the only platform CI runs it.
+		t.skip("macOS only");
+		return;
+	}
+
 	const scenario = await loUpdateScenario();
 	const state = loServe(scenario.next.web);
-	const port = await state.listen();
-	const cacheRoot = join(scenario.dir, "cache");
-	loWriteUpdateConfig(cacheRoot, port);
 	try {
+		const port = await state.listen();
+		const cacheRoot = join(scenario.dir, "cache");
+		loWriteUpdateConfig(cacheRoot, port);
 		const { updater } = loMakeUpdater({
 			cacheRoot,
 			version: "0.19.6",
@@ -4186,7 +4229,21 @@ for (const [arch, own, other] of [
 	],
 	["x64", "local-operator-ui-0.19.7-x64.zip", "local-operator-ui-0.19.7-arm64.zip"],
 ]) {
-	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async () => {
+	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async (t) => {
+	if (process.platform !== "darwin") {
+		// The subject is MacUpdater: the feed below is a mac release (per-arch
+		// zips and `latest-mac.yml`), and on any other platform the updater asks
+		// for its own channel file, gets a 404 and fails the assertion - measured
+		// on the Ubuntu runner and in a node:22 container, where these six bodies
+		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
+		// siblings skipped. Failing here is also what USED to hang the suite,
+		// because the failure path left the fixture feed listening (see
+		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
+		// this file honest on the only platform CI runs it.
+		t.skip("macOS only");
+		return;
+	}
+
 		const run = await loRunUpdate({ arch });
 		try {
 			const entry = run.scenario.next.entries.find((it) => it.url === own);
@@ -4235,7 +4292,21 @@ for (const [arch, own, other] of [
 	});
 }
 
-test("a build that changed across most of the file transfers most of it", async () => {
+test("a build that changed across most of the file transfers most of it", async (t) => {
+	if (process.platform !== "darwin") {
+		// The subject is MacUpdater: the feed below is a mac release (per-arch
+		// zips and `latest-mac.yml`), and on any other platform the updater asks
+		// for its own channel file, gets a 404 and fails the assertion - measured
+		// on the Ubuntu runner and in a node:22 container, where these six bodies
+		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
+		// siblings skipped. Failing here is also what USED to hang the suite,
+		// because the failure path left the fixture feed listening (see
+		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
+		// this file honest on the only platform CI runs it.
+		t.skip("macOS only");
+		return;
+	}
+
 	// The honest counterpart to the delta above, and the reason the PR body does
 	// not claim routine updates are small: the mechanism transfers the blocks
 	// that changed, so a Chromium bump - which changes most of an archive - still
@@ -4261,7 +4332,21 @@ test("a build that changed across most of the file transfers most of it", async 
 	}
 });
 
-test("the first update off a universal build falls back to a full download", async () => {
+test("the first update off a universal build falls back to a full download", async (t) => {
+	if (process.platform !== "darwin") {
+		// The subject is MacUpdater: the feed below is a mac release (per-arch
+		// zips and `latest-mac.yml`), and on any other platform the updater asks
+		// for its own channel file, gets a 404 and fails the assertion - measured
+		// on the Ubuntu runner and in a node:22 container, where these six bodies
+		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
+		// siblings skipped. Failing here is also what USED to hang the suite,
+		// because the failure path left the fixture feed listening (see
+		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
+		// this file honest on the only platform CI runs it.
+		t.skip("macOS only");
+		return;
+	}
+
 	// The state every existing macOS user is in for exactly one release: they run
 	// a universal 0.19.6 whose zip sits in the cache as the diff base, and this
 	// release ships per-arch zips. The old block-map URL the updater derives is
@@ -4299,7 +4384,21 @@ test("the first update off a universal build falls back to a full download", asy
 	}
 });
 
-test("without the block maps a release offers, the updater transfers the whole file", async () => {
+test("without the block maps a release offers, the updater transfers the whole file", async (t) => {
+	if (process.platform !== "darwin") {
+		// The subject is MacUpdater: the feed below is a mac release (per-arch
+		// zips and `latest-mac.yml`), and on any other platform the updater asks
+		// for its own channel file, gets a 404 and fails the assertion - measured
+		// on the Ubuntu runner and in a node:22 container, where these six bodies
+		// failed with `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` while their macOS
+		// siblings skipped. Failing here is also what USED to hang the suite,
+		// because the failure path left the fixture feed listening (see
+		// `loRunUpdate`); the leak is fixed separately, and the gate is what makes
+		// this file honest on the only platform CI runs it.
+		t.skip("macOS only");
+		return;
+	}
+
 	// The world every release up to now lived in: electron-builder built a block
 	// map for each archive and the publish job dropped it, so the first block-map
 	// fetch 404s, the catch turns the update into the full download, and the only
