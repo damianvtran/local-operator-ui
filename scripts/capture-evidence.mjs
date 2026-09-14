@@ -174,6 +174,25 @@ export const STORIES = [
 	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
 	   either side of the threshold, and a bulky one. */
 	["chat-canonical-notices--notice-lengths", 1280, 340],
+	/*
+	 * The three states a notification click can paint before the owner answers:
+	 * a cached paint with its caption, the skeleton for a first-ever open, and
+	 * the named state for a conversation this machine no longer has.
+	 *
+	 * `the-two-misses` exists because the pair a reader most needs to tell apart
+	 * is "this may be behind" against "this is gone" — two sentences, two
+	 * different next actions, and a frame that shows only one of them cannot be
+	 * judged for whether they are distinguishable.
+	 *
+	 * The narrow pass is the same caption in the narrowest chat column, where the
+	 * sentence is longer than the `Reconnecting` it shares a slot with.
+	 */
+	["chat-notification-feed-states--cached-paint", 1280, 600],
+	["chat-notification-feed-states--reconciled", 1280, 600],
+	["chat-notification-feed-states--conversation-gone", 1280, 600],
+	["chat-notification-feed-states--the-two-misses", 1280, 600],
+	["chat-notification-feed-states--cached-paint-narrow", 420, 600],
+	["chat-notification-feed-states--loading-first-open", 1280, 600],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
