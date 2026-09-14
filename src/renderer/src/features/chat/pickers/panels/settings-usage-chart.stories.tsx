@@ -19,7 +19,7 @@ import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { ChartFrame } from "@features/chat/pickers/panels/primitives/chart-frame";
 import { format, parseISO, subDays } from "date-fns";
 import { Line, LineChart } from "recharts";
-import "../../../styles/index.css";
+import "../../../../styles/index.css";
 
 /** Thirty days of a plausible rollup, ending today. */
 const series = (metric: "tokens" | "credits") =>
