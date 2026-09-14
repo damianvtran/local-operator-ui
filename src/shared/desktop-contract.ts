@@ -277,6 +277,29 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			limit: z.number().int().min(1).max(500).optional(),
 		})
 		.strict(),
+	/*
+	 * One child's durable transcript, for the run panel's reader
+	 * (`docs/run-sidebar.md` § 10.1, § 10.3).
+	 *
+	 * Both ids are the same `^[a-f0-9]{12}$` the whole desktop surface already
+	 * validates on, and NEITHER is a path: the child directory is resolved by the
+	 * route from the id and from the parent's own roster, so the renderer cannot
+	 * name a directory at all. That containment is the route's, not the caller's —
+	 * a schema that accepted a path here would be the whole boundary.
+	 *
+	 * `beforeId` is an entry id (max 128 chars, the `id` shape) rather than an
+	 * offset, matching `sessions.history`: file compaction replaces the JSONL
+	 * atomically, so offsets become lies while ids stay meaningful.
+	 */
+	z
+		.object({
+			op: z.literal("subagents.transcript"),
+			sessionId,
+			childId: sessionId,
+			beforeId: id.optional(),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.message"),
@@ -987,7 +1010,29 @@ export type DesktopMediaRequest =
 	// payload stripped, and the JSON transport's envelope has nowhere to put
 	// bytes — which is what puts a screenshot fetch on this relay rather than
 	// beside the other session operations.
-	| { op: "sessions.attachment"; sessionId: string; digest: string };
+	| { op: "sessions.attachment"; sessionId: string; digest: string }
+	/*
+	 * The same fetch, scoped to a CHILD of the named session.
+	 *
+	 * The parent's op above cannot serve a child's rows: its route resolves the
+	 * digest against the session whose transcript holds the reference, and a
+	 * child session is not a user session, so the parent's path refuses it. The
+	 * backend ships the child-scoped twin
+	 * (`/v1/desktop/sessions/{id}/children/{child}/attachments/{digest}`) in the
+	 * same window as its `transcript` sibling, so the reader that already reads
+	 * a child's page from that route family resolves that page's images through
+	 * this one.
+	 *
+	 * Both ids are the same `^[a-f0-9]{12}$` the rest of the desktop surface
+	 * validates on and neither is a path: main owns the URL, as it does for
+	 * every op here.
+	 */
+	| {
+			op: "subagents.attachment";
+			sessionId: string;
+			childId: string;
+			digest: string;
+	  };
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -1219,6 +1264,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.beforeId) query.set("before_id", request.beforeId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
+				method: "GET",
+			};
+		}
+		case "subagents.transcript": {
+			const query = new URLSearchParams({
+				limit: String(request.limit ?? 100),
+			});
+			if (request.beforeId) query.set("before_id", request.beforeId);
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
 				method: "GET",
 			};
 		}

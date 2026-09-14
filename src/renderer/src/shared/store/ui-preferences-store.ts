@@ -52,9 +52,57 @@ type UiPreferencesState = {
 
 	/**
 	 * Set the canvas open state
+	 *
+	 * Opening the canvas CLOSES the run panel. See `setRunPanelOpen` for why the
+	 * pair is excluded by construction rather than by one union field.
+	 *
 	 * @param open - Whether the canvas should be open
 	 */
 	setCanvasOpen: (open: boolean) => void;
+
+	/**
+	 * Whether the run panel is open (global, not per conversation)
+	 *
+	 * Global and persisted for the same reason `isCanvasOpen` is: the pane is a
+	 * property of the window's right slot rather than of one conversation, so
+	 * switching conversations keeps it open on the new session's data. What is
+	 * NOT global is the reader's open child, which belongs to one session's
+	 * lineage and is therefore the panel component's own state.
+	 */
+	isRunPanelOpen: boolean;
+
+	/**
+	 * Set the run panel open state
+	 *
+	 * One right pane at a time: opening the run panel closes the canvas. The two
+	 * states are separate booleans whose SETTERS own the exclusion, rather than
+	 * one `rightPane: "canvas" | "run" | null` field, because `setCanvasOpen(true)`
+	 * is called from eleven sites that mean "show me this file" and a union field
+	 * would churn all of them for no behavioural gain.
+	 *
+	 * @param open - Whether the run panel should be open
+	 */
+	setRunPanelOpen: (open: boolean) => void;
+
+	/**
+	 * The width of the run panel in pixels.
+	 *
+	 * 420 rather than the canvas's 800: a roster plus a prose transcript does not
+	 * need a document pane's room, and 420 is wide enough for the roster's fixed
+	 * segments plus the row's hover ground and the wider activity line.
+	 */
+	runPanelWidth: number;
+
+	/**
+	 * Set the width of the run panel
+	 * @param width - The new width in pixels
+	 */
+	setRunPanelWidth: (width: number) => void;
+
+	/**
+	 * Restore the run panel width to its default value
+	 */
+	restoreDefaultRunPanelWidth: () => void;
 
 	/**
 	 * Whether the create agent dialog is open
@@ -166,6 +214,7 @@ type UiPreferencesState = {
  */
 const DEFAULT_CANVAS_WIDTH = 800;
 const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
+const DEFAULT_RUN_PANEL_WIDTH = 420;
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -178,6 +227,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			isCanvasOpen: false,
+			isRunPanelOpen: false,
+			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			isCreateAgentDialogOpen: false,
 
 			openCreateAgentDialog: () => {
@@ -234,8 +285,30 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			},
 
 			setCanvasOpen: (open: boolean) => {
+				set(
+					open
+						? { isCanvasOpen: true, isRunPanelOpen: false }
+						: { isCanvasOpen: false },
+				);
+			},
+
+			setRunPanelOpen: (open: boolean) => {
+				set(
+					open
+						? { isRunPanelOpen: true, isCanvasOpen: false }
+						: { isRunPanelOpen: false },
+				);
+			},
+
+			setRunPanelWidth: (width: number) => {
 				set({
-					isCanvasOpen: open,
+					runPanelWidth: width,
+				});
+			},
+
+			restoreDefaultRunPanelWidth: () => {
+				set({
+					runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 				});
 			},
 
