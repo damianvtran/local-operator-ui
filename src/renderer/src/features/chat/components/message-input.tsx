@@ -1,10 +1,9 @@
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
-import { Button, Skeleton, Tooltip } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { useMediaQuery } from "@shared/hooks/use-media-query";
 import {
 	SEND_HELD,
 	type SendOutcome,
@@ -47,6 +46,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
@@ -82,6 +82,19 @@ export type ComposerSendError = {
 	 * be able to see that something is being held.
 	 */
 	message?: string;
+	/**
+	 * Suppress the generic "Your message is still in the composer. Send it
+	 * again." hint for this failure.
+	 *
+	 * The hint is the alert's "what to do" half (branding section 8) and it is
+	 * only ever true when the next send would be ACCEPTED. The read window's
+	 * refusal is the case where it is not: the notice retires on the same
+	 * condition that closes the window, so the retry is refused by the same rule
+	 * for as long as the notice is on screen, and the sentence carries its own
+	 * statement of the wait rather than an instruction to retry now (UX round 3,
+	 * U9).
+	 */
+	withholdRetryHint?: boolean;
 	actions?: { label: string; onClick: () => void }[];
 	/**
 	 * The exact payload the store will hold the next send to, when it is holding
@@ -118,6 +131,20 @@ type MessageInputProps = {
 		 * echo in its first state. See `use-message-input.ts` (round 7, F1).
 		 */
 		onEchoPainted?: () => void,
+		/*
+		 * What the user actually TYPED, before `buildSendPayload` wraps it in any
+		 * staged `<reply-to>` prefix.
+		 *
+		 * Only the pending-gate answer path reads it, and it exists because that
+		 * path must decide whether the composer holds an option ordinal. With a
+		 * reply staged, `content` is `"<reply-to>…</reply-to>\n2"`, which is not a
+		 * bare ordinal — so the resolver passed it through and the owner received
+		 * the whole wrapped string as the answer value (code review round 1,
+		 * MAJOR). Passing the typed text beside the payload keeps that decision
+		 * independent of how the payload is composed, instead of teaching the
+		 * resolver to parse a prefix format it would then have to track forever.
+		 */
+		typed?: string,
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
 	/**
@@ -250,6 +277,69 @@ const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
+ * The pending gate's first option that a user could actually reach, or null.
+ *
+ * A held card (an answer in flight, or one already answered) renders every option
+ * `disabled`, so this matches nothing and the caller leaves the key event alone.
+ */
+const firstLiveAnswerOption = (): HTMLElement | null =>
+	document.querySelector<HTMLElement>(
+		'[aria-label="Answer options"] button:not([disabled])',
+	);
+
+/**
+ * The composer's textarea, as the reader below finds it.
+ *
+ * Queried rather than read from a ref because the one caller
+ * (`composerHoldsFocusUntouched`) runs from `chat-page.tsx`'s layout effect,
+ * outside this component's render, and `aria-label="Message"` is the same
+ * handle the answer options are found by.
+ */
+const composerBox = (): HTMLTextAreaElement | null =>
+	document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]');
+
+/**
+ * Whether the user has POINTED at the composer since it was last handed focus.
+ *
+ * A press on an option hands focus here (`chat-page.tsx`), which makes "the
+ * composer holds focus" ambiguous between "we put it there" and "the user moved
+ * on". Typing resolves that ambiguity on its own - a box with content is not
+ * ours - but a CLICK into an empty box does not, and an ask gate advances on its
+ * own schedule: the caret is taken, the characters typed next reach nothing, and
+ * the following `Space` presses the option that stole focus and posts it as the
+ * user's answer to the NEXT question (UX round 4, U13).
+ *
+ * Module scope rather than component state because the reader is called from
+ * `chat-page.tsx`, outside this component. It is set by the textarea's own
+ * `onPointerDown` - the interaction that says "I am about to type here" - and
+ * cleared wherever this component hands focus over itself, so the flag means
+ * "the user has taken it since we last gave it" rather than "the user has ever
+ * touched it". Clearing at the hand-off rather than at the press is deliberate:
+ * `focusInput` is the single place focus is given, including the press's own
+ * hand-off, so a new call site cannot forget to reset it.
+ */
+let composerPointerTouched = false;
+
+/**
+ * Whether the composer holds focus with a box the user has neither typed in nor
+ * pointed at.
+ *
+ * `chat-page.tsx` hands focus HERE at a keyboard press on an option, because the
+ * pressed option is `disabled` the moment the press lands and a disabled control
+ * cannot hold focus: the browser drops it to the document body, where it stays
+ * for the whole request (UX round 3, U12). The decision itself - focus, an empty
+ * box, and no pointer interaction since the hand-off - is `composerFocusIsOurs`
+ * in `ask-answer.ts`, where it can be asserted without a DOM; this is only the
+ * DOM read that feeds it.
+ */
+export const composerHoldsFocusUntouched = (): boolean =>
+	composerFocusIsOurs(
+		composerBox(),
+		document.activeElement,
+		composerPointerTouched,
+	);
+
+/**
  * Type for the imperative handle to expose focusInput method
  */
 export type MessageInputHandle = {
@@ -321,18 +411,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * agent record is the fallback so the old backend path keeps its chip.
 		 */
 		const cwdToShow = cwd ?? agentData?.current_working_directory;
-		/*
-		 * Reduced motion turns the loading skeleton into a static bar: the pulse is
-		 * capped by `styles/index.css`, and the bar's resting fill against the
-		 * ground measures ~1.05:1 (design round 1, D7) - in an otherwise empty pane
-		 * that is very nearly nothing. The words below already exist in the
-		 * accessible tree; this reads the same media query the stylesheet honours so
-		 * they can carry the message when the animation cannot. Read in JS rather
-		 * than through `motion-reduce:` because the decision is which CLASS the text
-		 * gets, and a `sr-only`/`not-sr-only` pair in one `cn` call is exactly the
-		 * kind of collision this repo routes through `cn` to avoid.
-		 */
-		const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -441,6 +519,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					buildSendPayload(message, replies),
 					attachments.map((a) => a.path),
 					onEchoPainted,
+					// The typed text, beside the composed payload: the gate answer path
+					// resolves an option ordinal against THIS, never against the string
+					// the reply prefix produced.
+					message,
 				);
 				/*
 				 * Both failure answers leave the composer's own payload exactly as it is,
@@ -499,19 +581,52 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[newMessage, slash, setNewMessage],
 		);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
 				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
 					event.preventDefault();
 					return;
 				}
+				// Forward Tab leaves the conversation for the sidebar; while a
+				// question is waiting and the user is DONE with the box, the option
+				// group is the thing they were just shown and is one press away in
+				// this direction. The rule for "done with the box" is
+				// `shouldTabIntoAnswerOptions` — unmodified Tab, content in the
+				// composer, caret at the end, a live option to land on. Every other
+				// Tab, and every Tab with an empty box or a caret mid-draft, keeps
+				// its native meaning (UX round 2, U7; code review round 2, F2).
+				const textarea = textareaRef.current;
+				const target = firstLiveAnswerOption();
+				if (
+					target &&
+					shouldTabIntoAnswerOptions(
+						event,
+						{
+							value: newMessage,
+							selectionStart: textarea?.selectionStart ?? null,
+							selectionEnd: textarea?.selectionEnd ?? null,
+						},
+						true,
+					)
+				) {
+					target.focus();
+					event.preventDefault();
+					return;
+				}
 				handleKeyDown(event);
 			},
-			[slash, handleSlashPick, handleKeyDown],
+			[slash, handleSlashPick, handleKeyDown, newMessage],
 		);
 
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
+				/*
+				 * Handing focus over is the moment the box becomes ours again, so a
+				 * pointer interaction from BEFORE this call stops counting as the
+				 * user's. See `composerPointerTouched`.
+				 */
+				composerPointerTouched = false;
 				textareaRef.current?.focus();
 			},
 		}));
@@ -824,6 +939,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * into the very guard that is blocking them. It is also false with an
 				 * empty box, where there is nothing left to send.
 				 *
+				 * `withholdRetryHint` is the same rule stated by the failure that owns
+				 * it: the read window's refusal is refused AGAIN for as long as its
+				 * own notice is on screen, so its sender withholds this hint and the
+				 * sentence carries the wait instead (UX round 3, U9).
+				 *
 				 * `newMessage.trim()`, deliberately NOT `!boxEmpty`: this sentence
 				 * promises Enter will send, and the submit path guards on the raw
 				 * textarea (`use-message-input.ts`), which refuses a chip-only
@@ -835,6 +955,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				retryHint:
 					Boolean(sendError?.message) &&
+					!sendError?.withholdRetryHint &&
 					Boolean(newMessage.trim()) &&
 					(held === undefined || heldInBox),
 				// Only worth saying when the held message is not on screen; when it
@@ -1277,6 +1398,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								setCaret((e.target as HTMLTextAreaElement).selectionStart)
 							}
 							onKeyDown={handleComposerKeyDown}
+							onPointerDown={() => {
+								/*
+								 * "I am about to type here." An ask gate can advance while the
+								 * user is on their way into this box, and the restore must not
+								 * move them off it: the characters they type would reach
+								 * nothing and the next `Space` would answer the next question
+								 * (UX round 4, U13).
+								 */
+								composerPointerTouched = true;
+							}}
 							onPaste={handlePaste}
 							rows={1}
 							disabled={isInputDisabled}
@@ -1691,7 +1822,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
 					"flex w-full flex-col items-center justify-center",
-					messages.length === 0 ? "grow" : "shrink-0",
+					/*
+					 * The empty-chat band CLAIMS the column; every other state is natural
+					 * height at the bottom. `isHydrating` is the third case and the reason
+					 * this line is not simply `messages.length === 0`.
+					 *
+					 * A switch mounts this panel before the snapshot arrives, so the first
+					 * frames have no messages - and taking the empty-chat band put the
+					 * composer in the middle of the window (measured: composer top edge
+					 * 468px -> 736px, 30% of a 900px window, when the transcript landed).
+					 * "There is nothing here" is a CLAIM, and the hydration window is
+					 * exactly the state where the app does not know it yet; the composer is
+					 * therefore bottom-anchored at its settled geometry while hydrating, and
+					 * the placeholder that stands in for the transcript is rendered where the
+					 * transcript will be (`canonical-transcript.tsx`) rather than in this
+					 * band. A switch into a session that really is empty is the only case
+					 * that then moves, and that is the honest move.
+					 */
+					messages.length === 0 && !isHydrating ? "grow" : "shrink-0",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
@@ -1702,34 +1850,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 				data-lo-composer-band={true}
 			>
-				{messages.length === 0 && isHydrating && !isSmallView ? (
-					// Hydrating: we do not yet know whether this conversation is
-					// empty, so neither the greeting nor a transcript can be
-					// asserted. Suppressing the greeting alone left the pane BLANK
-					// (design D22) -- correct but mute, and on a slow or remote
-					// backend that blankness is the whole first impression. A
-					// skeleton in the greeting's own place says "loading" without
-					// claiming which of the two answers is coming.
-					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
-						{/* `<output>` rather than a div with role="status": it carries
-						 * the same implicit live-region semantics as a native element,
-						 * which is what the a11y lint asks for. */}
-						<output
-							className="flex w-full flex-col items-center gap-3"
-							aria-label="Loading conversation"
-						>
-							<Skeleton className="h-7 w-64" />
-							<span
-								className={cn(
-									reduceMotion ? "text-body-sm text-ink-dim" : "sr-only",
-								)}
-							>
-								Loading conversation…
-							</span>
-						</output>
-						{inputContent}
-					</div>
-				) : messages.length === 0 && !isSmallView ? (
+				{messages.length === 0 && !isHydrating && !isSmallView ? (
 					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
