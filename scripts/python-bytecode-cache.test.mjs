@@ -1597,8 +1597,19 @@ const SPAWN_SITES = [
 		"src/main/backend/backend-installer.ts",
 		"spawn",
 		2,
-		/\benv\b/,
+		/*
+		 * A property SHORTHAND, not the word `env`.
+		 *
+		 * This row matched `/\benv\b/`, which `env: process.env` satisfies - so it
+		 * asserted that the property was called `env` and would have stayed green for
+		 * an unguarded spawn that handed the script the ambient environment (review
+		 * R6). It now requires `env` to be passed as a bare shorthand, and the binding
+		 * below requires that identifier to be the one `withPythonBytecodeCache`
+		 * built, which is the pair the managed-python row above already uses.
+		 */
+		/(?:\{|,)\s*env\s*,/,
 		"the install script, which creates the venv with the bundled interpreter and pips into it, so its `env` is built by `withPythonBytecodeCache` (asserted by the installer case above)",
+		/const env: Record<string, string \| undefined> =\s*withPythonBytecodeCache\(/,
 	),
 	runsPython(
 		"src/main/backend/backend-service.ts",
