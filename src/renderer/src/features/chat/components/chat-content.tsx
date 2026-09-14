@@ -26,6 +26,10 @@ import type {
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
+import {
+	workingLineClaimed,
+	workingLineInputFor,
+} from "../canonical/working-line-model";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -655,7 +659,28 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										? Boolean(canonical.admitting || canonical.starting)
 										: isLoading
 								}
-								awaitingReply={canonical?.starting === true}
+								/*
+								 * Derived from the same expression the transcript's own line is, so
+								 * the two surfaces cannot disagree about whether work is being
+								 * claimed: a pending question and a dead transport both retire
+								 * this hint with the line (review round 2, R2-3; design round
+								 * 2, D5). Reading the latch directly is what let the composer
+								 * keep saying "Waiting for the agent" 46px below a pane that had
+								 * withdrawn exactly that claim.
+								 */
+								awaitingReply={Boolean(
+									canonical &&
+										workingLineClaimed(
+											workingLineInputFor({
+												waiting: canonical.busy,
+												starting: canonical.starting === true,
+												startingAfterId: canonical.startingAfterId ?? null,
+												gate: canonical.view.frontend?.pending_gate ?? null,
+												unavailable: canonicalSpeaking(canonical),
+												records: canonical.view.transcript.records,
+											}),
+										),
+								)}
 								conversationId={agentId}
 								messages={
 									canonical
@@ -714,6 +739,33 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									canonical
 										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
 										: false
+								}
+								/*
+								 * U8: a pending question is answered in this box, so the box
+								 * says so instead of inviting a message. The card above owns the
+								 * question and the reply it expects; this only stops the
+								 * composer reading "Ask me for help" over a turn that is waiting
+								 * on the user (UX round 2, U8).
+								 */
+								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								/*
+								 * U3: the held-claim sentence offers the transcript as proof
+								 * that the message exists somewhere ("its copy is in the
+								 * transcript above"), which is only true when a copy is
+								 * actually painted. On the draft path the pane held no rows at
+								 * all, so the sentence pointed at a greeting (UX round 2, U3).
+								 * Answered from the records this pane renders rather than
+								 * assumed; `undefined` (no canonical stream, nothing held)
+								 * leaves the clause out.
+								 */
+								heldCopyOnScreen={
+									canonical && sendError?.heldText
+										? canonical.view.transcript.records.some(
+												(record) =>
+													record.kind === "user" &&
+													record.text === sendError.heldText,
+											)
+										: undefined
 								}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}

@@ -1151,7 +1151,7 @@ test("the dictation counter is spelled at a glance", () => {
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1164,6 +1164,9 @@ const {
 	ADMITTED_SEND_ACTIVITY,
 	admittedSendFor,
 	ownerAnswered,
+	turnStopped,
+	workingLineClaimed,
+	workingLineInputFor,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1204,6 +1207,20 @@ const noticeRow = (id) => ({
 	ts: 1,
 	text: "Cleared the conversation",
 	level: "info",
+});
+/*
+ * A durable completion marker, which the reducer writes on a `notice` for
+ * exactly two outcomes - "Stopped with an error" and "Interrupted" - and never
+ * for its own renderer notes. The `complete` field is the marker; the text is
+ * copied from `transcript-reducer.ts` only so a reader can see what it is.
+ */
+const incidentRow = (id, level = "error") => ({
+	kind: "notice",
+	id,
+	ts: 2,
+	complete: true,
+	text: level === "error" ? "Stopped with an error" : "Interrupted",
+	level,
 });
 
 /** A send this pane admitted, with its echo painted under the anchor id. */
@@ -1381,7 +1398,9 @@ test("the anchored clear is the transcript's own predicate, swept", () => {
 		true,
 	);
 	// Without an anchor in the list — an evicted echo, a transcript replaced by
-	// `/clear` — the fallback withholds the clear rather than inventing one.
+	// `/clear` — the fallback falls back to the tail. `true` here IS the clear
+	// (it is what makes `deriveWorkingLine` return null); what the fallback
+	// withholds is the RUNG, in the case below where nothing paints.
 	assert.equal(ownerAnswered([assistantRow("a1", "hi")], "missing-anchor"), true);
 	assert.equal(ownerAnswered([userRow("u1", "go")], "missing-anchor"), false);
 });
@@ -1396,4 +1415,88 @@ test("the admitted-send copy claims nothing the renderer cannot check", () => {
 	// wants a mechanism word here, it has to make it checkable first.
 	assert.equal(ADMITTED_SEND_ACTIVITY, "waiting for the agent");
 	assert.doesNotMatch(ADMITTED_SEND_ACTIVITY, /runtime|model|session|start|think/i);
+});
+
+test("a turn that dies before it paints retires the wait, and a renderer note does not", () => {
+	/*
+	 * The regression QA round 2 measured (Q4): with the round-1 clear set an
+	 * incident retires nothing, because the owner never painted a row and the
+	 * transport is still live. The line was still up at t+55s beside "Stopped
+	 * with an error", and the composer's hint stayed on "Waiting for the agent"
+	 * underneath it - a stuck claim about work that has stopped and then failed,
+	 * which is worse than the dead air this whole change removed.
+	 */
+	const records = [userRow(ECHO, "go"), incidentRow("stop-1")];
+	assert.equal(admitted([incidentRow("stop-1")]), null);
+	assert.equal(turnStopped(records, ECHO), true);
+	// "Interrupted" is the same marker: a turn the USER stopped has also ended.
+	assert.equal(admitted([incidentRow("stop-2", "warning")]), null);
+
+	/*
+	 * THE OTHER DIRECTION, which is what keeps this from retiring the rung
+	 * mid-turn: the reducer writes plenty of notices with no marker - a retry
+	 * line, a harness recovery notice, a subagent failure - and none of them is
+	 * the turn being over.
+	 */
+	assert.equal(turnStopped([userRow(ECHO, "go"), noticeRow("note-1")], ECHO), false);
+	assert.deepEqual(admitted([noticeRow("note-1")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+	// A marker BEFORE the echo belongs to an earlier turn (the anchor rule).
+	assert.equal(turnStopped([incidentRow("stop-0"), userRow(ECHO, "go")], ECHO), false);
+	// And with no anchor in the list the fallback reads the tail, so a marker
+	// there retires rather than holding a rung over a finished turn.
+	assert.equal(turnStopped([incidentRow("stop-1")], "missing-anchor"), true);
+});
+
+test("the composer's hint is the rung's own derivation, not a second condition", () => {
+	/*
+	 * Review round 2's R2-3 and design round 2's D5 are one defect: the composer
+	 * asked the latch directly (`awaitingReply={canonical.starting}`), so it went
+	 * on saying "Waiting for the agent" in the states the line deliberately
+	 * yields in - a pending question, and a dead transport - 46px below a pane
+	 * that had withdrawn the claim. Both surfaces now call this module; the
+	 * property worth pinning is that they cannot disagree, so each case asserts
+	 * the pair.
+	 */
+	const pane = (over = {}) =>
+		workingLineInputFor({
+			waiting: false,
+			starting: true,
+			startingAfterId: ECHO,
+			gate: false,
+			unavailable: false,
+			records: [userRow(ECHO, "go")],
+			...over,
+		});
+	// The cold window: both claim it.
+	assert.notEqual(deriveWorkingLine(pane()), null);
+	assert.equal(workingLineClaimed(pane()), true);
+	// A pending question outranks the wait (branding § 7): neither claims it.
+	assert.equal(deriveWorkingLine(pane({ gate: true })), null);
+	assert.equal(workingLineClaimed(pane({ gate: true })), false);
+	// A dead transport: neither.
+	assert.equal(workingLineClaimed(pane({ unavailable: true })), false);
+	// A stopped turn: neither, on the same derivation.
+	assert.equal(workingLineClaimed(pane({ records: [userRow(ECHO, "go"), incidentRow("s1")] })), false);
+	// A painted answer: neither.
+	assert.equal(
+		workingLineClaimed(
+			pane({ records: [userRow(ECHO, "go"), assistantRow("a1", "hi")] }),
+		),
+		false,
+	);
+	// The ladder is a claim too, so the hint stays up through the hand-off
+	// instead of swapping a true sentence for "Ask me for help" while the agent
+	// is demonstrably writing.
+	assert.equal(
+		workingLineClaimed(pane({ waiting: true, records: [userRow(ECHO, "go")] })),
+		true,
+	);
+	// Nothing happening at all: neither.
+	assert.equal(
+		workingLineClaimed(pane({ starting: false, records: [userRow("u1", "go")] })),
+		false,
+	);
 });

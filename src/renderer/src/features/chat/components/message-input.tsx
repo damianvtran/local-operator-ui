@@ -163,6 +163,27 @@ type MessageInputProps = {
 	 * the disabled Send control, and this prop adds no second gate).
 	 */
 	awaitingReply?: boolean;
+	/**
+	 * A question is pending and the composer is where it is answered.
+	 *
+	 * The card above says what is being asked and the reply it expects, and the
+	 * box under it said "Ask me for help" - the one place the answer goes was the
+	 * one place that did not mention the question (UX round 2, U8). This changes
+	 * the PLACEHOLDER only, for the same reason `awaitingReply` does: an
+	 * approval is answered by typing into this box, so the box must not invite
+	 * something else, and no send is gated by it.
+	 */
+	awaitingAnswer?: boolean;
+	/**
+	 * Is a copy of the held payload painted in the transcript above?
+	 *
+	 * The held-claim sentence points at that copy, and pointing at one that is not
+	 * there is worse than saying nothing: on the draft path the pane held no rows
+	 * at all, so "its copy is in the transcript above" described a greeting and a
+	 * suggestion chip (UX round 2, U3). `undefined` means the caller cannot
+	 * answer, and the clause is then left out rather than assumed.
+	 */
+	heldCopyOnScreen?: boolean;
 	conversationId?: string;
 	messages: Message[];
 	currentJobId?: string | null;
@@ -386,6 +407,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			onSendMessage,
 			isLoading,
 			awaitingReply = false,
+			awaitingAnswer = false,
+			heldCopyOnScreen,
 			conversationId,
 			messages,
 			currentJobId,
@@ -476,6 +499,29 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the confirmation names which of the two abandonments actually happened.
 		 */
 		const [abandonNotice, setAbandonNotice] = useState<string | null>(null);
+		/*
+		 * A second Enter refused while the first send is still unacknowledged.
+		 *
+		 * The refusal itself is deliberate and the typed text is kept - the store
+		 * holds the earlier payload byte-for-byte and the composer keeps whatever
+		 * the user has typed since - but it was entirely SILENT: measured in the
+		 * live app, the box kept its text, the Send control was greyed out and
+		 * Enter did nothing at all, and on a delayed transport the refusal surfaced
+		 * nine seconds later inside an alert about the EARLIER send, which reads as
+		 * a server problem rather than as "one message at a time" (UX round 2, U6).
+		 * The composer is deliberately live during the wait - a user may compose,
+		 * and during a turn typing steers it - so Enter is the one action whose
+		 * result has to be said out loud.
+		 */
+		const [heldNotice, setHeldNotice] = useState<string | null>(null);
+		/*
+		 * Retired with the wait it describes. A send that is no longer outstanding
+		 * makes this sentence stale, and the notice is not an error: nothing has
+		 * failed, the box is simply one message ahead of the conversation.
+		 */
+		useEffect(() => {
+			if (!awaitingReply) setHeldNotice(null);
+		}, [awaitingReply]);
 		useEffect(() => {
 			if (abandonNotice === null) return;
 			const timer = setTimeout(() => setAbandonNotice(null), ABANDON_NOTICE_MS);
@@ -534,7 +580,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * chips here would make the post-Restore resend a DIFFERENT payload, which
 				 * the guard refuses - the deadlock Restore exists to escape.
 				 */
-				if (accepted === false || accepted === SEND_HELD) return accepted;
+				if (accepted === SEND_HELD) {
+					setHeldNotice(
+						"One message at a time - the current message is still on its way.",
+					);
+					return accepted;
+				}
+				if (accepted === false) return accepted;
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
@@ -1011,6 +1063,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
 				{(abandonNotice ||
+					(!sendError && heldNotice) ||
 					(sendError && (composerAlert.message || composerAlert.showHeld))) && (
 					/*
 					 * Above the box rather than inside it: the composer box is one
@@ -1053,6 +1106,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							// escape is CONFIRMED where the problem was reported. Muted ink
 							// and no icon: this is the resolved state, not a failure.
 							<p className="text-ink-muted">{abandonNotice}</p>
+						)}
+						{!abandonNotice && !sendError && heldNotice && (
+							// Muted ink on purpose: the region as a whole is the danger
+							// register, and nothing has failed here - the box is one message
+							// ahead of the conversation, which is a fact about the wait.
+							<p className="text-ink-muted">{heldNotice}</p>
 						)}
 						{!abandonNotice && composerAlert.message && (
 							/*
@@ -1125,10 +1184,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							 * remedy.
 							 */
 							<p className={cn("text-ink-muted")}>
-								An unsent message is still being held, so a different message
-								cannot be sent yet. Whether it reached the agent is not knowable
-								- its copy is in the transcript above - so restore it and send
-								again only if no reply arrives.
+								{heldCopyOnScreen === true
+									? "An unsent message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives."
+									: "An unsent message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives."}
 							</p>
 						)}
 						{!abandonNotice &&
@@ -1368,9 +1426,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							placeholder={
 								isInputDisabled
 									? "Agent is busy"
-									: awaitingReply
-										? "Waiting for the agent"
-										: "Ask me for help"
+									: awaitingAnswer
+										? // Names the thing the box is now for, without restating
+											// the question card or the waiting line (§ 7 keeps one
+											// liveness statement per turn, and the card owns it).
+											"Answer the question above"
+										: awaitingReply
+											? "Waiting for the agent"
+											: "Ask me for help"
 							}
 							value={newMessage}
 							onChange={(e) => {
