@@ -136,8 +136,12 @@ export function hostRows(process: DesktopInfoData["process"]): InfoRow[] {
 		{
 			key: "started",
 			label: "Started",
-			value: formatDuration(process.uptime_s),
-			note: "ago",
+			/*
+			 * A duration and its direction belong in ONE cell. Split as label +
+			 * "ago" the row read `Started  ago   3h 26m`, which is two halves of a
+			 * sentence on either side of a column gap and a value in the middle.
+			 */
+			value: `${formatDuration(process.uptime_s)} ago`,
 		},
 		{
 			key: "cwd",
