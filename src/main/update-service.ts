@@ -1954,7 +1954,21 @@ export class UpdateService {
 				"Quitting so the in-flight update install can finish.",
 				LogFileType.UPDATE_SERVICE,
 			);
-			if (marker) this.ensureWatchdogAfterInFlightQuit(marker);
+			/*
+			 * Recorded the way `quitForInFlightInstall` records it, and before the
+			 * ensure rather than after: this handler IS the decision, and this app's
+			 * quit runs the other one again on the way out (`before-quit` asks the
+			 * same question). Without the flag the second answer finds
+			 * `inFlightQuitWatchdogEnsured` false, decides again and ensures again -
+			 * two decisions and two watchdogs for one quit, where the window-close
+			 * gesture has always been one (UX U8). The flag is what makes "one
+			 * decision per quit" a property of the service rather than of which
+			 * gesture reached it.
+			 */
+			if (marker && !this.inFlightQuitWatchdogEnsured) {
+				this.inFlightQuitWatchdogEnsured = true;
+				this.ensureWatchdogAfterInFlightQuit(marker);
+			}
 			// Deferred so the reply reaches the renderer first: the button that
 			// asked for this reports a failure if the app quits mid-request, and
 			// the quit it asked for is happening either way.

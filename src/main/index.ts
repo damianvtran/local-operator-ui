@@ -185,6 +185,19 @@ function createApplicationMenu(): void {
 					? ([
 							{ type: "separator" as const },
 							{ role: "front" },
+							/*
+							 * `close` is what gives the window the standard Cmd+W, and on macOS
+							 * it is not implied by anything else here: the Window menu carried
+							 * `minimize`/`zoom`/`front` and no close item, so the gesture the
+							 * in-flight update panel invites ("quit and leave it closed until
+							 * the app opens again by itself") resolved to nothing at all - the
+							 * red button worked and the keyboard did not (UX U9). It belongs
+							 * here rather than in File because the app's own File menu holds a
+							 * lone `quit`, and this gesture has to reach the same
+							 * `window-all-closed` path the red button takes, which is the one
+							 * this change made safe for an install in flight.
+							 */
+							{ role: "close" },
 							{ type: "separator" as const },
 							{ role: "window" },
 						] as Electron.MenuItemConstructorOptions[])
