@@ -177,11 +177,25 @@ export const LEADING_SLASH_MESSAGE =
  * leading-slash draft that failed for some OTHER reason (a lost response, a dead
  * owner) has admitted nothing and may well succeed on a resend, so it must keep
  * the generic hint.
+ *
+ * A 422 that ALREADY carries a code yields to it, and this is not a nicety: the
+ * leading-slash policy has no code on the wire (its `detail` is a plain string;
+ * see `LEADING_SLASH_CODE`), so a coded 422 is by construction a DIFFERENT,
+ * specific refusal the transport has already classified - an unknown command, an
+ * invalid cwd. Letting this general rule overwrite that swapped a precise
+ * diagnosis for a vague one that described a request we had not sent (round 5,
+ * R13). The two conditions are complementary: the stage gate at the call site
+ * says the message request failed, and this says the policy is the reason.
+ *
+ * The caller must still establish that the failing request WAS the message
+ * request - `sessions.create` shares that try and its 422 never carried this
+ * text anywhere. See the `inFlight` gate in `admitChatDraft`.
  */
 export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
 	return (
 		error instanceof DesktopControlError &&
 		error.status === 422 &&
+		error.code === undefined &&
 		text.trimStart().startsWith("/")
 	);
 }
@@ -484,8 +498,32 @@ export async function admitChatDraft(
 	// `draft` is the pre-send snapshot, so reading `draft.sessionId` there would
 	// miss a session this very call created and leave its echo unretractable.
 	let id = sessionId ?? draft.sessionId;
+	/*
+	 * WHICH REQUEST THE FAILURE CAME FROM, and the reason this is recorded rather
+	 * than inferred at the catch.
+	 *
+	 * The classification below asks one question - "was the user's message
+	 * refused for its leading slash?" - and only `sessions.message` can answer
+	 * it. `sessions.create` shares this try because a send to a NEW conversation
+	 * has to create one first, but its 422 is about the CREATE fields (`cwd`,
+	 * `target`), and the draft text it would be classified against never left the
+	 * renderer: the request ops were `['sessions.create']`. Classifying that
+	 * failure by the draft's shape told a user whose directory was invalid to
+	 * "move it below your text" - the app confidently naming the wrong cause,
+	 * which is the exact class of defect U13 exists to remove, so reintroducing
+	 * it on the display path we had just repaired would be worse than never
+	 * having repaired it (round 5, R13).
+	 *
+	 * Reaching the message request is therefore the PRECONDITION of the slash
+	 * classification, not the draft's shape - and this variable is the only thing
+	 * that can satisfy it. It is set immediately before the request it names, so
+	 * a failure raised anywhere earlier (including a create that "succeeded"
+	 * without returning an id) stays on the create side by default.
+	 */
+	let inFlight: "sessions.create" | "sessions.message" | null = null;
 	try {
 		if (!id) {
+			inFlight = "sessions.create";
 			id =
 				(await store.createSession(
 					input.cwd,
@@ -540,6 +578,7 @@ export async function admitChatDraft(
 			})),
 			onEchoPainted,
 		);
+		inFlight = "sessions.message";
 		await desktopResult({
 			op: "sessions.message",
 			sessionId: id,
@@ -583,7 +622,10 @@ export async function admitChatDraft(
 		// actionable one (it sits on the text that failed and carries the
 		// remedies), so the send takes the message over and clears the other.
 		useCanonicalSessionsStore.setState({ error: null });
-		const leadingSlash = isLeadingSlashRefusal(error, text);
+		// Gated on the request that actually failed: a create-stage 422 is about the
+		// create fields and must keep its own diagnosis (round 5, R13).
+		const leadingSlash =
+			inFlight === "sessions.message" && isLeadingSlashRefusal(error, text);
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
