@@ -12,11 +12,12 @@ the commit this branch is rebased onto. It used to claim the branch sat on
 `6950d0bf3` (`0.19.5`) and that the measurement below came back **empty**; both
 were stale, and the second was the load-bearing one, because emptiness was the
 whole proof. Measured against the base this branch actually has —
-`git merge-base HEAD origin/main`, `73977340a` (v0.21.0) at the time of writing
-— the command returns **ten** files, not five:
+`git merge-base HEAD origin/main`, which reads `73977340a` (v0.21.0) when this
+paragraph was written and `2a5752b3b` (v0.22.0) at the current head — the
+command returns **ten** files at either base, with identical lists:
 
 ```sh
-git diff --name-only 54bf411e0..73977340a -- \
+git diff --name-only 54bf411e0..$(git merge-base HEAD origin/main) -- \
   'src/renderer/src/features/chat/canonical/**' \
   'src/renderer/src/features/chat/components/trace/**' \
   'src/renderer/src/features/chat/components/message-item/**'
