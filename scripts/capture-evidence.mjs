@@ -686,6 +686,9 @@ export const STORIES = [
 	["panels-session--narrow", 720, 1000],
 
 	["panels-info--populated", 1140, 1040],
+	/* The live half null and nothing bound: the payload the desktop's own route
+	   always sends, with the three unknown spellings it must render. */
+	["panels-info--live-half-unmeasured", 1140, 1040],
 	["panels-info--behind", 1140, 1040],
 	["panels-info--never-checked", 1140, 1040],
 	["panels-info--build-skew", 1140, 1040],
@@ -996,7 +999,12 @@ export function partialAddedFields(
 	at = new Date().toISOString(),
 ) {
 	return addedFrameCount > 0
-		? { addedFrames: addedFrameCount, addedSurfaces, addedAt: at, addedAtHead: head }
+		? {
+				addedFrames: addedFrameCount,
+				addedSurfaces,
+				addedAt: at,
+				addedAtHead: head,
+			}
 		: {};
 }
 
@@ -1730,7 +1738,11 @@ const main = async () => {
 						 * additions: keying it on the accumulated total would let a later commit of
 						 * the same pass re-stamp the citation for an earlier commit's frames.
 						 */
-						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						const added = partialAddedFields(
+							addedFrames.length,
+							addedSurfaces,
+							head,
+						);
 						/*
 						 * A pass that added nothing leaves the WHOLE added-pass record
 						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
@@ -1745,10 +1757,14 @@ const main = async () => {
 								? {}
 								: {
 										addedFrames:
-											(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-											addedFrames.length,
+											(sameHead
+												? (previous.partialCapture?.addedFrames ?? 0)
+												: 0) + addedFrames.length,
 										addedSurfaces: [
-											...new Set([...(sameHead ? priorSurfaces : []), ...addedSurfaces]),
+											...new Set([
+												...(sameHead ? priorSurfaces : []),
+												...addedSurfaces,
+											]),
 										],
 									};
 						const citationFields =
