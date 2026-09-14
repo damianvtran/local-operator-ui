@@ -482,6 +482,13 @@ export const STORIES = [
 	   rows — which are exactly the ones in question. */
 	["chat-reconnect-gap--gap", 1024, 480],
 	["chat-reconnect-gap--restored", 1024, 560],
+	/* The state the report is about: the reader returns WHILE the turn runs. The
+	   restored rows carry a call that succeeded and one that failed, and the
+	   turn's own liveness line and running call sit below them. Captured in the
+	   two `localOperator` palettes only: the claim is about the ink/ground
+	   relationship of three states the brand pair already spans, and the palette
+	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
+	["chat-reconnect-gap--restored-running", 1024, 620],
 ];
 
 /**

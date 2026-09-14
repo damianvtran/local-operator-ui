@@ -77,7 +77,15 @@ globalThis.__gapSubscribe = (args, onEvent) => {
 };
 globalThis.__gapRequest = async (request) => {
 	requests.push(request);
-	if (request.op === "sessions.history") return globalThis.__gapTail(request);
+	if (request.op === "sessions.history") {
+		// Addressable faults, by read INDEX: a case that is about a refused read
+		// has to say WHICH one, because the pre-switch-back snapshot reconciles
+		// too and a count-based fault would land on the wrong read.
+		const index = globalThis.__gapHistoryReads++;
+		if (globalThis.__gapHistoryFaults.includes(index))
+			throw new Error("history unavailable");
+		return globalThis.__gapTail(request);
+	}
 	if (request.op === "sessions.message")
 		return { status: "admitted", command_id: request.requestId, duplicate: false };
 	return {};
@@ -290,10 +298,11 @@ const openFrame = (seq, gap) => ({
  * A re-subscribe snapshot.
  *
  * `cursor` is the backend's CACHED `history_cursor` and the page is read
- * `through_id=<cursor>`, so `entries` always ends at the cursor row
- * (proved against the real reader: scripts/reconnect-page-gap.test.mjs's
- * companion probe). A cursor refreshed at the steer drain therefore bounds the
- * page at the steer row while later rows are already durable.
+ * `through_id=<cursor>`, so `entries` always ends at the cursor row - the
+ * semantics of `local_operator.session.transcript.read_transcript_page`, whose
+ * `through_id` branch stops AT that entry. A cursor refreshed at the steer
+ * drain therefore bounds the page at the steer row while later rows are already
+ * durable.
  */
 const snapshotFrame = (seq, { cursor, entries, liveEvents = [], streaming = true }) => ({
 	session_id: SESSION_A,
@@ -348,12 +357,15 @@ const snapshotFrame = (seq, { cursor, entries, liveEvents = [], streaming = true
 /**
  * A transcript that answers the way the backend's reader does.
  *
- * The page semantics are the real ones, verified against the real reader
- * (`local_operator.session.transcript.read_transcript_page`) in
- * `scripts/reconnect-page-gap.test.mjs`'s companion probe: a `through_id` page
- * ends AT that entry and its newest entry IS that id, and an unbounded read is
- * the tail. Modelling them here rather than hand-writing two pages is what
- * makes the read COUNT an honest measurement of the cost.
+ * The page semantics are the real reader's
+ * (`local_operator.session.transcript.read_transcript_page`: a `through_id`
+ * page ends AT that entry and its newest entry IS that id, `before_id` is
+ * exclusive, and an unbounded read is the tail). Modelling them here rather
+ * than hand-writing two pages is what makes the read COUNT an honest
+ * measurement of the cost. The reader is named rather than the check that used
+ * it: an earlier version of these two comments cited "this file's companion
+ * probe", which is this file - a self-reference that read like a second
+ * artifact and was not one.
  */
 function makeTranscript(rows) {
 	const indexOf = (id) => rows.findIndex((entry) => entry.id === id);
@@ -424,10 +436,12 @@ const settle = async () => {
 
 const ids = (transcript) => transcript.records.map((record) => record.id);
 
-function reset({ transcript }) {
+function reset({ transcript, historyFaults = [] }) {
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
+	globalThis.__gapHistoryReads = 0;
+	globalThis.__gapHistoryFaults = historyFaults;
 	globalThis.__gapTail = (request) =>
 		request.beforeId === undefined
 			? transcript.tail(request.limit)
@@ -490,9 +504,9 @@ function conversation({ withSteer, awayRows = 2 }) {
  * unbounded read do not overlap, so the guard must walk back before it can
  * prove the two pages connect.
  */
-function longConversation({ awayRows }) {
+function longConversation({ awayRows, total: declared }) {
 	const rows = [];
-	const total = 150 + awayRows;
+	const total = declared ?? 150 + awayRows;
 	for (let i = 1; i <= total; i++) {
 		rows.push(
 			i % 3 === 1
@@ -510,14 +524,19 @@ function longConversation({ awayRows }) {
 	};
 }
 
-async function driveSwitchBack({ plan, withSteer, tailReadsExpected }) {
+async function driveSwitchBack({
+	plan,
+	withSteer,
+	tailReadsExpected,
+	historyFaults = [],
+}) {
 	const { rows, cursor, missing } = plan;
 	const transcript = makeTranscript(rows);
 	// The snapshot's page is the backend's `through_id=<cursor>` read, bounded by
 	// the cached cursor the steer drain refreshed.
 	const page = transcript.page(cursor, SNAPSHOT_PAGE).entries;
 	const pageRecords = page.map(recordIdOf);
-	reset({ transcript });
+	reset({ transcript, historyFaults });
 
 	const runtime = makeRuntime();
 	let sessionId = SESSION_A;
@@ -658,4 +677,99 @@ test("an absence wider than one history page is closed by walking back, once per
 		painted.length,
 		"a walked-back reconcile must not duplicate a row",
 	);
+});
+
+/*
+ * A read that can never connect must not be walked. When the batch painted
+ * nothing (no entry ids from a snapshot page, no live seed), NO fetched page
+ * can satisfy the connection test, so the walk's remaining turns are dead work
+ * — and on the owner side each one is a full sequential pass of the transcript
+ * file. Two paths reach that state, and both are asserted here on a transcript
+ * long enough for a walk to run to its bound (600 rows > 5 x 100).
+ */
+const LONG = 600;
+
+async function driveEmptyPainted({ frame }) {
+	const plan = longConversation({ awayRows: 0, total: LONG });
+	reset({ transcript: makeTranscript(plan.rows) });
+	const runtime = makeRuntime();
+	let sessionId = SESSION_A;
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(sessionId, Boolean(sessionId));
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(frame);
+	await pump();
+	return {
+		reads: requests.filter((request) => request.op === "sessions.history").length,
+		painted: ids(handle.transcript),
+		plan,
+	};
+}
+
+const attentionFrame = (seq) => ({
+	session_id: SESSION_A,
+	epoch: "bridge-epoch",
+	seq,
+	type: "attention",
+	payload: {
+		conversation_id: `session/${SESSION_A}`,
+		completion_token: "token-1",
+		anchor_id: "anchor-not-painted",
+		kind: "complete",
+		unseen: true,
+		revision: [1, 1],
+	},
+});
+
+test("an unpainted attention anchor reads one page, not a walk to the bound", async () => {
+	const { reads, painted, plan } = await driveEmptyPainted({
+		frame: attentionFrame(2),
+	});
+	assert.equal(
+		reads,
+		1,
+		"with nothing painted the walk cannot connect, so one page is the whole read",
+	);
+	assert.deepEqual(
+		painted,
+		plan.rows.slice(-SNAPSHOT_PAGE).map(recordIdOf),
+		"and that page is the durable tail, painted oldest-first",
+	);
+});
+
+test("a cold snapshot's empty page reads one page, not a walk to the bound", async () => {
+	const { reads, painted, plan } = await driveEmptyPainted({
+		frame: snapshotFrame(2, { cursor: null, entries: [], liveEvents: [] }),
+	});
+	assert.equal(reads, 1, "an empty snapshot page paints nothing to connect to");
+	assert.deepEqual(
+		painted,
+		plan.rows.slice(-SNAPSHOT_PAGE).map(recordIdOf),
+		"the single page is still read: it is the rows a cold open has to show",
+	);
+});
+
+/*
+ * The tail read is the only thing on this side that closes the reported gap,
+ * so a single refusal at the re-subscribe moment must not stand down.
+ */
+test("a refused tail read is retried once, and the absent rows still land", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 2 });
+	const painted = await driveSwitchBack({
+		plan,
+		withSteer: false,
+		// Read 0 is the first snapshot's (it reconciles too); read 1 is the
+		// switch back's, which is the one this case is about.
+		historyFaults: [1],
+		tailReadsExpected: 2,
+	});
+	for (const recordId of plan.missing)
+		assert.ok(
+			painted.includes(recordId),
+			`${recordId} lands even though its first read was refused`,
+		);
 });
