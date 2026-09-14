@@ -24,13 +24,23 @@ two frames are the before/after pair for the read path.
 | `../canvas-workspace/variables/` | this branch | the populated namespace, read from the session that owns it, all twelve themes (the swept set) |
 
 The before frames are the ones the committed evidence could not show: the
-`canvas-workspace/variables/` frames in the tree until this branch were **stale**.
-They last changed in `#77` (the Tailwind migration) while `#83` moved this
-reader onto the desktop transport, so they pictured a populated list the story
-on `main` can no longer produce - the story's fetch stub answered a URL
-(`/execution-variables`) that the transport stopped calling. Nothing detected
-it: `check-evidence` asks whether a frame is a picture of the app, not whether
-it is a picture of the current code.
+`canvas-workspace/variables/` frames in the tree until this branch were **stale
+against `main`'s story**. They last changed in `#77` (the Tailwind migration)
+while `#83` moved this reader onto the desktop transport, so on `main` the story
+rendered the panel's FAILURE state, not the populated list those frames show -
+the story's fetch stub answered a URL (`/execution-variables`) the transport had
+stopped calling. Nothing detected it: `check-evidence` asks whether a frame is a
+picture of the app, not whether it is a picture of the current code.
+
+What this branch does NOT do is change those twelve files, and review round 1
+(C-04) was right to point at the difference: they are byte-identical to the base.
+That is the finding, not an omission - with the stub re-pointed at the ops the
+panel really calls, the story renders the same populated list it always meant to
+show, and re-capturing the twelve reproduced them byte for byte (checked with
+`git diff --stat` after a full scoped re-capture: only `manifest.json` moved).
+So the frames were never wrong about the panel; they were wrong about which tree
+they belonged to, and the stamp is what had drifted. The manifest's `headNote`
+records the re-stamp; this README records that the refresh is a no-op in the diff.
 
 ## Reproducing them
 
