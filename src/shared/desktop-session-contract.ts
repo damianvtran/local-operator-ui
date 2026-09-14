@@ -72,8 +72,16 @@ export type CompletionAttention = {
 /**
  * The backend's machine code for "your token is no longer the current one".
  *
- * Sent by the desktop route as `detail.code` and read back off the control error,
- * so the two ends cannot drift on a string that a decision depends on.
+ * The string is the BACKEND's, and the backend is its source of truth:
+ * `SUPERSEDED_TOKEN_CODE` in `local_operator/session/attention.py`, documented
+ * for clients in `docs/DESKTOP_API.md`. This copy exists because a renderer
+ * cannot import Python, and a copy cannot be bound automatically across two
+ * repositories -- each side's tests pin its own literal, so a change on one side
+ * lands green on the other. What makes that a maintenance step rather than a
+ * silent break is that this literal is asserted against the documented wire value
+ * in `scripts/completion-view-ack.test.mjs`, next to the refusal it decides: a
+ * change here fails a test that names the backend's value instead of quietly no
+ * longer recognising the refusal.
  */
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
 
@@ -102,10 +110,11 @@ export function receiptSettled(state: unknown, sessionId: string): boolean {
  * call failed".
  *
  * The distinction decides whether to back off. A superseded token is expected --
- * the state handed back with the refusal names the completion to acknowledge
- * next -- so treating it as a failure would only delay the re-arm. Everything
- * else (an unreachable transport, an unknown token, a backend that predates the
- * route) keeps the backed-off cadence.
+ * and the refusal carries no state, only the reason, so the caller re-reads its
+ * OWN attention state and acknowledges the token that names -- so treating it as
+ * a failure would only delay the re-arm. Everything else (an unreachable
+ * transport, an unknown token, a backend that predates the route) keeps the
+ * backed-off cadence.
  */
 export function isSupersededReceipt(error: unknown): boolean {
 	if (!error || typeof error !== "object") return false;

@@ -119,7 +119,7 @@ function frontend(extra = {}) {
  * Drive one hook instance: build the DOM, run the effect, and return a `tick`
  * that runs what the interval would have run.
  */
-function mount(transport) {
+function mount(transport, { covered = null } = {}) {
 	const element = {
 		getBoundingClientRect: () => ({ left: 0, top: 100, width: 200, height: 200, bottom: 300 }),
 		contains: (node) => node === element,
@@ -130,7 +130,14 @@ function mount(transport) {
 	globalThis.document = {
 		visibilityState: "visible",
 		hasFocus: () => true,
-		elementFromPoint: () => element,
+		/* `covered` stages what is on top at the row's bottom edge: "centre" is the
+		   measured collision with the app's own floating control, "all" is an
+		   overlay that hides the row (a modal scrim). */
+		elementFromPoint: (x) => {
+			if (covered === "all") return { notTheRow: true };
+			if (covered === "centre" && Math.abs(x - 100) < 1) return { notTheRow: true };
+			return element;
+		},
 	};
 	globalThis.CSS = { escape: (value) => String(value) };
 	globalThis.innerWidth = 1000;
@@ -192,12 +199,16 @@ test("a settled acknowledgement stops the poll, and only that does", async () =>
 	assert.equal(calls[0].completionToken, TOKEN);
 });
 
-test("a superseded refusal re-arms immediately instead of backing off", async () => {
+test("a superseded refusal is retried flat, then bounded and logged", async () => {
 	// 409 `superseded_completion_token` is expected: the backend has moved past
 	// the token this attempt rendered, and the state that arrives next names the
-	// current one. Counting it as a failure would put the re-arm behind a 60 s
-	// ceiling, exactly when it is about to succeed.
+	// current one -- so the first attempts stay FLAT rather than backing off
+	// behind a 60 s ceiling while the re-arm is imminent. What must not stand is
+	// the unbounded version of that: a projection that never advances (a cold or
+	// stalled stream) would be re-attempted twice a second for as long as the
+	// conversation is open, with nothing recorded (agent review round 1, N3).
 	const calls = [];
+	const warnings = [];
 	const harness = mount(async (request) => {
 		calls.push(request);
 		throw Object.assign(new Error("completion token superseded"), {
@@ -205,9 +216,92 @@ test("a superseded refusal re-arms immediately instead of backing off", async ()
 			code: "superseded_completion_token",
 		});
 	});
+	const warn = console.warn;
+	console.warn = (...args) => warnings.push(args.map(String).join(" "));
+	try {
+		harness.start();
+		for (let attempt = 0; attempt < 3; attempt += 1) await harness.tick();
+		assert.equal(calls.length, 3, "the flat window before the bound changed");
+		for (let attempt = 0; attempt < 2; attempt += 1) await harness.tick();
+		assert.equal(calls.length, 3, "a superseded refusal was retried past its bound");
+	} finally {
+		console.warn = warn;
+	}
+	assert.equal(
+		warnings.filter((line) => line.includes("superseded completion")).length,
+		1,
+		"the bound was not recorded, or was recorded more than once",
+	);
+});
+
+test("a superseded refusal that the answer then settles is not delayed", async () => {
+	// The bound must not cost the healthy path anything: while the projection is
+	// catching up -- which is the ordinary case -- the retry stays flat, and the
+	// attempt that is finally answered settles on the first try it gets.
+	const calls = [];
+	const harness = mount(async (request) => {
+		calls.push(request);
+		if (calls.length < 3) {
+			throw Object.assign(new Error("completion token superseded"), {
+				status: 409,
+				code: "superseded_completion_token",
+			});
+		}
+		return attention({ unseen: false, revision: [1, 1] });
+	});
 	harness.start();
-	for (let attempt = 0; attempt < 5; attempt += 1) await harness.tick();
-	assert.equal(calls.length, 5, "a superseded refusal backed the poll off");
+	for (let attempt = 0; attempt < 4; attempt += 1) await harness.tick();
+	assert.equal(calls.length, 3, "the settled answer did not arrive on the third attempt");
+});
+
+test("a control covering the row's centre does not refuse a visible result", async () => {
+	// Measured on the real app (agent review round 1, R1): the "Scroll to bottom"
+	// button sits at the transcript's bottom centre, over the last row's bottom
+	// edge. A single sample there refused a result the reader was looking at for as
+	// long as the conversation stayed open, so the probe samples across the row and
+	// one free sample is enough.
+	const calls = [];
+	const harness = mount(
+		async (request) => {
+			calls.push(request);
+			return attention({ unseen: false, revision: [1, 1] });
+		},
+		{ covered: "centre" },
+	);
+	harness.start();
+	await harness.tick();
+	assert.equal(calls.length, 1, "a floating control over the row's centre refused the receipt");
+});
+
+test("a row hidden by an overlay is still refused", async () => {
+	// The other direction, so the relaxed probe cannot pass everything: an overlay
+	// that really hides the row -- a modal scrim, spanning the viewport -- covers
+	// every sample, and a reader who cannot see the result cannot receipt it.
+	const calls = [];
+	const harness = mount(
+		async (request) => {
+			calls.push(request);
+			return attention({ unseen: false, revision: [1, 1] });
+		},
+		{ covered: "all" },
+	);
+	harness.start();
+	await harness.tick();
+	assert.equal(calls.length, 0, "a row covered by an overlay was receipted anyway");
+});
+
+test("the refusal code is pinned to the backend's documented wire value", () => {
+	// The string belongs to the BACKEND (`SUPERSEDED_TOKEN_CODE` in
+	// `local_operator/session/attention.py`, documented in docs/DESKTOP_API.md).
+	// A renderer cannot import Python, so this copy cannot be bound
+	// automatically -- pinning it HERE, as a literal, is what turns a change on
+	// either side into a failing test rather than a client that quietly stops
+	// recognising the refusal (agent review round 1, N2).
+	assert.equal(
+		contract.SUPERSEDED_COMPLETION_TOKEN_CODE,
+		"superseded_completion_token",
+		"the renderer no longer recognises the backend's superseded-token code",
+	);
 });
 
 test("an answer about another conversation never settles this one", async () => {
