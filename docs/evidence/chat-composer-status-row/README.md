@@ -3,16 +3,20 @@
 The row itself, in the states `docs/composer-status-tabs.md` § 3.1 lists, at the
 two column widths its own container queries resolve against.
 
-These frames come from `scripts/capture-evidence.mjs` driving Storybook
-(`pnpm storybook --port 6017 --no-open`), which is the committed and re-derivable
-route — unlike the composer-readings set beside this one, whose live-app driver is
-deliberately not in the tree. The exact command that wrote them:
+These frames come from `scripts/capture-evidence.mjs` driving Storybook, which is
+the committed and re-derivable route — unlike the composer-readings set beside this
+one, whose live-app driver is deliberately not in the tree. The exact command that
+wrote them:
 
 ```
-node scripts/capture-evidence.mjs http://localhost:6017 \
+pnpm storybook --port 6017 --no-open        # 6018 if a sibling worktree holds 6017
+node scripts/capture-evidence.mjs http://localhost:6018 \
   --only=chat-composer-status-row \
   --themes=localOperatorDark,localOperatorLight --allow-backend
 ```
+
+This pass ran against 6018: a sibling worktree's Storybook was already listening on
+6017, and the frames are whatever the URL you pass is serving.
 
 `--themes` is the two brand palettes, which is `branding.md` § 9.9's minimum, and
 the light pass is where contrast defects hide. The tree is the commit that added
@@ -34,8 +38,8 @@ legible; it contains no controls, and nothing in these frames is a claim about i
 | --- | --- |
 | `states/` | The matrix in the record's order. **Band 1 is the state that most needs pinning: the row renders NOTHING**, so that band IS the pre-change composer — the box with no row above it, which is what every session with no goal and no plan looked like before this change. Then: goal alone, plan alone at the row's start, both, and a finished plan still saying `0 to-dos open`. |
 | `long-goal/` | A goal that fits (the chip is content-sized) above a 300-character goal (the snippet truncates). The truncation claim needs the first band to be legible at all: an ellipsis only says anything beside a value that does not need one. |
-| `expanded/` | The collapsed row above its own expanded form at a 900px column, the second opened by CLICKING the real trigger. The vertical cost is the difference between the two bands; the body's cap is the `max-h-32` ceiling. |
-| `column-floor/` | The same pair at a 220px column, which is the canvas pane's open width. Collapsed, the row stacks and the goal's label goes `sr-only`; expanded, the body takes the row's own width less the primitive's 20px indent. |
+| `expanded/` | The collapsed row above its own expanded form at a 900px column, the second opened by CLICKING the real trigger. The vertical cost is the difference between the two bands; the body's cap is the whole-line ceiling `CAPPED_BLOCK` sets (120px, six lines at `leading-5`), which the frames show ending on a complete line rather than through a seventh line's glyphs. |
+| `column-floor/` | The same pair at a **172px** column — the width the app's chat column actually reaches with the canvas open (QA round 1, measured on the built app; this set was captured at 220px before that correction, which meant it pinned a large-view inset at a width where the product renders the small-view step). The story derives `isSmallView` from its own band width, so the row takes `px-2 pb-1` and the stand-in box `p-2` exactly as the app does. Collapsed, the row stacks with its label visible; expanded, the body takes the row's own width less the primitive's 20px indent. |
 
 ## The numbers the bands were measured at
 
@@ -43,19 +47,29 @@ Read from the live DOM of these stories (the rig's own viewport), not from the
 record's arithmetic — and stated because four of them are what the record's
 § 2.3 and § 11.1 predicted and two are not:
 
-| | Record | Measured (900) | Measured (220) |
+| | Record | Measured (900, one line) | Measured (172, small view) |
 | --- | --- | --- | --- |
-| Collapsed row height | 32px | **32px** | 58px (the stacked arrangement; the record's 54px assumes the small-view `pb-1`) |
-| Goal chip box | 24px | **24px** | **24px** |
-| Plan chip box | 24px | **24px** | **24px** |
+| Collapsed row height | 32px | **32px** | **54px** (the stacked arrangement, `pb-1`) |
+| Goal chip box | 24px | **24px** | **24px** (156px wide) |
+| Plan chip box | 24px | **24px** (112.3px wide, its `Info` mark 14px) | **24px** (112.3px wide) |
+| First chip's left edge, both states | one edge | **x=34 in both** (`-ml-1.5`) | — (stacked; the goal chip leads) |
 | Row `overflowX` | 0 | **0** | **0** |
-| Expanded body measure | ~184px | — | **168px** (client), 128px tall against 260px of content — the cap and the scroll |
-| Expanded body floor | ≥160px | — | **168px clears it** |
+| Expanded body measure | (see below) | — | **136px** client, **120px** tall (six whole lines) against **300px** of content — the cap and its own scroller |
 
-The 220px body is 168px rather than the record's ~184px because that arithmetic
-took the small-view inset (8px a side) where the row renders the `p-4`/`p-2` step
-the alert uses: 220 − 32 − 20. It clears the 160px floor the record sets, so its
-§ 11 risk 1 does not land and § 10's option D is not needed.
+Measured with a real browser on these stories, out of the live DOM — not
+re-derived from the record's arithmetic, which is what made the first version of
+this table wrong in two rows. The two corrections worth naming: the floor is 172px
+and takes the small-view step (so 54px, not 58px, and the body is 136px, not the
+168px a large-view inset produced), and the goal's label is VISIBLE at the floor
+rather than `sr-only` (design review round 1, D3 and D4).
+
+**The body's 136px is narrower than the ≥160px the record used to call its
+acceptance floor, and that floor was the wrong number**: it was arithmetic at a
+220px column, `204 − 20`, and the app does not render that column. At the real one
+even § 10's option D — the body spanning the whole row — tops out near the row's
+own 156px content box. The record's § 11.1 now says this in its own words; the
+number here is what the frame contains, and whether a ~136px measure is acceptable
+at the floor is the design round's call rather than this set's claim.
 
 ## What this set does NOT prove
 
@@ -71,6 +85,10 @@ the alert uses: 220 − 32 − 20. It clears the 160px floor the record sets, so
   components, and a still of a story cannot show a scroll position in a pane that
   is not mounted. It is covered by `scripts/composer-tabs.test.mjs` for the
   request's mechanics and by QA's independent pass for the flow.
+- **Nothing here is a live-app geometry claim.** The column width, the box and the
+  band heights in these frames are the story's, chosen to match the app's measured
+  numbers; the app's own numbers come from QA's driven pass. Where the two now
+  agree is stated above and in the record's § 2.4, rather than left to look equal.
 - **No hover and no focus ring.** Neither chip's hover wash nor its
   `:focus-visible` outline appears in these frames. The wash is the readings' own
   (`session-status-strip`), already photographed in
