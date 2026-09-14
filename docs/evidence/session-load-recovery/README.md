@@ -76,15 +76,17 @@ and `scripts/session-stream-token.test.mjs` takes the detail the real relay emit
 over a real socket and asserts exactly that mapping — rather than asserting the
 copy and hoping the packaged path produces it.
 
-The "Server is offline …" strip along the top of every frame is the legacy
-agents REST probe against a stub that does not serve that API. It is present on
-`origin/main` too and is unrelated to this change.
+**What is NOT on these frames.** No frame in this set paints the shell's
+connectivity banner — the fixed, full-width strip `connectivity-banner.tsx`
+renders over the window when the health probe it watches fails. The only failure
+painted anywhere in the set is the transcript's own notice, at the composer's
+edge.
 
 ## Before / after
 
 | Frame | Observed behaviour |
 | --- | --- |
-| [before.png](before.png) | The reported state, on `origin/main`, with the stub refusing the stream twice and then serving it. The conversation is open — its row is the sidebar's `Previous chats` entry, `Failing deploys` — the pane says "What can I help you with today?" over a conversation whose two durable rows are on the server, and the stream is refused. No conversation title is painted in the header on any frame in this set: the header carries only the `Chat \| Raw` tabs, and the conversation is named in the sidebar. The defect reproduces on base unchanged: the stub logged **one** `/events` attempt, because with no receipt the single auto-reconnect was skipped, so the refusal was permanent for that session. |
+| [before.png](before.png) | The reported state, on `origin/main`, with the stub refusing the stream twice and then serving it. The conversation is open — its row is the sidebar's `Previous chats` entry, `Failing deploys` — the pane says "What can I help you with today?" over a conversation whose two durable rows are on the server, and the stream is refused. Every frame in this set paints that conversation in the chat pane's header — the title `Failing deploys` over the subtitle `Canonical chat` here and on `loading`, `refused` and `narrow`, and over `~/.workspace` on `recovered` and `empty` — with the `Chat \| Raw` tabs beneath it, so the header names the conversation and the sidebar carries its row. The defect reproduces on base unchanged: the stub logged **one** `/events` attempt, because with no receipt the single auto-reconnect was skipped, so the refusal was permanent for that session. |
 | [loading.png](loading.png) | This branch, 2.5s in with the stub refusing every attempt: the retry window. The pane says **Reconnecting**, at the reading step and inside the pane rather than clipped above a 0px box (measured `scrollerHeight 632`), and the greeting is NOT shown — the app does not yet know what the conversation holds. |
 | [recovered.png](recovered.png) | This branch, same refusal, same stub. The stub logged `events attempt 1 -> 401`, `2 -> 401`, `3 -> 200` — the bounded retry re-armed the stream, the relay was rebuilt against the live token, and the real transcript painted: the user row, the agent's answer, "Start of conversation". No app restart. |
 | [refused.png](refused.png) | This branch, with the stream refused for good. After the retry budget is spent the transcript says **"Lost the connection to this conversation — reconnect to keep reading."** with a **Reconnect** beside it, above the composer. The greeting is NOT shown: the app does not know this conversation is empty, so it does not say so. |
