@@ -211,6 +211,9 @@ const {
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
+	findUnsealedBundledPaths,
+	pythonTreeSealCheck,
+	writeProbeVerdict,
 	runChecks,
 	summarize,
 	verifyArtifacts,
@@ -2999,7 +3002,19 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		mkdirSync(dirname(framework), { recursive: true });
 		writeFileSync(framework, `binary for ${arch}`, "utf8");
 		lipoGroups.set(framework, arch);
-		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
+		const treeDir = join(app, "Contents", "Resources", tree);
+		mkdirSync(treeDir, { recursive: true });
+		// The fixture is a BUILT app, and `scripts/after-pack.mjs` seals every
+		// directory under these trees before signing, so the seal probe passes on it
+		// for the same reason it passes on a real one. The unsealed arm - a build that
+		// skipped that step - is the case after this one.
+		if (process.platform === "darwin") {
+			spawnSync("/bin/chmod", [
+				"+a",
+				"everyone deny add_file,add_subdirectory",
+				treeDir,
+			]);
+		}
 	}
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-arm64.dmg"), "x");
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-x64.dmg"), "x");
@@ -3025,24 +3040,37 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		log: (line) => lines.push(line),
 	});
 	assert.equal(result.ok, true);
-	// 3 signer checks per app plus the bundled-bytecode walk and the interpreter
-	// check, and 2 image checks per image: nothing is left unaudited.
+	// 3 signer checks per app plus the bundled-bytecode walk, the interpreter
+	// check and the write-seal probe, and 2 image checks per image: nothing is left
+	// unaudited.
 	const bytecodeChecks = result.results.filter(
 		(check) => check.id === "app-no-bundled-bytecode",
 	);
 	const interpreterChecks = result.results.filter(
 		(check) => check.id === "app-one-bundled-python",
 	);
+	const sealChecks = result.results.filter(
+		(check) => check.id === "app-python-trees-sealed",
+	);
 	assert.equal(bytecodeChecks.length, 2);
 	assert.equal(interpreterChecks.length, 2);
+	assert.equal(sealChecks.length, 2);
 	assert.equal(
 		result.results.length,
-		2 * 3 + 2 * 2 + bytecodeChecks.length + interpreterChecks.length,
+		2 * 3 +
+			2 * 2 +
+			bytecodeChecks.length +
+			interpreterChecks.length +
+			sealChecks.length,
 	);
-	// Every check that shells out went through the injected runner. The bytecode
-	// walk is the exception: its subject is what the build put in the bundle,
-	// before anything was signed, so it reads the tree directly.
-	assert.equal(checked.length, result.results.length - bytecodeChecks.length);
+	// Every check that shells out went through the injected runner. Two exceptions:
+	// the bytecode walk, whose subject is what the build put in the bundle before
+	// anything was signed, and the seal probe, which asks the filesystem by trying
+	// the write the seal is supposed to refuse.
+	assert.equal(
+		checked.length,
+		result.results.length - bytecodeChecks.length - sealChecks.length,
+	);
 	for (const target of [...discovered.apps, ...discovered.dmgs]) {
 		assert.ok(checked.includes(target), `${target} was never checked`);
 	}
@@ -3063,6 +3091,113 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 	});
 	assert.equal(brokenResult.ok, false);
 	assert.match(brokenChecks.join("\n"), /could not be read/);
+});
+
+/**
+ * The release gate refuses a bundle whose interpreter trees accept a write.
+ *
+ * Why this case exists: the shipped 0.22.2 app carries no access-control entry on
+ * `Contents/Resources/python_aarch64` or on `.../lib/python3.12` - measured,
+ * `ls -lde` prints a bare mode line for both, because the seal was applied at
+ * runtime by the app rather than by the build, so a freshly installed bundle was
+ * born writable and was already unsealed when macOS refused to open it. A build
+ * that can write into its own interpreter trees unseals itself on first use, and
+ * this is the check that fails it before upload.
+ */
+test("the release gate refuses interpreter trees that accept a write", (t) => {
+	const dir = tempDir("lo-seal-gate-");
+	const app = join(dir, "Local Operator.app");
+	const root = join(app, "Contents", "Resources", "python_aarch64");
+	const tree = join(root, "lib", "python3.12");
+	const cache = join(tree, "__pycache__");
+	mkdirSync(cache, { recursive: true });
+	const pyc = join(cache, "webbrowser.cpython-312.pyc");
+	writeFileSync(pyc, "bytecode the build should not have shipped", "utf8");
+
+	// The field shape: a directory in the interpreter's own stdlib that a python
+	// can add `__pycache__` and `.pyc` to.
+	const unsealed = pythonTreeSealCheck(app, { platform: "darwin" });
+	assert.equal(unsealed.passed, false);
+	assert.match(unsealed.output, /accept a new file/);
+	assert.match(unsealed.output, /python_aarch64/, "the failure must name the tree");
+	// The probe cleans up after itself: a gate that left its own probe file in the
+	// artifact would fail the next run for its own litter.
+	assert.equal(existsSync(join(tree, ".local-operator-seal-probe")), false);
+	assert.equal(existsSync(join(cache, ".local-operator-seal-probe")), false);
+	// The `.pyc` arm as well: the file is there, so the probe opens it for append,
+	// which is the `file modified:` class no update-time heal can undo.
+	assert.ok(
+		findUnsealedBundledPaths(app).unsealed.some((path) => path === pyc),
+		"a shipped .pyc a process can rewrite must be reported",
+	);
+
+	// A bundle with no tree under it cannot pass: that is what a walker which
+	// silently found nothing would look like.
+	const empty = pythonTreeSealCheck(join(dir, "Empty.app"), { platform: "darwin" });
+	assert.equal(empty.passed, false);
+	assert.match(empty.output, /no bundled interpreter tree/);
+
+	// What a failed write means, which is what decides whether a check that could
+	// not run reports `unprobeable` or fails loudly: EACCES/EPERM are the seal,
+	// EROFS is the volume, and a permission model this code does not understand is
+	// rethrown rather than read as a sealed tree.
+	const refusal = (code) => Object.assign(new Error(code), { code });
+	assert.equal(writeProbeVerdict(refusal("EACCES")), "refused");
+	assert.equal(writeProbeVerdict(refusal("EPERM")), "refused");
+	assert.equal(writeProbeVerdict(refusal("EROFS")), "unprobeable");
+	assert.equal(writeProbeVerdict(refusal("ENOENT")), "unprobeable");
+	assert.throws(() => writeProbeVerdict(refusal("ENOTSUP")), /ENOTSUP/);
+
+	// A read-only volume answers EROFS, which is a fact about the volume rather
+	// than about the bundle: unprobeable, and never a pass.
+	const readOnly = () => "unprobeable";
+	const mounted = pythonTreeSealCheck(app, {
+		platform: "darwin",
+		probeNew: readOnly,
+		probeExisting: readOnly,
+	});
+	assert.equal(mounted.passed, false);
+	assert.match(mounted.output, /could not be probed/);
+	assert.match(mounted.output, /Copy the app off the mounted image/);
+
+	// Off macOS the mechanism does not exist - `sealPythonInterpreterTrees`
+	// returns `supported: false` there - so the check says so rather than demanding
+	// an entry no build applies.
+	const linux = pythonTreeSealCheck(app, { platform: "linux" });
+	assert.equal(linux.passed, true);
+	assert.match(linux.output, /not macOS \(linux\)/);
+
+	// The sealed arm needs a real access-control entry, which only macOS has.
+	if (process.platform !== "darwin") {
+		t.diagnostic("sealed arm skipped: `chmod +a` is macOS only");
+		return;
+	}
+	// A built app: `scripts/after-pack.mjs` walks the tree and applies the entry to
+	// every directory before signing, and rewrites nothing.
+	for (const path of [
+		join(app, "Contents", "Resources"),
+		root,
+		join(root, "lib"),
+		tree,
+		cache,
+	]) {
+		const applied = spawnSync(
+			"/bin/chmod",
+			["+a", "everyone deny add_file,add_subdirectory", path],
+			{ encoding: "utf8" },
+		);
+		assert.equal(applied.status, 0, applied.stderr);
+	}
+	const rewrite = spawnSync(
+		"/bin/chmod",
+		["+a", "everyone deny write,append", pyc],
+		{ encoding: "utf8" },
+	);
+	assert.equal(rewrite.status, 0, rewrite.stderr);
+
+	const sealed = pythonTreeSealCheck(app, { platform: "darwin" });
+	assert.equal(sealed.passed, true, sealed.output);
+	assert.equal(sealed.output, "5 path(s) under Contents/Resources/python[/_aarch64] refuse a write");
 });
 
 test("the real macOS tools reject an unsigned image, on macOS", async (t) => {
@@ -4185,7 +4320,13 @@ const loadUpdateServiceModule = async () => {
 							return fixture(`
 								const paths = globalThis.__loTestPaths;
 								export const app = {
-									isPackaged: true,
+									// A getter rather than a literal, so a test can put the app on
+									// the unpackaged side of the decisions gated on it - which is the
+									// state the operator's own worktree instances run in, and the one
+									// that must not act on the packaged app's install state.
+									get isPackaged() {
+										return globalThis.__loTestAppIsPackaged ?? true;
+									},
 									getPath: (name) => paths[name] ?? paths.userData,
 									getVersion: () => "0.0.0-test",
 									getName: () => "Local Operator",
