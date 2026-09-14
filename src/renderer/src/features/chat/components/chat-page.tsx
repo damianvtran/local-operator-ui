@@ -142,12 +142,10 @@ function SessionPanel({
 	identity,
 	draftKey,
 	sessionId,
-	pendingNavigation,
 }: {
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
-	pendingNavigation: boolean;
 }) {
 	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
 	useDesktopWatchLease(sessionId, canonical.subscriptionId);
@@ -523,7 +521,28 @@ function SessionPanel({
 		const key = draftIdentityFor(draftKey, sessionId);
 		if (!key) return false;
 		const previous = store.drafts[key];
-		if (pendingNavigation || previous?.pending) return false;
+		/*
+		 * `validatingSessionId` is the read window, and this is the half of the
+		 * removed pending flag that still earns its place. Commit-first put the
+		 * guard read BEHIND the commit, so for one round trip the view is on a
+		 * target whose existence `sessions.get` has not confirmed; a send issued in
+		 * that window would be addressed to a session that may be gone. The refusal
+		 * is silent and keeps the text in the composer - `false` is what
+		 * `use-message-input.ts` reads to leave it there - rather than disabling the
+		 * composer, because the panel has already told the user they are in the
+		 * target and the two can only disagree for a round trip.
+		 *
+		 * BOUNDED BY THE HYDRATION STATE, and that is evidence rather than a
+		 * timeout: a live frame from the session's own stream is proof the session
+		 * exists, so either answer opens the gate. Without that second term a hung
+		 * read - which cannot bound itself, `desktopResult` has no deadline - would
+		 * refuse every send from this panel forever and silently, and the pending
+		 * banner that used to be that state's escape hatch is gone.
+		 */
+		const validating =
+			useCanonicalSessionsStore.getState().validatingSessionId === sessionId &&
+			canonical.status !== "live";
+		if (validating || previous?.pending) return false;
 		if (!sendLock.tryAcquire()) {
 			/*
 			 * A send attempted while an answer (or another send) is in flight used to
@@ -700,7 +719,7 @@ function SessionPanel({
 		// The lock is checked here only to keep the busy flag honest; the claim
 		// itself is `answerGateOption`'s, and between this read and that claim
 		// there is no `await` for a handler to interleave in.
-		if (pendingNavigation || sendLock.held) return;
+		if (sendLock.held) return;
 		const key = gateKeyOf(gate);
 		/*
 		 * Whether the press came from the keyboard, so focus can be put back where
@@ -939,6 +958,25 @@ function SessionPanel({
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
+	/*
+	 * Nothing has named this session's identity yet, and the panel is waiting for
+	 * the stream that will.
+	 *
+	 * Both sources are exhausted above: the live frontend has not arrived, and the
+	 * catalogue row names no agent or team (a binding with both fields null is a
+	 * legal row). The chain at the `description` prop then falls through to its
+	 * last-resort sentence, which is what painted "Canonical chat" in the frame
+	 * after the click and "operator" once the snapshot landed - a fallback string
+	 * rendered as a fact, in front of the user, for the duration of the wait
+	 * (design D3). So the slot is HELD instead: a skeleton is not a claim, and the
+	 * identity replaces it the moment any source knows it.
+	 *
+	 * `connecting` rather than "no frontend": an `unavailable` stream never
+	 * arrives, and a header that stays a skeleton forever would be worse than one
+	 * that states what it has. `view` and not `canonical`, so this reads the same
+	 * status the panel below it renders from.
+	 */
+	const identityPending = !loaded && !draftKey && view.status === "connecting";
 	/*
 	 * The failed send, assembled for the composer.
 	 *
@@ -1184,6 +1222,7 @@ function SessionPanel({
 							? "The session starts when you send your first message."
 							: canonical.frontend?.cwd || "Canonical chat")
 					}
+					descriptionPending={identityPending}
 					onOpenOptions={() => setOptions((value) => !value)}
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
@@ -1286,7 +1325,7 @@ function SessionPanel({
 					canonical={{
 						view,
 						busy,
-						admitting: admitting || pendingNavigation,
+						admitting,
 						onStop: stop,
 						onAnswer: (label: string) => void answerWithOption(label),
 						answer: answerForThisGate,
@@ -1312,8 +1351,18 @@ export function ChatPage() {
 	const draft = useCanonicalSessionsStore((state) =>
 		draftKey ? state.drafts[draftKey] : undefined,
 	);
-	const pending = useCanonicalSessionsStore((state) => state.pendingSessionId);
 	const error = useCanonicalSessionsStore((state) => state.error);
+	/*
+	 * The navigation failure is read here and not from `error`, which is the
+	 * CATALOGUE's health: the catalogue refreshes on its own timer, and
+	 * `fetchSessions` clears that field when it starts, so the rollback's own
+	 * refetch used to erase the switch's failure sentence 4.5-8.1 ms after the
+	 * rollback wrote it. The user's own navigation failing is not the list's
+	 * health, and it is the sentence that must survive long enough to read.
+	 */
+	const navigationError = useCanonicalSessionsStore(
+		(state) => state.navigationError,
+	);
 	const [routeError, setRouteError] = useState<string | null>(null);
 	useEffect(() => {
 		if (!enabled || !routeIdentity) return;
@@ -1331,19 +1380,14 @@ export function ChatPage() {
 		if (store.activeSessionId !== id || store.activeDraftKey)
 			void store.openSession(id);
 	}, [enabled, routeIdentity]);
-	useEffect(() => {
-		const keydown = (event: KeyboardEvent) => {
-			if (
-				event.key === "Escape" &&
-				useCanonicalSessionsStore.getState().pendingSessionId
-			) {
-				event.preventDefault();
-				useCanonicalSessionsStore.getState().cancelOpen();
-			}
-		};
-		window.addEventListener("keydown", keydown);
-		return () => window.removeEventListener("keydown", keydown);
-	}, []);
+	/*
+	 * The keyboard abort for a switch is gone with the pending banner it belonged
+	 * to. The switch has no cancellable phase to abort any more: the commit IS the
+	 * navigation, it lands in the click's own frame, and the only wait left is the
+	 * panel's own hydration. A second click is the latest-wins exit and the store
+	 * already implements it; an Escape that silently did nothing while looking
+	 * armed is what this removes.
+	 */
 	const stage = (target?: ChatTarget, fresh?: boolean) => {
 		useCanonicalSessionsStore.getState().stageDraft(target, fresh);
 		setRouteError(null);
@@ -1375,28 +1419,22 @@ export function ChatPage() {
 			}
 			content={
 				<div className={cn("flex h-full min-h-0 flex-col")}>
-					{pending && (
-						<p
-							aria-live="polite"
-							className={cn("px-4 py-2 text-body-sm text-info")}
-						>
-							Opening chat…{" "}
-							<button
-								type="button"
-								onClick={() =>
-									useCanonicalSessionsStore.getState().cancelOpen()
-								}
-							>
-								Cancel
-							</button>
-						</p>
-					)}
-					{(routeError || error) && (
+					{/*
+					 * ONE sentence, and it is the user's navigation that owns it. The
+					 * catalogue's own failure is rendered where the remedy is (the
+					 * sidebar's `Retry refresh`, which refreshes the LIST); a switch
+					 * that failed has no list to refresh, so it is stated here, above the
+					 * panel it failed to open, and holds until the user navigates again.
+					 * It is deliberately NOT also painted in the sidebar: the same
+					 * sentence in two places under a remedy that fixes neither is what
+					 * made a deep link to a deleted chat read as two different failures.
+					 */}
+					{(routeError || navigationError || error) && (
 						<p
 							role="alert"
 							className={cn("px-4 py-2 text-body-sm text-danger")}
 						>
-							{routeError || error}
+							{routeError || navigationError || error}
 						</p>
 					)}
 					{!enabled ? (
@@ -1421,7 +1459,6 @@ export function ChatPage() {
 								identity={identity}
 								draftKey={draftKey}
 								sessionId={id}
-								pendingNavigation={Boolean(pending)}
 							/>
 						</div>
 					) : (

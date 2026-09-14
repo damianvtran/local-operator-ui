@@ -83,6 +83,8 @@ type ChatContentProps = {
 	onTabChange: (tab: "chat" | "raw") => void;
 	agentName: string;
 	description: string;
+	/** Held, not filled, until some source names the identity; see `ChatHeaderProps`. */
+	descriptionPending?: boolean;
 	onOpenOptions: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
@@ -258,6 +260,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onTabChange,
 		agentName,
 		description,
+		descriptionPending,
 		onOpenOptions,
 		isOptionsSidebarOpen,
 		onCloseOptions,
@@ -546,6 +549,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						<ChatHeader
 							agentName={agentName}
 							description={description}
+							descriptionPending={descriptionPending}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							fileCount={mentionedFileCount}

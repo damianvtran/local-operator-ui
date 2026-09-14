@@ -64,7 +64,8 @@ const SCENARIO = {
 const AS_JSON = ARGS.includes("--json");
 /**
  * Write frames instead of a phase table: `docs/evidence/session-switch/
- * <state>/<theme>.webp`. The two states are the ones a switch has.
+ * <state>/<theme>.webp`. One directory per state, and the states are the ones a
+ * switch can put on screen.
  *
  * A capture runs with a deliberately LONG stream delay (see `--stream`), not
  * because the timings are being reported but because the hydrating state is a
@@ -72,6 +73,31 @@ const AS_JSON = ARGS.includes("--json");
  * scale no screenshot round trip could land inside it.
  */
 const FRAMES = flag("frames", null);
+/**
+ * The states a capture writes, and the page each one is driven on.
+ *
+ * `hydrating` and `settled` are the switch's two states. The other four exist
+ * because a still of those two cannot answer the questions they raise:
+ *
+ * - `mark`: the PR body's defence is that the sidebar row's own selected state
+ *   is the acknowledgement now, and in a 24-row list the switched-to row sits
+ *   below the captured window - so the frames showed a sidebar band of plain
+ *   `surface` where the mark is claimed to be. This frame scrolls that row into
+ *   view first. (The hover half of the same request is NOT captured: see the
+ *   note on `mark` below.)
+ * - `error`: the rollback's failure sentence, which had no frame while it was
+ *   also (measured) painted for about 5 ms and cleared.
+ * - `slow`: the same hydrating state at the pulse TROUGH. At shipped latency
+ *   this state is three frames and invisible; on a slow or remote backend it is
+ *   the whole first impression, and it is the frame that exposes a placeholder
+ *   whose animation takes it under the contract's floor.
+ *
+ * Every state gets its OWN page load and its own click: the states are all
+ * reached from the same starting point, and a capture that reused one load
+ * would be photographing states in sequence, where the second click starts from
+ * a different view than the first.
+ */
+const FRAME_STATES = ["hydrating", "mark", "slow", "settled", "error"];
 const FRAME_THEMES = (
 	flag("themes", "localOperatorDark,localOperatorLight") ?? ""
 ).split(",").filter(Boolean);
@@ -81,9 +107,15 @@ const FRAME_THEMES = (
  * which is what no still can show, and not what the state looks like.
  */
 const FRAMES_URL = `${PAGE}?${new URLSearchParams({
-	stream: SCENARIO.stream ?? "1200",
+	stream: SCENARIO.stream ?? "4000",
 	get: SCENARIO.get ?? "12",
 })}`;
+/**
+ * The same page with the target's guard read scripted to 404, for the `error`
+ * frame: it is the rollback's own state, so it cannot be reached on the
+ * happy-path URL.
+ */
+const FRAMES_FAIL_URL = `${FRAMES_URL}&fail=incoming`;
 /**
  * Capture the PRE-CHANGE state of the same switch.
  *
@@ -185,25 +217,51 @@ const FAIL_RUN = `(async () => {
 	const probe = window.__lopSwitch;
 	const meta = probe.snapshot();
 	const before = probe.view();
+	/*
+	 * Started BEFORE the click and sampled per FRAME (see probe.record): what
+	 * it reports about the sentence is what a frame contained, not what the store
+	 * held at some instant between two paints.
+	 */
 	const recorder = probe.record();
 	const run = await probe.switchTo(meta.incoming, "failing");
 	const started = performance.now();
+	const frame = () =>
+		new Promise((resolve) => requestAnimationFrame(() => resolve()));
 	while (
 		probe.view().activeSessionId !== meta.outgoing &&
 		performance.now() - started < 5000
 	)
-		await new Promise((r) => setTimeout(r, 25));
+		await frame();
 	const atRollback = probe.view();
-	await new Promise((r) => setTimeout(r, 300));
-	const transitions = recorder.entries.slice();
+	const rollbackAt = performance.now();
+	/*
+	 * WATCH LONGER THAN THE CATALOGUE'S OWN TIMER. sessions.list is polled
+	 * every five seconds, and that poll is what erased the sentence on the
+	 * previous head (measured: on screen for 4.95 s, then gone). A 300 ms window
+	 * - what this observed before - cannot tell a sentence that survives from one
+	 * the next poll wipes, so the window is the poll period plus a margin, and the
+	 * verdict below counts the polls it lived through.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 6200));
+	const stats = recorder.stats();
+	const after = probe.view();
 	recorder.stop();
 	return {
 		meta,
 		before,
-		run: { committedAt: run.committedAt, getSettledAt: run.getSettledAt, timedOut: run.timedOut },
+		run: {
+			committedAt: run.committedAt,
+			getSettledAt: run.getSettledAt,
+			timedOut: run.timedOut,
+		},
 		atRollback,
-		after: probe.view(),
-		transitions,
+		after,
+		stats,
+		rollbackAt,
+		pollsAfterRollback: probe.bridge.log.requests.filter(
+			(request) =>
+				request.op === "sessions.list" && request.startedAt >= rollbackAt,
+		).length,
 		requests: probe.bridge.log.requests.map(
 			(request) => request.op + ":" + (request.sessionId ?? ""),
 		),
@@ -221,78 +279,218 @@ const median = (values) => {
 const round = (n) => (n === null ? null : Math.round(n * 10) / 10);
 
 /**
- * The two states of a switch, and what each one is a picture OF.
+ * The states of a switch, and what each frame is a picture OF.
  *
- * `hydrating` is the state the switch now reaches immediately: the target's
- * own panel, mounted, with the transcript it has not received yet. `settled`
- * is the same panel once the transcript is painted. For a reader's eye they
- * are the before/after of the change: the outgoing conversation held on screen
- * under an "Opening chat…" banner is the state that no longer exists here.
+ * `hydrating` is the state the switch now reaches immediately: the target's own
+ * panel, mounted, with the transcript it has not received yet. `settled` is the
+ * same panel once the transcript is painted. For a reader's eye they are the
+ * before/after of the change: the outgoing conversation held on screen under an
+ * "Opening chat…" banner is the state that no longer exists here.
+ *
+ * The other four exist because those two cannot answer what the change is
+ * defended on - see `FRAME_STATES` for what each one is for.
+ *
+ * EVERY state gets its own page load and its own click. The states are all
+ * reached from the same starting point, and a capture that shared one load
+ * would be photographing a SEQUENCE, where the second state starts from the
+ * view the first one left behind rather than from the app's own boot.
  */
 const captureFrames = async (cdp) => {
 	const written = [];
+	// Under `--expect-outgoing` the same script photographs the PRE-change state
+	// on the pre-change tree, and only that state exists there.
+	const states = EXPECT_OUTGOING ? ["hydrating"] : FRAME_STATES;
 	for (const theme of FRAME_THEMES) {
-		// A fresh page per theme: the switch's states depend on where the run
-		// started, and a second click from a settled incoming session is a
-		// different switch than the one being photographed.
-		await cdp.send("Page.navigate", { url: FRAMES_URL });
-		let ready = false;
-		for (let i = 0; i < 240 && !ready; i++) {
-			const { result } = await cdp.send("Runtime.evaluate", {
-				returnByValue: true,
-				expression: `(() => {
-					const probe = window.__lopSwitch;
-					return Boolean(probe && probe.ready) && document.fonts.status === "loaded";
-				})()`,
+		for (const state of states) {
+			await cdp.send("Page.navigate", {
+				url: state === "error" ? FRAMES_FAIL_URL : FRAMES_URL,
 			});
-			ready = result.value === true;
-			if (!ready) await sleep(250);
+			await waitForCaptureReady(cdp);
+			await cdp.send("Runtime.evaluate", {
+				expression: `document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)})`,
+			});
+			await settleFrames(cdp);
+			await prepareState(cdp, state);
+			written.push(
+				await shoot(cdp, join(FRAMES, state, `${theme}.webp`), state, theme),
+			);
 		}
-		if (!ready) throw new Error("the harness never became ready for the capture");
+	}
+	return written;
+};
 
-		await cdp.send("Runtime.evaluate", {
-			expression: `document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)})`,
-		});
-		await settleFrames(cdp);
-
-		/*
-		 * The click, dispatched in the page exactly as the timed runs do it, so
-		 * what is photographed is the shipped click path rather than a state
-		 * forced from outside it.
-		 */
-		const { result: meta } = await cdp.send("Runtime.evaluate", {
+/**
+ * The page is mounted on a session AND its fonts have resolved - a switch
+ * photographed against the fallback face would be a picture of this machine
+ * rather than of the product. Polled, not slept on.
+ */
+const waitForCaptureReady = async (cdp) => {
+	for (let i = 0; i < 240; i++) {
+		const { result } = await cdp.send("Runtime.evaluate", {
 			returnByValue: true,
 			expression: `(() => {
 				const probe = window.__lopSwitch;
-				const meta = probe.snapshot();
-				const row = document.querySelector(
-					'[data-chat-row][title^="' + meta.incomingTitle + '"]',
-				);
-				if (!row) return null;
-				row.click();
-				return meta;
+				return Boolean(probe && probe.ready) && document.fonts.status === "loaded";
 			})()`,
 		});
-		if (!meta.value) throw new Error("no sidebar row for the capture target");
+		if (result.value === true) return;
+		await sleep(250);
+	}
+	throw new Error("the harness never became ready for the capture");
+};
 
-		// One frame after the click: the commit has happened and the transcript
-		// has not arrived, which IS the state under review.
-		await settleFrames(cdp);
-		written.push(
-			await shoot(cdp, join(FRAMES, "hydrating", `${theme}.webp`), "hydrating"),
-		);
+/**
+ * The click, dispatched in the page exactly as the timed runs do it, so what is
+ * photographed is the shipped click path rather than a state forced from
+ * outside it.
+ */
+const clickTarget = async (cdp) => {
+	const { result } = await cdp.send("Runtime.evaluate", {
+		returnByValue: true,
+		expression: `(() => {
+			const probe = window.__lopSwitch;
+			const meta = probe.snapshot();
+			const row = document.querySelector(
+				'[data-chat-row][title^="' + meta.incomingTitle + '"]',
+			);
+			if (!row) return null;
+			row.click();
+			return meta;
+		})()`,
+	});
+	if (!result.value) throw new Error("no sidebar row for the capture target");
+	return result.value;
+};
 
-		// Then wait for the transcript, by the page's own definition of settled.
+/*
+ * The switched-to row, resolved the same way the click resolves it. Async,
+ * because one caller awaits the list's own smooth scroll inside it.
+ */
+const targetRow = (expression) => `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const row = document.querySelector(
+		'[data-chat-row][title^="' + meta.incomingTitle + '"]',
+	);
+	${expression}
+})()`;
+
+/** Put the page into the state under review, on the shipped click path. */
+const prepareState = async (cdp, state) => {
+	const meta = await clickTarget(cdp);
+	// One settle after the click: the commit has happened and the transcript has
+	// not arrived, which IS the state a switch now reaches.
+	await settleFrames(cdp);
+
+	if (state === "settled") {
 		await cdp.send("Runtime.evaluate", {
 			awaitPromise: true,
-			expression: `window.__lopSwitch.settle(${JSON.stringify(meta.value.incoming)})`,
+			expression: `window.__lopSwitch.settle(${JSON.stringify(meta.incoming)})`,
 		});
 		await settleFrames(cdp);
-		written.push(
-			await shoot(cdp, join(FRAMES, "settled", `${theme}.webp`), "settled"),
-		);
+		return;
 	}
-	return written;
+
+	if (state === "error") {
+		/*
+		 * The rollback, by the page's own definition of it: the view is back on the
+		 * outgoing session - and then its CONVERSATION is back too, because that is
+		 * the state the failure path promises ("the outgoing conversation still on
+		 * screen" beside the sentence that explains why). A frame shot the instant
+		 * the view moves would photograph the re-hydration window instead, and the
+		 * claim it is evidence for is about what the user is left with.
+		 */
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression: `(async () => {
+				const probe = window.__lopSwitch;
+				const deadline = performance.now() + 8000;
+				while (
+					probe.view().activeSessionId !== probe.view().outgoing &&
+					performance.now() < deadline
+				)
+					await new Promise((r) => requestAnimationFrame(() => r()));
+				await probe.settle(probe.view().outgoing);
+			})()`,
+		});
+		await settleFrames(cdp);
+		return;
+	}
+
+	if (state === "mark") {
+		/*
+		 * The mark is the acknowledgement this change is defended on, and in a
+		 * 24-row fixture the switched-to row sits BELOW the captured window - which
+		 * is why the frames showed a sidebar band of plain `surface` where the body
+		 * claimed a mark (design D5). The frame scrolls its own subject into view.
+		 *
+		 * NO HOVER FRAME, and it was attempted rather than skipped. A CDP-dispatched
+		 * `Input.dispatchMouseEvent` does not land the browser's hover state on the
+		 * row it is aimed at here - two attempts put the pointer on a sidebar button
+		 * that carried no row, and `[data-chat-row]:hover` stayed null - and the
+		 * alternatives are worse than the omission: forcing the pseudo-state
+		 * (`CSS.forcePseudoState`) would stage the state instead of driving it, and a
+		 * frame published under a hover claim it does not have is exactly the kind of
+		 * evidence this set exists to refuse. The selection/hover pair is pinned
+		 * numerically instead, by the contrast contract's own rows.
+		 */
+		await cdp.send("Runtime.evaluate", {
+			expression: targetRow(`row?.scrollIntoView({ block: "nearest" });`),
+		});
+		/*
+		 * THEN WAIT FOR THE SCROLL TO STOP. The list scrolls smoothly (the
+		 * stylesheet's own `scroll-behavior`), so two frames after the call the
+		 * row's box is still moving - and a pointer dispatched at a rectangle
+		 * measured mid-animation lands on whatever has moved under it, which is
+		 * how the first attempt hovered a row that was not the one it aimed at.
+		 * Stability, not a delay: two consecutive frames at the same offset.
+		 */
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression: targetRow(`
+				await new Promise((resolve) => {
+					let last = null;
+					let stable = 0;
+					const deadline = performance.now() + 3000;
+					const step = () => {
+						const rect = row?.getBoundingClientRect();
+						const key = rect ? Math.round(rect.top) : null;
+						stable = key !== null && key === last ? stable + 1 : 0;
+						last = key;
+						if (stable >= 2 || performance.now() > deadline) return resolve();
+						requestAnimationFrame(step);
+					};
+					requestAnimationFrame(step);
+				});`),
+		});
+		await settleFrames(cdp);
+	}
+
+	if (state === "slow") {
+		/*
+		 * The pulse's TROUGH, which is the state D2 is about, reached by waiting
+		 * for the animation's own phase rather than by freezing it: the
+		 * placeholder pulses once every 2 s from the moment it mounts, so the
+		 * trough is ~1 s after the click and the harness waits for the rendered
+		 * opacity to reach it. The readback in `shoot` records the opacity that was
+		 * actually on screen, so the frame states the phase it was taken at instead
+		 * of the harness asserting one it hoped for.
+		 */
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression: `(async () => {
+				const bar = () =>
+					document.querySelector('[aria-label="Loading conversation"]')
+						?.firstElementChild;
+				const deadline = performance.now() + 20_000;
+				while (performance.now() < deadline) {
+					const el = bar();
+					if (el && Number(getComputedStyle(el).opacity) <= 0.53) return;
+					await new Promise((r) => requestAnimationFrame(() => r()));
+				}
+			})()`,
+		});
+	}
 };
 
 /** Two frames: one for the change to lay out, one for it to paint. */
@@ -308,37 +506,49 @@ const settleFrames = (cdp) =>
  *
  * `check-evidence.mjs` exists because a frame was committed that was of nothing
  * at all (a loading spinner on a white page, 2,762 bytes against its siblings'
- * 57KB), so this asserts what has to be true of the surface - the panel is the
- * switch's target, and for `settled` the transcript has content - BEFORE the
- * bytes are allowed into the tree.
+ * 57KB), so this asserts what has to be true of the SURFACE before the bytes are
+ * allowed into the tree - and, since a still cannot say whether the writer had
+ * to scroll to reach its subject, the reads that a frame's own claim depends on
+ * (the mark in view, the pointer on another row, the placeholder's phase) are
+ * read back and printed with the file.
  */
-const shoot = async (cdp, path, state) => {
-	const { result: check } = await cdp.send("Runtime.evaluate", {
+const shoot = async (cdp, path, state, theme) => {
+	const { result } = await cdp.send("Runtime.evaluate", {
 		returnByValue: true,
-		expression: `(() => {
-			const probe = window.__lopSwitch;
-			const view = probe.view();
-			return {
-				active: view.activeSessionId,
-				target: probe.snapshot().incoming,
-				outgoing: view.outgoing,
-				pending: view.pendingIndicator,
-				content: view.transcriptHasContent,
-			};
-			})()`,
-		});
-		const seen = check.value;
-	if (EXPECT_OUTGOING && state === "hydrating") {
-		if (seen.active !== seen.outgoing || !seen.pending)
-			throw new Error(
-				`${state}: expected the outgoing session held under its pending affordance`,
-			);
-		} else {
+		expression: `(() => ({
+			...window.__lopSwitch.frame(),
+			sentence: document.body.innerText.includes("Unknown session"),
+		}))()`,
+	});
+	const seen = result.value;
+	const refuse = (message) => {
+		throw new Error(`${state}/${theme}: ${message}`);
+	};
+	if (EXPECT_OUTGOING) {
+		if (seen.active !== seen.outgoing || !seen.pendingIndicator)
+			refuse("expected the outgoing session held under its pending affordance");
+	} else if (state === "error") {
+		if (seen.active !== seen.outgoing)
+			refuse("the view is not back on the outgoing session");
+		if (!seen.content) refuse("the outgoing conversation has not come back");
+		if (!seen.sentence) refuse("the failure sentence is not on screen");
+	} else {
 		if (seen.active !== seen.target)
-			throw new Error(`${state}: the panel is not the switch's target`);
-		if (state === "settled" && !seen.content)
-			throw new Error(`${state}: the transcript is still empty`);
+			refuse("the panel is not the switch's target");
+		if (state === "settled") {
+			if (!seen.content) refuse("the transcript is still empty");
+		} else {
+			if (seen.content) refuse("the transcript already has content");
+			if (!seen.placeholder) refuse("no placeholder is on screen");
 		}
+		if (state === "mark") {
+			if (!seen.rowInView) refuse("the switched-to sidebar row is not in view");
+		}
+		if (state === "slow" && !((seen.placeholderOpacity ?? 1) <= 0.6))
+			refuse(
+				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
+			);
+	}
 	const { data } = await cdp.send("Page.captureScreenshot", {
 		format: "webp",
 		quality: 88,
@@ -351,19 +561,12 @@ const shoot = async (cdp, path, state) => {
 /**
  * The phases, in the order the user pays for them.
  *
- * `pending` and `pendingPaint` are null on a switch that commits before
- * painting anything else, which is the shape this work is aiming for - so a
- * missing phase is reported as "-", never coerced to zero.
+ * There is no pending phase on this head and there must not be one: the switch
+ * has no pending affordance left to paint, so "pending set → pending painted"
+ * would be two timestamps that can never be taken. The table reports the phases
+ * that exist, and the click's own frame is `click → committed`.
  */
 const PHASES = [
-	["click → pending set", (r) => (r.pendingAt === null ? null : r.pendingAt - r.clickAt)],
-	[
-		"pending set → pending painted",
-		(r) =>
-			r.pendingAt === null || r.pendingPaintedAt === null
-				? null
-				: r.pendingPaintedAt - r.pendingAt,
-	],
 	[
 		"click → sessions.get settled",
 		(r) => (r.getSettledAt === null ? null : r.getSettledAt - r.clickAt),
@@ -538,42 +741,81 @@ const main = async () => {
 		);
 
 	if (FAIL_GET) {
-		const { before, run, atRollback, after, transitions, requests } = result.value;
-		const errorWasSet = transitions.some((entry) => entry.error !== null);
-			const errorWasSeen = transitions.some((entry) => entry.shown);
+		const {
+			before,
+			run,
+				atRollback,
+				after,
+			stats,
+				pollsAfterRollback,
+				requests,
+			} = result.value;
+			/*
+					* EVERY CLAIM IS ABOUT A FRAME, not about the store's history.
+			*
+				* "The failure sentence reached the screen" used to be computed as
+			* `transitions.some((entry) => entry.shown)` over entries pushed from a
+				* `store.subscribe` callback - a `document.body.innerText` read taken at a
+				* store notification, i.e. at an instant no browser ever painted. It was
+						* true there and false on every delivered frame: the rollback's own
+					* catalogue refetch cleared the sentence 4.5-8.1 ms after writing it, and
+					* 0 of ~1,100 sampled frames contained it (UX round 1, U1). The recorder
+				* samples per `rAF` now, so `shownFrames > 0` is a claim about paints, and
+				* `shownAtEnd` is the one the fix has to satisfy: the sentence has to
+			* outlive the five-second poll that used to wipe it, and the run waits for
+			* at least one of those polls (`pollsAfterRollback`) before asking.
+			*/
 				const verdict = {
-				"the switch committed the target first": run.committedAt !== null,
+			"the switch committed the target first": run.committedAt !== null,
 			"the view came back to the outgoing session":
 				atRollback.activeSessionId === before.activeSessionId,
-				"the failure sentence was recorded": errorWasSet,
-			"the failure sentence reached the screen": errorWasSeen,
-			"the sidebar marks the outgoing session again":
-					atRollback.selectedRow === before.selectedRow,
-			};
-				const passed = Object.values(verdict).every(Boolean);
-			if (AS_JSON) {
-				console.log(
-				JSON.stringify(
-						{ verdict, before, run, atRollback, after, transitions, requests },
-					null,
-					2,
-				),
-				);
-			} else {
-			console.log("guard-read failure — the rollback, driven in the real renderer");
-			console.log(`  before:      ${JSON.stringify(before)}`);
-				console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
-			console.log(`  300 ms later: ${JSON.stringify(after)}`);
-			console.log(
-				`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
-			);
-			console.log(`  transitions: ${JSON.stringify(transitions)}`);
-			console.log(`  requests: ${requests.join(", ")}`);
-			for (const [claim, held] of Object.entries(verdict))
-				console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
-		}
-		if (!passed) process.exitCode = 1;
-		return;
+			"the failure sentence was recorded in the store": stats.recorded,
+			"the failure sentence reached a painted frame": stats.shownFrames > 0,
+			"the sentence is stated on exactly one surface":
+			stats.maxSurfaces === 1,
+				"the sentence outlived a catalogue poll":
+		stats.shownAtEnd && pollsAfterRollback > 0,
+		"the sidebar marks the outgoing session again":
+		atRollback.selectedRow === before.selectedRow,
+	};
+	const passed = Object.values(verdict).every(Boolean);
+	if (AS_JSON) {
+	console.log(
+		JSON.stringify(
+			{
+				verdict,
+				before,
+				run,
+				atRollback,
+				after,
+				stats,
+				pollsAfterRollback,
+				requests,
+			},
+			null,
+			2,
+		),
+	);
+	} else {
+	console.log("guard-read failure — the rollback, driven in the real renderer");
+	console.log(`  before:      ${JSON.stringify(before)}`);
+	console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
+	console.log(`  6.2 s later: ${JSON.stringify(after)}`);
+	console.log(
+		`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
+	);
+	console.log(
+		`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
+			` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
+			` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
+	);
+	console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
+	console.log(`  requests: ${requests.join(", ")}`);
+	for (const [claim, held] of Object.entries(verdict))
+		console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
+	}
+	if (!passed) process.exitCode = 1;
+	return;
 	}
 	const { meta, runs, latency } = result.value;
 	const steady = runs.filter((run) => run.label === "steady");

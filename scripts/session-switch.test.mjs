@@ -101,6 +101,8 @@ const { useCanonicalSessionsStore: store } = await import(
 );
 
 const OUTGOING = "111111111111";
+const DRAFT = "draft:agent:reviewer";
+const MATERIALISED = "444444444444";
 const TARGET = "222222222222";
 const OTHER = "333333333333";
 
@@ -121,7 +123,8 @@ function reset({ draft = null } = {}) {
 				}
 			: {},
 		sessionByAgent: {},
-		pendingSessionId: null,
+		validatingSessionId: null,
+		navigationError: null,
 		error: null,
 	});
 }
@@ -153,7 +156,7 @@ test("the switch commits the target before the guard read answers", async () => 
 	// duration.
 	assert.equal(store.getState().activeSessionId, TARGET);
 	assert.equal(store.getState().activeDraftKey, null);
-	assert.equal(store.getState().pendingSessionId, null);
+	assert.equal(store.getState().validatingSessionId, TARGET);
 	assert.equal(store.getState().error, null);
 
 	// The read is still issued - the guard was moved behind the commit, not
@@ -179,8 +182,15 @@ test("a failed guard read puts the view back where it was, and says why", async 
 
 	assert.equal(ok, false);
 	assert.equal(store.getState().activeSessionId, OUTGOING);
-	assert.equal(store.getState().pendingSessionId, null);
-	assert.equal(store.getState().error, "Unknown session.");
+	assert.equal(store.getState().validatingSessionId, null);
+	/*
+	 * The failure goes to `navigationError`, NOT to `error`. `error` is the
+	 * catalogue's health and `fetchSessions` clears it when it starts - which the
+	 * rollback's own refetch does, 4.5-8.1 ms later - so a switch that failed used
+	 * to be silent on every frame (UX round 1, U1).
+	 */
+	assert.equal(store.getState().navigationError, "Unknown session.");
+	assert.equal(store.getState().error, null);
 });
 
 test("a failed read restores the draft the user was in, not just the session", async () => {
@@ -194,6 +204,93 @@ test("a failed read restores the draft the user was in, not just the session", a
 	assert.equal(ok, false);
 	assert.equal(store.getState().activeDraftKey, "draft:agent:reviewer");
 	assert.equal(store.getState().activeSessionId, null);
+});
+
+/*
+ * R1/Q1 - THE ROLLBACK RE-VALIDATES THE DRAFT IT RESTORES.
+ *
+ * `previous` is captured at the CLICK and the guard read is an arbitrary window,
+ * so a send that was in flight on the outgoing draft can land inside it.
+ * `finishDraft` then deletes that draft's row and moves `activeSessionId` only
+ * while the view is still on that draft - which the commit has just made false -
+ * so the row is gone while the snapshot still names it. Writing the snapshot back
+ * verbatim put the view on a draft that does not exist: the panel was keyed on
+ * the dead key, and a send from it minted a fresh `createRequestId` and opened a
+ * SECOND session for a conversation that already had one, with the first now
+ * unreachable from the view.
+ *
+ * This drives the exact interleaving - send in flight, switch, read fails - and
+ * FAILS on `a98c2763d`, where `activeDraftKey` came back naming the deleted row.
+ */
+test("a failed read does not restore a draft whose row is gone", async () => {
+	reset({ draft: DRAFT });
+	const read = deferred();
+	answer = () => read.promise;
+
+	const pending = store.getState().openSession(TARGET);
+	/*
+	 * The send lands mid-read: the conversation it was admitted under
+	 * materialises as a session and `finishDraft` drops the row. The view is on
+	 * the target by then, so this deliberately does not move `activeSessionId` -
+	 * which is exactly why the rollback cannot read the outcome back out of the
+	 * store later.
+	 */
+	store.getState().finishDraft(DRAFT, MATERIALISED);
+	assert.equal(store.getState().drafts[DRAFT], undefined);
+
+	read.release(Promise.reject(new Error("Unknown session.")));
+	assert.equal(await pending, false);
+
+	/*
+	 * The pointer must not name a row that is gone: every consumer reads
+	 * `activeDraftKey` as "a draft is being composed", and a send from it goes
+	 * through `admitChatDraft` with no `previous` row - a second session for a
+	 * conversation that already has one.
+	 */
+	assert.equal(store.getState().activeDraftKey, null);
+	assert.equal(store.getState().activeSessionId, null);
+	assert.equal(store.getState().navigationError, "Unknown session.");
+});
+
+/*
+ * The other half of the same rule, and the reason the fix is not "stop
+ * restoring": a draft that SURVIVED the read is still the view the user came
+ * from, and a rollback that dropped it would move them twice for one failure.
+ */
+test("a failed read still restores a draft whose row survived", async () => {
+	reset({ draft: DRAFT });
+	const read = deferred();
+	answer = () => read.promise;
+
+	const pending = store.getState().openSession(TARGET);
+	// The send is still in flight, so the row is where the user left it.
+	assert.equal(store.getState().drafts[DRAFT].key, DRAFT);
+
+	read.release(Promise.reject(new Error("Unknown session.")));
+	assert.equal(await pending, false);
+
+	assert.equal(store.getState().activeDraftKey, DRAFT);
+	assert.equal(store.getState().activeSessionId, null);
+});
+
+/*
+ * The read window's send gate, which `pendingSessionId` used to carry and which
+ * commit-first would otherwise have dropped silently: while `sessions.get` has
+ * not answered, the target's existence is unverified, and
+ * `validatingSessionId` is what says so. It is closed by the answer - on
+ * success and on failure.
+ */
+test("the read window is published while it lasts and closed by its answer", async () => {
+	reset();
+	const read = deferred();
+	answer = () => read.promise;
+
+	const pending = store.getState().openSession(TARGET);
+	assert.equal(store.getState().validatingSessionId, TARGET);
+
+	read.release({});
+	assert.equal(await pending, true);
+	assert.equal(store.getState().validatingSessionId, null);
 });
 
 test("an older read cannot roll back a newer switch", async () => {
@@ -230,7 +327,7 @@ test("an older read cannot roll back a newer switch", async () => {
 	second.release(Promise.reject(new Error("Unknown session.")));
 	assert.equal(await secondSwitch, false);
 	assert.equal(store.getState().activeSessionId, TARGET);
-	assert.equal(store.getState().error, "Unknown session.");
+	assert.equal(store.getState().navigationError, "Unknown session.");
 });
 
 test("a superseded read reports false, so the URL is never rewritten back", async () => {
@@ -249,20 +346,12 @@ test("a superseded read reports false, so the URL is never rewritten back", asyn
 	assert.equal(store.getState().activeSessionId, OTHER);
 });
 
-test("cancelOpen abandons the switch without touching the commit", async () => {
-	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	store.getState().cancelOpen();
-
-	assert.equal(store.getState().pendingSessionId, null);
-
-	read.release({});
-	// Cancelled by a newer intent (the generation guard), so this call does not
-	// claim success - but the commit it made is the user's, and nothing here
-	// undoes it.
-	assert.equal(await pending, false);
-	assert.equal(store.getState().activeSessionId, TARGET);
-});
+/*
+ * `cancelOpen` is gone, and so is the test that pinned what it did to the
+ * commit. The switch has no cancellable phase left: the commit IS the navigation
+ * and it lands in the click's own frame, so "cancel" could only mean "go back to
+ * the session I came from" - which is what clicking that row does. The pending
+ * banner, its Escape handler, the sidebar spinner and the store field behind them
+ * were all unreachable once nothing set one; `validatingSessionId` carries the
+ * one guarantee that had to survive (see the read-window test above).
+ */
