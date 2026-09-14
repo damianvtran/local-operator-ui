@@ -64,21 +64,33 @@ for s in chat-tool-rows--expanded-detail chat-tool-rows--expanded-json-result \
 done
 ```
 
-**This needs one local change that is NOT in the tree, and it needs it on
-`main` too.** `pnpm storybook` cannot build its preview at this head: Storybook's
+**The `before` captures above needed one local change that is not in this
+repository — and `main` has since fixed the breakage it worked around.**
+`pnpm storybook` could not build its preview at `7f0511dd4`: Storybook's
 `reactDocgen: "react-docgen-typescript"` pulls `react-docgen-typescript@2.2.2`,
-which reads the TypeScript 7 JS compiler API that no longer exists, so the preview
-fails with `Cannot read properties of undefined (reading 'React')` before any
-story renders. That reproduces on unmodified `main` (measured, this machine,
-2026-09-14), so it is a pre-existing toolchain breakage rather than anything this
-branch introduced, and it is reported in the branch's PR as a finding rather than
-patched here. The captures above were taken with `reactDocgen: false` in a
-**local, untracked** `.storybook-local/` config (`-c .storybook-local`), which is
-the workaround the other branches in this tree use; docgen feeds only Storybook's
-props tables, so no frame is a function of it. The control that says so:
-`chat-tool-rows--states` re-captured on this machine differs from the committed
-frame by 663 of 1,152,000 pixels (0.058%) in `localOperatorDark` and 1,142
-(0.099%) in `localOperatorLight` — WebP encoder noise, not a render difference.
+which reads the TypeScript 7 JS compiler API that no longer exists, so the
+preview failed with `Cannot read properties of undefined (reading 'React')`
+before any story rendered. That reproduced on unmodified `main` at the time
+(measured, this machine, 2026-09-14) and was reported in this PR as a finding
+rather than patched here, so those eight `before` frames were taken with
+`reactDocgen: false` in a **local, untracked** `.storybook-local/` config
+(`-c .storybook-local`) — the workaround the other branches in this tree used.
+Docgen feeds only Storybook's props tables, so no frame was a function of it,
+and the control that says so is above: `chat-tool-rows--states` re-captured under
+it differs from the committed frame by 663 of 1,152,000 pixels (0.058%) in
+`localOperatorDark` and 1,142 (0.099%) in `localOperatorLight` — WebP encoder
+noise, not a render difference.
+
+The workaround is HISTORY now, and this is worth knowing before re-running any of
+it: the sync with `main` in this branch brings `#140`'s follow-up, which switches
+the config to the JSX-based `reactDocgen: "react-docgen"` and states the cost
+(the types-driven prop tables on the docs pages, which no committed frame
+renders). Every capture on the merged tree — including this branch's own eight
+surfaces, re-taken in the sync — therefore runs `pnpm exec storybook dev` with
+the committed config and writes no local file at all, which is why the manifest's
+`dirtyWorkingTree` is `false` for that pass. Only the `before` frames above still
+belong to the workaround, and they are left as they were taken rather than
+re-shot: they are a picture of `7f0511dd4`, where the breakage was real.
 
 The harness also refuses to run while a Local Operator backend answers on its
 configured port; `--allow-backend` is the documented opt-in for a narrowed
