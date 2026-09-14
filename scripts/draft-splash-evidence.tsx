@@ -106,6 +106,14 @@ type ChipRow = {
 	chips: number;
 };
 
+/** One reading of every loading claim on the page, wherever it is painted. */
+type LoadingClaims = {
+	placeholders: number;
+	outsideBand: number;
+	shimmerBars: number;
+	captionVisible: boolean;
+};
+
 /** One reading of the band, taken in one animation frame. */
 type BandFrame = {
 	at: number;
@@ -403,8 +411,49 @@ function useDraftStreamView() {
 	const view = useCanonicalSessionStream(undefined, false);
 	return {
 		hydrated: view.hydrated,
+		/*
+		 * The COMPOSED fact both readers take (the composer band as `isHydrating`, the
+		 * transcript pane's hold directly). Published beside `hydrated` rather than
+		 * instead of it, because the two disagree in exactly the state this set is
+		 * about - a session-less draft is `hydrated: false` and owes no page - and a
+		 * readback that could not show them disagreeing would not be evidence about
+		 * which of them the screen followed.
+		 */
+		awaitingHydration: view.awaitingHydration,
 		status: view.status,
 		failed: view.failure !== null,
+	};
+}
+
+/**
+ * Every "still loading" claim in the DOCUMENT, not only in the band.
+ *
+ * The acceptance bar for the pane's repair is about the whole screen: on a fresh
+ * New chat NOTHING may claim to be loading. The band's own counts cannot see the
+ * pane's claim at all - the placeholder renders in the transcript region, outside
+ * `[data-lo-composer-band]` - so a frame that showed the pane's
+ * `Loading conversation…` above the band's greeting passed every assertion this
+ * driver had, which is how the pair of contradictory claims survived capture.
+ *
+ * One count per kind of claim, because they are separable and each names a
+ * different element: the placeholder is a single `<output>` (its three shimmer
+ * bars and its caption are its own subtree, so its presence covers all three), a
+ * shimmer bar is `.animate-pulse-visible` (`styles/index.css` owns the keyframe),
+ * and the caption is read from the rendered text so a claim that is painted
+ * `sr-only` or clipped does not count as visible.
+ */
+function readLoadingClaims(): LoadingClaims {
+	const placeholders = Array.from(
+		document.querySelectorAll('output[aria-label="Loading conversation"]'),
+	);
+	const band = document.querySelector("[data-lo-composer-band]");
+	return {
+		placeholders: placeholders.length,
+		outsideBand: placeholders.filter(
+			(element) => !(band?.contains(element) ?? false),
+		).length,
+		shimmerBars: document.querySelectorAll(".animate-pulse-visible").length,
+		captionVisible: document.body.innerText.includes("Loading conversation"),
 	};
 }
 
@@ -438,6 +487,7 @@ function Probe() {
 			null,
 		store,
 		bandNow: now,
+		loadingClaims: readLoadingClaims(),
 		draftStreamView: draftView,
 		framesRead: total,
 		frames: frames.map(({ at, ...rest }) => ({ at, ...rest })),
