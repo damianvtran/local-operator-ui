@@ -1233,9 +1233,11 @@ test("refreshNotificationContract reads the capability and survives failure", as
  * stayed false). The only thing between a headless run and the operator's focus
  * is that nothing raises the window.
  */
-function raiseHarness(windowRaise) {
+function raiseHarness(windowRaise, host = undefined) {
 	const calls = [];
 	const target = {
+		id: 7,
+		isDestroyed: () => false,
 		show: () => calls.push("show"),
 		showInactive: () => calls.push("showInactive"),
 		focus: () => calls.push("focus"),
@@ -1251,8 +1253,9 @@ function raiseHarness(windowRaise) {
 			return { status: 200, body: { result: { claimed: true } } };
 		},
 		windowRaise,
+		host,
 	);
-	return { notifier, calls, requests };
+	return { notifier, calls, requests, target };
 }
 
 test("a headless run delivers no banner on any path, and burns no claim", async () => {
@@ -1292,8 +1295,12 @@ test("the same three paths do deliver in the ordinary mode", async () => {
 test("a clicked banner raises the window only as far as the plan allows", async () => {
 	const cases = [
 		// mode, what the click is allowed to do
-		["focus", ["show", "focus", "send:desktop-open-conversation"]],
-		["inactive", ["showInactive", "send:desktop-open-conversation"]],
+		//
+		// SEND FIRST, THEN RAISE (B3): naming the conversation before showing the
+		// window is what stops the click flashing the conversation the window was
+		// already on, which reads as a click that landed on the wrong row.
+		["focus", ["send:desktop-open-conversation", "show", "focus"]],
+		["inactive", ["send:desktop-open-conversation", "showInactive"]],
 	];
 	for (const [mode, expected] of cases) {
 		globalThis.__toasts = [];
@@ -1317,4 +1324,169 @@ test("a clicked banner raises the window only as far as the plan allows", async 
 	await settle(100);
 	assert.equal(globalThis.__shown.length, 0);
 	assert.deepEqual(calls, []);
+});
+
+// ---------------------------------------------------------------- B1 and the feed
+//
+// The four cases below are the FIRST tests of the two things that made the
+// operator's report unpredictable rather than merely wrong: the focus gate was
+// window-scoped, and a click with no window was a bare `return`.
+
+/** A second conversation, so "displayed" and "completing" can differ. */
+const OTHER = "ffffffffffff";
+
+/** One composed frame as the machine-wide feed puts it on the wire. */
+function feedNotificationFrame(sessionId = SESSION, overrides = {}) {
+	return {
+		epoch: "feed1",
+		seq: 4,
+		type: "notification",
+		session_id: sessionId,
+		// The feed carries the bridge's payload VERBATIM, `dedupe_key` included.
+		// If it ever stops doing that, the two paths stop collapsing into one
+		// banner and this test is where that shows up.
+		payload: { ...completionFrame().payload, ...overrides },
+	};
+}
+
+test("a focused window does NOT suppress another conversation's completion", async () => {
+	// The operator's own state: sitting in the app on session A while B finishes.
+	// This was announced to nobody — the toast was suppressed by the focus gate
+	// and rung 3 had already deferred to the desktop, so no other surface could
+	// raise it either (B1).
+	const { notifier, requests } = harness({ contract: 1 });
+	await focusWindow(notifier, requests);
+	notifier.observe(OTHER, feedNotificationFrame(OTHER));
+	await settle(100);
+	assert.equal(globalThis.__toasts.length, 1, "the other conversation banners");
+	assert.equal(
+		requests.filter((r) => r?.op === "sessions.notified").length,
+		1,
+		"and it claims delivery",
+	);
+});
+
+test("a focused window displaying THAT conversation suppresses it, with no claim", async () => {
+	// The one state where the completion is already on screen, so a banner would
+	// tell the user what they are reading. Unchanged from before B1 — the
+	// regression to guard against is over-correcting into a banner per turn.
+	const { notifier, requests } = harness({ contract: 1 });
+	await focusWindow(notifier, requests);
+	notifier.observe(SESSION, feedNotificationFrame());
+	await settle(100);
+	assert.equal(globalThis.__toasts.length, 0);
+	assert.equal(
+		requests.filter((r) => r?.op === "sessions.notified").length,
+		0,
+		"a suppressed banner must not burn the cross-surface claim",
+	);
+});
+
+test("a stale focus entry from a dead window suppresses nothing", async () => {
+	// `forgetWindow` runs on `closed`, but a renderer process that dies takes its
+	// webContents id with it and no `closed` event arrives. `webContents` ids are
+	// not reused, so an unfiltered entry suppressed every completion for the life
+	// of the process — the strongest candidate for the original report.
+	const requests = [];
+	const sender = async (input) => {
+		requests.push(input);
+		return { status: 200, body: { result: { claimed: true } } };
+	};
+	const heartbeat = (notifier) =>
+		notifier.heartbeat(1, {
+			sessionId: SESSION,
+			subscriptionId: "a".repeat(32),
+			visible: true,
+			focused: true,
+		});
+
+	const stale = new DesktopNotifier(() => null, sender, "focus", {
+		windowAlive: () => false,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	await heartbeat(stale);
+	stale.observe(SESSION, completionFrame());
+	await settle(100);
+	assert.equal(globalThis.__toasts.length, 1, "a dead window is not looking");
+
+	// The same state with a LIVE window, so the test is about liveness rather
+	// than about the notifier having forgotten how to suppress at all.
+	globalThis.__toasts = [];
+	globalThis.__shown = [];
+	const live = new DesktopNotifier(() => null, sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	await heartbeat(live);
+	live.observe(SESSION, completionFrame({ dedupe_key: "complete:x:live" }));
+	await settle(100);
+	assert.equal(globalThis.__toasts.length, 0);
+});
+
+test("the feed's frame and the bridge's frame with one dedupe_key raise one banner", async () => {
+	// The design's whole no-double-toast argument, at the layer that enforces it:
+	// main's local claim map, keyed on the backend's own string. Both sources
+	// reach `observe` here exactly as they do in production.
+	const { notifier, requests } = harness({ contract: 1 });
+	notifier.observe(SESSION, completionFrame());
+	notifier.observe(SESSION, feedNotificationFrame());
+	await settle(100);
+	assert.equal(globalThis.__toasts.length, 1, "one banner");
+	assert.equal(
+		requests.filter((r) => r?.op === "sessions.notified").length,
+		1,
+		"one delivery claim",
+	);
+});
+
+test("a banner click with no window recreates one instead of doing nothing", async () => {
+	// Defect C: `const target = this.window(); if (!target) return;`. On macOS
+	// with the window closed and the app alive in the dock — matrix row 4, the
+	// operator's exact case — the click did nothing at all.
+	const reopened = [];
+	const notifier = new DesktopNotifier(
+		() => null,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: (sessionId) => reopened.push(sessionId),
+		},
+	);
+	// `always` bypasses the focus gate, which has no window to read here.
+	notifier.observe(SESSION, completionFrame({ focus_policy: "always" }));
+	await settle(100);
+	const banner = globalThis.__shown[0];
+	assert.ok(banner, "the banner is delivered with no window");
+	banner.handlers.click();
+	assert.deepEqual(
+		reopened,
+		[SESSION],
+		"the click asks for the window to be recreated FOR THIS CONVERSATION",
+	);
+});
+
+test("a click for a window that is gone takes the recreate path too", async () => {
+	// A window reference that outlives its window: `mainWindow` is nulled on
+	// `closed`, but a click that lands between the destroy and the null must not
+	// send into a dead `webContents`.
+	const reopened = [];
+	const dead = { id: 9, isDestroyed: () => true, webContents: { send: () => {} } };
+	const notifier = new DesktopNotifier(
+		() => dead,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: (sessionId) => reopened.push(sessionId),
+		},
+	);
+	notifier.observe(SESSION, completionFrame({ focus_policy: "always" }));
+	await settle(100);
+	globalThis.__shown[0].handlers.click();
+	assert.deepEqual(reopened, [SESSION]);
 });

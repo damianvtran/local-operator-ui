@@ -44,6 +44,7 @@
 import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	CircleAlert,
 	Info,
@@ -191,6 +192,29 @@ export type CanonicalTranscriptProps = {
 	 * `transcriptPaneHoldsPlaceholder`.
 	 */
 	hydrated: boolean;
+	/**
+	 * True while the rows below came from the local paint cache rather than from
+	 * the owner (M2).
+	 *
+	 * It is a rendered state, not a hint: rows stay at full `ink` (a cached row is
+	 * a real row, and opacity is banned as a state signal in this system), and
+	 * what says "this may be behind" is ONE caption in the pane's own status
+	 * slot — the same slot `Reconnecting` and the failure notice use. It is
+	 * present from the cached paint's first frame and goes in the same commit as
+	 * the reconciled rows, so the reader never sees reconciled rows labelled
+	 * "last saved" or the reverse.
+	 */
+	stale?: boolean;
+	/**
+	 * True when the backend says this conversation is not on this machine (M6).
+	 *
+	 * A distinct state rather than the failure notice, because that notice is
+	 * about a TRANSPORT that may recover; the path that reaches this one is the
+	 * notification click, which deliberately does not validate the id first and
+	 * therefore needs words for "this conversation is gone" with no round trip
+	 * spent to learn it.
+	 */
+	missing?: boolean;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -857,6 +881,16 @@ const TranscriptRow = memo(function TranscriptRow({
 	);
 });
 
+/**
+ * How long a click's `lop:open:requested` mark stays usable as a trace origin.
+ *
+ * Between the click and the first painted row sit a window recreation, an IPC
+ * round trip and a history read; a minute is far longer than the worst honest
+ * sample and far shorter than "the user came back to this window later", which
+ * is the case that would otherwise be measured as a multi-second click.
+ */
+const OPEN_TRACE_MS = 60_000;
+
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	frontend,
 	transcript,
@@ -871,6 +905,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	failure,
 	hydrated,
+	stale = false,
+	missing = false,
 	attachmentScope,
 	onReconnect,
 	onAnswer,
@@ -1035,9 +1071,58 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * record can express: see the term's rationale in `transcript-pane.ts`.
 		 */
 		admittedSend: starting,
+		// The two states a notification click can paint with no authoritative
+		// answer in hand. Both are statements of the pane's own, so it must not
+		// collapse out of the layout and the band must not offer the greeting over
+		// a conversation nobody has read; the rules and the reasoning live in
+		// `transcript-pane.ts`, which is the one authority for them.
+		missing,
+		stale,
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
+
+	/*
+	 * The END of the click-to-visible trace: the first commit that paints a
+	 * transcript row for this conversation.
+	 *
+	 * A LAYOUT effect rather than a passive one on purpose. A passive effect runs
+	 * after the browser could have painted, so it would measure when React
+	 * happened to schedule the callback rather than when the user could read a
+	 * row. Once per conversation: a mark per row would measure scrolling rather
+	 * than the click, and the point of the trace is the FIRST row. The sibling
+	 * mark is at the click (`app.tsx`), and `performance.measure` throws when
+	 * either mark is absent - the ordinary case for a conversation opened from
+	 * the sidebar - so it is guarded rather than caught.
+	 *
+	 * The requested mark is CONSUMED, and a stale one is refused (review round 1,
+	 * R1-5). It is written by the click and never expired, so measuring from it
+	 * whenever it exists means the next conversation opened from the sidebar
+	 * produces a measure running from the ORIGINAL click - phantom multi-second
+	 * samples in exactly the p50/p95 this trace is collected for. Clearing after
+	 * the measure keeps one click to one sample; the age gate covers a click
+	 * whose window never paints a row, which would otherwise poison the first
+	 * sample after the app returns to it.
+	 */
+	const tracedSession = useRef<string | null>(null);
+	useLayoutEffect(() => {
+		if (visible.length === 0) return;
+		const key = sessionId ?? "";
+		if (tracedSession.current === key) return;
+		tracedSession.current = key;
+		performance.mark("lop:open:first-row");
+		const requested = performance
+			.getEntriesByName("lop:open:requested", "mark")
+			.at(-1);
+		if (requested && performance.now() - requested.startTime <= OPEN_TRACE_MS) {
+			performance.measure(
+				"lop:open:to-first-row",
+				"lop:open:requested",
+				"lop:open:first-row",
+			);
+		}
+		performance.clearMarks("lop:open:requested");
+	}, [visible.length, sessionId]);
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -1249,7 +1334,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    at that moment. Keeping it mounted is what makes the end of
 				    history a statement instead of an absence, and costs nothing: the
 				    slot is one fixed-height row either way. */}
-				{transcript.records.length > 0 && (
+				{/* NOT while the paint is cached: a cache entry carries no paging
+				    cursor (its rows are trimmed), which the slot reads as `exhausted`
+				    and says "Start of conversation" over a transcript that may be a
+				    thousand messages in. Measured on a captured frame, not inferred.
+				    The caption above already says the view is not authoritative. */}
+				{transcript.records.length > 0 && !stale && (
 					<OlderHistorySlot
 						state={slotState}
 						hiddenRows={hidden}
@@ -1260,6 +1350,64 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						transportDown={status !== "live"}
 						onLoadOlder={requestOlder}
 					/>
+				)}
+
+				{missing ? (
+					/*
+					 * The named state for a conversation this machine does not have,
+					 * and its way out. It replaces the whole status block rather than
+					 * sitting beside it: the failure notice and `Reconnecting` both
+					 * describe a TRANSPORT that may recover, and this is not that.
+					 *
+					 * The action clears the selection, which lands the reader on the
+					 * catalogue's own empty state — the only thing that can be done
+					 * about a conversation that no longer exists. It is NOT a retry:
+					 * retrying asks a question whose answer is about the session.
+					 */
+					<div
+						className={cn(
+							"mb-4 flex flex-col gap-2",
+							!isSmallView && AGENT_GUTTER,
+						)}
+					>
+						<p className="text-body-sm text-ink">
+							This conversation is no longer on this machine.
+						</p>
+						<p className="text-ink-dim text-meta">
+							It was deleted, or it belongs to a machine this app is not
+							connected to.
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							className="self-start"
+							onClick={() => {
+								// Read at click time rather than subscribed: this component
+								// must not re-render every time the catalogue does.
+								useCanonicalSessionsStore.getState().setActiveSession(null);
+							}}
+						>
+							Start a new chat
+						</Button>
+					</div>
+				) : (
+					<>
+						{stale && (
+							<p className="mb-4 text-ink-dim text-meta">
+								Showing the last saved view — checking for newer messages.
+							</p>
+						)}
+						{/*
+						 * The skeleton is NOT here any more. It is
+						 * `TranscriptPlaceholder`, rendered inside the content column
+						 * above, because the pane's own decision module
+						 * (`transcript-pane.ts`) is the single authority for when a
+						 * row-less pane holds a placeholder - and because the ground
+						 * the old inline bars used (`sunken`, the weakest adjacent
+						 * step in most palettes) was measured against the pane's
+						 * `canvas` and replaced with `elevated` there.
+						 */}
+					</>
 				)}
 
 				{status === "unavailable" && failure && (
@@ -1306,15 +1454,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
 				)}
 
-				{visible.map((row) => (
-					<TranscriptRow
-						key={row.record.id}
-						row={row}
-						isSmallView={isSmallView}
-						nameColumn={nameColumn}
-						scope={mediaScope}
-					/>
-				))}
+				{/* Rows are suppressed for a conversation that is not there: the pane
+				    must not paint its last memory of a session the backend says is
+				    gone, because nothing on screen could then be trusted and there is
+				    no state to reconcile to. */}
+				{!missing &&
+					visible.map((row) => (
+						<TranscriptRow
+							key={row.record.id}
+							row={row}
+							isSmallView={isSmallView}
+							nameColumn={nameColumn}
+							scope={mediaScope}
+						/>
+					))}
 
 				{working && (
 					// On the `item` tier, not a tier of its own: the working line is

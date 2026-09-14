@@ -7,10 +7,15 @@
  * main knows whether `Notification.isSupported()`. A lease claiming delivery
  * that never happens would silently swallow a pending approval.
  *
- * Frames come from the existing stream relay (one subscription per window,
- * no second connection): a `pending_gate` appearing in a snapshot or update
- * raises a gate notification, and a backend-composed `notification` frame
- * raises a completion or error one. Dedupe is by `session:epoch:request_id`
+ * Frames come from TWO subscriptions. The per-window stream relay carries the
+ * conversation on screen (one subscription per window, no second connection),
+ * and the machine-wide feed (`desktop-feed.ts`) carries the sessions no window
+ * holds at all — which is the case the app was silent about, and the one that
+ * matters when the last window is closed and the app is alive in the dock. Both
+ * land in `observe`, and the backend's own `dedupe_key` collapses a pair into
+ * one banner. A `pending_gate` appearing in a snapshot or update raises a gate
+ * notification, and a backend-composed `notification` frame raises a completion
+ * or error one. Dedupe is by `session:epoch:request_id`
  * (gates) and by the backend-minted `dedupe_key` (composed notifications)
  * across every window, so two windows on one session yield one toast.
  *
@@ -51,6 +56,7 @@
 import { type BrowserWindow, Notification } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import type {
+	DesktopFeedFrame,
 	DesktopNotification,
 	DesktopSessionFrame,
 	PendingDesktopGate,
@@ -145,9 +151,80 @@ function gateBody(kind: string, gateTitle: string, gateDetail: string): string {
 	return subject || GATE_BODIES[kind] || GATE_BODIES.approval;
 }
 
+/**
+ * The collaborators a caller gets by saying nothing.
+ *
+ * Named rather than inlined so the one place that accepts "no host" is
+ * greppable, and so the reasoning sits where the default does. A test that
+ * builds a notifier to exercise delivery alone is the caller: it has no windows
+ * and no click to serve, so "always alive" and "nothing to reopen" are the
+ * honest answers there rather than a convenience. Production always passes a
+ * real host (`index.ts`), which is what makes the click path unable to become a
+ * silent no-op again.
+ */
+const SILENT_HOST: DesktopNotifierHost = {
+	windowAlive: () => true,
+	noteDisplayed: () => undefined,
+	reopen: () => undefined,
+};
+
 type WatchState = {
 	visible: boolean;
 	focused: boolean;
+	/**
+	 * The conversation this window is DISPLAYING, from the renderer's own watch
+	 * heartbeat. Not decoration: the completion gate is session-scoped (B1), and
+	 * without this the notifier can only answer "is any window focused", which is
+	 * the predicate that swallowed every background completion while the user sat
+	 * in the app on another conversation.
+	 *
+	 * `""` means the renderer has not named one yet (it is still booting), which
+	 * is deliberately NOT a wildcard: an unnamed window suppresses nothing.
+	 */
+	session: string;
+};
+
+/**
+ * What a click on a banner needs from the app that owns the windows.
+ *
+ * The notifier owns DELIVERY and the app owns WINDOWS, and the two cannot be
+ * the same object without the notifier importing `createWindow` from the entry
+ * point. A caller that says nothing gets `SILENT_HOST` below — which is the
+ * honest answer for a unit test with no windows and no click to serve, and is
+ * why production must pass a real one: a `reopen` that does nothing would be
+ * exactly the silent no-op this change removes.
+ */
+export type DesktopNotifierHost = {
+	/**
+	 * Whether a window we have heard a heartbeat from is still there.
+	 *
+	 * A window can disappear without a `closed` event reaching the notifier — a
+	 * renderer process that dies takes its `webContents` id with it — so the
+	 * heartbeat map is filtered through this on every read rather than trusted.
+	 */
+	windowAlive: (windowId: number) => boolean;
+	/**
+	 * The conversation the renderer has just reported it is DISPLAYING.
+	 *
+	 * Called from the watch heartbeat, which is the only place main learns this,
+	 * and it has two consumers main owns: the viewer record's `current_session`
+	 * (so a click can route here and can skip a redundant switch), and the held
+	 * first present of a click-created window — that report is the "conversation
+	 * is on screen" milestone a window milestone cannot stand in for (B3).
+	 *
+	 * It is a callback rather than something the notifier does itself because
+	 * neither consumer has anything to do with delivery.
+	 */
+	noteDisplayed: (sessionId: string) => void;
+	/**
+	 * Recreate the window if there is none, and open this conversation in it.
+	 *
+	 * Called ONLY when there is no window: with one, the notifier sends and
+	 * raises directly, because the renderer is already mounted and can take the
+	 * message. Recreation lives in the app because it owns `createWindow` and the
+	 * readiness handshake that makes a click-created window safe to show (B3).
+	 */
+	reopen: (sessionId: string) => void;
 };
 
 export class DesktopNotifier {
@@ -229,6 +306,8 @@ export class DesktopNotifier {
 		 * says nothing keeps the app it has today.
 		 */
 		private readonly windowRaise: WindowShow = "focus",
+		/** Window state the notifier cannot see from here. See the type. */
+		private readonly host: DesktopNotifierHost = SILENT_HOST,
 	) {}
 
 	get canNotify(): boolean {
@@ -388,7 +467,12 @@ export class DesktopNotifier {
 		this.windows.set(windowId, {
 			visible: args.visible,
 			focused: args.focused,
+			session: args.sessionId,
 		});
+		// Before the request: the record and the held present are this app's own
+		// bookkeeping, and making them wait on a round trip would tie them to the
+		// backend's availability for no reason.
+		this.host.noteDisplayed(args.sessionId);
 		return this.request({
 			op: "sessions.watch",
 			sessionId: args.sessionId,
@@ -398,12 +482,34 @@ export class DesktopNotifier {
 		});
 	}
 
+	/**
+	 * Forget a window's watch state on close.
+	 *
+	 * This had NO CALLER while `mainWindow.on("closed")` nulled the window
+	 * without telling the notifier, and `webContents` ids are not reused — so
+	 * after one window close the map held `{visible: true, focused: true}` for
+	 * the life of the process and every `when_unfocused` completion was
+	 * suppressed for good. That is the strongest candidate for the operator's
+	 * "I don't reliably get notified", and the fix is this call plus the
+	 * liveness read in `anyDisplayingFocused`.
+	 */
 	forgetWindow(windowId: number): void {
 		this.windows.delete(windowId);
 	}
 
-	/** Called by the stream relay for every parsed frame it forwards. */
-	observe(sessionId: string, frame: DesktopSessionFrame): void {
+	/**
+	 * Called by the stream relay for every parsed frame it forwards, and by the
+	 * machine-wide feed for the frames it carries.
+	 *
+	 * ONE method for both sources on purpose. A `notification` frame's payload is
+	 * byte-identical whichever way it arrived — same `dedupe_key`, minted by the
+	 * backend — so two entry points would be two places to keep that true, and
+	 * the pair would eventually be delivered twice instead of once.
+	 */
+	observe(
+		sessionId: string,
+		frame: DesktopSessionFrame | DesktopFeedFrame,
+	): void {
 		if (!this.canNotify) return;
 		/*
 		 * The single delivery gate for every banner, ahead of every claim. A
@@ -487,8 +593,13 @@ export class DesktopNotifier {
 		if (!this.claim(n.dedupe_key)) return;
 		// A gate arrives as `always` because the user may be reading another
 		// conversation in the same window; a completion is only news when nobody
-		// is looking. The backend decides which; this app does not second-guess it.
-		if (n.focus_policy === "when_unfocused" && this.anyFocused()) return;
+		// is looking at THAT conversation. The backend decides which; this app does
+		// not second-guess it.
+		if (
+			n.focus_policy === "when_unfocused" &&
+			this.anyDisplayingFocused(sessionId)
+		)
+			return;
 		if (n.completion_token) {
 			// Claim LAST, immediately before delivery: an unclaimed completion stays
 			// available to another surface (a TUI on this machine), while a claim
@@ -556,9 +667,31 @@ export class DesktopNotifier {
 		}
 	}
 
-	private anyFocused(): boolean {
-		for (const state of this.windows.values()) {
-			if (state.visible && state.focused) return true;
+	/**
+	 * Whether a LIVE window is displaying `sessionId` in the foreground.
+	 *
+	 * THE completion gate, and the predicate is deliberately two facts rather
+	 * than one. `anyFocused()` alone answers "is the app in front", which is not
+	 * the question: with the app focused on session A, a completion in session B
+	 * was suppressed and announced to nobody — and rung 3 had already deferred
+	 * to rung 2, so nothing else could raise it either. That is the operator's
+	 * reported symptom, made permanent by the presence mechanism itself (B1).
+	 *
+	 * Only a window showing THIS conversation is a reason not to banner, because
+	 * only then is the completion already on screen.
+	 *
+	 * Dead windows are filtered rather than assumed gone. `forgetWindow` runs on
+	 * `closed`, but a renderer process that dies takes its `webContents` id with
+	 * it and no `closed` event reaches this map, and `webContents` ids are not
+	 * reused — so an unfiltered stale `{visible: true, focused: true}` entry
+	 * suppresses every completion for the life of the process.
+	 */
+	private anyDisplayingFocused(sessionId: string): boolean {
+		for (const [id, state] of this.windows) {
+			if (!state.visible || !state.focused) continue;
+			if (state.session !== sessionId) continue;
+			if (!this.host.windowAlive(id)) continue;
+			return true;
 		}
 		return false;
 	}
@@ -640,8 +773,15 @@ export class DesktopNotifier {
 	private turn(sessionId: string, seq: number): void {
 		const key = `turn:${sessionId}:${this.epochs.get(sessionId) ?? ""}:${seq}`;
 		if (!this.claim(key)) return;
-		// Completion is only news when nobody is looking.
-		if (this.anyFocused()) return;
+		// Completion is only news when nobody is looking AT THIS CONVERSATION.
+		//
+		// Session-scoped here too, and not only on the composed path: this is the
+		// fallback for a backend old enough to compose nothing, and it reaches an
+		// ORDINARY run — a provider fallback mid-session, or a downgrade by a
+		// health-check restart (design 4.3). Leaving it window-scoped would keep
+		// the reported defect alive on exactly the backends that cannot send a
+		// composed frame at all, and it has the session id in hand to do better.
+		if (this.anyDisplayingFocused(sessionId)) return;
 		this.show(sessionId, "Turn complete", "", "The agent finished its turn.");
 	}
 
@@ -715,16 +855,40 @@ export class DesktopNotifier {
 		});
 		notification.on("click", () => {
 			const target = this.window();
-			if (!target) return;
+			if (!target || target.isDestroyed()) {
+				/*
+				 * No window: the app is alive in the dock, which is the operator's
+				 * own reported case. This used to return here, so the click did
+				 * nothing at all.
+				 *
+				 * Recreation is the app's business (`index.ts` owns `createWindow`)
+				 * and it also owns the part that makes this safe: a `webContents.send`
+				 * into a window that has not loaded is dropped silently, so the
+				 * session id is QUEUED and delivered once the renderer reports the
+				 * conversation on screen. Sending it here directly would turn the
+				 * reported no-op into a rarer one.
+				 */
+				this.host.reopen(sessionId);
+				return;
+			}
 			/*
+			 * SEND BEFORE RAISING (B3).
+			 *
 			 * A click is the operator asking for the window, but only `normal` may
 			 * answer by activating the app: `raiseWindow` orders an `inactive`
 			 * window without taking focus and leaves a `headless` one off screen.
 			 * The conversation is delivered either way — the renderer decides how
 			 * to open it, and this line only names it.
+			 *
+			 * The order is the fix, not a preference. Raising first shows the
+			 * window holding whatever conversation it was on, for as long as the
+			 * switch takes, and that flash reads as a click that landed on the
+			 * wrong row. Naming the conversation first means whatever comes
+			 * forward is already correct — the same "switch first, then focus"
+			 * rule the backend's own click client states.
 			 */
-			raiseWindow(target, this.windowRaise);
 			target.webContents.send("desktop-open-conversation", { sessionId });
+			raiseWindow(target, this.windowRaise);
 		});
 		notification.show();
 	}

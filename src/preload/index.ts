@@ -5,8 +5,11 @@ import type { BackendUpdateInfo } from "../main/update-service";
 import type {
 	DesktopMediaRequest,
 	DesktopRequest,
+	DesktopStreamEvent,
 } from "../shared/desktop-contract";
+import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import { readOpenSessionArgv } from "../shared/open-session";
 
 // Custom APIs for renderer
 const api = {
@@ -24,6 +27,39 @@ const api = {
 			focused: boolean;
 		}) => ipcRenderer.invoke("desktop-watch-heartbeat", args),
 		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
+		/**
+		 * The conversation main launched this window to show, read from THIS
+		 * process's argv (`webPreferences.additionalArguments`, set only when the
+		 * window was created for a click).
+		 *
+		 * A synchronous value rather than an event, and that is the whole point
+		 * (B3): the renderer rehydrates its persisted active conversation and paints
+		 * it in the first frame, so an id that arrives after the load shows the user
+		 * the wrong conversation and then swaps it. `null` on an ordinary launch.
+		 */
+		initialSession: readOpenSessionArgv(process.argv),
+		feed: {
+			subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => {
+				const handler = (_event: unknown, frame: DesktopFeedFrame) =>
+					onFrame(frame);
+				ipcRenderer.on("desktop-feed-frame", handler);
+				return () => {
+					ipcRenderer.removeListener("desktop-feed-frame", handler);
+				};
+			},
+			watchState: (onState: (state: { connected: boolean }) => void) => {
+				const handler = (_event: unknown, state: { connected: boolean }) =>
+					onState(state);
+				ipcRenderer.on("desktop-feed-state", handler);
+				// Ask for the CURRENT state as well as every transition: a subscriber
+				// that mounts after a reconnect would otherwise render "disconnected"
+				// until the next transition, which may never come on a healthy feed.
+				ipcRenderer.send("desktop-feed-watch");
+				return () => {
+					ipcRenderer.removeListener("desktop-feed-state", handler);
+				};
+			},
+		},
 		onOpenConversation: (callback: (sessionId: string) => void) => {
 			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
 				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
@@ -36,12 +72,10 @@ const api = {
 		stream: {
 			subscribe: (
 				args: { sessionId: string; epoch?: string; afterSeq?: number },
-				onEvent: (event: {
-					streamId: string;
-					kind: "data" | "error" | "end";
-					data?: string;
-					detail?: string;
-				}) => void,
+				// The contract's own type rather than a fourth transcription of the
+				// frame: a local copy is where a new field (here `status`, which
+				// carries a 404) gets dropped silently between main and the renderer.
+				onEvent: (event: DesktopStreamEvent) => void,
 			): { streamId: Promise<string>; dispose: () => void } => {
 				/*
 				 * `settled` is the ONLY handle anything here waits on, and the reason
@@ -73,15 +107,7 @@ const api = {
 						});
 						return null;
 					});
-				const handler = (
-					_event: unknown,
-					frame: {
-						streamId: string;
-						kind: "data" | "error" | "end";
-						data?: string;
-						detail?: string;
-					},
-				) => {
+				const handler = (_event: unknown, frame: DesktopStreamEvent) => {
 					// Frames are scoped to their own subscription: a late frame from
 					// a dead stream must not land on a new one's consumer.
 					void settled.then((streamId) => {

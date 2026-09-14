@@ -291,6 +291,10 @@ const canonicalSpeaking = (
 			canonicalTranscriptSpeaks({
 				status: canonical.view.status,
 				failure: canonical.view.failure,
+				hydrated: canonical.view.hydrated,
+				recordCount: canonical.view.transcript.records.length,
+				stale: canonical.view.stale,
+				missing: canonical.view.missing,
 			}),
 	);
 
@@ -657,6 +661,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											// card holds itself disabled after an answer instead of
 											// coming back live against a gate the owner already took.
 											answer={canonical.answer ?? null}
+											// The two states a notification click paints before the
+											// owner answers: the rows may be this window's memory of
+											// the conversation rather than the owner's, or the
+											// conversation may not be on this machine at all.
+											stale={canonical.view.stale}
+											missing={canonical.view.missing}
 										/>
 									) : (
 										<MessagesView
@@ -801,6 +811,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											)
 										: undefined
 								}
+								// A conversation the backend says is gone is a KNOWN
+								// answer, so the composer refuses input rather than
+								// accepting a message that can only 404. The pane above
+								// carries the sentence and the way out (M6); this only
+								// refuses the keystroke.
+								unavailable={Boolean(canonical?.view.missing)}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
