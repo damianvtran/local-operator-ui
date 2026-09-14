@@ -958,8 +958,10 @@ test("an unpackaged instance hands the script its own environment, not the packa
 });
 
 /**
- * The install scripts take the path the app resolved, and default to the
- * packaged name when nobody's app started them.
+ * The install scripts take the path the app resolved, and only the two that can
+ * safely default (Linux, Windows) fall back to the packaged name when nobody's
+ * app started them; macOS refuses instead, because its default is the environment
+ * this split exists to keep a second instance out of.
  *
  * Why this is a case of its own: the venv split is only real if the script that
  * creates the environment agrees with the app about which environment it is. A

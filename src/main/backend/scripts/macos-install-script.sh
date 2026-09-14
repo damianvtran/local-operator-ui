@@ -17,11 +17,17 @@ LOG_FILE="$APP_DATA_DIR/backend-install.log"
 # and the installed bundle's stdlib lives inside the code-sealed .app), and only
 # the app knows which one it is. The app passes its answer in
 # (`LOCAL_OPERATOR_VENV_PATH`, set from `managedVenvPath` in
-# src/main/backend/venv-paths.ts); the default above is what a standalone run -
-# one nobody's app started - installs into, which is the packaged name because
-# that is what every install on a disk today has.
-
-: "${LOCAL_OPERATOR_VENV_PATH:?Pass the resolved managed environment path}"
+# src/main/backend/venv-paths.ts).
+#
+# macOS REFUSES a standalone run rather than falling back, and the asymmetry with
+# the Linux and Windows scripts is deliberate. Their default is the packaged name,
+# which is harmless there; here it is the exact environment this split exists to
+# stop a second instance from writing into - the measured failure is a dev-venv
+# interpreter whose stdlib is `/Applications/Local Operator.app/Contents/
+# Resources/python_aarch64`, so a silent default would rebuild that venv and
+# `pip install` into it, which is what R1 of the review caught. A caller that
+# cannot name the environment is a caller that should not be installing into one.
+: "${LOCAL_OPERATOR_VENV_PATH:?Pass the resolved managed environment path (see venv-paths.ts); this script will not guess which instance it belongs to}"
 VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"
 
 # Keep CPython's bytecode cache out of the application bundle.
