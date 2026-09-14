@@ -28,6 +28,14 @@ the x64 half is the negative direction this pass needed.
 
 ## What the released layout is, measured on a real build
 
+**Provenance, stated precisely:** the artifacts below were produced from the tree
+at `ce724b36b` with the container-gate work (this branch's `7aa9c0439`) in the
+working tree. The only difference to the head that carries this file is a comment
+in `src/main/backend/venv-paths.ts` and a comment in the macOS install script, so
+the bytes these checks were run against are the ones the head packages - but the
+gate was not re-run on a repacked artifact after those commits, and that is said
+rather than implied.
+
 `gates.txt` carries the build's own lines. The two that matter:
 
 ```
