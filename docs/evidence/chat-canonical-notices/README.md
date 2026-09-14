@@ -38,19 +38,21 @@ another agent's backend was listening on the configured port during the run.
 Nothing in this story calls out — its records are fixtures and its
 `onLoadOlder` is a stub — so no frame is a function of that backend.
 
-**One local workaround, uncommitted and disclosed.** Storybook cannot build the
-preview at this head at all: `main`'s TypeScript 7 toolchain removed the JS
-compiler API, and `react-docgen-typescript` 2.2.2 reads it
-(`Cannot read properties of undefined (reading 'React')`), so the build fails
-before any story renders — with these changes reverted too. The frames were
-therefore taken with `typescript.reactDocgen: false` set in
-`.storybook/main.ts` **in the working tree only**; the file is committed
-unchanged. Docgen generates props tables for docs blocks, not story renders, and
-`export const Story`/`Meta` types are the same either way — but this is a
-difference between the tree that took these frames and the tree under review, so
-it is stated rather than left for a reader to find. The proper fix (pin the
-docgen path, or upgrade past the TS 7 API removal) is a repository toolchain
-change, not this change's business.
+**The local workaround the early passes needed is GONE, and this is now stated in
+both directions.** Storybook could not build the preview at this branch's first
+base at all: the TypeScript 7 toolchain removed the JS compiler API, and
+`react-docgen-typescript` 2.2.2 reads it (`Cannot read properties of undefined
+(reading 'React')`), so the build failed before any story rendered — with these
+changes reverted too. The frames captured before main landed `6a952c469`
+(`build(storybook): use the JSX docgen, which the TypeScript 7 move left
+working`) were therefore taken with `typescript.reactDocgen: false` set in
+`.storybook/main.ts` **in the working tree only**, and the file is committed
+unchanged in every commit. Main's fix removed the need for it: the frames in this
+set are re-derived at the head from the tracked config, with the tree clean, and
+the manifest's `dirtyWorkingTree` is `false` for that pass. So the field and this
+paragraph no longer contradict each other (round 3's D9): the earlier passes were
+dirty, the pass that wrote the stamp was not, and the manifest's note says which
+is which.
 
 ## The pair
 
@@ -224,17 +226,35 @@ MATRIX: all rows pass
 Two of those rows are the ones the first attempt got wrong in opposite
 directions: a double-click used to end with one net toggle, and `Enter` did
 nothing at all while a selection lived. The trace the probe records with the
-verdict is Chrome's own — `mousedown:1, mouseup:1, click:1, mousedown:2,
-mouseup:2, click:2, dblclick:2` — which is how the revert could be fixed against
-the real event order rather than against a guess about it.
+verdict is Chrome's own. Quoted from `matrix-round2.txt`, for the closed row:
+`mousedown:1, mouseup:1, click:1, mousedown:2, mouseup:2, click:2, dblclick:2`;
+and for the open row, whose first press was followed by a second one before the
+multi-click began: `mousedown:1, mouseup:1, click:1, mousedown:1, mouseup:1,
+click:1, mousedown:2, mouseup:2, click:2, dblclick:2`. The `mouseup`'s `detail`
+is not guaranteed by Chrome and differs between runs — the round-3 review read
+`mouseup:1` in the same row — which is why the revert keys on the **press**
+(`mousedown` with `detail > 1`), the event that decides what gesture this is.
 
 **The frame deltas this round are measured, not eyeballed.** The two incident
-surfaces were re-captured and differ from the previous head's frames by **891
-pixels in a 56x13 box at the bottom-right corner** (1280) and **807 pixels in a
-56x15 box** (560) — the transcript's own date stamp. Nothing on a row moved. The
-notice surface changed by **85,554 pixels**, which is the fix: the long
-single-line notice now paints as a static line instead of a row that repeated
-itself behind its own chevron.
+surfaces were re-captured and differ from the previous head's frames per THEME
+— the earlier version of this paragraph mixed one theme's count with the
+other's, and quoted the date stamp's own ink box rather than the extent of the
+change. Measured with `magick compare -metric AE` against the frames at the
+round-2 head, and reproduced at this head:
+
+| surface | theme | pixels | changed-pixel box |
+| --- | --- | --- | --- |
+| 1280 | `localOperatorDark` | 891 | `74x18+1030+706` |
+| 1280 | `localOperatorLight` | 748 | `73x18+1031+707` |
+| 560 | `localOperatorDark` | 937 | `65x17+463+1119` |
+| 560 | `localOperatorLight` | 807 | `64x25+464+1119` |
+
+Every one of those boxes is the transcript's own date stamp (`56x13` and `56x15`
+are the stamp's ink, not the extent of change: the box is larger because the
+changed stamp text at the two viewports is wider than the glyphs that moved).
+Nothing on a row moved. The notice surface changed by **85,554 pixels**, which is
+the fix: the long single-line notice now paints as a static line instead of a row
+that repeated itself behind its own chevron.
 
 **What moved where, in one list**
 
@@ -250,8 +270,9 @@ itself behind its own chevron.
   unbreakable run measured `scrollWidth` 2773 in an 840px box;
 - a relayed row joins a heading to its outcome (`background job 'design849'
   failed: [Errno 28] …`, 37 of the store's 39 job results) and a one-shot wake
-  states its goal rather than its arming line, which carries no cadence (121 of
-  955 wake rows);
+  states its goal rather than its arming line, which carries no cadence (202 of
+  the store's 967 wake rows at the head that rewrote them: 766 keep an arming
+  line that does state one);
 - the wake-arming clause is stripped only from a wake row, so a hub message that
   quotes the phrase keeps its own words;
 - the first-sentence scan requires a capital after the terminator and rejects a
@@ -259,7 +280,9 @@ itself behind its own chevron.
   without a table of abbreviations to keep in step with English;
 - the provider the incident names is selectable like the message beside it, and
   `summaryAlign` no longer restates the default `items-center`, so the tool rows'
-  class string is the string they had before this branch (round 2's Q4).
+  TRIGGER carries the class string it had before this branch (round 2's Q4 — the
+  row as a whole still differs from base by one reordered class on the chevron
+  `mark` span, which predates this branch: round 3's Q13).
 
 **The honest gap this register still has.** There are no persisted `notice`
 records in the store to replay (type counts over the operator's transcripts:
@@ -267,15 +290,66 @@ message 108,140, custom 3,326, prune 846, compaction 30), so the notice surface'
 long path has a fixture and a frame behind it rather than a store-wide replay.
 The designer recorded that in round 2 and it is unchanged by this fix.
 
+## Round 4: the revert, the text marker, and the two wake shapes
+
+Round 3's review found no blocker or major in the pixels and one MAJOR in the
+merge state (`docs/evidence/manifest.json`, resolved by rebasing and letting
+main's own repair of that field stand). What it found in the code is here.
+
+- **The multi-click take-back is reachable, and the residual is gone (R12).**
+  The handler that could not fire is deleted rather than left documenting a bug
+  it did not fix. Chrome dispatches the second press as a `mousedown` with
+  `detail` 2 even when the release lands outside the trigger, and `dblclick`
+  fires only when the whole gesture stays inside, so the revert moved to the
+  press. The case the reviewer named — a double-click whose second release misses
+  the trigger, leaving the row toggled — is covered by construction.
+- **The guard's discriminator is no longer `user-select` (U17, and the reason it
+  was wrong).** The question is "is this part of the summary something a reader
+  can select and copy?", and a computed style answered a different one: `text`
+  for the narration and `none` for the label beside it. That is how a drag across
+  a row copied everything except the label that says what the row IS. `TraceLine`
+  now marks its text surfaces (`data-text-surface`) and selects them all, label
+  included; the guard reads the marker. Making the label selectable is therefore
+  safe — it cannot re-open U7, because suppression no longer keys on the select
+  behaviour at all.
+- **A wake keeps its own preamble (D8) and its goal loses its bullet (U15).**
+  The rule fires on the ARMING line only, which is the one predicate between the
+  two shapes: a payload whose own preamble opens it keeps the preamble, because
+  that is more informative than the generated line below it. The goal it quotes
+  then has a leading list marker stripped, which is markup rather than words.
+  Store-wide: **0** headlines lead with a bullet, from 79.
+- **A relayed row whose joined headline is its whole payload discloses nothing
+  (U16).** Same rule the notice register took in round 2: 4 of the store's 39
+  job results were re-reading themselves behind their own chevron. Measured over
+  the store with the shipped reducer: `selfRepeat` is now 0 on every custom type.
+- **The three literals this branch's rules added are module constants (Q9),** so
+  `pnpm lint`'s warnings for `transcript-reducer.ts` are back to the pre-branch
+  count of 1.
+
+**Corrected from round 3's reports, because the numbers did not reproduce.** The
+per-theme frame deltas and changed-pixel boxes above (R14); the event trace and
+the fact that its `mouseup` detail varies run to run (R15); "194 declared" and
+"121 of 955 wake rows", which are 205 and 202 of 967 at this head (U18, Q10);
+and the tool-row claim, which is true of the trigger rather than of the row
+(Q13). **`pnpm test:desktop` at this head is `tests 752, pass 748, fail 4`**: the
+three uv/pip install-layout tests plus `submit-latency.test.mjs`'s
+`M1/M2/M3: the warm removes the engage from the send…`, which fails at the
+pre-branch base too (Q12). **Deferred with reasons:** D10 (the joined job headline
+repeats the derived label's word "job" — copy is the design stream's lane and it
+recorded the nit as not asked for in this round) and R16 (the sentence scan still
+cannot separate `Step one: 1. Do the thing.` or `Dr. Smith` from a sentence end;
+0 of the store's statements carry either shape, so hardening it further would be
+built for a producer that does not exist).
+
 ## What these frames do not prove
 
 - **Two themes, not twelve.** The committed set is a narrowed capture
   (`manifest.json`'s `partialCapture`): `localOperatorDark` and
   `localOperatorLight`, at 1280 and (for the narrow claim) 560. The twelve-theme
-  sweep was not re-run — it would rewrite 400+ frames nobody is reviewing, and it
-  cannot be re-run at all at this head while the Storybook docgen build is broken
-  (above). The design round rendered five palettes from its own probe and cleared
-  contrast at token level for the other seven.
+  sweep was not re-run — it would rewrite 400+ frames nobody is reviewing. It can
+  be re-run at this head since main fixed the docgen build (`6a952c469`); it is a
+  choice not to, and the design round rendered five palettes from its own probe
+  and cleared contrast at token level for the other seven.
 - **Not the live app.** The rows, the reducer and the transcript are the shipped
   ones, but the frames are not a screenshot of the Electron app against a live
   session; the story is the pinning surface and the reducer probe above is the
