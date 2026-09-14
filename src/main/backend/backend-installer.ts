@@ -16,6 +16,7 @@ import { BrowserWindow, app, dialog as electronDialog } from "electron";
 import {
 	bundledPythonTreePaths,
 	describePythonTreeSeal,
+	ensureVenvBytecodeGuard,
 	sealPythonInterpreterTrees,
 	withPythonBytecodeCache,
 } from "../python-bytecode-cache";
@@ -25,6 +26,7 @@ import {
 	macosInstallScript,
 	windowsInstallScript,
 } from "./scripts";
+import { managedVenvPath } from "./venv-paths";
 
 /**
  * Backend Installer class
@@ -40,26 +42,17 @@ export class BackendInstaller {
 	 * Constructor
 	 */
 	constructor() {
-		// Set platform-specific virtual environment path
-		if (process.platform === "win32") {
-			this.venvPath = join(this.appDataPath, "local-operator-venv");
-		} else if (process.platform === "darwin") {
-			this.venvPath = join(
-				app.getPath("home"),
-				"Library",
-				"Application Support",
-				"Local Operator",
-				"local-operator-venv",
-			);
-		} else {
-			// Linux
-			this.venvPath = join(
-				app.getPath("home"),
-				".config",
-				"local-operator",
-				"local-operator-venv",
-			);
-		}
+		// The app-managed venv for THIS instance. A packaged install and an
+		// unpackaged one must not share it: the venv is created by whatever
+		// interpreter the instance resolves, so a shared one puts the installed
+		// bundle's stdlib in the dev instance's import path - see `managedVenvPath`,
+		// which carries the measurement.
+		this.venvPath = managedVenvPath({
+			platform: process.platform,
+			home: app.getPath("home"),
+			appDataPath: this.appDataPath,
+			packaged: app.isPackaged,
+		});
 
 		// Set resources path
 		this.resourcesPath =
@@ -104,6 +97,12 @@ export class BackendInstaller {
 				logger.info(message, LogFileType.INSTALLER);
 			}
 		}
+
+		// The other half of the same mechanism, covering the processes this app
+		// never spawns - see `ensureVenvBytecodeGuard`, which carries the field
+		// measurement. Run at every start rather than only after an install: the
+		// installs already on a disk have a venv created before the guard existed.
+		this.guardVenvBytecode();
 
 		// Find Python executable
 		this.pythonPath = this.findPython();
@@ -170,6 +169,24 @@ export class BackendInstaller {
 			LogFileType.INSTALLER,
 		);
 		return null;
+	}
+
+	/**
+	 * Make the app-managed venv refuse bytecode writes for every process that
+	 * uses it, whoever started it.
+	 *
+	 * Logged rather than silent in both directions: a guard that was already
+	 * there, one this call wrote, and one that could not be written (no venv yet,
+	 * or a `sitecustomize.py` the operator owns) are three different states of the
+	 * same guarantee, and the field diagnosis starts from which one this machine
+	 * is in. `ensureVenvBytecodeGuard` never replaces a file it did not write.
+	 */
+	private guardVenvBytecode(): void {
+		const guard = ensureVenvBytecodeGuard(this.venvPath);
+		logger.info(
+			`Bytecode guard in the app-managed venv: ${guard.reason}`,
+			LogFileType.INSTALLER,
+		);
 	}
 
 	/**
@@ -550,6 +567,10 @@ export class BackendInstaller {
 					"Backend installation completed successfully",
 					LogFileType.INSTALLER,
 				);
+
+				// The venv exists now, built on the bundled interpreter, so the guard
+				// can go in with it rather than waiting for the next start.
+				this.guardVenvBytecode();
 
 				// Verify the installation by checking if the local-operator executable exists
 				const localOperatorPath =

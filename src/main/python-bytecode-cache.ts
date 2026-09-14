@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { type Stats, lstatSync } from "node:fs";
+import {
+	type Stats,
+	existsSync,
+	lstatSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -48,11 +55,26 @@ import { join } from "node:path";
  * left the tree byte-for-byte unchanged (1821 files) and cached 582 `.pyc`
  * under the prefix.
  *
- * The environment variable is only half the guarantee, and the smaller half:
+ * `PYTHONDONTWRITEBYTECODE=1` rides beside the prefix on every spawn, and the
+ * two are not redundant. The prefix is a *redirect*: it decides where a write
+ * goes, so it protects the bundle only while the value is absolute, points
+ * somewhere writable, and is still read by the interpreter that writes. The flag
+ * is a *refusal*: `sys.dont_write_bytecode` is true before the first import, so
+ * such a process has nothing to redirect and nothing to lose if the prefix is
+ * absent, relative, unwritable, or dropped by an intermediate shell. What the
+ * pair costs is stated in `withPythonBytecodeCache`, which is where the
+ * decision lives.
+ *
+ * The environment is the half no process can be relied on to receive, and the
+ * smaller of the three:
  * an interpreter started with `-E`/`-I` ignores every `PYTHON*` variable by
- * design, so `sealPythonInterpreterTrees()` below makes the shipped tree itself
- * refuse the writes. Read its docstring before changing either half - it
- * carries the measurements, and the two exist as a pair.
+ * design, and - the class that actually broke the operator's install - a python
+ * nobody in this app started carries no environment at all. So
+ * `sealPythonInterpreterTrees()` below makes the shipped tree itself refuse the
+ * writes, and `ensureVenvBytecodeGuard()` puts the refusal inside the venv the
+ * app manages, which is the interpreter anything else on the machine reaches.
+ * Read both docstrings before changing either; they carry the measurements, and
+ * all three exist as one mechanism.
  *
  * Deliberately free of Electron imports so the contract tests bundle this
  * shipped module in memory (`pnpm test:desktop`), and the environment decision
@@ -96,14 +118,35 @@ export function pythonBytecodeCacheDir(userDataDir: string): string {
 }
 
 /**
- * `env` with `PYTHONPYCACHEPREFIX` pointing outside the application bundle.
+ * `env` with bytecode writing disabled, and any cache it does write placed
+ * outside the application bundle.
  *
  * Every other variable is passed through untouched - the backend needs the
  * operator's `PATH` to reach `gh` and `brew`, so a spawn environment is
  * additive here, never a replacement.
  *
+ * Two variables, one invariant, and each answers a case the other does not:
+ *
+ * - `PYTHONDONTWRITEBYTECODE=1` refuses the write at the interpreter. It is set
+ *   unconditionally, including over an operator's own value, because measured
+ *   on CPython `0` and the empty string are the two falsy spellings a stray
+ *   shell `export` can carry and a stale one would silently restore the writes
+ *   this module exists to prevent. The cost is real and is the reason the two
+ *   variables travel together rather than the flag alone: a process under the
+ *   flag compiles its imports and keeps nothing, so every python the app starts
+ *   recompiles its import graph per launch. Paying that on an app start is the
+ *   trade this module makes against a bundle macOS refuses to open, and it is
+ *   paid only by the pythons the app spawns - the app-managed venv, which is the
+ *   environment anything else on the machine reaches, is covered by
+ *   `ensureVenvBytecodeGuard` instead.
+ * - `PYTHONPYCACHEPREFIX` is kept for the processes that write bytecode anyway:
+ *   a python the app spawns is not the only python that runs under this
+ *   environment (a `bash -c` child can spawn its own), and a redirected write is
+ *   a cached module rather than a recompile. It defaults to a directory under
+ *   `userData`, which is never inside the thing that gets signed and swapped.
+ *
  * An operator's own `PYTHONPYCACHEPREFIX` is kept when it points somewhere
- * outside an `.app` bundle: they have already solved this problem for
+ * outside an `.app` bundle: they have already solved the placement problem for
  * themselves, and silently rewriting a variable they set would change where
  * their own bytecode lives for no gain. A value that *does* point inside a
  * bundle is replaced, because that is the exact configuration this module
@@ -116,8 +159,15 @@ export function withPythonBytecodeCache(
 	userDataDir: string,
 ): Record<string, string | undefined> {
 	const existing = env.PYTHONPYCACHEPREFIX?.trim();
-	if (existing && !insideAppBundle(existing)) return { ...env };
-	return { ...env, PYTHONPYCACHEPREFIX: pythonBytecodeCacheDir(userDataDir) };
+	const prefix =
+		existing && !insideAppBundle(existing)
+			? existing
+			: pythonBytecodeCacheDir(userDataDir);
+	return {
+		...env,
+		PYTHONPYCACHEPREFIX: prefix,
+		PYTHONDONTWRITEBYTECODE: "1",
+	};
 }
 
 /**
@@ -320,11 +370,15 @@ export function describePythonTreeSeal(seal: PythonTreeSeal): string {
  * cannot invalidate the signature it exists to protect. `rm -rf` of the sealed
  * tree exits 0, which is the property the mode seal could not have.
  *
- * `-B`/`PYTHONDONTWRITEBYTECODE` was the alternative belt and is deliberately
- * NOT used: it stops bytecode caching rather than redirecting it (every backend
- * and session-runtime launch would recompile its import graph), and in its
+ * `-B`/`PYTHONDONTWRITEBYTECODE` is a third layer rather than an alternative to
+ * the two above: it stops bytecode caching rather than redirecting it (a process
+ * under it recompiles its import graph on every start, which is why
+ * `PYTHONPYCACHEPREFIX` is the layer that keeps the cache working), and in its
  * environment form it is ignored by exactly the isolated children it would need
- * to stop.
+ * to stop - so the seal is what covers those. It is set anyway, in
+ * `withPythonBytecodeCache` and in the install scripts, because the promise this
+ * file exists to keep is a bundle its own app cannot unseal, and "no write was
+ * attempted" holds in cases "a write was redirected" does not.
  *
  * macOS only, and deliberately: what this protects is a *code signature*, and
  * only macOS seals an `.app`'s resources, so on Linux and Windows there is
@@ -429,4 +483,176 @@ function applyAce(
 	let selected = 0;
 	for (const byte of run.stdout) if (byte === 0) selected += 1;
 	return selected;
+}
+
+// ---------------------------------------------------------------------------
+// The app-managed venv, for the pythons this app never spawns
+
+/**
+ * `sitecustomize.py`: the name CPython's `site` module imports from the venv's
+ * own `site-packages` on every start, before any of the venv's packages.
+ */
+export const VENV_BYTECODE_GUARD_FILE = "sitecustomize.py";
+
+/**
+ * The sentinel line that marks the guard as ours.
+ *
+ * Needed because the file lives in the venv's `site-packages`, which is a
+ * directory a user may put their own files in: content that does not carry this
+ * line is somebody else's `sitecustomize.py`, and the app refuses to replace it
+ * (see {@link ensureVenvBytecodeGuard}). Written without a trailing newline so
+ * it can be a prefix test rather than a parse.
+ */
+const VENV_BYTECODE_GUARD_SENTINEL = "# Local Operator bytecode guard";
+
+/**
+ * What {@link ensureVenvBytecodeGuard} did.
+ *
+ * `written: false` is an ordinary outcome, not a failure: the guard is already
+ * there, the venv does not exist yet, or the file belongs to the user. `reason`
+ * is the log line in every case, because the caller's next question is always
+ * "why not".
+ */
+export type VenvBytecodeGuard = {
+	/** The file written, found, or refused, or null when there is no venv yet. */
+	path: string | null;
+	/** True when this call created or refreshed the file. */
+	written: boolean;
+	reason: string;
+};
+
+/**
+ * The text of the guard, as one string so the test can pin it and the app has
+ * exactly one copy.
+ *
+ * Why a file inside the venv at all: the app's environment variables reach only
+ * the processes it spawns or that inherit from one. The venv at
+ * `~/Library/Application Support/Local Operator/local-operator-venv` is built on
+ * the interpreter inside the installed bundle - its `pyvenv.cfg` records
+ * `home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin`
+ * - so *any* process that runs that venv's python resolves the stdlib inside the
+ * code-sealed `.app`: the operator's shell, a CLI script, launchd, an agent
+ * session. Measured in the field on 2026-09-14: the install of 0.22.2 was
+ * refused by Gatekeeper one run after the update with exactly one added file,
+ * `lib/python3.12/__pycache__/webbrowser.cpython-312.pyc`, written by a python
+ * this app never spawned.
+ *
+ * The guard is the half that covers those processes whoever starts them, and it
+ * is deliberately the cheap half: `site` imports `sitecustomize` in every
+ * process that uses this environment, so one file in `site-packages` turns the
+ * refusal on for all of them. It is not sufficient alone - `site.py`'s own
+ * startup imports (`encodings` and friends) are compiled before it runs, which
+ * is why the seal on the tree remains the load-bearing half - and it is confined
+ * to the venv this app creates: the operator's own environments are theirs.
+ */
+export function venvBytecodeGuardSource(): string {
+	return `${VENV_BYTECODE_GUARD_SENTINEL}. Do not edit; the app rewrites this file.
+#
+# Why this file exists: this virtual environment is built on the interpreter
+# inside the Local Operator application bundle (see pyvenv.cfg), so every module
+# this python imports has its source - and CPython's bytecode cache for it -
+# inside a code-sealed .app. A __pycache__/*.pyc written there changes a sealed
+# resource, and macOS then answers "the app is damaged" on the next launch and
+# Squirrel refuses the next in-place update with -67028
+# errSecCSBadBundleFormat.
+#
+# PYTHONDONTWRITEBYTECODE and PYTHONPYCACHEPREFIX reach only the processes the
+# app started or that inherited its environment. This file reaches every process
+# that uses this environment, including one started by a shell, a script or
+# launchd, because site.py imports sitecustomize from site-packages on every
+# start.
+#
+# The cost, stated rather than hidden: a process under this flag compiles its
+# imports and caches nothing, so the backend recompiles its import graph on each
+# start. That is the deliberate trade against an application bundle that macOS
+# refuses to open, and it is confined to this venv.
+import sys
+
+sys.dont_write_bytecode = True
+`;
+}
+
+/**
+ * The `site-packages` directory of a virtual environment, if it has one.
+ *
+ * Both layouts are stated rather than probed with a glob: a venv is
+ * `lib/python<X.Y>/site-packages` on POSIX and `Lib/site-packages` on Windows,
+ * and the version is whatever interpreter built it - which is the point, since
+ * this runs against a venv the app did not necessarily create in this process.
+ */
+function venvSitePackages(venvPath: string): string[] {
+	const candidates: string[] = [join(venvPath, "Lib", "site-packages")];
+	try {
+		for (const entry of readdirSync(join(venvPath, "lib"))) {
+			if (entry.startsWith("python")) {
+				candidates.push(join(venvPath, "lib", entry, "site-packages"));
+			}
+		}
+	} catch {
+		// No `lib/` is the ordinary state of a venv that does not exist yet, and
+		// of a Windows one. The Windows candidate above is still checked.
+	}
+	return candidates.filter((candidate) => existsSync(candidate));
+}
+
+/**
+ * Put the bytecode refusal inside the app-managed venv, or say why not.
+ *
+ * Idempotent by content: the file is rewritten only when it differs from
+ * {@link venvBytecodeGuardSource}, so a start-up call on every launch costs one
+ * read. It is called at start-up and after an install, which is what makes the
+ * field installs - whose venvs were created before this guard existed - covered
+ * without a reinstall.
+ *
+ * A `sitecustomize.py` that is not ours is never replaced: the file sits in
+ * `site-packages`, which is a place a user can legitimately own, and the app
+ * deletes nothing it did not write. A file that carries the sentinel is ours
+ * from a previous revision and is refreshed, which is what keeps the "one copy
+ * of the text" property true across releases.
+ */
+export function ensureVenvBytecodeGuard(venvPath: string): VenvBytecodeGuard {
+	const dirs = venvSitePackages(venvPath);
+	if (dirs.length === 0) {
+		return {
+			path: null,
+			written: false,
+			reason: `no site-packages under ${venvPath} yet, so there is nothing to guard`,
+		};
+	}
+	const path = join(dirs[0], VENV_BYTECODE_GUARD_FILE);
+	const source = venvBytecodeGuardSource();
+	let existing: string | null = null;
+	try {
+		existing = readFileSync(path, "utf8");
+	} catch {
+		// Absent is the case this function is for.
+	}
+	if (existing === source) {
+		return {
+			path,
+			written: false,
+			reason: `${path} already refuses bytecode writes`,
+		};
+	}
+	if (existing !== null && !existing.startsWith(VENV_BYTECODE_GUARD_SENTINEL)) {
+		return {
+			path,
+			written: false,
+			reason: `${path} is not ours (no "${VENV_BYTECODE_GUARD_SENTINEL}" line), so it was left exactly as it is`,
+		};
+	}
+	try {
+		writeFileSync(path, source);
+	} catch (error) {
+		return {
+			path,
+			written: false,
+			reason: `could not write ${path}: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
+	return {
+		path,
+		written: true,
+		reason: `${path} now sets sys.dont_write_bytecode for every process using this venv`,
+	};
 }

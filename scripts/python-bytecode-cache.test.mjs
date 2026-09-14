@@ -13,7 +13,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
@@ -48,13 +48,43 @@ const cache = await import(
 		bundle.outputFiles[0].text,
 	).toString("base64")}`
 );
+/**
+ * The backend path decision, bundled the same way: which environment an instance
+ * uses is what decides whether an unpackaged run can write into the packaged
+ * app's bundle at all.
+ */
+const pathsBundle = await build({
+	stdin: {
+		contents: 'export * from "./src/main/backend/venv-paths";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const venvPaths = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		pathsBundle.outputFiles[0].text,
+	).toString("base64")}`
+);
+const {
+	DEV_VENV_DIR_NAME,
+	PACKAGED_VENV_DIR_NAME,
+	managedVenvPath,
+	venvInterpreterBundle,
+} = venvPaths;
+
 const {
 	BUNDLED_PYTHON_TREE_NAMES,
+	VENV_BYTECODE_GUARD_FILE,
 	bundledPythonTreePaths,
 	describePythonTreeSeal,
+	ensureVenvBytecodeGuard,
 	PYTHON_BYTECODE_CACHE_DIR_NAME,
 	pythonBytecodeCacheDir,
 	sealPythonInterpreterTrees,
+	venvBytecodeGuardSource,
 	withPythonBytecodeCache,
 } = cache;
 
@@ -86,8 +116,8 @@ test("every other variable survives, and the input is not mutated", () => {
 	};
 	const env = withPythonBytecodeCache(original, USER_DATA);
 	assert.deepEqual(
-		{ ...env, PYTHONPYCACHEPREFIX: undefined },
-		{ ...original, PYTHONPYCACHEPREFIX: undefined },
+		{ ...env, PYTHONPYCACHEPREFIX: undefined, PYTHONDONTWRITEBYTECODE: undefined },
+		{ ...original, PYTHONPYCACHEPREFIX: undefined, PYTHONDONTWRITEBYTECODE: undefined },
 	);
 	assert.notEqual(env, original);
 	assert.deepEqual(original, {
@@ -96,6 +126,37 @@ test("every other variable survives, and the input is not mutated", () => {
 		LOCAL_OPERATOR_DESKTOP_TOKEN: "token",
 		PYTHONHASHSEED: "0",
 	});
+});
+
+test("the refusal is set beside the redirect, and overrides a stale falsy value", () => {
+	// The two travel together because each answers a case the other does not: the
+	// prefix decides where a write goes (so it fails open when the value is
+	// relative, unwritable or dropped), and the flag means no write is attempted
+	// at all. CPython was measured for the two falsy spellings - `0` and the empty
+	// string - and both left `sys.dont_write_bytecode` False, which is exactly the
+	// state a stray `export PYTHONDONTWRITEBYTECODE=0` in a shell rc would put
+	// every python the app spawns into.
+	for (const value of [undefined, "0", "", "  "]) {
+		const env = withPythonBytecodeCache(
+			{ PYTHONDONTWRITEBYTECODE: value },
+			USER_DATA,
+		);
+		assert.equal(
+			env.PYTHONDONTWRITEBYTECODE,
+			"1",
+			`an inherited ${JSON.stringify(value)} must not re-enable bytecode writes`,
+		);
+	}
+
+	// And the flag alone is not the answer either: a prefix that points into a
+	// bundle is replaced in the same call, so the pair is what a spawn receives
+	// whichever way it is called.
+	const env = withPythonBytecodeCache(
+		{ PYTHONPYCACHEPREFIX: INSIDE_BUNDLE_PREFIX },
+		USER_DATA,
+	);
+	assert.equal(env.PYTHONDONTWRITEBYTECODE, "1");
+	assert.equal(env.PYTHONPYCACHEPREFIX, pythonBytecodeCacheDir(USER_DATA));
 });
 
 test("an undefined value in the environment is passed through, not dropped", () => {
@@ -581,6 +642,14 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 				!env.PYTHONPYCACHEPREFIX.includes(".app"),
 				`${label}: ${env.PYTHONPYCACHEPREFIX} is not outside every bundle`,
 			);
+			// The refusal travels with the redirect: a spawn that carries one and not
+			// the other is the state this pair exists to prevent, and it is asserted
+			// at the spawn rather than only on the builder.
+			assert.equal(
+				env.PYTHONDONTWRITEBYTECODE,
+				"1",
+				`${label}: the interpreter must not be able to write bytecode at all`,
+			);
 			// Additive, never a replacement: the backend needs the operator's PATH
 			// to reach gh and brew.
 			assert.equal(env.PATH, process.env.PATH, `${label}: PATH survives`);
@@ -648,6 +717,11 @@ test("the belt: shellEnv is corrected after the rc files have been sourced", asy
 			!manager.shellEnv.PYTHONPYCACHEPREFIX.includes(".app"),
 			"shellEnv must not point into a bundle",
 		);
+		assert.equal(
+			manager.shellEnv.PYTHONDONTWRITEBYTECODE,
+			"1",
+			"and the refusal must be there for every reader of shellEnv, not only at the spawns",
+		);
 	} finally {
 		process.env.HOME = originalHome;
 		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
@@ -690,6 +764,27 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		"the Windows script must default the prefix itself",
 	);
 
+	// The refusal half, in all three: a standalone run of a script has no app to
+	// inherit an environment from, and the pythons it starts (venv creation, pip)
+	// are the ones that compiled the operator's in-bundle cache in the field.
+	// These run before the script's first python, so they are the whole guarantee
+	// for a run nobody's app is managing.
+	assert.match(
+		macosInstallScript,
+		/^export PYTHONDONTWRITEBYTECODE=1$/m,
+		"the macOS script must refuse bytecode writes as well as redirecting them",
+	);
+	assert.match(
+		linuxInstallScript,
+		/^export PYTHONDONTWRITEBYTECODE=1$/m,
+		"the Linux script must refuse bytecode writes as well as redirecting them",
+	);
+	assert.match(
+		windowsInstallScript,
+		/^\$env:PYTHONDONTWRITEBYTECODE = "1"$/m,
+		"the Windows script must refuse bytecode writes as well as redirecting them",
+	);
+
 	// And the macOS default executed, since a match on the text says the line is
 	// there rather than what it resolves to.
 	const run = runMacosInstallScript(macosInstallScript, {
@@ -715,6 +810,11 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 			trace,
 			/^\+ export PYTHONPYCACHEPREFIX$/m,
 			"the script must export the prefix it defaulted, or the python it runs will not inherit it",
+		);
+		assert.match(
+			trace,
+			/^\+ export PYTHONDONTWRITEBYTECODE=1$/m,
+			"and it must export the refusal with it, or the pythons it starts can still write into the tree",
 		);
 		assert.ok(
 			!trace.includes(".app"),
@@ -794,6 +894,11 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 		);
 		assert.equal(env.ELECTRON_RESOURCE_PATH, resources);
 		assert.equal(env.PYTHON_BIN, installer.pythonPath);
+		assert.equal(
+			env.PYTHONDONTWRITEBYTECODE,
+			"1",
+			"the script's own venv creation and pip runs are pythons we start",
+		);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
 		else delete process.resourcesPath;
@@ -1200,7 +1305,7 @@ test("the seal follows the code-sealed bundle, never the checkout's resources tr
 	}
 });
 
-test("the update service's python probe runs with the prefix in the child's own environment", async () => {
+test("the update service's python probe runs with the guards in the child's own environment", async () => {
 	const { LocalOperatorStartupMode, UpdateService } = await loadMainProcess();
 
 	const probeDir = mkdtempSync(join(tmpdir(), "lo-probe-python-"));
@@ -1213,7 +1318,7 @@ test("the update service's python probe runs with the prefix in the child's own 
 	const stub = join(probeDir, "python3");
 	writeFileSync(
 		stub,
-		`#!/bin/bash\nprintf '%s' "\${PYTHONPYCACHEPREFIX:-}" > '${envReport}'\necho "Name: local-operator"\necho "Version: 0.54.0"\n`,
+		`#!/bin/bash\nprintf '%s %s' "\${PYTHONPYCACHEPREFIX:-}" "\${PYTHONDONTWRITEBYTECODE:-}" > '${envReport}'\necho "Name: local-operator"\necho "Version: 0.54.0"\n`,
 	);
 	chmodSync(stub, 0o755);
 
@@ -1233,8 +1338,8 @@ test("the update service's python probe runs with the prefix in the child's own 
 		);
 		assert.equal(
 			readFileSync(envReport, "utf8"),
-			pythonBytecodeCacheDir(PATHS.userData),
-			"the child's own PYTHONPYCACHEPREFIX must point at the cache, not into a bundle",
+			`${pythonBytecodeCacheDir(PATHS.userData)} 1`,
+			"the child's own environment must carry both guards: the prefix, pointing at the cache rather than into a bundle, and the refusal",
 		);
 	} finally {
 		if (interval) clearInterval(interval);
@@ -1304,5 +1409,658 @@ test("every python-running runCommand call site in the update service passes the
 			/env:\s*this\.pythonSpawnEnv\(\)/,
 			`the python spawn at src/main/update-service.ts:${line} must pass the guarded environment: ${text.replace(/\s+/g, " ")}`,
 		);
+	}
+});
+
+// ---------------------------------------------------------------------------
+// The app-managed venv: the pythons this app never spawns
+
+/**
+ * A venv on disk with one `site-packages`, built the way CPython's `venv`
+ * module builds it.
+ *
+ * A directory tree rather than a real `python -m venv`: what is under test is
+ * where the guard is written and what it says, and a real venv would add a
+ * network-shaped dependency to a check about one file's placement. The
+ * behavioural half - that CPython imports this file and honours it - is the
+ * case after these, which runs a real interpreter.
+ */
+function makeVenv(layout = join("lib", "python3.12", "site-packages")) {
+	const venvPath = mkdtempSync(join(tmpdir(), "lo-venv-"));
+	mkdirSync(join(venvPath, layout), { recursive: true });
+	return venvPath;
+}
+
+test("the guard is written into the venv's own site-packages", () => {
+	const venvPath = makeVenv();
+	try {
+		const guard = ensureVenvBytecodeGuard(venvPath);
+		const expected = join(
+			venvPath,
+			"lib",
+			"python3.12",
+			"site-packages",
+			VENV_BYTECODE_GUARD_FILE,
+		);
+		assert.equal(guard.path, expected);
+		assert.equal(guard.written, true, guard.reason);
+		assert.equal(readFileSync(expected, "utf8"), venvBytecodeGuardSource());
+		// The property, not the text: the file turns bytecode writing off, which
+		// is what a process using this venv inherits whether or not it was this
+		// app that started it.
+		assert.match(readFileSync(expected, "utf8"), /^sys\.dont_write_bytecode = True$/m);
+
+		// Idempotent by content, because this runs at every start.
+		const second = ensureVenvBytecodeGuard(venvPath);
+		assert.equal(second.written, false);
+		assert.match(second.reason, /already refuses bytecode writes/);
+	} finally {
+		rmSync(venvPath, { recursive: true, force: true });
+	}
+});
+
+test("a venv without site-packages is reported, not created", () => {
+	const venvPath = mkdtempSync(join(tmpdir(), "lo-venv-empty-"));
+	try {
+		const guard = ensureVenvBytecodeGuard(venvPath);
+		assert.equal(guard.path, null);
+		assert.equal(guard.written, false);
+		assert.match(guard.reason, /no site-packages/);
+		assert.deepEqual(readdirSync(venvPath), [], "nothing may be created in a venv that is not there yet");
+	} finally {
+		rmSync(venvPath, { recursive: true, force: true });
+	}
+});
+
+test("a sitecustomize.py that is not ours is left exactly as it is", () => {
+	const venvPath = makeVenv();
+	const theirs = join(venvPath, "lib", "python3.12", "site-packages", VENV_BYTECODE_GUARD_FILE);
+	const ownText = "print('the operator put this here')\n";
+	writeFileSync(theirs, ownText);
+	try {
+		const guard = ensureVenvBytecodeGuard(venvPath);
+		assert.equal(guard.written, false);
+		assert.match(guard.reason, /is not ours/);
+		assert.equal(
+			readFileSync(theirs, "utf8"),
+			ownText,
+			"a file the app did not write must never be replaced, whatever it does",
+		);
+	} finally {
+		rmSync(venvPath, { recursive: true, force: true });
+	}
+});
+
+test("a previous revision's guard is refreshed rather than kept", () => {
+	// The sentinel is what makes a stale guard ours to replace: a file carrying it
+	// was written by this app, so keeping an old revision would leave the venv
+	// running whatever that revision said.
+	const venvPath = makeVenv();
+	const theirs = join(venvPath, "lib", "python3.12", "site-packages", VENV_BYTECODE_GUARD_FILE);
+	writeFileSync(theirs, "# Local Operator bytecode guard. Do not edit; the app rewrites this file.\n");
+	try {
+		const guard = ensureVenvBytecodeGuard(venvPath);
+		assert.equal(guard.written, true, guard.reason);
+		assert.equal(readFileSync(theirs, "utf8"), venvBytecodeGuardSource());
+	} finally {
+		rmSync(venvPath, { recursive: true, force: true });
+	}
+});
+
+test("a real CPython imports the guard and stops writing bytecode", (t) => {
+	// The mechanism, measured rather than reasoned about: `site` imports
+	// `sitecustomize` from a directory on `sys.path`, so a real interpreter run
+	// with the guard's own bytes on `PYTHONPATH` reports `sys.dont_write_bytecode`
+	// True and leaves no `__pycache__` beside the module it imports. The control
+	// run - the same import without the guard - is asserted beside it, because a
+	// test that cannot produce the write cannot prove it was prevented.
+	const scratch = mkdtempSync(join(tmpdir(), "lo-guard-real-"));
+	const guardDir = join(scratch, "site-packages");
+	const moduleDir = join(scratch, "modules");
+	mkdirSync(guardDir, { recursive: true });
+	mkdirSync(moduleDir, { recursive: true });
+	writeFileSync(join(guardDir, VENV_BYTECODE_GUARD_FILE), venvBytecodeGuardSource());
+	writeFileSync(join(moduleDir, "lo_probe_module.py"), "VALUE = 1\n");
+
+	const run = (extraEnv) =>
+		spawnSync(
+			"python3",
+			[
+				"-c",
+				`import sys; sys.path.insert(0, ${JSON.stringify(moduleDir)}); import lo_probe_module; print(sys.dont_write_bytecode)`,
+			],
+			{ encoding: "utf8", env: { ...process.env, ...extraEnv } },
+		);
+	const cacheDir = join(moduleDir, "__pycache__");
+	try {
+		const control = run({ PYTHONPATH: "" });
+		if (control.error) {
+			t.skip(`no python3 on PATH to measure with: ${control.error.message}`);
+			return;
+		}
+		assert.equal(control.stdout.trim(), "False", `the control run must be able to write: ${control.stderr}`);
+		assert.ok(existsSync(cacheDir), "the control run must have produced a __pycache__");
+
+		rmSync(cacheDir, { recursive: true, force: true });
+		const guarded = run({ PYTHONPATH: guardDir });
+		assert.equal(guarded.stdout.trim(), "True", `the guard must be imported by site: ${guarded.stderr}`);
+		assert.equal(
+			existsSync(cacheDir),
+			false,
+			"a process that imports the guard must write no bytecode at all, not merely somewhere else",
+		);
+	} finally {
+		rmSync(scratch, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Every spawn site, enumerated
+
+/**
+ * `source` with comments blanked out, keeping every offset and newline.
+ *
+ * Needed because the scan below is textual: a `spawn (` inside a doc comment -
+ * and this codebase has several, they are how these rules are explained - is
+ * not a call site, and a table that demanded one would be asserting on prose.
+ * Length-preserving so the line numbers it reports are the file's own.
+ */
+function blankComments(source) {
+	let out = "";
+	let i = 0;
+	while (i < source.length) {
+		const ch = source[i];
+		const next = source[i + 1];
+		if (ch === "/" && next === "/") {
+			while (i < source.length && source[i] !== "\n") {
+				out += " ";
+				i += 1;
+			}
+			continue;
+		}
+		if (ch === "/" && next === "*") {
+			out += "  ";
+			i += 2;
+			while (
+				i < source.length &&
+				!(source[i] === "*" && source[i + 1] === "/")
+			) {
+				out += source[i] === "\n" ? "\n" : " ";
+				i += 1;
+			}
+			out += "  ";
+			i += 2;
+			continue;
+		}
+		if (ch === '"' || ch === "'" || ch === "`") {
+			out += ch;
+			i += 1;
+			while (i < source.length) {
+				if (source[i] === "\\") {
+					out += `${source[i]}${source[i + 1] ?? ""}`;
+					i += 2;
+					continue;
+				}
+				out += source[i];
+				if (source[i] === ch) {
+					i += 1;
+					break;
+				}
+				i += 1;
+			}
+			continue;
+		}
+		out += ch;
+		i += 1;
+	}
+	return out;
+}
+
+const CHILD_PROCESS_NAMES = [
+	"spawn",
+	"spawnSync",
+	"exec",
+	"execSync",
+	"execFile",
+	"execFileSync",
+];
+
+/** Every `.ts` under `src/main`, excluding test files. */
+function mainProcessSources() {
+	const files = [];
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const child = join(dir, entry.name);
+			if (entry.isDirectory()) walk(child);
+			else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+				files.push(child);
+			}
+		}
+	};
+	walk(join(process.cwd(), "src", "main"));
+	return files.sort();
+}
+
+/**
+ * Every child-process call site in the shipping main-process sources, in file
+ * order, with the balanced text of its argument list.
+ *
+ * What it counts: names imported from `node:child_process` in that file, and the
+ * `require("node:child_process").name(` spelling `index.ts` uses. `RegExp.exec`
+ * is deliberately not a child process, so a `.exec(` whose receiver is anything
+ * else is skipped — which is also why the receiver is checked rather than the
+ * name alone.
+ */
+function findChildProcessSites() {
+	const sites = [];
+	for (const file of mainProcessSources()) {
+		const raw = readFileSync(file, "utf8");
+		const source = blankComments(raw);
+		const imported = new Set();
+		for (const match of raw.matchAll(
+			/import\s*\{([^}]*)\}\s*from\s*"node:child_process"/g,
+		)) {
+			for (const part of match[1].split(",")) {
+				const name = part.trim();
+				if (name) imported.add(name);
+			}
+		}
+		if (imported.size === 0 && !/require\("node:child_process"\)/.test(raw)) {
+			continue;
+		}
+		const found = [];
+		for (const name of CHILD_PROCESS_NAMES) {
+			if (!imported.has(name)) {
+				const pattern = new RegExp(
+					`require\\("node:child_process"\\)\\.${name}\\s*\\(`,
+					"g",
+				);
+				for (const match of source.matchAll(pattern)) {
+					found.push({ name, at: match.index + match[0].indexOf(name) });
+				}
+				continue;
+			}
+			for (const match of source.matchAll(
+				new RegExp(`(?<!\\.)\\b${name}\\s*\\(`, "g"),
+			)) {
+				found.push({ name, at: match.index });
+			}
+		}
+		found.sort((a, b) => a.at - b.at);
+		const seen = {};
+		for (const site of found) {
+			seen[site.name] = (seen[site.name] ?? 0) + 1;
+			let depth = 0;
+			let end = source.indexOf("(", site.at);
+			for (; end < source.length; end += 1) {
+				if (source[end] === "(") depth += 1;
+				else if (source[end] === ")" && (depth -= 1) === 0) break;
+			}
+			sites.push({
+				file: relative(process.cwd(), file),
+				line: raw.slice(0, site.at).split("\n").length,
+				name: site.name,
+				index: seen[site.name],
+				text: raw.slice(source.indexOf("(", site.at) + 1, end),
+			});
+		}
+	}
+	return sites;
+}
+
+/**
+ * The guarded environment a spawn has to pass, asserted on the call's own text.
+ *
+ * Not the only assertion about it: the cases above drive the three spawn classes
+ * that run our interpreter and read the environment the child is actually given
+ * (`backendSpawnEnv`, the install script's `env`, the update service's
+ * `pythonSpawnEnv`). This is the coverage half - every site in the file, and a
+ * new one fails for being absent rather than for what it does.
+ */
+const GUARDED_ENV = /withPythonBytecodeCache|backendSpawnEnv\(\)|pythonSpawnEnv\(\)/;
+
+/**
+ * A spawn that runs an interpreter this app ships, and the guard it must carry.
+ */
+function runsPython(file, name, index, env, why) {
+	return { file, name, index, kind: "python", env, why };
+}
+
+/** A spawn that starts no interpreter, with the command it starts. */
+function runsCommand(file, name, index, command, why) {
+	return { file, name, index, kind: "command", command, why };
+}
+
+/**
+ * A spawn whose command is the caller's, with the call sites that decide it.
+ */
+function passThrough(file, name, index, why) {
+	return { file, name, index, kind: "passthrough", why };
+}
+
+/**
+ * Every child-process spawn site in the main process, and what it must carry.
+ *
+ * Why a table the test walks rather than a case per site: the failure this file
+ * exists to remove is a spawn site that forgets the guard, and the site that
+ * forgets it is the one somebody adds next month. The scan above finds every
+ * site; anything it finds that is not named here fails, so the table is the
+ * place a new spawn has to be considered - either with the guarded environment
+ * it passes, or with the reason no interpreter runs under it.
+ *
+ * The command rows are the second half of the same property: they assert the
+ * command the call actually starts, so a row cannot go on claiming "no
+ * interpreter here" after the command under it changed.
+ */
+const SPAWN_SITES = [
+	runsCommand(
+		"src/main/backend/backend-installer.ts",
+		"spawn",
+		1,
+		/"taskkill"/,
+		"kills a stuck install process by pid; taskkill is a macOS/Windows tool, not an interpreter",
+	),
+	runsPython(
+		"src/main/backend/backend-installer.ts",
+		"spawn",
+		2,
+		/\benv\b/,
+		"the install script, which creates the venv with the bundled interpreter and pips into it, so its `env` is built by `withPythonBytecodeCache` (asserted by the installer case above)",
+	),
+	runsPython(
+		"src/main/backend/backend-service.ts",
+		"spawn",
+		1,
+		/env:\s*this\.backendSpawnEnv\(\)/,
+		"the global-install backend, whose `python` is the interpreter we ship",
+	),
+	runsPython(
+		"src/main/backend/backend-service.ts",
+		"spawn",
+		2,
+		/env:\s*this\.backendSpawnEnv\(\)/,
+		"the app-bundled venv backend, built on the interpreter inside the sealed bundle",
+	),
+	runsCommand(
+		"src/main/backend/backend-service.ts",
+		"spawn",
+		3,
+		/"taskkill"/,
+		"kills the backend by pid",
+	),
+	runsCommand(
+		"src/main/backend/backend-service.ts",
+		"spawn",
+		4,
+		/"taskkill"/,
+		"kills the backend by pid, forcibly",
+	),
+	// `index.ts` is the process-cleanup block: every site is a ps/pkill/pgrep or
+	// taskkill/tasklist call, none of which is an interpreter. Listed one by one
+	// rather than exempted as a file, because a file-level exemption is exactly
+	// what a new `spawn(pythonPath)` there would hide behind.
+	runsCommand("src/main/index.ts", "execSync", 1, /taskkill .*python\.exe/, "kills stray python processes on Windows"),
+	runsCommand("src/main/index.ts", "execSync", 2, /taskkill .*local-operator\.exe/, "kills the global install on Windows"),
+	runsCommand("src/main/index.ts", "execSync", 3, /pkill -f "local-operator serve"/, "stops the backend, gracefully"),
+	runsCommand("src/main/index.ts", "execSync", 4, /pkill -9 -f "local-operator serve"/, "stops the backend, forcibly"),
+	runsCommand("src/main/index.ts", "execSync", 5, /tasklist .*python\.exe/, "lists python processes on Windows"),
+	runsCommand("src/main/index.ts", "execSync", 6, /tasklist .*local-operator\.exe/, "lists the global install on Windows"),
+	runsCommand("src/main/index.ts", "execSync", 7, /pgrep -f "local-operator serve"/, "asks whether the backend is still up"),
+	runsCommand("src/main/index.ts", "execSync", 8, /taskkill .*python\.exe \/t/, "final cleanup on Windows"),
+	runsCommand("src/main/index.ts", "execSync", 9, /pkill -9 -f python/, "final cleanup on Unix"),
+	runsCommand("src/main/index.ts", "execSync", 10, /taskkill .*python\.exe/, "the same cleanup on the error path"),
+	runsCommand("src/main/index.ts", "execSync", 11, /taskkill .*local-operator\.exe/, "the same, for the global install"),
+	runsCommand("src/main/index.ts", "execSync", 12, /pkill -f "local-operator serve"/, "the same, gracefully"),
+	runsCommand("src/main/index.ts", "execSync", 13, /sleep 1 && pkill -9/, "the same, after a grace period"),
+	runsCommand("src/main/index.ts", "spawnSync", 1, /"cmd\.exe"/, "the same cleanup through cmd.exe"),
+	runsCommand("src/main/index.ts", "spawnSync", 2, /"cmd\.exe"/, "the same, for the global install"),
+	runsCommand("src/main/index.ts", "spawnSync", 3, /"bash"/, "the same cleanup through bash"),
+	runsCommand("src/main/index.ts", "spawnSync", 4, /"bash"/, "the same, after a grace period"),
+	runsCommand("src/main/index.ts", "spawnSync", 5, /"cmd\.exe"/, "the relaunch path's cleanup"),
+	runsCommand("src/main/index.ts", "spawnSync", 6, /"cmd\.exe"/, "the relaunch path's cleanup, for the global install"),
+	runsCommand("src/main/index.ts", "spawnSync", 7, /"bash"/, "the relaunch path's cleanup on Unix"),
+	runsCommand("src/main/index.ts", "spawnSync", 8, /"bash"/, "the relaunch path's cleanup, after a grace period"),
+	runsCommand(
+		"src/main/python-bytecode-cache.ts",
+		"spawnSync",
+		1,
+		/FIND/,
+		"the seal itself: /usr/bin/find with /bin/chmod - it must run under the INHERITED environment, because it is what makes the tree refuse writes",
+	),
+	passThrough(
+		"src/main/update-service.ts",
+		"execFile",
+		1,
+		"the update service's `runCommand`: it runs `codesign` (inherited environment, its own call sites below) and the two python probes, and the python call sites pass `pythonSpawnEnv()` - asserted by the runCommand case above",
+	),
+	passThrough(
+		"src/main/update-service.ts",
+		"execFileSync",
+		1,
+		"`readCommandOutput`, used for /bin/ps and /usr/bin/defaults - no interpreter among its call sites",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawnSync",
+		1,
+		/"\/bin\/launchctl"/,
+		"removes ShipIt's launchd job",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawnSync",
+		2,
+		/jobProbe/,
+		"asks launchd whether ShipIt's job is loaded; `jobProbe` is `/bin/launchctl` from `watchdogSignals`",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawn",
+		1,
+		/"sh"/,
+		"the relaunch watchdog: a shell script that waits for the swap and starts the app again. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
+	),
+];
+
+test("every child-process spawn site is enumerated, and the python ones carry the guards", () => {
+	const sites = findChildProcessSites();
+	// Asserted rather than assumed, so a scanner that silently stopped matching
+	// cannot make this pass by finding nothing: one site per row is the table's
+	// own count.
+	assert.equal(
+		sites.length > 0,
+		true,
+		"the scan found no child-process call sites at all, which means the scan is broken rather than that the app starts nothing",
+	);
+
+	const key = (site) => `${site.file}#${site.name}#${site.index}`;
+	const rows = new Map(SPAWN_SITES.map((row) => [key(row), row]));
+
+	const unlisted = sites.filter((site) => !rows.has(key(site)));
+	assert.deepEqual(
+		unlisted.map(
+			(site) =>
+				`${site.file}:${site.line} ${site.name} #${site.index}: ${site.text.replace(/\s+/g, " ").trim().slice(0, 80)}`,
+		),
+		[],
+		"every spawn site must be named in SPAWN_SITES - either with the guarded environment it passes (runsPython), or with the command it starts and the reason no interpreter runs under it (runsCommand/passThrough). A new site fails here on purpose: that is the site most likely to have forgotten the guard.",
+	);
+
+	const stale = SPAWN_SITES.filter(
+		(row) => !sites.some((site) => key(site) === key(row)),
+	);
+	assert.deepEqual(
+		stale.map(key),
+		[],
+		"SPAWN_SITES names a call site that is no longer there; remove the row with the call, so the table stays a description of the tree",
+	);
+
+	for (const site of sites) {
+		const row = rows.get(key(site));
+		const where = `${site.file}:${site.line} ${site.name} #${site.index}`;
+		if (row.kind === "python") {
+			assert.match(
+				site.text,
+				row.env,
+				`${where} runs an interpreter we ship and must hand it the guarded environment (${row.why})`,
+			);
+			assert.match(
+				readFileSync(join(process.cwd(), site.file), "utf8"),
+				GUARDED_ENV,
+				`${where} must build its environment with withPythonBytecodeCache (or the service's own wrapper): ${row.why}`,
+			);
+			// And the guard is both variables, never the prefix alone: the prefix
+			// decides where a write goes, the flag is what refuses it.
+			assert.match(
+				readFileSync(join(process.cwd(), site.file), "utf8"),
+				/GUARD|withPythonBytecodeCache/,
+				`${where} must reach a builder that sets PYTHONPYCACHEPREFIX and PYTHONDONTWRITEBYTECODE`,
+			);
+		} else if (row.kind === "command") {
+			assert.match(
+				site.text,
+				row.command,
+				`${where} must still start the command its row names (${row.why})`,
+			);
+		}
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Which interpreter environment an instance uses
+
+test("a packaged and an unpackaged instance never share a venv", () => {
+	const input = {
+		platform: "darwin",
+		home: "/Users/someone",
+		appDataPath: "/Users/someone/Library/Application Support/local-operator-ui",
+	};
+	const packaged = managedVenvPath({ ...input, packaged: true });
+	const dev = managedVenvPath({ ...input, packaged: false });
+	assert.equal(
+		packaged,
+		"/Users/someone/Library/Application Support/Local Operator/local-operator-venv",
+		"the packaged name is the one every install on disk today uses",
+	);
+	assert.equal(
+		dev,
+		"/Users/someone/Library/Application Support/Local Operator/local-operator-venv-dev",
+		"and a dev instance gets a name of its own, beside it rather than inside it",
+	);
+	assert.notEqual(packaged, dev);
+	assert.ok(dev.includes(DEV_VENV_DIR_NAME) && packaged.includes(PACKAGED_VENV_DIR_NAME));
+
+	// Windows has no `home` branch: everything is under userData, and the name is
+	// the whole split.
+	assert.equal(
+		managedVenvPath({ ...input, platform: "win32", packaged: false }),
+		"/Users/someone/Library/Application Support/local-operator-ui/local-operator-venv-dev",
+	);
+	assert.equal(
+		managedVenvPath({ ...input, platform: "linux", packaged: true }),
+		"/Users/someone/.config/local-operator/local-operator-venv",
+	);
+});
+
+test("the bundle a venv's interpreter resolves its stdlib from is read from pyvenv.cfg", () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-venv-bundle-"));
+	const app = join(home, "Applications", "Local Operator.app");
+	mkdirSync(join(app, "Contents", "Resources", "python_aarch64", "bin"), {
+		recursive: true,
+	});
+	const venv = join(home, "venv");
+	mkdirSync(venv, { recursive: true });
+	writeFileSync(
+		join(venv, "pyvenv.cfg"),
+		[
+			`home = ${join(app, "Contents", "Resources", "python_aarch64", "bin")}`,
+			"include-system-site-packages = false",
+			"version = 3.12.10",
+			`executable = ${join(app, "Contents", "Resources", "python_aarch64", "bin", "python3.12")}`,
+			"",
+		].join("\n"),
+	);
+	try {
+		// The field measurement, reproduced: this is what the operator's
+		// app-managed venv says today, and it is why a dev instance's backend start
+		// writes into the installed app.
+		assert.equal(venvInterpreterBundle(venv), app);
+
+		// An unpackaged instance's own venv is built on the checkout's interpreter
+		// tree: same tail, no bundle, nothing to repair from here.
+		writeFileSync(
+			join(venv, "pyvenv.cfg"),
+			`home = /Users/someone/local-operator/resources/python_aarch64/bin\n`,
+		);
+		assert.equal(venvInterpreterBundle(venv), null);
+
+		// And a system or uv-managed python has no bundle behind it either.
+		writeFileSync(join(venv, "pyvenv.cfg"), "home = /opt/homebrew/bin\n");
+		assert.equal(venvInterpreterBundle(venv), null);
+
+		// A bundle that is not there any more is not one to probe.
+		writeFileSync(
+			join(venv, "pyvenv.cfg"),
+			`home = ${join(home, "Gone.app", "Contents", "Resources", "python", "bin")}\n`,
+		);
+		assert.equal(venvInterpreterBundle(venv), null);
+	} finally {
+		rmSync(home, { recursive: true, force: true });
+	}
+	assert.equal(
+		venvInterpreterBundle(join(tmpdir(), "lo-venv-that-does-not-exist-xyz")),
+		null,
+	);
+});
+
+/**
+ * The wiring, not the guard: constructing the installer must put the guard in
+ * the venv THIS instance will run, at start-up, because the installs already on
+ * a disk were created before the guard existed.
+ */
+test("constructing the installer guards the venv of the instance it belongs to", async () => {
+	const { BackendInstaller } = await loadMainProcess();
+
+	// The venv this instance resolves, laid out the way `venv` leaves it, with one
+	// directory in it that must survive untouched.
+	const venvPath = join(
+		PATHS.home,
+		"Library",
+		"Application Support",
+		"Local Operator",
+		"local-operator-venv",
+	);
+	const sitePackages = join(venvPath, "lib", "python3.12", "site-packages");
+	mkdirSync(sitePackages, { recursive: true });
+	const untouched = join(sitePackages, "some_package.py");
+	writeFileSync(untouched, "x = 1\n");
+
+	// `process.resourcesPath` is Electron's and the constructor reads it
+	// unguarded, so a run under plain node has to seed it (`update-robustness`
+	// seeds it the same way).
+	const hadResourcesPath = "resourcesPath" in process;
+	const originalResourcesPath = process.resourcesPath;
+	const resources = mkdtempSync(join(tmpdir(), "lo-installer-resources-"));
+	process.resourcesPath = resources;
+	const installer = new BackendInstaller();
+	const guard = join(sitePackages, VENV_BYTECODE_GUARD_FILE);
+	try {
+		assert.equal(
+			installer.venvPath,
+			venvPath,
+			"a packaged run must keep using the venv name every install on disk has",
+		);
+		assert.equal(
+			readFileSync(guard, "utf8"),
+			venvBytecodeGuardSource(),
+			"the installer must write the guard into the venv it will run",
+		);
+		assert.equal(readFileSync(untouched, "utf8"), "x = 1\n");
+	} finally {
+		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		else delete process.resourcesPath;
+		rmSync(resources, { recursive: true, force: true });
+		rmSync(guard, { force: true });
+		rmSync(untouched, { force: true });
 	}
 });

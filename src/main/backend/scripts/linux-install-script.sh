@@ -27,6 +27,13 @@ TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 : "${PYTHONPYCACHEPREFIX:=${APP_DATA_DIR}/python-bytecode-cache}"
 export PYTHONPYCACHEPREFIX
 
+# The refusal half of the pair, set rather than merged with whatever the caller
+# had: CPython reads the flag before its first import, so nothing this script
+# runs - `-m venv`, pip, the venv they create - can write a `__pycache__` at
+# all. Kept in step with the app's `withPythonBytecodeCache`, which sets both
+# variables on every python it spawns.
+export PYTHONDONTWRITEBYTECODE=1
+
 # Create app data directory if it doesn't exist
 if ! mkdir -p "${APP_DATA_DIR}"; then
   echo "ERROR: Unable to create app data directory at ${APP_DATA_DIR}"
