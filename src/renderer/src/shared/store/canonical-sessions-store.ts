@@ -637,7 +637,18 @@ export async function admitChatDraft(
 				? LEADING_SLASH_MESSAGE
 				: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
 		});
-		throw error;
+		// The caller's catch takes precedence over the persisted draft error in
+		// the composer. Carry the same classified sentence across that boundary,
+		// preserving 422 so its pre-admission retention path still restores text.
+		// Keeping the original as cause also preserves the transport diagnosis.
+		throw leadingSlash
+			? new DesktopControlError(
+					422,
+					LEADING_SLASH_MESSAGE,
+					error,
+					LEADING_SLASH_CODE,
+				)
+			: error;
 	}
 }
 type CanonicalSessionsState = {
