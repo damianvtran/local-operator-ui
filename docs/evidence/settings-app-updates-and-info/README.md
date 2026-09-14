@@ -80,6 +80,30 @@ The other values in the frame — `1.0.0` for the application version, `darwin
 (x64)`, Node and Electron — come from the Storybook preview's own `systemInfo`
 stub and are not evidence about anything this change touches.
 
+## The pair, and what it measures
+
+`docs/evidence/settings-app-updates-and-info-baseline/` is the SAME five states,
+the same two palettes and the same viewport, photographed on a detached worktree
+of unmodified `origin/main` at `a8f6bc4b9` with only the stories file and the
+`shared/backend-status.ts` type module copied in — the component in those frames
+is `main`'s own `AppUpdatesSection`, the one that decided liveness with its own
+`/health` fetch. Its declaration in the manifest carries the full recipe.
+
+The measurement is arithmetic rather than visual, which is why it is worth
+stating exactly:
+
+- **All ten baseline frames are byte-identical** —
+  `8eb57fa5f757820a89d3b819176b3d0c` dark, `a3c8dfd5b44901ff383222f0d74c0529`
+  light. Before this change the row printed the same bytes for a serving daemon,
+  a degraded one, a detached one, a not-yet-probed one, and a host with no bridge
+  at all.
+- **Those bytes are this set's `detached` and `no-bridge` frames**, unchanged.
+  Which is the defect in one line: the row's number could not distinguish a live
+  server from no server, because it came from a probe the renderer made itself and
+  never from the daemon main was attached to.
+- After the change the same five states produce `0.54.47` on the two live ones,
+  `Unavailable` on `detached`/`no-bridge`, and `Loading...` before the first probe.
+
 ## What these frames do not prove
 
 - **Not a live daemon, and not the packaged app.** The bridge is a stub, so the
