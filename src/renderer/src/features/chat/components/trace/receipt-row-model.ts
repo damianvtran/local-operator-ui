@@ -33,6 +33,17 @@
  */
 
 /**
+ * The three separators these derivations split on, hoisted because a regex
+ * literal inside a function is rebuilt on every call and the peer rows of a
+ * transcript are rebuilt on every reconnect (`useTopLevelRegex`).
+ */
+const WHITESPACE_RUN = /\s+/;
+const TRAILING_SEPARATORS = /[\\/]+$/;
+const PATH_SEPARATOR = /[\\/]/;
+const ENVELOPE_BREAK = "\n\n";
+const CANCEL_INSTRUCTION = " — cancel with wake(";
+
+/**
  * How much of one advisory sender field is printed.
  *
  * `_SENDER_FIELD_MAX_CHARS` (transcript.py:2242), ported: generous enough that
@@ -65,7 +76,7 @@ export function senderField(value: unknown): string {
 	if (value === null || value === undefined) return "";
 	const text = typeof value === "string" ? value : String(value);
 	return text
-		.split(/\s+/)
+		.split(WHITESPACE_RUN)
 		.filter(Boolean)
 		.join(" ")
 		.slice(0, SENDER_FIELD_MAX_CHARS);
@@ -120,11 +131,11 @@ export function peerName(sender: PeerSender): {
 	if (sender.conversationName) {
 		return { name: sender.conversationName, quoted: true };
 	}
-	const cwd = sender.cwd.replace(/[\\/]+$/, "");
+	const cwd = sender.cwd.replace(TRAILING_SEPARATORS, "");
 	if (cwd) {
 		// Split on both separators rather than one: the app runs on Windows too,
 		// where the TUI's `os.path.basename` would keep the whole path as a name.
-		const base = cwd.split(/[\\/]/).pop() ?? "";
+		const base = cwd.split(PATH_SEPARATOR).pop() ?? "";
 		// A trailing slash says "this is a directory", which is the only thing
 		// that distinguishes a guessed name from a chosen one when both are
 		// unquoted.
@@ -344,9 +355,9 @@ export function wakeIsCatchup(details: Record<string, unknown>): boolean {
  * the function exists to prevent surviving inside the function that prevents it.
  */
 export function wakeReceiptHeadline(text: string): string {
-	let head = text.split("\n\n")[0] ?? "";
-	head = head.split(/\s+/).filter(Boolean).join(" ");
-	head = head.split(" — cancel with wake(")[0];
+	let head = text.split(ENVELOPE_BREAK)[0] ?? "";
+	head = head.split(WHITESPACE_RUN).filter(Boolean).join(" ");
+	head = head.split(CANCEL_INSTRUCTION)[0];
 	const alarm = "(alarm) ";
 	while (head.startsWith(alarm)) head = head.slice(alarm.length);
 	const prefix = "Scheduled wake ";
@@ -363,6 +374,6 @@ export function wakeReceiptHeadline(text: string): string {
  * envelope, which is the caller's signal that there is nothing to disclose.
  */
 export function wakePromptBody(text: string): string {
-	const separator = text.indexOf("\n\n");
+	const separator = text.indexOf(ENVELOPE_BREAK);
 	return separator === -1 ? "" : text.slice(separator + 2).trim();
 }
