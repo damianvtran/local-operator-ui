@@ -1060,6 +1060,35 @@ export const STORIES = [
 	["panels-failovers--loading", 1140, 400],
 	["panels-failovers--unavailable", 1140, 400],
 	["panels-failovers--narrow", 720, 580],
+
+	/* Settings: the version row, in the five states discovery can put it in.
+
+	   This is the surface the reported bug is ABOUT - the row that said
+	   "Unavailable" (or named a different install) while the operator's daemon was
+	   serving - and until now the sweep had no settings story at all, so no frame
+	   could contradict it. The row's value is a string, so the evidence is the five
+	   strings, one per state, and Storybook is the only instrument that can produce
+	   them: `detached` needs a daemon to exit, `degraded` needs two probes to fail
+	   on a live one, and neither can be asked for on demand without breaking the
+	   machine the capture runs on.
+
+	   Captured in the two `localOperator` palettes only, for the reason the
+	   reconnect-gap pair above is: the claim is the ink/ground relationship of one
+	   row's value, and the palette floors belong to `check-themes`, not to a
+	   seventy-frame sweep of five strings.
+
+	   Sized to the section rather than to a window, like the older-history-slot
+	   entries above: the section paints ~190px (a title, a description, five info
+	   rows and the updates card), and the story's own `min-h-screen` ground fills
+	   whatever else the viewport has. A 760-tall frame put 95% of its pixels on one
+	   colour - inside `check-evidence`'s ceiling but in the band its two nearest
+	   legitimate frames (96.3-97.0%) occupy, and mostly empty page that says nothing
+	   about the row. 320 leaves the whole section plus a strip of ground below it. */
+	["settings-app-updates-and-info--no-bridge", 980, 320],
+	["settings-app-updates-and-info--before-first-probe", 980, 320],
+	["settings-app-updates-and-info--attached-to-discovered-daemon", 980, 320],
+	["settings-app-updates-and-info--degraded-daemon", 980, 320],
+	["settings-app-updates-and-info--detached-daemon", 980, 320],
 ];
 
 /**
