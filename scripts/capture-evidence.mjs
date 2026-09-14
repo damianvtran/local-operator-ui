@@ -185,6 +185,27 @@ export const STORIES = [
 	   its own content — one row and its body — because the marker's visibility at
 	   rest is the whole claim. */
 	["chat-tool-rows--diff-body-narrow-wrapped-cap", 560, 830],
+	/* The expanded detail: the operator's report was that it read as
+	   `JSON.stringify(args)` in one bordered box with the output in a second. The
+	   review question is a READING question — does the expansion read as one pane,
+	   with a labelled block per argument and the result under a label — so the
+	   frames are the evidence and the assertions are elsewhere (no JSON
+	   punctuation reaches the pane, no envelope reaches a receipt row: see the
+	   sections in `tool-row.test.mjs` and `transcript-reducer.test.mjs`, because
+	   an absence cannot be photographed). Heights are the stories' own, read off
+	   the rendered frame. */
+	["chat-tool-rows--expanded-detail", 1280, 760],
+	/* Three results side by side — a JSON object, a JSON array, and a result that
+	   only looks like JSON — because the boundary between "structured" and
+	   "printed verbatim" is the rule this surface can get wrong most quietly. */
+	["chat-tool-rows--expanded-json-result", 1280, 760],
+	/* The failed call, where the TUI keeps the arguments beside the error: a
+	   failure produces no diff, so the inputs are the only account of what was
+	   attempted. */
+	["chat-tool-rows--expanded-failed-edit", 1280, 420],
+	/* The two receipt rows on the shared ledger, with a collapsed peer row beside
+	   an expanded one — the pair that shows what the disclosure is FOR. */
+	["chat-tool-rows--receipt-rows", 1280, 560],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
