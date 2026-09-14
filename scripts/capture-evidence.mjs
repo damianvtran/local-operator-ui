@@ -189,8 +189,13 @@ export const STORIES = [
 	 */
 	["chat-notification-feed-states--cached-paint", 1280, 600],
 	["chat-notification-feed-states--reconciled", 1280, 600],
-	["chat-notification-feed-states--conversation-gone", 1280, 600],
-	["chat-notification-feed-states--the-two-misses", 1280, 600],
+	/* These two are captured in a viewport SIZED TO THEM for the reason the
+	   `narrow` tool-row pass is: the vanished state is three lines and a button,
+	   and at 600px it is 99.45% one colour, which `check-evidence` rejects as
+	   "the story painted its ground and nothing else" — its judgement, and the
+	   right one. Sizing the frame to the state keeps it a picture of the state. */
+	["chat-notification-feed-states--conversation-gone", 720, 200],
+	["chat-notification-feed-states--the-two-misses", 760, 200],
 	["chat-notification-feed-states--cached-paint-narrow", 420, 600],
 	["chat-notification-feed-states--loading-first-open", 1280, 600],
 
