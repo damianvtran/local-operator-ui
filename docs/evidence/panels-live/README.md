@@ -1,5 +1,16 @@
 # `panels-live` — the in-app (real-path) frames
 
+> Round-3 update: the ten original PNGs below are preserved unchanged and now
+> have lossless `<state>/localOperatorDark.webp` companions (decoded pixels
+> verified identical). They retain their original native-app provenance; this
+> is format conversion, not a new capture. The eleventh WebP,
+> `wire-environment/localOperatorDark.webp`, is separate browser-tool evidence
+> of production InfoPanel over actual isolated backend HTTP, showing null skills
+> and approval mode as labelled unknowns. It is NOT native Electron/preload or
+> slash-dispatch evidence. See `../panels-remediation/README.md` for its runner,
+> exact boundary, and corrected provenance. The historical rig below describes
+> the earlier pass only; all new page work used the browser tool.
+
 **This set is what a story fixture cannot prove**: that the shipped app opens
 these panels at all — the slash command is offered, the destination row exists,
 the op is reachable, and the panel draws the WIRE shape rather than a fixture.
