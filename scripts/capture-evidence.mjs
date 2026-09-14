@@ -312,6 +312,15 @@ export const STORIES = [
 	["chat-tool-rows--prose-tool-alignment", 1024, 700],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The cold engage: a send the app has admitted and the owner has not answered
+	   yet - the operator's "I hit send and nothing happens for three seconds".
+	   Captured as a PAIR with its baseline, because the claim is a difference:
+	   the baseline is the same transcript with the wait line absent (what the app
+	   painted before this change), and the two frames differ by one quiet line at
+	   the foot. A single frame of the fixed state would not say what was wrong,
+	   and a single frame of the baseline would not say what replaced it. */
+	["chat-tool-rows--admitted-send-before-first-frame", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-baseline", 1024, 300],
 	/* The COMMON case, which had no standing frame until design review round 1
 	   (D4) asked for one: an answer mixing prose with a fenced code block, a
 	   table and a list. The alignment frames above are plain paragraphs, and

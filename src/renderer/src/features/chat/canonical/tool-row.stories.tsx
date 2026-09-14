@@ -32,6 +32,7 @@ import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptRecord,
 	type TranscriptState,
+	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
 	dropLiveRecords,
@@ -80,6 +81,7 @@ const Frame = ({
 	width = "100%",
 	height = 300,
 	waiting = false,
+	starting = false,
 	openRows = false,
 }: {
 	records: TranscriptRecord[];
@@ -94,6 +96,11 @@ const Frame = ({
 	 */
 	height?: number;
 	waiting?: boolean;
+	/**
+	 * A send this conversation has admitted and that has produced nothing yet —
+	 * the cold-engage window, before the owner's first frame.
+	 */
+	starting?: boolean;
 	/**
 	 * Click every row's trigger after mount, the way a reader opens one.
 	 *
@@ -126,6 +133,7 @@ const Frame = ({
 				transcript={transcriptOf(records)}
 				gate={null}
 				waiting={waiting}
+				starting={starting}
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
@@ -860,6 +868,67 @@ export const StreamingBeforeFirstToken: Story = {
 					error: false,
 				},
 			]}
+		/>
+	),
+};
+
+/**
+ * The window an accepted send spends waiting to be admitted: the user's own
+ * bubble is in the transcript and the owner has produced nothing yet.
+ *
+ * This is the state the operator reported as dead air - "I hit send, the frame
+ * shows my message, and then nothing for a good three seconds". On a cold
+ * session those seconds are the runtime spawning inside the message request
+ * (`use-warm-session.ts`), and the New-chat pane cannot warm before the send
+ * because it has neither a session id nor a bridge to hold the warm with.
+ *
+ * What the frame has to show is one quiet line at the foot saying the app is
+ * waiting, in the ledger's own register - not a card, not a spinner beside it
+ * (§ 7: one liveness element per turn, and it is the working line), and named
+ * without claiming anything the renderer cannot check. The echo is built
+ * through the real `appendPendingUser` rather than hand-written, so the row in
+ * the picture is the row the store actually paints.
+ */
+export const AdmittedSendBeforeFirstFrame: Story = {
+	render: () => (
+		<Frame
+			starting
+			height={160}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
+		/>
+	),
+};
+
+/**
+ * The same admitted send with the wait line absent: the BEFORE frame.
+ *
+ * Deliberately the same records as the story above and nothing else changed, so
+ * the pair isolates the one thing this change adds. What it shows is what the
+ * app painted while the operator was waiting - the user's bubble, and then dead
+ * air until the first frame from the owner - which is the state reported as "I
+ * hit send and nothing happens for three seconds". `starting={false}` is
+ * exactly the old behaviour: nothing is waiting on the app's own send state, so
+ * the working line has no rung to stand on until `frontend.streaming` flips.
+ */
+export const AdmittedSendBeforeFirstFrameBaseline: Story = {
+	render: () => (
+		<Frame
+			height={160}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
 		/>
 	),
 };

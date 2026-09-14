@@ -151,6 +151,33 @@ function SessionPanel({
 	);
 	const busy = canonical.frontend?.streaming === true;
 	/*
+	 * A send this panel has ADMITTED and that has produced nothing yet.
+	 *
+	 * This is the app's own fact, not the owner's, and it is the only signal
+	 * that exists for the window the user actually waits through: a cold
+	 * session spends ~1.15 s inside the message request spawning its runtime
+	 * (`use-warm-session.ts`), and until the first frame lands the transcript
+	 * used to paint the user's own bubble and then nothing at all. On the
+	 * New-chat path the panel is also remounted by the identity flip while this
+	 * is true, which is why it is read from the STORE's draft row rather than
+	 * from this component's `admitting` state — local state does not survive
+	 * that remount and the row does.
+	 *
+	 * Both flags, deliberately. `pending` is the request being in flight;
+	 * `admissionAttempted` is the store's own record that the request was
+	 * actually ISSUED, i.e. that the owner may have the message. A send that
+	 * failed before admission clears both, which is why a refusal shows a
+	 * failure and not a working line.
+	 *
+	 * It cannot outlive the turn: the store retires the row when the request
+	 * settles (`finishDraft`), records the failure when it throws, and drops the
+	 * row entirely when the user abandons the message. The transcript's own
+	 * clears are the belt to those braces and live in `working-line-model.ts`.
+	 */
+	const starting = Boolean(
+		sessionId && draft?.pending && draft?.admissionAttempted,
+	);
+	/*
 	 * The run-details view model (`docs/run-details.md` § 8), derived once per
 	 * wire frame from the two lists the canonical stream already carries and
 	 * currently drops on the floor: `frontend.jobs` -> the subagent roster,
@@ -828,6 +855,7 @@ function SessionPanel({
 						view,
 						busy,
 						admitting: admitting || pendingNavigation,
+						starting,
 						onStop: stop,
 					}}
 				/>

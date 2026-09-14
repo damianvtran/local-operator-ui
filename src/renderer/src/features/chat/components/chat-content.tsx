@@ -141,6 +141,17 @@ type ChatContentProps = {
 		view: CanonicalSessionHandle;
 		busy: boolean;
 		admitting?: boolean;
+		/**
+		 * A send this conversation has admitted and that has produced nothing yet.
+		 *
+		 * Distinct from `admitting`, which is the composer-side window in which a
+		 * send is being issued and the text is still the user's. This one starts
+		 * when the request is on the wire and ends when it settles, so it covers
+		 * the cold engage the user actually waits through — and it is what the
+		 * transcript's working line and the composer's own busy presentation both
+		 * read. See `working-line-model.ts` for the copy rule.
+		 */
+		starting?: boolean;
 		onStop: () => void;
 	};
 	/**
@@ -458,6 +469,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											transcript={canonical.view.transcript}
 											gate={canonical.view.frontend?.pending_gate ?? null}
 											waiting={canonical.busy}
+											starting={canonical.starting === true}
 											loadingOlder={canonical.view.loadingOlder}
 											onLoadOlder={canonical.view.loadOlder}
 											containerRef={messagesContainerRef}
@@ -495,7 +507,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onSendMessage={onSendMessage}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-								isLoading={canonical ? Boolean(canonical.admitting) : isLoading}
+								isLoading={
+									canonical
+										? Boolean(canonical.admitting || canonical.starting)
+										: isLoading
+								}
 								conversationId={agentId}
 								messages={
 									canonical
