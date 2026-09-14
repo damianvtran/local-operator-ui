@@ -254,6 +254,11 @@ export const NoticeLengths: Story = {
  *   fixed instruction line every hub relay carries above its content.
  * - The empty relay states its envelope instead of its closing tag, and the
  *   wake row states its cadence instead of the agent's own cancellation call.
+ *   That second row is upstream's receipt model's as of this branch's rebase
+ *   onto current `main`: a `wake_prompt` (like a `peer_message`) is projected to
+ *   its own kind before this branch's relay path runs, so `receipt-row-model`
+ *   derives its headline and a frame captured before that rebase shows the row
+ *   as this branch painted it then (round 7's D15).
  * - All of them sit on the ledger pitch, so a run of mixed rows does not go
  *   ragged where one appears.
  */

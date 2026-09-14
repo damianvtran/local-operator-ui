@@ -615,12 +615,20 @@ const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
  * before this set is read, so listing it here would be configuration that can
  * never fire.
  *
- * Any other custom type is a RELAYED payload — a `hub_message`, a
- * `peer_message`, a wake prompt, a job result — whose body belongs behind the
- * disclosure: measured over the operator's own store those run to 18,259
- * characters, and a transcript that painted them inline would be unusable. They
- * are not reduced to their type name either; the row states its first
- * substantive line and keeps the body one click away.
+ * Any other custom type that reaches this branch is a RELAYED payload — a
+ * `hub_message`, a job result — whose body belongs behind the disclosure:
+ * measured over the operator's own store those run to 18,259 characters, and a
+ * transcript that painted them inline would be unusable. They are not reduced to
+ * their type name either; the row states its first substantive line and keeps
+ * the body one click away.
+ *
+ * `peer_message` and `wake_prompt` are custom types too, but they never reach
+ * this branch or this set: `durableRecord` projects each to its own kind first
+ * (see the receipts branch there), because upstream's `receipt-row-model` owns
+ * both rows and derives their headline and prompt at paint time. Correcting this
+ * paragraph rather than the code is the point — it used to name four types, two
+ * of which can no longer arrive here, which is how the next reader ends up
+ * "fixing" machinery that cannot run (round 7's R33).
  */
 const INLINE_CUSTOM_TYPES = new Set([
 	"session_mcp_recovery",
@@ -670,17 +678,6 @@ const RELAY_INSTRUCTIONS = new Set([
 	"this is a note, not a question. no reply is needed unless it changes what you should do.",
 ]);
 
-/**
- * The wake-arming clause the scheduler appends to a wake prompt's first line:
- * `— cancel with wake({op:"cancel",id:"w1"}) once its goal is met.`
- *
- * Also agent-directed (it is how the run cancels its own alarm) and carried by
- * 749 of the store's 951 wake rows, so it crowded out the one thing a reader
- * wants from that row: the cadence before it, `w1 (1/16, every 1h30m)`. The
- * clause stays in the body.
- */
-const WAKE_ARM_CLAUSE = /\s+—\s*cancel with wake\([^)]*\)[^.]*\.?/;
-
 /** The bracket the harness prefixes its statement texts with (`[model switch]`). */
 const STATEMENT_TAG = /^\[[^\]]{1,32}\]\s*/;
 
@@ -695,26 +692,12 @@ const LEADING_ORDINAL = /^\d+\.$/;
 const CAPITAL = /[A-Z]/;
 
 /*
- * The two wake shapes (round 2's U10, and D8/U15 the day after). A wake's arming
- * line is generated: `(alarm) Scheduled wake w1 (1/16, every 1h30m) — …`. With no
- * cadence it says nothing a reader wants, so the row quotes the goal out of the
- * body instead — but ONLY when the line chosen IS that arming line, because a
- * payload whose own preamble opens it must keep the preamble (D8), and that is
- * the one-predicate difference between the two shapes.
- */
-const WAKE_ARMING_LINE = /^\(alarm\)\s*Scheduled wake/;
-/** A markdown list bullet the body may lead with, which is markup, not words. */
-const LIST_BULLET = /^[-*•]\s+/;
-/*
- * Two more literals from the same pair of rules, hoisted for the reason the
- * linter names but mostly because one of them is evaluated PER CHARACTER:
- * `firstSentenceEnd` walks a headline's characters, so a literal inside it
- * builds a regex object on every character of every row's text.
+ * Hoisted for the reason the linter names but mostly because it is evaluated PER
+ * CHARACTER: `firstSentenceEnd` walks a headline's characters, so a literal
+ * inside it builds a regex object on every character of every row's text.
  */
 /** Any whitespace, which is what a sentence end must be followed by. */
 const WHITESPACE = /\s/;
-/** The cadence a wake's arming line states when it is worth reading. */
-const HAS_CADENCE = /\bevery\b/;
 
 /**
  * A headline is a summary of the row, not the row's payload — `detail` is the
@@ -755,7 +738,7 @@ function customRow(
 			provider: null,
 			...(INLINE_CUSTOM_TYPES.has(customType)
 				? splitStatement(text.trim().replace(STATEMENT_TAG, ""))
-				: relayRow(text, customType)),
+				: relayRow(text)),
 		};
 	}
 	return { level: "error", ...incidentRow(text, details) };
@@ -874,9 +857,8 @@ function incidentRow(
  */
 function relayRow(
 	text: string,
-	customType: string,
 ): Pick<Extract<TranscriptRecord, { kind: "custom" }>, "headline" | "detail"> {
-	const headline = headlineOf(text, customType);
+	const headline = headlineOf(text);
 	const flat = text
 		.split("\n")
 		.map((line) => line.trim())
@@ -888,36 +870,48 @@ function relayRow(
 /**
  * The line of a relayed payload that says something, bounded to a headline.
  *
- * Three kinds of line are not the message and are stepped over:
+ * Two kinds of line are not the message and are stepped over:
  *
  * 1. the envelope's own tags, opening or closing — `<parent-message>`, and the
  *    `</subagent-message>` an empty relay would otherwise paint;
  * 2. the channel's fixed instruction line (see `RELAY_INSTRUCTIONS`), which is
- *    byte-identical on 411 hub rows;
- * 3. the wake-arming clause — and only on a wake row, which is the only producer
- *    that writes it. Stripping it from every relay would silently edit a
- *    hub message that happened to quote the phrase (round 2's R9; 0 store rows
- *    have that shape today, so the point is to remove the class rather than to
- *    fix a row).
+ *    byte-identical on 411 hub rows.
+ *
+ * The wake-arming clause was the third kind until round 7's R33. The strip was
+ * scoped to a wake row, and what changed is the row rather than the rule: a
+ * `wake_prompt` record is projected to its own `wake` kind before this path can
+ * be reached (see the receipts branch in `durableRecord`), so nothing this
+ * function edits is a wake's own words. Instrumented at both arms they took zero
+ * hits across the suite and from real wake and peer payloads, and deleting them
+ * left it green — which is why they are deleted rather than left looking live.
  *
  * When nothing survives, the ENVELOPE itself is the honest headline: a relay
  * with an empty body still names its label and job id
  * (`<subagent-message label='rollover-template-fix' job='5fb25794e06c'>`), which
  * is strictly better than a stray closing token.
  *
- * Two further shapes, both of which left the row stating a LABEL rather than the
- * message it exists to state (round 2's U10, measured):
+ * One further shape left the row stating a LABEL rather than the message it
+ * exists to state (round 2's U10, measured): a chosen line that ENDS in a colon
+ * is a heading with its outcome on the next line — `background job 'design849'
+ * failed:` / `[Errno 28] No space left on device` — so the two are joined, which
+ * was 37 of the store's 39 job results at the 2026-09-14 scan (the population
+ * grows as the operator works; it was 42 the next day).
  *
- * - a chosen line that ENDS in a colon is a heading with its outcome on the next
- *   line — `background job 'design849' failed:` / `[Errno 28] No space left on
- *   device` — so the two are joined, which was 37 of the store's 39 job results
- *   at the 2026-09-14 scan (the population grows as the operator works; it was 42
- *   the next day);
- * - a one-shot wake states no cadence (`(alarm) Scheduled wake w1 (1/1).`, 121 of
- *   955 wake rows), which leaves the arming line with nothing to say, so the row
- *   quotes the goal out of the body instead.
+ * The two wake shapes that sat beside it (round 2's U10, then D8/U15) are
+ * DELETED rather than disabled, and the suite is the proof: instrumented at both
+ * sites they took 0 hits over 110 tests and 0 from five real wake shapes fed
+ * through both the durable and the live path, while the relay control hit. A
+ * `wake_prompt` payload is claimed by the receipts branch in `durableRecord`
+ * before `customRow` — this function's only caller — is reached, so a wake row
+ * has no custom-row headline at all and rules about one could never fire. Upstream
+ * owns the row a wake now paints (`receipt-row-model`, pinned by
+ * `scripts/tool-row.test.mjs`).
+ *
+ * `customType` went with them: every arm that read it was wake-only, so the
+ * parameter would be configuration nothing consults. Adding the parameter back
+ * is the signal that a caller has a per-type rule again.
  */
-function headlineOf(text: string, customType: string): string {
+function headlineOf(text: string): string {
 	const lines = text
 		.split("\n")
 		.map((candidate) => candidate.trim())
@@ -930,27 +924,6 @@ function headlineOf(text: string, customType: string): string {
 		(line) => ENVELOPE_TAG.test(line) && !line.startsWith("</"),
 	);
 	let chosen = substantive ?? opening ?? text.trim();
-	/** Whether the headline came out of a wake's body, where a bullet is markup. */
-	let goalFromBody = false;
-
-	if (
-		customType === "wake_prompt" &&
-		WAKE_ARMING_LINE.test(chosen) &&
-		!HAS_CADENCE.test(chosen)
-	) {
-		const goal = lines.find((line) => speaks(line) && line !== chosen);
-		/*
-		 * The RAW goal line is kept here and its bullet is stripped AFTER the join
-		 * below, because `lines.indexOf` has to find the line as the payload wrote
-		 * it: a stripped copy is not in `lines`, so the lookup returned -1 and the
-		 * heading/outcome join silently did not run for a bulleted goal (round 4's
-		 * R24).
-		 */
-		if (goal) {
-			chosen = goal;
-			goalFromBody = true;
-		}
-	}
 
 	const at = lines.indexOf(chosen);
 	if (at >= 0 && chosen.endsWith(":")) {
@@ -958,9 +931,7 @@ function headlineOf(text: string, customType: string): string {
 		if (outcome) chosen = `${chosen} ${outcome}`;
 	}
 
-	const headline =
-		customType === "wake_prompt" ? chosen.replace(WAKE_ARM_CLAUSE, "") : chosen;
-	return bounded(goalFromBody ? headline.replace(LIST_BULLET, "") : headline);
+	return bounded(chosen);
 }
 
 /** Whether a line is one of the channel's fixed instruction lines. */

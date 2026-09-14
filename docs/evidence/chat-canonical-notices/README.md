@@ -69,6 +69,22 @@ fixtures sat unchanged in both. `before` is declared `supplementary` because a
 sweep cannot produce it: it needs a tree that no longer exists in the
 repository.
 
+**One row of `session-incidents` is a row upstream owns now, and the set is
+labelled rather than recaptured (round 7's D15).** The six frames in these three
+sets are the round-2 capture, unchanged since `0af821f67`, so the wake row in
+`session-incidents` and `session-incidents-narrow` is painted the way this
+branch painted it then (`wake prompt: (alarm) Scheduled wake w1 (1/16, every
+1h30m)`). At this head the identical record paints through upstream's receipt
+model instead: the name column reads `wake`, with the ledger's clock glyph and
+the cadence as the headline (`w1 (1/16, every 1h30m)`), which is the shape
+upstream's own `chat-tool-rows/receipt-rows` frame shows, because a `wake_prompt`
+(and a `peer_message`) record is projected to its own kind before this branch's
+relay path runs. So the picture is a historical capture of one row rather than a
+stale claim about it, and the pair's other rows — the incidents, the statements,
+the relayed payloads — are what this branch still paints. Labelled and not
+recaptured: a fresh sweep would rewrite both sets to photograph a row this branch
+no longer owns. `notice-lengths` carries no wake or peer row and is unaffected.
+
 ## What to look for
 
 - **The message is the row.** `mcp`, `cut-off`, `rate-limit`, `auth`,
@@ -163,13 +179,21 @@ moved in them, and what did not:
   selection opens the row.
 - **A relay states its message, not the envelope's manners (UX U3 / design D3 /
   review R1).** The channel's three fixed instruction lines are matched and
-  skipped, and so is the wake-arming clause. Over the store AT THE 2026-09-14 SCAN
-  (these are counts of a store that grows as the operator works, so they carry the
-  day they were taken): 0 of 4,389 `hub_message` and 0 of 4,424 `peer_message`
-  headlines are boilerplate now, where 411 hub rows opened with the same sentence;
-  0 of 951 wake rows lead with the cancellation call; and the 34 empty relays state
-  their envelope
-  (`<subagent-message label='…' job='…'>`) instead of a closing tag.
+  skipped. Over the store AT THE 2026-09-14 SCAN (these are counts of a store that
+  grows as the operator works, so they carry the day they were taken): 0 of 4,389
+  `hub_message` headlines are boilerplate now, where 411 hub rows opened with the
+  same sentence, and the 34 empty relays state their envelope
+  (`<subagent-message label='…' job='…'>`) instead of a closing tag. Two counters
+  this bullet used to carry are **retired rather than re-derived**, and they are
+  named here so a reader who saw them is not left wondering whether they still
+  hold: "0 of 4,424 `peer_message` headlines are boilerplate" and "0 of 951 wake
+  rows lead with the cancellation call". Since this branch's rebase onto current
+  `main`, `durableRecord` projects `peer_message` to its own `peer` kind and
+  `wake_prompt` to `wake` **before** the relay path runs, so neither row has a
+  custom-row headline at all and the metric those two counts were made of does not
+  exist at this head. From there on both rows are upstream's: `receipt-row-model`,
+  painted by `PeerRow`/`WakeRow` in the transcript and pinned by
+  `scripts/tool-row.test.mjs`.
 - **A statement states its fact, not its instruction (UX U2).** The three
   statement types split at the first sentence, so a model switch reads
   `You are now running as X (was Y).` on the row and the agent-directed tail is
@@ -186,7 +210,10 @@ moved in them, and what did not:
   Reverted, with the numbers in the PR thread.
 
 The reducer rules above are pinned by tests (`scripts/transcript-reducer.test.mjs`,
-47 tests) and measured store-wide through the shipped `applyHistoryPage` over
+**55 tests at this head**; the 47 cited here before was that file's own count when
+the sentence was written, and the number moves with main's receipt-row tests as
+much as with this branch's) and measured store-wide through the shipped
+`applyHistoryPage` over
 every persisted custom row in `~/.local-operator/sessions`: 10,997 records, 0 with
 an empty headline, 0 whose headline is its type name.
 
@@ -273,12 +300,17 @@ that repeated itself behind its own chevron.
 - a relayed row joins a heading to its outcome (`background job 'design849'
   failed: [Errno 28] …`, 37 of the store's 39 job rows at the 2026-09-14 scan;
   the population grows as the operator works, so this is a count with a date on it,
-  not a property) and a one-shot wake
-  states its goal rather than its arming line, which carries no cadence (202 of
-  the store's 967 wake rows at the head that rewrote them: 766 keep an arming
-  line that does state one);
-- the wake-arming clause is stripped only from a wake row, so a hub message that
-  quotes the phrase keeps its own words;
+  not a property);
+- **two wake rules that stood in this list are superseded, and the code is deleted
+  rather than left disabled (round 7's R33 — see the Round 4 entry below):** "a
+  one-shot wake states its goal rather than its arming line, which carries no
+  cadence" (202 of the store's 967 wake rows at the head that rewrote them: 766
+  keep an arming line that does state one) and "the wake-arming clause is stripped
+  only from a wake row, so a hub message that quotes the phrase keeps its own
+  words". A `wake_prompt` record is projected to its own `wake` kind before the
+  relay path that implemented them, so neither rule can fire; the clause is
+  stripped from nothing at all now, which is why a hub message that quotes it keeps
+  its words;
 - the first-sentence scan requires a capital after the terminator and rejects a
   leading `digits.`, so `approx.`, `e.g.` and `1.` no longer split a headline —
   without a table of abbreviations to keep in step with English;
@@ -296,6 +328,11 @@ long path has a fixture and a frame behind it rather than a store-wide replay.
 The designer recorded that in round 2 and it is unchanged by this fix.
 
 ## Round 4: the revert, the text marker, and the two wake shapes
+
+> **Superseded in round 7 (R33/D15).** Both wake shapes are deleted from the
+> reducer, and the claims below are corrected in place rather than rewritten: the
+> wake row is upstream's receipt now, which is why a rule that could not fire is
+> gone rather than left looking live.
 
 Round 3's review found no blocker or major in the pixels and one MAJOR in the
 merge state (`docs/evidence/manifest.json`, resolved by rebasing and letting
@@ -326,12 +363,20 @@ main's own repair of that field stand). What it found in the code is here.
   included; the guard reads the marker. Making the label selectable is therefore
   safe — it cannot re-open U7, because suppression no longer keys on the select
   behaviour at all.
-- **A wake keeps its own preamble (D8) and its goal loses its bullet (U15).**
-  The rule fires on the ARMING line only, which is the one predicate between the
-  two shapes: a payload whose own preamble opens it keeps the preamble, because
-  that is more informative than the generated line below it. The goal it quotes
-  then has a leading list marker stripped, which is markup rather than words.
-  Store-wide: **0** headlines lead with a bullet, from 79.
+- **A wake keeps its own preamble (D8) and its goal loses its bullet (U15) —
+  SUPERSEDED in round 7, and deleted rather than left in place.** The rule fired
+  on the ARMING line only, which was the one predicate between the two shapes, and
+  it is what the frames of that day show. It cannot fire at this head: a
+  `wake_prompt` record is projected to its own `wake` kind before the custom path
+  that carried it, so a wake row has no custom-row headline to shape. Reproduced
+  through the shipped reducer: a one-shot paints `w1 (1/1).`, a bulleted goal
+  paints `w1 (1/1).`, an own preamble paints `Session resumed after a restart.
+  (alarm) Scheduled wake w1 (1/1).`, and the cadence case paints `w1 (1/16, every
+  1h30m)`. The preamble is still kept, but as part of upstream's headline — the
+  whole first paragraph, its generated markers stripped — rather than instead of
+  the generated line; the two goal claims are not shipped in any form. The counter
+  that measured them (**0** headlines lead with a bullet, from 79) is retired with
+  the rule, because no custom-row headline is left to count.
 - **A relayed row whose joined headline is its whole payload discloses nothing
   (U16).** Same rule the notice register took in round 2: at the 2026-09-14 scan,
   4 of the store's 39 job results were re-reading themselves behind their own chevron. Measured over
