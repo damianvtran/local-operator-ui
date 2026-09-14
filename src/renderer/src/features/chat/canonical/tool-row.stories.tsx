@@ -82,6 +82,10 @@ const Frame = ({
 	height = 300,
 	waiting = false,
 	starting = false,
+	startingAfterId = null,
+	status = "live",
+	error = null,
+	isSmallView = false,
 	openRows = false,
 }: {
 	records: TranscriptRecord[];
@@ -101,6 +105,13 @@ const Frame = ({
 	 * the cold-engage window, before the owner's first frame.
 	 */
 	starting?: boolean;
+	/** The echo record that send painted; the clears measure from it. */
+	startingAfterId?: string | null;
+	/** The stream's own state, so the clears this rung has can be photographed. */
+	status?: "connecting" | "live" | "reconnecting" | "unavailable";
+	error?: string | null;
+	/** The small-view wrapper of the same transcript. */
+	isSmallView?: boolean;
 	/**
 	 * Click every row's trigger after mount, the way a reader opens one.
 	 *
@@ -134,12 +145,13 @@ const Frame = ({
 				gate={null}
 				waiting={waiting}
 				starting={starting}
+				startingAfterId={startingAfterId}
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
-				isSmallView={false}
-				status="live"
-				error={null}
+				isSmallView={isSmallView}
+				status={status}
+				error={error}
 			/>
 		</div>
 	);
@@ -888,12 +900,77 @@ export const StreamingBeforeFirstToken: Story = {
  * without claiming anything the renderer cannot check. The echo is built
  * through the real `appendPendingUser` rather than hand-written, so the row in
  * the picture is the row the store actually paints.
+ *
+ * `height={220}` because the frame must show the transcript's FOOT: at 160 it
+ * clipped the message time under the rung, so the pair read as two differences
+ * rather than as the one added line it claims (design round 1, D1; the measured
+ * scroll height of the content is 219).
  */
 export const AdmittedSendBeforeFirstFrame: Story = {
 	render: () => (
 		<Frame
 			starting
-			height={160}
+			startingAfterId="s1"
+			height={220}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
+		/>
+	),
+};
+
+/**
+ * The same admitted send, in the SMALL-VIEW wrapper.
+ *
+ * The rung is rendered by a different wrapper in the small view (no
+ * `AGENT_GUTTER`, a tighter `GAP.item`), so the narrow entry in the sweep - a
+ * narrow COLUMN at `isSmallView={false}` - was never a picture of it (design
+ * round 1, D2). Same records as the frame above, so the difference between the
+ * two is the wrapper alone.
+ */
+export const AdmittedSendBeforeFirstFrameSmallView: Story = {
+	render: () => (
+		<Frame
+			starting
+			startingAfterId="s1"
+			isSmallView
+			height={220}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
+		/>
+	),
+};
+
+/**
+ * The rung's other clear: the stream has died, so the app is no longer waiting.
+ *
+ * `deriveWorkingLine` refuses the rung while `unavailable`, because the
+ * transcript is about to render the failure itself and a line claiming progress
+ * beside it is a claim the transport is not making. The clear had no frame
+ * before this (the story's `status` was hardcoded to `live`), which is a review
+ * surface rather than a behaviour - the derivation is asserted in
+ * `scripts/tool-row.test.mjs` - so the same admitted send is photographed with
+ * the transport gone: the error is on screen and the rung is not.
+ */
+export const AdmittedSendTransportDown: Story = {
+	render: () => (
+		<Frame
+			starting
+			startingAfterId="s1"
+			status="unavailable"
+			error="The connection to the local operator was lost. Reopen the session to reconnect."
+			height={220}
 			records={
 				appendPendingUser(
 					EMPTY_TRANSCRIPT,
@@ -916,11 +993,14 @@ export const AdmittedSendBeforeFirstFrame: Story = {
  * hit send and nothing happens for three seconds". `starting={false}` is
  * exactly the old behaviour: nothing is waiting on the app's own send state, so
  * the working line has no rung to stand on until `frontend.streaming` flips.
+ *
+ * The same `height={220}` as its pair, and that is the point: a pair whose
+ * halves are cropped differently cannot show that one line is the difference.
  */
 export const AdmittedSendBeforeFirstFrameBaseline: Story = {
 	render: () => (
 		<Frame
-			height={160}
+			height={220}
 			records={
 				appendPendingUser(
 					EMPTY_TRANSCRIPT,

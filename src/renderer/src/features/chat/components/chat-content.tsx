@@ -145,13 +145,18 @@ type ChatContentProps = {
 		 * A send this conversation has admitted and that has produced nothing yet.
 		 *
 		 * Distinct from `admitting`, which is the composer-side window in which a
-		 * send is being issued and the text is still the user's. This one starts
-		 * when the request is on the wire and ends when it settles, so it covers
+		 * send is being issued and the text is still the user's. This one spans the
+		 * whole wait, from the send until the owner paints something, so it covers
 		 * the cold engage the user actually waits through — and it is what the
-		 * transcript's working line and the composer's own busy presentation both
-		 * read. See `working-line-model.ts` for the copy rule.
+		 * transcript's working line, the pane's own emptiness and the composer's
+		 * placeholder all read. See `working-line-model.ts` for the copy rule.
 		 */
 		starting?: boolean;
+		/**
+		 * The record this send painted, which every clear measures from. Null only
+		 * when no send is admitted.
+		 */
+		startingAfterId?: string | null;
 		onStop: () => void;
 	};
 	/**
@@ -470,6 +475,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											gate={canonical.view.frontend?.pending_gate ?? null}
 											waiting={canonical.busy}
 											starting={canonical.starting === true}
+											startingAfterId={canonical.startingAfterId ?? null}
 											loadingOlder={canonical.view.loadingOlder}
 											onLoadOlder={canonical.view.loadOlder}
 											containerRef={messagesContainerRef}
@@ -512,10 +518,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										? Boolean(canonical.admitting || canonical.starting)
 										: isLoading
 								}
+								awaitingReply={canonical?.starting === true}
 								conversationId={agentId}
 								messages={
 									canonical
-										? canonical.view.transcript.records.length > 0
+										? /*
+											 * A send this pane has admitted counts as content here, and that is a
+											 * correction rather than a nicety: with zero records the greeting's
+											 * branch renders into the column and the transcript is left no
+											 * height at all (`canonical-transcript.tsx`'s `collapsed`), so the
+											 * rung existed in the DOM through the whole cold engage and never
+											 * painted a pixel — the operator's dead-air window, unchanged
+											 * (QA round 1, Q1). The pane is not empty once a message is on its
+											 * way: "What can I help you with today?" and the suggestion chips
+											 * are claims about a conversation that has already started.
+											 */
+											canonical.view.transcript.records.length > 0 ||
+											canonical.starting
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
 												? messages

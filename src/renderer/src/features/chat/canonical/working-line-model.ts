@@ -14,7 +14,7 @@
  * vocabulary is the harness's own (`harness/intent.py`), so a reader who
  * learned it in the terminal does not learn it again here.
  *
- * The exception is `starting`, and it is deliberately the weakest claim the app
+ * The exception is `admitted`, and it is deliberately the weakest claim the app
  * can make:
  *
  * A send this app issued can be admitted by the owner and produce nothing at
@@ -35,6 +35,15 @@
  * a model call for the whole of the engage. An earlier design reviewed here
  * also considered "starting the session"; it was rejected for the same reason,
  * because a warm session would be described as starting while it is already up.
+ *
+ * Its WINDOW is the whole wait, not the request. Review round 1 caught the
+ * difference: bounded by the request's own lifetime, the rung vanished for a
+ * frame the moment the receipt arrived and the first frame had not, so the
+ * clock restarted at `0s` under the reader - the exact defect this row's own
+ * contract calls out. The window is therefore "a send this pane admitted that
+ * has not been answered", which is one continuous fact from Enter until the
+ * owner paints something, and every clear below measures from this send's own
+ * echo record rather than from the shape of the transcript.
  *
  * The phase is the ladder's `thinking` on purpose, rather than a phase of its
  * own. Phases are what the clock is keyed to, and the wait this branch names
@@ -60,17 +69,98 @@ export type WorkingLineState = { activity: string; phase: string };
  */
 export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
 
+/**
+ * A send this pane made that the owner has not answered: the request id its
+ * optimistic echo was painted under, which is also the id the owner's durable
+ * row coalesces onto.
+ *
+ * The id is the ANCHOR every clear measures from, which is why the identity is
+ * carried rather than a boolean: "no answer yet" is a statement about the
+ * records AFTER this one, and without it the only thing left to inspect is the
+ * tail of the transcript - which is the scope error review round 1 found.
+ */
+export type AdmittedSend = { requestId: string };
+
+/**
+ * The send a pane has admitted, read from the store's own draft row.
+ *
+ * The one load-bearing rule of this change, kept pure and exported (the way
+ * `draftIdentityFor` and `panelIdentityFor` are) so it can be asserted rather
+ * than only exercised through a panel: swapping it for the composer's local
+ * `admitting` state, or dropping the `sessionId` conjunct, restores the
+ * operator's dead-air report while every other test stays green.
+ *
+ * Both flags, deliberately. `pending` is the request being in flight;
+ * `admissionAttempted` is the store's record that the request was actually
+ * ISSUED, i.e. that the owner may have the message. A send that failed before
+ * admission clears both, which is why a refusal shows a failure and not a
+ * rung.
+ *
+ * `sessionId` is required because the rung is a claim about a CONVERSATION:
+ * before the create returns there is no session for the owner to answer on, and
+ * on that hop the composer still holds the user's text.
+ */
+export function admittedSendFor(
+	sessionId: string | undefined,
+	draft:
+		| {
+				pending?: boolean;
+				admissionAttempted?: boolean;
+				admissionRequestId?: string;
+		  }
+		| undefined,
+): AdmittedSend | null {
+	if (!sessionId || !draft?.pending || !draft.admissionAttempted) return null;
+	if (!draft.admissionRequestId) return null;
+	return { requestId: draft.admissionRequestId };
+}
+
+/**
+ * Whether the owner has ANSWERED a send that was admitted under `afterId`.
+ *
+ * Swept over every record after the anchor rather than over the tail alone, and
+ * that is a correction rather than a style: `buildRows` and `AssistantRow` both
+ * sweep the whole list on `paintsSomething`, so a record that paints nothing is
+ * invisible to the transcript while it was decisive to this clear - painted
+ * prose followed by an empty `message_start` placeholder re-asserted the rung
+ * over an answer already on screen (review round 1, R3).
+ *
+ * The predicate is the transcript's own `paintsSomething` (one copy of the rule
+ * that decides whether a record becomes a row), narrowed to the two kinds that
+ * mean the OWNER produced something. A notice, a local note, a compaction or
+ * the user's own later row are not the agent answering, and none of them may
+ * end the wait.
+ *
+ * An anchor that is not in the list - an echo evicted from the buffer, a
+ * transcript replaced by `/clear` mid-send - falls back to the tail, whose only
+ * failure mode is to withhold the rung rather than to claim one.
+ */
+export function ownerAnswered(
+	records: TranscriptRecord[],
+	afterId: string | null | undefined,
+): boolean {
+	const ownerPainted = (record: TranscriptRecord) =>
+		(record.kind === "tool" || record.kind === "assistant") &&
+		paintsSomething(record);
+	if (afterId) {
+		const at = records.findIndex((record) => record.id === afterId);
+		if (at >= 0) return records.slice(at + 1).some(ownerPainted);
+	}
+	const tail = records[records.length - 1];
+	return tail !== undefined && ownerPainted(tail);
+}
+
 export type WorkingLineInput = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
 	/**
-	 * A send from this panel has been admitted and no assistant row exists yet.
-	 *
-	 * The app's own fact, not the owner's: it is true from the moment the
-	 * admission request is issued until that request settles. See
-	 * `chat-page.tsx` for where it is read from.
+	 * A send from this conversation has been admitted and the owner has not
+	 * answered it. The app's own fact, not the owner's; see the file comment for
+	 * why its window is the whole wait rather than the request.
 	 */
 	starting: boolean;
+	/** The echo record that send painted; every clear below measures from it. */
+	startingAfterId?: string | null;
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
@@ -85,6 +175,7 @@ export type WorkingLineInput = {
 export function deriveWorkingLine({
 	waiting,
 	starting,
+	startingAfterId,
 	gate,
 	unavailable,
 	records,
@@ -131,23 +222,7 @@ export function deriveWorkingLine({
 	}
 
 	if (!starting) return null;
-	// The owner has produced something for this turn, so the wait this branch
-	// describes is over. This is the belt to the send latch's braces rather than
-	// the primary clear: the latch is released when the admission request
-	// settles, and the request's own frame can precede the receipt that settles
-	// it (the owner's `frontend.update` lands 3-6 ms BEFORE the receipt once the
-	// session is warm), so the two orderings are genuinely both reachable.
-	//
-	// An assistant record that paints nothing is NOT content - a provider call
-	// opens one at `message_start`, before a token exists - and the row itself
-	// uses the same predicate (`paintsSomething`), because two copies of that
-	// rule is how the empty row comes back.
-	const tail = records[records.length - 1];
-	if (
-		tail?.kind === "tool" ||
-		(tail?.kind === "assistant" && paintsSomething(tail))
-	)
-		return null;
 	if (unavailable) return null;
+	if (ownerAnswered(records, startingAfterId)) return null;
 	return { activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" };
 }

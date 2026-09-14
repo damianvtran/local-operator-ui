@@ -28,6 +28,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import {
+	type AdmittedSend,
+	admittedSendFor,
+	ownerAnswered,
+} from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
@@ -151,32 +156,66 @@ function SessionPanel({
 	);
 	const busy = canonical.frontend?.streaming === true;
 	/*
-	 * A send this panel has ADMITTED and that has produced nothing yet.
+	 * The send this pane ADMITTED and the owner has not answered.
 	 *
-	 * This is the app's own fact, not the owner's, and it is the only signal
-	 * that exists for the window the user actually waits through: a cold
-	 * session spends ~1.15 s inside the message request spawning its runtime
+	 * This is the app's own fact, not the owner's, and it is the only signal that
+	 * exists for the window the user actually waits through: a cold session
+	 * spends ~1.15 s inside the message request spawning its runtime
 	 * (`use-warm-session.ts`), and until the first frame lands the transcript
-	 * used to paint the user's own bubble and then nothing at all. On the
-	 * New-chat path the panel is also remounted by the identity flip while this
-	 * is true, which is why it is read from the STORE's draft row rather than
-	 * from this component's `admitting` state — local state does not survive
-	 * that remount and the row does.
+	 * used to paint the user's own bubble and then nothing at all.
 	 *
-	 * Both flags, deliberately. `pending` is the request being in flight;
-	 * `admissionAttempted` is the store's own record that the request was
-	 * actually ISSUED, i.e. that the owner may have the message. A send that
-	 * failed before admission clears both, which is why a refusal shows a
-	 * failure and not a working line.
+	 * Read from the STORE's draft row rather than from this component's
+	 * `admitting`, and LATCHED rather than derived per render, for two reasons
+	 * review round 1 measured:
 	 *
-	 * It cannot outlive the turn: the store retires the row when the request
-	 * settles (`finishDraft`), records the failure when it throws, and drops the
-	 * row entirely when the user abandons the message. The transcript's own
-	 * clears are the belt to those braces and live in `working-line-model.ts`.
+	 * 1. On the New-chat path the identity flip remounts this panel while the
+	 *    row is live - the panel that paints the rung is not the one the send
+	 *    started in - so local state does not carry it and the row does.
+	 * 2. `finishDraft` DELETES that row when the receipt arrives, and the receipt
+	 *    can arrive before the owner's first frame (they land 3-6 ms apart when
+	 *    the session is warm). Deriving `starting` from the row alone therefore
+	 *    dropped the rung for a frame in that gap, which restarted its clock at
+	 *    `0s` under the reader - the exact defect `working-line.tsx` documents as
+	 *    impossible. The latch spans the whole wait, from the send until the
+	 *    owner paints something.
+	 *
+	 * A ref, not state, because every transition that matters is already a store
+	 * change that re-renders this panel: the row appearing, the row failing, and
+	 * content arriving are all store updates, so there is nothing for a
+	 * `setState` to schedule. The write is idempotent, which is what makes it
+	 * safe under a repeated render.
 	 */
-	const starting = Boolean(
-		sessionId && draft?.pending && draft?.admissionAttempted,
+	const admittedNow = admittedSendFor(sessionId, draft);
+	const admitted = useRef<AdmittedSend | null>(null);
+	if (admittedNow) admitted.current = admittedNow;
+	/*
+	 * What ends the wait, and what deliberately does not.
+	 *
+	 * CONTENT ends it, measured from this send's echo record rather than from the
+	 * tail of the transcript: prose or a tool row is the owner answering, and a
+	 * record that paints nothing (a `message_start` placeholder) does not count,
+	 * which is the same predicate the transcript itself rows on
+	 * (`ownerAnswered`). A FAILURE ends it too: the store records one on the row
+	 * when the request throws, and the composer carries the remedy, so the rung
+	 * must not keep claiming progress beside it.
+	 *
+	 * A pending gate and a dead stream only SUSPEND the rung, in
+	 * `working-line-model.ts`: the send is still unanswered, so answering the
+	 * gate has to bring the rung back rather than start a new wait.
+	 *
+	 * One corner is recorded rather than hidden: a message the user abandons
+	 * while it is unconfirmed may still have landed on the owner, and the app
+	 * cannot tell that from a lost one - so the rung stays until the owner paints
+	 * something or the store records a failure. That is the app saying it is
+	 * still waiting, which is true; it is not a claim that the turn is running.
+	 */
+	const answered = ownerAnswered(
+		canonical.transcript.records,
+		admitted.current?.requestId,
 	);
+	if (admitted.current && (answered || Boolean(draft?.error)))
+		admitted.current = null;
+	const starting = admitted.current !== null;
 	/*
 	 * The run-details view model (`docs/run-details.md` § 8), derived once per
 	 * wire frame from the two lists the canonical stream already carries and
@@ -856,6 +895,7 @@ function SessionPanel({
 						busy,
 						admitting: admitting || pendingNavigation,
 						starting,
+						startingAfterId: admitted.current?.requestId ?? null,
 						onStop: stop,
 					}}
 				/>
