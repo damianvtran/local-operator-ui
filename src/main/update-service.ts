@@ -27,6 +27,11 @@ import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
+	type UpdateChannelStatus,
+	type UpdateCheckVerdict,
+	updateCheckVerdict,
+} from "./update-check-verdict";
+import {
 	type InstallBlock,
 	type InstallFailurePayload,
 	type InstallIdentity,
@@ -248,6 +253,21 @@ export type BackendUpdateInfo = {
 	 * whether "nothing newer" is sent at all (review U12, round 3).
 	 */
 	manual?: boolean;
+};
+
+/**
+ * What the server channel found out, beside the offer it may carry.
+ *
+ * The two travel together because they answer different questions: `status` is
+ * what this check knows about the channel and is what the whole check's verdict
+ * is built from, while `info` is the offer the by-hand panel renders. The IPC
+ * handler for `check-for-backend-updates` unwraps the offer, because that
+ * channel's existing return shape is a panel's input and nothing consumes a
+ * status from it.
+ */
+type BackendCheckReport = {
+	status: UpdateChannelStatus;
+	info: BackendUpdateInfo | null;
 };
 
 /**
@@ -1742,7 +1762,10 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			try {
-				return await this.checkForBackendUpdates();
+				// The channel's status is the verdict's business; this handler's
+				// contract is the panel's input, so only the offer crosses it.
+				const { info } = await this.checkForBackendUpdates();
+				return info;
 			} catch (error) {
 				logger.error(
 					"Error checking for backend updates:",
@@ -1762,36 +1785,38 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.onCheckRequested(options);
+				/*
+				 * `silent` is the mirror of `manual`: a check the user asked for is not
+				 * silent, and one nobody asked for is. The argument used to be dropped
+				 * here, so every renderer-initiated check ran as a foreground one and
+				 * the option it carried reached the renderer and nothing else.
+				 */
+				const silent = !options?.manual;
 				try {
-					return await this.checkForAllUpdates();
+					return await this.checkForAllUpdates(silent);
 				} catch (error) {
 					logger.error(
 						"Error checking for all updates:",
 						LogFileType.UPDATE_SERVICE,
 						error,
 					);
-
-					// Apply the same error filtering logic here
-					const shouldFilter = this.shouldFilterUpdateError(error as Error);
-
-					if (shouldFilter) {
-						logger.info(
-							"Error filtering result in check-for-all-updates: Reporting as no updates available",
-							LogFileType.UPDATE_SERVICE,
-						);
-						// Return a "no update available" result instead of throwing the error
-						return {
-							updateInfo: {
-								version: app.getVersion(),
-							},
-							versionInfo: {
-								version: app.getVersion(),
-							},
-							cancellationToken: null,
-						};
-					}
-
-					throw error;
+					/*
+					 * ALWAYS a verdict, including here, so the renderer's read of what
+					 * this check earned is total. Two things made the old error path
+					 * unsafe and both are gone with it: an error the updater filters as
+					 * a known no-availability one came back as an update-check result
+					 * that says nothing about either channel, and anything else came
+					 * back as a rejection. A rejection loses no information - each
+					 * channel has already reported its own failure through
+					 * `update-error`/`backend-update-error`, which the renderer renders,
+					 * and the button's own catch still reports a rejected invoke - it
+					 * just makes the answer to "what did this check find out?" arrive as
+					 * an exception rather than as "nothing".
+					 */
+					return updateCheckVerdict({
+						app: "unavailable",
+						server: "unavailable",
+					});
 				}
 			},
 		);
@@ -1980,8 +2005,13 @@ export class UpdateService {
 	/**
 	 * Check for updates
 	 * @param silent - Whether to show a notification if no update is available
+	 * @returns What THIS channel found out, which is half of a whole check's
+	 *   answer and never an answer of its own: "nothing newer here" says nothing
+	 *   about the other channel, and a channel that could not reach an answer
+	 *   says it with `unavailable` rather than by omission. `checkForAllUpdates`
+	 *   is what turns the pair into the one sentence a user reads.
 	 */
-	public async checkForUpdates(silent = false): Promise<void> {
+	public async checkForUpdates(silent = false): Promise<UpdateChannelStatus> {
 		logger.info(
 			`Checking for updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
@@ -2007,7 +2037,10 @@ export class UpdateService {
 						"Application is running in development mode. Updates are disabled.",
 					);
 				}
-				return;
+				// Development mode does not find out nothing: it does not find out
+				// anything, which is the difference that keeps an affirmation off
+				// a check that never ran.
+				return "unavailable";
 			}
 
 			// Handle npx installation case
@@ -2016,6 +2049,8 @@ export class UpdateService {
 					"Application was installed via npx. Checking npm registry for updates...",
 					LogFileType.UPDATE_SERVICE,
 				);
+
+				let status: UpdateChannelStatus = "unavailable";
 
 				if (!silent) {
 					// Check npm registry for the latest version
@@ -2043,6 +2078,7 @@ export class UpdateService {
 								updateCommand: "npx local-operator-ui@latest",
 							});
 						}
+						status = "available";
 					} else {
 						logger.info(
 							`No newer version available. Current: ${currentVersion}, Latest: ${latestVersion || "unknown"}`,
@@ -2059,9 +2095,15 @@ export class UpdateService {
 								version: currentVersion,
 							});
 						}
+						// The event stays where it is - the renderer clears a stale
+						// offer on it - but only a registry that ANSWERED has said
+						// there is nothing newer: a read that came back empty is the
+						// absence of a reading, and calling it "current" would let a
+						// failed fetch earn the whole check's affirmation.
+						status = latestVersion ? "current" : "unavailable";
 					}
 				}
-				return;
+				return status;
 			}
 
 			// Regular update flow for packaged app
@@ -2086,8 +2128,19 @@ export class UpdateService {
 				});
 			}
 
-			// Check for updates
-			await autoUpdater.checkForUpdates();
+			// Check for updates.
+			//
+			// The channel's status comes from what the CHECK resolved to, never from
+			// which events it happened to emit: electron-updater resolves a
+			// `UpdateCheckResult` in both cases (`isUpdateAvailable` false after it
+			// emits `update-not-available`), and this service's own filtered-error
+			// path emits that same `update-not-available` for a check that found out
+			// nothing at all - so the event cannot tell "nothing newer" from "no
+			// answer", which is exactly how the renderer came to show "You are up to
+			// date" beside a server offer. A `null` result is the updater declining
+			// to run at all (`isUpdaterActive()` false), which is a refusal to find
+			// out rather than an answer.
+			const result = await autoUpdater.checkForUpdates();
 
 			// Restore original handler if we're in silent mode and modified it
 			if (silent && originalNotAvailableHandler) {
@@ -2097,6 +2150,9 @@ export class UpdateService {
 					originalNotAvailableHandler as (info: unknown) => void,
 				);
 			}
+
+			if (!result) return "unavailable";
+			return result.isUpdateAvailable ? "available" : "current";
 		} catch (error) {
 			logger.error(
 				"Error checking for updates:",
@@ -2115,6 +2171,12 @@ export class UpdateService {
 					(error as Error).message,
 				);
 			}
+			// An error is not an answer: a known-spurious no-availability error is
+			// filtered here (the autoUpdater's own listener turns it into an
+			// `update-not-available` event), and an unfiltered one is reported to the
+			// user through `update-error` above. Either way this check did not find
+			// out what the running version is, so it may not affirm anything.
+			return "unavailable";
 		}
 	}
 
@@ -2492,9 +2554,18 @@ export class UpdateService {
 		return identity;
 	}
 
+	/**
+	 * Check the installed server against the published release.
+	 *
+	 * @returns this channel's status and the offer it may carry. The renderer
+	 *   events below are unchanged and still the thing a panel clears itself on;
+	 *   the status is what keeps an "up to date" sentence off a check that
+	 *   proved nothing, which is why "could not determine the version" returns
+	 *   `unavailable` rather than the `current` it used to read as.
+	 */
 	public async checkForBackendUpdates(
 		silent = false,
-	): Promise<BackendUpdateInfo | null> {
+	): Promise<BackendCheckReport> {
 		logger.info(
 			`Checking for backend updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
@@ -2520,7 +2591,7 @@ export class UpdateService {
 						"Backend updates are disabled in development mode.",
 					);
 				}
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			// Check if we have a backend service and get its startup mode
@@ -2534,7 +2605,7 @@ export class UpdateService {
 					"No python server is available, nothing to check or update",
 					LogFileType.UPDATE_SERVICE,
 				);
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			const installedVersion = await this.getInstalledBackendVersion();
@@ -2555,7 +2626,7 @@ export class UpdateService {
 						"Unable to determine backend version.",
 					);
 				}
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			// "Unknown" is not a version older than the latest one - it is the
@@ -2572,7 +2643,7 @@ export class UpdateService {
 						"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
 					);
 				}
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			const shouldUpdate = this.isNewerVersion(latestVersion, installedVersion);
@@ -2615,7 +2686,7 @@ export class UpdateService {
 				);
 				this.sendToRenderer("backend-update-available", updateInfo);
 
-				return updateInfo;
+				return { status: "available", info: updateInfo };
 			}
 
 			logger.info(
@@ -2635,7 +2706,7 @@ export class UpdateService {
 				});
 			}
 
-			return null;
+			return { status: "current", info: null };
 		} catch (error) {
 			logger.error(
 				"Error checking for backend updates:",
@@ -2656,7 +2727,10 @@ export class UpdateService {
 				);
 			}
 
-			return null;
+			// A failed check is not "the server is current": the panel's copy and
+			// the pip fallback used to be offered either way, and the affirmation
+			// used to be earned either way.
+			return { status: "unavailable", info: null };
 		}
 	}
 
@@ -3117,11 +3191,25 @@ export class UpdateService {
 
 	/**
 	 * Check for all updates (UI and backend)
+	 *
 	 * @param silent - Whether to suppress notifications on no updates
+	 * @returns what the WHOLE check found out, with the one sentence it earns.
+	 *   This is what the renderer's "check for updates" affirmation is read
+	 *   from: a sentence about the user's installation cannot be assembled from
+	 *   one channel's event, which is how the app came to offer a server update
+	 *   and affirm it was up to date in the same turn. No new event channel
+	 *   carries it - each channel's own events are unchanged, and the verdict
+	 *   crosses the IPC boundary as this call's return value.
 	 */
-	public async checkForAllUpdates(silent = false): Promise<void> {
-		await this.checkForUpdates(silent);
-		await this.checkForBackendUpdates(silent);
+	public async checkForAllUpdates(silent = false): Promise<UpdateCheckVerdict> {
+		// Sequential rather than concurrent: each channel reports through its own
+		// renderer events and completes on its own schedule, and the verdict is
+		// the only thing here that reads both - so running them together would
+		// change nothing a user sees while making the pair's failures harder to
+		// attribute.
+		const app = await this.checkForUpdates(silent);
+		const server = await this.checkForBackendUpdates(silent);
+		return updateCheckVerdict({ app, server: server.status });
 	}
 
 	/**

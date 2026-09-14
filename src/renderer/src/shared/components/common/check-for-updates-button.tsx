@@ -45,7 +45,14 @@ export const CheckForUpdatesButton = () => {
 		attempts: number;
 	} | null>(null);
 
-	// Used to track if the last check was manual (to avoid showing notifications for background checks)
+	/**
+	 * Whether the check in flight is one the user asked for.
+	 *
+	 * It gates only the event-driven messages now (the error listener and the
+	 * server-channel dev-mode note). The affirmation does not need it: it is read
+	 * from the verdict of this button's own await-ed check, which cannot be
+	 * another check's broadcast arriving late.
+	 */
 	const manualCheckRef = useRef(false);
 
 	// Access the deferred updates store to clear deferred updates when manually checking
@@ -86,21 +93,20 @@ export const CheckForUpdatesButton = () => {
 			},
 		);
 
-		// Listen for "no updates" events (frontend and backend)
-		const removeUpdateNotAvailableListener =
-			window.api.updater.onUpdateNotAvailable(() => {
-				if (!manualCheckRef.current) return;
-				setSnackbarMessage("You are up to date");
-				setSnackbarSeverity("success");
-				setSnackbarOpen(true);
-			});
-		const removeBackendUpdateNotAvailableListener =
-			window.api.updater.onBackendUpdateNotAvailable(() => {
-				if (!manualCheckRef.current) return;
-				setSnackbarMessage("The server is up to date");
-				setSnackbarSeverity("success");
-				setSnackbarOpen(true);
-			});
+		/*
+		 * Nothing subscribes to `update-not-available` or
+		 * `backend-update-not-available` here any more, and that is the fix.
+		 *
+		 * Each of those events is a statement about ONE channel - "nothing newer
+		 * in the app", "nothing newer on the server" - while this button only ever
+		 * asks for the aggregate check. Turning either into the sentence the user
+		 * reads is how a server update offer and "You are up to date" came to be
+		 * rendered in the same turn, decided by whichever event the main process
+		 * happened to emit last. The sentence now comes from the verdict of the
+		 * button's own check below, which knows both channels. The events stay in
+		 * the main process: `update-notification.tsx` still clears a stale offer or
+		 * manual panel on them.
+		 */
 		const removeBackendUpdateDevModeListener =
 			window.api.updater.onBackendUpdateDevMode((message) => {
 				if (!manualCheckRef.current) return;
@@ -111,8 +117,6 @@ export const CheckForUpdatesButton = () => {
 
 		return () => {
 			removeUpdateErrorListener();
-			removeUpdateNotAvailableListener();
-			removeBackendUpdateNotAvailableListener();
 			removeBackendUpdateDevModeListener();
 		};
 	}, []);
@@ -157,13 +161,31 @@ export const CheckForUpdatesButton = () => {
 			clearDeferredUpdate(UpdateType.UI);
 			clearDeferredUpdate(UpdateType.BACKEND);
 
-			// Check for all updates (UI and backend). `manual` lets the main process
-			// re-offer a release whose artifact failed verification: this is the check
-			// the refusal panels send the user here to make.
-			await window.api.updater.checkForAllUpdates({ manual: true });
+			/*
+			 * The affirmation, from the verdict of the check this button just ran.
+			 *
+			 * `affirmation` is non-null only when the WHOLE check positively proved
+			 * both channels current, so a check that offered an update - or that
+			 * could not find out about one - says nothing here. That is the property
+			 * the events could not provide: each of them knew only its own channel.
+			 *
+			 * `manual: true` also lets the main process re-offer a release whose
+			 * artifact failed verification: this is the check the refusal panels
+			 * send the user here to make.
+			 */
+			const result = await window.api.updater.checkForAllUpdates({
+				manual: true,
+			});
 
-			// The UpdateNotification component will handle displaying the results,
-			// but we show confirmation/error for manual checks here.
+			if (result?.affirmation) {
+				setSnackbarMessage(result.affirmation);
+				setSnackbarSeverity("success");
+				setSnackbarOpen(true);
+			}
+
+			// The UpdateNotification component handles the panels an available
+			// update puts on screen; this component owns the manual check's own
+			// confirmation and error messages.
 		} catch (error) {
 			setSnackbarMessage(
 				`Error checking for updates: ${
