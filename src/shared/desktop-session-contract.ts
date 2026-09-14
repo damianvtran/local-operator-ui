@@ -68,6 +68,51 @@ export type CompletionAttention = {
 	/** False for a live owner that has not negotiated completion receipts. */
 	supported?: boolean;
 };
+
+/**
+ * The backend's machine code for "your token is no longer the current one".
+ *
+ * Sent by the desktop route as `detail.code` and read back off the control error,
+ * so the two ends cannot drift on a string that a decision depends on.
+ */
+export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
+
+/**
+ * Whether an acknowledgement may be taken as marking this conversation READ.
+ *
+ * `sessions.seen` answers with the resulting attention state, and `unseen` is the
+ * whole verdict: a 2xx is NOT a read. A backend that had already moved past the
+ * token answered with a 200 whose body still said `unseen: true`, and a client
+ * that latched on the resolved call stopped retrying -- leaving the completion's
+ * mark on forever, over a result the operator was looking at (the reported
+ * defect). Identity is part of the test rather than assumed: only a state about
+ * THIS conversation can settle this attempt.
+ */
+export function receiptSettled(state: unknown, sessionId: string): boolean {
+	if (!state || typeof state !== "object") return false;
+	const attention = state as Partial<CompletionAttention>;
+	return (
+		attention.unseen === false &&
+		attention.conversation_id === `session/${sessionId}`
+	);
+}
+
+/**
+ * Whether a refused receipt means "this token was replaced" rather than "this
+ * call failed".
+ *
+ * The distinction decides whether to back off. A superseded token is expected --
+ * the state handed back with the refusal names the completion to acknowledge
+ * next -- so treating it as a failure would only delay the re-arm. Everything
+ * else (an unreachable transport, an unknown token, a backend that predates the
+ * route) keeps the backed-off cadence.
+ */
+export function isSupersededReceipt(error: unknown): boolean {
+	if (!error || typeof error !== "object") return false;
+	return (
+		(error as { code?: unknown }).code === SUPERSEDED_COMPLETION_TOKEN_CODE
+	);
+}
 export function mergeCompletionAttention(
 	current: CompletionAttention | undefined,
 	incoming: CompletionAttention | undefined,

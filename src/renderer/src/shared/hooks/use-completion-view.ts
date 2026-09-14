@@ -1,11 +1,18 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type RefObject, useEffect } from "react";
-import type { CanonicalFrontendState } from "../../../../shared/desktop-session-contract";
+import {
+	type CanonicalFrontendState,
+	type CompletionAttention,
+	isSupersededReceipt,
+	receiptSettled,
+} from "../../../../shared/desktop-session-contract";
 
 /** A stream, mount, watch lease or offscreen row is never evidence of reading.
  * Capture canonical identity and completion together; navigation retires this
  * attempt, and main independently checks the actual BrowserWindow at admission.
+ * An acknowledgement is believed only when its ANSWER says this conversation is
+ * read (`receiptSettled`), never because the call resolved.
  */
 
 /** Poll cadence while the completion has not been acknowledged. */
@@ -79,8 +86,22 @@ export function useCompletionView(
 			const top = document.elementFromPoint(x, y);
 			if (!top || !element.contains(top)) return;
 			pending = true;
-			void desktopResult({ op: "sessions.seen", sessionId, completionToken })
-				.then(() => {
+			void desktopResult<CompletionAttention>({
+				op: "sessions.seen",
+				sessionId,
+				completionToken,
+			})
+				.then((state) => {
+					if (!receiptSettled(state, sessionId)) {
+						// Resolved, but the conversation is NOT read: the receipt did not
+						// land on the completion this attempt rendered (the token was
+						// already superseded when it arrived, or a newer completion
+						// published under it). Nothing is latched -- the poll keeps
+						// running and re-arms with whatever token the next state names,
+						// which is the token that actually clears the mark. Latching here
+						// is the defect: a no-op 200 used to stop every later attempt.
+						return;
+					}
 					acknowledged = true;
 					// Nothing left to attempt for this completion; a new one
 					// re-runs the effect with a fresh token.
@@ -89,6 +110,13 @@ export function useCompletionView(
 				.catch((error: unknown) => {
 					// No optimistic clear. A rejected native-focus check or stale
 					// token leaves authoritative state intact and permits a retry.
+					if (isSupersededReceipt(error)) {
+						// Expected and self-healing, NOT a failure: the backend has
+						// moved past the token this attempt rendered, and the state it
+						// hands back names the current one. Backing off would only
+						// delay the re-arm.
+						return;
+					}
 					//
 					// Backed off and logged ONCE at the threshold because the
 					// failing cases are persistent, not transient: a backend that
