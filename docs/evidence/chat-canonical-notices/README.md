@@ -47,12 +47,12 @@ changes reverted too. The frames captured before main landed `6a952c469`
 (`build(storybook): use the JSX docgen, which the TypeScript 7 move left
 working`) were therefore taken with `typescript.reactDocgen: false` set in
 `.storybook/main.ts` **in the working tree only**, and the file is committed
-unchanged in every commit. Main's fix removed the need for it: the frames in this
-set are re-derived at the head from the tracked config, with the tree clean, and
-the manifest's `dirtyWorkingTree` is `false` for that pass. So the field and this
-paragraph no longer contradict each other (round 3's D9): the earlier passes were
-dirty, the pass that wrote the stamp was not, and the manifest's note says which
-is which.
+unchanged in every commit. Main's fix removed the need for that override. The
+manifest preserved at `8e8660808` records `dirtyWorkingTree: true`, not a clean
+capture: its stamp must be read with that limitation (Q21/R31). Removing scratch
+files later does not retroactively make the capture clean. Round-5 remediation
+captures and gate results are recorded separately in the PR with their source
+head and timestamp; they do not relabel the historical capture.
 
 ## The pair
 
@@ -301,7 +301,7 @@ Round 3's review found no blocker or major in the pixels and one MAJOR in the
 merge state (`docs/evidence/manifest.json`, resolved by rebasing and letting
 main's own repair of that field stand). What it found in the code is here.
 
-- **The multi-click take-back is reachable, and the residual is gone (R12).**
+- **The multi-click take-back is reachable for text (R12/R18).**
   The handler that could not fire is deleted rather than left documenting a bug
   it did not fix. Chrome dispatches the second press as a `mousedown` with
   `detail` 2 even when the release lands outside the trigger, and `dblclick`
@@ -312,7 +312,9 @@ main's own repair of that field stand). What it found in the code is here.
   message whose release misses the trigger — is closed. A second press on the
   row's non-text chrome whose release lands outside the trigger still leaves one
   net toggle, because that press is not on text and the trigger never receives the
-  `click`/`dblclick` that would follow. Loosening the condition to catch it would
+  `click`/`dblclick` that would follow. If that second chrome release stays inside
+  the trigger instead, the second click toggles again: net zero, with a visible
+  open-to-close flicker (R29). Loosening the condition to catch it would
   break the intended "two chrome toggles cancel out" case, so the residual is
   stated here rather than traded for a worse one.
 - **The guard's discriminator is no longer `user-select` (U17, and the reason it
@@ -331,12 +333,12 @@ main's own repair of that field stand). What it found in the code is here.
   then has a leading list marker stripped, which is markup rather than words.
   Store-wide: **0** headlines lead with a bullet, from 79.
 - **A relayed row whose joined headline is its whole payload discloses nothing
-  (U16).** Same rule the notice register took in round 2: 4 of the store's 39
-  job results were re-reading themselves behind their own chevron. Measured over
+  (U16).** Same rule the notice register took in round 2: at the 2026-09-14 scan,
+  4 of the store's 39 job results were re-reading themselves behind their own chevron. Measured over
   the store with the shipped reducer: `selfRepeat` is now 0 on every custom type.
-- **The three literals this branch's rules added are module constants (Q9),** so
-  `pnpm lint`'s warnings for `transcript-reducer.ts` are back to the pre-branch
-  count of 1.
+- **The five branch-added regex literals are module constants (Q9/R27).**
+  The round-5 reviewer measured zero diagnostics for `transcript-reducer.ts` at
+  both `8e8660808` and base `915928a18`; the earlier claim of one was incorrect.
 
 **Corrected from round 3's reports, because the numbers did not reproduce.** The
 per-theme frame deltas and changed-pixel boxes above (R14); the event trace and
@@ -348,16 +350,18 @@ rather than being carried forward: at the head this paragraph was written for, t
 manifest declared **339** frames across **28** supplementary sets out of **1,509**
 on disk, and the arithmetic to check is always that sum against the directory
 itself, not against this paragraph. The tool-row claim is true of the trigger
-rather than of the row (Q13). **`pnpm test:desktop` is quoted at the head the PR
-names, because it is not a fixed number**: it was `840/840/0 EXIT=0` when the
-tests were last run at a head of this branch, and the four failures earlier rounds
-recorded — three uv/pip install-layout tests and `submit-latency.test.mjs`'s
-`M1/M2/M3: the warm removes the engage from the send…` — no longer reproduce,
-because main's own work fixed them (Q12/R21: the sentence claiming they failed at
-the pre-branch base is deleted rather than carried as a false statement). **Decided, not deferred:** D10 — the derived
-label is dropped when the payload's own opening names the subject, so a job row no
-longer reads "job result: background job …"; this was every job row in the store,
-and the decision is in the round-4 commit rather than in a queue. **Deferred with reason:** R16 (the sentence scan still
+rather than of the row (Q13). **Desktop suite evidence is head-specific.**
+On 2026-09-14, CI run `34873984750`, Desktop Tests job `104076512595`, at
+`8e86608083171428c02ecd85fa357ff186dee824` reported 950 tests, 935 passed,
+0 failed and 15 skipped. Independent QA's local run at that same head reported
+950 tests, 950 passed, 0 failed. Neither result is a claim about a later head;
+new local and CI results belong in timestamped PR comments, separately (R26/Q22).
+The earlier unqualified 840 and 891 counts are superseded, as is the unsupported
+claim that earlier failures reproduced at the pre-branch base.
+**Decided, not deferred:** D10 suppression is reverted in round 5. Job rows keep
+an explicit `job result` label so the full message and statement glyph remain
+intact; duplicated job wording is an accepted cosmetic tradeoff. There is no new
+payload parsing or label API (D11–D14/Q20/R28). **Deferred with reason:** R16 (the sentence scan still
 cannot separate `Step one: 1. Do the thing.` or `Dr. Smith` from a sentence end;
 0 of the store's statements carry either shape, so hardening it further would be
 built for a producer that does not exist).
