@@ -111,6 +111,7 @@ const bundle = await build({
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -155,7 +156,12 @@ const bundle = await build({
 const hook = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { useCanonicalSessionStream, admitChatDraft, useCanonicalSessionsStore } = hook;
+const {
+	useCanonicalSessionStream,
+	admitChatDraft,
+	useCanonicalSessionsStore,
+	__resetPaintCache,
+} = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
 const SESSION_B = "bbbbbbbbbbbb";
@@ -437,6 +443,15 @@ const settle = async () => {
 const ids = (transcript) => transcript.records.map((record) => record.id);
 
 function reset({ transcript, historyFaults = [] }) {
+	/*
+	 * The paint cache is process-global by design — it is this WINDOW's memory of
+	 * what it has shown, keyed by session — and every case in this file reuses
+	 * `SESSION_A`. Left alone, one case's paint seeds the next one's first frame
+	 * and the rows a claim is made about are another case's fixture. The cache
+	 * ships its own reset for exactly this reason; the harness just has to own
+	 * the state its own cases share.
+	 */
+	__resetPaintCache();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
