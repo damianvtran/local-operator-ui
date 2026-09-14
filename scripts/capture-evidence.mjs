@@ -484,7 +484,6 @@ export const STORIES = [
 	["settings-integrations--deep-link-verb-hit", 1000, 860],
 	["settings-integrations--deep-link-miss", 1000, 860],
 	["settings-integrations--no-session-fallback", 1000, 860],
-	["settings-integrations--no-sessions-at-all", 1000, 860],
 	["settings-integrations--filtered", 1000, 860],
 	["settings-integrations--filtered-empty", 1000, 860],
 	["settings-integrations--no-servers", 1000, 860],
