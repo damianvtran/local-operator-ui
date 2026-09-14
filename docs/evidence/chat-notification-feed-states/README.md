@@ -12,10 +12,30 @@ makes.
 These frames come from the repo's own Storybook capture path
 (`scripts/capture-evidence.mjs`), so they render the production
 `CanonicalTranscript` and the production `MessageInput` — not a fixture drawn to
-look like them. Every frame in this set was re-taken at
-**`3c474c120`** (see `manifest.json`'s `head`, `srcTree`, `scriptsTree` and
-`capturedAt`, which this pass re-stamped), in three palettes: the two brand
-themes plus `obsidian`, which is where the loading state was worst.
+look like them. Every frame in this set was re-taken at **`8c0e227fa`**, the head
+after this branch was rebased onto `142e86904` (#171 / v0.22.3, which brought in
+**#150**'s transcript-pane refactor), in three palettes: the two brand themes plus
+`obsidian`, which is where the loading state was worst. The geometry below was recorded by that earlier capture pass, not re-measured
+during recovery. The rebase onto browser-host #160 (`915928a18`) retained these
+frames byte-for-byte from `619f90bc9`; it did not run a browser or take new frames.
+The entire `src/renderer` tree and the capture script are byte-identical to the
+original capture commit. `manifest.json` now separates current source-verification
+stamps (`head`, `srcTree`, `scriptsTree`) from the historical capture provenance
+(`rebaseVerification.originalCapture`); timestamps and refresh totals remain
+historical. Its `partialCapture.refreshedAtHead` is the capture commit's replay,
+not a claim of a new capture. Main/preload browser-host wiring changed underneath
+the unchanged renderer, so independent live click-flow QA/UX remains required.
+
+**#150 superseded two of this branch's own fixes, and the frames now show THEIR
+implementation.** The skeleton this branch drew inline (three percentage-width
+bars on `sunken`, label above) is now `canonical/transcript-placeholder.tsx`:
+`skeleton` bars on `elevated`, the label below them, and a measured pulse depth
+that is not this branch's. #150 reached the same two conclusions independently —
+`elevated` rather than `sunken`, and the caption's `text-meta` register for the
+label — so this branch's version of those two rows was dropped in the rebase
+rather than re-applied beside it. The same applies to the pane's collapse and
+hold rules, which now live in one module (`canonical/transcript-pane.ts`) and to
+which this branch adds only the two states it introduced (`stale`, `missing`).
 
 ```sh
 npx storybook dev -p 6317 --no-open
@@ -33,9 +53,9 @@ headless Chromium the capture uses (1280x600 / 720x260 / 900x160, DPR 1).
 | frames | what it proves | measured |
 | --- | --- | --- |
 | `cached-paint/{localOperatorDark,localOperatorLight,obsidian}` | a cached paint is rows at full `ink` plus one caption — no dimming, no scrim, no opacity | scroll box `clientHeight` 527 / `scrollHeight` 527 (`scrollTop` 0), caption rect top 0 / bottom 33.4 — the caption is in the pane, and the frame fits, which is why it cannot show the defect below |
-| `cached-paint-overflow/*` | **the caption is on screen when the transcript is TALLER than the pane**, which is the ordinary case: the cache is only written for a conversation this pane has already painted | `clientHeight` 527, `scrollHeight` **2570**, `scrollTop` 0, content box top **-1994.5** / bottom 544, **37 rows**, caption rect top **0** / bottom 33.4, `color: rgb(145,139,125)` (`--lo-ink-dim`), `font-size: 12px`. Before the fix the caption was the content's first child and measured **top -2028** in a 560px pane |
+| `cached-paint-overflow/*` | **the caption is on screen when the transcript is TALLER than the pane**, which is the ordinary case: the cache is only written for a conversation this pane has already painted | `clientHeight` 527, `scrollHeight` **2604**, `scrollTop` 0, content box top **-2027.9** / bottom 544, **37 rows**, caption rect top **0** / bottom 33.4, `color: rgb(145,139,125)` (`--lo-ink-dim`), `font-size: 12px`, and — the structural half, which a still cannot show — the caption's parent is **not** the scroll box (`captionParentIsScrollBox: false`) while the scroll box no longer declares the container (`scrollerHasContainer: false`, `paneHasContainer: true`). Before the fix the caption was the content's first child, inside the scroller, and measured **top -2028** in a 527px pane |
 | `reconciled/*` | the same rows once the owner's snapshot lands: the caption is gone and nothing moved | caption absent; content bottom unchanged at 544 |
-| `loading-first-open/*` | a first-ever open is a skeleton, never the empty-conversation claim | three `aria-hidden` bars (`elevated`), label `Loading conversation…` at 12px `rgb(143,143,151)` (`--lo-ink-dim`); on `obsidian` the bars are `rgb(39,39,42)` = `#27272A` = `elevated`, against a `canvas` of `#09090B` (was `sunken` `#030307`, ΔE00 1.23 — a black pane with one sentence) |
+| `loading-first-open/*` | a first-ever open is a skeleton, never the empty-conversation claim — now `#150`'s `TranscriptPlaceholder` | `obsidian` measured: bars `rgb(39,39,42)` = `#27272A` = `elevated` at 224/320/256px wide, label `Loading conversation…` at **12px** `rgb(143,143,151)` = `--lo-ink-dim`, below the bars, inside the `<output>`. The ground `sunken` this branch replaced would be `#030307` — ΔE00 1.23 against the pane's `#09090B` canvas, i.e. a black pane with one sentence |
 | `conversation-gone/*` | the state with nothing cached: what happened, what it means, and the way out | `This conversation is no longer on this machine.` — read out of the DOM, not the source |
 | `conversation-gone-with-paint/*` | the same state reached **the way a click reaches it**, with this window's cached rows seeded — the half the empty-rows frame cannot cover | DOM reads: `saysGone` true, `saysStartOfConversation` **false**, `hasTimestamp` **false**. Both gates are the fix: the history slot and the footer timestamp used to render over the seeded rows, painting "Start of conversation" and an orphaned date under a statement that the conversation does not exist |
 | `the-two-misses/*` | "this may be behind" and "this is gone" side by side, so the two are judged for whether they read apart | 760x200 |
