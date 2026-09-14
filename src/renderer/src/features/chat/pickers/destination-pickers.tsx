@@ -1485,68 +1485,6 @@ export const RenamePicker: FC<PickerContext> = ({
 	);
 };
 
-export const ContextView: FC<PickerContext> = ({
-	sessionId,
-	canonical,
-	onClose,
-}) => {
-	const command = useSessionCommand(sessionId);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fetch once on open
-	useEffect(() => {
-		void command.run("context", "");
-	}, []);
-	const block =
-		command.outcome &&
-		!isNativeAction(command.outcome) &&
-		command.outcome.kind === "block"
-			? (command.outcome.data as { items?: [string, string][]; title?: string })
-			: null;
-	const frontend = canonical.frontend;
-	return (
-		<PickerHost
-			open
-			onClose={onClose}
-			title="Context"
-			description={block?.title ?? "What the next request will carry."}
-			body={
-				<div className="flex flex-col">
-					{block?.items?.map(([label, value]) => (
-						<PickerKeyValue key={label} label={label} value={value} />
-					))}
-					{frontend && (
-						<>
-							<PickerKeyValue
-								label="Measured"
-								value={
-									frontend.context_tokens === null
-										? "unknown"
-										: `${frontend.context_tokens}${frontend.context_is_estimate ? " (estimate)" : ""}`
-								}
-							/>
-							<PickerKeyValue
-								label="Window"
-								value={
-									frontend.context_window === null
-										? "unknown"
-										: String(frontend.context_window)
-								}
-							/>
-							<PickerKeyValue
-								label="Cost knowledge"
-								value={frontend.cost_knowledge}
-							/>
-						</>
-					)}
-					{command.busy && (
-						<p className="text-ink-dim text-meta">Asking the owner</p>
-					)}
-				</div>
-			}
-			result={command.result?.tone === "error" ? command.result : null}
-		/>
-	);
-};
-
 export const LoopPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
@@ -2085,166 +2023,27 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 };
 
 // ------------------------------------------------------------- data views
-
 /*
- * `/usage` lives in `usage-view.tsx`: it is the one data view with ported
- * rules of its own (`usage-view-model.ts` mirrors the TUI's `usage_panel.py`)
- * and a presentational half that stories render without a backend. Re-exported
- * here so `picker-registry.tsx` keeps importing every adapter from one module.
+ * The five read-only diagnostic panels live in `panels/`, each split into a
+ * presentational component and a `*-model.ts` that owns the decisions — the
+ * `usage-view.tsx` / `usage-view-model.ts` shape, so a story renders the
+ * production component over fixtures with no backend behind it.
+ *
+ * `pickers/panels/` is also where the panel primitives live (the region frame,
+ * the four states, the stat card, the share meter, the bounded table and the
+ * ONE chart wrapper), because a primitive that only one panel uses still has to
+ * be named once: every chart in the app resolves its colours in one place, or
+ * the twelve-theme promise is checked in twelve places.
+ *
+ * Re-exported here so `picker-registry.tsx` keeps importing every adapter from
+ * one module.
  */
+export { AnalyticsView } from "./panels/analytics-panel";
+export { ContextView } from "./panels/context-panel";
+export { FailoversView } from "./panels/failovers-panel";
+export { InfoView } from "./panels/info-panel";
+export { SessionView } from "./panels/session-panel";
 export { UsageView } from "./usage-view";
-
-export const FailoversView: FC<PickerContext> = ({ sessionId, onClose }) => {
-	const data = useQuery({
-		queryKey: ["desktop", "failovers", sessionId],
-		queryFn: () =>
-			desktopResult<{
-				data: {
-					selected: Record<string, unknown> | null;
-					effective: Record<string, unknown> | null;
-					chains: Record<string, string[]>;
-					scope: string;
-					live_model_source: string;
-				};
-			}>({ op: "sessions.failovers", sessionId }),
-	});
-	const d = data.data?.data;
-	const label = (model: Record<string, unknown> | null | undefined) =>
-		model ? `${String(model.provider)}/${String(model.model_id)}` : "none";
-	return (
-		<PickerHost
-			open
-			onClose={onClose}
-			title="Failovers"
-			description="The model this session selected, the one actually serving it, and the configured default fallback chains. Defaults are configuration, not live routing state."
-			body={
-				data.isLoading ? (
-					<p className="text-ink-dim text-meta">Loading</p>
-				) : data.isError ? (
-					<p className="text-body-sm text-danger">{errorText(data.error)}</p>
-				) : (
-					<div className="flex flex-col gap-2">
-						<PickerKeyValue label="Selected" value={label(d?.selected)} />
-						<PickerKeyValue
-							label="Effective (serving)"
-							value={label(d?.effective)}
-						/>
-						<p className="pt-2 text-ink-dim text-meta">
-							Default chains ({d?.scope})
-						</p>
-						{Object.keys(d?.chains ?? {}).length === 0 ? (
-							<p className="text-body-sm text-ink-muted">
-								No fallback chains configured.
-							</p>
-						) : (
-							Object.entries(d?.chains ?? {}).map(([from, to]) => (
-								<PickerKeyValue
-									key={from}
-									label={from}
-									value={to.join(" -> ") || "(none)"}
-								/>
-							))
-						)}
-					</div>
-				)
-			}
-		/>
-	);
-};
-
-export const AnalyticsView: FC<PickerContext> = ({ sessionId, onClose }) => {
-	const [days, setDays] = useState(7);
-	const [thisSession, setThisSession] = useState(false);
-	const data = useQuery({
-		queryKey: ["desktop", "analytics", days, thisSession ? sessionId : ""],
-		queryFn: () =>
-			desktopResult<{
-				data: {
-					aggregate: Record<string, unknown> & {
-						by_provider?: Record<string, unknown>;
-					};
-					daily: Record<string, unknown>[];
-					daily_scope?: string;
-				};
-			}>({
-				op: "analytics.get",
-				days,
-				sessionId: thisSession ? sessionId : undefined,
-			}),
-	});
-	const agg = data.data?.data.aggregate;
-	const cost =
-		typeof agg?.cost_micro === "number"
-			? `$${(agg.cost_micro / 1_000_000).toFixed(4)}`
-			: "unknown";
-	return (
-		<PickerHost
-			open
-			onClose={onClose}
-			title="Analytics"
-			wide
-			description="Backend analytics store: model calls, tokens and known cost. The daily series always covers all sessions."
-			toolbar={
-				<div className="flex items-center gap-3">
-					<PickerSegment
-						label="Window"
-						value={String(days) as "1" | "7" | "30"}
-						onChange={(value) => setDays(Number(value))}
-						options={[
-							{ value: "1", label: "Today" },
-							{ value: "7", label: "7 days" },
-							{ value: "30", label: "30 days" },
-						]}
-					/>
-					<PickerCheck
-						checked={thisSession}
-						onCheckedChange={setThisSession}
-						tone="muted"
-					>
-						This session only (aggregate)
-					</PickerCheck>
-				</div>
-			}
-			body={
-				data.isLoading ? (
-					<p className="text-ink-dim text-meta">Loading</p>
-				) : data.isError ? (
-					<p className="text-body-sm text-danger">{errorText(data.error)}</p>
-				) : (
-					<div className="flex flex-col">
-						<PickerKeyValue label="Calls" value={String(agg?.calls ?? 0)} />
-						<PickerKeyValue
-							label="Input tokens"
-							value={String(agg?.input_tokens ?? 0)}
-						/>
-						<PickerKeyValue
-							label="Output tokens"
-							value={String(agg?.output_tokens ?? 0)}
-						/>
-						<PickerKeyValue
-							label="Cache read"
-							value={String(agg?.cache_read_tokens ?? 0)}
-						/>
-						<PickerKeyValue
-							label="Known cost"
-							value={`${cost} (${String(agg?.cost_known_calls ?? 0)} of ${String(agg?.calls ?? 0)} calls priced)`}
-						/>
-						<p className="pt-2 text-ink-dim text-meta">By provider</p>
-						{Object.keys(agg?.by_provider ?? {}).length === 0 ? (
-							<p className="text-body-sm text-ink-muted">
-								No calls in this window.
-							</p>
-						) : (
-							<pre className="max-h-48 overflow-auto font-mono text-ink-muted text-mono-sm">
-								{JSON.stringify(agg?.by_provider, null, 2)}
-							</pre>
-						)}
-					</div>
-				)
-			}
-		/>
-	);
-};
 
 // -------------------------------------------------------------------- help
 

@@ -8,7 +8,9 @@
  * instead of silently doing nothing.
  *
  * Three kinds of answer:
- *   - `picker`: a component from `destination-pickers` rendered in the host.
+ *   - `picker`: a component from `destination-pickers` rendered in the host —
+ *     either a decision picker or, for the read-only diagnostics, one of the
+ *     panel views (`destination-pickers` re-exports them from `./panels`).
  *   - `navigate`: an existing settings surface; the picker would duplicate it.
  *   - `direct`: an immediate local action with no UI (clear, exit).
  */
@@ -28,6 +30,7 @@ import {
 	ForkPicker,
 	GoalPicker,
 	HelpPalette,
+	InfoView,
 	LoginPicker,
 	LogoutPicker,
 	LoopPicker,
@@ -38,6 +41,7 @@ import {
 	ReloadPicker,
 	RenamePicker,
 	ResumePicker,
+	SessionView,
 	SkillsPicker,
 	StopPicker,
 	ThemePicker,
@@ -76,11 +80,15 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"session.compact": { kind: "picker", component: CompactView },
 	"session.approvals": { kind: "picker", component: ApprovalsPicker },
 	"session.context": { kind: "picker", component: ContextView },
+	// `/session` used to answer "not available in the desktop app yet" because
+	// this row was missing; the destination has existed all along.
+	"session.diagnostics": { kind: "picker", component: SessionView },
 	"session.failovers": { kind: "picker", component: FailoversView },
 	"session.credential": { kind: "picker", component: CredentialPicker },
 	"session.team": { kind: "picker", component: TeamPicker },
 	"session.agent": { kind: "picker", component: AgentPicker },
 	appearance: { kind: "picker", component: ThemePicker },
+	info: { kind: "picker", component: InfoView },
 	skills: { kind: "picker", component: SkillsPicker },
 	usage: { kind: "picker", component: UsageView },
 	analytics: { kind: "picker", component: AnalyticsView },
