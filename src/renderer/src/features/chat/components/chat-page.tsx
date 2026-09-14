@@ -69,6 +69,7 @@ import {
 import {
 	deriveRunDetails,
 	mcpErrorTexts,
+	useMcpRemedy,
 	useRunPanelMcpServers,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
@@ -378,6 +379,13 @@ function SessionPanel({
 		 */
 		errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
 	});
+	/*
+	 * The panel's MCP remedies, taken HERE for the same reason the list is: this is
+	 * the component that owns the session identity, and a press has to write the
+	 * operation's result into the one cache entry both the trigger and the section
+	 * read. The section receives them as props and stays presentational.
+	 */
+	const mcpRemedy = useMcpRemedy({ sessionId });
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
@@ -1561,6 +1569,7 @@ function SessionPanel({
 					 */
 					onComposerInput={warm}
 					mcpServers={mcpServers}
+					mcpRemedy={mcpRemedy}
 					childrenOpenable={childrenOpenable}
 					pulses={canonical.subagentPulses}
 					canonical={{

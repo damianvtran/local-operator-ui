@@ -52,6 +52,7 @@ import {
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -243,6 +244,15 @@ type ChatContentProps = {
 	 */
 	mcpServers?: readonly McpServerRow[];
 	/**
+	 * The panel's MCP remedy controls (`use-mcp-remedy.ts`).
+	 *
+	 * Read by the page, like the server list itself, and threaded down rather than
+	 * taken inside the section: the controls address the ACTIVE session and write
+	 * into the one query the trigger and the panel both read, so the page is the
+	 * level that owns both facts.
+	 */
+	mcpRemedy: McpRemedyControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -349,6 +359,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		canonical,
 		runDetails,
 		mcpServers = [],
+		mcpRemedy,
 		childrenOpenable = false,
 		pulses,
 	}) => {
@@ -935,6 +946,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<RunPanel
 								details={runDetails}
 								mcpServers={mcpServers}
+								mcpRemedy={mcpRemedy}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}

@@ -56,10 +56,13 @@ import {
 	type SubagentRow,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
+import type { McpRemedyControls } from "./use-mcp-remedy";
 
 export type RunPanelProps = {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
+	/** The pane's MCP remedy controls, threaded to the MCP section (`chat-page`). */
+	mcpRemedy: McpRemedyControls;
 	/** The canonical session id the reader's route is addressed with. */
 	sessionId: string | null;
 	/** Per-child pulse counters, from the canonical session stream (`§ 5.3`). */
@@ -121,6 +124,7 @@ const childrenOf = (
 export const RunPanel = ({
 	details,
 	mcpServers,
+	mcpRemedy,
 	sessionId,
 	pulses,
 	childrenOpenable,
@@ -801,6 +805,7 @@ export const RunPanel = ({
 					<RunDetailsPanel
 						details={details}
 						mcpServers={mcpServers}
+						mcpRemedy={mcpRemedy}
 						childrenOpenable={childrenOpenable}
 						onOpenChild={openChild}
 						rosterExpanded={rosterExpanded}

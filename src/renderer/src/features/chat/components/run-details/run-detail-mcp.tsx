@@ -22,6 +22,8 @@
  * user configured.
  */
 
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
@@ -31,11 +33,13 @@ import {
 	LoaderCircle,
 	X,
 } from "lucide-react";
+import { useState } from "react";
 import {
 	type McpServerRow,
 	mcpServersAreCold,
 	mcpTally,
 } from "./run-detail-model";
+import type { McpRemedyControls } from "./use-mcp-remedy";
 
 /**
  * One mark per state, ported by MEANING rather than by codepoint, exactly as the
@@ -73,23 +77,152 @@ const MCP_INK: Record<string, string> = {
 const MCP_UNKNOWN_ICON = CircleHelp;
 
 /**
- * The sentence a remedy renders as, for the two kinds the row cannot yet act on
- * itself.
+ * The app's own control words for the remedies this surface can carry out.
  *
- * The model now carries the remedy as a KIND (grant / reconnect / words) rather
- * than as a pre-composed hint, because the panel's next change makes two of the
- * three actionable; until then each kind renders the sentence it rendered before,
- * in the app's own control vocabulary. `words` carries its own label — it is the
- * state whose text is the whole answer, so it is not a table entry.
+ * The same words the Settings section uses, because one state must not acquire
+ * two spellings (`§ 7.2` amended): the confirmation is the shared modal and the
+ * controls speak the shared vocabulary.
  */
-const MCP_REMEDY_WORD = {
-	grant: "Grant this server account access in Settings",
-	reconnect: "Reconnect this server in Settings",
+const MCP_CONTROL_WORD = {
+	grant: "Grant account access",
+	reconnect: "Reconnect",
 } as const;
 
-const remedyWords = (remedy: McpServerRow["remedy"]): string | null => {
-	if (!remedy) return null;
-	return remedy.kind === "words" ? remedy.label : MCP_REMEDY_WORD[remedy.kind];
+/**
+ * What the row's action line says while a grant is in the backend's hands.
+ *
+ * `Waiting for your browser` is a statement about what is happening, not a
+ * spinner: the runtime opens the browser itself (`mcp/auth.py:2317`, in the
+ * redirect handler), so this surface's job is to say that it is waiting and to
+ * offer the cancel that is the only thing it can usefully do.
+ */
+const MCP_GRANT_WORD = {
+	running: "Waiting for your browser",
+	failed: "Sign-in failed",
+	cancelled: "Sign-in cancelled",
+} as const;
+
+/**
+ * The one sentence for a sign-in the backend refused.
+ *
+ * Reached only from a 409 whose cause the probe could NOT attribute to a
+ * transport that cannot do OAuth: printing the wire's own sentence would be the
+ * unhelpful-copy class `branding.md` § 8 refuses, because the route replaces
+ * every cause with one fixed string (`routes/desktop_lifecycle.py:148-155`).
+ */
+const MCP_REFUSED_WORD =
+	"This server refused the sign-in. Check its configuration.";
+
+/**
+ * Where a server whose credentials this surface cannot set keeps them.
+ *
+ * A stdio child, or a config that declares another `auth.type`, can never
+ * complete a browser flow (`server_rejects_oauth`), so the row keeps words and
+ * names the surface that owns the `env`/`headers` map.
+ */
+const MCP_CREDENTIALS_WORD = "Manage this server's credentials in Settings";
+
+/** The sentence form of a remedy, prefixed the way the row's prose lines are. */
+const words = (label: string) => (
+	<span
+		className={cn("truncate text-ink-muted text-meta leading-4")}
+		title={label}
+	>
+		{`— ${label}`}
+	</span>
+);
+
+/**
+ * The row's action line: the remedy as a control where this surface can carry it
+ * out, and as the sentence that names the other surface where it cannot.
+ *
+ * The order is fixed and it is the reason a terminal operation can never be read
+ * as the row's state:
+ *
+ * 1. a grant the backend says is `complete` clears the line — the next read calls
+ *    the server `connected` and the tool count appears, and this surface never
+ *    says a sign-in finished before the backend does;
+ * 2. a grant that is `running`, `failed` or `cancelled` IS the line, with the
+ *    cancel or the retry that belongs to it. The cancelled case appends the
+ *    credential's fate, because `grants.py:168-175` records that a cancel between
+ *    the grant's delete and its reconnect leaves the server with NO credential —
+ *    "cancelled" alone would send the reader to a server that cannot connect;
+ * 3. a refusal the surface has established replaces the control with its cause;
+ * 4. otherwise the remedy itself: a link control, or the sentence for the states
+ *    this surface cannot act on.
+ *
+ * The control is a `link`, never a filled button and never a clickable row: the
+ * row's second line is 16px and a `size="sm"` box would take it to 28px, growing
+ * every problem row's height budget (`§ 8`), while a row that lit up would promise
+ * one action where two are possible. Disabled is a colour step, never opacity
+ * (`branding.md` § 6).
+ */
+const McpActionLine = ({
+	row,
+	remedy,
+	disabled,
+	onPress,
+}: {
+	row: McpServerRow;
+	remedy: McpRemedyControls;
+	disabled: boolean;
+	onPress: (row: McpServerRow) => void;
+}) => {
+	const grant = row.grant;
+	if (grant?.status === "complete") return null;
+	if (grant) {
+		return (
+			<span className={cn("flex min-w-0 items-baseline gap-2")}>
+				<span
+					className={cn("min-w-0 truncate text-ink-muted text-meta leading-4")}
+				>
+					{MCP_GRANT_WORD[grant.status]}
+				</span>
+				{grant.status === "cancelled" && grant.credentialRemoved && (
+					<span
+						className={cn(
+							"min-w-0 truncate text-ink-muted text-meta leading-4",
+						)}
+					>
+						The stored credential was removed.
+					</span>
+				)}
+				<Button
+					variant="link"
+					size="sm"
+					onClick={() =>
+						grant.status === "running" ? remedy.cancel(grant.id) : onPress(row)
+					}
+				>
+					{grant.status === "running" ? "Cancel" : "Try again"}
+				</Button>
+			</span>
+		);
+	}
+
+	const refusal = remedy.refusalFor(row.name);
+	if (refusal === "not-oauth") return words(MCP_CREDENTIALS_WORD);
+	if (refusal === "refused") return words(MCP_REFUSED_WORD);
+
+	if (!row.remedy) return null;
+	if (row.remedy.kind === "words") return words(row.remedy.label);
+	return (
+		<Button
+			variant="link"
+			size="sm"
+			disabled={disabled}
+			/*
+			 * The capture rig's handle on this control, which is how the confirm frame is
+			 * taken by clicking the real link rather than by opening the dialog by hand
+			 * (`run-details.stories.tsx`, `useClickAndWait`). The remedy KIND is the
+			 * value, so a later story can address whichever one its fixture renders.
+			 */
+			data-mcp-remedy={row.remedy.kind}
+			onClick={() => onPress(row)}
+		>
+			{MCP_CONTROL_WORD[row.remedy.kind]}
+		</Button>
+	);
 };
 
 const iconFor = (status: string) =>
@@ -97,7 +230,29 @@ const iconFor = (status: string) =>
 
 const inkFor = (status: string) => MCP_INK[status] ?? "text-ink-dim";
 
-const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
+const McpRow = ({
+	row,
+	cold,
+	remedy,
+	controlDisabled,
+	onPress,
+}: {
+	row: McpServerRow;
+	cold: boolean;
+	remedy: McpRemedyControls;
+	/**
+	 * Whether this row's control is disabled because another row's grant is
+	 * running.
+	 *
+	 * The backend allows ONE grant per session (`mcp/desktop.py:158-160`), so
+	 * leaving the other links live would let every press refuse with the opaque 409
+	 * of `§ 3.3-2` — and a disabled control is a better answer than an unhelpful
+	 * sentence. Derived from the READ's `operations` rather than from local state,
+	 * so a grant started in the TUI or another conversation disables these too.
+	 */
+	controlDisabled: boolean;
+	onPress: (row: McpServerRow) => void;
+}) => {
 	const Mark = iconFor(row.status);
 	/*
 	 * The row's height is pinned by the design (`§ 8`): 32px healthy, 48px on a
@@ -220,14 +375,12 @@ const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 				 * would be a guess, and a guess is worse than the quiet unknown row that does
 				 * still take attention.
 				 */}
-				{remedyWords(row.remedy) ? (
-					<span
-						className={cn("truncate text-ink-muted text-meta leading-4")}
-						title={remedyWords(row.remedy) ?? undefined}
-					>
-						{`— ${remedyWords(row.remedy)}`}
-					</span>
-				) : null}
+				<McpActionLine
+					row={row}
+					remedy={remedy}
+					disabled={controlDisabled}
+					onPress={onPress}
+				/>
 				{row.errorText ? (
 					<span
 						className={cn(
@@ -245,11 +398,47 @@ const McpRow = ({ row, cold }: { row: McpServerRow; cold: boolean }) => {
 
 export const RunDetailMcp = ({
 	servers,
+	remedy,
 }: {
 	servers: readonly McpServerRow[];
+	/**
+	 * The pane's remedy controls, threaded from the page (`chat-page.tsx`).
+	 *
+	 * A prop rather than a hook call here, so this section stays presentational and
+	 * the pane renders from a fixture in the story set and from the real controls in
+	 * the app.
+	 */
+	remedy: McpRemedyControls;
 }) => {
+	/*
+	 * The confirmation is ONE dialog for the pane, held here rather than per row,
+	 * and that is the part of the old refusal that still holds (§ 7.2 amended):
+	 * there is one place that owns the confirmation, the scope and the error copy.
+	 *
+	 * The grant is the only remedy that confirms, because the backend's `reauth` is
+	 * destructive before it is constructive — `run_grant` deletes the stored row and
+	 * disconnects before it re-consents (`mcp/grants.py:193-211`), and the control
+	 * refuses without `confirmed: true` (`mcp/desktop.py:59-60`). It is deliberately
+	 * NOT danger-styled: the operation is recoverable by completing the consent, and
+	 * `DangerButton` is for the destructive-without-remedy class.
+	 */
+	const [confirmTarget, setConfirmTarget] = useState<McpServerRow | null>(null);
 	if (servers.length === 0) return null;
 	const cold = mcpServersAreCold(servers);
+	/*
+	 * One grant per session, so while any row's grant is running every OTHER row's
+	 * control is disabled. Read off the rows, which are folded from the read's own
+	 * `operations`: a grant started anywhere — the TUI, another conversation — locks
+	 * these controls too, and local state could not know that.
+	 */
+	const grantRunning = servers.some((row) => row.grant?.status === "running");
+	const start = (row: McpServerRow) => {
+		if (row.remedy?.kind === "grant") {
+			setConfirmTarget(row);
+			return;
+		}
+		remedy.press(row);
+	};
 	return (
 		<section className={cn("flex flex-col pb-1.5")}>
 			{cold ? (
@@ -296,9 +485,37 @@ export const RunDetailMcp = ({
 			)}
 			<ul className={cn("flex flex-col")}>
 				{servers.map((row) => (
-					<McpRow key={row.name} row={row} cold={cold} />
+					<McpRow
+						key={row.name}
+						row={row}
+						cold={cold}
+						remedy={remedy}
+						controlDisabled={grantRunning && row.grant?.status !== "running"}
+						onPress={start}
+					/>
 				))}
 			</ul>
+			{/*
+			 * `Grant account access`, not `Confirm`: the button says what it does, and
+			 * the message states both consequences — the browser opens, and a stored
+			 * credential is replaced — because both are facts the reader would otherwise
+			 * discover afterwards.
+			 *
+			 * A navigation NEVER lands here on its own (`§ 3.2`): the deep link reveals
+			 * the row and stops, because opening a confirm dialog and a browser tab is an
+			 * action nobody asked for.
+			 */}
+			<ConfirmationModal
+				open={confirmTarget !== null}
+				title={`Grant account access to ${confirmTarget?.name ?? ""}?`}
+				message="Your browser opens to approve access. A stored credential for this server is replaced."
+				confirmText="Grant account access"
+				onConfirm={() => {
+					if (confirmTarget) remedy.press(confirmTarget);
+					setConfirmTarget(null);
+				}}
+				onCancel={() => setConfirmTarget(null)}
+			/>
 		</section>
 	);
 };

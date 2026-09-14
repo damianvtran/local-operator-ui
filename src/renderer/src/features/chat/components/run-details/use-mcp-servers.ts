@@ -200,5 +200,9 @@ export function useRunPanelMcpServers({
 
 	// A failed read is the LAST KNOWN rows rather than an empty list: the section
 	// must not render "no servers configured" for a read it could not complete.
-	return deriveMcpServers(query.data?.servers, errors);
+	//
+	// The document's own `operations` ride along into the derivation (`§ 3.2`): the
+	// row's in-flight grant is read from THIS poll rather than from a second query,
+	// so the two facts cannot disagree on screen and the pane adds no timer.
+	return deriveMcpServers(query.data?.servers, errors, query.data?.operations);
 }
