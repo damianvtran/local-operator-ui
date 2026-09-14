@@ -258,6 +258,13 @@ const InTranscript = ({
 				isSmallView={false}
 				status="live"
 				failure={null}
+				/*
+				 * A fixture of a conversation that has been read: the rows are handed in
+				 * rather than fetched, so the reader's question is answered `true`. The
+				 * hold cannot fire here (it needs zero records) and nothing here is a
+				 * claim about the read.
+				 */
+				hydrated={true}
 				onReconnect={() => {}}
 			/>
 		</div>

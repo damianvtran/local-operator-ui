@@ -23,10 +23,8 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import {
-	CanonicalTranscript,
-	canonicalTranscriptSpeaks,
-} from "../canonical/canonical-transcript";
+import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -83,6 +81,8 @@ type ChatContentProps = {
 	onTabChange: (tab: "chat" | "raw") => void;
 	agentName: string;
 	description: string;
+	/** Held, not filled, until some source names the identity; see `ChatHeaderProps`. */
+	descriptionPending?: boolean;
 	onOpenOptions: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
@@ -258,6 +258,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onTabChange,
 		agentName,
 		description,
+		descriptionPending,
 		onOpenOptions,
 		isOptionsSidebarOpen,
 		onCloseOptions,
@@ -546,6 +547,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						<ChatHeader
 							agentName={agentName}
 							description={description}
+							descriptionPending={descriptionPending}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							fileCount={mentionedFileCount}
@@ -582,6 +584,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											isSmallView={isSmallView}
 											status={canonical.view.status}
 											failure={canonical.view.failure}
+											/*
+											 * The reader's own question, and the same property the band
+											 * below reads as `isHydrating`: the pane's hold and the
+											 * band's claim are one decision with two readers, so
+											 * they are handed one value rather than each deriving its
+											 * own.
+											 */
+											hydrated={canonical.view.hydrated}
 											onReconnect={canonical.view.retry}
 											onAnswer={canonical.onAnswer}
 											// The composer's own in-flight flag, reused: one
@@ -651,7 +661,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// applied for this session - so the loading state holds
 								// until the app genuinely knows, whether that takes a retry
 								// or not.
-								isHydrating={canonical ? !canonical.view.hydrated : false}
+								//
+								// And `hydrated` is not the band's question on its own
+								// either: a pane that is already saying what went wrong is
+								// not "still hydrating", so the band takes the same
+								// statement term the pane's hold does. The two readers
+								// derive one question rather than one of them reading a
+								// proxy for it (and the answer is unaffected today: a
+								// speaking pane is handed `CANONICAL_NONEMPTY` above, so
+								// the greeting is already withheld - this keeps the two
+								// expressions from drifting apart).
+								isHydrating={
+									canonical
+										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
+										: false
+								}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={

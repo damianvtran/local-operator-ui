@@ -541,6 +541,16 @@ export const RunChildReader = ({
 						status="live"
 						failure={null}
 						/*
+						 * The reader's question, answered by this reader's own state: the
+						 * branch that renders this transcript is the `ready` one (the
+						 * empty states above are `QuietLine`s), so the child's page HAS
+						 * been read. The hold cannot fire here anyway - it needs zero
+						 * records and this branch is reached only with rows - and `true`
+						 * is what the reader's own state says rather than a value chosen
+						 * to keep the predicate quiet.
+						 */
+						hydrated={true}
+						/*
 						 * A child page has no session handle to re-arm: its read is the
 						 * child-scoped route, re-run when the child next beats (`pulse`),
 						 * and `useChildTranscript` exposes no reconnect of its own. The
