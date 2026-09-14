@@ -1,6 +1,6 @@
 {
   "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
-  "headNote": "Recovery integration: normal merge of origin/main 915928a18 into 535a99de5, preserving both histories (no rebase or force-push). The top-level tree stamps describe the integrated source, not a new capture. Existing frame timestamps and partialCapture provenance remain unchanged: composer round-1 remediation frames were captured at 0f19ae5e2 and committed in 535a99de5. Upstream changes no renderer source or capture script; all 109 nonconflicting feature files are byte-identical to 535a99de5. Conflicts were additive test-list union in package.json (version remains main 0.22.3) and this manifest stamp block. New browser-tool validation is reported separately on PR #175; these historical frames are not represented as independently re-captured during recovery.",
+  "headNote": "Historical capture stamps inherited from upstream 8d019993e are preserved; no full recapture or clean-stamp claim was made during the forge-required rebase. Only supplementary set union and counts are reconciled. The round-5 label screenshots were captured before that rebase at the source documented in job-result-label-round5/README.md. Global src/scripts stamp drift is reported in the PR, not hidden by rewriting the historical capture source.",
   "srcTree": "6253e4196ba11cdf2855f5a8fec4fc07deacdc6e",
   "scriptsTree": "2fe452ad280ba12139b28e41b6e33d0624136414",
   "dirtyWorkingTree": false,
@@ -9,8 +9,8 @@
   "surfaces": 168,
   "themes": 12,
   "countsMean": {
-    "frames": "The sweep's own frame count, asserted by `check-evidence.mjs` against the frames on disk that fall outside any declared `supplementary` set - 1172 at this head, and the assertion is the definition rather than a restatement of it: 1509 `.webp` are committed under `docs/evidence`, 337 of them sit inside the 27 declared sets below, and the remaining 1172 are the sweep's - this branch's own set is the eight frames the composer status row adds, which are counted in both of these totals. Re-derived for THIS tree and stated once. The exclusion is by DIRECTORY, which is why the set list below and this number cannot disagree: every declared set's `frames` field matched the frames under its own path when this was written (the check this field's own history needed - `main`'s `composer-readings` used to state 23 against 34 frames and was repaired on `main` in `05a48ca4c`, not here). Two earlier derivations are deleted rather than quoted, on the rule this field already carries: a stale derivation is worse here than none, because the field's whole justification is that a reader can re-compute it, and one that does not resolve teaches them to stop checking. `check-evidence.mjs` fails when these terms disagree with it - in the fast half as well as in the sweep, so the field cannot lag the disk for a whole review round again (code review round 4, m4). This branch carries no version bump of its own: it is rebased onto the release commit rather than merged with a bump, so `package.json` on it reads `0.22.3`, byte-identical to `origin/main`'s apart from the `test:desktop` file list, which is what the repository's version-bump guard reads.",
-    "surfaces": "`capture-evidence.mjs`'s `STORIES.length` at the head above - 165 entries, counted off the capturer's own literal by the gate itself rather than summed from the two sides. 161 of them are `main`'s own list at this branch's base, and the four this branch adds are the `chat-composer-status-row` stories (`states`, `long-goal`, `expanded`, `column-floor`) - one surface and one width each, so the entry count and the directory count move together here. 161 + 4 = 165 is a derivation, not the assertion: the gate counts the list and fails a mismatch, so this field cannot silently lag its own source - which is exactly how it read 115 against the capturer's 124 for a whole review round (code review round 3, M1), and why the number is now counted rather than reasoned.",
+    "frames": "Forge-required rebase accounting on 2026-09-14: 1,522 WebP files on disk, 344 declared in 29 supplementary sets, and 1,178 outside those sets. The five new browser-tool label frames are supplementary. Counting files is not a new full image histogram sweep.",
+    "surfaces": "168 entries in the merged capture-evidence.mjs STORIES list, counted during the 2026-09-14 forge-required rebase. This is the capture inventory, not the count of every exported Storybook story.",
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12. Asserted the same way as `surfaces`: the gate counts the capturer's own list and fails a mismatch."
   },
   "partialCapture": {
@@ -397,6 +397,15 @@
       "why": "The before half of the incident-row pair, and the reproduction of the operator's report. A sweep cannot re-derive it: it needs a tree that no longer exists in the repository, and the story renders the production components, so a fixture cannot fake the shipped row. What it holds is what the defect looked like - ten rows reading `session incident` with every message behind a chevron.",
       "capturedAt": "2026-09-13T23:36:00.000Z",
       "capturedAtHead": "73977340a81660a6ba88ecff9c9f33f00ab77178"
+    },
+    {
+      "path": "job-result-label-round5",
+      "frames": 5,
+      "surfaces": 3,
+      "themes": 2,
+      "source": "Local Operator browser tool, production JobResultMessages story in an isolated Vite harness. Before: canonical-transcript.tsx at 8e86608083171428c02ecd85fa357ff186dee824 plus the new fixture. After: that fixture with the explicit-label restoration committed as dce5c74fca8151e4425ee0c6794400a020172a0e before the forge-required rebase; modified working tree during capture. See job-result-label-round5/README.md for viewport, geometry and capture limitations. No CDP or private browser engine.",
+      "why": "The before/after pair pins the fallback label, glyph and truncated message regression on long job results with and without supporting detail. The expanded frame checks the surviving disclosure.",
+      "capturedAt": "2026-09-14T19:47:44.871517+00:00"
     }
   ]
 }
