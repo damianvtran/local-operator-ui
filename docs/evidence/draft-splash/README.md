@@ -1,4 +1,4 @@
-# The composer band on a New chat, before and after
+# The composer band and the transcript pane on a New chat, before and after
 
 The operator's report: "the skeleton loader seems to be stuck on new chats …
 instead of showing the normal splash composer visuals". On a fresh **New chat**
@@ -22,21 +22,31 @@ last chip row through its glyphs (design D1). The frames below are of both
 claims, at four sizes, because the second only appears near the app's window
 floor.
 
-**This rebase lands the fix on a `main` that has since moved, and the moved
-ground is in these frames.** `main`'s #150 (`perf/session-switch-instant`) took
-the hydration placeholder out of the band and gave the PANE its own hold
-(`transcript-pane.ts`: `transcriptPaneHoldsPlaceholder` = `recordCount === 0 &&
-!hydrated && !speaks`), so on this base the same New chat paints that placeholder
-in the transcript region — every `after-draft-*.png` here carries its three bars
-and its `Loading conversation…` — while the band below it is the half this branch
-restores: the greeting and the chips. Both halves hold; together they are the one
-screen a reader sees. The pane's term has no "there is no session here" in it,
-and this branch does not add one: `hydrated` is false for a session-less draft by
-construction, so the pane holds for as long as a New chat is open. That is
-`main`'s rule rather than this change's, and it is recorded here — with the
-measurement, and with the band that the driver's assertions actually read —
-because a reader of these frames has to know which half of the screen they are
-evidence for. See *What these frames do not prove* below.
+**`main` moved under the work, and it carried the second half of the operator's
+report with it.** #150 (`perf/session-switch-instant`) took the hydration
+placeholder out of the band and gave the transcript PANE its own hold
+(`transcript-pane.ts`: `recordCount === 0 && !hydrated && !speaks`). On that base
+the same New chat painted the pane's placeholder — three shimmer bars and its
+`Loading conversation…` — **above** the band this branch had restored: two
+contradictory claims on one screen, and the half a reader would take as a stuck
+loader that was never fixed. **This round fixes it at the source**: the pane's
+hold is now keyed on the same composed fact the band reads
+(`CanonicalSessionHandle.awaitingHydration` — there is a stream for this session
+and no page has been applied), so a pane with no session owes nothing and makes
+no claim, while a real cold session's hold is unchanged. `transcript-pane.ts`'s
+32-row matrix in `scripts/session-switch.test.mjs` was restated over that input
+(a session-less draft and a settled-empty conversation are deliberately the same
+row), and `scripts/draft-splash.test.mjs` asserts the composition for both
+readers against the shipped hook, including that the pane's call site cannot read
+the raw `hydrated` field.
+
+So every `after-draft-*.png` here is a New chat with **no loading claim anywhere
+in the document**: placeholders 0, shimmer bars 0, none outside the band, no
+visible `Loading conversation…` — read document-wide at every size, and the
+driver refuses to publish a frame that shows one. That is the acceptance bar for
+both halves of the report, and it is why the after frames no longer carry the
+pane's three bars. See *What these frames do not prove* for the two states this
+set does not stage.
 
 ## What produced these frames
 
@@ -91,17 +101,26 @@ rather than a paragraph.
 **The two halves are of different generations, and that is stated rather than
 implied.** `before` is `ef40c81e2`, which was `origin/main` when round 1 captured
 it and is now an ancestor of this branch's base: it is the tree the BAND's
-skeleton was the defect on. `after` was re-shot after the rebase onto `main`
-(`142e86904`), because the upstream delta changes what the same screen renders —
-an after frame from the pre-rebase tree would show a pane that no longer exists.
-So the pair is not "this branch against its own base": the `before` half carries
-the round-1 defect and the `after` half carries `main`'s pane beside this branch's
-band. Re-shooting `before` on the new base is not something this instrument can
+skeleton was the defect on, and it predates the pane's own hold entirely. `after`
+has been re-shot twice on `main`'s ground — once for the rebase onto `142e86904`,
+and again for this round's fix to the pane hold that rebase inherited (below). So
+the pair is not "this branch against its own base": the `before` half carries the
+round-1 defect, and the `after` half carries the fixed band and the fixed pane on
+the tree that ships. Re-shooting `before` on the new base is not something this instrument can
 do honestly: its settled-draft expectation is the band's skeleton, and on
 `142e86904` the band renders neither the skeleton nor the greeting for a draft
 (the greeting branch is gated on `!isHydrating`, and a draft is `awaitingHydration
 === false` and `!hydrated === true`), so the run would refuse to publish rather
 than photograph that state.
+
+**The `after` half was re-shot a second time for this round, and only the
+`after` half again.** Fixing the pane's hold changes what a New chat renders: the
+pane no longer takes 230px of the column at the default window and 156px at the
+two constrained sizes, so the band's splash owns the column at every size, and an
+after frame from the previous pass would be a picture of a geometry the app no
+longer has. The re-take is the `AFTER` command under *Re-capturing* below, at
+this round's head, and its readback records that head and the `src` tree the
+frames are a picture of.
 
 Each run photographs four viewports, each in its **own page load** (the
 canonical sessions store persists to localStorage, so a second size would
@@ -114,7 +133,7 @@ Send button, then the settled conversation.
 | 1380x872 | the app's own default window (`DEFAULT_WINDOW_WIDTH/HEIGHT` = 1380x900, minus the 28px macOS title bar) |
 | 900x572 | the second size design round 1 measured the overflow at |
 | 830x572 | the narrowest window that still takes the splash branch at the app's minimum HEIGHT (`WINDOW_MIN_HEIGHT` = 600 → 572 CSS) |
-| 800x572 | the minimum window itself, whose 520px column takes the small view — the control that this change did not touch that branch |
+| 800x572 | the minimum window itself, whose 520px column takes the small view — the control for the splash half of the change (both trees paint neither the greeting nor a skeleton there); its composer box does move, and the before/after table below records why |
 
 The harness publishes its own readback in `#probe` (`window.__draftSplashMarker`
 for the echo check, `window.__draftSplashChipList` parsed from the product), and
@@ -123,22 +142,24 @@ the flip's shutter, at the first painted echo and at the settled conversation.
 That readback is what the frames are checked against — the run FAILS rather than
 publishing when an error surface is on screen, when the draft state was never
 entered, when the band disagrees with what the label says it should show, **when
-the band or its suggestion stack runs past the pane or a chip row is cut**, or
-when the admitted send never painted a row.
+anything outside the band claims to be loading** (the pane's own placeholder,
+counted document-wide: placeholders, their shimmer bars, and the visible
+caption), **when the band or its suggestion stack runs past the pane or a chip
+row is cut**, or when the admitted send never painted a row.
 
 ## Before / after
 
 | Frame | What it shows |
 | --- | --- |
 | [before-draft-1380x872-frame1.png](before-draft-1380x872-frame1.png), [-frame2.png](before-draft-1380x872-frame2.png) | The defect: a New chat settled with the hydration skeleton above the composer, no greeting and no chips. `readback-before.json` reads `greeting 0, skeleton 1, chips 0`, band 768px. The two frames differ by **7,165 pixels — 7,148 of them inside the skeleton's own row** (`1052x28+304+402`), its shimmer moving, which is why the pair is here rather than one still. |
-| [after-draft-1380x872-frame1.png](after-draft-1380x872-frame1.png), [-frame2.png](after-draft-1380x872-frame2.png) | The same state on the fixed tree: `What can I help you with today?`, the composer, and **7 suggestion chips** drawn from `DEFAULT_MESSAGE_SUGGESTIONS` (25 entries in `chat-content.tsx`; `message-input.tsx` samples `MAX_SUGGESTIONS = 7` of them at random, so the labels differ run to run and only the count and the membership are stable — both are asserted). The band is 538px of the 872px column (`333.9 + 538.1 = 872`) and the stack is **5 rows of 5, 179.5px tall in a 269.8px room — uncapped, because at the default window it fits.** The band's top edge is where the PANE's own block ends: since #150 the pane holds a row-less unread conversation, and a New chat's draft is one, so every after frame carries `Loading conversation…` and its three bars above the splash (see the head of this file). Those two consecutive frames differ by **9,540 pixels, all of them inside the pane's placeholder** — its pulse. |
+| [after-draft-1380x872-frame1.png](after-draft-1380x872-frame1.png), [-frame2.png](after-draft-1380x872-frame2.png) | The same state on this round's tree: `What can I help you with today?`, the composer, and **7 suggestion chips** drawn from `DEFAULT_MESSAGE_SUGGESTIONS` (25 entries in `chat-content.tsx`; `message-input.tsx` samples `MAX_SUGGESTIONS = 7` of them at random, so the labels differ run to run and only the count and the membership are stable — both are asserted). The band is the **whole 872px column** (`104 + 768 = 872`) and the stack is **3 rows of 3, 104.5px in a 347.3px room — uncapped, because with the pane collapsed it fits**. Nothing on the screen claims to be loading: a draft owes no page, so the pane makes no claim and yields the column, and the splash is the only content above the composer. Those two consecutive frames are **byte-identical** (0 pixels): the movement the previous pass photographed here was the pane's placeholder pulse, and the pane no longer paints one. |
 | [-band-1380x872.png](after-draft-band-1380x872.png), and the same clip at [900x572](after-draft-band-900x572.png), [830x572](after-draft-band-830x572.png), [800x572](after-draft-band-800x572.png) | The band clipped to its own box, at every size, for the close read. The 830x572 clip is the size D1 is about. |
 | [before-draft-900x572-frame1.png](before-draft-900x572-frame1.png), [before-draft-830x572-frame1.png](before-draft-830x572-frame1.png) and their `-frame2` / `-band-` siblings | The same New chat on the pre-fix tree at the constrained heights: the skeleton, band 468px — inside the pane, because the skeleton is 228px of content. **The overflow those sizes are about is the CHIPS'**, which the pre-fix tree only reaches through an ordinary empty conversation (QA reproduced it there: 6–7 rows, `chipRowBottom` 582.5/600.5 against a 572px window), not through New chat. |
-| [after-draft-900x572-frame1.png](after-draft-900x572-frame1.png), [after-draft-830x572-frame1.png](after-draft-830x572-frame1.png) | The fix at those sizes: 7 chips, the stack capped — **4 of its 5 rows (142px of 179.5px)** at 900x572 and **4 of its 6 rows (142px of 217px)** at 830x572 — and the band `156 + 416 = 572`, with the last visible row inside it. |
-| [before-draft-800x572-frame1.png](before-draft-800x572-frame1.png) / [after-draft-800x572-frame1.png](after-draft-800x572-frame1.png) | The minimum window: `greeting 0, skeleton 0, chips 0` in the BAND on **both** trees — the `isSmallView` branch, which this change does not touch. The pair now differs by 114,932 pixels and none of them is a band claim: 31,866 are the pane's placeholder appearing in the comparison and 83,066 are the composer moving down inside the band, because on this base the pane keeps the top 225.9px instead of collapsing (`329.9 + 242.1 = 572`). The pre-rebase pair differed by 11 pixels, the composer's caret. |
-| [before-send-after-flip.png](before-send-after-flip.png), [after-send-after-flip.png](after-send-after-flip.png) | The state just after the identity flip, read back immediately after the shutter: a real session whose page is owed. `bandAtFlipShot` caught `greeting 0, skeleton 1` (before) and `greeting 1, skeleton 0, chips 7` (after) — the post-flip state of an empty authoritative page, which both trees reach — so this pair carries the band reading rather than the band. Whether the echo has painted by then is a race the frame does not claim to have won; the readback says which state it caught. |
+| [after-draft-900x572-frame1.png](after-draft-900x572-frame1.png), [after-draft-830x572-frame1.png](after-draft-830x572-frame1.png) | The fix at those sizes: 7 chips, the stack capped — **5 of its 6 rows (179.5px of 217px)** at both — and the band `104 + 468 = 572`, the whole column again, with the last visible row inside it and the boundary in the gap below it. |
+| [before-draft-800x572-frame1.png](before-draft-800x572-frame1.png) / [after-draft-800x572-frame1.png](after-draft-800x572-frame1.png) | The minimum window: `greeting 0, skeleton 0, chips 0` in the BAND on **both** trees — the `isSmallView` branch, which this change does not touch. The pair differs by **11 pixels**, the composer's caret, because with the pane yielding the column the composer sits exactly where the pre-#150 tree puts it. The previous pass's 114,932-pixel difference here was the pane's placeholder (31,866) plus the composer being pushed down by the pane it no longer competes with (83,066). |
+| [before-send-after-flip.png](before-send-after-flip.png), [after-send-after-flip.png](after-send-after-flip.png) | The state just after the identity flip, read back immediately after the shutter: a real session whose page is owed, so the one state in this set where the pane's hold is live. `bandAtFlipShot` caught `greeting 1, skeleton 0, chips 7` at the default size on BOTH trees — the post-flip state of an empty authoritative page, which both reach — and the before half's `greeting 0, skeleton 1` at 900x572 and 830x572, where the pre-fix band holds its skeleton; the after half reads `greeting 1, chips 7` at all three splash sizes. Whether the echo has painted by then is a race the frame does not claim to have won; the readback says which state it caught. |
 | [before-send-first-painted.png](before-send-first-painted.png), [after-send-first-painted.png](after-send-first-painted.png) | The first frame in which the admitted send is painted in the transcript, read from the harness's per-frame trace: the message is a row and the band shows no greeting, no skeleton and no chips. |
-| [after-send-settled-1380x872-frame1.png](after-send-settled-1380x872-frame1.png), [-frame2.png](after-send-settled-frame2.png), and `send-settled-<size>-frame1` at the other three sizes | The settled conversation, and — at 900x572 and 830x572 — the ADMITTED-SEND state the peer change at the same height budget also has to hold in: greeting gone, chips gone, the transcript column painted, and the band still exactly the pane (`y 404.3 + h 167.7 = 572`). Nothing is capped in that state; the constraint is only that it is inside the pane. |
+| [after-send-settled-1380x872-frame1.png](after-send-settled-1380x872-frame1.png), [-frame2.png](after-send-settled-frame2.png), and `send-settled-<size>-frame1` at the other three sizes | The settled conversation, and — at 900x572 and 830x572 — the ADMITTED-SEND state the peer change at the same height budget also has to hold in: greeting gone, chips gone, the transcript column painted, and the band still exactly the pane (`736.3 + 135.7 = 872` at the default window; `404.3 + 167.7 = 572` at 900x572 and 830x572; `442 + 130 = 572` at 800x572). Nothing is capped in that state; the constraint is only that it is inside the pane. |
 
 ## The containment, and its numbers
 
@@ -155,28 +176,45 @@ the slash popup acquires one.
 
 | Size | Band box | Band / column | Stack: rows visible / laid out | Stack box vs its content | Boundary |
 | --- | --- | --- | --- | --- | --- |
-| 1380x872 | 333.9 + 538.1 = 872 | 538 / 872 | 5 / 5 | 179.5px, no cap | in the gap |
-| 900x572 | 156 + 416 = 572 | 416 / 572 | 4 / 5 | 142px of 179.5px | in the gap |
-| 830x572 | 156 + 416 = 572 | 416 / 572 | 4 / 6 | 142px of 217px | in the gap |
-| 800x572 | 329.9 + 242.1 = 572 | 242 / 572 | no chips (small view) | — | — |
+| 1380x872 | 104 + 768 = 872 | 768 / 872 | 3 / 3 | 104.5px, no cap | in the gap |
+| 900x572 | 104 + 468 = 572 | 468 / 572 | 5 / 6 | 179.5px of 217px | in the gap |
+| 830x572 | 104 + 468 = 572 | 468 / 572 | 5 / 6 | 179.5px of 217px | in the gap |
+| 800x572 | 104 + 468 = 572 | 468 / 572 | no chips (small view) | — | — |
 
-The band's top edge is where the pane's own block ends — the placeholder at a
-draft — so it starts 230px below the column's top at the default window and 52px
-below it at the two constrained sizes. The cap's budget is the BAND's, which is
-what `message-input.tsx` measures: `window.innerHeight` minus the band's top edge
-and its padding, less everything in the splash the stack does not decide.
+The band's top edge is the column's own top (104), at every size and in every
+state, because the pane yields the free height whenever it has nothing to paint —
+at a draft because a draft owes no page, and in a settled-empty conversation
+because the read proved it empty. That is the same single row of the pane's rule
+in both cases (see the head of this file). The cap's budget is the BAND's, which
+is what `message-input.tsx` measures: `window.innerHeight` minus the band's top
+edge and its padding, less everything in the splash the stack does not decide.
 
 **What the cap is holding back, in the same run's own numbers.** The stack's own
-content is 217px against its 142px box at 830x572 and 179.5px against 142px at
-900x572, so the cap holds back 75px and 37.5px: uncapped, the band would be
-**491px at 830x572 (75px past its 416px pane, and 75px past the window) and
-453.5px at 900x572 (37.5px past)**. That is the defect the designer measured at
-these sizes, arriving by the chips rather than by the skeleton.
+content is 217px against its 179.5px box at 900x572 and at 830x572, so the cap
+holds back 37.5px at both: uncapped, the band would be **505.5px in a 468px column
+— 37.5px past the pane and 37.5px past the window**. That is the defect the
+designer measured at these sizes, arriving by the chips rather than by the
+skeleton. At the default window nothing is held back: the stack fits uncapped in
+a 347.3px room.
+
+**Where the cap engages is now the sample's call at one of the two sizes, and
+that is a fact about the geometry rather than a flake.** The budget at a 572px
+window is 179.5px, and a draw that wraps into five rows measures exactly that —
+within half a pixel of the budget — while a draw that wraps into six measures
+217px and is capped. So the wide constrained column (900x572, 620px) can be
+drawn short enough to fit while the narrow one (830x572, 550px) wraps past the
+budget; measured on the way to these frames, `--require-cap=830x572,900x572`
+failed six consecutive samples at 900x572 on "this sample never reached the cap"
+and the run that published above engaged it at both. The documented command
+below therefore requires the cap at **830x572**, the size D1 is about and the
+narrowest column at the constrained height, and the 900x572 frames are still held
+to the containment properties at every size (nothing past the pane, no row cut,
+the boundary in the gap) so a frame there cannot show an overflowing stack.
 
 **Rows the cap leaves out are dropped whole, and nothing behind them is
 reachable.** At 830x572 the band carries all 7 sampled suggestions in the
 document (`chips: 7` in the readback) and paints the whole rows that fit — at
-this run's sample, 4 of the 6 rows it lays out. The alternative considered was a scroller, and it
+this run's sample, 5 of the 6 rows it lays out. The alternative considered was a scroller, and it
 was rejected on this app's own numbers: `global-scrollbar-styles.tsx` gives every
 scroll container an 8px scrollbar, so a stack that gains or loses one re-wraps
 the very labels it is measuring, and a wrap that depends on whether it overflowed
@@ -195,63 +233,67 @@ the frames beside them.
 | --- | --- | --- |
 | settled band reading, 1380x872 | greeting 0, skeleton 1, chips 0 | greeting 1, skeleton 0, chips 7 |
 | settled band reading, 900x572 / 830x572 / 800x572 | 0/1/0 · 0/1/0 · 0/0/0 | 1/0/7 · 1/0/7 · 0/0/0 |
-| band box (x, y, w, h) at 1380x872 | 280, 104, 1100, 768 | 280, 333.9, 1100, 538.1 |
-| band box at the three smaller sizes | 280, 104, w, 468 | 280, 156, 620, 416 · 280, 156, 550, 416 · 280, 329.9, 520, 242.1 |
-| consecutive draft frames, per size | 7,165 / 7,148 / 7,164 / 0 | 9,540 / 1,782 / 1,781 / 9,531 (the pane's placeholder, at every size) |
-| traced frames / frames with the echo painted | 31/14 · 34/15 · 30/13 · 34/14 | 37/16 · 36/16 · 39/11 · 38/14 |
+| band box (x, y, w, h) at 1380x872 | 280, 104, 1100, 768 | 280, 104, 1100, 768 |
+| band box at the three smaller sizes | 280, 104, 620, 468 · 280, 104, 550, 468 · 280, 104, 520, 468 | the same three boxes as the before half |
+| loading claims in the document at the draft (placeholders / shimmer bars / outside the band / visible caption) | not read — this reading was added for this round; what this tree paints is its band's own skeleton (`skeleton 1` above) | **0 / 0 / 0 / none at every size** |
+| suggestion stack (rows visible / laid out; box vs content), per size | none — the band paints a skeleton in place of it | 3/3, 104.5px of 104.5px · 5/6, 179.5px of 217px · 5/6, 179.5px of 217px · no chips |
+| consecutive draft frames, per size | 7,165 / 7,148 / 7,164 / 0 | 0 / 0 / 17 / 0 |
+| traced frames / frames with the echo painted | 31/14 · 34/15 · 30/13 · 34/14 | 30/12 · 34/15 · 28/11 · 25/11 |
 | traced frames with a claim AND the echo painted | 0 at every size | 0 at every size |
 | band reading when Send was clicked | skeleton at 1380/900/830 | greeting + chips at 1380/900/830 |
-| the pane's own hold at the draft | `hydrated: false`, `transcriptPainted: false` → the pane collapsed | the same reading, and #150's rule holds the pane on it, so the placeholder is in every after frame |
+| the pane's own hold at the draft (readback) | `draftStreamView.hydrated: false`, `transcriptPainted: false` — this tree predates #150, so its pane paints nothing | `hydrated: false` **and `awaitingHydration: false`**, `transcriptPainted: false` — no page is owed, so the pane makes no claim and yields the column |
 
 Two quantities move between runs and are reported per run rather than pinned.
-The trace length is the harness's own mutation-driven sampling (37/16 here,
-39/11 at 830x572), and the after tree's two settled frames now differ by 9,540 /
-1,782 / 1,781 / 9,531 pixels across the four sizes — **all of it inside the
-pane's placeholder**, whose pulse is the only thing moving in that pair on this
-base. The pair this set shipped before the rebase was byte-identical at 1380x872
-and 800x572 and moved 17 pixels, the composer's caret, at the other two (code
-review round 1's N1 corrected the row-or-caret split; the before tree's reading
-is unchanged). The before tree's pair always moves: 7,165, 7,148 and 7,164
-pixels across the three splash-bearing sizes, which is the reason the pair is
-captured at all. A single still could not show that the skeleton is animating
-rather than painted once. The two movers are named rather than lumped: of the
-7,165 pixels at 1380x872, **7,148 are the skeleton's shimmer inside its own row
-and the remaining 17 are the composer's caret**, which is why the row crop and
-the total are quoted apart.
+The trace length is the harness's own mutation-driven sampling (30/12 here,
+28/11 at 830x572), and the after tree's two settled frames now **do not move at
+all** at 1380x872, 900x572 and 800x572 (0 pixels) and differ by **17 pixels, the
+composer's caret**, at 830x572 — the same row-or-caret split this set shipped
+before the rebase. The movement the previous pass measured in that pair (9,540 /
+1,782 / 1,781 / 9,531) was the pane's placeholder, which the pane no longer
+paints; its absence is one of this round's claims rather than a lost reading.
+The before tree's pair always moves: 7,165, 7,148 and 7,164 pixels across the
+three splash-bearing sizes, which is the reason the pair is captured at all. A
+single still could not show that the skeleton is animating rather than painted
+once. The two movers are named rather than lumped: of the 7,165 pixels at
+1380x872, **7,148 are the skeleton's shimmer inside its own row and the remaining
+17 are the composer's caret**, which is why the row crop and the total are quoted
+apart.
 
-**The pair differs only inside the pane.** Measured with ImageMagick `compare`
-over the two frames of the same size, one tree against the other, and over the
-regions the change cannot reach:
+**The pair differs only inside the chat column.** Measured with ImageMagick
+`compare` over the two frames of the same size, one tree against the other, and
+over the regions the change cannot reach. The regions are this round's: the after
+tree's band now STARTS at the column's top (104) because the pane collapses, so
+there is no "pane above the band" left to measure apart from the band. The
+previous pass's split at the band's top edge measured the pane's placeholder on
+one side of it and the splash on the other.
 
-| Size | whole frame | sidebar (`280xH+0+0`) | header | pane, above the band | band |
-| --- | --- | --- | --- | --- | --- |
-| 1380x872 | 69,851 | **0** | **0** | 10,167 | 59,684 |
-| 900x572 | 87,453 | **0** | **0** | 2,415 | 85,038 |
-| 830x572 | 95,500 | 19,933 | **0** | 2,415 | 75,567 |
-| 800x572 | 114,932 | **0** | **0** | 31,866 | 83,066 |
+| Size | whole frame | sidebar (`280xH+0+0`) | chat chrome (`(W-280)x104+280+0`) | chat column (`(W-280)x(H-104)+280+104`) |
+| --- | --- | --- | --- | --- |
+| 1380x872 | 136,666 | **0** | **0** | 136,666 |
+| 900x572 | 133,947 | **0** | **0** | 133,947 |
+| 830x572 | 137,844 | 19,933 | **0** | 117,911 |
+| 800x572 | 11 | **0** | **0** | 11 |
 
-Nothing outside the pane moved: the header is 0 at every size and the sidebar is
-0 except at 830x572. The pane's own two columns are worth reading apart rather
-than as one number, because they are two different claims: the column above the
-band is the placeholder `main`'s #150 paints on a session-less draft, and the band
-column is this change. The one exception is the 830x572 sidebar, and it is the
-run's own doing rather than the change's: that size is the third load of the run,
-so its sidebar lists the two sessions the run's own sends created, and their
-relative times ("2 minutes ago" against "1 minute ago") are the runs' own clock.
-The default window's pair is clean in every region outside the pane, which is the
-zero worth having rather than assuming — the first pass of this set had the two
-runs' sidebars differing by 15,619 pixels of hover wash, because the driver's own
-click left the pointer on a row. The driver now parks the pointer on neutral
-ground before every shutter.
+Nothing outside the chat column moved: the chrome strip above it is 0 at every
+size and the sidebar is 0 except at 830x572. The one exception is unchanged and
+is the run's own doing rather than the change's: that size is the third load of
+the run, so its sidebar lists the two sessions the run's own sends created, and
+their relative times ("2 minutes ago" against "1 minute ago") are the run's own
+clock. The default window's pair is clean in every region outside the column,
+which is the zero worth having rather than assuming — the first pass of this set
+had the two runs' sidebars differing by 15,619 pixels of hover wash, because the
+driver's own click left the pointer on a row. The driver now parks the pointer on
+neutral ground before every shutter.
 
-**The pane column's numbers are the placeholder's.** The `before` tree here is
-`ef40c81e2`, which predates #150, so this column measures the placeholder
-APPEARING where that tree's band used to be: the band's top edge moves from 104px
-to 333.9px at the default window, and the 10,167 pixels above the band are the
-placeholder's own bars and caption over ground the pre-rebase band occupied. In
-the band itself the two trees differ by the splash: 59,684 pixels at 1380x872,
-where the before tree paints a 28px skeleton row and the after tree paints the
-greeting and seven chips.
+**What the column's numbers say.** At the default window the pair differs by
+136,666 pixels, all inside the column: the before tree paints a 28px skeleton row
+where the after tree paints the greeting and seven chips, and the band's top edge
+is the column's top on both. At 800x572 it is 11 pixels — the composer's caret —
+because the small view paints neither the splash nor a skeleton on either tree
+and the pane no longer pushes the composer down. The previous passes' "pane,
+above the band" column (10,167 / 2,415 / 2,415 / 31,866) has no claims in it left
+to measure: on this state the pane holds nothing, so that region is the band's own
+ground.
 
 **The admission flip, measured frame by frame rather than from stills.** The
 harness records one reading per animation frame for as long as mutations keep
@@ -287,21 +329,31 @@ paints is clean on both trees.
 - **One theme** (`localOperatorDark`). The light palettes are not photographed;
   the band's classes are theme-independent, which is an argument rather than a
   frame.
-- **The pane's `Loading conversation…` in every `after` frame is `main`'s, and
-  this set is not evidence about it.** `transcript-pane.ts`'s
-  `transcriptPaneHoldsPlaceholder` is `recordCount === 0 && !hydrated &&
-  !speaks`; a session-less draft is `hydrated: false` with no records and no
-  statement of its own, so the pane holds for as long as a New chat is open — the
-  readback records exactly that reading (`draftStreamView.hydrated: false`,
-  `transcriptPainted: false`) in the same run that paints the greeting below it.
-  The band is what this change moves and what the driver's assertions read
-  (`data-lo-composer-band`); the pane's half of the screen is photographed, not
-  tested. The two halves are one screen and they make opposite claims, which is
-  recorded here rather than fixed: the pane's rule has no "there is no session"
-  term in it, and giving it one is either a change to `transcript-pane.ts`
-  (extending `session-switch.test.mjs`'s matrix) or a line in `chat-content.tsx`
-  handing the pane the composer's composed fact — neither of which is this
-  branch's, and both of which are for the PR's own review round to route.
+- **The pane's two other states are not staged here, and they are the ones that
+  keep its hold honest.** This set's claim about the pane is the DRAFT: no page is
+  owed, so nothing may claim to be loading, and the readback carries the composed
+  reading (`awaitingHydration: false`) beside the raw one. What it does not carry
+  is a real cold session DURING its history read, or a read that FAILS — the two
+  states in which the pane is supposed to hold and to speak. Those are pinned
+  where they happen rather than photographed here: the 32-row matrix in
+  `scripts/session-switch.test.mjs` (which now walks the same composed input the
+  pane reads, so a session whose read failed still resolves to the notice), and
+  the `hydrating`/`slow` frames of the `session-switch` set, whose rig forces the
+  stream delay and refuses to write a frame without the pane's placeholder on
+  screen. `draft-splash.test.mjs` also drives the shipped hook for both readings:
+  a draft owes nothing, and a cold session does. **That pair was re-run against
+  this head rather than left to a pointer.** `node
+  scripts/session-switch-latency.mjs --frames=…` on this tree, with the switch's
+  stream delay forced to 4s, read `placeholder: true, placeholderOpacity: 1` for
+  `hydrating` and `placeholder: true, placeholderOpacity: 0.72` (dark) / `0.73`
+  (light) for `slow` — the claim IS on screen and at the pulse's trough, which
+  the harness refuses to write the frame without — and `placeholder: false,
+  content: true` for `settled`, which is the same claim RESOLVING when the rows
+  land. Those frames were NOT committed here: `settled`, `error` and `mark` came
+  back byte-identical to the ones that set already carries, and
+  `hydrating`/`slow` are pulse-phase and fixture dependent, so re-stamping
+  another set with this round's pass would claim an attribution the pixels do not
+  make. The reading is the evidence; the committed frames stay theirs.
 - **`model_name: mock`.** No real provider, no real latency, no tool path.
 - **No paint timing.** These are stills plus a DOM-read trace; the trace's clock
   is the harness's own `performance.now()`, not a compositor timeline.
@@ -311,8 +363,10 @@ paints is clean on both trees.
   CONVERSATION, which this harness does not stage (QA's independent pass
   reproduced it on both trees and owns that reading). What the frames do carry is
   the after tree's containment at those sizes, with the cap demonstrably engaged
-  — `--require-cap=830x572,900x572` makes the driver reload and re-sample until
-  it is, so the frame cannot be of a stack that never needed containing.
+  at 830x572 — `--require-cap=830x572` makes the driver reload and re-sample
+  until it is, so the frame cannot be of a stack that never needed containing —
+  and the 900x572 frame held to the same containment properties, though whether
+  the cap engages there depends on the sample's wrap (see *The containment*).
 
 ## Where this set is declared
 
@@ -353,9 +407,9 @@ LOCAL_OPERATOR_DESKTOP_BACKEND_URL="http://127.0.0.1:$PORT" \
     --sizes=1380x872,900x572,830x572,800x572
 
 # restart the backend on a fresh config dir, then:
-# AFTER - the branch worktree, port 5210 (this is the re-take the rebase ran)
+# AFTER - the branch worktree, port 5210 (this is the re-take this round ran)
 LO_DRAFT_SPLASH_PORT=5210 ... node scripts/draft-splash-capture.mjs --label=after \
-  --sizes=1380x872,900x572,830x572,800x572 --require-cap=830x572,900x572
+  --sizes=1380x872,900x572,830x572,800x572 --require-cap=830x572
 ```
 
 Ports are `LO_DRAFT_SPLASH_PORT` (5204 in the config's default, 5210/5212 for
@@ -365,19 +419,33 @@ list, each with its own page load and its own draft → send → settled pass; t
 first entry carries the full per-frame flip trace in the readback. `--require-cap`
 names the sizes at which the run must have reached the suggestion stack's cap,
 which the driver enforces by reloading for a new random sample and failing rather
-than publishing a frame that proves nothing. The driver starts and stops its own
-Vite server, launches its own Chrome, and writes the frames and readbacks into
+than publishing a frame that proves nothing — `830x572` alone since the pane
+yields the column, because at the wider constrained column a short draw fits the
+budget and the requirement would fail runs for a reason that is not a defect (see
+*The containment, and its numbers*). The driver starts and stops its own Vite
+server, launches its own Chrome, and writes the frames and readbacks into
 this directory; it fails loudly instead of publishing a degraded run — including
 when `src/` is dirty against the commit its readback is about to record.
 
-**This set was re-shot on the rebase onto `main` (`142e86904`), and only the
-`after` half was.** The upstream delta (#150) changes what the same screen
-renders — the band's hydration branch is gone and the pane paints its own
-placeholder — so an `after` frame taken before the rebase would be a picture of a
-tree that no longer exists. The re-take is the `AFTER` command above, at the
-rebased head, and its readback records that head and the source tree the frames
-are of. The `before` half is NOT re-shot and is left where it is: it is a picture
-of `ef40c81e2` (see the generation note above), and the driver cannot honestly
+**This set has been re-shot twice on the `after` side, and only the `after` half
+each time.** The first was the rebase onto `main` (`142e86904`): the upstream
+delta (#150) changed what the same screen renders — the band's hydration branch is
+gone and the pane paints its own placeholder — so an `after` frame taken before
+it would be a picture of a tree that no longer exists. The second is this round,
+which fixed that placeholder's rule: the pane no longer keeps 230px of the column
+at the default window and 156px at the two constrained sizes, so the band's splash
+owns the column and every after frame carrying the old geometry would be wrong in
+the same way. Both re-takes are the `AFTER` command above, at their own head, and
+each readback records the head and the source tree it is a picture of. The
+`before` half is NOT re-shot and is left where it is: it is a picture of
+`ef40c81e2` (see the generation note above), and the driver cannot honestly
 photograph the new base in that role — a draft on `142e86904` renders neither the
 band's skeleton nor its greeting, so the `--label=before` expectation (the
 skeleton in the band) would fail the run rather than publish a frame.
+
+The document-wide loading-claim reading is this round's addition to the rig
+(`draft-splash-evidence.tsx`'s `readLoadingClaims`, asserted by the driver before
+the shutters at every size). It is deliberately asked of the DOCUMENT and not of
+the band: the pane's placeholder renders outside `[data-lo-composer-band]`, and a
+band-scoped reading passed every assertion this driver had while the two
+contradictory claims were on screen together.
