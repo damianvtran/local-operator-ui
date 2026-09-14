@@ -21,6 +21,18 @@ const CHECK_MS = 500;
 const FAILURES_BEFORE_BACKOFF = 3;
 /** Ceiling on the backed-off cadence: ~1 attempt/minute, not ~7,200/hour. */
 const MAX_BACKOFF_MS = 60_000;
+/**
+ * The wait after `attempts` consecutive attempts that got nowhere.
+ *
+ * One function because two kinds of attempt back off (a refusal that failed and
+ * a refusal that cannot resolve) and two copies of the ladder would be two
+ * places to change the ceiling.
+ */
+const backoffMs = (attempts: number) =>
+	Math.min(
+		MAX_BACKOFF_MS,
+		CHECK_MS * 2 ** (attempts - FAILURES_BEFORE_BACKOFF + 1),
+	);
 export function useCompletionView(
 	frontend: CanonicalFrontendState | null | undefined,
 	ready: boolean,
@@ -48,6 +60,16 @@ export function useCompletionView(
 		let pending = false;
 		let acknowledged = false;
 		let failures = 0;
+		/**
+		 * Consecutive SUPERSEDED refusals for the token this attempt rendered.
+		 *
+		 * Its own counter rather than an arm of `failures`, because the two mean
+		 * different things: a failure is a call that did not work, while a
+		 * superseded refusal is a call that worked exactly as promised and whose
+		 * remedy is to wait for the projection to name the current token. Only the
+		 * first few are free -- see the catch below for why they are bounded.
+		 */
+		let superseded = 0;
 		let nextAttempt = 0;
 		let timer = 0;
 		const stop = () => {
@@ -72,19 +94,37 @@ export function useCompletionView(
 			);
 			if (!element) return;
 			const rect = element.getBoundingClientRect();
-			const x = rect.left + rect.width / 2;
 			const y = rect.bottom - 2;
+			if (rect.width <= 0 || rect.height <= 0 || y < 0 || y >= innerHeight)
+				return;
+			/*
+			 * SEVERAL SAMPLES, not one pixel. The gate exists to prove the END of this
+			 * result is on screen -- not merely that a row exists -- so the probe has to
+			 * be a hit test rather than a layout measure. But a single sample at the
+			 * row's centre is at the mercy of the app's OWN floating controls, and it
+			 * was: measured on the real app, the "Scroll to bottom" button sits at the
+			 * transcript's bottom centre, over the last row's bottom edge, and the one
+			 * sample landed on it -- so the acknowledgement was refused for as long as
+			 * the conversation stayed open, over a result the reader was looking at.
+			 * (That control also stayed hit-testable while invisible; it no longer is.
+			 * Both halves are needed: the overlay was a bug and the probe was fragile.)
+			 *
+			 * One free sample is enough, and the claim it supports is unchanged: an
+			 * overlay that really hides the row -- a modal scrim, which spans the
+			 * viewport -- covers every sample, so a reader who cannot see the result
+			 * still cannot receipt it.
+			 */
+			const coveredBy = (x: number): boolean => {
+				if (x < 0 || x >= innerWidth) return true;
+				const top = document.elementFromPoint(x, y);
+				return !top || !element.contains(top);
+			};
 			if (
-				rect.width <= 0 ||
-				rect.height <= 0 ||
-				x < 0 ||
-				x >= innerWidth ||
-				y < 0 ||
-				y >= innerHeight
+				[0.25, 0.5, 0.75].every((fraction) =>
+					coveredBy(rect.left + rect.width * fraction),
+				)
 			)
 				return;
-			const top = document.elementFromPoint(x, y);
-			if (!top || !element.contains(top)) return;
 			pending = true;
 			void desktopResult<CompletionAttention>({
 				op: "sessions.seen",
@@ -92,6 +132,9 @@ export function useCompletionView(
 				completionToken,
 			})
 				.then((state) => {
+					// Any answer at all means this attempt got through, so whatever
+					// streak of superseded refusals preceded it is over.
+					superseded = 0;
 					if (!receiptSettled(state, sessionId)) {
 						// Resolved, but the conversation is NOT read: the receipt did not
 						// land on the completion this attempt rendered (the token was
@@ -111,12 +154,28 @@ export function useCompletionView(
 					// No optimistic clear. A rejected native-focus check or stale
 					// token leaves authoritative state intact and permits a retry.
 					if (isSupersededReceipt(error)) {
-						// Expected and self-healing, NOT a failure: the backend has
-						// moved past the token this attempt rendered, and the state it
-						// hands back names the current one. Backing off would only
-						// delay the re-arm.
+						// Expected and self-healing to begin with: the backend has moved
+						// past the token this attempt rendered, and the state it publishes
+						// names the current one. NOT a failure while the projection is one
+						// push behind -- but nothing here bounds how long that lasts, so a
+						// projection that never advances would be re-attempted at the flat
+						// cadence (2/s) for as long as the conversation stays open, in
+						// silence. It therefore backs off on the same ladder and says so
+						// once, and the re-arm is untouched: a state that names the current
+						// token re-runs this effect with these counters at zero.
+						superseded += 1;
+						if (superseded === FAILURES_BEFORE_BACKOFF) {
+							console.warn(
+								`[attention] ${sessionId} still names a superseded completion after ${superseded} attempts; backing off until the state re-arms`,
+								error,
+							);
+						}
+						if (superseded >= FAILURES_BEFORE_BACKOFF) {
+							nextAttempt = Date.now() + backoffMs(superseded);
+						}
 						return;
 					}
+					superseded = 0;
 					//
 					// Backed off and logged ONCE at the threshold because the
 					// failing cases are persistent, not transient: a backend that
@@ -132,12 +191,7 @@ export function useCompletionView(
 						);
 					}
 					if (failures >= FAILURES_BEFORE_BACKOFF) {
-						nextAttempt =
-							Date.now() +
-							Math.min(
-								MAX_BACKOFF_MS,
-								CHECK_MS * 2 ** (failures - FAILURES_BEFORE_BACKOFF + 1),
-							);
+						nextAttempt = Date.now() + backoffMs(failures);
 					}
 				})
 				.finally(() => {
