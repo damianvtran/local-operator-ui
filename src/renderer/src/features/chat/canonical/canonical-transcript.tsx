@@ -483,11 +483,22 @@ const NoticeRow = memo(function NoticeRow({
 					// reader the half that says what happened.
 					dense
 					verbOverride={record.category ?? record.customType.replace(/_/g, " ")}
+					// The provider/model the incident names rides the ledger's
+					// machine-voice object column: it is an identifier, not prose, and
+					// "which provider died" is the decision-relevant half for an
+					// operator running several of them.
+					object={record.provider ?? undefined}
 					narration={record.headline}
 					failed={record.level === "error"}
 					wrap
 					glyph={<Icon />}
 					details={
+						/* No extra indent: the disclosure's content box already sits on
+						   the ledger's body edge (x250 in the 1280 column, the same as a
+						   tool row's args block), which was measured in the DOM rather
+						   than read off a frame — see the design round's D4 in the PR
+						   thread. Indenting the paragraph further put it at x270, off
+						   the edge it already shared. */
 						record.detail ? (
 							<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
 								{record.detail}
@@ -528,11 +539,16 @@ const NoticeRow = memo(function NoticeRow({
 				// Same column as the tool rows, so the same pitch: a notice must not
 				// be the row that makes a run look ragged.
 				dense={!long}
-				verbOverride={long ? "Notice" : record.text}
+				// The row states the notice's OWN opening line, not the word
+				// "Notice": a bulky notice used to render as the literal type name
+				// with the whole body behind the chevron, which is the defect the
+				// operator reported one register down. The body stays behind the
+				// disclosure, because what makes a notice long is that it is bulky.
+				verbOverride={long ? firstLine(record.text) : record.text}
 				failed={level === "error"}
 				// The row carries the whole message when it is not collapsed, so
 				// it must not be clipped to the rail width.
-				wrap={!long}
+				wrap
 				glyph={<Icon />}
 				details={
 					long ? (
@@ -545,6 +561,13 @@ const NoticeRow = memo(function NoticeRow({
 		</MessageContainer>
 	);
 });
+
+/** The first line of a body, for a row that discloses the rest of it. */
+const firstLine = (text: string): string =>
+	text
+		.split("\n")
+		.map((line) => line.trim())
+		.find((line) => line.length > 0) ?? text.trim();
 
 // ---------------------------------------------------------------- list
 
