@@ -459,11 +459,17 @@ result once it lands.
 
 ### 6.1 The trigger
 
-**Icon: `Activity`.** Not `Users`, not `ListChecks`. Those two glyphs already
-mean *a specific tool* everywhere else in this app — they are the ledger rows
-for `task`/`agent` and for `todo` respectively (`tool-glyphs.ts:54-79`) — and a
-header button wearing one of them would read as that tool rather than as the
-view over both. One new symbol is cheaper than re-teaching an existing one.
+**Icon: `Info`, not `Activity`.** The heartbeat claimed *liveness*, which is not
+what this pane holds — a roster, a plan and the connections the session has are
+facts about a run, not a pulse — and the incumbent's justification was only ever
+negative. `Info` is this app's own mark for "there is more to read here"; the
+full argument, and the candidate table it survives, is
+`docs/composer-status-tabs.md` § 6. The earlier half of this reasoning still
+holds and is why `Users`/`ListChecks` were never options: those two glyphs
+already mean *a specific tool* everywhere else in this app — they are the ledger
+rows for `task`/`agent` and for `todo` respectively (`tool-glyphs.ts:54-79`) — and
+a header button wearing one of them would read as that tool rather than as the
+view over both.
 
 A single 8px `danger` dot at the button's top-right corner carries the
 unseen-failure state described in § 3.3. It is not decoration and it is not a
