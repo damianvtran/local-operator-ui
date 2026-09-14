@@ -196,6 +196,70 @@ export const STORIES = [
 	   its own content — one row and its body — because the marker's visibility at
 	   rest is the whole claim. */
 	["chat-tool-rows--diff-body-narrow-wrapped-cap", 560, 830],
+	/* The expanded detail: the operator's report was that it read as
+	   `JSON.stringify(args)` in one bordered box with the output in a second. The
+	   review question is a READING question — does the expansion read as one pane,
+	   with a labelled block per argument and the result under a label — so the
+	   frames are the evidence and the assertions are elsewhere (no JSON
+	   punctuation reaches the pane, no envelope reaches a receipt row: see the
+	   sections in `tool-row.test.mjs` and `transcript-reducer.test.mjs`, because
+	   an absence cannot be photographed). Heights are the stories' own, read off
+	   the rendered frame. */
+	["chat-tool-rows--expanded-detail", 1280, 760],
+	/* Three results side by side — a JSON object, a JSON array, and a result that
+	   only looks like JSON — because the boundary between "structured" and
+	   "printed verbatim" is the rule this surface can get wrong most quietly. */
+	["chat-tool-rows--expanded-json-result", 1280, 760],
+	/* The failed call, where the TUI keeps the arguments beside the error: a
+	   failure produces no diff, so the inputs are the only account of what was
+	   attempted. */
+	["chat-tool-rows--expanded-failed-edit", 1280, 420],
+	/* The two receipt rows on the shared ledger, with a collapsed peer row beside
+	   an expanded one — the pair that shows what the disclosure is FOR. */
+	["chat-tool-rows--receipt-rows", 1280, 560],
+	/* The cap, which no earlier frame exercised: every pane committed before this
+	   one had `scrollHeight == clientHeight`, so nothing showed that a long
+	   argument list pushed the result's label off the pane and that a scroll
+	   region's overflow is invisible at rest. Two viewports because the narrow
+	   column wraps the same script into more rows, and the report has to be a
+	   function of the content rather than of the wide layout. */
+	["chat-tool-rows--expanded-overflow", 1280, 1100],
+	["chat-tool-rows--expanded-overflow-narrow", 560, 1100],
+	/* The same narrow story with every capped section parked at its own END, the
+	   state the round-3 pages were measured at: 0.203px of the first section's last
+	   line and 0.469px of the second's stay outside the box at this width, because
+	   a non-composited scroller saturates on an integer offset, and the count read
+	   that residue as a whole line. It is a SECOND entry for one story rather than
+	   a second story because the difference is a scroll position, which is browser
+	   state a story cannot set — the reason `scrollToEnd` exists above. The at-rest
+	   frames stay in their own directory: the pair is the point, since the fix is
+	   that the count goes QUIET here while the box does not move. */
+	[
+		"chat-tool-rows--expanded-overflow-narrow",
+		560,
+		1100,
+		{
+			dir: "expanded-overflow-narrow-end",
+			scrollToEnd: "[data-detail-section] > div",
+		},
+	],
+	/* The two results that hold nothing, and the row that holds nothing to
+	   disclose. The third row is the readable half of the gate fix: a call whose
+	   arguments are an all-empty container and which printed nothing is a STATIC
+	   row here, where it used to offer a click onto an empty bordered box. */
+	["chat-tool-rows--expanded-empty-result", 1280, 420],
+	/* The hostile sender, built through the production `peerFields` so the frame
+	   is a picture of the app's own sanitiser output rather than of a hand-built
+	   sender the app cannot produce: a bidi override beside the pid, two control
+	   sequences, and a name long enough to be bounded. */
+	["chat-tool-rows--receipt-hostile-sender", 1280, 300],
+	/* Both row KINDS in ONE run — three tool calls with a peer receipt and a wake
+	   receipt between them — because every frame before it carried one kind at a
+	   time, so "the receipts share the tool rows' own name column" rested on the
+	   single `toolNameColumn` measurement rather than on a picture (design round 2
+	   stated that gap itself). Sized to the five rows it holds with every one of
+	   them opened, for the reason `working-labels` is. */
+	["chat-tool-rows--mixed-run", 1280, 830],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
@@ -914,7 +978,12 @@ export function partialAddedFields(
 	at = new Date().toISOString(),
 ) {
 	return addedFrameCount > 0
-		? { addedFrames: addedFrameCount, addedSurfaces, addedAt: at, addedAtHead: head }
+		? {
+				addedFrames: addedFrameCount,
+				addedSurfaces,
+				addedAt: at,
+				addedAtHead: head,
+			}
 		: {};
 }
 
@@ -1406,6 +1475,42 @@ const main = async () => {
 					pointerType: "mouse",
 				});
 			}
+			/*
+			 * A SCROLL POSITION, for the frame whose claim is a section's END.
+			 *
+			 * Like `:hover` above, this is browser state rather than story state: no
+			 * story can scroll its own scroller, and a story that faked an offset
+			 * would be evidence about the fake. So the rig sets each matched element to
+			 * its own end before the shutter — `scrollTop = scrollHeight`, which the
+			 * browser clamps to the real maximum, so the frame holds the state a reader
+			 * reaches by scrolling rather than an offset this script chose.
+			 *
+			 * Two things THROW, for the hover's reason (the resting state and the
+			 * scrolled one are indistinguishable in a directory listing): a selector
+			 * that matches nothing, and a selector whose matches all sit at offset 0 —
+			 * which is a resting frame filed under a name that claims an end.
+			 */
+			if (options?.scrollToEnd) {
+				const { result: scrolled } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const els = [...document.querySelectorAll(${JSON.stringify(options.scrollToEnd)})];
+						for (const el of els) el.scrollTop = el.scrollHeight;
+						return els.map((el) => el.scrollTop);
+					})()`,
+				});
+				const offsets = scrolled.value ?? [];
+				if (offsets.length === 0) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollToEnd selector \`${options.scrollToEnd}\` matched nothing`,
+					);
+				}
+				if (!offsets.some((top) => top > 0)) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollToEnd selector \`${options.scrollToEnd}\` matched ${offsets.length} element(s) and none of them scrolls — the frame would be the resting state under a name that claims an end`,
+					);
+				}
+			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
@@ -1420,11 +1525,25 @@ const main = async () => {
 			 * so a sweep does not overwrite itself. Single-width stories keep the
 			 * plain path, which keeps every existing frame reference valid.
 			 */
-			const widths = STORIES.filter(([s]) => s === story);
+			/*
+			 * A story captured at several widths writes one directory per width,
+			 * so a sweep does not overwrite itself. Single-width stories keep the
+			 * plain path, which keeps every existing frame reference valid.
+			 *
+			 * An entry may name its own directory instead (`dir`), which is how a
+			 * story is captured in a SECOND state — a scroll position, where the
+			 * state is partial in a way the viewport cannot describe. Those entries
+			 * are excluded from the width count above, or adding one would rename
+			 * the frames of the state that was already there.
+			 */
+			const widths = STORIES.filter(
+				([s, , , entryOptions]) => s === story && !entryOptions?.dir,
+			);
 			const leaf =
-				widths.length > 1
+				options?.dir ??
+				(widths.length > 1
 					? `${story.split("--")[1]}@${width}`
-					: story.split("--")[1];
+					: story.split("--")[1]);
 			const dir = join(OUT, story.split("--")[0], leaf);
 			/*
 			 * Whether this directory existed BEFORE the run, recorded before
@@ -1648,7 +1767,11 @@ const main = async () => {
 						 * additions: keying it on the accumulated total would let a later commit of
 						 * the same pass re-stamp the citation for an earlier commit's frames.
 						 */
-						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						const added = partialAddedFields(
+							addedFrames.length,
+							addedSurfaces,
+							head,
+						);
 						/*
 						 * A pass that added nothing leaves the WHOLE added-pass record
 						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
@@ -1663,10 +1786,14 @@ const main = async () => {
 								? {}
 								: {
 										addedFrames:
-											(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-											addedFrames.length,
+											(sameHead
+												? (previous.partialCapture?.addedFrames ?? 0)
+												: 0) + addedFrames.length,
 										addedSurfaces: [
-											...new Set([...(sameHead ? priorSurfaces : []), ...addedSurfaces]),
+											...new Set([
+												...(sameHead ? priorSurfaces : []),
+												...addedSurfaces,
+											]),
 										],
 									};
 						const citationFields =
