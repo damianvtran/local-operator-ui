@@ -174,11 +174,13 @@ export const RunPanel = ({
 	/** One line above the roster when a child could not be opened at all. */
 	const [unopenable, setUnopenable] = useState(false);
 	/*
-	 * The row the reader was opened from, kept so "back" can return focus to it —
-	 * and, separately, so the header's facts survive the child leaving
-	 * `frontend.jobs` (a settled child is swept minutes later, `§ 5.2`).
+	 * The header's own facts, cached so they survive the child leaving
+	 * `frontend.jobs` (a settled child is swept minutes later, `§ 5.2`). The row the
+	 * reader was OPENED FROM is deliberately not recorded any more: the lineage
+	 * walk below gives `leaveReader` a better answer — the nearest ancestor that is
+	 * actually a row — where a single id could only ever name the page the user
+	 * landed on (round 2, Q2-1/U2-1).
 	 */
-	const openedFrom = useRef<string | null>(null);
 	const cachedRow = useRef<SubagentRow | null>(null);
 
 	const openRow = useMemo(
@@ -217,20 +219,37 @@ export const RunPanel = ({
 	 * Focus returns to the row it came from — one rAF later, because the roster has
 	 * to paint before its button can take focus — and the unopenable note is
 	 * cleared, since it describes a child the reader has now left.
+	 *
+	 * WHICH row is the whole of round 2's Q2-1/U2-1. The child the reader was
+	 * opened FROM is not always a roster row: a grandchild, and every page reached
+	 * by descending (the `N child` control, a crumb, a peer stepper, all of which
+	 * call `openChild`), has no row by design (`§ 4`). The query then returned null,
+	 * `?.focus()` was a no-op, and focus fell to `<body>` — where the ladder's own
+	 * guard refused every later press, so the pane could not be closed with
+	 * `Escape` at all. The home for those pages is the nearest ancestor that IS a
+	 * row — walking up the reader's own path, which is why `path` is a dependency
+	 * here — and the trigger is the fallback when even that is not on screen (a row
+	 * behind `Show N more` is a member without a rendered row). Focus is never left
+	 * to land wherever it likes: the one outcome this may not have is `<body>`.
 	 */
 	const leaveReader = useCallback(() => {
-		const from = openedFrom.current;
 		onReaderChildChange(null);
 		setUnopenable(false);
-		if (!from) return;
 		requestAnimationFrame(() => {
-			document
-				.querySelector<HTMLButtonElement>(
-					`[data-run-panel-row="${CSS.escape(from)}"] button`,
+			const row = [...path]
+				.reverse()
+				.map((entry) =>
+					document.querySelector<HTMLButtonElement>(
+						`[data-run-panel-row="${CSS.escape(entry.id)}"] button`,
+					),
 				)
-				?.focus();
+				.find((element) => element !== null);
+			(
+				row ??
+				document.querySelector<HTMLButtonElement>("[data-run-panel-trigger]")
+			)?.focus();
 		});
-	}, [onReaderChildChange]);
+	}, [onReaderChildChange, path]);
 
 	/*
 	 * BACK: one level UP the lineage, and out of the pane at the first level
@@ -268,14 +287,12 @@ export const RunPanel = ({
 		 * is the trigger's own effect rather than a call here, because this button
 		 * unmounts with the pane and a `focus()` on a detached node is a no-op.
 		 */
-		openedFrom.current = null;
 		setUnopenable(false);
 		onClose();
 	}, [onClose, onReaderChildChange, path]);
 
 	const openChild = useCallback(
 		(id: string) => {
-			openedFrom.current = id;
 			cachedRow.current = null;
 			setUnopenable(false);
 			onReaderChildChange(id);
@@ -313,12 +330,37 @@ export const RunPanel = ({
 	 */
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
 			const target = event.target instanceof Element ? event.target : null;
 			if (!target) return;
 			const fromTrigger = target.closest("[data-run-panel-trigger]") !== null;
 			const inPane = sectionRef.current?.contains(target) ?? false;
-			if (!fromTrigger && !inPane) return;
+			/*
+			 * A press carrying no element of its own — `<body>`, which is where focus
+			 * lands when it is lost — still belongs to the pane while the pane is open
+			 * (round 2, Q2-1/U2-1). Leave the reader without a row to focus (below) and
+			 * the next press arrives from `<body>`; a guard that names only the trigger
+			 * and the section then refuses the one key the design promises there.
+			 */
+			const onDocument =
+				target === document.body || target === document.documentElement;
+			const mine = fromTrigger || inPane;
+			if (!mine && !onDocument) return;
+			/*
+			 * `defaultPrevented` is how a layer INSIDE the pane claims the press first —
+			 * Radix's `DismissableLayer` preventDefaults BEFORE it dismisses, from a
+			 * CAPTURE-phase listener on the document (`react-dismissable-layer`'s
+			 * `handleKeyDown`, `{ capture: true }`), so the bail below is what used to
+			 * leave a press eaten by a layer nothing in this pane opens deliberately: the
+			 * only dismissable layers here are the TOOLTIPS on the pane's own chrome and
+			 * the trigger. When the press came FROM that chrome it is still the pane's to
+			 * answer — round 2's D9 measured the first `Escape` after a reader dismissing
+			 * a tooltip and the pane staying open. A press from `<body>` that something
+			 * else has already claimed stays deferred, and so does anything outside the
+			 * pane. If a menu or a select is ever added inside this pane, THIS is the rule
+			 * that has to be revisited: its own `Escape` is a press whose target is in
+			 * here.
+			 */
+			if (event.defaultPrevented && !mine) return;
 			if (
 				event.key === "[" &&
 				(event.metaKey || event.ctrlKey) &&
@@ -357,7 +399,6 @@ export const RunPanel = ({
 	useEffect(() => {
 		onReaderChildChange(null);
 		setUnopenable(false);
-		openedFrom.current = null;
 		cachedRow.current = null;
 	}, [sessionId]);
 
@@ -631,7 +672,6 @@ export const RunPanel = ({
 					onUnopenable={() => {
 						onReaderChildChange(null);
 						setUnopenable(true);
-						openedFrom.current = null;
 					}}
 				/>
 			) : (
