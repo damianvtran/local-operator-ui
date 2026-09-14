@@ -1,15 +1,23 @@
-import type { ExecutionVariable } from "@shared/api/local-operator/types";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import type {
+	SessionVariable,
+	SessionVariablesObserved,
+	VariableWrite,
+} from "@shared/api/local-operator/session-variables-api";
+import { isSessionVariablesMissing } from "@shared/api/local-operator/session-variables-api";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import {
-	useAgentExecutionVariables,
-	useCreateAgentExecutionVariable,
-	useDeleteAgentExecutionVariable,
-	useUpdateAgentExecutionVariable,
-} from "@shared/hooks/use-agent-execution-variables";
+	useCreateSessionVariable,
+	useDeleteSessionVariable,
+	useSessionVariables,
+	useUpdateSessionVariable,
+} from "@shared/hooks/use-session-variables";
 import { cn } from "@shared/lib/utils";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ChevronDown,
 	ChevronRight,
@@ -19,11 +27,32 @@ import {
 	Trash2,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { VariableFormDialog } from "./variable-form-dialog";
 
 type CanvasVariablesViewerProps = {
-	conversationId: string;
+	/**
+	 * The canonical session whose code memory this panel shows, or `undefined`
+	 * for a staged draft that has no session yet.
+	 *
+	 * Threaded from `chat-page.tsx` through `chat-content.tsx` and
+	 * `canvas/index.tsx`, exactly as `cwd` is, and deliberately NOT re-derived
+	 * here from `conversationId` or `agentId`: those are canvas-store keys, so
+	 * they are the draft key while a chat is staged and the session id once it
+	 * exists - which is precisely the confusion that made this panel address a
+	 * session id at an agent-registry route and 404 on every load. The one
+	 * question this panel asks the backend is "what is in this session's
+	 * namespace", and the backend can only answer it for a real session id.
+	 */
+	sessionId?: string;
 };
 
 /**
@@ -46,20 +75,10 @@ const truncateText = (text: string, maxLength: number): string => {
 	return `${text.substring(0, maxLength)}...`;
 };
 
-// Define editable variable types
-const EDITABLE_TYPES: Record<string, true> = {
-	str: true,
-	int: true,
-	float: true,
-	list: true,
-	dict: true,
-	bool: true,
-};
-
 // Individual variable display component
 type VariableDisplayProps = {
-	variable: ExecutionVariable;
-	onEdit: (variable: ExecutionVariable) => void;
+	variable: SessionVariable;
+	onEdit: (variable: SessionVariable) => void;
 	onDelete: (variableKey: string) => void;
 };
 
@@ -69,11 +88,18 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 		const [copied, setCopied] = useState(false);
 		const contentId = useId();
 
-		// Check if variable type is editable
-		const isEditable = useMemo(
-			() => EDITABLE_TYPES[variable.type] === true,
-			[variable.type],
-		);
+		/*
+		 * Editability is the BACKEND's answer, not a local list of type names.
+		 *
+		 * A table here would be a second copy of the coercion table the write
+		 * path uses, and the two are free to disagree: the version this replaced
+		 * offered `string`, `boolean`, `object` and `array` in the form while the
+		 * worker's table had `str`/`bool`/`list`/`dict`, so an edit the panel
+		 * offered could only be refused. `editable` is computed server-side from
+		 * the same table the value is coerced with, so "the panel offers an edit"
+		 * and "the write path accepts it" cannot drift apart.
+		 */
+		const isEditable = variable.editable;
 
 		// Memoize string value conversion with truncation
 		const stringValue = useMemo(() => String(variable.value), [variable.value]);
@@ -276,41 +302,61 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 VariableRow.displayName = "VariableRow";
 
 export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
-	({ conversationId }) => {
-		const agentId = conversationId;
-
+	({ sessionId }) => {
 		const [isFormOpen, setIsFormOpen] = useState(false);
 		const [editingVariable, setEditingVariable] =
-			useState<ExecutionVariable | null>(null);
+			useState<SessionVariable | null>(null);
 		const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 		const [variableToDeleteKey, setVariableToDeleteKey] = useState<
 			string | null
 		>(null);
 
-		const {
-			data: variablesResponse,
-			isLoading,
-			error,
-			isError,
-			// refetch: refetchVariables, // Not directly used, relying on query invalidation
-		} = useAgentExecutionVariables(agentId);
-
-		const createVariableMutation = useCreateAgentExecutionVariable();
-		const updateVariableMutation = useUpdateAgentExecutionVariable();
-		const deleteVariableMutation = useDeleteAgentExecutionVariable();
-
-		// Memoize variables array
-		const variables = useMemo(
-			() => variablesResponse?.result?.execution_variables ?? [],
-			[variablesResponse?.result?.execution_variables],
+		/*
+		 * The capability gate comes first, and it is the only honest way to
+		 * handle an older backend: an unadvertised surface means the routes are
+		 * not there, so the panel offers the update rather than firing a call it
+		 * knows will 404. `undefined` capabilities (still loading, or this app
+		 * did not start a backend) is also false, so the gate fails closed.
+		 */
+		const capabilities = useDesktopCapabilities();
+		const supported = desktopFeatureEnabled(
+			capabilities.data,
+			"session_variables",
 		);
+
+		const { data, isLoading, error, isError } = useSessionVariables(
+			sessionId,
+			supported,
+		);
+
+		const createVariableMutation = useCreateSessionVariable();
+		const updateVariableMutation = useUpdateSessionVariable();
+		const deleteVariableMutation = useDeleteSessionVariable();
+
+		/*
+		 * The last list the backend actually read.
+		 *
+		 * A `busy` answer means "a cell is running; the namespace cannot be read
+		 * right now" and carries no variables by design. Blanking the panel there
+		 * would turn a running cell into "nothing stored yet", so the previous
+		 * reading is kept and the reading affordance sits beside it. Only a
+		 * reading that was never taken renders the affordance alone.
+		 */
+		const lastObserved = useRef<SessionVariablesObserved | null>(null);
+		useEffect(() => {
+			if (data?.state === "observed") lastObserved.current = data;
+		}, [data]);
+
+		const observed = data?.state === "observed" ? data : lastObserved.current;
+		const isBusy = data?.state === "busy";
+		const variables = useMemo(() => observed?.variables ?? [], [observed]);
 
 		const handleOpenCreateForm = useCallback(() => {
 			setEditingVariable(null);
 			setIsFormOpen(true);
 		}, []);
 
-		const handleOpenEditForm = useCallback((variable: ExecutionVariable) => {
+		const handleOpenEditForm = useCallback((variable: SessionVariable) => {
 			setEditingVariable(variable);
 			setIsFormOpen(true);
 		}, []);
@@ -321,83 +367,96 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 		}, []);
 
 		const handleSubmitVariableForm = useCallback(
-			async (data: ExecutionVariable) => {
-				if (!agentId) {
-					showErrorToast("Agent ID is missing.");
-					return;
-				}
+			async (write: VariableWrite) => {
+				// Unreachable through the UI (the form is only offered with a
+				// session), but the panel never invents an identity to write to.
+				if (!sessionId) return;
 				try {
 					if (editingVariable) {
 						// Update existing variable
 						await updateVariableMutation.mutateAsync({
-							agentId,
-							variableKey: editingVariable.key, // Key cannot be changed
-							variableData: { ...data, key: editingVariable.key },
+							sessionId,
+							...write,
+							key: editingVariable.key, // Key cannot be changed
 						});
 					} else {
-						// Create new variable
-						await createVariableMutation.mutateAsync({
-							agentId,
-							variableData: data,
-						});
+						await createVariableMutation.mutateAsync({ sessionId, ...write });
 					}
-					// Toast for success/error is handled by mutation hooks
-					// refetchVariables(); // Implicitly handled by query invalidation in hooks
+					// The toast, success or refusal, belongs to the mutation hook:
+					// it is the layer that holds the backend's own sentence.
 				} catch (e) {
-					// Error already shown by mutation hook's onError
+					// Rethrown so the dialog stays open on a refusal - the form is
+					// where the user fixes a reserved name or a bad value.
 					console.error("Submission failed in component:", e);
+					throw e;
 				}
 			},
 			[
-				agentId,
+				sessionId,
 				editingVariable,
 				createVariableMutation,
 				updateVariableMutation,
 			],
 		);
 
-		const handleDeleteVariable = useCallback(
-			async (variableKey: string) => {
-				if (!agentId) {
-					showErrorToast("Agent ID is missing.");
-					return;
-				}
-				setVariableToDeleteKey(variableKey);
-				setIsDeleteConfirmOpen(true);
-			},
-			[agentId], // deleteVariableMutation will be a dependency of confirmDeleteVariable
-		);
+		const handleDeleteVariable = useCallback((variableKey: string) => {
+			setVariableToDeleteKey(variableKey);
+			setIsDeleteConfirmOpen(true);
+		}, []);
 
 		const confirmDeleteVariable = useCallback(async () => {
-			if (!agentId || !variableToDeleteKey) {
-				showErrorToast("Agent ID or variable key is missing for deletion.");
-				setIsDeleteConfirmOpen(false); // Close modal even if there's an issue
+			if (!sessionId || !variableToDeleteKey) {
+				setIsDeleteConfirmOpen(false);
 				setVariableToDeleteKey(null);
 				return;
 			}
 			try {
 				await deleteVariableMutation.mutateAsync({
-					agentId,
-					variableKey: variableToDeleteKey,
+					sessionId,
+					key: variableToDeleteKey,
 				});
-				// Toast for success/error is handled by mutation hooks
 			} catch (e) {
-				// Error already shown by mutation hook's onError
-				// showErrorToast is likely called within the mutation hook's onError
+				// The refusal's own sentence is already on screen, from the hook.
 				console.error("Deletion failed during confirmation:", e);
 			} finally {
 				setIsDeleteConfirmOpen(false);
 				setVariableToDeleteKey(null);
 			}
-		}, [agentId, variableToDeleteKey, deleteVariableMutation]);
+		}, [sessionId, variableToDeleteKey, deleteVariableMutation]);
 
-		useEffect(() => {
-			if (isError && error) {
-				showErrorToast(
-					`Error loading variables: ${error.message || "An unknown error occurred."}`,
-				);
-			}
-		}, [isError, error]);
+		if (capabilities.isLoading) {
+			return (
+				<CenteredState>
+					<Spinner size="sm" />
+					<p className={cn("text-body-sm text-ink-muted")}>Loading variables</p>
+				</CenteredState>
+			);
+		}
+
+		if (!supported) {
+			return (
+				<CenteredState>
+					<p className={cn("text-heading text-ink")}>
+						Update the backend to read code memory.
+					</p>
+				</CenteredState>
+			);
+		}
+
+		/*
+		 * A draft has no session, so there is nothing to read and NOTHING is
+		 * asked: the query stays disabled above, and this is the honest sentence
+		 * rather than a request that could only 404.
+		 */
+		if (!sessionId) {
+			return (
+				<CenteredState>
+					<p className={cn("text-heading text-ink")}>
+						Code memory starts when you send your first message.
+					</p>
+				</CenteredState>
+			);
+		}
 
 		if (isLoading) {
 			return (
@@ -409,31 +468,81 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 		}
 
 		if (isError) {
+			/*
+			 * A 404 here is a STALE capabilities answer, not a missing session:
+			 * the gate above already established that this build advertises the
+			 * surface, so the route itself is what is absent. That is the same
+			 * family of sentence as the gate's, because it is the same fix.
+			 */
+			if (isSessionVariablesMissing(error)) {
+				return (
+					<CenteredState>
+						<p className={cn("text-heading text-ink")}>
+							Update the backend to read code memory.
+						</p>
+					</CenteredState>
+				);
+			}
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
 						Could not load variables
 					</p>
 					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						The agent's code memory could not be read. Check that Local Operator
-						is running, then try again.
+						The session's code memory could not be read. Check that Local
+						Operator is running, then try again.
+					</p>
+				</CenteredState>
+			);
+		}
+
+		if (data?.state === "unsupported") {
+			return (
+				<CenteredState>
+					<p className={cn("text-heading text-ink")}>
+						This chat cannot read code memory.
 					</p>
 				</CenteredState>
 			);
 		}
 
 		if (variables.length === 0) {
+			if (isBusy) {
+				return (
+					<CenteredState>
+						<Spinner size="sm" />
+						<p className={cn("text-body-sm text-ink-muted")}>Reading…</p>
+					</CenteredState>
+				);
+			}
+			/*
+			 * An empty namespace is only "empty" once a kernel exists to hold
+			 * one. The two absences have their own sentences because they are
+			 * different situations for the user: a chat that has not started yet
+			 * versus one whose interpreter was released after sitting idle.
+			 */
+			const kernelAbsent =
+				observed?.kernel === "absent" || observed?.runtime === "absent";
 			return (
 				<CenteredState>
-					<p className={cn("text-heading text-ink")}>Nothing stored yet</p>
-					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						When the agent runs code for you, the values it keeps around between
-						steps show up here. You can add one yourself too.
+					<p className={cn("text-heading text-ink")}>
+						{kernelAbsent ? "No code memory yet" : "Nothing stored yet"}
 					</p>
-					<Button variant="secondary" size="sm" onClick={handleOpenCreateForm}>
-						<Plus aria-hidden="true" />
-						New variable
-					</Button>
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						{kernelAbsent
+							? "It fills in when code runs in this chat."
+							: "When the agent runs code for you, the values it keeps around between steps show up here. You can add one yourself too."}
+					</p>
+					{kernelAbsent ? null : (
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={handleOpenCreateForm}
+						>
+							<Plus aria-hidden="true" />
+							New variable
+						</Button>
+					)}
 				</CenteredState>
 			);
 		}
@@ -451,11 +560,28 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						"flex h-10 shrink-0 items-center justify-between gap-3 border-hairline border-b px-3",
 					)}
 				>
-					<p className={cn("min-w-0 truncate text-body-sm text-ink-muted")}>
+					<p
+						className={cn(
+							"flex min-w-0 items-center truncate text-body-sm text-ink-muted",
+						)}
+					>
 						<span className={cn("font-medium text-ink")}>Code memory</span>
 						<span className={cn("mx-1.5 text-ink-dim")}>·</span>
 						{variables.length}{" "}
 						{variables.length === 1 ? "variable" : "variables"}
+						{/*
+						 * Busy keeps the list it was showing and says, quietly, that
+						 * it is re-reading. It is not an error: the last answer is
+						 * still the best one available, and a cell that is running is
+						 * the normal way to reach this state.
+						 */}
+						{isBusy ? (
+							<>
+								<span className={cn("mx-1.5 text-ink-dim")}>·</span>
+								<Spinner size="xs" />
+								<span className={cn("ml-1.5")}>Reading…</span>
+							</>
+						) : null}
 					</p>
 					<Button variant="ghost" size="sm" onClick={handleOpenCreateForm}>
 						<Plus aria-hidden="true" />
@@ -477,14 +603,14 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						/>
 					))}
 				</div>
-				{agentId && ( // Ensure agentId is present before rendering dialog
-					<VariableFormDialog
-						open={isFormOpen}
-						onClose={handleCloseForm}
-						onSubmit={handleSubmitVariableForm}
-						initialData={editingVariable}
-					/>
-				)}
+				{/* Always mounted past the draft guard above: the form is where a
+				    create or an edit lands, and both need a session to write to. */}
+				<VariableFormDialog
+					open={isFormOpen}
+					onClose={handleCloseForm}
+					onSubmit={handleSubmitVariableForm}
+					initialData={editingVariable}
+				/>
 				{variableToDeleteKey && ( // Render modal only if there's a key to delete
 					<ConfirmationModal
 						open={isDeleteConfirmOpen}
