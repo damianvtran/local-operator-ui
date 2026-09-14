@@ -16,6 +16,17 @@
  * that hides in one theme is still a defect. A hand-taken screenshot set
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
+ *
+ * The Storybook it reads has to BUILD first, and on the tree as it stands the
+ * shipped `.storybook/main.ts` cannot build its preview: it sets
+ * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
+ * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
+ * undefined (reading 'React')` inside the docgen parser before a single frame
+ * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
+ * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
+ * rather than argued: the whole `chat-ask-options` set re-captured under it came
+ * back byte-identical to the committed frames, so it changes how the preview is
+ * BUILT and nothing about what is photographed (design round 3, D12).
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -407,6 +418,40 @@ export const STORIES = [
 	   against a 700px story padded the frame with 257px of empty ground that
 	   no reviewer is meant to read (design review round 2, D9). */
 	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 800],
+	/* The `ask` gate's options, which became real controls rather than an inert
+	   numbered list. Swept because these states are slow and awkward to hold
+	   open live — a gate ends the moment anyone answers, and eight options, a
+	   wrapping label, a multi-question ask and a secret ask (no options at all)
+	   are not states a live session offers on demand.
+
+	   Each height MATCHES its story's own `Frame height`: the capture floors at
+	   the declared viewport, so declaring more than the story renders pads the
+	   frame with empty ground and crosses `check-evidence`'s uniformity
+	   ceiling. 1024 wide is the chat column at a realistic desktop width, where
+	   the 900px measure cap actually binds. */
+	["chat-ask-options--options", 1024, 470],
+	["chat-ask-options--single-option", 1024, 380],
+	/* The app's own default window is 1380x900, which leaves this pane about
+	   617px once the header and the composer band come out. Captured here rather
+	   than at the story's old 820 because 820 was chosen to fit the content, and
+	   a viewport sized to fit cannot show that the content does not fit (design
+	   round 1, D1). */
+	["chat-ask-options--many-options", 1024, 620],
+	/* Two widths, because the label only wraps below ~900px: at 1024 the story
+	   photographed an unwrapped label while claiming to exercise wrapping (design
+	   round 1, D5). 760 was the second width and it did NOT wrap the label either —
+	   the label box there measures one 19.5px line (its single-line measure is
+	   ~581px against a 616px button interior) and the thing that dropped to a
+	   second line was the `Recommended` mark, so the committed pair showed the
+	   ordinal pinned to a wrapped MARK, not to a wrapped label (design round 2,
+	   D9). 560 puts the button interior under the label's own measure, which is
+	   where the property this story exists for actually happens. */
+	["chat-ask-options--wrapping-labels", 1024, 620],
+	["chat-ask-options--wrapping-labels", 560, 620],
+	["chat-ask-options--multi-question", 1024, 450],
+	["chat-ask-options--answer-in-flight", 1024, 470],
+	["chat-ask-options--secret-ask", 1024, 360],
+	["chat-ask-options--approval-unchanged", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
@@ -1454,6 +1499,17 @@ const main = async () => {
 	 * the COMMITTED tree, so if the capture ran over dirty or staged source it
 	 * names something these frames did not come from. Read `dirtyWorkingTree`
 	 * first; a tree hash from a dirty run is a hash of the wrong thing.
+	 *
+	 * A REBASE IS WHERE THESE STAMPS GO WRONG, and there is a test for it now.
+	 * Resolving `manifest.json` by keeping upstream's top-level stamp block while
+	 * the branch's own delta rewrites a neighbouring key produces a file that
+	 * certifies the committed frames against somebody else's tree - and git reports
+	 * no conflict, so nothing local notices; at the round-3 head both tree hashes
+	 * and `surfaces` named `origin/main` while the branch's own `STORIES` list had
+	 * moved nine entries (round 3, M1). `scripts/evidence-manifest.test.mjs` binds
+	 * the shipped manifest's stamps against `HEAD`'s trees inside `test:desktop`,
+	 * so that resolution fails CI rather than shipping, and the expected aftermath
+	 * of any rebase that touches this file is a re-stamp before the suite is green.
 	 */
 	const treeHash = (path) =>
 		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })

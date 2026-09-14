@@ -34,11 +34,27 @@ import { MarkdownRenderer } from "../markdown-renderer";
 export type AgentQuestionProps = {
 	/** The question text. Empty renders nothing. */
 	content?: string;
+	/**
+	 * An answer to this question is on its way to the owner.
+	 *
+	 * The eyebrow switches wording rather than the callout changing shape: the
+	 * question still owns the accent and the frame, and all that changes is what
+	 * the line above it claims is happening. On a slow round trip this state
+	 * lasts seconds, and with the eyebrow static the user's press was
+	 * indistinguishable from a press that did not register — the only signal was
+	 * a colour step on the rows (design round 1, D3; UX round 1, U2, measured at
+	 * 9.1s of nothing).
+	 */
+	busy?: boolean;
 	/** Extra classes on the callout. */
 	className?: string;
 };
 
-export const AgentQuestion = ({ content, className }: AgentQuestionProps) => {
+export const AgentQuestion = ({
+	content,
+	busy = false,
+	className,
+}: AgentQuestionProps) => {
 	if (!content) return null;
 
 	return (
@@ -55,7 +71,7 @@ export const AgentQuestion = ({ content, className }: AgentQuestionProps) => {
 			/>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<p className="font-medium text-accent text-meta">
-					Waiting for your answer
+					{busy ? "Sending your answer…" : "Waiting for your answer"}
 				</p>
 				{/* The body is `ink`, not `accent`.
 				 *
