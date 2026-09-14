@@ -72,6 +72,7 @@ import {
 	type DirectoryIndicatorHandle,
 	type DirectoryWritePath,
 } from "./directory-indicator";
+import { MeasuredSuggestionStack } from "./measured-suggestion-stack";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
@@ -95,10 +96,6 @@ import type {
 	SlashCommandInvocation,
 	SlashSubmissionPlan,
 } from "./slash-submit";
-import {
-	type SuggestionChipBox,
-	suggestionStackCapFor,
-} from "./suggestion-stack";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -751,109 +748,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			return shuffled.slice(0, MAX_SUGGESTIONS);
 		}, [initialSuggestions]);
 
-		/*
-		 * The suggestion stack's containment (design round 1, D1).
-		 *
-		 * WHAT WAS WRONG. On a New chat at the app's own minimum window height the
-		 * greeting, the composer box and seven wrapped chips made the band 528.5px
-		 * tall inside a 468px pane. The band cannot bound itself (see its own
-		 * comment: a `max-height` or an `overflow` on it erases the slash popup,
-		 * which is an unportaled `absolute bottom-full` child of the composer box),
-		 * and the column's `overflow: hidden` then cut the last chip row through its
-		 * glyphs with nothing to scroll. So the bound lives here, on the one thing in
-		 * the band that grows without one - the rule the band's comment states as
-		 * "cap whatever new content grows, where it grows".
-		 *
-		 * WHY THE ROOM IS MEASURED FROM THE BAND AND NOT FROM THE STACK. `room` is
-		 * the band's own budget in the window (the column is `h-full`, so its floor is
-		 * the viewport's), and `fixed` is everything in the splash the stack does not
-		 * decide: the paddings, the greeting, the composer box and the contexts around
-		 * them. Their difference is what the stack may occupy - and because neither
-		 * term depends on the stack's height, the answer is a single pass rather than
-		 * a layout feedback loop. That is also why the cap is a plain `max-height`
-		 * plus `overflow: clip` rather than a scroller: a scrollbar is 8px wide in
-		 * this app (`global-scrollbar-styles.tsx`), so gaining or losing one would
-		 * re-wrap the labels it is measuring, and a stack whose wrapping depends on
-		 * whether it overflowed can oscillate between the two states.
-		 *
-		 * The clip gets a 4px margin because the boundary sits in the `gap-2` between
-		 * rows - no row is ever cut (see `suggestion-stack.ts`) - while the last
-		 * visible chip's own focus ring is drawn 1px outside its box plus 2px of
-		 * outline, and a ring sliced off at the cap would be the same class of defect
-		 * the cap exists to remove.
-		 *
-		 * `suggestionStackCap === null` means "the whole stack fits", so at every size
-		 * where the band already held it the stack renders exactly as it did before
-		 * this change - which is why the default window's approved frame is untouched.
-		 */
-		const bandRef = useRef<HTMLDivElement>(null);
-		const splashRef = useRef<HTMLDivElement>(null);
-		const suggestionStackRef = useRef<HTMLDivElement>(null);
-		const [suggestionStackCap, setSuggestionStackCap] = useState<number | null>(
-			null,
-		);
-
-		useLayoutEffect(() => {
-			const band = bandRef.current;
-			const splash = splashRef.current;
-			const stack = suggestionStackRef.current;
-			/*
-			 * The sample is this measurement's INPUT: the cap is aligned to the rows the
-			 * current draw wrapped into, so a new draw is a new answer. Nothing else
-			 * about the labels is read here (the rows come from the DOM), which is why
-			 * the emptiness check below is what makes the dependency real rather than
-			 * `suggestions.map` or a join of the labels.
-			 */
-			if (!band || !splash || !stack || suggestions.length === 0) {
-				setSuggestionStackCap(null);
-				return;
-			}
-
-			const measure = () => {
-				if (disposed) return;
-				const style = window.getComputedStyle(band);
-				const room =
-					window.innerHeight -
-					band.getBoundingClientRect().top -
-					Number.parseFloat(style.paddingTop) -
-					Number.parseFloat(style.paddingBottom);
-				const fixed =
-					splash.getBoundingClientRect().height -
-					stack.getBoundingClientRect().height;
-				const chips: SuggestionChipBox[] = Array.from(stack.children).map(
-					(chip) => {
-						const box = chip.getBoundingClientRect();
-						return { top: box.top, bottom: box.bottom };
-					},
-				);
-				setSuggestionStackCap(
-					suggestionStackCapFor(
-						chips,
-						stack.getBoundingClientRect().top,
-						room - fixed,
-					),
-				);
-			};
-
-			let disposed = false;
-			measure();
-			// Any of these can move the rows the cap is aligned to: the window (the
-			// column's own width and the band's budget), the splash (the composer box
-			// growing with its text, or the send-failure alert appearing above it), and
-			// a late web font re-wrapping the labels themselves.
-			window.addEventListener("resize", measure);
-			const observer = new ResizeObserver(measure);
-			observer.observe(splash);
-			void document.fonts?.ready.then(measure).catch(() => undefined);
-
-			return () => {
-				// The font promise outlives the effect, and a measurement of a pane that
-				// is gone is not one worth storing.
-				disposed = true;
-				window.removeEventListener("resize", measure);
-				observer.disconnect();
-			};
-		}, [suggestions]);
+		// Node-valued callback refs follow conditional splash remounts; a stable
+		// suggestion sample does not imply that the measured DOM is still alive.
+		const [band, setBand] = useState<HTMLDivElement | null>(null);
+		const [splash, setSplash] = useState<HTMLDivElement | null>(null);
 
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
@@ -2602,42 +2500,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * what they are — examples, not the primary action. Raycast and
 						 * Linear's command palettes hold suggestions at exactly this
 						 * weight. */}
-						<div
-							ref={suggestionStackRef}
-							/* Named for the geometry probe in
-							 * `scripts/draft-splash-evidence.tsx`, which reads this
-							 * stack's rows to check that the cap this band computes
-							 * lands on a row boundary rather than inside one. */
-							data-lo-suggestion-stack={true}
-							className={cn(
-								"flex flex-wrap justify-center gap-2",
-								/* Only when the cap is doing something: `null` means the
-								 * whole stack fits, and the stack then renders exactly as
-								 * it did before this containment existed. `clip` rather
-								 * than `hidden` so the 4px margin can keep the last
-								 * visible chip's focus ring in the picture. */
-								suggestionStackCap !== null &&
-									"overflow-clip [overflow-clip-margin:4px]",
-							)}
-							style={
-								suggestionStackCap === null
-									? undefined
-									: { maxHeight: suggestionStackCap }
-							}
-						>
-							{suggestions.map((suggestion) => (
-								<Button
-									key={suggestion}
-									variant="outline"
-									size="sm"
-									className="h-auto max-w-full whitespace-normal break-words px-3 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"
-									onClick={() => handleSuggestionClick(suggestion)}
-									disabled={isInputDisabled || isRecording || isTranscribing}
-								>
-									{suggestion}
-								</Button>
-							))}
-						</div>
+						<MeasuredSuggestionStack
+							band={band}
+							splash={splash}
+							suggestions={suggestions}
+							disabled={isInputDisabled || isRecording || isTranscribing}
+							onSelect={handleSuggestionClick}
+							focusComposer={() => textareaRef.current?.focus()}
+						/>
 					</div>
 				)}
 			</form>
@@ -2735,7 +2605,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
 				data-lo-composer-band={true}
-				ref={bandRef}
+				ref={setBand}
 			>
 				{/*
 				 * ONE wrapper at every state, and only its CLASSES change.
@@ -2769,7 +2639,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * non-null in every other state cannot arm the measurement.
 				 */}
 				<div
-					ref={splashRef}
+					ref={setSplash}
 					className={cn(
 						showEmptyChatPrompt
 							? "flex w-full flex-col items-center justify-center gap-6 py-4"

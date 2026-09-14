@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Draft splash — browser-tool viewport harness</title>
+  <style>
+    body { margin: 12px; font: 14px system-ui; }
+    fieldset { margin-bottom: 12px; }
+    iframe { display: block; border: 0; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <!-- Harness-only controls, not product chrome. The iframe is the actual
+       ChatPage harness; resizing it changes window.innerHeight and media-query
+       inputs together without reloading the mounted React tree. No driver,
+       remote-debugging port, private browser or screenshot automation exists. -->
+  <fieldset>
+    <legend>Viewport (same mounted ChatPage)</legend>
+    <button data-size="1380x872">1380 × 872</button>
+    <button data-size="900x572">900 × 572</button>
+    <button data-size="830x572">830 × 572</button>
+    <button data-size="800x572">800 × 572</button>
+    <button id="reload">Reload at selected size</button>
+  </fieldset>
+  <fieldset>
+    <legend>DOM probes — not trusted keyboard events</legend>
+    <button id="focus-next">Focus next enabled suggestion</button>
+    <button id="focus-last">Focus last enabled suggestion</button>
+    <button id="activate">Activate focused suggestion (DOM click)</button>
+    <button id="read">Read geometry and focus</button>
+  </fieldset>
+  <iframe id="app" title="Actual ChatPage" src="draft-splash-evidence.html"></iframe>
+  <pre id="readback" aria-label="Geometry and focus readback"></pre>
+  <script type="module">
+    const app = document.querySelector('#app');
+    const output = document.querySelector('#readback');
+    let selected = new URLSearchParams(location.search).get('size') || '830x572';
+    function resize(size) {
+      const match = /^(1380x872|900x572|830x572|800x572)$/.exec(size);
+      if (!match) throw new Error('Unsupported viewport');
+      selected = size;
+      const [width, height] = size.split('x').map(Number);
+      app.width = width;
+      app.height = height;
+    }
+    const buttons = () => [...app.contentDocument.querySelectorAll('[data-lo-suggestion-stack] button')];
+    const available = () => buttons().filter(button => !button.disabled && button.getAttribute('aria-hidden') !== 'true');
+    function read() {
+      const doc = app.contentDocument;
+      const stack = doc.querySelector('[data-lo-suggestion-stack]');
+      output.textContent = JSON.stringify({
+        viewport: selected,
+        active: doc.activeElement?.textContent || doc.activeElement?.tagName,
+        stack: stack && { height: stack.getBoundingClientRect().height, scrollHeight: stack.scrollHeight, clientHeight: stack.clientHeight },
+        chips: buttons().map(button => ({ label: button.textContent, disabled: button.disabled, ariaHidden: button.getAttribute('aria-hidden'), visibility: app.contentWindow.getComputedStyle(button).visibility, focused: button === doc.activeElement, top: button.getBoundingClientRect().top, bottom: button.getBoundingClientRect().bottom })),
+        pageProbe: doc.querySelector('#probe')?.textContent,
+      }, null, 2);
+    }
+    document.querySelectorAll('[data-size]').forEach(button => {
+      button.addEventListener('click', () => { resize(button.dataset.size); requestAnimationFrame(() => requestAnimationFrame(read)); });
+    });
+    document.querySelector('#reload').onclick = () => { app.contentWindow.location.reload(); };
+    document.querySelector('#read').onclick = read;
+    document.querySelector('#focus-next').onclick = () => {
+      const candidates = available();
+      const index = candidates.indexOf(app.contentDocument.activeElement);
+      candidates[(index + 1) % candidates.length]?.focus();
+      read();
+    };
+    document.querySelector('#focus-last').onclick = () => { available().at(-1)?.focus(); read(); };
+    document.querySelector('#activate').onclick = () => {
+      const focused = app.contentDocument.activeElement;
+      if (available().includes(focused)) focused.click();
+      read();
+    };
+    resize(selected);
+    app.addEventListener('load', read);
+  </script>
+</body>
+</html>
