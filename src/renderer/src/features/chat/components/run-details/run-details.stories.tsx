@@ -125,8 +125,13 @@ const mcpRemedy = (
 	overrides: Partial<McpRemedyControls> = {},
 ): McpRemedyControls => ({
 	press: (row) => presses.push(row.name),
+	pressKey: async (row, values) => {
+		presses.push(`${row.name}:${Object.keys(values).sort().join(",")}`);
+		return true;
+	},
 	cancel: (operationId) => presses.push(`cancel:${operationId}`),
 	pendingName: null,
+	keyError: null,
 	refusalFor: () => null,
 	...overrides,
 });
@@ -1564,6 +1569,51 @@ const GrantConfirmGround = () => {
 
 export const McpGrantConfirm: Story = {
 	render: () => <GrantConfirmGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The key remedy: three rows, one per decision the payload makes.
+ *
+ * `google-workspace` (stdio, `env` name) and `slack` (http, header name, OAuth
+ * refused) both offer `Enter API key`; `legacy-stdio` declares nothing and keeps
+ * the sentence naming the surface that owns its configuration. The grant is not
+ * offered on ANY of them, which is the decision this frame carries: a transport
+ * that cannot complete a browser sign-in must not be given a browser control.
+ */
+export const McpKeyAuth: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpKeyAuth()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The key popout, reached by pressing the row's own `Enter API key` link.
+ *
+ * The fields are the payload's OWN declared names — one password input per name,
+ * seeded from `environment_keys`/`header_keys` — so the frame is about the form a
+ * real config produces rather than about a form this story invented. Interactive
+ * for the same reason the confirm frame is: the dialog is opened by the real
+ * control.
+ */
+const KeyPopoutGround = () => {
+	useClickAndWait('[data-mcp-remedy="key"]', '[role="dialog"]');
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpKeyAuth()}
+			openPanel={true}
+		/>
+	);
+};
+
+export const McpKeyPopout: Story = {
+	render: () => <KeyPopoutGround />,
 	decorators: [withCanvasClosed],
 };
 

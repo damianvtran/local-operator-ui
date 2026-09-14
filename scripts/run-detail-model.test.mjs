@@ -2450,6 +2450,81 @@ test("a row's grant state is the newest operation the read carries", () => {
 	assert.equal(deriveMcpServers(servers)[0].grant, null);
 });
 
+test("a server that declares credential fields gets the key remedy, and one that declares none keeps the sentence", () => {
+	const row = (payload) => deriveMcpServers([{ name: "s", ...payload }])[0];
+
+	// The credential path exists because the config holds a `${NAME}` REFERENCE and
+	// the value lives in the owner store — which is the store Settings' API
+	// credentials writes. Both spellings of "cannot do OAuth" take it.
+	assert.deepEqual(
+		row({
+			status: "auth-required",
+			transport: "stdio",
+			environment_keys: ["GOOGLE_CLIENT_SECRET"],
+		}).remedy,
+		{ kind: "key" },
+	);
+	assert.deepEqual(
+		row({
+			status: "auth-required",
+			transport: "http",
+			transport_oauth_supported: false,
+			header_keys: ["Authorization"],
+		}).remedy,
+		{ kind: "key" },
+	);
+
+	// Nothing declared is nothing to ask for: the sentence still names the surface
+	// that owns this server's configuration.
+	assert.deepEqual(
+		row({ status: "auth-required", transport: "stdio" }).remedy,
+		{ kind: "words", label: "Manage this server's credentials in Settings" },
+	);
+	assert.deepEqual(row({ status: "auth-required", transport: "stdio", environment_keys: [] }).remedy, {
+		kind: "words",
+		label: "Manage this server's credentials in Settings",
+	});
+
+	// A server that CAN grant never gets the key remedy: the browser flow is the
+	// one that re-consents, and a declared header map does not change that.
+	assert.deepEqual(
+		row({
+			status: "auth-required",
+			transport: "http",
+			header_keys: ["Authorization"],
+		}).remedy,
+		{ kind: "grant" },
+	);
+});
+
+test("a row's credential field names are the payload's, deduped and never values", () => {
+	const [row] = deriveMcpServers([
+		{
+			name: "slack",
+			status: "auth-required",
+			transport: "http",
+			environment_keys: ["TOKEN", "SHARED"],
+			header_keys: ["Authorization", "SHARED"],
+		},
+	]);
+	// Environment first, then headers, one entry per name: a form must not offer
+	// the same field twice because one name is declared in both maps.
+	assert.deepEqual(row.keyNames, ["TOKEN", "SHARED", "Authorization"]);
+
+	// A payload that says nothing, or says something that is not a list of strings,
+	// offers no field rather than a field named `[object Object]`.
+	const [bare] = deriveMcpServers([{ name: "bare", status: "connected" }]);
+	assert.deepEqual(bare.keyNames, []);
+	const [odd] = deriveMcpServers([
+		{
+			name: "odd",
+			status: "connected",
+			environment_keys: [{ name: "nope" }, "  ", 7],
+		},
+	]);
+	assert.deepEqual(odd.keyNames, []);
+});
+
 /* ------------------------------------------------------------------ */
 /* The plan's unnamed group (`§ 6.2`)                                  */
 /* ------------------------------------------------------------------ */

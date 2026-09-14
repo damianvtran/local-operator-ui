@@ -46,6 +46,7 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
+import { McpKeyDialog } from "./mcp-key-dialog";
 import {
 	type McpServerRow,
 	mcpServersAreCold,
@@ -97,6 +98,7 @@ const MCP_UNKNOWN_ICON = CircleHelp;
  */
 const MCP_CONTROL_WORD = {
 	grant: "Grant account access",
+	key: "Enter API key",
 	reconnect: "Reconnect",
 } as const;
 
@@ -180,6 +182,18 @@ const McpActionLine = ({
 	disabled: boolean;
 	onPress: (row: McpServerRow) => void;
 }) => {
+	/** The key remedy, as the control both the remedy and a refusal can reach. */
+	const keyControl = (
+		<Button
+			variant="link"
+			size="sm"
+			disabled={disabled}
+			data-mcp-remedy="key"
+			onClick={() => onPress(row)}
+		>
+			{MCP_CONTROL_WORD.key}
+		</Button>
+	);
 	const grant = row.grant;
 	if (grant?.status === "complete") return null;
 	if (grant) {
@@ -213,11 +227,20 @@ const McpActionLine = ({
 	}
 
 	const refusal = remedy.refusalFor(row.name);
-	if (refusal === "not-oauth") return words(MCP_CREDENTIALS_WORD);
+	if (refusal === "not-oauth") {
+		/*
+		 * The probe said this transport cannot do OAuth, so the grant is not the fix
+		 * — but a config that DECLARES credential fields can still be fixed here, by
+		 * writing the credential its `${NAME}` reference points at. Where it declares
+		 * none, the row keeps the sentence that names the surface that owns them.
+		 */
+		return row.keyNames.length > 0 ? keyControl : words(MCP_CREDENTIALS_WORD);
+	}
 	if (refusal === "refused") return words(MCP_REFUSED_WORD);
 
 	if (!row.remedy) return null;
 	if (row.remedy.kind === "words") return words(row.remedy.label);
+	if (row.remedy.kind === "key") return keyControl;
 	return (
 		<Button
 			variant="link"
@@ -437,6 +460,13 @@ export const RunDetailMcp = ({
 	 * `DangerButton` is for the destructive-without-remedy class.
 	 */
 	const [confirmTarget, setConfirmTarget] = useState<McpServerRow | null>(null);
+	/*
+	 * The key popout's target, held here beside the confirmation so this section is
+	 * still the ONE place that owns a dialog over these rows. It is a separate state
+	 * from `confirmTarget` because the two answer different questions and only one
+	 * of them is destructive.
+	 */
+	const [keyTarget, setKeyTarget] = useState<McpServerRow | null>(null);
 	if (servers.length === 0) return null;
 	const cold = mcpServersAreCold(servers);
 	/*
@@ -449,6 +479,10 @@ export const RunDetailMcp = ({
 	const start = (row: McpServerRow) => {
 		if (row.remedy?.kind === "grant") {
 			setConfirmTarget(row);
+			return;
+		}
+		if (row.remedy?.kind === "key") {
+			setKeyTarget(row);
 			return;
 		}
 		remedy.press(row);
@@ -529,6 +563,30 @@ export const RunDetailMcp = ({
 					setConfirmTarget(null);
 				}}
 				onCancel={() => setConfirmTarget(null)}
+			/>
+			{/*
+			 * The key popout closes only on a save the backend ACCEPTED (`pressKey`
+			 * resolves true), so a refused credential write leaves the form and the
+			 * backend's own sentence on screen rather than a dialog that vanished over an
+			 * error nobody saw.
+			 */}
+			<McpKeyDialog
+				open={keyTarget !== null}
+				target={
+					keyTarget
+						? { name: keyTarget.name, keyNames: keyTarget.keyNames }
+						: null
+				}
+				saving={keyTarget !== null && remedy.pendingName === keyTarget.name}
+				error={remedy.keyError}
+				onCancel={() => setKeyTarget(null)}
+				onSave={(values) => {
+					const row = keyTarget;
+					if (!row) return;
+					void remedy.pressKey(row, values).then((saved) => {
+						if (saved) setKeyTarget(null);
+					});
+				}}
 			/>
 		</section>
 	);

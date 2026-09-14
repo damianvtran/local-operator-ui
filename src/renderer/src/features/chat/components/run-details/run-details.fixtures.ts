@@ -1124,6 +1124,42 @@ export const mcpTwoProblems = (): McpWireRow[] => [
 	},
 ];
 
+/**
+ * The servers whose remedy is a CREDENTIAL rather than a grant.
+ *
+ * Three cases in one payload, because the row's control is decided from them:
+ * a stdio child declaring an `env` name, an http server declaring a `header` name
+ * (its transport refuses OAuth — `transport_oauth_supported: false` is the only
+ * value that means a definite refusal), and a server that declares NOTHING, which
+ * keeps the sentence pointing at the surface that owns its configuration.
+ * `environment_keys`/`header_keys` carry names only — the backend publishes what
+ * a config references and never a value.
+ */
+export const mcpKeyAuth = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{
+		name: "google-workspace",
+		status: "auth-required",
+		transport: "stdio",
+		environment_keys: ["GOOGLE_CLIENT_SECRET"],
+		owned_scope: "global",
+	},
+	{
+		name: "legacy-stdio",
+		status: "auth-required",
+		transport: "stdio",
+		owned_scope: "global",
+	},
+	{
+		name: "slack",
+		status: "auth-required",
+		transport: "http",
+		transport_oauth_supported: false,
+		header_keys: ["Authorization"],
+		owned_scope: "global",
+	},
+];
+
 /** A grant the backend says is RUNNING, which must never read as complete. */
 export const mcpGrantRunning = (): McpWireOperation[] => [
 	{

@@ -81,6 +81,18 @@ export type DesktopMcpState = {
 		transport_oauth_supported?: boolean | null;
 		/** MCP transport health does not establish downstream Workspace consent. */
 		downstream_authorization?: "unknown";
+		/**
+		 * The credential field NAMES a server's config declares — a stdio child's `env`
+		 * and an HTTP server's `headers` — and never a value.
+		 *
+		 * `public_server_config` (`mcp/desktop.py:92-116`) publishes the names of the
+		 * secrets a config references; the values live in the owner credential store.
+		 * They are declared here because the run panel seeds a key-entry form from
+		 * them, and because the type omitted them while the route sent them — the
+		 * asymmetry this file's own header warns about.
+		 */
+		environment_keys?: string[];
+		header_keys?: string[];
 		tool_count?: number;
 		setup?: { kind: "session_prompt"; text: string };
 	}[];
