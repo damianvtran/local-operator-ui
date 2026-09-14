@@ -734,6 +734,15 @@ export const STORIES = [
 	   function: the only frame in this set whose subject is a control's
 	   outcome rather than a rest state. */
 	["canvas-workspace--variables-write-refused", 1280, 900],
+	/* The six states remediation round 1 added, each because a round named the
+	   claim it could not judge from the frames that existed (design D2/D3/D5,
+	   the backend's truncation edge, and the failure branch whose copy still
+	   carried the advice this PR retires). */
+	["canvas-workspace--variables-backend-unreachable", 1280, 900],
+	["canvas-workspace--variables-truncated", 1280, 900],
+	["canvas-workspace--variables-row-actions", 1280, 900],
+	["canvas-workspace--variables-uneditable-row", 1280, 900],
+	["canvas-workspace--variables-delete-confirm", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
 
