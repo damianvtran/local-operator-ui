@@ -150,9 +150,19 @@ const TraceRow = ({
 				wrap ? "min-w-0 whitespace-pre-wrap break-words" : "truncate",
 			)}
 		>
+			{/*
+			 * `data-text-surface` marks the parts of a row that ARE text, and
+			 * `select-text` opts them out of the trigger's `select-none`. Both spans
+			 * carry it, so a drag across a row copies the whole row — including the
+			 * label that says what it is, which a drag used to drop because the label
+			 * was the one span that was not selectable (round 3's U17). The marker is
+			 * also what the trigger's click guard reads, so the guard stays scoped to
+			 * text surfaces rather than to whatever `user-select` computes to.
+			 */}
 			<span
+				data-text-surface="true"
 				className={cn(
-					"font-mono text-mono-sm",
+					"select-text font-mono text-mono-sm",
 					running ? "text-ink-muted" : "text-ink-dim",
 					failed && "text-danger",
 				)}
@@ -168,7 +178,10 @@ const TraceRow = ({
 				 * trigger is `select-none`, so without this the one fact D2 added to
 				 * the row would be the one fact on it that cannot be copied).
 				 */
-				<span className="select-text font-mono text-ink-muted text-mono-sm">
+				<span
+					data-text-surface="true"
+					className="select-text font-mono text-ink-muted text-mono-sm"
+				>
 					{" "}
 					{object}
 				</span>
@@ -182,7 +195,10 @@ const TraceRow = ({
 				 * somewhere. The primitive's click guard keeps a selection-ending
 				 * mouseup from toggling the row it was selecting.
 				 */
-				<span className="select-text text-body-sm text-ink-muted">
+				<span
+					data-text-surface="true"
+					className="select-text text-body-sm text-ink-muted"
+				>
 					{" "}
 					{narration}
 				</span>
