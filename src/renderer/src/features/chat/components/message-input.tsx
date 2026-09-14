@@ -67,7 +67,11 @@ import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { ComposerStatusRow } from "./composer-status-row";
-import { DirectoryIndicator } from "./directory-indicator";
+import {
+	DirectoryIndicator,
+	type DirectoryIndicatorHandle,
+	type DirectoryWritePath,
+} from "./directory-indicator";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
@@ -285,23 +289,32 @@ type MessageInputProps = {
 	/**
 	 * Working directory for this conversation, and the way to change it.
 	 *
-	 * `onChangeCwd` is present while the chip has a write path: on a DRAFT, where
-	 * it stages the directory `sessions.create` will use, and on a LIVE session
-	 * whose backend advertises `session_move`, where it moves the running session
-	 * (see `useSessionMove`). Absent means the chip renders read-only with
-	 * `readOnlyReason`, which is the honest state for an older backend rather than
-	 * a control whose every use fails.
+	 * `cwdWritePath` describes the write path, and it is one value rather than a
+	 * callback plus a flag because its two kinds answer differently and the chip
+	 * must not be able to mix them: a DRAFT stages the directory
+	 * `sessions.create` will use, and a LIVE session with `session_move` moved
+	 * (see `useSessionMove`). Absent means the chip renders read-only, with
+	 * `cwdReadOnlyReason` saying why - the honest state for an older backend or a
+	 * session still being created, rather than a control whose every use fails.
 	 */
 	cwd?: string;
-	onChangeCwd?: (cwd: string) => void;
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * Why the chip is read-only here. Supplied per cause rather than assumed:
+	 * `MOVE_UNAVAILABLE_REASON` is false on a session that is merely still being
+	 * created, and the composer is the layer that knows which of the two it is
+	 * looking at (agent review m1).
+	 */
+	cwdReadOnlyReason?: string;
 	/**
 	 * A directory move for this session has not been confirmed yet.
 	 *
-	 * Reaches the chip as `DirectoryIndicatorProps.pending` and changes copy, not
-	 * anatomy: no spinner, no colour step, and no disabling. The transcript receipt
-	 * is the primary feedback, and the chip repaints from the canonical stream
-	 * within a couple of seconds, so a new visual treatment here would be a visual
-	 * change with no new state to show.
+	 * Reaches the chip as `DirectoryIndicatorProps.pending`. It does change the
+	 * chip's pixels - the folder glyph becomes the app's spinner, the tooltip and
+	 * the live region carry the two pending sentences - because the state has to be
+	 * visible on the surface the user is looking at rather than behind a hover
+	 * (design review D2); the remaining anatomy is unchanged, so this is the app's
+	 * existing in-flight treatment and not a new one.
 	 */
 	cwdPending?: boolean;
 	isSmallView?: boolean;
@@ -490,6 +503,16 @@ export const composerHoldsFocusUntouched = (): boolean =>
  */
 export type MessageInputHandle = {
 	focusInput: () => void;
+	/**
+	 * Focus the working-directory chip and open its menu.
+	 *
+	 * The bare `/move` form's whole effect: the destination resolves in the
+	 * composer's own control rather than in a dialog, so the command has to be able
+	 * to reach it. A no-op when the chip is not mounted (no directory is known) or
+	 * is read-only, which is why the dispatch branch checks the capability before
+	 * asking.
+	 */
+	openWorkingDirectoryMenu: () => void;
 };
 
 /*
@@ -547,7 +570,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			initialSuggestions,
 			agentData,
 			cwd,
-			onChangeCwd,
+			cwdWritePath,
+			cwdReadOnlyReason,
 			cwdPending,
 			isSmallView = false,
 			isHydrating = false,
@@ -563,7 +587,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * The canonical session's cwd is the answer where there is one; the legacy
 		 * agent record is the fallback so the old backend path keeps its chip.
 		 */
-		const cwdToShow = cwd ?? agentData?.current_working_directory;
+		/*
+		 * The canonical session's cwd is the answer where there is one; the legacy
+		 * store's value is the fallback below it.
+		 *
+		 * The AGENT RECORD is a fallback only where the chip has no live write path.
+		 * A live move commits against the SESSION, so the value it displays has to come
+		 * from the session's own canonical source: falling back to the agent record
+		 * would put a directory the session may not be in on an editable chip, one menu
+		 * row away from being the path a move commits to (agent review n2). A draft is
+		 * the case the backstop is for - its staged cwd starts from the agent's own
+		 * default, so the two agree by construction - and the read-only chip keeps it
+		 * for the same reason: it displays, and cannot commit.
+		 */
+		const cwdToShow =
+			cwd ??
+			(cwdWritePath?.kind === "move"
+				? undefined
+				: agentData?.current_working_directory);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -1184,6 +1225,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			],
 		);
 
+		/*
+		 * The chip's own ref, so the composer can be asked to open it.
+		 *
+		 * A bare `/move` focuses this chip and opens its menu instead of mounting a
+		 * dialog that hosted a copy of it (design § 5.2, settled by the measured menu
+		 * clipping inside the dialog): one control, one write path. The composer is the
+		 * owner of the chip, so the request travels through its handle rather than
+		 * through a store or an event, which keeps the "only one chip" rule true by
+		 * construction.
+		 */
+		const cwdChipRef = useRef<DirectoryIndicatorHandle>(null);
+
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
 				/*
@@ -1193,6 +1246,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				composerPointerTouched = false;
 				textareaRef.current?.focus();
+			},
+			openWorkingDirectoryMenu: () => {
+				cwdChipRef.current?.openMenu();
 			},
 		}));
 
@@ -2278,11 +2334,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 */}
 								{cwdToShow !== undefined && (
 									<DirectoryIndicator
+										ref={cwdChipRef}
 										currentWorkingDirectory={cwdToShow}
-										onChangeDirectory={onChangeCwd}
+										writePath={cwdWritePath}
 										pending={cwdPending}
 										readOnlyReason={
-											onChangeCwd ? undefined : MOVE_UNAVAILABLE_REASON
+											cwdWritePath
+												? undefined
+												: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
 										}
 									/>
 								)}

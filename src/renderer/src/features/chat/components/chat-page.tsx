@@ -56,7 +56,12 @@ import {
 	type DraftSelectionTarget,
 	draftPreviewQuery,
 } from "../draft-selection";
-import { useSessionMove } from "../move-session";
+import {
+	MOVE_NOT_READY_REASON,
+	MOVE_UNAVAILABLE_REASON,
+	sessionMoveEnabled,
+	useSessionMove,
+} from "../move-session";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
@@ -68,6 +73,7 @@ import {
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type MessageInputHandle,
 	composerHoldsFocusUntouched,
@@ -433,9 +439,16 @@ function SessionPanel({
 	 * the pane must not still be a draft (`draftKey` is the store's own answer to
 	 * "is this conversation created yet", and during admission the create is in
 	 * flight, so a move would race the directory it is creating), and the backend
-	 * must advertise `session_move` - absent means the route is not there, and the
-	 * chip must keep the read-only branch it has always rendered rather than offer
-	 * a control whose every use 404s.
+	 * must advertise the move CONTRACT this renderer implements - `session_move`
+	 * at 2 (the exclusivity fence) AND `frontend_replace` (the replacement frame a
+	 * move publishes to a viewer that is already mounted). `sessionMoveEnabled` is
+	 * that pair, stated once and shared with the hook and the typed `/move` form.
+	 *
+	 * Against a backend that advertises less, the chip keeps the read-only branch
+	 * it has always rendered. That is not merely politeness about a missing route:
+	 * the cold half of a move publishes its accepted directory ONLY through the
+	 * replacement frame, so a renderer that could not consume it would show the
+	 * old directory beside a receipt claiming the move landed.
 	 *
 	 * `useSessionMove` owns the optimistic value and the per-session latch behind
 	 * it; the chip reads `cwd` from here so that the value it PAINTS and the value
@@ -443,14 +456,49 @@ function SessionPanel({
 	 * hook's three rules).
 	 */
 	const canMove =
-		Boolean(sessionId) &&
-		!draftKey &&
-		desktopFeatureEnabled(capabilities.data, "session_move");
+		Boolean(sessionId) && !draftKey && sessionMoveEnabled(capabilities.data);
 	const live = useSessionMove({
 		sessionId,
 		canonical,
 		capabilities: capabilities.data,
 	});
+	/*
+	 * The chip's write path, which is one value because the two kinds answer
+	 * differently: a draft STAGES the directory `sessions.create` will use, and a
+	 * live session on a capable backend MOVES one, so what the chip may announce or
+	 * remember follows the receipt rather than a client-side guess
+	 * (`DirectoryWritePath`).
+	 */
+	const cwdWritePath: DirectoryWritePath | undefined = useMemo(
+		() =>
+			draftKey && !draft?.sessionId && !admitting
+				? { kind: "stage", commit: setCwd }
+				: canMove
+					? { kind: "move", commit: live.moveTo }
+					: undefined,
+		// `live.moveTo` is a stable callback (the chip's own callbacks key off this
+		// value, so rebuilding it per render would rebuild them per render).
+		[draftKey, draft?.sessionId, admitting, canMove, setCwd, live.moveTo],
+	);
+	/*
+	 * And the sentence for the case where there is none, PER CAUSE (agent review
+	 * m1).
+	 *
+	 * `MOVE_UNAVAILABLE_REASON` is about the backend, so it is only true where the
+	 * backend is the reason. The second case is a pane whose session is being
+	 * created: `draftKey` survives admission by design (the pane is keyed on the
+	 * session identity so it does not remount), and for that window a move would
+	 * race the very directory `sessions.create` is creating - so the chip is
+	 * read-only, but telling its user the backend cannot move a live session, that
+	 * they should start a new chat and that updating would help would be three
+	 * false statements at once.
+	 */
+	const cwdReadOnlyReason =
+		draftKey && (Boolean(draft?.sessionId) || admitting)
+			? MOVE_NOT_READY_REASON
+			: canMove
+				? undefined
+				: MOVE_UNAVAILABLE_REASON;
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		void useCanonicalSessionsStore
@@ -646,6 +694,18 @@ function SessionPanel({
 		rebind,
 		addMessage: (message) => canonical.addNote(message.message ?? ""),
 		focusComposer: () => input.current?.focusInput(),
+		/*
+		 * Where a bare `/move` lands. The destination resolves in the composer's own
+		 * chip rather than in a dialog that hosted a copy of it - one control, one
+		 * write path, and no popper inside a dialog (design § 5.2, settled by the
+		 * measured menu clipping). Both this and `draftPicker` below are options on
+		 * ONE dispatcher: the rebase onto `main` kept main's draft-picker hook and
+		 * this branch's chip focus rather than choosing between them, because they
+		 * answer different commands.
+		 */
+		focusCwdChip: () => input.current?.openWorkingDirectoryMenu(),
+		moveSession: live.moveTo,
+
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
 		 * be honoured — and only once the preview has answered, because the
@@ -1587,7 +1647,17 @@ function SessionPanel({
 								: draft?.sessionId
 									? canonical.frontend?.cwd || cwd || "Canonical chat"
 									: "The session starts when you send your first message."
-							: canonical.frontend?.cwd || "Canonical chat")
+							: /*
+								 * LIVE: the value the chip paints, not `canonical.frontend?.cwd`.
+								 *
+								 * The header is the second surface a user reads to answer "where am I",
+								 * and while a move is in flight it is the chip that holds the pending
+								 * value; reading the canonical stream here made the two disagree for the
+								 * whole restart - the header on the old directory while the receipt in the
+								 * transcript said the session had moved (UX review U3). `live.cwd` is
+								 * `pending ?? stream`, so the two surfaces cannot disagree by construction.
+								 */
+								live.cwd || "Canonical chat")
 					}
 					descriptionPending={identityPending}
 					onOpenOptions={() => setOptions((value) => !value)}
@@ -1602,11 +1672,17 @@ function SessionPanel({
 					 * value that move is settling on (`live.cwd` reads
 					 * `pending ?? canonical.frontend?.cwd`).
 					 *
-					 * `onChangeCwd` is supplied in two cases now, and the second one is the
+					 * `cwdWritePath` is supplied in two cases, and the second one is the
 					 * point of the capability gate: a draft stages a directory, and a live
 					 * session on a backend that advertises `session_move` moves one. Every
 					 * other combination leaves the chip read-only with a reason, which is
 					 * what keeps a backend without the route inert rather than broken.
+					 *
+					 * `main` grew a draft-only `onChangeCwd` prop in parallel with this
+					 * branch's single `cwdWritePath` value; the rebase keeps ONE, and it is
+					 * this one, because it covers the draft case through its `stage` kind
+					 * (the same `setCwd` write) and the live case through `move`. Two props
+					 * for one write path is the defect the rebase would otherwise ship.
 					 */
 					/*
 					 * `live.cwd` rather than `canonical.frontend?.cwd`: it IS the stream's
@@ -1618,6 +1694,8 @@ function SessionPanel({
 					 * wanted and neither subsumes the other.
 					 */
 					cwd={draftKey ? cwd : live.cwd}
+					cwdWritePath={cwdWritePath}
+					cwdReadOnlyReason={cwdReadOnlyReason}
 					/*
 					 * The session the code-memory panel reads, passed as the identity the
 					 * backend knows. It is NOT the same as `agentId` above, which is
@@ -1626,13 +1704,6 @@ function SessionPanel({
 					 * memory by draft key or by agent id is the bug this fixes.
 					 */
 					sessionId={sessionId}
-					onChangeCwd={
-						draftKey && !draft?.sessionId && !admitting
-							? setCwd
-							: canMove
-								? live.moveTo
-								: undefined
-					}
 					cwdPending={canMove && live.busy}
 					messages={[]}
 					isLoading={false}

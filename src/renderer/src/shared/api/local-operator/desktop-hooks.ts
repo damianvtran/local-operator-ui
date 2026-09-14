@@ -139,7 +139,20 @@ export type DesktopFeature =
 	 * answers its `native_action` today), so the chip is the only surface this
 	 * negotiation actually protects.
 	 */
-	| "session_move";
+	| "session_move"
+	/**
+	 * `frontend.replace`: the desktop-only replacement frame that carries an
+	 * accepted move's directory to an already-mounted viewer.
+	 *
+	 * Its OWN key, and it must gate INDEPENDENTLY of `session_move`, because the
+	 * two are independently useful: a backend can accept a move (so the route
+	 * works) while a viewer that cannot repaint is mounted next to it, and a move
+	 * whose accepted directory no mounted viewer can render is exactly the
+	 * stale-paint defect the frame exists to fix. The move controls therefore
+	 * require `session_move >= 2` AND `frontend_replace >= 1` - see
+	 * `sessionMoveEnabled`, which is the ONE place that pair is written down.
+	 */
+	| "frontend_replace";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

@@ -44,6 +44,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -153,7 +154,8 @@ type ChatContentProps = {
 	 */
 	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
-	onChangeCwd?: (cwd: string) => void;
+	/** How the chip's commit is applied; see `MessageInputProps.cwdWritePath`. */
+	cwdWritePath?: DirectoryWritePath;
 	/**
 	 * A working-directory move is in flight for this session; see
 	 * `MessageInputProps.cwdPending`.
@@ -164,6 +166,8 @@ type ChatContentProps = {
 	 * answer to "is this session's chip settled".
 	 */
 	cwdPending?: boolean;
+	/** Why the chip is read-only here, per cause; see `MessageInputProps`. */
+	cwdReadOnlyReason?: string;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
@@ -390,8 +394,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwd,
 		sessionId,
 		turnTerminal,
-		onChangeCwd,
+		cwdWritePath,
 		cwdPending,
+		cwdReadOnlyReason,
 		sendError,
 		sessionStatus,
 		onSlashCommand,
@@ -883,8 +888,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
 								cwd={cwd}
-								onChangeCwd={onChangeCwd}
+								cwdWritePath={cwdWritePath}
 								cwdPending={cwdPending}
+								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}
