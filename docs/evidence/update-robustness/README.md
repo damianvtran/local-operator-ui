@@ -115,6 +115,50 @@ before upload. An install that is already broken in this way needs one manual
 reinstall; the three rewritten sealed `.pyc` in it cannot be restored by
 deleting anything, and the measurements say so rather than the prose.
 
+## The 2026-09-14 incident: the seal the build did not ship
+
+The in-app update from 0.22.1 to 0.22.2 finished (`ShipIt_stderr.log`:
+`Installation completed successfully`) and macOS then answered *"Local Operator" is
+damaged and can't be opened*. One file had appeared in the installed bundle between
+signing at 09:31:53 and 10:11:29:
+`Contents/Resources/python_aarch64/lib/python3.12/__pycache__/webbrowser.cpython-312.pyc`.
+The pre-flight had passed its own seal check at 09:48:42 and was right to — the
+break did not exist yet.
+
+Two things were wrong, and neither was the check. The app's seal on the interpreter
+trees is applied **at runtime**, by the app, so every in-place update swaps in a
+fresh copy that carries no access-control entries at all: measured on the shipped
+artifact, `ls -lde` on `Contents/Resources/python_aarch64` and on
+`.../lib/python3.12` prints a bare mode line, and a write succeeds at every level.
+And the interpreter those trees belong to is the one the **app-managed venv** is
+built on — `~/Library/Application Support/Local Operator/local-operator-venv`'s
+`pyvenv.cfg` records `home = /Applications/Local Operator.app/Contents/Resources/
+python_aarch64/bin` — so any process that runs that venv's python, whoever started
+it, writes into the installed bundle. Every `Update service initialized` line after
+09:50 came from an unpackaged worktree instance, none of which can act on that
+state; the pending marker for 0.22.2 was still on disk with nothing reported.
+
+[self-seal.txt](self-seal.txt) is the measurement set, ending with the field break
+reproduced on a copy of the signed image: one unguarded `python3 -c "import
+webbrowser"` inside it writes 32 `.pyc`, `codesign --verify --deep` goes from exit
+0 to exit 1 with `file added: .../webbrowser.cpython-312.pyc`, the app's own heal
+takes it back to `valid on disk`, and the build step's seal then makes the same
+write refuse with `EACCES`. What changed here:
+
+- the shipped artifact is born sealed (`scripts/after-pack.mjs`, before signing)
+  and the gate refuses an artifact whose interpreter trees accept a write
+  (`app-python-trees-sealed`);
+- every python the app spawns refuses bytecode outright
+  (`PYTHONDONTWRITEBYTECODE=1` beside `PYTHONPYCACHEPREFIX`), and the app writes a
+  `sitecustomize.py` guard into the venv it manages, which covers the processes it
+  does not spawn — 29 of the 32 writes above, with the interpreter's own startup
+  imports left to the seal, which is why the seal is the load-bearing half;
+- start-up probes the running bundle's seal and heals a `file added:` bytecode
+  break on the spot, and a broken bundle a *different* instance can reach - the one
+  the app-managed venv's interpreter lives in - is healed too, never sealed;
+- an unpackaged instance no longer acts on the packaged app's install state, and
+  no longer uses its venv.
+
 ## How the relaunch watchdog decides
 
 The watchdog exists for one outcome: a failed Squirrel.Mac install quits the app
