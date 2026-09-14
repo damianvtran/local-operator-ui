@@ -560,20 +560,33 @@ test("re-selecting the active session still leaves a staged draft", async () => 
  */
 
 /*
- * The pane's hold, keyed on the READER and not on the transport.
+ * The pane's claim, keyed on the READER and on the pane's own statement - never
+ * on the transport's mood.
  *
  * The pre-merge resolution check (Finding 1) found the pane and the band asking
  * different questions: the hold was `status === "connecting"`, while the band
  * this PR re-keyed asks `hydrated`. On this path the two disagree in both
- * directions, and the cases below are those directions - the first FAILS on the
- * pre-fix expression (it held a conversation a completed read had already proven
- * EMPTY while the band offered the greeting and its own `grow` beside it), and
- * the second FAILS on it too (an unhydrated `live` pane, which the old
- * expression collapsed, leaving no loading claim anywhere on screen).
+ * directions, and the two named cases below ARE those directions - the first
+ * FAILS on the pre-fix expression (it held a conversation a completed read had
+ * already proven EMPTY while the band offered the greeting and its own `grow`
+ * beside it), and the second FAILS on it too (an unhydrated `live` pane, which
+ * the old expression collapsed, leaving no loading claim anywhere on screen).
  *
- * The rule lives in `transcript-pane.ts` rather than inside the component for
+ * Keyed on `hydrated` alone it was then wrong in the OPPOSITE direction: a pane
+ * whose own statement is already on screen - the failure notice, or the
+ * "Reconnecting" line - has nobody having read it either, so it painted the
+ * placeholder beside the statement. The table below is the answer to having
+ * repaired this class twice, in two opposite directions: it walks EVERY
+ * combination of the rule's inputs, so the next change moves a row rather than
+ * adding a case. A case records the last bug; a row is a fact about the rule.
+ *
+ * The rules live in `transcript-pane.ts` rather than inside the component for
  * the same reason `scroll-paging.ts` does: a decision about state can be pinned
- * by a node test, and the component keeps the rendering.
+ * by a node test, and the component keeps the rendering. This file drives the
+ * SHIPPED functions - `canonicalTranscriptSpeaks`, `transcriptPaneHoldsPlaceholder`
+ * and `transcriptPaneCollapses` - rather than restating the arithmetic, because
+ * a test that copies a rule goes on passing after the rule is reverted (review
+ * round 2, R7).
  */
 const paneBundle = await build({
 	stdin: {
@@ -586,7 +599,11 @@ const paneBundle = await build({
 	platform: "node",
 	write: false,
 });
-const { transcriptPaneHoldsPlaceholder: holdsPlaceholder } = await import(
+const {
+	canonicalTranscriptSpeaks: speaks,
+	transcriptPaneCollapses: collapses,
+	transcriptPaneHoldsPlaceholder: holdsPlaceholder,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(paneBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -594,19 +611,182 @@ test("a conversation the read has already proven empty is NOT held, even while `
 	// `Retry` re-arms the stream as `connecting` with `hydrated` untouched
 	// (`use-canonical-session.ts:1307-1312`), so the transport is saying
 	// "connecting" about a conversation the reader has already answered.
-	assert.equal(holdsPlaceholder({ hydrated: true, recordCount: 0 }), false);
+	assert.equal(
+		holdsPlaceholder({
+			status: "connecting",
+			failure: null,
+			hydrated: true,
+			recordCount: 0,
+		}),
+		false,
+	);
 });
 
 test("a conversation nobody has read yet IS held, at `connecting` and at `live`", () => {
 	// Two routes into the same reader-state: this switch's own hydrating window,
 	// and a cold session whose `cursor_missing` snapshot goes `live` without ever
 	// hydrating (`:1019`, `:1038`). The placeholder is the loading claim in both.
-	assert.equal(holdsPlaceholder({ hydrated: false, recordCount: 0 }), true);
+	for (const status of ["connecting", "live"]) {
+		assert.equal(
+			holdsPlaceholder({
+				status,
+				failure: null,
+				hydrated: false,
+				recordCount: 0,
+			}),
+			true,
+		);
+	}
 });
 
 test("records beat the hold: an unhydrated pane with rows paints no placeholder", () => {
 	// Optimistic echo and live events paint rows before the history read lands,
 	// and a placeholder over them would contradict the pane's own content.
-	assert.equal(holdsPlaceholder({ hydrated: false, recordCount: 2 }), false);
-	assert.equal(holdsPlaceholder({ hydrated: true, recordCount: 3 }), false);
+	assert.equal(
+		holdsPlaceholder({
+			status: "live",
+			failure: null,
+			hydrated: false,
+			recordCount: 2,
+		}),
+		false,
+	);
+	assert.equal(
+		holdsPlaceholder({
+			status: "connecting",
+			failure: null,
+			hydrated: true,
+			recordCount: 3,
+		}),
+		false,
+	);
+});
+
+/*
+ * THE WHOLE MATRIX.
+ *
+ * A row-less pane has exactly one claim to make, and which one is a function of
+ * four values: the status, whether a failure is published, whether the durable
+ * history has been read, and whether there are any records. Every combination is
+ * below. `failure` present or absent, `hydrated` read or not, `records` zero or
+ * non-zero (2 is a stand-in; the rule reads only the zero test), and `claim` is
+ * the single thing the pane is then allowed to show:
+ *
+ *   rows             the conversation's own rows, and nothing else
+ *   rows+notice      rows with the failure notice above them
+ *   rows+reconnect   rows with the "Reconnecting" line above them
+ *   notice           the failure notice alone - no placeholder beside it
+ *   reconnect        the "Reconnecting" line alone - no placeholder beside it
+ *   placeholder      the pulsing "Loading conversation…" placeholder alone
+ *   empty            nothing: the pane collapses, and the band may claim the
+ *                    conversation is empty because the read proved it
+ *
+ * The `reachable` column is the store's own invariant, not a rendering fact, and
+ * it is asserted rather than trusted: `failure` is published only WITH
+ * `unavailable` (`use-canonical-session.ts:766`, `:1201`) and cleared whenever
+ * the stream re-arms or a snapshot lands (`:1031`, `:1240`, `:1308`), so a
+ * failure at any other status, and `unavailable` with no failure, cannot occur.
+ * Those rows are still asserted: the decision is total, and the next edit to the
+ * store may reach one.
+ *
+ * The matrix is asserted COMPLETE as well as correct - all 32 combinations, once
+ * each - so dropping a row fails here even when every remaining row agrees.
+ */
+const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
+/** Any non-null notice: the rule reads its presence, not its prose. */
+const FAILURE = { statement: "unreadable", action: "reconnect" };
+const MATRIX = [
+	// status, failure, hydrated, records, reachable, claim
+	["connecting", null, false, 0, true, "placeholder"],
+	["connecting", null, false, 2, true, "rows"],
+	["connecting", null, true, 0, true, "empty"],
+	["connecting", null, true, 2, true, "rows"],
+	["connecting", FAILURE, false, 0, false, "placeholder"],
+	["connecting", FAILURE, false, 2, false, "rows"],
+	["connecting", FAILURE, true, 0, false, "empty"],
+	["connecting", FAILURE, true, 2, false, "rows"],
+	["live", null, false, 0, true, "placeholder"],
+	["live", null, false, 2, true, "rows"],
+	["live", null, true, 0, true, "empty"],
+	["live", null, true, 2, true, "rows"],
+	["live", FAILURE, false, 0, false, "placeholder"],
+	["live", FAILURE, false, 2, false, "rows"],
+	["live", FAILURE, true, 0, false, "empty"],
+	["live", FAILURE, true, 2, false, "rows"],
+	["reconnecting", null, false, 0, true, "reconnect"],
+	["reconnecting", null, false, 2, true, "rows+reconnect"],
+	["reconnecting", null, true, 0, true, "reconnect"],
+	["reconnecting", null, true, 2, true, "rows+reconnect"],
+	["reconnecting", FAILURE, false, 0, false, "reconnect"],
+	["reconnecting", FAILURE, false, 2, false, "rows+reconnect"],
+	["reconnecting", FAILURE, true, 0, false, "reconnect"],
+	["reconnecting", FAILURE, true, 2, false, "rows+reconnect"],
+	["unavailable", null, false, 0, false, "placeholder"],
+	["unavailable", null, false, 2, false, "rows"],
+	["unavailable", null, true, 0, false, "empty"],
+	["unavailable", null, true, 2, false, "rows"],
+	["unavailable", FAILURE, false, 0, true, "notice"],
+	["unavailable", FAILURE, false, 2, true, "rows+notice"],
+	["unavailable", FAILURE, true, 0, true, "notice"],
+	["unavailable", FAILURE, true, 2, true, "rows+notice"],
+];
+
+const key = (status, failure, hydrated, records) =>
+	`${status}|${failure ? "failure" : "none"}|${hydrated ? "read" : "unread"}|${records === 0 ? 0 : "rows"}`;
+
+test("the pane's single claim, over every combination of the rule's inputs", async (t) => {
+	const seen = new Set(
+		MATRIX.map(([status, failure, hydrated, records]) =>
+			key(status, failure, hydrated, records),
+		),
+	);
+	assert.equal(MATRIX.length, 32, "a combination is missing from the table");
+	assert.equal(seen.size, 32, "a combination is listed twice");
+	for (const status of STATUSES) {
+		for (const failure of [null, FAILURE]) {
+			for (const hydrated of [false, true]) {
+				for (const records of [0, 2]) {
+					assert.ok(
+						seen.has(key(status, failure, hydrated, records)),
+						`${key(status, failure, hydrated, records)} is not in the table`,
+					);
+				}
+			}
+		}
+	}
+
+	for (const [status, failure, hydrated, records, reachable, claim] of MATRIX) {
+		const name = `${key(status, failure, hydrated, records)} -> ${claim}`;
+		await t.test(name, () => {
+			const view = { status, failure, hydrated, recordCount: records };
+			const shows = [];
+			if (records > 0) shows.push("rows");
+			if (speaks(view))
+				shows.push(status === "unavailable" ? "notice" : "reconnect");
+			if (holdsPlaceholder(view)) shows.push("placeholder");
+			const painted = shows.length === 0 ? "empty" : shows.join("+");
+			assert.equal(painted, claim, `${name}: the pane would paint ${painted}`);
+			// The collapse is the absence of every claim, and nothing else: a
+			// collapse over a statement would hide it, and the band reads this
+			// same absence as licence to claim the conversation is empty.
+			assert.equal(
+				collapses(view),
+				claim === "empty",
+				`${name}: the collapse disagrees with the claim`,
+			);
+			// At most one claim per row-less pane, which is the defect class.
+			assert.ok(
+				!(holdsPlaceholder(view) && speaks(view)),
+				`${name}: a placeholder beside the pane's own statement`,
+			);
+			const unreachable =
+				(failure !== null && status !== "unavailable") ||
+				(status === "unavailable" && failure === null);
+			assert.equal(
+				reachable,
+				!unreachable,
+				`${name}: the row's reachability disagrees with the store's invariants`,
+			);
+		});
+	}
 });

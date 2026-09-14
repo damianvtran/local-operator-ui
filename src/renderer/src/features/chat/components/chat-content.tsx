@@ -23,10 +23,8 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import {
-	CanonicalTranscript,
-	canonicalTranscriptSpeaks,
-} from "../canonical/canonical-transcript";
+import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -663,7 +661,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// applied for this session - so the loading state holds
 								// until the app genuinely knows, whether that takes a retry
 								// or not.
-								isHydrating={canonical ? !canonical.view.hydrated : false}
+								//
+								// And `hydrated` is not the band's question on its own
+								// either: a pane that is already saying what went wrong is
+								// not "still hydrating", so the band takes the same
+								// statement term the pane's hold does. The two readers
+								// derive one question rather than one of them reading a
+								// proxy for it (and the answer is unaffected today: a
+								// speaking pane is handed `CANONICAL_NONEMPTY` above, so
+								// the greeting is already withheld - this keeps the two
+								// expressions from drifting apart).
+								isHydrating={
+									canonical
+										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
+										: false
+								}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
