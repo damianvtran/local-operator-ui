@@ -71,19 +71,16 @@ const venvPaths = await import(
 const {
 	DEV_VENV_DIR_NAME,
 	PACKAGED_VENV_DIR_NAME,
+	VENV_PATH_ENV,
 	managedVenvPath,
-	venvInterpreterBundle,
+	venvInterpreter,
 } = venvPaths;
 
 const {
-	BUNDLED_PYTHON_TREE_NAMES,
 	VENV_BYTECODE_GUARD_FILE,
-	bundledPythonTreePaths,
-	describePythonTreeSeal,
 	ensureVenvBytecodeGuard,
 	PYTHON_BYTECODE_CACHE_DIR_NAME,
 	pythonBytecodeCacheDir,
-	sealPythonInterpreterTrees,
 	venvBytecodeGuardSource,
 	withPythonBytecodeCache,
 } = cache;
@@ -116,8 +113,16 @@ test("every other variable survives, and the input is not mutated", () => {
 	};
 	const env = withPythonBytecodeCache(original, USER_DATA);
 	assert.deepEqual(
-		{ ...env, PYTHONPYCACHEPREFIX: undefined, PYTHONDONTWRITEBYTECODE: undefined },
-		{ ...original, PYTHONPYCACHEPREFIX: undefined, PYTHONDONTWRITEBYTECODE: undefined },
+		{
+			...env,
+			PYTHONPYCACHEPREFIX: undefined,
+			PYTHONDONTWRITEBYTECODE: undefined,
+		},
+		{
+			...original,
+			PYTHONPYCACHEPREFIX: undefined,
+			PYTHONDONTWRITEBYTECODE: undefined,
+		},
 	);
 	assert.notEqual(env, original);
 	assert.deepEqual(original, {
@@ -296,6 +301,7 @@ async function loadMainProcess() {
 	if (!mainProcessPromise) {
 		mainProcessPromise = (async () => {
 			PATHS.home = mkdtempSync(join(tmpdir(), "lo-bytecode-home-"));
+			process.resourcesPath ??= join(PATHS.home, "resources");
 			PATHS.userData = mkdtempSync(join(tmpdir(), "lo-bytecode-userdata-"));
 			PATHS.appData = PATHS.userData;
 			globalThis.__loTestPaths = PATHS;
@@ -515,6 +521,22 @@ async function loadInstallScripts() {
 }
 
 /**
+ * True when the script's own trace shows it resolved `VENV_PATH` to `path`.
+ *
+ * Bash's xtrace quotes an assignment whose value has spaces (`+ VENV_PATH='...'`),
+ * which is every macOS path this test produces, so the assertion matches the
+ * trace's spelling rather than the shell's source text.
+ */
+function venvAssignment(trace, path) {
+	return trace
+		.split("\n")
+		.some(
+			(line) =>
+				line === `+ VENV_PATH='${path}'` || line === `+ VENV_PATH=${path}`,
+		);
+}
+
+/**
  * Run the shipped macOS install script's own bytes under a real `/bin/bash -x`,
  * in a temp `HOME`, and hand back the trace.
  *
@@ -551,6 +573,7 @@ function runMacosInstallScript(scriptText, extraEnv) {
 	const env = {
 		...process.env,
 		HOME: home,
+		[VENV_PATH_ENV]: join(home, "selected-environment"),
 		PYTHON_BIN: pythonStub,
 		...extraEnv,
 	};
@@ -796,14 +819,17 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		// Bash's xtrace prints this assignment as the expanded argument of `:`,
 		// so the line is read rather than pattern-matched to a `VAR=value`
 		// spelling (measured: `+ : '<path>'`).
-		const assignment = trace
+		// Every `: ` assignment in the trace, not the first: the script now defaults
+		// two variables this way (the venv path and the prefix), and bash's xtrace
+		// prints both as `+ : '<value>'`.
+		const assignments = trace
 			.split("\n")
-			.find((line) => line.startsWith("+ : "));
+			.filter((line) => line.startsWith("+ : "));
 		assert.ok(
-			assignment?.includes(expected),
-			`the default must resolve to ${expected}; assignment line: ${assignment}; trace head:\n${trace
+			assignments.some((line) => line.includes(expected)),
+			`the default must resolve to ${expected}; assignment lines: ${assignments.join(" | ")}; trace head:\n${trace
 				.split("\n")
-				.slice(0, 12)
+				.slice(0, 14)
 				.join("\n")}`,
 		);
 		assert.match(
@@ -833,10 +859,10 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 	try {
 		const preset = runWithValue.stderr
 			.split("\n")
-			.find((line) => line.startsWith("+ : "));
+			.filter((line) => line.startsWith("+ : "));
 		assert.ok(
-			preset?.includes(appValue),
-			`a prefix the app set must be the one the script uses; assignment line: ${preset}`,
+			preset.some((line) => line.includes(appValue)),
+			`a prefix the app set must be the one the script uses; assignment lines: ${preset.join(" | ")}`,
 		);
 		assert.ok(
 			!runWithValue.stderr.includes(dirName),
@@ -864,6 +890,99 @@ async function waitForSpawn(timeoutMs = 5000) {
 	);
 }
 
+/**
+ * The dev arm of the same handoff, which is the configuration that was measured
+ * wrong: an unpackaged instance's install must build its own environment.
+ *
+ * QA could not run this path end to end - doing so writes into the operator's
+ * shared app-support tree - so it is covered here instead: the value the spawn is
+ * handed is `managedVenvPath`'s answer for an unpackaged instance, and it is not
+ * the packaged name.
+ */
+test("an unpackaged instance hands the script its own environment, not the packaged app's", async () => {
+	const { BackendInstaller } = await loadMainProcess();
+
+	const resources = mkdtempSync(join(tmpdir(), "lo-resources-dev-venv-"));
+	const hadResourcesPath = "resourcesPath" in process;
+	const originalResourcesPath = process.resourcesPath;
+	const originalPackaged = globalThis.__loTestAppIsPackaged;
+	process.resourcesPath = resources;
+	globalThis.__loTestAppIsPackaged = false;
+	try {
+		const installer = new BackendInstaller();
+		const expected = managedVenvPath({
+			platform: process.platform,
+			home: PATHS.home,
+			appDataPath: PATHS.userData,
+			packaged: false,
+		});
+		assert.equal(
+			installer.venvPath,
+			expected,
+			"the instance's own environment is the unpackaged one",
+		);
+		assert.notEqual(
+			installer.venvPath,
+			managedVenvPath({
+				platform: process.platform,
+				home: PATHS.home,
+				appDataPath: PATHS.userData,
+				packaged: true,
+			}),
+			"and it must differ from the packaged app's, or the split is not a split",
+		);
+
+		globalThis.__loSpawns.length = 0;
+		installer.pythonPath = join(PATHS.home, "external-python");
+		void installer.installEnvironment();
+		const spawned = await waitForSpawn();
+		assert.equal(
+			spawned.options.env[VENV_PATH_ENV],
+			expected,
+			"the script must be told, since it cannot derive it: left to itself it builds the packaged name",
+		);
+	} finally {
+		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		else delete process.resourcesPath;
+		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
+		else globalThis.__loTestAppIsPackaged = originalPackaged;
+		rmSync(resources, { recursive: true, force: true });
+		rmSync(
+			join(
+				tmpdir(),
+				`install-backend-${process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : "linux"}.${process.platform === "win32" ? "ps1" : "sh"}`,
+			),
+			{ force: true },
+		);
+	}
+});
+
+/**
+ * The install scripts take the path the app resolved, and default to the
+ * packaged name when nobody's app started them.
+ *
+ * Why this is a case of its own: the venv split is only real if the script that
+ * creates the environment agrees with the app about which environment it is. A
+ * review measured the shipped macOS script building `.../local-operator-venv`
+ * under a dev instance whose own answer was `.../local-operator-venv-dev`, i.e.
+ * a dev run creating, pip-installing into and `rm -rf`ing the packaged app's
+ * environment. The text half is checked because the ps1 cannot be executed here;
+ * the macOS half is executed, because a match on the text says the line is there
+ * rather than what the script resolves.
+ */
+test("the install scripts consume the resolved final environment path", async () => {
+	const { linuxInstallScript, macosInstallScript, windowsInstallScript } = await loadInstallScripts();
+	assert.ok(macosInstallScript.includes('VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"'));
+	assert.ok(linuxInstallScript.includes('VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"'));
+	assert.ok(windowsInstallScript.includes('$VenvPath = $env:LOCAL_OPERATOR_VENV_PATH'));
+	const unset = runMacosInstallScript(macosInstallScript, { [VENV_PATH_ENV]: undefined });
+	assert.notEqual(unset.status, 0);
+	assert.match(unset.stderr, /Pass the resolved managed environment path/);
+	const selected = join(PATHS.home, "managed-python", "dev", "environments", "selected-generation");
+	const supplied = runMacosInstallScript(macosInstallScript, { [VENV_PATH_ENV]: selected });
+	assert.ok(venvAssignment(supplied.stderr, selected));
+});
+
 test("the installer's script spawn carries the prefix into the venv it creates", async () => {
 	const { BackendInstaller } = await loadMainProcess();
 
@@ -884,7 +1003,8 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 	try {
 		// Not awaited: the child is recorded rather than run, so `install()` never
 		// settles. What is under test is the environment handed to the spawn.
-		void installer.install();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		void installer.installEnvironment();
 		const spawned = await waitForSpawn();
 		const env = spawned.options.env;
 		assert.equal(
@@ -898,6 +1018,21 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 			env.PYTHONDONTWRITEBYTECODE,
 			"1",
 			"the script's own venv creation and pip runs are pythons we start",
+		);
+		assert.equal(
+			env[VENV_PATH_ENV],
+			installer.venvPath,
+			"the script cannot derive the environment it may build and rm -rf; it is handed it",
+		);
+		assert.equal(
+			env[VENV_PATH_ENV],
+			managedVenvPath({
+				platform: process.platform,
+				home: PATHS.home,
+				appDataPath: PATHS.userData,
+				packaged: true,
+			}),
+			"and the value must be the app's own decision for this instance",
 		);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
@@ -953,356 +1088,10 @@ function aceLines(path) {
 		.map((line) => line.trim());
 }
 
-test(
-	"a sealed interpreter tree refuses the write a CPython cache write performs, and stays deletable",
-	{ skip: process.platform !== "darwin" },
-	() => {
-		const root = mkdtempSync(join(tmpdir(), "lo-seal-"));
-		const tree = join(root, "python_aarch64");
-		const untouched = join(root, "elsewhere");
-		mkdirSync(join(tree, "lib", "python3.12", "json"), { recursive: true });
-		mkdirSync(untouched, { recursive: true });
-		writeFileSync(join(tree, "lib", "python3.12", "os.py"), "# stdlib\n");
-		writeFileSync(join(untouched, "keep.py"), "# not ours\n");
-		// Bytecode an earlier version of the app wrote before the seal existed - the
-		// operator's real shape, and the file the heal exists to remove. It is also
-		// why the seal withholds `write` from a `.pyc`: rewriting one of these is
-		// `file modified:`, the class codesign cannot accept a deletion for.
-		const cache = join(tree, "lib", "python3.12", "__pycache__");
-		mkdirSync(cache, { recursive: true });
-		writeFileSync(join(cache, "os.cpython-312.pyc"), "old bytecode");
-		const before = hashTree(tree);
-
-		const seal = sealPythonInterpreterTrees([tree, join(root, "python")]);
-		assert.deepEqual(
-			seal.sealed,
-			[tree],
-			"only the tree that exists is sealed",
-		);
-		// Exact figures, not `> 0`: the previous revision counted every directory
-		// twice and reported the ones it had just sealed as "already read-only"
-		// (285 on the shipped tree, where the true fresh-tree value is 0), and
-		// `> 0` is what let that pass.
-		assert.equal(
-			seal.directories,
-			5,
-			"the tree root and all four directories below it are sealed",
-		);
-		assert.equal(
-			seal.bytecodeFiles,
-			1,
-			"the .pyc already there is covered too",
-		);
-		assert.deepEqual(seal.failures, []);
-
-		// The contents are intact - an access-control entry is not a resource
-		// change, which is what keeps the code signature this exists to protect
-		// valid - and the interpreter that owns the tree still runs.
-		assert.equal(hashTree(tree), before, "a seal must not change a byte");
-		assert.equal(
-			readFileSync(join(tree, "lib", "python3.12", "os.py"), "utf8"),
-			"# stdlib\n",
-		);
-
-		// What an isolated child does: `-E`/`-I` ignore the environment, so this
-		// write is the only thing standing between it and the sealed bundle. Both
-		// halves of what CPython performs - the `.pyc` in an existing cache
-		// directory, and the cache directory itself on a fresh tree.
-		assert.throws(
-			() => writeCacheEntry(tree, join("lib", "python3.12", "__pycache__")),
-			{ code: "EACCES" },
-			"a sealed tree must refuse the write an unredirected interpreter makes",
-		);
-		assert.throws(
-			() => mkdirSync(join(tree, "lib", "python3.12", "json", "__pycache__")),
-			{ code: "EACCES" },
-			"and must refuse to be given the cache directory itself",
-		);
-		assert.throws(
-			() => writeFileSync(join(tree, "lib", "python3.12", "new.py"), "# new\n"),
-			{ code: "EACCES" },
-		);
-		assert.throws(
-			() => appendFileSync(join(cache, "os.cpython-312.pyc"), "more"),
-			{ code: "EACCES" },
-			"rewriting the bytecode already there is the class the heal cannot repair",
-		);
-
-		// Nothing outside the named trees is touched.
-		assert.doesNotThrow(() =>
-			writeFileSync(join(untouched, "kept.py"), "# still writable\n"),
-		);
-
-		// Idempotent: the second pass reports the same set and changes nothing.
-		const again = sealPythonInterpreterTrees([tree]);
-		assert.deepEqual(again.sealed, [tree]);
-		assert.equal(again.directories, 5);
-		assert.equal(again.bytecodeFiles, 1);
-		assert.deepEqual(again.failures, []);
-		assert.equal(hashTree(tree), before);
-
-		// Idempotent at the level the mechanism actually works at, which is the one
-		// the counts and the hash cannot see: both figures above are `find` counts
-		// and the hash is content, so a second pass that *appended* a duplicate
-		// entry every launch would satisfy them all. One ACE per path is the claim
-		// (macOS merges an identical entry - pinned here rather than assumed).
-		for (const path of [
-			tree,
-			join(tree, "lib"),
-			cache,
-			join(cache, "os.cpython-312.pyc"),
-		]) {
-			const aces = aceLines(path);
-			assert.equal(
-				aces.length,
-				1,
-				`${path} must carry exactly one access-control entry after a second seal, got ${JSON.stringify(aces)}`,
-			);
-		}
-		assert.match(
-			aceLines(tree)[0],
-			/deny add_file,add_subdirectory$/,
-			"a directory withholds creation and keeps delete_child",
-		);
-		assert.match(
-			aceLines(join(cache, "os.cpython-312.pyc"))[0],
-			/deny write,append$/,
-			"existing bytecode withholds the rewrite the heal cannot repair",
-		);
-
-		// The two properties a mode seal could not have, and the reason this one
-		// withholds the rights separately: the app can still heal the bundle it is
-		// about to hand to ShipIt (unlinking is a directory right, which the seal
-		// leaves granted), and the user can still delete the app (same).
-		assert.doesNotThrow(
-			() => rmSync(join(cache, "os.cpython-312.pyc")),
-			"the heal must still be able to unlink bytecode in a sealed tree",
-		);
-		assert.equal(existsSync(join(cache, "os.cpython-312.pyc")), false);
-		assert.doesNotThrow(
-			() => rmSync(root, { recursive: true, force: true }),
-			"emptying the Trash must still be able to reclaim a sealed tree",
-		);
-		assert.equal(existsSync(root), false);
-	},
-);
-
-test("a seal is described by what was applied, never by what was selected", () => {
-	// The clean shape: every selected path took the entry, so the sentence may say
-	// so. Both figures are named as *selected* even here, because that is what
-	// they are - only `failures` decides whether they were applied.
-	const clean = describePythonTreeSeal({
-		sealed: ["/bundle/python_aarch64"],
-		directories: 287,
-		bytecodeFiles: 163,
-		failures: [],
-		supported: true,
-	});
-	assert.match(
-		clean,
-		/287 directory path\(s\) selected and now refusing new entries/,
-	);
-	assert.match(
-		clean,
-		/163 bytecode file\(s\) selected and now refusing rewrites/,
-	);
-
-	// The shape this exists for, copied from a read-only APFS volume: every path
-	// refused, so nothing was applied - the previous wording said "4 path(s) now
-	// refuse new entries ... 5 refused" about exactly this result (Q4).
-	const refused = describePythonTreeSeal({
-		sealed: ["/bundle/python_aarch64"],
-		directories: 4,
-		bytecodeFiles: 1,
-		failures: [
-			"chmod: Failed to set ACL on file '/bundle/python_aarch64': Read-only file system",
-			"chmod: Failed to set ACL on file '/bundle/python_aarch64/lib': Read-only file system",
-		],
-		supported: true,
-	});
-	assert.match(refused, /INCOMPLETE/);
-	assert.doesNotMatch(
-		refused,
-		/now refusing/,
-		"a partial seal must not borrow the wording of an applied one",
-	);
-	assert.match(refused, /2 refused and left with the access they had/);
-	// It names the refused path rather than only counting them.
-	assert.match(refused, /\/bundle\/python_aarch64\/lib/);
-	// A long failure list is truncated, and says so rather than looking complete.
-	assert.match(
-		describePythonTreeSeal({
-			sealed: ["/bundle/python"],
-			directories: 5,
-			bytecodeFiles: 0,
-			failures: ["a", "b", "c", "d"],
-			supported: true,
-		}),
-		/\(\+1 more\)/,
-	);
-
-	assert.match(
-		describePythonTreeSeal({
-			sealed: [],
-			directories: 0,
-			bytecodeFiles: 0,
-			failures: [],
-			supported: false,
-		}),
-		/macOS-only/,
-		"a platform without the mechanism says so instead of reporting zeroes",
-	);
-
-	// And the installer logs this message rather than composing its own, which is
-	// the only reason the wording is worth pinning here.
-	const installerSource = readFileSync(
-		join(process.cwd(), "src/main/backend/backend-installer.ts"),
-		"utf8",
-	);
-	assert.match(installerSource, /describePythonTreeSeal\(seal\)/);
-	assert.doesNotMatch(installerSource, /path\(s\) now refuse new entries/);
-});
-
-test("constructing the installer seals the bundled trees of a packaged app", async () => {
+test("the installer never executes the macOS in-bundle seed", async () => {
 	const { BackendInstaller } = await loadMainProcess();
-
-	const resources = mkdtempSync(join(tmpdir(), "lo-resources-seal-"));
-	// The tree a packaged arm64 app ships, with one writable file in it: if the
-	// constructor does not seal it, the assertion below fails on this tree.
-	const tree = join(resources, "python_aarch64");
-	mkdirSync(join(tree, "bin"), { recursive: true });
-	mkdirSync(join(tree, "lib", "python3.12"), { recursive: true });
-	writeFileSync(join(tree, "bin", "python3"), "#!/bin/sh\n");
-	writeFileSync(join(tree, "lib", "python3.12", "json.py"), "# stdlib\n");
-
-	const hadResourcesPath = "resourcesPath" in process;
-	const originalResourcesPath = process.resourcesPath;
-	process.resourcesPath = resources;
-	// The cache write under the tree, named once: the darwin and non-darwin arms
-	// assert opposite outcomes about the *same* write.
-	const cacheWrite = () =>
-		writeCacheEntry(tree, join("lib", "python3.12", "json", "__pycache__"));
-	try {
-		new BackendInstaller();
-		if (process.platform === "darwin") {
-			assert.throws(
-				cacheWrite,
-				{ code: "EACCES" },
-				"a packaged app must seal its bundled interpreter before any python runs",
-			);
-		} else {
-			// The platform contract, asserted rather than skipped. The seal is a
-			// documented no-op everywhere but macOS - there is no code seal to
-			// protect elsewhere - and CI runs this suite on `ubuntu-latest`, so the
-			// no-op is the arm that must be *covered*, not one that may be assumed
-			// away: two unguarded `EACCES` assertions here are what made this file
-			// fail on the runner's platform while nothing on the PR could see it
-			// (round-2 R6).
-			assert.doesNotThrow(
-				cacheWrite,
-				"off darwin the seal is a no-op, so a packaged app's tree stays writable",
-			);
-			assert.deepEqual(
-				sealPythonInterpreterTrees([tree]),
-				{
-					sealed: [],
-					directories: 0,
-					bytecodeFiles: 0,
-					failures: [],
-					supported: false,
-				},
-				"and the module reports the platform contract rather than reporting zeroes",
-			);
-		}
-		// And the sibling tree this build does not ship stays absent rather than
-		// being created: the seal walks, it does not provision.
-		assert.equal(existsSync(join(resources, "python")), false);
-	} finally {
-		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
-		// `delete` rather than `= undefined`: the point of this branch is to restore
-		// the property's *absence*, and assigning undefined would leave it present.
-		else delete process.resourcesPath;
-		// No mode surgery before this one: a sealed tree is deletable, which is the
-		// property the mechanism was chosen for (the mode seal needed
-		// `chmod -R u+w` here, and only because a test may do what a user may not).
-		rmSync(resources, { recursive: true, force: true });
-	}
-});
-
-test("the seal follows the code-sealed bundle, never the checkout's resources tree", async () => {
-	// `BackendInstaller` resolves its own `resourcesPath` at
-	// `join(process.cwd(), "resources")` whenever NODE_ENV is development, and
-	// `resources/python*` is a gitignored build input
-	// (`scripts/setup-python-resource.sh`) that this app does not own. Sealing by
-	// `app.isPackaged` alone took the write bits off that tree; the seal is
-	// aimed at `process.resourcesPath` instead, and an unpackaged run seals
-	// nothing at all.
-	const { BackendInstaller } = await loadMainProcess();
-	const scratch = mkdtempSync(join(tmpdir(), "lo-resources-dev-"));
-	const checkout = join(scratch, "resources", "python_aarch64");
-	const bundle = join(scratch, "bundle", "python_aarch64");
-	const unpackaged = join(scratch, "unpackaged", "python_aarch64");
-	for (const tree of [checkout, bundle, unpackaged]) {
-		mkdirSync(join(tree, "lib", "python3.12"), { recursive: true });
-		writeFileSync(join(tree, "lib", "python3.12", "json.py"), "# stdlib\n");
-	}
-	const cacheWrite = (tree) => () =>
-		writeCacheEntry(tree, join("lib", "python3.12", "__pycache__"));
-
-	const originalCwd = process.cwd();
-	const originalNodeEnv = process.env.NODE_ENV;
-	const hadResourcesPath = "resourcesPath" in process;
-	const originalResourcesPath = process.resourcesPath;
-	const originalPackaged = globalThis.__loTestAppIsPackaged;
-	// `join(process.cwd(), "resources")` is what the constructor resolves in a
-	// development run, so the cwd is the scratch directory rather than the
-	// checkout - this test must not create one in the repository it runs from.
-	process.chdir(scratch);
-	process.env.NODE_ENV = "development";
-	process.resourcesPath = join(scratch, "bundle");
-	try {
-		new BackendInstaller();
-		assert.doesNotThrow(
-			cacheWrite(checkout),
-			"a packaged dev run must not seal the checkout's own resources tree",
-		);
-		if (process.platform === "darwin") {
-			assert.throws(
-				cacheWrite(bundle),
-				{ code: "EACCES" },
-				"but it must seal the bundle it actually ships",
-			);
-		} else {
-			// Nothing is sealed anywhere off darwin, so the arm that distinguishes
-			// the checkout tree from the shipped one cannot be exercised there - and
-			// the assertion says exactly that rather than asserting an `EACCES` this
-			// platform cannot produce (round-2 R6).
-			assert.doesNotThrow(
-				cacheWrite(bundle),
-				"off darwin no tree is sealed, so the shipped bundle is left as it is",
-			);
-		}
-
-		globalThis.__loTestAppIsPackaged = false;
-		process.resourcesPath = join(scratch, "unpackaged");
-		new BackendInstaller();
-		assert.doesNotThrow(
-			cacheWrite(unpackaged),
-			"an unpackaged run is not the shipped artifact and must seal nothing",
-		);
-	} finally {
-		process.chdir(originalCwd);
-		if (originalNodeEnv === undefined) {
-			// `delete` rather than `= undefined`: the latter would leave NODE_ENV set
-			// to the string "undefined", which is not a state any test started from.
-			delete process.env.NODE_ENV;
-		} else process.env.NODE_ENV = originalNodeEnv;
-		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
-		// Same reason as the branch in the test above: restore the absence.
-		else delete process.resourcesPath;
-		globalThis.__loTestAppIsPackaged = originalPackaged;
-		rmSync(scratch, { recursive: true, force: true });
-	}
+	const installer = new BackendInstaller();
+	if (process.platform === "darwin") assert.equal(installer.findPython(), null);
 });
 
 test("the update service's python probe runs with the guards in the child's own environment", async () => {
@@ -1448,7 +1237,10 @@ test("the guard is written into the venv's own site-packages", () => {
 		// The property, not the text: the file turns bytecode writing off, which
 		// is what a process using this venv inherits whether or not it was this
 		// app that started it.
-		assert.match(readFileSync(expected, "utf8"), /^sys\.dont_write_bytecode = True$/m);
+		assert.match(
+			readFileSync(expected, "utf8"),
+			/^sys\.dont_write_bytecode = True$/m,
+		);
 
 		// Idempotent by content, because this runs at every start.
 		const second = ensureVenvBytecodeGuard(venvPath);
@@ -1466,7 +1258,11 @@ test("a venv without site-packages is reported, not created", () => {
 		assert.equal(guard.path, null);
 		assert.equal(guard.written, false);
 		assert.match(guard.reason, /no site-packages/);
-		assert.deepEqual(readdirSync(venvPath), [], "nothing may be created in a venv that is not there yet");
+		assert.deepEqual(
+			readdirSync(venvPath),
+			[],
+			"nothing may be created in a venv that is not there yet",
+		);
 	} finally {
 		rmSync(venvPath, { recursive: true, force: true });
 	}
@@ -1474,7 +1270,13 @@ test("a venv without site-packages is reported, not created", () => {
 
 test("a sitecustomize.py that is not ours is left exactly as it is", () => {
 	const venvPath = makeVenv();
-	const theirs = join(venvPath, "lib", "python3.12", "site-packages", VENV_BYTECODE_GUARD_FILE);
+	const theirs = join(
+		venvPath,
+		"lib",
+		"python3.12",
+		"site-packages",
+		VENV_BYTECODE_GUARD_FILE,
+	);
 	const ownText = "print('the operator put this here')\n";
 	writeFileSync(theirs, ownText);
 	try {
@@ -1496,8 +1298,17 @@ test("a previous revision's guard is refreshed rather than kept", () => {
 	// was written by this app, so keeping an old revision would leave the venv
 	// running whatever that revision said.
 	const venvPath = makeVenv();
-	const theirs = join(venvPath, "lib", "python3.12", "site-packages", VENV_BYTECODE_GUARD_FILE);
-	writeFileSync(theirs, "# Local Operator bytecode guard. Do not edit; the app rewrites this file.\n");
+	const theirs = join(
+		venvPath,
+		"lib",
+		"python3.12",
+		"site-packages",
+		VENV_BYTECODE_GUARD_FILE,
+	);
+	writeFileSync(
+		theirs,
+		"# Local Operator bytecode guard. Do not edit; the app rewrites this file.\n",
+	);
 	try {
 		const guard = ensureVenvBytecodeGuard(venvPath);
 		assert.equal(guard.written, true, guard.reason);
@@ -1519,7 +1330,10 @@ test("a real CPython imports the guard and stops writing bytecode", (t) => {
 	const moduleDir = join(scratch, "modules");
 	mkdirSync(guardDir, { recursive: true });
 	mkdirSync(moduleDir, { recursive: true });
-	writeFileSync(join(guardDir, VENV_BYTECODE_GUARD_FILE), venvBytecodeGuardSource());
+	writeFileSync(
+		join(guardDir, VENV_BYTECODE_GUARD_FILE),
+		venvBytecodeGuardSource(),
+	);
 	writeFileSync(join(moduleDir, "lo_probe_module.py"), "VALUE = 1\n");
 
 	const run = (extraEnv) =>
@@ -1538,12 +1352,23 @@ test("a real CPython imports the guard and stops writing bytecode", (t) => {
 			t.skip(`no python3 on PATH to measure with: ${control.error.message}`);
 			return;
 		}
-		assert.equal(control.stdout.trim(), "False", `the control run must be able to write: ${control.stderr}`);
-		assert.ok(existsSync(cacheDir), "the control run must have produced a __pycache__");
+		assert.equal(
+			control.stdout.trim(),
+			"False",
+			`the control run must be able to write: ${control.stderr}`,
+		);
+		assert.ok(
+			existsSync(cacheDir),
+			"the control run must have produced a __pycache__",
+		);
 
 		rmSync(cacheDir, { recursive: true, force: true });
 		const guarded = run({ PYTHONPATH: guardDir });
-		assert.equal(guarded.stdout.trim(), "True", `the guard must be imported by site: ${guarded.stderr}`);
+		assert.equal(
+			guarded.stdout.trim(),
+			"True",
+			`the guard must be imported by site: ${guarded.stderr}`,
+		);
 		assert.equal(
 			existsSync(cacheDir),
 			false,
@@ -1717,13 +1542,14 @@ function findChildProcessSites() {
  * `pythonSpawnEnv`). This is the coverage half - every site in the file, and a
  * new one fails for being absent rather than for what it does.
  */
-const GUARDED_ENV = /withPythonBytecodeCache|backendSpawnEnv\(\)|pythonSpawnEnv\(\)/;
+const GUARDED_ENV =
+	/withPythonBytecodeCache|backendSpawnEnv\(\)|pythonSpawnEnv\(\)/;
 
 /**
  * A spawn that runs an interpreter this app ships, and the guard it must carry.
  */
-function runsPython(file, name, index, env, why) {
-	return { file, name, index, kind: "python", env, why };
+function runsPython(file, name, index, env, why, binding) {
+	return { file, name, index, kind: "python", env, why, binding };
 }
 
 /** A spawn that starts no interpreter, with the command it starts. */
@@ -1753,6 +1579,11 @@ function passThrough(file, name, index, why) {
  * interpreter here" after the command under it changed.
  */
 const SPAWN_SITES = [
+	runsPython(
+		"src/main/backend/managed-python.ts", "spawn", 1, /env:\s*isolated/,
+		"the owned backend-preparation smoke child; its env is the blocked allowlist bound to withPythonBytecodeCache",
+		/const isolated = withPythonBytecodeCache\(/,
+	),
 	runsCommand(
 		"src/main/backend/backend-installer.ts",
 		"spawn",
@@ -1820,13 +1651,7 @@ const SPAWN_SITES = [
 	runsCommand("src/main/index.ts", "spawnSync", 6, /"cmd\.exe"/, "the relaunch path's cleanup, for the global install"),
 	runsCommand("src/main/index.ts", "spawnSync", 7, /"bash"/, "the relaunch path's cleanup on Unix"),
 	runsCommand("src/main/index.ts", "spawnSync", 8, /"bash"/, "the relaunch path's cleanup, after a grace period"),
-	runsCommand(
-		"src/main/python-bytecode-cache.ts",
-		"spawnSync",
-		1,
-		/FIND/,
-		"the seal itself: /usr/bin/find with /bin/chmod - it must run under the INHERITED environment, because it is what makes the tree refuse writes",
-	),
+
 	passThrough(
 		"src/main/update-service.ts",
 		"execFile",
@@ -1873,6 +1698,25 @@ test("every child-process spawn site is enumerated, and the python ones carry th
 		"the scan found no child-process call sites at all, which means the scan is broken rather than that the app starts nothing",
 	);
 
+	// The other half of every python row, asserted once because there is one
+	// builder: the shared environment has to set BOTH variables - the prefix
+	// decides where a write goes, the flag is what refuses it - and a per-site
+	// grep for a name would pass on a file that merely mentions it (review R6).
+	const builder = readFileSync(
+		join(process.cwd(), "src/main/python-bytecode-cache.ts"),
+		"utf8",
+	);
+	assert.match(
+		builder,
+		/PYTHONPYCACHEPREFIX:\s*prefix/,
+		"the guarded environment must set PYTHONPYCACHEPREFIX to the prefix it resolved",
+	);
+	assert.match(
+		builder,
+		/PYTHONDONTWRITEBYTECODE:\s*"1"/,
+		"and PYTHONDONTWRITEBYTECODE, unconditionally: the spawns that reach it are the ones we start",
+	);
+
 	const key = (site) => `${site.file}#${site.name}#${site.index}`;
 	const rows = new Map(SPAWN_SITES.map((row) => [key(row), row]));
 
@@ -1909,13 +1753,13 @@ test("every child-process spawn site is enumerated, and the python ones carry th
 				GUARDED_ENV,
 				`${where} must build its environment with withPythonBytecodeCache (or the service's own wrapper): ${row.why}`,
 			);
-			// And the guard is both variables, never the prefix alone: the prefix
-			// decides where a write goes, the flag is what refuses it.
-			assert.match(
-				readFileSync(join(process.cwd(), site.file), "utf8"),
-				/GUARD|withPythonBytecodeCache/,
-				`${where} must reach a builder that sets PYTHONPYCACHEPREFIX and PYTHONDONTWRITEBYTECODE`,
-			);
+			if (row.binding) {
+				assert.match(
+					readFileSync(join(process.cwd(), site.file), "utf8"),
+					row.binding,
+					`${where} passes an environment that must be bound to the guarded builder: ${row.why}`,
+				);
+			}
 		} else if (row.kind === "command") {
 			assert.match(
 				site.text,
@@ -1930,36 +1774,19 @@ test("every child-process spawn site is enumerated, and the python ones carry th
 // Which interpreter environment an instance uses
 
 test("a packaged and an unpackaged instance never share a venv", () => {
-	const input = {
-		platform: "darwin",
-		home: "/Users/someone",
-		appDataPath: "/Users/someone/Library/Application Support/local-operator-ui",
-	};
-	const packaged = managedVenvPath({ ...input, packaged: true });
-	const dev = managedVenvPath({ ...input, packaged: false });
-	assert.equal(
-		packaged,
-		"/Users/someone/Library/Application Support/Local Operator/local-operator-venv",
-		"the packaged name is the one every install on disk today uses",
-	);
-	assert.equal(
-		dev,
-		"/Users/someone/Library/Application Support/Local Operator/local-operator-venv-dev",
-		"and a dev instance gets a name of its own, beside it rather than inside it",
-	);
-	assert.notEqual(packaged, dev);
-	assert.ok(dev.includes(DEV_VENV_DIR_NAME) && packaged.includes(PACKAGED_VENV_DIR_NAME));
-
-	// Windows has no `home` branch: everything is under userData, and the name is
-	// the whole split.
-	assert.equal(
-		managedVenvPath({ ...input, platform: "win32", packaged: false }),
-		"/Users/someone/Library/Application Support/local-operator-ui/local-operator-venv-dev",
-	);
-	assert.equal(
-		managedVenvPath({ ...input, platform: "linux", packaged: true }),
-		"/Users/someone/.config/local-operator/local-operator-venv",
-	);
+	for (const platform of ["darwin", "linux", "win32"]) {
+		const input = { platform, home: PATHS.home, appDataPath: PATHS.userData };
+		const packaged = managedVenvPath({ ...input, packaged: true });
+		const dev = managedVenvPath({ ...input, packaged: false });
+		assert.notEqual(packaged, dev);
+		if (platform === "darwin") {
+			assert.match(packaged, /managed-python[/]packaged[/]unprepared$/);
+			assert.match(dev, /managed-python[/]dev[/]unprepared$/);
+		} else {
+			assert.ok(packaged.endsWith(PACKAGED_VENV_DIR_NAME));
+			assert.ok(dev.endsWith(DEV_VENV_DIR_NAME));
+		}
+	}
 });
 
 test("the bundle a venv's interpreter resolves its stdlib from is read from pyvenv.cfg", () => {
@@ -1984,7 +1811,7 @@ test("the bundle a venv's interpreter resolves its stdlib from is read from pyve
 		// The field measurement, reproduced: this is what the operator's
 		// app-managed venv says today, and it is why a dev instance's backend start
 		// writes into the installed app.
-		assert.equal(venvInterpreterBundle(venv), app);
+		assert.deepEqual(venvInterpreter(venv), { kind: "bundled", bundle: app });
 
 		// An unpackaged instance's own venv is built on the checkout's interpreter
 		// tree: same tail, no bundle, nothing to repair from here.
@@ -1992,24 +1819,27 @@ test("the bundle a venv's interpreter resolves its stdlib from is read from pyve
 			join(venv, "pyvenv.cfg"),
 			`home = /Users/someone/local-operator/resources/python_aarch64/bin\n`,
 		);
-		assert.equal(venvInterpreterBundle(venv), null);
+		assert.deepEqual(venvInterpreter(venv), { kind: "none" });
 
 		// And a system or uv-managed python has no bundle behind it either.
 		writeFileSync(join(venv, "pyvenv.cfg"), "home = /opt/homebrew/bin\n");
-		assert.equal(venvInterpreterBundle(venv), null);
+		assert.deepEqual(venvInterpreter(venv), { kind: "none" });
 
-		// A bundle that is not there any more is not one to probe.
+		// A bundle the venv names that is GONE is its own answer, not the same one as
+		// "no bundle here": this is the operator's state today, and the start-up
+		// repair names the path it could not find rather than staying silent (QA Q3).
+		const gone = join(home, "Gone.app");
 		writeFileSync(
 			join(venv, "pyvenv.cfg"),
-			`home = ${join(home, "Gone.app", "Contents", "Resources", "python", "bin")}\n`,
+			`home = ${join(gone, "Contents", "Resources", "python", "bin")}\n`,
 		);
-		assert.equal(venvInterpreterBundle(venv), null);
+		assert.deepEqual(venvInterpreter(venv), { kind: "missing", bundle: gone });
 	} finally {
 		rmSync(home, { recursive: true, force: true });
 	}
-	assert.equal(
-		venvInterpreterBundle(join(tmpdir(), "lo-venv-that-does-not-exist-xyz")),
-		null,
+	assert.deepEqual(
+		venvInterpreter(join(tmpdir(), "lo-venv-that-does-not-exist-xyz")),
+		{ kind: "none" },
 	);
 });
 
@@ -2018,52 +1848,12 @@ test("the bundle a venv's interpreter resolves its stdlib from is read from pyve
  * the venv THIS instance will run, at start-up, because the installs already on
  * a disk were created before the guard existed.
  */
-test("constructing the installer guards the venv of the instance it belongs to", async () => {
+test("constructing the macOS installer does not edit a legacy venv", async () => {
 	const { BackendInstaller } = await loadMainProcess();
-
-	// The venv this instance resolves, laid out the way `venv` leaves it, with one
-	// directory in it that must survive untouched.
-	// Derived from the same decision the installer makes rather than from the macOS
-	// spelling of it: the path is per-platform (`~/.config/local-operator` on Linux,
-	// userData on Windows), and a hand-written literal here passed on darwin and
-	// failed the whole suite on ubuntu - which is where CI runs it.
-	const venvPath = managedVenvPath({
-		platform: process.platform,
-		home: PATHS.home,
-		appDataPath: PATHS.userData,
-		packaged: true,
-	});
-	const sitePackages = join(venvPath, "lib", "python3.12", "site-packages");
-	mkdirSync(sitePackages, { recursive: true });
-	const untouched = join(sitePackages, "some_package.py");
-	writeFileSync(untouched, "x = 1\n");
-
-	// `process.resourcesPath` is Electron's and the constructor reads it
-	// unguarded, so a run under plain node has to seed it (`update-robustness`
-	// seeds it the same way).
-	const hadResourcesPath = "resourcesPath" in process;
-	const originalResourcesPath = process.resourcesPath;
-	const resources = mkdtempSync(join(tmpdir(), "lo-installer-resources-"));
-	process.resourcesPath = resources;
-	const installer = new BackendInstaller();
-	const guard = join(sitePackages, VENV_BYTECODE_GUARD_FILE);
-	try {
-		assert.equal(
-			installer.venvPath,
-			venvPath,
-			"a packaged run must keep using the venv name every install on disk has",
-		);
-		assert.equal(
-			readFileSync(guard, "utf8"),
-			venvBytecodeGuardSource(),
-			"the installer must write the guard into the venv it will run",
-		);
-		assert.equal(readFileSync(untouched, "utf8"), "x = 1\n");
-	} finally {
-		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
-		else delete process.resourcesPath;
-		rmSync(resources, { recursive: true, force: true });
-		rmSync(guard, { force: true });
-		rmSync(untouched, { force: true });
-	}
+	const legacy = join(PATHS.home, "Library", "Application Support", "Local Operator", "local-operator-venv", "lib", "python3.12", "site-packages");
+	mkdirSync(legacy, { recursive: true });
+	const userGuard = join(legacy, "sitecustomize.py");
+	writeFileSync(userGuard, "# unknown user work\n");
+	new BackendInstaller();
+	assert.equal(readFileSync(userGuard, "utf8"), "# unknown user work\n");
 });
