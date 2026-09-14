@@ -488,7 +488,21 @@ const NoticeRow = memo(function NoticeRow({
 					// rather than truncating at it: a clipped sentence costs the
 					// reader the half that says what happened.
 					dense
-					verbOverride={record.category ?? record.customType.replace(/_/g, " ")}
+					/*
+					 * The derived label says what KIND of row this is, and it is
+					 * dropped only when the payload's own first words already name the
+					 * subject — a job result whose headline opens "background job 'x'
+					 * failed:" would otherwise read "job result: background job 'x'
+					 * failed:" and say "job" twice in the space of six words (round 4's
+					 * D10, decided here rather than deferred again). The condition is
+					 * the payload's own opening, not a list of type names, so it cannot
+					 * rot when a producer changes.
+					 */
+					verbOverride={
+						record.headline.startsWith("background job")
+							? undefined
+							: (record.category ?? record.customType.replace(/_/g, " "))
+					}
 					// The provider/model the incident names rides the ledger's
 					// machine-voice object column: it is an identifier, not prose, and
 					// "which provider died" is the decision-relevant half for an
