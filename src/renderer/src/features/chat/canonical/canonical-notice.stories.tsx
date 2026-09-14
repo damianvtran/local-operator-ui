@@ -201,11 +201,7 @@ const INCIDENT_OPEN = "801c032e12604b478ab44b3bedcbd503";
 
 export const SessionIncidents: Story = {
 	render: () => (
-		<Frame
-			records={incidentTranscript()}
-			height={700}
-			expand={INCIDENT_OPEN}
-		/>
+		<Frame records={incidentTranscript()} height={700} expand={INCIDENT_OPEN} />
 	),
 };
 
