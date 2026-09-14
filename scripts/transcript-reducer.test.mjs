@@ -1575,3 +1575,232 @@ test("removeRecord retracts exactly the echo it names", () => {
 	const pruned = removeRecord(state, "req-1");
 	assert.equal(pruned.index.get("req-2"), 0);
 });
+
+/* ------------------------------------------------------- receipt rows */
+
+/*
+ * A peer message and a wake delivery are `CustomMessage` rows whose
+ * `details.text` is markup addressed to the MODEL — a `<peer-session-message …>`
+ * provenance envelope, and `(alarm) Scheduled wake w-9 … — cancel with
+ * wake({op:"cancel",id:"w-9"})` — and the generic custom branch paints
+ * `details.text`, which is how both reached the screen verbatim.
+ *
+ * These assert the PROJECTION rather than the row: that the record a page
+ * produces carries the human fields and not the envelope, that the live
+ * `history_delta` path produces the SAME record as the durable page (they share
+ * `durableRecord`, and "they share it" is exactly the assumption worth testing
+ * rather than trusting), and that a replayed page does not rebuild a record it
+ * already has.
+ */
+
+const PEER_ENVELOPE =
+	"<peer-session-message from_pid=92064 conversation='review-agent' model='deepseek/deepseek-flash'>\n" +
+	"the tool row needs the same treatment\n" +
+	"</peer-session-message>";
+
+const PEER_SENDER = {
+	pid: 92064,
+	conversation_name: "review-agent",
+	cwd: "/Users/damian/local-operator-ui",
+	session_id: "01J8ZQ4K7XABCDEF",
+	model_label: "deepseek/deepseek-flash",
+};
+
+const peerMessage = (details) => ({
+	id: "p1",
+	custom_type: "peer_message",
+	attribution: "user",
+	details,
+});
+
+const pageOf = (entries) => ({ entries, has_more: false, cursor_missing: false });
+
+const messageEntry = (id, ts, payload) => ({
+	id,
+	ts,
+	type: "message",
+	payload,
+});
+
+test("a peer message projects to its body and sender, never the envelope", () => {
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("p1", 5, {
+				kind: "custom",
+				...peerMessage({
+					text: PEER_ENVELOPE,
+					body: "the tool row needs the same treatment",
+					sender: PEER_SENDER,
+				}),
+			}),
+		]),
+	);
+	const [record] = state.records;
+	assert.equal(record.kind, "peer");
+	assert.equal(record.body, "the tool row needs the same treatment");
+	assert.equal(record.sender.pid, "92064");
+	assert.equal(record.sender.conversationName, "review-agent");
+	assert.equal(record.sender.cwd, "/Users/damian/local-operator-ui");
+	assert.equal(record.sender.sessionId, "01J8ZQ4K7XABCDEF");
+	assert.equal(record.sender.modelLabel, "deepseek/deepseek-flash");
+	// The rule the whole projection exists for. Asserted over the serialised
+	// record so it covers any field a later edit might add.
+	assert.ok(
+		!JSON.stringify(record).includes("peer-session-message"),
+		"the model-facing envelope must not reach the view",
+	);
+	assert.ok(!JSON.stringify(record).includes("from_pid"), "nor its attributes");
+});
+
+test("a peer row that carries only the envelope still names its sender", () => {
+	// The fallback path: a row written before `body`/`sender` existed, or by a
+	// delivery path that never learned about them. It still has to name the
+	// sender and still has to have something to say.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([messageEntry("p1", 5, { kind: "custom", ...peerMessage({ text: PEER_ENVELOPE }) })]),
+	);
+	const [record] = state.records;
+	assert.equal(record.kind, "peer");
+	assert.equal(record.body, "the tool row needs the same treatment");
+	assert.equal(record.sender.pid, "92064");
+	assert.equal(record.sender.conversationName, "review-agent");
+	assert.equal(record.sender.modelLabel, "deepseek/deepseek-flash");
+	// The two the envelope has no field for stay empty rather than invented.
+	assert.equal(record.sender.cwd, "");
+	assert.equal(record.sender.sessionId, "");
+});
+
+test("a peer row with an empty body is still a row", () => {
+	// The expansion carries the pid and the model, which the collapsed row
+	// cannot; that is why the row is always expandable and why an empty message
+	// is not an invisible record. The TUI's `can_expand()` returns True
+	// unconditionally for the same reason.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("p1", 5, {
+				kind: "custom",
+				...peerMessage({ text: "", body: "", sender: { pid: 42, session_id: "01J8ZQ4K7X" } }),
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].kind, "peer");
+	assert.equal(state.records[0].body, "");
+	assert.equal(state.records[0].sender.pid, "42");
+});
+
+test("the live path and the durable page produce the same receipt", () => {
+	const row = peerMessage({
+		text: PEER_ENVELOPE,
+		body: "the tool row needs the same treatment",
+		sender: PEER_SENDER,
+	});
+	const durable = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([messageEntry("p1", 5, { kind: "custom", ...row })]),
+	);
+	const live = applyEvent(EMPTY_TRANSCRIPT, { type: "history_delta", messages: [row] }, 5000);
+	assert.deepEqual(live.records, durable.records);
+
+	// And a replayed page that teaches nothing new returns the SAME state object,
+	// which is only true if the sender object is reused: the equality gate
+	// compares fields by reference, and a freshly built sender would report this
+	// row as changed on every reconnect (the bargain `extractImages` strikes).
+	const again = applyHistoryPage(durable, pageOf([messageEntry("p1", 5, { kind: "custom", ...row })]));
+	assert.equal(again, durable);
+});
+
+test("a wake delivery is a receipt, and the catch-up is not one", () => {
+	const delivery =
+		'(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})\n\ncheck the deploy';
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w1", 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				attribution: "user",
+				details: { wake_id: "w-9", occurrence: 1, text: delivery },
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].kind, "wake");
+	// The record holds what ARRIVED: the headline and the prompt are derived at
+	// paint time by the pure receipt model, so the state carries no rendering of
+	// its own.
+	assert.equal(state.records[0].text, delivery);
+
+	// The resume catch-up is not a receipt. It is user-attributed, and both
+	// shipping surfaces skip it on replay for that reason — replaying it "would
+	// put a raw '(alarm) The session resumed…' line in the transcript as if the
+	// user had typed it" — so a receipt row must not be minted from it either.
+	state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w2", 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				attribution: "user",
+				details: {
+					wake_catchup: true,
+					text: "(alarm) The session resumed after being closed; the following scheduled wake(s) came due while it was down.\n\n- w1 (due 12:00): missed while the session was down.",
+				},
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 0);
+
+	// A wake row with no text at all is nothing to show, so it stays dropped —
+	// the generic custom branch's own rule.
+	state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w3", 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				details: { wake_id: "w-3", text: "   " },
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 0);
+});
+
+test("the new kinds do not change how other custom rows project", () => {
+	// The regression guard for the branch this change inserted in front of: a
+	// custom row that is neither a peer nor a wake still paints `details.text`,
+	// and the two kinds that were already silent stay silent.
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("c1", 5, {
+				kind: "custom",
+				custom_type: "subagent_progress",
+				attribution: "agent",
+				details: { text: "the reviewer started" },
+			}),
+			messageEntry("c2", 6, {
+				kind: "custom",
+				custom_type: "hub_communication",
+				attribution: "agent",
+				details: { text: "parent words" },
+			}),
+			messageEntry("c3", 7, {
+				kind: "custom",
+				custom_type: "peer_message_summary",
+				attribution: "system",
+				details: { text: "1 peer message, 40 bytes" },
+			}),
+		]),
+	);
+	assert.deepEqual(
+		state.records.map((record) => [record.id, record.kind, record.text ?? record.customType]),
+		[
+			["c1", "custom", "the reviewer started"],
+			["c3", "custom", "1 peer message, 40 bytes"],
+		],
+	);
+});

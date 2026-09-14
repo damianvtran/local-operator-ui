@@ -354,7 +354,7 @@ test("the app window's CSP admits the blob images the attachment path produces",
 const rowsBundle = await build({
 	stdin: {
 		contents:
-			'export { buildRows, GAP, paintsSomething } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -371,7 +371,7 @@ const rowsBundle = await build({
 	},
 	write: false,
 });
-const { buildRows, GAP, paintsSomething } = await import(
+const { buildRows, GAP, isTraceLike, ledgerName, paintsSomething } = await import(
 	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -418,6 +418,37 @@ test("an empty tool-call-only assistant record never becomes a row", () => {
 		["t1", "t2"],
 		"the invisible record is not painted",
 	);
+});
+
+test("a receipt row is a ledger row, not prose", () => {
+	// A peer message and a wake delivery sit INSIDE a run of tool calls — a note
+	// that arrived mid-run belongs to the run — so they take the ledger's 2px
+	// tier rather than prose's air (the operator's "extra space randomly inserted
+	// which doesn't look very uniform" is what a second tier in a run looks like).
+	const peer = { kind: "peer", id: "p1", ts: 2, body: "hi", sender: {} };
+	const wake = { kind: "wake", id: "w1", ts: 3, text: "(alarm) Scheduled wake w-1" };
+	assert.equal(isTraceLike(peer), true);
+	assert.equal(isTraceLike(wake), true);
+	assert.equal(paintsSomething(peer), true);
+	// A peer row with NO body still paints: the identity alone is what the
+	// expansion is for, so an empty note is a row and not an invisible record.
+	assert.equal(paintsSomething({ ...peer, body: "" }), true);
+
+	const run = buildRows(
+		[toolRecord("t1"), peer, wake, toolRecord("t2")],
+		[],
+	);
+	assert.deepEqual(
+		run.map((row) => row.gap),
+		["first", "trace", "trace", "trace"],
+		"a receipt in a run of calls takes the run's own tier",
+	);
+
+	// And the shared name column counts them, or a receipt scrolling into view
+	// would shift every other row's summary rail.
+	assert.equal(ledgerName(peer), "peer");
+	assert.equal(ledgerName(wake), "wake");
+	assert.equal(ledgerName(emptyAssistant("a1")), "");
 });
 
 test("an invisible record does not break trace adjacency", () => {
@@ -1054,4 +1085,379 @@ test("the dictation counter is spelled at a glance", () => {
 	assert.equal(formatBytes(12_688), "12.4 KB");
 	assert.equal(formatBytes(1024 * 1024), "1.0 MB");
 	assert.equal(formatBytes(2_097_152), "2.0 MB");
+});
+
+/* --------------------------------------- expanded detail and receipt rows */
+
+/*
+ * The defect this section exists for, in the operator's words: an expanded tool
+ * row rendered "JSON.stringify(record.args)" inside one bordered box with the
+ * result in a second, and an inbound peer message rendered its own card whose
+ * body was the model-facing envelope, `<peer-session-message from_pid=92064 …>`,
+ * verbatim.
+ *
+ * TWO THINGS ABOUT THE FIX CANNOT BE SEEN IN A FRAME, which is why they are
+ * asserted here rather than photographed. A reader looking at a working pane
+ * cannot tell that JSON punctuation which should not be there is not there, and
+ * a reader looking at a peer row cannot tell that an envelope which is no longer
+ * printed would have been. Both are absences, and an absence has to be written
+ * down (`assert.ok(!text.includes("{"))`) or it is only a habit.
+ *
+ * Bundled separately from the blocks above because these two modules import
+ * nothing but `@shared/lib/utils` (the `cn` helper) into the component they feed;
+ * the models themselves are pure.
+ */
+const detailBundle = await build({
+	stdin: {
+		contents: [
+			'export * from "./src/renderer/src/features/chat/components/trace/tool-detail-model";',
+			'export * from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+		].join("\n"),
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	EMPTY_SENDER,
+	argumentLines,
+	detailText,
+	hasDetail,
+	peerFields,
+	peerIdentity,
+	peerIdentityLine,
+	peerSnippet,
+	peerSummary,
+	resultLines,
+	sameSender,
+	senderField,
+	wakeIsCatchup,
+	wakePromptBody,
+	wakeReceiptHeadline,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(detailBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/** Every mark the pane is forbidden to print. */
+const JSON_MARKS = ["{", "}", "[", "]", '"'];
+
+const sender = (over = {}) => ({ ...EMPTY_SENDER, ...over });
+
+test("an expanded call prints labelled values, never a JSON dump", () => {
+	// The shape the report was about: a `write` whose `content` is a whole file,
+	// and an MCP-ish `params` that nests an object and an array.
+	const args = {
+		path: "invoices/march.csv",
+		content: "line one\nline two",
+		params: { filter: { status: "open" }, tags: ["a", "b"] },
+		limit: 3,
+		dry: true,
+		missing: null,
+		blank: "",
+		gone: {},
+	};
+	const text = detailText(argumentLines(args));
+
+	for (const mark of JSON_MARKS) {
+		assert.ok(
+			!text.includes(mark),
+			`the pane must not print JSON punctuation: found "${mark}" in\n${text}`,
+		);
+	}
+
+	// A string keeps its own newlines — the reason `_argument_text` exists is
+	// that a heredoc's shape IS the thing being reported, and flattening it is
+	// what made the collapsed row unable to carry it.
+	assert.ok(text.includes("content: line one\nline two"), text);
+	// A scalar prints as itself, unquoted.
+	assert.ok(text.includes("limit: 3"), text);
+	assert.ok(text.includes("dry: true"), text);
+	// `_argument_text`'s `str()`: a None argument prints as the word, not as a
+	// blank that reads like a rendering failure.
+	assert.ok(text.includes("missing: null"), text);
+	// The TUI's own rule (`if not text: continue`): a value that prints nothing
+	// is dropped entirely rather than leaving a bare `key:` line.
+	assert.ok(!text.includes("blank"), text);
+	assert.ok(!text.includes("gone"), text);
+
+	// Nesting is one `key.subkey` line per LEAF, so an array element and an
+	// object's field are spelled the same way and neither needs braces.
+	assert.ok(text.includes("params.filter.status: open"), text);
+	assert.ok(text.includes("params.tags.0: a"), text);
+	assert.ok(text.includes("params.tags.1: b"), text);
+	// The indent is the leaf's depth, one step per level: the top level is flush
+	// and `params.filter.status` is two levels down. It is what tells a nested
+	// field apart from a second top-level argument.
+	assert.ok(text.includes("\n    params.filter.status: open"), text);
+
+	// ARGUMENT ORDER survives: it is the TUI's order and the collapsed row's
+	// summary rule ("the first two identity scalars in argument order") depends
+	// on it.
+	assert.ok(text.indexOf("path:") < text.indexOf("content:"), text);
+});
+
+test("a JSON result is structured by the same rules, and anything else is text", () => {
+	// A result that is not a container — a shell block, a plain-text tool —
+	// passes through untouched, which is every result in the app except the ones
+	// this branch is for.
+	assert.equal(resultLines("exit code: 0\n--- stdout ---\nhi"), null);
+	assert.equal(resultLines(""), null);
+	assert.equal(resultLines(null), null);
+	// A container whose leaves are all empty has nothing to print, and the raw
+	// text is the honest fallback: the tool said `{}` and the pane would say
+	// nothing.
+	assert.equal(resultLines("{}"), null);
+	// A bare scalar is a value the tool chose to encode, not a record. Printing
+	// it as `x: 3` under an invented key would be the pane making something up.
+	assert.equal(resultLines("3"), null);
+	assert.equal(resultLines('"a string"'), null);
+	assert.equal(resultLines("true"), null);
+	// Look-alikes that do not parse are text, not JSON.
+	assert.equal(resultLines("{not json}"), null);
+	assert.equal(resultLines("[1, 2"), null);
+
+	// The real shapes: an object, and an array at the root. A nested leaf is
+	// indented by its depth — `items.0.id` sits two levels under the root — and a
+	// flat one is flush, which is the TUI's one-block-per-key reading.
+	assert.equal(detailText(resultLines('{"ok": true}')), "ok: true");
+	assert.equal(
+		detailText(resultLines('{"items": [{"id": 1}, {"id": 2}]}')),
+		"    items.0.id: 1\n    items.1.id: 2",
+	);
+	assert.equal(detailText(resultLines("[1, 2]")), "0: 1\n1: 2");
+
+	// No punctuation here either: this is the same renderer as the input half.
+	const structured = detailText(resultLines('{"path": "a/b.md", "tags": ["x"]}'));
+	for (const mark of JSON_MARKS) {
+		assert.ok(!structured.includes(mark), structured);
+	}
+});
+
+test("the pane is only offered when there is something to disclose", () => {
+	// Cheap on purpose: the transcript builds every row's detail node whether or
+	// not the row is open, so this runs per row per paint and must not walk the
+	// arguments.
+	assert.equal(hasDetail(null, null), false);
+	assert.equal(hasDetail({}, null), false);
+	assert.equal(hasDetail(null, "ok"), true);
+	assert.equal(hasDetail({}, "ok"), true);
+	assert.equal(hasDetail({ path: "a" }, null), true);
+	// An empty output is no output: `""` is what a call that printed nothing
+	// carries, and a pane with an "Output" label over nothing is the lie the
+	// TUI's empty-card rules exist to prevent.
+	assert.equal(hasDetail(null, ""), false);
+});
+
+test("a receipt row never degrades to an unnamed pid", () => {
+	// The ladder: the name the peer chose (quoted, because it IS a name), then
+	// the directory it runs in (with a trailing slash, because it is not), then
+	// an id prefix, then the pid, then the vocabulary `harness/comms.py` uses.
+	assert.equal(peerIdentity(sender({ conversationName: "review-agent" })), '"review-agent"');
+	assert.equal(peerIdentity(sender({ cwd: "/Users/damian/minervaai/" })), "minervaai/");
+	assert.equal(peerIdentity(sender({ cwd: "C:\\work\\admin-api" })), "admin-api/");
+	assert.equal(peerIdentity(sender({ sessionId: "01J8ZQ4K7XABCDEF" })), "01J8ZQ4K");
+	assert.equal(peerIdentity(sender({ pid: "92064" })), "pid 92064");
+	assert.equal(peerIdentity(sender()), "another session");
+
+	// The ladder is ordered, not a set: each rung only answers when the one
+	// above it is absent.
+	assert.equal(
+		peerIdentity(sender({ conversationName: "review-agent", cwd: "/work/x" })),
+		'"review-agent"',
+	);
+	assert.equal(peerIdentity(sender({ cwd: "/work/x", sessionId: "01J8ZQ4K7X" })), "x/");
+	// A cwd of only separators has no basename, so it falls through rather than
+	// printing a lone slash.
+	assert.equal(peerIdentity(sender({ cwd: "/", sessionId: "01J8ZQ4K7X" })), "01J8ZQ4K");
+
+	// The expansion's line: name · pid · model, the TUI's order and its shed
+	// order (the model is context, not an address).
+	assert.equal(
+		peerIdentityLine(
+			sender({
+				conversationName: "lo-usage-panel",
+				pid: "92064",
+				modelLabel: "deepseek/deepseek-flash",
+			}),
+		),
+		'"lo-usage-panel" · pid 92064 · deepseek/deepseek-flash',
+	);
+	assert.equal(peerIdentityLine(sender({ pid: "1" })), "pid 1");
+	// The TUI's own quirk, ported rather than corrected: with no name and no pid,
+	// a model label IS the whole line. It reads oddly, but the case needs a
+	// sender with neither a name nor a pid nor a session id AND a model, and every
+	// producer puts a pid on the wire — so inventing "another session · sonnet"
+	// here would be a second rule no reference surface has.
+	assert.equal(peerIdentityLine(sender({ modelLabel: "sonnet" })), "sonnet");
+	assert.equal(peerIdentityLine(sender()), "another session");
+});
+
+test("a sender field is one line, and bounded", () => {
+	// A newline in a name split the TUI's pinned one-row card into three rows;
+	// whitespace runs collapse so a name stays one paragraph and the row one row.
+	assert.equal(senderField("a\nb\tc    d"), "a b c d");
+	assert.equal(senderField(92064), "92064");
+	assert.equal(senderField(null), "");
+	assert.equal(senderField(undefined), "");
+	// Bounded at `_SENDER_FIELD_MAX_CHARS`: generous enough that no honest name
+	// is clipped, small enough that a hostile one cannot own the row.
+	assert.equal(senderField("x".repeat(500)).length, 120);
+});
+
+test("the collapsed peer row leads with the sender, then the message", () => {
+	// The FIRST non-empty line, whitespace-collapsed: a body that opens with a
+	// blank line still previews its first real line rather than nothing.
+	assert.equal(peerSnippet("\n\n  hello   there\nsecond"), "hello there");
+	assert.equal(peerSnippet("one line"), "one line");
+	assert.equal(peerSnippet("   \n\t\n"), "");
+
+	assert.equal(
+		peerSummary(sender({ conversationName: "review-agent" }), "merged, thanks"),
+		'"review-agent" · merged, thanks',
+	);
+	// An empty body leaves the identity alone rather than a dangling separator.
+	assert.equal(peerSummary(sender({ conversationName: "review-agent" }), ""), '"review-agent"');
+	assert.equal(peerSummary(sender({ pid: "42" }), ""), "pid 42");
+});
+
+test("the sender object is reused when a replayed row teaches nothing new", () => {
+	// The transcript's equality gate compares record fields by reference, so a
+	// freshly built sender on every re-read would repaint every peer row of the
+	// page.
+	const base = sender({ conversationName: "review-agent", pid: "92064" });
+	assert.equal(sameSender(base, { ...base }), true);
+	assert.equal(sameSender(base, { ...base, pid: "92065" }), false);
+	assert.equal(sameSender(base, { ...base, modelLabel: "sonnet" }), false);
+});
+
+test("a peer delivery is projected from its human fields, with the envelope as a fallback", () => {
+	const text =
+		"<peer-session-message from_pid=92064 conversation='review-agent' model='deepseek/deepseek-flash'>\n" +
+		"the tool row needs the same treatment\n" +
+		"</peer-session-message>";
+	const envelope = {
+		from_pid: "92064",
+		conversation: "review-agent",
+		model: "deepseek/deepseek-flash",
+	};
+
+	// 1. The normal case: `details.body` and `details.sender` are what the UIs
+	// render (the phone's fold does exactly this), and the envelope is ignored
+	// even though it is present and parsable.
+	const normal = peerFields({
+		text,
+		body: "the tool row needs the same treatment",
+		sender: {
+			pid: 92064,
+			conversation_name: "review-agent",
+			cwd: "/Users/damian/local-operator-ui",
+			session_id: "01J8ZQ4K7XABCDEF",
+			model_label: "deepseek/deepseek-flash",
+		},
+	});
+	assert.equal(normal.body, "the tool row needs the same treatment");
+	assert.equal(normal.sender.conversationName, "review-agent");
+	assert.equal(normal.sender.pid, "92064");
+	assert.equal(normal.sender.cwd, "/Users/damian/local-operator-ui");
+	assert.equal(normal.sender.sessionId, "01J8ZQ4K7XABCDEF");
+	assert.equal(normal.sender.modelLabel, "deepseek/deepseek-flash");
+
+	// 2. A row that carries ONLY the envelope — an older producer, or a delivery
+	// path that never learned about `body` — still names its sender and still has
+	// something to say, instead of degrading to "another session".
+	const recovered = peerFields({ text });
+	assert.equal(recovered.body, "the tool row needs the same treatment");
+	assert.equal(recovered.sender.pid, envelope.from_pid);
+	assert.equal(recovered.sender.conversationName, envelope.conversation);
+	assert.equal(recovered.sender.modelLabel, envelope.model);
+	// The three the envelope does not carry stay empty rather than invented.
+	assert.equal(recovered.sender.cwd, "");
+	assert.equal(recovered.sender.sessionId, "");
+
+	// 3. The two sources are combined FIELD BY FIELD, not wholesale: a `sender`
+	// missing only `model_label` takes that one field from the envelope rather
+	// than losing the other four.
+	const partial = peerFields({
+		text,
+		sender: { pid: 7, cwd: "/work/x" },
+	});
+	assert.equal(partial.sender.pid, "7");
+	assert.equal(partial.sender.cwd, "/work/x");
+	assert.equal(partial.sender.conversationName, "review-agent");
+	assert.equal(partial.sender.modelLabel, "deepseek/deepseek-flash");
+
+	// 4. `repr` quoting: a name containing an apostrophe comes back in DOUBLE
+	// quotes, and both spellings have to parse.
+	assert.equal(
+		peerFields({
+			text: `<peer-session-message from_pid=1 conversation="damian's shell" model='x'>\nhi\n</peer-session-message>`,
+		}).sender.conversationName,
+		"damian's shell",
+	);
+
+	// 5. The envelope must not survive the unwrap even when a body QUOTES one:
+	// the rule is "never let the envelope reach the view", so it is a strip
+	// rather than a check.
+	const quoted = peerFields({ body: "see <peer-session-message from_pid=1>this</peer-session-message> too" });
+	assert.equal(quoted.body.includes("peer-session-message"), true);
+	const recoveredQuoted = peerFields({
+		text: "<peer-session-message from_pid=1 conversation='a' model='m'>\nquote: <peer-session-message from_pid=2>x</peer-session-message>\n</peer-session-message>",
+	});
+	assert.ok(
+		!recoveredQuoted.body.includes("peer-session-message"),
+		`the envelope must not reach the view: ${recoveredQuoted.body}`,
+	);
+
+	// 6. A row with nothing at all still projects to a printable shape: an empty
+	// body and an all-absent sender, which the row paints as the fallback name
+	// alone.
+	const bare = peerFields({});
+	assert.equal(bare.body, "");
+	assert.equal(bare.sender.pid, "");
+	assert.equal(peerSummary(bare.sender, bare.body), "another session");
+});
+
+test("a wake receipt is the headline, and its prompt is the part behind the envelope", () => {
+	// Ported from `wake_receipt_headline` (`harness/rows.py:397`) and asserted
+	// against the SAME inputs, with the expected values read off the Python
+	// function itself rather than retyped from its docstring.
+	const delivery =
+		'(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})';
+	assert.equal(wakeReceiptHeadline(`${delivery}\n\ncheck the deploy`), "w-9 (1, every 6h)");
+	assert.equal(wakePromptBody(`${delivery}\n\ncheck the deploy`), "check the deploy");
+	// The cancel how-to is an instruction for the model, and the (alarm) /
+	// `Scheduled wake` markers restate what the row's own clock glyph says.
+	assert.equal(
+		wakeReceiptHeadline("(alarm) Scheduled wake w-2 (3, every 1d)"),
+		"w-2 (3, every 1d)",
+	);
+	// EVERY leading marker is stripped, not one: a single strip leaves
+	// "(alarm) (alarm) …" on a human surface, which is the exact defect the
+	// function exists to prevent surviving inside the function that prevents it.
+	assert.equal(
+		wakeReceiptHeadline("(alarm) (alarm) Scheduled wake w-1 (2, at 09:00)\n\nbody"),
+		"w-1 (2, at 09:00)",
+	);
+	// Envelope whitespace collapses before anything else, so a doubled space is
+	// not a reason to keep the marker.
+	assert.equal(
+		wakeReceiptHeadline(
+			'(alarm)   Scheduled  wake   w-3 (4, every 30m) — cancel with wake({"op": "cancel"})\n\nx',
+		),
+		"w-3 (4, every 30m)",
+	);
+	// A delivery with no envelope is its own headline rather than an empty row.
+	assert.equal(wakeReceiptHeadline("plain first paragraph\n\nsecond"), "plain first paragraph");
+	// No prompt behind the envelope is an empty disclosure, which the row reads
+	// as "nothing to offer" rather than as a blank line under a label.
+	assert.equal(wakePromptBody("(alarm) Scheduled wake w-1 (1, every 1h)"), "");
+
+	// The CATCH-UP is not a receipt: both shipping surfaces skip it on replay,
+	// because it is user-attributed and its first paragraph is addressed to the
+	// model. The projection has to agree.
+	assert.equal(wakeIsCatchup({ wake_catchup: true }), true);
+	assert.equal(wakeIsCatchup({}), false);
+	assert.equal(wakeIsCatchup({ wake_catchup: 0 }), false);
 });
