@@ -8,7 +8,10 @@ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, type ReactNode, useLayoutEffect } from "react";
-import type { UpdateCheckVerdict } from "../../../../../main/update-check-verdict";
+import {
+	UP_TO_DATE_AFFIRMATION,
+	type UpdateCheckVerdict,
+} from "../../../../../main/update-check-verdict";
 
 /**
  * The app shell: the rail, the settings surface and the agents surface, in one
@@ -193,22 +196,18 @@ const route = (path: string): Response | null => {
 const noopUnsubscribe = () => () => {};
 
 /**
- * The verdicts a fake bridge hands the renderer, as GIVEN data.
+ * The verdict a fake bridge hands the renderer, as GIVEN data.
  *
- * The rule that produces them lives in `src/main/update-check-verdict.ts` and is
- * asserted in `scripts/update-robustness.test.mjs`; they are written out here
- * because this file is captured from BOTH the fixed tree and a worktree at the
- * pre-fix commit - where that module does not exist - so a story that imported
- * it could not be photographed on the before tree, and the pair would be two
- * different scripts rather than one script on two trees. Deriving the rule here
- * would also make every story a second copy of it, which is the thing the
- * verdict module exists to prevent; the type is imported so a change to the
- * shape still fails the typecheck the moment it lands.
+ * The sentence is READ from the shipped module rather than retyped here, and
+ * for the same reason the shape is: `src/main/update-check-verdict.ts` owns that
+ * copy, and a second spelling of it in a story is exactly the drift the module
+ * exists to prevent. The type is imported so a change to the verdict's shape
+ * fails this file's typecheck the moment it lands.
  */
 const UP_TO_DATE_VERDICT: UpdateCheckVerdict = {
 	app: "current",
 	server: "current",
-	affirmation: "The app and server are up to date",
+	affirmation: UP_TO_DATE_AFFIRMATION,
 };
 
 const UPDATER_STUB = {

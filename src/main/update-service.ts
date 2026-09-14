@@ -1779,19 +1779,30 @@ export class UpdateService {
 		// Check for all updates (UI and backend)
 		ipcMain.handle(
 			"check-for-all-updates",
-			async (_event, options?: { manual?: boolean }) => {
+			async (_event, options?: { manual?: boolean; silent?: boolean }) => {
 				logger.info(
 					"Checking for all updates (UI and backend)...",
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.onCheckRequested(options);
 				/*
-				 * `silent` is the mirror of `manual`: a check the user asked for is not
-				 * silent, and one nobody asked for is. The argument used to be dropped
-				 * here, so every renderer-initiated check ran as a foreground one and
-				 * the option it carried reached the renderer and nothing else.
+				 * `silent` is its OWN flag, not the absence of `manual`.
+				 *
+				 * The two answer different questions. `manual` is the renderer's - it
+				 * lets a by-hand check re-offer a release whose artifact failed
+				 * verification, and it travels on to the server offer - while `silent`
+				 * decides whether this check emits the per-channel `*-not-available`
+				 * events, which `update-notification.tsx` clears stale state on and
+				 * which gate the npx registry read.
+				 *
+				 * `!options?.manual` made the suppression rule a side effect of a flag
+				 * that exists for a different reason, so a caller that set `manual` for
+				 * the re-offer rule while saying nothing about notifications would
+				 * acquire it invisibly. Reading it explicitly also keeps this handler's
+				 * own history: it used to drop `options` entirely and run every check
+				 * non-silent, so a caller that sends no `silent` still gets the events.
 				 */
-				const silent = !options?.manual;
+				const silent = options?.silent === true;
 				try {
 					return await this.checkForAllUpdates(silent);
 				} catch (error) {
@@ -1802,16 +1813,15 @@ export class UpdateService {
 					);
 					/*
 					 * ALWAYS a verdict, including here, so the renderer's read of what
-					 * this check earned is total. Two things made the old error path
-					 * unsafe and both are gone with it: an error the updater filters as
-					 * a known no-availability one came back as an update-check result
-					 * that says nothing about either channel, and anything else came
-					 * back as a rejection. A rejection loses no information - each
-					 * channel has already reported its own failure through
-					 * `update-error`/`backend-update-error`, which the renderer renders,
-					 * and the button's own catch still reports a rejected invoke - it
-					 * just makes the answer to "what did this check find out?" arrive as
-					 * an exception rather than as "nothing".
+					 * this check earned is total. The branch is total and the rejection
+					 * that used to sit on it is gone: neither channel's check rethrows
+					 * its own failure - each reports it through its own
+					 * `update-error`/`backend-update-error` event and resolves an
+					 * `unavailable` status - so the old filter-then-throw was dead in
+					 * practice, and removing it loses no report. Throwing would only
+					 * have moved the answer to "what did this check find out?" out of
+					 * the verdict and into an exception; a rejected invoke is still
+					 * reported by the button's own catch.
 					 */
 					return updateCheckVerdict({
 						app: "unavailable",
@@ -2111,9 +2121,14 @@ export class UpdateService {
 			autoUpdater.autoDownload = false;
 
 			// Configure the autoUpdater to handle silent mode
-			const originalNotAvailableHandler = autoUpdater.listeners(
+			/*
+			 * Every listener, not the first one: `removeAllListeners` takes off all
+			 * of them, so restoring `listeners(...)[0]` alone would drop any second
+			 * subscriber for the rest of the session.
+			 */
+			const originalNotAvailableHandlers = autoUpdater.listeners(
 				"update-not-available",
-			)[0];
+			);
 
 			if (silent) {
 				// Temporarily remove the update-not-available handler to prevent notifications
@@ -2140,15 +2155,31 @@ export class UpdateService {
 			// date" beside a server offer. A `null` result is the updater declining
 			// to run at all (`isUpdaterActive()` false), which is a refusal to find
 			// out rather than an answer.
-			const result = await autoUpdater.checkForUpdates();
-
-			// Restore original handler if we're in silent mode and modified it
-			if (silent && originalNotAvailableHandler) {
-				autoUpdater.removeAllListeners("update-not-available");
-				autoUpdater.on(
-					"update-not-available",
-					originalNotAvailableHandler as (info: unknown) => void,
-				);
+			/*
+			 * The swap is undone in a `finally`, and UNCONDITIONALLY while `silent`.
+			 *
+			 * `checkForUpdates()` rejects on a failed feed fetch, and a restore
+			 * placed after the `await` never ran on that path: the service's own
+			 * `update-not-available` forwarder (`setupUpdateEvents`) stayed removed
+			 * for the rest of the session, with the silent no-op listener left
+			 * behind to swallow the next genuine not-available event. Restoring
+			 * outside the `if (original...)` guard is the same hazard from the other
+			 * side: when there was nothing to put back, the temporary listener was
+			 * still the one that had to come off.
+			 */
+			let result: Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>;
+			try {
+				result = await autoUpdater.checkForUpdates();
+			} finally {
+				if (silent) {
+					autoUpdater.removeAllListeners("update-not-available");
+					for (const handler of originalNotAvailableHandlers) {
+						autoUpdater.on(
+							"update-not-available",
+							handler as (info: UpdateInfo) => void,
+						);
+					}
+				}
 			}
 
 			if (!result) return "unavailable";

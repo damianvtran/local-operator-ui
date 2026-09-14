@@ -599,6 +599,17 @@ export const STORIES = [
 	 */
 	["settings-app-updates-section--server-update-offered", 900, 460],
 
+	/*
+	 * The other half of the same story: both channels proved current, so the
+	 * verdict carries the affirmation and no offer is raised. Captured here
+	 * because the sentence is new copy - the removed button stories drew their
+	 * own "latest version" alert from a channel event, which is a state the
+	 * shipped button can no longer produce, so the sweep had no frame of the
+	 * sentence the fix introduces. Not captured on a pre-fix tree: the
+	 * affirmation exists only on this one.
+	 */
+	["settings-app-updates-section--all-current", 900, 460],
+
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],
 	["canvas-workspace--markdown-format-menu", 1280, 900],
