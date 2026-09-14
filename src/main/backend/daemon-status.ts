@@ -16,6 +16,8 @@
  * - a daemon whose pid is gone is `detached` immediately, because that IS
  *   evidence;
  * - a capability refusal is recorded BESIDE the state and never moves it;
+ * - an announced build change is recorded in the detail and moves nothing: the
+ *   daemon keeps serving, and detaching over it would kill live work;
  * - `degraded` never restarts anything, and `detached` always re-discovers
  *   before anything is started, so a slow daemon is never replaced by a second
  *   one;
@@ -60,7 +62,7 @@ export type ProbeObservation =
 	| { kind: "identified" }
 	| { kind: "heartbeat-stale"; detail: string }
 	| { kind: "capability"; status: number; detail: string }
-	| { kind: "retiring"; detail: string }
+	| { kind: "build-announced"; detail: string }
 	| { kind: "failed"; detail: string }
 	| { kind: "pid-dead" }
 	| { kind: "no-candidate"; detail: string };
@@ -142,11 +144,14 @@ export class DaemonStateMachine {
 				this.capabilityStatus = observation.status;
 				this.detail = `${observation.detail} The daemon is running.`;
 				break;
-			case "retiring":
-				// 503 daemon-retiring: this daemon is handing over to a successor.
-				this.capabilityStatus = 503;
-				this.failures = 0;
-				this.state = this.state === "detached" ? "detached" : "degraded";
+			case "build-announced":
+				// `retiring_from`/`retiring_to` announce that the INSTALLED build
+				// changed under a serving daemon. The backend keeps serving until a
+				// verified idle-boundary handoff exists, so this is recorded and
+				// nothing else: moving the state here would detach live streams and
+				// cancel in-flight turns over an announcement, which is the failure
+				// the backend correction exists to prevent. Not a capability refusal
+				// either - no route refused us - so `capabilityStatus` stays as it is.
 				this.detail = observation.detail;
 				break;
 			case "heartbeat-stale":

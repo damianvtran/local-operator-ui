@@ -178,6 +178,8 @@ export interface DiscoveryResult {
 	 * every rule here, and without the fallback a UI update would strand it.
 	 */
 	noRecordsAtAll: boolean;
+	/** Live/unreadable records forbid treating failed discovery as an empty machine. */
+	blocksSpawn: boolean;
 }
 
 export interface DiscoverOptions {
@@ -343,7 +345,7 @@ export type IdentityProbe =
 	| { outcome: "not-a-daemon"; detail: string }
 	| { outcome: "identity-mismatch"; detail: string; identity: HealthIdentity };
 
-function readIdentity(payload: unknown): HealthIdentity | null {
+export function readIdentity(payload: unknown): HealthIdentity | null {
 	if (typeof payload !== "object" || payload === null) return null;
 	const result = (payload as { result?: unknown }).result;
 	if (typeof result !== "object" || result === null) return null;
@@ -567,6 +569,14 @@ export async function discoverDaemons(
 			});
 			continue;
 		}
+		if (probe.identity.pid !== record.pid) {
+			rejected.push({
+				subject: entry.file,
+				reason: "identity-mismatch",
+				detail: "The answering PID does not match the record.",
+			});
+			continue;
+		}
 		candidates.push({
 			address,
 			record,
@@ -623,6 +633,13 @@ export async function discoverDaemons(
 		picked: ranked[0] ?? null,
 		reapable,
 		noRecordsAtAll: files.length === 0,
+		// A dead PID is positive evidence; timeout, malformed JSON or a stopped
+		// heartbeat is not. Do not spawn over a busy or temporarily unreadable daemon.
+		blocksSpawn:
+			problem === "unreadable" ||
+			files.some(
+				(entry) => !entry.record || pidLiveness(entry.record.pid) !== "dead",
+			),
 	};
 	for (const rejection of rejected) {
 		log(
