@@ -202,9 +202,48 @@ export async function clearBrowsingData(
 	await browserSession.clearCache();
 }
 
+/**
+ * Clear ONE origin's browsing data, for "forget this site" (design 9.4).
+ *
+ * The per-origin counterpart of `clearBrowsingData`, and it is a separate
+ * function rather than a parameter on it because the two answer different user
+ * intentions: the three named buttons are "log me out of everything / of this
+ * app's cache", while this one is "this site, gone". It clears cookies and the
+ * site's own storage, and it deliberately does NOT touch the approval store —
+ * `forgetSite` in the host calls this AND revokes, and the copy in the chrome
+ * says both, because a user who thinks one of the two happened and got the other
+ * has been misled about their privacy either way.
+ *
+ * `originMatchingMode: "origin-in-all-contexts"` rather than the default: the
+ * default (`third-parties-included`) also removes data other sites stored in a
+ * third-party context on this origin's pages, which is a broader blast radius
+ * than the user asked for.
+ */
+export async function clearOriginData(
+	browserSession: Session,
+	origin: string,
+): Promise<void> {
+	browserSession.flushStorageData();
+	await browserSession.clearData({
+		origins: [origin],
+		originMatchingMode: "origin-in-all-contexts",
+		dataTypes: [
+			"cookies",
+			"localStorage",
+			"indexedDB",
+			"serviceWorkers",
+			"fileSystems",
+			"webSQL",
+			"backgroundFetch",
+			"cache",
+		],
+	});
+}
+
 /** Write any buffered DOMStorage to disk. Called on quit so a hard kill does not
- * lose storage that was just written. */
-export function flushBrowserStorage(browserSession: Session): void {
+ * lose storage that was just written. */ export function flushBrowserStorage(
+	browserSession: Session,
+): void {
 	try {
 		browserSession.flushStorageData();
 	} catch {

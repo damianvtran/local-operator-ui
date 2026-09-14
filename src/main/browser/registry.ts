@@ -441,7 +441,16 @@ export class TabRegistry {
 
 	/** The renderer owns presentation geometry, not whether a background renderer
 	 * has a viewport. Inactive views keep bounded default dimensions independently
-	 * of this rectangle, so agent actions never require a route or focus change. */
+	 * of this rectangle, so agent actions never require a route or focus change.
+	 *
+	 * A NULL rect still hides every view, and that is a correctness requirement
+	 * rather than a tidy-up: the browser surface is a ROUTE, so navigating away
+	 * unmounts the only thing that knows where the view belongs. Without this, the
+	 * last rect would stay applied and the native view would go on painting over
+	 * the chat route — the one failure mode that makes this feature look like a
+	 * hijacked window. Visiting the route again reports a fresh rect and restores
+	 * it. A null rect is also how the caller hides the view at teardown, so it must
+	 * never be swallowed on the way here (see `use-browser-chrome`). */
 	setContentRect(rect: ContentRect | null): void {
 		this.contentRect = rect;
 		this.applyLayout();
