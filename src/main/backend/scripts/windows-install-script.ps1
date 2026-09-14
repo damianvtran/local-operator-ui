@@ -10,6 +10,17 @@ $VenvPath = "$AppDataDir\\$VenvName"
 $LogFile = "$AppDataDir\\backend-install-shell.log"
 $PyenvDir = "$env:USERPROFILE\\.pyenv"
 
+# Which environment this installs into - the app's decision, handed in rather
+# than re-derived. A packaged install and an unpackaged one must not share an
+# environment (the venv is built on whatever interpreter the instance resolves),
+# and only the app knows which it is: LOCAL_OPERATOR_VENV_PATH carries
+# managedVenvPath's answer (src/main/backend/venv-paths.ts). The default above is
+# what a standalone run uses - the packaged name, because that is what every
+# install on a disk today has.
+if ($env:LOCAL_OPERATOR_VENV_PATH) {
+    $VenvPath = $env:LOCAL_OPERATOR_VENV_PATH
+}
+
 # Keep CPython's bytecode cache out of the application directory.
 #
 # Same rule as the macOS script, and stated here for the same reason: an

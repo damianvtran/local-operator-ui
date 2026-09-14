@@ -262,6 +262,18 @@ export function evaluateBundleSeal(probe: SealProbe): SealVerdict {
 }
 
 /**
+ * Who found the broken seal, which decides what the user is told.
+ *
+ * Two contexts with the same remedy and different facts behind them: the
+ * pre-flight finds it while an update is being offered, so the update is the
+ * thing that was stopped; the start-up pass finds it with no update in play at
+ * all, and what the user has to know there is that macOS will refuse to open this
+ * copy the next time. Borrowing the update's sentence told that user an update had
+ * been stopped when none had been attempted (review R2).
+ */
+export type SealBlockContext = "update" | "startup";
+
+/**
  * The refusal shown when the installed bundle cannot be replaced in place.
  *
  * The remedy names the first step the user has to take themselves - quitting
@@ -272,12 +284,17 @@ export function installedBundleSealBlock(
 	appBundlePath: string,
 	detail: string,
 	version?: string | null,
+	context: SealBlockContext = "update",
 ): InstallBlock {
+	const message =
+		context === "startup"
+			? "This copy of Local Operator did not pass its integrity check and cannot update itself. Download a fresh copy and replace the app in Applications."
+			: version
+				? `This install of Local Operator can't be updated in place, so the update to version ${version} was stopped before the app quit.`
+				: "This install of Local Operator can't be updated in place, so the update was stopped before the app quit.";
 	return {
 		code: "installed-bundle-not-sealed",
-		message: version
-			? `This install of Local Operator can't be updated in place, so the update to version ${version} was stopped before the app quit.`
-			: "This install of Local Operator can't be updated in place, so the update was stopped before the app quit.",
+		message,
 		remedy: {
 			text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
 			url: DOWNLOAD_PAGE_URL,
@@ -489,7 +506,7 @@ export type BytecodeHealResult = BytecodeHealPlan & { removed: string[] };
  * would be extra deletion with nothing to gain.
  *
  * A *sealed* tree is healable, and that is a property of the seal rather than of
- * this function: `sealPythonInterpreterTrees` withholds `add_file` and
+ * this function: the retired build-time ACL seal withheld `add_file` and
  * `add_subdirectory` from the trees' directories and `write`/`append` from the
  * bytecode already in them, and deliberately leaves `delete_child` granted -
  * unlinking is a directory right, not a file one. So both halves of the
