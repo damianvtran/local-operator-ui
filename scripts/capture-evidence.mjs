@@ -440,12 +440,54 @@ export const STORIES = [
 	   shut; the story holds the shutter until the sequence has arrived. */
 	["chat-run-panel--mcp-dot-ack-acknowledged", 460, 220],
 	["chat-run-panel--mcp-dot-ack", 460, 220],
+	/* The remedy as a CONTROL, which is the change to § 7.2 (§ 4 of the design brief). The row's own frames
+	   above show it at rest (a link where the sentence used to be, and the words
+	   that survive on the states this surface cannot act on); these show the four
+	   states a press produces, and all four come from the FIXTURE's `operations`
+	   rather than from a handler, because that is where the row reads them. */
+	["chat-run-panel--mcp-grant-running", 1280, 700],
+	["chat-run-panel--mcp-grant-failed", 1280, 700],
+	["chat-run-panel--mcp-grant-cancelled-removed", 1280, 700],
+	/* One grant per session: the second problem row's control is disabled, in
+	   colour rather than opacity. */
+	["chat-run-panel--mcp-grant-locked", 1280, 700],
+	/* The dialog, opened by clicking the row's own link and held until it is on
+	   screen. Both consequences are in the copy because both are facts the reader
+	   would otherwise discover afterwards. */
+	["chat-run-panel--mcp-grant-confirm", 1280, 700],
+	/* The key remedy, for a server whose transport cannot complete a browser
+	   sign-in: the three decisions a payload makes (a stdio `env` name, an http
+	   header name with OAuth refused, nothing declared) in one frame, and the
+	   popout opened by the same click convention. The fields are the payload's own
+	   declared names, never a value. */
+	["chat-run-panel--mcp-key-auth", 1280, 700],
+	["chat-run-panel--mcp-key-popout", 1280, 700],
 	/* The window floor, and the two gated surfaces in one frame pair. */
 	["chat-run-panel--narrow-800", 800, 700],
 	["chat-run-panel--capability-absent", 1280, 700],
 	/* The pane's two animated glyphs with motion reduced: the running child's
 	   spinner and the MCP `connecting` mark. */
 	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
+	/*
+	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
+	 * that report was about — the deep link revealing a named server, an argument
+	 * that names nothing, the section's own search, and the borrow when no
+	 * conversation is open.
+	 *
+	 * Captured at 1000x860 rather than the 1280 default because the section is drawn
+	 * on the settings page's own column (`max-w-3xl`), so a wider viewport only adds
+	 * ground either side of it; 860 is tall enough that the search box, the note and
+	 * every row are in frame at once, which is what the search and borrow frames are
+	 * about (`check-evidence`'s uniformity ceiling is the other half of the choice).
+	 */
+	["settings-integrations--deep-link-hit", 1000, 860],
+	["settings-integrations--deep-link-verb-hit", 1000, 860],
+	["settings-integrations--deep-link-miss", 1000, 860],
+	["settings-integrations--no-session-fallback", 1000, 860],
+	["settings-integrations--no-sessions-at-all", 1000, 860],
+	["settings-integrations--filtered", 1000, 860],
+	["settings-integrations--filtered-empty", 1000, 860],
+	["settings-integrations--no-servers", 1000, 860],
 	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
 	   `usage_panel.py`. Swept for the states that cannot be produced on demand
 	   live — an OAuth grant has to die, a provider has to go idle past its
