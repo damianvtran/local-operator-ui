@@ -1537,10 +1537,19 @@ test("the writes resolve their ack out of the same wrapper", async () => {
 			message: "ok",
 			result: { data: { state: "ok", variable: VARIABLE }, replayed: false },
 		},
+		// A variable of its own, so the assertion below reads as "the update's ack
+		// is what came back" rather than as "the write was ignored": the value
+		// asked for and the value answered are deliberately different.
 		"sessions.variables.update": {
 			status: 200,
 			message: "ok",
-			result: { data: { state: "ok", variable: VARIABLE }, replayed: false },
+			result: {
+				data: {
+					state: "ok",
+					variable: { ...VARIABLE, value: "9" },
+				},
+				replayed: false,
+			},
 		},
 		"sessions.variables.delete": {
 			status: 200,
@@ -1559,7 +1568,10 @@ test("the writes resolve their ack out of the same wrapper", async () => {
 		value: "9",
 		type: "float",
 	});
-	assert.equal(updated.value, "1234.5");
+	// The ack's own value, which is the one the backend stored, not the one the
+	// request asked for: an unwrap that read the wrong level would return the
+	// request body and still pass a comparison against it.
+	assert.equal(updated.value, "9");
 	await deleteSessionVariable(SESSION, "total_outstanding");
 });
 

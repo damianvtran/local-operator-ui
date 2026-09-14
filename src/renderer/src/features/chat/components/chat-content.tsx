@@ -142,6 +142,13 @@ type ChatContentProps = {
 	 * the identity a backend route can resolve. See `CanvasProps.sessionId`.
 	 */
 	sessionId?: string;
+	/**
+	 * How many turns the canonical stream has seen end, forwarded to the canvas
+	 * so the code-memory panel can re-read when a cell finishes; see
+	 * `CanvasProps.turnTerminal`. Undefined on the legacy path, where there is no
+	 * canonical stream to take the signal from.
+	 */
+	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
 	onChangeCwd?: (cwd: string) => void;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
@@ -329,6 +336,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		messageInputRef,
 		cwd,
 		sessionId,
+		turnTerminal,
 		onChangeCwd,
 		sendError,
 		sessionStatus,
@@ -860,6 +868,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								conversationId={conversationId}
 								agentId={agentId}
 								sessionId={sessionId}
+								turnTerminal={turnTerminal}
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								scan={filesScan}

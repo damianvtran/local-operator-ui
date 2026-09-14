@@ -730,7 +730,37 @@ const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
  *
  * @type {{theme: string, fg: string, bg: string, got: number, why: string}[]}
  */
-const EXCEPTIONS = [];
+const EXCEPTIONS = [
+	/*
+	 * `danger` as text on `elevated`, the three palettes that cannot clear 4.5:1
+	 * there. Measured from the shipped palettes, not argued: the pair is drawn by
+	 * the dialog required-mark and the danger-variant button's label, both of
+	 * which are shared components this file does not own. Every other palette
+	 * clears the floor (4.66 tokyoNight up to 6.19 iceberg) and is asserted
+	 * normally above.
+	 */
+	{
+		theme: "dracula",
+		fg: "danger",
+		bg: "elevated",
+		got: 3.81,
+		why: "the dialog required-mark and the danger button's label; a shared control's colour, recorded rather than changed here (design round 2, D3)",
+	},
+	{
+		theme: "monokai",
+		fg: "danger",
+		bg: "elevated",
+		got: 3.76,
+		why: "same pair as dracula; worst of the three",
+	},
+	{
+		theme: "neon",
+		fg: "danger",
+		bg: "elevated",
+		got: 4.43,
+		why: "same pair as dracula; 0.07 under the floor",
+	},
+];
 
 /*
  * The step between a CONTROL's ink and a READOUT's ink, measured in one row.
@@ -1022,7 +1052,7 @@ for (const { id, palette: p } of palettes) {
 	 * there (`accent` 4.22 on dracula, `danger` 3.76 on monokai) and asserting
 	 * them would report failures against pairs nothing renders.
 	 *
-	 * This note is nevertheless the one place a tone ink IS drawn on `elevated`:
+	 * This note is one of TWO places a tone ink is drawn on `elevated`:
 	 * `models.catalogue` can answer with rows AND per-provider errors, and the
 	 * note about what is missing belongs above the list rather than instead of it
 	 * (design D4). `warning` is the role it renders in, so that is the pair
@@ -1036,6 +1066,33 @@ for (const { id, palette: p } of palettes) {
 		"elevated",
 		FLOOR.text,
 		"the picker's partial-listing note",
+	);
+
+	/*
+	 * The second place, and the one that used to be invisible to this file.
+	 *
+	 * `danger` is drawn as TEXT on `elevated` by two surfaces: the required-mark
+	 * asterisk beside every label in a dialog, and the danger-variant button's
+	 * label (the delete confirmation). Asserting the pair is what makes the
+	 * decision visible — three palettes are below the floor (monokai 3.76,
+	 * dracula 3.81, neon 4.43) and each is pinned below with its measured ratio.
+	 * The alternative was a design change to two shared components (a required
+	 * mark's colour, and a destructive control's variant on dialog grounds),
+	 * which is a decision for the whole app rather than for the code-memory
+	 * panel that surfaced it, so it is recorded here instead of made here
+	 * (design round 2, D3).
+	 *
+	 * The code-memory panel's OWN error sentences do not join this list: they
+	 * render in `ink` precisely so the panel does not add a third user
+	 * (`variable-form-dialog.tsx`).
+	 */
+	assertPair(
+		id,
+		p,
+		"danger",
+		"elevated",
+		FLOOR.text,
+		"danger as text on a dialog's ground",
 	);
 
 	/* Component triples. */
