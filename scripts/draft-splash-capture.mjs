@@ -7,7 +7,15 @@
  *     LOCAL_OPERATOR_DESKTOP_TOKEN=<token> \
  *     LOCAL_OPERATOR_DESKTOP_BACKEND_URL=http://127.0.0.1:<port> \
  *     VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:<port> \
- *       node scripts/draft-splash-capture.mjs --label=before
+ *       node scripts/draft-splash-capture.mjs --label=before \
+ *         --sizes=1380x872,900x572,830x572,800x572 --require-cap=830x572,900x572
+ *
+ * `--sizes` is the list of CSS viewports to photograph, each with its own page
+ * load and its own full draft -> send -> settled pass; the FIRST one carries the
+ * full per-frame flip trace (the others record their settled readings and the
+ * counts). `--require-cap` names the sizes at which the run has to have reached
+ * the suggestion stack's cap - see its comment, and `CAP_ATTEMPTS` for what a
+ * run that cannot does.
  *
  * Run it once per tree, each from its own worktree, both against the SAME
  * isolated backend: `--label=after` is the tree carrying the fix and
@@ -37,12 +45,14 @@
  * degraded run publishes something that looks like evidence and is not (the
  * incident `new-chat-row-evidence.mjs` exists for). So the run FAILS rather
  * than writes a frame when: an error surface is on screen, the draft state was
- * never entered, the band disagrees with what the label says it should show, or
- * the admission flip never painted. The frames are only written once the
- * readings behind them hold.
+ * never entered, the band disagrees with what the label says it should show,
+ * the band or its suggestion stack runs past the pane it is in, a row of chips
+ * is cut through its glyphs, `src/` is dirty against the commit the readback
+ * records, or the admission flip never painted. The frames are only written
+ * once the readings behind them hold.
  */
 
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -99,10 +109,9 @@ const MAX_SUGGESTIONS = /const MAX_SUGGESTIONS = (\d+);/;
  * The app's own default window, whose CSS viewport is the window minus the
  * macOS title bar (`src/main/window-mode.ts`; measured 1380x872 in
  * `docs/evidence/chat-shell/`). The harness has no window chrome, so the
- * viewport is set to the CSS number the app actually paints into.
+ * viewport is set to the CSS number the app actually paints into. Every other
+ * size a run is given is a CSS viewport for the same reason.
  */
-const WIDTH = 1380;
-const HEIGHT = 872;
 
 const MARKER = `draft-splash-probe-${process.pid}`;
 
@@ -151,19 +160,96 @@ const PRODUCT = readProduct();
 const CHIPS = PRODUCT.suggestions;
 
 /**
- * What each tree is expected to show, so a broken run cannot publish.
+ * What each tree is expected to show at a given size, so a broken run cannot
+ * publish.
  *
  * The before tree is the defect: the band holds the hydration skeleton and
- * neither the greeting nor the chips. The after tree is the claim.
+ * neither the greeting nor the chips. The after tree is the claim. Both live on
+ * the SPLASH branch, which is gated on `!isSmallView` - so a window narrow
+ * enough to take the small view shows the same thing on either tree, which is
+ * what makes the minimum window the control for that branch.
  */
-const EXPECTED =
-	LABEL === "before"
-		? { greeting: 0, skeleton: 1, chips: 0 }
-		: {
-				greeting: 1,
-				skeleton: 0,
-				chips: Math.min(PRODUCT.max, CHIPS.length),
-			};
+const expectedFor = ({ width }) => {
+	if (width - SESSION_LIST_WIDTH < SMALL_VIEW_BELOW)
+		return { greeting: 0, skeleton: 0, chips: 0 };
+	if (LABEL === "before") return { greeting: 0, skeleton: 1, chips: 0 };
+	return {
+		greeting: 1,
+		skeleton: 0,
+		chips: Math.min(PRODUCT.max, CHIPS.length),
+	};
+};
+
+/**
+ * The commit each run is a picture of, recorded rather than asserted in prose.
+ *
+ * The manifest's other supplementaries carry `capturedAtHead` for exactly this
+ * reason (code review round 1, M2): what makes a before/after pair mean anything
+ * is which tree each half photographed, and a reader of the frames has no
+ * worktree to check it in. `capturedAtSrcTree` is the stronger of the two - it is
+ * the same stamp the manifest's own `srcTree` is held to - so a reader can see
+ * at a glance that the frames are pictures of the committed source rather than of
+ * somebody's working tree.
+ */
+const provenance = () => {
+	const git = (...args) =>
+		execFileSync("git", args, { cwd: ROOT }).toString().trim();
+	return {
+		capturedAtHead: git("rev-parse", "HEAD"),
+		capturedAtSrcTree: git("rev-parse", "HEAD:src"),
+		dirtySource: git("status", "--porcelain", "--", "src").length > 0,
+	};
+};
+
+/**
+ * The sizes a run photographs, in order, each with its own page load. The first
+ * is the one that carries the full per-frame flip trace; pass the app's own
+ * window first.
+ *
+ * 830x572 is the narrowest window that still takes the splash branch at the
+ * app's own minimum HEIGHT (`WINDOW_MIN_HEIGHT = 600` minus the macOS title
+ * bar), which is where design round 1 measured the band's overflow (D1/D2);
+ * 800x572 is the minimum window itself, whose pane is narrow enough for the
+ * small view.
+ */
+const SIZES = flag("sizes", "1380x872")
+	.split(",")
+	.map((entry) => entry.trim())
+	.filter(Boolean)
+	.map((entry) => {
+		const match = /^(\d+)x(\d+)$/.exec(entry);
+		if (!match)
+			throw new Error(`--sizes entries are WxH; got ${JSON.stringify(entry)}`);
+		return { id: entry, width: Number(match[1]), height: Number(match[2]) };
+	});
+const DEFAULT_SIZE = SIZES[0];
+
+/**
+ * The sizes at which a run must have EXERCISED the suggestion stack's cap - i.e.
+ * the sample must have wrapped past the room the band has - because otherwise a
+ * frame of "containment" is a frame of a stack that never needed containing.
+ *
+ * The chips are sampled at random per mount, so a short draw can be re-drawn but
+ * not asserted away: the driver reloads and re-samples, and fails loudly rather
+ * than publishing a frame that proves nothing.
+ */
+const REQUIRE_CAP = new Set(
+	flag("require-cap", "")
+		.split(",")
+		.map((entry) => entry.trim())
+		.filter(Boolean),
+);
+const CAP_ATTEMPTS = Number(flag("cap-attempts", "6"));
+
+/**
+ * The chat column's width is the window minus the session list's default width,
+ * and that width is what decides whether the pane takes the band's small-view
+ * branch. The driver reads the band's own box back and fails if it disagrees, so
+ * this figure cannot drift away from the layout it predicts.
+ */
+const SESSION_LIST_WIDTH = 280;
+/** `isSmallView` is `contentRect.width < 550` (`chat-content.tsx`). */
+const SMALL_VIEW_BELOW = 550;
 
 async function waitFor(url, attempts = 120) {
 	for (let i = 0; i < attempts; i++) {
@@ -347,45 +433,6 @@ async function main() {
 	});
 
 	const frames = [];
-	/**
-	 * Park the pointer on neutral ground before the shutter.
-	 *
-	 * The driver's clicks leave the pointer where it put them, and the sidebar's
-	 * rows carry a hover step (`hover:bg-elevated` - a colour step, per the
-	 * design contract, not a lift). In the first pass that made the two runs'
-	 * SIDEBARS differ by 15,619 pixels of hover wash, which is a difference
-	 * between two photographs rather than between two trees, and the claim that
-	 * the pair differs only inside the band is worth being able to check. The
-	 * far corner is the chat column's own ground, where a pointer rests on
-	 * nothing interactive, and the wait covers the style recalc.
-	 */
-	const parkPointer = async (send) => {
-		await send("Input.dispatchMouseEvent", {
-			type: "mouseMoved",
-			x: WIDTH - 4,
-			y: HEIGHT - 4,
-		});
-		await evaluate(
-			send,
-			"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
-			true,
-		);
-	};
-	const shoot = async (send, name, clip = null) => {
-		await parkPointer(send);
-		const { data } = await send("Page.captureScreenshot", {
-			format: "png",
-			...(clip ? { clip: { ...clip, scale: 1 } } : {}),
-		});
-		const path = join(OUT, `${LABEL}-${name}.png`);
-		writeFileSync(path, Buffer.from(data, "base64"));
-		// The same guard the swept set goes through: a frame whose dominant
-		// colour is not one of the theme's grounds, or that is one flat colour,
-		// is a picture of nothing.
-		assertFramePaints(path, THEME);
-		frames.push(path);
-		return path;
-	};
 
 	try {
 		const url = `http://localhost:${PORT}/draft-splash-evidence.html`;
@@ -413,17 +460,17 @@ async function main() {
 				);
 
 		/*
-		 * Consecutive frames, the app's default viewport, and no reload between
-		 * states: the composer's textarea is a growable part that keeps whatever
-		 * height its previous content gave it, so a state entered from a fresh
-		 * load is the only one comparable to another state's.
+		 * The frames are pictures of a COMMIT, and the readback says which (code
+		 * review round 1, M2). An uncommitted edit under `src/` would make that
+		 * claim false, so the run refuses rather than recording a head that is not
+		 * what it photographed.
 		 */
-		await send("Emulation.setDeviceMetricsOverride", {
-			width: WIDTH,
-			height: HEIGHT,
-			deviceScaleFactor: 1,
-			mobile: false,
-		});
+		const origin = provenance();
+		if (origin.dirtySource)
+			throw new Error(
+				"src/ has uncommitted changes: this run records the commit it photographed, so commit the change first and capture after it (see docs/evidence/draft-splash/README.md)",
+			);
+
 		/*
 		 * A headless page is never the focused window, and the composer's
 		 * caret/`:focus` ring would be missing from a frame of a control the
@@ -437,239 +484,441 @@ async function main() {
 		 * `Page.navigate` returns: navigation resolves before the new document
 		 * exists, and a `Runtime.evaluate` raced against it can land in the
 		 * outgoing context - which reads as "the transcript never painted" rather
-		 * than as a missing probe.
+		 * than as a missing probe. Installed once for every size, because each
+		 * size is a fresh load of the same page.
 		 */
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: [
+				/*
+				 * Each size is a FRESH app, not a reload of the one before it.
+				 * The canonical sessions store persists to localStorage, so without this
+				 * the second size opens the session the first size's send created -
+				 * and `New chat` on a pane that already has a session is a different
+				 * state from the one these frames are of (the run refuses it rather
+				 * than photographing it). Clearing the store's own storage at document
+				 * start is what the first launch of the app looks like; the harness
+				 * sets the cwd it needs after this runs.
+				 */
+				"window.localStorage.clear();",
 				`window.__draftSplashMarker = ${JSON.stringify(MARKER)};`,
 				`window.__draftSplashChipList = ${JSON.stringify(CHIPS)};`,
 			].join("\n"),
 		});
-		await send("Page.navigate", { url });
 
-		/*
-		 * Wait for the app's own readiness, not a harness flag: the sidebar's
-		 * New chat row is DISABLED until the session catalogue has loaded, so
-		 * "the row exists and is enabled" is the product telling us the surface
-		 * is where the frames say it is. Capabilities and the catalogue are the
-		 * two calls behind it.
+		/**
+		 * Park the pointer on neutral ground before the shutter.
+		 *
+		 * The driver's clicks leave the pointer where it put them, and the sidebar's
+		 * rows carry a hover step (`hover:bg-elevated` - a colour step, per the
+		 * design contract, not a lift). In the first pass that made the two runs'
+		 * SIDEBARS differ by 15,619 pixels of hover wash, which is a difference
+		 * between two photographs rather than between two trees, and the claim that
+		 * the pair differs only inside the band is worth being able to check. The
+		 * far corner is the chat column's own ground, where a pointer rests on
+		 * nothing interactive, and the wait covers the style recalc.
 		 */
-		let armed = false;
-		for (let attempt = 0; attempt < 120 && !armed; attempt++) {
-			armed = Boolean(
-				await evaluate(
-					send,
-					`(() => {
-						const row = [...document.querySelectorAll('button')].find((el) => el.textContent.trim() === 'New chat');
-						return Boolean(row) && !row.disabled;
-					})()`,
+		const parkPointer = async (size) => {
+			await send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: size.width - 4,
+				y: size.height - 4,
+			});
+			await evaluate(
+				send,
+				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+				true,
+			);
+		};
+		const shoot = async (size, name, clip = null) => {
+			await parkPointer(size);
+			const { data } = await send("Page.captureScreenshot", {
+				format: "png",
+				...(clip ? { clip: { ...clip, scale: 1 } } : {}),
+			});
+			const path = join(OUT, `${LABEL}-${name}.png`);
+			writeFileSync(path, Buffer.from(data, "base64"));
+			// The same guard the swept set goes through: a frame whose dominant
+			// colour is not one of the theme's grounds, or that is one flat colour,
+			// is a picture of nothing.
+			assertFramePaints(path, THEME);
+			frames.push(path);
+			return path;
+		};
+
+		/**
+		 * Everything the band's own containment has to satisfy, from the reading
+		 * alone - the check the frames are only the illustration of.
+		 */
+		const containmentProblems = (size, band) => {
+			const problems = [];
+			const bandBox = band.boxes?.band;
+			if (!bandBox) {
+				problems.push("the band's own box was not read");
+			} else if (bandBox.y + bandBox.h > size.height + 0.5) {
+				problems.push(
+					`the band's box runs to ${Math.round((bandBox.y + bandBox.h) * 10) / 10}px in a ${size.height}px window`,
+				);
+			}
+			if (band.chips === 0) return problems;
+
+			const stack = band.stack;
+			if (!stack) {
+				problems.push("the band carries chips but no stack box");
+				return problems;
+			}
+			if (!stack.topEdgeInside)
+				problems.push("the suggestion stack starts above the top of the window");
+			if (!stack.lastVisibleRowInside)
+				problems.push(
+					`the last row inside the stack ends at y ${stack.lastVisibleRowBottom}, past the ${size.height}px window`,
+				);
+			if (!stack.boundaryInGap)
+				problems.push(
+					"the stack's boundary falls inside a row, so a row of chips is cut through its glyphs",
+				);
+			if (stack.visibleRows === 0)
+				problems.push("no chip row is inside the stack's own box");
+			return problems;
+		};
+
+		/** Whether this run's sample actually reached the cap. */
+		const capEngaged = (band) =>
+			Boolean(band.stack) &&
+			band.stack.contentHeight > band.stack.height + 0.5 &&
+			band.stack.visibleRows < band.stack.rowCount;
+
+		/** Load the harness at a size and stage a New chat on it. */
+		const loadDraft = async (size) => {
+			await send("Emulation.setDeviceMetricsOverride", {
+				width: size.width,
+				height: size.height,
+				deviceScaleFactor: 1,
+				mobile: false,
+			});
+			await send("Page.navigate", { url });
+
+			/*
+			 * Wait for the app's own readiness, not a harness flag: the sidebar's
+			 * New chat row is DISABLED until the session catalogue has loaded, so
+			 * "the row exists and is enabled" is the product telling us the surface
+			 * is where the frames say it is. Capabilities and the catalogue are the
+			 * two calls behind it.
+			 */
+			let armed = false;
+			for (let attempt = 0; attempt < 120 && !armed; attempt++) {
+				armed = Boolean(
+					await evaluate(
+						send,
+						`(() => {
+							const row = [...document.querySelectorAll('button')].find((el) => el.textContent.trim() === 'New chat');
+							return Boolean(row) && !row.disabled;
+						})()`,
+					),
+				);
+				if (!armed) await sleep(500);
+			}
+			if (!armed) {
+				console.error(`page log:\n${pageLog().join("\n")}`);
+				console.error(
+					`page text:\n${await evaluate(send, "document.body.innerText.slice(0, 600)")}`,
+				);
+				throw new Error(
+					`${size.id}: the New chat row never became available`,
+				);
+			}
+			const alerts = await alertText(send);
+			if (alerts.length > 0)
+				throw new Error(
+					`the page is showing an error surface: ${alerts.join(" | ")}`,
+				);
+
+			/*
+			 * The click is retried once: the dev server re-optimizes its deps when the
+			 * harness files change and pushes a reload into the page it is serving, and
+			 * a click that lands across that reload stages nothing (observed). A second
+			 * click on a page that has finished loading is the same click the product's
+			 * own New chat button gets, so retrying it costs no fidelity - it only
+			 * stops a reload from looking like a broken store.
+			 */
+			let probe = null;
+			for (let click = 0; click < 2 && !probe?.store?.activeDraftKey; click++) {
+				await clickRect(send, NEW_CHAT_ROW);
+				for (let attempt = 0; attempt < 20; attempt++) {
+					probe = await readProbe(send);
+					if (probe?.store?.activeDraftKey) break;
+					await sleep(250);
+				}
+			}
+			if (!probe?.store?.activeDraftKey)
+				throw new Error(
+					`${size.id}: clicking New chat did not stage a draft`,
+				);
+			if (probe.store.activeSessionId !== null)
+				throw new Error(
+					`the pane has a session (${probe.store.activeSessionId}), so this is not a New chat`,
+				);
+			return probe;
+		};
+
+		/**
+		 * One size, photographed end to end in one page load.
+		 *
+		 * The chips are SAMPLED AT RANDOM per mount, so a run at a size where the
+		 * stack is supposed to be under pressure can draw a sample short enough to
+		 * prove nothing. The stack's own reading decides: a size named in
+		 * `--require-cap` reloads and re-samples until the cap actually bit, and the
+		 * run fails rather than publishing a frame of a stack that never needed
+		 * containing.
+		 */
+		const captureSize = async (size) => {
+			const expected = expectedFor(size);
+			let settled = null;
+			let problems = [];
+
+			for (let attempt = 1; attempt <= CAP_ATTEMPTS; attempt++) {
+				await loadDraft(size);
+				/*
+				 * Two consecutive frames of the settled state, as the operator's rule
+				 * asks: anything that settles has to be captured across the settle, not
+				 * once. The reading is taken after the pair, so what is recorded is what
+				 * was photographed.
+				 */
+				await sleep(600);
+				settled = (await readProbe(send)).bandNow;
+
+				problems = containmentProblems(size, settled);
+				for (const field of ["greeting", "skeleton", "chips"]) {
+					if (settled[field] !== expected[field])
+						problems.push(
+							`the band shows ${field}=${settled[field]}, and this tree at ${size.id} is expected to show ${field}=${expected[field]}`,
+						);
+				}
+				if (REQUIRE_CAP.has(size.id) && !capEngaged(settled))
+					problems.push(
+						"this sample never reached the cap, so the frame would show a stack that needed no containing",
+					);
+				if (problems.length === 0) break;
+				if (attempt < CAP_ATTEMPTS)
+					console.log(
+						`${size.id}: attempt ${attempt} is not publishable (${problems.join("; ")}) - reloading for a new sample`,
+					);
+			}
+			if (problems.length > 0)
+				throw new Error(`${size.id}: ${problems.join("; ")}`);
+
+			if (expected.chips > 0) {
+				const labels = settled.chipLabels;
+				if (labels.length !== expected.chips)
+					throw new Error(
+						`${LABEL}: the band shows ${labels.length} chips, and the composer's own MAX_SUGGESTIONS over ${CHIPS.length} suggestions is ${expected.chips}`,
+					);
+				for (const label of labels)
+					if (!CHIPS.includes(label))
+						throw new Error(
+							`${LABEL}: a chip reads ${JSON.stringify(label)}, which is not one of DEFAULT_MESSAGE_SUGGESTIONS`,
+						);
+				if (new Set(labels).size !== labels.length)
+					throw new Error(`${LABEL}: the same suggestion is rendered twice`);
+			}
+			console.log(
+				`${size.id}: draft settled - band ${settled.bandHeight}px, ` +
+					`greeting ${settled.greeting}, skeleton ${settled.skeleton}, chips ${settled.chips}, ` +
+					`stack rows ${settled.stack?.visibleRows ?? 0}/${settled.stack?.rowCount ?? 0} visible in ${settled.stack?.height ?? 0}px ` +
+					`(content ${settled.stack?.contentHeight ?? 0}px, room ${settled.stack?.room ?? 0}px)`,
+			);
+
+			await shoot(size, `draft-${size.id}-frame1`);
+			await sleep(400);
+			await shoot(size, `draft-${size.id}-frame2`);
+			const draft = await readProbe(send);
+			const bandBox = draft.bandNow.boxes?.band;
+			if (bandBox)
+				await shoot(size, `draft-band-${size.id}`, {
+					x: bandBox.x,
+					y: bandBox.y,
+					width: bandBox.w,
+					height: bandBox.h,
+				});
+
+			/*
+			 * The admission flip, which is the other half of the claim: when a send
+			 * is admitted the pane becomes a real session, and the band must not
+			 * flash the greeting or the skeleton over the optimistic echo. The
+			 * readback carries a per-frame trace of the band for exactly this, and
+			 * what is asserted below is the property rather than a frame count.
+			 */
+			await clickRect(
+				send,
+				RECT("document.querySelector('textarea')", "composer"),
+			);
+			await send("Input.insertText", { text: MARKER });
+			await clickRect(
+				send,
+				RECT(
+					`document.querySelector('[aria-label="Send message"]')`,
+					"Send message",
 				),
 			);
-			if (!armed) await sleep(500);
-		}
-		if (!armed) {
-			console.error(`page log:\n${pageLog().join("\n")}`);
-			console.error(
-				`page text:\n${await evaluate(send, "document.body.innerText.slice(0, 600)")}`,
-			);
-			console.error(
-				`readback:\n${await evaluate(send, "(document.getElementById('probe')?.textContent ?? 'none').slice(0, 400)")}`,
-			);
-			throw new Error("the New chat row never became available");
-		}
-		const alerts = await alertText(send);
-		if (alerts.length > 0)
-			throw new Error(
-				`the page is showing an error surface: ${alerts.join(" | ")}`,
-			);
+			/*
+			 * The band as it stood when the send was clicked - the frame the user was
+			 * looking at when they pressed it. On the after tree that is the greeting
+			 * and the chips, i.e. the same band as before the click; on the before tree
+			 * it is the skeleton, which is the defect.
+			 */
+			const atClick = await readProbe(send);
+			/*
+			 * Named for what it shows rather than for the instant of the click. The
+			 * screenshot round trip is slower than the admission on this backend, so
+			 * what lands here is the state just AFTER the identity flip - a real
+			 * session whose page is owed, which still waits on both trees. It is NOT
+			 * the instant of Enter, and whether the echo has painted by the time of
+			 * the shutter is a race this frame does not claim to have won: the
+			 * readback's `bandAtFlipShot` is taken immediately after the shutter and
+			 * says which of the two it caught.
+			 * That instant is what the per-frame trace in the readback carries, because
+			 * no still can be timed to it. What this frame shows is read back
+			 * immediately AFTER the shutter, so the record says which state it is
+			 * rather than which state it was meant to be.
+			 */
+			if (size.id === DEFAULT_SIZE.id) await shoot(size, "send-after-flip");
+			const atFlipShot = await readProbe(send);
 
-		await clickRect(send, NEW_CHAT_ROW);
-		let probe = null;
-		for (let attempt = 0; attempt < 40; attempt++) {
-			probe = await readProbe(send);
-			if (probe?.store?.activeDraftKey) break;
-			await sleep(250);
-		}
-		if (!probe?.store?.activeDraftKey)
-			throw new Error("clicking New chat did not stage a draft");
-		if (probe.store.activeSessionId !== null)
-			throw new Error(
-				`the pane has a session (${probe.store.activeSessionId}), so this is not a New chat`,
-			);
-
-		// Two consecutive frames of the settled state, as the operator's rule
-		// asks: anything that settles has to be captured across the settle, not
-		// once.
-		await sleep(600);
-		await shoot(send, "draft-1380x872-frame1");
-		await sleep(400);
-		await shoot(send, "draft-1380x872-frame2");
-		const settled = await readProbe(send);
-		const band = settled.bandNow;
-		const clip = band.boxes?.band;
-		if (clip)
-			await shoot(send, "draft-band", {
-				x: clip.x,
-				y: clip.y,
-				width: clip.w,
-				height: clip.h,
-			});
-
-		for (const field of ["greeting", "skeleton", "chips"]) {
-			if (band[field] !== EXPECTED[field])
-				throw new Error(
-					`${LABEL}: the band shows ${field}=${band[field]}, and this tree is expected to show ${field}=${EXPECTED[field]} - the run is not of the state it claims`,
-				);
-		}
-		if (EXPECTED.chips > 0) {
-			const labels = band.chipLabels;
-			if (labels.length !== EXPECTED.chips)
-				throw new Error(
-					`${LABEL}: the band shows ${labels.length} chips, and the composer's own MAX_SUGGESTIONS over ${CHIPS.length} suggestions is ${EXPECTED.chips}`,
-				);
-			for (const label of labels)
-				if (!CHIPS.includes(label))
-					throw new Error(
-						`${LABEL}: a chip reads ${JSON.stringify(label)}, which is not one of DEFAULT_MESSAGE_SUGGESTIONS`,
-					);
-			if (new Set(labels).size !== labels.length)
-				throw new Error(`${LABEL}: the same suggestion is rendered twice`);
-		}
-		console.log(
-			`${LABEL}: draft settled - band ${band.bandHeight}px, ` +
-				`greeting ${band.greeting}, skeleton ${band.skeleton}, chips ${band.chips}; ` +
-				`band text ${JSON.stringify(band.text.slice(0, 120))}`,
-		);
-
-		/*
-		 * The admission flip, which is the other half of the claim: when a send
-		 * is admitted the pane becomes a real session, and the band must not
-		 * flash the greeting or the skeleton over the optimistic echo. The
-		 * readback carries a per-frame trace of the band for exactly this, and
-		 * what is asserted below is the property rather than a frame count.
-		 */
-		await clickRect(
-			send,
-			RECT("document.querySelector('textarea')", "composer"),
-		);
-		await send("Input.insertText", { text: MARKER });
-		await clickRect(
-			send,
-			RECT(
-				`document.querySelector('[aria-label="Send message"]')`,
-				"Send message",
-			),
-		);
-		/*
-		 * The band as it stood when the send was clicked - the frame the user was
-		 * looking at when they pressed it. On the after tree that is the greeting
-		 * and the chips, i.e. the same band as before the click; on the before tree
-		 * it is the skeleton, which is the defect.
-		 */
-		const atClick = await readProbe(send);
-		/*
-		 * Named for what it shows rather than for the instant of the click. The
-		 * screenshot round trip is slower than the admission on this backend, so
-		 * what lands here is the state just AFTER the identity flip - a real
-		 * session whose page is owed, which still waits on both trees. It is NOT
-		 * the instant of Enter, and whether the echo has painted by the time of
-		 * the shutter is a race this frame does not claim to have won: the
-		 * readback's `bandAtFlipShot` is taken immediately after the shutter and
-		 * says which of the two it caught.
-		 * That instant is what the per-frame trace in the readback carries, because
-		 * no still can be timed to it. What this frame shows is read back
-		 * immediately AFTER the shutter, so the record says which state it is
-		 * rather than which state it was meant to be.
-		 */
-		await shoot(send, "send-after-flip");
-		const atFlipShot = await readProbe(send);
-
-		let painted = false;
-		let firstPainted = null;
-		for (let attempt = 0; attempt < 100 && !painted; attempt++) {
-			const reading = await readProbe(send);
-			if (reading?.bandNow?.transcriptPainted) {
-				painted = true;
-				firstPainted = reading;
-				break;
+			let painted = false;
+			let firstPainted = null;
+			for (let attempt = 0; attempt < 100 && !painted; attempt++) {
+				const reading = await readProbe(send);
+				if (reading?.bandNow?.transcriptPainted) {
+					painted = true;
+					firstPainted = reading;
+					break;
+				}
+				await sleep(100);
 			}
-			await sleep(100);
-		}
-		if (!painted)
-			throw new Error(
-				"the send never painted a row in the transcript, so there is no flip to photograph",
+			if (!painted)
+				throw new Error(
+					`${size.id}: the send never painted a row in the transcript, so there is no flip to photograph`,
+				);
+			if (size.id === DEFAULT_SIZE.id) await shoot(size, "send-first-painted");
+			await sleep(1500);
+			const afterSend = await readProbe(send);
+			await shoot(size, `send-settled-${size.id}-frame1`);
+			if (size.id === DEFAULT_SIZE.id) {
+				await sleep(400);
+				await shoot(size, "send-settled-frame2");
+			}
+
+			/*
+			 * The traced frames are the record, and the trace is what makes the
+			 * check possible at all: a greeting or a skeleton painted over the echo
+			 * is a one-frame state that two stills cannot show. `transcriptPainted`
+			 * says the echo was on screen for that frame, so the property is
+			 * "no traced frame had a message painted AND a claim about what is in
+			 * the pane".
+			 */
+			const overEcho = (afterSend.frames ?? []).filter(
+				(frame) =>
+					frame.transcriptPainted &&
+					(frame.greeting > 0 || frame.skeleton > 0 || frame.chips > 0),
 			);
-		await shoot(send, "send-first-painted");
-		await sleep(1500);
-		const afterSend = await readProbe(send);
-		await shoot(send, "send-settled-frame1");
-		await sleep(400);
-		await shoot(send, "send-settled-frame2");
+			if (overEcho.length > 0)
+				throw new Error(
+					`${size.id}: ${overEcho.length} traced frame(s) showed the greeting/skeleton/chips over the painted echo: ${JSON.stringify(overEcho.slice(0, 3))}`,
+				);
+			const flipFrames = (afterSend.frames ?? []).filter(
+				(frame) => frame.transcriptPainted,
+			).length;
+			if (flipFrames === 0)
+				throw new Error(
+					`${size.id}: the trace holds no frame with the echo painted, so the property above was never exercised`,
+				);
+
+			/*
+			 * The admitted-send state, which the peer change at the same height
+			 * budget (PR #155) also has to hold in: the greeting and the chips are
+			 * gone and the band is the composer and its readings alone. Nothing is
+			 * capped in it - the constraint is only that it is still inside the pane.
+			 */
+			const sendProblems = containmentProblems(size, afterSend.bandNow);
+			if (afterSend.bandNow.chips > 0)
+				sendProblems.push(
+					"the suggestion chips are still in the band after the send was admitted",
+				);
+			if (sendProblems.length > 0)
+				throw new Error(
+					`${size.id}: the admitted-send band is not contained: ${sendProblems.join("; ")}`,
+				);
+
+			return {
+				viewport: size.id,
+				expected,
+				draft,
+				/*
+				 * The full traced frames are kept once, at the default size: the
+				 * property is asserted at every size above, but four copies of a
+				 * per-animation-frame trace is a megabyte of JSON that says the same
+				 * thing four times.
+				 */
+				afterSend: {
+					bandNow: afterSend.bandNow,
+					frames:
+						size.id === DEFAULT_SIZE.id ? (afterSend.frames ?? []) : [],
+				},
+				flip: {
+					framesWithEchoPainted: flipFrames,
+					tracedFrames: (afterSend.frames ?? []).length,
+					firstPaintedBand: firstPainted?.bandNow ?? null,
+					bandAtSendClick: atClick?.bandNow ?? null,
+					bandAtFlipShot: atFlipShot?.bandNow ?? null,
+					bandStates: (afterSend.frames ?? []).map((frame) => ({
+						at: frame.at,
+						echo: frame.transcriptPainted,
+						greeting: frame.greeting > 0,
+						skeleton: frame.skeleton > 0,
+						chips: frame.chips > 0,
+					})),
+				},
+			};
+		};
+
+		const sizes = [];
+		for (const size of SIZES) {
+			sizes.push(await captureSize(size));
+		}
 
 		/*
-		 * The traced frames are the record, and the trace is what makes the
-		 * check possible at all: a greeting or a skeleton painted over the echo
-		 * is a one-frame state that two stills cannot show. `transcriptPainted`
-		 * says the echo was on screen for that frame, so the property is
-		 * "no traced frame had a message painted AND a claim about what is in
-		 * the pane".
+		 * The band's own column width is asserted rather than assumed: whether a
+		 * window takes the small view or the splash is decided by the column's
+		 * width, so a session list that changed width would silently move every
+		 * expectation in this file.
 		 */
-		const overEcho = (afterSend.frames ?? []).filter(
-			(frame) =>
-				frame.transcriptPainted &&
-				(frame.greeting > 0 || frame.skeleton > 0 || frame.chips > 0),
-		);
-		if (overEcho.length > 0)
-			throw new Error(
-				`${overEcho.length} traced frame(s) showed the greeting/skeleton/chips over the painted echo: ${JSON.stringify(overEcho.slice(0, 3))}`,
-			);
-		const flipFrames = (afterSend.frames ?? []).filter(
-			(frame) => frame.transcriptPainted,
-		).length;
-		if (flipFrames === 0)
-			throw new Error(
-				"the trace holds no frame with the echo painted, so the property above was never exercised",
-			);
+		for (const captured of sizes) {
+			const [width] = captured.viewport.split("x").map(Number);
+			const bandWidth = captured.draft.bandNow.boxes?.band?.w;
+			if (bandWidth !== width - SESSION_LIST_WIDTH)
+				throw new Error(
+					`${captured.viewport}: the band is ${bandWidth}px wide, and this run predicts the window minus a ${SESSION_LIST_WIDTH}px session list`,
+				);
+		}
 
 		const readback = {
 			label: LABEL,
 			capturedAt: new Date().toISOString(),
+			...origin,
 			instrument:
 				"scripts/draft-splash-capture.mjs - private headless Chrome over raw CDP driving scripts/draft-splash-evidence.html (the shipped ChatPage) against an isolated local-operator serve through the dev desktop proxy",
 			url,
-			viewport: `${WIDTH}x${HEIGHT}`,
 			theme: THEME,
-			expected: EXPECTED,
 			chipList: "DEFAULT_MESSAGE_SUGGESTIONS (chat-content.tsx)",
-			draft: settled,
-			afterSend,
-			flip: {
-				framesWithEchoPainted: flipFrames,
-				tracedFrames: (afterSend.frames ?? []).length,
-				firstPaintedBand: firstPainted?.bandNow ?? null,
-				bandAtSendClick: atClick?.bandNow ?? null,
-				bandAtFlipShot: atFlipShot?.bandNow ?? null,
-				/*
-				 * The trace itself, whittled to the four booleans the claim is about,
-				 * with the harness's own clock. Both the stills and this list exist
-				 * because neither answers the other's question: the stills show what the
-				 * band looked like, the list shows that nothing was on screen for only a
-				 * frame or two without being seen.
-				 */
-				bandStates: (afterSend.frames ?? []).map((frame) => ({
-					at: frame.at,
-					echo: frame.transcriptPainted,
-					greeting: frame.greeting > 0,
-					skeleton: frame.skeleton > 0,
-					chips: frame.chips > 0,
-				})),
-			},
+			expected: Object.fromEntries(
+				SIZES.map((size) => [size.id, expectedFor(size)]),
+			),
+			sizes,
 			frames: frames.map((path) => path.slice(ROOT.length + 1)),
 		};
 		const readbackPath = join(OUT, `readback-${LABEL}.json`);
 		writeFileSync(readbackPath, `${JSON.stringify(readback, null, 2)}\n`);
 		console.log(
-			`${LABEL}: ${frames.length} frames, ${flipFrames} traced frames with the echo painted (0 with a claim over it)`,
+			`${LABEL}: ${frames.length} frames at ${SIZES.map((size) => size.id).join(", ")}`,
 		);
 		console.log(`readback: ${readbackPath}`);
 		teardown();

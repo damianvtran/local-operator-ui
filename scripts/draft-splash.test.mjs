@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 import { build } from "esbuild";
 
 /*
@@ -37,7 +38,17 @@ import { build } from "esbuild";
  *      `composer-readings.test.mjs` records for asserting its row half on the
  *      source as well. What a rendered composer would prove is only that its
  *      `isHydrating` prop picks its branch; the defect was which fact was passed
- *      into that prop, and that is a fact about one JSX expression.
+ *      into that prop, and that is a fact about one JSX expression. The
+ *      EXPRESSION is evaluated against handle-shaped probes rather than
+ *      compared to source text, so a semantics-preserving reformat does not
+ *      redden it (code review round 1, N4).
+ *
+ *   3. The suggestion stack's containment - how tall the band's chips may grow
+ *      before they outgrow the pane (design round 1, D1) - asserted on the pure
+ *      rule `message-input.tsx` measures its cap with. The RULE is what can be
+ *      pinned here: the geometry it is fed comes from the live layout, and the
+ *      frames under docs/evidence/draft-splash/ are where that geometry is
+ *      photographed at the sizes the defect was measured at.
  *
  * ONE THING THIS TEST DOES NOT REACH: a real session whose page HAS landed, i.e.
  * the settled empty conversation, which is the other half of the composed rule
@@ -57,6 +68,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { suggestionStackCapFor } from "./src/renderer/src/features/chat/components/suggestion-stack";
 			/*
 			 * Renders the hook ONCE and hands back the handle it returned. The
 			 * probe renders nothing on purpose: the handle is the whole subject.
@@ -104,7 +116,7 @@ const bundle = await build({
 // has no base path for.
 const bundlePath = new URL("./_draft-splash.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { handleFor } = await import(bundlePath.href);
+const { handleFor, suggestionStackCapFor } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /**
@@ -154,7 +166,10 @@ test("a session with its stream deliberately off does not wait forever", () => {
 	// No product call site does this today, and that is why the term is in the
 	// rule: a caller that holds the stream off on purpose would otherwise strand
 	// the composer in a wait that cannot end, because `hydrated` cannot turn
-	// true without a subscription.
+	// true without a subscription. The trade runs the other way too - such a
+	// caller is asserting there is nothing to wait FOR, so it must not read the
+	// band's empty-conversation state out of this field (the field's docstring
+	// says so; code review round 1, M1).
 	const held = handleFor(SESSION, false);
 
 	assert.equal(
@@ -166,9 +181,16 @@ test("a session with its stream deliberately off does not wait forever", () => {
 
 test("the composer is given the composed fact, not the raw one", () => {
 	/*
-	 * The wiring half. Read as text because the composer cannot render in
-	 * isolation (see this file's header), and because the defect was which fact
-	 * reached `isHydrating` rather than what the composer does with it.
+	 * The wiring half: the prop's own expression, EVALUATED against handle-shaped
+	 * probes rather than compared to source text. The claim is which fact reaches
+	 * `isHydrating`, and a `Boolean(...)` wrap, parentheses, optional chaining or
+	 * a reordered ternary all make that same claim - requiring one exact string
+	 * made a semantics-preserving reformat red (code review round 1, N4).
+	 *
+	 * The first probe is the one that tells the two rules apart: a draft has
+	 * nothing applied AND nothing owed, and that is the state `!hydrated` got
+	 * wrong. A probe where `hydrated` and `awaitingHydration` agree cannot fail
+	 * the old expression, so the probes are chosen to disagree in that direction.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/chat-content.tsx",
@@ -179,16 +201,99 @@ test("the composer is given the composed fact, not the raw one", () => {
 		prop,
 		"chat-content.tsx no longer passes `isHydrating` to the composer at all - this guard is aimed at that expression",
 	);
-	const expression = prop[1].replace(/\s+/g, "");
+	const expression = prop[1];
 
-	assert.equal(
-		expression,
-		"canonical?canonical.view.awaitingHydration:false",
+	const probes = [
+		// A New chat staged as a draft: no page applied, and none owed.
+		{ view: { hydrated: false, awaitingHydration: false } },
+		// A cold session whose page is still in flight (design D7): still waits.
+		{ view: { hydrated: false, awaitingHydration: true } },
+		// A settled conversation: nothing owed.
+		{ view: { hydrated: true, awaitingHydration: false } },
+		// No handle at all.
+		null,
+	];
+	const expected = probes.map((probe) => probe?.view.awaitingHydration ?? false);
+
+	let actual;
+	try {
+		actual = probes.map((probe) =>
+			runInNewContext(`(${expression})`, { canonical: probe }),
+		);
+	} catch (error) {
+		assert.fail(
+			`the composer's \`isHydrating\` expression could not be evaluated with only a \`canonical\` handle in scope (${error.message}) - this guard reads that expression off the source, so it has to be re-aimed at whatever now carries the fact`,
+		);
+	}
+
+	assert.deepEqual(
+		actual,
+		expected,
 		"the composer's loading state is the session handle's own claim that a page is owed; feeding it anything else is how a New chat came to wait on a page that does not exist",
 	);
 	assert.doesNotMatch(
-		source,
-		/!canonical\.view\.hydrated/,
-		"`hydrated` answers 'has an authoritative page been applied for this session', which is false forever on a pane that has no session - the composer must not read it directly (use the handle's composed field)",
+		expression,
+		/\.hydrated\b/,
+		"`hydrated` answers 'has an authoritative page been applied for this session', which is false forever on a pane that has no session - the composer must not read it directly (use the handle's composed field). Asserted on the prop's own expression, not file-wide: a later legitimate reader of that field elsewhere in this file is not this defect (code review round 1, N4).",
+	);
+});
+
+/*
+ * The suggestion stack's containment (design round 1, D1).
+ *
+ * The stack is the one thing in the band that grows without a bound of its own,
+ * so it is where the bound lives - and the bound has to land on a ROW boundary,
+ * because a cap that lands inside a row cuts the chips' glyphs (the defect) and
+ * a cap that lands past the room the band has is a cap that does nothing. Both
+ * halves are arithmetic over the measured rows, so both are pinned here; the
+ * measurement itself is photographed in docs/evidence/draft-splash/.
+ */
+const rowOf = (top, height) => ({ top, bottom: top + height });
+
+test("the suggestion stack is only capped when it does not fit", () => {
+	const rows = [rowOf(0, 28), rowOf(36, 28), rowOf(72, 28)];
+
+	assert.equal(
+		suggestionStackCapFor(rows, 0, 200),
+		null,
+		"a stack with room to spare is not capped at all, which is what keeps the default window's approved frame untouched",
+	);
+	assert.equal(
+		suggestionStackCapFor(rows, 0, 80),
+		64,
+		"capped at the bottom edge of the last row that fits, so the boundary sits in the gap below it rather than through its glyphs",
+	);
+});
+
+test("a chip whose label wraps inside itself moves the boundary past its whole row", () => {
+	// Row two is a two-line chip - 28px of chip plus a second line - so a cap
+	// measured by the row PITCH would cut it; one measured by the rows on screen
+	// does not.
+	const rows = [rowOf(0, 28), rowOf(36, 46), rowOf(90, 28)];
+
+	assert.equal(
+		suggestionStackCapFor(rows, 0, 60),
+		28,
+		"the tall row is dropped whole rather than cut in half",
+	);
+	assert.equal(
+		suggestionStackCapFor(rows, 0, 82),
+		82,
+		"and its own bottom is the boundary as soon as its room is there",
+	);
+});
+
+test("a stack is never capped away entirely, and page coordinates do not leak in", () => {
+	const rows = [rowOf(400, 28), rowOf(436, 28)];
+
+	assert.equal(
+		suggestionStackCapFor(rows, 400, 4),
+		28,
+		"a pane with no room for even one row still shows the first: the alternative is a band that lost its suggestions rather than one that bounds them",
+	);
+	assert.equal(
+		suggestionStackCapFor([], 400, 0),
+		null,
+		"no chips is not a containment problem",
 	);
 });

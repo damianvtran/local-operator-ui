@@ -91,6 +91,21 @@ const HARNESS_HOME = "/Users/damian";
  */
 useCanonicalSessionsStore.setState({ cwd: HARNESS_HOME });
 
+/**
+ * One row of the chip stack, as the browser laid it out.
+ *
+ * The rows are derived from the chips' own boxes rather than from a row pitch,
+ * because a suggestion long enough to wrap inside its own chip makes a row
+ * taller than its neighbours: the containment fix (D1) caps the stack to whole
+ * rows, so "which row does the boundary fall on" has to be answered by the
+ * geometry that is actually on screen rather than by an assumed line height.
+ */
+type ChipRow = {
+	top: number;
+	bottom: number;
+	chips: number;
+};
+
 /** One reading of the band, taken in one animation frame. */
 type BandFrame = {
 	at: number;
@@ -101,6 +116,29 @@ type BandFrame = {
 	chipLabels: string[];
 	bandHeight: number;
 	boxes: Record<string, string>;
+	/**
+	 * The chip stack's own geometry, which is what D1 is a claim about: how many
+	 * rows the sample wrapped to, how tall each is, and whether the last one is
+	 * inside the window.
+	 */
+	stack: {
+		top: number;
+		bottom: number;
+		height: number;
+		clientHeight: number;
+		scrollHeight: number;
+		scrollable: boolean;
+		topEdgeInside: boolean;
+		rows: ChipRow[];
+		rowCount: number;
+		visibleRows: number;
+		lastVisibleRowBottom: number;
+		lastVisibleRowInside: boolean;
+		boundaryInGap: boolean;
+		contentHeight: number;
+		/** How much of the window is left below the stack's top edge. */
+		room: number;
+	} | null;
 	/**
 	 * Whether the driver's own probe text is painted in the TRANSCRIPT.
 	 *
@@ -155,6 +193,7 @@ function readBand(): BandFrame {
 			chipLabels: [],
 			bandHeight: 0,
 			boxes: {},
+			stack: null,
 			transcriptPainted: false,
 		};
 	/*
@@ -177,6 +216,67 @@ function readBand(): BandFrame {
 			)
 		: [];
 	const composer = band.querySelector("form");
+	/*
+	 * The chip stack's geometry, which is what D1 turns on.
+	 *
+	 * `room` is the honest measure of what the stack has: the distance from its
+	 * own top edge to the bottom of the visible column, which is the window's own
+	 * bottom because the chat column is `h-full`. Measured from the WINDOW rather
+	 * than from the band, because the band is exactly what overflows when this
+	 * fails: its own box runs past the window and reading its bottom would report
+	 * the space it claimed rather than the space the user has.
+	 */
+	const stack = (() => {
+		const wrap = document.querySelector<HTMLElement>(
+			"[data-lo-suggestion-stack]",
+		);
+		if (!wrap) return null;
+		const wrapBox = wrap.getBoundingClientRect();
+		const rows = new Map<number, ChipRow>();
+		for (const chip of wrap.children) {
+			const box = chip.getBoundingClientRect();
+			const top = Math.round(box.top * 10) / 10;
+			const bottom = Math.round(box.bottom * 10) / 10;
+			const existing = rows.get(top);
+			rows.set(top, {
+				top,
+				bottom: Math.max(bottom, existing?.bottom ?? bottom),
+				chips: (existing?.chips ?? 0) + 1,
+			});
+		}
+		const ordered = [...rows.values()].sort((a, b) => a.top - b.top);
+		/*
+		 * Visible vs laid out: the stack keeps every chip in the document and caps
+		 * the box (see `suggestion-stack.ts`), so the rows below the cap still have
+		 * boxes - they are simply outside the box that is painted. Reporting the last
+		 * LAID OUT row as "inside the window" would call a cut stack contained, which
+		 * is the reading this probe exists to be able to refuse.
+		 */
+		const visible = ordered.filter((row) => row.bottom <= wrapBox.bottom + 0.5);
+		const firstClipped =
+			ordered.find((row) => row.bottom > wrapBox.bottom + 0.5) ?? null;
+		const contentBottom = ordered.at(-1)?.bottom ?? wrapBox.bottom;
+		const lastVisibleBottom = visible.at(-1)?.bottom ?? wrapBox.top;
+		return {
+			top: Math.round(wrapBox.top * 10) / 10,
+			bottom: Math.round(wrapBox.bottom * 10) / 10,
+			height: Math.round(wrapBox.height * 10) / 10,
+			clientHeight: wrap.clientHeight,
+			scrollHeight: wrap.scrollHeight,
+			scrollable: wrap.scrollHeight > wrap.clientHeight + 1,
+			topEdgeInside: wrapBox.top >= 0,
+			rows: ordered,
+			rowCount: ordered.length,
+			visibleRows: visible.length,
+			lastVisibleRowBottom: Math.round(lastVisibleBottom * 10) / 10,
+			lastVisibleRowInside: lastVisibleBottom <= window.innerHeight,
+			/** Nothing is cut: the first row below the box starts at or below it. */
+			boundaryInGap: firstClipped ? firstClipped.top >= wrapBox.bottom - 1 : true,
+			contentHeight: Math.round((contentBottom - wrapBox.top) * 10) / 10,
+			/** How much of the window is left below the stack's top edge. */
+			room: Math.round((window.innerHeight - wrapBox.top) * 10) / 10,
+		};
+	})();
 	return {
 		at: 0,
 		text: (band.innerText ?? "").replace(/\s+/g, " ").trim(),
@@ -195,6 +295,7 @@ function readBand(): BandFrame {
 			chipRow: rect(chips[0]?.parentElement ?? null),
 			composer: rect(composer),
 		},
+		stack,
 		transcriptPainted: (() => {
 			const marker = (window as unknown as { __draftSplashMarker?: string })
 				.__draftSplashMarker;
