@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { BrowserExtensionsApi } from "../shared/browser-extensions";
 import type {
 	DesktopAPI,
 	ProbedFile,
@@ -23,6 +24,7 @@ declare global {
 			 * drift from the one main actually sends.
 			 */
 			browser: {
+				extensions: BrowserExtensionsApi;
 				state: () => Promise<unknown>;
 				newTab: () => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;

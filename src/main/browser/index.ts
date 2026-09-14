@@ -5,6 +5,7 @@ import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
 import { ConsentNotifier } from "./consent-notifier";
 import type { DriveableView } from "./electron-types";
+import { createBrowserExtensionManager } from "./extension-ui";
 import { BrowserHost } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { OwnershipLedger } from "./ownership";
@@ -155,6 +156,16 @@ export async function startBrowserHost(
 		},
 		log,
 	});
+
+	// Electron does not restore unpacked extensions itself. Load the approved
+	// registry before restoring browser tabs so content scripts see first navigation.
+	const extensions = createBrowserExtensionManager({
+		window: options.window,
+		session: browserSession,
+		dir: join(options.userDataDir, "browser"),
+		windowShow: options.windowShow,
+	});
+	await extensions.start();
 
 	// The public-suffix rules the `domain` approval scope needs. The vendored
 	// `origin-policy` (design 12.2) takes them by injection rather than importing the
@@ -340,6 +351,7 @@ export async function startBrowserHost(
 		window: () => options.window,
 		expectedUrl: options.expectedUrl,
 		host: () => host,
+		extensions,
 		clearData: (what: ClearWhat) => clearBrowsingData(browserSession, what),
 		log,
 	});
@@ -365,6 +377,7 @@ export async function startBrowserHost(
 			await cdp.close();
 			await server.close();
 			unregisterBrowserIpc();
+			extensions.stop();
 			stateWriter?.clear();
 			approvals.resetPending();
 			ownership.clear();

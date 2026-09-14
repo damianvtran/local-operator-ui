@@ -47,6 +47,7 @@ export interface BrowserUrlBarProps {
 	onReload: () => void;
 	onStop: () => void;
 	onOpenSites: () => void;
+	onOpenExtensions?: () => void;
 	/** How many sites an agent may act on as the user, for the Sites button. */
 	approvalCount: number;
 }
@@ -71,6 +72,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onReload,
 	onStop,
 	onOpenSites,
+	onOpenExtensions,
 	approvalCount,
 }) => {
 	const [draft, setDraft] = useState<string | null>(null);
@@ -217,6 +219,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<span className="text-ink-dim">{approvalCount}</span>
 				)}
 			</Button>
+			{onOpenExtensions && (
+				<Button variant="ghost" size="sm" onClick={onOpenExtensions}>
+					Extensions
+				</Button>
+			)}
 		</div>
 	);
 };

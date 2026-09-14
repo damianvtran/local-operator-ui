@@ -348,6 +348,16 @@ const api = {
 	 * moves to a session (the hand-over) mints a nonce main never sends back here.
 	 */
 	browser: {
+		extensions: {
+			list: () => ipcRenderer.invoke("browser-extensions-list"),
+			install: () => ipcRenderer.invoke("browser-extensions-install"),
+			setEnabled: (key: string, enabled: boolean) =>
+				ipcRenderer.invoke("browser-extensions-set-enabled", key, enabled),
+			remove: (key: string) =>
+				ipcRenderer.invoke("browser-extensions-remove", key),
+			openPopup: (key: string): Promise<void> =>
+				ipcRenderer.invoke("browser-extensions-popup", key),
+		},
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
 		newTab: (): Promise<unknown> => ipcRenderer.invoke("browser-new-tab"),
 		closeTab: (tabId: number): Promise<unknown> =>
