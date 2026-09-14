@@ -1466,6 +1466,16 @@ test("a sender field is one line, bounded, and free of both rendering hazards", 
 	// The 8-bit (C1) form is the one that does not look like an escape once
 	// decoded, and it survives a 7-bit-only pattern.
 	assert.equal(senderField("a\u009b31mred"), "ared");
+	// …and its STRING form is the same branch of the alternation, so it is pinned
+	// here rather than left to the CSI line above: the introducers (`\u009d` OSC,
+	// `\u0090` DCS, `\u0098` SOS, `\u009e` PM, `\u009f` APC) go WITH their payload
+	// up to `\u009c`, because a pattern that took the introducer alone would leave
+	// `0;pwned` standing in an identity label — wrong text, not absent text.
+	// Deleting `[\u009d\u0090\u0098\u009e\u009f]` from `CONTROL_SEQUENCES` used to
+	// leave this suite 45/45 green (reviewer F7).
+	assert.equal(senderField("a\u009d0;pwned\u009cb"), "ab");
+	assert.equal(senderField("a\u0090dcs\u009cb"), "ab");
+	assert.equal(senderField("a\u009fapc\u009cb"), "ab");
 	assert.equal(senderField("a\u001b]0;title\u0007b"), "ab");
 	// A control character hiding a newline in its payload cannot split the row:
 	// the strip runs BEFORE the whitespace collapse, so the newline goes with the
@@ -1572,6 +1582,28 @@ test("a peer delivery is projected from its human fields, with the envelope as a
 	// The three the envelope does not carry stay empty rather than invented.
 	assert.equal(recovered.sender.cwd, "");
 	assert.equal(recovered.sender.sessionId, "");
+
+	// 2b. …and the same row when the open tag CANNOT be parsed: an unterminated
+	// quoted attribute, or a conversation name carrying both quote kinds, which is
+	// what Python's `repr` produces for `Damian's "tool trace" work`. The
+	// quote-aware scan does not match at all here, so there is no `inner` to
+	// recover — and the body used to come back empty, which is a row that keeps
+	// NEITHER the sender nor the message: `body=""` against round 1's
+	// `body="please re-run the export"` on the same input (QA round 2, Q-5). What
+	// a reader gets now is the text behind the tag, which is cut at its first `>`
+	// — the only tag end available without a parse — while the attributes that
+	// could not be read stay absent rather than being guessed at piecemeal.
+	const unterminated = peerFields({
+		text: "<peer-session-message from_pid=1 conversation='a model='m'>\nplease re-run the export\n</peer-session-message>",
+	});
+	assert.equal(unterminated.body, "please re-run the export");
+	// The envelope must not be what the row says, whichever way it failed to parse.
+	assert.equal(unterminated.body.includes("peer-session-message"), false);
+	const bothQuotes = peerFields({
+		text: `<peer-session-message from_pid=1 conversation='Damian\\'s "tool trace" work' model='m'>\nplease re-run the export\n</peer-session-message>`,
+	});
+	assert.equal(bothQuotes.body, "please re-run the export");
+	assert.equal(bothQuotes.body.includes("peer-session-message"), false);
 
 	// 3. The two sources are combined FIELD BY FIELD, not wholesale: a `sender`
 	// missing only `model_label` takes that one field from the envelope rather

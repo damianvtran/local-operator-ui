@@ -331,8 +331,14 @@ export function sameSender(a: PeerSender, b: PeerSender): boolean {
  * `conversation="'a"` and the rest of the envelope lands in the body as text,
  * which is the one thing this module exists to prevent. `(?:[^>"']|"[^"]*"|'[^']*')`
  * is the same reluctant-of-nothing scan with the quoted values consumed whole.
- * An UNTERMINATED quote therefore fails to match at all, which is the safe
- * direction: the tag then survives as text rather than being cut in the middle.
+ * An UNTERMINATED quote therefore fails to match at all, and that is a TRADE
+ * rather than a free win. The safe direction is real — the alternative consumes
+ * the tag only up to the `>` inside a quoted value and drops the rest of the
+ * envelope into the body as text — but what a scan cannot parse it also cannot
+ * remove, so the fragment survives as text. A row carrying `details.body` pays
+ * nothing for that; a row carrying ONLY the envelope is the case `peerFields`
+ * answers explicitly, and there the tag is cut by the fallback rule beside
+ * `UNPARSED_OPEN_TAG` rather than left standing in the row.
  */
 const PEER_ENVELOPE =
 	/^<peer-session-message\s+((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/peer-session-message>\s*$/;
@@ -340,6 +346,23 @@ const PEER_ENVELOPE =
 /** Any envelope tag, wherever it sits — see `peerFields`. */
 const PEER_ENVELOPE_TAG =
 	/<\/?peer-session-message(?:[^>"']|"[^"]*"|'[^']*')*>/g;
+
+/**
+ * The open tag of an envelope whose own attributes would not parse.
+ *
+ * Used on exactly one path — the fallback in `peerFields`, where `PEER_ENVELOPE`
+ * did not match at all and there is therefore no inner text to recover. It cuts
+ * at the FIRST `>`, which is the only tag end available without a parse: the
+ * producer (`Session._peer_custom_message`) writes the whole open tag on one line
+ * with the message after it, and every input that actually reaches here — a name
+ * carrying both quote kinds, which Python's `repr` escapes with a backslash, or a
+ * genuinely unterminated quote — ends its tag at that first `>`. A value that
+ * CONTAINS a `>` is the case the quote-aware scan exists for, and such an
+ * envelope parses, so it never reaches this rule; if one ever does, the cut lands
+ * inside the value and leaves a short fragment in front of the message, which is
+ * the imperfect half of a recovery whose alternative is a row with nothing on it.
+ */
+const UNPARSED_OPEN_TAG = /^<peer-session-message[^>]*>/;
 
 /**
  * One `key=value` attribute of an envelope's open tag.
@@ -375,7 +398,15 @@ const PEER_ENVELOPE_ATTR =
  * delivery path that was never updated. Recovering `from_pid`, `conversation`
  * and `model` from the open tag means such a row still names its sender instead
  * of degrading to "another session", and recovering the body from inside the
- * wrapper means it still has something to say.
+ * wrapper means it still has something to say. When the open tag itself cannot be
+ * read — an unterminated quoted attribute, or a name carrying both quote kinds,
+ * which is what reaches it — there is no `inner` to recover, so the fallback cuts
+ * the tag at its first `>` (`UNPARSED_OPEN_TAG`) and keeps the raw text behind it.
+ * That is deliberate and it is the cheaper half of the trade: on this path the
+ * text IS the message, and a message behind a cut-open tag is recoverable where an
+ * empty body is a receipt with nothing on it (QA round 2, Q-5 — one input measured
+ * `body="please re-run the export"` before round 1's quote-aware scan and `""`
+ * after it, and the peer's words are back on the row either way).
  *
  * `details.sender` WINS field by field rather than wholesale: the two sources
  * carry overlapping but not identical facts, and a row that has a `sender` dict
@@ -395,7 +426,20 @@ export function peerFields(details: Record<string, unknown>): {
 		}
 	}
 	const inner = match ? match[2] : "";
-	const chosen = String(details.body ?? "").trim() || inner;
+	/*
+	 * The UNMATCHED path keeps the raw text, and this is the path the fallback
+	 * exists for: with the quote-aware scan an unparseable open tag leaves `inner`
+	 * empty, so a row that carried ONLY the envelope — the older-producer case —
+	 * lost the body, the pid, the name and the model at once and degraded to a
+	 * static `another session` with nothing to open. The tag is cut at its first
+	 * `>` on the way (`UNPARSED_OPEN_TAG`): the message is what the reader came
+	 * for, and a row that printed the model-facing envelope in front of it would
+	 * be the defect this module exists for, one path over.
+	 */
+	const chosen =
+		String(details.body ?? "").trim() ||
+		inner ||
+		(match ? "" : text.trim().replace(UNPARSED_OPEN_TAG, ""));
 	// The envelope must not survive the unwrap even when a body quoted one, so any
 	// tag still standing is removed rather than trusted to be absent — on the body
 	// that was CHOSEN, which is what makes the claim cover `details.body` too. This

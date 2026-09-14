@@ -224,6 +224,13 @@ export const STORIES = [
 	   sender the app cannot produce: a bidi override beside the pid, two control
 	   sequences, and a name long enough to be bounded. */
 	["chat-tool-rows--receipt-hostile-sender", 1280, 300],
+	/* Both row KINDS in ONE run — three tool calls with a peer receipt and a wake
+	   receipt between them — because every frame before it carried one kind at a
+	   time, so "the receipts share the tool rows' own name column" rested on the
+	   single `toolNameColumn` measurement rather than on a picture (design round 2
+	   stated that gap itself). Sized to the five rows it holds with every one of
+	   them opened, for the reason `working-labels` is. */
+	["chat-tool-rows--mixed-run", 1280, 830],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
@@ -883,7 +890,12 @@ export function partialAddedFields(
 	at = new Date().toISOString(),
 ) {
 	return addedFrameCount > 0
-		? { addedFrames: addedFrameCount, addedSurfaces, addedAt: at, addedAtHead: head }
+		? {
+				addedFrames: addedFrameCount,
+				addedSurfaces,
+				addedAt: at,
+				addedAtHead: head,
+			}
 		: {};
 }
 
@@ -1606,7 +1618,11 @@ const main = async () => {
 						 * additions: keying it on the accumulated total would let a later commit of
 						 * the same pass re-stamp the citation for an earlier commit's frames.
 						 */
-						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						const added = partialAddedFields(
+							addedFrames.length,
+							addedSurfaces,
+							head,
+						);
 						/*
 						 * A pass that added nothing leaves the WHOLE added-pass record
 						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
@@ -1621,10 +1637,14 @@ const main = async () => {
 								? {}
 								: {
 										addedFrames:
-											(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-											addedFrames.length,
+											(sameHead
+												? (previous.partialCapture?.addedFrames ?? 0)
+												: 0) + addedFrames.length,
 										addedSurfaces: [
-											...new Set([...(sameHead ? priorSurfaces : []), ...addedSurfaces]),
+											...new Set([
+												...(sameHead ? priorSurfaces : []),
+												...addedSurfaces,
+											]),
 										],
 									};
 						const citationFields =
