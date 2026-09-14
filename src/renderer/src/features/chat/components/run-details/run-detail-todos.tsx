@@ -22,6 +22,7 @@ import {
 	SquareDashed,
 	SquareSlash,
 } from "lucide-react";
+import type { Ref } from "react";
 import {
 	type RunDetails,
 	type TodoItemStatus,
@@ -167,14 +168,24 @@ const TodoRow = ({ item }: { item: TodoItemView }) => {
 export const RunDetailTodos = ({
 	details,
 	paneWidth,
+	sectionRef,
 }: {
 	details: RunDetails;
 	/** The pane's own width, which is what the tally's budget is measured against. */
 	paneWidth: number;
+	/**
+	 * The section's own element, for a caller that has to bring it into view.
+	 *
+	 * Held by the PANE rather than by this section, because the request that needs
+	 * it comes from outside the pane entirely (the composer's plan chip) and the
+	 * pane is what consumes it. Nothing here reads the ref; the section is simply
+	 * where the node exists.
+	 */
+	sectionRef?: Ref<HTMLElement>;
 }) => {
 	const { phases } = visibleTodoPhases(details.todos);
 	return (
-		<section className={cn("flex flex-col pb-1.5")}>
+		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
 			<div
 				className={cn(
 					"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",

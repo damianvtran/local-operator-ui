@@ -395,6 +395,29 @@ export const STORIES = [
 	["chat-session-status-strip--draft", 1000, 400],
 	["chat-session-status-strip--draft-tooltip", 1000, 520],
 	["chat-session-status-strip--commands-off", 1000, 300],
+	/* The composer's status row: the goal and the plan, above the box.
+	 *
+	 * Four frames, each carrying several bands so every claim has its control
+	 * beside it — the row's states in the record's own order, a goal that fits
+	 * above one that truncates, the collapsed row above its expanded form, and
+	 * that pair again at the column floor. A single band would be one number
+	 * with nothing to compare it to.
+	 *
+	 * Viewports are SIZED TO THE CONTENT for the reason the strip's frames are:
+	 * these are one line and a box, and at 1280x900 the frame would be almost
+	 * entirely ground, which crosses `check-evidence`'s uniformity ceiling.
+	 *
+	 * `states` opens with the band where the row renders NOTHING: that band is
+	 * the pre-change composer, so it is the "before" half of the pair whose
+	 * "after" is the same frame's fourth band. 900 is the composer's own column
+	 * width and 220 is the column floor with the canvas pane open, which is the
+	 * width the row's own container queries resolve against. The two stories
+	 * with an expanded band are clicked open by the rig's own convention.
+	 */
+	["chat-composer-status-row--states", 1000, 880],
+	["chat-composer-status-row--long-goal", 1000, 360],
+	["chat-composer-status-row--expanded", 1000, 500],
+	["chat-composer-status-row--column-floor", 360, 560],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap

@@ -56,8 +56,10 @@ import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
+import { ComposerStatusRow } from "./composer-status-row";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ReplyPreview } from "./reply-preview";
+import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import {
 	type SlashCommandMeta,
@@ -235,6 +237,16 @@ type MessageInputProps = {
 		 */
 		draft?: boolean;
 	};
+	/**
+	 * The run's derived model, for the status row's plan count.
+	 *
+	 * Passed in rather than derived here, and that is the point of the prop: the
+	 * counts on this composer and the counts in the run pane have to be ONE
+	 * derivation (`deriveRunDetails`), because a second call here is a second tally
+	 * free to disagree with the pane's. `null` on every path with no canonical
+	 * session, which is also what keeps the status row off a legacy pane.
+	 */
+	runDetails?: RunDetails | null;
 };
 
 /**
@@ -386,6 +398,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			isHydrating = false,
 			sessionStatus,
+			runDetails,
 		},
 		ref,
 	) => {
@@ -993,6 +1006,32 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
+				{/*
+				 * The session's status row, ABOVE the alert and therefore above the box:
+				 * `docs/composer-status-tabs.md` § 2.1. The alert is a transient failure
+				 * that points at the composer; this row is persistent ambient context, so
+				 * it sits outboard of the transient one. Band order, top to bottom: row,
+				 * alert, box.
+				 *
+				 * KEYED ON THE CONVERSATION, and that is a requirement rather than
+				 * tidiness: the composer is not remounted on a session switch, so a goal
+				 * expanded in one conversation would arrive expanded in the next. The
+				 * goal's expansion is deliberately not persisted (spec § 3.3), and this
+				 * key is the whole reset mechanism.
+				 *
+				 * It returns null when the session has neither a goal nor a plan, so a
+				 * legacy pane and a fresh draft reserve no height at all. It renders inside
+				 * an error boundary with an empty fallback for the readings' own reason: a
+				 * crash in metadata must not cost the ability to type.
+				 */}
+				<ErrorBoundary fallback={null}>
+					<ComposerStatusRow
+						key={conversationId}
+						frontend={sessionStatus?.frontend}
+						runDetails={runDetails}
+						isSmallView={isSmallView}
+					/>
+				</ErrorBoundary>
 				{(abandonNotice ||
 					(sendError && (composerAlert.message || composerAlert.showHeld))) && (
 					/*

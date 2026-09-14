@@ -85,6 +85,41 @@ type UiPreferencesState = {
 	setRunPanelOpen: (open: boolean) => void;
 
 	/**
+	 * A pending request to open the run pane AT one of its sections.
+	 *
+	 * A request rather than a mode, and CONSUMED ONCE: the composer's plan chip
+	 * names a destination inside the pane ("open the plan"), and the pane's own
+	 * view state — the reader's open child — is the pane's, not a preference
+	 * (`docs/run-sidebar.md` § 3.5). So the requester states what it wants once
+	 * and the pane acts on it; nothing here is a second source of truth for which
+	 * view is showing, and a request nobody consumes is inert rather than sticky.
+	 *
+	 * `null` in every ordinary state, which is the state this store ships in.
+	 */
+	runPanelReveal: RunPanelReveal | null;
+
+	/**
+	 * Opens the run pane at a section, from a control outside the pane.
+	 *
+	 * Both halves of that in ONE update: opening the pane has to clear the canvas
+	 * (the two share the window's right slot, and the exclusion lives in
+	 * `setRunPanelOpen`), and a request set against a still-closed pane would be
+	 * consumed by nothing — the pane is what reads it. Two `set` calls would
+	 * render either a closed pane holding a request or an open one with none.
+	 *
+	 * @param section - Which of the pane's sections to bring into view
+	 */
+	revealRunPanelSection: (section: RunPanelSection) => void;
+
+	/**
+	 * Retires a request the pane has acted on.
+	 *
+	 * @param nonce - The request's own nonce. An effect that is finishing work for
+	 * an older request must not consume a newer one that arrived while it ran.
+	 */
+	clearRunPanelReveal: (nonce: number) => void;
+
+	/**
 	 * The width of the run panel in pixels.
 	 *
 	 * 420 rather than the canvas's 800: a roster plus a prose transcript does not
@@ -205,6 +240,30 @@ type UiPreferencesState = {
 };
 
 /**
+ * The sections of the run pane that a control outside it can point at.
+ *
+ * A union with one member rather than a bare string: there is exactly one such
+ * control today (the composer's plan chip), and a second one has to be added
+ * HERE rather than spelled at its call site, where whoever consumes the request
+ * would never see it.
+ */
+export type RunPanelSection = "todos";
+
+/**
+ * A one-shot request to bring one of the pane's sections into view.
+ */
+export type RunPanelReveal = {
+	section: RunPanelSection;
+	/**
+	 * Bumped on every request, so two presses of the same section are two
+	 * requests. Anything reacting to the request can then compare the pair rather
+	 * than rely on the object identity of a fresh `set`, which is the property a
+	 * future refactor would silently take away.
+	 */
+	nonce: number;
+};
+
+/**
  * Store for managing UI preferences
  *
  * Uses zustand's persist middleware to save the state to localStorage
@@ -228,6 +287,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
+			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			isCreateAgentDialogOpen: false,
 
@@ -300,6 +360,23 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				);
 			},
 
+			revealRunPanelSection: (section: RunPanelSection) => {
+				set((state) => ({
+					isRunPanelOpen: true,
+					isCanvasOpen: false,
+					runPanelReveal: {
+						section,
+						nonce: (state.runPanelReveal?.nonce ?? 0) + 1,
+					},
+				}));
+			},
+
+			clearRunPanelReveal: (nonce: number) => {
+				set((state) =>
+					state.runPanelReveal?.nonce === nonce ? { runPanelReveal: null } : {},
+				);
+			},
+
 			setRunPanelWidth: (width: number) => {
 				set({
 					runPanelWidth: width,
@@ -338,6 +415,22 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 		}),
 		{
 			name: "ui-preferences-storage",
+			/*
+			 * `runPanelReveal` is deliberately NOT persisted, and this is the only
+			 * field the filter touches — every other field keeps the default "persist
+			 * it" behaviour this store has always had.
+			 *
+			 * Persisting it would outlive the event it describes: a request that was
+			 * still pending when the app closed would be restored on the next launch
+			 * and would open the run pane at a section on a session the user never
+			 * asked about. That is the same defect `docs/run-sidebar.md` § 3.5 refuses
+			 * for the reader's open child — "a mode of a pane is not a preference" —
+			 * and a consumed-once request is more transient than a mode, not less.
+			 */
+			partialize: (state) => {
+				const { runPanelReveal: _pending, ...persisted } = state;
+				return persisted;
+			},
 		},
 	),
 );
