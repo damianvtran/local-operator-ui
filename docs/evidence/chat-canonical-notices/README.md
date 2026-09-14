@@ -329,7 +329,11 @@ main's own repair of that field stand). What it found in the code is here.
 **Corrected from round 3's reports, because the numbers did not reproduce.** The
 per-theme frame deltas and changed-pixel boxes above (R14); the event trace and
 the fact that its `mouseup` detail varies run to run (R15); "194 declared" and
-"121 of 955 wake rows", which are 205 and 202 of 967 at this head (U18, Q10);
+"121 of 955 wake rows", which are 205 and 202 of 967 at the head the round-3
+reports were written against (U18, Q10). Both terms move with main's own evidence
+activity — this branch's manifest at its final head declares **227** frames across
+25 supplementary sets out of 1,289 on disk, which is the arithmetic to check
+against the file itself rather than against this paragraph.
 and the tool-row claim, which is true of the trigger rather than of the row
 (Q13). **`pnpm test:desktop` at this head is `tests 752, pass 748, fail 4`**: the
 three uv/pip install-layout tests plus `submit-latency.test.mjs`'s
