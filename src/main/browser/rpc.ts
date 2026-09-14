@@ -61,6 +61,12 @@ export const KEY_HEADER = "x-bridge-key";
  * body past this is a mistake or an attack, and buffering it is the mistake. */
 export const MAX_BODY_BYTES = 1 << 20;
 
+/** The one address this listener may bind (design 11.7, rule 1). Named rather
+ * than spelled at the call site so the rule has a single home, and returned to
+ * the caller so a test can assert the address the OS actually resolved instead
+ * of re-reading the source line. */
+export const LOOPBACK_HOST = "127.0.0.1";
+
 export type RpcDispatcher = (
 	method: string,
 	params: Record<string, unknown>,
@@ -75,6 +81,12 @@ export interface RpcServerOptions {
 }
 
 export interface RpcServer {
+	/** The address the socket is bound to, as the OS resolved it. Rule 1 is that
+	 * this is `127.0.0.1` — a `0.0.0.0` bind turns this into a remote-control
+	 * surface for the operator's authenticated jar — so it is published here for
+	 * the unit suite and the proof to assert, rather than being a property only a
+	 * reader of this file can vouch for (R3). */
+	readonly address: string;
 	readonly port: number;
 	close(): Promise<void>;
 }
@@ -205,21 +217,25 @@ export async function startRpcServer(
 		void handle(req, res, options);
 	});
 
-	const port = await new Promise<number>((resolve, reject) => {
-		server.once("error", reject);
-		// 127.0.0.1 explicitly, and port 0 for an ephemeral port. The daemon's
-		// fixed 4099 exists because the extension cannot read files; neither this
-		// host nor Python has that limitation, so the port is read from the state
-		// file and collisions with 4099 disappear (design 10.1).
-		server.listen(0, "127.0.0.1", () => {
-			const address = server.address();
-			if (address && typeof address === "object") resolve(address.port);
-			else reject(new Error("loopback listener has no port"));
-		});
-	});
+	const bound = await new Promise<{ address: string; port: number }>(
+		(resolve, reject) => {
+			server.once("error", reject);
+			// 127.0.0.1 explicitly, and port 0 for an ephemeral port. The daemon's
+			// fixed 4099 exists because the extension cannot read files; neither this
+			// host nor Python has that limitation, so the port is read from the state
+			// file and collisions with 4099 disappear (design 10.1).
+			server.listen(0, LOOPBACK_HOST, () => {
+				const address = server.address();
+				if (address && typeof address === "object") {
+					resolve({ address: address.address, port: address.port });
+				} else reject(new Error("loopback listener has no port"));
+			});
+		},
+	);
 
 	return {
-		port,
+		address: bound.address,
+		port: bound.port,
 		close: () =>
 			new Promise<void>((resolve) => {
 				server.close(() => resolve());

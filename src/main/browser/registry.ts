@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
-import type { SnapshotRef } from "./policy/ax-compact";
+import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
 /**
  * The tab registry: the main process's one truth about what browser tabs exist.
@@ -187,13 +187,7 @@ export class TabRegistry {
 	 * `chrome.tabs.create({active: false})` equivalent.
 	 */
 	create(options: CreateTabOptions): TabRecord {
-		if (options.owner === "agent" && this.agentTabCount() >= MAX_AGENT_TABS) {
-			throw new BrowserHostError(
-				"tab_limit",
-				`this host is already driving ${MAX_AGENT_TABS} agent tabs; close one first`,
-				{ limit: MAX_AGENT_TABS },
-			);
-		}
+		if (options.owner === "agent") this.assertAgentCapacity();
 		const tabId = this.nextTabId++;
 		const restored = options.restored === true;
 		const record: TabRecord = {
@@ -218,6 +212,21 @@ export class TabRegistry {
 		this.applyLayout();
 		this.onChanged();
 		return record;
+	}
+
+	/** The cap check, in one place because TWO routes make a tab agent-owned:
+	 * `create({owner: "agent"})` and a hand-over, which changes the owner of a tab
+	 * the user created. Checking only the first let hand-overs push the
+	 * agent-owned count past the cap, after which the next `open` was refused with
+	 * "already driving 8 agent tabs" for tabs the user had handed over — the cap
+	 * reported by `status` and the cap enforced on `open` disagreeing (N3). */
+	private assertAgentCapacity(): void {
+		if (this.agentTabCount() < MAX_AGENT_TABS) return;
+		throw new BrowserHostError(
+			"tab_limit",
+			`this host is already driving ${MAX_AGENT_TABS} agent tabs; close one first`,
+			{ limit: MAX_AGENT_TABS },
+		);
 	}
 
 	/** Resolve a tab by its own id. */
@@ -303,8 +312,7 @@ export class TabRegistry {
 	 */
 	handOver(tabId: number, rawSessionId: string): void {
 		const record = this.tabs.get(tabId);
-		if (!record) throw new BrowserHostError("tab_closed", "that tab is gone");
-		// Stored BARE (`a`, not `session:a`), matching what `open` writes and what a
+		if (!record) throw new BrowserHostError("tab_closed", "that tab is gone"); // Stored BARE (`a`, not `session:a`), matching what `open` writes and what a
 		// session's own identity reduces to. Normalising here rather than at each
 		// comparison is what keeps `tabs`'s "handed to you" marker and the ownership
 		// checks from disagreeing about the same session's name.
@@ -315,6 +323,11 @@ export class TabRegistry {
 				"handing a tab over needs a session to hand it to",
 			);
 		}
+		// Only a hand-over that ADDS an agent-owned tab is capped: re-handing an
+		// agent tab to another session does not change the count, and refusing it
+		// would make the cap visible as "this host is already driving 8 agent tabs"
+		// for the one action that does not add one.
+		if (record.owner !== "agent") this.assertAgentCapacity();
 		record.owner = "agent";
 		record.sessionId = sessionId;
 		record.handedTo = sessionId;

@@ -1,6 +1,5 @@
 import type { DriveableView } from "../electron-types";
 import { BrowserHostError } from "../errors";
-import { WEB_CONTENTS_DEADLINE_MS, deadline } from "../policy/deadline";
 import { permittedScheme, settle } from "../settle";
 import type { BrowserActionContext } from "./context";
 
@@ -130,6 +129,19 @@ export async function withOriginGate<T>(
  * than hiding behind what the agent asked for. The settle is armed BEFORE the
  * load, because a navigation can finish before `loadURL`'s promise resolves and
  * a listener attached afterwards would wait forever.
+ *
+ * THE SETTLE OWNS THE OUTCOME, and the load's promise is deliberately NOT given
+ * a ceiling of its own. Awaiting `loadURL` first (inside a 35 s deadline, 5 s
+ * more than the 30 s budget both sides publish) is what made the typed
+ * `nav_timeout` unreachable: Electron's `loadURL` promise resolves when the
+ * frame stops being busy and NEVER resolves for a server that accepts the
+ * connection and then answers nothing, so on exactly the hung-page input the
+ * deadline always won and the model read a generic
+ * `internal` + `data.stalled` with no remedy (QA round 1, Q1). With the settle
+ * as the authority, a hung page ends at its own `timeoutMs` — which is
+ * `COMMAND_TIMEOUTS_S.goto`, the number the session client already budgets for
+ * plus its own 5 s slack — with the typed code `settle.ts` and the design's
+ * failure table both promise.
  */
 export async function navigateView(
 	ctx: BrowserActionContext,
@@ -141,22 +153,36 @@ export async function navigateView(
 ): Promise<{ url: string; title: string }> {
 	const contents = view.webContents;
 	return withOriginGate(ctx, view, requester, approved, async () => {
-		const settled = settle(contents as never, timeoutMs);
-		try {
-			await deadline(
-				contents.loadURL(url.href),
-				WEB_CONTENTS_DEADLINE_MS + timeoutMs,
-				`loadURL(${url.href})`,
-			);
-		} catch (error) {
-			// Let the settle promise go rather than leaving an unhandled rejection
-			// behind: the load's own failure is the error the caller reads.
-			settled.catch(() => {});
-			throw error;
-		}
-		await settled;
+		const settled = settle(contents, timeoutMs);
+		// Both arms are started before either is awaited, so a load that finishes
+		// before the settle's listeners are armed cannot be missed.
+		await Promise.race([settled, loadFailure(contents.loadURL(url.href))]);
 		return { url: contents.getURL(), title: contents.getTitle() };
 	});
+}
+
+/**
+ * A promise that settles only when `loadURL` fails OUTRIGHT.
+ *
+ * The resolve arm is a promise that never settles, because a resolved
+ * `loadURL` is not a navigation result here: the settle reports what actually
+ * arrived, and it is the only thing that knows about `did-fail-load`'s typed
+ * `nav_failed` and its own `nav_timeout`. The reject arm is real and keeps the
+ * failures no event describes — a view torn down under the call, an
+ * `ERR_ABORTED` — visible instead of hanging to the settle's ceiling.
+ *
+ * `Promise.race` attaches a reaction to BOTH promises, so whichever arm loses
+ * is still handled: an abandoned settle clears its own listeners and timer in
+ * `finish()`, and a late `loadURL` rejection cannot surface as an unhandled
+ * rejection in the main process.
+ */
+function loadFailure(load: Promise<void>): Promise<never> {
+	return load.then(
+		() => new Promise<never>(() => {}),
+		(error: unknown) => {
+			throw error;
+		},
+	);
 }
 
 /** The page the view is showing right now. Always reported from the view, never
