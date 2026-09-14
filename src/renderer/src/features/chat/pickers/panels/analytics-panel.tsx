@@ -279,7 +279,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 								<StatCard
 									label="Tokens"
 									value={formatTokens(totalTokens(aggregate))}
-									note={`${formatTokens(aggregate.input_tokens)} in · ${formatTokens(aggregate.output_tokens)} out`}
+									note={`${formatTokens(aggregate.context_tokens)} in · ${formatTokens(aggregate.output_tokens)} out`}
 								/>
 								<StatCard
 									label="Cost"

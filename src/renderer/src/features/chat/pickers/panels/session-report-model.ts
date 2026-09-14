@@ -251,21 +251,25 @@ export const purposeRows = (
 	);
 
 /**
- * Whether this report carries a shape the panel cannot render, and why.
+ * Whether this report carries a shape the panel cannot draw, and why.
  *
  * A group-by that arrives keyed rather than listed is not an empty answer and
  * not an outage: it is an answer written to a different contract, and the one
  * thing the panel must not do about it is render anyway — `by_purpose.map` over
  * an object throws inside the render pass, which unmounts the panel to the
- * app's error boundary and loses the ledger facts that WERE readable. Naming
- * the field here turns it into the panel's own `unavailable` state, which says
- * what happened and what it means. Reported upstream rather than absorbed.
+ * app's error boundary and loses the ledger facts that WERE readable.
+ *
+ * The sentence is for a person, not for a schema reader: what happened, what it
+ * means, what to do (§ 8's register, and the same shape as the gated sentence
+ * beside it). "Keyed rows" and "a list" are contract terms — that they are true
+ * of the payload is why the check exists, not what the user needs to hear
+ * (review round 1, R4).
  */
 export function reportShapeProblem(
 	report: DesktopSessionReport,
 ): string | null {
 	if (!Array.isArray(report.by_purpose)) {
-		return "This backend sent the purpose breakdown as keyed rows rather than a list, which this panel cannot draw. Update the backend and try again.";
+		return "Part of this session's usage could not be read. Update the backend and try again.";
 	}
 	return null;
 }

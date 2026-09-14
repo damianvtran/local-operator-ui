@@ -32,7 +32,10 @@ export type PanelNoticeProps = {
 	kind: "loading" | "unavailable" | "empty" | "degraded";
 	/** One sentence: what happened, what it means, what to do, in that order. */
 	text: string;
-	/** The backend's own detail text or a measurement caveat. Mono, one line. */
+	/**
+	 * One clause of context for `text`: what the answer does NOT cover, in prose.
+	 * A backend's own error string is not this — that is the `unavailable` `text`.
+	 */
 	detail?: string;
 };
 
@@ -47,7 +50,17 @@ export const PanelNotice = ({ kind, text, detail }: PanelNoticeProps) => (
 	<div className={cn("flex flex-col gap-1 py-1")}>
 		<p className={cn("text-body-sm", TEXT_CLASS[kind])}>{text}</p>
 		{detail ? (
-			<p className={cn("font-mono text-ink-dim text-mono-sm")}>{detail}</p>
+			/*
+			 * Prose type, not mono. § 4.6 of the design contract asks for monospace
+			 * here and `branding.md` forbids it — "Monospace for emphasis, or for
+			 * prose, is forbidden" — and the brand contract is the arbiter on how a
+			 * desktop surface reads. Both call sites pass a SENTENCE ("Analytics
+			 * accrue as sessions make provider calls."), which in a terminal face,
+			 * dim under a notice that is neither, read as machine output (design
+			 * round 1, D5). Genuinely machine detail — a path, an error string — is
+			 * not this slot: that is `text`, where the backend's own words already go.
+			 */
+			<p className={cn("text-balance text-body-sm text-ink-dim")}>{detail}</p>
 		) : null}
 	</div>
 );

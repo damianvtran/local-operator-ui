@@ -198,12 +198,17 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 								<ProportionBar
 									fraction={measured.fraction}
 									size="gauge"
-									className={cn("w-full max-w-96")}
+									/*
+									 * Capped width, number on the number edge — the same correction as
+									 * `/session`'s gauge, because the two panels render the same fact
+									 * and a reader moves between them (design round 1, D9).
+									 */
+									className={cn("min-w-0 max-w-96 flex-1")}
 									srLabel={`Context window: ${measured.value}`}
 								/>
 								<p
 									className={cn(
-										"shrink-0 font-mono text-body-sm tabular-nums",
+										"ml-auto shrink-0 font-mono text-body-sm tabular-nums",
 										measured.fraction === null ? "text-ink-dim" : "text-ink",
 									)}
 								>
