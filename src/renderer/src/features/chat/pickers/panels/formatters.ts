@@ -243,6 +243,22 @@ export function formatDayBucket(period: string): string {
 }
 
 /**
+ * A `provider/model_id` pair, or the unknown spelling when either half is
+ * missing.
+ *
+ * One spelling for one quantity across panels: the join of two empty strings is
+ * a bare `/`, which is a fabricated glyph rather than an unknown — and it is
+ * what three rows on two panels rendered, because the payload's model specs are
+ * `{provider: "", model_id: ""}` when nothing was chosen (QA round 1, Q3).
+ */
+export function formatModelSpec(
+	model: { provider: string; model_id: string } | null | undefined,
+): string {
+	if (!model || !model.provider || !model.model_id) return UNKNOWN;
+	return `${model.provider}/${model.model_id}`;
+}
+
+/**
  * A rate: `73%` / {@link UNKNOWN}
  * (`analytics_panel.py` `format_percent`).
  *

@@ -205,6 +205,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
+			bodyLabel="Analytics region"
 			title="Analytics"
 			description="Model calls, tokens and known cost from the backend analytics ledger."
 			toolbar={

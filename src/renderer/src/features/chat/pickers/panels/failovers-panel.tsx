@@ -130,6 +130,7 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
+			bodyLabel="Failover chains region"
 			title="Failovers"
 			description="The model this session selected, the one actually serving it, and the configured default fallback chains."
 			body={
