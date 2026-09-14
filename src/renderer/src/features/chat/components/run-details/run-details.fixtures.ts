@@ -1092,9 +1092,64 @@ export const mcpAllConnected = (): McpWireRow[] => [
 	{ name: "linear", status: "connected", tool_count: 7, source: "~/mcp.json" },
 ];
 
+/** One row of an `mcp.list` payload's `operations`, in the wire's own names. */
+type McpWireOperation = Record<string, unknown>;
+
 export const mcpAuthRequired = (): McpWireRow[] => [
 	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
-	{ name: "notion", status: "auth-required", owned_scope: "project" },
+	{
+		name: "notion",
+		status: "auth-required",
+		transport: "http",
+		owned_scope: "project",
+	},
+];
+
+/**
+ * Two problem rows, for the frame that proves one grant locks the other.
+ *
+ * `transport_oauth_supported` is deliberately left off both: `None` is the
+ * NORMAL answer for an http server (`public_server_config` publishes `False`
+ * only for a definite refusal), so both rows are offered the grant and the
+ * disabled state on the second one is the subject of the frame.
+ */
+export const mcpTwoProblems = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "hubspot", status: "auth-required", transport: "http" },
+	{
+		name: "notion",
+		status: "auth-required",
+		transport: "http",
+		owned_scope: "project",
+	},
+];
+
+/** A grant the backend says is RUNNING, which must never read as complete. */
+export const mcpGrantRunning = (): McpWireOperation[] => [
+	{
+		id: "1".repeat(32),
+		name: "notion",
+		action: "reauth",
+		status: "running",
+		created_at: 1_760_000_000,
+		credential_removed: false,
+	},
+];
+
+/** The same grant after the backend reported a failure. */
+export const mcpGrantFailed = (): McpWireOperation[] => [
+	{ ...mcpGrantRunning()[0], status: "failed" },
+];
+
+/**
+ * A cancelled grant that took the credential with it.
+ *
+ * `grants.py:168-175`: a cancel between the grant's delete and its reconnect
+ * leaves the server with NO credential, which is the one thing that separates
+ * "cancelled, try again" from "cancelled, and your credential is gone".
+ */
+export const mcpGrantCancelledRemoved = (): McpWireOperation[] => [
+	{ ...mcpGrantRunning()[0], status: "cancelled", credential_removed: true },
 ];
 
 export const mcpDisconnected = (): McpWireRow[] => [
