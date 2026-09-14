@@ -746,13 +746,6 @@ const WakeRow = memo(function WakeRow({
 		</MessageContainer>
 	);
 });
-/** The first line of a body, for a row that discloses the rest of it. */
-const firstLine = (text: string): string =>
-	text
-		.split("\n")
-		.map((line) => line.trim())
-		.find((line) => line.length > 0) ?? text.trim();
-
 // ---------------------------------------------------------------- list
 
 /** Development row-render counter; read by the perf readout below. */

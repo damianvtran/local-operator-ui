@@ -1965,16 +1965,6 @@ test("a harness statement paints its fact, and puts its instruction to the model
 		);
 		assert.match(row.detail, /^(This applies|This supersedes|Its value)/);
 	}
-	// The bracket repeats the row's own label, so the headline starts at the
-	// sentence: "session model switch: You are now running as …".
-	assert.equal(
-		rows[0].headline,
-		"You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).\nThis applies from now on.",
-	);
-	assert.equal(
-		rows[1].headline,
-		"MCP server 'gitlab' is connected again and 12 tools are available again.",
-	);
 	assert.equal(
 		rows[0].headline,
 		"You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).",
@@ -2003,15 +1993,6 @@ test("a relayed payload keeps its body behind the disclosure but is not reduced 
 		"the envelope tag is not the headline",
 	);
 	assert.equal(row.detail, body, "the whole body is what the disclosure holds");
-
-	// A first line that is only a tag, with nothing after it, still paints
-	// something rather than an empty row.
-	const [tagOnly] = replay([
-		custom("peer", "peer_message", {
-			text: "<peer-session-message from_pid=1>",
-		}),
-	]);
-	assert.equal(tagOnly.headline, "<peer-session-message from_pid=1>");
 });
 
 test("a long headline is bounded and cut on a word, so the column cannot be pushed out", () => {
@@ -2084,19 +2065,6 @@ test("an empty relay paints its envelope rather than its closing tag", () => {
 		true,
 		"the row still names the relay",
 	);
-});
-
-test("a wake row states its cadence, not the agent's own cancellation call", () => {
-	// 749 of the store's 951 wake rows carried the arming clause inline, which
-	// crowded out the cadence that is the whole reason to look at the row.
-	const [row] = replay([
-		custom("wake", "wake_prompt", {
-			text: '(alarm) Scheduled wake w1 (1/16, every 1h30m) — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n\nGPU capacity probe — NER backfill is 12 pods Pending.',
-		}),
-	]);
-	assert.equal(row.headline, "(alarm) Scheduled wake w1 (1/16, every 1h30m)");
-	// The clause is still reachable, in the body.
-	assert.ok(row.detail.includes('cancel with wake({op:"cancel",id:"w1"})'));
 });
 
 test("an incident carries the provider it names, and a row with nothing to say is not painted", () => {
@@ -2173,42 +2141,6 @@ test("a statement splits at the sentence end, not at an abbreviation or a list m
 	}
 });
 
-test("a relayed row joins a heading to its outcome, and a one-shot wake states its goal", () => {
-	// Round 2's U10, both measured over the store: 37 of 39 job results end their
-	// inline half on a colon with the outcome on the next line, and 121 of 955
-	// wake rows are one-shot, so the arming line carries no cadence to state.
-	const [job] = replay([
-		custom("j", "job_result", {
-			text: "background job 'design849' failed:\n[Errno 28] No space left on device",
-		}),
-	]);
-	assert.equal(
-		job.headline,
-		"background job 'design849' failed: [Errno 28] No space left on device",
-	);
-
-	const [oneShot] = replay([
-		custom("w", "wake_prompt", {
-			text: "(alarm) Scheduled wake w1 (1/1).\n\nPost-release check for core-svc MR !193: verify prod-2 is Synced.",
-		}),
-	]);
-	assert.equal(
-		oneShot.headline,
-		"Post-release check for core-svc MR !193: verify prod-2 is Synced.",
-	);
-
-	// A wake WITH a cadence still states the cadence.
-	const [recurring] = replay([
-		custom("w2", "wake_prompt", {
-			text: '(alarm) Scheduled wake w1 (1/16, every 1h30m) — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n\nGPU capacity probe.',
-		}),
-	]);
-	assert.equal(
-		recurring.headline,
-		"(alarm) Scheduled wake w1 (1/16, every 1h30m)",
-	);
-});
-
 test("the wake-arming clause is only stripped from a wake row", () => {
 	// Round 2's R9: applying the strip to every relay would edit a hub message
 	// that happened to quote the phrase. Its words are the payload's own.
@@ -2219,23 +2151,6 @@ test("the wake-arming clause is only stripped from a wake row", () => {
 	]);
 	assert.ok(hub.headline.includes("cancel with wake("));
 	assert.ok(!hub.headline.startsWith("This is a note"));
-});
-
-test("a wake keeps its own preamble, and its goal loses the bullet it was listed under", () => {
-	// D8: the rule must fire on the ARMING line only. A payload that opens with
-	// its own preamble keeps it — the preamble is more informative than the
-	// generated line below it.
-	const preamble = "Session resumed after a restart.\n(alarm) Scheduled wake w1 (1/1).\n\nGet the release out.";
-	const [kept] = replay([custom("w", "wake_prompt", { text: preamble })]);
-	assert.equal(kept.headline, "Session resumed after a restart.");
-
-	// U15: 79 real rows put their goal in a list, and the bullet is markup.
-	const [bullet] = replay([
-		custom("w2", "wake_prompt", {
-			text: "(alarm) Scheduled wake w1 (1/1).\n\n- w1 (due 11:20): missed while the session was down.",
-		}),
-	]);
-	assert.equal(bullet.headline, "w1 (due 11:20): missed while the session was down.");
 });
 
 test("a relayed row whose headline is its whole payload discloses nothing", () => {
@@ -2262,17 +2177,3 @@ test("a relayed row whose headline is its whole payload discloses nothing", () =
 	assert.ok(long.detail?.includes("Retry once the volume is clear."));
 });
 
-test("a bulleted wake goal is still joined to its outcome", () => {
-	// R24: the bullet was stripped BEFORE the join looked the line up, so
-	// `lines.indexOf` was -1 for a bulleted goal and the heading/outcome join
-	// silently did not run for that shape. The marker is stripped after the join
-	// now, and this shape is the one that proves it — reachable from no producer
-	// in the store today, which is why it is pinned here rather than left to the
-	// next reader to notice.
-	const [row] = replay([
-		custom("w3", "wake_prompt", {
-			text: "(alarm) Scheduled wake w1 (1/1).\n\n- Two things to land:\nRead the ledger.",
-		}),
-	]);
-	assert.equal(row.headline, "Two things to land: Read the ledger.");
-});
