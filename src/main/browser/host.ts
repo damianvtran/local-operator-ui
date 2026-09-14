@@ -1,5 +1,6 @@
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
+import { withOriginGate } from "./actions/gate";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
@@ -26,6 +27,16 @@ import { permittedScheme } from "./settle";
  */
 
 /** The methods that address one tab and therefore take that tab's command lane. */
+const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
+	"read",
+	"snapshot",
+	"screenshot",
+	"click",
+	"type",
+	"scroll",
+	"logs",
+]);
+
 const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"goto",
 	"read",
@@ -76,7 +87,7 @@ export class BrowserHost implements BrowserActionContext {
 	): Promise<Record<string, unknown>> {
 		const run = (): Promise<Record<string, unknown>> =>
 			this.ownership.withOwnership(method, params, () =>
-				this.perform(method, params, requestId),
+				this.authorizedPerform(method, params, requestId),
 			);
 		if (
 			TAB_SCOPED.has(method) &&
@@ -89,6 +100,56 @@ export class BrowserHost implements BrowserActionContext {
 			return this.registry.lane(record.tabId, run);
 		}
 		return run();
+	}
+
+	private async authorizedPerform(
+		method: string,
+		params: Record<string, unknown>,
+		requestId: string,
+	): Promise<Record<string, unknown>> {
+		if (!DOCUMENT_SCOPED.has(method))
+			return this.perform(method, params, requestId);
+		const token = String(params.tab ?? "");
+		const record = this.registry.requireSurface(token);
+		const requester = requesterOf(params, requestId);
+		const assertDocument = (): URL => {
+			const url = new URL(record.view.webContents.getURL() || "about:blank");
+			if (
+				!permittedScheme(url) ||
+				!this.approvals.documentAllowed(
+					token,
+					url,
+					requester,
+					record.documentEpoch,
+				)
+			) {
+				this.registry.bumpEpoch(record.tabId);
+				this.approvals.refuseDocument(url);
+			}
+			return url;
+		};
+		assertDocument();
+		// Entry authorization alone leaks data if a document changes during an
+		// await. Gate action-triggered requests, then recheck before returning any
+		// read/AX/image result; autonomous later navigation must pass a new check.
+		return withOriginGate(
+			this,
+			record.view,
+			requester,
+			(url) =>
+				this.approvals.documentAllowed(
+					token,
+					url,
+					requester,
+					record.documentEpoch,
+				),
+			async () => {
+				assertDocument();
+				const result = await this.perform(method, params, requestId);
+				assertDocument();
+				return result;
+			},
+		);
 	}
 
 	private async perform(
