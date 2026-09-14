@@ -824,30 +824,34 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// before it knew, then repainted when history arrived
 								// (design D7's hydration note). Passing the real state
 								// lets the composer wait instead of guessing.
+								//
 								// The rule is NOT "the stream is connecting" any more. That
 								// asked the transport a question the reader was asking about
 								// the CONVERSATION: a stream that failed, or one whose
 								// history read did, is not "connecting", so the composer
 								// asserted the empty-conversation greeting over rows that
-								// had existed the whole time. `hydrated` answers the reader's
-								// actual question instead - has an authoritative page been
-								// applied for this session - so the loading state holds
-								// until the app genuinely knows, whether that takes a retry
-								// or not.
+								// had existed the whole time.
 								//
-								// And `hydrated` is not the band's question on its own
-								// either: a pane that is already saying what went wrong is
-								// not "still hydrating", so the band takes the same
-								// statement term the pane's hold does. The two readers
-								// derive one question rather than one of them reading a
-								// proxy for it (and the answer is unaffected today: a
-								// speaking pane is handed `CANONICAL_NONEMPTY` above, so
-								// the greeting is already withheld - this keeps the two
-								// expressions from drifting apart).
+								// `awaitingHydration` is the reader's actual question -- is a
+								// page for THIS session still owed -- so the loading state
+								// holds until the app genuinely knows, whether that takes a
+								// retry or not. It is composed by the canonical session
+								// handle (see its docstring) rather than from `hydrated`
+								// alone, because "no page has been applied" is equally true
+								// of a New chat's draft, which has no session and therefore
+								// no page to wait for -- the stuck skeleton this band showed
+								// instead of the greeting and its suggestion chips.
+								//
+								// The statement term the pane's own hold grew alongside this
+								// one (a pane already saying what went wrong is not "still
+								// hydrating") is deliberately not repeated: it guards a state
+								// this band cannot reach, because a speaking pane is handed
+								// `CANONICAL_NONEMPTY` above, so the greeting is withheld
+								// before this prop is read - and the refusal it stands down
+								// for is a state in which a page IS owed, which is exactly
+								// the claim this band makes.
 								isHydrating={
-									canonical
-										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
-										: false
+									canonical ? canonical.view.awaitingHydration : false
 								}
 								/*
 								 * U8: a pending question is answered in this box, so the box

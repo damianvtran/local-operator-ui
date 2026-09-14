@@ -221,6 +221,33 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * opened, or this one unmounted).
 	 */
 	retry: () => void;
+	/**
+	 * Whether an authoritative page for THIS session is still owed.
+	 *
+	 * The composed fact the composer's loading state is a claim about, and
+	 * neither half of the view states it alone. `hydrated` answers "has a page
+	 * been applied for this session", which a pane with NO session answers "no"
+	 * to forever: a New chat is a staged DRAFT, the stream is deliberately off
+	 * until the user's first send creates a session, so that answer describes a
+	 * wait that is not happening and the composer waited on it permanently -
+	 * the band showed the hydration skeleton in place of the greeting and the
+	 * suggestion chips.
+	 *
+	 * Both terms are this hook's own inputs, which is why the rule is here and
+	 * said once:
+	 *
+	 *   - `enabled`/`sessionId` are "there is a stream that owes us a page". A
+	 *     draft has neither, and a caller that holds the stream off on purpose
+	 *     must not strand the composer in a wait that can never end.
+	 *   - `hydrated` stays false for a session whose stream failed, so a real
+	 *     conversation whose cold history is in flight (or whose read failed)
+	 *     keeps waiting instead of asserting it is empty over rows that had
+	 *     simply not arrived (design D7).
+	 *
+	 * Deliberately NOT a redefinition of `hydrated`: that field's scope is a page
+	 * that exists, and a reader of it must keep reading it that way.
+	 */
+	awaitingHydration: boolean;
 };
 
 const TERMINAL_EVENTS = new Set([
@@ -1801,6 +1828,14 @@ export function useCanonicalSessionStream(
 	return useMemo(
 		() => ({
 			...view,
+			/*
+			 * Composed here rather than at the consumer, and not stored in the view
+			 * state: it is derived from the hook's own arguments, which the state
+			 * does not observe, so a stored copy would go stale the moment the panel
+			 * changed session. See `CanonicalSessionHandle.awaitingHydration` for why
+			 * the composer needs it and why `hydrated` is left alone.
+			 */
+			awaitingHydration: enabled && Boolean(sessionId) && !view.hydrated,
 			loadOlder,
 			clearView,
 			addNote,
@@ -1810,6 +1845,8 @@ export function useCanonicalSessionStream(
 		}),
 		[
 			view,
+			enabled,
+			sessionId,
 			loadOlder,
 			clearView,
 			addNote,
