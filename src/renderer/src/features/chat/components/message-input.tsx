@@ -48,6 +48,7 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
 import {
+	CAPPED_BLOCK,
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
@@ -1004,6 +1005,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * draw. The variant owns the size; the call sites no longer claim to.
 		 */
 
+		/*
+		 * Whether the empty-chat prompt belongs in the band.
+		 *
+		 * Derived here rather than written into the JSX so the wrapper below does not
+		 * have to repeat the condition three times: the wrapper is always rendered and
+		 * only the prompt's presence is conditional. See the wrapper's own comment for
+		 * why that matters (QA round 1, Q4 - focus dropped to `<body>` when a press on
+		 * the plan chip narrowed the column across `isSmallView`).
+		 */
+		const showEmptyChatPrompt =
+			messages.length === 0 && !isHydrating && !isSmallView;
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
 				{/*
@@ -1066,7 +1079,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						role="alert"
 						className={cn(
 							CHAT_MEASURE,
-							"flex max-h-32 flex-col gap-1 overflow-y-auto text-body-sm text-danger",
+							"flex flex-col gap-1 text-body-sm text-danger",
+							/*
+							 * The composer's whole-line cap, shared with the status row's goal body.
+							 * Both blocks grow and then cap themselves, and both used `max-h-32`, which
+							 * at the composer's own leading lands 8px into a seventh line - letter tops
+							 * under a complete line, which reads as a rendering accident (design review
+							 * round 1, D2). One device, decided once, in `chat-measure.ts`.
+							 */
+							CAPPED_BLOCK,
 							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 						)}
 					>
@@ -1868,16 +1889,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 				data-lo-composer-band={true}
 			>
-				{messages.length === 0 && !isHydrating && !isSmallView ? (
-					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
+				{/*
+				 * ONE wrapper at every state, and only its CLASSES change.
+				 *
+				 * This was a ternary between a centred `<div>` holding the greeting and
+				 * `inputContent` bare, and the branch keys on `!isSmallView` - a COLUMN
+				 * measurement (`chat-content.tsx`, <550px). So opening the run pane or the
+				 * canvas narrows the column across that threshold and swaps the element
+				 * TYPE at this position, which React resolves by unmounting the old subtree
+				 * and mounting a new one. The status row lives inside `inputContent`, so a
+				 * press on its plan chip - a control whose whole job is to narrow the column
+				 * - replaced the very node the user had just pressed, and focus went to
+				 * `<body>` (QA round 1, Q4: `focusout` with no following `focusin`, and the
+				 * chip's dataset mark gone). On a populated transcript the node survives and
+				 * nothing is dropped, which is why only the empty-transcript case failed.
+				 *
+				 * Rendering the wrapper always and moving the difference into its classes is
+				 * the fix at the source: the subtree is never replaced, so no control inside
+				 * it can be torn out from under a press. `w-full` in the non-prompt state is
+				 * what keeps this neutral - the band is a centred flex COLUMN, and a plain
+				 * unwidthed wrapper would shrink to its content instead of filling the column
+				 * the way `inputContent`'s own `w-full` did.
+				 */}
+				<div
+					className={cn(
+						showEmptyChatPrompt
+							? "flex w-full flex-col items-center justify-center gap-6 py-4"
+							: "w-full",
+					)}
+				>
+					{showEmptyChatPrompt ? (
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
 						</h2>
-						{inputContent}
-					</div>
-				) : (
-					inputContent
-				)}
+					) : null}
+					{inputContent}
+				</div>
 				<ScrollToBottomButton
 					visible={isFarFromBottom}
 					onClick={scrollToBottom}

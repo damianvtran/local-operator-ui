@@ -11,9 +11,15 @@ than deleted. Where this document disagrees with those two, this one is newer
 and says why; where it disagrees with `docs/branding.md`, the branding contract
 wins and this document is wrong.
 
-**Status: spec, not implementation.** No code is written from this document
-here; the PR that implements it carries the frames, and a design round and a UX
-round on the rendered result (the operator's standing rules).
+**Status: spec, then implementation, then revised against it.** The row is
+shipped (PR #175) and this document was corrected in that PR's remediation round
+to describe what shipped rather than what was planned - each correction carries
+the measurement or the review finding that made it, and the divergences the
+implementation took deliberately are folded in rather than left to be
+rediscovered. The places that moved: `§ 2.3`/`§ 3.1` (the chip's height and the
+plan's gate), `§ 2.4`/`§ 4.4` (the column floor's real width and the body's cap),
+`§ 4.1`/`§ 4.2` (the measured class overrides and the floor's label), `§ 5.1`
+(the count's visible affordance mark) and `§ 9.1` (what was actually captured).
 
 ---
 
@@ -150,11 +156,11 @@ cn(CHAT_MEASURE, "flex items-start gap-x-2 gap-y-0.5",
 
 | | Height | The number it changes |
 |---|---|---|
-| Collapsed row, one line | **24px** — the readings' own box height (`session-status-strip.tsx:156`, `h-6`) and the disclosure's own `min-h-6` (`disclosure.tsx:111`) are the same number | — |
+| Collapsed row, one line | **24px** — the readings' own box height (`session-status-strip.tsx:156`, `h-6`). The disclosure's own `min-h-6` (`disclosure.tsx:111`) is a FLOOR rather than a height, so the chip pins `h-6 py-0` to land on the same 24px: measured without it, that box is 25.7px beside the plan chip's 24px (§ 4.1) | — |
 | + its `pb-2` / `pb-1` | **8px** / 4px | — |
 | **Collapsed, one line** | **32px** (28px under `isSmallView`) | above 750px of column the band goes 111.7 → **143.7px**; in the 240-750px band 143.5 → **171.5px** (the box is already two lines there) |
 | **Collapsed, stacked** (at or below 240px of column, § 2.4) | 24 + 2 + 24 + 4 = **54px** | at the 220px floor 143.5 → **197.5px** |
-| Expanded, worst case | 24 + 4 (`mt-1`) + 128 (body cap) + 4 (`pb-1`) + 8 = **168px** | band 111.7 → 279.7px, only while the goal is expanded |
+| Expanded, worst case | 24 + 4 (`mt-1`) + 120 (body cap) + 4 (`pb-1`) + 8 = **160px** | band 111.7 → 271.7px, only while the goal is expanded. The cap is 120px rather than 128px since design review round 1 (D2) - see § 4.4 |
 
 Why 24px and not less: it is the smallest box on this composer's own ramp that
 still holds a 12px glyph and a `text-meta` label — the readings' box
@@ -170,10 +176,19 @@ line of `body-sm`), and it is why the row renders **nothing at all** when there
 is no goal and no plan: no 24px, no 8px gap, no band change from 111.7px
 (`§ 3.1`).
 
-### 2.4 The 220px column floor, and a short window
+### 2.4 The column floor, and a short window
 
-At the 220px column (the canvas pane open) the composer band is narrow, so the
-row's arrangement changes:
+**The floor is 172px, not 220px.** The app's chat column measures **172px** with
+the canvas pane holding the right slot (QA round 1, driven on the built app at
+1380x600 and 1380x900); 220px was this document's assumption and the app never
+renders it. Every number below is restated at the real width, and the frames that
+prove them render at 172px with the small-view step the app takes there (design
+review round 1, D3: before that correction the frames pinned the large-view inset
+at a width where the product renders small view, so the set certified 58px of
+collapsed height and a 168px body against the product's 54px and a 120px-capped
+body).
+
+At that column the composer band is narrow, so the row's arrangement changes:
 
 - **Above 240px of column: one line.** `CHAT_CHIP_ICON_ONLY_PX`
   (`chat-measure.ts:80`) is 240, the composer's own "the chrome cannot share the
@@ -186,16 +201,18 @@ row's arrangement changes:
 The reason for the switch is the *expanded* body, not the collapsed row: see
 § 4.4. Its cost is 26px of collapsed height, and it is paid only in the width
 band where the readings cluster already folds onto two lines of its own —
-measured 50px at the 220px floor (`numbers.json`, `populated-220`:
+measured 50px at the narrow column (`numbers.json`, `populated-220`:
 `stripBox.h = 50`, `row.h = 90`), which is the same `24 + 2 + 24` the stacked row
-produces here. At that width the composer's chrome wraps; that is the app's
+produces here. Measured at the app's own floor the stacked row is **54px** with
+the small-view `pb-1`, and 58px with the large-view `pb-2` this document's
+arithmetic used - the 4px the D3 correction removed. At that width the composer's chrome wraps; that is the app's
 existing behaviour, not a new one.
 
 **A short window.** The row bounds itself, which is this composer's own rule:
 *"each growable part of the composer caps itself and scrolls internally, so no
 wrapper has to clip on behalf of its children"* (`message-input.tsx:1300-1308`,
 the attachments block's `max-h-[240px]`). The collapsed row is a fixed 24px; the
-body caps at 128px and scrolls; so the row's own growth is bounded at 168px and
+body caps at 120px and scrolls; so the row's own growth is bounded at 160px and
 no ancestor acquires a scroller to hold it.
 
 **Acceptance test for all of the above**, in the frames rather than by
@@ -214,11 +231,22 @@ and `box.y` are four of its keys.
 
 | Goal | Plan | What renders | Height |
 |---|---|---|---|
-| absent (`goal.trim() === ""`) | none (`details.todos.length === 0`) | **nothing** — the component returns `null` | 0px |
+| absent (`goal.trim() === ""`) | none (`RunDetails.totalTodos === 0`) | **nothing** — the component returns `null` | 0px |
 | present | none | the goal chip alone | 24px + gap |
 | absent | present | the plan count alone, at the row's start | 24px + gap |
 | present | present | goal chip first, count second | 24px + gap |
-| present, expanded | either | the chips' line, plus the goal's body beneath | up to 168px |
+| present, expanded | either | the chips' line, plus the goal's body beneath | up to 160px |
+
+**The plan's gate is the ITEM count (`totalTodos > 0`), and this table used to say
+`details.todos.length === 0`.** `RunDetails.todos` holds PHASES, and the model
+decodes a phase record with no items to a phase with no items, so the phase count
+is non-zero for a session whose plan is one named empty phase - where the row
+would print `0 to-dos open`, which reads as a finished plan (QA round 1, Q3,
+driven: that checkpoint renders no row while the pane still shows `To-dos 0 of 0
+closed · Foundation`). The item count is zero only when there is genuinely nothing
+to be in the middle of. The pane's own section keeps gating on phases,
+deliberately and for the opposite reason - it renders phase headers, so a named
+empty phase is content for it (`run-details-panel.tsx`'s note at that gate).
 
 At or below 240px of column every one of those rows is the stacked arrangement
 (§ 2.4): 54px collapsed instead of 32px, and the count on the line below the
@@ -290,8 +318,8 @@ The chip is the app's one disclosure idiom — `Disclosure`
 ```tsx
 <Disclosure
   className="min-w-0 flex-1"
-  rowClassName="rounded-sm px-1.5"                       // height comes from the primitive's min-h-6
-  triggerClassName="w-fit -ml-1.5 text-ink-muted hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
+  rowClassName="h-6 rounded-sm px-1.5 py-0"              // see "Two measured overrides" below
+  triggerClassName="w-fit max-w-full -ml-1.5 text-ink-muted hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!"
   summary={…}   // chevron is the primitive's; the summary is "Goal:" + the snippet
 />
 ```
@@ -300,6 +328,26 @@ The chip is the app's one disclosure idiom — `Disclosure`
   while its flex item takes the free space — that item's width is what the
   expanded body gets (§ 4.4), so the two requirements that usually fight
   (a chip-shaped hover, a full-width body) resolve together.
+
+**Two measured overrides, both found in the frames rather than in review.** This
+document prescribed the two class strings above without them, and a future agent
+implementing § 4.1 as it used to read would reintroduce two defects this PR's
+frames caught. Both are pinned byte-exact by `scripts/composer-tabs.test.mjs`,
+because the numbers are the finding:
+
+1. **`max-w-full` — `w-fit` alone does not clamp.** Measured in the live frames,
+   Blink resolves `width: fit-content` on this button to its content's max-content
+   width: 2026px inside an 868px item, so the chip painted over the plan count and
+   past the column at every width, and the snippet's `truncate` never ran because
+   there was nothing to truncate against. Clamped, the chip is 768px with the
+   snippet truncating (clientWidth 698 against scrollWidth 1956), while a goal that
+   FITS is unchanged at 257px — still chip-sized, which is what `w-fit` is for.
+2. **`h-6 py-0` — the primitive's `min-h-6` is a floor, not a height.** With its
+   `py-0.5` and a 12px label at its own line height the box measured **25.7px**
+   beside the plan chip's **24px**: two chips of one species 1.7px apart on one
+   line, which is a ragged baseline in the one row where they are meant to be
+   identical. Pinned, both are 24px and the collapsed row is the 32px § 2.3
+   states.
 - `-ml-1.5` and `px-1.5` are § 2.2's alignment device, the readings' own.
 - **The one contract point:** `triggerClassName` is documented as "Layout and
   hover ground only" (`disclosure.tsx:73-75`), and `hover:text-ink` plus the ink
@@ -332,7 +380,7 @@ Visible: `[chevron 14px] Goal: <snippet>`, one line, 24px tall.
 | The rule that pairs with it | **an unbounded value may truncate only where its full text has a second home** | `session-status-strip.tsx:85-89`: *"Only the model name truncates, because it is the one item with unbounded length and the one whose full value the tooltip already carries… Truncating a value reading (`≥$0.0…`, `52.5%/40…`) would be a false or unverifiable claim, which § 8 forbids."* The goal is that same class of item, so the tooltip carries it in full (§ 4.3). |
 | Newlines | collapsed by `white-space: nowrap` (a newline renders as a space), preserved verbatim in the expanded body (`§ 4.4`) | A one-line preview cannot show a line break; the full text is one click away and there it keeps the author's breaks. |
 | Markup | rendered as **text**, never as markdown | The goal is authored in a plain `Textarea` (`destination-pickers.tsx:1287-1291`), so it is plain text. Rendering it as markdown would be a claim about the value the picker does not make. |
-| The floor | at or below 240px of column the label `sr-only`s itself | The working-directory chip's established device (`directory-indicator.tsx:167`, with its reason: *"`sr-only` and never hidden: the spans keep their place in the accessibility tree, so a screen-reader user still hears 'Working directory: /Users/damian' and only the pixels change"*). Here it is what lets the goal chip shrink to its chevron so the count is never squeezed (§ 5.4). |
+| The floor | the label stays **visible**, at every width | This used to go `sr-only` at the floor, on the reasoning that hiding it "is what lets the goal chip shrink to its chevron so the count is never squeezed". That reasoning does not hold in the arrangement the same rule is paired with: at the floor the row is a COLUMN, so the count has a line to itself with the whole width available — measured, a 92px chip in a 156px content box — and a word on the line above cannot squeeze it. What the hidden label did cost was the row's only identifying word: line one read `> Reconcile the March I…` with nothing saying what it was, one line above the user's composer (design review round 1, D4). The label is `shrink-0`, so it never deforms; the snippet yields first and the count is `shrink-0` and never cut, which is § 5.4's yield order stated the other way round. |
 
 ### 4.3 Copy
 
@@ -368,17 +416,28 @@ break-words text-ink-muted`):
 |---|---|---|
 | Type and ink | `text-body-sm leading-5`, `text-ink-muted`, `font-sans` | The brief block's own roles, and `leading-5` is on the ramp where `body-sm`'s inherited 1.5 is not (`docs/run-details.md:454`). |
 | Wrapping | `whitespace-pre-wrap break-words` | The goal is authored and may be a list; the break characters are the author's. Same as the brief. |
-| Cap and scroll | `max-h-32` (128px) + `overflow-y-auto` | The app's rule is that a growable block caps itself (`message-input.tsx:1300-1308`). 128px is 6 full lines plus part of a seventh at `leading-5`, and that partial line is the "there is more" cue — the same trick the brief's own `max-h-48` plays at 9.6 lines. |
+| Cap and scroll | **120px (six whole lines at `leading-5`)** + `overflow-y-auto`, shared with the send-error alert as `CAPPED_BLOCK` in `chat-measure.ts` | The app's rule is that a growable block caps itself (`message-input.tsx:1300-1308`). This was `max-h-32` (128px), which at this leading is six lines plus 8px of a seventh: the cap landed inside a line's glyphs and the paint was a row of letter TOPS under a complete line, which reads as a rendering accident rather than as "there is more" (design review round 1, D2, measured on the floor frame: ink at y458-460, 3px of the seventh line, immediately above the plan chip). 120px lands on a line boundary, so the last painted line is always a whole one. A FADE was the alternative and is rejected: the repo has the device (`picker-host.tsx`, `[mask-image:linear-gradient(...)]`) but applies it to regions that always overflow, and on a block that does NOT overflow a static mask would dim a two-line body's last line — a new defect for the old one. |
 | Indent | the primitive's `ml-5` | One chevron column, which is the whole reason it exists (`disclosure.tsx:100-105`). |
 | Keyboard | `tabIndex={0}`, `role="group"`, `aria-label="Session goal"` | The pane's own rule, read from the other side: its scroller deliberately has **no** tab stop *"because every row inside it is a real button, so the region is reachable and operable by keyboard through its own content"* (`run-panel.tsx:677-689`). This body has no focusable content, so the same rule says the region must carry one — a keyboard user cannot scroll a mouse-only scroller (WCAG 2.1.1; the `scrollable-region-focusable` check). The stop exists **only while the body is mounted**, i.e. only while the goal is expanded, so it never adds a stop to the ordinary composer. |
 | Motion | none on open — content mounts, no height animation | The primitive's own decision (`disclosure.tsx:11-14`), and `branding.md` § 5 permits transform transitions for entrances only. |
 
 **The body's width** is the goal item's width, which is the row's width minus
 the count chip. Above 240px of column that is 750px+ at a 900px box. At the
-220px column floor the row is a column (§ 2.4), so the body takes the row's own
-width: 204px of content box at a 220px row (`220 − 2×8`), less the 20px indent,
-i.e. **~184px of measure**. That is the reason for the arrangement switch, and
-it is the number the frames must show; the acceptance floor is **≥160px**.
+column floor the row is a column (§ 2.4), so the body takes the row's own width:
+at the app's 172px floor the row's content box is 156px (`172 − 2×8`), less the
+primitive's 20px indent, i.e. **~128-136px of measure** — narrower than the
+**≥160px** this document called the acceptance floor.
+
+That floor was arithmetic at a 220px column (204 − 20 = 184px) and the app does
+not render that column, so the ≥160px figure cannot be met at the real one by any
+arrangement this design can reach: even § 10's option D, which lets the body span
+the whole row, buys back only the indent and the count chip's line and tops out
+around 156px. The honest statement is therefore that **the body's measure at the
+column floor is what the app's floor allows, and the frame that proves it is
+`column-floor` at 172px**; whether a ~128px measure is acceptable, or whether the
+row should change shape at the floor (option D, or letting the body keep the row's
+inset), is a design decision recorded in § 11.1 rather than a number this
+document can assert.
 
 ---
 
@@ -397,7 +456,8 @@ is three boxes too many, so these read as text until you reach for one"*
 (`session-status-strip.tsx:151-154`). This row has two chips over one bounded
 box, so the rule applies with one fewer to spare.
 
-Visible: **`4 to-dos open`** — `todoClause(openTodos)`
+Visible: **`[Info] 4 to-dos open`** — the run pane's own mark, then
+`todoClause(openTodos)`
 (`run-detail-model.ts:2125-2126`), which is the app's one spelling of that fact:
 it is the clause the run trigger's own tooltip already uses
 (`run-detail-model.ts:2203`), and its singular/plural grammar
@@ -405,6 +465,28 @@ it is the clause the run trigger's own tooltip already uses
 for the sibling attention clause: *"Two copies of one rule is how round 1's
 U1-7/Q7 happened… and nothing but review would have caught it"*
 (`:2131-2144`).
+
+**The mark is the run pane's own `Info`, leading the count**, and it was added in
+design review round 1 (D1). Without it the chip was plain muted text in the same
+ink as the goal's snippet, with the pointer cursor and the tooltip as its whole
+affordance — neither of which exists in a still, and neither of which a reader
+consults before pressing. At the floor it was worse than neutral: `3 to-dos open`
+sat on the line under a truncated goal sentence, in the goal's ink, where it read
+as the sentence's wrapped remainder, and `0 to-dos open` read as a completion
+statement. One glyph now means "this opens the run pane" on both surfaces, since
+the header trigger wears the same mark (§ 6.1). `size-3.5` is the disclosure
+chevron's own size, so the two chips carry same-size marks and stay one species.
+
+Rejected alternatives, all of them one line away: **the goal chip's chevron** —
+the app's mark for "expands in place", and with both chips on one line it would
+say the two controls do the same thing, which is the opposite of the distinction
+D1 asks for; **`PanelRight`/`PanelRightClose`** — the pane's own chrome control,
+and § 6.1 already refuses an open/close pair that differs by one small arrow with
+both on screen at once; **`ArrowUpRight`/`ExternalLink`** — they mean leaving this
+surface; **`ListChecks`** — the ledger's glyph for the todo TOOL
+(`tool-glyphs.ts`), the collision § 6.1 refuses. The mark is `aria-hidden`: the
+accessible name already states the action in words, so it is a decorative
+repetition rather than a second label.
 
 - **`todoClause` must be exported** (from `run-detail-model.ts` and the
   `run-details/index.ts` barrel, which already re-exports `todoTally`,
@@ -710,11 +792,25 @@ States to add, each in `localOperatorLight` and `localOperatorDark`
 | `status-goal-900` | the goal chip alone; the label, the colon, the snippet, the chevron's shape |
 | `status-plan-900` | the count alone, at the row's start |
 | `status-both-900` | both chips; goal left, count at the right edge; the count's x does not move with the goal's text |
-| `status-goal-expanded-900` | the body: the full text, the cap and the scroll, the 128px ceiling, `pre-wrap` on a goal that contains newlines |
+| `status-goal-expanded-900` | the body: the full text, the cap and the scroll, the 120px ceiling (six whole lines), `pre-wrap` on a goal that contains newlines |
 | `status-goal-long-900` | a several-hundred-character goal: CSS truncation in the snippet, the tooltip carrying the whole value, the body scrolling |
-| `status-both-220` and `status-both-220-canvas` | the column floor: the row stacked, nothing leaving the box (`boxOverflowX === 0`), the body's measured width ≥160px when expanded |
+| `status-both-172` and `status-both-172-canvas` | the column floor (172px, the width the app actually renders): the row stacked, nothing leaving the box (`boxOverflowX === 0`), and the body's measured width — whatever it is, since § 11.1 records that the ≥160px this document asked for is not reachable at the real floor |
 | `status-hover-900` and `status-focus-900` | the wash (a real dispatched hover, as the existing `hover-focus-900` does) and the focus ring on each chip |
 | `status-goal-draft-900` | a draft pane: the row renders nothing (no session goal yet) |
+
+**What was actually captured, and where it differs from the table above.** The
+shipped set is `docs/evidence/chat-composer-status-row/` - four stories over the
+two brand palettes, eight frames - captured from the committed rig
+(`scripts/capture-evidence.mjs`) against Storybook, because the live-app driver
+this section assumed (`out/evidence-harness/row-frames.mjs`) is gitignored and not
+in the tree. The names are the story ids, not the `status-*` names above:
+`states` carries the matrix (including the "renders nothing" band, which is
+`status-neither-900` above), `long-goal` carries the truncation pair, `expanded`
+carries the collapsed-above-expanded pair, and `column-floor` carries the floor
+pair at the app's real 172px with the small-view step. What that route cannot
+photograph is the live composer's own box (a story's box is a stand-in) and the
+real `numbers.json` geometry; the set's README says so, and
+`docs/evidence/composer-readings/` remains the set that owns the live composer.
 
 `numbers.json` fields to read per frame: `box.h` and `box.y` (the composer box,
 unchanged height, moved up), the row's own box, `boxOverflowX`, the two chips'
@@ -798,12 +894,18 @@ the version").
 
 Recorded rather than hidden, per `branding.md` § 8.
 
-1. **The expanded body's width at the column floor is arithmetic, not a frame.**
-   184px at a 220px column is `204 − 20` from the measured box geometry, not a
-   measurement of the body itself, and the stacked arrangement it depends on is a
-   layout the app has never rendered. If the frames show the stacked body under
-   ~160px, the remedy is option D of § 10 and it is a real round of work, not a
-   tweak.
+1. **The expanded body's width at the column floor is narrower than this
+   document's acceptance floor, and the floor was the wrong number.** This risk
+   asked for ≥160px at a 220px column; the app's column is 172px with the canvas
+   open (QA round 1, driven), where the body measures **~128-136px** - and the
+   ≥160px figure is unreachable at that width by any arrangement this design can
+   reach, including § 10's option D, which buys back the indent and the count
+   chip's line and tops out near the row's own 156px content box. So the code is
+   not what failed; the acceptance number was arithmetic at a column the app does
+   not render. The measured frame is
+   `docs/evidence/chat-composer-status-row/column-floor/`, and the open question
+   for the designer is whether a ~128px measure is acceptable at the floor or the
+   row should change shape there - recorded, not assumed either way.
 2. **The alignment argument is a 6px device.** `-ml-1.5` puts the first chip's
    text on the row's content edge (the alert's own left edge), which is 8px left
    of the *message text* below it. The alert accepted that gap deliberately

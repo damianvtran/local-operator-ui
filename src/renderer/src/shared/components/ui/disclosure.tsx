@@ -57,7 +57,18 @@ export type DisclosureProps = {
 	chevron?: "leading" | "trailing";
 	/** Extra classes on the outer wrapper. */
 	className?: string;
-	/** Extra classes on the trigger button. Layout and hover ground only. */
+	/**
+	 * Extra classes on the trigger button: layout, ink and hover ground.
+	 *
+	 * Ink counts as well as layout, and that is worth stating rather than leaving to
+	 * be discovered: a caller whose chip must sit among controls of one species
+	 * legitimately overrides the row's resting ink to match theirs, and `cn`'s
+	 * last-wins makes that deterministic. The composer's status row is that caller
+	 * (`text-ink-muted hover:text-ink`), argued in `docs/composer-status-tabs.md`
+	 * § 4.1: a second ink prop for one call site would be a bigger change than the
+	 * override it replaces. What this prop is NOT for is the trigger's SIZE - a
+	 * different row height belongs on `rowClassName`, which reaches both branches.
+	 */
 	triggerClassName?: string;
 	/**
 	 * Extra classes on the ROW BOX, applied in both the interactive and the

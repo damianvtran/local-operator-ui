@@ -168,6 +168,12 @@ const code = (path) =>
 
 const ROW = "src/renderer/src/features/chat/components/composer-status-row.tsx";
 const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+// Named for the band's own file in the round-1 findings; `COMPOSER` is the
+// historical name for the same file in this suite's earlier assertions.
+const MESSAGE_INPUT = COMPOSER;
+const MEASURE = "src/renderer/src/features/chat/chat-measure.ts";
+const SCROLL_BUTTON =
+	"src/renderer/src/features/chat/components/scroll-to-bottom-button.tsx";
 const PANEL = "src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 
 /* ---------------------------------------------------------------- */
@@ -468,28 +474,52 @@ test("the composer's run model comes off the page's one derivation", () => {
 
 test("the row's own layout: the floor stacks it, and the alignment device is the alert's", () => {
 	const source = code(ROW);
-	// One line above 240px of column, a column at or below it.
-	assert.match(source, /"@max-\[240px\]\/chatcol:flex-col"/);
-	// The goal item is the flexible one and can shrink to nothing (`min-w-0`).
-	assert.match(source, /"min-w-0 flex-1", COLUMN_GOAL/);
-	// At the floor it takes the row's own width and stops being a flex item that
-	// could collapse in a column container.
-	assert.match(source, /@max-\[240px\]\/chatcol:w-full/);
-	assert.match(source, /@max-\[240px\]\/chatcol:flex-none/);
-	// The label leaves the pixels but stays in the accessibility tree.
-	assert.match(source, /@max-\[240px\]\/chatcol:sr-only/);
-	// The chip's hover ground is chip-sized while the item keeps the free space.
-	assert.match(source, /"w-fit max-w-full -ml-1\.5 /);
 	/*
-	 * `max-w-full` and `h-6 py-0` are both measured overrides rather than taste,
-	 * and both are pinned because the frames are what found them: without the
-	 * clamp the chip resolves to its content's max-content width and paints over
-	 * the count, and without the height the two chips of one row differ by 1.7px.
+	 * TOKEN-level rather than whole-class-string pins, except where the exact
+	 * string IS the finding (agent review round 1, M5): a pin on
+	 * `"min-w-0 flex-1", COLUMN_GOAL` fails the moment anyone reorders or adds a
+	 * class, which costs a review round for a cosmetic edit, while the property
+	 * those classes carry is what a regression would remove.
 	 */
+	const tokens = (...names) =>
+		assert.ok(
+			names.every((name) => source.includes(name)),
+			`expected the row's source to carry ${names.join(", ")}`,
+		);
+
+	// One line above 240px of column, a column at or below it.
+	tokens("@max-[240px]/chatcol:flex-col");
+	// The goal item is the flexible one and can shrink to nothing (`min-w-0`).
+	tokens("min-w-0", "flex-1", "COLUMN_GOAL", "@max-[240px]/chatcol:w-full", "@max-[240px]/chatcol:flex-none");
+	/*
+	 * The label is VISIBLE in every arrangement (design review round 1, D4): the
+	 * `sr-only` floor rule is gone, and the label's `shrink-0` is what makes the
+	 * yield order hold where both chips share a line - the snippet yields, the
+	 * count never does.
+	 */
+	assert.doesNotMatch(source, /chatcol:sr-only/);
+	tokens('cn("shrink-0")', "{GOAL_LABEL}");
+
+	/*
+	 * The row owns the first-chip rule (design review round 1, D5): one constant,
+	 * applied by the row to whichever chip renders first, so the two states the row
+	 * can be in share one left edge.
+	 */
+	assert.match(source, /const FIRST_CHIP = "-ml-1\.5";/);
+	assert.match(source, /showGoal \? undefined : FIRST_CHIP/);
+
+	/*
+	 * The two MEASURED overrides, byte-exact, because the numbers are the finding:
+	 * without `max-w-full` the chip resolves to its content's max-content width
+	 * (2026px inside an 868px item) and paints over the count with the snippet
+	 * un-truncated; without `h-6 py-0` the two chips of one row differ by 1.7px
+	 * (25.7px beside 24px).
+	 */
+	assert.match(source, /"w-fit max-w-full text-ink-muted/);
 	assert.match(source, /rowClassName=\{cn\("h-6 rounded-sm px-1\.5 py-0"\)\}/);
+
 	// The shared horizontal inset is the alert's own, not a second number.
-	assert.match(source, /isSmallView \? "px-2 pb-1" : "px-4 pb-2"/);
-	assert.match(source, /CHAT_MEASURE/);
+	tokens("isSmallView ?", '"px-2 pb-1"', '"px-4 pb-2"', "CHAT_MEASURE");
 	/*
 	 * The plan chip is the readings' own control box, IMPORTED rather than
 	 * restated: two chips over one box with two class strings is how two hover
@@ -499,13 +529,26 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 		source,
 		/import \{ READING_BUTTON as CHIP_CONTROL \} from "\.\.\/session-status\/session-status-strip"/,
 	);
-	assert.match(source, /className=\{CHIP_CONTROL\}/);
+	tokens("CHIP_CONTROL");
 	assert.doesNotMatch(source, /bg-surface|border-control|bg-elevated/);
+	/*
+	 * The count's visible affordance mark (design review round 1, D1): the run
+	 * pane's own glyph, leading the count, decorative to assistive tech because the
+	 * accessible name already states the action.
+	 */
+	tokens("import { Info } from", "<Info aria-hidden={true}", "size-3.5");
 });
 
 test("the expanded body caps itself, keeps the author's breaks, and carries its own tab stop", () => {
 	const source = code(ROW);
-	assert.match(source, /max-h-32 overflow-y-auto/);
+	/*
+	 * The cap is the composer's SHARED whole-line device, not a local number
+	 * (design review round 1, D2): `max-h-32` at `leading-5` ended 8px into a
+	 * seventh line, so the paint was a row of letter tops under a complete line.
+	 * The alert above the box uses the same constant.
+	 */
+	assert.match(source, /CAPPED_BLOCK/);
+	assert.doesNotMatch(source, /max-h-32/);
 	assert.match(source, /whitespace-pre-wrap break-words/);
 	assert.match(source, /role="group"/);
 	assert.match(source, /aria-label="Session goal"/);
@@ -517,6 +560,62 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	 */
 	assert.doesNotMatch(source, /aria-pressed/);
 	assert.match(source, /onClick=\{\(\) => revealPlan\("todos"\)\}/);
+});
+
+test("the composer's two capped blocks share one whole-line cap", () => {
+	const measure = code(MEASURE);
+	/* 120px is six whole lines at `leading-5`, and the leading is stated rather
+	 * than inherited so the boundary cannot drift back through a line. */
+	assert.match(measure, /max-h-\[7\.5rem\]/);
+	assert.match(measure, /leading-5/);
+	const input = code(MESSAGE_INPUT);
+	// The send-error alert, which had the identical `max-h-32` and the identical
+	// defect, now consumes the same constant.
+	assert.match(input, /CAPPED_BLOCK/);
+	assert.doesNotMatch(input, /max-h-32/);
+});
+
+test("the goal mirror follows the control it describes across a hide", () => {
+	const source = code(ROW);
+	/*
+	 * `goalOpen` is a copy of the disclosure's state, used for the label's verb. It
+	 * is never written from the caller, so it holds only while the primitive stays
+	 * mounted - and the chip unmounts when there is no goal (`showGoal && <Disclosure>`),
+	 * which is how `/goal`, `clear`, then a new goal announced "Collapse..." over a
+	 * closed chip (agent review round 1, M1). A rendered test needs jsdom, which
+	 * this tree does not have, so the reset is pinned at the source.
+	 */
+	assert.match(source, /if \(!showGoal\) setGoalOpen\(false\);/);
+	assert.match(source, /\}, \[showGoal\]\);/);
+});
+
+test("the hidden scroll-to-bottom control is not hit-testable", () => {
+	const source = code(SCROLL_BUTTON);
+	/*
+	 * Hit-testing ignores opacity, so the unconditionally re-enabled
+	 * `pointer-events-auto` left an invisible 32x32 button over the composer at the
+	 * column floor, where it swallowed real presses on the goal chip and part of the
+	 * expanded body (QA round 1, Q1).
+	 */
+	assert.match(source, /visible \? "pointer-events-auto" : "pointer-events-none"/);
+	assert.doesNotMatch(source, /className="pointer-events-auto rounded-full/);
+});
+
+test("the empty-chat band keeps one wrapper, so a narrowing column cannot remount the row", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * The band used to swap between a centred prompt `<div>` and a bare
+	 * `inputContent` on `!isSmallView`, a COLUMN measurement - so opening the pane
+	 * or the canvas changed the element TYPE at that position and React replaced the
+	 * subtree, including the plan chip the user had just pressed. Focus went to
+	 * `<body>` (QA round 1, Q4). One wrapper at every state, classes only.
+	 */
+	assert.match(source, /const showEmptyChatPrompt =/);
+	assert.doesNotMatch(
+		source,
+		/messages\.length === 0 && !isHydrating && !isSmallView \?/,
+	);
+	assert.match(source, /\{showEmptyChatPrompt \? \(/);
 });
 
 test("the pane consumes the request: leave a reader, scroll the plan in, retire it", () => {

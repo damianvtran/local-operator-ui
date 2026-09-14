@@ -250,6 +250,28 @@ type UiPreferencesState = {
 export type RunPanelSection = "todos";
 
 /**
+ * Claiming the right slot for one of the two panes that can live in it.
+ *
+ * The slot holds ONE pane, so every claim is "this side wins and the other side is
+ * cleared" - a rule that was written out at each of the three call sites until
+ * agent review round 1 (M4) counted them. Three copies is not redundant, it is
+ * drift waiting for a reason to happen: the next person to add a term to the rule
+ * (a third pane, telemetry, a width reset on the losing side) would update the two
+ * toggles and miss `revealRunPanelSection`, whose body cannot simply call one of
+ * them because a request and the pane it targets have to land in ONE update - the
+ * request must never exist against a closed pane.
+ *
+ * So the rule lives here, the caller names only what it is claiming, and the
+ * losing side is not something any call site has to remember.
+ */
+const claimRightSlot = (
+	pane: "isRunPanelOpen" | "isCanvasOpen",
+): Pick<UiPreferencesState, "isRunPanelOpen" | "isCanvasOpen"> => ({
+	isRunPanelOpen: pane === "isRunPanelOpen",
+	isCanvasOpen: pane === "isCanvasOpen",
+});
+
+/**
  * A one-shot request to bring one of the pane's sections into view.
  */
 export type RunPanelReveal = {
@@ -345,25 +367,19 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			},
 
 			setCanvasOpen: (open: boolean) => {
-				set(
-					open
-						? { isCanvasOpen: true, isRunPanelOpen: false }
-						: { isCanvasOpen: false },
-				);
+				set(open ? claimRightSlot("isCanvasOpen") : { isCanvasOpen: false });
 			},
 
 			setRunPanelOpen: (open: boolean) => {
 				set(
-					open
-						? { isRunPanelOpen: true, isCanvasOpen: false }
-						: { isRunPanelOpen: false },
+					open ? claimRightSlot("isRunPanelOpen") : { isRunPanelOpen: false },
 				);
 			},
 
 			revealRunPanelSection: (section: RunPanelSection) => {
 				set((state) => ({
-					isRunPanelOpen: true,
-					isCanvasOpen: false,
+					// The claim is spread rather than restated: see `claimRightSlot`.
+					...claimRightSlot("isRunPanelOpen"),
 					runPanelReveal: {
 						section,
 						nonce: (state.runPanelReveal?.nonce ?? 0) + 1,

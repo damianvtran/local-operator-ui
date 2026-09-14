@@ -88,11 +88,34 @@ const LONG_GOAL =
 	"Reconcile the March invoices against the payments ledger, group the unpaid rows\nby customer, confirm what 'pending' means with finance (two rows need a decision), then write reports/unpaid-march.md from the reconciled totals and publish the summary to the finance channel before the month closes";
 
 /**
+ * The column width at and below which the APP takes its small-view step.
+ *
+ * `chat-content.tsx` measures the chat column with a `ResizeObserver` and sets
+ * `isSmallView` under 550px, so this is a property of the COLUMN and not of the
+ * window: a 220px band inside a 1380px window is small view, and a story that
+ * rendered the large-view inset there would certify a layout the product does not
+ * have at that width. The floor frames shipped that way until design review
+ * round 1 measured them (D3): the row took `px-4 pb-2` and the box `p-4` at a
+ * width where the app renders `px-2 pb-1` and `p-2`, so the set certified 58px
+ * and a 168px body against the app's 54px and 184px.
+ *
+ * Copied rather than imported because `chat-content.tsx` does not export it: the
+ * threshold lives in a `ResizeObserver` callback there. A drift in one of the two
+ * numbers would show up as a frame whose inset does not match the app's, which is
+ * the defect this constant exists to prevent - so if that 550 moves, this moves
+ * with it.
+ */
+const SMALL_VIEW_PX = 550;
+
+/**
  * One composer band at the column width under test.
  *
  * The row's own bottom padding is the ONLY gap between it and the box, exactly as
  * in the app: `message-input.tsx`'s form is a bare `w-full` and owns no gap, so a
- * frame that added one would show a spacing the product does not have.
+ * frame that added one would show a spacing the product does not have. The box
+ * mirrors `COMPOSER_BOX`'s two steps so the band is the app's band at the width
+ * it is drawn at, and `isSmallView` is derived from `width` rather than chosen,
+ * so a band cannot describe a step the app would not render there.
  */
 const Composer = ({
 	width = 900,
@@ -102,23 +125,28 @@ const Composer = ({
 	width?: number;
 	label: string;
 	children: React.ReactNode;
-}) => (
-	<div className="flex flex-col bg-canvas p-6" style={{ width: width + 48 }}>
-		<p className={cn("pb-2 text-ink-dim text-meta")}>{label}</p>
-		<div className={cn("@container/chatcol flex flex-col")} style={{ width }}>
-			{children}
-			<div
-				className={cn(
-					"flex w-full flex-col gap-3 rounded-frame border border-control bg-surface p-4",
-				)}
-			>
-				<p className={cn("text-body-sm text-ink-dim")}>
-					A message would be typed here.
-				</p>
+}) => {
+	const isSmall = width <= SMALL_VIEW_PX;
+
+	return (
+		<div className="flex flex-col bg-canvas p-6" style={{ width: width + 48 }}>
+			<p className={cn("pb-2 text-ink-dim text-meta")}>{label}</p>
+			<div className={cn("@container/chatcol flex flex-col")} style={{ width }}>
+				{children}
+				<div
+					className={cn(
+						"flex w-full flex-col rounded-frame border border-control bg-surface",
+						isSmall ? "gap-2 rounded-md p-2" : "gap-3 p-4",
+					)}
+				>
+					<p className={cn("text-body-sm text-ink-dim")}>
+						A message would be typed here.
+					</p>
+				</div>
 			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 /**
  * Click the goal's trigger and hold the shutter until the state it produces is
@@ -157,6 +185,34 @@ const useOpenLastGoal = () => {
 	}, []);
 };
 
+/**
+ * One band: the composer band, plus the row the story is about.
+ *
+ * The row's `isSmallView` is derived from the BAND'S width, here, once - the same
+ * rule the app applies with its own `ResizeObserver`. Passing it from the story
+ * body would let a band describe a step the app would not render at that width,
+ * which is exactly the defect design review round 1 measured (D3).
+ */
+const Band = ({
+	width = 900,
+	label,
+	frontend: f,
+	runDetails,
+}: {
+	width?: number;
+	label: string;
+	frontend: CanonicalFrontendState;
+	runDetails: RunDetails | null;
+}) => (
+	<Composer width={width} label={label}>
+		<ComposerStatusRow
+			frontend={f}
+			runDetails={runDetails}
+			isSmallView={width <= SMALL_VIEW_PX}
+		/>
+	</Composer>
+);
+
 const meta: Meta = {
 	title: "Chat/Composer status row",
 	parameters: { layout: "fullscreen" },
@@ -177,24 +233,31 @@ type Story = StoryObj;
 export const States: Story = {
 	render: () => (
 		<div className={cn("flex flex-col gap-4")}>
-			<Composer label="No goal and no plan: the row renders nothing at all (the pre-change composer)">
-				<ComposerStatusRow frontend={frontend("")} runDetails={EMPTY} />
-			</Composer>
-			<Composer label="Goal alone: chevron, label, colon, and a snippet that truncates in CSS">
-				<ComposerStatusRow frontend={frontend(LONG_GOAL)} runDetails={null} />
-			</Composer>
-			<Composer label="Plan alone, at the row's start: 3 of 5 open — pending plus blocked, the model's own count">
-				<ComposerStatusRow frontend={frontend("")} runDetails={IN_FLIGHT} />
-			</Composer>
-			<Composer label="Both: the count holds the right edge and does not move with the goal's text">
-				<ComposerStatusRow
-					frontend={frontend(LONG_GOAL)}
-					runDetails={IN_FLIGHT}
-				/>
-			</Composer>
-			<Composer label="A finished plan still renders, and says 0 to-dos open">
-				<ComposerStatusRow frontend={frontend("")} runDetails={FINISHED} />
-			</Composer>
+			<Band
+				label="No goal and no plan: the row renders nothing at all (the pre-change composer)"
+				frontend={frontend("")}
+				runDetails={EMPTY}
+			/>
+			<Band
+				label="Goal alone: chevron, label, colon, and a snippet that truncates in CSS"
+				frontend={frontend(LONG_GOAL)}
+				runDetails={null}
+			/>
+			<Band
+				label="Plan alone, at the row's start: 3 of 5 open — pending plus blocked, the model's own count"
+				frontend={frontend("")}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Both: the count holds the right edge and does not move with the goal's text"
+				frontend={frontend(LONG_GOAL)}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="A finished plan still renders, and says 0 to-dos open"
+				frontend={frontend("")}
+				runDetails={FINISHED}
+			/>
 		</div>
 	),
 };
@@ -210,15 +273,16 @@ export const States: Story = {
 export const LongGoal: Story = {
 	render: () => (
 		<div className={cn("flex flex-col gap-4")}>
-			<Composer label="A goal that fits: the chip is content-sized, so nothing is clipped">
-				<ComposerStatusRow frontend={frontend(SHORT_GOAL)} runDetails={null} />
-			</Composer>
-			<Composer label="A 300-character goal: the ellipsis is the browser's, the tooltip carries the rest">
-				<ComposerStatusRow
-					frontend={frontend(LONG_GOAL)}
-					runDetails={IN_FLIGHT}
-				/>
-			</Composer>
+			<Band
+				label="A goal that fits: the chip is content-sized, so nothing is clipped"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={null}
+			/>
+			<Band
+				label="A 300-character goal: the ellipsis is the browser's, the tooltip carries the rest"
+				frontend={frontend(LONG_GOAL)}
+				runDetails={IN_FLIGHT}
+			/>
 		</div>
 	),
 };
@@ -237,60 +301,63 @@ export const Expanded: Story = {
 		useOpenLastGoal();
 		return (
 			<div className={cn("flex flex-col gap-4")}>
-				<Composer label="Collapsed: one line, 32px of the composer band">
-					<ComposerStatusRow
-						frontend={frontend(LONG_GOAL)}
-						runDetails={IN_FLIGHT}
-					/>
-				</Composer>
-				<Composer label="Expanded by a click on the real trigger: the author's break is kept and the body caps at 128px">
-					<ComposerStatusRow
-						frontend={frontend(LONG_GOAL)}
-						runDetails={IN_FLIGHT}
-					/>
-				</Composer>
+				<Band
+					label="Collapsed: one line, 32px of the composer band"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+				<Band
+					label="Expanded by a click on the real trigger: the author's break is kept and the body caps at six whole lines"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
 			</div>
 		);
 	},
 };
 
 /**
- * The column floor: a 220px column, which is the canvas pane's own open width,
+ * The column floor: the chat column's width with the canvas open in the app,
  * collapsed above its expanded form.
  *
- * At or below 240px of column the row stops being a line — the goal takes the
- * row's own width, the count sits below it, and the goal's label goes `sr-only` so
- * the chip can shrink to its chevron. The cost is 26px of collapsed height, paid
- * here because the EXPANDED body would otherwise measure the row less a whole
- * count chip.
+ * **172px, not the record's 220px.** QA round 1 drove the built app at 1380x600
+ * and 1380x900 and measured the column at 172px with the canvas holding the right
+ * slot; 220px was the record's assumption and the app never renders it. A frame
+ * drawn at a width the product does not have is a frame about a different layout,
+ * so this is the app's number and the record's § 2.4 is corrected to match it.
  *
- * The body's measure in the second band is the record's § 11 risk 1: it is the
- * row's own width less the primitive's 20px indent, its acceptance floor is 160px,
- * and if this frame shows less than that the remedy is the record's § 10 option D.
+ * The band takes the SMALL-VIEW step, which is what the app does here: 172px is
+ * well under the 550px threshold `chat-content.tsx` measures with its own
+ * `ResizeObserver`. Until design review round 1 (D3) this story rendered the
+ * large-view inset at this width, so the set certified 58px of collapsed height
+ * and a 168px body where the product renders 54px and a 120px-capped body; the
+ * numbers the README states are now the ones this frame actually contains.
+ *
+ * At or below 240px of column the row stops being a line - the goal takes the
+ * row's own width and the count sits below it - which is the arrangement that
+ * buys the expanded body the row's whole width instead of the row less a count
+ * chip. The body's measure in the second band is the record's § 11 risk 1, and
+ * these frames are how that risk is settled rather than assumed.
  */
+const FLOOR_COLUMN_PX = 172;
+
 export const ColumnFloor: Story = {
 	render: () => {
 		useOpenLastGoal();
 		return (
 			<div className={cn("flex flex-col gap-4")}>
-				<Composer
-					width={220}
-					label="Collapsed: the row stacks, the label goes sr-only"
-				>
-					<ComposerStatusRow
-						frontend={frontend(LONG_GOAL)}
-						runDetails={IN_FLIGHT}
-					/>
-				</Composer>
-				<Composer
-					width={220}
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="Collapsed: the row stacks, and the label stays visible"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+				<Band
+					width={FLOOR_COLUMN_PX}
 					label="Expanded: the body takes the row's width less the indent"
-				>
-					<ComposerStatusRow
-						frontend={frontend(LONG_GOAL)}
-						runDetails={IN_FLIGHT}
-					/>
-				</Composer>
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
 			</div>
 		);
 	},
