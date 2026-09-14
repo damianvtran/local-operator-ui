@@ -56,6 +56,11 @@ export interface TabRecord {
 	 * another tab's click target (the extension's `state.ts` keeps refs per
 	 * surface for the same reason). */
 	epoch: number;
+	/** Same-document URL changes invalidate refs, not document-scoped consent. */
+	documentEpoch: number;
+	/** Mirrors what `applyLayout` last told the view. The capture path branches on
+	 * this because Electron's `View` has no visibility getter to read back. */
+	presented: boolean;
 	refs: Record<string, SnapshotRef>;
 	/** Ownership-journal linkage for the `owner_*` methods, empty for a tab
 	 * opened without an allocation. */
@@ -74,6 +79,15 @@ export interface TabRecord {
  * honest bound on those is memory, which `status` reports rather than a second
  * invented number. */
 export const MAX_AGENT_TABS = 8;
+
+/** Background rendering must not depend on a foreground route's measurement.
+ * The fleet cap and bounded viewport bound raster memory without activating views. */
+export const BACKGROUND_VIEWPORT: ContentRect = {
+	x: 0,
+	y: 0,
+	width: 1280,
+	height: 720,
+};
 
 /** How many nonce characters a redacted handle shows. Enough to prefix-match
  * your own token against a listing entry, far too few to reconstruct the 32-hex
@@ -203,12 +217,18 @@ export class TabRegistry {
 			createdAt: Date.now(),
 			lastUsedAt: Date.now(),
 			epoch: 0,
+			documentEpoch: 0,
+			presented: false,
 			refs: {},
 			allocationId: options.allocationId ?? "",
 		};
 		this.tabs.set(tabId, record);
-		if (options.owner === "user" && !restored) this.activeTabId = tabId;
-		if (this.activeTabId === null) this.activeTabId = tabId;
+		// Only a USER tab may become the active one, including when nothing is active
+		// yet. The earlier `activeTabId === null` form activated whichever tab was
+		// created first — on a session with no user tab that is the agent's own, so the
+		// agent's background tab silently became the presented one and every other tab
+		// kept zero layout. The layout pass below reads this to decide presentation.
+		if (record.owner === "user") this.activeTabId = tabId;
 		this.applyLayout();
 		this.onChanged();
 		return record;
@@ -332,8 +352,8 @@ export class TabRegistry {
 		record.sessionId = sessionId;
 		record.handedTo = sessionId;
 		record.nonce = mintNonce();
-		record.epoch = 0;
-		record.refs = {};
+		record.allocationId = "";
+		this.bumpEpoch(record.tabId);
 		this.onChanged();
 	}
 
@@ -346,6 +366,8 @@ export class TabRegistry {
 		record.owner = "user";
 		record.sessionId = null;
 		record.handedTo = null;
+		record.allocationId = "";
+		this.bumpEpoch(record.tabId);
 		this.onChanged();
 	}
 
@@ -367,10 +389,11 @@ export class TabRegistry {
 	 * `element_not_found` instead of clicking whatever now occupies that
 	 * position.
 	 */
-	bumpEpoch(tabId: number): void {
+	bumpEpoch(tabId: number, newDocument = true): void {
 		const record = this.tabs.get(tabId);
 		if (!record) return;
 		record.epoch += 1;
+		if (newDocument) record.documentEpoch += 1;
 		// The refs are deliberately KEPT, not cleared. Clearing them would also make
 		// the old refs unusable, but it would do so by making them indistinguishable
 		// from a ref that never existed — and the more useful refusal is the one that
@@ -416,9 +439,9 @@ export class TabRegistry {
 
 	// ---- layout, visibility, activation --------------------------------------
 
-	/** The renderer owns layout (design 11.2): it measures its content area and
-	 * reports it, and this applies it to the ACTIVE tab only. Every other tab
-	 * keeps its own bounds but is hidden, so one rect authority serves N views. */
+	/** The renderer owns presentation geometry, not whether a background renderer
+	 * has a viewport. Inactive views keep bounded default dimensions independently
+	 * of this rectangle, so agent actions never require a route or focus change. */
 	setContentRect(rect: ContentRect | null): void {
 		this.contentRect = rect;
 		this.applyLayout();
@@ -443,8 +466,11 @@ export class TabRegistry {
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
 			const isActive = record === active;
-			record.view.setVisible(isActive && this.visible);
-			if (isActive && this.contentRect) record.view.setBounds(this.contentRect);
+			record.presented = isActive && this.visible && this.contentRect !== null;
+			record.view.setBounds(
+				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
+			);
+			record.view.setVisible(record.presented);
 		}
 	}
 
@@ -465,6 +491,7 @@ export class TabRegistry {
 		if (this.activeTabId === tabId) {
 			this.activeTabId = this.list().at(-1)?.tabId ?? null;
 		}
+		this.applyLayout();
 		this.onChanged();
 		return record;
 	}

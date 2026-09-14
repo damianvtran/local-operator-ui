@@ -141,6 +141,13 @@ export class ApprovalStore {
 	private onceGrants: OnceGrants = {};
 	/** Receipts for displaced requesters (see `access-flow.ts`). */
 	private tombstones: AccessTombstones = {};
+	/** Consumed once grants authorize one committed document, not every future
+	 * document on that origin. Revocation invalidates in-flight admissions too. */
+	private revision = 0;
+	private documents = new Map<
+		string,
+		{ origin: string; requester: string; epoch: number; revision: number }
+	>();
 
 	constructor(options: ApprovalStoreOptions) {
 		this.path = join(options.dir, APPROVALS_FILENAME);
@@ -232,6 +239,69 @@ export class ApprovalStore {
 				authority: displayAuthority(url),
 				reason: this.refusalReason(url),
 			},
+		);
+	}
+
+	/** Admission is captured once, but revocation remains authoritative while an
+	 * asynchronous navigation is in flight. A receipt is never transferable. */
+	admit(
+		url: URL,
+		requester: string,
+	): { viaOnceGrant: boolean; approved: (candidate: URL) => boolean } {
+		const { viaOnceGrant } = this.ensureTopLevelAccess(url, requester);
+		const revision = this.revision;
+		return {
+			viaOnceGrant,
+			approved: (candidate) =>
+				this.originAllowed(candidate) ||
+				(viaOnceGrant &&
+					revision === this.revision &&
+					candidate.origin === url.origin),
+		};
+	}
+
+	rememberDocument(
+		token: string,
+		url: URL,
+		requester: string,
+		epoch: number,
+		admitted: (url: URL) => boolean,
+	): void {
+		if (!admitted(url)) this.refuseDocument(url);
+		this.documents.set(token, {
+			origin: url.origin,
+			requester,
+			epoch,
+			revision: this.revision,
+		});
+	}
+
+	documentAllowed(
+		token: string,
+		url: URL,
+		requester: string,
+		epoch: number,
+	): boolean {
+		if (this.originAllowed(url)) return true;
+		const receipt = this.documents.get(token);
+		return (
+			!!receipt &&
+			receipt.origin === url.origin &&
+			receipt.requester === requester &&
+			receipt.epoch === epoch &&
+			receipt.revision === this.revision
+		);
+	}
+
+	forgetDocument(token: string): void {
+		this.documents.delete(token);
+	}
+
+	refuseDocument(url: URL): never {
+		throw new BrowserHostError(
+			"origin_not_allowed",
+			`the user has not approved ${url.origin} for this document; request access before driving it`,
+			{ origin: url.origin, reason: this.refusalReason(url) },
 		);
 	}
 
@@ -520,6 +590,7 @@ export class ApprovalStore {
 		this.store.origins = {};
 		this.store.siteGrants = { version: 1, grants: {} };
 		this.store.records = [];
+		this.resetPending();
 		this.persist();
 		this.onChanged();
 		return removed;
@@ -528,6 +599,8 @@ export class ApprovalStore {
 	/** Drop everything about the pending flow. Used by the host-off toggle, which
 	 * tears the state file down so discovery is honest. */
 	resetPending(): void {
+		this.revision += 1;
+		this.documents.clear();
 		this.queue = [];
 		this.results = {};
 		this.onceGrants = {};

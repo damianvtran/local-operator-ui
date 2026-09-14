@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type BrowserWindow, type Event, WebContentsView, app } from "electron";
 import { ApprovalStore } from "./approvals";
@@ -6,6 +5,7 @@ import { CdpPool } from "./cdp";
 import type { DriveableView } from "./electron-types";
 import { BrowserHost } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
+import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
 import {
 	BROWSER_PARTITION,
@@ -29,6 +29,7 @@ import {
 	configurePslRules,
 	domainScopeAvailable,
 } from "./vendor/driver/origin-policy";
+import { PSL_RULES } from "./vendor/driver/psl.gen";
 
 /**
  * The browser host: wiring, lifecycle, and the per-view security handlers.
@@ -138,14 +139,9 @@ export async function startBrowserHost(
 		log,
 	});
 
-	// The public-suffix rules the `domain` approval scope needs. The vendored
-	// `origin-policy` (design 12.2) takes them by injection rather than importing the
-	// generated table, so this reads an OPTIONAL file and reports the consequence
-	// instead of failing: without rules, no broad-domain option is offered and no
-	// stored domain grant is matched. Exact-origin behaviour is untouched — see
-	// `vendor/driver/origin-policy.ts`'s ADAPTED note (and PROVENANCE.json's
-	// `patches`) for why this is fail-closed.
-	configurePslRules(readOptionalPslRules(options.userDataDir, log));
+	// Policy and data share one immutable vendoring pin. A writable userData
+	// file must not silently redefine which public suffixes admit broad grants.
+	configurePslRules(PSL_RULES);
 	const cdp = new CdpPool({ log });
 	/** Child views by tab id, so close and quit can release each one, and a
 	 * webContents that dies on its own can be matched back to its tab. */
@@ -189,9 +185,17 @@ export async function startBrowserHost(
 	}
 
 	const ownership = new OwnershipLedger({
+		mayAdopt: (token, requester) => {
+			const record = registry.requireSurface(token);
+			return (
+				record.handedTo === requester.slice("session:".length) &&
+				!record.allocationId
+			);
+		},
 		closeTab: async (token) => {
 			try {
 				const record = registry.requireSurface(token);
+				approvals.forgetDocument(token);
 				registry.destroy(record.tabId);
 			} catch {
 				// Already gone is the finished state, not a pending obligation.
@@ -327,8 +331,9 @@ export async function startBrowserHost(
 		// Popups: DENY everything, and do not auto-open the URL. The main window's
 		// own handler is deliberately not copied: its trusted-auth-domain allowlist
 		// exists for the app's own OAuth popup, while a driven page's `window.open`
-		// is arbitrary web content. An auth redirect inside a driven page navigates
-		// the same tab, which is what a browser does.
+		// is arbitrary web content. Only same-tab HTTP(S) navigation is supported;
+		// this is not popup OAuth parity. POST bodies, window.opener and postMessage
+		// exchanges cannot be recreated safely from a blocked popup's URL.
 		contents.setWindowOpenHandler((details) => {
 			if (HTTP_SCHEME.test(details.url)) {
 				log(
@@ -378,10 +383,15 @@ export async function startBrowserHost(
 		// page-initiated ones are all covered.
 		contents.on("did-navigate", (_event, url) => {
 			registry.bumpEpoch(tabId);
+			// Returning to an approved site must not expose logs buffered while
+			// an autonomous unapproved document occupied this same WebContents.
+			stopLogCapture(contents.id);
+			startLogCapture(contents.id);
 			log(`[browser] tab ${tabId} navigated to ${url}`);
 		});
-		contents.on("did-navigate-in-page", (_event, url) => {
-			registry.bumpEpoch(tabId);
+		contents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
+			if (!isMainFrame) return;
+			registry.bumpEpoch(tabId, false);
 			log(`[browser] tab ${tabId} navigated in page to ${url}`);
 		});
 
@@ -420,24 +430,6 @@ function releaseView(
 		window.contentView.removeChildView(view);
 	} catch {
 		// The window itself may be closing; nothing to detach from.
-	}
-}
-
-/** The public-suffix data, if the install provides one. Absent is a supported
- * state: see the call site and `vendor/driver/origin-policy.ts`'s ADAPTED note. */
-function readOptionalPslRules(
-	userDataDir: string,
-	log: (message: string) => void,
-): string | null {
-	try {
-		const path = join(userDataDir, "browser", "psl.txt");
-		if (!existsSync(path)) return null;
-		const rules = readFileSync(path, "utf8");
-		log(`[browser] loaded public-suffix rules from ${path}`);
-		return rules;
-	} catch (error) {
-		log(`[browser] could not load public-suffix rules: ${String(error)}`);
-		return null;
 	}
 }
 
