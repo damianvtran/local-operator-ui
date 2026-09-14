@@ -44,8 +44,10 @@
 import {
 	DesktopControlError,
 	desktopResult,
+	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import { mcpKeys } from "@shared/api/local-operator/mcp-list";
+import { credentialsQueryKey } from "@shared/hooks/use-credentials";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { DesktopMcpState } from "../../../../../../shared/desktop-control-contract";
@@ -65,10 +67,23 @@ export type McpRefusal = "not-oauth" | "refused";
 export type McpRemedyControls = {
 	/** Start the row's remedy. The GRANT is confirmed by the caller first. */
 	press: (row: McpServerRow) => void;
+	/**
+	 * Write the row's credentials and reconnect it (the key remedy).
+	 *
+	 * Resolves `true` only when every credential was stored AND the reconnect was
+	 * accepted, so the caller keeps its dialog open on a press that did not take
+	 * rather than closing on the appearance of one.
+	 */
+	pressKey: (
+		row: McpServerRow,
+		values: Record<string, string>,
+	) => Promise<boolean>;
 	/** Cancel a running grant by operation id. */
 	cancel: (operationId: string) => void;
 	/** The row whose press is in flight, or `null`. */
 	pendingName: string | null;
+	/** The backend's own sentence for a failed credential write, or `null`. */
+	keyError: string | null;
 	/** The remembered refusal for a server, or `null`. */
 	refusalFor: (name: string) => McpRefusal | null;
 };
@@ -86,6 +101,7 @@ export function useMcpRemedy({
 	const [refusals, setRefusals] = useState<
 		Readonly<Record<string, McpRefusal>>
 	>({});
+	const [keyError, setKeyError] = useState<string | null>(null);
 
 	const explain = useCallback(
 		async (name: string, refused: DesktopControlError) => {
@@ -118,7 +134,11 @@ export function useMcpRemedy({
 
 	const press = useCallback(
 		(row: McpServerRow) => {
-			if (!sessionId || !row.remedy || row.remedy.kind === "words") return;
+			if (!sessionId || !row.remedy) return;
+			// `key` is the dialog's path (`pressKey`), and `words` is not an action: this
+			// function starts the two ONE-OP remedies and nothing else.
+			if (row.remedy.kind !== "grant" && row.remedy.kind !== "reconnect")
+				return;
 			const key = mcpKeys.list(sessionId);
 			setPendingName(row.name);
 			// A press clears what the last one learned: the next refusal may have a
@@ -186,10 +206,63 @@ export function useMcpRemedy({
 		[queryClient, sessionId],
 	);
 
+	/**
+	 * Write the row's credentials, then reconnect.
+	 *
+	 * Two operations, in this order, and the order is the point: the credential has
+	 * to exist before the reconnect builds a transport from it. The credential path
+	 * is the owner store's own (`credentials.update`, the op Settings → API
+	 * credentials writes through), because the server's config holds a `${NAME}`
+	 * reference rather than a value — see `mcp-key-dialog.tsx` for the backend
+	 * change this depends on, and for what that means against a backend without it.
+	 *
+	 * The reconnect is the `connect` control, whose response is the new snapshot, so
+	 * the row settles from this call rather than from the next 5 s tick.
+	 */
+	const pressKey = useCallback(
+		async (
+			row: McpServerRow,
+			values: Record<string, string>,
+		): Promise<boolean> => {
+			if (!sessionId) return false;
+			setPendingName(row.name);
+			setKeyError(null);
+			try {
+				for (const [key, value] of Object.entries(values)) {
+					await desktopResult({ op: "credentials.update", key, value });
+				}
+				// The credentials surface reads its own key, so a key entered here must not
+				// leave that list one edit behind.
+				void queryClient.invalidateQueries({ queryKey: credentialsQueryKey });
+				const envelope = await desktopResult<{ data: DesktopMcpState }>({
+					op: "mcp.control",
+					sessionId,
+					control: { action: "connect", name: row.name },
+				});
+				if (envelope?.data) {
+					queryClient.setQueryData(mcpKeys.list(sessionId), envelope.data);
+				} else {
+					void queryClient.invalidateQueries({
+						queryKey: mcpKeys.list(sessionId),
+					});
+				}
+				return true;
+			} catch (cause) {
+				// Authored copy only: a runtime exception's message is a stack-trace
+				// fragment, and this line is read by someone who just typed a secret in.
+				setKeyError(userFacingMessage(cause, "The key could not be saved."));
+				return false;
+			} finally {
+				setPendingName(null);
+			}
+		},
+		[queryClient, sessionId],
+	);
+
 	const refusalFor = useCallback(
 		(name: string) => refusals[name] ?? null,
 		[refusals],
 	);
 
-	return { press, cancel, pendingName, refusalFor };
+	return { press, pressKey, cancel, pendingName, keyError, refusalFor };
 }

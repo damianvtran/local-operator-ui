@@ -466,6 +466,19 @@ const wireNumber = (value: unknown): number | null => {
 };
 
 /**
+ * A list of NAMES off the wire (`environment_keys` / `header_keys`).
+ *
+ * `toWireList` is for record lists and would drop these: the payload publishes an
+ * array of strings here, and anything that is not one is dropped rather than
+ * stringified, so a backend that changed the shape cannot turn a name into
+ * `"[object Object]"` in a form field.
+ */
+const wireNames = (value: unknown): string[] =>
+	Array.isArray(value)
+		? value.map((entry) => wireText(entry)).filter(Boolean)
+		: [];
+
+/**
  * Flatten model-written text to one line.
  *
  * The activity string is a model's own sentence and may arrive with newlines or
@@ -1400,6 +1413,7 @@ const MCP_NOT_A_PROBLEM: readonly string[] = [
  */
 export type McpRemedy =
 	| { kind: "grant" }
+	| { kind: "key" }
 	| { kind: "reconnect" }
 	| { kind: "words"; label: string };
 
@@ -1470,6 +1484,16 @@ export type McpServerRow = {
 	 * `server_rejects_oauth` states as a hard refusal.
 	 */
 	transport: string | null;
+	/**
+	 * The credential field names the config declares: `environment_keys` for a stdio
+	 * child, `header_keys` for an HTTP server, in that order.
+	 *
+	 * The payload publishes NAMES only — `public_server_config`
+	 * (`mcp/desktop.py:92-116`) never sends a value — which is exactly what a
+	 * key-entry form needs: one field per name, no value to pre-fill and none to
+	 * leak into a frame.
+	 */
+	keyNames: string[];
 	/**
 	 * Whether this server's transport can do OAuth, or `null` for "unknown".
 	 *
@@ -1554,6 +1578,12 @@ export function deriveMcpServers(
 				typeof row.transport_oauth_supported === "boolean"
 					? row.transport_oauth_supported
 					: null;
+			// Names only, deduped, env before headers: one key can be declared by both a
+			// child's environment and a header map, and a form must not offer it twice.
+			const keyNames = [
+				...wireNames(row.environment_keys),
+				...wireNames(row.header_keys),
+			].filter((name, index, all) => all.indexOf(name) === index);
 			return {
 				name,
 				status,
@@ -1562,6 +1592,7 @@ export function deriveMcpServers(
 				// one reports the tools its last session knew about, and printing that
 				// beside `disconnected` would claim tools that are not reachable.
 				toolCount: status === "connected" ? wireNumber(row.tool_count) : null,
+				keyNames,
 				transport,
 				oauthSupported,
 				// Only while this row is still asking for something, unless the sign-in is
@@ -1581,7 +1612,12 @@ export function deriveMcpServers(
 				// and its tail is the only part that says which file it came from.
 				scope: wireText(row.owned_scope) || sourceBasename(row.source) || null,
 				remedy: problem
-					? mcpRemedyFor({ status, transport, oauthSupported })
+					? mcpRemedyFor({
+							status,
+							transport,
+							oauthSupported,
+							keyNames,
+						})
 					: null,
 				// Renderable only on a problem row: see the field's own note for why a
 				// stale startup failure must not sit under a healthy word.
@@ -1620,10 +1656,22 @@ export const mcpRemedyFor = (server: {
 	status: string;
 	transport: string | null;
 	oauthSupported: boolean | null;
+	/**
+	 * The credential field names the config declares, if any.
+	 *
+	 * A stdio child's `env` and an HTTP server's `headers` hold `$ {NAME}`
+	 * references, and the VALUES live in the owner credential store
+	 * (`~/.local-operator/credentials.json`, the same store Settings' API
+	 * credentials write). So a server whose transport cannot do OAuth is not
+	 * unfixable from here: where the config names a field, this surface can write
+	 * that credential and reconnect.
+	 */
+	keyNames: readonly string[];
 }): McpRemedy | null => {
 	if (server.status === "disconnected") return { kind: "reconnect" };
 	if (server.status !== "auth-required") return null;
 	if (server.transport === "stdio" || server.oauthSupported === false) {
+		if (server.keyNames.length > 0) return { kind: "key" };
 		return {
 			kind: "words",
 			label: MCP_WORDS["auth-required"],
