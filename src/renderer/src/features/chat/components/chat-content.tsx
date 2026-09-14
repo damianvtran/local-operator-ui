@@ -691,6 +691,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onChangeCwd={onChangeCwd}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
+								/*
+								 * The SAME derived model the header trigger and the pane read, handed
+								 * to the composer so its status row states the plan's size without a
+								 * second tally (spec § 3.2). `null` on every path with no canonical
+								 * session, which is also what keeps the row off a legacy pane.
+								 */
+								runDetails={runDetails}
 								isSmallView={isSmallView}
 							/>
 						)}
