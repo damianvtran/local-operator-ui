@@ -93,6 +93,48 @@ export const SEND_UNCONFIRMED_MESSAGE =
 	"The send could not be confirmed. Retry this draft.";
 
 /**
+ * The read window's refusal, as a category.
+ *
+ * A send addressed to a session whose guard read (`sessions.get`) has not
+ * answered is refused by the store, because commit-first puts the view on that
+ * session one round trip before anything has confirmed it still exists. Like
+ * `UNCONFIRMED_SEND_CODE`, this is a code rather than a string comparison on
+ * the copy: the sentence below is expected to be reworded, and matching prose
+ * would silently stop matching.
+ *
+ * Two consumers read it, and neither can key off the copy. `chat-page` retires
+ * the notice when the window it describes closes, the same way
+ * `unresolved_attachment` retires its own on an observable condition. And the
+ * composer WITHHOLDS its generic retry hint for this code: the hint is the
+ * alert's "what to do" half, and "send it again" is refused by this same window
+ * for exactly as long as the notice is on screen, so the sentence carries its
+ * own statement of the wait instead (UX round 3, U9).
+ */
+export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
+
+/**
+ * What a send refused by the read window says, in the composer's own row.
+ *
+ * This refusal used to be silent, which is a real defect and not a stylistic
+ * one: the user pressed Enter and the app did nothing at all - no request, no
+ * line, no explanation - for as long as the read took, and when the backend
+ * was dead that was the rest of the session (UX round 2, U8). The refusal
+ * itself is right; saying nothing about it was not.
+ *
+ * The words follow branding section 8: what happened (the message was not
+ * sent), what it means (this chat is not ready for messages yet), and what to
+ * do. The "what to do" half is the sentence itself rather than the composer's
+ * generic "Your message is still in the composer. Send it again.", which is
+ * suppressed for this code (see above): a retry is refused by the read window
+ * for as long as the window lasts, and this sentence cannot outlive it, so
+ * instructing a retry would name the one action that cannot succeed yet. What is
+ * true is that the send works once the wait ends - the read's own answer, the
+ * session's live frame, or the read's 30 s deadline.
+ */
+export const SESSION_UNVALIDATED_MESSAGE =
+	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
+
+/**
  * The one place a composer value becomes a send PAYLOAD.
  *
  * The unchanged-payload guard compares byte-for-byte, because a retry of a
@@ -211,13 +253,48 @@ export function panelIdentityFor(
  *
  * 413 and 422 are raised before the prompt reaches the session (the reasoning is
  * spelled out on the un-latch below), so the message provably does not exist on
- * the owner. Every other failure is unknowable.
+ * the owner. The read window's refusal is the third case and the same kind of
+ * fact: it is raised before the draft is even touched, so nothing reached the
+ * owner either. Every other failure is unknowable.
  */
 export function isRefusedBeforeAdmission(error: unknown): boolean {
 	return (
-		error instanceof DesktopControlError &&
-		(error.status === 413 || error.status === 422)
+		(error instanceof DesktopControlError &&
+			(error.status === 413 || error.status === 422)) ||
+		/*
+		 * The read window's own refusal belongs in this answer, not beside it. It
+		 * is raised before anything is written to the draft and before the
+		 * transport is reached, so "nothing reached the owner" is exactly as true
+		 * of it as of a 413 - and the composer reads this one predicate to decide
+		 * whether the text goes back in the box (`false`) or stays out because the
+		 * outcome is unknowable (`SEND_HELD`). A second copy of that judgement at
+		 * the call site is how the two come to disagree about one refusal.
+		 */
+		(error instanceof UserFacingError &&
+			error.code === SESSION_UNVALIDATED_CODE)
 	);
+}
+
+/**
+ * Whether a send addressed to `sessionId` is inside the guard read's window.
+ *
+ * Extracted and exported for the same reason `draftIdentityFor` and
+ * `panelIdentityFor` are: a rule that only exists inside one component is a rule
+ * nothing exercises. `scripts/session-switch.test.mjs` drives a real
+ * `openSession` and asserts the refusal through the store it belongs to, so a
+ * regression in the gate - dropping a term, or comparing the wrong id - fails a
+ * case instead of shipping.
+ *
+ * The window has no live term of its own here because it does not need one any
+ * more: `confirmSessionLive` closes it when the session's stream proves the
+ * session exists, so a second condition at the call site would be a second
+ * answer to a question the store already answers (see `validatingSessionId`).
+ */
+export function isSessionUnvalidated(
+	validatingSessionId: string | null,
+	sessionId: string | null | undefined,
+): boolean {
+	return Boolean(sessionId) && validatingSessionId === sessionId;
 }
 
 /** Create and admission are intentionally separate receipts. A response lost
@@ -242,6 +319,33 @@ export async function admitChatDraft(
 	onEchoPainted?: () => void,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
+	/*
+	 * THE READ WINDOW'S GATE, and it lives here rather than at the call site
+	 * because "a message may not be admitted against a session nothing has
+	 * confirmed yet" is a property of admission, not of one screen's send button.
+	 *
+	 * Commit-first (see `openSession`) puts the view on the target one round trip
+	 * before `sessions.get` has said whether it still exists, and
+	 * `validatingSessionId` is that window. A message admitted inside it would be
+	 * addressed to a session that may be gone - so it is refused here, before the
+	 * draft is latched and before the transport is reached, which is also what
+	 * makes the refusal a `false` at the composer rather than a held claim (see
+	 * `isRefusedBeforeAdmission`).
+	 *
+	 * `UserFacingError` rather than a bare `null`, deliberately. `null` is this
+	 * function's answer for "the same send is already in flight" and for the
+	 * unchanged-payload guard, and the composer cannot tell the three apart from
+	 * it - which is exactly how this refusal stayed silent for a whole review
+	 * round (UX round 2, U8). The error carries the sentence the composer shows.
+	 *
+	 * Only a send that NAMES a session can be refused: creating one addresses no
+	 * existing target, so the create path is untouched.
+	 */
+	if (isSessionUnvalidated(store.validatingSessionId, sessionId))
+		throw new UserFacingError(
+			SESSION_UNVALIDATED_MESSAGE,
+			SESSION_UNVALIDATED_CODE,
+		);
 	const previous = store.drafts[key];
 	if (previous?.pending) return null;
 	// Normalized once, here, and used for the guard, the stored claim and the
@@ -462,7 +566,60 @@ type CanonicalSessionsState = {
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
 	sessionByAgent: Record<string, string>;
-	pendingSessionId: string | null;
+	/**
+	 * The session whose guard read (`sessions.get`) has not answered yet.
+	 *
+	 * This is the one job the removed `pendingSessionId` still had that the view
+	 * needs: it is what refuses a send addressed to a session the app has NOT yet
+	 * confirmed exists. The read window used to be gated that way, and commit-first
+	 * moved the read behind the commit without moving the target's validation, so
+	 * the guarantee has to survive the reordering.
+	 *
+	 * TWO CLOSING BOUNDS, and both are the store's to keep. The read's own answer
+	 * is the first (see `openSession`), and a read that never answers still closes
+	 * the window: every desktop control runs under `withDeadline` at
+	 * `DESKTOP_REQUEST_TIMEOUT_MS` (30 s; see `desktop-api`), and that rejection
+	 * takes the same rollback path as any other failed read. The second bound is a
+	 * live frame from the session's own stream - proof it exists - and
+	 * `confirmSessionLive` is how the panel reports it. It is kept because it is
+	 * the EARLIER bound: on a read that is merely slow it opens the gate on the
+	 * session's own proof instead of at the 30 s deadline, which is the wait the
+	 * deleted pending banner used to give an escape from (UX round 2, U8).
+	 *
+	 * A window is opened only for a switch that MOVES the view: `openSession`
+	 * returns early when the target is already active and no draft is staged. The
+	 * one shape that escapes it - the active row clicked while a draft IS staged,
+	 * a real move because it leaves the draft - opens a window on a session the
+	 * panel is already showing, and there the live-frame bound cannot fire: the
+	 * panel is keyed on the session once its draft learns the id
+	 * (`panelIdentityFor`), so the stream effect's `[sessionId, canonical.status]`
+	 * deps are unchanged across that click and a frame that already arrived is
+	 * never re-reported. That window is bounded by the read alone - its answer, or
+	 * the 30 s `withDeadline` when it never answers.
+	 *
+	 * No banner, spinner or Escape handler sits on this path any more: re-basing
+	 * the old "Opening chat…/Cancel" chrome on this field would paint that banner
+	 * over a panel that has already switched - the wait it named is the panel's
+	 * own hydration now - and the sidebar row's selected state is the
+	 * acknowledgement. What this field DOES own on screen is the bounded sentence
+	 * a refused send shows in the composer's own alert row (see
+	 * `SESSION_UNVALIDATED_MESSAGE`), which lives exactly as long as the window
+	 * does.
+	 */
+	validatingSessionId: string | null;
+	/**
+	 * A failure of the user's own NAVIGATION, held apart from `error`, which is the
+	 * CATALOGUE's health.
+	 *
+	 * While both were one field the rollback's failure sentence was invisible: a
+	 * failed switch rolls `activeSessionId` back, which re-fires the page's
+	 * `fetchSessions` effect, and `fetchSessions` clears `error` when it starts
+	 * (`:553`). Measured, the sentence was written and erased 4.5-8.1 ms later, and
+	 * 0 of ~1,100 sampled frames contained it - so the switch's own safety net
+	 * reported a failure to nobody. A five-second poll may clear the catalogue's
+	 * health; only the user can clear this, by navigating again.
+	 */
+	navigationError: string | null;
 	loading: boolean;
 	truncated: boolean;
 	error: string | null;
@@ -475,8 +632,18 @@ type CanonicalSessionsState = {
 		requestId?: string,
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
+	/**
+	 * Close the read window because proof of the session's existence arrived.
+	 *
+	 * See `validatingSessionId` for why this is the window's second bound: the
+	 * read's answer closes it too, and a read that never answers is closed by its
+	 * own 30 s deadline, but on a slow read the frame is what keeps the refusal to
+	 * the stream's latency instead of the deadline. Guarded on the id, so a
+	 * snapshot belonging to an abandoned target cannot vouch for the session the
+	 * user is actually on.
+	 */
+	confirmSessionLive: (sessionId: string | null) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
-	cancelOpen: () => void;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	finishDraft: (key: string, sessionId: string) => void;
@@ -542,7 +709,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			activeDraftKey: null,
 			drafts: {},
 			sessionByAgent: {},
-			pendingSessionId: null,
+			validatingSessionId: null,
+			navigationError: null,
 			loading: false,
 			truncated: false,
 			error: null,
@@ -608,37 +776,195 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			setActiveSession: (activeSessionId) => {
 				++navigationGeneration;
-				set({ activeSessionId, activeDraftKey: null, pendingSessionId: null });
+				set({
+					activeSessionId,
+					activeDraftKey: null,
+					validatingSessionId: null,
+					navigationError: null,
+				});
+			},
+			/*
+			 * A guard rather than an assignment: a live frame belongs to the session
+			 * that streamed it, and the view may already be somewhere else. Clearing
+			 * unconditionally here would let an abandoned target's own snapshot vouch
+			 * for a window the user is no longer waiting in.
+			 */
+			confirmSessionLive: (sessionId) => {
+				if (sessionId && get().validatingSessionId === sessionId)
+					set({ validatingSessionId: null });
 			},
 			openSession: async (sessionId) => {
+				/*
+				 * RE-SELECTING THE ROW THE VIEW IS ALREADY ON IS A NO-OP.
+				 *
+				 * The window below has two closing bounds and only one of them is
+				 * reachable for a session that is already active: the live frame is
+				 * reported by an effect keyed on the session and its stream status
+				 * (`chat-page`), and neither changes when the same row is clicked again -
+				 * so the frame that already arrived is never reported for the new window,
+				 * and the read's latency (up to its 30 s deadline) is the only thing that
+				 * closes it. That window refuses sends and reports why, which is a refusal
+				 * the user cannot act on, for a switch that moves nothing: the view, the
+				 * draft and the URL are already at the target, so `true` is the answer a
+				 * `select` navigates on.
+				 *
+				 * `activeDraftKey` is part of the condition rather than decoration: a
+				 * staged draft is a different view of the same session (the sidebar does
+				 * not mark the row while one is staged), so a click that leaves it is a
+				 * real move and still runs the whole switch.
+				 */
+				if (get().activeSessionId === sessionId && !get().activeDraftKey)
+					return true;
 				const generation = ++navigationGeneration;
-				set({ pendingSessionId: sessionId, error: null });
+				/*
+				 * COMMIT FIRST, VALIDATE BEHIND THE COMMIT.
+				 *
+				 * This used to await the `sessions.get` guard read before touching
+				 * `activeSessionId`, which put a whole IPC-plus-HTTP round trip on the
+				 * critical path of every switch: the panel only mounted - and the
+				 * transcript subscription only opened - AFTER the read came back, and
+				 * until then the user kept looking at the conversation they were
+				 * leaving with an "Opening chat…" banner over it. Measured on
+				 * `scripts/session-switch-latency.mjs`, that serialisation is the whole
+				 * of `click → committed` (0.1 ms of it is the store write; the rest is
+				 * the read), and the hydration that follows is unchanged either way.
+				 *
+				 * So the intent is committed now and the read that used to gate it
+				 * becomes what it always was for the user - a check whose result is
+				 * never rendered. What it still owns is the FAILURE path, and that is
+				 * the reason it cannot simply be deleted: `sessions.get` is the only
+				 * thing that tells us the target exists. A read that fails puts the view
+				 * back exactly where it was - previous session AND previous draft - so a
+				 * switch to a session that is gone ends as an error with the outgoing
+				 * conversation still on screen, never as a chat index that does not
+				 * open.
+				 *
+				 * What is deliberately NOT dropped:
+				 *
+				 * - The generation guard, in both directions. A second click bumps
+				 *   `navigationGeneration`, so a slow first read neither clears the
+				 *   newer switch's state nor rolls it back when it fails.
+				 * - The pending BANNER is gone, and with it the three sites that could no
+				 *   longer render once this path stopped setting a pending id: the
+				 *   "Opening chat…/Cancel" row over the panel, its Escape handler and the
+				 *   sidebar row's spinner. Holding that banner would paint "Opening chat…"
+				 *   over a panel that has already switched, beside the panel's own
+				 *   hydration placeholder that says the same thing honestly; the sidebar
+				 *   row's own selected state is the immediate acknowledgement, and it is a
+				 *   property of the commit rather than of a timer.
+				 *
+				 * - What the pending id ALSO did is kept, under its real name. It gated a
+				 *   send for the duration of the read, and commit-first moved the read
+				 *   behind the commit rather than removing it, so `validatingSessionId`
+				 *   carries that half: while the target's existence is unverified a send
+				 *   addressed to it is refused (the composer keeps the text) instead of
+				 *   being issued at a session that may be gone. Nothing paints it, so no
+				 *   unreachable affordance comes back with it.
+				 *
+				 * The composer is enabled during HYDRATION, exactly as it already was:
+				 * clearing the pending flag at the commit used to happen one round trip
+				 * BEFORE the transcript arrived, so that window is not new, it just starts
+				 * earlier. The READ window is the one that was gated, and that gate is the
+				 * `validatingSessionId` refusal rather than a disabled composer, because
+				 * the panel has already told the user they are in the target and the two
+				 * can only disagree for one round trip.
+				 */
+				const previous = {
+					activeSessionId: get().activeSessionId,
+					activeDraftKey: get().activeDraftKey,
+				};
+				set({
+					activeSessionId: sessionId,
+					activeDraftKey: null,
+					validatingSessionId: sessionId,
+					navigationError: null,
+					error: null,
+				});
 				try {
-					// A candidate read does not acknowledge output or switch the current view.
-					// Only a successful latest intent commits; failed reads keep outgoing work.
 					await desktopResult({ op: "sessions.get", sessionId });
+					/*
+					 * A newer intent owns the view by the time this read answers, so this
+					 * call reports `false`.
+					 *
+					 * The return value is what routes: `select` navigates to
+					 * `/chat/<id>` only for a `true`, and without this guard a slow first
+					 * read would rewrite the URL back to the session the user has already
+					 * left. The commit above was latest-wins by construction - an older
+					 * read cannot re-commit an older target - so this is the URL half of
+					 * the same rule, not a second one.
+					 */
 					if (generation !== navigationGeneration) return false;
-					set({
-						activeSessionId: sessionId,
-						activeDraftKey: null,
-						pendingSessionId: null,
-					});
+					// The read answered for THIS intent, so the target is no longer
+					// unverified - and only this intent may clear the flag: a late success
+					// must not vouch for a newer target nobody has read yet.
+					if (get().validatingSessionId === sessionId)
+						set({ validatingSessionId: null });
 					return true;
 				} catch (error) {
+					// Only the latest intent may roll back: a user who has already
+					// clicked elsewhere is not waiting on this read, and undoing their
+					// switch would be a worse lie than the one this path exists to
+					// avoid.
 					if (generation === navigationGeneration)
 						set({
-							pendingSessionId: null,
-							error:
+							/*
+							 * RE-VALIDATE THE SNAPSHOT AGAINST THE STORE IT IS WRITTEN INTO.
+							 *
+							 * `previous` was captured at the click and the guard read is an
+							 * arbitrary window, so anything the user did inside it has already
+							 * happened by the time this runs. The one thing that can happen to
+							 * the OUTGOING draft is that it FINISHES: a send in flight when the
+							 * row was clicked lands, `finishDraft` deletes the row and moves
+							 * `activeSessionId` only while the view is still on that draft -
+							 * which the commit above has just made false. Restoring the key
+							 * verbatim then leaves the view on a draft row that no longer
+							 * exists (`drafts[key]` undefined, the panel keyed on a dead draft),
+							 * and a send from it mints a FRESH `createRequestId` (`:281-285`)
+							 * and opens a SECOND session for a conversation that already has
+							 * one - with the first now unreachable from the view. The identical
+							 * interleaving on the pre-change store ended coherently, so that is
+							 * a regression this path introduced rather than an inherited quirk.
+							 *
+							 * So the snapshot is a candidate, not an instruction: the draft half
+							 * is restored only if its row survived. The SESSION half is restored
+							 * unconditionally, because the read only ever disproved the TARGET -
+							 * nothing happened to where the user came from.
+							 *
+							 * The alternative fix - bumping `navigationGeneration` in
+							 * `finishDraft`/`discardDraft` so a stale rollback cannot win - is
+							 * wrong for every caller of this guard, not merely this one. That
+							 * counter means "a newer navigation owns the view", and it is ALSO
+							 * what suppresses the URL rewrite on success (`select` navigates
+							 * only on a `true`). A send landing mid-read would therefore make a
+							 * successful switch report `false` and leave `/chat/<old>` in the
+							 * address bar while the panel showed the new chat; and on failure it
+							 * would skip this rollback entirely, leaving the user on a target
+							 * the read has just proved is gone. Re-validating the write is the
+							 * fix that is correct for every caller.
+							 *
+							 * Deliberately NOT done: rebinding to whatever session the finished
+							 * draft materialised. That id is passed to `finishDraft` and dropped
+							 * with the row, so reading it here would need a second channel from
+							 * `finishDraft` back into navigation - a field whose only writer is
+							 * this rare interleaving. The fallback is coherent instead: with no
+							 * draft and no previous session the page renders its "Start a chat"
+							 * landing, and the session the send created is in the catalogue the
+							 * sidebar is already re-reading.
+							 */
+							activeSessionId: previous.activeSessionId,
+							activeDraftKey:
+								previous.activeDraftKey !== null &&
+								get().drafts[previous.activeDraftKey] !== undefined
+									? previous.activeDraftKey
+									: null,
+							validatingSessionId: null,
+							navigationError:
 								error instanceof Error
 									? error.message
 									: "Chat could not open. Retry.",
 						});
 					return false;
 				}
-			},
-			cancelOpen: () => {
-				++navigationGeneration;
-				set({ pendingSessionId: null });
 			},
 			stageDraft: (target, fresh = false) => {
 				++navigationGeneration;
@@ -649,7 +975,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				const existing = get().drafts[key];
 				set((state) => ({
 					activeDraftKey: key,
-					pendingSessionId: null,
+					validatingSessionId: null,
+					navigationError: null,
 					error: null,
 					drafts: {
 						...state.drafts,

@@ -90,6 +90,15 @@ const Frame = ({
 	status = "live",
 	failure = null,
 	isSmallView = false,
+	/*
+	 * A fixture of rows handed in rather than read: the reader's question is
+	 * answered `true` by default, and the hold cannot fire (it needs zero
+	 * records). The admitted-send stories pass `false` deliberately - a pane whose
+	 * history has not been read is the row of the pane matrix where the wait line
+	 * must outrank the loading placeholder, and the New-chat path the operator
+	 * reported is exactly that row (`transcript-pane.ts`).
+	 */
+	hydrated = true,
 	openRows = false,
 }: {
 	records: TranscriptRecord[];
@@ -115,6 +124,8 @@ const Frame = ({
 	status?: "connecting" | "live" | "reconnecting" | "unavailable";
 	/** The published failure notice, as the stream hands it over. */
 	failure?: SessionFailureNotice | null;
+	/** Has this conversation's durable history been read? */
+	hydrated?: boolean;
 	/** The small-view wrapper of the same transcript. */
 	isSmallView?: boolean;
 	/**
@@ -154,11 +165,18 @@ const Frame = ({
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
-				isSmallView={isSmallView}
+isSmallView={isSmallView}
 				status={status}
 				failure={failure}
-				onReconnect={() => {}}
-			/>
+				/*
+	 * The admitted-send stories pass `false` and the rest take the default:
+				 * see `Frame`'s own note. A row-less pane whose history has not been read
+				 * is the row where the wait line has to outrank the placeholder, and that
+				 * is the state the operator's New-chat report is in.
+				 */
+				 hydrated={hydrated}
+				 onReconnect={() => {}}
+				 />
 		</div>
 	);
 };
@@ -917,6 +935,7 @@ export const AdmittedSendBeforeFirstFrame: Story = {
 		<Frame
 			starting
 			startingAfterId="s1"
+			hydrated={false}
 			height={220}
 			records={
 				appendPendingUser(
@@ -944,6 +963,7 @@ export const AdmittedSendBeforeFirstFrameSmallView: Story = {
 		<Frame
 			starting
 			startingAfterId="s1"
+			hydrated={false}
 			isSmallView
 			height={220}
 			records={
@@ -974,6 +994,7 @@ export const AdmittedSendTransportDown: Story = {
 		<Frame
 			starting
 			startingAfterId="s1"
+			hydrated={false}
 			status="unavailable"
 			failure={streamFailureNotice(null)}
 			height={220}
@@ -1007,6 +1028,13 @@ export const AdmittedSendBeforeFirstFrameBaseline: Story = {
 	render: () => (
 		<Frame
 			height={220}
+			/*
+			 * The same row of the pane matrix as its pair (`hydrated={false}`), so the
+			 * two frames differ by the added line and by nothing else: with the
+			 * default the baseline would also differ in which claim the pane's own
+			 * hold makes, and the pair would no longer isolate the change.
+			 */
+			hydrated={false}
 			records={
 				appendPendingUser(
 					EMPTY_TRANSCRIPT,

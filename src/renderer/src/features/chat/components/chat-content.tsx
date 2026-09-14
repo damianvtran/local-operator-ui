@@ -23,10 +23,8 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import {
-	CanonicalTranscript,
-	canonicalTranscriptSpeaks,
-} from "../canonical/canonical-transcript";
+import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
@@ -83,6 +81,8 @@ type ChatContentProps = {
 	onTabChange: (tab: "chat" | "raw") => void;
 	agentName: string;
 	description: string;
+	/** Held, not filled, until some source names the identity; see `ChatHeaderProps`. */
+	descriptionPending?: boolean;
 	onOpenOptions: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
@@ -104,6 +104,13 @@ type ChatContentProps = {
 		attachments: string[],
 		/** See `MessageInputProps.onSendMessage` - the echo seam's paint callback. */
 		onEchoPainted?: () => void,
+		/*
+		 * Passed straight through to the page's `send`. See `MessageInputProps`
+		 * for why the typed text travels beside the composed payload: the gate
+		 * answer path must resolve an option ordinal against what the user typed,
+		 * not against a payload a staged reply has already wrapped.
+		 */
+		typed?: string,
 	) => SendOutcome | Promise<SendOutcome>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
@@ -163,6 +170,21 @@ type ChatContentProps = {
 		 */
 		startingAfterId?: string | null;
 		onStop: () => void;
+		/**
+		 * Answer the pending `ask` gate with an option's label.
+		 *
+		 * Travels beside `onStop` because it is the same kind of thing: a session
+		 * action the transcript can trigger but does not own. `SessionPanel` holds
+		 * the send lock and the error surface, so the answer has to be raised to
+		 * it rather than posted from the row that was clicked.
+		 */
+		onAnswer?: (label: string) => void;
+		/**
+		 * What `SessionPanel` knows about the gate it just answered. Passed through
+		 * untouched: the card's hold and its refusal sentence are decided where the
+		 * request and its failure are, not re-derived here.
+		 */
+		answer?: { sending: boolean; refused: string | null } | null;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -252,6 +274,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onTabChange,
 		agentName,
 		description,
+		descriptionPending,
 		onOpenOptions,
 		isOptionsSidebarOpen,
 		onCloseOptions,
@@ -540,6 +563,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						<ChatHeader
 							agentName={agentName}
 							description={description}
+							descriptionPending={descriptionPending}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							fileCount={mentionedFileCount}
@@ -578,7 +602,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											isSmallView={isSmallView}
 											status={canonical.view.status}
 											failure={canonical.view.failure}
+											/*
+											 * The reader's own question, and the same property the band
+											 * below reads as `isHydrating`: the pane's hold and the
+											 * band's claim are one decision with two readers, so
+											 * they are handed one value rather than each deriving its
+											 * own.
+											 */
+											hydrated={canonical.view.hydrated}
 											onReconnect={canonical.view.retry}
+											onAnswer={canonical.onAnswer}
+											// The composer's own in-flight flag, reused: one
+											// answer per question, whichever surface starts it.
+											answering={Boolean(canonical.admitting)}
+											// This panel's own record of the gate it pressed, so the
+											// card holds itself disabled after an answer instead of
+											// coming back live against a gate the owner already took.
+											answer={canonical.answer ?? null}
 										/>
 									) : (
 										<MessagesView
@@ -660,7 +700,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// applied for this session - so the loading state holds
 								// until the app genuinely knows, whether that takes a retry
 								// or not.
-								isHydrating={canonical ? !canonical.view.hydrated : false}
+								//
+								// And `hydrated` is not the band's question on its own
+								// either: a pane that is already saying what went wrong is
+								// not "still hydrating", so the band takes the same
+								// statement term the pane's hold does. The two readers
+								// derive one question rather than one of them reading a
+								// proxy for it (and the answer is unaffected today: a
+								// speaking pane is handed `CANONICAL_NONEMPTY` above, so
+								// the greeting is already withheld - this keeps the two
+								// expressions from drifting apart).
+								isHydrating={
+									canonical
+										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
+										: false
+								}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={

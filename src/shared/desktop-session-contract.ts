@@ -148,6 +148,32 @@ export type PendingDesktopGate = {
 	question_index: number;
 	question_total: number;
 	/**
+	 * Index of the option the model recommends, into `options` AS CARRIED.
+	 *
+	 * ADDITIVE and OPTIONAL: `PendingRequest` has sent it since the ask-picker
+	 * contract landed, but a backend older than that omits the key entirely, so
+	 * this must be read as "a number or nothing" rather than defaulted to 0 —
+	 * defaulting would badge the first option on every ask a legacy backend
+	 * sends, which is a recommendation the model never made.
+	 *
+	 * `AskQuestion._shape` has ALREADY rotated the recommended option to index
+	 * 0 and set this to 0 to match, so it indexes the order as transmitted and
+	 * not the model's authored order. A consumer that re-sorts `options` must
+	 * therefore drop or recompute this value; this app renders the wire order,
+	 * so it can use it directly.
+	 */
+	recommended?: number | null;
+	/**
+	 * The `AskQuestion.persist` intent for a `secret: true` ask — whether the
+	 * answer is meant to be saved to the credential store rather than used
+	 * once.
+	 *
+	 * ADDITIVE and OPTIONAL for the same version-skew reason as `recommended`.
+	 * Carried here so the type matches the wire; the secret answer path is the
+	 * composer's masked input, which does not branch on this yet.
+	 */
+	persist?: boolean;
+	/**
 	 * The session's display name, for the notification banner only.
 	 *
 	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed

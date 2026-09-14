@@ -8,6 +8,8 @@
 
 export { AgentQuestion } from "./agent-question";
 export type { AgentQuestionProps } from "./agent-question";
+export { AskOptions } from "./ask-options";
+export type { AskOptionsProps } from "./ask-options";
 export { AgentReasoning } from "./agent-reasoning";
 export type { AgentReasoningProps } from "./agent-reasoning";
 export { DiffBlock } from "./diff-block";
