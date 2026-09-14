@@ -409,7 +409,10 @@ test("the fetching story photographs a state the container can now reach", async
  * asserted is the state the container would hand `UsageDialog` at that instant.
  */
 async function askLive(client, { hang = true } = {}) {
-	const observer = new QueryObserver(client, usageQueryOptions(undefined, false));
+	const observer = new QueryObserver(
+		client,
+		usageQueryOptions(undefined, false),
+	);
 	const unsubscribe = observer.subscribe(() => {});
 	await settle();
 
@@ -540,7 +543,10 @@ test("a second ask cannot be a state set, because that sends nothing", async () 
 	const client = newClient();
 	respond = async () => ({ status: 200, body: { result: payload("live") } });
 
-	const observer = new QueryObserver(client, usageQueryOptions(undefined, true));
+	const observer = new QueryObserver(
+		client,
+		usageQueryOptions(undefined, true),
+	);
 	const unsubscribe = observer.subscribe(() => {});
 	await settle(30);
 
@@ -766,7 +772,12 @@ test("the in-flight label distinguishes a cached read from a live ask", async ()
 	// U9: opening the view reads the backend's cache, and labelling that
 	// `Asking providers` claimed a provider probe the user never asked for.
 	const cachedRead = text(
-		renderDialog({ payload: null, loading: true, fetching: true, asked: false }),
+		renderDialog({
+			payload: null,
+			loading: true,
+			fetching: true,
+			asked: false,
+		}),
 	);
 	assert.match(cachedRead, /Reading cached usage/);
 	assert.doesNotMatch(cachedRead, /Asking providers/);

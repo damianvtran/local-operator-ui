@@ -54,6 +54,32 @@ export const CHAT_MEASURE =
 	"w-full @min-[750px]/chatcol:max-w-[900px] @min-[750px]/chatcol:mx-auto";
 
 /**
+ * The column width at which the composer's row stops being one line: above it
+ * the session readings sit inline between the working-directory chip and the
+ * controls, below it they take the row's own first line.
+ *
+ * It is `CHAT_MEASURE`'s own 750 rather than a second number, because the two
+ * describe the same moment - the column stops having room to spare - and a
+ * composer that changed shape at a width the measure did not know about would
+ * be a second breakpoint to keep in step.
+ */
+export const CHAT_ROW_INLINE_PX = 750;
+
+/**
+ * The column width at and below which the composer's working-directory chip
+ * drops its text and renders as its folder glyph alone.
+ *
+ * MEASURED, not chosen: the chip's text floor is 96px, and at a 240px column
+ * the row has 202px for attach (28) + chip (96 + 12 gap) + microphone (28) +
+ * send (28) + gaps - 204px of demand against 202px of supply, so the button
+ * line broke to a third line and the composer grew from 143.5px to 179.5px
+ * (design round 1, D1/D8). Named here beside the inline threshold because the
+ * two are the composer row's only width rules and reading one without the
+ * other is how they drift apart.
+ */
+export const CHAT_CHIP_ICON_ONLY_PX = 240;
+
+/**
  * The horizontal inset the shared measure resolves against, for the composer
  * band. `px-6` is 24px, and 24px is not a taste choice: it is exactly what the
  * transcript above insets its content by -- its own `p-4` (16px) PLUS the 8px

@@ -14,10 +14,10 @@ import { ProviderGrid } from "@features/providers/provider-grid";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
+import { useModelsStore } from "@shared/store/models-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { useModelsStore } from "@shared/store/models-store";
 import censusFixture from "./fixtures/auth-providers-0.50.0.json";
 import "@renderer/styles/index.css";
 
@@ -72,7 +72,10 @@ Object.defineProperty(document, "visibilityState", {
 	configurable: true,
 	get: () => "visible",
 });
-Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+Object.defineProperty(document, "hidden", {
+	configurable: true,
+	get: () => false,
+});
 
 /**
  * The census the healthy panel renders.

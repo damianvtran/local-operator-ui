@@ -96,7 +96,10 @@ test("a stalled config load reaches an actionable error within one deadline, not
 		retry: "shipped",
 	});
 
-	assert.ok(error, "a stalled load must settle into an error a user can act on");
+	assert.ok(
+		error,
+		"a stalled load must settle into an error a user can act on",
+	);
 	// The measurement that matters: one deadline, not two. At `retry: 1` this
 	// is ~60s, which is the symptom the issue was reported for.
 	assert.ok(

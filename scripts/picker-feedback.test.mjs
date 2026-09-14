@@ -40,8 +40,8 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -147,7 +147,8 @@ const rowHtml = (over = {}) =>
 	);
 
 /** The row's own class list, off the rendered element. */
-const classesOf = (html) => html.match(/^<div[^>]*\bclass="([^"]*)"/)?.[1] ?? "";
+const classesOf = (html) =>
+	html.match(/^<div[^>]*\bclass="([^"]*)"/)?.[1] ?? "";
 
 test("the active row's ground is not the ground it is drawn on", () => {
 	/*
@@ -191,7 +192,11 @@ test("the pointer's and the in-flight mark carry a floored role, not only a wash
 		/\boutline-control\b/,
 		"the pointer's mark carries a structural role; the wash alone is invisible in obsidian",
 	);
-	assert.match(hovered, /\bbg-accent-wash\b/, "and keeps the tint where it reads");
+	assert.match(
+		hovered,
+		/\bbg-accent-wash\b/,
+		"and keeps the tint where it reads",
+	);
 
 	const picked = classesOf(rowHtml({ isPicked: true }));
 	assert.match(
@@ -369,7 +374,10 @@ test("closing while busy is called Close, not Cancel", () => {
 	assert.equal(pickerPrimaryLabel({ busy: true, result: null }), "Close");
 	assert.equal(pickerPrimaryLabel({ busy: false, result: null }), "Close");
 	assert.equal(
-		pickerPrimaryLabel({ busy: false, result: { tone: "success", text: "ok" } }),
+		pickerPrimaryLabel({
+			busy: false,
+			result: { tone: "success", text: "ok" },
+		}),
 		"Done",
 	);
 	assert.equal(
@@ -423,10 +431,14 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 		noticeDetail: null,
 	});
 
-	const total = catalogueListing(undefined, {
-		isError: true,
-		error: new Error("the transport refused it"),
-	}, (error) => (error instanceof Error ? error.message : String(error)));
+	const total = catalogueListing(
+		undefined,
+		{
+			isError: true,
+			error: new Error("the transport refused it"),
+		},
+		(error) => (error instanceof Error ? error.message : String(error)),
+	);
 	assert.match(total.loadError ?? "", /transport refused/);
 	assert.equal(total.notice, null);
 
@@ -626,7 +638,10 @@ test("the handle reconciles the paint against the owner's own frames", () => {
 	// pending mark would be permanent, and with a looser comparison it would be
 	// dropped by the next unrelated frame instead.
 	assert.match(hook, /modelSelector\(frontend\?\.selected_model\) === painted/);
-	assert.match(hook, /modelSelector\(frontend\?\.effective_model\) === painted/);
+	assert.match(
+		hook,
+		/modelSelector\(frontend\?\.effective_model\) === painted/,
+	);
 	assert.match(hook, /const PENDING_MODEL_TIMEOUT_MS/);
 	assert.match(hook, /pendingModel: null,/);
 
@@ -728,7 +743,10 @@ test("the listbox owns the pointer, and clears it on the way out", () => {
 	 * the comment beside it had always claimed.
 	 */
 	assert.match(host, /tabIndex=\{-1\}/);
-	const contract = readFileSync(join(ROOT, "scripts/contrast-contract.mjs"), "utf8");
+	const contract = readFileSync(
+		join(ROOT, "scripts/contrast-contract.mjs"),
+		"utf8",
+	);
 	assert.match(
 		contract,
 		/picker option row selection ground/,

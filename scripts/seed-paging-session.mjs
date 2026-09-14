@@ -70,9 +70,10 @@ const WORDS =
 		" ",
 	);
 const prose = (n) =>
-	Array.from({ length: n }, () => WORDS[Math.floor(rand() * WORDS.length)]).join(
-		" ",
-	);
+	Array.from(
+		{ length: n },
+		() => WORDS[Math.floor(rand() * WORDS.length)],
+	).join(" ");
 
 const start = Date.now() / 1000 - ROWS * 60;
 const lines = [];
@@ -80,7 +81,11 @@ for (let i = 0; i < ROWS; i++) {
 	const user = i % 2 === 0;
 	// Every twentieth assistant row is a long block, so the transcript has rows
 	// tall enough to make a mis-measured anchor visible rather than plausible.
-	const words = user ? 6 + Math.floor(rand() * 14) : i % 20 === 1 ? 180 : 20 + Math.floor(rand() * 60);
+	const words = user
+		? 6 + Math.floor(rand() * 14)
+		: i % 20 === 1
+			? 180
+			: 20 + Math.floor(rand() * 60);
 	lines.push(
 		JSON.stringify({
 			id: id(),
@@ -89,17 +94,16 @@ for (let i = 0; i < ROWS; i++) {
 			payload: {
 				kind: "message",
 				role: user ? "user" : "assistant",
-				content: [{ text: `[row ${String(i).padStart(4, "0")}] ${prose(words)}` }],
+				content: [
+					{ text: `[row ${String(i).padStart(4, "0")}] ${prose(words)}` },
+				],
 			},
 		}),
 	);
 }
 
 writeFileSync(join(dir, "transcript.jsonl"), `${lines.join("\n")}\n`);
-writeFileSync(
-	join(dir, "created_at.json"),
-	JSON.stringify(start),
-);
+writeFileSync(join(dir, "created_at.json"), JSON.stringify(start));
 // The desktop marker is what lets the pool open this session without replaying
 // a frontend checkpoint to recover a working directory.
 writeFileSync(
