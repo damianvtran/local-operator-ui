@@ -1594,7 +1594,11 @@ const incident = (id, { text, raw, token, ...rest }) => ({
 	payload: {
 		kind: "custom",
 		custom_type: "session_incident",
-		details: { text, ...(raw === undefined ? {} : { raw }), ...(token ? { token } : {}) },
+		details: {
+			text,
+			...(raw === undefined ? {} : { raw }),
+			...(token ? { token } : {}),
+		},
 		...rest,
 	},
 });
@@ -1637,7 +1641,10 @@ test("an incident row is an error row whose message is inline, not its type name
 	// The supporting half — the harness's advice and its tail sentence — is what
 	// the disclosure is for now, rather than the whole message.
 	assert.match(row.detail, /^suggested action: An MCP server is unavailable/);
-	assert.match(row.detail, /This is why the previous turn ended\. Take it into account before repeating the same request\.$/);
+	assert.match(
+		row.detail,
+		/This is why the previous turn ended\. Take it into account before repeating the same request\.$/,
+	);
 });
 
 test("the message is `details.raw`, not the head line the renderer built from it", () => {
@@ -1663,7 +1670,10 @@ test("the category is read off the head, and a `raw`-less row falls back to it",
 	]);
 	assert.equal(older.level, "error");
 	assert.equal(older.category, "cut-off");
-	assert.equal(older.headline, "the runtime was terminated while this turn was running");
+	assert.equal(
+		older.headline,
+		"the runtime was terminated while this turn was running",
+	);
 	assert.equal(older.detail, "This is why the previous turn ended.");
 
 	// A payload that is not a rendered incident is not given a category, and its
@@ -1706,7 +1716,10 @@ test("a harness statement paints its fact, and puts its instruction to the model
 		rows[0].headline,
 		"You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).",
 	);
-	assert.equal(rows[1].headline, "MCP server 'gitlab' is connected again and 12 tools are available again.");
+	assert.equal(
+		rows[1].headline,
+		"MCP server 'gitlab' is connected again and 12 tools are available again.",
+	);
 	assert.equal(rows[2].headline, "DEPLOY_KEY was just stored by the operator.");
 	// The tokeniser is a version, not a sentence end: `deepseek-v4.1-flash` must
 	// not split the headline in half.
@@ -1717,15 +1730,24 @@ test("a relayed payload keeps its body behind the disclosure but is not reduced 
 	// Measured over the operator's store, these run to 18,259 characters, so the
 	// body stays one click away — and the first line that says something is on
 	// the row, stepping over the envelope tag both relays open with.
-	const body = "<parent-message>\nThis is a note, not a question.\n\nCorrection: rebase onto the current origin/main.";
+	const body =
+		"<parent-message>\nThis is a note, not a question.\n\nCorrection: rebase onto the current origin/main.";
 	const [row] = replay([custom("hub", "hub_message", { text: body })]);
 	assert.equal(row.level, "info");
-	assert.equal(row.headline, "This is a note, not a question.", "the envelope tag is not the headline");
+	assert.equal(
+		row.headline,
+		"This is a note, not a question.",
+		"the envelope tag is not the headline",
+	);
 	assert.equal(row.detail, body, "the whole body is what the disclosure holds");
 
 	// A first line that is only a tag, with nothing after it, still paints
 	// something rather than an empty row.
-	const [tagOnly] = replay([custom("peer", "peer_message", { text: "<peer-session-message from_pid=1>" })]);
+	const [tagOnly] = replay([
+		custom("peer", "peer_message", {
+			text: "<peer-session-message from_pid=1>",
+		}),
+	]);
 	assert.equal(tagOnly.headline, "<peer-session-message from_pid=1>");
 });
 
@@ -1734,7 +1756,10 @@ test("a long headline is bounded and cut on a word, so the column cannot be push
 	const [row] = replay([custom("long", "job_result", { text: sentence })]);
 	assert.ok(row.headline.length <= 161, `headline was ${row.headline.length}`);
 	assert.ok(row.headline.endsWith("…"));
-	assert.ok(!row.headline.includes("wor…"), "cut on a word boundary, not mid-word");
+	assert.ok(
+		!row.headline.includes("wor…"),
+		"cut on a word boundary, not mid-word",
+	);
 	assert.equal(row.detail, sentence, "the payload itself is untouched");
 });
 
@@ -1743,7 +1768,10 @@ test("an incident row that has said everything it has to say is a static line", 
 	// `suggested action` and no tail. `detail: null` is what makes the row a
 	// static line rather than a trigger that reveals nothing.
 	const [row] = replay([
-		incident("bare", { text: "[session incident (p/m)] unknown: [Errno 28]", raw: "[Errno 28]" }),
+		incident("bare", {
+			text: "[session incident (p/m)] unknown: [Errno 28]",
+			raw: "[Errno 28]",
+		}),
 	]);
 	assert.equal(row.level, "error");
 	assert.equal(row.category, "unknown");
@@ -1783,9 +1811,16 @@ test("an empty relay paints its envelope rather than its closing tag", () => {
 			text: "<subagent-message label='rollover-template-fix' job='5fb25794e06c'>\n\n</subagent-message>",
 		}),
 	]);
-	assert.equal(row.headline, "<subagent-message label='rollover-template-fix' job='5fb25794e06c'>");
+	assert.equal(
+		row.headline,
+		"<subagent-message label='rollover-template-fix' job='5fb25794e06c'>",
+	);
 	assert.ok(!row.headline.startsWith("</"));
-	assert.equal(row.headline.includes("subagent-message"), true, "the row still names the relay");
+	assert.equal(
+		row.headline.includes("subagent-message"),
+		true,
+		"the row still names the relay",
+	);
 });
 
 test("a wake row states its cadence, not the agent's own cancellation call", () => {
@@ -1824,6 +1859,101 @@ test("an incident carries the provider it names, and a row with nothing to say i
 	// headline the operator reported (a row that states nothing). No producer
 	// emits one; the gate is here so none can.
 	for (const blank of ["   ", " \n \n "]) {
-		assert.equal(replay([custom("blank", "hub_message", { text: blank })]).length, 0);
+		assert.equal(
+			replay([custom("blank", "hub_message", { text: blank })]).length,
+			0,
+		);
 	}
+});
+
+test("a statement splits at the sentence end, not at an abbreviation or a list marker", () => {
+	// Round 2's R7: the bare "terminator followed by whitespace" rule split real
+	// text in half. Each case here is one the reviewer measured through the
+	// shipped reducer.
+	const cases = [
+		[
+			"You are now running as gpt-6 (approx. 200k ctx).",
+			"This applies from now on.",
+		],
+		[
+			"You are now running as gpt-6, e.g. the fast tier.",
+			"This applies from now on.",
+		],
+		["1. You are now running as gpt-6.", "This applies."],
+	];
+	for (const [fact, instruction] of cases) {
+		const [row] = replay([
+			custom("s", "session_model_switch", {
+				text: `[model switch] ${fact} ${instruction}`,
+			}),
+		]);
+		assert.equal(row.headline, fact);
+		assert.equal(row.detail, instruction);
+	}
+	// And the shapes that must keep splitting exactly as they did: a decimal, a
+	// version, a URL with a dotted version in it, and a question.
+	for (const [fact, instruction] of [
+		["Running at 0.5 units.", "This applies."],
+		[
+			"You are now running as deepseek/deepseek-v4.1-flash (was x).",
+			"This applies.",
+		],
+		["POST http://1.2.3.4:8000/v2.0 now.", "This applies."],
+		["Are you ready?", "This applies."],
+	]) {
+		const [row] = replay([
+			custom("s", "session_model_switch", {
+				text: `[model switch] ${fact} ${instruction}`,
+			}),
+		]);
+		assert.equal(row.headline, fact);
+	}
+});
+
+test("a relayed row joins a heading to its outcome, and a one-shot wake states its goal", () => {
+	// Round 2's U10, both measured over the store: 37 of 39 job results end their
+	// inline half on a colon with the outcome on the next line, and 121 of 955
+	// wake rows are one-shot, so the arming line carries no cadence to state.
+	const [job] = replay([
+		custom("j", "job_result", {
+			text: "background job 'design849' failed:\n[Errno 28] No space left on device",
+		}),
+	]);
+	assert.equal(
+		job.headline,
+		"background job 'design849' failed: [Errno 28] No space left on device",
+	);
+
+	const [oneShot] = replay([
+		custom("w", "wake_prompt", {
+			text: "(alarm) Scheduled wake w1 (1/1).\n\nPost-release check for core-svc MR !193: verify prod-2 is Synced.",
+		}),
+	]);
+	assert.equal(
+		oneShot.headline,
+		"Post-release check for core-svc MR !193: verify prod-2 is Synced.",
+	);
+
+	// A wake WITH a cadence still states the cadence.
+	const [recurring] = replay([
+		custom("w2", "wake_prompt", {
+			text: '(alarm) Scheduled wake w1 (1/16, every 1h30m) — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n\nGPU capacity probe.',
+		}),
+	]);
+	assert.equal(
+		recurring.headline,
+		"(alarm) Scheduled wake w1 (1/16, every 1h30m)",
+	);
+});
+
+test("the wake-arming clause is only stripped from a wake row", () => {
+	// Round 2's R9: applying the strip to every relay would edit a hub message
+	// that happened to quote the phrase. Its words are the payload's own.
+	const [hub] = replay([
+		custom("h", "hub_message", {
+			text: '<parent-message>\nThis is a note, not a question. No reply is needed unless it changes what you should do.\n\nWe cancelled w1 — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n</parent-message>',
+		}),
+	]);
+	assert.ok(hub.headline.includes("cancel with wake("));
+	assert.ok(!hub.headline.startsWith("This is a note"));
 });
