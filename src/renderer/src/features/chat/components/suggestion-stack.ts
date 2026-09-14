@@ -34,8 +34,8 @@
  * nothing: the next row begins one `gap-2` (8px) below that edge, so it is
  * wholly outside the clip rather than half inside it.
  *
- * Both inputs are the caller's to measure, and the caller is `message-input.tsx`
- * — see its layout effect for why the room is the band's own budget rather than
+ * Both inputs are the caller's to measure: `MeasuredSuggestionStack` owns the
+ * layout effect. See it for why the room is the band's own budget rather than
  * anything the stack can influence (which is what keeps this a single pass
  * instead of a layout feedback loop).
  */

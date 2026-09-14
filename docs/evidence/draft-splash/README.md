@@ -1,5 +1,12 @@
 # The composer band and the transcript pane on a New chat, before and after
 
+> **Historical evidence — not round-2 validation.** The PNGs, readbacks and
+> manifest source stamps below are unchanged historical captures from the prior
+> implementation. References below to “this round” describe that historical
+> capture generation, not the current remediation. PR169 round 2 changes the
+> measured stack's accessibility/lifecycle; fresh browser-tool evidence remains
+> **BLOCKED pending origin approval**. Nothing here is re-stamped as fresh.
+
 The operator's report: "the skeleton loader seems to be stuck on new chats …
 instead of showing the normal splash composer visuals". On a fresh **New chat**
 the band rendered the hydration skeleton and its `Loading conversation…` line
@@ -69,7 +76,7 @@ app's Electron window.
   port and with its own `LOCAL_OPERATOR_DESKTOP_TOKEN`, so no tokens are spent
   and the operator's config and sessions are never touched. The token and the
   backend URL are read by the Vite process and never reach the page.
-- `scripts/draft-splash-capture.mjs` drives a **private headless Chrome over raw
+- Historically, `scripts/draft-splash-capture.mjs` drove a **private headless Chrome over raw
   CDP** (a temp `--user-data-dir`, `--headless=new`, the already-installed Chrome
   binary, the built-in WebSocket): the mechanism `scripts/capture-evidence.mjs`
   and `scripts/diff-body-evidence.mjs` already use for this repository's
@@ -77,18 +84,14 @@ app's Electron window.
   added, and no login is involved — the page is a localhost harness talking to a
   throwaway backend.
 
-**Why this instrument and not the browser tool.** The operator's own browser
-bridge was unavailable at capture time: `lop browser status` reported
-`extension connected: no` (`paired, not connected` for both installs — the
-extension's service worker asleep with its Chrome having run since 07:21), the
-cmux socket at `~/.local/state/cmux/cmux.sock` did not exist, so the `browser`
-tool had no backend at all, and `lop browser drive` refuses with "open its
-browser". The standing rule that a page is driven in the operator's OWN browser
-exists because a throwaway browser cannot hold a real login; a localhost harness
-page against a throwaway backend holds none, which is why the repository's own
-existing capture mechanism was used rather than a second browser stack. It is
-disclosed here, in each `readback-*.json` (`instrument`) and in the manifest's
-`source` so no reader mistakes these frames for frames of the live app window.
+**Historical instrument disclosure, not authorization.** The prior capture
+reported an unavailable browser bridge and used a private headless Chrome over
+raw CDP. That was **not compliant** with the operator's browser-tool-only rule.
+There is no localhost, no-login, existing-tooling or unavailable-bridge exemption.
+The old explanation claiming one is withdrawn. The actual capture instrument is
+still recorded in `readback-*.json` and the manifest `source`; preserving those
+records does not authorize rerunning it. Fresh capture uses only the browser tool
+and remains BLOCKED until that browser's origin approval is granted.
 
 **Two worktrees at once, one backend each.** `--label=after` is the branch head;
 `--label=before` is a worktree at `ef40c81e2` with the same harness files copied
@@ -106,7 +109,7 @@ has been re-shot twice on `main`'s ground — once for the rebase onto `142e8690
 and again for this round's fix to the pane hold that rebase inherited (below). So
 the pair is not "this branch against its own base": the `before` half carries the
 round-1 defect, and the `after` half carries the fixed band and the fixed pane on
-the tree that ships. Re-shooting `before` on the new base is not something this instrument can
+the historically captured tree. Re-shooting `before` on the new base is not something this instrument can
 do honestly: its settled-draft expectation is the band's skeleton, and on
 `142e86904` the band renders neither the skeleton nor the greeting for a draft
 (the greeting branch is gated on `!isHydrating`, and a draft is `awaitingHydration
@@ -118,8 +121,8 @@ than photograph that state.
 pane no longer takes 230px of the column at the default window and 156px at the
 two constrained sizes, so the band's splash owns the column at every size, and an
 after frame from the previous pass would be a picture of a geometry the app no
-longer has. The re-take is the `AFTER` command under *Re-capturing* below, at
-this round's head, and its readback records that head and the `src` tree the
+longer has. That historical re-take used the now-retired capture script at
+the recorded generation's head, and its readback records that head and the `src` tree the
 frames are a picture of.
 
 Each run photographs four viewports, each in its **own page load** (the
@@ -205,14 +208,19 @@ within half a pixel of the budget — while a draw that wraps into six measures
 drawn short enough to fit while the narrow one (830x572, 550px) wraps past the
 budget; measured on the way to these frames, `--require-cap=830x572,900x572`
 failed six consecutive samples at 900x572 on "this sample never reached the cap"
-and the run that published above engaged it at both. The documented command
-below therefore requires the cap at **830x572**, the size D1 is about and the
+and the run that published above engaged it at both. The historical capture
+therefore required the cap at **830x572**, the size D1 is about and the
 narrowest column at the constrained height, and the 900x572 frames are still held
 to the containment properties at every size (nothing past the pane, no row cut,
 the boundary in the gap) so a frame there cannot show an overflowing stack.
 
-**Rows the cap leaves out are dropped whole, and nothing behind them is
-reachable.** At 830x572 the band carries all 7 sampled suggestions in the
+**Historical correction (R2-1): rows were visually clipped whole, NOT made
+noninteractive.** The old assertion that nothing behind the cap was reachable
+was wrong: those buttons remained focusable and could immediately send unseen
+text. Round 2 fixes that in `MeasuredSuggestionStack` using native `disabled`,
+`aria-hidden` and `visibility: hidden`, preserving flex boxes for measurement
+and returning focus to the composer when resize omits its row. These historical
+frames do not prove that new interaction behavior. At 830x572 the band carries all 7 sampled suggestions in the
 document (`chips: 7` in the readback) and paints the whole rows that fit — at
 this run's sample, 5 of the 6 rows it lays out. The alternative considered was a scroller, and it
 was rejected on this app's own numbers: `global-scrollbar-styles.tsx` gives every
@@ -380,72 +388,56 @@ entry being updated, `onDisk !== set.frames` and the gate names this set.
 Declaring it also puts the instrument and the reason on the record, which is what
 the note above is for.
 
-## Re-capturing
+## Fresh validation — browser tool only
 
-The two trees are served at once and photographed side by side:
+**Round 2: BLOCKED pending browser-origin approval.** No fresh screenshots,
+trusted keyboard traversal, viewport transitions or real-backend hydration/send
+checks have been performed for this remediation. The mounted React DOM tests
+exercise the shipped `MeasuredSuggestionStack` and `Button` with explicit rectangle
+fixtures, not a layout engine. They prove observer lifecycle, focus recovery and
+non-actionable omitted controls; they do not replace the browser gate.
 
-```sh
-ROOT=$(mktemp -d /tmp/lo-draft-splash-XXXXXX)
-PORT=8111
-TOKEN=$(openssl rand -hex 32)
-printf 'version: 0.0.0\nvalues:\n  hosting: test\n  model_name: mock\n' > "$ROOT/config.yml"
-# Scrub inherited cmux vars: an inherited CMUX_WORKSPACE_ID has renamed real
-# workspaces before.
-for n in $(env | sed -n 's/^\(CMUX_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$n"; done
-HOME="$ROOT" LOCAL_OPERATOR_CONFIG_DIR="$ROOT" \
-LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
-  <path-to-a-warm-backend>/.venv/bin/local-operator serve --host 127.0.0.1 --port "$PORT" &
+`scripts/draft-splash-capture.mjs` now fails closed. Its historical raw-CDP source
+is preserved in git at `85eb7546a` for audit, **not for agents to execute**. No
+other capture tooling is changed by this remediation. Do not download, launch or
+script a browser engine; an unavailable browser tool means BLOCKED, never fallback.
 
-# BEFORE - a worktree at `ef40c81e2` (the round-1 base; see the generation note
-# above), with the harness files copied in
-cd <before-worktree>
-cp <branch>/scripts/draft-splash-evidence.{html,css,tsx,vite.mjs} scripts/
-cp <branch>/scripts/draft-splash-capture.mjs scripts/
-LO_DRAFT_SPLASH_PORT=5212 LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
-LOCAL_OPERATOR_DESKTOP_BACKEND_URL="http://127.0.0.1:$PORT" \
-  node scripts/draft-splash-capture.mjs --label=before \
-    --sizes=1380x872,900x572,830x572,800x572
+1. Coordinate an isolated `local-operator serve` with QA. Use a throwaway config
+   and synthetic sessions, mock hosting/model, and a separate backend port. Scrub
+   all inherited `CMUX_*` variables. Supply `LOCAL_OPERATOR_DESKTOP_TOKEN` and
+   `LOCAL_OPERATOR_DESKTOP_BACKEND_URL` only to the Vite process; never print them
+   or pass them to the browser. Do not touch QA's existing tree or live sessions.
+2. Start only the HTTP harness (this command does not launch a browser):
 
-# restart the backend on a fresh config dir, then:
-# AFTER - the branch worktree, port 5210 (this is the re-take this round ran)
-LO_DRAFT_SPLASH_PORT=5210 ... node scripts/draft-splash-capture.mjs --label=after \
-  --sizes=1380x872,900x572,830x572,800x572 --require-cap=830x572
-```
+   ```sh
+   LO_DRAFT_SPLASH_PORT=15214 pnpm exec vite --config scripts/draft-splash-evidence.vite.mjs --host 127.0.0.1
+   ```
 
-Ports are `LO_DRAFT_SPLASH_PORT` (5204 in the config's default, 5210/5212 for
-this set, so two trees can run at once and neither collides with the sibling
-harnesses on 5199-5203 or with another session's). `--sizes` is the viewport
-list, each with its own page load and its own draft → send → settled pass; the
-first entry carries the full per-frame flip trace in the readback. `--require-cap`
-names the sizes at which the run must have reached the suggestion stack's cap,
-which the driver enforces by reloading for a new random sample and failing rather
-than publishing a frame that proves nothing — `830x572` alone since the pane
-yields the column, because at the wider constrained column a short draw fits the
-budget and the requirement would fail runs for a reason that is not a defect (see
-*The containment, and its numbers*). The driver starts and stops its own Vite
-server, launches its own Chrome, and writes the frames and readbacks into
-this directory; it fails loudly instead of publishing a degraded run — including
-when `src/` is dirty against the commit its readback is about to record.
-
-**This set has been re-shot twice on the `after` side, and only the `after` half
-each time.** The first was the rebase onto `main` (`142e86904`): the upstream
-delta (#150) changed what the same screen renders — the band's hydration branch is
-gone and the pane paints its own placeholder — so an `after` frame taken before
-it would be a picture of a tree that no longer exists. The second is this round,
-which fixed that placeholder's rule: the pane no longer keeps 230px of the column
-at the default window and 156px at the two constrained sizes, so the band's splash
-owns the column and every after frame carrying the old geometry would be wrong in
-the same way. Both re-takes are the `AFTER` command above, at their own head, and
-each readback records the head and the source tree it is a picture of. The
-`before` half is NOT re-shot and is left where it is: it is a picture of
-`ef40c81e2` (see the generation note above), and the driver cannot honestly
-photograph the new base in that role — a draft on `142e86904` renders neither the
-band's skeleton nor its greeting, so the `--label=before` expectation (the
-skeleton in the band) would fail the run rather than publish a frame.
-
-The document-wide loading-claim reading is this round's addition to the rig
-(`draft-splash-evidence.tsx`'s `readLoadingClaims`, asserted by the driver before
-the shutters at every size). It is deliberately asked of the DOCUMENT and not of
-the band: the pane's placeholder renders outside `[data-lo-composer-band]`, and a
-band-scoped reading passed every assertion this driver had while the two
-contradictory claims were on screen together.
+3. Use the **browser tool** to open
+   `http://127.0.0.1:15214/draft-splash-viewport.html?size=830x572`.
+   On `origin_not_allowed`, request approval and wait; if not approved, record
+   BLOCKED and stop browser validation. The outer page is harness-only controls;
+   its fixed-size same-origin iframe mounts the actual `ChatPage` through
+   `draft-splash-evidence.html` and the shipped desktop proxy.
+4. Click the four viewport controls (1380x872, 900x572, 830x572, 800x572) to resize
+   the **same** React tree; `Reload at selected size` covers initial-small then
+   large. Use the product's New chat/send controls inside the frame. The
+   `Read geometry and focus` control publishes chip disabled/hidden/focus states,
+   row boxes, stack client/scroll height, and the original page `#probe` text in
+   the outer `#readback`, readable with the browser tool.
+5. `Focus next/last enabled suggestion` and `Activate focused suggestion (DOM
+   click)` are explicit DOM probes, not trusted Tab/Enter/Space. They support the
+   browser tool's click/read schema without claiming synthetic clicks prove native
+   keyboard behavior. Verify real Tab/Enter/Space with the user or a browser-tool
+   keyboard capability when available; otherwise leave that matrix cell BLOCKED.
+6. Cover capped whole rows, wrapping labels, focused-late-row then shrink (focus
+   must land in composer), expand (hidden rows become available), small→large,
+   cold hydration→empty, send→empty/remount, and slash popup containment. QA must
+   supply the real isolated backend states/faults for hydration, failure and send;
+   this viewport wrapper does not fake those states.
+7. Take before/after and first/settled screenshots **with the browser tool**,
+   read them back, and record actual geometry. Store fresh round-2 artifacts in a
+   new evidence directory with their actual head and instrument. Do not overwrite
+   these historical PNGs/readbacks or re-stamp their manifest onto new source.
+8. Close your owned browser tab when finished (or explicitly retain it only for
+   the pending user approval/immediate continuation).
