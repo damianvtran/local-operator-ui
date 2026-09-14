@@ -27,6 +27,11 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import {
+	fetchMcpList,
+	mcpKeys,
+	mcpListServers,
+} from "@shared/api/local-operator/mcp-list";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
@@ -34,10 +39,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plug, PlugZap, RotateCw, Trash2 } from "lucide-react";
 import type { FC, RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-	DesktopControlResult,
-	DesktopMcpState,
-} from "../../../../../shared/desktop-control-contract";
+import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
 import { foreignMcpConfigOrigin } from "../../../../../shared/mcp-foreign-config-origin";
 import { SettingsSection } from "./settings-section";
 
@@ -74,9 +76,6 @@ import { SettingsSection } from "./settings-section";
  */
 type MCPServerRow = DesktopMcpState["servers"][number];
 
-/** Lifecycle routes wrap their payload as `{data, replayed}`. */
-type MCPListResult = DesktopControlResult<DesktopMcpState>;
-
 type MCPAction =
 	| "list"
 	| "add"
@@ -90,10 +89,6 @@ type MCPAction =
 	| "reauth"
 	| "status"
 	| "cancel";
-
-export const mcpKeys = {
-	list: (sessionId: string) => ["desktop", "mcp", sessionId] as const,
-};
 
 const AddServerForm: FC<{
 	sessionId: string;
@@ -272,19 +267,17 @@ export const McpManagementSection: FC<{
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [showAdd, setShowAdd] = useState(false);
 
-	const listQuery = useQuery<MCPListResult["data"], Error>({
+	const listQuery = useQuery<DesktopMcpState, Error>({
 		queryKey: mcpKeys.list(sessionId ?? ""),
 		queryFn: () => {
 			if (!sessionId) throw new Error("No conversation selected.");
-			return desktopResult<MCPListResult>({ op: "mcp.list", sessionId }).then(
-				(result) => result.data,
-			);
+			return fetchMcpList(sessionId);
 		},
 		enabled: enabled && Boolean(sessionId),
 		staleTime: 10_000,
 	});
 
-	const servers: MCPServerRow[] = listQuery.data?.servers ?? [];
+	const servers: MCPServerRow[] = mcpListServers(listQuery.data);
 
 	// `/mcp <name>` emits `&mcp=<name>` and nothing read it, so the argument was
 	// silently dropped and the command landed on an undifferentiated list (UX

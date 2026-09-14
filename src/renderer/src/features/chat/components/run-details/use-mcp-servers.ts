@@ -70,15 +70,14 @@
  * and a window gate rather than a signal.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { fetchMcpList, mcpKeys } from "@shared/api/local-operator/mcp-list";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { mcpKeys } from "../../../settings/components/mcp-management-section";
 import { type McpServerRow, deriveMcpServers } from "./run-detail-model";
 
 /** The closed-panel cadence: the dot's own freshness while nobody is looking. */
@@ -108,15 +107,6 @@ let ticksInFlight = 0;
  */
 const isWatched = (): boolean =>
 	document.visibilityState === "visible" && document.hasFocus();
-
-/** The `mcp.list` payload, narrowed to the field this surface reads.
- *
- * Lifecycle routes wrap their result as `{ data, replayed? }` — the same envelope
- * `mcp-management-section.tsx` unwraps — and the servers live inside `data`.
- * `cold` is read only to document the case, not to branch on: the route stamps
- * every row's own `status: "cold"` in that branch, so the rows already say it.
- */
-type McpListPayload = { data?: { servers?: unknown; cold?: boolean } };
 
 export function useRunPanelMcpServers({
 	sessionId,
@@ -161,15 +151,16 @@ export function useRunPanelMcpServers({
 	const query = useQuery({
 		// The SETTINGS page's own key, deliberately: the two surfaces read one
 		// document, and a second key would be a second cache entry, two polls and
-		// two answers to "is this server connected" on one screen.
+		// two answers to "is this server connected" on one screen. The KEY and the
+		// fetched SHAPE both come from `shared/api/local-operator/mcp-list.ts`,
+		// which is what stops the two surfaces disagreeing about the second half
+		// of that sentence — they cached an envelope and an unwrapped document
+		// under this one key until it did (see that module's header).
 		queryKey: key,
 		queryFn: async () => {
 			ticksInFlight += 1;
 			try {
-				return await desktopResult<McpListPayload>({
-					op: "mcp.list",
-					sessionId: sessionId as string,
-				});
+				return await fetchMcpList(sessionId as string);
 			} finally {
 				ticksInFlight -= 1;
 			}
@@ -209,5 +200,5 @@ export function useRunPanelMcpServers({
 
 	// A failed read is the LAST KNOWN rows rather than an empty list: the section
 	// must not render "no servers configured" for a read it could not complete.
-	return deriveMcpServers(query.data?.data?.servers, errors);
+	return deriveMcpServers(query.data?.servers, errors);
 }
