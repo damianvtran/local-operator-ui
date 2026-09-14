@@ -206,6 +206,24 @@ export const STORIES = [
 	/* The two receipt rows on the shared ledger, with a collapsed peer row beside
 	   an expanded one — the pair that shows what the disclosure is FOR. */
 	["chat-tool-rows--receipt-rows", 1280, 560],
+	/* The cap, which no earlier frame exercised: every pane committed before this
+	   one had `scrollHeight == clientHeight`, so nothing showed that a long
+	   argument list pushed the result's label off the pane and that a scroll
+	   region's overflow is invisible at rest. Two viewports because the narrow
+	   column wraps the same script into more rows, and the report has to be a
+	   function of the content rather than of the wide layout. */
+	["chat-tool-rows--expanded-overflow", 1280, 1100],
+	["chat-tool-rows--expanded-overflow-narrow", 560, 1100],
+	/* The two results that hold nothing, and the row that holds nothing to
+	   disclose. The third row is the readable half of the gate fix: a call whose
+	   arguments are an all-empty container and which printed nothing is a STATIC
+	   row here, where it used to offer a click onto an empty bordered box. */
+	["chat-tool-rows--expanded-empty-result", 1280, 420],
+	/* The hostile sender, built through the production `peerFields` so the frame
+	   is a picture of the app's own sanitiser output rather than of a hand-built
+	   sender the app cannot produce: a bidi override beside the pid, two control
+	   sequences, and a name long enough to be bounded. */
+	["chat-tool-rows--receipt-hostile-sender", 1280, 300],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is

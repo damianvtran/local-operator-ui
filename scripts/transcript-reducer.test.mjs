@@ -1673,10 +1673,11 @@ test("a peer row that carries only the envelope still names its sender", () => {
 });
 
 test("a peer row with an empty body is still a row", () => {
-	// The expansion carries the pid and the model, which the collapsed row
-	// cannot; that is why the row is always expandable and why an empty message
-	// is not an invisible record. The TUI's `can_expand()` returns True
-	// unconditionally for the same reason.
+	// An empty message is not an invisible record: the row still paints its
+	// sender, and the TUI's `can_expand()` returns True unconditionally on the
+	// same ground. Whether the DISCLOSURE is offered is a separate question, and
+	// `peerHasDetail` answers it false when the expansion would only restate the
+	// collapsed row (`{ pid: 42 }` with no body is exactly that case).
 	const state = applyHistoryPage(
 		EMPTY_TRANSCRIPT,
 		pageOf([

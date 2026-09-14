@@ -6,8 +6,7 @@
  * of `tool-row.tsx`: these are rules with a right answer — how an argument value
  * is spelled, when a result is structured, what counts as a leaf — and there is
  * no React test host in this repo, so a rule that lives inside a component is a
- * rule nobody can falsify. `scripts/tool-detail.test.mjs` asserts these
- * directly.
+ * rule nobody can falsify. `scripts/tool-row.test.mjs` asserts these directly.
  *
  * Ported from the TUI's one-pane expansion (`ToolCard._build_content`,
  * `_append_input_body`, `_append_output_body` in
@@ -23,11 +22,18 @@
  *    instead — the reader gets the same information in the shape they would
  *    have navigated the JSON to reach, without the punctuation they have to
  *    navigate it with.
- * 2. **Nothing is truncated.** The TUI bounds each value at `INPUT_MAX_LINES`
- *    and reports the remainder as "… N more lines", because a terminal is a
- *    fixed grid. The pane is a scroll region, so the bound moves to the
- *    container (`max-h`/`overflow-auto` in `tool-detail.tsx`) and a huge
- *    `write` payload is fully readable rather than counted.
+ * 2. **The bound moves to the container, and it is REPORTED.** The TUI bounds
+ *    each value at `INPUT_MAX_LINES` and reports the remainder as "… N more
+ *    lines", because a terminal is a fixed grid. The pane is a scroll region
+ *    with one cap PER SECTION (input, result — `tool-detail.tsx`), so a long
+ *    argument list cannot push the result's label off the pane and a huge
+ *    `write` payload is fully readable rather than counted. What the pane keeps
+ *    from the terminal is the REPORT (`detailOverflowLabel`): a cap whose
+ *    overflow is invisible at rest is a pane claiming a completeness it does not
+ *    have, and that is exactly how the result went missing — design round 1 (D1)
+ *    measured the `Output` label 8px BELOW the pane's own bottom edge, with
+ *    every committed frame at `scrollHeight == clientHeight` so no frame could
+ *    show it.
  *
  * Argument ORDER is preserved: it is the TUI's order (`self._args.items()`) and
  * the row's own summary rule depends on it (`summaryFromArgs` — "the first two
@@ -66,8 +72,37 @@ const MAX_DEPTH = 8;
 /** What a cut-off subtree prints instead of its leaves. */
 const DEEPER_VALUES = "… deeper values not shown";
 
+/**
+ * The app's own spelling for a section that exists and holds nothing.
+ *
+ * The producer writes `(empty)` as a section's body when a call printed nothing
+ * on that stream (`tools/builtin.py:1694-1695`), and the object column already
+ * treats it as wiring rather than as prose (`OUTPUT_WIRING_LINE` in
+ * `tool-row-model.ts`). Reusing the same word for "this result is an empty
+ * container" means a reader meets ONE spelling of nothing in this app instead of
+ * a second dialect invented here.
+ */
+const EMPTY_CONTAINER = "(empty)";
+
 /** One indent step in the TEXT projection (`detailText`), as the TUI counts it. */
 const INDENT = "  ";
+
+/**
+ * The line under a capped section that says how much of it is not shown.
+ *
+ * Spelled exactly as the terminal spells it (`_append_input_body` /
+ * `_append_output_body`, `tool_card.py`: `f"… {hidden} more line{'s' if hidden
+ * != 1 else ''}"`), singular included, for the reason the diff body's
+ * `diffOverflowLabel` gives: "… 1 more lines" is the kind of copy a reader
+ * notices INSTEAD of the number.
+ *
+ * The count is what a reader would count — the rows of the section that are not
+ * fully inside its box, so a wrapped value counts as the rows it occupies rather
+ * than as the one argument it came from.
+ */
+export function detailOverflowLabel(hidden: number): string {
+	return `… ${hidden} more line${hidden === 1 ? "" : "s"}`;
+}
 
 /**
  * The pane's content as plain text, one line per `DetailLine`.
@@ -167,21 +202,61 @@ export function argumentLines(
 }
 
 /**
+ * How many nodes `hasDetail` may look at before it answers.
+ *
+ * The gate runs for every tool row on EVERY PAINT — the transcript builds every
+ * row's detail node whether or not the row is open, and React runs the pane's own
+ * walk only on open — so the walk is bounded rather than trusted. The bound is on
+ * NODES, not bytes: a `write`'s file content is one string LEAF and costs one
+ * visit however large it is, which is why the gate can afford to be exact at all.
+ *
+ * 512 is far above any real argument list (a `todos` array of fifty objects is a
+ * couple of hundred nodes and stops at its first printable leaf), and exhaustion
+ * answers the OPTIMISTIC way. The two failures are not equal: a row that hides a
+ * real payload behind a disclosure it never offers loses information silently,
+ * while an offered click onto nothing is visible and is closed by the pane's own
+ * empty guard (`ToolDetail` paints nothing when it has nothing to paint).
+ */
+const DETAIL_PROBE_MAX_NODES = 512;
+
+/**
  * Does this call have anything to disclose?
  *
- * Deliberately CHEAP, and deliberately not the same question as "does the pane
- * print a line". The transcript builds every row's detail node whether or not
- * the row is open (React only runs the component on open), so this runs for
- * every tool row on every paint: walking the arguments here would re-walk a
- * `write`'s whole file content per frame. Which KEYS actually print is decided
- * inside the pane, where the walk happens once, while the row is open.
+ * The question the PANE answers is "does `argumentLines` print a line", so this
+ * gate has to AGREE with it rather than approximate it. `{params: {}}`,
+ * `{a: []}` and `{a: ""}` all have a key and all print nothing, which is how a
+ * durable `read` row whose arguments are `{"path": ""}` came to offer a
+ * disclosure onto a bordered, padded, empty `sunken` box (reviewer F2, QA Q-2).
+ *
+ * Every input the pane can receive is exact here: an all-empty container, an
+ * empty string value, an array of empties, an empty-OBJECT root, and `args`
+ * `null` or `undefined` — the last of which used to THROW (`Object.keys(undefined)`)
+ * while its sibling `argumentLines` treated the same value as nothing.
+ *
+ * The walk mirrors `walk`'s rules: a container descends, a leaf prints unless
+ * `scalarText` drops it, and a subtree cut at `MAX_DEPTH` PRINT the deeper-values
+ * marker — so a depth cut is content on both sides of this gate.
  */
 export function hasDetail(
-	args: Record<string, unknown> | null,
+	args: Record<string, unknown> | null | undefined,
 	output: string | null,
 ): boolean {
 	if (output) return true;
-	return args !== null && Object.keys(args).length > 0;
+	if (!args) return false;
+	let budget = DETAIL_PROBE_MAX_NODES;
+	const printable = (value: unknown, depth: number): boolean => {
+		if (budget-- <= 0) return true;
+		if (depth > MAX_DEPTH) return true;
+		if (!isContainer(value)) return scalarText(value) !== null;
+		for (const child of Object.values(value)) {
+			if (printable(child, depth + 1)) return true;
+		}
+		return false;
+	};
+	for (const value of Object.values(args)) {
+		if (printable(value, 1)) return true;
+	}
+	return false;
 }
 
 /**
@@ -195,9 +270,15 @@ export function hasDetail(
  * parse — which is every `exit code: 0` + stdout block, and every plain-text
  * tool — returns `null` and is printed byte-for-byte as it arrived.
  *
- * A container whose leaves are all empty (a result of `{}`) also returns
- * `null`: `detailText` would be the empty string and the pane would say nothing
- * where the tool said `{}`. The raw text is the honest fallback.
+ * A container whose leaves are all empty (`{}`, `{"a": {}}`, `{"items": []}`)
+ * prints ONE line — the app's own `(empty)` — rather than returning `null` and
+ * letting the raw text through. Raw text was the earlier answer and it is not
+ * honest: it puts `{"a": {}}` under the `Output` label, which is the JSON
+ * punctuation this whole pane exists to keep out, and empty containers are
+ * REACHABLE — an empty object is what a "no rows found" API returns (reviewer
+ * F4). `(empty)` is what the producer itself writes when a section held nothing
+ * (`tools/builtin.py`), so the pane says the same word the app says elsewhere
+ * rather than inventing a second dialect for the same fact.
  */
 export function resultLines(
 	output: string | null | undefined,
@@ -215,5 +296,7 @@ export function resultLines(
 	}
 	if (!isContainer(parsed)) return null;
 	const lines = argumentLines(parsed as Record<string, unknown>);
-	return lines.length > 0 ? lines : null;
+	return lines.length > 0
+		? lines
+		: [{ key: "", value: EMPTY_CONTAINER, depth: 1 }];
 }

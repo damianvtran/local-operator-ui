@@ -18,18 +18,28 @@
  *
  * Pure, and separate from the row component, for the reason `tool-row-model.ts`
  * is separate from `tool-row.tsx`: every rule below has a right answer, and there
- * is no React test host in this repo. `scripts/receipt-rows.test.mjs` asserts
- * them.
+ * is no React test host in this repo. `scripts/tool-row.test.mjs` asserts them.
  *
  * THE SENDER FIELDS ARE UNTRUSTED. They cross a process boundary from another
  * session, and a conversation name is free text the peer chose. The TUI treats
  * them as the least trusted data it renders and sanitises every one of them
- * (`_sanitize_sender_field`), which is why nothing here prints a raw field: a
- * newline in a name split a pinned one-row card into three rows, and an
- * unterminated RTL override in a pid visibly scrambled the one field a reader
- * uses to address the peer back. React escapes the text and cannot be re-inked
- * from a label the way a terminal can, but the SHAPE and SIZE hazards port
- * exactly — a name is still one line, and it is still bounded.
+ * (`_sanitize_sender_field`), which is why nothing here prints a raw field.
+ * THREE hazards are closed, and all three reach a DOM text node:
+ *
+ * - SHAPE. A newline in a name split a pinned one-row card into three rows.
+ * - RENDERING. A format character (Unicode `Cf` — RTL override, ZWSP, BOM)
+ *   reorders the glyphs AROUND it, and control sequences re-ink their host.
+ *   React escaping is HTML escaping: it does not touch either, because neither
+ *   is markup. An unterminated `U+202E` in a pid visibly scrambled the one field
+ *   a reader uses to address the peer back — a label that misreports the address
+ *   is worse than no label.
+ * - SIZE. Length is bounded so a hostile name cannot own the row.
+ *
+ * The boundary is `peerFields`: it is the ONLY constructor of a `PeerSender`
+ * (the reducer projects every wire row through it), so it is where all five
+ * fields are sanitised and therefore the reason no field needs re-checking at
+ * the point it is painted. `senderField` is exported and asserted directly, which
+ * is what makes that single choke point checkable.
  */
 
 /**
@@ -53,6 +63,33 @@ const CANCEL_INSTRUCTION = " — cancel with wake(";
 const SENDER_FIELD_MAX_CHARS = 120;
 
 /**
+ * The control sequences a label must not carry, 7-bit (ESC) and 8-bit (C1).
+ *
+ * A port of `local_operator/ansi.py`'s `_CONTROL_RE`, the helper the TUI's own
+ * `_sanitize_line` delegates to, and it is ported in full rather than
+ * approximated: an `ESC [`-only pattern leaves the 8-bit form (which does not
+ * look like an escape once decoded) live, and a negated payload class cannot
+ * cross an ESC, so an OSC payload carrying one survived the whole alternation.
+ * The string controls (OSC/DCS/SOS/PM/APC) go WITH their payload up to the
+ * terminator, because their content is device data and leaving `tmux;title`
+ * behind afterwards converts a control sequence into wrong text.
+ */
+const CONTROL_SEQUENCES =
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: the control characters ARE the subject — this is the terminal's control-sequence alphabet, ported from `local_operator/ansi.py`'s `_CONTROL_RE`, and a pattern that avoided writing them could not match them.
+	/(?:\u001b[\]PX^_]|[\u009d\u0090\u0098\u009e\u009f])(?:(?!\u0007|\u001b\\|\u009c)[\s\S])*(?:\u0007|\u001b\\|\u009c|$)|(?:\u001b\[|\u009b)[0-?]*[ -/]*[@-~]|(?:\u001b\[|\u009b)[0-?]*[ -/]*$|\u001b[ -/]+[0-~]|\u001b[@-Z\\-_]|\u001b$|[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g;
+
+/**
+ * Every Unicode `Cf` (format) character.
+ *
+ * A format character is NOT a control sequence and survives the strip above:
+ * `U+202E` (RTL override) and its relatives reorder the glyphs around them, and
+ * a zero-width joiner hides the seam in a spliced word. The category is what
+ * makes the class exhaustive — an explicit codepoint list misses the next bidi
+ * control somebody finds.
+ */
+const FORMAT_CHARACTERS = /\p{Cf}/gu;
+
+/**
  * How much of a peer body is read to build the collapsed row's preview.
  *
  * `_SNIPPET_SOURCE_MAX_CHARS`, ported — and NOT a display cap. The wire allows a
@@ -68,14 +105,27 @@ const SNIPPET_SOURCE_MAX_CHARS = 4096;
  *
  * Offending characters are removed rather than escaped, because this is an
  * identity LABEL: the point is to say which session reached in, not to display
- * what an odd name contained. Whitespace runs (newlines and tabs included)
- * collapse to single spaces so a name stays one paragraph and the row stays one
- * row.
+ * what an odd name contained.
+ *
+ * The ORDER is the reference's and each step depends on the one above it. The
+ * strips come FIRST because stripping can expose the whitespace they were
+ * hiding: a sequence's payload can contain a newline, so collapsing first would
+ * leave that newline standing after the introducer was removed. Whitespace runs
+ * (newlines and tabs included) then collapse to single spaces so a name stays
+ * one paragraph and the row stays one row. The bound is LAST, so it counts the
+ * characters a reader can actually see.
+ *
+ * A non-string is coerced through `String` rather than rejected: `details.sender`
+ * is untyped on the wire, and `pid` is an integer on every producer that puts one
+ * there (`session/session.py` writes it bare), so a number is the SHAPE of a real
+ * pid rather than an attack.
  */
 export function senderField(value: unknown): string {
 	if (value === null || value === undefined) return "";
 	const text = typeof value === "string" ? value : String(value);
 	return text
+		.replace(CONTROL_SEQUENCES, "")
+		.replace(FORMAT_CHARACTERS, "")
 		.split(WHITESPACE_RUN)
 		.filter(Boolean)
 		.join(" ")
@@ -169,9 +219,11 @@ export function peerIdentity(sender: PeerSender): string {
 /**
  * The expansion's identity line: `"<name>" · pid N · <model>`.
  *
- * This is the information the collapsed row cannot hold, and the reason the row
- * is always expandable: the pid and the model are what a reader needs in order
- * to address the peer back, and no snippet can carry them.
+ * This is the information the collapsed row cannot hold, and the reason a peer
+ * row is worth opening: the pid and the model are what a reader needs in order
+ * to address the peer back, and no snippet can carry them. `peerHasDetail` is
+ * what decides whether it is offered at all, and its answer is exactly this line
+ * being a fact the summary did not already carry.
  *
  * The TUI attaches the model only when the composed line still fits on one row,
  * because a terminal has to shed something (`_header`). A paragraph has no such
@@ -189,6 +241,30 @@ export function peerIdentityLine(sender: PeerSender): string {
 	// Nothing identifying at all: the one case that still needs prose, because a
 	// bare "·"-joined empty list says nothing.
 	return "another session";
+}
+
+/**
+ * Does a peer row's expansion carry a fact its collapsed row does not?
+ *
+ * The disclosure is offered on this answer and nothing else, because an
+ * expansion that restates the row above it costs a click and pays back nothing.
+ * Two things can make it worth opening:
+ *
+ * - a BODY, which the collapsed row can only preview one line of;
+ * - the identity LINE, when it adds the pid or the model the collapsed SUMMARY
+ *   has no room for. `peerSummary` leads with the name only, so a named or
+ *   pied sender's identity line carries the addressing facts — that is the
+ *   TUI's own justification for an always-expandable peer block
+ *   (`PeerMessageBlock.can_expand()`).
+ *
+ * The case this closes is the all-absent sender: summary `another session`,
+ * identity line `another session`, so the expansion delivers the row verbatim.
+ * The sibling receipt already rules the same case static (a wake with no prompt
+ * has no body to disclose), and the two must agree about it.
+ */
+export function peerHasDetail(sender: PeerSender, body: string): boolean {
+	if (body.trim()) return true;
+	return peerIdentityLine(sender) !== peerIdentity(sender);
 }
 
 /**
@@ -247,12 +323,23 @@ export function sameSender(a: PeerSender, b: PeerSender): boolean {
  * <message>\n</peer-session-message>`, with the three attributes written through
  * Python's `repr` — so a name containing an apostrophe comes back in DOUBLE
  * quotes and both spellings have to parse.
+ *
+ * The tag scans are QUOTE-AWARE, and that is not tidiness: `_peer_custom_message`
+ * writes each attribute through Python's `repr`, so a conversation name
+ * containing `>` comes back as `conversation='a>b'`. A `[^>]*` scan stops at the
+ * `>` inside that quoted value — the whole open tag then parses as
+ * `conversation="'a"` and the rest of the envelope lands in the body as text,
+ * which is the one thing this module exists to prevent. `(?:[^>"']|"[^"]*"|'[^']*')`
+ * is the same reluctant-of-nothing scan with the quoted values consumed whole.
+ * An UNTERMINATED quote therefore fails to match at all, which is the safe
+ * direction: the tag then survives as text rather than being cut in the middle.
  */
 const PEER_ENVELOPE =
-	/^<peer-session-message\s+([^>]*)>([\s\S]*?)<\/peer-session-message>\s*$/;
+	/^<peer-session-message\s+((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/peer-session-message>\s*$/;
 
 /** Any envelope tag, wherever it sits — see `peerFields`. */
-const PEER_ENVELOPE_TAG = /<\/?peer-session-message[^>]*>/g;
+const PEER_ENVELOPE_TAG =
+	/<\/?peer-session-message(?:[^>"']|"[^"]*"|'[^']*')*>/g;
 
 /**
  * One `key=value` attribute of an envelope's open tag.
@@ -274,6 +361,14 @@ const PEER_ENVELOPE_ATTR =
  * and `sender` is the advisory identity. The UIs are supposed to render the
  * second and third (the mobile fold does exactly that, `mobile/projection.py`),
  * and the first must never reach a human surface.
+ *
+ * NEITHER source is trusted to be free of the envelope, which is why the strip
+ * runs over whichever body was CHOSEN rather than only over the envelope's own
+ * inner text: `details.body` is the peer's own message, and a peer that quotes an
+ * envelope in it is quoting — but the operator's rule is that no envelope tag
+ * reaches an expanded body at all, and a strip is what makes that true of both
+ * paths. The cost is that a peer cannot print the tag as literal text; the TUI
+ * pays the same one for the same reason.
  *
  * The envelope is still parsed, for the rows that carry ONLY it: a transcript
  * written by an older producer, or one whose `details` were dropped by a
@@ -299,12 +394,14 @@ export function peerFields(details: Record<string, unknown>): {
 			attrs[attr[1]] = attr[2] ?? attr[3] ?? attr[4] ?? "";
 		}
 	}
-	// The envelope must not survive the unwrap even when a body quoted one, so
-	// any tag still standing is removed rather than trusted to be absent. This is
-	// the "never let the envelope reach the view" rule expressed as a strip
+	const inner = match ? match[2] : "";
+	const chosen = String(details.body ?? "").trim() || inner;
+	// The envelope must not survive the unwrap even when a body quoted one, so any
+	// tag still standing is removed rather than trusted to be absent — on the body
+	// that was CHOSEN, which is what makes the claim cover `details.body` too. This
+	// is the "never let the envelope reach the view" rule expressed as a strip
 	// instead of a check.
-	const inner = (match ? match[2] : "").replace(PEER_ENVELOPE_TAG, "").trim();
-	const body = String(details.body ?? "").trim() || inner;
+	const body = chosen.replace(PEER_ENVELOPE_TAG, "").trim();
 	const raw = (details.sender ?? {}) as Record<string, unknown>;
 	const field = (fromSender: unknown, fromEnvelope: string | undefined) =>
 		senderField(fromSender) || senderField(fromEnvelope);

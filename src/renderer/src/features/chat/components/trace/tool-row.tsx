@@ -199,6 +199,24 @@ const CATEGORY_INK: Record<ToolCategory, string> = {
 };
 
 /**
+ * The ink a row's NAME takes.
+ *
+ * A RECEIPT is not a call, so no tool CATEGORY decides its ink. `wake` is a
+ * `meta` tool — the agent can call it — and the category table therefore bought
+ * the wake RECEIPT the accent, which is the palette's LIVENESS colour
+ * (`running`, below) and made one receipt louder than the calls around it. Both
+ * receipts take `ink-muted`: that is what the TUI's own peer row reads
+ * (`tool.row.name_meta` derives from `label`, not from the accent), and two rows
+ * of one kind painting two inks is a difference the reader has to explain away.
+ */
+const rowNameInk = (outcome: ToolRowOutcome, toolName: string): string => {
+	if (outcome === "running") return "text-ink";
+	if (outcome === "error") return "text-danger";
+	if (outcome === "receipt") return "text-ink-muted";
+	return CATEGORY_INK[toolCategory(toolName)];
+};
+
+/**
  * The diff counters.
  *
  * Never `+0` or `-0`: a zero states that nothing was added, which is a
@@ -389,6 +407,12 @@ export const ToolRow = ({
 	const failed = outcome === "error";
 	const Icon = toolIcon(toolName);
 	const name = displayName(toolName);
+	// The one expression the summary cell both prints and titles, so the tooltip
+	// cannot drift from the text it stands for — including the dropped-stutter
+	// fallback below.
+	const summaryText = isBareToolName(summary, toolName)
+		? (summaryFallback ?? "")
+		: summary;
 
 	const row = (
 		<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
@@ -416,11 +440,7 @@ export const ToolRow = ({
 					// text box and truncated the very name the column was sized for
 					// (`web_fetch` rendered as `web_fet…`).
 					"pr-1",
-					running
-						? "text-ink"
-						: failed
-							? "text-danger"
-							: CATEGORY_INK[toolCategory(toolName)],
+					rowNameInk(outcome, toolName),
 				)}
 				// The shared column is a per-list measurement, so it cannot be a
 				// static class: Tailwind compiles the utilities it can see in the
@@ -439,6 +459,12 @@ export const ToolRow = ({
 					"min-w-0 flex-1 truncate font-mono text-mono-sm",
 					running ? "text-ink-muted" : "text-ink-dim",
 				)}
+				// The name beside it has carried a `title` since it became truncatable;
+				// this cell truncates too, and at 390px the summary is the half that
+				// loses: measured 126.4px of box against 461px of text, so a peer row's
+				// preview read as `"review-agent" · ca…` with no way to see the rest
+				// short of opening the row (UX round 1, U4).
+				title={summaryText}
 			>
 				{/*
 				 * A summary identical to the name beside it is dropped.
@@ -460,7 +486,7 @@ export const ToolRow = ({
 				 * copies of this rule could disagree and leave a row blank with a
 				 * usable fact in hand.
 				 */}
-				{isBareToolName(summary, toolName) ? (summaryFallback ?? "") : summary}
+				{summaryText}
 			</span>
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
