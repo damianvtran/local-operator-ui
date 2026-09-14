@@ -22,10 +22,7 @@
  * confirmation is the shared `ConfirmationModal`, held once here rather than per
  * row, and both surfaces speak the same control words. What was refused before
  * was a second PLACE to get those facts wrong; what changed is that this section
- * now holds the same place's copy rather than a copy of its own. What this
- * section owes the reader instead is the REMEDY in words on the row that needs
- * it, because the two problem states need different actions and the word alone
- * does not say which.
+ * now holds the same place's copy rather than a copy of its own.
  *
  * Encoding follows the other two sections: the state is said in a MARK and a
  * WORD, the mark is `aria-hidden` decoration, colour is spent on failure and on
@@ -350,7 +347,7 @@ const McpRow = ({
 					 * make the panel and the Settings page disagree about one server's
 					 * state, and the backend's own docstring makes rendering the string
 					 * directly the contract between them. The human meaning is carried
-					 * by the hint on the second line.
+					 * by the remedy on the second line.
 					 *
 					 * A COLD row has no word: one jargon word repeated N times is what
 					 * the section refuses, and the cold line says it once instead.
@@ -396,7 +393,7 @@ const McpRow = ({
 				 * section's blocked-row shape, because "what do I do about a server that is
 				 * down" is the ask, and a row that answers only with a diagnosis leaves it
 				 * unanswered for exactly the broken case (round 2, U2-2 — round 1's U1-8 had
-				 * pushed the hint out entirely to make room for the wire's own failure text,
+				 * pushed the remedy out entirely to make room for the wire's own failure text,
 				 * which was a choice where the design asks for both).
 				 *
 				 * The DIAGNOSIS follows, on its own line, when the read carries one (`§ 7.2`,
