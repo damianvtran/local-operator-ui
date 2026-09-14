@@ -615,6 +615,10 @@ export const STORIES = [
 	["panels-session--dense", 1140, 1150],
 	["panels-session--narrow", 720, 1000],
 
+	/* The settings usage chart's frame over a fixture — the live settings
+	   surface needs a signed-in Radient tenant, so this is the honest half. */
+	["panels-settings--usage-chart-tokens", 1140, 560],
+	["panels-settings--usage-chart-credits", 1140, 560],
 	["panels-info--populated", 1140, 1040],
 	/* The live half null and nothing bound: the payload the desktop's own route
 	   always sends, with the three unknown spellings it must render. */
