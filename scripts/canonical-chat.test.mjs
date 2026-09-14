@@ -877,6 +877,16 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	const text = "/usage\nhello from line two";
 	await assert.rejects(
 		admitChatDraft(key, { ...input, text }, "222222222222"),
+		(error) => {
+			// The composer prioritizes its catch over the persisted draft. The
+			// classified copy must cross that boundary, not only reach the store.
+			assert.ok(error instanceof DesktopControlError);
+			assert.equal(error.status, 422);
+			assert.equal(error.code, LEADING_SLASH_CODE);
+			assert.equal(error.message, LEADING_SLASH_MESSAGE);
+			assert.equal(error.cause.message, "The request has invalid fields.");
+			return true;
+		},
 	);
 	const draft = store.getState().drafts[key];
 	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
