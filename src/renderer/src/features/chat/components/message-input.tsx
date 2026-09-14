@@ -53,6 +53,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
+import { DESTINATIONS } from "../pickers/picker-registry";
 import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
@@ -67,6 +68,7 @@ import {
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
+import { pointerPickRuns } from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
@@ -747,15 +749,29 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				setNewMessage(completion.text);
 				setCaret(completion.caret);
 				/*
-				 * RUN, when the row's own list says a pick runs and the gate let it
-				 * through. The ambiguity gate is applied by `handleSlashKeyDown` for
-				 * the keyboard and deliberately waived for a pointer click
-				 * (`editor.py:8040`); `runs: false` is honoured here so no `/team`
-				 * name can ever be run on the keystroke that chose it.
+				 * RUN, when the pick named a row that runs and the gate let it through.
+				 * The ambiguity gate is applied by `handleSlashKeyDown` for the keyboard
+				 * and deliberately waived for a pointer click (`editor.py:8040`);
+				 * `runs: false` is honoured here so no `/team` name can ever be run on
+				 * the keystroke that chose it.
+				 *
+				 * The two row kinds answer "does a pick run this?" from different places,
+				 * because they are different questions. An ARGUMENT row's own list
+				 * declares it (`slash.inline.runs`: `/model` runs its choice, `/team` and
+				 * `/theme` never do). A COMMAND row's DESTINATION declares it
+				 * (`pointerPickRuns`), which is the rule that lets a click open a panel
+				 * instead of only completing the word. The keyboard never runs a command
+				 * row - `handleSlashKeyDown` hands every one of them `run: false` - so
+				 * that half is the pointer path only.
 				 */
 				const shouldRun =
 					disposition.run &&
-					(slash.inline?.runs ?? false) &&
+					(row.kind === "command"
+						? pointerPickRuns(
+								row.command.destination,
+								DESTINATIONS[row.command.destination],
+							)
+						: (slash.inline?.runs ?? false)) &&
 					Boolean(onSlashCommand);
 				if (!shouldRun) return;
 				// Run through the SAME plan a submit takes, so a command picked

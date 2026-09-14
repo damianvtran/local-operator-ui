@@ -90,6 +90,88 @@ export function slashDestructive(
 }
 
 /**
+ * The minimum a DESTINATION entry must say for a pick to be routed.
+ *
+ * Structural for the same reason `RoutableRow` is: the real type
+ * (`DestinationEntry`) lives in `picker-registry.tsx`, which imports this module,
+ * so naming it here would make a value-level cycle out of a type-only dependency.
+ * `DESTINATIONS`'s own entries are assignable to it, and the caller passes the
+ * entry it looked up rather than a second table kept here.
+ */
+export type PickDestination =
+	| {
+			kind: "picker";
+			inline?: { source: string; nameThenMessage: boolean; runs: boolean };
+	  }
+	| { kind: "navigate" }
+	| { kind: "direct" };
+
+/**
+ * The destinations a POINTER pick must never run, whatever their kind says.
+ *
+ * NOT parity with the TUI, and not described as such: each is something a
+ * keyboard gesture may do and a stray click must not. A click can land on a row
+ * the user never meant to name — the pointer passes over rows on its way
+ * somewhere else — and these three are the ones where the accident is not
+ * recoverable in the same breath: `window.close` detaches the app,
+ * `transcript.clear` wipes the view the user was reading, and `session.compact`
+ * spends a compaction pass on the conversation. Each stays reachable from the
+ * composer with Enter, the gesture that names it.
+ */
+const POINTER_PICK_NEVER_RUNS = new Set([
+	"window.close",
+	"transcript.clear",
+	"session.compact",
+]);
+
+/**
+ * Whether a POINTER pick of a command row RUNS the command rather than only
+ * completing its word (`/info` → the panel, not `/info ` and a second Enter).
+ *
+ * The TUI's own rule, generalised to the desktop's list sources.
+ * `Editor.opens_a_list` (`local_operator/tui/widgets/editor.py:2597`) answers it
+ * for the terminal host: completing a command's word REPLACES running it
+ * exactly when the list that opens IS the outcome of the gesture, and submitting
+ * as well would run a no-op over the list it had just drawn. Here the list
+ * sources are `picker-registry`'s `inline` field, so the rule reads: a
+ * destination that opens an inline argument list completes, and every other
+ * destination runs.
+ *
+ * Keyed off the destination KIND and the list SOURCE, deliberately NOT off the
+ * registry's `arguments` field: `/analytics` is `arguments: "optional"` with no
+ * inline list and must run bare on a pick, which is the row an `arguments`-keyed
+ * rule breaks. That field states what the TUI's KEYBOARD offers and remains the
+ * sole authority there; nothing reads it here.
+ *
+ * TWO DELIBERATE DEVIATIONS from the TUI, recorded as deviations so nobody
+ * "fixes" them back to parity:
+ *
+ *   - `POINTER_PICK_NEVER_RUNS` above, which has no TUI counterpart at all.
+ *   - `/login` and `/logout` RUN on a pick. They are the only commands whose
+ *     `arguments` is `REQUIRED`, and the TUI must not run a REQUIRED-argument
+ *     command on accept because accepting opens an inline list there. Neither
+ *     has an inline list HERE — the picker IS the provider list, and it is a
+ *     DIALOG (`LoginPicker` / `LogoutPicker`) — so completing-only would strand
+ *     the user on `/login ` with nothing to choose from and no list to open.
+ *
+ * A destination this side has not learned yet RUNS: nothing is known about it to
+ * say it opens a list, and the dispatcher answers an unmatched destination with
+ * its own honest "not available in the desktop app yet" note — the same outcome
+ * Enter has today. That arm is why `info` and `session.diagnostics`, which
+ * arrive as `{kind: "picker"}` panels on the side that routes them, need no
+ * entry here and must not be hardcoded: asked by KIND, they run the moment their
+ * rows land.
+ */
+export function pointerPickRuns(
+	destination: string,
+	entry: PickDestination | undefined,
+): boolean {
+	if (POINTER_PICK_NEVER_RUNS.has(destination)) return false;
+	if (!entry) return true;
+	return entry.kind !== "picker" || entry.inline === undefined;
+}
+
+/**
  * Route one key press.
  *
  * Ported from `editor.py:_resolve_argument` / `:8060-8115` and pinned by
