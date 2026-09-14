@@ -142,6 +142,7 @@ export const ActionableColdStartReasons: Story = {
 export const NoticeLengths: Story = {
 	render: () => (
 		<Frame
+			height={340}
 			records={[
 				notice("short", "Session resumed.", "info"),
 				notice("at-72", `${"x".repeat(64)} ends here`, "warning"),
@@ -178,8 +179,11 @@ export const NoticeLengths: Story = {
  * - Every incident is ONE error row: the danger glyph, the category as the
  *   row's label (`mcp`, `cut-off`, `rate-limit`, …) and the vendor's own error
  *   text in place, wrapping rather than truncating.
- * - The `context-length` row is the wrap case: 217 characters of raw, which is
- *   the longest any producer writes, and its tail is readable.
+ * - Two wrapped rows are the wrap case, and they are the widest the producer
+ *   writes: the `context-length` one at 217 characters of raw, and the
+ *   `rate-limit` one at 296 — the store's maximum `raw` and its maximum
+ *   rendered head line (601 characters of `text`). Both must be readable to
+ *   their last word, at 1280 and at a narrow column.
  * - The `unknown` row has no suggested action, so its disclosure is short —
  *   the tail sentence alone. A row with nothing behind it is a disabled
  *   trigger with a reserved chevron gutter, not a hole.
@@ -189,10 +193,12 @@ export const NoticeLengths: Story = {
  * - The three harness STATEMENTS — a model switch, an MCP recovery, a stored
  *   credential — are informational, not errors, and their message is likewise
  *   the row.
- * - The `hub message` control is the other direction: a relayed payload is
- *   genuinely bulky, so its body stays behind the disclosure — but the row
- *   still states something real instead of only its type name, stepping over a
- *   leading envelope tag to quote the first line a reader would want.
+ * - The relayed rows are the other direction: a payload is genuinely bulky, so
+ *   its body stays behind the disclosure — but the row states the message
+ *   rather than the envelope's manners, stepping over the opening tag AND the
+ *   fixed instruction line every hub relay carries above its content.
+ * - The empty relay states its envelope instead of its closing tag, and the
+ *   wake row states its cadence instead of the agent's own cancellation call.
  * - All of them sit on the ledger pitch, so a run of mixed rows does not go
  *   ragged where one appears.
  */
@@ -201,8 +207,21 @@ const INCIDENT_OPEN = "801c032e12604b478ab44b3bedcbd503";
 
 export const SessionIncidents: Story = {
 	render: () => (
-		<Frame records={incidentTranscript()} height={700} expand={INCIDENT_OPEN} />
+		<Frame records={incidentTranscript()} height={800} expand={INCIDENT_OPEN} />
 	),
+};
+
+/**
+ * The same rows in a narrow column, where they wrap hardest.
+ *
+ * Design round 1's D1 was measured at 420px, which is where a three-line row
+ * lost its mark entirely — the chevron and the glyph both sat on line 2, so line
+ * 1 carried no kind at all. This is the same transcript at 560, the narrowest
+ * width the column is designed around, so the fix is shown where the defect was
+ * found rather than only at 1280, where a wrapped row is still the exception.
+ */
+export const SessionIncidentsNarrow: Story = {
+	render: () => <Frame records={incidentTranscript()} height={1220} />,
 };
 
 const custom = (
@@ -245,6 +264,13 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 	custom("68bab38958084b039c48227942b50d8a", 1789100003.1, "session_incident", {
 		text: "[session incident (deepseek/deepseek-flash)] context-length: invalid request: prompt is too large for deepseek-flash: about 995,106 tokens of input against a 1,000,000-token context window leaves under 4,096 tokens for the reply. Compact the conversation or start a new session.\nsuggested action: The request was too large for the model: the harness compacts and drops the oldest screenshots automatically, so retry once; if it repeats, ask the user to /compact or send fewer and smaller images.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
 		raw: "invalid request: prompt is too large for deepseek-flash: about 995,106 tokens of input against a 1,000,000-token context window leaves under 4,096 tokens for the reply. Compact the conversation or start a new session.",
+	}),
+	// The widest raw the producer writes (296 chars, rendered head 601) and the
+	// store's only 601-char head line, so the frame covers the real maximum
+	// rather than an understated one.
+	custom("078983ad4c7a4261816e92d305b97a09", 1789100003.6, "session_incident", {
+		text: "[session incident (anthropic/claude-fable-5-1)] rate-limit: rate limit or quota exceeded: All 5 OAuth sign-in credentials for provider 'anthropic' are not usable right now (rate limited, a token refresh failed, or the stored credential could not be read). The credentials are still configured; retry once the limit resets, or sign in again to replace them.\nsuggested action: Back off and retry later; if it persists, tell the user which provider hit the limit — they may need to switch model or top up quota.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+		raw: "rate limit or quota exceeded: All 5 OAuth sign-in credentials for provider 'anthropic' are not usable right now (rate limited, a token refresh failed, or the stored credential could not be read). The credentials are still configured; retry once the limit resets, or sign in again to replace them.",
 	}),
 	custom("fff1d0c0cbcc44c79ceea3903057cad9", 1789100004.1, "session_incident", {
 		text: "[session incident (openrouter/qwen/qwen3.8-max)] provider: transient provider error (HTTP 502): provider_unavailable: Network connection lost.\nsuggested action: The provider is failing server-side: a retry may work; if it repeats, suggest switching model or provider.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
@@ -307,6 +333,22 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 		text: "<parent-message>\nThis is a note, not a question. No reply is needed unless it changes what you should do.\n\nCorrection: rebase onto the CURRENT origin/main, not the ref I named. main has moved twice while you worked: origin/main is now `0ae91825c` (v0.54.21, released 09:27). Fetch again, then rebase the branch onto `origin/main` and report the resulting head SHA.\n</parent-message>",
 		direction: "to_child",
 		expects_reply: false,
+	}),
+	// An empty relay: 34 real rows in the store are this shape, and the closing
+	// tag is not a message.
+	custom("daf1c68b41ba4924ad74b85f5f47862a", 1789100012.1, "hub_message", {
+		text: "<subagent-message label='rollover-template-fix' job='5fb25794e06c'>\n\n</subagent-message>",
+		direction: "to_parent",
+		job_id: "5fb25794e06c",
+		label: "rollover-template-fix",
+		body: "",
+	}),
+	// A wake prompt: the cadence is the datum, and the arming call addressed to
+	// the agent is what the row used to lead with (749 of 951 store rows).
+	custom("59ea7ac6d2da40f0bd7b7a80cb039990", 1789100013.1, "wake_prompt", {
+		text: '(alarm) Scheduled wake w1 (1/16, every 1h30m) — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n\nGPU capacity probe — NER backfill is 12 pods Pending on prod-2.',
+		wake_id: "w1",
+		occurrence: 1,
 	}),
 ];
 
