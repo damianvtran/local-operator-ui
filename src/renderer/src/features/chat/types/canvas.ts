@@ -46,6 +46,23 @@ export type CanvasDocument = {
 	 * Type of the document/file
 	 */
 	type?: CanvasDocumentType;
+
+	/**
+	 * Whether the bytes are actually on disk, as last reported by the probe.
+	 *
+	 * ABSENT is not the same as `"present"`: it means nothing has checked yet,
+	 * which is the normal state for the frame between a tile being added and
+	 * `probe-files` answering. The tile renders normally until a probe says
+	 * otherwise, and a document that says `"missing"` keeps its place in the grid
+	 * with the `No longer on disk` receipt rather than being quietly dropped.
+	 */
+	availability?: "present" | "missing";
+
+	/**
+	 * Size in bytes, when the probe reported one. Used to state "too large to
+	 * preview" before a read is attempted, rather than after it fails.
+	 */
+	sizeBytes?: number;
 };
 
 /**

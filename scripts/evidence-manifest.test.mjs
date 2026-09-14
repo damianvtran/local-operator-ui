@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { partialFrameCount } from "./capture-evidence.mjs";
+import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import { frames as frameFiles, provenanceFailures } from "./check-evidence.mjs";
 
 /*
@@ -316,4 +316,66 @@ test("a missing head is a failure, not a pass by omission", () => {
 		provenanceFailures({ ...GOOD, head: "abc" }, git)[0],
 		/missing or not a sha/,
 	);
+});
+
+test("partialCapture's own head citations are checked too", () => {
+	/*
+	 * Round 4, R4-1. `addedAtHead` and `refreshedAtHead` name the commits a
+	 * narrowed pass took frames at, and a reader checks a frame against them
+	 * exactly as against `head` - but this function read neither, so a
+	 * pre-force-push sha could sit there while the gate called the manifest
+	 * clean. And it did: the field carried `45b6dd635`, reachable from no ref,
+	 * in the very commit that claimed every citation was reachable.
+	 */
+	const partial = {
+		...GOOD,
+		partialCapture: {
+			addedAtHead: "6e0d41580e24cacc3de08d659b8f6058d78ead53",
+		},
+	};
+	const out = provenanceFailures(partial, git);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /partialCapture\.addedAtHead/);
+	assert.match(out[0], /reachable from no ref/);
+	// The other one, the same way: this is the class, not the instance.
+	const refreshed = provenanceFailures(
+		{
+			...GOOD,
+			partialCapture: { refreshedAtHead: "6e0d41580e24cacc3de08d659b8f6058d78ead53" },
+		},
+		git,
+	);
+	assert.equal(refreshed.length, 1);
+	assert.match(refreshed[0], /partialCapture\.refreshedAtHead/);
+	// A reachable one passes, and an absent one is not a failure to report.
+	assert.deepEqual(
+		provenanceFailures(
+			{ ...GOOD, partialCapture: { addedAtHead: GOOD.head, refreshedAtHead: undefined } },
+			git,
+		),
+		[],
+	);
+	assert.deepEqual(provenanceFailures({ ...GOOD, partialCapture: {} }, git), []);
+});
+
+test("a pass that added no frames does not claim to have added them", () => {
+	/*
+	 * The writer half of R4-1. `addedAt`/`addedAtHead` answer "which commit do I
+	 * fetch to see the frames this story was added by"; the writer stamped its
+	 * OWN head there on every partial run, so a refresh that added nothing
+	 * rewrote the citation to name a pass that had added nothing - and then the
+	 * next rebase orphaned that sha. A zero-add pass must leave the field alone,
+	 * which the caller gets by spreading the previous `partialCapture` under an
+	 * empty overlay.
+	 */
+	// The property the caller depends on: an empty overlay, so the spread of the
+	// previous `partialCapture` leaves those four fields exactly as they were.
+	assert.deepEqual(Object.keys(partialAddedFields(0, [], GOOD.head)), []);
+	const added = partialAddedFields(3, ["live"], GOOD.head, "2026-09-13T00:00:00.000Z");
+	assert.deepEqual(added, {
+		addedFrames: 3,
+		addedSurfaces: ["live"],
+		addedAt: "2026-09-13T00:00:00.000Z",
+		addedAtHead: GOOD.head,
+	});
 });

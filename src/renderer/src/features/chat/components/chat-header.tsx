@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot, FileText } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useEffect, useRef } from "react";
 import { type RunDetails, RunDetailsTrigger } from "./run-details";
 
 /**
@@ -12,6 +12,7 @@ import { type RunDetails, RunDetailsTrigger } from "./run-details";
  * @property onOpenOptions - Optional callback for opening options/canvas.
  * @property runDetails - The session's derived subagent and to-do view model, or
  * `null`/absent when the session has none.
+ * @property fileCount - How many files the conversation has been seen to mention.
  *
  * `runDetails` is passed by `chat-page.tsx`, which owns the canonical stream and
  * derives the model per wire frame (`run-details.md` § 8); stories pass a fixture
@@ -27,6 +28,16 @@ type ChatHeaderProps = {
 	description?: string;
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
+	/**
+	 * How many files the conversation has been seen to mention.
+	 *
+	 * The header carries it because it is the only surface visible before the
+	 * canvas is ever opened: with 32 files on screen-worth of conversation the
+	 * feature used to announce itself nowhere, so a user had to already know the
+	 * canvas existed to find them. Not "unseen" - there is no read receipt here -
+	 * just "this conversation has files".
+	 */
+	fileCount?: number;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
@@ -34,12 +45,37 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	description = "Your on-device AI assistant",
 	onOpenOptions,
 	runDetails = null,
+	fileCount = 0,
 }) => {
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
+
+	/*
+	 * Closing the canvas put focus back on `<body>`, which is the top of the
+	 * document: a keyboard user who left the panel lost their place entirely. The
+	 * control they came from is this button, and it only exists while the canvas
+	 * is closed - so the focus move has to happen on the true->false transition,
+	 * after the button is back in the DOM, and never on the first mount (which
+	 * would pull focus out of whatever the user was doing when the app opened).
+	 */
+	const canvasButtonRef = useRef<HTMLButtonElement | null>(null);
+	const previouslyOpen = useRef(isCanvasOpen);
+	useEffect(() => {
+		if (
+			previouslyOpen.current &&
+			!isCanvasOpen &&
+			// Only when focus was actually LOST. Closing the canvas from inside it
+			// unmounts the control that had focus and leaves `body` active; closing
+			// it from the command palette while the composer has focus must not pull
+			// the caret out of the message being typed.
+			document.activeElement === document.body
+		)
+			canvasButtonRef.current?.focus();
+		previouslyOpen.current = isCanvasOpen;
+	}, [isCanvasOpen]);
 
 	return (
 		<div
@@ -119,17 +155,45 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			<div className={cn("ml-auto flex items-center gap-2")}>
 				<RunDetailsTrigger details={runDetails} />
 				{onOpenOptions && !isCanvasOpen && (
-					<Tooltip content={`Open canvas (${shortcut})`} side="top">
+					<Tooltip
+						content={
+							fileCount > 0
+								? `Open canvas (${shortcut}) — ${fileCount} ${fileCount === 1 ? "file" : "files"}`
+								: `Open canvas (${shortcut})`
+						}
+						side="top"
+					>
 						<Button
+							ref={canvasButtonRef}
 							variant="ghost"
 							/* 32px `icon`, the size every other header action in the app
 							 * uses. `icon-lg` (36px) made this one button the outlier. */
 							size="icon"
 							onClick={() => setCanvasOpen(true)}
-							aria-label={`Open canvas (${shortcut})`}
+							aria-label={
+								fileCount > 0
+									? `Open canvas (${shortcut}), ${fileCount} ${fileCount === 1 ? "file" : "files"}`
+									: `Open canvas (${shortcut})`
+							}
 							data-tour-tag="open-canvas-button"
+							className={cn("relative")}
 						>
 							<FileText aria-hidden={true} />
+							{/*
+							 * A dot, not a count. The number belongs on the Files segment, where
+							 * there is room to read it; here the only job is to say "there is
+							 * something in the canvas" before the user has opened it. `ink-muted`
+							 * rather than an accent: nothing is unread, and the accent is spent on
+							 * actions the app is asking for.
+							 */}
+							{fileCount > 0 && (
+								<span
+									aria-hidden="true"
+									className={cn(
+										"absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted",
+									)}
+								/>
+							)}
 						</Button>
 					</Tooltip>
 				)}

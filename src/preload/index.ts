@@ -77,6 +77,18 @@ const api = {
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>
 		ipcRenderer.invoke("read-file", filePath, encoding),
+	/**
+	 * Bytes for the in-app viewers. No encoding: a PDF is not text, and base64
+	 * would inflate it by a third on both sides of the boundary.
+	 */
+	readFileBytes: (filePath: string, maxBytes?: number) =>
+		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	/**
+	 * Resolve-and-stat a batch of paths. The answer carries the resolved path,
+	 * which is the Files panel's identity for a file.
+	 */
+	probeFiles: (paths: string[], cwd?: string) =>
+		ipcRenderer.invoke("probe-files", paths, cwd),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 	showItemInFolder: (filePath: string) =>
