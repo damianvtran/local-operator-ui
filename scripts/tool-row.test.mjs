@@ -309,6 +309,80 @@ test("an unpaired backend refuses the attachment fetch rather than calling it un
 	assert.equal(seen.length, count);
 });
 
+test("a CHILD's attachment fetch reaches the child-scoped path and nothing else", async () => {
+	// The reader's rows reference digests in the shared store, and the parent's
+	// route refuses them: it takes the session whose transcript holds the
+	// reference, which a child session is not. So the two ids in the PATH are the
+	// whole contract, and a wiring regression that dropped back to the parent's op
+	// would 404 in the app while every renderer test stayed green.
+	const digest = "0f1e2d3c4b5a69788796a5b4c3d2e1f0";
+	const response = await requestDesktopMedia(
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "fedcba987654",
+			digest,
+		},
+		null,
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(response.kind, "bytes");
+	assert.deepEqual(Buffer.from(response.data), PNG);
+	const last = seen.at(-1);
+	assert.equal(
+		last.path,
+		`/v1/desktop/sessions/0123456789ab/children/fedcba987654/attachments/${digest}`,
+	);
+	assert.equal(last.method, "GET");
+	assert.equal(last.authorization, `Bearer ${token}`);
+});
+
+test("a renderer cannot steer the child attachment fetch either", async () => {
+	const count = seen.length;
+	for (const request of [
+		// Traversal in the child id, which is the identifier this op adds.
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "../../admin",
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "a".repeat(31),
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "FEDCBA987654",
+			digest: "a".repeat(32),
+		},
+		// The parent op cannot be reached by omitting the child id.
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			digest: "a".repeat(32),
+		},
+		// `.strict()`, as above: no smuggled path, and no parent field.
+		{
+			op: "subagents.attachment",
+			sessionId: "0123456789ab",
+			childId: "fedcba987654",
+			digest: "a".repeat(32),
+			path: "/v1/anything",
+		},
+	]) {
+		const response = await requestDesktopMedia(request, null, url, token);
+		assert.equal(response.status, 422, JSON.stringify(request));
+		assert.equal(response.kind, "error");
+	}
+	assert.equal(seen.length, count);
+});
+
 /* --------------------------------------------------------- renderer CSP */
 
 test("the app window's CSP admits the blob images the attachment path produces", async () => {

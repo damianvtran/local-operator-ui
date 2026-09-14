@@ -4,6 +4,7 @@ import type {
 	DesktopRequest,
 	DesktopResponse,
 } from "../../../../../shared/desktop-contract";
+import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
 
 export type {
 	AuthOperation,
@@ -319,7 +320,11 @@ export function subscribeDesktopStream(
 	};
 	source.onerror = () => {
 		if (source.readyState === EventSource.CLOSED) {
-			onEvent({ kind: "error", detail: "The event stream ended." });
+			// The SAME machine vocabulary main's relay emits, from the shared module: the
+			// notice the reader sees must not depend on which transport delivered the
+			// failure (design round 1, D1). EventSource exposes no status code, so this
+			// path can only say the stream failed to stay open.
+			onEvent({ kind: "error", detail: DESKTOP_STREAM_DETAIL.ended });
 			source.close();
 		}
 		// CONNECTING is EventSource's own retry; leave it alone.
