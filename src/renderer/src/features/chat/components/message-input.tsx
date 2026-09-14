@@ -77,7 +77,10 @@ import { pointerPickRuns } from "./slash-contract";
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import { planSlashSubmission } from "./slash-submit";
-import type { SlashSubmissionPlan } from "./slash-submit";
+import type {
+	SlashCommandInvocation,
+	SlashSubmissionPlan,
+} from "./slash-submit";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -234,7 +237,7 @@ type MessageInputProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -248,17 +251,23 @@ type MessageInputProps = {
 		draft?: boolean;
 	};
 	/**
-	 * Run a slash command line the composer pulled out of the draft, and report
+	 * Run the command the composer's planner pulled out of the draft, and report
 	 * what happened to it.
 	 *
-	 * The SAME dispatcher the chips and the whole-draft submit path use, so a
-	 * command typed into a sentence cannot take a second route with its own
-	 * outcome mapping. The composer owns the restore/splice decision afterwards
-	 * because it is the only place that knows what it held before; when absent
-	 * (the legacy chat path has no command dispatcher), nothing is ever spliced
-	 * and the draft sends as prose.
+	 * The SAME dispatcher the chips use, so a command cannot take a second route
+	 * with its own outcome mapping. The composer owns the restore/splice decision
+	 * afterwards because it is the only place that knows what it held before; when
+	 * absent (the legacy chat path has no command dispatcher), nothing is ever
+	 * spliced and the draft sends as prose.
+	 *
+	 * It is handed the planner's answer — a `SlashCommandInvocation` — rather than
+	 * the draft: the decision about WHAT a draft submits is the planner's alone
+	 * (see `slash-submit.ts`), and this signature is what makes a second such
+	 * decision impossible.
 	 */
-	onSlashCommand?: (line: string) => Promise<SlashDispatchOutcome>;
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
 	/**
 	 * Say something in the composer's own note idiom.
 	 *
@@ -624,11 +633,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [newMessage, textareaRef]);
 
 		/*
-		 * What Enter should do with this draft, decided by the pure planner.
+		 * What Enter should do with this draft, decided by the pure planner — the ONLY
+		 * place that answers it (see `slash-submit.ts`'s "one decision" note).
 		 *
 		 * Both halves of `enabled` matter: a command needs the feature ON and
-		 * somewhere to hand the line. With neither, the planner answers `send`,
-		 * so nothing is ever spliced on a path that could not run it.
+		 * somewhere to hand it. With neither, the planner answers `send`, so nothing
+		 * is ever spliced on a path that could not run it.
 		 */
 		const planFor = useCallback(
 			(draft: string, at: number) =>
@@ -652,6 +662,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		/**
 		 * Carry out a plan that is not a plain send, and decide what the box holds
 		 * afterwards.
+		 *
+		 * EVERY non-`send` plan lands here, `whole` included: a whole-draft command is
+		 * a consequence of the caret rule, not a different route, and giving it one
+		 * (a submit that re-examined the raw text one layer down) is exactly how a
+		 * two-line draft was dispatched as `/usage` with line 2 as its argument (QA
+		 * round 2, Q4). The command is handed on as the planner parsed it, so nothing
+		 * here can disagree with the planner about what the draft is.
 		 *
 		 * The outcome contract is the dispatcher's, unchanged: `consumed` means the
 		 * command ran, so the token is gone and whatever survives it stays;
@@ -684,7 +701,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// waiting for (round 1 UX U5).
 					if (slash.open && slash.matches.length > 0) return;
 					onSlashNote?.(
-						`Type a name after ${plan.line}, or choose one from the list.`,
+						`Type a name after /${plan.command.name}, or choose one from the list.`,
 					);
 					return;
 				}
@@ -693,7 +710,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// note, then the ORIGINAL draft comes back whole: the misspelling
 					// is the thing the user has to fix, so consuming it removes the
 					// only copy of it (round 1 UX U8).
-					await runSlashCommand(plan.line);
+					await runSlashCommand(plan.command);
 					pendingCaret.current = at;
 					setNewMessage(draft);
 					setCaret(at);
@@ -711,7 +728,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					onSlashNote?.(`Staged ${plan.text.trim()}. Enter again runs it.`);
 					return;
 				}
-				const outcome = await runSlashCommand(plan.line);
+				const outcome = await runSlashCommand(plan.command);
 				if (outcome === "consumed") {
 					const text = plan.kind === "whole" ? "" : plan.text;
 					const next = plan.kind === "whole" ? 0 : plan.caret;
@@ -825,12 +842,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				/*
-				 * Enter is the submit key, and the planner is what decides whether
-				 * this draft is a submit at all: a command typed into a sentence is
-				 * spliced out and run, and a free-text command is reassembled and
-				 * STAGED. `send` and `whole` defer to the composer's own submit path,
-				 * unchanged. The plan is consulted BEFORE the submit, never after, so
-				 * a command can never be quietly turned back into prose.
+				 * Enter is the submit key, and the planner is the only thing that decides
+				 * what this draft submits: a command typed into a sentence is spliced out
+				 * and run, a whole-draft command is run here too, and a free-text command
+				 * is reassembled and STAGED. Only `send` falls through to the message
+				 * path, which is the ONE answer that means "this is prose" — so a command
+				 * can never be quietly turned back into prose by a later re-read of the
+				 * text, and a draft the planner called prose can never be claimed by a
+				 * command (QA round 2, Q4).
 				 */
 				if (
 					event.key === "Enter" &&
@@ -838,7 +857,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					!event.nativeEvent.isComposing
 				) {
 					const plan = planFor(newMessage, caret);
-					if (plan.kind !== "send" && plan.kind !== "whole") {
+					if (plan.kind !== "send") {
 						event.preventDefault();
 						void applyPlan(plan, newMessage, caret);
 						return;
@@ -1063,12 +1082,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!newMessage.trim() && attachments.length === 0) return;
 			/*
 			 * The SAME planner the Enter key consults, so the Send button and the
-			 * key cannot disagree about whether a draft is a command. A draft that
-			 * holds a command mid-sentence is spliced and run here too; `send` and
-			 * `whole` fall through to the composer's own submit path unchanged.
+			 * key cannot disagree about whether a draft is a command — and every
+			 * non-`send` verdict is applied here, so the message path below is only
+			 * ever reached for prose. It does not re-examine the text: that is what
+			 * turned `/usage` on line 1 into a command that claimed line 2.
 			 */
 			const plan = planFor(newMessage, caret);
-			if (plan.kind !== "send" && plan.kind !== "whole") {
+			if (plan.kind !== "send") {
 				void applyPlan(plan, newMessage, caret);
 				return;
 			}

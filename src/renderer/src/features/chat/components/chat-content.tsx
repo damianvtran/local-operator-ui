@@ -45,6 +45,7 @@ import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -137,7 +138,7 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -150,7 +151,9 @@ type ChatContentProps = {
 	 * its outcome handed back. Forwarded verbatim; see
 	 * `MessageInputProps.onSlashCommand` for why the outcome matters.
 	 */
-	onSlashCommand?: (line: string) => Promise<SlashDispatchOutcome>;
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
 	/**
 	 * The dispatcher's own note surface, borrowed by the composer so a staged
 	 * reassembly and an unanswerable name list can say what happened. Forwarded

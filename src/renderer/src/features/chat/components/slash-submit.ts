@@ -3,12 +3,24 @@
  *
  * The renderer twin of `Editor._run_command_from_buffer`
  * (`editor.py:8166-8227`), kept pure so the whole rule is testable without a
- * browser. Today the composer only recognises a draft that is ENTIRELY a
- * command (`slash-dispatch.ts`'s `SLASH_SUBMISSION` against `text.trim()`), so a
- * command typed into a sentence is prose and silently reaches the model. In the
- * TUI it is not: the token at the caret is spliced out and run, the surviving
- * draft stays in the composer, and a command whose argument is FREE TEXT is
+ * browser. The token at the caret is spliced out and run, the surviving draft
+ * stays in the composer, and a command whose argument is FREE TEXT is
  * reassembled to the front and STAGED rather than run.
+ *
+ * THE ONE DECISION. This function is the only thing that answers "what does
+ * this draft submit?" — it hands back a plan, and the plan carries the command
+ * the dispatcher will post (`SlashCommandInvocation`), already split. Nothing
+ * downstream re-reads the draft to re-derive that answer. The reason is a
+ * defect this file's first version still allowed: the planner answered `send`
+ * for a two-line draft whose caret was on line 2, and the canonical send path
+ * then asked its own question of the RAW text — a `SLASH_SUBMISSION` guard
+ * whose `[\s\S]*` argument group read the newline as the command/argument
+ * separator, so `/usage` on line 1 claimed line 2 as its argument, the box was
+ * emptied, and the prose reached the transport as a provider name (QA round 2,
+ * Q4 — round 1's Q1, one layer below where it was fixed). An ordering guard did
+ * not catch it because the second guard was never an ordering problem: it was a
+ * SECOND decision. So the split lives here, where the span is known to end at
+ * its own line end, and the dispatcher is handed the answer.
  *
  * Rule order, one-to-one with the TUI:
  *
@@ -17,9 +29,9 @@
  *   1. The token at the CARET (`slashTokenSpan`, which is what
  *      `_run_command_from_buffer` itself calls first) defines the span the run
  *      owns. No token at the caret → prose; send it. The whole-draft shape is
- *      NOT tested first: a `/usage` on line 1 of a two-line draft is a token on
- *      its own LINE, and asking `SLASH_SUBMISSION` about the whole draft let it
- *      claim line 2 as its argument and clear the box (round 1 R2 = Q1 = U1).
+ *      NOT tested first, it is a CONSEQUENCE of this: a `/usage` on line 1 of a
+ *      two-line draft is a token on its own LINE, so the caret on line 2 finds
+ *      no token and the draft is prose (round 1 R2 = Q1 = U1).
  *   2. Nothing survives removing the span → the token IS the draft → whole.
  *   3. A slash-shaped token that names no command → `unrecognised`: report it
  *      through the normal dispatch (which owns the "did you mean" note) and keep
@@ -46,36 +58,42 @@
 
 import { replaceSpan, slashTokenSpan } from "./slash-token";
 
+/**
+ * A command the dispatcher can post without asking anything about its text.
+ *
+ * Produced by `planSlashSubmission` and by the controls that name a command
+ * outright (`session-status-strip.tsx`'s readings, the Commands panel) — never
+ * by parsing a draft, which is the whole point: `args` can only ever be the
+ * rest of the command's OWN LINE, because the span it is cut from ends there
+ * (`slashTokenSpan`). `name` is the word as typed, NOT lower-cased: the
+ * dispatcher's catalogue lookup is case-sensitive, and `/Usage` answering
+ * "unknown command" is the behaviour this carries over unchanged.
+ */
+export type SlashCommandInvocation = {
+	name: string;
+	args: string;
+};
+
 export type SlashSubmissionPlan =
 	/** Not a command in this draft. Send the draft to the model. */
 	| { kind: "send" }
-	/** The whole trimmed draft is a command. Hand it to dispatch as today. */
-	| { kind: "whole"; line: string }
-	/** Splice `[start, end)` out of the draft, keep the rest, and run `line`. */
+	/** The whole draft is the command: nothing survives removing its token. */
+	| { kind: "whole"; command: SlashCommandInvocation }
+	/** Splice the token out of the draft, keep the rest, and run `command`. */
 	| {
 			kind: "splice";
 			start: number;
 			end: number;
-			line: string;
+			command: SlashCommandInvocation;
 			text: string;
 			caret: number;
 	  }
-	/** Move `line` to the front, keep the rest as its argument, stage, do not run. */
+	/** Move the command to the front, keep the rest as its argument, stage it. */
 	| { kind: "reassemble"; text: string; caret: number }
 	/** A name-list command with no name typed yet: the roster list owns the key. */
-	| { kind: "list-open"; line: string }
+	| { kind: "list-open"; command: SlashCommandInvocation }
 	/** Slash-shaped, but names no command: report it and KEEP the draft. */
-	| { kind: "unrecognised"; line: string };
-
-/**
- * The whole-draft command shape.
- *
- * The DISPATCHER's guard, not the planner's: `planSlashSubmission` no longer
- * asks this question, because the token at the caret is what decides a draft.
- * It stays exported as the ONE pattern object `slash-dispatch.ts` imports, so
- * "is this line a command at all" cannot drift between two copies.
- */
-export const SLASH_SUBMISSION = /^\/([A-Za-z]+)(?:\s([\s\S]*))?$/;
+	| { kind: "unrecognised"; command: SlashCommandInvocation };
 
 export type SlashSubmissionArgs = {
 	draft: string;
@@ -90,9 +108,31 @@ export type SlashSubmissionArgs = {
 	enabled: boolean;
 };
 
+/** The name/argument separator: the first whitespace character of a token. */
+const WHITESPACE = /\s/;
+
 /** The lower-cased command word of a token's text, `/team ops` → `team`. */
 function wordOf(commandText: string): string {
 	return commandText.slice(1).split(" ")[0].toLowerCase();
+}
+
+/**
+ * Split a token's text into the name and args a command posts.
+ *
+ * Fed `commandText` — a `slashTokenSpan` slice, whose end is the end of its own
+ * LINE — so the split is done once, on text that cannot contain a newline. The
+ * separator is the first whitespace character, matching what the old
+ * whole-draft regex treated as the name/argument boundary (`/team\tops` still
+ * parses as `team` + `ops`).
+ */
+function invocationOf(commandText: string): SlashCommandInvocation {
+	const body = commandText.slice(1);
+	const separator = body.search(WHITESPACE);
+	if (separator === -1) return { name: body, args: "" };
+	return {
+		name: body.slice(0, separator),
+		args: body.slice(separator + 1).trim(),
+	};
 }
 
 export function planSlashSubmission({
@@ -124,14 +164,14 @@ export function planSlashSubmission({
 
 	const spliced = replaceSpan(draft, span.start, span.end, "");
 	const commandText = draft.slice(span.start, span.end).trim();
-	if (spliced.text.trim() === "") return { kind: "whole", line: commandText };
+	const command = invocationOf(commandText);
+	if (spliced.text.trim() === "") return { kind: "whole", command };
 
 	const word = wordOf(commandText);
 	// Slash-shaped but not a command this host knows: the misspelling is the
 	// thing to fix, so the caller reports it and keeps the draft rather than
 	// consuming the token (round 1 U8).
-	if (!commandNames.has(word))
-		return { kind: "unrecognised", line: commandText };
+	if (!commandNames.has(word)) return { kind: "unrecognised", command };
 
 	if (promptCommands.has(word)) {
 		const typedArgument = commandText.slice(1).split(" ").slice(1).join(" ");
@@ -140,7 +180,7 @@ export function planSlashSubmission({
 		// leaving it open is the whole interaction, and reassembly happens when
 		// a NAME row is chosen (TUI `editor.py:8219-8222`).
 		if (nameListCommands.has(word) && !typedArgument.trim())
-			return { kind: "list-open", line: commandText };
+			return { kind: "list-open", command };
 		const rest = spliced.text.trim();
 		const text = rest ? `${commandText} ${rest}` : `${commandText} `;
 		return { kind: "reassemble", text, caret: text.length };
@@ -150,7 +190,7 @@ export function planSlashSubmission({
 		kind: "splice",
 		start: span.start,
 		end: span.end,
-		line: commandText,
+		command,
 		text: spliced.text,
 		caret: spliced.caret,
 	};

@@ -61,6 +61,7 @@ import {
 	useRunPanelMcpServers,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 
@@ -571,14 +572,17 @@ function SessionPanel({
 		setSendError(null);
 		setSendErrorCode(undefined);
 		try {
-			// Three outcomes, not two. `consumed` retires the draft the way a sent
-			// message does; `retained` means the line WAS a command and was refused
-			// before it ran, so the composer must keep the text - returning false
-			// here is what `use-message-input.ts:172` reads to leave it in place
-			// (round 2, Q-7). Only `not-a-command` falls through to the model path.
-			const dispatched = await dispatch(content);
-			if (dispatched === "consumed") return true;
-			if (dispatched === "retained") return false;
+			/*
+			 * No command check here, deliberately. The composer's planner already
+			 * decided what this draft submits — whole-draft command, spliced command,
+			 * prose — with the CARET in hand, and it runs every non-`send` verdict
+			 * itself (`message-input.tsx:applyPlan`). Asking again, here or anywhere
+			 * below, is the second decision this path used to make: a
+			 * `SLASH_SUBMISSION` test against the RAW text read the newline in
+			 * `/usage\nhello` as the command/argument separator, so line 1 claimed
+			 * line 2, the box was emptied on `consumed` and nothing reached the model
+			 * (QA round 2, Q4). Prose is prose: it goes to the model.
+			 */
 			if (!draftKey && !sessionId) return false;
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
@@ -1128,11 +1132,11 @@ function SessionPanel({
 								? [
 										{
 											label: "Choose agent",
-											onClick: () => void dispatch("/agent"),
+											onClick: () => void dispatch({ name: "agent", args: "" }),
 										},
 										{
 											label: "Choose team",
-											onClick: () => void dispatch("/team"),
+											onClick: () => void dispatch({ name: "team", args: "" }),
 										},
 									]
 								: activeErrorCode === "profile_registry_unavailable"
@@ -1241,7 +1245,7 @@ function SessionPanel({
 							className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
 							onClick={() => {
 								setOptions(false);
-								void dispatch(`/${command}`);
+								void dispatch({ name: command, args: "" });
 							}}
 						>
 							{command === "agent"
@@ -1295,13 +1299,13 @@ function SessionPanel({
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
 					/*
-					 * The SAME dispatcher the chips and the escaped-command path use, with
-					 * its outcome handed back: the composer splices a command out of a draft
-					 * and must know whether it ran before deciding what the box holds
+					 * The SAME dispatcher the chips use, handed the planner's own answer (an
+					 * invocation, never the draft) with its outcome handed back: the composer
+					 * must know whether the command ran before deciding what the box holds
 					 * afterwards, and a failure must report through this path's own note
 					 * rather than a second copy of its sentence (round 2, Q-7's contract).
 					 */
-					onSlashCommand={(line: string) => dispatchFromControl(line)}
+					onSlashCommand={dispatchFromControl}
 					onSlashNote={slashNote}
 					sendError={composerSendError}
 					/*
@@ -1338,7 +1342,8 @@ function SessionPanel({
 									 * does, so an unconsumed outcome has to be surfaced here
 									 * rather than dropped into a `void` (round 1, U2).
 									 */
-									onCommand: (line: string) => void dispatchFromControl(line),
+									onCommand: (invocation: SlashCommandInvocation) =>
+										void dispatchFromControl(invocation),
 									/*
 									 * The SAME query `EffortPicker` renders from, by the
 									 * same key, so React Query serves both from one cache

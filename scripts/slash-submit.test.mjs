@@ -27,7 +27,7 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { planSlashSubmission, SLASH_SUBMISSION } = await import(
+const { planSlashSubmission } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -60,16 +60,55 @@ const plan = (draft, caret, over = {}) =>
 
 test("the whole-draft command shape is unchanged", () => {
 	// The existing whole-draft path is untouched: all three
-	// `SlashDispatchOutcome` meanings keep their current behaviour.
-	assert.ok(SLASH_SUBMISSION.test("/usage"));
-	assert.ok(SLASH_SUBMISSION.test("/model gpt-5"));
+	// `SlashDispatchOutcome` meanings keep their current behaviour, and the
+	// command the dispatcher is handed is the name plus the args of that line.
 	assert.equal(plan("/usage", 6).kind, "whole");
-	assert.equal(plan("/usage", 6).line, "/usage");
+	assert.deepEqual(plan("/usage", 6).command, { name: "usage", args: "" });
 	assert.equal(plan("  /usage  ", 10).kind, "whole");
 	// A command with arguments on the SAME line is still a whole-draft command:
 	// the existing shape, kept deliberately so `/model gpt-5` does not become a
 	// splice.
 	assert.equal(plan("/usage more prose", 6).kind, "whole");
+	assert.deepEqual(plan("/model gpt-5", 12).command, {
+		name: "model",
+		args: "gpt-5",
+	});
+});
+
+test("the plan hands the dispatcher a command, so args cannot cross a line", () => {
+	/*
+	 * THE SEAM. QA round 2's Q4 found that round 1's fix lived one layer above
+	 * the failure: the planner answered correctly and the canonical send path
+	 * then re-derived "is this whole draft a command" from the RAW text, where a
+	 * `[\s\S]*` argument group read the newline as the command/argument
+	 * separator. The property that must hold is exactly this one: the planner
+	 * hands on a name and the args OF ITS OWN LINE, and nothing downstream has
+	 * any text left to read. See `slash-dispatch.ts` for the consumer side.
+	 */
+	// One split, at the first whitespace, from the token's own line.
+	assert.deepEqual(plan("/model gpt-5", 12).command, {
+		name: "model",
+		args: "gpt-5",
+	});
+	assert.deepEqual(plan("fix this /model gpt-5", 20).command, {
+		name: "model",
+		args: "gpt-5",
+	});
+	// A command with no argument hands on an EMPTY args, not the next line.
+	assert.deepEqual(plan("fix this /model", 14).command, {
+		name: "model",
+		args: "",
+	});
+	// The blocker's own draft, caret where typing leaves it: the token is on
+	// line 2, so there is no command at all — and therefore no command object
+	// for any later layer to re-derive. Prose goes to the model.
+	assert.deepEqual(plan("/usage\nhello from line two", 25), { kind: "send" });
+	// And with the caret back on the command's line, the command that IS handed
+	// on owns that line alone: line 2 is the surviving draft, never its argument.
+	const spliced = plan("/usage\nhello from line two", 6);
+	assert.equal(spliced.kind, "splice");
+	assert.deepEqual(spliced.command, { name: "usage", args: "" });
+	assert.equal(spliced.text, "hello from line two");
 });
 
 test("the caret's token decides, not the whole-draft regex (round 1 R2)", () => {
@@ -85,7 +124,7 @@ test("the caret's token decides, not the whole-draft regex (round 1 R2)", () => 
 	 */
 	const spliced = plan("/usage\nfix this", 6);
 	assert.equal(spliced.kind, "splice");
-	assert.equal(spliced.line, "/usage");
+	assert.deepEqual(spliced.command, { name: "usage", args: "" });
 	assert.equal(spliced.text, "fix this");
 
 	// Same draft, caret at the END of line 2: the command is above the caret, so
@@ -97,7 +136,7 @@ test("the caret's token decides, not the whole-draft regex (round 1 R2)", () => 
 	// message survives in the composer.
 	const below = plan("fix this\n/usage", 15);
 	assert.equal(below.kind, "splice");
-	assert.equal(below.line, "/usage");
+	assert.deepEqual(below.command, { name: "usage", args: "" });
 	assert.equal(below.text, "fix this");
 });
 
@@ -108,9 +147,10 @@ test("a slash-shaped token that names no command is reported, not consumed", () 
 	// caller restores the ORIGINAL draft.
 	const result = plan("fix this /tema", 14);
 	assert.equal(result.kind, "unrecognised");
-	assert.equal(result.line, "/tema");
-	// A whole-draft misspelling keeps the existing shape: dispatch answers
-	// `not-a-command` / `consumed` exactly as it did before this change.
+	assert.deepEqual(result.command, { name: "tema", args: "" });
+	// A whole-draft misspelling keeps the existing shape: the command is handed
+	// on and the dispatcher's own "unknown command" note (with its suggestions)
+	// answers it, exactly as it did before this change.
 	assert.equal(plan("/tema", 5).kind, "whole");
 });
 
@@ -125,7 +165,7 @@ test("a command typed into a sentence splices out and runs", () => {
 	// Acceptance criterion 19: the surrounding draft survives.
 	const result = plan("fix this /usage", 14);
 	assert.equal(result.kind, "splice");
-	assert.equal(result.line, "/usage");
+	assert.deepEqual(result.command, { name: "usage", args: "" });
 	assert.equal(result.text, "fix this");
 	assert.equal(result.caret, 8);
 });
@@ -149,19 +189,19 @@ test("a free-text command mid-draft reassembles to the front, staged", () => {
 test("a name-list command with no name typed keeps its list open", () => {
 	// Acceptance criterion 21: `/team` and `/agent` do NOT reassemble on the word
 	// alone — the name is picked from the list first
-	// (`editor.py:8219-8222`). The plan carries the line so a caller whose list
-	// cannot answer can still say which command is waiting (round 1 UX U5).
+	// (`editor.py:8219-8222`). The plan carries the command so a caller whose
+	// list cannot answer can still say which command is waiting (round 1 UX U5).
 	assert.deepEqual(plan("fix this /team", 13), {
 		kind: "list-open",
-		line: "/team",
+		command: { name: "team", args: "" },
 	});
 	assert.deepEqual(plan("fix this /agent", 14), {
 		kind: "list-open",
-		line: "/agent",
+		command: { name: "agent", args: "" },
 	});
 	assert.deepEqual(plan("fix this /teams", 14), {
 		kind: "list-open",
-		line: "/teams",
+		command: { name: "teams", args: "" },
 	});
 	// With a name typed, the exception does not apply and it reassembles.
 	assert.equal(plan("fix this /team ops", 17).kind, "reassemble");
@@ -173,7 +213,7 @@ test("a command on its own line below a draft collapses that line", () => {
 	const result = plan("fix this\n/usage", 15);
 	assert.equal(result.kind, "splice");
 	assert.equal(result.text, "fix this");
-	assert.equal(result.line, "/usage");
+	assert.deepEqual(result.command, { name: "usage", args: "" });
 });
 
 test("the capabilities flag turns the planner off completely", () => {

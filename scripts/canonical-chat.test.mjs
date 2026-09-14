@@ -2041,28 +2041,56 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 	);
 });
 
-test("the composer plans a slash submit before it submits", async () => {
+test("the submit path cannot re-decide what a draft is", async () => {
 	/*
-	 * The shape guard for the inline-command contract (slash parity, round 1).
+	 * The shape guard for the inline-command contract: the ordering half from
+	 * round 1, the SEAM half from round 2.
 	 *
-	 * WHAT IT DEFENDS. Before this change the composer recognised a command only
-	 * when the WHOLE draft was one (`SLASH_SUBMISSION` against `text.trim()`), so
-	 * a command typed into a sentence reached the model as prose — a silent no-op
-	 * the user could not see. The fix is that `message-input.tsx` asks
-	 * `planSlashSubmission` first and only then decides whether to submit. That is
-	 * easy to lose in a refactor that touches only the submit path: deleting the
-	 * plan call leaves every unit test green, because the planner itself is still
-	 * correct and merely unused.
+	 * WHAT IT DEFENDS, PART 1 (ordering). Before this change the composer
+	 * recognised a command only when the WHOLE draft was one, so a command typed
+	 * into a sentence reached the model as prose — a silent no-op the user could
+	 * not see. The fix is that `message-input.tsx` asks `planSlashSubmission`
+	 * first and only then decides whether to submit. That is easy to lose in a
+	 * refactor that touches only the submit path: deleting the plan call leaves
+	 * every unit test green, because the planner itself is still correct and
+	 * merely unused.
+	 *
+	 * WHAT IT DEFENDS, PART 2 (one decision, not one order). Part 1 was green
+	 * while the defect was still live in the app. `chat-page.tsx`'s canonical
+	 * `send()` called `dispatch(content)` on the RAW text, and the dispatcher
+	 * asked `SLASH_SUBMISSION` whether that whole string was a command — a
+	 * SECOND decision, one layer below the planner, whose `[\s\S]*` argument
+	 * group read the newline in `/usage\nhello` as the command/argument
+	 * separator. The planner answered `send` for that draft, the dispatcher
+	 * overruled it, the composer was emptied on `consumed` and nothing reached
+	 * the model (QA round 2, Q4 — round 1's Q1, one layer down). An ordering
+	 * guard cannot catch that: the second guard was never out of order, it was a
+	 * second answer. So what is pinned here is structural — the dispatcher is
+	 * handed an already-parsed command, and nothing on the submit path re-reads
+	 * draft text to ask whether it is one. Reinstate the old line and this test
+	 * goes red (it was run that way).
 	 *
 	 * Asserted on the SOURCE rather than by rendering, for the reason the clipping
-	 * guard above is: what is being defended is the ORDER of two calls in one
-	 * file, and a render test would need a real backend to observe the difference
-	 * between "spliced" and "sent to the model".
+	 * guard above is: what is being defended is which call sites exist and what
+	 * they are handed, and a render test would need a real backend to observe the
+	 * difference between "spliced" and "sent to the model".
 	 */
 	const { readFile } = await import("node:fs/promises");
-	const composer = await readFile(
-		"src/renderer/src/features/chat/components/message-input.tsx",
-		"utf8",
+	/*
+	 * Comments are stripped before every assertion below, because each of them is
+	 * about CODE: the defect these guards describe is *named* in the docstrings
+	 * that record it, and a guard that fired on its own history would be a guard
+	 * nobody could keep.
+	 */
+	const code = (source) =>
+		source
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/^[ \t]*\/\/.*$/gm, "");
+	const composer = code(
+		await readFile(
+			"src/renderer/src/features/chat/components/message-input.tsx",
+			"utf8",
+		),
 	);
 	// The planner is consulted with the CARET, not just the value: the whole
 	// point is the token at the caret (`slashTokenSpan`), so a call that dropped
@@ -2083,5 +2111,50 @@ test("the composer plans a slash submit before it submits", async () => {
 	assert.ok(
 		plans.length >= 2,
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
+	);
+
+	/*
+	 * The seam itself.
+	 *
+	 * (a) Every non-`send` verdict belongs to the composer. Excluding `whole`
+	 * here is what routed a whole-draft command back through the message path,
+	 * where the second decision waited for it.
+	 */
+	assert.ok(
+		!composer.includes('kind !== "send" && plan.kind !== "whole"'),
+		"the composer exempts `whole` from the plan again, so a whole-draft command is being routed back through the message path — the path that used to re-decide it",
+	);
+	// (b) The dispatcher takes the planner's answer (a name and its args) and has
+	// no text-shape guard left to disagree with the planner.
+	const dispatcher = code(
+		await readFile(
+			"src/renderer/src/features/chat/components/slash-dispatch.ts",
+			"utf8",
+		),
+	);
+	assert.ok(
+		!/SLASH_SUBMISSION/.test(dispatcher),
+		"a whole-draft text-shape guard is back in slash-dispatch.ts; it can disagree with the composer's planner, which is QA round 2's Q4",
+	);
+	assert.match(
+		dispatcher,
+		/async \(\s*invocation: SlashCommandInvocation,?\s*\): Promise<SlashDispatchOutcome>/,
+		"the dispatcher no longer takes a `SlashCommandInvocation`; handing it text lets a second whole-draft decision exist again",
+	);
+	// (c) The canonical send path never asks whether the text is a command: it is
+	// the model path, and the composer has already dealt with every command.
+	const page = code(
+		await readFile(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+			"utf8",
+		),
+	);
+	assert.ok(
+		!/dispatch\((?:content|text|draft|payload|message)\b/.test(page),
+		"the canonical send path dispatches the draft text again (`dispatch(content)`); the dispatcher would then decide instead of the planner",
+	);
+	assert.ok(
+		!/SLASH_SUBMISSION/.test(page),
+		"chat-page.tsx has a whole-draft text-shape guard again; that is the second decision QA round 2's Q4 came from",
 	);
 });

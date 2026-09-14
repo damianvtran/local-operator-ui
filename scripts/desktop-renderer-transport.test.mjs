@@ -1029,15 +1029,33 @@ test("a refused slash command reports RETAINED, so the composer keeps the draft"
 	const catchBranch = source.slice(source.lastIndexOf("} catch (error) {"));
 	assert.match(catchBranch, /return "retained";/);
 
-	// And the consumer must translate `retained` into the `false` that keeps the
-	// text. A dispatch that reports honestly into a caller that ignores it is the
-	// same bug one file over.
-	const page = await readFile(
-		"src/renderer/src/features/chat/components/chat-page.tsx",
+	// And the consumer must translate `retained` into text the user still has. A
+	// dispatch that reports honestly into a caller that ignores it is the same bug
+	// one file over.
+	//
+	// The consumer is the COMPOSER, not the canonical send path (QA round 2, Q4):
+	// `send()` no longer sees a command at all — the planner decides, and every
+	// non-`send` verdict is run by `applyPlan` — so the mapping from outcome to
+	// `what the box holds` lives there. `consumed` is the only outcome that
+	// retires the token; anything else puts the ORIGINAL draft back, so a refused
+	// command still leaves the paste to shorten and retry.
+	const composer = await readFile(
+		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
 	);
-	assert.match(page, /if \(dispatched === "retained"\) return false;/);
-	assert.match(page, /if \(dispatched === "consumed"\) return true;/);
+	const composerTail = composer.slice(
+		composer.lastIndexOf("const outcome = await runSlashCommand("),
+	);
+	assert.match(
+		composerTail,
+		/if \(outcome === "consumed"\)/,
+		"the composer must branch on `consumed` — it is the only outcome that may retire the draft",
+	);
+	assert.match(
+		composerTail,
+		/setNewMessage\(draft\);/,
+		"a command that did NOT run must put the ORIGINAL draft back verbatim, token included; restoring anything else loses the text the refusal was about",
+	);
 });
 
 test("an oversize fork message is refused before the request, in the fork's own words", async () => {

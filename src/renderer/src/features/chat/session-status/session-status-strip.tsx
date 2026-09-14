@@ -6,6 +6,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import type { SlashCommandInvocation } from "../components/slash-submit";
 import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
@@ -45,8 +46,9 @@ import {
  *
  * ## Why the clicks go through slash dispatch
  *
- * Each control calls `onCommand("/model")`, `onCommand("/effort")`,
- * `onCommand("/context")` — the SAME string the user could type. The picker
+ * Each control dispatches `/model`, `/effort` or `/context` — the SAME command
+ * the user could type, in the shape the dispatcher takes (a name and its args).
+ * The picker
  * is then reached by the one path that already exists (composer -> dispatch ->
  * owner command -> `native_action` -> `picker-registry`), so the chip cannot
  * drift from the command: there is no second way to open a picker, and a
@@ -100,8 +102,11 @@ export type SessionStatusStripProps = {
 	 * Run a slash command exactly as typing it would. Absent on a surface with
 	 * no dispatcher (an older backend with commands disabled), which renders
 	 * every reading as a plain label rather than a control that cannot succeed.
+	 *
+	 * The argument is a `SlashCommandInvocation`, not a line: the dispatcher no
+	 * longer parses text (see `slash-dispatch.ts`).
 	 */
-	onCommand?: (line: string) => void;
+	onCommand?: (invocation: SlashCommandInvocation) => void;
 	/**
 	 * The effort rungs `/effort` will accept, or `undefined` while unknown.
 	 *
@@ -388,7 +393,7 @@ const COMMANDS_OFF =
  */
 function modelReason(
 	draft: boolean,
-	dispatch?: (line: string) => void,
+	dispatch?: (invocation: SlashCommandInvocation) => void,
 ): string {
 	if (dispatch) return "Click to choose a different model";
 	if (draft)
@@ -413,7 +418,7 @@ function modelReason(
 function effortReason(
 	draft: boolean,
 	adjustable: boolean,
-	dispatch?: (line: string) => void,
+	dispatch?: (invocation: SlashCommandInvocation) => void,
 ): string | null {
 	if (!adjustable) return null;
 	if (draft) return DRAFT_EFFORT_LINE;
@@ -594,7 +599,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 							}
 						/>
 					}
-					onOpen={dispatch ? () => dispatch("/model") : undefined}
+					onOpen={
+						dispatch ? () => dispatch({ name: "model", args: "" }) : undefined
+					}
 					// The one item with unbounded length, so it is the one that
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
@@ -681,7 +688,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// to learn it than never offering the control.
 					onOpen={
 						dispatch && effort.adjustable
-							? () => dispatch("/effort")
+							? () => dispatch({ name: "effort", args: "" })
 							: undefined
 					}
 				>
@@ -725,7 +732,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						}
 					/>
 				}
-				onOpen={dispatch ? () => dispatch("/context") : undefined}
+				onOpen={
+					dispatch ? () => dispatch({ name: "context", args: "" }) : undefined
+				}
 			>
 				<ContextWheel reading={reading} />
 				{/*
