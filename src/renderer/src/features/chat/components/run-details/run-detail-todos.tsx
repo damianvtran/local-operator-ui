@@ -142,14 +142,17 @@ const TodoRow = ({ item }: { item: TodoItemView }) => {
 						 * assistive tech (the twin) and on hover (the `title`), and a mouse is no
 						 * longer the only way to read a sentence that is the whole point of the
 						 * blocked state. The row grows with it: 16px per line, the same pin the
-						 * record already carries (§ 8). `ink-muted` rather than the mark's
+						 * record already carries (§ 8). The `title` carries the reason WITHOUT the
+						 * `— blocked: ` the visible line leads with (round 3's U3-1): a tooltip that
+						 * repeats the line under the pointer tells the reader nothing the line did
+						 * not. `ink-muted` rather than the mark's
 						 * `ink-dim`: on a blocked row this is the part that says what the work is
 						 * waiting on, and `dim` is the ink for settled work.
 						 */}
 						<span
 							aria-hidden={true}
 							className={cn("line-clamp-2 text-ink-muted text-meta leading-4")}
-							title={reason}
+							title={item.reason ?? undefined}
 						>
 							{reason}
 						</span>
