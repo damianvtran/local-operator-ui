@@ -136,6 +136,16 @@ export function costKnownFraction(
 	aggregate: DesktopUsageAggregate,
 ): number | null {
 	if (!aggregate.calls) return null;
+	/*
+	 * Nothing priceable in scope is NOT measured, which is a different fact from
+	 * a measured zero, and the card's two halves have to agree about it: the
+	 * value renders `—` when `cost_known_calls === 0` (§ 6.1), while a fraction
+	 * of `0` draws the bar's AT-ZERO spelling — an empty track, which
+	 * `proportion-bar.tsx` defines as the claim "nothing was spent". One card
+	 * cannot say both (design round 1, D6). `null` is the unknown the bar renders
+	 * as a dotted rule, so a window with no priced call says it once.
+	 */
+	if (aggregate.cost_known_calls === 0) return null;
 	return aggregate.cost_known_calls / aggregate.calls;
 }
 

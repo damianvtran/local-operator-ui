@@ -7,9 +7,12 @@ import {
 	isValidElement,
 } from "react";
 import {
+	Area,
 	Bar,
 	CartesianGrid,
+	Line,
 	ResponsiveContainer,
+	Scatter,
 	Tooltip,
 	XAxis,
 	YAxis,
@@ -42,12 +45,12 @@ import { formatDayBucket, formatTokens } from "../formatters";
 
 export type ChartFrameProps = {
 	/**
-	 * Sentence case heading; a chart is never unlabelled. An EMPTY title renders
-	 * no heading row, which exists for one case: a caller whose surrounding
-	 * section already carries the heading (and the control the frame has no slot
-	 * for) would otherwise print the series name twice.
+	 * Sentence case heading; a chart is never unlabelled. ABSENT — not `""` — is
+	 * how a caller with its own heading row says so: the settings section has one
+	 * and it carries the metric toggle this frame has no slot for, and an
+	 * optional prop cannot be silently empty by accident.
 	 */
-	title: string;
+	title?: string;
 	meta?: string;
 	/** A REAL height. ResponsiveContainer measures its box, so `h-full` renders nothing. */
 	heightClassName?: string;
@@ -107,6 +110,63 @@ type TooltipPayload = { value?: number | string; name?: string };
  * anatomy as every other overlay in the app: `elevated` ground, `shadow-overlay`,
  * monospace for the number because a number is machine voice.
  */
+/**
+ * The mark TYPES that take the animation flag, and nothing else.
+ *
+ * `isAnimationActive` is read by the MARK in the installed recharts: 2.15.3's
+ * `chart/generateCategoricalChart.js` — the module that builds `BarChart` and
+ * `LineChart` — never mentions the prop, while `cartesian/Bar.js` and
+ * `cartesian/Line.js` default it to `!Global.isSsr`, i.e. true in a browser.
+ * Writing it on the chart element, which this frame used to do, is therefore a
+ * prop nothing reads: every mark still animated in, so § 7's "no motion on
+ * marks" was not delivered by the one file that exists to own it — and no
+ * settled frame could show the difference.
+ *
+ * A whitelist rather than a blanket clone: this frame also injects `XAxis`,
+ * `YAxis`, `CartesianGrid` and `Tooltip`, and recharts spreads some of those
+ * props onto SVG nodes, where an unknown attribute warns. Rebuilding only the
+ * marks with the flag keeps the rule in one file, applied to every chart the app
+ * draws, rather than repeated at each call site where forgetting it would
+ * reintroduce motion silently.
+ */
+const MARKS: unknown[] = [Bar, Line, Area, Scatter];
+
+/**
+ * Every mark below `nodes`, with its mount animation off.
+ *
+ * Exported so `scripts/panel-chart-motion.test.mjs` can bind the SHIPPED
+ * function rather than reimplementing it — the failure this guards against (the
+ * flag set where nothing reads it) is invisible in any rendered frame, since a
+ * settled frame after the animation equals the frame before it.
+ */
+export const withoutMotion = (nodes: ReactNode): ReactNode =>
+	Children.map(nodes, (node) => {
+		if (!isValidElement(node)) return node;
+		const element = node as ReactElement<{
+			children?: ReactNode;
+			isAnimationActive?: boolean;
+		}>;
+		const isMark = MARKS.includes(element.type as unknown);
+		/*
+		 * A leaf keeps its own props exactly. Cloning one with `children:
+		 * undefined` would ADD a key it never had, and this frame injects axes and
+		 * grids whose props recharts spreads onto SVG nodes — an attribute nobody
+		 * asked for is exactly what the whitelist above exists to avoid.
+		 */
+		if (
+			element.props.children === undefined ||
+			element.props.children === null
+		) {
+			return isMark
+				? cloneElement(element, { isAnimationActive: false })
+				: element;
+		}
+		const children = withoutMotion(element.props.children);
+		return isMark
+			? cloneElement(element, { isAnimationActive: false, children })
+			: cloneElement(element, { children });
+	});
+
 const ChartTooltip = ({
 	active,
 	label,
@@ -171,15 +231,13 @@ export const ChartFrame = ({
 		(cloneElement(
 			children as ReactElement<{
 				children?: ReactNode;
-				isAnimationActive?: boolean;
 			}>,
 			/*
-			 * `isAnimationActive: false` on the chart element, not on each mark at
-			 * each call site: § 7's "no motion on marks" is a rule about charts, so
-			 * the chart idiom owns it. A mark that animated in would be an entrance
-			 * on a surface whose numbers are already settled.
+			 * Nothing is set on the chart element itself: the animation flag belongs
+			 * to the marks (see `withoutMotion`), and the axes, the grid and the
+			 * tooltip are injected as children below.
 			 */
-			{ isAnimationActive: false },
+			{},
 			[
 				<CartesianGrid key="grid" strokeDasharray="3 3" vertical={false} />,
 				<XAxis
@@ -197,7 +255,9 @@ export const ChartFrame = ({
 					tickFormatter={yTickFormatter}
 				/>,
 				...Children.toArray(
-					(children as ReactElement<{ children?: ReactNode }>).props.children,
+					withoutMotion(
+						(children as ReactElement<{ children?: ReactNode }>).props.children,
+					),
 				),
 				<Tooltip
 					key="tooltip"

@@ -24,6 +24,7 @@ import type {
 } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
 import { SessionPanel } from "./session-panel";
+import { scrollPanelToSection } from "./story-scroll";
 
 const noop = () => {};
 
@@ -249,6 +250,10 @@ export const TreeCostUnmeasured: Story = {
 /** A session predating tool-call recording: one line, no zeroed counters. */
 export const NoToolCalls: Story = {
 	args: { ...base, report: report({ tool_calls: null }) },
+	/* The Tool-calls section is the sixth of nine and below the fold of every
+	   frame this state has: unscrolled, this story is the populated image
+	   (design round 1, D2). */
+	play: () => scrollPanelToSection("Tool calls"),
 };
 
 /** Timings with no samples: `unknown (0 samples)`, never `0 ms`. */
@@ -268,6 +273,11 @@ export const ZeroSamples: Story = {
 			},
 		}),
 	},
+	/* `unknown (0 samples)` is stated in the Timings section, and no frame has
+	   ever scrolled to it (design round 1, D2). Section 6 is also where the
+	   recent-request table and the Scope disclosure start, so this frame carries
+	   all four of the sections that had never been photographed. */
+	play: () => scrollPanelToSection("Timings"),
 };
 
 /** An empty ledger: the empty copy, plus the LIVE gauge that still has a value. */
