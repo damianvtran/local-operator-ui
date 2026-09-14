@@ -516,9 +516,31 @@ export function useCanonicalSessionStream(
 		 * reports `cursor_missing: false`, indistinguishable from a complete one.
 		 * Comparing `history.entries` against `frontend.snapshot.history_cursor`
 		 * therefore proves nothing — they are one value on two fields. The
-		 * unbounded route (`sessions.history`, no cursor) is the only door to
-		 * those rows, and it is cheap: one bounded page, walked back only when
-		 * the fetched page does not reach the snapshot's newest row.
+		 * unbounded route (`sessions.history`, no cursor) reads the tail whatever
+		 * cursor the owner published, and that is what makes it the read which
+		 * closes this: against an owner that still bounds its page by a stale
+		 * cursor it delivers the rows in between, and against one that publishes a
+		 * genuine page (the backend half of this defect, landing separately) it is
+		 * a redundant second read of rows already in hand — absorbed by the
+		 * reducer's id-keyed merge for the cost of one bounded page. Kept
+		 * unconditional because a client cannot tell the two owners apart from the
+		 * frame it was handed.
+		 *
+		 * THE BOUND, which is different in the two cases:
+		 *
+		 *  - something WAS painted (the common case): the first read is the tail,
+		 *    and it is the only one unless it does not reach back to a painted row —
+		 *    the walk then continues until it does, stopped by `has_more` or by
+		 *    `RECONCILE_WALK_MAX_ROWS` (500 rows, read in
+		 *    `RECONCILE_TAIL_ENTRIES`-sized pages). A snapshot whose page already
+		 *    reaches the tail costs exactly one page, which is what this path paid
+		 *    before the guard existed.
+		 *  - NOTHING was painted (a cold or cursor-less snapshot, an attention
+		 *    frame naming an unpainted anchor with no snapshot in the batch, a
+		 *    label-gap retry): no fetched page can ever satisfy the connection test,
+		 *    so a walk would run to its bound for nothing — five sequential reads,
+		 *    and five full file passes on the owner side, where one page is the
+		 *    whole coverage. One page, then out.
 		 *
 		 * `painted` is built from the FRAMES, not from the painted view: an
 		 * updater runs lazily, so at this point the view may not hold what this
@@ -533,6 +555,7 @@ export function useCanonicalSessionStream(
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
 			let rows = 0;
+			let failures = 0;
 			while (rows < RECONCILE_WALK_MAX_ROWS) {
 				let page: DesktopHistoryPage;
 				try {
@@ -543,9 +566,20 @@ export function useCanonicalSessionStream(
 						limit: reconcileLimit(missingCalls),
 					});
 				} catch {
-					// Painted rows stay; the stream keeps delivering. A failed
-					// reconcile is not a reason to blank the conversation.
-					return;
+					/*
+					 * ONE retry, then stand down. The shape is the stream's own error
+					 * path (`connect`'s single automatic reconnect), and the reason is
+					 * stronger here: this read is the only thing on the client side
+					 * that can close the reported gap, so a transient refusal at the
+					 * exact re-subscribe moment must not leave the symptom on screen
+					 * waiting for an unrelated trigger to arrive. A second failure
+					 * stands down silently, as before this change: the painted rows
+					 * are correct and the stream keeps delivering, and a backend that
+					 * is genuinely down leaves nothing to merge — blanking the
+					 * conversation would be worse than the rows that are missing.
+					 */
+					if (failures++ > 0) return;
+					continue;
 				}
 				if (generationRef.current !== generation) return;
 				const oldest = page.entries[0];
@@ -556,15 +590,23 @@ export function useCanonicalSessionStream(
 					...state,
 					transcript: applyHistoryPage(state.transcript, page),
 				}));
+				// Nothing on screen means nothing to connect TO: every further page
+				// would be merged by the same test that cannot fire. One page is the
+				// coverage, and the walk past it is dead work on both sides of the
+				// wire — see the two bound cases above.
+				if (painted.size === 0) return;
 				const connected = page.entries.some(
 					(entry) => painted.has(entry.id) || fetchedIds.has(entry.id),
 				);
 				for (const entry of page.entries) fetchedIds.add(entry.id);
-				// No overlap, no more rows behind this page, or no progress to make:
-				// the walk is over either way.
-				if (connected || !oldest || !page.has_more || oldest.id === beforeId) {
-					return;
-				}
+				// No overlap, or nothing further back: the walk is over either way.
+				//
+				// No `beforeId`-progress clause belongs here. The reader's `before_id`
+				// is EXCLUSIVE (it breaks before appending the boundary row), so a page
+				// can never hand back its own boundary row as its oldest; and a
+				// transcript replaced under the walk is caught by the `fetchedIds`
+				// overlap test above, which sees the tail it hands back.
+				if (connected || !oldest || !page.has_more) return;
 				beforeId = oldest.id;
 			}
 		};
@@ -587,8 +629,10 @@ export function useCanonicalSessionStream(
 			// cursor reports cursor_missing — both are the contract's "reconcile
 			// through /history" case. What changed is the third one: a NON-empty
 			// page without cursor_missing used to be accepted as complete, and it
-			// cannot be known to be — see `reconcileTail`. The cost is one bounded
-			// page per snapshot, on a path that already paid it for the other two.
+			// cannot be known to be — see `reconcileTail`. On the two paths that
+			// painted nothing the read is one page and no more; on the path that did
+			// it is one page unless the tail does not reach it, which is the same
+			// page this path already paid for the other two.
 			// An attention frame only justifies a refetch when it names an anchor
 			// the transcript has not painted: the backend publishes one after
 			// every successful ACK, so reconciling on all of them spent a
