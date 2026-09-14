@@ -125,6 +125,61 @@ export default meta;
 type Story = StoryObj;
 
 /**
+ * The statement register must not fall into TraceLine's tool-label fallback.
+ * Both detail shapes matter: a clipped static row has no disclosure through
+ * which a reader could recover the missing error, while a detailed row must
+ * retain the full headline independently of its supporting body.
+ */
+export const JobResultMessages: Story = {
+	render: () => (
+		<Frame
+			height={720}
+			records={[
+				...(["failed", "completed"] as const).flatMap((outcome) =>
+					[
+						null,
+						"Supporting job output remains available through this disclosure.",
+					].map((detail, index): TranscriptRecord => {
+						const headline = `background job 'review-long-result' ${outcome}: ${
+							outcome === "failed"
+								? "[Errno 28] No space left on device while writing the verification report; free disk space before retrying."
+								: "All requested suites passed and the complete verification report is ready for the independent reviewer."
+						}`;
+						return {
+							kind: "custom",
+							id: `job-${outcome}-${index}`,
+							ts: 1_760_000_000_000,
+							customType: "job_result",
+							level: "info",
+							category: null,
+							provider: null,
+							headline,
+							text: [headline, detail].filter(Boolean).join("\n"),
+							attribution: "system",
+							detail,
+						};
+					}),
+				),
+				{
+					kind: "custom",
+					id: "job-ordinary",
+					text: "The independent reviewer finished checking the complete verification report and found no remaining blockers.",
+					attribution: "system",
+					ts: 1_760_000_000_000,
+					customType: "job_result",
+					level: "info",
+					category: null,
+					provider: null,
+					headline:
+						"The independent reviewer finished checking the complete verification report and found no remaining blockers.",
+					detail: null,
+				},
+			]}
+		/>
+	),
+};
+
+/**
  * The regression. Every one of these must be readable to its final word --
  * "then send the message again" is the actionable half.
  */
