@@ -4453,6 +4453,14 @@ const loAggregateCheck = async ({
 	serverAnswersVersion = true,
 	devMode = false,
 	ipc = null,
+	/*
+	 * The npx install is a channel of its own: it answers from the npm registry
+	 * rather than from electron-updater, so a case reaches it by naming the
+	 * version the registry would hand back (QA round 1, Q2 covers that channel
+	 * too). Omitted means the app is not an npx install, which is every other
+	 * case in this file.
+	 */
+	npxVersion = null,
 }) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
@@ -4501,6 +4509,10 @@ const loAggregateCheck = async ({
 		// The field the constructor derives from `app.isPackaged`, which the
 		// fixture pins to a packaged app for every other case in this file.
 		if (devMode) updateService.isDevMode = true;
+		if (npxVersion !== null) {
+			updateService.isNpxInstall = true;
+			updateService.getLatestNpmVersion = async () => npxVersion;
+		}
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
 		globalThis.__loTestAppCheck = appCheck;
 		/*
@@ -4538,8 +4550,27 @@ const loAggregateCheck = async ({
 	}
 };
 
-const loAppCurrent = () => ({ isUpdateAvailable: false });
-const loAppTrails = () => ({ isUpdateAvailable: true });
+/*
+ * The app channel's fixtures carry `versionInfo`, because the real updater does.
+ *
+ * electron-updater's `AppUpdater.doCheckForUpdates` returns
+ * `{isUpdateAvailable, versionInfo, updateInfo}` on BOTH of its outcomes - the
+ * not-available return and the available one - with `versionInfo` the parsed
+ * feed entry. A fixture that answered with the flag alone was modelling
+ * something the library never produces, and it is exactly the shape QA round 1's
+ * Q2 finding turns on: the channel now needs the READINGS, not just the flag
+ * computed from them, so a missing `versionInfo` is refused rather than read as
+ * "nothing newer".
+ */
+const APP_RUNNING_VERSION = "0.0.0-test";
+const loAppCurrent = () => ({
+	isUpdateAvailable: false,
+	versionInfo: { version: APP_RUNNING_VERSION },
+});
+const loAppTrails = () => ({
+	isUpdateAvailable: true,
+	versionInfo: { version: "0.22.4" },
+});
 
 /**
  * The pure rule, bundled with NO fixture and no stubs.
@@ -4719,6 +4750,204 @@ test("an invoke through the aggregate handler emits both channels' events unless
 		// channels current, so the invoke that asked for it still resolves the one
 		// sentence such a check earns.
 		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * QA round 1, Q2: a status may not be derived from a version nobody can read.
+ *
+ * `isNewerVersion` splits on `.` and coerces with `Number`, so a part that is
+ * not a number becomes `NaN`, every `NaN` comparison is false, and a malformed
+ * pair reads as "nothing newer" - which then earned the WHOLE-installation
+ * affirmation. Three shapes, one rule: an unreadable reading is the same
+ * absence as one that never arrived.
+ */
+test("an unreadable server version reading cannot earn the affirmation", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		// The installed version, from a real /health response whose payload
+		// carries `999.invalid` - QA's first reproduction, verbatim.
+		const installedUnreadable = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "999.invalid",
+			publishedVersion: "0.54.43",
+		});
+		assert.equal(installedUnreadable.verdict.server, "unavailable");
+		assert.equal(installedUnreadable.verdict.app, "current");
+		assert.equal(installedUnreadable.verdict.affirmation, null);
+		/*
+		 * The reading was PRESENT - the health endpoint answered with a version
+		 * string - so this is about the value rather than about a missing answer,
+		 * which is what separates it from the no-version case above.
+		 */
+		assert.ok(
+			installedUnreadable.sent.some(
+				({ channel }) => channel === "backend-update-error",
+			),
+			JSON.stringify(installedUnreadable.sent.map(({ channel }) => channel)),
+		);
+
+		// The published version, which is the other side of the same comparison.
+		const publishedUnreadable = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.43",
+			publishedVersion: "invalid",
+		});
+		assert.equal(publishedUnreadable.verdict.server, "unavailable");
+		assert.equal(publishedUnreadable.verdict.affirmation, null);
+
+		/*
+		 * And the direction QA also measured: an unreadable INSTALLED version used
+		 * to produce an offer ("update to 0.54.44") for a server whose version
+		 * could not be read at all - the same confusion that once produced a pip
+		 * command for an unreadable server. No offer, and no status.
+		 */
+		const offerFromUnreadable = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "not-a-version",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(offerFromUnreadable.verdict.server, "unavailable");
+		assert.equal(offerFromUnreadable.verdict.affirmation, null);
+		assert.ok(
+			!offerFromUnreadable.sent.some(
+				({ channel }) => channel === "backend-update-available",
+			),
+			JSON.stringify(offerFromUnreadable.sent.map(({ channel }) => channel)),
+		);
+
+		// The app channel: no `versionInfo` at all, then a malformed one.
+		const appNoReading = await loAggregateCheck({
+			appCheck: () => ({ isUpdateAvailable: false }),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(appNoReading.verdict.app, "unavailable");
+		assert.equal(appNoReading.verdict.affirmation, null);
+
+		const appUnreadable = await loAggregateCheck({
+			appCheck: () => ({
+				isUpdateAvailable: false,
+				versionInfo: { version: "999.invalid" },
+			}),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(appUnreadable.verdict.app, "unavailable");
+		assert.equal(appUnreadable.verdict.affirmation, null);
+
+		// The npx channel reads the npm registry instead of the updater.
+		const npxUnreadable = await loAggregateCheck({
+			appCheck: () => ({ isUpdateAvailable: false, versionInfo: { version: "0.0.0-test" } }),
+			npxVersion: "invalid",
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(npxUnreadable.verdict.app, "unavailable");
+		assert.equal(npxUnreadable.verdict.affirmation, null);
+
+		// And the sentence is still reachable where the readings are real.
+		const npxCurrent = await loAggregateCheck({
+			appCheck: () => ({ isUpdateAvailable: false, versionInfo: { version: "0.0.0-test" } }),
+			npxVersion: "0.0.0-test",
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(npxCurrent.verdict.app, "current");
+		assert.equal(npxCurrent.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The other half of Q2: the fix must not reclassify anything this product
+ * actually publishes. These are the comparisons the update path has always
+ * made, kept as themselves so a future tightening of the grammar names the
+ * release form it broke.
+ */
+test("the readable-version grammar keeps every comparison it always made", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const equal = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(equal.verdict.server, "current");
+		assert.equal(equal.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+
+		const newer = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.45",
+		});
+		assert.equal(newer.verdict.server, "available");
+		assert.equal(newer.verdict.affirmation, null);
+
+		// The four-part form (the backend has published `0.18.0.1`) and the
+		// pre-release form (the registry carries `0.55.0-rc1`), both readable.
+		const fourPart = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44.1",
+			publishedVersion: "0.54.44.2",
+		});
+		assert.equal(fourPart.verdict.server, "available");
+
+		const preRelease = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.55.0-rc1",
+			publishedVersion: "0.55.0",
+		});
+		assert.equal(preRelease.verdict.server, "available");
+
+		/*
+		 * The grammar itself, over the forms the product publishes.
+		 *
+		 * Every version ever published for `local-operator` on PyPI and
+		 * `local-operator-ui` on npm was checked against it when the rule was
+		 * written - 558 of 558 accepted - and a representative sample is pinned
+		 * here so a tightening fails on a nameable form rather than in production.
+		 * The rejects are QA's own inputs plus the shapes a truncating reader can
+		 * produce.
+		 */
+		const readable = [
+			"0.54.44",
+			"0.18",
+			"0.18.0.1",
+			"v0.22.3",
+			"0.0.0-test",
+			"0.1.0-beta.1",
+			"0.18.0-rc1",
+			"0.1.3b0",
+			"1.0.0.post1",
+			"0.55.0.dev3",
+		];
+		const unreadable = [
+			"999.invalid",
+			"invalid",
+			"not-a-version",
+			"Unknown",
+			"",
+			"v",
+			"1.2.3.4.5",
+			"0.54.43-",
+			"1.2.x",
+			"0.1.0;rm -rf /",
+		];
+		for (const version of readable)
+			assert.equal(rule.isReadableVersion(version), true, `${version} is a published form`);
+		for (const version of unreadable)
+			assert.equal(rule.isReadableVersion(version), false, `${version} must not be compared`);
+		assert.equal(rule.isReadableVersion(null), false, "no reading");
+		assert.equal(rule.isReadableVersion(undefined), false, "no reading");
+		assert.equal(
+			rule.isReadableVersion("  0.54.43  "),
+			true,
+			"trimmed, the way isNewerVersion normalises",
+		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

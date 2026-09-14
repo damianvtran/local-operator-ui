@@ -29,6 +29,7 @@ import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
+	isReadableVersion,
 	updateCheckVerdict,
 } from "./update-check-verdict";
 import {
@@ -2067,6 +2068,29 @@ export class UpdateService {
 					const currentVersion = app.getVersion();
 					const latestVersion = await this.getLatestNpmVersion();
 
+					/*
+					 * Both readings, before either is compared (QA round 1, Q2).
+					 *
+					 * `isNewerVersion` coerces non-numeric parts to `NaN` and every
+					 * comparison against `NaN` is false, so a malformed pair reads as
+					 * "nothing newer" and would earn the whole check's affirmation. An
+					 * unreadable registry answer or an unreadable running version is
+					 * "we could not find out", which is `unavailable` - the same answer
+					 * an empty registry read already gets. This is also the answer for
+					 * an offer: a version that cannot be read is not one to tell the
+					 * user to move to.
+					 */
+					if (
+						!isReadableVersion(currentVersion) ||
+						!isReadableVersion(latestVersion)
+					) {
+						logger.warn(
+							`Unreadable version reading for the npx install (running: ${currentVersion}, latest: ${latestVersion}); reporting the channel as unavailable rather than comparing them.`,
+							LogFileType.UPDATE_SERVICE,
+						);
+						return "unavailable";
+					}
+
 					if (
 						latestVersion &&
 						this.isNewerVersion(latestVersion, currentVersion)
@@ -2183,6 +2207,35 @@ export class UpdateService {
 			}
 
 			if (!result) return "unavailable";
+			/*
+			 * What the packaged app channel is allowed to conclude, from the readings
+			 * the updater resolved rather than from the flag alone (QA round 1, Q2).
+			 *
+			 * `isUpdateAvailable` is a comparison's RESULT: when either side of that
+			 * comparison was not a version, the flag is false for a reason that has
+			 * nothing to do with being current, and "false" then earns the
+			 * installation-wide affirmation. Both sides are therefore checked here:
+			 * the running version, and the version the feed reported. electron-updater
+			 * populates `versionInfo` on BOTH of its outcomes
+			 * (`AppUpdater.doCheckForUpdates`: the not-available and available returns
+			 * both carry `versionInfo: updateInfo`), so a missing one is an absent
+			 * reading - not a legitimate "no update" - and is refused for the same
+			 * reason. A malformed reading on an otherwise-available check yields no
+			 * offer either: the version could not be read, so there is nothing to name
+			 * and nothing to affirm.
+			 */
+			const runningVersion = app.getVersion();
+			const publishedVersion = result.versionInfo?.version;
+			if (
+				!isReadableVersion(runningVersion) ||
+				!isReadableVersion(publishedVersion)
+			) {
+				logger.warn(
+					`Unreadable version reading from the update feed (running: ${runningVersion}, published: ${publishedVersion}); reporting the channel as unavailable rather than trusting isUpdateAvailable=${result.isUpdateAvailable}.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return "unavailable";
+			}
 			return result.isUpdateAvailable ? "available" : "current";
 		} catch (error) {
 			logger.error(
@@ -2645,6 +2698,37 @@ export class UpdateService {
 			// rather than from a check, and it has to be able to name the published
 			// release the user is working towards (review U17).
 			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
+
+			/*
+			 * A reading that cannot be parsed is the same absence as one that never
+			 * arrived (QA round 1, Q2). `999.invalid` installed against `0.54.43`
+			 * published compared as not-newer - every `NaN` comparison in
+			 * `isNewerVersion` is false - and the channel reported `current`, which
+			 * affirmed that the whole installation was up to date from a health
+			 * payload nobody could read. The `Unknown` case below keeps its own,
+			 * more specific message; this catches every other unreadable shape.
+			 */
+			const unreadable = [
+				["installed", installedVersion as string | null],
+				["published", latestVersion as string | null],
+			].filter(([, value]) => !isReadableVersion(value));
+			if (unreadable.length > 0) {
+				logger.error(
+					`Unable to read the ${unreadable
+						.map(([which]) => which)
+						.join(
+							" and ",
+						)} server version (installed: ${installedVersion}, published: ${latestVersion}); no status is reported rather than comparing an unreadable reading.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				if (!silent) {
+					this.sendToRenderer(
+						"backend-update-error",
+						"Unable to determine backend version.",
+					);
+				}
+				return { status: "unavailable", info: null };
+			}
 
 			if (!installedVersion || !latestVersion) {
 				logger.error(
