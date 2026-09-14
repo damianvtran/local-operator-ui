@@ -37,10 +37,10 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, rmSync } from "node:fs";
-import { loadavg, cpus } from "node:os";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpus, loadavg } from "node:os";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 
 const ARGS = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -62,6 +62,41 @@ const SCENARIO = {
 	outgoingSteps: flag("outgoing-steps", null),
 };
 const AS_JSON = ARGS.includes("--json");
+/**
+ * Write frames instead of a phase table: `docs/evidence/session-switch/
+ * <state>/<theme>.webp`. The two states are the ones a switch has.
+ *
+ * A capture runs with a deliberately LONG stream delay (see `--stream`), not
+ * because the timings are being reported but because the hydrating state is a
+ * window: it is photographed while it lasts, and at the shipped millisecond
+ * scale no screenshot round trip could land inside it.
+ */
+const FRAMES = flag("frames", null);
+const FRAME_THEMES = (
+	flag("themes", "localOperatorDark,localOperatorLight") ?? ""
+).split(",").filter(Boolean);
+/**
+ * The page a CAPTURE loads: a stream delay long enough for the hydrating window
+ * to outlive a screenshot round trip. It changes how long the state lasts,
+ * which is what no still can show, and not what the state looks like.
+ */
+const FRAMES_URL = `${PAGE}?${new URLSearchParams({
+	stream: SCENARIO.stream ?? "1200",
+	get: SCENARIO.get ?? "12",
+})}`;
+/**
+ * Capture the PRE-CHANGE state of the same switch.
+ *
+ * On the tree before this work the panel is not the target one frame after the
+ * click - that is the point of the change - and the state actually on screen
+ * is the outgoing conversation with "Opening chat…" over it. Photographing
+ * that state is worth a flag rather than a relaxed assertion, because the
+ * assertion is what keeps this from publishing a picture of a moment the
+ * harness did not reach: under `--expect-outgoing` the frame must show the
+ * outgoing session AND the pending affordance, which is a stronger claim about
+ * that state than the target check would be.
+ */
+const EXPECT_OUTGOING = ARGS.includes("--expect-outgoing");
 /**
  * Drive the ROLLBACK instead of the happy path: the guard read for the target
  * is scripted to 404, so the switch must end with the error and the outgoing
@@ -184,6 +219,134 @@ const median = (values) => {
 		: (sorted[middle - 1] + sorted[middle]) / 2;
 };
 const round = (n) => (n === null ? null : Math.round(n * 10) / 10);
+
+/**
+ * The two states of a switch, and what each one is a picture OF.
+ *
+ * `hydrating` is the state the switch now reaches immediately: the target's
+ * own panel, mounted, with the transcript it has not received yet. `settled`
+ * is the same panel once the transcript is painted. For a reader's eye they
+ * are the before/after of the change: the outgoing conversation held on screen
+ * under an "Opening chat…" banner is the state that no longer exists here.
+ */
+const captureFrames = async (cdp) => {
+	const written = [];
+	for (const theme of FRAME_THEMES) {
+		// A fresh page per theme: the switch's states depend on where the run
+		// started, and a second click from a settled incoming session is a
+		// different switch than the one being photographed.
+		await cdp.send("Page.navigate", { url: FRAMES_URL });
+		let ready = false;
+		for (let i = 0; i < 240 && !ready; i++) {
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const probe = window.__lopSwitch;
+					return Boolean(probe && probe.ready) && document.fonts.status === "loaded";
+				})()`,
+			});
+			ready = result.value === true;
+			if (!ready) await sleep(250);
+		}
+		if (!ready) throw new Error("the harness never became ready for the capture");
+
+		await cdp.send("Runtime.evaluate", {
+			expression: `document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)})`,
+		});
+		await settleFrames(cdp);
+
+		/*
+		 * The click, dispatched in the page exactly as the timed runs do it, so
+		 * what is photographed is the shipped click path rather than a state
+		 * forced from outside it.
+		 */
+		const { result: meta } = await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			expression: `(() => {
+				const probe = window.__lopSwitch;
+				const meta = probe.snapshot();
+				const row = document.querySelector(
+					'[data-chat-row][title^="' + meta.incomingTitle + '"]',
+				);
+				if (!row) return null;
+				row.click();
+				return meta;
+			})()`,
+		});
+		if (!meta.value) throw new Error("no sidebar row for the capture target");
+
+		// One frame after the click: the commit has happened and the transcript
+		// has not arrived, which IS the state under review.
+		await settleFrames(cdp);
+		written.push(
+			await shoot(cdp, join(FRAMES, "hydrating", `${theme}.webp`), "hydrating"),
+		);
+
+		// Then wait for the transcript, by the page's own definition of settled.
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression: `window.__lopSwitch.settle(${JSON.stringify(meta.value.incoming)})`,
+		});
+		await settleFrames(cdp);
+		written.push(
+			await shoot(cdp, join(FRAMES, "settled", `${theme}.webp`), "settled"),
+		);
+	}
+	return written;
+};
+
+/** Two frames: one for the change to lay out, one for it to paint. */
+const settleFrames = (cdp) =>
+	cdp.send("Runtime.evaluate", {
+		awaitPromise: true,
+		expression:
+			"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+	});
+
+/**
+ * One screenshot, refused unless it is a picture of the state it claims.
+ *
+ * `check-evidence.mjs` exists because a frame was committed that was of nothing
+ * at all (a loading spinner on a white page, 2,762 bytes against its siblings'
+ * 57KB), so this asserts what has to be true of the surface - the panel is the
+ * switch's target, and for `settled` the transcript has content - BEFORE the
+ * bytes are allowed into the tree.
+ */
+const shoot = async (cdp, path, state) => {
+	const { result: check } = await cdp.send("Runtime.evaluate", {
+		returnByValue: true,
+		expression: `(() => {
+			const probe = window.__lopSwitch;
+			const view = probe.view();
+			return {
+				active: view.activeSessionId,
+				target: probe.snapshot().incoming,
+				outgoing: view.outgoing,
+				pending: view.pendingIndicator,
+				content: view.transcriptHasContent,
+			};
+			})()`,
+		});
+		const seen = check.value;
+	if (EXPECT_OUTGOING && state === "hydrating") {
+		if (seen.active !== seen.outgoing || !seen.pending)
+			throw new Error(
+				`${state}: expected the outgoing session held under its pending affordance`,
+			);
+		} else {
+		if (seen.active !== seen.target)
+			throw new Error(`${state}: the panel is not the switch's target`);
+		if (state === "settled" && !seen.content)
+			throw new Error(`${state}: the transcript is still empty`);
+		}
+	const { data } = await cdp.send("Page.captureScreenshot", {
+		format: "webp",
+		quality: 88,
+	});
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, Buffer.from(data, "base64"));
+	return { path: relative(process.cwd(), path), state, ...seen };
+};
 
 /**
  * The phases, in the order the user pays for them.
@@ -319,7 +482,7 @@ const main = async () => {
 		deviceScaleFactor: 1,
 		mobile: false,
 	});
-	await cdp.send("Page.navigate", { url });
+	await cdp.send("Page.navigate", { url: FRAMES ? FRAMES_URL : url });
 
 	/* Ready means the app is mounted on a session AND its fonts have resolved:
 	   a switch measured against the fallback face would be a number about this
@@ -338,7 +501,13 @@ const main = async () => {
 		ready = result.value === true;
 		if (!ready) await sleep(250);
 	}
-	if (!ready) throw new Error(`the harness at ${url} never became ready`);
+	if (!ready) throw new Error(`the harness at ${FRAMES ? FRAMES_URL : url} never became ready`);
+
+	if (FRAMES) {
+		const written = await captureFrames(cdp);
+		console.log(JSON.stringify(written, null, 2));
+		return;
+	}
 
 	const runWithDeadline = (expression, ms) =>		Promise.race([
 			cdp.send("Runtime.evaluate", {
@@ -475,8 +644,21 @@ const main = async () => {
 
 const fmt = (n) => (n === null || n === undefined ? "-" : String(n));
 
-main().then(teardown, (error) => {
-	teardown();
-	console.error(error);
-	process.exit(1);
-});
+main().then(
+	() => {
+		/*
+		 * The websocket to the browser keeps the event loop alive, so the driver
+		 * exits explicitly once the table is on stdout: a harness that prints its
+		 * results and then hangs looks identical to one that is still measuring,
+		 * and the next reader waits on it. Seen for real on a loaded machine - the
+		 * run had finished and written every frame while the process sat there.
+		 */
+		teardown();
+		process.exit(0);
+	},
+	(error) => {
+		teardown();
+		console.error(error);
+		process.exit(1);
+	},
+);

@@ -293,6 +293,58 @@ function installPreloadStubs() {
 	 */
 	window_.api ??= {};
 	window_.api.getHomeDirectory ??= async () => "/Users/operator";
+	/*
+	 * The shell's own preload surfaces (the updater, the platform report). The
+	 * harness now mounts the whole app rather than the chat page alone, so the
+	 * banners that live beside the chat read these on mount - and a missing one
+	 * throws inside an effect, which unmounts the tree and leaves a blank page
+	 * that looks like a harness bug rather than a mock gap.
+	 *
+	 * The same set, and the same reason, as the shell story's fixture:
+	 * `shell.stories.tsx` stubs exactly this much to render the app shell
+	 * outside Electron. Nothing here is measured.
+	 */
+	const unsub = () => () => {};
+	window_.api.systemInfo ??= {
+		getAppVersion: async () => "0.20.0",
+		getPlatformInfo: async () => ({
+			platform: "darwin",
+			arch: "arm64",
+			nodeVersion: "22.14.0",
+			electronVersion: "35.5.1",
+			chromeVersion: "130.0.6723.152",
+		}),
+	};
+	window_.api.updater ??= {
+		checkForUpdates: async () => ({ updateInfo: {}, cancellationToken: null }),
+		checkForBackendUpdates: async () => null,
+		checkForAllUpdates: async () => {},
+		updateBackend: async () => false,
+		downloadUpdate: async () => [],
+		quitAndInstall: () => {},
+		/*
+		 * Every subscription the shell's update banner takes on mount, from the
+		 * call sites in `src/renderer/src` rather than from the story's fixture:
+		 * the fixture predates three of these, and a missing one throws inside
+		 * the mount effect (`window.api.updater.onBackendUpdateManualRequired is
+		 * not a function`), unmounting the tree and leaving a blank page.
+		 */
+		onUpdateAvailable: unsub,
+		onUpdateNotAvailable: unsub,
+		onUpdateDevMode: unsub,
+		onUpdateNpxAvailable: unsub,
+		onUpdateDownloaded: unsub,
+		onUpdateProgress: unsub,
+		onUpdateError: unsub,
+		onUpdateInstallBlocked: unsub,
+		onUpdateInstallFailed: unsub,
+		onBackendUpdateAvailable: unsub,
+		onBackendUpdateDevMode: unsub,
+		onBackendUpdateNotAvailable: unsub,
+		onBackendUpdateCompleted: unsub,
+		onBackendUpdateManualRequired: unsub,
+	};
+	window_.api.showItemInFolder ??= () => {};
 }
 
 /**
