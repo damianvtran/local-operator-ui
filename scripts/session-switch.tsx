@@ -24,12 +24,18 @@
  * double-invocation wrapper.
  */
 
-import "@renderer/styles/index.css";
+import "./session-switch.css";
+/* The app's real faces, imported by both renderer entries and by Storybook's
+ * preview for the same reason: without them `font-mono` resolves to the
+ * platform fallback, so a frame would be a picture of the reviewer's OS rather
+ * than of the product. */
+import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { cn } from "@shared/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import {
 	type BridgeHandle,
 	type SessionFixture,
@@ -148,6 +154,8 @@ type Probe = {
 		selectedRow: string | null;
 		errorShown: boolean;
 		transcriptHasContent: boolean;
+		outgoing: string;
+		pendingIndicator: boolean;
 	};
 	record: () => {
 		entries: Array<{
@@ -376,6 +384,7 @@ const api: Probe = {
 		sessions: SESSION_IDS,
 		outgoing: OUTGOING,
 		incoming: INCOMING,
+		incomingTitle: sessions.find((row) => row.id === INCOMING)?.name ?? "",
 		latency: bridge.log.latency,
 		hasRow: (id: string) => rowFor(id) !== null,
 	}),
@@ -402,6 +411,9 @@ const api: Probe = {
 		 */
 		errorShown: document.body.innerText.includes("Unknown session"),
 		transcriptHasContent: transcriptHasContent(),
+		/** The pre-change state: the outgoing view, held, with its affordance. */
+		outgoing: OUTGOING,
+		pendingIndicator: pendingIndicator(),
 	}),
 	/**
 	 * Every state transition the rollback makes, so a reader can tell "the
@@ -431,21 +443,49 @@ const api: Probe = {
 
 probe.__lopSwitch = api;
 
-createRoot(document.getElementById("root") as HTMLElement).render(
+/**
+ * The app shell a page lives inside, copied from `shell.stories.tsx`'s
+ * `ShellFrame` - which is where this repository already renders a page in the
+ * shell outside Electron, and the reason it exists there is the reason it
+ * exists here: `ChatPage` is a ROUTE, and everything that gives it a box -
+ * `h-screen`, `overflow-hidden`, `min-w-0 grow` - lives in the shell above it.
+ * Mounting the page alone compiles, renders and measures, and produces a frame
+ * of a 32px-wide column 128,805px tall: the first capture attempt did exactly
+ * that, and only looking at the frame caught it.
+ *
+ * Mounting the whole `App` instead would drag in the first-run gating (the
+ * onboarding modal and the compatibility banner) and photograph that rather
+ * than the switch; the shell story draws the same conclusion.
+ */
+const ShellFrame = ({ children }: { children: React.ReactNode }) => (
+	<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
+		{/*
+		 * No `SidebarNavigation`. The shell story renders it; here it paints the
+		 * product's splash mark at viewport size (a browser has no desktop bridge
+		 * to tell it otherwise) and pushes the chat column off the right edge.
+		 * The rail is app chrome beside the subject, and the switch is the chat
+		 * column's, so the frame is the chat column: same box the app gives it,
+		 * minus the rail that sits to its left.
+		 */}
+		<main className="flex min-w-0 grow flex-col overflow-hidden">
+			{children}
+		</main>
+	</div>
+);
+
+createRoot(document.getElementById("app") as HTMLElement).render(
 	<QueryClientProvider client={queryClient}>
 		{/*
-		 * `MemoryRouter`, not the app's `HashRouter`, and for the same reason
-		 * `.storybook/preview.tsx` uses it: a harness page has no URL to keep, and
-		 * an empty hash matches no route at all - which mounts nothing and looks
-		 * like a broken harness rather than an empty one. The route only feeds the
-		 * page's deep-link effect; the panel the switch swaps is driven by the
-		 * STORE, so nothing under measurement depends on which router is in use.
+		 * `MemoryRouter` at `/chat`, which is where the app boots: `/` redirects
+		 * there, so this is the route the operator is on when they click a
+		 * conversation. A harness page has no URL to keep, and an empty hash
+		 * matches no route at all - which mounts nothing and looks like a broken
+		 * harness rather than an empty one.
 		 */}
 		<MemoryRouter initialEntries={["/chat"]}>
-			<Routes>
-				<Route path="/chat" element={<ChatPage />} />
-				<Route path="/chat/:agentId" element={<ChatPage />} />
-			</Routes>
+			<ShellFrame>
+				<ChatPage />
+			</ShellFrame>
 		</MemoryRouter>
 	</QueryClientProvider>,
 );

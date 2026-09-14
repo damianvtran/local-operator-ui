@@ -33,7 +33,14 @@
 		</script>
 	</head>
 	<body>
-		<div id="root"></div>
+		<!--
+		 * `#app`, not `#root`: `styles/index.css` pins the height chain on
+		 * `html, body, #app`, and the app's own entry mounts into `#app`. A
+		 * differently named node breaks that chain silently - the DOM is correct,
+		 * the text is laid out, and the screenshot is an empty column. Caught by
+		 * looking at the first frames rather than by asserting on them.
+		 -->
+		<div id="app"></div>
 		<script type="module" src="./session-switch.tsx"></script>
 	</body>
 </html>

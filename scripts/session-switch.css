@@ -1,0 +1,19 @@
+/*
+ * The harness's stylesheet: the app's own, plus the sources it has to scan.
+ *
+ * WHY THIS FILE EXISTS. Tailwind v4 discovers class names by scanning source
+ * files, and it roots that scan at the build's working directory - which for
+ * this harness is `scripts/` (the Vite root), not the repository. Importing
+ * `styles/index.css` alone therefore generated the handful of utilities used by
+ * the harness's own two files and NOTHING from the app: 213 CSS rules, no
+ * `.flex-1`, no `.w-0`. The page still rendered, the DOM was correct, and the
+ * chat column collapsed to 0px wide with a 128,805px-tall transcript - a frame
+ * of an empty pane that every DOM-level assertion called healthy.
+ *
+ * `@source` is the fix the framework provides for exactly this: it names the
+ * tree to scan when the automatic one is wrong. It is pinned to the renderer
+ * source, so a class added to the app in a later change is picked up here
+ * without a second list to maintain.
+ */
+@source "../src/renderer/src";
+@import "../src/renderer/src/styles/index.css";
