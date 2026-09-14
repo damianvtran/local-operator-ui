@@ -188,6 +188,24 @@ export class BackendServiceManager {
 	 * the banner path or leave the sidebar reading a stale connection state. */
 	private feedFrameObserver: ((frame: DesktopFeedFrame) => void) | null = null;
 	private feedStateObserver: ((state: DesktopFeedState) => void) | null = null;
+	/**
+	 * The window/focus/displayed-session answers the presence claim carries.
+	 *
+	 * Set by main once a window can exist — before that a windowless app is the
+	 * honest answer, which is also the reference's own default for a client that
+	 * has not said anything yet.
+	 */
+	private presenceContext:
+		| (() => {
+				sessionId: string;
+				window: {
+					exists: boolean;
+					focused: boolean;
+					visible: boolean;
+					minimized: boolean;
+				};
+		  })
+		| null = null;
 
 	/**
 	 * Called every time the backend becomes reachable and authenticated.
@@ -282,12 +300,16 @@ export class BackendServiceManager {
 					// The presence beat is a contract op, so it travels the same
 					// authenticated transport as every other control and the token
 					// never leaves this class.
-					beatPresence: (subscriptionId, canNotify) =>
+					beatPresence: (presence) =>
 						this.requestDesktop({
 							op: "sessions.presence",
-							subscriptionId,
-							canNotify,
+							...presence,
 						}),
+					// What this app can say about its own window. Supplied by main
+					// (it owns the window and the notifier's displayed session) and
+					// read at each beat rather than captured, so a window that opens
+					// or closes mid-lease is reported without a new relay.
+					presenceContext: () => this.presenceContext?.() ?? null,
 				},
 			);
 			this.feedRelay.observe(this.feedFrameObserver);
@@ -295,6 +317,29 @@ export class BackendServiceManager {
 			this.feedRelayUrl = this.backendUrl;
 		}
 		return this.feedRelay;
+	}
+
+	/**
+	 * Supply the presence claim's window state.
+	 *
+	 * Separate from `observeDesktopFeed` because it is a different question
+	 * asked of a different owner: the observers are consumers of frames, and
+	 * this is main's answer about itself. Applied to a relay that already
+	 * exists, so the ordering between "start the feed" and "make a window" does
+	 * not decide whether the claim is complete.
+	 */
+	providePresenceContext(
+		context: () => {
+			sessionId: string;
+			window: {
+				exists: boolean;
+				focused: boolean;
+				visible: boolean;
+				minimized: boolean;
+			};
+		},
+	): void {
+		this.presenceContext = context;
 	}
 
 	observeDesktopFeed(

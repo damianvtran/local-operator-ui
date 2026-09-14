@@ -115,6 +115,7 @@ export type DesktopFeature =
 	 */
 	| "diagnostics";
 	| "radient"
+
 	/**
 	 * The machine-wide feed: `GET /v1/desktop/events` and `POST
 	 * /v1/desktop/presence`, with their frame and lease shapes. The consumer gate

@@ -60,9 +60,17 @@ const api = {
 				};
 			},
 		},
-		onOpenConversation: (callback: (sessionId: string) => void) => {
+		onOpenConversation: (callback: (sessionId: string | null) => void) => {
+			/*
+			 * `null` is a TARGET, not a malformed payload: a burst digest's click
+			 * names several conversations and opens the catalogue, which the store
+			 * models as "no active session". Dropping it here would turn that click
+			 * back into the silent no-op this path exists to remove, so the filter
+			 * admits an explicit null and refuses only a value that is neither.
+			 */
 			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
 				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
+				else if (payload?.sessionId === null) callback(null);
 			};
 			ipcRenderer.on("desktop-open-conversation", handler);
 			return () => {

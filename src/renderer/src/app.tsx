@@ -120,8 +120,16 @@ const App: FC = () => {
 				 * click-to-visible number. Marked HERE rather than in the transcript
 				 * because this is the process's first knowledge of the click, which is
 				 * the only honest beginning: everything after it is ours to lose.
+				 *
+				 * Only a click that NAMES a conversation starts a trace: a burst
+				 * digest's click opens the catalogue (R1-2), which has no
+				 * conversation row to paint, and a mark for it would sit there until
+				 * some later open measured a row against it.
 				 */
-				performance.mark("lop:open:requested");
+				if (sessionId !== null) performance.mark("lop:open:requested");
+				// `null` is the catalogue: the store models "no active session" as
+				// exactly this, so a digest click lands where all the burst's
+				// conversations are listed rather than on one arbitrary member.
 				setActiveSession(sessionId);
 				navigate("/chat");
 			},

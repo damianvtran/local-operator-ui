@@ -39,10 +39,24 @@ import type {
 	DesktopFeedState,
 	DesktopResponse,
 } from "../shared/desktop-contract";
-import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
+import {
+	type DesktopFeedFrame,
+	FEED_NOTIFIABLE_KINDS,
+} from "../shared/desktop-session-contract";
 
 /** The backend's own beat, used until an `open` frame says otherwise. */
 const DEFAULT_HEARTBEAT_SECONDS = 15;
+
+/**
+ * The bounds a backend-supplied cadence is clamped into.
+ *
+ * The value sizes a local liveness bound, so it is not free: under a second,
+ * ordinary jitter on a loaded machine reads as three missed beats and the feed
+ * reconnects on a healthy socket; over a minute, a genuinely dead socket stays
+ * unnoticed for that long.
+ */
+const MIN_HEARTBEAT_SECONDS = 1;
+const MAX_HEARTBEAT_SECONDS = 60;
 
 /**
  * How many missed heartbeats mean the socket is dead.
@@ -85,10 +99,50 @@ export type DesktopFeedOptions = {
 	 * the server holds the lease against this socket, so a dropped feed revokes
 	 * the claim instead of leaving a stale "somebody is here" for a full TTL.
 	 */
-	beatPresence: (
-		subscriptionId: string,
-		canNotify: boolean,
-	) => Promise<DesktopResponse>;
+	beatPresence: (presence: {
+		subscriptionId: string;
+		canNotify: boolean;
+		/** What this app can deliver over the feed; see the contract's note. */
+		canNotifyKinds: readonly ("complete" | "error")[];
+		/** The conversation a window is displaying, or "" for none. */
+		sessionId: string;
+		window: {
+			exists: boolean;
+			focused: boolean;
+			visible: boolean;
+			minimized: boolean;
+		};
+	}) => Promise<DesktopResponse>;
+	/**
+	 * What THIS app can say about its own window right now.
+	 *
+	 * Injected rather than read from the relay because the relay is transport:
+	 * the window, its focus and the conversation it displays are main's facts,
+	 * and the notifier is the one place that keeps them (it already tracks them
+	 * for the session-scoped suppression). A relay that guessed would be a
+	 * second opinion about which conversation is on screen.
+	 *
+	 * Absent means a windowless app, which is a real state rather than a missing
+	 * value: macOS keeps the app alive in the dock with no window, and such an
+	 * app can raise a banner but cannot be displaying anything.
+	 */
+	/**
+	 * How often the presence lease is renewed.
+	 *
+	 * Injectable so a test can reach a SECOND beat without waiting out the
+	 * production cadence - three beats per the lease's 45 s TTL is the default
+	 * and the value that must ship.
+	 */
+	presenceIntervalMs?: number;
+	presenceContext?: () => {
+		sessionId: string;
+		window: {
+			exists: boolean;
+			focused: boolean;
+			visible: boolean;
+			minimized: boolean;
+		};
+	} | null;
 };
 
 export class DesktopFeedRelay {
@@ -114,6 +168,15 @@ export class DesktopFeedRelay {
 	private watchdog: NodeJS.Timeout | null = null;
 	private presence: NodeJS.Timeout | null = null;
 	private reconnectTimer: NodeJS.Timeout | null = null;
+	/**
+	 * Settles the promise `pause()` is parked on.
+	 *
+	 * The timer IS the only thing that would resolve it, so a `stop()` that only
+	 * cleared the timer left `pump()` awaiting a promise nothing could settle — a
+	 * leak nobody would find later (the relay refuses to restart, so it had no
+	 * visible symptom). Held so teardown ends the wait explicitly.
+	 */
+	private reconnectResolve: (() => void) | null = null;
 	private attempt = 0;
 
 	/**
@@ -202,6 +265,8 @@ export class DesktopFeedRelay {
 			clearTimeout(this.reconnectTimer);
 			this.reconnectTimer = null;
 		}
+		this.reconnectResolve?.();
+		this.reconnectResolve = null;
 		this.endSocket();
 		this.setConnected(false);
 	}
@@ -240,8 +305,10 @@ export class DesktopFeedRelay {
 		);
 		this.attempt += 1;
 		return new Promise((resolve) => {
+			this.reconnectResolve = resolve;
 			this.reconnectTimer = setTimeout(() => {
 				this.reconnectTimer = null;
+				this.reconnectResolve = null;
 				resolve();
 			}, delay);
 			this.reconnectTimer.unref?.();
@@ -331,11 +398,20 @@ export class DesktopFeedRelay {
 		}
 		if (frame.type === "open") {
 			this.subscriptionId = frame.payload.subscription_id;
-			if (
-				typeof frame.payload.heartbeat_seconds === "number" &&
-				frame.payload.heartbeat_seconds > 0
-			) {
-				this.heartbeatMs = frame.payload.heartbeat_seconds * 1000;
+			/*
+			 * The backend's cadence sizes a LOCAL liveness bound, so it is clamped
+			 * rather than trusted: a value under a second would make ordinary jitter
+			 * on a loaded machine look like three missed beats, and the feed would
+			 * tear down and reconnect on a healthy socket. The ceiling matters for
+			 * the same reason in reverse — a cadence far longer than any real one
+			 * would leave a dead socket unnoticed for that long.
+			 */
+			if (typeof frame.payload.heartbeat_seconds === "number") {
+				this.heartbeatMs =
+					Math.min(
+						MAX_HEARTBEAT_SECONDS,
+						Math.max(MIN_HEARTBEAT_SECONDS, frame.payload.heartbeat_seconds),
+					) * 1000;
 			}
 			this.startPresence();
 		}
@@ -384,12 +460,38 @@ export class DesktopFeedRelay {
 		const beat = () => {
 			const subscriptionId = this.subscriptionId;
 			if (!subscriptionId) return;
+			/*
+			 * Read at EVERY beat, not captured at construction: the relay is built
+			 * when the backend becomes reachable and this answer changes the moment
+			 * a window opens or the user navigates. A captured value would report
+			 * the state at relay-construction for the lifetime of the lease.
+			 */
+			const context = this.options.presenceContext?.() ?? {
+				sessionId: "",
+				window: {
+					exists: false,
+					focused: false,
+					visible: false,
+					minimized: false,
+				},
+			};
 			void this.options
-				.beatPresence(subscriptionId, true)
+				.beatPresence({
+					subscriptionId,
+					canNotify: true,
+					// Always the FEED's kinds, never a window's: this app delivers a
+					// completion window or no window, which is why the feed exists.
+					canNotifyKinds: FEED_NOTIFIABLE_KINDS,
+					sessionId: context.sessionId,
+					window: context.window,
+				})
 				.catch(() => undefined);
 		};
 		beat();
-		this.presence = setInterval(beat, PRESENCE_INTERVAL_MS);
+		this.presence = setInterval(
+			beat,
+			this.options.presenceIntervalMs ?? PRESENCE_INTERVAL_MS,
+		);
 		this.presence.unref?.();
 	}
 

@@ -198,6 +198,15 @@ export const STORIES = [
 	["chat-notification-feed-states--the-two-misses", 760, 200],
 	["chat-notification-feed-states--cached-paint-narrow", 420, 600],
 	["chat-notification-feed-states--loading-first-open", 1280, 600],
+	/* The caption on a transcript TALLER than the pane, which is the ordinary
+	   cached paint rather than an edge (design review round 1, D1): the cache is
+	   only written for a conversation this pane has already shown, and the
+	   earlier five-row frame fit, so it could not show that the sentence was
+	   thousands of pixels above the fold. */
+	["chat-notification-feed-states--cached-paint-overflow", 1280, 600],
+	/* The gone state with the cached rows a real click arrives with — the half
+	   the committed empty-rows frame cannot cover (design review round 1, D2). */
+	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right

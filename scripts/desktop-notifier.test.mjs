@@ -1469,6 +1469,124 @@ test("a banner click with no window recreates one instead of doing nothing", asy
 	);
 });
 
+test("a burst digest's click opens the catalogue, not one arbitrary member", async () => {
+	// R1-2. The backend caps per-tick banners and publishes ONE digest frame for
+	// the remainder, with `burst_count`/`session_ids` on it and `session_id` set
+	// to the LAST overflow member (a session frame has to name a session). The
+	// click closure used `session_id`, so clicking "3 sessions finished" opened
+	// one conversation nobody asked for — the "the click does not land where I
+	// expected" defect, re-introduced on the busy path.
+	const sent = [];
+	const target = {
+		id: 7,
+		isDestroyed: () => false,
+		show: () => undefined,
+		showInactive: () => undefined,
+		focus: () => undefined,
+		isMinimized: () => false,
+		restore: () => undefined,
+		isFocused: () => false,
+		isVisible: () => true,
+		webContents: {
+			send: (channel, payload) => sent.push({ channel, payload }),
+		},
+	};
+	const notifier = new DesktopNotifier(
+		() => target,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: () => undefined,
+		},
+	);
+	const OTHER = "bbbbbbbbbbbb";
+	notifier.observe(
+		SESSION,
+		completionFrame({
+			focus_policy: "always",
+			burst_count: 3,
+			session_ids: [SESSION, OTHER, "cccccccccccc"],
+		}),
+	);
+	await settle(100);
+	const banner = globalThis.__shown.at(-1);
+	assert.ok(banner, "the digest is delivered as a banner");
+	banner.handlers.click();
+	const opened = sent.find((c) => c.channel === "desktop-open-conversation");
+	assert.ok(opened, "the click opened something");
+	assert.deepEqual(
+		opened.payload,
+		{ sessionId: null },
+		"a digest names several conversations, so its click lands on the catalogue",
+	);
+});
+
+test("a digest click with no window recreates the window on the catalogue", async () => {
+	// The same routing on the windowless path (macOS, app alive in the dock):
+	// `reopen(null)` means "a window, on the catalogue", which is the state the
+	// store already models as no active session.
+	const reopened = [];
+	const notifier = new DesktopNotifier(
+		() => null,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: (sessionId) => reopened.push(sessionId),
+		},
+	);
+	notifier.observe(
+		SESSION,
+		completionFrame({
+			focus_policy: "always",
+			burst_count: 4,
+			session_ids: ["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
+		}),
+	);
+	await settle(100);
+	globalThis.__shown.at(-1).handlers.click();
+	assert.deepEqual(reopened, [null], "the catalogue, not one of the burst's ids");
+});
+
+test("a single completion still routes its click to its own conversation", async () => {
+	// The guard against over-matching: the digest detection must not swallow the
+	// ordinary case. A frame with no `burst_count` and no `session_ids` is one
+	// conversation, and its click must land on it.
+	const sent = [];
+	const target = {
+		id: 7,
+		isDestroyed: () => false,
+		show: () => undefined,
+		showInactive: () => undefined,
+		focus: () => undefined,
+		isMinimized: () => false,
+		restore: () => undefined,
+		isFocused: () => false,
+		isVisible: () => true,
+		webContents: {
+			send: (channel, payload) => sent.push({ channel, payload }),
+		},
+	};
+	const notifier = new DesktopNotifier(
+		() => target,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: () => undefined,
+		},
+	);
+	notifier.observe(SESSION, completionFrame({ focus_policy: "always" }));
+	await settle(100);
+	globalThis.__shown.at(-1).handlers.click();
+	const opened = sent.find((c) => c.channel === "desktop-open-conversation");
+	assert.deepEqual(opened.payload, { sessionId: SESSION });
+});
+
 test("a click for a window that is gone takes the recreate path too", async () => {
 	// A window reference that outlives its window: `mainWindow` is nulled on
 	// `closed`, but a click that lands between the destroy and the null must not

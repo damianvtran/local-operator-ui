@@ -58,6 +58,32 @@ const assistant = (id: string, text: string): TranscriptRecord => ({
 	error: false,
 });
 
+/**
+ * A conversation long enough that the cache's caption is at issue.
+ *
+ * WHY THIS ONE EXISTS (design review round 1, D1). The caption was the first
+ * child of the measured content box inside a bottom-anchored `flex-col-reverse`
+ * scroller, which put it at the visual top of the content — measured on a
+ * 36-row stale transcript at 1280x600, its rect was top -2028 in a 560px pane.
+ * The committed `cached-paint` story has five rows and FITS, so the frame that
+ * was supposed to show the affordance could not show that it was unreachable,
+ * and the state was indistinguishable from a live one.
+ *
+ * The cache is only ever written for a conversation this pane has already
+ * painted, so a cached paint is a conversation at least a screen tall: this is
+ * the ordinary case, not an edge.
+ */
+const OVERFLOWING_ROWS: TranscriptRecord[] = Array.from(
+	{ length: 18 },
+	(_, index) => [
+		user(`ou${String(index)}`, `Turn ${String(index + 1)}: adjust the model.`),
+		assistant(
+			`oa${String(index)}`,
+			`Turn ${String(index + 1)} done. Reconciled the variance, rebuilt the driver table and re-ran the close. The enterprise line moved 4.1%, the services line stayed flat, and the two renewals from the last week of the quarter are the whole of the delta.`,
+		),
+	],
+).flat();
+
 const CACHED_ROWS: TranscriptRecord[] = [
 	user("u1", "Rebuild the forecast with the Q3 actuals."),
 	assistant(
@@ -171,6 +197,39 @@ export const TheTwoMisses: Story = {
 				<Panel height="h-[200px]" records={[]} missing status="unavailable" />
 			</div>
 		</div>
+	),
+};
+
+/**
+ * The caption on a transcript taller than the pane — the state the caption
+ * exists for, and the one the first capture pass could not reach (D1). The
+ * sentence must be on screen in the FIRST frame, with the rows it qualifies
+ * below it and at full ink.
+ */
+export const CachedPaintOverflow: Story = {
+	render: () => (
+		<Panel records={OVERFLOWING_ROWS} stale status="connecting" />
+	),
+};
+
+/**
+ * The same "not on this machine" state, reached the way a CLICK reaches it:
+ * with this window's cached rows already in the live view.
+ *
+ * The committed `conversation-gone` story renders `records={[]}` — the other
+ * half of the path. The 404 keeps the seeded rows, and with the history slot
+ * and the footer timestamp ungated that painted "Start of conversation" above
+ * "This conversation is no longer on this machine." plus a bare date floating
+ * bottom-right (D2). This frame is the half that could show it.
+ */
+export const ConversationGoneWithPaint: Story = {
+	render: () => (
+		<Panel
+			height="h-[260px]"
+			records={CACHED_ROWS.slice(0, 2)}
+			missing
+			status="unavailable"
+		/>
 	),
 };
 

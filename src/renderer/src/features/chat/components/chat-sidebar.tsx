@@ -1065,7 +1065,12 @@ export function ChatSidebar({
 					 * or a browser-dev renderer has no feed to be disconnected from, and
 					 * the legacy poll is running instead.
 					 */}
-					{feed.available && !feed.connected && (
+					{/* Suppressed when the alert below already carries the condition
+					    (design review round 1, D9): the catalogue fetch fails exactly
+					    when the backend is down, so the two statements about one
+					    backend would otherwise stack — a quiet `ink-dim` line directly
+					    under a `role="alert" text-danger` block about the same thing. */}
+					{feed.available && !feed.connected && !error && (
 						<p
 							className={cn(
 								"text-meta",

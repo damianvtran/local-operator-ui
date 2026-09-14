@@ -266,8 +266,8 @@ test("with the capability the feed delivers frames, beats presence, and closes c
 			status: 200,
 			body: { result: { features: { desktop_feed: 1 } } },
 		}),
-		beatPresence: async (subscriptionId, canNotify) => {
-			beats.push({ subscriptionId, canNotify });
+		beatPresence: async (presence) => {
+			beats.push(presence);
 			return { status: 200, body: null };
 		},
 	});
@@ -284,7 +284,27 @@ test("with the capability the feed delivers frames, beats presence, and closes c
 	// The presence lease is held against THIS subscription, so the beat must name
 	// it — that is what lets the backend revoke the claim when the socket drops
 	// instead of waiting out a stale TTL.
-	assert.deepEqual(beats, [{ subscriptionId: "abcd1234", canNotify: true }]);
+	// B1. The lease reads more than the subscription id: the kinds this app can
+	// deliver, and the window it is displaying. Without `canNotifyKinds` the
+	// backend's `delivers(kind)` is false for every completion, and without
+	// `window` its `attended` is false - which together are the operator's
+	// reported symptom rather than a weaker claim. No `presenceContext` is
+	// supplied here, so this is also the windowless case (macOS, app alive in
+	// the dock): it must still beat, and must name all-false with no session.
+	assert.deepEqual(beats, [
+		{
+			subscriptionId: "abcd1234",
+			canNotify: true,
+			canNotifyKinds: ["complete", "error"],
+			sessionId: "",
+			window: {
+				exists: false,
+				focused: false,
+				visible: false,
+				minimized: false,
+			},
+		},
+	]);
 
 	source.push(attentionFrame(SESSION));
 	source.push(catalogueFrame(11));
@@ -299,6 +319,70 @@ test("with the capability the feed delivers frames, beats presence, and closes c
 	await sleep(TICK);
 	assert.equal(relay.isConnected, false);
 	assert.equal(states.at(-1), false);
+	globalThis.fetch = original;
+});
+
+test("the presence beat carries the window and the conversation it displays", async () => {
+	// B1's other half. The claim is read per BEAT, not captured when the relay
+	// was built: the relay is constructed when the backend becomes reachable,
+	// and the window opens (or closes, or the user navigates) later. A captured
+	// value would report the relay-construction state for the whole lease.
+	const original = globalThis.fetch;
+	const source = sseSource();
+	globalThis.fetch = async () => source.response;
+	const beats = [];
+	let context = {
+		sessionId: "AAAAAAAAAAAA",
+		window: {
+			exists: true,
+			focused: true,
+			visible: true,
+			minimized: false,
+		},
+	};
+	const relay = new DesktopFeedRelay("http://127.0.0.1:9/", "token", {
+		request: async () => ({
+			status: 200,
+			body: { result: { features: { desktop_feed: 1 } } },
+		}),
+		beatPresence: async (presence) => {
+			beats.push(presence);
+			return { status: 200, body: null };
+		},
+		presenceContext: () => context,
+		// The production cadence is three beats per the lease's 45 s TTL; a test
+		// needs a second beat, not a 15 s wait.
+		presenceIntervalMs: 60,
+	});
+
+	await relay.start();
+	await sleep(TICK);
+	source.push(openFrame());
+	await sleep(TICK);
+	assert.deepEqual(beats.at(-1), {
+		subscriptionId: "abcd1234",
+		canNotify: true,
+		canNotifyKinds: ["complete", "error"],
+		sessionId: "AAAAAAAAAAAA",
+		window: { exists: true, focused: true, visible: true, minimized: false },
+	});
+
+	// The window closes while the same lease is live: the next beat must say so
+	// rather than keep advertising a surface that cannot display anything.
+	context = {
+		sessionId: "",
+		window: { exists: false, focused: false, visible: false, minimized: false },
+	};
+	await sleep(60 + TICK);
+	assert.equal(beats.at(-1).window.exists, false);
+	assert.equal(
+		beats.at(-1).sessionId,
+		"",
+		"a windowless app displays nothing, so it must name no conversation",
+	);
+
+	relay.stop();
+	await sleep(TICK);
 	globalThis.fetch = original;
 });
 

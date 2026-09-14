@@ -608,7 +608,8 @@ let viewerEndpoint: ViewerEndpoint | null = null;
  * Open a conversation in a window, creating one if there is none. Assigned once
  * `whenReady` has the window-creation path in scope; `null` before that.
  */
-let openConversationInWindow: ((sessionId: string) => void) | null = null;
+let openConversationInWindow: ((sessionId: string | null) => void) | null =
+	null;
 
 /**
  * How long a click-created window may stay hidden waiting for the renderer to
@@ -676,10 +677,16 @@ function releaseHeldWindow(windowId: number): boolean {
  * stays held until its own report or its fallback fires.
  */
 function releaseHeldWindowFor(session: string): void {
+	// EVERY window holding this conversation, not the first one found: the map is
+	// keyed by window id and two windows can be waiting on the same conversation
+	// (the notifier's comments describe exactly that case). Releasing one and
+	// returning leaves the other to serve out the full fallback with its window
+	// still off screen, which reads as a click that did nothing. The iteration is
+	// safe against mutation because `releaseHeldWindow` deletes through the same
+	// map, and Map iteration continues past a deletion.
 	for (const [windowId, held] of heldForConversation) {
 		if (held.session !== session) continue;
 		releaseHeldWindow(windowId);
-		return;
 	}
 }
 
@@ -886,6 +893,16 @@ app
 				window.webContents.send("desktop-feed-state", state);
 			},
 		);
+		/*
+		 * What the presence claim says about this app, read at every beat.
+		 *
+		 * Read through the notifier rather than recomputed here from `mainWindow`:
+		 * the conversation it names is the one the completion gate uses, and a
+		 * second opinion about which conversation is on screen is exactly the
+		 * disagreement this lease must not have (it decides whether the backend
+		 * banners a completion at all).
+		 */
+		backendService.providePresenceContext(() => desktopNotifier.presence());
 		// A renderer that mounts after a reconnect asks for the CURRENT state, so a
 		// healthy feed does not have to produce a transition before the sidebar can
 		// stop saying "not connected".
@@ -1565,8 +1582,14 @@ app
 		 * "open" means. The create branch passes the id into the window's argv so
 		 * the renderer can paint it in its FIRST frame, and the held present keeps
 		 * the window off screen until that paint is confirmed (B3).
+		 *
+		 * `null` is the CATALOGUE, not a missing value: a burst digest's click
+		 * names several conversations, so the window it recreates must open on the
+		 * list rather than on one of them (R1-2). The create branch already
+		 * distinguishes "no conversation" from a conversation by omitting the argv
+		 * flag, which is exactly this state.
 		 */
-		function openSessionInWindow(sessionId: string): void {
+		function openSessionInWindow(sessionId: string | null): void {
 			const window = mainWindow;
 			if (window && !window.isDestroyed()) {
 				// Send before raising: naming the conversation first means whatever

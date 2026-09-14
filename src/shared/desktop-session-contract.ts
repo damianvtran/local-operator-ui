@@ -277,6 +277,18 @@ export type PendingDesktopGate = {
  * See docs/design/descriptive-notifications.md 4.1 and 8.1 — these names are
  * the wire contract, not a local convenience.
  */
+/**
+ * The notification kinds this app can deliver over the MACHINE-WIDE FEED.
+ *
+ * Completions only, and it is narrower than `DesktopNotification["kind"]` on
+ * purpose: the feed publishes a completed or failed TURN, while a gate
+ * (`ask`/`approval`) travels the per-session bridge where it belongs to a
+ * conversation the user is already in. This is what the presence claim
+ * advertises — the backend's `delivers(kind)` reads it, and a claim that
+ * advertises nothing makes every completion someone else's to raise.
+ */
+export const FEED_NOTIFIABLE_KINDS = ["complete", "error"] as const;
+
 export type DesktopNotification = {
 	/** Payload shape version. 1 today; additive fields do not bump it. */
 	contract: number;
@@ -305,6 +317,26 @@ export type DesktopNotification = {
 	 * the bare body, which is exactly what it rendered before the flag existed.
 	 */
 	body_is_failure?: boolean;
+	/**
+	 * How many completions this frame stands for, when it is a BURST DIGEST.
+	 *
+	 * The backend caps per-tick banners and publishes one frame for the
+	 * remainder of a busy tick rather than one banner per session. Additive and
+	 * optional like `body_is_failure`: absent on a single conversation's frame,
+	 * and absent from a backend that predates the cap. A surface that ignored it
+	 * would still render the frame, but would route its click to whichever
+	 * overflow member `session_id` happens to name.
+	 */
+	burst_count?: number;
+	/**
+	 * The conversations a digest stands for, in the backend's own order.
+	 *
+	 * Present so a surface can say WHO finished (a count in a banner is only
+	 * half of "what happened") without a second request. Never trusted as a
+	 * routing target: a digest's click belongs on the catalogue, which is where
+	 * all of them are listed.
+	 */
+	session_ids?: string[];
 	/** False when the privacy flag is off or the session has no stored name. */
 	title_is_session_name: boolean;
 	/**
