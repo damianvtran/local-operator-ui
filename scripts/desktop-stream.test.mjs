@@ -19,7 +19,13 @@ import { build } from "esbuild";
  */
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/main/desktop-stream";',
+		// The notice vocabulary comes along so the watchdog's own detail is
+		// asserted against the shared list rather than against a copy of a string:
+		// #144 moved these sentences into `desktop-stream-notice.ts` as the ONE
+		// authority, and a test that hard-codes one would stop noticing when the
+		// relay and the vocabulary disagree.
+		contents:
+			'export * from "./src/main/desktop-stream"; export { DESKTOP_STREAM_DETAIL } from "./src/shared/desktop-stream-notice";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -27,7 +33,7 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { DesktopStreamRelay } = await import(
+const { DesktopStreamRelay, DESKTOP_STREAM_DETAIL } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -94,7 +100,11 @@ test("a silent socket is reported as an error, not waited on forever", async () 
 	await sleep(900);
 	const errors = events.filter((event) => event.kind === "error");
 	assert.equal(errors.length, 1, JSON.stringify(events));
-	assert.match(errors[0].detail, /stopped responding/);
+	// The relay names silence with the vocabulary's OWN sentence for a stream that
+	// ended: from the reader's side there is one distinction that matters («the
+	// connection is gone»), and inventing a second string for it here is what
+	// #144 removed.
+	assert.equal(errors[0].detail, DESKTOP_STREAM_DETAIL.ended);
 	assert.equal(
 		events.at(-1).kind,
 		"end",
@@ -146,7 +156,7 @@ test("a refused stream carries the status, which is how a 404 is tellable apart"
 		{
 			streamId: events[0].streamId,
 			kind: "error",
-			detail: "The event stream was refused (404).",
+			detail: DESKTOP_STREAM_DETAIL.refused(404),
 			// The renderer needs this to land on the transcript's named
 			// "no longer on this machine" state instead of printing transport text
 			// for a conversation that simply is not there (M6).
