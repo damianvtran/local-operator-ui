@@ -12,6 +12,22 @@ const settingKey = z
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
 const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+/**
+ * The wire shape of a canonical stream subscription id.
+ *
+ * Exported because three parties have to agree on it and only one of them can
+ * see the schema below: this request schema, the renderer's watch lease, and
+ * main's `desktop-watch-heartbeat` handler - which is the last gate before an
+ * authenticated POST and the only one Electron actually passes through.
+ *
+ * They disagreed. The renderer's lease tested its id for truthiness and main
+ * tested it for `typeof === "string"`, so an empty `subscription_id` reached
+ * `POST /v1/desktop/sessions/{id}/watch` and the backend answered 422 (its own
+ * `Watch.subscription_id` is `Field(pattern=r"^[a-f0-9]{32}$")`). A lease for
+ * a subscription that does not exist is not a lease, so the shape is checked
+ * at every hop instead of being assumed from the id's presence.
+ */
+export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
 const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
@@ -358,7 +374,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.watch"),
 			sessionId,
-			subscriptionId: z.string().regex(/^[a-f0-9]{32}$/),
+			subscriptionId: z.string().regex(SUBSCRIPTION_ID_PATTERN),
 			visible: z.boolean(),
 			canNotify: z.boolean(),
 		})

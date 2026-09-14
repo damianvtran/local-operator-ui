@@ -5,6 +5,7 @@ import {
 	shell,
 } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
+import { SUBSCRIPTION_ID_PATTERN } from "../shared/desktop-contract";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
@@ -146,6 +147,15 @@ export function registerDesktopIPC(
 				typeof args.focused !== "boolean"
 			) {
 				throw new Error("Invalid watch heartbeat.");
+			}
+			// A lease names a subscription the backend currently holds. Checked as a
+			// SHAPE here, not just for being a string: this handler is the last gate
+			// before an authenticated `POST .../watch`, and the backend rejects
+			// anything but `[a-f0-9]{32}` with a 422. A malformed id is a lease for
+			// a subscription that does not exist, so it is refused before the
+			// round trip rather than earning a 422 the renderer cannot act on.
+			if (!SUBSCRIPTION_ID_PATTERN.test(args.subscriptionId)) {
+				throw new Error("No live event subscription to lease.");
 			}
 			return notifier.heartbeat(event.sender.id, {
 				sessionId: args.sessionId,

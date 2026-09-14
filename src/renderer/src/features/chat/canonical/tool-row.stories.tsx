@@ -131,7 +131,8 @@ const Frame = ({
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"
-				error={null}
+				failure={null}
+				onReconnect={() => {}}
 			/>
 		</div>
 	);
