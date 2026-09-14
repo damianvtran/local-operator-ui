@@ -264,16 +264,25 @@ of the primary navigation announcing `All chats` where the panel draws
 the element's contents with `aria-hidden` subtrees excluded — beside the text the
 panel draws:
 
-| state | drawn | spoken |
+| state | drawn (the DOM text, sr-only mirror included) | spoken (the accessible name) |
 | --- | --- | --- |
-| rest, no query | `All chats 6` / `Previous chats 6` | `All chats 6` / `Previous chats 6` |
+| rest, no query | `All chats 6 6` / `Previous chats 6 6` | `All chats 6` / `Previous chats 6` |
 | query `retention`, 3 matches | `All chats 3 3 matching` | `All chats 3 matching` |
 | clipped answer | `All chats 100+ At least 100 matching` | `All chats At least 100 matching` |
 
-Read live in the app the frames were taken in, in one session, through the
-operator's own browser — the rest row's names were also read straight off the
-accessibility tree (`button "All chats 6"`, `button "Previous chats 6"`), which is
-the same answer by construction.
+The `drawn` column is the element's whole text, which is why the number appears
+twice: `readings/a11y-rest.json` records `drawn: "All chats 6 6"` with
+`name: "All chats 6"` beside it, and `readings/after-clipped-dark.json` records
+the clipped row the same way. That mirror is the D15 `sr-only` live region, which
+is pre-existing in this panel and not part of this change.
+
+Read live in the app the frames were taken in, through the operator's own
+browser, across the two passes this set spans — the accessible-name pass and the
+re-shoot pass — rather than in a single session, since the fix they record landed
+between them; each reading file is named for the frame it belongs to, and the
+rest row's names were also read straight off the accessibility tree
+(`button "All chats 6"`, `button "Previous chats 6"`), which is the same answer
+by construction.
 
 ## Re-capturing this set
 
