@@ -123,9 +123,18 @@ export function detailOverflowLabel(hidden: number): string {
  * line the reader IS looking at, through eight real wheel notches, forever
  * (reviewer round 3 F8, design round 3 D7, two independent reproductions).
  *
- * A HALF PIXEL, not a round one: it is under the smallest distance a display
- * can paint (one device pixel at 1x) and comfortably above the sub-pixel
- * residues above, so it cannot hide a line the reader could actually lose.
+ * A HALF PIXEL, and the value is fixed by the ROUNDING rather than by the
+ * residue: `scrollHeight` rounds the content to a whole pixel against an integer
+ * box, so the overhang reachable at a section's own end cannot exceed half a
+ * pixel (measured on this tree: +0.2031, +0.4688, −0.40625). Its margin is thin,
+ * and that is recorded here rather than called comfortable: `linesBelowFold`
+ * places line box `k` at `row.top + k × lineHeight` while the renderer lays those
+ * boxes out at the mono face's own 17.390625px, so the model's last box sits
+ * `k × 0.009375px` below the real one — 0.1875px across 20 boxes — leaving 560
+ * about 0.022px of headroom (reviewer round 4, R4-3). The exact close, if the
+ * mono metrics or this pane's padding ever move, is the row's own pitch —
+ * `row.height / Math.round(row.height / lineHeight)` — which removes the offset
+ * and keeps Q-6's line-box unit.
  */
 export const SUBPIXEL_TOLERANCE = 0.5;
 
