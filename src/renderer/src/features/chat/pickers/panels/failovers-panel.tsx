@@ -164,7 +164,7 @@ export const FailoversPanel: FC<FailoversPanelProps> = ({
 						</PanelSection>
 						<PanelSection
 							title="Fallback chains"
-							meta={`${data?.scope ?? "configured defaults"} · not live routing state`}
+							meta={`${data?.scope === "configured_defaults" || !data?.scope ? "configured defaults" : data.scope.split("_").join(" ")} · not live routing state`}
 						>
 							{chains.length === 0 ? (
 								<PanelNotice
