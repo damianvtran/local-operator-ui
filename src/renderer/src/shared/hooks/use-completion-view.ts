@@ -4,7 +4,6 @@ import { type RefObject, useEffect } from "react";
 import {
 	type CanonicalFrontendState,
 	type CompletionAttention,
-	isSupersededReceipt,
 	receiptSettled,
 } from "../../../../shared/desktop-session-contract";
 
@@ -59,18 +58,21 @@ export function useCompletionView(
 		let cancelled = false;
 		let pending = false;
 		let acknowledged = false;
-		let failures = 0;
-		/**
-		 * Consecutive SUPERSEDED refusals for the token this attempt rendered.
-		 *
-		 * Its own counter rather than an arm of `failures`, because the two mean
-		 * different things: a failure is a call that did not work, while a
-		 * superseded refusal is a call that worked exactly as promised and whose
-		 * remedy is to wait for the projection to name the current token. Only the
-		 * first few are free -- see the catch below for why they are bounded.
-		 */
-		let superseded = 0;
+		let attempts = 0;
 		let nextAttempt = 0;
+		// All non-settling outcomes share a budget: alternating a refusal with
+		// an old backend's unread 2xx must not reset the ladder forever.
+		const unresolved = (reason: unknown) => {
+			attempts += 1;
+			if (attempts === FAILURES_BEFORE_BACKOFF) {
+				console.warn(
+					`[attention] ${sessionId} receipt unresolved after ${attempts} attempts; backing off`,
+					reason,
+				);
+			}
+			if (attempts >= FAILURES_BEFORE_BACKOFF)
+				nextAttempt = Date.now() + backoffMs(attempts);
+		};
 		let timer = 0;
 		const stop = () => {
 			if (timer) {
@@ -109,10 +111,9 @@ export function useCompletionView(
 			 * (That control also stayed hit-testable while invisible; it no longer is.
 			 * Both halves are needed: the overlay was a bug and the probe was fragile.)
 			 *
-			 * One free sample is enough, and the claim it supports is unchanged: an
-			 * overlay that really hides the row -- a modal scrim, which spans the
-			 * viewport -- covers every sample, so a reader who cannot see the result
-			 * still cannot receipt it.
+			 * One free sample admits a partially covered bottom edge, unlike the old
+			 * centre-only rule. It does not prove the whole result is unobscured. A
+			 * viewport-spanning scrim still covers every sample and refuses receipt.
 			 */
 			const coveredBy = (x: number): boolean => {
 				if (x < 0 || x >= innerWidth) return true;
@@ -132,68 +133,14 @@ export function useCompletionView(
 				completionToken,
 			})
 				.then((state) => {
-					// Any answer at all means this attempt got through, so whatever
-					// streak of superseded refusals preceded it is over.
-					superseded = 0;
-					if (!receiptSettled(state, sessionId)) {
-						// Resolved, but the conversation is NOT read: the receipt did not
-						// land on the completion this attempt rendered (the token was
-						// already superseded when it arrived, or a newer completion
-						// published under it). Nothing is latched -- the poll keeps
-						// running and re-arms with whatever token the next state names,
-						// which is the token that actually clears the mark. Latching here
-						// is the defect: a no-op 200 used to stop every later attempt.
+					if (!receiptSettled(state, sessionId, completionToken)) {
+						unresolved("answer did not settle the rendered completion");
 						return;
 					}
 					acknowledged = true;
-					// Nothing left to attempt for this completion; a new one
-					// re-runs the effect with a fresh token.
 					stop();
 				})
-				.catch((error: unknown) => {
-					// No optimistic clear. A rejected native-focus check or stale
-					// token leaves authoritative state intact and permits a retry.
-					if (isSupersededReceipt(error)) {
-						// Expected and self-healing to begin with: the backend has moved
-						// past the token this attempt rendered, and the state it publishes
-						// names the current one. NOT a failure while the projection is one
-						// push behind -- but nothing here bounds how long that lasts, so a
-						// projection that never advances would be re-attempted at the flat
-						// cadence (2/s) for as long as the conversation stays open, in
-						// silence. It therefore backs off on the same ladder and says so
-						// once, and the re-arm is untouched: a state that names the current
-						// token re-runs this effect with these counters at zero.
-						superseded += 1;
-						if (superseded === FAILURES_BEFORE_BACKOFF) {
-							console.warn(
-								`[attention] ${sessionId} still names a superseded completion after ${superseded} attempts; backing off until the state re-arms`,
-								error,
-							);
-						}
-						if (superseded >= FAILURES_BEFORE_BACKOFF) {
-							nextAttempt = Date.now() + backoffMs(superseded);
-						}
-						return;
-					}
-					superseded = 0;
-					//
-					// Backed off and logged ONCE at the threshold because the
-					// failing cases are persistent, not transient: a backend that
-					// predates the receipt route, a wedged store, a window state
-					// the native gate keeps refusing. At a flat cadence that is
-					// thousands of silent IPC round trips an hour with nothing in
-					// the renderer rendering `attention` to explain them.
-					failures += 1;
-					if (failures === FAILURES_BEFORE_BACKOFF) {
-						console.warn(
-							`[attention] could not mark ${sessionId} read after ${failures} attempts; backing off`,
-							error,
-						);
-					}
-					if (failures >= FAILURES_BEFORE_BACKOFF) {
-						nextAttempt = Date.now() + backoffMs(failures);
-					}
-				})
+				.catch((error: unknown) => unresolved(error))
 				.finally(() => {
 					pending = false;
 				});

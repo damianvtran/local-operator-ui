@@ -96,12 +96,17 @@ export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
  * defect). Identity is part of the test rather than assumed: only a state about
  * THIS conversation can settle this attempt.
  */
-export function receiptSettled(state: unknown, sessionId: string): boolean {
+export function receiptSettled(
+	state: unknown,
+	sessionId: string,
+	token: string,
+): boolean {
 	if (!state || typeof state !== "object") return false;
 	const attention = state as Partial<CompletionAttention>;
 	return (
 		attention.unseen === false &&
-		attention.conversation_id === `session/${sessionId}`
+		attention.conversation_id === `session/${sessionId}` &&
+		attention.completion_token === token
 	);
 }
 

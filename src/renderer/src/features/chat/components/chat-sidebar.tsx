@@ -16,19 +16,11 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import {
 	Bot,
-	Check,
 	ChevronDown,
 	ChevronRight,
-	Circle,
-	CircleAlert,
-	Clock,
-	HelpCircle,
 	List,
-	LoaderCircle,
-	MessageSquare,
 	MessageSquarePlus,
 	MoreHorizontal,
-	Pause,
 	Plus,
 	Users,
 	X,
@@ -60,57 +52,7 @@ type Props = {
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
-/** Resting codes that legitimately render as a plain ring; see `Status`. */
-const KNOWN_RESTING = new Set(["idle", "recent"]);
-
-function Status({ row }: { row: CanonicalSessionRow }) {
-	const code = row.status?.code;
-	const Icon =
-		code === "busy"
-			? LoaderCircle
-			: code === "approval" ||
-					code === "answer" ||
-					code === "wedged" ||
-					code === "error"
-				? CircleAlert
-				: code === "interrupted" || code === "dormant"
-					? Pause
-					: code === "complete"
-						? Check
-						: code === "scheduled"
-							? Clock
-							: code === "attached"
-								? MessageSquare
-								: // `idle`/`recent` are ordinary resting states and keep the plain
-									// ring. Anything else is a code this build does not know, so it
-									// must not be normalised into looking like "Recent" — a backend
-									// newer than the UI would silently misreport state. An ABSENT
-									// status is a different case: a locally created row carries none
-									// until the next fetch, and the label already reads "Recent", so
-									// treating it as unknown made the icon contradict the label.
-									KNOWN_RESTING.has(code ?? "recent")
-									? Circle
-									: HelpCircle;
-	const ink =
-		code === "busy"
-			? "text-info motion-safe:animate-spin"
-			: code === "error" || code === "wedged"
-				? "text-danger"
-				: code === "approval" || code === "answer" || code === "interrupted"
-					? "text-warning"
-					: code === "complete"
-						? "text-success"
-						: "text-ink-dim";
-	return (
-		<span
-			className="flex size-4 shrink-0"
-			title={row.status?.label ?? "Recent"}
-		>
-			<Icon className={cn("size-4", ink)} aria-hidden="true" />
-			<span className="sr-only">{row.status?.label ?? "Recent"}</span>
-		</span>
-	);
-}
+import { ChatSessionStatus } from "./chat-session-status";
 
 export function ChatSidebar({
 	selectedConversation,
@@ -372,7 +314,7 @@ export function ChatSidebar({
 				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
 				onClick={() => onSelectConversation(row.session_id)}
 			>
-				<Status row={row} />
+				<ChatSessionStatus row={row} />
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 				    in `features/chat/chat-search.ts` — which is also where the three
 				    failed layouts that led to it are written down (an orphan `·` from
