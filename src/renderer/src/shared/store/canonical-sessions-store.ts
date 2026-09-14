@@ -586,9 +586,16 @@ type CanonicalSessionsState = {
 	 * session's own proof instead of at the 30 s deadline, which is the wait the
 	 * deleted pending banner used to give an escape from (UX round 2, U8).
 	 *
-	 * A window is only opened for a session the view is NOT already on (see
-	 * `openSession`), so nothing can hold this field on a target whose stream has
-	 * already reported itself and will not report itself again.
+	 * A window is opened only for a switch that MOVES the view: `openSession`
+	 * returns early when the target is already active and no draft is staged. The
+	 * one shape that escapes it - the active row clicked while a draft IS staged,
+	 * a real move because it leaves the draft - opens a window on a session the
+	 * panel is already showing, and there the live-frame bound cannot fire: the
+	 * panel is keyed on the session once its draft learns the id
+	 * (`panelIdentityFor`), so the stream effect's `[sessionId, canonical.status]`
+	 * deps are unchanged across that click and a frame that already arrived is
+	 * never re-reported. That window is bounded by the read alone - its answer, or
+	 * the 30 s `withDeadline` when it never answers.
 	 *
 	 * No banner, spinner or Escape handler sits on this path any more: re-basing
 	 * the old "Opening chat…/Cancel" chrome on this field would paint that banner
