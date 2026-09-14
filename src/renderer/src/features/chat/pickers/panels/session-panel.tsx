@@ -252,6 +252,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
+			bodyLabel="Session diagnostics region"
 			title="Session"
 			description="What this session has used, from one read of the local ledger."
 			toolbar={
