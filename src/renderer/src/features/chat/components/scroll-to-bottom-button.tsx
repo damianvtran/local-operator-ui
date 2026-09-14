@@ -66,7 +66,31 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 			<Button
 				variant="secondary"
 				size={hasNewActivity ? "sm" : "icon"}
-				className="pointer-events-auto rounded-full shadow-overlay"
+				className={cn(
+					"rounded-full shadow-overlay",
+					/*
+					 * Pointer events follow VISIBILITY here, not the wrapper.
+					 *
+					 * The wrapper above disables them (`pointer-events-none`) and this button
+					 * re-enabled them unconditionally, which is the right thing for the visible
+					 * state and a trap for the invisible one: hit-testing ignores opacity, so
+					 * hidden the button was a real 32x32 target sitting somewhere over the
+					 * transcript. Where it sat was wherever `bottomDistance` put it, and in this
+					 * component's own use that band is the composer: at the column floor the
+					 * composer's status row lands on it, and `elementFromPoint` at the goal
+					 * chip's centre answered "Scroll to bottom" - pressing the chip there did
+					 * nothing at all, in the width this row was designed for (QA round 1, Q1;
+					 * the same hidden button also covered part of the expanded goal body at
+					 * the wide column).
+					 *
+					 * `invisible` on the wrapper was the other candidate and is rejected: the
+					 * wrapper fades out (`transition-opacity`), and `visibility: hidden` takes
+					 * effect immediately, so the fade would be replaced by a pop. The pointer
+					 * switch is the half that matters: seconds after the state changes, the
+					 * fading control is not something the user is aiming at.
+					 */
+					visible ? "pointer-events-auto" : "pointer-events-none",
+				)}
 				aria-label={
 					hasNewActivity ? "New activity, scroll to bottom" : "Scroll to bottom"
 				}
