@@ -223,6 +223,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
+			bodyLabel="Host info region"
 			title="Info"
 			description="The install, the host this app is connected to, and the conversation in front of you."
 			body={

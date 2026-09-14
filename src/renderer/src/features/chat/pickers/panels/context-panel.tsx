@@ -175,6 +175,7 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
+			bodyLabel="Context estimate region"
 			title="Context"
 			description={block?.title ?? "What the next request will carry."}
 			body={
@@ -186,7 +187,16 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 					<PanelStack>
 						<PanelSection
 							title="This conversation"
-							meta="live · measured on the last request"
+							meta={
+								/*
+								 * The meta follows the value, like `/info`'s context note: over an
+								 * unmeasured gauge "measured on the last request" is a claim about a
+								 * measurement nobody took (QA round 1, Q3).
+								 */
+								measured.fraction === null
+									? "live · not measured yet"
+									: "live · measured on the last request"
+							}
 						>
 							{/*
 							 * The bar and its number are the same fact, so the bar is
