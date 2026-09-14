@@ -33,6 +33,16 @@ LOG_FILE="$APP_DATA_DIR/backend-install.log"
 : "${PYTHONPYCACHEPREFIX:=$APP_DATA_DIR/python-bytecode-cache}"
 export PYTHONPYCACHEPREFIX
 
+# And the refusal half of the same pair, so a standalone run of this script
+# cannot write bytecode into the bundle even where the redirect above does not
+# apply - a relative or unwritable prefix, or a child that drops the variable.
+# CPython reads the flag before its first import, so this script's own
+# `python -m venv`, its pip runs and the venv they create all compile without
+# writing a `__pycache__` anywhere. Measured on CPython: `0` and the empty
+# string are the two falsy spellings, so the value is set rather than merged
+# with whatever the caller had.
+export PYTHONDONTWRITEBYTECODE=1
+
 # Determine CPU Architecture and Python Directory Name
 ARCH=$(uname -m)
 PYTHON_DIR_NAME="python" # Default for x86_64
