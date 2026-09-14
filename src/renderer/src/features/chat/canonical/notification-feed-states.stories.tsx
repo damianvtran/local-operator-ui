@@ -207,9 +207,7 @@ export const TheTwoMisses: Story = {
  * below it and at full ink.
  */
 export const CachedPaintOverflow: Story = {
-	render: () => (
-		<Panel records={OVERFLOWING_ROWS} stale status="connecting" />
-	),
+	render: () => <Panel records={OVERFLOWING_ROWS} stale status="connecting" />,
 };
 
 /**

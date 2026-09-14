@@ -402,6 +402,11 @@ test("a silent socket is torn down and reconnected, not trusted", async () => {
 			body: { result: { features: { desktop_feed: 1 } } },
 		}),
 		beatPresence: async () => ({ status: 200, body: null }),
+		// The production floor is 1 s, which would put the three-missed-beat
+		// watchdog three seconds away and make this test a wait rather than a
+		// check. Lowering the FLOOR (rather than skipping the clamp) keeps the
+		// clamped path the one under test.
+		heartbeatFloorSeconds: 0.05,
 	});
 	await relay.start();
 	await sleep(TICK);

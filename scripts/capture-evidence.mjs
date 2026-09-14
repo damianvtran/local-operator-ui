@@ -208,6 +208,14 @@ export const STORIES = [
 	   the committed empty-rows frame cannot cover (design review round 1, D2). */
 	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
 
+	/* The composer's two refusals and the state a vanished conversation leaves
+	   it in (design review round 1, D3): the transcript stories above render the
+	   transcript alone, so the false "Agent is busy" placeholder and the missing
+	   colour step were never in a frame. Sized to the band, not to a window. */
+	["chat-composer-states--idle", 900, 160],
+	["chat-composer-states--busy", 900, 160],
+	["chat-composer-states--conversation-gone", 900, 160],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
