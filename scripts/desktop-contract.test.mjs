@@ -509,7 +509,6 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 	// (review round 3, Q7). Each must now reach its real path and method with
 	// the main-owned bearer, and the write bodies must arrive unmangled.
 	const agentId = "fixture-agent";
-	const key = "API_TOKEN";
 	const agent = { name: "new agent", security_prompt: "be careful" };
 	for (const [operation, path, method, body] of [
 		[{ op: "legacy.agent.create", agent }, "/v1/agents", "POST", agent],
@@ -545,42 +544,6 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 			`/v1/agents/${agentId}/download`,
 			"GET",
 		],
-		[
-			{ op: "legacy.agent.variables.list", agentId },
-			`/v1/agents/${agentId}/execution-variables`,
-			"GET",
-		],
-		[
-			{
-				op: "legacy.agent.variables.create",
-				agentId,
-				variable: { key, value: "v" },
-			},
-			`/v1/agents/${agentId}/execution-variables`,
-			"POST",
-			{ key, value: "v" },
-		],
-		[
-			{ op: "legacy.agent.variables.get", agentId, key },
-			`/v1/agents/${agentId}/execution-variables/${key}`,
-			"GET",
-		],
-		[
-			{
-				op: "legacy.agent.variables.update",
-				agentId,
-				key,
-				variable: { value: "w" },
-			},
-			`/v1/agents/${agentId}/execution-variables/${key}`,
-			"PATCH",
-			{ value: "w" },
-		],
-		[
-			{ op: "legacy.agent.variables.delete", agentId, key },
-			`/v1/agents/${agentId}/execution-variables/${key}`,
-			"DELETE",
-		],
 		[{ op: "legacy.job.cancel", jobId: "job-1" }, "/v1/jobs/job-1", "DELETE"],
 	]) {
 		assert.equal((await requestDesktop(operation, url, token)).status, 200);
@@ -591,16 +554,23 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 		if (body) assert.deepEqual(JSON.parse(actual.body), body);
 	}
 
-	// The variable key lands in the PATH, so a permissive value would let the
-	// renderer address a route it was never given an operation for.
+	/*
+	 * The legacy agent-variable ops are GONE from the vocabulary, not merely
+	 * unused. The code-memory panel was their only consumer, and a
+	 * familiar-looking call is how the bug comes back: a session id sent to
+	 * `/v1/agents/{id}/execution-variables` can only 404, because that route
+	 * resolves agent-directory UUIDs. Refusing the op at the contract is what
+	 * makes that mistake impossible rather than merely unlikely.
+	 */
 	const count = seen.length;
 	for (const input of [
+		{ op: "legacy.agent.variables.list", agentId },
+		{ op: "legacy.agent.variables.get", agentId, key: "API_TOKEN" },
 		{
-			op: "legacy.agent.variables.get",
+			op: "legacy.agent.variables.delete",
 			agentId,
 			key: "../../../v1/credentials",
 		},
-		{ op: "legacy.agent.variables.delete", agentId, key: "a/b" },
 		{ op: "legacy.agent.update", agentId: "../config", update: {} },
 		{ op: "legacy.job.cancel", jobId: "../agents" },
 		{ op: "legacy.agent.create", agent: {}, extra: "smuggled" },
@@ -662,6 +632,11 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 		[
 			{ op: "sessions.failovers", sessionId },
 			`/v1/desktop/sessions/${sessionId}/failovers`,
+			"GET",
+		],
+		[
+			{ op: "sessions.variables.list", sessionId },
+			`/v1/desktop/sessions/${sessionId}/variables`,
 			"GET",
 		],
 		[
@@ -743,7 +718,80 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 		if (operation.control)
 			assert.deepEqual(JSON.parse(actual.body), operation.control);
 	}
+	/*
+	 * Code memory's write half, compared by BODY rather than by path alone:
+	 * create carries the key, update deliberately does not (once the name
+	 * exists it is immutable and travels in the path), and the body shape is the
+	 * route's own `{key, value, type}` / `{value, type}`. The key below has a
+	 * space in it on purpose - a Python name is not the only legal key
+	 * (`globals()["outstanding total"] = 1` is memory like any other), so the
+	 * path must percent-encode it rather than the renderer refusing to address
+	 * a name the panel lists.
+	 */
+	const codeMemoryKey = "outstanding total";
+	for (const [operation, path, method, body] of [
+		[
+			{
+				op: "sessions.variables.create",
+				sessionId,
+				key: codeMemoryKey,
+				value: "7",
+				type: "int",
+			},
+			`/v1/desktop/sessions/${sessionId}/variables`,
+			"POST",
+			{ key: codeMemoryKey, value: "7", type: "int" },
+		],
+		[
+			{
+				op: "sessions.variables.update",
+				sessionId,
+				key: codeMemoryKey,
+				value: "{'a': 1}",
+				type: "dict",
+			},
+			`/v1/desktop/sessions/${sessionId}/variables/outstanding%20total`,
+			"PATCH",
+			{ value: "{'a': 1}", type: "dict" },
+		],
+		[
+			{ op: "sessions.variables.delete", sessionId, key: codeMemoryKey },
+			`/v1/desktop/sessions/${sessionId}/variables/outstanding%20total`,
+			"DELETE",
+		],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, path);
+		assert.equal(actual.method, method);
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		if (body) assert.deepEqual(JSON.parse(actual.body), body);
+	}
+
+	/*
+	 * A key that could address another route, and a type outside the six-name
+	 * table, are both refused BEFORE the transport: the key becomes a path
+	 * segment, and the type selects the worker's coercion - neither is a value
+	 * to guess at.
+	 */
+	const beforeRefusals = seen.length;
+	for (const operation of [
+		{ op: "sessions.variables.delete", sessionId, key: "../../v1/credentials" },
+		{ op: "sessions.variables.update", sessionId, key: "a/b", value: "1", type: "int" },
+		{
+			op: "sessions.variables.create",
+			sessionId,
+			key: "x",
+			value: "1",
+			type: "string",
+		},
+		{ op: "sessions.variables.list", sessionId: "not-a-session" },
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 422);
+	}
+	assert.equal(seen.length, beforeRefusals);
 	const count = seen.length;
+
 	for (const operation of [
 		{ op: "sessions.stop", requestId, targets: [sessionId], confirmed: false },
 		{
