@@ -41,13 +41,19 @@ export const DEV_VENV_DIR_NAME = "local-operator-venv-dev";
  * The variable the app hands its resolved venv path to the install scripts in.
  *
  * The scripts cannot derive it: they run as a subprocess with no view of
- * `app.isPackaged`, and a standalone run of one has no app at all - so their own
- * default stays the packaged name (what every install on a disk today has), and
- * the app overrides it when the instance is not packaged. Without this the
- * separation above exists only in the app: a review measured the shipped macOS
- * script creating `.../local-operator-venv` with the app's own decision for that
- * instance reading `.../local-operator-venv-dev`, so a dev run still created,
+ * `app.isPackaged`, and a standalone run of one has no app at all. Without this
+ * the separation above exists only in the app: a review measured the shipped
+ * macOS script creating `.../local-operator-venv` with the app's own decision for
+ * that instance reading `.../local-operator-venv-dev`, so a dev run still created,
  * pip-installed into and `rm -rf`ed the packaged app's environment.
+ *
+ * What each script does WITHOUT it is deliberately not uniform. Linux and Windows
+ * fall back to the packaged name, which is harmless on both: Linux's default is
+ * under `~/.config/local-operator` and Windows' under `%APPDATA%`, and neither is
+ * a tree a packaged install is sealed against. macOS refuses - see
+ * `macos-install-script.sh` - because its default IS the shared environment this
+ * split exists to remove, so guessing there would rebuild exactly the venv the
+ * fix is about.
  */
 export const VENV_PATH_ENV = "LOCAL_OPERATOR_VENV_PATH";
 
