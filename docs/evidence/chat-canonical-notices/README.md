@@ -163,10 +163,12 @@ moved in them, and what did not:
   selection opens the row.
 - **A relay states its message, not the envelope's manners (UX U3 / design D3 /
   review R1).** The channel's three fixed instruction lines are matched and
-  skipped, and so is the wake-arming clause. Over the store: 0 of 4,389
-  `hub_message` and 0 of 4,424 `peer_message` headlines are boilerplate now, where
-  411 hub rows opened with the same sentence; 0 of 951 wake rows lead with the
-  cancellation call; and the 34 empty relays state their envelope
+  skipped, and so is the wake-arming clause. Over the store AT THE 2026-09-14 SCAN
+  (these are counts of a store that grows as the operator works, so they carry the
+  day they were taken): 0 of 4,389 `hub_message` and 0 of 4,424 `peer_message`
+  headlines are boilerplate now, where 411 hub rows opened with the same sentence;
+  0 of 951 wake rows lead with the cancellation call; and the 34 empty relays state
+  their envelope
   (`<subagent-message label='…' job='…'>`) instead of a closing tag.
 - **A statement states its fact, not its instruction (UX U2).** The three
   statement types split at the first sentence, so a model switch reads
@@ -287,8 +289,9 @@ that repeated itself behind its own chevron.
   `mark` span, which predates this branch: round 3's Q13).
 
 **The honest gap this register still has.** There are no persisted `notice`
-records in the store to replay (type counts over the operator's transcripts:
-message 108,140, custom 3,326, prune 846, compaction 30), so the notice surface's
+records in the store to replay (type counts over the operator's transcripts at the
+2026-09-14 scan: message 108,140, custom 3,326, prune 846, compaction 30), so the
+notice surface's
 long path has a fixture and a frame behind it rather than a store-wide replay.
 The designer recorded that in round 2 and it is unchanged by this fix.
 
@@ -303,8 +306,15 @@ main's own repair of that field stand). What it found in the code is here.
   it did not fix. Chrome dispatches the second press as a `mousedown` with
   `detail` 2 even when the release lands outside the trigger, and `dblclick`
   fires only when the whole gesture stays inside, so the revert moved to the
-  press. The case the reviewer named — a double-click whose second release misses
-  the trigger, leaving the row toggled — is covered by construction.
+  press. What that closes and what it does not (R18 corrected this sentence, which
+  said "covered by construction"): the take-back runs when the SECOND PRESS lands
+  on a marked text surface, so the case round 3 measured — a double-click in the
+  message whose release misses the trigger — is closed. A second press on the
+  row's non-text chrome whose release lands outside the trigger still leaves one
+  net toggle, because that press is not on text and the trigger never receives the
+  `click`/`dblclick` that would follow. Loosening the condition to catch it would
+  break the intended "two chrome toggles cancel out" case, so the residual is
+  stated here rather than traded for a worse one.
 - **The guard's discriminator is no longer `user-select` (U17, and the reason it
   was wrong).** The question is "is this part of the summary something a reader
   can select and copy?", and a computed style answered a different one: `text`
@@ -333,17 +343,21 @@ per-theme frame deltas and changed-pixel boxes above (R14); the event trace and
 the fact that its `mouseup` detail varies run to run (R15); "194 declared" and
 "121 of 955 wake rows", which are 205 and 202 of 967 at the head the round-3
 reports were written against (U18, Q10). Both terms move with main's own evidence
-activity — this branch's manifest at its final head declares **227** frames across
-25 supplementary sets out of 1,289 on disk, which is the arithmetic to check
-against the file itself rather than against this paragraph. The tool-row claim is
-true of the trigger rather than of the row (Q13). **`pnpm test:desktop` at the
-final head is `tests 802, pass 798, fail 4`**: the three uv/pip install-layout
-tests plus `submit-latency.test.mjs`'s `M1/M2/M3: the warm removes the engage from
-the send…`, which fails in isolation at this head and at the pre-branch base
-(Q12). The suite grows with main (`772/768/4` one rebase earlier), so the count to
-trust is the one in the run the PR quotes at the head it was made against. **Deferred with reasons:** D10 (the joined job headline
-repeats the derived label's word "job" — copy is the design stream's lane and it
-recorded the nit as not asked for in this round) and R16 (the sentence scan still
+activity, which is why the numbers below carry the head they were counted at
+rather than being carried forward: at the head this paragraph was written for, the
+manifest declared **339** frames across **28** supplementary sets out of **1,509**
+on disk, and the arithmetic to check is always that sum against the directory
+itself, not against this paragraph. The tool-row claim is true of the trigger
+rather than of the row (Q13). **`pnpm test:desktop` is quoted at the head the PR
+names, because it is not a fixed number**: it was `840/840/0 EXIT=0` when the
+tests were last run at a head of this branch, and the four failures earlier rounds
+recorded — three uv/pip install-layout tests and `submit-latency.test.mjs`'s
+`M1/M2/M3: the warm removes the engage from the send…` — no longer reproduce,
+because main's own work fixed them (Q12/R21: the sentence claiming they failed at
+the pre-branch base is deleted rather than carried as a false statement). **Decided, not deferred:** D10 — the derived
+label is dropped when the payload's own opening names the subject, so a job row no
+longer reads "job result: background job …"; this was every job row in the store,
+and the decision is in the round-4 commit rather than in a queue. **Deferred with reason:** R16 (the sentence scan still
 cannot separate `Step one: 1. Do the thing.` or `Dr. Smith` from a sentence end;
 0 of the store's statements carry either shape, so hardening it further would be
 built for a producer that does not exist).
