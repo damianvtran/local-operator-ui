@@ -307,7 +307,6 @@ const json = (body: unknown, status = 200) =>
 		headers: { "Content-Type": "application/json" },
 	});
 
-
 /** The session id the variables stories read, in the wire's own shape (12 hex). */
 const STORY_SESSION_ID = "8fd6c6a40934";
 
