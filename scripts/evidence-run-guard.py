@@ -11,7 +11,8 @@ The command inherits the lease on fd 3 and must pass it to heavy children.
 The production caller uses one fixed /tmp path, not HOME/TMPDIR or the
 checkout. An explicit path here lets subprocess tests use an isolated lease,
 never the operator's production lock. This is macOS/Linux developer tooling;
-missing Python/POSIX locking must fail closed, not run an unbounded fallback.
+missing Python/POSIX locking must fail closed, not run an unbounded fallback,
+and it must say so in those terms - `fcntl` is not something to install.
 """
 
 import errno
@@ -23,7 +24,22 @@ import sys
 def main():
     try:
         import fcntl
+    except ImportError as error:
+        # The one failure here that is about the HOST rather than about this
+        # admission, and therefore the only one that can name a recovery.
+        # `fcntl` is a POSIX-only stdlib module with no wheel to install, so a
+        # reader told only its name goes looking for one (design round 1, D1).
+        # Nothing has been opened or locked on this path, so the message may
+        # and must say that no frames were checked.
+        print(
+            "Evidence check BLOCKED: Python 3 with POSIX locking is required "
+            "(macOS/Linux). No frames checked. Use a supported environment, "
+            f"then rerun `pnpm check-evidence`. Detail: {error}",
+            file=sys.stderr,
+        )
+        return 1
 
+    try:
         path, command, *args = sys.argv[1:]
         fd = os.open(
             path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600
@@ -65,7 +81,7 @@ def main():
                 file=sys.stderr,
             )
         os.execvp(command, [command, *args])
-    except (OSError, ImportError, ValueError, AttributeError) as error:
+    except (OSError, ValueError, AttributeError) as error:
         print(
             f"Evidence check BLOCKED: admission unavailable: {error}",
             file=sys.stderr,

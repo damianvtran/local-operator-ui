@@ -4,6 +4,7 @@ import { once } from "node:events";
 import {
 	chmodSync,
 	copyFileSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -264,4 +265,44 @@ test("unsafe lock path and command failure fail closed; priority is inherited", 
 	assert.equal(missing.status, 1);
 	assert.match(missing.stderr, /BLOCKED/);
 	assert.equal(attempt(other).status, 0);
+});
+
+/**
+ * The unsupported-HOST path, which no fixture reaches by running the guard
+ * normally: it needs a machine whose `fcntl` is absent, and `fcntl` is a
+ * POSIX-only stdlib module every CI runner here has. Making the import itself
+ * fail is the portable stand-in for that host, and the guard returns before it
+ * opens the lease, so this cannot reach a real one.
+ *
+ * Bound because the message IS this path's deliverable: a reader told only the
+ * module's name goes looking for something to install, and `fcntl` has no wheel
+ * (design round 1, D1). The claim that nothing was checked is the half a reader
+ * would otherwise have to assume, so it is asserted rather than trusted.
+ */
+test("an unavailable POSIX locking module names the platform, not a module", (t) => {
+	const lock = fixture(t);
+	const blocked = spawnSync(
+		"python3",
+		[
+			"-c",
+			'import sys, runpy; sys.modules["fcntl"] = None; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name="__main__")',
+			guard,
+			lock,
+			process.execPath,
+			"-e",
+			'console.log("UNSAFE")',
+		],
+		{ encoding: "utf8", env, timeout: 5000 },
+	);
+	assert.equal(blocked.status, 1, blocked.stderr);
+	assert.match(blocked.stderr, /BLOCKED: Python 3 with POSIX locking is required/);
+	assert.match(blocked.stderr, /No frames checked/);
+	assert.match(
+		blocked.stderr,
+		/Use a supported environment, then rerun `pnpm check-evidence`/,
+	);
+	// The raw detail stays, after the recovery the reader can act on.
+	assert.match(blocked.stderr, /Detail: /);
+	assert.doesNotMatch(blocked.stdout, /UNSAFE/);
+	assert.equal(existsSync(lock), false);
 });
