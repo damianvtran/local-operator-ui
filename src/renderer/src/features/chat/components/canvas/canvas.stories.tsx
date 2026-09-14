@@ -22,7 +22,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { fireEvent, screen, userEvent, within } from "@storybook/test";
+import { fireEvent, screen, userEvent, waitFor, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
@@ -316,6 +316,28 @@ const VARIABLE_KEY_LABEL = /Name \(key\)/;
 const REFUSAL_SENTENCE = /'secrets' is a name the session keeps/;
 
 /**
+ * Hold the shutter until the story says the frame is worth taking.
+ *
+ * The capturer polls `documentElement.dataset.capturePending` before it
+ * screenshots (see `scripts/capture-evidence.mjs`), and a story that sets it on
+ * mount keeps every theme's frame on the far side of its own interaction. Story
+ * effects that end with a rendered result MUST use this: without it the shutter
+ * races the effect, and the same story produces a frame with the result in one
+ * theme and without it in the next. That is exactly what happened to
+ * `VariablesWriteRefused` in design round 1 (D1): the toast was in seven themes'
+ * frames and missing from five, so a frame named for the refusal did not
+ * evidence one.
+ */
+const holdShutter = () => {
+	document.documentElement.dataset.capturePending = "1";
+};
+
+/** Let the shutter go, once the state under test is on screen. */
+const releaseShutter = () => {
+	delete document.documentElement.dataset.capturePending;
+};
+
+/**
  * One answer from the stub, as the BACKEND would give it: a status plus the
  * envelope body. Refusals carry `detail.code`/`detail.message`, which is the
  * shape `desktopResult` lifts a write's sentence out of.
@@ -333,6 +355,25 @@ const ok = (result: unknown): DesktopAnswer => ({
 	status: 200,
 	body: { status: 200, message: "ok", result },
 });
+
+/**
+ * One answer from a CODE-MEMORY route, in the shape those routes really send.
+ *
+ * This is the fix for review round 1's Q-2: the four routes answer
+ * `result: {data: <state>, replayed: false}`, one level inside what
+ * `desktopResult` hands back, and the stories used to answer `result: <state>` -
+ * the single shape for which a read path that never unwraps `data` works. So a
+ * green fixture certified a contract the backend does not send, and a frame of a
+ * populated namespace looked right while the shipping panel read `undefined` and
+ * rendered "Nothing stored yet" (C-01/Q-1/U1). Every variables answer goes
+ * through here now, so no story can express a shape the routes never produce.
+ *
+ * `ok` is still what the capability probe uses: `/v1/capabilities` is a plain
+ * route whose `result` IS the object, and it is deliberately not routed through
+ * this.
+ */
+const variablesEnvelope = (data: unknown): DesktopAnswer =>
+	ok({ data, replayed: false });
 
 const refused = (
 	status: number,
@@ -362,7 +403,7 @@ const observed = (
 		truncated?: boolean;
 	} = {},
 ): DesktopAnswer =>
-	ok({
+	variablesEnvelope({
 		state: "observed",
 		runtime: over.runtime ?? "running",
 		kernel: over.kernel ?? "resident",
@@ -427,7 +468,8 @@ const installFetchStub = () => {
 			}
 			if (request.op?.startsWith("sessions.variables.")) {
 				return respond(
-					desktopAnswers.write?.(request.op, request) ?? ok({ state: "ok" }),
+					desktopAnswers.write?.(request.op, request) ??
+						variablesEnvelope({ state: "ok" }),
 				);
 			}
 			return respond(ok({}));
@@ -825,7 +867,7 @@ export const VariablesBusy: Story = {
 			activeId={DOCUMENTS[0].id}
 			variables={{
 				features: { session_variables: 1 },
-				list: () => ok({ state: "busy" }),
+				list: () => variablesEnvelope({ state: "busy" }),
 			}}
 		/>
 	),
@@ -845,7 +887,7 @@ export const VariablesUnsupported: Story = {
 			activeId={DOCUMENTS[0].id}
 			variables={{
 				features: { session_variables: 1 },
-				list: () => ok({ state: "unsupported" }),
+				list: () => variablesEnvelope({ state: "unsupported" }),
 			}}
 		/>
 	),
@@ -904,11 +946,17 @@ export const VariablesWriteRefused: Story = {
 		/>
 	),
 	play: async ({ canvasElement }) => {
+		// Held from the first line: the whole point of this story is the state
+		// AFTER the refusal, and the capturer must not photograph the dialog
+		// mid-submission.
+		holdShutter();
 		// Only the trigger is inside the frame: the dialog and the toast both
 		// render through portals at the document root, so `screen` is what can
 		// see them.
 		const canvas = within(canvasElement);
-		await userEvent.click(await canvas.findByRole("button", { name: "New" }));
+		await userEvent.click(
+			await canvas.findByRole("button", { name: "New variable" }),
+		);
 		/*
 		 * `fireEvent.change` rather than `userEvent.type`: the value is not what
 		 * this frame is about, and typing it costs seven keystroke rounds that
@@ -921,13 +969,188 @@ export const VariablesWriteRefused: Story = {
 			target: { value: "secrets" },
 		});
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Create variable" }),
+			await screen.findByRole("button", { name: "Create" }),
 		);
 		// The assertion is also the wait: the story is not "done" until the
 		// refusal has been rendered, and the toast is what this frame is for.
 		await screen.findByText(REFUSAL_SENTENCE);
+		// ...and the refusal ALSO marks the field it is about, which is the other
+		// half of UX round 1's U3: the same sentence, beside the control the user
+		// has to change, instead of only in a toast that floats past.
+		await screen.findByText(REFUSAL_SENTENCE, { selector: "p" });
+		releaseShutter();
 	},
 };
+
+/**
+ * The backend answered, and the answer was a failure this panel cannot name.
+ *
+ * Design round 1 (D3) found this branch unframed and still carrying advice that
+ * this PR exists to retire: "Check that Local Operator is running" is false
+ * whenever the backend answered at all, which is the case here. The state is
+ * reachable (a 5xx, a proxy that answered instead of the backend, a bearer the
+ * backend rejected) and it is the one state whose copy a reviewer had to
+ * imagine, so it is rendered.
+ *
+ * The stub refuses rather than answering a 404: a 404 is its own branch
+ * (`VariablesBackendTooOld`), and a frame cannot tell the two apart if both
+ * stories answer with the same status.
+ */
+export const VariablesBackendUnreachable: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () =>
+					refused(
+						503,
+						"backend_unavailable",
+						"The backend did not answer in time.",
+					),
+			}}
+		/>
+	),
+};
+
+/**
+ * A namespace the owner could not list at all: one value bigger than the whole
+ * reading budget.
+ *
+ * `truncated: true` with nothing to show is a real answer from the backend
+ * (recorded during remediation from PR #1101's own budget rule), and the frozen
+ * state table has no row for it - so the panel must not borrow the empty one,
+ * which would state that the namespace is empty when it is only unlistable.
+ */
+export const VariablesTruncated: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed([], { truncated: true }),
+			}}
+		/>
+	),
+};
+
+/**
+ * The row actions, revealed the way the keyboard reveals them.
+ *
+ * Design round 1 (D5) could not judge whether the hidden-until-hover actions
+ * read as intentional, because no frame contained them: at rest they are
+ * `opacity-0` with pointer events off, and a still cannot hover. Focus can be
+ * drawn, and `group-focus-within` is what makes them keyboard-reachable in the
+ * first place - so the frame shows the second row focused, with its Copy, Edit
+ * and Delete controls drawn beside the value they act on.
+ */
+export const VariablesRowActions: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed(VARIABLES),
+			}}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		const canvas = within(canvasElement);
+		// The second row: the first is the uneditable DataFrame, which has its own
+		// story below.
+		const edits = await canvas.findAllByRole("button", { name: "Edit variable" });
+		edits[1].focus();
+		await waitFor(() => {
+			if (document.activeElement !== edits[1]) throw new Error("not focused");
+		});
+		releaseShutter();
+	},
+};
+
+/**
+ * The row the backend says cannot be edited, focused.
+ *
+ * `outstanding` is a DataFrame with `editable: false`, and the question D5 asks
+ * of it is whether the absence of an editable control reads as a rule rather
+ * than as breakage: the Edit control is drawn `aria-disabled` with a tooltip
+ * naming the reason (a plain `disabled` button would swallow the tooltip), and
+ * Delete stays available because a value the panel cannot re-coerce can still be
+ * removed.
+ */
+export const VariablesUneditableRow: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed(VARIABLES),
+			}}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		const canvas = within(canvasElement);
+		const edits = await canvas.findAllByRole("button", { name: "Edit variable" });
+		edits[0].focus();
+		await waitFor(() => {
+			if (document.activeElement !== edits[0]) throw new Error("not focused");
+		});
+		releaseShutter();
+	},
+};
+
+/**
+ * The delete confirmation, opened through the real control.
+ *
+ * Also unrendered before this round (D5). The play drives the row's own Delete
+ * button - focus first, because the control only exists for a pointer or a
+ * keyboard, then the click - so the dialog in the frame is the component the
+ * app ships, not a mock of it.
+ */
+export const VariablesDeleteConfirm: Story = {
+	render: () => (
+		<CanvasFrame
+			view="variables"
+			activeId={DOCUMENTS[0].id}
+			variables={{
+				features: { session_variables: 1 },
+				list: () => observed(VARIABLES),
+			}}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		const canvas = within(canvasElement);
+		const deletes = await canvas.findAllByRole("button", {
+			name: "Delete variable",
+		});
+		deletes[1].focus();
+		await userEvent.click(deletes[1]);
+		await screen.findByRole("dialog");
+		releaseShutter();
+	},
+};
+
+/*
+ * A populated list, then `busy` over it, has NO story here on purpose.
+ *
+ * Design round 1 (D2) asked for the transition, and it cannot be a fixture: the
+ * retention rule is about a query that already holds a reading when the next one
+ * comes back `busy`, and this environment gives a story no way to provoke that
+ * second read. The app provokes it by coming back to the window, and this
+ * app's query-core (5.73.3) wires that to `visibilitychange` - but dispatching
+ * the event from a play function, and from the page over CDP, both left the
+ * reader at one call (measured, not assumed: a counter on the stub read 1
+ * before and 1 after). A story that cannot reach the state it is named for is
+ * worse than no story, so the transition is photographed in the live app, where
+ * a real cell is running and the lease keeps the kernel resident - see
+ * `docs/evidence/session-code-memory/README.md`.
+ */
 
 /* ------------------------------------------------------------------ */
 /* Diff review                                                         */

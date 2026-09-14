@@ -1407,3 +1407,201 @@ test("sessions.warm reaches the warm route with an empty body on the control bud
 	}
 	assert.equal(seen.length, count + 1, "no malformed warm reached the network");
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * The code-memory read path, through the SHIPPING renderer module.
+ *
+ * Review round 1 (C-01 / Q-1 / U1) found the panel reading one envelope level
+ * too shallow: the four routes answer `result: {data: <state>, replayed: false}`
+ * and `desktopResult` returns `envelope.result`, so `data.state` was undefined
+ * and every state fell through to the empty branch - a populated namespace
+ * rendering "Nothing stored yet". Nothing in the suite could see it, because
+ * every fixture answered the shape for which an unwrapped read works.
+ *
+ * So this test does not assert a fixture's shape. It replays the bodies the
+ * BACKEND sent - copied from a live session against PR #1101's routes - through
+ * the module the renderer really calls, and asserts the resolved value. The
+ * second half is the guard that would have failed before the fix: the same
+ * module, handed the shallow envelope, must NOT resolve a state. A test that
+ * only asserted the correct shape would keep passing if someone re-flattened
+ * the read path and re-flattened the fixture with it.
+ * ---------------------------------------------------------------------------
+ */
+const rendererBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	listSessionVariables,
+	createSessionVariable,
+	updateSessionVariable,
+	deleteSessionVariable,
+	isWritableVariableKey,
+	desktopRequestSchema,
+	desktopEndpoint: rendererDesktopEndpoint,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
+);
+
+const SESSION = "8fd6c6a40934";
+
+/** Serve fixed bodies through the renderer transport, as a backend would. */
+const serveRenderBodies = (bodies) => {
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					const body = bodies[request.op];
+					if (!body) throw new Error(`no body for ${request.op}`);
+					return { status: 200, body };
+				},
+			},
+		},
+	};
+};
+
+/** What `GET /v1/desktop/sessions/{id}/variables` really answers. */
+const LIST_BODY = {
+	status: 200,
+	message: "Desktop session result.",
+	result: {
+		data: {
+			state: "observed",
+			runtime: "running",
+			kernel: "resident",
+			variables: [
+				{
+					key: "total_outstanding",
+					type: "float",
+					value: "1234.5",
+					editable: true,
+					truncated: false,
+				},
+			],
+			truncated: false,
+		},
+		replayed: false,
+	},
+};
+
+const VARIABLE = {
+	key: "total_outstanding",
+	type: "float",
+	value: "1234.5",
+	editable: true,
+	truncated: false,
+};
+
+test("a code-memory read resolves the state inside the backend's `data` wrapper", async () => {
+	serveRenderBodies({ "sessions.variables.list": LIST_BODY });
+	const result = await listSessionVariables(SESSION);
+	assert.equal(
+		result.state,
+		"observed",
+		"the read must resolve the state the backend named, not the wrapper around it",
+	);
+	assert.equal(result.variables.length, 1);
+	assert.equal(result.variables[0].key, "total_outstanding");
+});
+
+test("the writes resolve their ack out of the same wrapper", async () => {
+	serveRenderBodies({
+		"sessions.variables.create": {
+			status: 200,
+			message: "ok",
+			result: { data: { state: "ok", variable: VARIABLE }, replayed: false },
+		},
+		"sessions.variables.update": {
+			status: 200,
+			message: "ok",
+			result: { data: { state: "ok", variable: VARIABLE }, replayed: false },
+		},
+		"sessions.variables.delete": {
+			status: 200,
+			message: "ok",
+			result: { data: { state: "ok" }, replayed: false },
+		},
+	});
+	const created = await createSessionVariable(SESSION, {
+		key: "total_outstanding",
+		value: "1234.5",
+		type: "float",
+	});
+	assert.equal(created.key, "total_outstanding");
+	const updated = await updateSessionVariable(SESSION, {
+		key: "total_outstanding",
+		value: "9",
+		type: "float",
+	});
+	assert.equal(updated.value, "1234.5");
+	await deleteSessionVariable(SESSION, "total_outstanding");
+});
+
+test("the shallow envelope - the shape this PR shipped against - does not resolve a state", async () => {
+	serveRenderBodies({
+		"sessions.variables.list": {
+			status: 200,
+			message: "ok",
+			// What the Storybook fixtures used to answer: the state where the
+			// backend puts its wrapper. Kept as a test rather than deleted from
+			// history, because this is the exact body that made a broken read
+			// path look correct in 98 committed frames.
+			result: LIST_BODY.result.data,
+		},
+	});
+	const result = await listSessionVariables(SESSION);
+	assert.equal(
+		result?.state,
+		undefined,
+		"if this ever resolves a state, the read path is reading a shape the backend does not send",
+	);
+});
+
+test("a dot-only key is refused by the contract and never addressed", () => {
+	for (const key of [".", "..", "...", "", "a".repeat(129), "bad\u0007name"]) {
+		assert.equal(isWritableVariableKey(key), false, `${key} must not be addressable`);
+		const parsed = desktopRequestSchema.safeParse({
+			op: "sessions.variables.delete",
+			sessionId: SESSION,
+			key,
+		});
+		assert.equal(parsed.success, false, `${key} must not pass the schema`);
+	}
+	/*
+	 * And why the rule has to be a refusal rather than a warning: the endpoint
+	 * builder itself is happy to produce the traversing path, and `new URL` in
+	 * the transport resolves it away before the request leaves - so a name of
+	 * dots would address `/variables/` or the collection, not the name. Pinned
+	 * here so the rule cannot be relaxed without this line failing.
+	 */
+	const { path: traversing } = rendererDesktopEndpoint({
+		op: "sessions.variables.delete",
+		sessionId: SESSION,
+		key: "..",
+	});
+	assert.equal(
+		new URL(traversing, "http://127.0.0.1:1111").pathname,
+		`/v1/desktop/sessions/${SESSION}/`,
+		"a dot-only key re-points the request; the schema refusal is what stops it",
+	);
+	// Names that are legal memory stay addressable: a space, a dot inside a
+	// name, and a dunder - the reason this is a denylist rather than an
+	// identifier regex.
+	for (const key of ["outstanding total", "a.b", "__builtins__"]) {
+		assert.equal(isWritableVariableKey(key), true, `${key} must stay addressable`);
+		const { path } = rendererDesktopEndpoint({
+			op: "sessions.variables.delete",
+			sessionId: SESSION,
+			key,
+		});
+		assert.equal(new URL(path, "http://127.0.0.1:1111").pathname, `/v1/desktop/sessions/${SESSION}/variables/${encodeURIComponent(key)}`);
+	}
+});
