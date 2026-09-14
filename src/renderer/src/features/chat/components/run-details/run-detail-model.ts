@@ -1385,22 +1385,57 @@ const MCP_NOT_A_PROBLEM: readonly string[] = [
 ];
 
 /**
- * The one-line remedy per KNOWN problem state, and why it is a hint rather than
- * a control (`§ 7.2`).
+ * The remedy on a problem row, as ONE field with three cases (`§ 7.2` amended).
  *
- * The panel is a live VIEW: it must not grow a reauth button, and the control
- * stays where the configuration lives — `settings/components/mcp-management-section.tsx`,
- * which is the only surface that can act on a server. The hints name that
- * surface's own controls (`Grant account access`, `Reconnect`), because a fix a
- * reader cannot find in the UI is not a hint.
+ * One field rather than a hint string plus a control flag, because a row must not
+ * be able to render a control and a sentence at the same time. `words` is the
+ * case the panel cannot act on — a stdio server or one whose config declares
+ * another `auth.type`, where a browser flow is a hard refusal
+ * (`server_rejects_oauth`) — and it carries the sentence instead, in the app's own
+ * control vocabulary, because a fix the reader cannot find is not a hint.
  *
- * There is deliberately NO entry for an unrecognised word: a fix for a word this
- * build cannot name would be a guess, and a guess is worse than the quiet
- * unknown row that does still take attention.
+ * The panel STARTS these two operations and the backend owns them: the panel
+ * never writes configuration (`docs/run-sidebar.md` § 7.2, amended in this
+ * change).
  */
-const MCP_HINT: Record<string, string> = {
-	"auth-required": "Grant this server account access in Settings",
-	disconnected: "Reconnect this server in Settings",
+export type McpRemedy =
+	| { kind: "grant" }
+	| { kind: "reconnect" }
+	| { kind: "words"; label: string };
+
+/**
+ * The remedy sentence for a state no control on this surface can fix.
+ *
+ * `auth-required` is an OAuth-grant condition, so for a server whose transport
+ * cannot do OAuth the configuration surface is where its credentials live —
+ * which is the section's own control vocabulary (`Grant account access` lives
+ * there, over the same `env`/`headers` map).
+ */
+const MCP_WORDS: Record<string, string> = {
+	"auth-required": "Manage this server's credentials in Settings",
+};
+
+/**
+ * A sign-in this surface started, as the READ carries it (`mcp.list` returns
+ * `operations`, `MCPDesktop.snapshot()` at `mcp/desktop.py:152`).
+ *
+ * Rendered from the polled list rather than from the POST's response, because
+ * the pane must also show a grant started elsewhere — the TUI, another
+ * conversation — and a second source could disagree with the first about whether
+ * a sign-in is running.
+ */
+export type McpGrantState = {
+	id: string;
+	action: string;
+	status: "running" | "complete" | "failed" | "cancelled";
+	/**
+	 * Whether the grant deleted the stored credential before it re-consented.
+	 *
+	 * `grants.py:168-175` records that a cancel between the delete and the
+	 * reconnect leaves the server with NO credential, so "cancelled" alone would
+	 * send the reader to a server that cannot connect.
+	 */
+	credentialRemoved: boolean;
 };
 
 /** One configured MCP server, as the panel's MCP section renders it. */
@@ -1426,8 +1461,28 @@ export type McpServerRow = {
 	 * its scarcest column on a distinction only the settings page acts on.
 	 */
 	scope: string | null;
-	/** The one-line remedy on a problem row, `null` on every other state. */
-	hint: string | null;
+	/**
+	 * The server's transport, verbatim (`stdio` / `http`), or `null` when the
+	 * payload did not say.
+	 *
+	 * Read because the OAuth decision turns on it (`§ 3.3`): a stdio child can
+	 * never complete a browser sign-in, which the backend's own
+	 * `server_rejects_oauth` states as a hard refusal.
+	 */
+	transport: string | null;
+	/**
+	 * Whether this server's transport can do OAuth, or `null` for "unknown".
+	 *
+	 * `null` is the NORMAL state, not an error: `public_server_config` publishes
+	 * `False` only when `server_rejects_oauth` says never
+	 * (`mcp/desktop.py:104-116`), so an http server with no explicit refusal
+	 * arrives as unknown and is offered the control (`§ 3.3-2`).
+	 */
+	oauthSupported: boolean | null;
+	/** The sign-in this server has in flight, or `null` when it has none shown. */
+	grant: McpGrantState | null;
+	/** The remedy for a problem row, `null` on every row the panel cannot fix. */
+	remedy: McpRemedy | null;
 	/**
 	 * The wire's own failure text for this server, when the read carries one.
 	 *
@@ -1472,7 +1527,19 @@ export function deriveMcpServers(
 	 * is the behaviour this section shipped with.
 	 */
 	errors: Readonly<Record<string, string>> = {},
+	/**
+	 * The `mcp.list` document's own `operations`, from the read the panel already
+	 * polls.
+	 *
+	 * A SECOND ARGUMENT rather than a second query: one read answers "is this
+	 * server connected" and "is a sign-in running for it", so the two facts cannot
+	 * disagree on screen, and the pane costs no extra timer (`§ 3.2`). Optional
+	 * because a caller with no operations still builds rows — it just shows no
+	 * grant state.
+	 */
+	operations: unknown = [],
 ): McpServerRow[] {
+	const grants = mcpGrantStates(operations);
 	return toWireList(rows)
 		.map((row) => {
 			const name = wireText(row.name);
@@ -1482,6 +1549,11 @@ export function deriveMcpServers(
 			// `connected` would be a lie and `disconnected` a false alarm.
 			const status = wireText(row.status) || "cold";
 			const problem = !MCP_NOT_A_PROBLEM.includes(status);
+			const transport = wireText(row.transport) || null;
+			const oauthSupported =
+				typeof row.transport_oauth_supported === "boolean"
+					? row.transport_oauth_supported
+					: null;
 			return {
 				name,
 				status,
@@ -1490,6 +1562,17 @@ export function deriveMcpServers(
 				// one reports the tools its last session knew about, and printing that
 				// beside `disconnected` would claim tools that are not reachable.
 				toolCount: status === "connected" ? wireNumber(row.tool_count) : null,
+				transport,
+				oauthSupported,
+				// Only while this row is still asking for something, unless the sign-in is
+				// still RUNNING: a terminal `failed` op must not sit under a live
+				// `connected` row until the backend evicts it (64 ops,
+				// `mcp/desktop.py:222-228`), which is what `§ 3.2`'s rule prevents.
+				grant:
+					grants.get(name) &&
+					(problem || grants.get(name)?.status === "running")
+						? (grants.get(name) as McpGrantState)
+						: null,
 				// `owned_scope` is the field the route actually sends (`§ 7.1`: the
 				// Settings section reads a `scope` key that does not exist on this
 				// payload, and that bug is deliberately not copied here). The fallback is
@@ -1497,7 +1580,9 @@ export function deriveMcpServers(
 				// spend the row's widest segment on something the reader cannot act on,
 				// and its tail is the only part that says which file it came from.
 				scope: wireText(row.owned_scope) || sourceBasename(row.source) || null,
-				hint: problem ? (MCP_HINT[status] ?? null) : null,
+				remedy: problem
+					? mcpRemedyFor({ status, transport, oauthSupported })
+					: null,
 				// Renderable only on a problem row: see the field's own note for why a
 				// stale startup failure must not sit under a healthy word.
 				errorText: problem ? wireText(errors[name]) || null : null,
@@ -1510,6 +1595,99 @@ export function deriveMcpServers(
 /** Both separators, at module level: a regex literal inside the function would be
  * rebuilt per call, which is the lint rule this satisfies (`useTopLevelRegex`). */
 const PATH_SEPARATORS = /[\\/]/;
+
+/**
+ * The remedy this surface can carry out for one problem state, or the sentence
+ * for the states it cannot (`§ 3.3`).
+ *
+ * The decision is made from the ROW'S OWN PAYLOAD, in this order, with no new
+ * backend op:
+ *
+ * 1. `disconnected` is transport-level, and the shipped control for it is
+ *    `connect` (`manager.reconnect_server`), so it gets a Reconnect.
+ * 2. `auth-required` on a transport that cannot do OAuth — a stdio child, or a
+ *    config that declares another `auth.type` (`server_rejects_oauth`) — can
+ *    never complete a browser flow, so it keeps words and points at the surface
+ *    that owns the credentials.
+ * 3. every other `auth-required` gets the grant. `transport_oauth_supported` is
+ *    `null` for an http server in the normal case (`§ 1.5`: the backend
+ *    publishes `False` only for a definite refusal), so "unknown" must be
+ *    offered the control rather than treated as a refusal.
+ * 4. an unrecognised word gets nothing: a fix for a word this build cannot name
+ *    would be a guess.
+ */
+export const mcpRemedyFor = (server: {
+	status: string;
+	transport: string | null;
+	oauthSupported: boolean | null;
+}): McpRemedy | null => {
+	if (server.status === "disconnected") return { kind: "reconnect" };
+	if (server.status !== "auth-required") return null;
+	if (server.transport === "stdio" || server.oauthSupported === false) {
+		return {
+			kind: "words",
+			label: MCP_WORDS["auth-required"],
+		};
+	}
+	return { kind: "grant" };
+};
+
+/** The four operation states this build has been taught, and no others. */
+const MCP_GRANT_STATUSES = [
+	"running",
+	"complete",
+	"failed",
+	"cancelled",
+] as const;
+
+/**
+ * The newest grant operation per server name, from the read's own `operations`.
+ *
+ * Newest by `created_at`, because the backend keeps 64 operations and evicts the
+ * oldest (`mcp/desktop.py:222-228`): a name can hold a `failed` op beside a later
+ * `complete` one, and the row has to render the LATEST statement about it —
+ * including that the credential was removed, which is the one thing that
+ * distinguishes "cancelled, try again" from "cancelled, and your credential is
+ * gone" (`grants.py:168-175`).
+ *
+ * An operation whose status this build has not been taught is DROPPED rather than
+ * folded to the nearest word: the same refusal an unrecognised server status
+ * gets, and for the same reason — a row must not claim a sign-in is running when
+ * the word is one it cannot read.
+ */
+export const mcpGrantStates = (
+	operations: unknown,
+): Map<string, McpGrantState> => {
+	const newest = new Map<string, McpGrantState & { createdAt: number }>();
+	for (const row of toWireList(operations)) {
+		const name = wireText(row.name);
+		const id = wireText(row.id);
+		const status = wireText(row.status);
+		if (!name || !id) continue;
+		if (
+			!MCP_GRANT_STATUSES.includes(
+				status as (typeof MCP_GRANT_STATUSES)[number],
+			)
+		) {
+			continue;
+		}
+		const createdAt = wireNumber(row.created_at) ?? 0;
+		const current = newest.get(name);
+		if (current && current.createdAt > createdAt) continue;
+		newest.set(name, {
+			id,
+			action: wireText(row.action) || "reauth",
+			status: status as McpGrantState["status"],
+			credentialRemoved: row.credential_removed === true,
+			createdAt,
+		});
+	}
+	const states = new Map<string, McpGrantState>();
+	for (const [name, { createdAt: _createdAt, ...state }] of newest) {
+		states.set(name, state);
+	}
+	return states;
+};
 
 /** The last path segment of a config source, or `""` when there is none.
  *
