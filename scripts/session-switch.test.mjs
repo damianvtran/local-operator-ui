@@ -558,3 +558,55 @@ test("re-selecting the active session still leaves a staged draft", async () => 
  * were all unreachable once nothing set one; `validatingSessionId` carries the
  * one guarantee that had to survive (see the read-window tests above).
  */
+
+/*
+ * The pane's hold, keyed on the READER and not on the transport.
+ *
+ * The pre-merge resolution check (Finding 1) found the pane and the band asking
+ * different questions: the hold was `status === "connecting"`, while the band
+ * this PR re-keyed asks `hydrated`. On this path the two disagree in both
+ * directions, and the cases below are those directions - the first FAILS on the
+ * pre-fix expression (it held a conversation a completed read had already proven
+ * EMPTY while the band offered the greeting and its own `grow` beside it), and
+ * the second FAILS on it too (an unhydrated `live` pane, which the old
+ * expression collapsed, leaving no loading claim anywhere on screen).
+ *
+ * The rule lives in `transcript-pane.ts` rather than inside the component for
+ * the same reason `scroll-paging.ts` does: a decision about state can be pinned
+ * by a node test, and the component keeps the rendering.
+ */
+const paneBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/canonical/transcript-pane";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { transcriptPaneHoldsPlaceholder: holdsPlaceholder } = await import(
+	`data:text/javascript;base64,${Buffer.from(paneBundle.outputFiles[0].text).toString("base64")}`
+);
+
+test("a conversation the read has already proven empty is NOT held, even while `connecting`", () => {
+	// `Retry` re-arms the stream as `connecting` with `hydrated` untouched
+	// (`use-canonical-session.ts:1307-1312`), so the transport is saying
+	// "connecting" about a conversation the reader has already answered.
+	assert.equal(holdsPlaceholder({ hydrated: true, recordCount: 0 }), false);
+});
+
+test("a conversation nobody has read yet IS held, at `connecting` and at `live`", () => {
+	// Two routes into the same reader-state: this switch's own hydrating window,
+	// and a cold session whose `cursor_missing` snapshot goes `live` without ever
+	// hydrating (`:1019`, `:1038`). The placeholder is the loading claim in both.
+	assert.equal(holdsPlaceholder({ hydrated: false, recordCount: 0 }), true);
+});
+
+test("records beat the hold: an unhydrated pane with rows paints no placeholder", () => {
+	// Optimistic echo and live events paint rows before the history read lands,
+	// and a placeholder over them would contradict the pane's own content.
+	assert.equal(holdsPlaceholder({ hydrated: false, recordCount: 2 }), false);
+	assert.equal(holdsPlaceholder({ hydrated: true, recordCount: 3 }), false);
+});
