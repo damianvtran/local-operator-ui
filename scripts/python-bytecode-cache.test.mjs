@@ -2023,13 +2023,16 @@ test("constructing the installer guards the venv of the instance it belongs to",
 
 	// The venv this instance resolves, laid out the way `venv` leaves it, with one
 	// directory in it that must survive untouched.
-	const venvPath = join(
-		PATHS.home,
-		"Library",
-		"Application Support",
-		"Local Operator",
-		"local-operator-venv",
-	);
+	// Derived from the same decision the installer makes rather than from the macOS
+	// spelling of it: the path is per-platform (`~/.config/local-operator` on Linux,
+	// userData on Windows), and a hand-written literal here passed on darwin and
+	// failed the whole suite on ubuntu - which is where CI runs it.
+	const venvPath = managedVenvPath({
+		platform: process.platform,
+		home: PATHS.home,
+		appDataPath: PATHS.userData,
+		packaged: true,
+	});
 	const sitePackages = join(venvPath, "lib", "python3.12", "site-packages");
 	mkdirSync(sitePackages, { recursive: true });
 	const untouched = join(sitePackages, "some_package.py");
