@@ -705,6 +705,16 @@ const CAPITAL = /[A-Z]/;
 const WAKE_ARMING_LINE = /^\(alarm\)\s*Scheduled wake/;
 /** A markdown list bullet the body may lead with, which is markup, not words. */
 const LIST_BULLET = /^[-*•]\s+/;
+/*
+ * Two more literals from the same pair of rules, hoisted for the reason the
+ * linter names but mostly because one of them is evaluated PER CHARACTER:
+ * `firstSentenceEnd` walks a headline's characters, so a literal inside it
+ * builds a regex object on every character of every row's text.
+ */
+/** Any whitespace, which is what a sentence end must be followed by. */
+const WHITESPACE = /\s/;
+/** The cadence a wake's arming line states when it is worth reading. */
+const HAS_CADENCE = /\bevery\b/;
 
 /**
  * A headline is a summary of the row, not the row's payload — `detail` is the
@@ -797,7 +807,7 @@ function splitStatement(
 function firstSentenceEnd(text: string): number {
 	for (let i = 0; i < text.length - 1; i++) {
 		if (!".!?…".includes(text[i])) continue;
-		if (!/\s/.test(text[i + 1])) continue;
+		if (!WHITESPACE.test(text[i + 1])) continue;
 		if (LEADING_ORDINAL.test(text.slice(0, i + 1))) continue;
 		if (!CAPITAL.test(text.slice(i + 1).trimStart()[0] ?? "")) continue;
 		return i + 1;
@@ -857,7 +867,8 @@ function incidentRow(
  * `detail` is `null` when the headline IS the whole payload, because a disclosure
  * that repeats what the row already says promises material it does not add — the
  * same rule the notice register needed (round 2's U14), and the one 4 of the
- * store's 38 job results hit once the colon join consumed their two-line body
+ * store's job results at the 2026-09-14 scan — 39 then, 42 the next day — hit
+ * once the colon join consumed their two-line body
  * (U16). The comparison is on the flattened text, so it holds whether the join
  * stitched lines together or the payload was one line to begin with.
  */
@@ -899,7 +910,9 @@ function relayRow(
  *
  * - a chosen line that ENDS in a colon is a heading with its outcome on the next
  *   line — `background job 'design849' failed:` / `[Errno 28] No space left on
- *   device` — so the two are joined, which is 37 of the store's 39 job results;
+ *   device` — so the two are joined, which was 37 of the store's 39 job results
+ *   at the 2026-09-14 scan (the population grows as the operator works; it was 42
+ *   the next day);
  * - a one-shot wake states no cadence (`(alarm) Scheduled wake w1 (1/1).`, 121 of
  *   955 wake rows), which leaves the arming line with nothing to say, so the row
  *   quotes the goal out of the body instead.
@@ -917,14 +930,26 @@ function headlineOf(text: string, customType: string): string {
 		(line) => ENVELOPE_TAG.test(line) && !line.startsWith("</"),
 	);
 	let chosen = substantive ?? opening ?? text.trim();
+	/** Whether the headline came out of a wake's body, where a bullet is markup. */
+	let goalFromBody = false;
 
 	if (
 		customType === "wake_prompt" &&
 		WAKE_ARMING_LINE.test(chosen) &&
-		!/\bevery\b/.test(chosen)
+		!HAS_CADENCE.test(chosen)
 	) {
 		const goal = lines.find((line) => speaks(line) && line !== chosen);
-		if (goal) chosen = goal.replace(LIST_BULLET, "");
+		/*
+		 * The RAW goal line is kept here and its bullet is stripped AFTER the join
+		 * below, because `lines.indexOf` has to find the line as the payload wrote
+		 * it: a stripped copy is not in `lines`, so the lookup returned -1 and the
+		 * heading/outcome join silently did not run for a bulleted goal (round 4's
+		 * R24).
+		 */
+		if (goal) {
+			chosen = goal;
+			goalFromBody = true;
+		}
 	}
 
 	const at = lines.indexOf(chosen);
@@ -933,9 +958,9 @@ function headlineOf(text: string, customType: string): string {
 		if (outcome) chosen = `${chosen} ${outcome}`;
 	}
 
-	return bounded(
-		customType === "wake_prompt" ? chosen.replace(WAKE_ARM_CLAUSE, "") : chosen,
-	);
+	const headline =
+		customType === "wake_prompt" ? chosen.replace(WAKE_ARM_CLAUSE, "") : chosen;
+	return bounded(goalFromBody ? headline.replace(LIST_BULLET, "") : headline);
 }
 
 /** Whether a line is one of the channel's fixed instruction lines. */
