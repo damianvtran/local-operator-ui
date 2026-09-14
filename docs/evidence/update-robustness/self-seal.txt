@@ -1,5 +1,22 @@
 # The self-seal invariant, the field break, and every repair
 
+> **SUPERSEDED MECHANISM - read the measurements, not the remedy.**
+>
+> The second half of this file measures a filesystem seal applied to the bundled
+> interpreter trees, reached through `scripts/after-pack.mjs` and asserted by a gate
+> check named `app-python-trees-sealed`. **Neither the step nor the check exists any
+> more**, and the sections that describe them as the fix (3 and 5, and the gate run
+> in 6) are kept only as the record of what was measured and why it was not enough.
+> The seal could not be a correctness mechanism: the ZIP Squirrel.Mac stages does
+> not carry access-control entries, so the bundle an in-place update lands in is
+> unsealed by construction - the window the incident sits in. The shipped mechanism
+> ships the interpreter as inert data under a private resource namespace and runs a
+> copied runtime outside every `.app`; see
+> [../managed-python-runtime/README.md](../managed-python-runtime/README.md).
+>
+> Everything measured here about the FIELD state, the shipped artifact and the
+> reproduction of the break still holds and is still depended on.
+
 Measured on this machine, 2026-09-14, against the signed 0.22.2 disk image mounted
 at `/Volumes/Local Operator 0.22.2-arm64` (source
 `~/Downloads/local-operator-ui-0.22.2-arm64.dmg`) and copies taken out of it, plus
@@ -14,15 +31,20 @@ What it establishes, in the same order:
 2. the shipped artifact is born writable, and one unguarded interpreter run in it
    breaks its seal exactly as the field install broke - including the same
    `webbrowser.cpython-312.pyc`;
-3. the app's own heal takes that break back to `valid on disk`, and the build
-   step is what stops it recurring, at the cost measured for the start-up probe;
+3. the app's own heal takes that break back to `valid on disk`, at the cost
+   measured for the start-up probe (the build-step seal this section then treats as
+   the remedy is **superseded** - see the banner above);
 4. the app-managed venv is built on the interpreter inside the installed bundle,
-   which is the propagation path, and the venv-side guard closes the part of it a
-   guard can close;
-5. the release gate fails the shipped artifact and passes a sealed build of this
-   branch;
+   which is the propagation path - the finding the shipped fix is built on;
+5. the release gate, as it stood, failed the shipped artifact and passed a build of
+   this branch - by a check that has since been replaced by the structural one in
+   `docs/CODE_SIGNING.md`;
 6. the contract tests fail when the guards are removed, and for a new spawn site
    that omits them.
+
+What this file does **not** establish, and does not claim: which process wrote the
+bytecode, that the in-app update broke the bundle, or that the bundle broke twice.
+See the retractions in [README.md](README.md).
 
 ## 1. The operator's machine, read-only
 
@@ -239,7 +261,14 @@ $ "/tmp/seal-evidence/venvtest/venv/bin/python3" -c "import sys, webbrowser"   -
 (the guard's limit - the interpreter's own startup imports, which run before `site` imports this file - is measured in 05-guard-limit.txt)
 ```
 
-## 5. The limit of the guard, which is why the tree seal is the load-bearing half
+## 5. The limit of the guard, which is why a guard alone was not the answer
+
+Superseded in its conclusion: the half that would have been missing was going to be
+filled by the tree seal, and the seal could not hold. What the measurement below
+still establishes, and is still the finding the shipped fix rests on, is that a
+guard cannot cover an interpreter that is never started through the app - which is
+why the shipped answer removes the in-bundle interpreter from the resolution path
+entirely instead of guarding it harder.
 
 `site` imports `sitecustomize` after `site.py`'s own startup imports, so a guarded
 python still writes those. Two fresh trees off the shipped image, the same import
@@ -293,6 +322,14 @@ every file the guard still allowed is a startup import: true
 ```
 
 ## 6. The release gate: FAIL on the shipped artifact, PASS on a build of this branch
+
+**Superseded as a description of the gate.** The check this section runs
+(`pythonTreeSealCheck`, `app-python-trees-sealed`) has been removed with the
+mechanism it asserted, and the gate's checks are now the structural ones in
+`docs/CODE_SIGNING.md`. What the block below still records, and the reason it is
+kept, is the shipped artifact being refused by a gate that reads the artifact
+rather than the build output - the property the current gate keeps, on the
+delivered `.dmg` and `.zip`.
 
 The first block is the gate's seal check against the shipped copy. The second is
 `node scripts/verify-macos-artifacts.mjs` against a real `pnpm build` +
