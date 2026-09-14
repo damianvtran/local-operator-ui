@@ -94,6 +94,7 @@ import {
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalImage } from "./canonical-image";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import { transcriptPaneHoldsPlaceholder } from "./transcript-pane";
 import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptRecord,
@@ -137,6 +138,20 @@ export type CanonicalTranscriptProps = {
 	status: "connecting" | "live" | "reconnecting" | "unavailable";
 	/** The published failure state: one product sentence and its action. */
 	failure: SessionFailureNotice | null;
+	/**
+	 * Has the durable history been READ for this conversation?
+	 *
+	 * The hold stand-down below asks this and not `status`, because the two
+	 * disagree in both directions on this path: `Retry` re-arms the stream as
+	 * `connecting` in front of a conversation a completed read has already proven
+	 * EMPTY, and a cold session's `cursor_missing` snapshot goes `live` without
+	 * ever hydrating. Required rather than defaulted, like `onReconnect`: the
+	 * caller that owns the reader is the only thing that can answer it, and a
+	 * default would let a new call site collapse a conversation nobody has read
+	 * yet. The rule and its two failing shapes live in
+	 * `transcriptPaneHoldsPlaceholder`.
+	 */
+	hydrated: boolean;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -600,6 +615,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	isSmallView,
 	status,
 	failure,
+	hydrated,
 	attachmentScope,
 	onReconnect,
 	onAnswer,
@@ -682,7 +698,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	/*
 	 * An empty transcript must not claim the column's free space - UNLESS the
-	 * transcript is on its way.
+	 * reader has not been told what the conversation holds yet.
 	 *
 	 * This scroller carries `grow` so it absorbs the leftover height between the
 	 * header and the composer. With rows in it that is the whole point. With NO
@@ -691,13 +707,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * suggestion chips on exactly that condition -- is left pinned to the bottom
 	 * under a large dark void.
 	 *
-	 * The ONE non-empty zero-record state is `connecting`: no rows yet and a
-	 * transcript still coming. Collapsing there is what made a switch land in the
-	 * app's EMPTY-CHAT shape and then re-shape when the snapshot arrived
-	 * (measured: composer top edge 468px -> 736px, box 112px -> 148px). An empty
-	 * layout is a claim -- "there is nothing here" -- and `connecting` is the
-	 * state that does not know yet, so it keeps the filled geometry and holds
-	 * `TranscriptPlaceholder` at the anchor the rows will occupy.
+	 * So the hold asks `hydrated` and NOT `status`, and the distance between the
+	 * two is the whole of the pre-merge resolution check's Finding 1. They
+	 * disagree in both directions on this path: `Retry` re-arms the stream as
+	 * `connecting` in front of a conversation a completed read has already proven
+	 * EMPTY (`use-canonical-session.ts` leaves `hydrated` untouched), and a cold
+	 * session's `cursor_missing` snapshot goes `live` without hydrating. Keyed on
+	 * the transport's word the pane held "Loading conversation…" over a
+	 * conversation known to hold nothing while the band took the greeting and its
+	 * own `grow`, two contradictory claims splitting one column until the
+	 * snapshot landed and the composer dropped to the empty-chat position -- the
+	 * 468px -> 736px move this work exists to remove -- and the mirror state (not
+	 * yet read, already `live`) left no loading claim anywhere. Both directions
+	 * are pinned in `scripts/session-switch.test.mjs`.
 	 *
 	 * THE EXCEPTION IS A TRANSCRIPT THAT CANNOT BE READ, which is not an empty
 	 * one, or one that is being waited through. While the pane has something of
@@ -712,20 +734,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * decision, and the composer band asks it the same question before it claims
 	 * the free height for a greeting.
 	 *
-	 * The two holds are separate facts and both are live: `connecting` is a
-	 * transcript on its way, where this branch's placeholder has to keep the
-	 * rows' geometry, and `canonicalTranscriptSpeaks` is a transcript whose own
-	 * statement must not be clipped. Neither state implies the other - no hold
-	 * on the `connecting` side ever sees a failure notice, and a `reconnecting`
-	 * pane is never `connecting` - so the collapse stands down for both.
+	 * The two holds are separate facts and both are live: this one is a transcript
+	 * whose history has not been READ, where the placeholder keeps the rows' own
+	 * geometry, and `canonicalTranscriptSpeaks` is a transcript whose own
+	 * statement must not be clipped. The first is a fact about the reader and the
+	 * second about the transport, and neither implies the other: a hydrated
+	 * `reconnecting` or `unavailable` pane is held by `canonicalTranscriptSpeaks`
+	 * alone, and the notice is rendered only at those two statuses, so an
+	 * unhydrated `connecting` pane has no statement of its own to show. The
+	 * collapse therefore stands down for both.
 	 *
 	 * `records` rather than `rows` because a record that renders to no row is
-	 * still nothing to scroll. The legacy twin (`MessagesView`) already does this
-	 * with its `collapsed` branch; the two paths change together so neither keeps
-	 * the defect.
+	 * still nothing to scroll - the rule itself lives in
+	 * `transcriptPaneHoldsPlaceholder`. The legacy twin (`MessagesView`) already
+	 * does this with its `collapsed` branch; the two paths change together so
+	 * neither keeps the defect.
 	 */
-	const holdPlaceholder =
-		status === "connecting" && transcript.records.length === 0;
+	const holdPlaceholder = transcriptPaneHoldsPlaceholder({
+		hydrated,
+		recordCount: transcript.records.length,
+	});
 	const collapsed =
 		transcript.records.length === 0 &&
 		!holdPlaceholder &&
