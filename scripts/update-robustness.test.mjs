@@ -1784,14 +1784,44 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 	const watchdog = runWatchdog({ plan: held, binDir: fixture.binDir });
 	app.kill();
 
-	// Past the soft bound with the job loaded: still no launch. This is the
-	// assertion the incident is about - everything else here is the consequence.
-	await new Promise((resolve) => setTimeout(resolve, 4200));
-	assert.equal(
-		fixture.launches().length,
-		before,
-		"the soft bound launched into a loaded install job",
-	);
+	/*
+	 * Past the soft bound with the job loaded: still no launch, and the HOLD is
+	 * the fact asserted rather than a clock margin.
+	 *
+	 * This used to sleep a fixed 4.2 s and assert afterwards, and that is a race
+	 * under the suite's own concurrency rather than a margin: the script reaches
+	 * the soft bound only after several of its own forks - `date`, the launchctl
+	 * shim, the osascript shim - and on a loaded host that stretch can carry the
+	 * still-installing notification past any constant a test could pick, so the
+	 * case failed for being slow rather than for the script deciding wrongly.
+	 * Widening the constant does not fix that; it only moves the load at which
+	 * it breaks, because the quantity is the host's scheduling and not the
+	 * script's own bound.
+	 *
+	 * The notification IS the decision, so it is what this waits for: the script
+	 * writes it on exactly one path - the soft bound taken with the install's job
+	 * still loaded (`holding=1`) - and the negation of that decision is a launch.
+	 * So poll for the decision to become observable, failing the moment a launch
+	 * appears instead of at the end of a fixed window, and let the hard bound's
+	 * own launch below be the other end of the assertion. The 60 s ceiling is
+	 * only a bound on the wait, not the thing being asserted: the script's own
+	 * hard bound is 6 s here, so a hold that never becomes observable and never
+	 * launches is a hang, not a slow machine.
+	 */
+	const decisionDeadline = Date.now() + 60000;
+	let holding = false;
+	while (Date.now() < decisionDeadline) {
+		assert.equal(
+			fixture.launches().length,
+			before,
+			"the soft bound launched into a loaded install job",
+		);
+		holding = fixture
+			.notifications()
+			.some((line) => /still installing/.test(line));
+		if (holding) break;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
 	const holdingNotes = fixture.notifications();
 	assert.ok(
 		holdingNotes.some((line) => /still installing/.test(line)),
