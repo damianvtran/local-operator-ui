@@ -116,13 +116,14 @@ build actually produced, and any failure fails the release before upload:
 | App ticket is stapled | `xcrun stapler validate` on the `.app` |
 | Image is accepted | `spctl -a -vvv -t open --context context:primary-signature` on the `.dmg` |
 | Image ticket is stapled | `xcrun stapler validate` on the `.dmg` |
-| No bytecode ships | Walks `Contents/Resources/python[_aarch64]` for `.pyc`/`.pyo` |
-| One interpreter ships | Asserts the single tree present is the one `lipo -archs` says this bundle's architecture resolves |
+| No bytecode ships | Walks the private seed tree for `.pyc`/`.pyo` |
+| Private seed ships | Asserts exactly one `python-runtime-seed/<arch>` and no `python`/`python_aarch64` name beside it - including a dangling symlink |
+| One seed ships | Asserts the seed present is the one `lipo -archs` says this bundle's architecture resolves |
 
 The last two ask nothing of `codesign`: they are about what the build
-assembled. A shipped `.pyc` is a seal break the app cannot heal, and two
-interpreter trees mean half of it is an interpreter the machine cannot run
-(`afterPack` in `scripts/prune-python-resource.mjs` removes the other one).
+assembled. A shipped `.pyc` is bytecode that must not exist in a code-sealed
+bundle at all, and two seed trees mean half of it is an interpreter the machine
+cannot run (`afterPack` in `scripts/after-pack.mjs` removes the other one).
 
 Every app bundle and every disk image the build produced is asserted, not the
 first of each: `mac.target` builds a dmg and a zip for each architecture, so a

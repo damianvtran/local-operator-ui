@@ -143,12 +143,24 @@ of the Electron framework and both bundled interpreters, so half of every
 download is code the user's machine cannot run.
 
 `extraResources` is not architecture-aware and copies both interpreters into
-every build. `scripts/prune-python-resource.mjs` runs as `afterPack` and deletes
-the one the app cannot run — `backend-installer.ts` probes `python_aarch64` on
-arm64 and `python` on x64. It has to run before signing: the interpreter tree is
-code-sealed inside the `.app`, and removing a sealed file is a violation no
-update-time heal can repair. `pnpm verify-macos-artifacts` fails the release if
-an app bundle does not carry exactly the tree its architecture needs.
+every build, as inert data under `Contents/Resources/python-runtime-seed/<arch>`
+(`arm64`/`x64`) rather than under the old `python`/`python_aarch64` names. Two
+steps in `scripts/after-pack.mjs` - which `package.json` names as the single
+`afterPack` hook, and which is where anyone who followed an older revision of
+this paragraph to `prune-python-resource.mjs` should look now - run there:
+
+1. `scripts/prune-python-resource.mjs` deletes the tree the app cannot run, by
+the same mapping `backend-installer.ts` resolves at runtime.
+2. The hook refuses a bundle that still carries a legacy resource name, even a
+dangling one. The seed is never executed from the `.app`, but an incumbent
+install's venv still names `Contents/Resources/python[_aarch64]/bin` in its
+`pyvenv.cfg`, and a directory there would let it reach the new bundle's tree in
+the window between an update's swap and the app's first instruction.
+
+Both have to run before signing: removing a file from a code-sealed `.app` is a
+violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
+the release if a delivered bundle does not carry exactly the seed its
+architecture needs, or carries a legacy alias beside it.
 
 ### Windows: the union installer is load-bearing
 
