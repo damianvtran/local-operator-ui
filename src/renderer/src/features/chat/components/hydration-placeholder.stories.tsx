@@ -56,8 +56,18 @@ export default meta;
 
 type Story = StoryObj;
 
-/** Settled, with rows: what the region looks like once the stream has spoken. */
-export const SettledEmpty: Story = {
+/**
+ * Settled, with rows: what the region looks like once the stream has spoken.
+ *
+ * Named `Settled` and not `SettledEmpty`, which is what it was called when the
+ * empty-chat layout was what this region held. The content moved to the rows a
+ * transcript actually arrives as in the D1/D2 pass, and the export kept the old
+ * name - so a story whose job is to be the comparison for the placeholder was
+ * labelled with a state it does not show (reviewer round 2, N3). The settled
+ * EMPTY state is the greeting layout in the composer band, which is not this
+ * region and is not what the placeholder stands in for.
+ */
+export const Settled: Story = {
 	render: () => (
 		<Region>
 			<p className="text-body text-ink">

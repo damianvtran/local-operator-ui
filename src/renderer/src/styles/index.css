@@ -154,10 +154,45 @@
 	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
+	/* ---- the placeholder's pulse ---------------------------------------
+	 * Tailwind's `animate-pulse` is keyed `1 -> 0.5 -> 1`, and a skeleton ON A
+	 * GROUND takes the step with it: the bar's whole job is to be a visible
+	 * step above the pane, so an opacity floor of 0.5 is a bar that is half
+	 * GONE for part of every cycle. Measured on the captured frames that is
+	 * exactly what happened in the light brand palette - the trough delivered
+	 * dE00 1.63 against the pane's canvas, under the ~2 branding.md section 3
+	 * records from its own frames, while the palette's `elevated` step is
+	 * comfortable at rest (dE00 4.79).
+	 *
+	 * The floor is 0.7 rather than a colour change because the ROLE was right
+	 * and the step at rest was right: what needed fixing is how far a DECORATIVE
+	 * animation is allowed to take a step the user is meant to see. On the
+	 * re-captured frames that floor delivers dE00 2.81 in the light palette (from
+	 * 1.63) and 4.26 in the dark (from 3.54), with rest unmoved at 4.79 / 6.52 -
+	 * so dark began above the aim and only improves.
+	 *
+	 * `0%`/`100%` stay at 1 - and that is load-bearing. `styles/index.css` caps
+	 * animation-duration under `prefers-reduced-motion` instead of cancelling the
+	 * animation, so a user who has asked for less motion lands on the END
+	 * keyframe: a pulse that ended anywhere but fully opaque would ship an
+	 * invisible placeholder to exactly those users.
+	 */
+	--animate-pulse-visible: pulse-visible 2s cubic-bezier(0.4, 0, 0.6, 1)
+		infinite;
+
+	@keyframes pulse-visible {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.7;
+		}
+	}
+
 	/* The modal/drawer scrim. Mapped as a colour so overlays can reach it as
 	   `bg-scrim` instead of hardcoding a black alpha that ignores the theme. */
 	--color-scrim: var(--lo-scrim);
-
 	/* ---- elevation -------------------------------------------------------
 	 * One shadow. Elevation between in-flow surfaces is a lightness step; the
 	 * shadow is only for objects that leave the flow.

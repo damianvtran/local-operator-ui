@@ -96,7 +96,12 @@ export const discardPendingEchoes = () => {};`,
 	],
 });
 
-const { useCanonicalSessionsStore: store } = await import(
+const {
+	useCanonicalSessionsStore: store,
+	admitChatDraft,
+	draftIdentityFor,
+	SESSION_UNVALIDATED_CODE,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -347,11 +352,120 @@ test("a superseded read reports false, so the URL is never rewritten back", asyn
 });
 
 /*
+ * THE READ WINDOW'S SEND GATE, DRIVEN AS A SEND.
+ *
+ * `validatingSessionId` is one round trip of unconfirmed session, and the rule
+ * that depends on it - a message may not be ADMITTED against a target nothing
+ * has confirmed - used to live only in `ChatPage`'s send callback. Nothing
+ * exercised it, so a regression (dropping a term, comparing the wrong id) stayed
+ * green through CI, and the refusal itself was silent: the composer kept the
+ * text, sent nothing, and said nothing (UX round 2, U8; reviewer N2).
+ *
+ * Both halves are pinned here against the store that owns them. The refusal is
+ * driven through the real admission path and named by its own code, and BOTH
+ * bounds that open the window are driven: the read's answer, and a live frame
+ * from the session's own stream (`confirmSessionLive`) - the bound that matters
+ * when the read never answers at all. The message is asserted to have created no
+ * echo, because "refused before admission" is the reason the composer puts the
+ * text BACK rather than holding a claim (`isRefusedBeforeAdmission`).
+ *
+ * FAILS on `df7f3fdb9`, where the gate had no store-side existence: the first
+ * assertion below gets an admission instead of a refusal.
+ */
+const SEND = {
+	text: "Review this",
+	attachments: [],
+	images: [],
+	mode: "prompt",
+	cwd: "/tmp",
+};
+/** The key `admitChatDraft` is addressed by, from the shipped rule. */
+const SEND_KEY = draftIdentityFor(null, TARGET);
+
+test("a send inside the read window is refused, and the answer opens it", async () => {
+	reset();
+	const read = deferred();
+	answer = () => read.promise;
+
+	const pending = store.getState().openSession(TARGET);
+	assert.equal(store.getState().validatingSessionId, TARGET);
+
+	// The send, mid-read. Nothing is addressed to the unconfirmed target, and the
+	// refusal carries the code the composer renders and reads back.
+	await assert.rejects(
+		admitChatDraft(SEND_KEY, SEND, TARGET),
+		(error) => error.code === SESSION_UNVALIDATED_CODE,
+	);
+	assert.deepEqual(
+		calls.map((request) => request.op),
+		["sessions.get"],
+	);
+	// No claim was latched, so the composer's text is the only copy of the
+	// message: nothing was echoed into a transcript and nothing is being held.
+	assert.equal(store.getState().drafts[SEND_KEY], undefined);
+
+	// The read's own answer is the first bound.
+	read.release({});
+	assert.equal(await pending, true);
+	assert.equal(store.getState().validatingSessionId, null);
+	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	assert.deepEqual(
+		calls.map((request) => request.op),
+		["sessions.get", "sessions.message"],
+	);
+});
+
+test("a live frame opens the read window before the read answers", async () => {
+	reset();
+	const read = deferred();
+	answer = () => read.promise;
+
+	const pending = store.getState().openSession(TARGET);
+	/*
+	 * Refused to begin with, so this case names the same failure on the pre-change
+	 * store as the one above rather than an absent method: the gate is what is
+	 * under test here, and the bound is exercised through it.
+	 */
+	await assert.rejects(
+		admitChatDraft(SEND_KEY, SEND, TARGET),
+		(error) => error.code === SESSION_UNVALIDATED_CODE,
+	);
+	/*
+	 * A stale frame cannot vouch for a window it does not belong to - the guard
+	 * that keeps an abandoned target's own snapshot from opening the CURRENT
+	 * session's gate.
+	 */
+	store.getState().confirmSessionLive(OTHER);
+	assert.equal(store.getState().validatingSessionId, TARGET);
+	await assert.rejects(
+		admitChatDraft(SEND_KEY, SEND, TARGET),
+		(error) => error.code === SESSION_UNVALIDATED_CODE,
+	);
+
+	// The session's own stream is the earlier proof: it opens the gate while the
+	// read is still in flight, which is the state a hung read leaves the panel in
+	// (the `Cancel`/Escape affordance that used to cover it is gone).
+	store.getState().confirmSessionLive(TARGET);
+	assert.equal(store.getState().validatingSessionId, null);
+	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	assert.deepEqual(
+		calls.map((request) => request.op),
+		["sessions.get", "sessions.message"],
+	);
+
+	// The read lands afterwards and must not roll anything back: it is a read for
+	// a switch that already succeeded.
+	read.release({});
+	assert.equal(await pending, true);
+	assert.equal(store.getState().activeSessionId, TARGET);
+});
+
+/*
  * `cancelOpen` is gone, and so is the test that pinned what it did to the
  * commit. The switch has no cancellable phase left: the commit IS the navigation
  * and it lands in the click's own frame, so "cancel" could only mean "go back to
  * the session I came from" - which is what clicking that row does. The pending
  * banner, its Escape handler, the sidebar spinner and the store field behind them
  * were all unreachable once nothing set one; `validatingSessionId` carries the
- * one guarantee that had to survive (see the read-window test above).
+ * one guarantee that had to survive (see the read-window tests above).
  */

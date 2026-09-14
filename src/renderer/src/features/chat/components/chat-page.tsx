@@ -16,10 +16,12 @@ import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
+	SESSION_UNVALIDATED_CODE,
 	UNCONFIRMED_SEND_CODE,
 	admitChatDraft,
 	draftIdentityFor,
 	isRefusedBeforeAdmission,
+	isSessionUnvalidated,
 	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -522,27 +524,23 @@ function SessionPanel({
 		if (!key) return false;
 		const previous = store.drafts[key];
 		/*
-		 * `validatingSessionId` is the read window, and this is the half of the
-		 * removed pending flag that still earns its place. Commit-first put the
-		 * guard read BEHIND the commit, so for one round trip the view is on a
-		 * target whose existence `sessions.get` has not confirmed; a send issued in
-		 * that window would be addressed to a session that may be gone. The refusal
-		 * is silent and keeps the text in the composer - `false` is what
-		 * `use-message-input.ts` reads to leave it there - rather than disabling the
-		 * composer, because the panel has already told the user they are in the
-		 * target and the two can only disagree for a round trip.
+		 * The read window's refusal is the STORE's, not this function's: a send
+		 * addressed to a session whose guard read has not answered is refused at
+		 * admission (`admitChatDraft`), so the rule holds for every caller rather
+		 * than for this screen's send button only.
 		 *
-		 * BOUNDED BY THE HYDRATION STATE, and that is evidence rather than a
-		 * timeout: a live frame from the session's own stream is proof the session
-		 * exists, so either answer opens the gate. Without that second term a hung
-		 * read - which cannot bound itself, `desktopResult` has no deadline - would
-		 * refuse every send from this panel forever and silently, and the pending
-		 * banner that used to be that state's escape hatch is gone.
+		 * What this function owns is the ANSWER. The refusal arrives through the
+		 * catch below as copy in the composer's own alert row, which is the visible
+		 * half it never used to have - the user pressed Enter, nothing was sent, and
+		 * nothing said so (UX round 2, U8).
+		 *
+		 * `false` is the right answer for it because nothing reached the owner, so
+		 * the text belongs back in the box; `isRefusedBeforeAdmission` decides that,
+		 * and knows this refusal's code. The composer is deliberately NOT disabled:
+		 * the panel has already told the user they are in the target, and the two
+		 * can only disagree for a round trip.
 		 */
-		const validating =
-			useCanonicalSessionsStore.getState().validatingSessionId === sessionId &&
-			canonical.status !== "live";
-		if (validating || previous?.pending) return false;
+		if (previous?.pending) return false;
 		if (!sendLock.tryAcquire()) {
 			/*
 			 * A send attempted while an answer (or another send) is in flight used to
@@ -1031,6 +1029,38 @@ function SessionPanel({
 				errorCode: undefined,
 			});
 	}, [attachmentResolved, draftIdentity]);
+	/*
+	 * The read window, and the notice that explains it.
+	 *
+	 * `validatingSessionId` is the one round trip after a switch during which the
+	 * target's existence is unconfirmed. The STORE owns the window and refuses a
+	 * send inside it; these two effects are the stream's half of that contract,
+	 * because the store cannot see the stream.
+	 *
+	 * - `confirmSessionLive` closes the window on a live frame from the session's
+	 *   own stream. That is the EARLIER bound: it opens the gate on the first
+	 *   proof rather than at the read's own end, and it is the only bound that
+	 *   arrives at all when the read never answers. The read is bounded too -
+	 *   `desktopResult` runs every desktop control under `withDeadline` at
+	 *   `DESKTOP_REQUEST_TIMEOUT_MS` (30 s) - but thirty seconds of a panel that
+	 *   refuses every send is not a bound a user can use, so the live term is
+	 *   kept for what it adds, not because the alternative is unbounded.
+	 * - the refused send's notice retires on that same observable condition, the
+	 *   way `attachmentResolved` retires its own: a sentence explaining a refusal
+	 *   must not outlive the cause it names.
+	 */
+	useEffect(() => {
+		if (!sessionId || canonical.status !== "live") return;
+		useCanonicalSessionsStore.getState().confirmSessionLive(sessionId);
+	}, [sessionId, canonical.status]);
+	const readWindowOpen = useCanonicalSessionsStore((state) =>
+		isSessionUnvalidated(state.validatingSessionId, sessionId),
+	);
+	useEffect(() => {
+		if (readWindowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
+		setSendError(null);
+		setSendErrorCode(undefined);
+	}, [readWindowOpen, sendErrorCode]);
 	/*
 	 * The claim, and whether the user can currently see what it holds.
 	 *
