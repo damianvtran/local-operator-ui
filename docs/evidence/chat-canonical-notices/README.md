@@ -186,6 +186,87 @@ The reducer rules above are pinned by tests (`scripts/transcript-reducer.test.mj
 every persisted custom row in `~/.local-operator/sessions`: 10,997 records, 0 with
 an empty headline, 0 whose headline is its type name.
 
+## Round 3: the guard the first remediation added, and the notice's repeat
+
+Round 2's UX stream found two MAJORs in the guard round 1 introduced, and the
+code reviewer found the same root cause independently: the guard asked
+`window.getSelection()` on a plain `onClick`, which is page-global. `select-none`
+chrome never clears a selection, so the state that suppressed the click was
+preserved by the suppression itself — with any live selection the row swallowed
+every click on its chrome **and** every keypress, for as long as the selection
+lived. The comment above it claimed the keyboard was unaffected, which was false.
+
+**Every line of the required behaviour was then exercised with real dispatched
+gestures** — `Input.dispatchMouseEvent` press/move/release and
+`Input.dispatchKeyEvent`, never `element.click()`, which is what produced the
+first version's wrong claim — and all of it passes:
+
+```
+PASS  5 plain click on the label toggles
+PASS  1 drag does not toggle the row
+PASS  1 the selection survives the mouseup
+PASS  3 click on the gutter with a selection live toggles
+PASS  3 and again to collapse
+PASS  4 Enter toggles with a selection live
+PASS  4 Space toggles with a selection live
+PASS  4 the selection survived the keys
+PASS  4 Escape clears the selection
+PASS  2 double-click leaves the row as it found it
+PASS  2 double-click selects a word
+PASS  2 double-click on an OPEN row leaves it open
+PASS  6 the click did not toggle the row
+PASS  6 the selection it cleared is gone
+PASS  7 no tool-row summary keeps text selectable, so the guard cannot fire there
+PASS  7 a click on a tool row's label with a selection live still toggles
+MATRIX: all rows pass
+```
+
+Two of those rows are the ones the first attempt got wrong in opposite
+directions: a double-click used to end with one net toggle, and `Enter` did
+nothing at all while a selection lived. The trace the probe records with the
+verdict is Chrome's own — `mousedown:1, mouseup:1, click:1, mousedown:2,
+mouseup:2, click:2, dblclick:2` — which is how the revert could be fixed against
+the real event order rather than against a guess about it.
+
+**The frame deltas this round are measured, not eyeballed.** The two incident
+surfaces were re-captured and differ from the previous head's frames by **891
+pixels in a 56x13 box at the bottom-right corner** (1280) and **807 pixels in a
+56x15 box** (560) — the transcript's own date stamp. Nothing on a row moved. The
+notice surface changed by **85,554 pixels**, which is the fix: the long
+single-line notice now paints as a static line instead of a row that repeated
+itself behind its own chevron.
+
+**What moved where, in one list**
+
+- the guard is scoped to the gesture (a press on text the summary keeps
+  selectable), the keyboard path is not gated at all (`detail === 0` is the
+  click Enter and Space synthesise), and `Escape` now clears a selection this
+  trigger owns — the only keyboard exit a reader with a selection had, and one a
+  focused button does not get from the browser;
+- the notice row and its disclosure **partition** the text, and a notice whose
+  opening line is the whole of it paints through the static branch rather than
+  growing a chevron that reveals the same bytes; both detail bodies gain
+  `break-words`, because `pre-wrap` alone leaves `overflow-wrap: normal` and an
+  unbreakable run measured `scrollWidth` 2773 in an 840px box;
+- a relayed row joins a heading to its outcome (`background job 'design849'
+  failed: [Errno 28] …`, 37 of the store's 39 job results) and a one-shot wake
+  states its goal rather than its arming line, which carries no cadence (121 of
+  955 wake rows);
+- the wake-arming clause is stripped only from a wake row, so a hub message that
+  quotes the phrase keeps its own words;
+- the first-sentence scan requires a capital after the terminator and rejects a
+  leading `digits.`, so `approx.`, `e.g.` and `1.` no longer split a headline —
+  without a table of abbreviations to keep in step with English;
+- the provider the incident names is selectable like the message beside it, and
+  `summaryAlign` no longer restates the default `items-center`, so the tool rows'
+  class string is the string they had before this branch (round 2's Q4).
+
+**The honest gap this register still has.** There are no persisted `notice`
+records in the store to replay (type counts over the operator's transcripts:
+message 108,140, custom 3,326, prune 846, compaction 30), so the notice surface's
+long path has a fixture and a frame behind it rather than a store-wide replay.
+The designer recorded that in round 2 and it is unchanged by this fix.
+
 ## What these frames do not prove
 
 - **Two themes, not twelve.** The committed set is a narrowed capture
