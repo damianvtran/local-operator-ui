@@ -99,9 +99,12 @@ declare global {
 				// The aggregate check's own answer, and the ONLY source of the "up to
 				// date" affirmation: a value that says the whole check proved both
 				// channels current, never merely that one of them had nothing to
-				// offer. See `src/main/update-check-verdict.ts`.
+				// offer. See `src/main/update-check-verdict.ts`. `silent` is the
+				// caller's own flag for suppressing this check's per-channel
+				// `*-not-available` events.
 				checkForAllUpdates: (options?: {
 					manual?: boolean;
+					silent?: boolean;
 				}) => Promise<UpdateCheckVerdict>;
 				/** The last install that did not complete, if the app recorded one. */
 				getLastInstallAttempt: () => Promise<{

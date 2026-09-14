@@ -77,6 +77,25 @@ const REPORTED_VERDICT: UpdateCheckVerdict = {
 	affirmation: null,
 };
 
+/**
+ * The one pair that EARNS a sentence: both channels proved current.
+ *
+ * Written out for the same reason as `REPORTED_VERDICT` - this file is
+ * photographed on a tree without the fix, where the module that owns the
+ * sentence does not exist, so a value import here would break the before half
+ * of the pair. The literal must match `UP_TO_DATE_AFFIRMATION` in
+ * `src/main/update-check-verdict.ts`, which is the shipped copy.
+ *
+ * `satisfies` rather than `: UpdateCheckVerdict` so the sentence stays a
+ * `string` here: it is the text the frame below waits for. The type still
+ * fails this file the moment the verdict's shape changes.
+ */
+const ALL_CURRENT_VERDICT = {
+	app: "current",
+	server: "current",
+	affirmation: "The application and server are up to date",
+} satisfies UpdateCheckVerdict;
+
 /** The payload the main process sends on `backend-update-available`. */
 type ServerOfferListener = Parameters<
 	typeof window.api.updater.onBackendUpdateAvailable
@@ -188,13 +207,17 @@ const updaterRef = () =>
 /**
  * Install the two readings this story owns, from the meta decorator.
  *
+ * The verdict is the STORY's, taken from its `parameters`, because the fixture
+ * has to be installed before the components mount and each story is a different
+ * answer to the same press.
+ *
  * Not in the frame's own effect: the section reads the bridge and the health
  * endpoint in its mount effects, and React runs a CHILD's effects before its
  * parent's - so a fixture installed by a parent effect would land after the
  * reads it answers. A decorator's body runs before its children render, which
  * is early enough for both.
  */
-const installFixtures = () => {
+const installFixtures = (verdict: UpdateCheckVerdict) => {
 	const window_ = window as unknown as {
 		api: { updater: unknown; systemInfo: unknown };
 		__loSectionFixtures?: boolean;
@@ -202,7 +225,7 @@ const installFixtures = () => {
 	};
 	if (window_.__loSectionFixtures) return;
 	window_.__loSectionFixtures = true;
-	const scripted = scriptedUpdater(REPORTED_VERDICT);
+	const scripted = scriptedUpdater(verdict);
 	window_.__loUpdater = scripted;
 	window_.api.updater = scripted;
 	window_.api.systemInfo = {
@@ -242,7 +265,17 @@ const pressCheckForUpdates = () => {
 	return Boolean(button);
 };
 
-const ReportFrame: FC = () => {
+/**
+ * The press, and the shutter.
+ *
+ * `expect` is the text this verdict's own press is supposed to put on screen -
+ * the notification's offer when the server trails, the affirmation sentence
+ * when the whole check proved both channels current - and the shutter waits for
+ * it rather than for a fixed delay. The frame therefore cannot silently
+ * photograph a press that produced nothing, and the wait is a property of the
+ * story's script rather than of how long the harness happened to sleep.
+ */
+const ReportFrame: FC<{ expect: string }> = ({ expect }) => {
 	useLayoutEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
@@ -264,14 +297,13 @@ const ReportFrame: FC = () => {
 			);
 			/*
 			 * The press is the subject, so it happens before anything is
-			 * photographed, and the shutter waits for the offer it produces
-			 * rather than for a fixed delay: on the pre-fix tree the affirmation
-			 * is committed in the same pass as the panel, so both are up by the
-			 * time it lands.
+			 * photographed, and the shutter waits for the text the verdict produces.
+			 * On the pre-fix tree the affirmation is committed in the same pass as
+			 * the panel, so both are up by the time the offer lands.
 			 */
 			await pressCheckForUpdates();
 			for (let i = 0; i < 100; i++) {
-				if (document.body.textContent?.includes("Server update available")) {
+				if (document.body.textContent?.includes(expect)) {
 					break;
 				}
 				await new Promise((resolve) => setTimeout(resolve, 50));
@@ -291,7 +323,7 @@ const ReportFrame: FC = () => {
 			cancelled = true;
 			delete document.documentElement.dataset.capturePending;
 		};
-	}, []);
+	}, [expect]);
 
 	return (
 		<div className="min-h-screen bg-canvas p-6 font-sans text-body text-ink">
@@ -317,15 +349,20 @@ const ReportFrame: FC = () => {
 const meta = {
 	title: "Settings/App updates section",
 	component: AppUpdatesSection,
-	parameters: { layout: "fullscreen" },
+	/*
+	 * `verdict` is the story's own script: the decorator installs a bridge that
+	 * answers the press with it, so the ServerUpdateOffered and AllCurrent
+	 * frames differ in the answer the check gave and in nothing else.
+	 */
+	parameters: { layout: "fullscreen", verdict: REPORTED_VERDICT },
 	/*
 	 * Every story here drives the updater through a scripted bridge and reads
 	 * the server version from a fixture, so a story added later cannot pick up
 	 * the live ones by accident.
 	 */
 	decorators: [
-		(Story) => {
-			installFixtures();
+		(Story, context) => {
+			installFixtures(context.parameters.verdict as UpdateCheckVerdict);
 			return <Story />;
 		},
 	],
@@ -340,8 +377,25 @@ type Story = StoryObj<typeof meta>;
  *
  * Before the fix this frame is the report - the offer as a panel and "You are
  * up to date" as a success snackbar, from that one press. After it, the same
- * press leaves the offer standing and says nothing.
+ * press leaves the offer standing and says nothing ITSELF: the notification's
+ * own "a new server update is available" line is still up beside it.
  */
 export const ServerUpdateOffered: Story = {
-	render: () => <ReportFrame />,
+	render: () => <ReportFrame expect="Server update available" />,
+};
+
+/**
+ * The state the sentence exists for: both channels current, so the verdict
+ * carries the affirmation and no offer is raised. One press leaves the
+ * affirmation and nothing else on screen.
+ *
+ * This is the AFTER half of the copy this branch introduces, and the state the
+ * two hand-rolled stories deleted from `check-for-updates-button.stories.tsx`
+ * used to depict: those fired a channel's own `onUpdateNotAvailable` and drew
+ * their own button, which is a mechanism the shipped button no longer turns
+ * into a sentence - it reads one from the verdict of the check it ran.
+ */
+export const AllCurrent: Story = {
+	parameters: { verdict: ALL_CURRENT_VERDICT },
+	render: () => <ReportFrame expect={ALL_CURRENT_VERDICT.affirmation} />,
 };

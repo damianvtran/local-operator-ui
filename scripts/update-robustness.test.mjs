@@ -4438,6 +4438,13 @@ test("the banner's remedy names the release the last check read", async () => {
  * because the defect is about the two TOGETHER: an event that means "nothing
  * newer on this channel" is legitimate, and only the sentence built from it was
  * not.
+ *
+ * `ipc` reaches the same check the way the RENDERER does - `setupIpcHandlers`
+ * and then the registered `check-for-all-updates` handler, invoked with
+ * `ipc.options` - rather than by calling the service method directly. That is
+ * the boundary the silent flag crosses, so the two rules that live there (an
+ * absent option runs non-silent, and `silent` is the only thing that suppresses
+ * the events) are only reachable through it.
  */
 const loAggregateCheck = async ({
 	appCheck,
@@ -4445,6 +4452,7 @@ const loAggregateCheck = async ({
 	publishedVersion,
 	serverAnswersVersion = true,
 	devMode = false,
+	ipc = null,
 }) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
@@ -4495,10 +4503,29 @@ const loAggregateCheck = async ({
 		if (devMode) updateService.isDevMode = true;
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
 		globalThis.__loTestAppCheck = appCheck;
-		const verdict = await updateService.checkForAllUpdates(false);
+		/*
+		 * The fixture's `ipcMain.handle` RECORDS the handlers (see its own comment),
+		 * which is how a case can call the function the app would call - the same
+		 * route the quit-for-update-install case above takes to its decision.
+		 */
+		let verdict;
+		if (ipc) {
+			delete globalThis.__loIpcHandlers;
+			updateService.setupIpcHandlers();
+			const handler = globalThis.__loIpcHandlers?.["check-for-all-updates"];
+			assert.equal(
+				typeof handler,
+				"function",
+				"the aggregate check must have a handler for the renderer to invoke",
+			);
+			verdict = await handler({}, ipc.options);
+		} else {
+			verdict = await updateService.checkForAllUpdates(false);
+		}
 		return { verdict, sent };
 	} finally {
 		delete globalThis.__loTestAppCheck;
+		delete globalThis.__loIpcHandlers;
 		if (interval) clearInterval(interval);
 		if (health) {
 			health.closeAllConnections();
@@ -4628,6 +4655,70 @@ test("a check that proved both channels current earns the affirmation", async ()
 			channels.includes("backend-update-not-available"),
 			JSON.stringify(channels),
 		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The same check, driven through the IPC handler the renderer actually invokes.
+ *
+ * Why this case exists (review round 1, R4): the six cases above reach
+ * `UpdateService.checkForAllUpdates` and never `setupIpcHandlers`, so the rule
+ * that decides whether a renderer-originated check is silent was asserted
+ * nowhere - and `silent` is not a detail. It is what decides whether either
+ * channel emits its own `*-not-available` event, which is the property
+ * `update-notification.tsx` clears a stale offer and a by-hand panel on
+ * (`:669`, `:827`), and it gates the npx registry read.
+ *
+ * Two invokes must run NON-silent: no options at all (the default this handler
+ * had when it dropped `options` entirely, so no caller changed behaviour), and
+ * `{manual: true}` (what every renderer caller sends). `{silent: true}` is the
+ * only thing that suppresses the events - and it suppresses only the events: the
+ * check still proved both channels current, so the invoke still resolves the
+ * sentence.
+ */
+test("an invoke through the aggregate handler emits both channels' events unless it asks to be silent", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		for (const options of [undefined, { manual: true }]) {
+			const { verdict, sent } = await loAggregateCheck({
+				appCheck: loAppCurrent,
+				serverVersion: "0.54.44",
+				publishedVersion: "0.54.44",
+				ipc: { options },
+			});
+			const channels = sent.map(({ channel }) => channel);
+			assert.ok(
+				channels.includes("update-not-available"),
+				`options=${JSON.stringify(options)}: ${JSON.stringify(channels)}`,
+			);
+			assert.ok(
+				channels.includes("backend-update-not-available"),
+				`options=${JSON.stringify(options)}: ${JSON.stringify(channels)}`,
+			);
+			assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		}
+
+		const { verdict, sent } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { options: { silent: true } },
+		});
+		const channels = sent.map(({ channel }) => channel);
+		assert.ok(
+			!channels.includes("update-not-available"),
+			JSON.stringify(channels),
+		);
+		assert.ok(
+			!channels.includes("backend-update-not-available"),
+			JSON.stringify(channels),
+		);
+		// Silence is about the EVENTS, not the answer: the check still proved both
+		// channels current, so the invoke that asked for it still resolves the one
+		// sentence such a check earns.
+		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

@@ -53,7 +53,8 @@ export type UpdateCheckVerdict = {
  * meaningful to them: "the app is up to date" while the server is behind is
  * exactly the contradiction this file exists to prevent.
  */
-export const UP_TO_DATE_AFFIRMATION = "The app and server are up to date";
+export const UP_TO_DATE_AFFIRMATION =
+	"The application and server are up to date";
 
 /**
  * The affirmation a pair of channel statuses earns, or null.
