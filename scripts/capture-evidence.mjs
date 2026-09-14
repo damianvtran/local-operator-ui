@@ -165,7 +165,15 @@ export const STORIES = [
 	  say. Sized to the rows it holds (700), for the reason `working-labels`
 	  is: at 900 tall it is mostly ground, which crosses `check-evidence`'s
 	  uniformity ceiling. */
-	["chat-canonical-notices--session-incidents", 1280, 700],
+	["chat-canonical-notices--session-incidents", 1280, 800],
+	/* The same rows in the narrow column, which is where the wrapped row's mark
+	   was measured wrong (design round 1, D1): at 560 the 17 rows wrap hardest
+	   and the danger markers must still form a column. Sized to its content. */
+	["chat-canonical-notices--session-incidents-narrow", 560, 1220],
+	/* The notice register's own length cases, which the `notice` branch's fix
+	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
+	   either side of the threshold, and a bulky one. */
+	["chat-canonical-notices--notice-lengths", 1280, 340],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right

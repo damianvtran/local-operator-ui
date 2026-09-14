@@ -1676,30 +1676,41 @@ test("the category is read off the head, and a `raw`-less row falls back to it",
 	assert.equal(opaque.detail, null, "nothing to disclose is a static row");
 });
 
-test("the harness's other statements are informational rows, and still say their message", () => {
-	// A 231-row shape in the operator's store, and the one the shipped rule hid:
-	// two lines long, so `long` was true and the row read only its type name.
+test("a harness statement paints its fact, and puts its instruction to the model behind the disclosure", () => {
+	// Both halves measured over the store: all 231 real model-switch rows carry
+	// the agent-directed tail in the same string, so painting the text whole put
+	// a 3-4 line instruction block in a one-line ledger.
 	const rows = replay([
 		custom("switch", "session_model_switch", {
-			text: "[model switch] You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).\nThis applies from now on.",
+			text: "[model switch] You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).\nThis applies from now on. Capabilities, context window, and tone may differ from the previous model; act as the model you now are.",
 		}),
 		custom("recovery", "session_mcp_recovery", {
-			text: "[mcp recovery] MCP server 'gitlab' is connected again and 12 tools are available again.",
+			text: "[mcp recovery] MCP server 'gitlab' is connected again and 12 tools are available again. This supersedes the earlier session incident about this server: its tools are usable now, so call them normally and stop reporting it as unavailable.",
 		}),
 		custom("credential", "session_credential", {
-			text: "[session credential] DEPLOY_KEY was just stored by the operator.",
+			text: "[session credential] DEPLOY_KEY was just stored by the operator. Its value is held in session memory and injected as the environment variable $DEPLOY_KEY into every bash command — use it there (a child process reads it), never echo, print, or write it.",
 		}),
 	]);
 	for (const row of rows) {
 		assert.equal(row.level, "info", `${row.customType} is not a failure`);
-		assert.equal(row.detail, null, `${row.customType} has nothing to disclose`);
 		assert.notEqual(row.headline, row.customType.replace(/_/g, " "));
+		// The bracket repeats the row's own label, so the headline starts at the
+		// sentence: "session model switch: You are now running as …".
+		assert.ok(
+			!row.headline.includes("This applies from now on"),
+			`${row.customType}: the instruction to the model is not the headline`,
+		);
+		assert.match(row.detail, /^(This applies|This supersedes|Its value)/);
 	}
-	// The bracket repeats the row's own label, so the headline starts at the
-	// sentence: "session model switch: You are now running as …".
-	assert.equal(rows[0].headline, "You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).\nThis applies from now on.");
+	assert.equal(
+		rows[0].headline,
+		"You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).",
+	);
 	assert.equal(rows[1].headline, "MCP server 'gitlab' is connected again and 12 tools are available again.");
 	assert.equal(rows[2].headline, "DEPLOY_KEY was just stored by the operator.");
+	// The tokeniser is a version, not a sentence end: `deepseek-v4.1-flash` must
+	// not split the headline in half.
+	assert.ok(rows[0].headline.includes("deepseek-v4.1-flash (was"));
 });
 
 test("a relayed payload keeps its body behind the disclosure but is not reduced to its type name", () => {
@@ -1738,4 +1749,81 @@ test("an incident row that has said everything it has to say is a static line", 
 	assert.equal(row.category, "unknown");
 	assert.equal(row.headline, "[Errno 28]");
 	assert.equal(row.detail, null);
+});
+
+test("a relayed payload's headline steps over both instruction lines the channel prepends", () => {
+	// Measured over the store: 411 hub rows open with the `note` line verbatim,
+	// so quoting it inline made every one of those rows read the same while the
+	// parent's actual words stayed behind the chevron. All three lines come from
+	// `harness/comms.py::TO_CHILD_INSTRUCTIONS`.
+	const instructions = [
+		"This is a note, not a question. No reply is needed unless it changes what you should do.",
+		"This changes your instructions. Apply it from now on, and drop work it makes pointless.",
+		"Answer it now with the `hub` tool — a short, direct reply — then carry on with what you were doing. Do not restructure your work around the question.",
+	];
+	const rows = replay(
+		instructions.map((instruction, index) =>
+			custom(`hub-${index}`, "hub_message", {
+				text: `<parent-message>\n${instruction}\n\nWhat the parent actually said ${index}.\n</parent-message>`,
+			}),
+		),
+	);
+	for (const [index, row] of rows.entries()) {
+		assert.equal(row.headline, `What the parent actually said ${index}.`);
+		// The instruction is not lost: it is the first thing the reader meets
+		// once the row is open, and the label already says the row is a relay.
+		assert.ok(row.detail.includes(instructions[index]));
+	}
+});
+
+test("an empty relay paints its envelope rather than its closing tag", () => {
+	// 34 real rows in the store are this shape: the description line is empty.
+	const [row] = replay([
+		custom("empty", "hub_message", {
+			text: "<subagent-message label='rollover-template-fix' job='5fb25794e06c'>\n\n</subagent-message>",
+		}),
+	]);
+	assert.equal(row.headline, "<subagent-message label='rollover-template-fix' job='5fb25794e06c'>");
+	assert.ok(!row.headline.startsWith("</"));
+	assert.equal(row.headline.includes("subagent-message"), true, "the row still names the relay");
+});
+
+test("a wake row states its cadence, not the agent's own cancellation call", () => {
+	// 749 of the store's 951 wake rows carried the arming clause inline, which
+	// crowded out the cadence that is the whole reason to look at the row.
+	const [row] = replay([
+		custom("wake", "wake_prompt", {
+			text: '(alarm) Scheduled wake w1 (1/16, every 1h30m) — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n\nGPU capacity probe — NER backfill is 12 pods Pending.',
+		}),
+	]);
+	assert.equal(row.headline, "(alarm) Scheduled wake w1 (1/16, every 1h30m)");
+	// The clause is still reachable, in the body.
+	assert.ok(row.detail.includes('cancel with wake({op:"cancel",id:"w1"})'));
+});
+
+test("an incident carries the provider it names, and a row with nothing to say is not painted", () => {
+	const [row] = replay([
+		incident("with-provider", {
+			text: "[session incident (anthropic/claude-opus-5)] rate-limit: rate limit or quota exceeded\nsuggested action: Back off.\nThis is why the previous turn ended.",
+			raw: "rate limit or quota exceeded",
+		}),
+	]);
+	// The harness's own advice for a rate limit is "tell the user which provider
+	// hit the limit", so the row has to carry it.
+	assert.equal(row.provider, "anthropic/claude-opus-5");
+	// A no-provider incident says so by omission rather than by an empty string.
+	const state = replay([
+		incident("no-provider", {
+			text: "[session incident] cut-off: the runtime stopped\nThis is why the previous turn ended.",
+			raw: "the runtime stopped",
+		}),
+	]);
+	assert.equal(state[0].provider, null);
+
+	// A whitespace-only body is not a row: painting it would produce the empty
+	// headline the operator reported (a row that states nothing). No producer
+	// emits one; the gate is here so none can.
+	for (const blank of ["   ", " \n \n "]) {
+		assert.equal(replay([custom("blank", "hub_message", { text: blank })]).length, 0);
+	}
 });
