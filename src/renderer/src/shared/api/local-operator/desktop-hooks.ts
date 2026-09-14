@@ -123,7 +123,23 @@ export type DesktopFeature =
 	 * verbatim, and when this app is old enough not to open the feed nothing on
 	 * the backend changes either. Neither skew can double-toast.
 	 */
-	| "desktop_feed";
+	| "desktop_feed"
+	/**
+	 * `sessions.move`: moving a LIVE session's working directory
+	 * (`POST /v1/desktop/sessions/{id}/working-directory`).
+	 *
+	 * Its OWN key rather than a bump of `commands` or `session_catalogue`, on the
+	 * rule `session_search` and `draft_preview` state above: an EXISTING surface
+	 * must keep working against a backend that lacks the new route. Here the
+	 * existing surface is the working-directory chip, which is exactly what a
+	 * renderer that sees no `session_move` keeps rendering - read-only, with a
+	 * sentence that says why. Bumping `commands` would be the wrong lever twice
+	 * over: a client renders the command palette perfectly well without this
+	 * route, and `/move`'s presentation already exists on older backends (it
+	 * answers its `native_action` today), so the chip is the only surface this
+	 * negotiation actually protects.
+	 */
+	| "session_move";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

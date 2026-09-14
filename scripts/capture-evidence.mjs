@@ -780,6 +780,37 @@ export const STORIES = [
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
 
+	/* `/move`: the desktop's move-a-live-session surface, in two sets.
+
+	   The CHIP states are the composer's working-directory chip. Four of them are
+	   unreachable by hand in a reasonable time: `readonly-older-backend` needs an
+	   OLD backend underneath the app (and is the only frame a user who never uses
+	   this feature ever sees of it, which is why the copy change gets one of its
+	   own), `pending` lasts until a successor runtime has bound (1-3 s of a real
+	   spawn), and `unset` needs a staged cwd that is empty. 1000x520 is the
+	   composer's shape, and the chip reads a CONTAINER QUERY at 750px - a narrower
+	   viewport would photograph the icon-only floor rather than the chip.
+
+	   `pending` shows the SECOND of the chip's two pending sentences, because a
+	   mounted story is photographed well past the 600 ms escalation; the first
+	   ("Moving to `~/x`…") is caught in the live-app pair on the PR, where the
+	   shutter can be inside that window.
+
+	   The PICKER states are `/move` itself: resting, in flight (a transport that
+	   never settles, so the state can be held still), refused by a mid-turn session
+	   (the refusal a user actually meets), and inert against a backend without the
+	   route. Same dialog, so the same viewport as the model picker. */
+	["chat-cwd-move--editable", 1000, 520],
+	["chat-cwd-move--menu-open", 1000, 620],
+	["chat-cwd-move--pending", 1000, 520],
+	["chat-cwd-move--readonly-older-backend", 1000, 520],
+	["chat-cwd-move--unset", 1000, 520],
+	["chat-cwd-move--truncated-path", 1000, 520],
+	["chat-move-picker--idle", 900, 620],
+	["chat-move-picker--busy", 900, 620],
+	["chat-move-picker--refused", 900, 700],
+	["chat-move-picker--unavailable", 900, 620],
+
 	/* The band's own half of U1: the model reading painted from the user's pick
 	   before the owner's frame confirms it. Two frames in one story, so the
 	   pending mark is judged against the same reading at full weight. */

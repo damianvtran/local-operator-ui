@@ -655,3 +655,34 @@ export type DesktopCommandReceipt = {
 		  };
 	replayed?: boolean;
 };
+
+/**
+ * What a working-directory change did, and where it left the session.
+ *
+ * Mirrors the backend's `MoveReceipt` (`POST
+ * /v1/desktop/sessions/{id}/working-directory`). Both `cwd` and `label` are
+ * carried because they are different facts: `cwd` is the VALUE to compare
+ * against what the canonical `frontend` stream later reports (the chip holds
+ * its optimistic value until the two agree - see `useSessionMove`), and `label`
+ * is the backend's own home-aware spelling of it, printed rather than
+ * reformatted here because only the process that owns the session knows how to
+ * spell `~`. A client-side `~/` would print the CLIENT's home for a remote
+ * backend, which is a different directory with the same name.
+ *
+ * `outcome` is the viewer's own vocabulary plus one route-level value:
+ * `cold` and `rebound` are `set_working_directory`'s (`cold` = the field moved
+ * and nothing was running, `rebound` = the runtime was retired and a successor
+ * is owed), and `unchanged` is the already-there no-op.
+ *
+ * `will_wait` is a pre-call HINT (the TUI's own `move_will_wait`, sampled before
+ * the move) and deliberately NOT load-bearing here: a caller learns it after
+ * the move has already happened, so it cannot narrate anything with it. It is on
+ * the wire so a receipt reader can tell "the session restarted" from "the field
+ * moved under an engage that then failed".
+ */
+export type DesktopMoveReceipt = {
+	cwd: string;
+	label: string;
+	outcome: "cold" | "rebound" | "unchanged";
+	will_wait: boolean;
+};

@@ -154,6 +154,16 @@ type ChatContentProps = {
 	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
 	onChangeCwd?: (cwd: string) => void;
+	/**
+	 * A working-directory move is in flight for this session; see
+	 * `MessageInputProps.cwdPending`.
+	 *
+	 * Threaded through here rather than read from a store because this component
+	 * is a pure pass-through for the composer's props: the value belongs to the
+	 * session pane that owns the move, and a second reader of it would be a second
+	 * answer to "is this session's chip settled".
+	 */
+	cwdPending?: boolean;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
@@ -381,6 +391,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		sessionId,
 		turnTerminal,
 		onChangeCwd,
+		cwdPending,
 		sendError,
 		sessionStatus,
 		onSlashCommand,
@@ -873,6 +884,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								agentData={agentData}
 								cwd={cwd}
 								onChangeCwd={onChangeCwd}
+								cwdPending={cwdPending}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}

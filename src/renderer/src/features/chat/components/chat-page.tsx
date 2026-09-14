@@ -56,6 +56,7 @@ import {
 	type DraftSelectionTarget,
 	draftPreviewQuery,
 } from "../draft-selection";
+import { useSessionMove } from "../move-session";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
@@ -423,6 +424,33 @@ function SessionPanel({
 		capabilities.data,
 		"subagent_transcript",
 	);
+	/*
+	 * Moving a LIVE session's directory, which is the one composer control whose
+	 * write path is a lifecycle operation rather than a draft field.
+	 *
+	 * `canMove` is the whole gate and it is deliberately three questions rather
+	 * than one: a session must exist (a draft has its own staged-cwd write path),
+	 * the pane must not still be a draft (`draftKey` is the store's own answer to
+	 * "is this conversation created yet", and during admission the create is in
+	 * flight, so a move would race the directory it is creating), and the backend
+	 * must advertise `session_move` - absent means the route is not there, and the
+	 * chip must keep the read-only branch it has always rendered rather than offer
+	 * a control whose every use 404s.
+	 *
+	 * `useSessionMove` owns the optimistic value and the per-session latch behind
+	 * it; the chip reads `cwd` from here so that the value it PAINTS and the value
+	 * the stream reports can never disagree about which is in force (see the
+	 * hook's three rules).
+	 */
+	const canMove =
+		Boolean(sessionId) &&
+		!draftKey &&
+		desktopFeatureEnabled(capabilities.data, "session_move");
+	const live = useSessionMove({
+		sessionId,
+		canonical,
+		capabilities: capabilities.data,
+	});
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		void useCanonicalSessionsStore
@@ -1569,13 +1597,27 @@ function SessionPanel({
 					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to
-					 * `sessions.create`. Live: the directory the session actually runs
-					 * in, reported by the canonical stream. `onChangeCwd` is supplied
-					 * only in the first case, which is what makes the chip read-only
-					 * once the session exists - there is no backend route that moves a
-					 * live session, so an editable chip there would always fail.
+					 * `sessions.create`. Live: the directory the session actually runs in,
+					 * reported by the canonical stream - or, while a move is in flight, the
+					 * value that move is settling on (`live.cwd` reads
+					 * `pending ?? canonical.frontend?.cwd`).
+					 *
+					 * `onChangeCwd` is supplied in two cases now, and the second one is the
+					 * point of the capability gate: a draft stages a directory, and a live
+					 * session on a backend that advertises `session_move` moves one. Every
+					 * other combination leaves the chip read-only with a reason, which is
+					 * what keeps a backend without the route inert rather than broken.
 					 */
-					cwd={draftKey ? cwd : canonical.frontend?.cwd}
+					/*
+					 * `live.cwd` rather than `canonical.frontend?.cwd`: it IS the stream's
+					 * directory with this session's in-flight move on top of it
+					 * (`pending.target ?? pending.path ?? streamCwd`), which is the whole
+					 * point of the chip - a value the backend has not confirmed yet has to
+					 * be paintable, or the user watches a move they made not happen. The
+					 * rebase onto `main` kept main's `sessionId` prop beside it; both are
+					 * wanted and neither subsumes the other.
+					 */
+					cwd={draftKey ? cwd : live.cwd}
 					/*
 					 * The session the code-memory panel reads, passed as the identity the
 					 * backend knows. It is NOT the same as `agentId` above, which is
@@ -1585,8 +1627,13 @@ function SessionPanel({
 					 */
 					sessionId={sessionId}
 					onChangeCwd={
-						draftKey && !draft?.sessionId && !admitting ? setCwd : undefined
+						draftKey && !draft?.sessionId && !admitting
+							? setCwd
+							: canMove
+								? live.moveTo
+								: undefined
 					}
+					cwdPending={canMove && live.busy}
 					messages={[]}
 					isLoading={false}
 					isLoadingMessages={false}

@@ -60,6 +60,7 @@ import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "../draft-selection";
+import { MOVE_UNAVAILABLE_REASON } from "../move-session";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
@@ -284,13 +285,25 @@ type MessageInputProps = {
 	/**
 	 * Working directory for this conversation, and the way to change it.
 	 *
-	 * `onChangeCwd` is present only while the session is still a draft: a cwd is
-	 * fixed at `sessions.create` and the backend exposes no way to move a live
-	 * one, so the chip renders read-only once the session exists rather than
-	 * offering a control that cannot succeed.
+	 * `onChangeCwd` is present while the chip has a write path: on a DRAFT, where
+	 * it stages the directory `sessions.create` will use, and on a LIVE session
+	 * whose backend advertises `session_move`, where it moves the running session
+	 * (see `useSessionMove`). Absent means the chip renders read-only with
+	 * `readOnlyReason`, which is the honest state for an older backend rather than
+	 * a control whose every use fails.
 	 */
 	cwd?: string;
 	onChangeCwd?: (cwd: string) => void;
+	/**
+	 * A directory move for this session has not been confirmed yet.
+	 *
+	 * Reaches the chip as `DirectoryIndicatorProps.pending` and changes copy, not
+	 * anatomy: no spinner, no colour step, and no disabling. The transcript receipt
+	 * is the primary feedback, and the chip repaints from the canonical stream
+	 * within a couple of seconds, so a new visual treatment here would be a visual
+	 * change with no new state to show.
+	 */
+	cwdPending?: boolean;
 	isSmallView?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
@@ -535,6 +548,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			agentData,
 			cwd,
 			onChangeCwd,
+			cwdPending,
 			isSmallView = false,
 			isHydrating = false,
 			unavailable = false,
@@ -2266,10 +2280,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									<DirectoryIndicator
 										currentWorkingDirectory={cwdToShow}
 										onChangeDirectory={onChangeCwd}
+										pending={cwdPending}
 										readOnlyReason={
-											onChangeCwd
-												? undefined
-												: "Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
+											onChangeCwd ? undefined : MOVE_UNAVAILABLE_REASON
 										}
 									/>
 								)}

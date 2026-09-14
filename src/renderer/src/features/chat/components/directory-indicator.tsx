@@ -78,6 +78,18 @@ type DirectoryIndicatorProps = {
 	onChangeDirectory?: (path: string) => void;
 	/** Tooltip shown when `onChangeDirectory` is absent. */
 	readOnlyReason?: string;
+	/**
+	 * A move is in flight for THIS session: the chip is painting a directory the
+	 * backend has not confirmed yet.
+	 *
+	 * The chip gains no new visual state from this - no spinner, no colour step -
+	 * and the reason is that the transcript receipt is the primary feedback while
+	 * the chip repaints from the canonical stream within a couple of seconds. What
+	 * it does gain is honest copy while it is showing a value nothing has
+	 * confirmed: the tooltip says what is happening, and the live region says it
+	 * too, so the change is announced rather than only painted.
+	 */
+	pending?: boolean;
 };
 
 type DirectoryInfo = {
@@ -108,6 +120,18 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * hint - the value being unreadable everywhere was the defect.
  */
 const TRIGGER_PATH_TRUNCATES_AT = 28;
+
+/**
+ * How long the chip says WHERE a move is going before it says what the move does.
+ *
+ * About 600 ms, which is roughly where the optimistic path stops being news:
+ * "Moving to ~/x" is true the instant the user chose, and it is no longer the
+ * useful fact once the wait is long enough to wonder about - at that point what
+ * the user is waiting on is that this session's runtime is being replaced. Past
+ * the second sentence there is nothing more to say until the backend answers, so
+ * it stays up rather than cycling through a third phrase.
+ */
+const PENDING_RESTART_AFTER_MS = 600;
 
 /**
  * The chip's outer slot.
@@ -322,6 +346,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	currentWorkingDirectory,
 	onChangeDirectory,
 	readOnlyReason,
+	pending = false,
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
@@ -358,6 +383,28 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	useEffect(() => {
 		setDirectory(currentWorkingDirectory || "");
 	}, [currentWorkingDirectory]);
+
+	/*
+	 * The pending chip's two sentences, escalated on a timer.
+	 *
+	 * State rather than a derived value because the escalation is the only thing
+	 * that makes this chip's copy time-dependent, and it has to reset when a new
+	 * move starts (a second move must not open on "Restarting…" from the first).
+	 * See `PENDING_RESTART_AFTER_MS` for why the second sentence replaces the
+	 * first rather than joining it.
+	 */
+	const [pendingRestarting, setPendingRestarting] = useState(false);
+	useEffect(() => {
+		if (!pending) {
+			setPendingRestarting(false);
+			return;
+		}
+		const timer = setTimeout(
+			() => setPendingRestarting(true),
+			PENDING_RESTART_AFTER_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [pending]);
 
 	const handleCloseMenu = useCallback(() => {
 		setIsMenuOpen(false);
@@ -552,12 +599,34 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	const truncates = shown.length > TRIGGER_PATH_TRUNCATES_AT;
 
 	/*
-	 * Read-only: show the directory and say why it cannot be changed here.
+	 * What the chip says while a move it has asked for has not been confirmed.
 	 *
-	 * A live session's cwd is fixed at creation. `sessions.create` is the only
-	 * cwd write path the backend exposes - the TUI's `/move` has no HTTP route -
-	 * so offering a picker on a live session would be a control whose every use
-	 * fails. Stating the reason in a tooltip is the honest version of that, and
+	 * `null` the rest of the time, so every consumer below reads one value instead
+	 * of re-deriving the two sentences. The tooltip and the live region both use
+	 * it: the transcript receipt is the primary feedback, but the chip is showing a
+	 * directory nothing has confirmed yet, and a silent pending value is how a user
+	 * comes to believe a move landed when it did not.
+	 */
+	const pendingText = pending
+		? pendingRestarting
+			? "Restarting this session's runtime…"
+			: `Moving to ${shown}…`
+		: null;
+
+	/*
+	 * Read-only: show the directory and say why it cannot be changed HERE.
+	 *
+	 * The reason is no longer always "a cwd cannot be moved". A live session CAN be
+	 * moved when the backend advertises `session_move` (`sessions.move`, the route
+	 * `/move` uses on both surfaces); what this branch renders is the case where
+	 * that capability is absent, or where the caller has no write path of its own
+	 * to offer. Both are real: the create-file dialog holds a session id rather
+	 * than an agent UUID, so it mounts this chip read-only rather than owning a
+	 * second write path that 404s, and a renderer talking to a backend without the
+	 * route must keep the read-only chip it has always rendered - which is exactly
+	 * what the capability negotiation is for.
+	 *
+	 * Stating the reason in a tooltip is the honest version of that, and
 	 * the button stays focusable so a keyboard user can read it too.
 	 *
 	 * It is rendered as a `span`, not a `Button`. As a ghost `Button` this was
@@ -677,7 +746,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			 * implicit live-region semantics as a native element, which is the form
 			 * this codebase already uses for the composer's loading region. */}
 			<output className={cn("sr-only")} aria-live="polite">
-				{announcement}
+				{pendingText ?? announcement}
 			</output>
 			{isEditing ? (
 				<Input
@@ -694,11 +763,15 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 				<DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
 					<Tooltip
 						content={
-							isInvalid
+							// A move in flight speaks first: it is the thing the user just did,
+							// and "Click to change the working directory" would invite a second
+							// move while the first is still being applied.
+							pendingText ??
+							(isInvalid
 								? `${shown} is not a directory on this computer`
 								: truncates
 									? shown
-									: "Click to change the working directory"
+									: "Click to change the working directory")
 						}
 						side="top"
 					>
