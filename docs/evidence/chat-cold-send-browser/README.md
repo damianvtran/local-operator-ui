@@ -68,13 +68,23 @@ operator's browser permissions. The implementing coder closed its owned tab.
 
 The final pre-push fetch found GitHub **DIRTY** against `8d019993e` (newly merged
 composer tabs, #175). The merge preserved both sides; only manifest metadata
-conflicted. These images **precede that merge** and are not re-stamped as merged
-composer screenshots. A new browser-tool open for post-merge verification failed:
-`cmux.sock: Connection refused`; `lop browser status` then reported daemon healthy,
-paired, but **extension connected: no**. Post-merge rendered validation is therefore
-**BLOCKED pending browser reconnection**, not green. The unchanged failure/echo
-logic is supported by the pre-merge real flows plus merged-tree regression tests;
-final independent QA/design/UX must inspect the merged composer when connected.
+conflicted. The first nine images above **precede that merge** and are not
+re-stamped as merged-composer screenshots.
+
+A first attempt at post-merge verification hit two browser failures in sequence:
+`cmux.sock: Connection refused`, then (after `lop browser status` reported the
+extension connected again) repeated `chrome.debugger.sendCommand(Runtime.enable)`
+stalls. Both are recorded as encountered, not hidden. The extension recovered on
+its own and post-merge verification then **succeeded**, adding two frames:
+
+| Directory | Actual state and result |
+| --- | --- |
+| `merged-idle-draft` | Merged tree, New draft: main's composer-status row and tab affordances render alongside the pre-send subtitle and normal composer. No regression from the fix. |
+| `merged-refusal-after-fix` | Merged tree, new `[refuse]` turn: `Stopped with an error` with **no** rung and composer back to `Ask me for help`. The Q4 fix still holds on the merged composer. |
+
+These two are the post-merge rendered proof. The renderer overlap was separately
+exercised by the merged-tree scoped suites below, and the FULL evidence corpus
+was not re-walked.
 
 ## Geometry and gates
 
@@ -88,9 +98,11 @@ On failure the line became null and placeholder returned to `Ask me for help`.
 The before/after header keeps its two-line height; no subtitle-height collapse.
 
 Final delta gates: `pnpm lint` exit 0 (34 existing warnings), `pnpm check-types`
-exit 0, `pnpm check-themes` 2303 assertions/12 themes, and scoped tool-row,
-canonical-chat, echo-delivery, transcript-reducer and session-switch tests
-**212 passed, 0 failed**. Fresh isolated HOME/config; inherited LOP/CMUX scrubbed.
+exit 0, `pnpm check-themes` 2303 assertions/12 themes, and merged-tree scoped
+tool-row, canonical-chat, echo-delivery, transcript-reducer, session-switch and
+composer-tabs tests **234 passed, 0 failed**. Targeted `provenanceFailures`
+**PASS (0)** and `assertFramePaints` **19/19** on the changed frames at the
+merged head. Fresh isolated HOME/config; inherited LOP/CMUX scrubbed.
 
 The full ImageMagick corpus walk remains **BLOCKED/not rerun** under the shared
 host resource budget. The targeted provenance/paint result is recorded on the PR;

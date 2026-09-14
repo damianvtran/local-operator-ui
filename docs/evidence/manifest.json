@@ -9,7 +9,7 @@
   "surfaces": 173,
   "themes": 12,
   "countsMean": {
-    "frames": "1536 WebP files: 1188 swept and 348 in declared supplementary sets. File counts, not a newly completed full sweep.",
+    "frames": "1538 WebP files: 1188 swept and 350 in declared supplementary sets. File counts, not a newly completed full sweep.",
     "surfaces": "173 entries in the merged capture script; supplementary live-pane sets are not swept stories.",
     "themes": "12 theme names in the capture script. Per-set theme counts may be narrower."
   },
@@ -86,10 +86,31 @@
     },
     "refreshedFromHead": "9c82dce4f2a498c5ea97066b12c0ec3b24b1be88"
   },
-  "upstreamComposerCapture": {"mergeTarget": "8d019993e", "sourceManifest": "8d019993e:docs/evidence/manifest.json", "capturedAtHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519", "refreshedAt": "2026-09-14T18:10:25.667Z", "refreshedFrames": 310, "note": "Main composer-tabs capture history remains at the source manifest above; its images and surface entries are preserved unchanged. This is not part of the cold-send capture pass. Integration was required by GitHub DIRTY and a manifest conflict; the renderer overlap is covered by a scoped post-merge smoke, not a corpus recapture."},
+  "upstreamComposerCapture": {
+    "mergeTarget": "8d019993e",
+    "sourceManifest": "8d019993e:docs/evidence/manifest.json",
+    "capturedAtHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
+    "refreshedAt": "2026-09-14T18:10:25.667Z",
+    "refreshedFrames": 310,
+    "note": "Main composer-tabs capture history remains at the source manifest above; its images and surface entries are preserved unchanged. This is not part of the cold-send capture pass. Integration was required by GitHub DIRTY and a manifest conflict; the renderer overlap is covered by a scoped post-merge smoke, not a corpus recapture."
+  },
   "supplementary": [
-    {"path": "chat-cold-send-browser", "frames": 9, "surfaces": 9, "themes": 1, "source": "Real browser-tool screenshots, lossless WebP conversions; actual React renderer and isolated HTTP/SSE backend", "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep."},
-    {"path": "chat-tool-rows/cold-send-live-pane", "frames": 2, "surfaces": 1, "themes": 2, "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures", "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."},
+    {
+      "path": "chat-cold-send-browser",
+      "frames": 11,
+      "surfaces": 9,
+      "themes": 1,
+      "source": "Real browser-tool screenshots, lossless WebP conversions; actual React renderer and isolated HTTP/SSE backend",
+      "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep."
+    },
+    {
+      "path": "chat-tool-rows/cold-send-live-pane",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures",
+      "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."
+    },
     {
       "path": "chat-title",
       "frames": 16,
