@@ -120,6 +120,12 @@ function Panel({
 		<div className={`flex flex-col bg-canvas ${height}`}>
 			<CanonicalTranscript
 				transcript={transcriptOf(records)}
+				/*
+				 * The reader's question, not the transport's: a cached paint or a
+				 * vanished conversation both arrive BEFORE any authoritative page, and
+				 * the pane's hold/statement rules read this rather than `status`.
+				 */
+				hydrated={false}
 				gate={null}
 				waiting={false}
 				loadingOlder={false}
