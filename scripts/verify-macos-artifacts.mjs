@@ -144,6 +144,19 @@ const LIPO = "/usr/bin/lipo";
 const INTERPRETER_BY_ARCH = { arm64: "python-runtime-seed/arm64", x86_64: "python-runtime-seed/x64" };
 
 /**
+ * A `lipo` architecture name as the artifact filename spells it.
+ *
+ * `lipo` says `x86_64` and `mac.artifactName` says `x64`; translating in one
+ * place is what keeps the comparison in `bundledPythonCheck` from having to
+ * know both spellings. An unrecognised name is passed through unchanged, so it
+ * fails the comparison with both values named rather than matching by accident.
+ */
+const ARTIFACT_ARCH_NAMES = { x86_64: "x64" };
+function toArtifactArch(arch) {
+	return ARTIFACT_ARCH_NAMES[arch] ?? arch;
+}
+
+/**
  * The architecture a packaged app runs as, read from the bundle itself.
  *
  * `lipo -archs` on the framework binary rather than on the launcher: the path is
@@ -185,6 +198,11 @@ export function bundleArchitectures(appPath, { run = spawnRunner } = {}) {
 export function bundledPythonCheck(appPath, options = {}) {
 	const trees = bundledPythonTrees(appPath, options);
 	const { archs, error } = bundleArchitectures(appPath, options);
+	// The architecture the container's own NAME claims, which is the only place
+	// that statement exists: an artifact whose app disagrees with its filename is
+	// wrong for whichever machines the name was meant to serve, and nothing inside
+	// the app can tell. `null` (an unpacked `dist` app) asks for no cross-check.
+	const expectArch = options.expectArch ?? null;
 	const describe = (trees.length === 0 ? ["none"] : trees)
 		.map((name) => `Contents/Resources/${name}`)
 		.join(", ");
@@ -204,6 +222,10 @@ export function bundledPythonCheck(appPath, options = {}) {
 	if (!Object.hasOwn(INTERPRETER_BY_ARCH, archs[0]))
 		return fail(
 			`the app is ${archs[0]}, which no bundled interpreter matches; mac.target builds arm64 and x64`,
+		);
+	if (expectArch != null && toArtifactArch(archs[0]) !== expectArch)
+		return fail(
+			`the artifact names ${expectArch} but the app inside it is ${archs[0]}; it installs on the build machine and cannot start on the one it was built for`,
 		);
 	const expected = INTERPRETER_BY_ARCH[archs[0]];
 	if (trees.length !== 1 || trees[0] !== expected)
@@ -386,9 +408,15 @@ export function discoverDmg(distDir, options = {}) {
 	return discoverArtifacts(distDir, options).dmgs[0] ?? null;
 }
 
-/** `spawnSync` runner: the real thing, used by the CLI. */
-export function spawnRunner(command, args) {
-	const result = spawnSync(command, args, { encoding: "utf8" });
+/** `spawnSync` runner: the real thing, used by the CLI.
+ *
+ * `input` exists for one caller - the disk image's license agreement, which
+ * `hdiutil` reads from stdin and refuses to mount without - and is threaded
+ * through rather than worked around with a `yes |` shell, so the checker keeps
+ * spawning the tool it names and nothing else.
+ */
+export function spawnRunner(command, args, input = undefined) {
+	const result = spawnSync(command, args, { encoding: "utf8", input });
 	return {
 		status: result.status ?? 1,
 		stdout: result.stdout ?? "",
@@ -433,11 +461,16 @@ export function verifyArtifacts({
 	 * Every image is asserted, and the app checks run against each app bundle:
 	 * the whole point of this gate is that no artifact reaches a release without
 	 * having been asked the questions a user's Gatekeeper asks.
+	 *
+	 * `arch` is what the container's filename claims (see `artifactArch`), so the
+	 * app extracted from a `-x64.zip` is held to being an x64 app; it is `null`
+	 * for an unpacked `dist` app, whose own architecture is the only statement
+	 * there is.
 	 */
 	const results = [];
-	const checkApp = (path) => [
+	const checkApp = (path, arch = null) => [
 		...runChecks({ appPath: path, dmgPath: null, run }),
-		bundledBytecodeCheck(path), bundledPythonCheck(path, { run }), privatePythonSeedCheck(path),
+		bundledBytecodeCheck(path), bundledPythonCheck(path, { run, expectArch: arch }), privatePythonSeedCheck(path, { expectArch: arch }),
 	];
 	for (const appPath of appPaths) {
 		if (!existsSync(appPath)) {

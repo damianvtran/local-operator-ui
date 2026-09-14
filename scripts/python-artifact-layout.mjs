@@ -13,11 +13,33 @@ function contained(root, path) {
 	return rel === "" || (!rel.startsWith("../") && rel !== ".." && !isAbsolute(rel));
 }
 
+/** The architecture a release artifact's FILENAME claims.
+ *
+ * `mac.artifactName` is `${name}-${version}-${arch}.${ext}`, so the name is the
+ * only statement about which architecture a container is meant to carry. The
+ * app inside it can be read for its own architecture (`lipo`), and for a
+ * container the two must agree: a `-x64.zip` whose app is arm64 extracts and
+ * launches on the machine that built it and cannot start on the machine it was
+ * built for, which is the one failure mode no other check in this gate can see.
+ *
+ * `null` for a name carrying no architecture (an unpacked `dist` app, a copy
+ * taken by hand): the caller then has nothing to cross-check and must not
+ * invent one. Never guess - the check that reads this refuses on a mismatch.
+ */
+export function artifactArch(path) {
+	return /-(arm64|x64)\.(?:dmg|zip)$/.exec(basename(path))?.[1] ?? null;
+}
+
 /** No compatibility aliases: an incumbent venv must not reach the new signed
  * seed between ShipIt's swap and the candidate's very first instruction.
  * File modes/ACLs are deliberately irrelevant to this namespace guarantee.
+ *
+ * `expectArch` is the architecture the artifact being checked claims (see
+ * `artifactArch`), and it is asserted against the seed's own directory name: a
+ * container that carries the other architecture's complete, correct seed is the
+ * failure this catches, and it passes every other check in the gate.
  */
-export function privatePythonSeedCheck(appPath) {
+export function privatePythonSeedCheck(appPath, { expectArch = null } = {}) {
 	return check("app-private-python-seed", appPath, "complete private Python seed with no legacy aliases", () => {
 		const resources = join(appPath, "Contents", "Resources");
 		for (const legacy of ["python", "python_aarch64"]) {
@@ -28,6 +50,7 @@ export function privatePythonSeedCheck(appPath) {
 		const parent = join(resources, "python-runtime-seed");
 		const names = readdirSync(parent);
 		if (names.length !== 1 || !["arm64", "x64"].includes(names[0])) throw new Error("Expected one architecture-specific private seed");
+		if (expectArch != null && names[0] !== expectArch) throw new Error(`The artifact names ${expectArch} but ships the ${names[0]} seed`);
 		const root = join(parent, names[0]);
 		const rootReal = realpathSync(root);
 		if (!lstatSync(root).isDirectory()) throw new Error("Seed root must be a directory, not an alias");
@@ -47,9 +70,26 @@ export function privatePythonSeedCheck(appPath) {
 	});
 }
 
+/**
+ * What a shipped disk image wants on stdin before it will mount.
+ *
+ * electron-builder treats `build/license_<lang>.txt` as the image's SLA by
+ * convention, so every image this project ships carries one - measured on a real
+ * `electron-builder --mac --arm64` output of this branch: a bare `hdiutil
+ * attach` printed the agreement and then answered `hdiutil: attach canceled`,
+ * exit 1, with no TTY to answer on. The gate would then have reported the app
+ * inside the image as unverifiable on every release, which is the row R3 exists
+ * for. One `Y` is enough for one language; the prompt is satisfied and the mount
+ * continues. Read-only and `-nobrowse` stay, so this never surfaces a volume in
+ * the Finder of whoever is running the gate.
+ */
+const LICENSE_ACCEPTANCE = "Y\n";
+
 /** Check what users receive, not merely electron-builder's unpacked directory.
  * A DMG must be copied out with ditto so the gate tests an installed, writable
- * copy. Every mount and extracted tree belongs to this invocation alone.
+ * copy - one real, per-architecture artifact at a time, with the architecture
+ * its filename claims handed to `checkApp`. Every mount and extracted tree
+ * belongs to this invocation alone.
  */
 export function finalContainerChecks(path, { run, checkApp }) {
 	const scratch = mkdtempSync(join(tmpdir(), "local-operator-artifact-"));
@@ -58,15 +98,15 @@ export function finalContainerChecks(path, { run, checkApp }) {
 	const mount = join(scratch, "mount");
 	let mounted = false;
 	const results = [];
-	const mustRun = (command, args) => {
-		const result = run(command, args);
+	const mustRun = (command, args, input) => {
+		const result = run(command, args, input);
 		if (result.status !== 0) throw new Error(`${command}: ${result.stderr || result.stdout}`);
 		return result;
 	};
 	try {
 		if (path.endsWith(".dmg")) {
 			mkdirSync(mount);
-			mustRun("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mount, path]);
+			mustRun("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mount, path], LICENSE_ACCEPTANCE);
 			mounted = true;
 			for (const name of readdirSync(mount).filter((name) => name.endsWith(".app"))) {
 				mustRun("/usr/bin/ditto", [join(mount, name), join(extracted, name)]);
@@ -78,7 +118,11 @@ export function finalContainerChecks(path, { run, checkApp }) {
 		}
 		const apps = readdirSync(extracted).filter((name) => name.endsWith(".app"));
 		if (apps.length !== 1) throw new Error(`Expected exactly one application in ${basename(path)}`);
-		for (const app of apps) results.push(...checkApp(join(extracted, app)).map((result) => ({ ...result, target: `${path} :: ${app}` })));
+		// The filename's architecture travels with the extracted app: the checks
+		// below read the app's own architecture, and only the container knows which
+		// one the user's download was supposed to be.
+		const arch = artifactArch(path);
+		for (const app of apps) results.push(...checkApp(join(extracted, app), arch).map((result) => ({ ...result, target: `${path} :: ${app}` })));
 	} catch (error) {
 		results.push({ id: "final-container-app", target: path, description: "validate the delivered application", passed: false, output: error.message });
 	} finally {
