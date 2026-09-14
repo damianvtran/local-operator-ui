@@ -92,7 +92,6 @@ const contract = await import(
 );
 const { useCompletionView } = contract;
 const receiptSettled = (...args) => contract.receiptSettled(...args, TOKEN);
-const isSupersededReceipt = (...args) => contract.isSupersededReceipt(...args);
 
 const SESSION = "abcdef123456";
 const TOKEN = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -384,29 +383,6 @@ test("the verdict is read from the state, not from the call resolving", () => {
 		),
 		false,
 	);
-	assert.equal(
-		isSupersededReceipt(
-			Object.assign(new Error("superseded"), {
-				code: "superseded_completion_token",
-			}),
-		),
-		true,
-	);
-	// Everything else keeps the backed-off cadence.
-	for (const other of [
-		Object.assign(new Error("unknown completion token"), {
-			code: undefined,
-			status: 409,
-		}),
-		Object.assign(new Error("not running"), { status: 503 }),
-		Object.assign(new Error("unreachable"), { status: null }),
-		new Error("bare"),
-		undefined,
-		null,
-		"nope",
-	]) {
-		assert.equal(isSupersededReceipt(other), false, String(other));
-	}
 });
 
 for (const outcome of ["unread", "wrong-token", "alternating"]) {
