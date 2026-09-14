@@ -269,7 +269,9 @@ that repeated itself behind its own chevron.
   `break-words`, because `pre-wrap` alone leaves `overflow-wrap: normal` and an
   unbreakable run measured `scrollWidth` 2773 in an 840px box;
 - a relayed row joins a heading to its outcome (`background job 'design849'
-  failed: [Errno 28] …`, 37 of the store's 39 job results) and a one-shot wake
+  failed: [Errno 28] …`, 37 of the store's 39 job rows at the 2026-09-14 scan;
+  the population grows as the operator works, so this is a count with a date on it,
+  not a property) and a one-shot wake
   states its goal rather than its arming line, which carries no cadence (202 of
   the store's 967 wake rows at the head that rewrote them: 766 keep an arming
   line that does state one);
