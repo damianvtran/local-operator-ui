@@ -147,7 +147,22 @@ export function desktopProxyPlugin(): Plugin {
 						 * invent its own sentence, so browser development and the packaged app
 						 * described one condition in two registers (design round 2, D9). The
 						 * sentence is machine vocabulary and lives in ONE list.
+						 *
+						 * Headers already written mean the stream was mid-flight when it died, and
+						 * then there is no status line left to write: setting one throws
+						 * `ERR_HTTP_HEADERS_SENT` inside a middleware whose returned promise
+						 * connect does not await, so the throw surfaces as an unhandled rejection
+						 * and exits the whole dev-server process - a dead stub backend took the
+						 * Vite server down with it. The renderer cannot be told anything at this
+						 * point, and it does not need to be: dropping the socket is what the
+						 * browser transport already reads as a lost stream, the same `ended`
+						 * detail it emits for any dropped connection, so the shared vocabulary is
+						 * reached by closing rather than by a sentence that cannot be delivered.
 						 */
+						if (res.headersSent) {
+							res.destroy();
+							return;
+						}
 						res.statusCode = 503;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
