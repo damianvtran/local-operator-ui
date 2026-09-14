@@ -857,7 +857,18 @@ test("latest candidate open wins and a failed open retains outgoing session", as
 	};
 	const first = store.getState().openSession("222222222222");
 	const last = store.getState().openSession("333333333333");
-	assert.equal(store.getState().activeSessionId, "111111111111");
+	/*
+	 * The view follows the LATEST INTENT, immediately — it does not wait for a
+	 * read to bless it.
+	 *
+	 * This assertion used to be `111111111111`: while two opens were in flight
+	 * the outgoing session stayed on screen, and the panel only mounted once the
+	 * second read answered. That serialisation was the switch's own cost (see
+	 * `scripts/session-switch-latency.mjs`), so the contract is now the other
+	 * way round — and the half that still matters is unchanged: a read that
+	 * FAILS puts the view back, which is what the tail of this test asserts.
+	 */
+	assert.equal(store.getState().activeSessionId, "333333333333");
 	resolutions.get("333333333333").resolve({});
 	assert.equal(await last, true);
 	resolutions.get("222222222222").resolve({});
