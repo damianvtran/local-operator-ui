@@ -760,6 +760,20 @@ const EXCEPTIONS = [
 		got: 4.43,
 		why: "same pair as dracula; 0.07 under the floor",
 	},
+	/*
+	 * The danger-variant control's border on a dialog ground, eight palettes
+	 * under the 3:1 a control's only edge is asked to clear. Same reasoning as
+	 * the text pair above: a shared control's colour, recorded where a reader
+	 * can find it rather than changed in a panel's PR.
+	 */
+	{ theme: "monokai", fg: "dangerBorder", bg: "elevated", got: 2.49, why: "the danger control's only edge on a dialog ground; worst of the eight" },
+	{ theme: "dracula", fg: "dangerBorder", bg: "elevated", got: 2.51, why: "same pair as monokai" },
+	{ theme: "radient", fg: "dangerBorder", bg: "elevated", got: 2.58, why: "same pair as monokai" },
+	{ theme: "synth", fg: "dangerBorder", bg: "elevated", got: 2.6, why: "same pair as monokai" },
+	{ theme: "obsidian", fg: "dangerBorder", bg: "elevated", got: 2.65, why: "same pair as monokai" },
+	{ theme: "tokyoNight", fg: "dangerBorder", bg: "elevated", got: 2.66, why: "same pair as monokai" },
+	{ theme: "neon", fg: "dangerBorder", bg: "elevated", got: 2.78, why: "same pair as monokai" },
+	{ theme: "dune", fg: "dangerBorder", bg: "elevated", got: 2.88, why: "same pair as monokai; 0.12 under the floor" },
 ];
 
 /*
@@ -1093,6 +1107,26 @@ for (const { id, palette: p } of palettes) {
 		"elevated",
 		FLOOR.text,
 		"danger as text on a dialog's ground",
+	);
+
+	/*
+	 * And the border that goes with it, because it is the whole boundary of the
+	 * control: the danger-variant button draws `border-danger-border` with no
+	 * fill until hover (`button.tsx`), so on a dialog the edge IS the control.
+	 *
+	 * Eight palettes are under 3:1 here (monokai 2.49 through dune 2.88, measured
+	 * from the palettes) and each is pinned below. Repainting a shared control's
+	 * variant is an app-wide decision and not this PR's to take; measuring it is
+	 * this PR's, because the delete-confirmation frame it adds is where the pair
+	 * is now drawn (design round 2, D3).
+	 */
+	assertPair(
+		id,
+		p,
+		"dangerBorder",
+		"elevated",
+		FLOOR.nonText,
+		"the danger control's only edge on a dialog's ground",
 	);
 
 	/* Component triples. */
