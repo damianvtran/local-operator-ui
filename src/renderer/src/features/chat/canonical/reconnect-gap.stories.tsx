@@ -280,7 +280,16 @@ const Frame = ({
 					containerRef={containerRef}
 					isSmallView={false}
 					status={status}
-					error={null}
+					failure={null}
+					/*
+					 * A fixture has no session handle to re-arm: it is a static
+					 * transcript for `check-evidence` to photograph. The prop is
+					 * required because the SHIPPED surface must never render a failure
+					 * notice without its action, and this story renders no notice at
+					 * all (`failure` is null in every frame here), so this handler is
+					 * unreachable rather than a stand-in for one that works.
+					 */
+					onReconnect={() => {}}
 				/>
 			</div>
 		</div>
