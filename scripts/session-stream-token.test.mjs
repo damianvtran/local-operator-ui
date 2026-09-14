@@ -204,6 +204,7 @@ const bundle = await build({
 												return this;
 											},
 											kill(signal) {
+												this.signalCode = signal;
 												this.killed.push(signal);
 												const fire = (map) => {
 													const cbs = map.get("exit") ?? [];
@@ -497,7 +498,7 @@ test("the relay authenticates with the token the current backend was started wit
 	}
 });
 
-test("a watchdog restart carries the restart intent and never takes the final-shutdown path", async () => {
+test("a watchdog timeout never terminates a still-live owned daemon", async () => {
 	const manager = new BackendServiceManager();
 	try {
 		state.healthy = false;
@@ -511,14 +512,14 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 			stopIntents.push(isRestart);
 			return realStop(isRestart);
 		};
-		// One unhealthy sample, the condition the watchdog acts on, without
-		// waiting out the 30s interval that samples it.
+		// Failing samples, driven directly rather than by waiting out the probe
+		// interval that would produce them.
 		//
-		// Bounded to that ONE sample deliberately. `checkHealth` is the same method
-		// the replacement `start()` polls while it waits for its new process, so a
-		// blanket `false` here made the restart spend its whole retry budget (30s)
-		// before the test could finish - a property of the stub, not of the
-		// manager. The assertions below are unchanged.
+		// Bounded to the detach threshold deliberately. `checkHealth` is also the
+		// method the replacement `start()` polls while it waits for its new
+		// process, so a blanket `false` here would make a recovery spend its whole
+		// retry budget (30s) before the test could finish - a property of the
+		// stub, not of the manager.
 		const realCheckHealth = manager.checkHealth.bind(manager);
 		let samples = 0;
 		manager.checkHealth = async () => {
@@ -526,7 +527,9 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 			return samples <= DEGRADED_AFTER_FAILURES ? false : realCheckHealth();
 		};
 
+		manager.discoverAndAttach = async () => false;
 		const execsBefore = state.execs.length;
+		const spawnsBefore = state.spawns.length;
 		// Three failing probes: the threshold before the state is `detached` and
 		// recovery is allowed to act. One sample is `degraded`, which never
 		// restarts anything - that is the point of the change.
@@ -536,8 +539,13 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 
 		assert.deepEqual(
 			stopIntents,
-			[true],
-			"the watchdog must ask stop() for a RESTART; the no-argument form is the final-shutdown path",
+			[],
+			"three timeouts do not authorize killing a live daemon or its active turns",
+		);
+		assert.equal(
+			state.spawns.length,
+			spawnsBefore,
+			"no replacement on uncertainty",
 		);
 		const commands = state.execs.slice(execsBefore);
 		assert.deepEqual(
@@ -687,7 +695,11 @@ test("adoption never probes an origin other than the one the app was configured 
 		/fetch\(/,
 		"the adoption path must not fetch an origin directly: identity comes from the record, through the probe",
 	);
-	assert.doesNotMatch(adoption, /https?:\/\/[a-z0-9.:]+/i, "no literal origin to fall back to");
+	assert.doesNotMatch(
+		adoption,
+		/https?:\/\/[a-z0-9.:]+/i,
+		"no literal origin to fall back to",
+	);
 	// The identity half of the rule, from the module that owns it.
 	const discoverySource = await readFile(
 		new URL("../src/main/backend/discovery.ts", import.meta.url),
@@ -793,6 +805,54 @@ test("the relay's own refusal detail is the shared vocabulary and maps to the sh
 	} finally {
 		relay.dispose();
 	}
+});
+
+test("an explicit remote target stays remote and never spawns a local fallback", async () => {
+	const previousUrl = globalThis.__backendTestUrl;
+	globalThis.__backendTestUrl = "https://127.0.0.2:9";
+	const manager = new BackendServiceManager();
+	try {
+		const before = state.spawns.length;
+		assert.equal(manager.backendUrl, "https://127.0.0.2:9");
+		assert.equal(await manager.start({ quiet: true }), false);
+		await manager.recoverFromDetachment();
+		assert.equal(state.spawns.length, before);
+		assert.equal(manager.getStatusSnapshot().state, "detached");
+	} finally {
+		await manager.stop(false);
+		globalThis.__backendTestUrl = previousUrl;
+	}
+});
+
+test("a missing external daemon never becomes a managed replacement", async () => {
+	const manager = new BackendServiceManager();
+	manager.isExternalBackend = true;
+	manager.discoverAndAttach = async () => false;
+	const before = state.spawns.length;
+	await manager.recoverFromDetachment();
+	assert.equal(state.spawns.length, before);
+});
+
+test("an announced build change leaves the daemon attached and its relay unchanged", async () => {
+	const manager = new BackendServiceManager();
+	const candidate = {
+		address: url,
+		file: "/synthetic/serve/record.json",
+		source: "record",
+		record: { pid: process.pid, retiring_from: "1.0.0", retiring_to: "1.0.1" },
+		identity: {
+			instanceId: "announcing",
+			pid: process.pid,
+			version: "1.0.0",
+			prefix: "/synthetic",
+			installKind: "uv-tool",
+		},
+	};
+	await manager.attachTo(candidate);
+	const relay = manager.getStreamRelay();
+	assert.equal(manager.getStatusSnapshot().state, "attached");
+	assert.equal(manager.getStreamRelay(), relay);
+	await manager.stop(false);
 });
 
 test("a stream against a backend that is not listening reports the server, not the stream (Q-2)", async () => {

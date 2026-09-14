@@ -9,8 +9,8 @@
  *     identity-failing probes, and nothing at all before that);
  *   - a gated route's 401/403/503 was read as "server down" (now: a capability
  *     result, recorded BESIDE the state, never moving it);
- *   - a daemon handing over on a new build (`503 daemon-retiring`) looked dead
- *     (now: degraded and named);
+ *   - a daemon announcing a new installed build looked dead (now: attached and
+ *     named, because an announcement is not a handover);
  *   - a daemon whose pid is gone kept the app "attached" for a whole tick (now:
  *     detached immediately, because that is evidence rather than a timeout).
  *
@@ -122,15 +122,20 @@ test("a CAPABILITY refusal never moves the state or counts as a failure", () => 
 	assert.equal(machine.snapshot().capabilityStatus, null);
 });
 
-test("a retiring daemon is handing over, never reported as down", () => {
+test("an announced build change leaves the connection attached and untouched", () => {
 	const machine = attached();
+	// The backend announces that the INSTALLED build moved; it keeps serving
+	// until a verified idle-boundary handoff exists. Anything but `attached`
+	// here detaches the event stream and abandons whatever turn is in flight.
 	assert.equal(
-		machine.observe({ kind: "retiring", detail: "retiring from v0.54.46 to v0.55.0" }),
-		"degraded",
+		machine.observe({ kind: "build-announced", detail: "new installed build v0.54.46 -> v0.55.0" }),
+		"attached",
 	);
-	assert.equal(isServerReachable(machine.getState()), true, "a handover is not an outage");
-	assert.equal(machine.snapshot().capabilityStatus, 503);
+	assert.equal(isServerReachable(machine.getState()), true, "an announcement is not an outage");
+	assert.equal(machine.snapshot().capabilityStatus, null, "no route refused us: not a capability result either");
 	assert.equal(machine.snapshot().failures, 0);
+	assert.match(machine.snapshot().detail, /new installed build/);
+	assert.equal(machine.observe({ kind: "identified" }), "attached");
 });
 
 test("a stale heartbeat with a live daemon is degraded, not detached", () => {
