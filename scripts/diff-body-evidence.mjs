@@ -143,9 +143,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** A private headless Chrome over raw CDP, the same shape the capture uses. */
 async function launchChrome(profile) {
 	if (!existsSync(CHROME))
-		throw new Error(
-			`no Chrome at ${CHROME} — set CHROME_PATH to one`,
-		);
+		throw new Error(`no Chrome at ${CHROME} — set CHROME_PATH to one`);
 	const chrome = spawn(CHROME, [
 		"--headless=new",
 		"--no-first-run",

@@ -58,7 +58,9 @@ export function dmgArtifacts(artifactPaths = []) {
  */
 export function updateUpdateYmlEntry(ymlText, fileName, { sha512, size }) {
 	const lines = ymlText.split("\n");
-	const entryIndex = lines.findIndex((line) => line.trim() === `- url: ${fileName}`);
+	const entryIndex = lines.findIndex(
+		(line) => line.trim() === `- url: ${fileName}`,
+	);
 	if (entryIndex === -1) return { text: ymlText, matched: false, replaced: 0 };
 
 	let replaced = 0;
@@ -123,7 +125,6 @@ function parseArgs(argv) {
 	return args;
 }
 
-
 /**
  * Rewrite every update-metadata file that lists `name`, and fail when none of
  * them was rewritten.
@@ -145,7 +146,13 @@ function parseArgs(argv) {
  * this hash, so a stale one is a failed install for every user of the release:
  * the release is late rather than wrong (reviews R8, R12).
  */
-export function rewriteUpdateMetadata({ ymlPaths, name, sha512, size, log = () => {} }) {
+export function rewriteUpdateMetadata({
+	ymlPaths,
+	name,
+	sha512,
+	size,
+	log = () => {},
+}) {
 	let describedSomewhere = false;
 	const matchedButNotRewritten = [];
 	for (const ymlPath of ymlPaths) {
@@ -172,7 +179,11 @@ export function rewriteUpdateMetadata({ ymlPaths, name, sha512, size, log = () =
 	}
 }
 
-export async function notarizeArtifacts({ dist, artifactPaths, log = console.log }) {
+export async function notarizeArtifacts({
+	dist,
+	artifactPaths,
+	log = console.log,
+}) {
 	const env = loadBuildEnv();
 
 	if (process.platform !== "darwin") {
@@ -183,7 +194,11 @@ export async function notarizeArtifacts({ dist, artifactPaths, log = console.log
 		log("Skipping disk image notarization: NOTARIZE not set to true");
 		return { notarized: [] };
 	}
-	if (!process.env.APPLE_ID || !process.env.APPLE_ID_PASSWORD || !process.env.APPLE_TEAM_ID) {
+	if (
+		!process.env.APPLE_ID ||
+		!process.env.APPLE_ID_PASSWORD ||
+		!process.env.APPLE_TEAM_ID
+	) {
 		log(
 			"Skipping disk image notarization: set APPLE_ID, APPLE_ID_PASSWORD and APPLE_TEAM_ID (in .env.build when building locally)",
 		);

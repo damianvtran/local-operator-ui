@@ -191,6 +191,34 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			target: target.optional(),
 		})
 		.strict(),
+	/*
+	 * What a NEW conversation's readings would be, without creating anything.
+	 *
+	 * The composer's status strip needs a model, an effort ladder and a window
+	 * BEFORE a session exists, and every honest way to get them was rejected: a
+	 * `sessions.create` on pane open writes a directory and a marker, so every
+	 * abandoned new-chat pane would leave a visible empty row in the sidebar,
+	 * and composing it in the renderer from `config.get` + `models.catalogue`
+	 * moves model RESOLUTION (Python policy) into the app and reports nothing
+	 * when the pair is absent from the catalogue. This op runs the backend's own
+	 * cold resolution and returns the same canonical projection a cold session
+	 * publishes, so the strip keeps one arithmetic path and the draft cannot
+	 * disagree with the session the first send creates.
+	 *
+	 * Body and response mirror `sessions.create` deliberately: same `cwd`, same
+	 * optional `target`, same 422 for an unresolvable profile. The response is a
+	 * `CanonicalFrontendSync` — the wire shape `sessions.watch` streams — whose
+	 * `snapshot.session_id` is EMPTY, because there is no session. The renderer
+	 * passes it to the strip and never into the canonical sessions store.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.preview"),
+			requestId,
+			cwd: z.string().min(1).max(4096),
+			target: target.optional(),
+		})
+		.strict(),
 	z.object({ op: z.literal("sessions.get"), sessionId }).strict(),
 	z
 		.object({
@@ -1100,6 +1128,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "sessions.create":
 			return {
 				path: "/v1/desktop/sessions",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					cwd: request.cwd,
+					...(request.target ? { target: request.target } : {}),
+				},
+			};
+		case "sessions.preview":
+			return {
+				path: "/v1/desktop/sessions/preview",
 				method: "POST",
 				body: {
 					request_id: request.requestId,

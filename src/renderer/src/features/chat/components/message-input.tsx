@@ -199,6 +199,13 @@ type MessageInputProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/**
+		 * This pane is a NEW conversation's draft: there is no session yet, so the
+		 * readings come from `sessions.preview` and render inert. See
+		 * `SessionStatusStripProps["draft"]` for why the state is passed in rather
+		 * than inferred from a missing dispatcher.
+		 */
+		draft?: boolean;
 	};
 };
 
@@ -1252,209 +1259,308 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					)}
 
 					{/*
-					 * The session's readings, on their own row above the controls.
+					 * The composer's controls and the session's readings, on ONE row.
 					 *
-					 * Its own row rather than four more items in the button row below:
-					 * that row is already over budget at the 220px column floor (see
-					 * the working-directory chip's shrink notes, design round 2 D11),
-					 * and these four readings describe the SESSION where the row below
-					 * describes the message being composed. A crash in the strip must
-					 * not take the composer down with it — the readings are metadata
-					 * and the ability to type is not — so it renders inside an error
-					 * boundary with an empty fallback: a missing strip is a degradation
-					 * a user can work through, and a fallback panel here would be a
-					 * bigger interruption than the thing it reports.
+					 * The readings used to have a row of their own above this one. They are
+					 * inside it now, which is why this row wraps: above 750px of COLUMN the
+					 * cluster sits inline, immediately after the working-directory chip, with
+					 * the row's free space falling before the controls; below it the cluster
+					 * takes the FIRST line in full (`basis-full`) and the controls keep the
+					 * second. `justify-between` cannot express either — with three children it
+					 * centres the middle one, which is the opposite of what the row needs — so
+					 * the row uses `ml-auto` instead, on the controls group, which is the one
+					 * child that always renders.
+					 *
+					 * That "always renders" is not a nicety, it is the round-1 blocker. The
+					 * readings cluster returns `null` in three ordinary states (no `frontend`
+					 * yet, nothing known at all, the error boundary's empty fallback), and
+					 * while the margin lived on the cluster those states had NO live auto
+					 * margin at all — the controls sat flush against the chip, mid-row, in
+					 * this PR's own draft frame (design round 1.5, D7).
+					 *
+					 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
+					 * the within-component step, tighter than the 12px this composer used
+					 * when the readings were a separate row (§ 5).
+					 *
+					 * `flex-nowrap` above the threshold is NOT decoration. Wrapping happens
+					 * on the items' CONTENT sizes, before any shrinking: a long model name (an
+					 * aggregator slug is ~48 characters) makes the cluster wider than its
+					 * share, so a still-wrapping row moves the microphone and send to a
+					 * second line instead of truncating the name — the exact inversion of the
+					 * yield order, where the name truncates first and the controls never
+					 * move. Measured on the live composer at a 750px box: with the row free
+					 * to wrap, the controls sat 24px below the readings; with `flex-nowrap`
+					 * they stay on one line and the name gives up the width.
 					 */}
-					{sessionStatus && (
-						<ErrorBoundary fallback={null}>
-							<SessionStatusStrip
-								frontend={sessionStatus.frontend}
-								onCommand={sessionStatus.onCommand}
-								effortEntities={sessionStatus.effortEntities}
-								pendingModel={sessionStatus.pendingModel}
-							/>
-						</ErrorBoundary>
-					)}
-
-					{/* § 2 budgets the accent at about three spends per screen and the
-					 * composer was taking three on its own — attach, microphone and
-					 * send — before the suggestion chips added a dozen more. Send is
-					 * the primary action and keeps it; the two secondary tools are
-					 * neutral until you reach for them. */}
-					<div className="flex min-w-0 items-center justify-between gap-2">
+					<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap">
 						{/*
-						 * Left side: attachment button and the working-directory chip.
+						 * The session's readings, inside the row rather than on a row of their
+						 * own above it (R1).
 						 *
-						 * `min-w-0` on this group AND on the row above it: a flex item's
-						 * automatic minimum size is its CONTENT, so an intermediate
-						 * wrapper that does not opt out of it refuses to shrink and the
-						 * `min-w-0` further down never gets the chance to apply. With the
-						 * canvas panel open the chat column collapses to its 220px floor
-						 * and the chip's 260px cap alone drove the row 97px past the
-						 * column's right edge (design round 2, D11); the chip carries the
-						 * shrink, but only these two ancestors can let it happen.
+						 * The DOM slot is FIRST, before the left group, so that the wrapped
+						 * state's tab order matches its painted order: below 750 the cluster is
+						 * the row's first line, and `order-first` only ever reordered the paint,
+						 * leaving a keyboard user to walk down to attach and the chip and back
+						 * UP to the readings (UX round 1, U4). Above 750 the strip's own
+						 * `order-2` puts it back between the chip and the controls, and the
+						 * controls' `order-3` keeps mic and send last.
+						 *
+						 * The two widths want OPPOSITE DOM orders and there is one DOM:
+						 * wrapped, the cluster paints first and must be tabbed first;
+						 * inline, it paints third and UX round 2 (U8) measured it still
+						 * being tabbed first. One node cannot satisfy both, and a second
+						 * render to fix the inline order would be a second layout to keep
+						 * in step - the thing this row is built to avoid, and what the
+						 * composer test pins. The wrapped width keeps the guarantee
+						 * because that is where the mismatch is a visible jump back UP
+						 * the row; inline the readings sit between the chip and the
+						 * controls, so the tab lands one stop early rather than out of
+						 * sequence. Recorded rather than silently chosen.
+						 *
+						 * A crash in the strip must not take the composer down with it — the
+						 * readings are metadata and the ability to type is not — so it renders
+						 * inside an error boundary with an empty fallback: a missing strip is a
+						 * degradation a user can work through, and a fallback panel here would
+						 * be a bigger interruption than the thing it reports. The row's other
+						 * groups survive the same fallback untouched.
 						 */}
-						<div className="flex min-w-0 items-center gap-1">
-							<Tooltip content="Attach file">
-								<span>
-									<Button
-										variant="ghost"
-										size={isSmallView ? "icon-sm" : "icon"}
-										className="text-ink-dim hover:bg-elevated hover:text-ink"
-										onClick={handleAttachFile}
-										aria-label="Attach file"
-										data-tour-tag="chat-input-attach-file-button"
-										disabled={isInputDisabled || isRecording || isTranscribing}
-									>
-										<Paperclip aria-hidden="true" />
-									</Button>
-								</span>
-							</Tooltip>
-							{/*
-							 * Gated on whether a directory is KNOWN, not on whether it is
-							 * truthy, and not on the session being idle.
-							 *
-							 * Two unsatisfiable-condition bugs in the same three lines,
-							 * one after the other. The original `!canonicalStop` gate
-							 * could never be true in the canonical chat - the stop
-							 * control is passed unconditionally - so the chip was
-							 * unreachable from v0.16.0 even though it was still mounted
-							 * here. Replacing it with `{cwdToShow && ...}` then made the
-							 * chip able to DELETE ITSELF: `""` is a legal value of the
-							 * staged cwd, it is falsy, and this chip is the only writer
-							 * of `state.cwd` now the full-width bar is gone. So clearing
-							 * the field unmounted the one control that could set it
-							 * again, and `cwd` is persisted, so the app came back from a
-							 * restart still with no chip - unrecoverable without
-							 * devtools.
-							 *
-							 * `!== undefined` is the honest question: undefined means "no
-							 * directory is known for this conversation", which is the one
-							 * case with nothing to render. An empty string means "known,
-							 * and empty" - a state the chip has an affordance for, and
-							 * the reason its `unset` branch is reachable again.
-							 */}
-							{cwdToShow !== undefined && (
-								<DirectoryIndicator
-									currentWorkingDirectory={cwdToShow}
-									onChangeDirectory={onChangeCwd}
-									readOnlyReason={
-										onChangeCwd
-											? undefined
-											: "Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
-									}
+						{sessionStatus && (
+							<ErrorBoundary fallback={null}>
+								<SessionStatusStrip
+									frontend={sessionStatus.frontend}
+									onCommand={sessionStatus.onCommand}
+									effortEntities={sessionStatus.effortEntities}
+									draft={sessionStatus.draft}
+									pendingModel={sessionStatus.pendingModel}
 								/>
-							)}
-						</div>
+							</ErrorBoundary>
+						)}
 
-						{/* Right side: microphone, send or stop button */}
-						<div className="flex items-center gap-1">
-							{!isRecording &&
-								!isTranscribing &&
-								!(isLoading && currentJobId) && (
-									<Tooltip
-										content={
-											!canEnableRecordingFeature
-												? recordingUnavailableReason
-												: `Start recording (${shortcutText} or hold Space)`
+						{/*
+						 * The BUTTON LINE, as one flex item.
+						 *
+						 * Below 750px of column the readings take the row's first line
+						 * and this is the second - and this wrapper is what makes "the
+						 * second" mean one line rather than however many the items
+						 * need. Without it the row's own `flex-wrap` broke the line on
+						 * the items' CONTENT sizes: the chip's path is 202px at full
+						 * length, so at a 240-336px column the chip did not get the
+						 * chance to shrink and the microphone and send fell to a THIRD
+						 * line (the composer grew 143.5 -> 179.5px at the floor, design
+						 * round 1, D1 and code review round 1, MAJOR 2). A wrapping row
+						 * cannot express "one line, and everything on it yields".
+						 *
+						 * Above the threshold it dissolves: `contents` hands its
+						 * children back to the row, so the cluster's `order-2` puts the
+						 * readings between the chip and the controls and the controls'
+						 * `ml-auto` takes the free space - the same single auto margin
+						 * as below, now between the cluster and mic/send (D7).
+						 *
+						 * `min-w-0` is what lets the chip inside actually shrink rather
+						 * than pushing the group past the row: a flex item's automatic
+						 * floor is its content.
+						 */}
+						<div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 @min-[750px]/chatcol:contents">
+							{/*
+							 * Left side: attachment button and the working-directory chip.
+							 *
+							 * `min-w-0` on this group AND on the row above it: a flex item's
+							 * automatic minimum size is its CONTENT, so an intermediate
+							 * wrapper that does not opt out of it refuses to shrink and the
+							 * `min-w-0` further down never gets the chance to apply. With the
+							 * canvas panel open the chat column collapses to its 220px floor
+							 * and the chip's 260px cap alone drove the row 97px past the
+							 * column's right edge (design round 2, D11); the chip carries the
+							 * shrink, but only these two ancestors can let it happen.
+							 *
+							 * ABOVE the threshold this group does not shrink at all, and that is
+							 * not a preference: the chip's own root is `shrink-0` there so a long
+							 * model name truncates before the path yields (D9). With the chip
+							 * refusing to shrink while its parent still could, the group shrank to
+							 * 145.6px around a 260px chip and the path painted straight over the
+							 * readings - visible in the 750px long-name frame, and invisible to
+							 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
+							 * order needs both halves stated.
+							 */}
+							<div className="flex min-w-0 items-center gap-1 @min-[750px]/chatcol:shrink-0">
+								<Tooltip content="Attach file">
+									<span>
+										<Button
+											variant="ghost"
+											size={isSmallView ? "icon-sm" : "icon"}
+											className="text-ink-dim hover:bg-elevated hover:text-ink"
+											onClick={handleAttachFile}
+											aria-label="Attach file"
+											data-tour-tag="chat-input-attach-file-button"
+											disabled={
+												isInputDisabled || isRecording || isTranscribing
+											}
+										>
+											<Paperclip aria-hidden="true" />
+										</Button>
+									</span>
+								</Tooltip>
+								{/*
+								 * Gated on whether a directory is KNOWN, not on whether it is
+								 * truthy, and not on the session being idle.
+								 *
+								 * Two unsatisfiable-condition bugs in the same three lines,
+								 * one after the other. The original `!canonicalStop` gate
+								 * could never be true in the canonical chat - the stop
+								 * control is passed unconditionally - so the chip was
+								 * unreachable from v0.16.0 even though it was still mounted
+								 * here. Replacing it with `{cwdToShow && ...}` then made the
+								 * chip able to DELETE ITSELF: `""` is a legal value of the
+								 * staged cwd, it is falsy, and this chip is the only writer
+								 * of `state.cwd` now the full-width bar is gone. So clearing
+								 * the field unmounted the one control that could set it
+								 * again, and `cwd` is persisted, so the app came back from a
+								 * restart still with no chip - unrecoverable without
+								 * devtools.
+								 *
+								 * `!== undefined` is the honest question: undefined means "no
+								 * directory is known for this conversation", which is the one
+								 * case with nothing to render. An empty string means "known,
+								 * and empty" - a state the chip has an affordance for, and
+								 * the reason its `unset` branch is reachable again.
+								 */}
+								{cwdToShow !== undefined && (
+									<DirectoryIndicator
+										currentWorkingDirectory={cwdToShow}
+										onChangeDirectory={onChangeCwd}
+										readOnlyReason={
+											onChangeCwd
+												? undefined
+												: "Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
 										}
-									>
+									/>
+								)}
+							</div>
+
+							{/* Right side: microphone, send or stop button.
+							 *
+							 * `ml-auto` is the row's ONE live auto margin, at EVERY width, and it is
+							 * here rather than on the readings on purpose (design round 1.5, D7):
+							 * this group cannot return `null`, so the row's right-justification
+							 * does not depend on whether a cluster that can vanish happens to be
+							 * rendering. Below 750px of column it separates this group from the
+							 * attached line above it; above, it holds the free space between the
+							 * cluster and these controls, which is what leaves the readings
+							 * immediately after the working-directory chip. A second live auto
+							 * margin would share that space evenly and float the controls mid-row.
+							 *
+							 * `order-3` above the threshold is only needed because the strip's DOM
+							 * slot is first (see above); it makes the paint [attach][chip]
+							 * [readings][mic][send] out of a DOM whose first child is the cluster.
+							 */}
+							<div className="ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3">
+								{!isRecording &&
+									!isTranscribing &&
+									!(isLoading && currentJobId) && (
+										<Tooltip
+											content={
+												!canEnableRecordingFeature
+													? recordingUnavailableReason
+													: `Start recording (${shortcutText} or hold Space)`
+											}
+										>
+											<span>
+												<Button
+													variant="ghost"
+													size={isSmallView ? "icon-sm" : "icon"}
+													className="text-ink-dim hover:bg-elevated hover:text-ink"
+													onClick={handleStartRecording}
+													aria-label="Start recording"
+													disabled={isLoading || !canEnableRecordingFeature}
+												>
+													<Mic aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									)}
+								{isRecording && (
+									<>
+										<Tooltip content="Confirm recording (Enter)">
+											<span>
+												<Button
+													variant="ghost"
+													size={isSmallView ? "icon-sm" : "icon"}
+													className="text-success hover:bg-success-wash hover:text-success"
+													onClick={handleConfirmRecording}
+													aria-label="Confirm recording"
+													disabled={isLoading}
+												>
+													<Check aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+										<Tooltip content="Cancel recording (Esc)">
+											<span>
+												<Button
+													variant="ghost"
+													size={isSmallView ? "icon-sm" : "icon"}
+													className="text-danger hover:bg-danger-wash hover:text-danger"
+													onClick={handleCancelRecording}
+													aria-label="Cancel recording"
+													disabled={isLoading}
+												>
+													<X aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									</>
+								)}
+								{canonicalStop?.active && (
+									<Tooltip content="Stop this session's current work">
 										<span>
 											<Button
-												variant="ghost"
+												variant="danger"
 												size={isSmallView ? "icon-sm" : "icon"}
-												className="text-ink-dim hover:bg-elevated hover:text-ink"
-												onClick={handleStartRecording}
-												aria-label="Start recording"
-												disabled={isLoading || !canEnableRecordingFeature}
+												type="button"
+												onClick={canonicalStop.onStop}
+												aria-label="Stop"
 											>
-												<Mic aria-hidden="true" />
+												<Square aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
 								)}
-							{isRecording && (
-								<>
-									<Tooltip content="Confirm recording (Enter)">
+								{isLoading && currentJobId ? (
+									<Tooltip content="Stop agent">
 										<span>
 											<Button
-												variant="ghost"
+												variant="danger"
 												size={isSmallView ? "icon-sm" : "icon"}
-												className="text-success hover:bg-success-wash hover:text-success"
-												onClick={handleConfirmRecording}
-												aria-label="Confirm recording"
-												disabled={isLoading}
+												type="button"
+												onClick={() => onCancelJob?.(currentJobId)}
+												aria-label="Stop agent"
 											>
-												<Check aria-hidden="true" />
+												<Square aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
-									<Tooltip content="Cancel recording (Esc)">
-										<span>
-											<Button
-												variant="ghost"
-												size={isSmallView ? "icon-sm" : "icon"}
-												className="text-danger hover:bg-danger-wash hover:text-danger"
-												onClick={handleCancelRecording}
-												aria-label="Cancel recording"
-												disabled={isLoading}
-											>
-												<X aria-hidden="true" />
-											</Button>
-										</span>
-									</Tooltip>
-								</>
-							)}
-							{canonicalStop?.active && (
-								<Tooltip content="Stop this session's current work">
-									<span>
-										<Button
-											variant="danger"
-											size={isSmallView ? "icon-sm" : "icon"}
-											type="button"
-											onClick={canonicalStop.onStop}
-											aria-label="Stop"
-										>
-											<Square aria-hidden="true" />
-										</Button>
-									</span>
-								</Tooltip>
-							)}
-							{isLoading && currentJobId ? (
-								<Tooltip content="Stop agent">
-									<span>
-										<Button
-											variant="danger"
-											size={isSmallView ? "icon-sm" : "icon"}
-											type="button"
-											onClick={() => onCancelJob?.(currentJobId)}
-											aria-label="Stop agent"
-										>
-											<Square aria-hidden="true" />
-										</Button>
-									</span>
-								</Tooltip>
-							) : (
-								!isRecording &&
-								!isTranscribing && (
-									<Tooltip content="Send message">
-										<span>
-											<Button
-												variant="primary"
-												size={isSmallView ? "icon-sm" : "icon"}
-												type="submit"
-												disabled={
-													isLoading ||
-													(!newMessage.trim() && attachments.length === 0)
-												}
-												aria-label="Send message"
-											>
-												<Send aria-hidden="true" />
-											</Button>
-										</span>
-									</Tooltip>
-								)
-							)}
+								) : (
+									!isRecording &&
+									!isTranscribing && (
+										<Tooltip content="Send message">
+											<span>
+												<Button
+													variant="primary"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="submit"
+													disabled={
+														isLoading ||
+														(!newMessage.trim() && attachments.length === 0)
+													}
+													aria-label="Send message"
+												>
+													<Send aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									)
+								)}
+							</div>
 						</div>
 					</div>
 				</div>

@@ -251,6 +251,29 @@ export type CanonicalFrontendState = {
 		input_tokens?: number | null;
 		output_tokens?: number | null;
 	} | null;
+	/**
+	 * Seconds the agent has spent WORKING in this conversation, banked.
+	 *
+	 * Mirrors `FrontendSessionState.active_duration_s`: it accrues between
+	 * `agent_start` and `agent_end`, so it is neither wall-clock time since the
+	 * session opened nor time the user spent reading. Declared rather than
+	 * reached through the index signature for the same reason as `last_usage`
+	 * above — `active_duration_s === 0` is exactly what decides whether the
+	 * duration reading renders at all, and an `as never` cast at the call site
+	 * would let a rename on the wire pass type-checking silently.
+	 */
+	active_duration_s?: number | null;
+	/**
+	 * When the turn currently in flight began, as an epoch in SECONDS, or
+	 * `null` between turns.
+	 *
+	 * Mirrors `FrontendSessionState.activity_started_at`. The pair is what lets
+	 * a reading tick without the stream repainting at 1 Hz: `active_duration_s`
+	 * is the banked truth and this is the open edge to add to it. Null means
+	 * there is no edge, so the banked figure is the whole answer and no timer
+	 * should run.
+	 */
+	activity_started_at?: number | null;
 	// Canonical runtime fields are additive; preserve unknown fields rather
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;
