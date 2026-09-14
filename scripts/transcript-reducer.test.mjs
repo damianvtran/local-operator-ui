@@ -1998,3 +1998,18 @@ test("a relayed row whose headline is its whole payload discloses nothing", () =
 	]);
 	assert.ok(long.detail?.includes("Retry once the volume is clear."));
 });
+
+test("a bulleted wake goal is still joined to its outcome", () => {
+	// R24: the bullet was stripped BEFORE the join looked the line up, so
+	// `lines.indexOf` was -1 for a bulleted goal and the heading/outcome join
+	// silently did not run for that shape. The marker is stripped after the join
+	// now, and this shape is the one that proves it — reachable from no producer
+	// in the store today, which is why it is pinned here rather than left to the
+	// next reader to notice.
+	const [row] = replay([
+		custom("w3", "wake_prompt", {
+			text: "(alarm) Scheduled wake w1 (1/1).\n\n- Two things to land:\nRead the ledger.",
+		}),
+	]);
+	assert.equal(row.headline, "Two things to land: Read the ledger.");
+});

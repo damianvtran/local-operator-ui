@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { after, before, test } from "node:test";
@@ -1158,4 +1159,126 @@ test("a notice's body is partitioned between its row and its disclosure", () => 
 
 	// Whitespace alone has nothing to say, and says it as a static line.
 	assert.deepEqual(splitFirstLine("   \n \n"), { headline: "", rest: null });
+});
+
+/* ---------------------------------------------- the selectable-text marker */
+
+/*
+ * R22: nothing bound `data-text-surface` to the guard that reads it, and the
+ * failure mode of a divergence is silent and already-fixed: a span written
+ * without the marker makes a drag across it TOGGLE the row and drop that span
+ * from the copy (U7/U17).
+ *
+ * So this asserts the property neither side can assert alone — the real row,
+ * rendered, marks every text it exposes to a drag — plus the binding itself:
+ * the writer and the reader both name the marker through one shared constant,
+ * so changing the attribute in one place cannot leave the other behind. The
+ * render is `react-dom/server` with React external, the same shape
+ * `ask-options.test.mjs` uses (the repo has no jsdom and does not need one).
+ */
+const surfaceBundle = await build({
+	stdin: {
+		contents: [
+			'export { TraceLine } from "./src/renderer/src/features/chat/components/trace/trace-line";',
+			'export { TEXT_SURFACE_ATTR, TEXT_SURFACE_PROPS } from "./src/renderer/src/shared/components/ui/text-surface";',
+		].join("\n"),
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	loader: { ".css": "empty" },
+	jsx: "automatic",
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+});
+const surfacePath = new URL("./_text-surface.bundle.mjs", import.meta.url);
+await writeFile(surfacePath, surfaceBundle.outputFiles[0].text);
+const { createElement: h } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { TraceLine, TEXT_SURFACE_ATTR, TEXT_SURFACE_PROPS } = await import(
+	surfacePath.href
+);
+await unlink(surfacePath);
+
+test("the marker the guard reads is the marker the row writes", () => {
+	// The binding: one constant, two importers. `PROPS` is what the row spreads
+	// onto its spans, and it must carry exactly the name the guard asks for.
+	assert.equal(TEXT_SURFACE_PROPS[TEXT_SURFACE_ATTR], "true");
+	const guard = readFileSync(
+		resolve("src/renderer/src/shared/components/ui/disclosure.tsx"),
+		"utf8",
+	);
+	const row = readFileSync(
+		resolve("src/renderer/src/features/chat/components/trace/trace-line.tsx"),
+		"utf8",
+	);
+	for (const [file, source] of [
+		["disclosure.tsx", guard],
+		["trace-line.tsx", row],
+	]) {
+		assert.match(source, /TEXT_SURFACE_(ATTR|PROPS)/, `${file} imports it`);
+		// A literal would be a second spelling of the attribute, which is the
+		// divergence this constant exists to make impossible.
+		assert.equal(
+			source.includes(`"${TEXT_SURFACE_ATTR}"`),
+			false,
+			`${file} does not spell the attribute itself`,
+		);
+	}
+});
+
+test("every text a row exposes to a drag carries the marker", () => {
+	const shapes = [
+		// An open tool row: a disclosure trigger with its body behind it.
+		h(TraceLine, {
+			action: "READ",
+			filePath: "invoices/march.csv",
+			narration: "summing the unpaid invoices",
+			details: h("pre", null, "rows: 12"),
+		}),
+		// A static line, the shape a row takes when it has nothing to disclose.
+		h(TraceLine, {
+			action: "READ",
+			filePath: "invoices/march.csv",
+			narration: "summing the unpaid invoices",
+		}),
+		// The incident shape: a derived verb, a machine-voice object and a
+		// wrapping message — the row type U17 was about.
+		h(TraceLine, {
+			dense: true,
+			verbOverride: "mcp",
+			object: "anthropic/claude-opus-5",
+			narration:
+				"MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+			failed: true,
+			wrap: true,
+		}),
+	];
+
+	for (const [index, element] of shapes.entries()) {
+		const markup = renderToStaticMarkup(element);
+		// Every span the row makes selectable must carry the marker, or a drag
+		// over it toggles the row and drops it from the copy.
+		const selectable = markup.match(/class="[^"]*select-text[^"]*"/g) ?? [];
+		assert.ok(selectable.length > 0, `shape ${index} exposes text`);
+		for (const span of markup.match(/<span[^>]*>/g) ?? []) {
+			if (!/select-text/.test(span)) continue;
+			assert.ok(
+				span.includes(`${TEXT_SURFACE_ATTR}="true"`),
+				`shape ${index}: a selectable span is marked — ${span}`,
+			);
+		}
+		// And the marker is not put on anything that is NOT text: the trigger's
+		// own chrome must stay unmarked, or a press on it stops being a row action.
+		for (const tag of markup.match(/<(span|div|button)[^>]*data-text-surface[^>]*>/g) ?? []) {
+			assert.match(tag, /select-text/, `marked but not selectable — ${tag}`);
+		}
+	}
 });
