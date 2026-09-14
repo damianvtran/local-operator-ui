@@ -28,8 +28,15 @@ node scripts/capture-evidence.mjs http://localhost:6036 \
   --themes=localOperatorDark,localOperatorLight --allow-backend
 ```
 
-`ef40c81e2` is the branch's own base (`origin/main` at the time of writing), so
-the only difference between these frames and the AFTER ones is the fix.
+`ef40c81e2` is the commit these frames were taken on: the base this branch was
+cut from (the merge of release #168), which `main` has since moved past. The
+branch was later rebased onto `142e86904` - the merge of release #171,
+twenty-one commits further on - so `ef40c81e2` is now an ancestor of the base
+rather than the base itself. That moves the AFTER tree and not these pixels: the
+story scripts the two channels' own events and the verdict a whole check returns
+and contains no part of the fix, so the state these frames show is still the
+pre-fix behaviour, and the fix remains the only rendered difference between them
+and the AFTER pair.
 
 The frames are a declared `supplementary` set in `docs/evidence/manifest.json`
 rather than part of the sweep, because the sweep of the fixed tree cannot
