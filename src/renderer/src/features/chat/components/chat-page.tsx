@@ -48,6 +48,7 @@ import {
 } from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import {
+	type DraftResolution,
 	type DraftSelectionTarget,
 	draftPreviewQuery,
 } from "../draft-selection";
@@ -513,18 +514,39 @@ function SessionPanel({
 		...(draft?.target ? { target: draft.target } : {}),
 		model: draft?.model ?? null,
 	};
+	/*
+	 * A pure read, and only for a pane that has no session: once the first send
+	 * creates one, the canonical stream is the only source and this query stops.
+	 * The empty cwd is refused rather than sent: the contract requires 1..4096
+	 * characters and a draft whose directory is not settled has nothing to preview
+	 * ("known and empty" is a legal staged cwd - see the chip's notes).
+	 */
+	const draftPreviewOn =
+		!sessionId &&
+		cwd.length > 0 &&
+		desktopFeatureEnabled(capabilities.data, "draft_preview");
 	const preview = useQuery({
 		...draftPreviewQuery(draftTarget),
-		// A pure read, and only for a pane that has no session: once the first send
-		// creates one, the canonical stream is the only source and this query stops.
-		// The empty cwd is refused rather than sent: the contract requires 1..4096
-		// characters and a draft whose directory is not settled has nothing to
-		// preview ("known and empty" is a legal staged cwd - see the chip's notes).
-		enabled:
-			!sessionId &&
-			cwd.length > 0 &&
-			desktopFeatureEnabled(capabilities.data, "draft_preview"),
+		enabled: draftPreviewOn,
 	});
+	/*
+	 * Where the resolution IS, for the two states in which the pane has no
+	 * reading to print (UX U3).
+	 *
+	 * The strip's readings ARE this query's answer, so "not answered yet" and
+	 * "never answered" were both rendered as the third state - a chip offering a
+	 * first choice of model. `keepPreviousData` means a resolved answer stays
+	 * painted while a pick re-resolves, so this is only ever the FIRST load or a
+	 * failure with nothing behind it; `retry: false` on the query is why the
+	 * failure needs a control of its own, since nothing else will ask again.
+	 */
+	const draftResolution: DraftResolution | undefined = draftPreviewOn
+		? preview.data
+			? undefined
+			: preview.isError
+				? { status: "failed", retry: () => void preview.refetch() }
+				: { status: "pending" }
+		: undefined;
 	const draftPickable =
 		!sessionId &&
 		desktopFeatureEnabled(capabilities.data, "draft_selection") &&
@@ -1503,7 +1525,20 @@ function SessionPanel({
 											? openDraftPicker
 											: undefined,
 									}
-								: undefined
+								: draftResolution
+									? {
+											/*
+											 * No snapshot, and a state worth saying: the pane renders the pending
+											 * treatment, or the failure with its retry, instead of the absent
+											 * cluster it used to render for both (UX U3). `frontend` is null
+											 * rather than a blank snapshot: the strip asks for the readings
+											 * it can still answer and claims none of the others.
+											 */
+											frontend: null,
+											draft: true,
+											draftResolution,
+										}
+									: undefined
 					}
 					currentJobId={null}
 					onCancelJob={stop}

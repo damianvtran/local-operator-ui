@@ -127,6 +127,17 @@ const DRAFT = {
 };
 
 /**
+ * The same pane with a resolution that named NO model — the one state design
+ * D3's "Choose a model" entry is for, and the state UX U3 separated from a
+ * resolution that has not answered yet (or never will).
+ */
+const DRAFT_NO_MODEL = {
+	...DRAFT,
+	effective_model: null,
+	selected_model: null,
+};
+
+/**
  * The class list a reading's own box carries.
  *
  * Matched on the reading's `aria-label`, so the assertion is about the element
@@ -385,9 +396,15 @@ test("a draft whose backend selects exposes model and effort as CONTROLS, in the
 
 	// THE MODEL: a real control, not the label form. No `aria-disabled`, so a
 	// screen reader is not told the chip is unavailable while it opens a dialog.
+	//
+	// The scope clause is UX U2's: the chip keeps the control's sentence, and says
+	// what the control can affect. Before it, the only place a draft's scope was
+	// ever stated was the dialog's subtitle, so a pane whose pick is
+	// first-message-only stopped saying so the moment it could be picked - and the
+	// user's question ("did that change my default?") had no answer on screen.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Model: openrouter\/openai\/gpt-5\. Click to choose a different model"/,
+		/<button type="button" aria-label="Model: openrouter\/openai\/gpt-5\. Click to choose a different model\. It applies to the first message\."/,
 	);
 	assert.doesNotMatch(
 		html,
@@ -396,11 +413,11 @@ test("a draft whose backend selects exposes model and effort as CONTROLS, in the
 	);
 
 	// THE EFFORT: offered because this spec carries a ladder, and the sentence is
-	// the session's — the control's nature is what the copy describes, and this
-	// control changes exactly the fact the session's does, one step earlier.
+	// the control's - the same one a session's effort chip carries - one step
+	// earlier, with the same U2 scope clause after it.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Reasoning effort: high\. Change it\."/,
+		/<button type="button" aria-label="Reasoning effort: high\. Change it\. It applies to the first message\."/,
 	);
 
 	// The sentences a draft may no longer say where the chip CAN open (R21/R8 of
@@ -435,6 +452,111 @@ test("the draft keeps its fact-plus-reason copy wherever a chip cannot open", ()
 	assert.doesNotMatch(text(html), /Change it\./);
 });
 
+/* ---- 2c. the draft's resolution is a STATE, not an absence ---------------- */
+
+/*
+ * UX U3: `chooseModel` is `!identity && draftOpen`, which is true in three
+ * different situations the render used to treat as one - the resolution is still
+ * in flight, it failed, and the backend genuinely resolved a spec that names no
+ * model. Only the third is a question for the user. These three cases pin the
+ * split, and the middle one pins that a failed resolution is RECOVERABLE, which
+ * it was not: the query is `retry: false`, and before this the whole cluster was
+ * suppressed, so nothing on the pane ever asked again.
+ */
+test("a draft whose resolution is still in flight says so instead of offering a choice", () => {
+	const html = renderStrip({
+		frontend: null,
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+		draftResolution: { status: "pending" },
+	});
+	assert.doesNotMatch(
+		html,
+		/Choose a model/,
+		"a resolution that has not happened is not a resolution that named nothing",
+	);
+	assert.match(html, /Resolving the model/, "the pending reading is on the pane");
+	assert.match(
+		html,
+		/aria-label="Model: resolving the model the first message will run on\."/,
+		"and it is announced as the question, not the answer",
+	);
+	// The app's own waiting treatment, not a bare sentence: this is the same
+	// spinner the session's switching chip carries.
+	assert.match(html, /role="status"/);
+	assert.match(
+		html,
+		/<button type="button" aria-disabled="true" aria-label="Model: resolving/,
+		"nothing can be opened while the resolution is in flight, and the control says so",
+	);
+});
+
+test("a failed resolution offers the retry nothing else on the pane would", () => {
+	const html = renderStrip({
+		frontend: null,
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+		draftResolution: { status: "failed", retry: () => undefined },
+	});
+	assert.doesNotMatch(html, /Choose a model/);
+	assert.match(html, /Retry/);
+	// React escapes the apostrophe in its text projection, hence the alternation.
+	assert.match(
+		html,
+		/<button type="button" aria-label="Model: the first message(?:&#x27;|')s model was not resolved\. Retry\."/,
+		"the failure is a control, because `retry: false` means nothing else will ask",
+	);
+	assert.doesNotMatch(html, /role="status"/, "nothing is in flight any more");
+});
+
+test("the resolved-no-model state keeps its own control", () => {
+	// The regression pin for the split: design D3's entry is still there for the
+	// one state it was written for.
+	const html = renderStrip({
+		frontend: DRAFT_NO_MODEL,
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+	});
+	assert.match(html, /Choose a model/);
+	assert.doesNotMatch(html, /Retrying|Resolving the model/);
+});
+
+test("the pane's resolution state is wired to the strip, not merely supported by it", () => {
+	/*
+	 * The component renders these states only when it is handed one, and the strip
+	 * is rendered with each prop spelled out — so a missing forwarding line makes
+	 * the whole pending/failure treatment dead code while every render test above
+	 * stays green. The pane is the source, the composer is the only strip caller.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/draftResolution: DraftResolution \| undefined = draftPreviewOn/,
+		"the pane derives the state from its own preview query",
+	);
+	assert.match(
+		page,
+		/preview\.isError[\s\S]{0,120}status: "failed", retry:/,
+		"a failed resolution carries the retry, which is the only route back",
+	);
+	assert.match(composer, /draftResolution={sessionStatus\.draftResolution}/);
+	assert.match(page, /frontend: null,\s*\n\s*draft: true,\s*\n\s*draftResolution,/);
+});
+
+test("a session with no snapshot is still silent, not pending", () => {
+	// The states are the DRAFT's: a session that has not reported has a stream to
+	// report it, and claiming a resolution on its behalf would be a new lie.
+	const html = renderStrip({ frontend: null });
+	assert.equal(text(html), "");
+});
+
 test("a ladderless draft offers no effort control even where the model can be picked", () => {
 	// The same rule a session follows, with a stricter reason for the draft: a
 	// model that reasons without a reported ladder reads `reasoning`, and a draft's
@@ -456,7 +578,7 @@ test("a ladderless draft offers no effort control even where the model can be pi
 	// The model beside it IS a control: the gate is per reading, not per pane.
 	assert.match(
 		html,
-		/aria-label="Model: [^"]*\. Click to choose a different model"/,
+		/aria-label="Model: [^"]*\. Click to choose a different model\. It applies to the first message\."/,
 	);
 	const effort = readingClasses(html, "Reasoning effort:");
 	assert.equal(effort.label, "Reasoning effort: reasoning.");

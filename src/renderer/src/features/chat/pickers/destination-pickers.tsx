@@ -53,11 +53,13 @@ import {
 	type DraftSelectionTarget,
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
+	effortCarry,
 	selectionFromModel,
 } from "../draft-selection";
 import {
 	bandReadings,
 	effortLadder,
+	effortState,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
@@ -379,6 +381,9 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * is mounted (disabled) in session mode because hooks cannot be conditional.
 	 */
 	const draftPick = useDraftPick(draft, note);
+	/* The same client the pick's own resolution goes through, so the U1 effort-carry
+	   probe and the recorded pick share one cache entry per selection. */
+	const queryClient = useQueryClient();
 	/*
 	 * Keyed on the hook's target rather than on the pane's own prop: the prop is the
 	 * snapshot this dialog opened on, so a pick would otherwise leave this dialog's
@@ -501,16 +506,66 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * model's own default exactly as `/effort auto` does.
 			 */
 			if (draft) {
+				/*
+				 * A DRAFT pane's pick is not a command and has no owner to switch.
+				 *
+				 * The rung cannot ride the request as "keep whatever was there":
+				 * `reasoning_effort` is a level on THIS selection and `null` is "no rung
+				 * chosen", which resolves to the new model's own default. So a user who
+				 * chose `high` and then changed model used to get a first turn at a
+				 * different level AND a different cost from the one they configured,
+				 * while every on-screen signal - the confirmation, the chip, the tooltip
+				 * - told them the pick had simply succeeded (UX U1, design D7: the same
+				 * defect read from the copy side).
+				 *
+				 * The backend IS able to answer the only question that matters - does the
+				 * new model offer that level - so it is asked before the pick is recorded
+				 * rather than guessed at after it: resolve the new model once without a
+				 * rung, then carry the chosen level onto it, or clear it and SAY so, naming
+				 * the level the first message will actually run. Silence is the one outcome
+				 * this may not produce. The probe is the same query the pick itself will
+				 * read, by the same key, so carrying costs one extra resolution and clearing
+				 * is served from the probe.
+				 */
+				const carried =
+					typeof draft.target.model?.reasoning_effort === "string"
+						? draft.target.model.reasoning_effort.trim()
+						: "";
+				const next: DesktopModelSelection = {
+					provider,
+					model_id: modelId,
+					reasoning_effort: null,
+				};
+				const selectorOfResolution = (resolved: CanonicalFrontendSync) =>
+					modelSelector(
+						resolved.snapshot.selected_model ??
+							resolved.snapshot.effective_model,
+					) || option.label;
+				let carry = effortCarry("", [], "");
+				if (carried) {
+					try {
+						const probe = await queryClient.fetchQuery(
+							draftPreviewQuery({ ...draft.target, model: next }),
+						);
+						const offered = bandReadings(probe.snapshot, null).effort;
+						carry = effortCarry(
+							carried,
+							effortLadder(offered),
+							effortState(offered)?.label ?? "its own default",
+						);
+					} catch {
+						/*
+						 * The probe is the resolution the pick itself needs, so a failure here is
+						 * reported by the pick's own refusal path rather than twice: the sentence
+						 * is the plain one, which claims no level.
+						 */
+					}
+				}
 				await draftPick.pick(
-					{ provider, model_id: modelId, reasoning_effort: null },
+					carry.rung ? { ...next, reasoning_effort: carry.rung } : next,
 					{
 						describe: (resolved) =>
-							`The first message will run ${
-								modelSelector(
-									resolved.snapshot.selected_model ??
-										resolved.snapshot.effective_model,
-								) || option.label
-							}.`,
+							carry.confirmation(selectorOfResolution(resolved)),
 						refused: "The model was not changed.",
 					},
 				);
@@ -613,6 +668,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			rowAuth,
 			draft,
 			draftPick.pick,
+			queryClient,
 		],
 	);
 
@@ -685,8 +741,8 @@ export const ModelPicker: FC<PickerContext> = ({
 			description={
 				draft
 					? shownSelector
-						? `The first message will run ${shownSelector}. Choosing another changes what this conversation starts on.`
-						: "Choose the model the first message will run on."
+						? `The first message will run ${shownSelector}. Choosing another changes what this conversation starts on; your default is unchanged.`
+						: "Choose the model the first message will run on. This changes the first message only; your default is unchanged."
 					: shownSelector
 						? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
 						: "Choose the model for this session."

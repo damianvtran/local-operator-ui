@@ -880,10 +880,14 @@ export const Draft: Story = {
  * What to look for:
  *
  * - The model chip is no longer `aria-disabled`, carries the hover step a
- *   control has, and says "Click to choose a different model"; the sentence the
- *   old draft copy used ("The first message will use it. Change it once the
- *   conversation starts.") is gone, because it is no longer true.
- * - The effort chip says "Change it." — the session's own sentence.
+ *   control has, and says "Click to choose a different model. It applies to the
+ *   first message."; the sentence the old draft copy used ("The first message
+ *   will use it. Change it once the conversation starts.") is gone, because it is
+ *   no longer true.
+ * - The effort chip says "Change it. It applies to the first message." — the
+ *   control's own sentence, one step before a session's, carrying the same scope
+ *   clause (UX U2: the scope must survive the chip becoming actionable, which is
+ *   the moment it used to stop being said).
  * - The context chip is UNCHANGED: still the inert label, still focusable.
  * - Geometry: the strip measures 92px in BOTH boards at every width this set
  *   declares (900, the 220px floor and the 1000px capture viewport), and only
@@ -1014,8 +1018,9 @@ export const DraftTooltip: Story = {
  * The ACTIONABLE draft's model tooltip, opened the way a keyboard user opens it.
  *
  * The pair of `DraftTooltip`: same chip, same focus, one capability apart. A draft
- * that can open gets the control's sentence ("Click to choose a different model")
- * and a draft that cannot gets the fact-plus-reason one, and the only way to see
+ * that can open gets the control's sentence ("Click to choose a different model.
+ * It applies to the first message.") and a draft that cannot gets the
+ * fact-plus-reason one, and the only way to see
  * that the two frames say different things is to photograph both (design round 1,
  * D1). The tooltip is the button's `aria-label` content, so this frame is the
  * accessible name as much as it is the panel.

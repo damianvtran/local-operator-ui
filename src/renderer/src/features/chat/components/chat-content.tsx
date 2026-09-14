@@ -31,6 +31,10 @@ import {
 	workingLineInputFor,
 } from "../canonical/working-line-model";
 import type { DraftPickerDestination } from "../draft-selection";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -156,6 +160,11 @@ type ChatContentProps = {
 		 * readings inert with today's copy on a backend that cannot honour a pick.
 		 */
 		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		/**
+		 * Where a draft's resolution IS, while it has no reading yet; see
+		 * `SessionStatusStripProps["draftResolution"]`.
+		 */
+		draftResolution?: DraftResolution;
 	};
 	/**
 	 * Present when the conversation is a canonical backend session: the

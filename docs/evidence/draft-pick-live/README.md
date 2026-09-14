@@ -4,7 +4,18 @@ These three PNGs show a draft strip and an open model picker, not a successful
 model/effort pick or first message. They predate the PR #154 recovery and have
 not been recaptured. A live API response proves backend resolution; it does not
 prove that a user can activate the picker or that the resulting state renders.
-The missing browser interaction and rendered states remain a merge gate.
+
+**The browser interaction and rendered states this file used to call a merge gate
+exist, and are not in this directory.** QA round 3 drove the whole flow with the
+harness browser tool on `localhost:5204` against a real isolated backend and
+recorded a passing cell for every state this set lacks — effort-first pick, model
+pick, picked pair before send, send, first turn, sibling draft, and the
+capability-off negative control on a genuine pre-`draft_selection` backend — with
+frames kept outside the repository at `/tmp/qa-ui154-r3/evidence/20`-`41`. Design
+round 3 signed those states off on the same head, and its disposition table marks
+this set's D5 as fixed in documentation. Nothing in this directory changed for
+that: the pixels here stay historical, and the frames that carry the interaction
+claim are the ones QA drove.
 
 Historical method (not permission to repeat it): `scripts/draft-pick-evidence.vite.mjs`
 serves this page under Vite with `desktopProxyPlugin()` — the same plugin
@@ -20,7 +31,7 @@ approved browser tool only; do not run the historical Chrome/CDP driver.
 
 The initial capture report named backend PR #1110 at `ee8d41fba`; a later pass
 reported the released 0.54.46 backend and committed the current PNGs in
-`e444c44a2` (rebased equivalent `5a65d4af7`). The exact capture timestamps and
+`e444c44a2` (rebased equivalent `301ae2d9d`). The exact capture timestamps and
 per-frame DOM measurements were not retained. The manifest cites the historical
 frame-carrying commit, not a fresh capture or current-head visual equivalence.
 Backend #1110 is merged at `1296cda41` and released in 0.54.46; its availability
@@ -100,15 +111,21 @@ reproducible from the code, and these local files are not published attachments.
 - **Independent QA's API matrix** on frozen UI `b79c3eb80` found 617 catalogue
   rows, 447 connected, and successfully previewed and created a chosen
   model/effort; a real first turn answered `QA154-PONG`. It also verified auth and
-  invalid-input refusals. This is backend/transport execution, **not UI click
-  proof**: see PR #154's `QA report — round 1` for commands and actual responses.
-- **Effort first on a fresh default-resolved draft**, model first then effort,
-  rejected-pick preservation, another draft/settings remaining unchanged, and
-  the capability-off negative control all still need the real browser-tool flow.
-  QA's origin approval request expired without user approval; no alternative
-  browser driver was used and no new screenshot is claimed.
-- **Design scope:** round 2 is terminal only for its viewed strip remediation and
-  supplied populated model-picker layout. The missing picked/effort/after-send
-  surfaces, including loading/empty/refusal/populated and consecutive frames,
-  remain **BLOCKED / unreviewed**. Existing pixels do not establish these states
-  on the changed picker code or the upstream-changed whole app.
+  invalid-input refusals. This is backend/transport execution, now SUPERSEDED as
+  the reachability argument by the browser round below rather than left as the
+  only evidence: see PR #154's `QA report — round 1` for commands and actual
+  responses, and `QA report — round 3` for the UI cells it could not reach.
+- **The interaction cells are covered, outside this directory.** QA round 3 drove
+  them with real pointer events through the shipped browser transport: the
+effort-first pick on a fresh draft and on a chosen model, the model pick with its
+confirmation, the picked pair before send, the send, the first turn served by the
+picked pair, a sibling draft left on the machine default, and the capability-off
+negative control at rest and on click. The frames are QA's, at
+`/tmp/qa-ui154-r3/evidence/`; the round's disclosures bound them — the browser
+transport rather than Electron IPC, and no captured outbound provider body.
+- **Design scope:** design round 3 is terminal on its head for the live picker,
+  picked, after-send and inert states, with no blocker or major finding, and its
+  D6-D9 remaining as recorded follow-ups. Its three unrendered items stay
+  unrendered: the longest catalogue selector, the in-dialog refusal (unreachable by
+  product design), and the mid-transition frames for D6. Existing pixels in THIS
+  directory still do not establish any of it.

@@ -53,7 +53,10 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
-import type { DraftPickerDestination } from "../draft-selection";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
@@ -283,6 +286,11 @@ type MessageInputProps = {
 		 * honour a pick. See `SessionStatusStripProps["onOpenDraftPicker"]`.
 		 */
 		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		/**
+		 * Where a draft's resolution IS, while it has no reading yet; see
+		 * `SessionStatusStripProps["draftResolution"]`.
+		 */
+		draftResolution?: DraftResolution;
 	};
 	/**
 	 * The run's derived model, for the status row's plan count.
@@ -1629,6 +1637,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									effortEntities={sessionStatus.effortEntities}
 									draft={sessionStatus.draft}
 									onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
+									draftResolution={sessionStatus.draftResolution}
 									pendingModel={sessionStatus.pendingModel}
 								/>
 							</ErrorBoundary>

@@ -63,6 +63,7 @@ const bundle = await build({
 				NO_DRAFT_TARGET,
 				draftPreviewKey,
 				draftPreviewQuery,
+				effortCarry,
 				fetchDraftPreview,
 				selectionFromModel,
 				selectionSelector,
@@ -108,6 +109,7 @@ const {
 	desktopRequestSchema,
 	draftPreviewKey,
 	draftPreviewQuery,
+	effortCarry,
 	effortLadder,
 	errorText,
 	fetchDraftPreview,
@@ -413,9 +415,33 @@ test("each picker routes a draft's pick through one resolver, and never through 
 		"the effort pick reads the remembered selection, not the prop",
 	);
 
-	// A model pick replaces the selection, rung included: the previous model's
-	// rung is not a level the new model agreed to.
-	assert.match(picker, /model_id: modelId, reasoning_effort: null/);
+	/*
+	 * A model pick no longer SILENTLY discards the effort rung the user chose
+	 * (UX U1, design D7 - the same defect from the copy side).
+	 *
+	 * The candidate still starts with no rung, because that is the wire's only
+	 * spelling of "the new model's own default", and the previous model's rung is
+	 * still not a level the new model agreed to. What changed is that the pick
+	 * asks whether it IS offered before recording it: the candidate is replaced by
+	 * the carried selection only where the new model's own resolved ladder
+	 * contains the level, and BOTH branches name in the confirmation which level
+	 * the first message will actually run. The rung is read from the pane's own
+	 * pick, not from a row or a default.
+	 */
+	assert.match(picker, /model_id: modelId,\s*reasoning_effort: null/);
+	assert.match(picker, /draft\.target\.model\?\.reasoning_effort/);
+	assert.match(picker, /effortCarry\(/);
+	assert.match(picker, /effortLadder\(offered\)/);
+	assert.match(picker, /carry\.rung \? \{ \.\.\.next, reasoning_effort: carry\.rung \} : next/);
+	// The fallback the clearing sentence names is the NEW model's resolved
+	// default, read off the same resolution - and it degrades to a phrase rather
+	// than to silence when the resolution names no level. The sentences
+	// themselves are asserted in "a model pick may not silently discard the
+	// chosen effort rung" above, against the shipped decision.
+	assert.match(
+		picker,
+		/effortState\(offered\)\?\.label \?\? "its own default"/,
+	);
 	// Candidate behaviour is exercised below through the actual hook/adapter.
 	// A regex here previously required the very null branch that broke effort-first
 	// picks on a resolved default, while every source assertion stayed green (R7).
@@ -430,6 +456,57 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	// checkbox to change it with.
 	assert.match(picker, /\{!draft && \(/);
 	assert.match(picker, /This pick also sets the default for new sessions/);
+});
+
+/* ---- 3b. a model pick may not silently discard the chosen effort rung ------ */
+
+/*
+ * UX U1, and design D7 read from the other side: the same defect, one a flow
+ * finding and one a copy finding.
+ *
+ * The wire cannot say "keep the previous rung" - `null` means "the new model's
+ * own default" - so a pick that always sent it discarded an explicit choice in
+ * silence, and every signal on screen said the pick had succeeded. These are the
+ * three outcomes `effortCarry` decides from the NEW model's own resolved ladder,
+ * and each one is asserted on the sentence the confirmation prints, because a
+ * clearing that is not stated is the defect rather than the rule.
+ */
+test("a model that offers the chosen rung carries it, and the confirmation says so", () => {
+	const carry = effortCarry("high", ["low", "medium", "high", "xhigh", "max"], "low");
+	assert.equal(carry.rung, "high");
+	assert.equal(
+		carry.confirmation("openrouter/openai/gpt-6-astra"),
+		"The first message will run openrouter/openai/gpt-6-astra at high effort.",
+	);
+});
+
+test("a model that does not offer it clears the rung AND names the level that will run", () => {
+	const carry = effortCarry("high", ["low", "medium"], "low");
+	assert.equal(carry.rung, null);
+	const sentence = carry.confirmation("openrouter/meta/llama-4");
+	assert.match(sentence, /The first message will run openrouter\/meta\/llama-4\./);
+	assert.match(sentence, /effort goes back to low/, "the level that will actually run");
+	assert.match(sentence, /high belongs to the other model/, "the level that was dropped");
+});
+
+test("a pane that never chose a rung is unchanged, and claims no level", () => {
+	const carry = effortCarry("", ["low", "medium"], "low");
+	assert.equal(carry.rung, null);
+	assert.equal(
+		carry.confirmation("openrouter/openai/gpt-5"),
+		"The first message will run openrouter/openai/gpt-5.",
+	);
+});
+
+test("a resolution that names no default level still says the rung was cleared", () => {
+	// The fallback is `effortState(...)?.label ?? "its own default"` at the call
+	// site; the decision must not turn an unknown default into a silent clear.
+	const carry = effortCarry("xhigh", [], "its own default");
+	assert.equal(carry.rung, null);
+	assert.match(
+		carry.confirmation("openrouter/openai/gpt-5"),
+		/effort goes back to its own default, because xhigh belongs to the other model's ladder/,
+	);
 });
 
 test("the affordance is gated on all three capabilities the pickers depend on", () => {

@@ -134,6 +134,74 @@ export async function fetchDraftPreview(
 }
 
 /**
+ * What a MODEL pick does to the effort level the user had already chosen.
+ *
+ * The wire cannot express "keep the previous rung": `reasoning_effort` names a
+ * level on THIS request, and `null` is "no rung chosen", which the backend
+ * resolves to the new model's own default. A pick that always sent `null`
+ * therefore discarded an explicit choice in silence — the pane read `low` where
+ * the user had set `high`, the first turn ran at a different level AND a
+ * different cost, and every on-screen signal said the pick had succeeded
+ * (UX U1; design D7 is the same defect read from the copy side).
+ *
+ * The backend can answer the only question that matters — does the new model
+ * OFFER that level — so this decides AFTER the new model is resolved, from the
+ * resolution's own ladder, and returns both halves of the answer: the rung to
+ * record, and the sentence the confirmation must print. Clearing a rung is a
+ * legitimate outcome; clearing it silently is not, which is why the two live
+ * together here rather than at the call site, where the sentence could drift
+ * from the decision it describes.
+ *
+ * `carried` is the level in force on the DRAFT's own pick (empty when the user
+ * never chose one), `ladder` the new model's resolved rungs, and `fallback` the
+ * level the first message will actually run when the rung is dropped — the
+ * resolved default's own label, or `its own default` when the resolution does
+ * not name one.
+ */
+export function effortCarry(
+	carried: string,
+	ladder: readonly string[],
+	fallback: string,
+): { rung: string | null; confirmation: (selector: string) => string } {
+	if (!carried)
+		return {
+			rung: null,
+			confirmation: (selector) => `The first message will run ${selector}.`,
+		};
+	if (ladder.includes(carried))
+		return {
+			rung: carried,
+			confirmation: (selector) =>
+				`The first message will run ${selector} at ${carried} effort.`,
+		};
+	return {
+		rung: null,
+		confirmation: (selector) =>
+			`The first message will run ${selector}. Its effort goes back to ${fallback}, because ${carried} belongs to the other model's ladder.`,
+	};
+}
+
+/**
+ * Where the pane's resolution IS, for the states in which it has no reading yet.
+ *
+ * A draft's model and effort readings are the backend's own answer for its
+ * selection, so there is a window — and a failure - in which the pane has no
+ * reading rather than an unresolved one, and the two must not be spelled the
+ * same way (UX U3). The strip's "no model resolved yet" entry claims a
+ * RESOLUTION that named nothing; while the resolution is in flight, or after it
+ * failed, the honest statement is about the question rather than its answer.
+ * `pending` therefore gets the app's own not-yet-known treatment (the dim ink
+ * and spinner the session's switching chip uses) and `failed` gets a control
+ * that retries, because `retry: false` on the query means nothing else will.
+ *
+ * Built by the pane from its own query, and consumed only by the strip, so the
+ * two cannot disagree about which of the three states the pane is in.
+ */
+export type DraftResolution =
+	| { status: "pending" }
+	| { status: "failed"; retry: () => void };
+
+/**
  * The query the pane and the pickers share.
  *
  * `keepPreviousData` is load-bearing rather than a nicety: picking a model
