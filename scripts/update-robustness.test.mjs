@@ -4111,49 +4111,121 @@ async function loRunUpdate({
 			);
 		}
 	}
-	const port = await state.listen();
-	const cacheRoot = join(scenario.dir, "cache");
-	const updateCache = loWriteUpdateConfig(cacheRoot, port);
-	if (cachedOld) {
-		mkdirSync(updateCache, { recursive: true });
-		writeFileSync(
-			join(updateCache, "update.zip"),
-			cacheBase ?? scenario.previous(arch),
-		);
-	}
+	try {
+		/*
+		 * INSIDE the try, all of it: `listen()` starts the leak this catch exists
+		 * for, and the writes below can throw (mkdirSync, writeFileSync, and the
+		 * `scenario.previous(arch)` read behind them). Opening the try after them -
+		 * which is what this looked like on the first pass - left the feed
+		 * listening on any throw in between, which is the same hang by a narrower
+		 * door.
+		 */
+		const port = await state.listen();
+		const cacheRoot = join(scenario.dir, "cache");
+		const updateCache = loWriteUpdateConfig(cacheRoot, port);
+		if (cachedOld) {
+			mkdirSync(updateCache, { recursive: true });
+			writeFileSync(
+				join(updateCache, "update.zip"),
+				cacheBase ?? scenario.previous(arch),
+			);
+		}
 
-	const result = await loAsArch(arch, async () => {
-		const { updater, lines } = loMakeUpdater({
-			cacheRoot,
-			version: "0.19.6",
-			feedUrl: `http://127.0.0.1:${port}/`,
+		const result = await loAsArch(arch, async () => {
+			const { updater, lines } = loMakeUpdater({
+				cacheRoot,
+				version: "0.19.6",
+				feedUrl: `http://127.0.0.1:${port}/`,
+			});
+			try {
+				await updater.checkForUpdates();
+				const files = await updater.downloadUpdate();
+				return { updater, lines, files };
+			} finally {
+				// Not cleanup for its own sake: `updateDownloaded` starts the proxy
+				// server it would hand a zip to Squirrel.Mac with, and that listener
+				// would otherwise hold this process open after the last assertion.
+				//
+				// IN A `finally`, because the failure path leaked it: a throw from
+				// `checkForUpdates`/`downloadUpdate` used to skip this line, and the
+				// proxy then held the file's process open for good.
+				updater.closeServerIfExists();
+			}
 		});
-		await updater.checkForUpdates();
-		const files = await updater.downloadUpdate();
-		// Not cleanup for its own sake: `updateDownloaded` starts the proxy server
-		// it would hand a zip to Squirrel.Mac with, and that listener would
-		// otherwise hold this process open after the last assertion.
-		updater.closeServerIfExists();
-		return { updater, lines, files };
-	});
 
-	return {
-		scenario,
-		state,
-		updateCache,
-		...result,
-		close: () => state.close(),
-		downloadedPath: (name) => join(updateCache, "pending", name),
-	};
+		return {
+			scenario,
+			state,
+			updateCache,
+			...result,
+			close: () => state.close(),
+			downloadedPath: (name) => join(updateCache, "pending", name),
+		};
+	} catch (error) {
+		/*
+		 * THE FAILURE PATH MUST CLOSE THE FEED TOO, or one failing test hangs the
+		 * whole suite instead of reporting.
+		 *
+		 * `close()` is handed to the CALLER, so a throw from inside this function
+		 * means the caller never receives the object and its `finally` never runs -
+		 * leaving the fixture feed listening on 127.0.0.1 for the life of this
+		 * process. `node --test` waits for a file's process to exit, so the whole
+		 * desktop suite then never returns at all: measured in CI, `Desktop Tests`
+		 * silent for tens of minutes (43 in the first job I read, 185 in the
+		 * longest) until the next push cancelled it, and reproduced in a Linux
+		 * container where this file alone never exits and leaves five listeners
+		 * behind.
+		 *
+		 * The defect is not that these tests can fail - they do, on a host whose
+		 * channel file is not the one MacUpdater asks for - it is that failing
+		 * HANGS the run, which is the one outcome a test must never have.
+		 */
+		try {
+			state.close();
+		} catch {
+			// A close failure must not replace the error on its way out: the
+			// assertion the reader needs is the original one, and a close that
+			// throws has nothing to add to it.
+		}
+		throw error;
+	}
 }
 
-test("the updater resolves the channel file, and both architectures are listed", async () => {
+/**
+ * Skip a body that asserts MacUpdater behaviour when it is not running on macOS.
+ *
+ * The subject is MacUpdater: the feed these tests build is a mac release (per-arch
+ * zips and `latest-mac.yml`), and off darwin the updater asks for that platform's
+ * own channel file instead. They are red on Linux, and the mode depends on the
+ * head rather than on the platform: job 103777903178 (run 34777397403, the last
+ * `Desktop Tests` ever to complete) failed all six with `Cannot find module
+ * 'app-builder-bin'` from the scenario builder it had then, before any feed
+ * existed, while on this head - which builds its fixtures through `buildBlockMap`
+ * - a `node:22` container fails them with `Cannot find channel
+ * "latest-linux.yml"`, a 404 from the fixture. Six red tests on the only platform
+ * this suite runs on is also what USED to leave `Desktop Tests` silent for tens of
+ * minutes (43 in the first job I read, 185 in the longest) until the next push
+ * cancelled it, because the failure path left the fixture feed listening
+ * (`loRunUpdate`). That leak is fixed separately; this gate is what makes this
+ * file honest about where it is evidence.
+ *
+ * Returns true when the caller must return immediately.
+ */
+function skipUnlessDarwin(t) {
+	if (process.platform === "darwin") return false;
+	t.skip("macOS only");
+	return true;
+}
+
+test("the updater resolves the channel file, and both architectures are listed", async (t) => {
+	if (skipUnlessDarwin(t)) return;
+
 	const scenario = await loUpdateScenario();
 	const state = loServe(scenario.next.web);
-	const port = await state.listen();
-	const cacheRoot = join(scenario.dir, "cache");
-	loWriteUpdateConfig(cacheRoot, port);
 	try {
+		const port = await state.listen();
+		const cacheRoot = join(scenario.dir, "cache");
+		loWriteUpdateConfig(cacheRoot, port);
 		const { updater } = loMakeUpdater({
 			cacheRoot,
 			version: "0.19.6",
@@ -4186,7 +4258,9 @@ for (const [arch, own, other] of [
 	],
 	["x64", "local-operator-ui-0.19.7-x64.zip", "local-operator-ui-0.19.7-arm64.zip"],
 ]) {
-	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async () => {
+	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async (t) => {
+		if (skipUnlessDarwin(t)) return;
+
 		const run = await loRunUpdate({ arch });
 		try {
 			const entry = run.scenario.next.entries.find((it) => it.url === own);
@@ -4235,7 +4309,9 @@ for (const [arch, own, other] of [
 	});
 }
 
-test("a build that changed across most of the file transfers most of it", async () => {
+test("a build that changed across most of the file transfers most of it", async (t) => {
+	if (skipUnlessDarwin(t)) return;
+
 	// The honest counterpart to the delta above, and the reason the PR body does
 	// not claim routine updates are small: the mechanism transfers the blocks
 	// that changed, so a Chromium bump - which changes most of an archive - still
@@ -4261,7 +4337,9 @@ test("a build that changed across most of the file transfers most of it", async 
 	}
 });
 
-test("the first update off a universal build falls back to a full download", async () => {
+test("the first update off a universal build falls back to a full download", async (t) => {
+	if (skipUnlessDarwin(t)) return;
+
 	// The state every existing macOS user is in for exactly one release: they run
 	// a universal 0.19.6 whose zip sits in the cache as the diff base, and this
 	// release ships per-arch zips. The old block-map URL the updater derives is
@@ -4299,7 +4377,9 @@ test("the first update off a universal build falls back to a full download", asy
 	}
 });
 
-test("without the block maps a release offers, the updater transfers the whole file", async () => {
+test("without the block maps a release offers, the updater transfers the whole file", async (t) => {
+	if (skipUnlessDarwin(t)) return;
+
 	// The world every release up to now lived in: electron-builder built a block
 	// map for each archive and the publish job dropped it, so the first block-map
 	// fetch 404s, the catch turns the update into the full download, and the only
