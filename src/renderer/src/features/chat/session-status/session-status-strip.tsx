@@ -161,7 +161,17 @@ const READING_BOX =
  * scale (§ 5). `cursor-pointer` follows the working-directory chip's rule: a
  * control that opens a menu takes the pointer, an inert row does not.
  */
-const READING_BUTTON = cn(
+/**
+ * The readings' control box, EXPORTED because the composer now has a second
+ * chip species in the same region: the status row's plan count.
+ *
+ * `docs/composer-status-tabs.md` § 5.1 fixes the treatment as "the readings' own
+ * control", and a restated class string is how two chips over one box drift into
+ * two hover grounds and two focus offsets. The name stays the readings' because
+ * that is where the box was authored; what is shared is the box, not the
+ * readings.
+ */
+export const READING_BUTTON = cn(
 	READING_BOX,
 	"cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart",
 	"hover:bg-accent-wash hover:text-ink",

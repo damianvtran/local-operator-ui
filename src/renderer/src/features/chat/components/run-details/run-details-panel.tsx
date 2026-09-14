@@ -18,7 +18,7 @@
 
 import { Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { Fragment, type HTMLAttributes, type ReactNode } from "react";
+import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
 import { RunDetailMcp } from "./run-detail-mcp";
 import type { McpServerRow, RunDetails } from "./run-detail-model";
 import { hasRunDetails } from "./run-detail-model";
@@ -45,6 +45,15 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 * `tallyBudget`. One source, one reading.
 	 */
 	paneWidth: number;
+	/**
+	 * The To-dos section's element, for the pane's consume-once reveal request.
+	 *
+	 * Threaded through the body rather than read here: the request is the pane's
+	 * (`RunPanel` owns the effect and the store subscription), and this component
+	 * stays presentational — it renders the sections and decides nothing about
+	 * where the pane is looking.
+	 */
+	todosSectionRef?: Ref<HTMLElement>;
 };
 
 export const RunDetailsPanel = ({
@@ -55,6 +64,7 @@ export const RunDetailsPanel = ({
 	rosterExpanded,
 	onToggleRosterExpanded,
 	paneWidth,
+	todosSectionRef,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -97,7 +107,13 @@ export const RunDetailsPanel = ({
 	if (details.todos.length > 0) {
 		sections.push({
 			key: "todos",
-			body: <RunDetailTodos details={details} paneWidth={paneWidth} />,
+			body: (
+				<RunDetailTodos
+					details={details}
+					paneWidth={paneWidth}
+					sectionRef={todosSectionRef}
+				/>
+			),
 		});
 	}
 	if (mcpServers.length > 0) {

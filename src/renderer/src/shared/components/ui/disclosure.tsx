@@ -32,6 +32,7 @@
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
+import { Tooltip } from "./tooltip";
 
 export type DisclosureProps = {
 	/**
@@ -82,6 +83,41 @@ export type DisclosureProps = {
 	 * the second kind.
 	 */
 	disabled?: boolean;
+	/**
+	 * The trigger's ACCESSIBLE NAME, when the visible summary is abbreviated.
+	 *
+	 * A summary is a preview: `Goal: <a truncated snippet>` is the whole visible
+	 * text, and the value behind the ellipsis has to be readable without
+	 * operating the control. The name is where that goes, because it is the one
+	 * string a screen reader reads before the press and the pointer reads on
+	 * hover beside `triggerTooltip`.
+	 *
+	 * Not a `title` and not a second visible line: the trigger is a 24px chip and
+	 * a `title` answers neither keyboard focus nor the app's own tooltip idiom.
+	 */
+	triggerLabel?: string;
+	/**
+	 * The app's tooltip over the TRIGGER, for the same class of caller.
+	 *
+	 * The primitive owns the button, so a caller whose summary truncates cannot
+	 * attach `Tooltip` to it from outside — the wrapper this component renders is
+	 * the caller's flex ITEM, and a tooltip anchored there would answer for the
+	 * empty space beside the chip as well as for the chip. Passing the content
+	 * here is the only way to put the app's tooltip on the control without
+	 * reimplementing the trigger, which `docs/branding.md` § Disclosure forbids
+	 * outside the two named button-in-button cases.
+	 */
+	triggerTooltip?: ReactNode;
+	/**
+	 * Reports the open state, for copy that has to state its VERB.
+	 *
+	 * A caller whose `triggerLabel`/`triggerTooltip` names the action needs the
+	 * state this component owns — `Expand the session goal` collapsed,
+	 * `Collapse the session goal` open — and there is no way to derive it from
+	 * outside without duplicating the state. The report is one-way by design: it
+	 * never controls the component, so the two cannot disagree.
+	 */
+	onOpenChange?: (open: boolean) => void;
 };
 
 // One chevron column: the 14px glyph plus the trigger's 6px gap. Content hangs
@@ -112,6 +148,9 @@ export const Disclosure = ({
 	triggerClassName,
 	rowClassName,
 	disabled = false,
+	triggerLabel,
+	triggerTooltip,
+	onOpenChange,
 }: DisclosureProps) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
 	const contentId = useId();
@@ -119,7 +158,9 @@ export const Disclosure = ({
 	// The chevron slot is reserved rather than dropped: losing 20px of gutter
 	// is exactly the jog this shares a constant to avoid. Interactive
 	// affordances come off, and `triggerClassName` is not applied — a hover
-	// ground on a row that does not respond to a click is a lie.
+	// ground on a row that does not respond to a click is a lie. `triggerLabel`
+	// and `triggerTooltip` come off with it and for the same reason: there is no
+	// control here for a name to name or a tooltip to describe.
 	if (disabled) {
 		return (
 			<div className={className}>
@@ -141,27 +182,44 @@ export const Disclosure = ({
 
 	return (
 		<div className={className}>
-			<button
-				type="button"
-				aria-expanded={isOpen}
-				aria-controls={contentId}
-				onClick={() => setIsOpen((previous) => !previous)}
-				className={cn(
-					ROW,
-					"cursor-pointer select-none",
-					"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
-					rowClassName,
-					triggerClassName,
-				)}
-			>
-				{chevron === "leading" && (
-					<span className="flex shrink-0 text-ink-disabled">{glyph}</span>
-				)}
-				<span className="min-w-0 flex-1">{summary}</span>
-				{chevron === "trailing" && (
-					<span className="flex shrink-0 text-ink-disabled">{glyph}</span>
-				)}
-			</button>
+			{/*
+			 * `Tooltip` renders its child BARE when it has no content, so this is not
+			 * a second branch: a caller that passes no `triggerTooltip` gets the
+			 * trigger unwrapped with no extra node, which is what every existing call
+			 * site does.
+			 */}
+			<Tooltip content={triggerTooltip} side="top">
+				<button
+					type="button"
+					aria-expanded={isOpen}
+					aria-controls={contentId}
+					aria-label={triggerLabel}
+					onClick={() => {
+						/*
+						 * Reported OUTSIDE the state updater: React may invoke an updater
+						 * more than once for one press (StrictMode does), and a callback that
+						 * runs inside it would then be called twice for one toggle.
+						 */
+						setIsOpen(!isOpen);
+						onOpenChange?.(!isOpen);
+					}}
+					className={cn(
+						ROW,
+						"cursor-pointer select-none",
+						"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
+						rowClassName,
+						triggerClassName,
+					)}
+				>
+					{chevron === "leading" && (
+						<span className="flex shrink-0 text-ink-disabled">{glyph}</span>
+					)}
+					<span className="min-w-0 flex-1">{summary}</span>
+					{chevron === "trailing" && (
+						<span className="flex shrink-0 text-ink-disabled">{glyph}</span>
+					)}
+				</button>
+			</Tooltip>
 			{isOpen && (
 				<div
 					id={contentId}
