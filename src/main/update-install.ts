@@ -1760,11 +1760,22 @@ done
 #     job going or the swap landing still ends this at once - both are decisions
 #     the install made - and otherwise the hard bound does, which is where
 #     "better a live swap than no app at all" takes over.
+#
+#     The hard bound's notice names the action the panel will ask for instead of
+#     a different one. What the user sees next is the app coming back with the
+#     in-flight panel, whose copy is "quit and leave it closed until the app
+#     opens again by itself" - so a notice that ended "check for updates when it
+#     is back" told them the install was over at the exact moment the app was
+#     about to say it was still running, and two authorities seconds apart with
+#     opposite instructions is worse than either alone (UX U10). The notice now
+#     states what is happening and hands over to that panel rather than
+#     pre-empting it: the instruction the user acts on is the panel's, and it is
+#     the correct one - quitting again is what lets the swap finish.
 if [ "$holding" -eq 1 ]; then
 	while :; do
 		if decided; then break; fi
 		if [ "$(now)" -ge "$hard_deadline" ]; then
-			notify "The update is taking longer than expected. Opening Local Operator again now — check for updates when it is back."
+			notify "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes."
 			break
 		fi
 		sleep ${intervalSeconds}

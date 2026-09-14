@@ -1809,6 +1809,16 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 	 * launches is a hang, not a slow machine.
 	 */
 	const decisionDeadline = Date.now() + 60000;
+	/*
+	 * The still-installing notice, matched by its OWN sentence rather than by the
+	 * phrase it shares with other copy. The hard bound's notice names the panel's
+	 * instruction ("if it says the update is still installing, quit it and leave
+	 * it closed"), so a bare /still installing/ counts two notices where this
+	 * case is about there being exactly one (UX U10). The sentence is what the
+	 * script writes on exactly one path, which is also what makes it the right
+	 * thing to count.
+	 */
+	const stillInstalling = /The update is still installing\./;
 	let holding = false;
 	while (Date.now() < decisionDeadline) {
 		assert.equal(
@@ -1816,15 +1826,13 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 			before,
 			"the soft bound launched into a loaded install job",
 		);
-		holding = fixture
-			.notifications()
-			.some((line) => /still installing/.test(line));
+		holding = fixture.notifications().some((line) => stillInstalling.test(line));
 		if (holding) break;
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 	const holdingNotes = fixture.notifications();
 	assert.ok(
-		holdingNotes.some((line) => /still installing/.test(line)),
+		holdingNotes.some((line) => stillInstalling.test(line)),
 		`expected a still-installing notification, got ${JSON.stringify(holdingNotes)}`,
 	);
 
@@ -1832,6 +1840,14 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 	const result = await watchdog.exit;
 	assert.equal(result.code, 0);
 	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	/*
+	 * Exactly one launch, not "at least one". `waitForLaunches` is a `>=` wait,
+	 * so it cannot tell one launch from two - and two is what a hold whose
+	 * decision is taken twice would produce: the soft bound's path and the hard
+	 * bound's are the same question asked at two moments (review R13). The
+	 * no-hold case above asserts the same equality on its own bound.
+	 */
+	assert.equal(fixture.launches().length, before + 1);
 	const notes = fixture.notifications();
 	// The first notification is the one the operator never got: the app has just
 	// vanished, and this is the only warning that reopening it cancels the install.
@@ -1846,7 +1862,7 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 	// Once each, and named as this app: a banner the user cannot attribute is
 	// worse than no banner.
 	assert.equal(
-		notes.filter((line) => /still installing/.test(line)).length,
+		notes.filter((line) => stillInstalling.test(line)).length,
 		1,
 	);
 	assert.ok(notes.every((line) => /Local Operator/.test(line)));
@@ -4186,7 +4202,21 @@ const loadUpdateServiceModule = async () => {
 									requestSingleInstanceLock: () => true,
 									releaseSingleInstanceLock: () => {},
 								};
-								export const ipcMain = { handle: () => {}, on: () => {}, once: () => {}, removeHandler: () => {}, removeAllListeners: () => {} };
+								export const ipcMain = {
+									/*
+									 * handle() RECORDS as well as drops. Nothing in this fixture ever
+									 * invokes a handler - this process is not Electron - but a test
+									 * that needs to drive a path the app reaches only through IPC (the
+									 * quit an in-flight panel offers, UX U8) has to be able to call
+									 * the function the app would call, and a fixture that swallows
+									 * them leaves that path unassertable.
+									 */
+									handle: (channel, fn) => { (globalThis.__loIpcHandlers ??= {})[channel] = fn; },
+									on: () => {},
+									once: () => {},
+									removeHandler: (channel) => { delete (globalThis.__loIpcHandlers ?? {})[channel]; },
+									removeAllListeners: () => {},
+								};
 								export class BrowserWindow {
 									constructor() {
 										this.webContents = { send: () => {}, isDestroyed: () => false, on: () => {}, once: () => {}, setWindowOpenHandler: () => {} };
@@ -5327,6 +5357,125 @@ test("a quit during an in-flight install takes the close over, and only then", a
 			if (interval) clearInterval(interval);
 		}
 		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * One quit is one decision, whichever gesture asked for it.
+ *
+ * There are two ways into this decision and the user believes both are the same
+ * act: the panel's own "Quit and let the update finish", which goes through the
+ * `quit-for-update-install` IPC handler, and the window close / ordinary quit,
+ * which go through `quitForInFlightInstall`. The app runs the second one again
+ * on the way out, because `before-quit` asks the same question. So the handler
+ * has to RECORD its decision exactly as the other path does - without that, one
+ * quit is answered twice and the second answer starts a second relaunch
+ * watchdog for one install, where the panel's gesture and the window gesture
+ * would leave different numbers of watchdogs behind (UX U8).
+ *
+ * What is pinned is the service's own property, measured where the two paths
+ * meet: the number of watchdogs ensured per quit. The gesture-to-handler wiring
+ * lives in `src/main/index.ts` and `src/preload/index.ts`, and the live-app run
+ * in the PR drives the gestures themselves.
+ */
+test("a quit through the panel's own handler decides once and ensures one watchdog", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const intervals = [];
+
+	try {
+		// A current marker with the install's job loaded: the machine says an
+		// install is in flight, so both gestures are the take-over case.
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.19.5",
+			artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+			startedAt: new Date().toISOString(),
+			watchdogPid: null,
+		});
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					once: () => {},
+				},
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		intervals.push(updateService.updateCheckInterval);
+		updateService.backendUrl = "http://127.0.0.1:9";
+		updateService.installJobLoadedProbe = () => true;
+		/*
+		 * The seam is `launchWatchdog`, substituted rather than run for real.
+		 *
+		 * It is where an ensure ends (the marker carries no watchdog pid, so
+		 * `watchdogIsOurs` answers no and every ensure starts one), so counting
+		 * these calls is counting the watchdogs a quit would leave running - which
+		 * is the thing a second decision produces a second of. Substituted rather
+		 * than delegated because the real one spawns a detached process on a
+		 * packaged darwin app, and a test must not leave a watchdog on the
+		 * operator's machine; its own behaviour is driven against a real process
+		 * tree by the cases above.
+		 */
+		const ensures = [];
+		updateService.launchWatchdog = (targetVersion) => {
+			ensures.push(targetVersion);
+			return 4242;
+		};
+
+		updateService.setupIpcHandlers();
+		const handler = globalThis.__loIpcHandlers?.["quit-for-update-install"];
+		assert.equal(
+			typeof handler,
+			"function",
+			"the panel's own quit must have a handler to reach the decision",
+		);
+
+		// The panel's gesture: one decision, one watchdog.
+		assert.equal(handler(), true);
+		assert.equal(ensures.length, 1);
+
+		// And the app's own quit on the way out asks the same question again -
+		// which is the whole reason the handler had to record its answer.
+		assert.equal(updateService.quitForInFlightInstall("app quit"), true);
+		assert.equal(ensures.length, 1);
+
+		// The window-close gesture then behaves identically, so the two gestures
+		// cannot drift apart again: same one decision, same one watchdog.
+		const fromWindowClose = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false, once: () => {} },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		intervals.push(fromWindowClose.updateCheckInterval);
+		fromWindowClose.backendUrl = "http://127.0.0.1:9";
+		fromWindowClose.installJobLoadedProbe = () => true;
+		const windowEnsures = [];
+		fromWindowClose.launchWatchdog = (targetVersion) => {
+			windowEnsures.push(targetVersion);
+			return 4243;
+		};
+		assert.equal(fromWindowClose.quitForInFlightInstall("last window closed"), true);
+		assert.equal(fromWindowClose.quitForInFlightInstall("app quit"), true);
+		assert.equal(windowEnsures.length, 1);
+
+		// Nothing was cleared to make either promise true: the marker is the
+		// record of the install that is still running.
+		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
+	} finally {
+		for (const interval of intervals) {
+			if (interval) clearInterval(interval);
+		}
+		delete globalThis.__loTestPaths;
+		delete globalThis.__loIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
