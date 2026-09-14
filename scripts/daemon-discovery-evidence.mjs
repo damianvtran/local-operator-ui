@@ -206,8 +206,12 @@ function startRealDaemon(label) {
 	});
 	children.push(child);
 	let log = "";
-	child.stdout.on("data", (d) => (log += d));
-	child.stderr.on("data", (d) => (log += d));
+	child.stdout.on("data", (d) => {
+		log += d;
+	});
+	child.stderr.on("data", (d) => {
+		log += d;
+	});
 	return { child, text: () => log };
 }
 
@@ -432,6 +436,7 @@ try {
 		"",
 	);
 	process.env.LOCAL_OPERATOR_CONFIG_DIR = ROOT;
+	// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 	delete process.env.VITE_DISABLE_BACKEND_MANAGER;
 	const managerModule = await bundleManagerModule(1);
 	const manager = new managerModule.BackendServiceManager();
@@ -551,6 +556,7 @@ try {
 	line(
 		"\n\n# ===== an explicit non-loopback target is never replaced by a local daemon =====",
 	);
+	// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 	delete process.env.VITE_DISABLE_BACKEND_MANAGER;
 	// 127.0.0.2 is loopback but NOT the address the app treats as "local" (that
 	// set is localhost/127.0.0.1/[::1]), so this takes the remote branch without
@@ -561,7 +567,11 @@ try {
 	const remoteManager = new remoteModule.BackendServiceManager();
 	const remoteStarted = await remoteManager.start();
 	assert.equal(remoteStarted, false);
-	assert.equal(remoteManager.getOwnedPid(), null, "no local daemon may be substituted for a remote target");
+	assert.equal(
+		remoteManager.getOwnedPid(),
+		null,
+		"no local daemon may be substituted for a remote target",
+	);
 	const remoteStatus = remoteManager.getStatusSnapshot();
 	assert.equal(remoteStatus.state, "detached");
 	/*
@@ -575,7 +585,10 @@ try {
 		"the configured target is not rewritten to a local port",
 	);
 	assert.match(remoteStatus.detail, /remote/i);
-	say("manager.start() with VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.2:9", `-> ${remoteStarted}`);
+	say(
+		"manager.start() with VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.2:9",
+		`-> ${remoteStarted}`,
+	);
 	line(JSON.stringify(remoteStatus, null, 2));
 	line(
 		`(daemon 2 pid alive, untouched: ${discovery.pidLiveness(daemon2.child.pid) === "alive"})`,
@@ -694,7 +707,7 @@ try {
 		),
 	);
 	line(
-		`\n(the old probe accepted a 200 here - that is the bug; the identity check refuses it)`,
+		"\n(the old probe accepted a 200 here - that is the bug; the identity check refuses it)",
 	);
 	line(
 		`picked: ${withStranger.picked?.address} (a daemon whose identity the record proves)`,
@@ -781,8 +794,15 @@ try {
 	globalThis.__evidenceConfiguredUrl = `http://${record2.host}:${record2.port}`;
 	const outageModule = await bundleManagerModule(5);
 	const outageManager = new outageModule.BackendServiceManager();
-	assert.equal(await outageManager.start(), true, "attached to the real daemon first");
-	assert.equal(outageManager.getStatusSnapshot().instanceId, record2.instance_id);
+	assert.equal(
+		await outageManager.start(),
+		true,
+		"attached to the real daemon first",
+	);
+	assert.equal(
+		outageManager.getStatusSnapshot().instanceId,
+		record2.instance_id,
+	);
 	say("daemon 2 is killed, then three health probes run", "");
 	const killedPid = daemon2.child.pid;
 	await stopChild(daemon2.child);

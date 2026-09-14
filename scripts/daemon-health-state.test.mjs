@@ -77,18 +77,32 @@ test("an attached daemon publishes its identity, and only an owned one is manage
 	assert.equal(snapshot.version, "0.54.46");
 	assert.equal(snapshot.installKind, "uv-tool");
 	assert.equal(snapshot.owned, false);
-	assert.equal(external.mayManageDaemon(), false, "an external daemon is not ours to stop");
+	assert.equal(
+		external.mayManageDaemon(),
+		false,
+		"an external daemon is not ours to stop",
+	);
 	assert.equal(attached(true).mayManageDaemon(), true);
 });
 
 test("ONE missed probe is degraded, never a restart, and three are detached", () => {
 	const machine = attached();
 	for (let i = 1; i <= DEGRADED_AFTER_FAILURES - 1; i++) {
-		assert.equal(machine.observe({ kind: "failed", detail: "no answer" }), "degraded");
+		assert.equal(
+			machine.observe({ kind: "failed", detail: "no answer" }),
+			"degraded",
+		);
 		assert.equal(machine.snapshot().failures, i);
 	}
-	assert.equal(isServerReachable(machine.getState()), true, "degraded is still a connection");
-	assert.equal(machine.observe({ kind: "failed", detail: "no answer" }), "detached");
+	assert.equal(
+		isServerReachable(machine.getState()),
+		true,
+		"degraded is still a connection",
+	);
+	assert.equal(
+		machine.observe({ kind: "failed", detail: "no answer" }),
+		"detached",
+	);
 	assert.equal(isServerReachable(machine.getState()), false);
 });
 
@@ -111,8 +125,19 @@ test("a daemon whose pid is gone is detached immediately, without waiting for a 
 test("a CAPABILITY refusal never moves the state or counts as a failure", () => {
 	const machine = attached();
 	for (const status of [401, 403, 503]) {
-		assert.equal(machine.observe({ kind: "capability", status, detail: `gated ${status}` }), "attached");
-		assert.equal(machine.snapshot().failures, 0, "a gated route is not a missed probe");
+		assert.equal(
+			machine.observe({
+				kind: "capability",
+				status,
+				detail: `gated ${status}`,
+			}),
+			"attached",
+		);
+		assert.equal(
+			machine.snapshot().failures,
+			0,
+			"a gated route is not a missed probe",
+		);
 		assert.equal(machine.snapshot().capabilityStatus, status);
 		assert.equal(isServerReachable(machine.getState()), true);
 		assert.match(machine.snapshot().detail, /The daemon is running\./);
@@ -128,11 +153,22 @@ test("an announced build change leaves the connection attached and untouched", (
 	// until a verified idle-boundary handoff exists. Anything but `attached`
 	// here detaches the event stream and abandons whatever turn is in flight.
 	assert.equal(
-		machine.observe({ kind: "build-announced", detail: "new installed build v0.54.46 -> v0.55.0" }),
+		machine.observe({
+			kind: "build-announced",
+			detail: "new installed build v0.54.46 -> v0.55.0",
+		}),
 		"attached",
 	);
-	assert.equal(isServerReachable(machine.getState()), true, "an announcement is not an outage");
-	assert.equal(machine.snapshot().capabilityStatus, null, "no route refused us: not a capability result either");
+	assert.equal(
+		isServerReachable(machine.getState()),
+		true,
+		"an announcement is not an outage",
+	);
+	assert.equal(
+		machine.snapshot().capabilityStatus,
+		null,
+		"no route refused us: not a capability result either",
+	);
 	assert.equal(machine.snapshot().failures, 0);
 	assert.match(machine.snapshot().detail, /new installed build/);
 	assert.equal(machine.observe({ kind: "identified" }), "attached");
@@ -140,20 +176,37 @@ test("an announced build change leaves the connection attached and untouched", (
 
 test("a stale heartbeat with a live daemon is degraded, not detached", () => {
 	const machine = attached();
-	assert.equal(machine.observe({ kind: "heartbeat-stale", detail: "heartbeat 60s old" }), "degraded");
-	assert.equal(machine.snapshot().failures, 0, "a stuck daemon is not a failing probe");
+	assert.equal(
+		machine.observe({ kind: "heartbeat-stale", detail: "heartbeat 60s old" }),
+		"degraded",
+	);
+	assert.equal(
+		machine.snapshot().failures,
+		0,
+		"a stuck daemon is not a failing probe",
+	);
 	assert.equal(isServerReachable(machine.getState()), true);
 });
 
 test("re-discovery finding nothing detaches, and the backoff doubles to a ceiling", () => {
 	const machine = attached();
-	assert.equal(machine.observe({ kind: "no-candidate", detail: "no daemon to attach to" }), "detached");
+	assert.equal(
+		machine.observe({ kind: "no-candidate", detail: "no daemon to attach to" }),
+		"detached",
+	);
 	assert.equal(machine.nextBackoff(), REATTACH_BACKOFF_MS);
 	assert.equal(machine.nextBackoff(), REATTACH_BACKOFF_MS * 2);
 	assert.equal(machine.nextBackoff(), REATTACH_BACKOFF_MS * 4);
 	const capped = machine.nextBackoff();
-	assert.equal(machine.nextBackoff(), Math.min(capped * 2, REATTACH_BACKOFF_CEILING_MS));
-	assert.equal(machine.nextBackoff(), REATTACH_BACKOFF_CEILING_MS, "the ceiling holds");
+	assert.equal(
+		machine.nextBackoff(),
+		Math.min(capped * 2, REATTACH_BACKOFF_CEILING_MS),
+	);
+	assert.equal(
+		machine.nextBackoff(),
+		REATTACH_BACKOFF_CEILING_MS,
+		"the ceiling holds",
+	);
 });
 
 test("a detach becomes reportable as 'stopped' only after the escalation window", () => {
@@ -170,7 +223,11 @@ test("a detach becomes reportable as 'stopped' only after the escalation window"
 
 test("a replacement this app started is an owned attachment, and reachable", () => {
 	const machine = attached(false);
-	machine.markReplaced({ ...identity, url: "http://127.0.0.1:55001", pid: 999 });
+	machine.markReplaced({
+		...identity,
+		url: "http://127.0.0.1:55001",
+		pid: 999,
+	});
 	assert.equal(machine.getState(), "replaced");
 	assert.equal(machine.mayManageDaemon(), true);
 	assert.equal(machine.getUrl(), "http://127.0.0.1:55001");
@@ -185,5 +242,9 @@ test("desktop availability is reported beside the state, not through it", () => 
 	assert.equal(machine.snapshot().desktopAvailable, false);
 	assert.equal(machine.getState(), "attached");
 	machine.observe({ kind: "identified" });
-	assert.equal(machine.snapshot().desktopAvailable, false, "a probe does not invent a capability");
+	assert.equal(
+		machine.snapshot().desktopAvailable,
+		false,
+		"a probe does not invent a capability",
+	);
 });

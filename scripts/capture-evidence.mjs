@@ -1239,7 +1239,22 @@ const teardown = () => {
 		chrome = null;
 	}
 	if (dataDir) {
-		rmSync(dataDir, { recursive: true, force: true });
+		/*
+		 * Retried, because `SIGKILL` above is asynchronous: Chrome's own children
+		 * can still hold the profile open for a moment after it, and a bare
+		 * `rmSync` then throws `ENOTEMPTY` out of the `finally` - which turns a
+		 * capture that wrote every frame and its manifest into a non-zero exit
+		 * with a Node stack trace, i.e. a complete run that reads as a failed one.
+		 * `maxRetries` only retries the races it is documented to retry
+		 * (`ENOTEMPTY`/`EBUSY`/`EPERM`); a profile that will not go is still loud,
+		 * and `sweepStaleProfiles` reaps it on the next run.
+		 */
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 20,
+			retryDelay: 50,
+		});
 		dataDir = null;
 	}
 };

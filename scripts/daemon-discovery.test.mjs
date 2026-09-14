@@ -21,7 +21,7 @@
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -154,7 +154,17 @@ async function startDaemon({
 
 /** Write a record into the isolated run dir, or anywhere it is told to. */
 function writeRecord(
-	{ pid, port, instanceId, version = "0.54.46", prefix = "/tmp/prefix", heartbeatAt, startedAt, claimKey = "", host = "127.0.0.1" },
+	{
+		pid,
+		port,
+		instanceId,
+		version = "0.54.46",
+		prefix = "/tmp/prefix",
+		heartbeatAt,
+		startedAt,
+		claimKey = "",
+		host = "127.0.0.1",
+	},
 	dir = runDir,
 	name = null,
 ) {
@@ -196,8 +206,14 @@ const env = () => ({ LOCAL_OPERATOR_CONFIG_DIR: configRootPath });
 const silence = () => {};
 
 test("the config root honours LOCAL_OPERATOR_CONFIG_DIR over the home default", () => {
-	assert.equal(configRoot({ LOCAL_OPERATOR_CONFIG_DIR: "/tmp/isolated" }), "/tmp/isolated");
-	assert.equal(serveRunDir({ LOCAL_OPERATOR_CONFIG_DIR: "/tmp/isolated" }), "/tmp/isolated/run/serve");
+	assert.equal(
+		configRoot({ LOCAL_OPERATOR_CONFIG_DIR: "/tmp/isolated" }),
+		"/tmp/isolated",
+	);
+	assert.equal(
+		serveRunDir({ LOCAL_OPERATOR_CONFIG_DIR: "/tmp/isolated" }),
+		"/tmp/isolated/run/serve",
+	);
 	assert.match(configRoot({}), /\.local-operator$/);
 	assert.match(serveRunDir({}), /\.local-operator\/run\/serve$/);
 });
@@ -247,7 +263,10 @@ test("a listener that answers 200 without an instance_id is REJECTED (the old bu
 	assert.equal(result.picked, null);
 	assert.equal(result.candidates.length, 0);
 	const rejection = result.rejected.find((r) => r.subject === stranger.address);
-	assert.ok(rejection, "the configured address is reported, not silently skipped");
+	assert.ok(
+		rejection,
+		"the configured address is reported, not silently skipped",
+	);
 	assert.equal(rejection.reason, "not-a-daemon");
 	await stranger.close();
 });
@@ -286,7 +305,11 @@ test("a record whose pid is gone is rejected as stale and offered for reaping", 
 	const rejection = result.rejected.find((r) => r.subject === file);
 	assert.equal(rejection.reason, "pid-dead");
 	assert.deepEqual(result.reapable, [file]);
-	assert.equal(readServeRecords(runDir).files.length, before, "discovery itself does not delete");
+	assert.equal(
+		readServeRecords(runDir).files.length,
+		before,
+		"discovery itself does not delete",
+	);
 	assert.deepEqual(reapStaleRecords(result.reapable), [file]);
 	assert.ok(!readServeRecords(runDir).files.some((f) => f.file === file));
 });
@@ -314,7 +337,10 @@ test("a record from the future is ignored rather than trusted for ordering", asy
 		startedAt: Date.now() / 1000 + 3600,
 	});
 	const result = await discoverDaemons({ env: env(), log: silence });
-	assert.equal(result.rejected.find((r) => r.subject === file).reason, "clock-skew");
+	assert.equal(
+		result.rejected.find((r) => r.subject === file).reason,
+		"clock-skew",
+	);
 	rmSync(file, { force: true });
 });
 
@@ -380,14 +406,21 @@ test("ranking compares versions numerically, and treats the configured URL as la
 		source,
 		identity: {},
 	});
-	assert.ok(compareVersions("0.54.46", "0.54.9") > 0, "the patch component is numeric, not lexicographic");
+	assert.ok(
+		compareVersions("0.54.46", "0.54.9") > 0,
+		"the patch component is numeric, not lexicographic",
+	);
 	assert.equal(compareVersions("0.55.0", "0.54.99"), 1);
 	assert.equal(compareVersions("1.0.0", "1.0.0-rc1"), 0);
 	const ranked = rankCandidates(
 		[candidate("9.9.9", "configured"), candidate("0.1.0", "record")],
 		null,
 	);
-	assert.equal(ranked[0].record.version, "0.1.0", "a configured address never outranks a found daemon");
+	assert.equal(
+		ranked[0].record.version,
+		"0.1.0",
+		"a configured address never outranks a found daemon",
+	);
 	const byVersion = rankCandidates(
 		[candidate("0.1.0", "record", 999), candidate("0.2.0", "record")],
 		null,
@@ -436,7 +469,10 @@ test("classification needs BOTH a dead pid and an aged heartbeat to call a recor
 		"wedged",
 		"a fresh heartbeat on a dead pid is not yet stale",
 	);
-	assert.equal(classifyRecord(record(gone, HEARTBEAT_TIMEOUT_MS + 1_000), now), "stale");
+	assert.equal(
+		classifyRecord(record(gone, HEARTBEAT_TIMEOUT_MS + 1_000), now),
+		"stale",
+	);
 	assert.equal(
 		classifyRecord(record(process.pid, HEARTBEAT_TIMEOUT_MS + 1_000), now),
 		"wedged",
@@ -445,11 +481,24 @@ test("classification needs BOTH a dead pid and an aged heartbeat to call a recor
 });
 
 test("record parsing refuses a record with no dialable address rather than guessing", () => {
-	assert.equal(parseRecord({ pid: 1, host: "127.0.0.1", port: 0, instance_id: "i" }, "f").problem, "malformed");
-	assert.equal(parseRecord({ host: "127.0.0.1", port: 1, instance_id: "i" }, "f").problem, "malformed");
-	assert.equal(parseRecord({ pid: 1, host: "127.0.0.1", port: 1 }, "f").problem, "malformed");
+	assert.equal(
+		parseRecord({ pid: 1, host: "127.0.0.1", port: 0, instance_id: "i" }, "f")
+			.problem,
+		"malformed",
+	);
+	assert.equal(
+		parseRecord({ host: "127.0.0.1", port: 1, instance_id: "i" }, "f").problem,
+		"malformed",
+	);
+	assert.equal(
+		parseRecord({ pid: 1, host: "127.0.0.1", port: 1 }, "f").problem,
+		"malformed",
+	);
 	assert.equal(parseRecord([], "f").problem, "malformed");
-	const ok = parseRecord({ pid: 1, host: "::1", port: 1111, instance_id: "i" }, "f");
+	const ok = parseRecord(
+		{ pid: 1, host: "::1", port: 1111, instance_id: "i" },
+		"f",
+	);
 	assert.equal(ok.problem, undefined);
 	assert.equal(discovery.recordAddress(ok.record), "http://[::1]:1111");
 });
@@ -458,16 +507,34 @@ test("the claim handshake sends the record's key as the bearer, never null or a 
 	const claimed = await startDaemon({
 		instanceId: "instance-claim",
 		version: "0.54.46",
-		claim: { status: 200, body: { claimed: true, instance_id: "instance-claim" } },
+		claim: {
+			status: 200,
+			body: { claimed: true, instance_id: "instance-claim" },
+		},
 	});
-	const outcome = await claimDesktopPlane(claimed.address, "key-from-the-record", {
-		origins: ["http://localhost:5173", "null", "*", "file:///x", "not-an-origin"],
+	const outcome = await claimDesktopPlane(
+		claimed.address,
+		"key-from-the-record",
+		{
+			origins: [
+				"http://localhost:5173",
+				"null",
+				"*",
+				"file:///x",
+				"not-an-origin",
+			],
+		},
+	);
+	assert.deepEqual(outcome, {
+		outcome: "claimed",
+		origins: ["http://localhost:5173"],
 	});
-	assert.deepEqual(outcome, { outcome: "claimed", origins: ["http://localhost:5173"] });
 	const request = claimed.seen.find((r) => r.path === "/v1/desktop/claim");
 	assert.equal(request.method, "POST");
 	assert.equal(request.authorization, "Bearer key-from-the-record");
-	assert.deepEqual(JSON.parse(request.body), { origins: ["http://localhost:5173"] });
+	assert.deepEqual(JSON.parse(request.body), {
+		origins: ["http://localhost:5173"],
+	});
 	await claimed.close();
 
 	// A native caller (no renderer origin to declare) sends an empty object.
@@ -486,7 +553,10 @@ test("the claim latch's 409 and a wrong key's 401 are distinct, named outcomes",
 	const latched = await startDaemon({
 		instanceId: "instance-latched",
 		version: "0.54.46",
-		claim: { status: 409, body: { detail: "This desktop plane is already controlled." } },
+		claim: {
+			status: 409,
+			body: { detail: "This desktop plane is already controlled." },
+		},
 	});
 	assert.deepEqual(await claimDesktopPlane(latched.address, "key", {}), {
 		outcome: "already-claimed",
@@ -497,7 +567,10 @@ test("the claim latch's 409 and a wrong key's 401 are distinct, named outcomes",
 	const wrongKey = await startDaemon({
 		instanceId: "instance-wrongkey",
 		version: "0.54.46",
-		claim: { status: 401, body: { detail: "Desktop claim authorization is required." } },
+		claim: {
+			status: 401,
+			body: { detail: "Desktop claim authorization is required." },
+		},
 	});
 	assert.deepEqual(await claimDesktopPlane(wrongKey.address, "stale-key", {}), {
 		outcome: "wrong-key",
@@ -508,7 +581,10 @@ test("the claim latch's 409 and a wrong key's 401 are distinct, named outcomes",
 	const refused = await startDaemon({
 		instanceId: "instance-refused",
 		version: "0.54.46",
-		claim: { status: 503, body: { detail: "This backend published no desktop claim key." } },
+		claim: {
+			status: 503,
+			body: { detail: "This backend published no desktop claim key." },
+		},
 	});
 	assert.deepEqual(await claimDesktopPlane(refused.address, "key", {}), {
 		outcome: "refused",
@@ -519,9 +595,16 @@ test("the claim latch's 409 and a wrong key's 401 are distinct, named outcomes",
 });
 
 test("a capability refusal is read as a capability, never as liveness", async () => {
-	const gated = await startDaemon({ instanceId: "instance-gated", version: "0.54.46" });
+	const gated = await startDaemon({
+		instanceId: "instance-gated",
+		version: "0.54.46",
+	});
 	const reported = await readDesktopAvailable(gated.address);
-	assert.equal(reported.available, false, "desktop_available false before a claim");
+	assert.equal(
+		reported.available,
+		false,
+		"desktop_available false before a claim",
+	);
 	assert.equal(reported.status, 200);
 	await gated.close();
 
@@ -545,8 +628,14 @@ test("a probe with a 2 s budget does not wait out a hung listener", async () => 
 });
 
 test("addresses are normalised so an address comparison is exact", () => {
-	assert.equal(normaliseAddress("http://127.0.0.1:1111/"), "http://127.0.0.1:1111");
-	assert.equal(normaliseAddress("http://localhost:1111"), "http://localhost:1111");
+	assert.equal(
+		normaliseAddress("http://127.0.0.1:1111/"),
+		"http://127.0.0.1:1111",
+	);
+	assert.equal(
+		normaliseAddress("http://localhost:1111"),
+		"http://localhost:1111",
+	);
 	assert.equal(normaliseAddress("not a url"), null);
 	assert.equal(normaliseAddress(""), null);
 	assert.equal(normaliseAddress(null), null);
