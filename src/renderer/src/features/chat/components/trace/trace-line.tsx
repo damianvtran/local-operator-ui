@@ -161,7 +161,17 @@ const TraceRow = ({
 				{narration ? ":" : null}
 			</span>
 			{object ? (
-				<span className="font-mono text-ink-muted text-mono-sm"> {object}</span>
+				/*
+				 * `select-text` for the same reason the narration carries it: on an
+				 * incident row this slot holds the `provider/model` that died, which is
+				 * a fact a reader may have to paste somewhere (round 2's U9 — the
+				 * trigger is `select-none`, so without this the one fact D2 added to
+				 * the row would be the one fact on it that cannot be copied).
+				 */
+				<span className="select-text font-mono text-ink-muted text-mono-sm">
+					{" "}
+					{object}
+				</span>
 			) : null}
 			{narration ? (
 				/*
