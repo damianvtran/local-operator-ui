@@ -163,6 +163,8 @@ type Probe = {
 		placeholderOpacity: number | null;
 		content: boolean;
 		rowInView: boolean;
+		composerAlert: string | null;
+		sentMessages: number;
 	};
 	record: () => RecordHandle;
 };
@@ -228,6 +230,19 @@ const rowInView = (el: Element | null) => {
 	if (!(el instanceof HTMLElement)) return false;
 	const rect = el.getBoundingClientRect();
 	return rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight;
+};
+/*
+ * The composer's own failure row, as painted.
+ *
+ * Scoped to the FORM rather than read as `[role="alert"]` off the document: a
+ * switch can have a navigation failure on screen at the same time, and a frame
+ * claiming "the composer states the read window's refusal" has to be about the
+ * row above the box the user pressed Enter in (UX round 2 U8, round 3 U9).
+ */
+const composerAlert = () => {
+	const form = document.querySelector("textarea")?.closest("form");
+	const alert = form?.querySelector('[role="alert"]');
+	return alert instanceof HTMLElement ? alert.innerText : null;
 };
 /*
  * How many surfaces state the failure sentence. One is the contract (U3): it
@@ -484,6 +499,18 @@ const api: Probe = {
 		placeholderOpacity: placeholderOpacity(),
 		content: transcriptHasContent(),
 		rowInView: rowInView(rowFor(INCOMING)),
+		/**
+		 * The refusal, and the fact that nothing left the app.
+		 *
+		 * The read window's refusal is a claim about two things at once: the
+		 * sentence is on screen where the composer can be read, and no message
+		 * reached the transport. The requests are the bridge's own log, so this is
+		 * the transport's answer rather than the absence of a render.
+		 */
+		composerAlert: composerAlert(),
+		sentMessages: bridge.log.requests.filter(
+			(request) => request.op === "sessions.message",
+		).length,
 	}),
 	/**
 	 * Every state transition the rollback makes, so a reader can tell "the

@@ -91,13 +91,24 @@ const FRAMES = flag("frames", null);
  *   this state is three frames and invisible; on a slow or remote backend it is
  *   the whole first impression, and it is the frame that exposes a placeholder
  *   whose animation takes it under the contract's floor.
+ * - `refusal`: the read window refusing a send - the sentence the composer
+ *   paints when the user presses Enter before anything has confirmed the target
+ *   (UX round 2 U8, round 3 U9). It is the one state on this path whose evidence
+ *   was a reviewer's and a QA's own frame rather than one of this harness's.
  *
  * Every state gets its OWN page load and its own click: the states are all
  * reached from the same starting point, and a capture that reused one load
  * would be photographing states in sequence, where the second click starts from
  * a different view than the first.
  */
-const FRAME_STATES = ["hydrating", "mark", "slow", "settled", "error"];
+const FRAME_STATES = [
+	"hydrating",
+	"mark",
+	"refusal",
+	"slow",
+	"settled",
+	"error",
+];
 /**
  * The placeholder's pulse floor, as `styles/index.css` defines it.
  *
@@ -127,6 +138,33 @@ const FRAMES_URL = `${PAGE}?${new URLSearchParams({
  * happy-path URL.
  */
 const FRAMES_FAIL_URL = `${FRAMES_URL}&fail=incoming`;
+/**
+ * The page a REFUSAL frame is driven on: the read window, held open.
+ *
+ * The state exists only while `sessions.get` has not answered, so this page
+ * scripts that read LONG - the same reason every capture runs on a long stream,
+ * since a window is photographed while it lasts and at shipped latency a
+ * round trip leaves no frame to catch. Both bounds are delayed on purpose: with
+ * the stream slow as well, the read's own latency is what closes the window,
+ * which is the refusal's honest shape on a backend that is merely slow.
+ */
+const FRAMES_REFUSAL_URL = `${PAGE}?${new URLSearchParams({
+	get: SCENARIO.get ?? "12000",
+	stream: SCENARIO.stream ?? "12000",
+})}`;
+/**
+ * The refusal's message and its sentence, as the shipped copy states them.
+ *
+ * Held here rather than read back from the page, because the frame is evidence
+ * FOR this copy: a frame showing another alert, or this sentence with the
+ * composer's generic retry appended to it, is a picture of a state the PR no
+ * longer ships (UX round 3, U9 - the hint asked for a retry the same window
+ * refuses).
+ */
+const REFUSAL_TEXT = "Check the invoice totals";
+const REFUSAL_SENTENCE =
+	"This chat is not ready for messages yet, so the message was not sent. " +
+	"Sending works once it is ready.";
 /**
  * Capture the PRE-CHANGE state of the same switch.
  *
@@ -313,9 +351,13 @@ const captureFrames = async (cdp) => {
 	const states = EXPECT_OUTGOING ? ["hydrating"] : FRAME_STATES;
 	for (const theme of FRAME_THEMES) {
 		for (const state of states) {
-			await cdp.send("Page.navigate", {
-				url: state === "error" ? FRAMES_FAIL_URL : FRAMES_URL,
-			});
+			const url =
+				state === "error"
+					? FRAMES_FAIL_URL
+					: state === "refusal"
+						? FRAMES_REFUSAL_URL
+						: FRAMES_URL;
+			await cdp.send("Page.navigate", { url });
 			await waitForCaptureReady(cdp);
 			await cdp.send("Runtime.evaluate", {
 				expression: `document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)})`,
@@ -392,6 +434,20 @@ const prepareState = async (cdp, state) => {
 	// One settle after the click: the commit has happened and the transcript has
 	// not arrived, which IS the state a switch now reaches.
 	await settleFrames(cdp);
+
+	if (state === "refusal") {
+		/*
+		 * THE SEND THE WINDOW REFUSES, typed and submitted through the real
+		 * composer with real input events - so what is photographed is the shipped
+		 * send path's own refusal and not a sentence planted in the DOM. The store
+		 * raises `SESSION_UNVALIDATED_MESSAGE` from `admitChatDraft`, before the
+		 * draft is latched and before the transport is reached, and the composer
+		 * paints it in the same alert row every other refused send uses.
+		 */
+		await sendInComposer(cdp, REFUSAL_TEXT);
+		await waitForComposerAlert(cdp, REFUSAL_SENTENCE);
+		await settleFrames(cdp);
+		}
 
 	if (state === "settled") {
 		await cdp.send("Runtime.evaluate", {
@@ -528,6 +584,67 @@ const awaitPulse = (cdp, comparison) =>
 		})()`,
 	});
 
+/**
+ * Type into the composer and submit, the way the app's own user does it: real
+ * input events on the focused field, then the Enter the submit path guards on.
+ * The read-back is part of the instrument rather than politeness - a page whose
+ * field never took the text would otherwise be photographed as a refusal of
+ * nothing, which is the empty-frame failure this set exists to refuse.
+ */
+const sendInComposer = async (cdp, text) => {
+	const focused = await cdp.send("Runtime.evaluate", {
+		returnByValue: true,
+		expression: `(() => {
+			const field = document.querySelector("textarea");
+			if (!field) return null;
+			field.focus();
+			return field.value;
+		})()`,
+	});
+	if (focused.result.value === null)
+		throw new Error("no composer on the page to send from");
+	await cdp.send("Input.insertText", { text });
+	const typed = await cdp.send("Runtime.evaluate", {
+		returnByValue: true,
+		expression: `document.querySelector("textarea")?.value ?? null`,
+	});
+	if (typed.result.value !== text)
+		throw new Error(
+			`the composer holds ${JSON.stringify(typed.result.value)} rather than ${JSON.stringify(text)}`,
+		);
+	for (const type of ["keyDown", "keyUp"])
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+			nativeVirtualKeyCode: 13,
+			...(type === "keyDown" ? { text: "\r" } : {}),
+		});
+};
+
+/**
+ * The composer's alert row, once it states `sentence`. Polled, not slept on, so
+ * the capture waits for a paint rather than for a delay - and it gives up loudly:
+ * a refusal that never arrived would otherwise be photographed as a hydrating
+ * panel with an empty alert.
+ */
+const waitForComposerAlert = async (cdp, sentence) => {
+	for (let i = 0; i < 120; i++) {
+		const { result } = await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			expression: `(() => {
+				const form = document.querySelector("textarea")?.closest("form");
+				return form?.querySelector('[role="alert"]')?.innerText ?? null;
+			})()`,
+		});
+		if (typeof result.value === "string" && result.value.includes(sentence))
+			return;
+		await sleep(50);
+	}
+	throw new Error(`the composer never stated the refusal: ${sentence}`);
+};
+
 /** Two frames: one for the change to lay out, one for it to paint. */
 const settleFrames = (cdp) =>
 	cdp.send("Runtime.evaluate", {
@@ -583,6 +700,25 @@ const shoot = async (cdp, path, state, theme) => {
 			refuse(
 				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
 			);
+		if (state === "refusal") {
+			/*
+			 * The state is the REFUSAL, and the frame has to be a picture of both
+			 * halves of it: the sentence in the composer's own row, and the fact that
+			 * nothing was sent. The second half is the one a still cannot show by
+			 * itself, so it is read off the bridge's request log - the refusal exists
+			 * precisely because no `sessions.message` was issued.
+			 */
+			if (!(seen.composerAlert ?? "").includes(REFUSAL_SENTENCE))
+				refuse(
+					`the composer is not stating the refusal (${JSON.stringify(seen.composerAlert)})`,
+				);
+			if ((seen.composerAlert ?? "").includes("Send it again"))
+				refuse(
+					"the notice still asks for a retry that this same window refuses",
+				);
+			if (seen.sentMessages !== 0)
+				refuse(`a message reached the transport (${seen.sentMessages})`);
+		}
 		/*
 		 * The mirror of the trough guard: the hydrating states are measured as the
 		 * pulse's REST phase (that is what "at rest" means beside those numbers),

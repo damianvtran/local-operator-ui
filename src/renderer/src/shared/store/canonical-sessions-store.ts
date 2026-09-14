@@ -102,10 +102,13 @@ export const SEND_UNCONFIRMED_MESSAGE =
  * the copy: the sentence below is expected to be reworded, and matching prose
  * would silently stop matching.
  *
- * The composer needs no code-specific remedy for it - the standard retry hint
- * is already true (the text never left the box) - but `chat-page` needs the
- * code to retire the notice when the window it describes closes, the same way
- * `unresolved_attachment` retires its own on an observable condition.
+ * Two consumers read it, and neither can key off the copy. `chat-page` retires
+ * the notice when the window it describes closes, the same way
+ * `unresolved_attachment` retires its own on an observable condition. And the
+ * composer WITHHOLDS its generic retry hint for this code: the hint is the
+ * alert's "what to do" half, and "send it again" is refused by this same window
+ * for exactly as long as the notice is on screen, so the sentence carries its
+ * own statement of the wait instead (UX round 3, U9).
  */
 export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
 
@@ -120,11 +123,16 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  *
  * The words follow branding section 8: what happened (the message was not
  * sent), what it means (this chat is not ready for messages yet), and what to
- * do - the composer appends its own "Your message is still in the composer.
- * Send it again." because the text genuinely never left the box.
+ * do. The "what to do" half is the sentence itself rather than the composer's
+ * generic "Your message is still in the composer. Send it again.", which is
+ * suppressed for this code (see above): a retry is refused by the read window
+ * for as long as the window lasts, and this sentence cannot outlive it, so
+ * instructing a retry would name the one action that cannot succeed yet. What is
+ * true is that the send works once the wait ends - the read's own answer, the
+ * session's live frame, or the read's 30 s deadline.
  */
 export const SESSION_UNVALIDATED_MESSAGE =
-	"This chat is not ready for messages yet, so the message was not sent.";
+	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
 
 /**
  * The one place a composer value becomes a send PAYLOAD.
@@ -568,13 +576,19 @@ type CanonicalSessionsState = {
 	 * the guarantee has to survive the reordering.
 	 *
 	 * TWO CLOSING BOUNDS, and both are the store's to keep. The read's own answer
-	 * is the first (see `openSession`). The second is a live frame from the
-	 * session's own stream - proof it exists, arriving earlier than the read when
-	 * the backend is slow, and the ONLY bound when the read never answers at all;
-	 * `confirmSessionLive` is how the panel reports that frame. A window bounded
-	 * only by the read would refuse every send from the panel for as long as a
-	 * hung read lasts, which is the state the deleted pending banner used to give
-	 * an escape from (UX round 2, U8).
+	 * is the first (see `openSession`), and a read that never answers still closes
+	 * the window: every desktop control runs under `withDeadline` at
+	 * `DESKTOP_REQUEST_TIMEOUT_MS` (30 s; see `desktop-api`), and that rejection
+	 * takes the same rollback path as any other failed read. The second bound is a
+	 * live frame from the session's own stream - proof it exists - and
+	 * `confirmSessionLive` is how the panel reports it. It is kept because it is
+	 * the EARLIER bound: on a read that is merely slow it opens the gate on the
+	 * session's own proof instead of at the 30 s deadline, which is the wait the
+	 * deleted pending banner used to give an escape from (UX round 2, U8).
+	 *
+	 * A window is only opened for a session the view is NOT already on (see
+	 * `openSession`), so nothing can hold this field on a target whose stream has
+	 * already reported itself and will not report itself again.
 	 *
 	 * No banner, spinner or Escape handler sits on this path any more: re-basing
 	 * the old "Opening chat…/Cancel" chrome on this field would paint that banner
@@ -615,10 +629,11 @@ type CanonicalSessionsState = {
 	 * Close the read window because proof of the session's existence arrived.
 	 *
 	 * See `validatingSessionId` for why this is the window's second bound: the
-	 * read's answer opens it too, but a live frame can arrive first, and when the
-	 * read never answers this is the only thing that stops the panel refusing
-	 * sends forever. Guarded on the id, so a snapshot belonging to an abandoned
-	 * target cannot vouch for the session the user is actually on.
+	 * read's answer closes it too, and a read that never answers is closed by its
+	 * own 30 s deadline, but on a slow read the frame is what keeps the refusal to
+	 * the stream's latency instead of the deadline. Guarded on the id, so a
+	 * snapshot belonging to an abandoned target cannot vouch for the session the
+	 * user is actually on.
 	 */
 	confirmSessionLive: (sessionId: string | null) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
@@ -772,6 +787,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					set({ validatingSessionId: null });
 			},
 			openSession: async (sessionId) => {
+				/*
+				 * RE-SELECTING THE ROW THE VIEW IS ALREADY ON IS A NO-OP.
+				 *
+				 * The window below has two closing bounds and only one of them is
+				 * reachable for a session that is already active: the live frame is
+				 * reported by an effect keyed on the session and its stream status
+				 * (`chat-page`), and neither changes when the same row is clicked again -
+				 * so the frame that already arrived is never reported for the new window,
+				 * and the read's latency (up to its 30 s deadline) is the only thing that
+				 * closes it. That window refuses sends and reports why, which is a refusal
+				 * the user cannot act on, for a switch that moves nothing: the view, the
+				 * draft and the URL are already at the target, so `true` is the answer a
+				 * `select` navigates on.
+				 *
+				 * `activeDraftKey` is part of the condition rather than decoration: a
+				 * staged draft is a different view of the same session (the sidebar does
+				 * not mark the row while one is staged), so a click that leaves it is a
+				 * real move and still runs the whole switch.
+				 */
+				if (get().activeSessionId === sessionId && !get().activeDraftKey)
+					return true;
 				const generation = ++navigationGeneration;
 				/*
 				 * COMMIT FIRST, VALIDATE BEHIND THE COMMIT.
