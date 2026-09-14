@@ -80,15 +80,18 @@ function Panel({
 	stale,
 	missing,
 	status,
+	/** SIZED TO THE CONTENT for the two sparse states — see `ConversationGone`. */
+	height = "h-[560px]",
 }: {
 	records: TranscriptRecord[];
 	stale?: boolean;
 	missing?: boolean;
 	status: "connecting" | "live" | "unavailable";
+	height?: string;
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div className="flex h-[560px] flex-col bg-canvas">
+		<div className={`flex flex-col bg-canvas ${height}`}>
 			<CanonicalTranscript
 				transcript={transcriptOf(records)}
 				gate={null}
@@ -138,9 +141,17 @@ export const LoadingFirstOpen: Story = {
 /**
  * A click for a conversation that no longer exists. Nothing to paint, house
  * wording, and the way out — never the transport's own refusal text.
+ *
+ * SIZED TO ITS CONTENT rather than to a window, for the reason the repo's other
+ * sparse stories are: this state is three lines and a button, and in a 600px
+ * frame it is 99.45% one colour — which `check-evidence` rejects, correctly, as
+ * "the story painted its ground and nothing else". The height here is the
+ * content's, so the frame is a picture of the state rather than of the ground.
  */
 export const ConversationGone: Story = {
-	render: () => <Panel records={[]} missing status="unavailable" />,
+	render: () => (
+		<Panel height="h-[200px]" records={[]} missing status="unavailable" />
+	),
 };
 
 /**
@@ -151,12 +162,12 @@ export const TheTwoMisses: Story = {
 	render: () => (
 		<div className="grid grid-cols-2">
 			<div className="bg-canvas">
-				<Panel records={[]} status="connecting" />
+				<Panel height="h-[200px]" records={[]} status="connecting" />
 			</div>
 			{/* `hairline`, not a panel fill: this is a divider between two states
 			    and carries no information of its own. */}
 			<div className="border-hairline border-l bg-canvas">
-				<Panel records={[]} missing status="unavailable" />
+				<Panel height="h-[200px]" records={[]} missing status="unavailable" />
 			</div>
 		</div>
 	),
