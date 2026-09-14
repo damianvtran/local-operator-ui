@@ -22,7 +22,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent, within } from "@storybook/test";
+import { fireEvent, screen, userEvent, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
@@ -910,13 +910,22 @@ export const VariablesWriteRefused: Story = {
 		// see them.
 		const canvas = within(canvasElement);
 		await userEvent.click(await canvas.findByRole("button", { name: "New" }));
-		await userEvent.type(
-			await screen.findByLabelText(VARIABLE_KEY_LABEL),
-			"secrets",
-		);
+		/*
+		 * `fireEvent.change` rather than `userEvent.type`: the value is not what
+		 * this frame is about, and typing it costs seven keystroke rounds that
+		 * the shutter - which fires as soon as the theme lands, ~700 ms after
+		 * mount - can land in the middle of. The first version of this story
+		 * photographed the dialog with the name typed and no refusal yet.
+		 * `change` sets the same React state in one event.
+		 */
+		fireEvent.change(await screen.findByLabelText(VARIABLE_KEY_LABEL), {
+			target: { value: "secrets" },
+		});
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Create variable" }),
 		);
+		// The assertion is also the wait: the story is not "done" until the
+		// refusal has been rendered, and the toast is what this frame is for.
 		await screen.findByText(REFUSAL_SENTENCE);
 	},
 };
