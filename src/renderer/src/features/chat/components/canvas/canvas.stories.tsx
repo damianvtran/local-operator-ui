@@ -25,9 +25,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { fireEvent, screen, userEvent, waitFor, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { resetToastDedup } from "@shared/utils/toast-manager";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
@@ -314,6 +316,33 @@ const STORY_SESSION_ID = "8fd6c6a40934";
 const VARIABLE_KEY_LABEL = /Name \(key\)/;
 /** The refusal the backend answers with, as the toast renders it. */
 const REFUSAL_SENTENCE = /'secrets' is a name the session keeps/;
+
+/**
+ * How long this fixture waits for anything the page has to render.
+ *
+ * Testing Library's default is 1000 ms, which is a bound for an idle machine.
+ * These stories are captured and reviewed on a shared host where the load
+ * average has been measured above 150, and a page starved for several seconds
+ * is routine there. A 1 s default does not make a fixture stricter, it makes
+ * it flaky in whichever theme lost the race - design round 4 (D2) saw `neon`
+ * fail at the FIRST interaction (`Unable to find role="button" and name "New
+ * variable"`) while the other three themes reached the dialog, which is the
+ * same class round 1 saw from the other direction.
+ */
+const FIXTURE_WAIT = 15_000;
+
+/**
+ * The "the namespace read has landed" anchor.
+ *
+ * The panel can only offer its header and its rows once the read has answered,
+ * and until then it renders one of its own earlier states. Waiting on a name the
+ * seeded namespace really contains is therefore a wait on the panel being READY
+ * rather than on it merely being mounted - which is what the first interaction
+ * needs, and what a wall-clock assumption about two round trips cannot give.
+ * Matched exactly, so it does not collide with the chat column's own prose about
+ * customers who are still outstanding.
+ */
+const SETTLED_NAMESPACE_KEY = "outstanding";
 
 /**
  * Hold the shutter until the story says the frame is worth taking.
@@ -941,6 +970,44 @@ export const VariablesBackendTooOld: Story = {
 };
 
 /**
+ * Release this story's held refusal when the story unmounts.
+ *
+ * The refusal is held on purpose - the story-scoped `toastDuration:
+ * Infinity` keeps sonner's one real toast on screen for a capture that can land
+ * tens of seconds after the write was refused - and holding it is what leaves
+ * state behind, in two places with different owners (agent review round 4,
+ * C-11):
+ *
+ *  - sonner's own list, where an infinity toast is never dismissed and never
+ *    auto-closes, so nothing clears it when the story goes away;
+ *  - `toast-manager`'s deduplication, which is keyed by the message and holds
+ *    that toast's id, and whose cleanup hooks (`onDismiss`/`onAutoClose`) only
+ *    run on a dismissal - which an unmount is not.
+ *
+ * So a same-document remount - Storybook's own args controls, or any host that
+ * reuses the page - finds the key already held, gets the stale id back and
+ * publishes nothing: a story named for the refusal renders without one, with
+ * the mutation's own toast suppressed rather than renewed. Dismissing the toast
+ * and dropping the deduplication state is what makes a second mount behave like
+ * the fresh page every capture load is.
+ *
+ * The STORY's teardown rather than the decorator's, so a fixture can never
+ * release a toast it did not hold. Production is untouched: its 4000 ms
+ * lifetime and its identical-error cooldown are exactly as shipped, only this
+ * story sets a duration and only this story resets the manager.
+ */
+const RefusalFixture = ({ children }: { children: ReactNode }) => {
+	useEffect(
+		() => () => {
+			toast.dismiss();
+			resetToastDedup();
+		},
+		[],
+	);
+	return <>{children}</>;
+};
+
+/**
  * A write the backend refuses, in the backend's own words.
  *
  * The form is driven rather than faked: the play function opens the real
@@ -959,20 +1026,22 @@ export const VariablesWriteRefused: Story = {
 		// taken in that window is the empty panel this story exists to replace.
 		holdShutter();
 		return (
-			<CanvasFrame
-				view="variables"
-				activeId={DOCUMENTS[0].id}
-				variables={{
-					features: { session_variables: 1 },
-					list: () => observed(VARIABLES),
-					write: () =>
-						refused(
-							409,
-							"reserved_name",
-							"'secrets' is a name the session keeps for its own tools.",
-						),
-				}}
-			/>
+			<RefusalFixture>
+				<CanvasFrame
+					view="variables"
+					activeId={DOCUMENTS[0].id}
+					variables={{
+						features: { session_variables: 1 },
+						list: () => observed(VARIABLES),
+						write: () =>
+							refused(
+								409,
+								"reserved_name",
+								"'secrets' is a name the session keeps for its own tools.",
+							),
+					}}
+				/>
+			</RefusalFixture>
 		);
 	},
 	play: async ({ canvasElement }) => {
@@ -984,30 +1053,106 @@ export const VariablesWriteRefused: Story = {
 		// render through portals at the document root, so `screen` is what can
 		// see them.
 		const canvas = within(canvasElement);
-		await userEvent.click(
-			await canvas.findByRole("button", { name: "New variable" }),
-		);
-		/*
-		 * `fireEvent.change` rather than `userEvent.type`: the value is not what
-		 * this frame is about, and typing it costs seven keystroke rounds that
-		 * the shutter - which fires as soon as the theme lands, ~700 ms after
-		 * mount - can land in the middle of. The first version of this story
-		 * photographed the dialog with the name typed and no refusal yet.
-		 * `change` sets the same React state in one event.
-		 */
-		fireEvent.change(await screen.findByLabelText(VARIABLE_KEY_LABEL), {
-			target: { value: "secrets" },
-		});
-		await userEvent.click(
-			await screen.findByRole("button", { name: "Create" }),
-		);
-		// The assertion is also the wait: the story is not "done" until the
-		// refusal has been rendered, and the toast is what this frame is for.
-		await screen.findByText(REFUSAL_SENTENCE);
-		// ...and the refusal ALSO marks the field it is about, which is the other
-		// half of UX round 1's U3: the same sentence, beside the control the user
-		// has to change, instead of only in a toast that floats past.
-		await screen.findByText(REFUSAL_SENTENCE, { selector: "p" });
+		try {
+			/*
+			 * The panel's READY state first, then the trigger. The panel asks the
+			 * backend two questions before it can offer "New variable" - its
+			 * capabilities and the namespace itself - so clicking on a fixed delay
+			 * is a race against two round trips. Waiting for a name the seeded
+			 * namespace contains is the deterministic form of the same wait, and it
+			 * is what makes this story's entry independent of host load (design
+			 * round 4, D2).
+			 */
+			await screen.findByText(
+				SETTLED_NAMESPACE_KEY,
+				{},
+				{ timeout: FIXTURE_WAIT },
+			);
+			await userEvent.click(
+				await canvas.findByRole(
+					"button",
+					{ name: "New variable" },
+					{ timeout: FIXTURE_WAIT },
+				),
+			);
+			/*
+			 * `fireEvent.change` rather than `userEvent.type`: the value is not what
+			 * this frame is about, and typing it costs seven keystroke rounds that
+			 * the shutter - which fires as soon as the theme lands, ~700 ms after
+			 * mount - can land in the middle of. The first version of this story
+			 * photographed the dialog with the name typed and no refusal yet.
+			 * `change` sets the same React state in one event.
+			 */
+			fireEvent.change(
+				await screen.findByLabelText(
+					VARIABLE_KEY_LABEL,
+					{},
+					{ timeout: FIXTURE_WAIT },
+				),
+				{ target: { value: "secrets" } },
+			);
+			const submit = await screen.findByRole(
+				"button",
+				{ name: "Create" },
+				{ timeout: FIXTURE_WAIT },
+			);
+			await userEvent.click(submit);
+			/*
+			 * The submit must SETTLE, and this story now says so in the two steps
+			 * that can tell a settled refusal from a stuck one.
+			 *
+			 * `handleSubmit` sets `isSubmitting` before it awaits the mutation and
+			 * clears it in its own `finally`, so the button's own label is a direct
+			 * witness of whether `await onSubmit(...)` came back. Waiting for the
+			 * "Saving…" label first proves the click registered, and waiting for
+			 * "Create" to come back proves the write RESOLVED OR REJECTED through
+			 * the real mutation instead of hanging.
+			 *
+			 * This is the half design round 4 (D1) measured as missing: with a
+			 * single write and nothing asserting the settlement, a fixture whose
+			 * promise never came back still produced a frame - the button read
+			 * "Saving…" and the state the story is named for was never on screen.
+			 * Asserting the settlement here makes that failure the story's failure,
+			 * where a reviewer sees it, rather than a frame nobody can tell apart
+			 * from the right one.
+			 */
+			await screen.findByRole(
+				"button",
+				{ name: /Saving/ },
+				{ timeout: FIXTURE_WAIT },
+			);
+			await screen.findByRole(
+				"button",
+				{ name: "Create" },
+				{ timeout: FIXTURE_WAIT },
+			);
+			// The assertion is also the wait: the story is not "done" until the
+			// refusal has been rendered, and the toast is what this frame is for.
+			await screen.findByText(REFUSAL_SENTENCE, {}, { timeout: FIXTURE_WAIT });
+			// ...and the refusal ALSO marks the field it is about, which is the other
+			// half of UX round 1's U3: the same sentence, beside the control the user
+			// has to change, instead of only in a toast that floats past.
+			await screen.findByText(
+				REFUSAL_SENTENCE,
+				{ selector: "p" },
+				{ timeout: FIXTURE_WAIT },
+			);
+		} catch (error) {
+			/*
+			 * A play that fails must not keep the shutter (design round 4, D3).
+			 *
+			 * `holdShutter()` runs from the render, before the play's first
+			 * statement, and the capturer polls `documentElement.dataset.capturePending`
+			 * before it screenshots. Releasing only on success therefore turns any
+			 * failure into a silent hang: the run never returns a frame and never
+			 * says why, which is strictly worse than a frame that is obviously
+			 * wrong. Releasing here and rethrowing keeps the failure loud - Storybook
+			 * reports the play error and the capturer is free to shoot what is
+			 * actually on screen.
+			 */
+			releaseShutter();
+			throw error;
+		}
 		// Both refusal surfaces are ready. The story-scoped toaster duration
 		// keeps the toast mounted after this point without another write.
 		releaseShutter();
