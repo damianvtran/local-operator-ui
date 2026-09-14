@@ -32,6 +32,26 @@ export const AppUpdatesSection: FC = () => {
 		// Both fetches outlive a fast navigation away from settings; the flag
 		// stops them setting state on an unmounted component.
 		let isMounted = true;
+		const showDaemonVersion = (snapshot: {
+			state: string;
+			version: string | null;
+		}) => {
+			if (!isMounted) return;
+			setServerVersion(
+				snapshot.state === "connecting"
+					? "Loading..."
+					: snapshot.state === "detached"
+						? "Unavailable"
+						: snapshot.version || "Unknown (update required)",
+			);
+		};
+		// Settings can stay open while discovery finishes or the selected daemon
+		// exits. A mount-only read would keep showing a version that is no longer serving.
+		let statusPushed = false;
+		const unsubscribe = window.api?.backend?.onStatusChange((snapshot) => {
+			statusPushed = true;
+			showDaemonVersion(snapshot);
+		});
 
 		const fetchAppInfo = async () => {
 			try {
@@ -63,13 +83,8 @@ export const AppUpdatesSection: FC = () => {
 				const bridge = window.api?.backend;
 				if (bridge) {
 					const snapshot = await bridge.getStatus();
-					if (isMounted) {
-						setServerVersion(
-							snapshot.state === "detached"
-								? "Unavailable"
-								: snapshot.version || "Unknown (update required)",
-						);
-					}
+					// A newer push wins if the initial IPC pull arrives afterwards.
+					if (!statusPushed) showDaemonVersion(snapshot);
 					return;
 				}
 				// No desktop bridge (Storybook, browser dev server): the direct probe,
@@ -94,6 +109,7 @@ export const AppUpdatesSection: FC = () => {
 
 		return () => {
 			isMounted = false;
+			unsubscribe?.();
 		};
 	}, []);
 
