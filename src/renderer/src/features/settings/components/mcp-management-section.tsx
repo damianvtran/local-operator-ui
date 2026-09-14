@@ -19,6 +19,20 @@
  *
  * The row is read with the field names the backend actually sends
  * (`owned_scope`, `setup.text`, `status`); see `MCPServerRow`.
+ *
+ * Three things about how the operator ARRIVES here, all added together because
+ * they are one flow — find the server, see which is broken, fix it:
+ *
+ * - `?mcp=<argument>` is RESOLVED against the loaded list rather than parsed as
+ *   a grammar (`resolveMcpServerTarget`), so `/mcp reauth hubspot` lands on
+ *   `hubspot`, and an argument that names nothing renders a line saying so. It
+ *   used to be compared whole and silently dropped on a miss.
+ * - The section has its own search box. It is not part of the settings search
+ *   index, deliberately: that index is a typed-editor registry over backend
+ *   settings keys, and these rows are a session-scoped live read.
+ * - With no active conversation the section borrows the newest roster row and
+ *   says which one, rather than dead-ending on a page whose whole job is to
+ *   show the configured servers.
  */
 
 import { compactPath } from "@features/chat/components/trace/tool-row-model";
@@ -35,10 +49,14 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import {
+	type CanonicalSessionRow,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plug, PlugZap, RotateCw, Trash2 } from "lucide-react";
+import { Plug, PlugZap, RotateCw, Search, Trash2 } from "lucide-react";
 import type { FC, RefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
 import { foreignMcpConfigOrigin } from "../../../../../shared/mcp-foreign-config-origin";
 import { SettingsSection } from "./settings-section";
@@ -89,6 +107,74 @@ type MCPAction =
 	| "reauth"
 	| "status"
 	| "cancel";
+
+/** Both separators, at module level: a regex literal inside the function would
+ * be rebuilt per call, which is the lint rule this satisfies (`useTopLevelRegex`). */
+const WHITESPACE = /\s+/;
+
+/**
+ * The server a `/mcp <argument>` deep link names, or why nothing matched.
+ *
+ * Resolution is against the LOADED list rather than against a grammar of verbs,
+ * and that is the whole design: the renderer holds no copy of the backend's
+ * subcommand vocabulary (`MCP_SUBCOMMANDS`, `session/frontend_state.py:862`), and
+ * `docs/desktop-controls.md` forbids authoring a second command list here. So
+ * `/mcp reauth hubspot` resolves by taking the LAST whitespace token that is a
+ * configured server name — the verb is simply a token that is not a server —
+ * which covers `login notion` and any verb the backend adds later, without the
+ * renderer knowing one verb from another.
+ *
+ * `null` is "no argument was passed" (nothing to say, no line to render).
+ * `miss` is an argument that names nothing, and the section states it: the old
+ * effect returned silently for exactly this case, which is why the operator's
+ * own remedy line (`/mcp reauth hubspot`) did nothing at all rather than
+ * something wrong.
+ */
+export type McpTarget =
+	| { kind: "matched"; name: string }
+	| { kind: "miss"; asked: string }
+	| null;
+
+export const resolveMcpServerTarget = (
+	raw: string | undefined,
+	names: readonly string[],
+): McpTarget => {
+	const asked = raw?.trim();
+	if (!asked) return null;
+	const configured = new Set(names);
+	if (configured.has(asked)) return { kind: "matched", name: asked };
+	const tokens = asked.split(WHITESPACE);
+	for (let index = tokens.length - 1; index >= 0; index -= 1) {
+		const token = tokens[index];
+		if (token && configured.has(token)) {
+			return { kind: "matched", name: token };
+		}
+	}
+	return { kind: "miss", asked };
+};
+
+/**
+ * The conversation the section borrows when none is active (`docs/run-sidebar.md`
+ * § 7 via this change's D5).
+ *
+ * Both MCP ops are session-scoped and there is no sessionless read, so a visit
+ * to Settings with no conversation open used to dead-end on "Open a conversation
+ * to manage its MCP servers." on the one page whose job is to show them. The
+ * newest roster row is the right conversation to borrow because the USER config
+ * is part of every cwd-derived config set: the list a recent conversation sees is
+ * the list, for the question "which of my servers exist".
+ *
+ * Ordered by `updated_at` descending, with the roster's own order as the
+ * fallback (the backend lists newest first, and a row the catalogue gave no
+ * timestamp is not a reason to borrow an older one).
+ */
+export const newestRosterRow = (
+	rows: readonly CanonicalSessionRow[],
+): CanonicalSessionRow | null =>
+	rows.reduce<CanonicalSessionRow | null>((best, row) => {
+		if (!best) return row;
+		return (row.updated_at ?? 0) > (best.updated_at ?? 0) ? row : best;
+	}, null);
 
 const AddServerForm: FC<{
 	sessionId: string;
@@ -257,52 +343,120 @@ const AddServerForm: FC<{
 export const McpManagementSection: FC<{
 	sessionId?: string;
 	sectionRef?: RefObject<HTMLDivElement>;
-	/** Server to reveal, from `/mcp <name>`'s `&mcp=` deep link. */
+	/**
+	 * The argument of `/mcp <argument>`, from the deep link's `&mcp=`.
+	 *
+	 * An ARGUMENT rather than a server name: `/mcp reauth hubspot` passes
+	 * `"reauth hubspot"`, and resolving that is this section's job (see
+	 * `resolveMcpServerTarget`). Named `highlightServer` for its first caller's
+	 * sake; the prop's contract is the raw string.
+	 */
 	highlightServer?: string;
 }> = ({ sessionId, sectionRef, highlightServer }) => {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "mcp");
 	const queryClient = useQueryClient();
+	/*
+	 * The roster, for the borrow below: the chat sidebar's own read (`chat-sidebar`
+	 * calls `fetchSessions` on mount), used here only when no session is active, so
+	 * the common case costs nothing and adds no read.
+	 */
+	const roster = useCanonicalSessionsStore((state) => state.sessions);
+	const fetchSessions = useCanonicalSessionsStore(
+		(state) => state.fetchSessions,
+	);
+	const rosterLoading = useCanonicalSessionsStore((state) => state.loading);
+	const borrowed = useMemo(
+		() => (sessionId ? null : newestRosterRow(roster)),
+		[sessionId, roster],
+	);
+	const readSessionId = sessionId ?? borrowed?.session_id;
 	const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [showAdd, setShowAdd] = useState(false);
+	const [filter, setFilter] = useState("");
+
+	// Only when the roster has nothing to borrow: an empty roster on a page opened
+	// straight from `/mcp` is the case D5 exists for, and a second read beside the
+	// sidebar's own would be the duplicate this section avoids elsewhere.
+	useEffect(() => {
+		if (sessionId || !enabled || roster.length > 0) return;
+		void fetchSessions();
+	}, [sessionId, enabled, roster.length, fetchSessions]);
 
 	const listQuery = useQuery<DesktopMcpState, Error>({
-		queryKey: mcpKeys.list(sessionId ?? ""),
+		queryKey: mcpKeys.list(readSessionId ?? ""),
 		queryFn: () => {
-			if (!sessionId) throw new Error("No conversation selected.");
-			return fetchMcpList(sessionId);
+			if (!readSessionId) throw new Error("No conversation selected.");
+			return fetchMcpList(readSessionId);
 		},
-		enabled: enabled && Boolean(sessionId),
+		enabled: enabled && Boolean(readSessionId),
 		staleTime: 10_000,
 	});
 
 	const servers: MCPServerRow[] = mcpListServers(listQuery.data);
 
-	// `/mcp <name>` emits `&mcp=<name>` and nothing read it, so the argument was
-	// silently dropped and the command landed on an undifferentiated list (UX
-	// U3). Honoured rather than removed: naming a server is the whole point of
-	// passing one.
+	// `/mcp <argument>` emits `&mcp=<argument>` and the surface used to compare
+	// the whole string against a server name, so the operator's own remedy line
+	// (`/mcp reauth hubspot`) matched nothing and the effect returned in silence.
+	// Resolution is against the loaded list (see `resolveMcpServerTarget`), and a
+	// miss is a STATE rather than a no-op.
+	const target = useMemo(
+		() =>
+			resolveMcpServerTarget(
+				highlightServer,
+				servers.map((server) => server.name),
+			),
+		[highlightServer, servers],
+	);
+	const named = target?.kind === "matched" ? target.name : null;
+
+	/** The revealed row, and the one reveal already performed for it. */
 	const highlightRef = useRef<HTMLLIElement>(null);
 	const revealed = useRef<string | null>(null);
+
+	const search = filter.trim().toLowerCase();
+	const visible = useMemo(
+		() =>
+			search
+				? servers.filter((server) => server.name.toLowerCase().includes(search))
+				: servers,
+		[servers, search],
+	);
+
+	/*
+	 * A filter typed BEFORE the command ran must not hide the row the command
+	 * exists to reveal, so the first arrival clears it — and only the first: after
+	 * the reveal, a filter the user types is theirs to keep, which is why the
+	 * guard is the reveal ref rather than the presence of an argument.
+	 */
 	useEffect(() => {
-		if (!highlightServer || servers.length === 0) return;
+		if (!named || revealed.current === named || !filter) return;
+		setFilter("");
+	}, [named, filter]);
+
+	useEffect(() => {
+		if (!named) return;
 		// Once per named server: re-scrolling on every list refetch would fight
 		// the user for the scroll position.
-		if (revealed.current === highlightServer) return;
-		if (!servers.some((server) => server.name === highlightServer)) return;
-		revealed.current = highlightServer;
+		if (revealed.current === named) return;
+		// Nothing to scroll to yet: the read has not returned, or the row is still
+		// filtered out and the effect above is about to clear the filter.
+		if (!visible.some((server) => server.name === named)) return;
+		revealed.current = named;
 		highlightRef.current?.scrollIntoView({
 			block: "center",
 			behavior: "smooth",
 		});
-	}, [highlightServer, servers]);
+	}, [named, visible]);
 
 	const refresh = useCallback(() => {
-		if (sessionId) {
-			void queryClient.invalidateQueries({ queryKey: mcpKeys.list(sessionId) });
+		if (readSessionId) {
+			void queryClient.invalidateQueries({
+				queryKey: mcpKeys.list(readSessionId),
+			});
 		}
-	}, [queryClient, sessionId]);
+	}, [queryClient, readSessionId]);
 
 	const control = useCallback(
 		async (
@@ -310,12 +464,12 @@ export const McpManagementSection: FC<{
 			name: string,
 			extra: { confirmed?: boolean; scope?: "global" | "project" } = {},
 		) => {
-			if (!sessionId) return;
+			if (!readSessionId) return;
 			setActionError(null);
 			try {
 				await desktopResult({
 					op: "mcp.control",
-					sessionId,
+					sessionId: readSessionId,
 					control: { action, name, ...extra },
 				});
 				refresh();
@@ -327,7 +481,7 @@ export const McpManagementSection: FC<{
 				);
 			}
 		},
-		[sessionId, refresh],
+		[readSessionId, refresh],
 	);
 
 	if (!enabled) {
@@ -345,16 +499,28 @@ export const McpManagementSection: FC<{
 		);
 	}
 
-	if (!sessionId) {
+	/*
+	 * No conversation AT ALL: the roster answered and it is empty, so there is
+	 * nothing to borrow and no session for either op. This is the only case the
+	 * old dead-end line survives in — and it is now a statement about the machine
+	 * rather than about the page's willingness to help.
+	 */
+	if (!readSessionId) {
 		return (
 			<SettingsSection
 				title="Integrations"
 				description="MCP servers connect agents to your tools and accounts."
 				sectionRef={sectionRef}
 			>
-				<p className="text-body-sm text-ink-muted">
-					Open a conversation to manage its MCP servers.
-				</p>
+				{rosterLoading ? (
+					<div className="flex h-24 items-center justify-center">
+						<Spinner size="lg" label="Loading MCP servers" />
+					</div>
+				) : (
+					<p className="text-body-sm text-ink-muted">
+						Open a conversation to manage its MCP servers.
+					</p>
+				)}
 			</SettingsSection>
 		);
 	}
@@ -367,6 +533,22 @@ export const McpManagementSection: FC<{
 		>
 			<div className="flex flex-col gap-4">
 				{actionError && <Alert variant="danger">{actionError}</Alert>}
+				{/*
+				 * Which conversation this list is. The sentence NAMES it, and that is a
+				 * requirement rather than a nicety: the statuses below are that
+				 * conversation's RUNTIME's, and `disconnect` is per-session — but the
+				 * CREDENTIAL is not, `~/.local-operator/auth.db` is shared and a grant from
+				 * any conversation revalidates the block in every other one
+				 * (`mcp/manager.py:3050-3075`). So naming the conversation must not be read
+				 * as claiming the sign-in belongs to it.
+				 */}
+				{borrowed && (
+					<p className="text-body-sm text-ink-muted">
+						Showing MCP servers for{" "}
+						{borrowed.title?.trim() || borrowed.session_id.slice(0, 6)}, your
+						most recent conversation. Open a conversation to see its own list.
+					</p>
+				)}
 				{listQuery.isLoading && (
 					<div className="flex h-24 items-center justify-center">
 						<Spinner size="lg" label="Loading MCP servers" />
@@ -386,16 +568,71 @@ export const McpManagementSection: FC<{
 						</div>
 					</Alert>
 				)}
+				{/*
+				 * The list's own search (D4). Client-side, over the rows the read already
+				 * returned, and present whenever there IS a list: "search for the name I
+				 * know" is the gesture that failed, and it needs no threshold to be worth
+				 * having. It is deliberately NOT wired into the settings search index —
+				 * that index is a typed-editor registry over backend settings keys, and
+				 * MCP rows are a session-scoped live read with a runtime status column,
+				 * which is the second-answer problem this section was built to avoid.
+				 */}
+				{servers.length > 0 && (
+					<div className="relative">
+						<Search
+							aria-hidden="true"
+							className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-dim"
+						/>
+						<Input
+							value={filter}
+							onChange={(event) => setFilter(event.target.value)}
+							placeholder="Search MCP servers"
+							aria-label="Search MCP servers"
+							className="pl-9"
+						/>
+					</div>
+				)}
+				{/*
+				 * Exactly one of these two lines, by construction: the miss line needs a
+				 * list to have been searched, and the configured line needs it to be empty
+				 * — so an argument that named nothing on a machine with no servers gets the
+				 * statement about the machine, which is the more complete answer.
+				 *
+				 * The miss line quotes the RAW argument, because that is what the reader
+				 * typed and what a resolution rule has to be re-read against.
+				 */}
+				{target?.kind === "miss" && servers.length > 0 && (
+					<p className="text-body-sm text-ink-muted">
+						{`No MCP server matches "${target.asked}".`}
+					</p>
+				)}
 				{listQuery.isSuccess && servers.length === 0 && (
 					<p className="text-body-sm text-ink-muted">
 						No MCP servers configured yet. Add one below.
 					</p>
 				)}
-				{servers.length > 0 && (
+				{/*
+				 * The filter's own empty state, in the provider grid's shape (the same
+				 * `No providers match this search.` + `Clear search` pair) because it is
+				 * the same question about a different list — and it is a different line
+				 * from the deep-link miss above, which is a statement about a NAME rather
+				 * than about a filter.
+				 */}
+				{servers.length > 0 && visible.length === 0 && (
+					<div className="flex flex-col items-start gap-2">
+						<p className="text-body-sm text-ink-muted">
+							No MCP servers match this search.
+						</p>
+						<Button variant="secondary" size="sm" onClick={() => setFilter("")}>
+							Clear search
+						</Button>
+					</div>
+				)}
+				{visible.length > 0 && (
 					<ul className="flex flex-col gap-2">
-						{servers.map((server) => {
+						{visible.map((server) => {
 							const connected = server.status === "connected";
-							const highlighted = server.name === highlightServer;
+							const highlighted = server.name === named;
 							// Aliased so the removal handler below keeps the non-null
 							// narrowing: the scope of the write and the reason the Remove
 							// control exists are the same question.
@@ -645,7 +882,7 @@ export const McpManagementSection: FC<{
 				)}
 				{showAdd ? (
 					<AddServerForm
-						sessionId={sessionId}
+						sessionId={readSessionId}
 						onAdded={() => {
 							setShowAdd(false);
 							refresh();
