@@ -23,6 +23,7 @@ import {
 	isRefusedBeforeAdmission,
 	isSessionUnvalidated,
 	panelIdentityFor,
+	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
 	useCanonicalSessionsStore,
 	withholdsRetryHint,
@@ -1205,6 +1206,15 @@ function SessionPanel({
 	 * (UX round 3 U14, QA round 3 Q7).
 	 */
 	const refusedText = refusedBeforeAdmissionText(draft);
+	/*
+	 * The other half of the same payload, carried the same way and for the same
+	 * reason: the composer's chips live under the identity the send was made from,
+	 * so the composer that mounts after the flip cannot reconstruct the file list
+	 * the refused send was carrying. Restoring the text without it is a send that
+	 * silently drops the user's file, and the row that recorded it is retired by
+	 * the very resend that lost it (round 7, R17).
+	 */
+	const refusedAttachments = refusedBeforeAdmissionAttachments(draft);
 	const releaseHeld = () => {
 		if (draftIdentity)
 			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
@@ -1277,6 +1287,13 @@ function SessionPanel({
 					 * unreachable again - the record ends when the draft does.
 					 */
 					refusedText,
+					/*
+					 * The files that go back with it. Same terms as `refusedText` above - the
+					 * composer's own chip row is per-identity and was staged under the identity
+					 * the flip replaced - and on the same refusal row, so the two arrive and are
+					 * dropped together.
+					 */
+					refusedAttachments,
 					onRestoreHeld:
 						heldText !== undefined ? () => clearError() : undefined,
 					/*
@@ -1404,10 +1421,27 @@ function SessionPanel({
 								 * the instant of the send - the constraint the designer set on
 								 * this fix, since a second line that disappears at that moment
 								 * is a reflow the reader watches happen.
+								 *
+								 * A THIRD state on the same slot: the send created its session
+								 * and the refusal then stopped it before admission, so a session
+								 * exists while nothing has been admitted into it. The instruction
+								 * is false there, and visibly so - the composer's own footer on
+								 * that very screen says the working directory is fixed BECAUSE
+								 * the session has started, one line below a header announcing
+								 * that it has not (UX round 4, U16), and the roster already
+								 * lists the session. So the head describes the conversation that
+								 * now exists, by its directory: the identity this header already
+								 * falls back to for a live chat, and the one the TUI names a
+								 * session by before it has a name (`cwd_label` - the terminal
+								 * never asserts that a session has not started, because there one
+								 * always has). The directory is also the exact thing the footer
+								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
 								? (loadedTarget ?? "Starting the session")
-								: "The session starts when you send your first message."
+								: draft?.sessionId
+									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									: "The session starts when you send your first message."
 							: canonical.frontend?.cwd || "Canonical chat")
 					}
 					descriptionPending={identityPending}

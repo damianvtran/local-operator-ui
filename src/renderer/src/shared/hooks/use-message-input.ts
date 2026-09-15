@@ -4,7 +4,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useConversationInputStore } from "../store/conversation-input-store";
+import {
+	type Attachment,
+	useConversationInputStore,
+} from "../store/conversation-input-store";
 
 /**
  * A failed send whose text must NOT be put back in the composer.
@@ -46,6 +49,40 @@ export const restoreSubmittedText = (
 	current: string,
 	submitted: string,
 ): string => (current === "" ? submitted : current);
+
+/**
+ * Put a refused send's ATTACHMENTS back, on the same rule as its text.
+ *
+ * The chip row a restored draft shows and the payload its next Send carries are
+ * the same list, so an attachment the restored draft does not re-adopt is a file
+ * the user believes they are sending and are not - the silent partial send of
+ * round 7's R17. Restoring the PATHS is enough for that payload to come back
+ * whole: the send re-encodes images from them (`encodeImageAttachments` in
+ * `chat-page.tsx`).
+ *
+ * The rule is `restoreSubmittedText`'s, and it is the same rule for the same
+ * reason: only into an EMPTY slot. A composer that already holds chips is
+ * holding files the user just picked, and overwriting those is loss - on the
+ * named-session arm that is exactly the state (`conversationId` never changes,
+ * so the chips were never cleared and there is nothing to restore). Empty answer
+ * means "adopt nothing", never "clear what is there".
+ *
+ * Exported and pure so the composer's own adoption can be pinned by a test
+ * rather than argued from its call site, exactly as the two transitions above
+ * are (`clearSubmittedText`'s own note).
+ */
+export const restoreSubmittedAttachments = (
+	current: readonly Attachment[],
+	submitted: readonly string[] | undefined,
+): readonly string[] =>
+	current.length === 0 && submitted ? submitted : EMPTY_PATHS;
+
+/**
+ * One instance, so the rule's negative answer is a stable value rather than a
+ * fresh array on every render - the composer adopts on a render-synchronous
+ * effect and an identity that changes per call is a re-run waiting to happen.
+ */
+const EMPTY_PATHS: readonly string[] = [];
 
 /**
  * Options for the useMessageInput hook

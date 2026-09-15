@@ -372,6 +372,20 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 }
 
 /**
+ * Whether this row is one whose refusal owes the composer a payload BACK.
+ *
+ * ONE discriminator for BOTH halves of that payload - the text and the
+ * attachments (round 7, R17). They are written together, before the request
+ * (`admitChatDraft` stores `submittedText`, `submittedAttachments` and
+ * `submittedImages` in one update), so a second copy of this rule is how one
+ * half comes to be restored while the other is dropped in silence.
+ */
+function owesRefusedPayload(draft: ChatDraft | undefined): draft is ChatDraft {
+	if (!draft) return false;
+	return !draft.pending && !draft.admissionAttempted;
+}
+
+/**
  * The text a refused send owes the composer, for the refusals that admitted
  * nothing.
  *
@@ -418,6 +432,15 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
  * SENTENCE, not abandoning the message they typed, and a dismissal that silently
  * made the text unreachable again would be this defect one keystroke later.
  * Discard, a successful send and `releaseClaim` are what end the record.
+ *
+ * WHAT IT DOES NOT ANSWER (round 7, R23). It reports the row's LAST refused
+ * payload, not "the text this refusal owes". The read window's refusal is raised
+ * before the draft is touched at all (`admitChatDraft`'s first gate), so on that
+ * arm this returns `undefined` - or an older payload from a send that failed
+ * earlier and was never abandoned - while a refusal is on screen. Nothing
+ * misbehaves today (both of those arms leave the box non-empty, and a repeat of
+ * the same payload short-circuits the effect), which is exactly why the limit is
+ * written down here rather than left for the next reader to assume past.
  */
 // The rule this text is put back THROUGH lives one layer up, in the composer
 // hook (`@shared/hooks/use-message-input`'s `restoreSubmittedText`): the store
@@ -425,8 +448,35 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 export function refusedBeforeAdmissionText(
 	draft: ChatDraft | undefined,
 ): string | undefined {
-	if (!draft || draft.pending || draft.admissionAttempted) return undefined;
+	if (!owesRefusedPayload(draft)) return undefined;
 	return draft.submittedText;
+}
+
+/**
+ * The attachments that same refusal owes the composer, on the same rule.
+ *
+ * WHY THEY NEED A ROUTE OF THEIR OWN. `submittedAttachments` is the user's file
+ * list, written before the request like the text - and the composer reads its
+ * chips from `inputByConversation[conversationId]`, which on the created-session
+ * arm were staged under the PRE-FLIP identity. So the chip row is empty after
+ * the flip and this field is the only survivor: pressing Send on the restored
+ * text sent the message WITHOUT the file, said nothing, and `finishDraft` then
+ * retired the row and the record with it. Silent and partial is the worst shape
+ * a failure can take, and it is the failure the composer's own comment promises
+ * cannot happen (`message-input.tsx`: "replies and attachments included" is true
+ * only while the composer that sent them survives) - round 7, R17.
+ *
+ * PATHS, not the encoded `submittedImages` beside them: the send re-encodes
+ * images from the composer's attachment paths (`encodeImageAttachments`), so a
+ * re-adopted path restores the exact payload the refused send carried - pasted
+ * images included, whose "path" is their own data URL. Re-adopting the encoded
+ * set as well would give one file two representations that can disagree.
+ */
+export function refusedBeforeAdmissionAttachments(
+	draft: ChatDraft | undefined,
+): string[] | undefined {
+	if (!owesRefusedPayload(draft)) return undefined;
+	return draft.submittedAttachments;
 }
 
 /**
