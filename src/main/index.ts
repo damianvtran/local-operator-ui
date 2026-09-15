@@ -345,7 +345,6 @@ function createWindow(
 			// keeps Electron's own default.
 			backgroundThrottling: windowLaunch.backgroundThrottling,
 			/*
-			/*
 			 * The conversation this window is being created FOR, in the renderer
 			 * process's own argv so preload can read it before the first paint (B3).
 			 *

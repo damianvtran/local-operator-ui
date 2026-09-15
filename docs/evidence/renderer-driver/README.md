@@ -25,11 +25,14 @@ frames first committed here were captured before `#177` (the browser tab) merged
 and that PR changed this very screen: the rail gained a `Browser` item between
 `Schedules` and `Settings`, and the connectivity banner's sentence was rewritten.
 Measured against the old pair at the merged head, `magick compare -metric AE`
-reports **126,564 differing pixels** (2.64% of the frame) in `chat-dark.png` and
-126,576 in `chat-light.png` — a rail entry and a banner sentence, not a rendering
-wobble. A caption that still called those frames "the merged tree" would have been
-wrong, so they were re-captured with the documented command at the merge that
-brought `#177` in, and re-hashed above, rather than left standing.
+reports **126,564 differing pixels** (2.64% of the frame) in both committed
+frames, `chat-dark.png` and `chat-light.png` — a rail entry and a banner
+sentence, not a rendering wobble. A reader re-measuring this who reads 126,576
+on the light frame is measuring the other light byte-form below, not a different
+stale pair: the two light forms are themselves 12 pixels apart. A caption that
+still called those frames "the merged tree" would have been wrong, so they were
+re-captured with the documented command at the merge that brought `#177` in, and
+re-hashed above, rather than left standing.
 
 Those hashes are worth comparing against a run of your own, **on the same
 Electron version** — the version is printed by the run itself
@@ -45,21 +48,38 @@ booted and no frame written. A worktree inheriting a stale shared `node_modules`
 therefore cannot populate a frames directory at all, rather than populating one
 it later disowns with an exit code.
 
-### Which of these two hashes is checkable, and which is one of two
+### Neither hash is checkable as one pair of bytes
 
-`chat-dark.png` is byte-stable: twelve `--scene states` runs taken while this pair
-was being re-cut — six on the pre-hardening build and six on the shipped one, at
-load averages of 96-124 — produced the same 93231 bytes every time.
-`chat-light.png` is **not**, and the earlier sentence here ("two consecutive runs
-produced identical bytes for both frames") generalised a two-run observation into
-a claim a twelve-run measurement falsifies. Across those twelve runs the light
-frame came out in two byte-forms: 92986 B (eight runs) and 92980 B (four), which
-differ in **12 pixels** (`magick compare -metric AE`, 2.5e-6 of the frame)
-confined to the rounded edges of the sidebar's search field and one glyph edge.
-Both forms are the same screen in the same palette from the same build; neither is
-a mid-transition frame, which is what the guards below are for — and neither is
-root-caused here, so quote the dark hash if you want a claim that holds, and treat
-the light one as one of two forms until somebody explains the twelve pixels.
+**The harness is not byte-reproducible across runs, on either frame**, and the
+sentences that used to stand here said otherwise because each generalised a
+smaller observation into a claim the next measurement falsified: "two consecutive
+runs produced identical bytes for both frames", and `chat-dark.png` "byte-stable
+… the same 93231 bytes every time". Both are retracted below from measurements,
+not from caution.
+
+`chat-light.png` came out in **two byte-forms** across the twelve `--scene
+states` runs taken while this pair was being re-cut — six on the pre-hardening
+build and six on the shipped one, at load averages of 96-124: 92986 B (eight
+runs) and 92980 B (four), which differ in **12 pixels** (`magick compare -metric
+AE`, 2.5e-6 of the frame) confined to the rounded edges of the sidebar's search
+field and one glyph edge.
+
+`chat-dark.png` is **not byte-stable either**. A thirteenth run — the first on a
+build made from this head — produced **93204 B** against the committed 93231 B,
+**20 pixels** apart (`magick compare -metric AE`), in the header/banner band: two
+symmetric antialiasing runs at y=150-157 (x=458-465 and x=974-981) plus four
+specks. Neither form is a build difference — seven other runs on that same build
+gave the committed bytes. The run's own log carries the signal and states it as
+an observation rather than here as a cause: the differing frame is the one whose
+in-run comparison failed and was retried (`chat-dark: held still after 3
+capture(s)`), and the two light runs that produced the second light form show the
+same retry, while every two-capture run produced the first form.
+
+All forms are the same screen in the same palette from the same build, and none
+is a mid-transition frame, which is what the guards below are for. None is
+root-caused here. **So treat either hash as one of two forms** — the dark frame
+is the more stable of the two (twelve runs of thirteen), not a byte-stable one —
+and compare pixels, not bytes, if a run of your own does not match.
 
 The in-run guarantee is separate from that cross-run question, and this is what
 the harness actually asserts, each half with a defect behind it from an earlier
@@ -195,12 +215,13 @@ The five limits a reader should know before quoting them:
   harness's isolation covers the operator's state — profile, config dir, log
   directory, backend URL — and not egress. `docs/agent-driver.md` states this
   where a reader will look for it.
-- **`chat-light.png` is one of two byte-forms, not the bytes.** Twelve runs gave
-  the light frame as 92986 B eight times and 92980 B four times, differing in 12
-  pixels of edge antialiasing on the sidebar's search field; `chat-dark.png` was
-  identical in all twelve. A reader comparing the light hash against a run should
-  expect either form until somebody explains the twelve pixels — the subsection
-  above carries the measurement.
+- **Both frames are one of two byte-forms, not the bytes.** Twelve runs gave the
+  light frame as 92986 B eight times and 92980 B four times, differing in 12
+  pixels of edge antialiasing on the sidebar's search field; a thirteenth gave the
+  dark frame as 93204 B against the committed 93231 B, 20 pixels apart in the
+  header/banner band. A reader comparing either hash against a run should expect
+  either form until somebody explains the pixels — the subsection above carries
+  the measurements.
 - **Transient toasts are excluded by construction**, so these frames say nothing
   about toast styling or placement: the scene waits for the app's toasts to clear
   and discards a capture that has one, precisely because `List agents request
