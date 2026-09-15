@@ -615,6 +615,28 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+
+	/* The unpacked-extension manager's sheet, whose four states are the ones the
+	   manager's projection can be in and three of which a reviewer cannot reach
+	   on demand: an empty registry, a loaded extension, a manifest that changed
+	   after approval, and a registry that could not be read. Swept rather than
+	   declared supplementary because the frames come from the ordinary Storybook
+	   story (`browser-extensions-sheet.stories.tsx`) over a stubbed transport,
+	   so a recapture re-derives every one of them. What they do NOT evidence is
+	   the native flow — nothing here loads an extension; that run is
+	   `scripts/browser-extensions-proof.mjs`, quoted in the PR and in the
+	   compatibility matrix beside it.
+
+	   1280x900 for all five: the sheet is capped at `max-w-lg`, so a wider
+	   viewport only adds ground, and the panel is a full-height `overflow-y-auto`
+	   drawer, so a taller one only scrolls. The dominant colour of each frame is
+	   therefore the ground behind a 512px panel, well inside the uniformity
+	   ceiling. */
+	["browser-extensions-sheet--empty", 1280, 900],
+	["browser-extensions-sheet--installed", 1280, 900],
+	["browser-extensions-sheet--warnings", 1280, 900],
+	["browser-extensions-sheet--refused", 1280, 900],
+	["browser-extensions-sheet--registry-unreadable", 1280, 900],
 ];
 
 /**
