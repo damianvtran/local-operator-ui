@@ -147,10 +147,21 @@ function Harness() {
 	const [draft, setDraft] = useState("");
 	const [rect, setRect] = useState("");
 	/*
-	 * Whether this composer addresses a live session. The page supplies
-	 * `sessionStatus` only when a canonical session exists, and its ABSENCE is the
-	 * honest "needs an open conversation" state — the state the staged note's own
-	 * sentence is conditioned on (UX U5 / design D5).
+	 * WHICH PANE SHAPE the composer is mounted as.
+	 *
+	 * `session` is a live canonical session: the page supplies `sessionStatus` (its
+	 * frontend snapshot and the dispatcher) and `conversationId` is the session's
+	 * id, so a command can address a session.
+	 *
+	 * `!session` is a NEW CHAT pane, and it is NOT "no `sessionStatus`": the page
+	 * builds one from `preview.data.snapshot` with `draft: true` (`chat-page.tsx`),
+	 * while `conversationId` is the PANE's own identity — a non-empty string — and
+	 * nothing can address a session. The earlier version of this harness forced
+	 * `sessionStatus={undefined}` for the draft case, which the shipping page does
+	 * not produce for a pane whose preview has resolved, and that is exactly why
+	 * the honest note could be rendered here and never in the app (UX round 2, U1).
+	 * The two shapes below are the page's own props, including the dispatcher's
+	 * answer (`paneHasSession`).
 	 */
 	const [session, setSession] = useState(true);
 
@@ -232,6 +243,37 @@ function Harness() {
 				{button("arrowdown", "3. ArrowDown (choose the row by hand)", () =>
 					pressKey(area(), "ArrowDown"),
 				)}
+				{button(
+					"choose-goal-by-hand",
+					"3b. choose /goal by hand from the full list",
+					() => {
+						/*
+						 * THE KEYBOARD PATH TO A HAND-MADE CHOICE, as the app really offers it.
+						 * A query of `/goal` matches ONE row in the real catalogue, the marker
+						 * clamps on a one-row list, and a clamped arrow is not a move — so the
+						 * hand-made state is reached the way a user reaches it: a bare `/`
+						 * lists the whole catalogue, and arrowing to `/goal` in it IS a move.
+						 *
+						 * One press per TICK, not per rAF: this harness runs in a background tab,
+						 * where `requestAnimationFrame` is paused outright and timers are merely
+						 * throttled - a loop awaiting a frame stalls after its first press. A tick
+						 * also lets React flush, so the next read of `aria-selected` sees the
+						 * marker the last press moved (reading it inside a synchronous loop reads
+						 * the state the loop started in, which is how this stopped on `/help` the
+						 * first time it was written).
+						 */
+						void (async () => {
+							fresh();
+							typeDraft(area(), "I approve spend /");
+							for (let i = 0; i < 40; i++) {
+								const goal = document.querySelector('[id$="-cmd-goal"]');
+								if (goal?.getAttribute("aria-selected") === "true") break;
+								pressKey(area(), "ArrowDown");
+								await new Promise((resolve) => setTimeout(resolve, 0));
+							}
+						})();
+					},
+				)}
 				{button("click-goal", "4. click the goal row", () => {
 					area()?.focus();
 					/*
@@ -244,6 +286,19 @@ function Harness() {
 						document.querySelector('[role="option"]');
 					(row as HTMLElement | null)?.click();
 				})}
+				{button("click-loop", "4b. click the /loop row", () => {
+					area()?.focus();
+					/*
+					 * The control row of the whole change: a POINTER pick of a free-text
+					 * command, whose own line and whose `Click …` line are the pair UX U2
+					 * measured. Driven here so the frame and the witness rows come from
+					 * the same gesture a reader can repeat.
+					 */
+					const row =
+						document.querySelector('[id$="-cmd-loop"]') ??
+						document.querySelector('[role="option"]');
+					(row as HTMLElement | null)?.click();
+				})}
 				{button("escape", "5. Escape", () => pressKey(area(), "Escape"))}
 				{button("toggle-session", "toggle live session", () =>
 					setSession((on) => !on),
@@ -251,16 +306,39 @@ function Harness() {
 				{button("read", "read", () => {})}
 			</div>
 			<Row k="box" v={JSON.stringify(draft)} />
+			<Row
+				k="pane"
+				v={
+					session
+						? "session: sessionStatus(snapshot) + claimable, conversationId=ev209, paneHasSession=true"
+						: "new chat: sessionStatus(preview, draft) + conversationId=draft:ev209, paneHasSession=false"
+				}
+			/>
 			<Row k="note (onSlashNote)" v={JSON.stringify(note)} />
 			<Row k="sent (onSendMessage)" v={JSON.stringify(sent)} />
 			<Row k="dispatched (onSlashCommand)" v={JSON.stringify(dispatched)} />
 			<Row k="rect" v={rect} />
 			<div ref={boxRef} data-ev="composer-frame">
 				<MessageInput
-					sessionStatus={session ? ({} as never) : undefined}
+					/*
+					 * The page's props for each pane, not a shape chosen for the frame: a
+					 * draft pane KEEPS a `sessionStatus` (from the preview, `draft: true`),
+					 * keeps a non-empty `conversationId` (the pane's identity), passes the
+					 * same dispatcher, and answers the arming copy's question with
+					 * `paneHasSession={false}`. The snapshot's own fields are not what these
+					 * frames are about, so it is the same minimal object in both shapes.
+					 */
+					sessionStatus={{
+						frontend: {} as never,
+						onCommand: session
+							? async () => "consumed" as const
+							: undefined,
+						draft: !session,
+					}}
+					paneHasSession={session}
 					isLoading={false}
 					messages={NONEMPTY}
-					conversationId="ev209"
+					conversationId={session ? "ev209" : "draft:ev209"}
 					onSendMessage={async (text?: string) => {
 						setSent(String(text ?? ""));
 						return true;
