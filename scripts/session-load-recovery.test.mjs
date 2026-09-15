@@ -277,6 +277,19 @@ globalThis.cancelAnimationFrame = (id) => {
 	if (at >= 0) rafQueue.splice(at, 1);
 };
 globalThis.window = {
+	/*
+	 * A listener registry, because the connectivity gate subscribes to the
+	 * browser's own online/offline events: without these the gate cannot mount at
+	 * all, and a harness that cannot mount the hook cannot say anything about it.
+	 */
+	listeners: {},
+	addEventListener(type, handler) {
+		(this.listeners[type] ??= []).push(handler);
+	},
+	removeEventListener(type, handler) {
+		const at = (this.listeners[type] ?? []).indexOf(handler);
+		if (at >= 0) this.listeners[type].splice(at, 1);
+	},
 	setTimeout: (callback, delay) => {
 		const id = nextId++;
 		timerQueue.push({ id, callback, delay });
@@ -785,4 +798,162 @@ test("every transport detail maps to ONE product sentence, and none of them leak
 		"no control is offered where reconnecting cannot help",
 	);
 	assert.deepEqual(streamFailureNotice(null), refused);
+});
+
+// ------------------------------------------------------- the connectivity gate
+
+/*
+ * The gate's half of the operator's second symptom: after a reload, no
+ * conversations or messages would load, and only a later reload brought them
+ * back.
+ *
+ * The mechanism was the effect that ran on the way DOWN. React Query's
+ * `invalidateQueries({ refetchType: "active" })` re-runs the reads it marks
+ * stale, and against a connection main had just called unreachable those reads
+ * can only fail - so a state flap replaced rendered rows with an error and threw
+ * away in-flight work at the exact moment the daemon was least able to answer.
+ * Nothing about a lost connection is a reason to re-ask a question; what the app
+ * owes the reader on the way back up is the re-read.
+ *
+ * The gate is bundled here with two fixtures and nothing else: a query client
+ * that records what it is asked to invalidate, and a status source the test
+ * drives. Everything between them is the shipping hook.
+ */
+
+const QUERY_SOURCE = `
+export const useQueryClient = () => globalThis.__gateTest.client;
+export const useQuery = () => ({ data: undefined, isLoading: false });
+`;
+
+const STATUS_SOURCE = `
+export const useConnectivityStatus = () => globalThis.__gateTest.status;
+`;
+
+const gateBundle = await build({
+	stdin: {
+		contents:
+			'export { useConnectivityGate } from "./src/renderer/src/shared/hooks/use-connectivity-gate.ts"; export { __setRuntime } from "react";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "neutral",
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	write: false,
+	tsconfig: "tsconfig.web.json",
+	plugins: [
+		{
+			name: "gate-test-fixtures",
+			setup(builder) {
+				const fixtures = {
+					react: HARNESS_SOURCE,
+					query: QUERY_SOURCE,
+					status: STATUS_SOURCE,
+				};
+				builder.onResolve({ filter: /^react$/ }, () => ({
+					path: "react",
+					namespace: "fixture",
+				}));
+				builder.onResolve({ filter: /^@tanstack\/react-query$/ }, () => ({
+					path: "query",
+					namespace: "fixture",
+				}));
+				// Resolved by IMPORTER as well as specifier: `./use-connectivity-status`
+				// is a relative import, and only the gate's own copy may be
+				// substituted.
+				builder.onResolve(
+					{ filter: /^\.\/use-connectivity-status$/ },
+					(args) =>
+						args.importer.endsWith("shared/hooks/use-connectivity-gate.ts")
+							? { path: "status", namespace: "fixture" }
+							: undefined,
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "fixture" },
+					(args) => ({ contents: fixtures[args.path], loader: "js" }),
+				);
+			},
+		},
+	],
+});
+
+globalThis.__gateTest = {
+	client: { calls: [], invalidateQueries(options) { this.calls.push(options); } },
+	status: {
+		isServerOnline: true,
+		isOnline: true,
+		hostingProvider: "",
+		shouldCheckInternet: true,
+		hasConnectivityIssue: false,
+		connectivityIssue: null,
+		isLoading: false,
+		refetchInternetStatus: () => {},
+		refetchServerStatus: () => {},
+	},
+};
+
+const { useConnectivityGate, __setRuntime } = await import(
+	`data:text/javascript;base64,${Buffer.from(gateBundle.outputFiles[0].text).toString("base64")}#gate`
+);
+
+test("a server flap does not re-ask or cancel a read on the way down, and refreshes on the way up", () => {
+	let view = null;
+	const renderer = createRenderer(() => {
+		view = useConnectivityGate();
+		return {};
+	});
+	__setRuntime(renderer);
+	renderer.render();
+
+	const client = globalThis.__gateTest.client;
+	assert.equal(view.isServerOnline, true);
+	assert.deepEqual(client.calls, [], "a healthy connection invalidates nothing");
+
+	// DOWN: main has called the connection unreachable.
+	client.calls.length = 0;
+	globalThis.__gateTest.status.isServerOnline = false;
+	renderer.render();
+	assert.deepEqual(
+		client.calls,
+		[],
+		"going offline must not re-run a single backend read: they can only fail, and re-running them is what replaced the rendered conversations with an error",
+	);
+	assert.equal(view.isServerOnline, false);
+	assert.equal(
+		view.shouldEnableQuery({ bypassInternetCheck: true }),
+		false,
+		"and the gate still disables a NEW read while there is no connection to read through",
+	);
+
+	// UP: the daemon is back.
+	client.calls.length = 0;
+	globalThis.__gateTest.status.isServerOnline = true;
+	renderer.render();
+	assert.equal(
+		client.calls.length,
+		1,
+		"the recovery is what owes the reader a re-read - exactly once",
+	);
+	const call = client.calls[0];
+	assert.equal(call.refetchType, "active");
+	const invalidates = (key) => call.predicate({ queryKey: [key] });
+	assert.equal(
+		invalidates("conversation-messages"),
+		true,
+		"the transcript is refreshed on recovery",
+	);
+	assert.equal(invalidates("credentials"), true);
+	for (const key of ["server-health", "internet-connectivity", "config"]) {
+		assert.equal(
+			invalidates(key),
+			false,
+			`${key} is the signal itself, not a read it should re-trigger`,
+		);
+	}
+
+	// A second render with nothing changed does not invalidate again.
+	client.calls.length = 0;
+	renderer.render();
+	assert.deepEqual(client.calls, []);
 });

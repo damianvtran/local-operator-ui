@@ -37,6 +37,8 @@ const {
 	DaemonStateMachine,
 	DEGRADED_AFTER_FAILURES,
 	DETACHED_AFTER_MS,
+	TRANSPORT_EVIDENCE_MS,
+	UNANSWERED_BEFORE_DETACHED,
 	REATTACH_BACKOFF_MS,
 	REATTACH_BACKOFF_CEILING_MS,
 	isServerReachable,
@@ -202,7 +204,24 @@ test("a stale heartbeat with a live daemon is reported as WEDGED, not as detache
 	assert.equal(machine.snapshot().reconnecting, false);
 	assert.match(
 		serverBannerCopy(machine.snapshot()).title,
-		/stopped publishing its own heartbeat/,
+		/is running on this machine and this app is not attached/,
+	);
+	/*
+	 * The path is in the DETAIL, and the title may not claim one.
+	 *
+	 * The title used to assert the heartbeat, which is true of this producer and
+	 * false of the other one that reaches `wedged` - a daemon answering the
+	 * configured address whose key this app may not use is running perfectly well.
+	 * A title that names a cause the state does not have is the same class of
+	 * mistake as calling a serving daemon offline, one rung down.
+	 */
+	assert.match(
+		serverBannerCopy(machine.snapshot()).detail,
+		/stopped publishing its heartbeat/,
+	);
+	assert.doesNotMatch(
+		serverBannerCopy(machine.snapshot()).title,
+		/heartbeat/,
 	);
 });
 
@@ -328,5 +347,170 @@ test("desktop availability is reported beside the state, not through it", () => 
 		machine.snapshot().desktopAvailable,
 		false,
 		"a probe does not invent a capability",
+	);
+});
+
+/*
+ * The operator's report, 2026-09-15: a banner said the backend was unavailable
+ * on port 1111 while the backend was serving fine on that port, the TUI attached
+ * to it without trouble, and `GET /health`, `GET /v1/credentials` and
+ * `GET /v1/desktop/sessions?limit=500` all answered 200 in the same minutes.
+ *
+ * The mechanism was this machine's own rule read too strongly: a probe that
+ * MISSES is not a probe that was REFUSED, and three misses at a 2 s budget is
+ * what a daemon in the middle of one long agent turn produces while it serves
+ * everything else. The cases below pin the three rules that remove it.
+ */
+
+test("a probe with no answer is not evidence of absence: three misses stay usable", () => {
+	const machine = attached();
+	for (let i = 1; i < UNANSWERED_BEFORE_DETACHED; i++) {
+		assert.equal(
+			machine.observe({
+				kind: "unanswered",
+				cause: "timeout",
+				detail: "http://127.0.0.1:1111 did not answer (timeout)",
+			}),
+			"degraded",
+		);
+		assert.equal(
+			isServerReachable(machine.getState()),
+			true,
+			`${i} unanswered probes is a busy daemon, not a gone one`,
+		);
+		assert.equal(machine.snapshot().unanswered, i);
+	}
+	assert.equal(
+		machine.observe({
+			kind: "unanswered",
+			cause: "timeout",
+			detail: "http://127.0.0.1:1111 did not answer (timeout)",
+		}),
+		"detached",
+		"a minute and a half of continuous silence IS evidence",
+	);
+	assert.match(machine.snapshot().detail, /did not answer/);
+});
+
+test("a refused socket is evidence, and still detaches on the ordinary count", () => {
+	const machine = attached();
+	for (let i = 1; i < DEGRADED_AFTER_FAILURES; i++) {
+		assert.equal(
+			machine.observe({
+				kind: "failed",
+				detail: "http://127.0.0.1:1111 refused the connection",
+			}),
+			"degraded",
+		);
+	}
+	assert.equal(
+		machine.observe({
+			kind: "failed",
+			detail: "http://127.0.0.1:1111 refused the connection",
+		}),
+		"detached",
+	);
+});
+
+test("a daemon that answered a request is never reported as offline", () => {
+	const machine = attached();
+	// A long turn: every probe expires, while the app keeps reading sessions.
+	for (let i = 0; i < UNANSWERED_BEFORE_DETACHED * 3; i++) {
+		machine.recordTransportSuccess();
+		machine.observe({
+			kind: "unanswered",
+			cause: "timeout",
+			detail: "http://127.0.0.1:1111 did not answer (timeout)",
+		});
+		assert.equal(
+			isServerReachable(machine.getState()),
+			true,
+			"the transport is the one carrying the user's data",
+		);
+		assert.equal(machine.getState(), "attached");
+	}
+	// The detail still says what the probe saw - the point is that the STATE
+	// does not repeat the probe's mistake.
+	assert.match(machine.snapshot().detail, /budget is what expired/);
+});
+
+test("the same misses detach once the transport has been silent as long as they have", () => {
+	let now = 1_000_000;
+	const machine = new DaemonStateMachine(() => now);
+	machine.attach(identity, { owned: false });
+	machine.recordTransportSuccess();
+	for (let i = 1; i < UNANSWERED_BEFORE_DETACHED; i++) {
+		now += TRANSPORT_EVIDENCE_MS + 1;
+		assert.equal(
+			machine.observe({
+				kind: "unanswered",
+				cause: "timeout",
+				detail: "no answer",
+			}),
+			"degraded",
+		);
+	}
+	now += TRANSPORT_EVIDENCE_MS + 1;
+	assert.equal(
+		machine.observe({ kind: "unanswered", cause: "timeout", detail: "no answer" }),
+		"detached",
+		"stale transport evidence does not excuse a silent daemon forever",
+	);
+});
+
+test("a corroborated absence bypasses the transport gate: a gone pid is a gone pid", () => {
+	const machine = attached();
+	machine.recordTransportSuccess();
+	assert.equal(machine.observe({ kind: "pid-dead" }), "detached");
+});
+
+test("an answer after the misses puts the connection back, and says so once", () => {
+	const machine = attached();
+	machine.observe({ kind: "unanswered", cause: "timeout", detail: "no answer" });
+	assert.equal(machine.getState(), "degraded");
+	assert.equal(
+		machine.recordTransportSuccess(),
+		true,
+		"the state moved, so the caller pushes exactly one snapshot",
+	);
+	assert.equal(machine.getState(), "attached");
+	assert.equal(machine.snapshot().unanswered, 0);
+	assert.equal(
+		machine.recordTransportSuccess(),
+		false,
+		"and a later answer has nothing new to say",
+	);
+});
+
+test("a daemon this app may not drive is WEDGED with its own path named, not detached", () => {
+	const machine = new DaemonStateMachine();
+	machine.observe({
+		kind: "unattachable",
+		detail:
+			"A Local Operator daemon is running at http://127.0.0.1:1111 (pid 42411, v0.55.6) and no serve record this app can read describes that address, so this app holds no credential for it.",
+	});
+	assert.equal(machine.getState(), "wedged");
+	assert.equal(
+		isServerReachable(machine.getState()),
+		false,
+		"this app is not attached, and must not pretend a read would work",
+	);
+	const copy = serverBannerCopy(machine.snapshot());
+	assert.match(copy.title, /is running on this machine and this app is not attached/);
+	assert.match(copy.detail, /pid 42411/, "the detail names what was observed");
+	assert.doesNotMatch(
+		copy.title,
+		/heartbeat/,
+		"the title may not claim a cause that belongs to one path only",
+	);
+});
+
+test("an unattachable daemon never displaces a live attachment", () => {
+	const machine = attached();
+	machine.observe({ kind: "unattachable", detail: "another daemon elsewhere" });
+	assert.equal(
+		machine.getState(),
+		"attached",
+		"a daemon answering a port this app is not using says nothing about the one it is",
 	);
 });
