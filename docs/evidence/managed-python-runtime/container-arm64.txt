@@ -1,0 +1,14 @@
+FAIL app-codesign [dist/local-operator-ui-0.22.3-arm64.dmg :: Local Operator.app]: codesign --verify --deep --strict on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-9etFAD/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-spctl [dist/local-operator-ui-0.22.3-arm64.dmg :: Local Operator.app]: spctl -a -vvv -t exec on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-9etFAD/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-stapler [dist/local-operator-ui-0.22.3-arm64.dmg :: Local Operator.app]: stapler validate on the app -> Processing: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-9etFAD/extracted/Local Operator.app | Local Operator.app does not have a ticket stapled to it.
+PASS app-one-bundled-python [dist/local-operator-ui-0.22.3-arm64.dmg :: Local Operator.app]: the bundled python interpreter tree this architecture needs
+PASS app-no-bundled-bytecode [dist/local-operator-ui-0.22.3-arm64.dmg :: Local Operator.app]: no .pyc/.pyo in the bundled python trees
+PASS app-private-python-seed [dist/local-operator-ui-0.22.3-arm64.dmg :: Local Operator.app]: complete private Python seed with no legacy aliases
+FAIL app-codesign [dist/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app]: codesign --verify --deep --strict on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-3wQQxc/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-spctl [dist/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app]: spctl -a -vvv -t exec on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-3wQQxc/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-stapler [dist/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app]: stapler validate on the app -> Processing: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-3wQQxc/extracted/Local Operator.app | Local Operator.app does not have a ticket stapled to it.
+PASS app-one-bundled-python [dist/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app]: the bundled python interpreter tree this architecture needs
+PASS app-no-bundled-bytecode [dist/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app]: no .pyc/.pyo in the bundled python trees
+PASS app-private-python-seed [dist/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app]: complete private Python seed with no legacy aliases
+container checks on arm64: 6 failure(s)
+EXIT=1

@@ -736,6 +736,10 @@ export const STORIES = [
 	// The install outcomes the 0.17.0 update never showed: a refusal with its
 	// remedy, and the next start admitting the install did not take.
 	["common-updatenotification--install-blocked", 1280, 900],
+	// The same refusal from the start-up pass, which is the other producer of it:
+	// the running bundle was already broken and no update was in play, so the copy
+	// has to describe that instead of an update that never happened (review R2).
+	["common-updatenotification--install-blocked-at-startup", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
 	// back (not a failure, and the one state whose action decides whether the
