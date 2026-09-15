@@ -431,6 +431,52 @@ const fail = (detail) =>
 
 // ---------------------------------------------------------------------- tests
 
+test("completion pulses ignore wait-latch starts and steering", async (t) => {
+	// Completion events schedule history reconciliation; drain those before the
+	// neighbouring retry test measures its own timer delays.
+	t.after(runTimers);
+	test_state.streams.length = 0;
+	const mounted = mountHook(await loadHook("completion-pulses"), SESSION);
+	await settle();
+	send(openFrame());
+	send(snapshotFrame());
+	await settle();
+	let seq = 2;
+	// Separate painted frames expose excess invalidations that batching all
+	// events together would hide. The wait latch must still see every event.
+	for (const [type, completed] of [
+		["agent_start", 0],
+		["turn_start", 0],
+		["provider_start", 0],
+		["steering_delivered", 0],
+		["turn_end", 1],
+		["agent_end", 2],
+		["turn_start", 2],
+		["turn_end", 3],
+		["turn_end", 4],
+	]) {
+		send({
+			type: "event",
+			epoch: "e".repeat(16),
+			seq: seq++,
+			payload: { type },
+		});
+		await settle();
+		assert.equal(
+			mounted.view().terminal,
+			type,
+			"wait-latch semantics stay intact",
+		);
+		assert.equal(mounted.view().turnsCompleted, completed, type);
+	}
+	await settle();
+	assert.equal(
+		mounted.view().turnsCompleted,
+		4,
+		"no events means no new pulse",
+	);
+});
+
 test("a stream that never opens is retried without a receipt, within a bounded schedule", async () => {
 	test_state.streams.length = 0;
 	test_state.historyRequests.length = 0;
