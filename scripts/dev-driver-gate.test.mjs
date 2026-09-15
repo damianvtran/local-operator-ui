@@ -241,7 +241,7 @@ test("nothing in main registers a dev-driver channel outside the armed branch", 
  * These two cases are source assertions rather than imports, because the fold
  * happens at import time in a module that reaches Electron and cannot be loaded
  * in a bare `node --test` process. The property itself is measured on REAL boots
- * by `node scripts/renderer-driver.mjs --gate-check`, which now boots three
+ * by `node scripts/renderer-driver.mjs --gate-check`, which now boots four
  * inert launches — nothing set anywhere, a cwd `.env` carrying the opt-in, and
  * that same file carrying it while the environment says `=0` — and asserts no
  * bridge, no channel, no frame and no banner in each. What is pinned here is the
@@ -249,28 +249,57 @@ test("nothing in main registers a dev-driver channel outside the armed branch", 
  * `process.env` would leave every other test in this file passing.
  */
 test("the launch environment is snapshotted before the .env is folded in", () => {
+	/*
+	 * The snapshot itself lives in `./launch-env` — it has to, because `logger.ts`
+	 * reads a launch fact and cannot import `config.ts` back without a cycle — so
+	 * this case asserts the two halves of the ordering rather than one statement's
+	 * position: `config.ts` imports the snapshot module STATICALLY (a dependency is
+	 * evaluated before the importing module's body, so the copy is taken before the
+	 * fold in that body), and the module it imports is a leaf that imports nothing.
+	 */
 	const config = readFileSync(
 		join(process.cwd(), "src/main/backend/config.ts"),
 		"utf8",
 	);
-	const snapshot = config.indexOf("export const launchEnv");
+	const snapshotImport = config.indexOf('from "./launch-env"');
 	const fold = config.indexOf("dotenvConfig({");
-	assert.notEqual(snapshot, -1, "backend/config.ts no longer exports launchEnv");
+	assert.notEqual(
+		snapshotImport,
+		-1,
+		"backend/config.ts no longer imports the launch snapshot",
+	);
 	assert.notEqual(
 		fold,
 		-1,
 		"backend/config.ts no longer calls dotenvConfig; re-read this test",
 	);
 	assert.ok(
-		snapshot < fold,
-		"the launch snapshot is taken AFTER the .env is folded into process.env, so it is not a record of the launch",
+		snapshotImport < fold,
+		"the .env fold comes before the snapshot import, so the snapshot is not a record of the launch",
 	);
-	// A copy, not a live view: `process.env` is mutated by the dotenv call below
-	// it, and a snapshot that kept referring to it would carry the file's values
-	// anyway.
 	assert.match(
-		config.slice(snapshot, fold),
-		/\{\s*\.\.\.process\.env,?\s*\}/,
+		config,
+		/export \{ launchEnv \};/,
+		"backend/config.ts no longer re-exports launchEnv, which is where the launch facts are resolved from",
+	);
+
+	const snapshot = readFileSync(
+		join(process.cwd(), "src/main/backend/launch-env.ts"),
+		"utf8",
+	);
+	assert.doesNotMatch(
+		snapshot,
+		/^import /m,
+		"the snapshot module must stay a leaf: an import in it is how it stops being evaluated before the fold",
+	);
+	/*
+	 * A copy, not a live view: `process.env` is mutated by the dotenv call in
+	 * `config.ts`, and a snapshot that kept referring to it would carry the file's
+	 * values anyway.
+	 */
+	assert.match(
+		snapshot,
+		/export const launchEnv: Record<string, string \| undefined> = \{\s*\.\.\.process\.env,?\s*\}/,
 		"launchEnv is not a copy of process.env",
 	);
 });

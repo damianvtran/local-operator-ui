@@ -18,9 +18,12 @@
  * This script is the supported way through, and it uses only the app's own
  * mechanisms:
  *
- * - the BUILT app, launched by its own Electron (`node_modules/.bin/electron
- *   <repo>`), in the documented `headless` window mode (`src/main/window-mode.ts`
- *   — a window that is never shown, so nothing can steal the operator's focus);
+ * - the BUILT app, launched by its own Electron — the runtime BINARY that
+ *   `require("electron")` resolves to, never the `node_modules/.bin/electron`
+ *   shim — in the documented `headless` window mode (`src/main/window-mode.ts` —
+ *   a window that is never shown, so nothing can steal the operator's focus).
+ *   The binary and not the shim is what makes the teardown reach the app; the
+ *   comment on `ELECTRON_BIN` carries the measurement that decided it;
  * - the app's own gated dev-driver bridge (`src/main/dev-driver.ts`,
  *   `docs/agent-driver.md`) for the verbs, reached over CDP `Runtime.evaluate`
  *   on the app's OWN debugging port — the same channel AGENTS.md documents for
@@ -87,14 +90,14 @@
  * Flags:
  *   --scene <states|none>  which built-in scene to run (default: states)
  *   --out <dir>            where frames go; copied out of the scratch tree when given
- *   --gate-check           measure the fail-closed gate on two real boots
+ *   --gate-check           measure the fail-closed gate on four real boots
  *   --window-size <WxH>    the window to request (default 1380x900)
  *   --keep                 keep the scratch directory even with --clean
  *   --clean                remove the scratch directory at the end; frames given
  *                          with --out live outside it and survive
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	existsSync,
@@ -104,11 +107,80 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const ROOT = process.cwd();
+
+/**
+ * The Electron runtime BINARY, never `node_modules/.bin/electron`.
+ *
+ * WHY NOT `.bin/electron`: that file is a Node shim (`electron`'s `cli.js`) which
+ * spawns the real app as ITS child. Spawning the shim means the pid this script
+ * holds belongs to the shim, so the teardown's SIGTERM — and the SIGKILL it
+ * escalates to five seconds later — land on the shim and the app it started is
+ * re-parented to launchd and survives the run. Measured on this harness: a
+ * `--gate-check --clean` run printed "scratch removed" with all four of its
+ * booted apps still alive under `ppid 1`, each re-creating the scratch profile
+ * the run had just deleted, one still answering `GET /json/version` on its
+ * `--remote-debugging-port`.
+ *
+ * `require("electron")` is the same resolution `bin/local-operator-ui.js` uses,
+ * so the harness drives the runtime the app ships against, and `child.pid` is
+ * the app's own main process — which is what makes the exact-pid teardown below
+ * reach it, and what lets the run say out loud which runtime a frame came from
+ * (`electronRuntime()`).
+ */
+const ELECTRON_BIN = (() => {
+	const resolveFromRepo = createRequire(join(ROOT, "package.json"));
+	let binary;
+	try {
+		binary = resolveFromRepo("electron");
+	} catch (error) {
+		throw new Error(
+			`cannot resolve the Electron runtime from ${ROOT}: ${error?.message ?? error}\n` +
+				"Install this branch's own dependencies first: pnpm install --frozen-lockfile",
+		);
+	}
+	if (typeof binary !== "string" || !existsSync(binary)) {
+		throw new Error(
+			`the Electron runtime is not on disk at ${String(binary)}\n` +
+				"pnpm install --frozen-lockfile (or `npx install-electron --no`) fetches it.",
+		);
+	}
+	return binary;
+})();
+
+/**
+ * The Electron version installed here, and the version this branch pins.
+ *
+ * WHY THE HARNESS CHECKS THEM AGAINST EACH OTHER: a committed frame is only
+ * reproducible on the runtime that produced it, and a worktree on this machine
+ * inherits a SHARED `node_modules` symlink whose Electron can be stale (35.5.1
+ * against this branch's 44.3.0 pin) — measured to differ in the content
+ * viewport's height (1380x868 vs 1380x872) and in every pixel hash, which is
+ * how a committed evidence pair ended up captured on a runtime nobody following
+ * the README would install.
+ *
+ * `optionalDependencies.electron` is the pin the npm channel installs and that
+ * `build.electronVersion` has to move with, so it is the value compared here —
+ * in `main()`, as a check, so a run on a stale tree fails the gate instead of
+ * quietly producing frames with someone else's binary's geometry.
+ */
+function electronRuntime() {
+	const installed = JSON.parse(
+		readFileSync(
+			join(ROOT, "node_modules", "electron", "package.json"),
+			"utf8",
+		),
+	).version;
+	const pinned =
+		JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"))
+			.optionalDependencies?.electron ?? null;
+	return { installed, pinned };
+}
 
 function argValue(name, fallback = null) {
 	const at = process.argv.indexOf(name);
@@ -130,7 +202,8 @@ if (!/^\d+x\d+$/.test(WINDOW_SIZE)) {
 	process.exit(2);
 }
 
-const SCRATCH = join(tmpdir(), `lo-renderer-driver-${process.pid}`);
+const SCRATCH_TAG = `lo-renderer-driver-${process.pid}`;
+const SCRATCH = join(tmpdir(), SCRATCH_TAG);
 const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const USER_DATA = join(SCRATCH, "userdata");
@@ -246,7 +319,40 @@ async function isListening(port, timeoutMs = 750) {
 
 let app = null;
 
-/** Kill by exact pid, never a pattern: a `pkill` would take the operator's app too. */
+/**
+ * The launches this run started and has not stopped yet.
+ *
+ * Handles rather than pids, because each one owns its own log stream and flush,
+ * and because the reaper has to stop a boot the same way the normal path does.
+ */
+const liveBoots = new Set();
+
+/** Resolve `true` when `promise` settles inside `ms`, `false` when it does not. */
+async function settledWithin(promise, ms) {
+	let timer = null;
+	try {
+		return await Promise.race([
+			promise.then(() => true),
+			new Promise((resolveTimeout) => {
+				timer = setTimeout(() => resolveTimeout(false), ms);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+/**
+ * Kill by exact pid, never a pattern: a `pkill` would take the operator's app too.
+ *
+ * The signal goes to the app's OWN main process — the pid `spawn` returned once
+ * the shim is gone (see `ELECTRON_BIN`) — and the escalation below targets that
+ * same pid. That pairing is the whole fix: a SIGTERM the app does honour, and a
+ * SIGKILL that lands on the app rather than on a shim that has already exited.
+ * Helper processes (renderer, GPU, utility) are the app's own children and exit
+ * with it — asserted rather than assumed, by the leftover probe at the end of
+ * this run.
+ */
 async function stopApp(handle = app) {
 	const stopping = handle;
 	if (!stopping) return;
@@ -260,18 +366,101 @@ async function stopApp(handle = app) {
 	 */
 	if (stopping === app) app = null;
 	stopping.flush();
-	await new Promise((resolveStop) => {
-		stopping.child.once("exit", resolveStop);
-		stopping.child.kill("SIGTERM");
-		setTimeout(() => {
-			try {
-				stopping.child.kill("SIGKILL");
-			} catch {
-				/* already gone */
-			}
-			resolveStop();
-		}, 5000);
+	await stopProcess(stopping);
+	liveBoots.delete(stopping);
+}
+
+/**
+ * SIGTERM the pid, then SIGKILL that same pid if it is still there, and wait for
+ * the exit either way.
+ *
+ * WHY THE WAIT IS THE POINT: `--clean` removes the scratch tree, and an app that
+ * is still running re-creates the profile directory the run has just deleted
+ * (`--user-data-dir` is under it). Waiting for the exit is what makes "scratch
+ * removed" true of a tree nothing is writing to.
+ */
+async function stopProcess(handle, { termMs = 8000, killMs = 5000 } = {}) {
+	const { child } = handle;
+	if (child.exitCode !== null || child.signalCode !== null) return;
+	const exited = new Promise((resolveExit) => child.once("exit", resolveExit));
+	child.kill("SIGTERM");
+	if (await settledWithin(exited, termMs)) return;
+	try {
+		child.kill("SIGKILL");
+	} catch {
+		/* exited between the check and the signal */
+	}
+	await settledWithin(exited, killMs);
+}
+
+/**
+ * Stop everything this run started, however the run ends.
+ *
+ * WHY A REAPER BESIDE THE `finally` BLOCKS: those run on the paths this script
+ * chooses, and an agent's run is usually stopped by something else — Ctrl+C, a
+ * supervisor's SIGTERM, a timeout — which used to leave every app booted so far
+ * running headless on the operator's desktop, each holding its scratch profile
+ * open. `SIGINT`/`SIGTERM` tear down exactly like the normal path (SIGTERM, then
+ * SIGKILL, exact pids only); the `exit` hook is the last-resort synchronous pass
+ * for a path that reaches the end without the async one, and can only SIGKILL.
+ */
+const reaping = { running: false };
+
+async function reapLiveBoots({ code, why }) {
+	if (reaping.running) return;
+	reaping.running = true;
+	const boots = [...liveBoots];
+	if (boots.length > 0) {
+		say(`\n[${why}] stopping ${boots.length} app(s) this run started`);
+	}
+	for (const handle of boots) {
+		try {
+			await stopApp(handle);
+		} catch (error) {
+			say(`[${why}] teardown threw: ${error?.message ?? error}`);
+		}
+	}
+	process.exit(code);
+}
+
+process.on("exit", () => {
+	for (const handle of liveBoots) {
+		try {
+			process.kill(handle.pid, "SIGKILL");
+		} catch {
+			/* already gone */
+		}
+	}
+});
+process.on("SIGINT", () => void reapLiveBoots({ code: 130, why: "SIGINT" }));
+process.on("SIGTERM", () => void reapLiveBoots({ code: 143, why: "SIGTERM" }));
+
+/**
+ * Every process on the machine whose command line names THIS run's scratch tag.
+ *
+ * DETECTION ONLY, never a kill list, and the tag is what makes it safe to ask: it
+ * contains this script's pid, so a match cannot be another session's process and
+ * cannot be the operator's own app. It exists because a pattern is the only way
+ * to SEE an orphan — an app re-parented to launchd no longer answers to any pid
+ * this run holds, but it still carries the run's tag in `--user-data-dir`. The
+ * kills in this file stay exact-pid; a sibling agent's pattern-derived kill on
+ * this machine matched eleven orphaned apps from runs that had already finished.
+ */
+function thisRunsProcesses() {
+	const ps = spawnSync("ps", ["-eo", "pid,ppid,etime,command"], {
+		encoding: "utf8",
 	});
+	if (ps.error || ps.status !== 0) {
+		return {
+			measured: false,
+			lines: [],
+			detail: ps.error?.message ?? `ps exited ${ps.status}`,
+		};
+	}
+	const lines = String(ps.stdout)
+		.split("\n")
+		.filter((line) => line.includes(SCRATCH_TAG));
+	return { measured: true, lines, detail: `${lines.length} process(es)` };
 }
 
 async function launchApp({
@@ -325,8 +514,12 @@ async function launchApp({
 	const port = await pickFreePort();
 	if (await isListening(port)) throw new Error(`picked port ${port} is in use`);
 
+	/*
+	 * The BINARY, not `node_modules/.bin/electron` — see `ELECTRON_BIN`. The shim
+	 * would make `child.pid` the shim's pid and orphan the app the shim starts.
+	 */
 	const child = spawn(
-		join(ROOT, "node_modules", ".bin", "electron"),
+		ELECTRON_BIN,
 		[
 			// The app directory as an argument rather than `.`: argv[1] is what
 			// Electron loads, so the cwd can be the scratch directory that the
@@ -357,7 +550,7 @@ async function launchApp({
 		flush();
 	});
 
-	return {
+	const handle = {
 		child,
 		port,
 		pid: child.pid,
@@ -366,6 +559,12 @@ async function launchApp({
 		flush,
 		apiUrl,
 	};
+	/*
+	 * Registered before anything can throw, so the reaper above owns every boot
+	 * this run started — including one that dies before its first answer.
+	 */
+	liveBoots.add(handle);
+	return handle;
 }
 
 async function readAppLog(handle) {
@@ -560,6 +759,95 @@ function capture(cdp, label) {
 }
 
 /**
+ * The selector sonner renders its toasts into (`themed-toast-container.tsx`).
+ * Pinned as a constant because a boot assertion and a scene check both read it.
+ */
+const TOAST_SELECTOR = "[data-sonner-toast]";
+
+/** How many toasts are on screen right now, asked of the app's own DOM. */
+function toastsOnScreen(cdp) {
+	return cdp.evaluate(
+		`document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}).length`,
+	);
+}
+
+/**
+ * Wait until no toast is on screen, or give up and say so.
+ *
+ * WHY A FRAME HAS TO BE TOAST-FREE. A driver run has no backend, so the app's
+ * queries fail: `/chat` mounts, React Query's agent list answers 503, and the app
+ * raises its own toast in the bottom-right corner — a real screen of a real
+ * state, but one that appears and auto-dismisses on a clock that has nothing to
+ * do with what the scene is photographing. Measured: two `--scene states` runs on
+ * the same build produced `chat-dark.png` differing in exactly that corner, one
+ * with `List agents request failed: 503` up and one without, 2.1% of pixels — so
+ * without this wait a committed frame is a coin-flip on whether a transient
+ * banner happened to be on screen, and the caption (which names the rail, the
+ * offline banner and the chat list's error row) would not describe it.
+ *
+ * Error toasts here auto-dismiss (sonner's default, and `toast-manager.ts`
+ * handles `onAutoClose`), so waiting is enough and no dismissal is forced: the
+ * scene does not reach into the app's toasts, it waits for the app to take its
+ * own down. A toast that outlives the bound is reported rather than waited
+ * through forever, and the caller fails the frame instead of committing it.
+ */
+async function waitForNoToasts(cdp, timeoutMs = 15_000) {
+	const started = Date.now();
+	for (;;) {
+		const count = await toastsOnScreen(cdp).catch(() => 0);
+		const waitedMs = Date.now() - started;
+		if (count === 0) return { waitedMs, timedOut: false };
+		if (waitedMs > timeoutMs) return { waitedMs, timedOut: true };
+		await wait(200);
+	}
+}
+
+/**
+ * Capture a frame the app is HOLDING, with no transient toast on it.
+ *
+ * WHY TWO CAPTURES, when the theme verb already waits the transitions out. The
+ * settle inside the app cannot see a transition that starts after it looked, and
+ * it has been wrong exactly that way on this build: two `--scene states` runs on
+ * Electron 44.3.0 produced a `chat-light.png` whose rail pill and banner `Retry`
+ * were 46% of the way through their colour transition (srgb(122,133,124) between
+ * the dark srgb(26,40,30) and the settled srgb(233,241,233)) in a run whose verb
+ * answered `timedOut: false` after 175ms. The verb now requires three consecutive
+ * quiet frames, and this is the harness-side check on the same property, measured
+ * on the pixels rather than on the app's bookkeeping: two captures `gapMs` apart
+ * are the same bytes only if nothing was animating between them.
+ *
+ * The file the scene compares is the SECOND capture, so what a reviewer opens is
+ * what was held. `stable` and `toastFree` are reported rather than rounded up —
+ * the scene checks both, because a frame the app never held still for, or one
+ * with a transient banner on it, is not evidence.
+ */
+async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
+	let previous = null;
+	let frame = null;
+	let toastWaitMs = 0;
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		const clearance = await waitForNoToasts(cdp);
+		toastWaitMs += clearance.waitedMs;
+		frame = await capture(cdp, label);
+		const bytes = readFileSync(frame.path);
+		// A toast that arrived while the frame was being taken is not this frame:
+		// the run throws the capture away and starts the comparison again.
+		const toastFree = (await toastsOnScreen(cdp).catch(() => 0)) === 0;
+		if (!toastFree || clearance.timedOut) {
+			previous = null;
+			await wait(gapMs);
+			continue;
+		}
+		if (previous !== null && previous.equals(bytes)) {
+			return { ...frame, attempts: attempt, stable: true, toastFree, toastWaitMs };
+		}
+		previous = bytes;
+		await wait(gapMs);
+	}
+	return { ...frame, attempts, stable: false, toastFree: false, toastWaitMs };
+}
+
+/**
  * The bridge's own methods, which are NOT scene verbs: `facts()` (window facts
  * from main) and `capture()` live on `window.__loDevDriver` itself, while the
  * verbs the app registers are reached through `call(name)`. The two surfaces are
@@ -686,7 +974,7 @@ async function sceneStates(cdp) {
 	await verb(cdp, "setTheme", "localOperatorDark");
 	const before = await verb(cdp, "state");
 	note("state before", JSON.stringify(before));
-	const beforeFrame = await capture(cdp, "chat-dark");
+	const beforeFrame = await captureSettled(cdp, "chat-dark");
 	note("frame", JSON.stringify(beforeFrame));
 
 	// 2. The same screen in another palette: the before/after pair a visual
@@ -700,17 +988,27 @@ async function sceneStates(cdp) {
 	 * `transition-colors duration-fast` (120ms) the change starts, and a reader
 	 * comparing a fresh run against the committed frame needs to know the wait
 	 * happened and that it did not hit its bound.
+	 *
+	 * It FAILS on a bound it hit, rather than noting it beside the frame. A settle
+	 * that timed out means the frame this run is about to commit is mid-transition
+	 * — the exact defect this wait was added for, when `chat-light.png` was once
+	 * captured one `nextFrame()` after the theme action and varied run to run — and
+	 * a `[note]` next to an invalid frame is how that defect stayed invisible in a
+	 * run that reported "ALL CHECKS PASSED". A settle that reports no duration at
+	 * all is the same failure wearing a pass: `Number.isFinite` refuses it.
 	 */
-	note(
-		"theme change settled before the frame",
-		`${themeAction.settledAfterMs}ms${themeAction.settleTimedOut ? " (TIMED OUT: the frame may be mid-transition)" : ""}`,
+	check(
+		"the theme change settled before the frame",
+		themeAction.settleTimedOut === false &&
+			Number.isFinite(themeAction.settledAfterMs),
+		`${themeAction.settledAfterMs}ms${themeAction.settleTimedOut ? " — TIMED OUT: this frame is mid-transition and is not evidence" : ""}`,
 	);
 	check(
 		"the theme action changed the app's own theme state",
 		after.theme === "localOperatorLight",
 		`theme ${before.theme} -> ${after.theme}`,
 	);
-	const afterFrame = await capture(cdp, "chat-light");
+	const afterFrame = await captureSettled(cdp, "chat-light");
 	note("frame", JSON.stringify(afterFrame));
 	check(
 		"the before/after pair is the same screen at the same size",
@@ -778,10 +1076,27 @@ async function sceneStates(cdp) {
 			chatState.theme === "localOperatorLight",
 		JSON.stringify(chatState),
 	);
-	const backFrame = await capture(cdp, "chat-light-returned");
+	const backFrame = await captureSettled(cdp, "chat-light-returned");
 	note("frame", JSON.stringify(backFrame));
 
 	const frames = [beforeFrame, afterFrame, backFrame];
+	/*
+	 * The settle is a claim about the app's own animations; this is the same claim
+	 * measured on the pixels, and it is the one a reader can check against the
+	 * committed file. A frame that never stopped changing is reported as unstable
+	 * and fails the scene, because committing it is how the earlier rounds shipped
+	 * a caption that did not match its bytes.
+	 */
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}, waited ${frame.toastWaitMs}ms for toasts`,
+			)
+			.join(" | "),
+	);
 	check(
 		"every capture wrote a PNG of the requested size",
 		frames.every(
@@ -804,6 +1119,25 @@ async function sceneStates(cdp) {
 // ---- gate-check --------------------------------------------------------------
 
 /**
+ * The `Log path: …` lines the app itself wrote, from this run's scratch logs.
+ *
+ * Read from the file rather than from the variable this script exported: the
+ * question is where the app RESOLVED its logs, and a run whose lines land in the
+ * operator's directory is not isolated however many other paths are redirected.
+ */
+function resolvedLogPaths() {
+	const lines = [];
+	for (const file of ["backend-installer.log", "backend-service.log"]) {
+		const path = join(LOG_DIR, file);
+		if (!existsSync(path)) continue;
+		for (const line of readFileSync(path, "utf8").split("\n")) {
+			if (line.includes("Log path:")) lines.push(line.trim());
+		}
+	}
+	return [...new Set(lines)];
+}
+
+/**
  * The checks ONE launch that did not ask for the driver must pass: the app
  * paints normally, exposes no bridge, has main refuse the capture channel,
  * writes no frame, and prints no banner.
@@ -824,7 +1158,7 @@ async function inertBootChecks(
 	handle,
 	prefix,
 	framesDir,
-	{ refusalExpected = false } = {},
+	{ refusalExpected = false, logDirFromFile = null } = {},
 ) {
 	const results = [];
 	const page = await waitForPage(cdp);
@@ -873,6 +1207,32 @@ async function inertBootChecks(
 			`${framesBefore.length} PNG(s) in ${framesDir}`,
 		),
 	);
+	/*
+	 * The log directory is the one launch fact a file in the working directory
+	 * must not be able to move, and this boot is what keeps that true: the
+	 * override is read from the pre-dotenv `launchEnv` snapshot, so the file's own
+	 * `LOCAL_OPERATOR_LOG_DIR` is resolved to nothing and the run's scratch tree is
+	 * what the app names in its own `Log path:` line. It only behaved that way by
+	 * IMPORT ORDER before (the `Logger` singleton is constructed while
+	 * `logger.ts` is evaluated, which is before `backend/config.ts` folds the
+	 * file), so a lazy `getInstance()` would have quietly handed the operator's
+	 * log directory to a `.env` — measured by review round 2 as an asymmetry, with
+	 * `dotenv-logs` never created.
+	 */
+	if (logDirFromFile !== null) {
+		const resolved = resolvedLogPaths();
+		const honouredTheFile = existsSync(logDirFromFile);
+		const namedTheRunsTree = resolved.some((line) =>
+			line.includes(`Log path: ${LOG_DIR}`),
+		);
+		results.push(
+			check(
+				`${prefix}: the log directory did not move`,
+				namedTheRunsTree && !honouredTheFile,
+				`${resolved.join(" / ") || "no Log path: line"}${honouredTheFile ? `; the file's ${logDirFromFile} was created` : ""}`,
+			),
+		);
+	}
 	const log = await readAppLog(handle);
 	const driverLines = log
 		.split("\n")
@@ -920,6 +1280,7 @@ async function inertBoot({
 	dotenvLines = [],
 	envExtra = {},
 	refusalExpected = false,
+	logDirFromFile = null,
 }) {
 	const handle = await launchApp({
 		armed: false,
@@ -934,6 +1295,7 @@ async function inertBoot({
 		cdp = await CdpClient.attach(handle.port, "out/renderer/index.html");
 		return await inertBootChecks(cdp, handle, prefix, framesDir, {
 			refusalExpected,
+			logDirFromFile,
 		});
 	} finally {
 		cdp?.close();
@@ -984,6 +1346,11 @@ async function gateCheck() {
 	 */
 	const dotenvFrames = join(SCRATCH, "dotenv-frames");
 	const dotenvOffFrames = join(SCRATCH, "dotenv-off-frames");
+	// The directory the `.env` below asks the app to log into. The launch exports
+	// `LOCAL_OPERATOR_LOG_DIR` as this run's scratch `logs/`, so a boot that
+	// honoured the file would leave this directory behind instead — see the check
+	// `inertBootChecks` makes when it is given this path.
+	const dotenvLogs = join(SCRATCH, "dotenv-logs");
 	mkdirSync(dotenvFrames, { recursive: true });
 	mkdirSync(dotenvOffFrames, { recursive: true });
 	results.push(
@@ -996,7 +1363,9 @@ async function gateCheck() {
 				"LOCAL_OPERATOR_UI_DEV_DRIVER=1",
 				`LOCAL_OPERATOR_UI_DEV_DRIVER_OUT=${dotenvFrames}`,
 				"LOCAL_OPERATOR_UI_WINDOW_MODE=headless",
+				`LOCAL_OPERATOR_LOG_DIR=${dotenvLogs}`,
 			],
+			logDirFromFile: dotenvLogs,
 		})),
 	);
 
@@ -1061,6 +1430,23 @@ async function gateCheck() {
 					.join(" / ") || "no [dev-driver] line",
 			),
 		);
+		/*
+		 * The leftover-process probe, asserted while the app IS running.
+		 *
+		 * Without this direction the "nothing outlived its boot" check at the end
+		 * of the run could pass for a tag that never matches anything — the shape
+		 * the previous round's false claim had. Both halves are in the transcript so
+		 * a reader can see the probe find an app and then find none.
+		 */
+		const whileArmed = thisRunsProcesses();
+		results.push(
+			check(
+				"armed: the leftover probe sees this boot while it runs",
+				whileArmed.measured && whileArmed.lines.length > 0,
+				whileArmed.lines.join("\n") ||
+					`${whileArmed.detail}, none matching ${SCRATCH_TAG}`,
+			),
+		);
 	} finally {
 		cdp?.close();
 		await stopApp(handle);
@@ -1092,6 +1478,23 @@ async function main() {
 	say(`  app cwd       ${APP_CWD}   (scratch: the repo's .env is not read)`);
 	say(
 		`  backend url   ${apiUrl}   (dead port; the run cannot reach a backend)`,
+	);
+
+	/*
+	 * Which runtime these frames come from, and whether it is the one the branch
+	 * pins. A frame is only reproducible on the binary that produced it: the
+	 * committed pair was once captured on this machine's stale shared install
+	 * (Electron 35.5.1) while the README told a reader on 44.3.0 to compare
+	 * hashes against it, and a worktree here inherits that install through a
+	 * `node_modules` symlink. So the version is printed AND asserted, not assumed.
+	 */
+	const runtime = electronRuntime();
+	say(`  electron      ${runtime.installed}   (${ELECTRON_BIN})`);
+	say(`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`);
+	check(
+		"the harness is driving the Electron this branch pins",
+		runtime.installed === runtime.pinned,
+		`installed ${runtime.installed} at ${ELECTRON_BIN}, pinned ${runtime.pinned}`,
 	);
 
 	const dead = await isListening(deadApiPort);
@@ -1187,6 +1590,28 @@ async function main() {
 		}
 	}
 
+	/*
+	 * The leftover-process check, part of the evidence rather than a claim beside
+	 * it. Every boot this run started has been stopped by now (the gate's four and
+	 * the scene's one both come through `stopApp`), so anything still carrying
+	 * this run's tag is an orphan — an app re-parented to launchd, which is what
+	 * `ps` reported four of after a "successful" `--gate-check --clean` run before
+	 * the teardown reached the app's own pid. It is checked in BOTH directions: the
+	 * armed boot asserts the probe sees an app while it runs, and this asserts
+	 * nothing survived — a probe that never matches anything would otherwise pass
+	 * this forever, which is how the claim above outlived its truth for a round.
+	 */
+	const leftovers = thisRunsProcesses();
+	if (leftovers.measured) {
+		check(
+			"no process from this run outlived its boot",
+			leftovers.lines.length === 0,
+			leftovers.lines.join("\n") || `0 processes matching ${SCRATCH_TAG}`,
+		);
+	} else {
+		note("the leftover-process probe is unavailable", leftovers.detail);
+	}
+
 	const frames = readdirSync(FRAMES)
 		.filter((f) => f.endsWith(".png"))
 		.sort();
@@ -1199,10 +1624,22 @@ async function main() {
 	 * writes them outside the scratch tree, so `--clean` can remove the tree
 	 * without removing the evidence. `--keep` is for an agent debugging a run that
 	 * wants the profile, the app log and the scratch `.env` to still be there.
+	 *
+	 * The removal waits for the check above: a surviving app re-creates the
+	 * profile directory under this tree the moment it is deleted (measured — the
+	 * four directories came back with fresh mtimes after "scratch removed" was
+	 * printed), so a tree with something still running in it is kept and reported
+	 * instead of deleted and quietly repopulated.
 	 */
 	if (CLEAN && !KEEP) {
-		rmSync(SCRATCH, { recursive: true, force: true });
-		say("scratch removed (--clean)");
+		if (leftovers.measured && leftovers.lines.length > 0) {
+			say(
+				`scratch kept: ${SCRATCH} — ${leftovers.lines.length} process(es) from this run are still alive, and deleting the tree would not remove their profile`,
+			);
+		} else {
+			rmSync(SCRATCH, { recursive: true, force: true });
+			say("scratch removed (--clean)");
+		}
 	} else {
 		say(
 			`scratch kept: ${SCRATCH}${OUT_ARG ? " (the frames are also in --out)" : ""}`,
@@ -1220,9 +1657,11 @@ main().catch(async (error) => {
 	const handle = app;
 	if (handle) {
 		const log = await readAppLog(handle);
-		await stopApp();
 		say("\n---- app log (tail) ----");
 		say(log.split("\n").slice(-40).join("\n"));
 	}
-	process.exit(1);
+	// Every boot, not just the scene's: a throw in the middle of the gate's four
+	// leaves whichever ones are still up, and the reaper is the one path that
+	// knows all of them.
+	await reapLiveBoots({ code: 1, why: "the run threw" });
 });

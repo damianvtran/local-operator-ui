@@ -9,41 +9,23 @@
 import { join } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 import { z } from "zod";
+import { launchEnv } from "./launch-env";
 import { LogFileType, logger } from "./logger";
 
-/**
+/*
  * The environment this process was LAUNCHED with, captured before the `.env`
- * below is applied.
+ * fold below — see `./launch-env`, which owns the snapshot and the two reasons it
+ * is a module of its own (a launch fact must come from the launch rather than
+ * from this repository's gitignored `.env`, and `logger.ts` has to read one of
+ * those facts without an import cycle back into this file).
  *
- * Why this exists, and why it is captured here rather than beside the decisions
- * that read it. `dotenvConfig` below runs at import time with `override: true`,
- * so from the next line onward `process.env` is no longer a record of the
- * launch: it is the launch with whatever is in a file at `process.cwd()` folded
- * in, and the file wins over the shell. A decision about the LAUNCH — how this
- * process was asked to behave — has to be resolved from what the operator
- * actually launched. Otherwise this repo's own gitignored, long-lived `.env`
- * (which AGENTS.md requires for `pnpm dev`) can arm the renderer dev driver, or
- * turn a deliberate `headless` run into a window that takes the operator's
- * focus, and an explicit `LOCAL_OPERATOR_UI_DEV_DRIVER=0` typed at the shell
- * cannot turn it off again.
- *
- * Captured in THIS module, on the statement before the mutation, rather than in
- * its own module imported first by whoever needs it: being the code that
- * rewrites `process.env` is what makes "this is the state before the rewrite"
- * true by construction instead of by import order that a later refactor can
- * quietly break. It is a plain snapshot, not a live view, so nothing that
- * mutates `process.env` afterwards can reach back into it.
- *
- * Add a key to it by asking the same question a reader of a launch would: did
- * the operator (or the harness) say this, or did a file in the working directory
- * say it? Launch facts — the window mode, the dev driver's opt-in — take this
- * one. Product configuration (`VITE_*`, the API URL, credentials) keeps reading
- * `process.env` after the dotenv call, because a `.env` is exactly where that is
- * supposed to come from.
+ * Re-exported from here because this is where the launch facts are resolved:
+ * `src/main/index.ts` reads it beside `backendConfig`. The import above is what
+ * keeps the ordering guarantee — a dependency's body is evaluated before the
+ * importing module's, so the snapshot is taken before the `dotenvConfig` call in
+ * this file's body can rewrite `process.env`.
  */
-export const launchEnv: Record<string, string | undefined> = {
-	...process.env,
-};
+export { launchEnv };
 
 // Load environment variables from .env file
 const envResult = dotenvConfig({

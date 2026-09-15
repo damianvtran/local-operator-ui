@@ -259,9 +259,13 @@ Four consequences for how you take evidence:
 
 - **Read the viewport from the page and label frames with it.** A
   `BrowserWindow` size includes the platform's window chrome, so 1380x900 is a
-  1380x872 CSS viewport on macOS. A `--window-size` under the verified 800x600
-  floor is clamped to it and reported in the log, so a frame cannot be labelled
-  with a size the window never had.
+  1380x872 CSS viewport on macOS **on Electron 35.5.1 and a 1380x868 one on
+  44.3.0** (both measured; the chrome the runtime reserves moved between them), so
+  treat the number as something the run reports rather than a constant to recall —
+  a committed frame labelled with the other version's viewport is a caption that
+  does not match its bytes. A `--window-size` under the verified 800x600 floor is
+  clamped to it and reported in the log, so a frame cannot be labelled with a size
+  the window never had.
 - **Focus-dependent rendering differs.** A window that is never shown cannot be
   focused: text carets, `:focus`/`:focus-visible` rings, and anything gated on
   `document.hasFocus()`. For a change about those, drive it in `inactive` mode,

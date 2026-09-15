@@ -99,7 +99,7 @@ test("the logger resolves the override, and still composes the old default", () 
 	);
 	assert.match(
 		logger,
-		/logDirOverride\(process\.env\[LOG_DIR_ENV\]\) \?\? Logger\.defaultLogPath\(\)/,
+		/logDirOverride\(launchEnv\[LOG_DIR_ENV\]\) \?\? Logger\.defaultLogPath\(\)/,
 		"the logger no longer resolves the launch's log-directory override",
 	);
 	const def = logger.indexOf("private static defaultLogPath()");
@@ -112,5 +112,79 @@ test("the logger resolves the override, and still composes the old default", () 
 	assert.match(
 		body,
 		/app\.getPath\("home"\), "\.config", "local-operator", "logs"/,
+	);
+});
+
+/**
+ * The override is read from the pre-dotenv launch snapshot, not from
+ * `process.env`.
+ *
+ * WHY THIS IS A SOURCE ASSERTION, and what it protects. `logger.ts` resolves the
+ * override while the `Logger` singleton is constructed, which happens during that
+ * module's own evaluation — and `backend/config.ts` folds a cwd `.env` over the
+ * launch in ITS body, which runs later. So reading `process.env` there behaved as
+ * a launch fact by import order alone (review round 2 measured exactly that: a
+ * `.env` naming its own log directory did not win, but only because of when the
+ * singleton was built). A refactor to a lazy `getInstance()` would have handed a
+ * file in the working directory the choice of where this app writes its logs —
+ * the one path a harness run otherwise writes into the operator's own log files.
+ * `launchEnv` is a copy taken before the fold, so the read cannot depend on
+ * evaluation order at all.
+ */
+test("the override comes from the launch snapshot, not a mutable process.env", () => {
+	const logger = readFileSync(
+		join(process.cwd(), "src/main/backend/logger.ts"),
+		"utf8",
+	);
+	assert.match(logger, /import \{ launchEnv \} from "\.\/launch-env";/);
+	assert.doesNotMatch(
+		logger,
+		/logDirOverride\(process\.env\[/,
+		"the log directory is decided from process.env again, which a cwd .env can rewrite",
+	);
+
+	const snapshot = readFileSync(
+		join(process.cwd(), "src/main/backend/launch-env.ts"),
+		"utf8",
+	);
+	assert.match(
+		snapshot,
+		/export const launchEnv: Record<string, string \| undefined> = \{\s*\.\.\.process\.env,\s*\};/,
+		"the snapshot no longer copies process.env",
+	);
+	assert.doesNotMatch(
+		snapshot,
+		/^import /m,
+		"the snapshot must stay a leaf module: an import here is how it stops being taken before the fold",
+	);
+
+	/*
+	 * And the module that DOES fold a `.env` still imports the snapshot, which is
+	 * what keeps the ordering: a dependency is evaluated before the module that
+	 * imports it, so the copy is taken before the `dotenvConfig` call in
+	 * `config.ts`'s body can rewrite `process.env`. Asserted as an ordering rather
+	 * than as a line number, because the position of the statement stopped being
+	 * the guarantee when the snapshot moved out of that file.
+	 */
+	const config = readFileSync(
+		join(process.cwd(), "src/main/backend/config.ts"),
+		"utf8",
+	);
+	const snapshotImport = config.indexOf('from "./launch-env"');
+	const fold = config.indexOf("dotenvConfig({");
+	assert.notEqual(
+		snapshotImport,
+		-1,
+		"config.ts no longer imports the launch snapshot at all",
+	);
+	assert.notEqual(fold, -1, "config.ts no longer folds a .env");
+	assert.ok(
+		snapshotImport < fold,
+		"the snapshot import must precede the dotenv call in config.ts",
+	);
+	assert.match(
+		config,
+		/export \{ launchEnv \};/,
+		"config.ts no longer re-exports the snapshot the launch facts are resolved from",
 	);
 });

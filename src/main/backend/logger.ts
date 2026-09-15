@@ -10,6 +10,7 @@ import fs from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import electronLog, { type ElectronLog } from "electron-log";
+import { launchEnv } from "./launch-env";
 import { LOG_DIR_ENV, logDirOverride } from "./log-dir";
 
 /**
@@ -62,8 +63,17 @@ export class Logger {
 		// has always used. An agent or QA run sets the override so that its lines do
 		// not land in the operator's own log files — see `./log-dir` for why the
 		// scratch HOME cannot do it.
+		//
+		// Read from `launchEnv` (the pre-dotenv snapshot of how this process was
+		// LAUNCHED) rather than from `process.env`, and not only because every other
+		// launch fact is resolved that way: `process.env` here happened to be
+		// pre-fold because this module is evaluated before `backend/config.ts`'s
+		// dotenv call, so a cwd `.env` could not move the log directory today but a
+		// later refactor to a lazy `getInstance()` would have let it — and the read
+		// that decides where logs land is the one thing standing between a harness
+		// run and the operator's own log files.
 		this.logPath =
-			logDirOverride(process.env[LOG_DIR_ENV]) ?? Logger.defaultLogPath();
+			logDirOverride(launchEnv[LOG_DIR_ENV]) ?? Logger.defaultLogPath();
 
 		// Ensure log directory exists
 		if (!fs.existsSync(this.logPath)) {

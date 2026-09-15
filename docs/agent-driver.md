@@ -106,12 +106,10 @@ Two mistakes are recorded here because they are the two ways this gate fails:
 A driver run happens on the operator's desktop, next to his real app. Every path
 that could reach his state is redirected, and the run prints all of them:
 
-- `HOME`, `LOCAL_OPERATOR_CONFIG_DIR` **and** `LOCAL_OPERATOR_LOG_DIR` are scratch.
-  The config dir alone is not enough: caches and hardcoded home roots follow
-  `HOME`, and this repository has already written 612 rows into the operator's
-  live analytics database from a run somebody believed was sandboxed. The log
-  directory is named separately because `HOME` does not move it: Electron's `home`
-  is the OS account's, so it needs the app's own override.
+- `HOME` and `LOCAL_OPERATOR_CONFIG_DIR` are scratch. The config dir alone is
+  not enough: caches and hardcoded home roots follow `HOME`, and this repository
+  has already written 612 rows into the operator's live analytics database from a
+  run somebody believed was sandboxed.
 - `--user-data-dir` is scratch **per launch**, so the Electron profile (the
   localStorage the UI preferences persist into) cannot see or touch the real one.
 - `LOCAL_OPERATOR_LOG_DIR` is scratch. The app's own log directory is the user's
@@ -120,7 +118,11 @@ that could reach his state is redirected, and the run prints all of them:
   every run appended its lines to the operator's
   `~/Library/Application Support/Local Operator/logs/*.log`. The harness sets the
   override and asserts, from the `Log path: …` line the app writes at logger
-  init, that the app resolved it.
+  init, that the app resolved it. The app resolves it from the pre-dotenv launch
+  snapshot (`src/main/backend/launch-env.ts`), so the scratch cwd `.env` in the
+  next bullet cannot move it either — a `--gate-check` boot names its own log
+  directory in that file and the run asserts the app logged into this run's tree
+  instead.
 - The app's **cwd is outside the checkout**, and the scratch cwd holds a `.env`
   with `VITE_LOCAL_OPERATOR_API_URL` pointing at a port the script picked and
   verified to be dead. `src/main/backend/config.ts` loads `.env` from
@@ -138,6 +140,37 @@ that could reach his state is redirected, and the run prints all of them:
   run in this repository.
 - Nothing raises the window: `headless` is never shown, and the run asserts
   `visible=false`, `focused=false` from main before it captures anything.
+
+## The app's lifecycle: one boot, one process, stopped by pid
+
+A run boots the app several times (four in `--gate-check`) and each of those apps
+is a real Electron process on the operator's desktop, so how it is stopped is
+part of what this harness has to get right:
+
+- Each launch spawns the **Electron binary itself** (`require("electron")`,
+  the same resolution `bin/local-operator-ui.js` uses) and not
+  `node_modules/.bin/electron`. That shim spawns the app as *its* child, so a pid
+  taken from it is the shim's — the teardown then signals a process that has
+  already exited and the app is re-parented to launchd, still running, still
+  holding the profile `--clean` is about to delete. Measured before the change: a
+  `--gate-check --clean` run printed "scratch removed" with all four of its apps
+  alive under `ppid 1`, one still answering on its debugging port.
+- Teardown is **SIGTERM, then SIGKILL, both to that same app pid**, and both
+  wait for the exit. Signals are never pattern-matched (`pkill`, `pgrep -f`): the
+  operator's own app matches any pattern wide enough to find a headless one, and a
+  sibling session's pattern-derived kill here matched eleven orphaned apps from
+  runs that had already finished.
+- Every boot is registered before anything can throw, and a reaper stops all of
+  them on `SIGINT`, on `SIGTERM` and on a thrown error — an interrupted run
+  (Ctrl+C, a supervisor's timeout) is the common way this harness is stopped, and
+  it used to leave every app booted so far running.
+- The run **measures** the result rather than asserting it in prose: the armed
+  boot checks that the leftover probe can see it while it is running, and every
+  run ends by checking that no process carrying this run's own tag survived
+  (detection can be a pattern, because the tag is `lo-renderer-driver-<this run's
+  pid>` and cannot match another session). `--clean` deletes the scratch tree only
+  after that check passes: an app still running re-creates the profile directory
+  under it the moment it is removed.
 
 ## The verbs
 
@@ -190,6 +223,14 @@ question "what can this reach" would have no answer.
   the painted point, and the scene checks the app's state moved.
 - That the run stayed out of the way: window mode, size, visibility and focus
   come from main, not from the page's own belief about itself.
+- That a committed frame is one the app **held still for**. The theme verb waits
+  out the app's own colour transitions (three consecutive frames with nothing
+  running) and the scene then captures twice, 150ms apart, committing the second
+  only if the two are byte-identical and no transient toast is on it. Both halves
+  are checks, not notes, because both have already been wrong on this harness: a
+  light frame captured mid-transition (the rail's pill at 46% of its colour
+  change in a run that reported a settled frame), and a dark frame carrying the
+  app's own `List agents request failed: 503` toast in one run out of two.
 
 ## What it cannot prove, and what it is not for
 
@@ -222,6 +263,11 @@ question "what can this reach" would have no answer.
   inside the page, which reaches the app's handlers but bypasses the browser's own
   hit testing and input pipeline. Whether a control is genuinely hit-testable is a
   different question with its own tool: `scripts/click-proof.mjs`.
+- **Transient toasts are excluded, deliberately.** A run has no backend, so the
+  app raises its own error toast on a timer the scene does not control; the scene
+  waits for toasts to clear and discards a capture that has one. So a frame here
+  is not evidence about toast styling, placement or timing — that needs a scene
+  that triggers and captures one on purpose.
 - **It is not a way to answer an approval, and must not be used as one.** A verb
   can press an in-app approval control, so a scene that did would make every "it
   works" captured through it worthless: approvals are the operator's, and the
