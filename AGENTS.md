@@ -434,8 +434,9 @@ window mode headless: 1380x900, window created and never shown, page throttling 
 Both spellings are quoted because a rig anchored on the whole named sentence
 never matches an assumed run, which is the common case for a harness. (The aside
 trails rather than sitting after the mode because of what an infix cost: 86
-characters between `headless` and its colon, which moved the colon to offset 120
-and made a wrapped row begin with `: 1380x900, …` — design round 4, D18.)
+characters between `headless` and its colon, which moved the colon to printed offset 120
+(106 in the sentence itself, before the `[window-mode] ` prefix) and made a
+wrapped row begin with `: 1380x900, …` — design round 4, D18.)
 
 `normal` prints neither, so a harness waiting for a policy line on a `normal`
 boot waits forever. The mode line deliberately says nothing about the launcher:
