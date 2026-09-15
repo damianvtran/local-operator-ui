@@ -79,11 +79,11 @@ import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import {
 	type CompletionRow,
 	SlashSuggestionsPopup,
-	completionFor,
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
-import { pickArmsCommand, pointerPickRuns } from "./slash-contract";
+import { completionFor } from "./slash-completion";
+import { pickArmsCommand, pointerPickRuns, stagedNote } from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
@@ -1165,7 +1165,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * completion below is the same write it has always been and the bare form
 				 * still opens the goal read on the next Enter.
 				 */
-				if (pickArmsCommand(row, slash.armedOnlyCommands)) {
+				// The `row.kind` test is the same rule `pickArmsCommand` applies, stated
+				// here so the destination below is reachable without a cast.
+				if (
+					row.kind === "command" &&
+					pickArmsCommand(row, slash.armedOnlyCommands)
+				) {
 					const armed = planSlashArming({
 						draft: completion.text,
 						caret: completion.caret,
@@ -1173,10 +1178,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						armedOnlyCommands: slash.armedOnlyCommands,
 					});
 					if (armed.kind === "armed") {
+						/*
+						 * The RECEIPT, and the one thing it may not guess at: the dispatcher
+						 * refuses `/goal` on a pane with no conversation and the staged line goes
+						 * with the refusal, so on a draft pane the note says what the pane can
+						 * actually do instead of promising the goal will be set (UX U5 / design
+						 * D5). `stagedNote` owns the sentence, keyed by the destination the row
+						 * carries, so a second armed destination cannot inherit a false one.
+						 */
 						stage(
 							armed.text,
 							armed.caret,
-							`Armed ${armed.text.trim()}. Enter sets the goal and sends the text.`,
+							stagedNote(
+								armed.text.trim(),
+								row.command.destination,
+								Boolean(slashSessionId),
+							),
 						);
 						return;
 					}
@@ -1226,6 +1243,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				planFor,
 				applyPlan,
 				stage,
+				// The staged note's promise is conditioned on whether this pane can run
+				// anything yet (UX U5), so the callback reads the session with the rest.
+				slashSessionId,
 			],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
