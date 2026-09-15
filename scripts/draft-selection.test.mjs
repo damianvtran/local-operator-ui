@@ -69,7 +69,13 @@ const bundle = await build({
 				selectionSelector,
 			} from "./src/renderer/src/features/chat/draft-selection";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
-			export { bandReadings, effortLadder, specUnresolved } from "./src/renderer/src/features/chat/session-status/session-model";
+			export {
+				bandReadings,
+				effortLadder,
+				effortState,
+				modelSelector,
+				specUnresolved,
+			} from "./src/renderer/src/features/chat/session-status/session-model";
 			export { errorText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
 			export {
 				admitChatDraft,
@@ -111,8 +117,10 @@ const {
 	draftPreviewQuery,
 	effortCarry,
 	effortLadder,
+	effortState,
 	errorText,
 	fetchDraftPreview,
+	modelSelector,
 	selectionFromModel,
 	selectionSelector,
 	specUnresolved,
@@ -380,7 +388,7 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	assert.ok(resolve.indexOf("await queryClient.fetchQuery") > 0);
 	assert.ok(
 		resolve.indexOf("await queryClient.fetchQuery") <
-			resolve.indexOf("draft.select(next)"),
+			resolve.indexOf("draft.select(chosen)"),
 		"the selection is recorded only after the preview answered",
 	);
 	assert.match(resolve, /refused: /);
@@ -395,7 +403,7 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	 * selection is also what the dialog's own preview is keyed on, so the ladder an
 	 * effort pick offers is the current model's.
 	 */
-	assert.match(resolve, /setPicked\(next\)/);
+	assert.match(resolve, /setPicked\(chosen\)/);
 	assert.match(
 		picker,
 		/draftPreviewQuery\(draftPick\.target \?\? NO_DRAFT_TARGET\)/,
@@ -430,18 +438,18 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	 */
 	assert.match(picker, /model_id: modelId,\s*reasoning_effort: null/);
 	assert.match(picker, /draft\.target\.model\?\.reasoning_effort/);
-	assert.match(picker, /effortCarry\(/);
-	assert.match(picker, /effortLadder\(offered\)/);
-	assert.match(picker, /carry\.rung \? \{ \.\.\.next, reasoning_effort: carry\.rung \} : next/);
-	// The fallback the clearing sentence names is the NEW model's resolved
-	// default, read off the same resolution - and it degrades to a phrase rather
-	// than to silence when the resolution names no level. The sentences
-	// themselves are asserted in "a model pick may not silently discard the
-	// chosen effort rung" above, against the shipped decision.
-	assert.match(
-		picker,
-		/effortState\(offered\)\?\.label \?\? "its own default"/,
-	);
+	assert.match(resolve, /effortCarry\(reading\.carry, \{/);
+	assert.match(resolve, /ladder: effortLadder\(offered\)/);
+	/*
+	 * The level the clearing sentence names is the NEW model's resolved one, read
+	 * off the same resolution - and `null` when the resolution reports none, which
+	 * is the non-reasoning target QA round 4 (Q-R4-1) filed. What cannot be read at
+	 * all is `checked: false`, and the PICK is refused rather than recording a
+	 * rung-less selection (review round 4, F1) - driven end to end in the tests at
+	 * the bottom of this file, not pinned as source text.
+	 */
+	assert.match(resolve, /level: effortState\(offered\)\?\.label \?\? null/);
+	assert.match(resolve, /if \(!decision\.checked\)/);
 	// Candidate behaviour is exercised below through the actual hook/adapter.
 	// A regex here previously required the very null branch that broke effort-first
 	// picks on a resolved default, while every source assertion stayed green (R7).
@@ -656,7 +664,13 @@ const pickerSource = readFileSync(
 	join(ROOT, "src/renderer/src/features/chat/pickers/destination-pickers.tsx"),
 	"utf8",
 );
-const hookStart = pickerSource.indexOf("function useDraftPick(");
+/*
+ * From the helper the hook calls, not from the hook itself: `pick` resolves the
+ * selector a confirmation names through the SAME function `ModelPicker` uses, so
+ * a span that started at `useDraftPick` would leave it undefined and every carry
+ * test would fail for a reason that has nothing to do with the carry.
+ */
+const hookStart = pickerSource.indexOf("function selectorOfResolution(");
 const hookEnd = pickerSource.indexOf("export const ModelPicker:");
 const effortStart = pickerSource.indexOf("export const EffortPicker:");
 const effortEnd = pickerSource.indexOf("export const ThemePicker:");
@@ -671,8 +685,12 @@ const pickerDependencies = {
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
 	selectionFromModel,
+	selectionSelector,
 	bandReadings,
+	effortCarry,
 	effortLadder,
+	effortState,
+	modelSelector,
 	specUnresolved,
 	errorText,
 	PickerHost: () => null,
@@ -744,22 +762,30 @@ function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
 		preview: (key) => {
 			if (!key[5]) return resolved;
 			const slash = key[5].indexOf("/");
-			const named = frame({
+			const model = {
 				...SPEC,
 				provider: key[5].slice(0, slash),
 				model_id: key[5].slice(slash + 1),
-				reasoning_effort: key[6],
-			});
+				/*
+				 * The backend's own cold resolution, which is what a real
+				 * `sessions.preview` answers for a rung-less request: it names the
+				 * level the model will actually run (`low` here, matching QA round 4's
+				 * live rows), rather than echoing a null the pane would read as `auto`.
+				 * A stub that echoed the request would make the clearing sentence name
+				 * a level the pane does not show.
+				 */
+				reasoning_effort: key[6] ?? "low",
+			};
 			const rungs = instance.ladders[key[5]];
 			if (rungs === "unreported")
 				return frame({
-					...named,
+					...model,
 					reasoning_efforts: undefined,
 					reasoning_default_effort: undefined,
 				});
-			if (!Array.isArray(rungs)) return named;
+			if (!Array.isArray(rungs)) return frame(model);
 			return frame({
-				...named,
+				...model,
 				reasoning_efforts: rungs,
 				reasoning_default_effort: "low",
 			});
@@ -971,10 +997,17 @@ test("a model pick carries the chosen rung through the shipped hook, and says th
 	];
 	const hook = picker.hook();
 	await hook.pick(NEW_MODEL, MODEL_READING);
+	const settled = picker.hook();
 	assert.deepEqual(picker.selections, [{ ...NEW_MODEL, reasoning_effort: "high" }]);
 	assert.equal(picker.requests.length, 2, "carrying costs the probe and the pick");
-	assert.equal(hook.result.tone, "success");
-	assert.match(hook.result.text, /at high effort\.$/);
+	assert.notDeepEqual(
+		picker.requests[0],
+		picker.requests[1],
+		"the carried selection is a different key, which is why it is a second call",
+	);
+	assert.equal(settled.busy, false);
+	assert.equal(settled.result.tone, "success");
+	assert.match(settled.result.text, /at high effort\.$/);
 	assert.deepEqual(picker.notes, []);
 });
 
@@ -983,14 +1016,21 @@ test("a model that does not offer the rung clears it, states the level, and cost
 	picker.ladders["openrouter/openai/gpt-6-astra"] = ["low", "medium"];
 	const hook = picker.hook();
 	await hook.pick(NEW_MODEL, MODEL_READING);
+	const settled = picker.hook();
 	assert.deepEqual(picker.selections, [NEW_MODEL], "no rung is recorded");
-	assert.equal(
-		picker.requests.length,
-		1,
-		"the clearing is served from the probe, which is the pick's own key",
+	/*
+	 * Two CALLS in the stub, one in production: the stub has no cache, so the
+	 * property to assert is the one that makes it free - the probe's key IS the
+	 * pick's key once no rung is carried, so a real client serves the second from
+	 * the entry the first wrote.
+	 */
+	assert.deepEqual(
+		picker.requests[0],
+		picker.requests[1],
+		"the probe's key is the pick's own key",
 	);
-	assert.match(hook.result.text, /effort falls to low/);
-	assert.match(hook.result.text, /because high is not one of that model's levels/);
+	assert.match(settled.result.text, /effort falls to low/);
+	assert.match(settled.result.text, /because high is not one of that model's levels/);
 });
 
 test("F1: a probe that cannot answer REFUSES the pick instead of dropping the rung in silence", async () => {
@@ -1006,11 +1046,23 @@ test("F1: a probe that cannot answer REFUSES the pick instead of dropping the ru
 	picker.failing = 1;
 	const hook = picker.hook();
 	await hook.pick(NEW_MODEL, MODEL_READING);
+	const settled = picker.hook();
 	assert.deepEqual(picker.selections, [], "nothing is recorded");
 	assert.equal(picker.requests.length, 1, "the pick's own resolution is not attempted");
-	assert.equal(hook.result.tone, "error");
-	assert.match(hook.result.text, /could not be checked, so nothing was changed/);
-	assert.deepEqual(picker.notes, [[hook.result.text, true]], "said twice, as a refusal is");
+	assert.equal(settled.result.tone, "error");
+	/*
+	 * Two refusal paths, and this is the transport's: a probe that THROWS is
+	 * refused by the same `catch` every other failure goes through, so the sentence
+	 * carries the transport's own words. The other is a resolution that answered
+	 * without a ladder, which refuses on `checked` (the test below) and adds the
+	 * sentence this reading supplies. Both record NOTHING, which is the finding.
+	 */
+	assert.match(settled.result.text, /The model was not changed\./);
+	assert.deepEqual(
+		picker.notes,
+		[[settled.result.text, true]],
+		"said twice, as a refusal is",
+	);
 });
 
 test("F4: an unreported ladder is refused, not read as an empty one", async () => {
@@ -1018,9 +1070,10 @@ test("F4: an unreported ladder is refused, not read as an empty one", async () =
 	picker.ladders["openrouter/openai/gpt-6-astra"] = "unreported";
 	const hook = picker.hook();
 	await hook.pick(NEW_MODEL, MODEL_READING);
+	const settled = picker.hook();
 	assert.deepEqual(picker.selections, []);
-	assert.equal(hook.result.tone, "error");
-	assert.match(hook.result.text, /could not be checked/);
+	assert.equal(settled.result.tone, "error");
+	assert.match(settled.result.text, /could not be checked/);
 });
 
 test("F2: the busy window covers the probe, so a second click cannot commit behind it", async () => {
@@ -1041,7 +1094,11 @@ test("a model pick on a pane with no rung is unchanged, and passes no carry ques
 	const picker = pickerHarness();
 	const hook = picker.hook();
 	await hook.pick(NEW_MODEL, { ...MODEL_READING, carry: "" });
+	const settled = picker.hook();
 	assert.deepEqual(picker.selections, [NEW_MODEL]);
 	assert.equal(picker.requests.length, 1, "no probe without a rung to check");
-	assert.match(hook.result.text, /This conversation will run openrouter\/openai\/gpt-6-astra\./);
+	assert.match(
+		settled.result.text,
+		/This conversation will run openrouter\/openai\/gpt-6-astra\./,
+	);
 });
