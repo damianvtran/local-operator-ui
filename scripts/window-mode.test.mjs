@@ -140,8 +140,116 @@ test("a mode argument with no value is missing, not the next flag", () => {
 	const resolved = plan({
 		argv: ["--window-mode", "--remote-debugging-port=9451"],
 	});
+	// The flag was reached for and misused, so the report is the answer — and
+	// the debug port beside it must not turn that mistake into a silent
+	// headless default.
 	assert.equal(resolved.mode, "normal");
 	assert.equal(resolved.problems.length, 1);
+	assert.equal(resolved.assumed, null);
+});
+
+test("a launch that names a scratch profile and no mode is assumed headless", () => {
+	// The rig-shaped launch: an isolated profile so it cannot touch the
+	// operator's, and no mode named. This is the shape that took their focus
+	// repeatedly on this machine, one window per run, so the silence has to
+	// resolve to the mode that cannot grab it.
+	const resolved = plan({
+		argv: [
+			".",
+			"--remote-debugging-port=9451",
+			"--user-data-dir=/tmp/rig/profile",
+		],
+	});
+	assert.equal(resolved.mode, "headless");
+	assert.equal(resolved.show, "never");
+	assert.equal(resolved.focusable, false);
+	assert.equal(resolved.backgroundThrottling, false);
+	assert.deepEqual(resolved.problems, []);
+	assert.match(resolved.assumed ?? "", /user-data-dir/);
+});
+
+test("either agent switch is enough, and both spellings are read", () => {
+	// A rig that only opens a devtools port is as much a run as one with its
+	// own profile, and `--user-data-dir /tmp/x` is how a shell script writes it.
+	assert.equal(plan({ argv: ["--user-data-dir=/tmp/rig"] }).mode, "headless");
+	assert.equal(
+		plan({ argv: ["--user-data-dir", "/tmp/rig"] }).mode,
+		"headless",
+	);
+	const portOnly = plan({ argv: ["--remote-debugging-port=9451"] });
+	assert.equal(portOnly.mode, "headless");
+	assert.match(portOnly.assumed ?? "", /remote-debugging-port/);
+	// A section heading is not a value: `--user-data-dir --remote-debugging-
+	// port=9451` is still a profile switch, and still a run.
+	assert.equal(
+		plan({ argv: ["--user-data-dir", "--remote-debugging-port=9451"] }).mode,
+		"headless",
+	);
+});
+
+test("a named mode wins over the agent switches, from either source", () => {
+	// The escape hatch has to stay exact, or a person debugging with a scratch
+	// profile could not get a real window at all.
+	for (const mode of ["normal", "inactive", "headless"]) {
+		const fromFlag = plan({
+			argv: [`--window-mode=${mode}`, "--user-data-dir=/tmp/rig"],
+		});
+		assert.equal(fromFlag.mode, mode, `${mode} from the flag`);
+		assert.equal(
+			fromFlag.assumed,
+			null,
+			`${mode} from the flag is not assumed`,
+		);
+		const fromEnv = plan({
+			env: { [WINDOW_MODE_ENV]: mode },
+			argv: ["--user-data-dir=/tmp/rig"],
+		});
+		assert.equal(fromEnv.mode, mode, `${mode} from the environment`);
+		assert.equal(
+			fromEnv.assumed,
+			null,
+			`${mode} from the environment is not assumed`,
+		);
+	}
+});
+
+test("a mistyped mode beside an agent switch still reports rather than assumes", () => {
+	// `headles` must not be read as silence and quietly become headless: the
+	// typo is the whole problem, and the person who made it can only fix a
+	// window they can see named in the report.
+	const resolved = plan({
+		env: { [WINDOW_MODE_ENV]: "headles" },
+		argv: ["--user-data-dir=/tmp/rig"],
+	});
+	assert.equal(resolved.mode, "normal");
+	assert.equal(resolved.assumed, null);
+	assert.equal(resolved.problems.length, 1);
+	assert.match(resolved.problems[0], /headles/);
+});
+
+test("silence with no agent switch is still the operator's focused window", () => {
+	// The shipped behaviour, asserted again next to the assumption so a future
+	// edit cannot widen "is a rig" into "is any launch with arguments".
+	assert.equal(plan().mode, "normal");
+	assert.equal(plan().assumed, null);
+	assert.equal(plan({ argv: [".", "--window-size=1024x673"] }).mode, "normal");
+});
+
+test("the startup line says the mode was assumed, and why", () => {
+	// This line is what a rig greps and what a person reads after a window did
+	// not appear. "headless" with no reason would be indistinguishable from a
+	// caller that asked for it.
+	const line = describeWindowLaunch(
+		plan({ argv: ["--user-data-dir=/tmp/rig"] }),
+	);
+	assert.match(line, /window mode headless/);
+	assert.match(line, /assumed/);
+	assert.match(line, /user-data-dir/);
+	assert.match(line, /never shown/);
+	assert.doesNotMatch(
+		describeWindowLaunch(plan({ env: { [WINDOW_MODE_ENV]: "headless" } })),
+		/assumed/,
+	);
 });
 
 test("the size comes from the environment, and the argument wins over it", () => {
