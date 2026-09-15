@@ -20,6 +20,16 @@ pnpm test:desktop                             -> unit-tests.txt (the suite, 0 fa
 node scripts/verify-macos-artifacts.mjs       -> release-gate.txt
 node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
                                               -> unit-tests.txt
+
+# Round 1 of the review, QA and design rounds, answered in one pass:
+node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+node scripts/run-desktop-tests.mjs scripts/python-bytecode-cache.test.mjs
+node scripts/run-desktop-tests.mjs scripts/update-robustness.test.mjs
+pnpm setup-python && pnpm build && electron-builder --mac --publish never
+node scripts/verify-macos-artifacts.mjs --dist dist
+node scripts/capture-evidence.mjs http://localhost:6017 \
+  --only=common-updatenotification --themes=localOperatorDark,localOperatorLight
+                                              -> round1-remediation.txt
 ```
 
 `--arm64` did not narrow the build as intended: `mac.target` lists both
@@ -112,16 +122,38 @@ could fail; these two are that question, and both are refused by name.
   `scripts/verify-signed-update.mjs` reports the whole exercise BLOCKED with exit
   2 rather than a surrogate PASS - it consumes artifacts the `ci(mac)` candidate
   workflow signs, and it says so.
-- **The x64 artifacts.** This checkout has no `resources/python` (the x64
-  interpreter is not downloaded here), so the x64 app carries no seed and the gate
-  refuses it:
+- **The x64 artifacts.** At the time the earlier pass ran, this checkout had no
+  `resources/python` (the x64 interpreter was not downloaded), so the x64 app
+  carried no seed and the gate refused it:
 
   ```
   FAIL app-one-bundled-python: ... the x86_64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/x64
   ```
 
   That is the check working: a bundle whose interpreter did not reach it is not a
-  bundle to ship. `pnpm setup-python` on the release runner supplies both.
+  bundle to ship. `pnpm setup-python` supplies both on a checkout that has run
+  it - and the remediation pass did run it, so the x64 rows above pass on the
+  artifacts that pass built.
+
+## Round 1 of the review, QA and design rounds
+
+`round1-remediation.txt` is the raw output behind every finding worked in that
+pass: the four provisioning-recovery fixtures, the seed-that-carries-bytecode
+case, the pre-split environment report driven with a real pre-split venv, the
+installer script run to its refusal, the setup dialog's copy, the Details line's
+contrast measured at token level, the release gate on this head's own build for
+BOTH architectures, and the container gate refusing two mutated copies of the
+real arm64 archive by name.
+
+Two things it records that the earlier pass could not:
+
+- **The x64 rows pass now.** `pnpm setup-python` supplied `resources/python`, so
+  all six app instances (two unpacked, four containers) pass the three seeded
+  rows for both architectures. The BLOCKED bullet below about the x64 artifacts
+  described the earlier pass's checkout, not this one.
+- **Only two frames moved.** The start-up panel was re-captured on this head in
+  both brand themes and 18 of the 20 frames came back byte-identical; the two
+  that differ are the ones D1-D3 changed. The manifest records which.
 
 ## Handoff state
 

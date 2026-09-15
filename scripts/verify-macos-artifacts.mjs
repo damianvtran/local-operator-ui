@@ -310,7 +310,7 @@ export function bundledBytecodeCheck(appPath, options = {}) {
 		passed: found.length === 0,
 		output:
 			found.length === 0
-				? "no bytecode under Contents/Resources/python[/_aarch64]"
+				? `no bytecode under Contents/Resources/${BUNDLED_PYTHON_TREES.join(", ")}`
 				: `${found.length} stale bytecode file(s): ${found.slice(0, 4).join(", ")}${found.length > 4 ? ` (and ${found.length - 4} more)` : ""}`,
 	};
 }
