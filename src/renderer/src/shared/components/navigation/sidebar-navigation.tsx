@@ -1,3 +1,7 @@
+import {
+	paletteShortcutCaps,
+	paletteShortcutLabel,
+} from "@features/command-palette/palette-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { Button, Tooltip } from "@shared/components/ui";
@@ -12,6 +16,7 @@ import {
 	ChevronRight,
 	Globe,
 	MessageSquare,
+	Search,
 	Settings,
 	Store,
 } from "lucide-react";
@@ -99,6 +104,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
 	const { isSidebarCollapsed, toggleSidebar } = useUiPreferencesStore();
+	const openCommandPalette = useUiPreferencesStore(
+		(state) => state.openCommandPalette,
+	);
 
 	const expanded = !isSidebarCollapsed;
 
@@ -205,6 +213,84 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const toggleLabel = expanded ? "Collapse sidebar" : "Expand sidebar";
 
 	/*
+	 * The palette's own door, at the foot of the rail above the account row.
+	 *
+	 * ## Why the foot and not the head of the list
+	 *
+	 * The list above it is DESTINATIONS, and every row in it is one — the active
+	 * row carries `aria-current="page"` and the accent wash that says "you are
+	 * here". Search is not a place, so putting it in that list would have made it
+	 * a seventh tab that lights up when nothing is selected, and would have pushed
+	 * Chat out of the first position it holds as the app's default view. At the
+	 * foot it sits beside the one other control the rail carries, on the same 32px
+	 * row and the same 8px inset, so the rail still reads as two groups: where you
+	 * can go, and what you can do.
+	 *
+	 * ## Why a visible chord
+	 *
+	 * The gesture is what makes this surface fast, and a user who never learns it
+	 * uses the palette once. The chord is written on the row (dim, monospace,
+	 * because it is machine voice) rather than in a tooltip, so the rail teaches
+	 * Cmd+K without being asked. Not `KeyboardShortcut`'s caps, though the same
+	 * text is used: a cap is `bg-sunken`, and this rail IS `sunken`, so a cap here
+	 * would be a key with no key around it.
+	 *
+	 * The macOS spelling rides a real platform check rather than a guess: off
+	 * macOS the same row reads Ctrl+K.
+	 */
+	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const searchLabel = `Search (${paletteShortcutLabel(isMac)})`;
+
+	const searchRow = expanded ? (
+		<button
+			type="button"
+			data-command-palette-trigger=""
+			onClick={openCommandPalette}
+			className={cn(
+				"flex h-8 w-full items-center gap-2 rounded-sm px-3 text-body-sm text-ink-muted",
+				"transition-colors duration-fast ease-out-quart",
+				"hover:bg-elevated hover:text-ink",
+			)}
+		>
+			<Search size={16} aria-hidden="true" className="shrink-0" />
+			<span className="truncate">Search</span>
+			{/*
+			 * Decorative: the accessible name above already carries the chord.
+			 *
+			 * Plain monospace rather than the app's key cap, because a cap is
+			 * `bg-sunken` and this rail IS `sunken`: the cap's own ground would
+			 * vanish into the row and leave a boxless glyph. The panel's footer
+			 * prints the same chips on `elevated`, where a cap is visible; the two
+			 * idioms are one decision and `docs/command-palette.md` records it. One
+			 * ink step up from the row's label, so the chord reads as a chord rather
+			 * than as fine print (design round 1, D6).
+			 */}
+			<span
+				aria-hidden="true"
+				className="ml-auto font-mono text-ink-muted text-mono-sm"
+			>
+				{paletteShortcutCaps(isMac)}
+			</span>
+		</button>
+	) : (
+		<Tooltip content={searchLabel} side="right">
+			<button
+				type="button"
+				data-command-palette-trigger=""
+				onClick={openCommandPalette}
+				aria-label={searchLabel}
+				className={cn(
+					"flex h-8 w-full items-center justify-center rounded-sm text-ink-muted",
+					"transition-colors duration-fast ease-out-quart",
+					"hover:bg-elevated hover:text-ink",
+				)}
+			>
+				<Search size={16} aria-hidden="true" />
+			</button>
+		</Tooltip>
+	);
+
+	/*
 	 * The collapse control lives in the header, revealed when the rail is
 	 * pointed at or contains focus.
 	 *
@@ -286,10 +372,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 			<ul className="flex flex-col gap-1 p-2">{navItems.map(renderNavItem)}</ul>
 
-			{/* `mt-auto` rather than `justify-between` on the nav: the account row
-			    is the only thing at the foot now, and space is what separates it
-			    from the list — the hairline it used to need went with the toggle. */}
-			<div className="mt-auto p-2">
+			{/* `mt-auto` rather than `justify-between` on the nav: the account row is
+			    the only thing at the foot now, and space is what separates it from the
+			    list — the hairline it used to need went with the toggle. The search row
+			    shares that foot, one gap above the account, because both are controls
+			    rather than destinations. */}
+			<div className="mt-auto flex flex-col gap-1 p-2">
+				{searchRow}
 				<UserProfileSidebar expanded={expanded} />
 			</div>
 		</nav>

@@ -41,8 +41,12 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import {
+	PANEL_REQUEST_TTL_MS,
+	useChatPanelRequestStore,
+} from "@shared/store/chat-panel-request-store";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
@@ -138,16 +142,23 @@ export type SlashDispatchOutcome = "not-a-command" | "consumed" | "retained";
 /**
  * The catalogue row for a destination, or a stand-in where the catalogue has none.
  *
- * A draft's pickers are opened by a CHIP, so no `SlashCommandMeta` arrives with
- * the request. None is needed: no adapter reads `spec`, and `PickerOutlet` routes
- * on `action.destination`. The catalogue's own row is preferred where it exists,
- * so this is the same object typing the command would have built; the stand-in
- * keeps the chip from depending on a command surface the pane is not allowed to
- * need — the copy and the availability of a draft's picker come from
- * `draft_selection`, not from the registry.
+ * A picker opened by a CHIP or by the COMMAND PALETTE arrives without a
+ * `SlashCommandMeta`, and none is needed: no adapter reads `spec`, and
+ * `PickerOutlet` routes on `action.destination`. The catalogue's own row is
+ * preferred where it exists, so this is the same object typing the command would
+ * have built; the stand-in keeps the two callers from depending on a command
+ * surface they are not allowed to need — a draft's picker availability comes from
+ * `draft_selection`, and the palette's rows are already gated on the pane.
+ *
+ * `destination` is a plain string rather than `DraftPickerDestination` because
+ * these are no longer only the draft's two readings: the palette names any
+ * picker destination (`info`, `usage`, `analytics`, `session.diagnostics`), and
+ * the stand-in's name is looked up in a table instead of being inferred from
+ * "is it the model one" — which answered `effort` for every destination that
+ * was not `session.model`, including the four the palette can now name.
  */
 function draftPickerSpec(
-	destination: DraftPickerDestination,
+	destination: string,
 	commands: SlashCommandMeta[] | undefined,
 ): SlashCommandMeta {
 	const known = commands?.find(
@@ -155,7 +166,7 @@ function draftPickerSpec(
 	);
 	if (known) return known;
 	return {
-		name: destination === "session.model" ? "model" : "effort",
+		name: FALLBACK_SLASH_NAMES[destination] ?? destination,
 		description: "",
 		aliases: [],
 		arguments: "optional",
@@ -165,6 +176,22 @@ function draftPickerSpec(
 		execution: "native",
 	};
 }
+
+/**
+ * The slash spelling of a destination whose catalogue row is not in hand.
+ *
+ * Only used when `commands.list` has not answered — a backend that cannot serve
+ * the catalogue cannot present these panels either, so the name only has to be
+ * right enough to appear in a message rather than to be typed.
+ */
+const FALLBACK_SLASH_NAMES: Record<string, string> = {
+	"session.model": "model",
+	"session.effort": "effort",
+	info: "info",
+	usage: "usage",
+	analytics: "analytics",
+	"session.diagnostics": "session",
+};
 
 function systemMessage(text: string, status?: Message["status"]): Message {
 	return {
@@ -704,6 +731,76 @@ export function useSlashDispatch({
 			rebind,
 		],
 	);
+
+	/*
+	 * A panel asked for from OUTSIDE this pane — the command palette.
+	 *
+	 * The palette owns no picker: `/info`, `/usage`, `/analytics` and `/session`
+	 * are destinations whose adapters need this pane's session handle, command
+	 * catalogue and rebind path, so the palette writes a REQUEST and this hook —
+	 * the one owner of the presentation slot — consumes it exactly the way a typed
+	 * command is consumed. Same destinations table, same adapters, same close
+	 * path; the palette's whole contribution is naming one.
+	 *
+	 * Two deliberate details:
+	 *
+	 * - The request is retired BEFORE it is acted on. `consumePanel` matches on the
+	 *   nonce, so a newer request raised while this effect ran is not cleared by
+	 *   it; retiring first is what makes the panel a one-shot rather than a state
+	 *   this pane re-opens on every render.
+	 * - An EXPIRED request is dropped without acting. Nothing can consume a request
+	 *   while no chat pane is mounted, and the palette's own navigation is what
+	 *   mounts one — so an old request means the pane never arrived, and acting on
+	 *   it later would open a panel the user asked for in another context with
+	 *   nothing on screen to explain it (see the store's TTL note).
+	 */
+	const panelRequest = useChatPanelRequestStore((state) => state.request);
+	const consumePanelRequest = useChatPanelRequestStore(
+		(state) => state.consumePanel,
+	);
+	useEffect(() => {
+		if (!panelRequest) return;
+		consumePanelRequest(panelRequest.nonce);
+		if (Date.now() - panelRequest.requestedAt > PANEL_REQUEST_TTL_MS) return;
+		const target = DESTINATIONS[panelRequest.destination];
+		if (target?.kind !== "picker") return;
+		/*
+		 * No invoking control: the row that asked for this closed with the palette,
+		 * and the palette restores focus to its own door. Leaving a stale element in
+		 * `invoker` would send Escape's focus somewhere unrelated.
+		 */
+		invoker.current = null;
+		setPicker({
+			action: {
+				kind: "native_action",
+				destination: panelRequest.destination,
+				// Empty on a draft pane, which the two session-scoped panels are never
+				// offered from; `info` and `usage` do not read it.
+				session_id: sessionId ?? "",
+				args: "",
+				fields: [],
+				data: {},
+			},
+			spec: draftPickerSpec(panelRequest.destination, commandsQuery.data),
+			sessionId: sessionId ?? "",
+			canonical,
+			commands: commandsQuery.data ?? [],
+			onClose: closePicker,
+			note,
+			dispatch: (invocation) => void dispatch(invocation),
+			rebind,
+		});
+	}, [
+		panelRequest,
+		consumePanelRequest,
+		sessionId,
+		canonical,
+		commandsQuery.data,
+		closePicker,
+		note,
+		dispatch,
+		rebind,
+	]);
 
 	return {
 		dispatch,
