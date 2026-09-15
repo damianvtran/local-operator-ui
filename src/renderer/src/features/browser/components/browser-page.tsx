@@ -64,9 +64,8 @@ import { BrowserUrlBar } from "./browser-url-bar";
  */
 
 /** The rect in CSS pixels, rounded, because Electron positions a native view in
- * device-independent pixels and a fractional origin shows as a seam. */ function measure(
-	element: HTMLElement,
-): {
+ * device-independent pixels and a fractional origin shows as a seam. */
+function measure(element: HTMLElement): {
 	x: number;
 	y: number;
 	width: number;
@@ -350,6 +349,13 @@ export const BrowserPage: FC = () => {
 					</div>
 				)}
 				{state && tabs.length === 0 && (
+					// ONE ACTION, ONE LABEL (design round 3, D19). This branch says `Open a
+					// tab` where the branch below says `New tab`, and both call
+					// `chrome.newTab()`; the strip's own `+` is `aria-label="New tab"`, so
+					// that is the label the feature already tells the user to look for.
+					// The EMPHASIS still differs - primary when there is nothing else to
+					// do, outline when the real next move is to pick a tab above - and
+					// that is deliberate rather than an inconsistency to iron out.
 					<div className="flex h-full flex-col items-center justify-center gap-3">
 						<Globe aria-hidden className="size-6 text-ink-dim" />
 						<p className="text-body text-ink-muted">No tabs are open.</p>
@@ -358,7 +364,7 @@ export const BrowserPage: FC = () => {
 							size="sm"
 							onClick={() => void chrome.newTab()}
 						>
-							Open a tab
+							New tab
 						</Button>
 					</div>
 				)}
