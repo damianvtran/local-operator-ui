@@ -12,15 +12,29 @@ import {
 	ipcMain,
 	nativeImage,
 	shell,
+	webContents,
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import {
+	BACKEND_RECONNECT_CHANNEL,
+	BACKEND_STATUS_CHANNEL,
+	BACKEND_STATUS_EVENT,
+} from "../shared/backend-status";
 import {
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
 	type ReadFileBytesResponse,
 } from "../shared/desktop-contract";
+import type { DesktopFeedState } from "../shared/desktop-contract";
+import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
+import {
+	OPEN_CATALOGUE_FLAG,
+	OPEN_SESSION_FLAG,
+	readLaunchTarget,
+	readOpenSessionArgv,
+} from "../shared/open-session";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -34,9 +48,11 @@ import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
+	browserHostStopPending,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -50,6 +66,8 @@ import {
 	withRememberedDirectory,
 } from "./picker-directory";
 import { UpdateService } from "./update-service";
+import { ViewerEndpoint } from "./viewer-endpoint";
+import { ViewerRecordPublisher } from "./viewer-record";
 import {
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
@@ -266,7 +284,10 @@ function createApplicationMenu(): void {
 	Menu.setApplicationMenu(menu);
 }
 
-function createWindow(): BrowserWindow {
+function createWindow(
+	initialSession: string | null = null,
+	openCatalogue = false,
+): BrowserWindow {
 	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say
 	 * how it wants the window to behave: `headless` (created, never shown) and
@@ -324,14 +345,46 @@ function createWindow(): BrowserWindow {
 			// keeps Electron's own default.
 			backgroundThrottling: windowLaunch.backgroundThrottling,
 			/*
-			 * The renderer dev driver's arming entry — usually absent, because it
-			 * is present only in a launch that opted in. See
-			 * `devDriverWebPreferences` above and `src/main/dev-driver.ts` for
-			 * what arms a run and what the entry is read by.
+			/*
+			 * The conversation this window is being created FOR, in the renderer
+			 * process's own argv so preload can read it before the first paint (B3).
+			 *
+			 * Omitted entirely rather than set to an empty value on an ordinary
+			 * launch: the preload parses a flag out of argv, and an empty one would
+			 * be a value it then has to decide means "no session".
+			 *
+			 * `openCatalogue` is the THIRD intent (R2-1): a burst digest's click has
+			 * no single conversation to name, and "no flag at all" already means
+			 * "restore what you had open" — so it needs a flag of its own rather than
+			 * sharing that absence.
+			 *
+			 * AND the renderer dev driver's arming entry, which is the other thing this
+			 * app puts in a renderer's argv — usually absent, because it is present only
+			 * in a launch that opted in. See `devDriverWebPreferences` above and
+			 * `src/main/dev-driver.ts` for what arms a run and what the entry is read by.
+			 *
+			 * WHY ONE SPREAD AND NOT TWO: both sources write `additionalArguments`, so a
+			 * second spread REPLACES the first's array rather than adding to it — and
+			 * either one alone still produces a well-formed window, so the loss would be
+			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
+			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...devDriverWebPreferences,
+			...rendererArgumentFlags(initialSession, openCatalogue),
 		},
 	});
+
+	/*
+	 * A window created to show a specific conversation HOLDS its first present.
+	 *
+	 * Presenting on `ready-to-show` is a WINDOW milestone, not a "conversation
+	 * applied" one, and the difference is visible: the renderer rehydrates its
+	 * persisted active conversation and paints that first, so showing here puts
+	 * the wrong conversation on screen and then swaps it — which reads as a click
+	 * that landed on the wrong row (B3). The release is the renderer's own
+	 * report that the conversation is up (its watch heartbeat), with a bounded
+	 * fallback so a renderer that never reports cannot strand a hidden window.
+	 */
+	if (initialSession) holdPresentUntilConversation(mainWindow, initialSession);
 
 	// Renderer warnings and errors reach a durable file, not just devTools.
 	// devTools are off outside `pnpm dev`, so a `console.warn` in a shipped
@@ -352,8 +405,14 @@ function createWindow(): BrowserWindow {
 		 * activating the app, so an agent run can be watched without interrupting
 		 * anyone. `headless` does not show it at all: the window still renders at
 		 * its full size, so `capturePage` and CDP see a complete frame.
+		 *
+		 * A window created for a conversation is the exception, and it is held by
+		 * `holdPresentUntilConversation` above rather than presented here: see the
+		 * call site for why "loaded" is not "showing the right conversation".
 		 */
-		presentWindow(mainWindow, windowLaunch.show);
+		if (!heldForConversation.has(mainWindow.id)) {
+			presentWindow(mainWindow, windowLaunch.show);
+		}
 
 		if (windowLaunch.mode === "normal") return;
 		/*
@@ -470,6 +529,27 @@ function createWindow(): BrowserWindow {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
 
+	/*
+	 * THE BROWSER HOST IS PART OF CREATING A WINDOW (review round 2, R2-2; moved
+	 * here in round 3, R3-5). It used to be attached by the startup path, so every
+	 * OTHER way a window comes into existence — a notification click, a viewer
+	 * resume, a second instance — recreated chat without the capability, and the
+	 * dock handler could not repair it because it is gated on zero windows.
+	 * Attaching it here is what makes the fix unconditional: there is one place a
+	 * window is built, so there is no call site left to forget, and the
+	 * source-shape guard that stood in for it asserts the shape rather than a
+	 * caller's diligence.
+	 *
+	 * Through `attachBrowserHostToWindow` rather than directly, because the host's
+	 * own state lives inside `whenReady` and this factory is at module scope; the
+	 * pointer is set before the first window is built. Not awaited, and it does
+	 * not need to be: the host needs the window to exist, nothing after this call
+	 * needs the host, and it owns its own teardown (its `closed` listener stops
+	 * it). It reports its own failures and never rejects, so a browser capability
+	 * that cannot start is a logged line rather than a reason the app does not
+	 * come up.
+	 */
+	attachBrowserHostToWindow?.(mainWindow);
 	return mainWindow;
 }
 
@@ -592,6 +672,197 @@ let mainWindow: BrowserWindow | null = null;
  * and the app deciding what to do about it. A new window replaces it.
  */
 let activeUpdateService: UpdateService | null = null;
+/**
+ * The conversation this launch was asked to show, from `--open-session`.
+ *
+ * Read from argv at module load and applied to the FIRST window this process
+ * creates, because that is the launch the click performed (`lop resume-click`'s
+ * third rung spawns the app with the id). It reaches the renderer through
+ * `webPreferences.additionalArguments` rather than through an IPC after the
+ * load, so the renderer can paint THIS conversation in its first frame instead
+ * of rehydrating the last one it had open and then swapping (B3).
+ */
+const launchTarget = readLaunchTarget(process.argv);
+const launchSession =
+	launchTarget.kind === "session" ? launchTarget.sessionId : null;
+/**
+ * Whether THIS launch asked for the catalogue rather than a conversation.
+ *
+ * A separate flag from `launchSession`'s absence, because the two are different
+ * intents (review round 2, R2-1): no flag means "restore the last conversation",
+ * and `--open-catalogue` means "open the list". The windowless half of a burst
+ * digest's click is the case that needed the second one.
+ */
+const launchCatalogue = launchTarget.kind === "catalogue";
+
+/**
+ * The argv a renderer process is created with, resolved once for every caller.
+ *
+ * `{}` on an ordinary launch rather than an empty array: the preload parses a
+ * flag out of argv, and a value it then has to decide means "no session" is a
+ * second spelling of absence to keep in step.
+ */
+function launchArgumentFlags(
+	initialSession: string | null,
+	openCatalogue: boolean,
+): { additionalArguments?: string[] } {
+	if (initialSession) {
+		return { additionalArguments: [`${OPEN_SESSION_FLAG}=${initialSession}`] };
+	}
+	if (openCatalogue) return { additionalArguments: [OPEN_CATALOGUE_FLAG] };
+	return {};
+}
+
+/**
+ * Everything this app puts in a renderer process's argv, in one value.
+ *
+ * WHY IT EXISTS. There are two sources now — the conversation or catalogue a
+ * window was created for (`launchArgumentFlags`) and the dev driver's arming
+ * entry (`devDriverWebPreferences`) — and both express themselves through the
+ * SAME `webPreferences.additionalArguments` slot. Spreading them as two separate
+ * entries at the call site does not union them: the second spread overwrites the
+ * first's array, so an armed run that also names a session would carry one flag
+ * and silently drop the other, with a well-formed window either way. This is the
+ * one place that decides, so the two can never disagree about who wins.
+ *
+ * Empty means `{}` and not `additionalArguments: []`, for the reason
+ * `launchArgumentFlags` gives: "this launch adds no option at all" has to be
+ * true of the object, not merely equivalent to it.
+ */
+function rendererArgumentFlags(
+	initialSession: string | null,
+	openCatalogue: boolean,
+): { additionalArguments?: string[] } {
+	const flags = [
+		...(launchArgumentFlags(initialSession, openCatalogue)
+			.additionalArguments ?? []),
+		...(devDriverWebPreferences.additionalArguments ?? []),
+	];
+	return flags.length > 0 ? { additionalArguments: flags } : {};
+}
+
+/**
+ * A conversation a SECOND launch asked for before this process could open it.
+ *
+ * A second instance's `commandLine` can arrive while the first is still
+ * starting — before `whenReady` has produced a window to send to — so the id is
+ * parked here rather than dropped. Dropping it is precisely the class of silent
+ * no-op the click path is being fixed for.
+ */
+let queuedSession: string | null = null;
+
+/**
+ * This app's viewer record and control endpoint, created inside `whenReady`.
+ *
+ * Module scope so `will-quit` can clean them up: a record left behind
+ * advertises a port nothing is listening on, which costs the next click its
+ * whole dial timeout before it falls back to spawning a terminal. `null` means
+ * the app never reached the point of creating them, not that a failure was
+ * swallowed.
+ */
+let viewerRecord: ViewerRecordPublisher | null = null;
+let viewerEndpoint: ViewerEndpoint | null = null;
+
+/**
+ * Open a conversation in a window, creating one if there is none. Assigned once
+ * `whenReady` has the window-creation path in scope; `null` before that.
+ */
+let openConversationInWindow: ((sessionId: string | null) => void) | null =
+	null;
+
+/**
+ * Attach the browser host to a freshly created window. Assigned once
+ * `whenReady` has the host's own state in scope; `null` before that.
+ *
+ * The SAME SEAM AS `openConversationInWindow` ABOVE, and for the same reason: the
+ * host cannot start before the app is ready (it needs `app.getVersion()`,
+ * `app.getPath("userData")` and the resolved renderer URL, all of which exist
+ * only inside the ready callback), while the window is built by a module-scope
+ * factory. Wiring it here rather than inside the factory's caller is what makes
+ * R2-2 unconditional: every way a window comes into existence — a notification
+ * click, a viewer resume, a second instance, the dock — goes through
+ * `createWindow`, so none of them can forget the host (review round 3, R3-5).
+ */
+let attachBrowserHostToWindow: ((window: BrowserWindow) => void) | null = null;
+
+/**
+ * How long a click-created window may stay hidden waiting for the renderer to
+ * report the conversation on screen.
+ *
+ * A BOUNDED fallback, not a timeout to tune: without it a renderer that never
+ * reports (a crash loop, a backend that never answers the subscribe) would
+ * strand a window the user cannot see and cannot close — strictly worse than
+ * the flash the hold exists to prevent. 3 s is the launch-path budget the
+ * design already names for "the app was not running", so a window shown by the
+ * fallback still lands inside the target.
+ */
+const CONVERSATION_PAINT_FALLBACK_MS = 3_000;
+
+/**
+ * Windows whose first present is held until the renderer reports a specific
+ * conversation on screen, keyed by window id.
+ *
+ * The report is the renderer's ordinary watch heartbeat (`desktop-watch-
+ * heartbeat`, which names the conversation it is displaying) rather than a new
+ * channel: that heartbeat already carries exactly this fact and is already sent
+ * when the panel mounts, so a second signal would be a second thing that can
+ * disagree with it.
+ */
+const heldForConversation = new Map<
+	number,
+	{ session: string; timer: NodeJS.Timeout }
+>();
+
+/** Hold this window's first present until `session` is on screen. */
+function holdPresentUntilConversation(
+	window: BrowserWindow,
+	session: string,
+): void {
+	const timer = setTimeout(() => {
+		releaseHeldWindow(window.id);
+	}, CONVERSATION_PAINT_FALLBACK_MS);
+	timer.unref?.();
+	heldForConversation.set(window.id, { session, timer });
+}
+
+/**
+ * Show a window whose present was held, once its conversation is on screen.
+ *
+ * Idempotent, and answers whether it actually released one: both the renderer's
+ * report and the fallback timer call it, and whichever arrives second must be a
+ * no-op rather than a second `presentWindow`.
+ */
+function releaseHeldWindow(windowId: number): boolean {
+	const held = heldForConversation.get(windowId);
+	if (!held) return false;
+	clearTimeout(held.timer);
+	heldForConversation.delete(windowId);
+	const window = BrowserWindow.fromId(windowId);
+	if (window && !window.isDestroyed()) presentWindow(window, windowLaunch.show);
+	return true;
+}
+
+/**
+ * Release any window waiting for `session` to be reported on screen.
+ *
+ * Keyed on the CONVERSATION rather than on a window id, because that is what
+ * the renderer reports: the heartbeat names the conversation it is displaying,
+ * not the window it is running in. A held window for a different conversation
+ * stays held until its own report or its fallback fires.
+ */
+function releaseHeldWindowFor(session: string): void {
+	// EVERY window holding this conversation, not the first one found: the map is
+	// keyed by window id and two windows can be waiting on the same conversation
+	// (the notifier's comments describe exactly that case). Releasing one and
+	// returning leaves the other to serve out the full fallback with its window
+	// still off screen, which reads as a click that did nothing. The iteration is
+	// safe against mutation because `releaseHeldWindow` deletes through the same
+	// map, and Map iteration continues past a deletion.
+	for (const [windowId, held] of heldForConversation) {
+		if (held.session !== session) continue;
+		releaseHeldWindow(windowId);
+	}
+}
 
 // Define zoom functions for before-input-event, ensuring mainWindow is available
 const zoomInFromEvent = () => {
@@ -624,6 +895,18 @@ if (!gotTheLock) {
 	app.quit();
 } else {
 	app.on("second-instance", (_event, commandLine) => {
+		// A second launch means "recreate, then navigate" (m2), not "raise whatever
+		// is there": the same queue the banner click uses, so the two cannot
+		// disagree about what a request to open a conversation does.
+		const requested = readOpenSessionArgv(commandLine);
+		if (requested) {
+			if (openConversationInWindow) openConversationInWindow(requested);
+			// Parked, not dropped: a second instance can arrive while the first is
+			// still starting, and a discarded id is a click that silently did
+			// nothing — the defect this path exists to remove.
+			else queuedSession = requested;
+			return;
+		}
 		// Someone tried to run a second instance, we should focus our window.
 		if (mainWindow) {
 			// A headless or inactive run exists precisely because the operator
@@ -682,6 +965,39 @@ app
 			() => mainWindow,
 			sendDesktop,
 			windowLaunch.show,
+			{
+				/*
+				 * Whether a window we have a heartbeat from is still there.
+				 *
+				 * `forgetWindow` is called on `closed`, which covers every ordinary
+				 * close — but a renderer process that dies takes its `webContents` id
+				 * with it and no `closed` event reaches the notifier, and those ids
+				 * are not reused. Filtering on liveness is what makes a stale
+				 * `{visible: true, focused: true}` entry unable to suppress every
+				 * completion for the rest of the run.
+				 */
+				windowAlive: (windowId) => {
+					const contents = webContents.fromId(windowId);
+					return Boolean(contents && !contents.isDestroyed());
+				},
+				// A banner click with no window recreates one and navigates it. The
+				// queue lives in `openSessionInWindow` because window creation does.
+				reopen: (sessionId) => openSessionInWindow(sessionId),
+				/*
+				 * The renderer's report that this conversation is on screen. Two
+				 * consumers, and neither is delivery:
+				 *
+				 * - the viewer record's `current_session`, which is how a later click
+				 *   routes here and how it skips a redundant switch;
+				 * - the held first present of a click-created window, where this report
+				 *   IS the "conversation applied" milestone `ready-to-show` is not
+				 *   (B3).
+				 */
+				noteDisplayed: (sessionId) => {
+					viewerRecord?.noteSession(sessionId);
+					releaseHeldWindowFor(sessionId);
+				},
+			},
 		);
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
@@ -702,6 +1018,13 @@ app
 		// through the window in between.
 		backendService.onBackendReady(() => {
 			void desktopNotifier.refreshNotificationContract();
+			// The feed's own gate: it reads `features.desktop_feed` and opens
+			// nothing without it, so an older backend keeps the per-session path and
+			// the renderer's 5 s catalogue poll verbatim. Read from the ready hook
+			// for the same reason the contract read is: the token this relay needs
+			// is minted inside `start()`.
+			void backendService.getDesktopFeedRelay().start();
+			void publishViewerPresence();
 		});
 		backendService.observeStream((sessionId, data) => {
 			try {
@@ -717,6 +1040,124 @@ app
 		const rendererUrl =
 			process.env.ELECTRON_RENDERER_URL ||
 			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+		/*
+		 * The machine-wide feed's two consumers, and the split between them is the
+		 * design: main takes the notifications (so a completion banners with no
+		 * window at all — the operator's own reported case) and the window takes
+		 * everything else it renders (attention merges, catalogue invalidations).
+		 *
+		 * A frame for a window that is not there is DROPPED, never queued: the
+		 * feed is live-only with no replay, so a repainted sidebar after the window
+		 * returns comes from the catalogue refetch on mount, not from a stale
+		 * backlog of attention deltas.
+		 */
+		backendService.observeDesktopFeed(
+			(frame: DesktopFeedFrame) => {
+				if (frame.type === "notification") {
+					desktopNotifier.observe(frame.session_id, frame);
+					return;
+				}
+				const window = mainWindow;
+				if (!window || window.isDestroyed()) return;
+				window.webContents.send("desktop-feed-frame", frame);
+			},
+			(state: DesktopFeedState) => {
+				const window = mainWindow;
+				if (!window || window.isDestroyed()) return;
+				window.webContents.send("desktop-feed-state", state);
+			},
+		);
+		/*
+		 * What the presence claim says about this app, read at every beat.
+		 *
+		 * Read through the notifier rather than recomputed here from `mainWindow`:
+		 * the conversation it names is the one the completion gate uses, and a
+		 * second opinion about which conversation is on screen is exactly the
+		 * disagreement this lease must not have (it decides whether the backend
+		 * banners a completion at all).
+		 */
+		backendService.providePresenceContext(() => desktopNotifier.presence());
+		// A renderer that mounts after a reconnect asks for the CURRENT state, so a
+		// healthy feed does not have to produce a transition before the sidebar can
+		// stop saying "not connected".
+		ipcMain.on("desktop-feed-watch", () => {
+			const window = mainWindow;
+			if (!window || window.isDestroyed()) return;
+			window.webContents.send("desktop-feed-state", {
+				connected: backendService.getDesktopFeedRelay().isConnected,
+			});
+		});
+
+		/*
+		 * The viewer record and the control endpoint that backs it: the artifact
+		 * `lop resume-click` reads to decide that a click belongs HERE rather than
+		 * in a new terminal. Published by MAIN, never by the renderer — a renderer
+		 * reload would advertise a port that died with the document (see
+		 * `viewer-record.ts`).
+		 */
+		const record = new ViewerRecordPublisher();
+		const endpoint = new ViewerEndpoint(
+			{
+				resumeSession: async (sessionId) => {
+					openSessionInWindow(sessionId);
+					return `showing ${sessionId}`;
+				},
+				focusWindow: async () => {
+					const window = mainWindow;
+					if (window && !window.isDestroyed()) {
+						raiseWindow(window, windowLaunch.show);
+						return "raised the window";
+					}
+					// No window to focus. Recreate one — the same "recreate then
+					// navigate" rule the click path follows (m2), because a request to
+					// bring this app forward from an app alive in the dock is exactly
+					// the case that used to be a no-op.
+					setupMainWindowWithUpdateService();
+					return "opened a window";
+				},
+			},
+			record.controlKey,
+		);
+		viewerRecord = record;
+		viewerEndpoint = endpoint;
+
+		/**
+		 * Bind the endpoint and publish the record, once the backend says it reads
+		 * one. Idempotent: the ready hook can fire twice in a tick.
+		 */
+		let viewerPublished = false;
+		async function publishViewerPresence(): Promise<void> {
+			if (viewerPublished) return;
+			let features: Record<string, unknown> | undefined;
+			try {
+				const response = await backendService.requestDesktop({
+					op: "capabilities",
+				});
+				const body = response.body as {
+					result?: { features?: Record<string, unknown> };
+				} | null;
+				features = body?.result?.features;
+			} catch {
+				// No answer says nothing about what the backend supports, so nothing
+				// is published. A backend old enough to need that care is also one
+				// whose click falls through to the terminal rung, unchanged.
+				return;
+			}
+			if (!(Number(features?.desktop_presence ?? 0) >= 1)) return;
+			try {
+				// Bind BEFORE publishing: a record advertising a port nothing
+				// listens on costs a click its whole dial timeout.
+				const port = await endpoint.start();
+				record.setControlPort(port);
+				record.start();
+				viewerPublished = true;
+			} catch (error) {
+				logger.warn(
+					`Viewer endpoint did not bind, so no record is published: ${String(error)}`,
+					LogFileType.BACKEND,
+				);
+			}
+		}
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -724,6 +1165,7 @@ app
 			() => backendService.getStreamRelay(),
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 			desktopNotifier,
+			(sessionId) => viewerRecord?.releaseSession(sessionId),
 		);
 
 		/*
@@ -1084,90 +1526,163 @@ app
 			};
 		});
 
+		/*
+		 * The server-status signal, answered by MAIN.
+		 *
+		 * The renderer used to decide "is the server online" by fetching `/health`
+		 * itself, from the packaged app's `file://` document. That makes a CORS
+		 * decision - and, on a claimed daemon, the origin allowlist - into a liveness
+		 * signal, so a change in the backend's origin handling reports a healthy
+		 * server as down. That is the reported failure. Main sends no Origin and
+		 * holds the bearer, so it is the only process that can answer honestly, and
+		 * the only one that knows whether the daemon it attached to is still the
+		 * daemon it attached to.
+		 *
+		 * A pull (`backend-status`) plus a push (`backend-status-changed`): the pull
+		 * so a window that opens later is not left waiting for the next transition,
+		 * the push so a state change reaches the renderer within one probe interval.
+		 */
+		ipcMain.handle(BACKEND_STATUS_CHANNEL, () =>
+			backendService.getStatusSnapshot(),
+		);
+		/*
+		 * The banner's Retry, as a verb rather than a re-read.
+		 *
+		 * Re-reading the snapshot cannot cause a reconnection - main's own recovery
+		 * timer is the only thing that could - so a renderer that only pulled the
+		 * snapshot rendered a Retry that did nothing in the one state that offers
+		 * one. This asks main to try now and answers with what it observed.
+		 */
+		ipcMain.handle(BACKEND_RECONNECT_CHANNEL, () =>
+			backendService.reconnectNow(),
+		);
+		backendService.onStatusChange((snapshot) => {
+			if (mainWindow && !mainWindow.isDestroyed()) {
+				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
+			}
+		});
+
 		// Check if backend manager is disabled via environment variable
 		const isBackendManagerDisabled =
 			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
 
-		if (!isBackendManagerDisabled) {
-			// Check if an external backend is already running
-			const hasExternalBackend = await backendService.checkExistingBackend();
+		/*
+		 * Discovery runs UNCONDITIONALLY, including when the manager is disabled.
+		 * The flag means "do not spawn or kill a daemon", never "assume one
+		 * exists": running it only in the enabled branch is why an app configured
+		 * with the flag could not see the operator's own TUI-started daemon - it
+		 * never looked, so it never found it, and every conversation opened empty
+		 * (design §3.7).
+		 */
+		const hasExternalBackend = await backendService.checkExistingBackend();
 
-			if (!hasExternalBackend) {
-				// Check if local-operator command exists globally
-				const hasGlobalCommand =
-					await backendService.checkLocalOperatorExists();
+		/*
+		 * Only an app permitted to manage a daemon may install or start one. A
+		 * disabled manager keeps looking (its probe loop re-discovers on every
+		 * tick) and reports what it finds, which is what lets a daemon started
+		 * after the app gets picked up without a restart.
+		 */
+		if (hasExternalBackend && isBackendManagerDisabled) {
+			// A daemon was found with the manager disabled: nothing to install and
+			// nothing to spawn, which is the whole of that flag's meaning.
+			logger.info(
+				"Discovered a daemon; the backend manager is configured not to spawn or kill one.",
+				LogFileType.BACKEND,
+			);
+		} else if (!hasExternalBackend && isBackendManagerDisabled) {
+			// Nothing was found and this app may not start a daemon. `start()` is
+			// still the right call: with the flag set it spawns nothing - it
+			// publishes the state and ARMS THE PROBE LOOP, so a daemon the operator
+			// starts a minute from now is attached without restarting the app. Its
+			// `false` is the honest answer here and must not quit the app.
+			//
+			// `reuseDiscovery` because the pass above ran in this same startup tick:
+			// the verdict it recorded (nothing found, and whether a live record
+			// forbids spawning) is what this call decides on, so a second sweep of
+			// the record directory could only repeat it.
+			await backendService.start({ reuseDiscovery: true });
+		}
 
-				// If local-operator doesn't exist globally and our backend is not installed
-				if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
-					// Install backend
-					const installSuccess = await backendInstaller.install();
-					// If installation was cancelled or failed, quit the app
-					if (!installSuccess) {
-						logger.error(
-							"Backend installation cancelled or failed, quitting app",
-							LogFileType.INSTALLER,
-						);
-						app.quit();
-						return; // Exit early to prevent window creation
-					}
+		if (!hasExternalBackend && !isBackendManagerDisabled) {
+			// Check if local-operator command exists globally
+			const hasGlobalCommand = await backendService.checkLocalOperatorExists();
 
-					// After successful installation, attempt to start the backend with retries
-					logger.info(
-						"Attempting to start backend service after installation",
+			// If local-operator doesn't exist globally and our backend is not installed
+			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
+				// Install backend
+				const installSuccess = await backendInstaller.install();
+				// If installation was cancelled or failed, quit the app
+				if (!installSuccess) {
+					logger.error(
+						"Backend installation cancelled or failed, quitting app",
 						LogFileType.INSTALLER,
 					);
-					let startAttempts = 0;
-					const maxStartAttempts = 3;
-					let backendStarted = false;
+					app.quit();
+					return; // Exit early to prevent window creation
+				}
 
-					while (startAttempts < maxStartAttempts && !backendStarted) {
-						try {
-							backendStarted = await backendService.start();
-							if (!backendStarted) {
-								logger.error(
-									`Backend start attempt ${startAttempts + 1} failed`,
-									LogFileType.INSTALLER,
-								);
-								// Wait before retrying
-								await new Promise((resolve) => setTimeout(resolve, 2000));
-							}
-						} catch (error) {
+				// After successful installation, attempt to start the backend with retries
+				logger.info(
+					"Attempting to start backend service after installation",
+					LogFileType.INSTALLER,
+				);
+				let startAttempts = 0;
+				const maxStartAttempts = 3;
+				let backendStarted = false;
+
+				while (startAttempts < maxStartAttempts && !backendStarted) {
+					try {
+						backendStarted = await backendService.start();
+						if (!backendStarted) {
 							logger.error(
-								`Error starting backend (attempt ${startAttempts + 1}):`,
+								`Backend start attempt ${startAttempts + 1} failed`,
 								LogFileType.INSTALLER,
-								error,
 							);
+							// Wait before retrying
+							await new Promise((resolve) => setTimeout(resolve, 2000));
 						}
-						startAttempts++;
+					} catch (error) {
+						logger.error(
+							`Error starting backend (attempt ${startAttempts + 1}):`,
+							LogFileType.INSTALLER,
+							error,
+						);
 					}
+					startAttempts++;
+				}
 
-					if (!backendStarted) {
-						logger.error(
-							"Failed to start backend after installation, quitting app",
-							LogFileType.INSTALLER,
-						);
-						reportBackendFailure(
-							"Failed to start the Local Operator backend service after installation. Please restart the application.",
-							LogFileType.INSTALLER,
-						);
-						app.quit();
-						return;
-					}
-				} else {
-					// Start our backend service (for existing installations)
-					const backendStarted = await backendService.start();
-					if (!backendStarted) {
-						logger.error(
-							"Failed to start backend with existing installation, quitting app",
-							LogFileType.BACKEND,
-						);
-						reportBackendFailure(
-							"Failed to start the Local Operator backend service. Please restart the application.",
-							LogFileType.BACKEND,
-						);
-						app.quit();
-						return;
-					}
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend after installation, quitting app",
+						LogFileType.INSTALLER,
+					);
+					reportBackendFailure(
+						"Failed to start the Local Operator backend service after installation. Please restart the application.",
+						LogFileType.INSTALLER,
+					);
+					app.quit();
+					return;
+				}
+			} else {
+				// Start our backend service (for existing installations).
+				// `reuseDiscovery` for the reason the disabled-manager branch states,
+				// and pointedly NOT on the post-install retries above: an install can
+				// take minutes, and a daemon that appeared while it ran has to be found
+				// rather than spawned over.
+				const backendStarted = await backendService.start({
+					reuseDiscovery: true,
+				});
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend with existing installation, quitting app",
+						LogFileType.BACKEND,
+					);
+					reportBackendFailure(
+						"Failed to start the Local Operator backend service. Please restart the application.",
+						LogFileType.BACKEND,
+					);
+					app.quit();
+					return;
 				}
 			}
 		}
@@ -1178,8 +1693,32 @@ app
 		// --- Helper to manage main window and update service lifecycle ---
 		let updateService: UpdateService | null = null;
 
-		function setupMainWindowWithUpdateService() {
-			mainWindow = createWindow();
+		/*
+		 * Create the window AND attach everything that window's lifetime owns.
+		 *
+		 * THE BROWSER HOST IS PART OF CREATING A WINDOW, not a step the startup path
+		 * happens to take next (review round 2, R2-2). It used to be started at two
+		 * call sites — the initial launch and the dock ``activate`` — while the
+		 * click/viewer/second-instance path in ``openSessionInWindow`` created a
+		 * window and started nothing. After the last window closed, a notification
+		 * click therefore recreated chat with the browser capability silently
+		 * missing, and activating the now-existing window could not repair it
+		 * because the dock handler is gated on zero windows.
+		 *
+		 * Starting it HERE is what makes every creation path share the contract
+		 * rather than duplicating #160's registration: there is one place a window
+		 * comes into existence, so there is one place the host attaches to it. The
+		 * host owns its own teardown (its ``closed`` listener stops it), which is why
+		 * nothing here has to unwind it.
+		 */
+		function setupMainWindowWithUpdateService(
+			initialSession: string | null = null,
+			openCatalogue = false,
+		) {
+			mainWindow = createWindow(initialSession, openCatalogue);
+			// The `webContents` id this window's watch state is keyed on, captured
+			// here because `mainWindow` is null by the time `closed` runs.
+			const windowId = mainWindow.webContents.id;
 
 			// Add before-input-event listener for zoom control
 			if (mainWindow) {
@@ -1217,8 +1756,31 @@ app
 					updateService.dispose();
 					updateService = null;
 				}
+				// THE MISSING CALLER. Without it the notifier kept
+				// `{visible: true, focused: true}` for this window id for the life of
+				// the process, and since `webContents` ids are not reused, every
+				// `when_unfocused` completion was then suppressed for good.
+				desktopNotifier.forgetWindow(windowId);
+				// A window that is gone is showing nothing, and the record must not
+				// keep naming a conversation no window has (m2): a click for THAT
+				// session would read `current_session` as a match, skip the switch,
+				// and land the user on whatever the recreated window happened to
+				// rehydrate.
+				if (BrowserWindow.getAllWindows().length === 0)
+					viewerRecord?.noteSession("");
+				if (heldForConversation.has(windowId)) {
+					// A held window destroyed before its conversation reported: drop the
+					// fallback timer rather than let it fire against a dead id.
+					const held = heldForConversation.get(windowId);
+					if (held) clearTimeout(held.timer);
+					heldForConversation.delete(windowId);
+				}
 				mainWindow = null;
 			});
+
+			// `focused_at` is the routing tiebreak when several viewers could take a
+			// click, and only the GAINING edge carries that information.
+			mainWindow.on("focus", () => viewerRecord?.noteFocused());
 
 			// Set up IPC handlers for the update service
 			updateService.setupIpcHandlers();
@@ -1271,10 +1833,15 @@ app
 		 * take its webContents down when the window closes (Electron's own documented
 		 * leak). So closing the window stops the host — which closes every view,
 		 * releases every debugger session and removes the state file — and a window
-		 * re-created by a dock click starts a fresh one. Tabs do not survive that, and
-		 * a session holding a handle gets the ordinary `tab_closed` and re-`open`s,
-		 * which is the designed recovery rather than a special case. Restoring tabs
-		 * across a window re-creation is the tab-restore work (design 7), not this PR.
+		 * re-created by a dock click starts a fresh one. A session holding a handle
+		 * gets the ordinary `tab_closed` and re-`open`s, which is the designed
+		 * recovery rather than a special case.
+		 *
+		 * THE TAB LIST SURVIVES it, which is the tab-restore work (design 7) and the
+		 * reason the stop path captures and flushes `session.json` before it destroys
+		 * anything: a window re-creation reopens the tabs the user had, and a session
+		 * still holding `ui:<oldTabId>:<oldNonce>` gets the same `tab_closed` it always
+		 * did, because a restored tab comes back with a fresh id and no nonce.
 		 *
 		 * A failure here must never be why the app does not start: the host is a
 		 * capability, not a dependency of the window. It is reported and the app
@@ -1296,6 +1863,11 @@ app
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
 					userDataDir: app.getPath("userData"),
+					// The launch plan's own answer, forwarded rather than re-derived: the
+					// browser host uses it to suppress consent banners in a run with nobody at
+					// the screen, and re-deciding it there would be a second policy beside
+					// `window-mode.ts`.
+					windowShow: windowLaunch.show,
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {
@@ -1306,17 +1878,71 @@ app
 				);
 			}
 		}
+		/*
+		 * Open a conversation in this app's window, creating one if it has none.
+		 *
+		 * ONE function for every requester — a banner click, `resume_session` on
+		 * the viewer endpoint, a second launch — because they are the same request
+		 * and three implementations is how they drift into disagreeing about what
+		 * "open" means. The create branch passes the id into the window's argv so
+		 * the renderer can paint it in its FIRST frame, and the held present keeps
+		 * the window off screen until that paint is confirmed (B3).
+		 *
+		 * `null` is the CATALOGUE, not a missing value: a burst digest's click
+		 * names several conversations, so the window it recreates must open on the
+		 * list rather than on one of them (R1-2). The CREATE branch has to say so
+		 * explicitly (review round 2, R2-1): omitting the argv flag is what an
+		 * ordinary launch does, and the renderer's rule for that case is "restore
+		 * the last conversation" — so `null` travels to `createWindow` as the
+		 * catalogue intent rather than as an absent value.
+		 */
+		function openSessionInWindow(sessionId: string | null): void {
+			const window = mainWindow;
+			if (window && !window.isDestroyed()) {
+				// Send before raising: naming the conversation first means whatever
+				// comes forward is already correct, rather than showing the old one
+				// for as long as the switch takes (B3).
+				window.webContents.send("desktop-open-conversation", { sessionId });
+				raiseWindow(window, windowLaunch.show);
+				return;
+			}
+			setupMainWindowWithUpdateService(sessionId, sessionId === null);
+		}
+		openConversationInWindow = openSessionInWindow;
+		// The host's state is in scope from here, and this runs before the first
+		// window is built below — as `openConversationInWindow` must be too.
+		attachBrowserHostToWindow = (window) => {
+			void startBrowserHostForWindow(window);
+		};
 
-		// Initial window + update service setup
-		setupMainWindowWithUpdateService();
-		if (mainWindow) await startBrowserHostForWindow(mainWindow);
+		/*
+		 * Initial window + update service setup. The browser host is attached by
+		 * `createWindow`, because that is the one place a
+		 * window comes into existence (review round 2, R2-2).
+		 *
+		 * The remaining order is load-bearing in one direction only: the queued launch
+		 * is a session id that arrived before a window existed, so the window is
+		 * created first and only then does the queue flush. A queue flush before it
+		 * would have nowhere to send the conversation, and the flush does NOT wait on
+		 * the browser host: the host is a capability hanging off the window, not a
+		 * dependency of naming a conversation in it.
+		 */
+		setupMainWindowWithUpdateService(launchSession, launchCatalogue);
+		// A second launch that arrived before there was a window to send to.
+		if (queuedSession) {
+			const queued = queuedSession;
+			queuedSession = null;
+			openSessionInWindow(queued);
+		}
 
 		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
-			// dock icon is clicked and there are no other windows open.
+			// dock icon is clicked and there are no other windows open. The browser
+			// host comes with the window (see `setupMainWindowWithUpdateService`),
+			// so there is nothing to attach here — and attaching it a second time
+			// would be the duplicate registration R2-2 ruled out.
 			if (BrowserWindow.getAllWindows().length === 0) {
 				setupMainWindowWithUpdateService();
-				if (mainWindow) void startBrowserHostForWindow(mainWindow);
 			}
 		});
 	})
@@ -1405,6 +2031,23 @@ const QUIT_CLEANUP_FAILSAFE_MS =
 	QUIT_FAILSAFE_MARGIN_MS;
 let backendQuitPending = false;
 app.on("will-quit", (event) => {
+	/*
+	 * The viewer record and endpoint are this branch's, and they go BEFORE the
+	 * owned-cleanup guard: that guard returns early when there is nothing owned to
+	 * stop, and a record left behind advertises a port nothing is listening on,
+	 * which costs the next click its whole dial timeout. The endpoint closes first
+	 * so no dial can arrive against a removed record.
+	 *
+	 * Idempotent on purpose, and the main-side quit path is why: `app.quit()` in the
+	 * cleanup below re-enters this handler, so both calls are reached twice. Neither
+	 * is damaged by that - `ViewerEndpoint.close` null-guards its server and
+	 * `ViewerRecord.stop` clears its timer - and the alternative reading, that the
+	 * replaced handler's global process-killing cleanup should come back with them,
+	 * is not one this rebase takes: #180 replaced that block with the owned-cleanup
+	 * path deliberately (review round 4, the quit-path rebase).
+	 */
+	viewerEndpoint?.close();
+	viewerRecord?.stop();
 	if (backendService.isOwnedCleanupComplete()) return;
 	event.preventDefault();
 	if (backendQuitPending) return;
@@ -1437,7 +2080,61 @@ app.on("will-quit", (event) => {
 });
 
 // Handle before-quit event to ensure proper cleanup
-app.on("before-quit", () => {
+/*
+ * The session-cookie hold: the quit waits on the browser host's stop, so the
+ * snapshot that stop writes is on disk before the app goes away.
+ *
+ * The stop reads the cookie jar over CDP, so it is asynchronous and its duration
+ * is the host's to inflate; a quit that exited mid-snapshot would leave the next
+ * launch with nothing to restore, and with a marker the next start rejects.
+ * EVERY quit while that stop is owed is held, including a second one the user
+ * makes while the first is still waiting — the quit that releases them is the
+ * hold's own, issued once the stop has settled or the budget has expired, and it
+ * is the only pass that may proceed. Module scope so the mark distinguishing
+ * those two survives between quits, and the decision itself lives in
+ * `createSessionCookieQuitHold`, which is testable without booting the app. The
+ * hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget it releases
+ * the quit, leaves the marker behind for the next start to reject, and says so in
+ * the log — "quitting anyway" is that line, not an exit, and in a frozen teardown
+ * the process can outlive it (the pre-existing stall QA's SIGSTOPped run hit 42 s
+ * later, in a build without this hold's involvement).
+ *
+ * WHY THIS HOLDS `before-quit` AND NOT `will-quit`, where it was authored: the
+ * `will-quit` listener above also owns the backend's owned cleanup, and that
+ * handler has to reach its `event.preventDefault()` in the SYNCHRONOUS part of
+ * the listener - Electron reads the cancelled flag when the synchronous part
+ * returns, so a preventDefault that lands after an `await` cancels nothing, and
+ * `scripts/owned-serve-lifecycle.test.mjs` pins that (two synchronous emits, both
+ * counted as prevented). Awaiting this hold inside that listener would defer its
+ * gate by a microtask and silently drop the owned cleanup. Holding here instead
+ * keeps that gate synchronous AND serialises the two shutdown obligations rather
+ * than racing them: the stop settles first, the re-quit it asks for then reaches
+ * the owned cleanup, and only the pass with both behind it exits. The hold module
+ * is unchanged and says nothing about which event it is asked from.
+ */
+const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
+	isPending: browserHostStopPending,
+	stop: stopBrowserHost,
+	quit: () => app.quit(),
+	log: (message) => logger.warn(message, LogFileType.BACKEND),
+});
+
+app.on("before-quit", async (event) => {
+	/*
+	 * Hold the quit for the browser host's stop, then let the ordinary pass
+	 * through: the stop settles or the budget expires, the hold asks for the quit
+	 * that reaches the body below. A second quit arriving while that stop is still
+	 * running is held against the same stop — see the hold's own module for why a
+	 * spent flag could not do that and exited with the snapshot still running.
+	 *
+	 * `before-quit` starts the stop and cannot await it, so the wait lives here;
+	 * the `will-quit` listener owns the owned cleanup and runs once this has
+	 * settled. A stop that FAILS still re-quits - see the hold's own module for why
+	 * that is the difference between a shutdown and an app that refuses to close
+	 * without saying so.
+	 */
+	if (await holdQuitForSessionCookieSnapshot(event)) return;
+
 	logger.info("App is about to quit", LogFileType.BACKEND);
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();

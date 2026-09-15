@@ -8,6 +8,8 @@ import { ChatPage } from "@features/chat/components/chat-page";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import { noteConsentAttention } from "@shared/browser-consent-attention";
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
@@ -45,6 +47,11 @@ const SchedulesPage = lazy(() =>
 		default: m.SchedulesPage,
 	})),
 );
+const BrowserPage = lazy(() =>
+	import("@features/browser/components/browser-page").then((m) => ({
+		default: m.BrowserPage,
+	})),
+);
 const SettingsPage = lazy(() =>
 	import("@features/settings/components/settings-page").then((m) => ({
 		default: m.SettingsPage,
@@ -70,6 +77,31 @@ const App: FC = () => {
 		isCreateAgentDialogOpen, // Get dialog state from store
 		closeCreateAgentDialog, // Get close action from store
 	} = useUiPreferencesStore();
+
+	/*
+	 * The browser view's overlay policy (design 11.3), registered where the
+	 * overlays actually live.
+	 *
+	 * A native `WebContentsView` paints above ALL DOM, so every one of these is
+	 * invisible over the browser surface unless the view itself is hidden. The
+	 * policy is one boolean, and this is where the app-level half of it is
+	 * declared: the store flags below already decide whether each overlay is up.
+	 *
+	 * THE TWO FIXED BANNERS ARE DELIBERATELY ABSENT, and the reason is geometry
+	 * rather than taste: they are a single-line strip pinned to the window's top
+	 * edge, which the browser route's own tab strip and URL bar already occupy, so
+	 * they do not reach the page rectangle. Hiding the page every time a
+	 * connectivity banner appeared would take the page away for as long as the
+	 * backend was down, which is worse than the banner being partially covered.
+	 * The rect and the banner's own box are both in the PR's evidence frames, so
+	 * this is a measured claim rather than a reasoned one.
+	 *
+	 * `ModelsInitializer` renders nothing, so it has nothing to register.
+	 */
+	useSuppressBrowserView(isCommandPaletteOpen, "command-palette");
+	useSuppressBrowserView(isCreateAgentDialogOpen, "create-agent-dialog");
+	useSuppressBrowserView(isOnboardingActive, "onboarding");
+	useSuppressBrowserView(isLowCreditsDialogOpen, "low-credits");
 	const navigate = useNavigate(); // For onAgentCreated
 
 	const handleAgentCreated = (agentId: string) => {
@@ -99,18 +131,63 @@ const App: FC = () => {
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
+	//
+	// `setActiveSession` and nothing else: deliberately NO validating
+	// `sessions.get` round trip here. `openSession` does that for a sidebar row,
+	// where ~1.5 s against a click the user already committed to is the right
+	// trade; on the notification path it is latency in front of the only thing
+	// the user asked for, and the panel's own paint cache plus the stream's
+	// snapshot answer the same questions. A conversation that turns out not to
+	// exist lands on the transcript's named state instead (M6).
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
 	useEffect(() => {
 		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
 			(sessionId) => {
+				/*
+				 * The START of the latency trace the design asks to report rather than
+				 * to describe: the sibling mark is at the first painted transcript row
+				 * (`canonical-transcript.tsx`), and the measure between them is the
+				 * click-to-visible number. Marked HERE rather than in the transcript
+				 * because this is the process's first knowledge of the click, which is
+				 * the only honest beginning: everything after it is ours to lose.
+				 *
+				 * Only a click that NAMES a conversation starts a trace: a burst
+				 * digest's click opens the catalogue (R1-2), which has no
+				 * conversation row to paint, and a mark for it would sit there until
+				 * some later open measured a row against it.
+				 */
+				if (sessionId !== null) performance.mark("lop:open:requested");
+				// `null` is the catalogue: the store models "no active session" as
+				// exactly this, so a digest click lands where all the burst's
+				// conversations are listed rather than on one arbitrary member.
 				setActiveSession(sessionId);
 				navigate("/chat");
 			},
 		);
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession]);
+
+	// A consent banner's click, handled where the ROUTES are.
+	//
+	// A native banner is raised for a request the user cannot see (design 9.2), so its
+	// click has to reach them wherever they are — and the browser surface's own
+	// subscriber is unmounted on every other route, which is precisely the case the
+	// banner exists for (review round 1, R8). The shell therefore owns the two halves
+	// that only the shell can do: remember which request was named, and bring the
+	// browser route forward.
+	//
+	// IT MUST NOT RAISE THE WINDOW. Navigating a route is renderer work; no window is
+	// shown, focused or activated here, and `src/main/window-raise.ts` stays the only
+	// module that decides whether a window comes forward (design 11.4).
+	useEffect(() => {
+		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
+			noteConsentAttention(payload.entryId);
+			navigate("/browser");
+		});
+		return () => unsubscribe?.();
+	}, [navigate]);
 
 	return (
 		<OnboardingProvider>
@@ -202,6 +279,7 @@ const App: FC = () => {
 								element={<AgentDetailsPage />}
 							/>
 							<Route path="/schedules" element={<SchedulesPage />} />
+							<Route path="/browser" element={<BrowserPage />} />
 							<Route path="*" element={<Navigate to="/chat" replace />} />
 						</Routes>
 					</Suspense>

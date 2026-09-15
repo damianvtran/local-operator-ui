@@ -303,6 +303,18 @@ export function subscribeDesktopStream(
 		kind: "data" | "error" | "end";
 		data?: string;
 		detail?: string;
+		/**
+		 * The HTTP status that refused the stream, when one did.
+		 *
+		 * Only main can see it: it is the process that carries the bearer and
+		 * makes the fetch. A 404 is the one refusal that is about the SESSION
+		 * rather than about the transport — the desktop plane answers it for an id
+		 * this machine does not have — and the click path reaches exactly that case
+		 * without validating the id first (it deliberately spends no `sessions.get`
+		 * on the latency path). Without the code the panel can only render transport
+		 * text for a conversation that is simply gone.
+		 */
+		status?: number;
 	}) => void,
 ): () => void {
 	const native = window.api?.desktop?.stream;
@@ -314,6 +326,13 @@ export function subscribeDesktopStream(
 	if (args.epoch) query.set("epoch", args.epoch);
 	if (args.afterSeq !== undefined)
 		query.set("after_seq", String(args.afterSeq));
+	/*
+	 * The additive `frontend_replace=1` negotiation, the same one main's relay
+	 * sends (remediation contract § C): this renderer's reducer consumes the
+	 * `frontend.replace` frame, so every subscription THIS build opens says so.
+	 * The proxy forwards it; an older backend ignores it.
+	 */
+	query.set("frontend_replace", "1");
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {
 		onEvent({ kind: "data", data: message.data });

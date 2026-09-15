@@ -1,0 +1,18 @@
+/*
+ * The stylesheet entry for the composer-alert geometry harness.
+ *
+ * `@import "@renderer/styles/index.css"` is the app's own stylesheet, so nothing
+ * about the palette, the type scale or `CAPPED_BLOCK`'s `max-h-[7.5rem]` can
+ * differ between this surface and the shipped one.
+ *
+ * `@source` is the part that is easy to omit and fails SILENTLY, and it matters
+ * more here than anywhere: the alert region's whole geometry is an `max-h` plus
+ * `overflow-y-auto` cap, and a vite root outside the renderer tree (`scripts/`,
+ * here) leaves the renderer's own classes out of Tailwind's scan. The cap would
+ * compile as nothing, the region would grow to its content, and this harness
+ * would measure a page with no defect to report. See
+ * `diff-body-evidence.css`, where the same trap cost a frame its colours.
+ */
+@import "@renderer/styles/index.css";
+
+@source "../src/renderer/src";
