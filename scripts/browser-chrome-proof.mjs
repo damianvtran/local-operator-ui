@@ -742,6 +742,30 @@ const pointerClickAt = (selector) =>
 		return JSON.stringify({ x, y });
 	})()`);
 
+/**
+ * Move a real pointer over an element, without pressing.
+ *
+ * THE STRIP'S TRANSIENT CHROME IS REVEALED BY HOVER, so a click dispatched at
+ * coordinates without a preceding move hit-tests against a control that is
+ * `pointer-events-none` until the pointer arrives - which is how this harness's
+ * "close the last tab" step timed out: one tab left, `activeTabId` null, so the row
+ * took the INACTIVE branch and its close control was not yet hit-testable. A person
+ * moves the pointer first, and the reveal is part of what §6 and D13 promise, so the
+ * harness does the same rather than reaching for a synthetic `.click()`.
+ */
+async function realHover(selector) {
+	const coords = await pointerClickAt(selector);
+	if (coords === "missing") return "missing";
+	const { x, y } = JSON.parse(coords);
+	await send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		buttons: 0,
+	});
+	return "hovered";
+}
+
 /** A real mouse press and release at an element's centre, through CDP.
  *
  * The only click that opens a Radix menu, and the only one that proves the
@@ -2970,6 +2994,10 @@ async function main() {
 
 		// The last tab, closed: the other empty state, and the one D19's label work is
 		// about - the same action under the same name in both branches.
+		// Hover the row, then press its close control: the reveal is by design (§6), so
+		// a click without the move hit-tests against `pointer-events-none` and lands on
+		// the tab instead - the harness's own sequence, not a defect in the strip.
+		await realHover('[role="tab"]');
 		const lastClose = await realClick('[data-tour-tag="browser-tab-close"]');
 		const noTabsSeen = await waitFor(async () => {
 			const current = await chromeState();
