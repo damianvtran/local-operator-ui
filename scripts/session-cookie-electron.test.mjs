@@ -342,7 +342,7 @@ test(
 		);
 		assert.match(
 			first.thirdPartyFrame.frameView,
-			/(^|;\s*)chips_3p=c3p/,
+			/(^|;\s*)chips_3p=chips-third-party-value/,
 			"the frame must be able to read the partitioned cookie it set",
 		);
 

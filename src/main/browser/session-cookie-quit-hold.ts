@@ -10,6 +10,13 @@
  * any Electron import, and `scripts/session-cookies.test.mjs` bundles it and
  * drives it directly — including the rejection case.
  *
+ * WHY THE BOUND IS HERE AND NOT AROUND THE SNAPSHOT: the hold is the only place
+ * the user's quit is waiting, so it is the only place the promise "the quit is not
+ * delayed by the snapshot" can be kept — whichever step of the stop turns out to
+ * be the slow one. The stop's own steps are local and measured at 3 ms combined
+ * on a loaded host; the snapshot is the part that reads over CDP, and it is the
+ * part a spent budget costs.
+ *
  * WHY THE `finally` IS THE FIX, not a style choice: `app.quit()` sat after the
  * `await`, so a rejected stop meant the rest of the handler never ran and the
  * quit was cancelled with nothing logged (measured in Electron 44.3.0: an
@@ -31,6 +38,75 @@ export interface QuitHoldDeps {
 	/** Called when the stop fails, so a shutdown that could not complete cleanly
 	 * leaves a line behind rather than the silence the defect above produced. */
 	log(message: string): void;
+	/** Overrides `SESSION_COOKIE_QUIT_BUDGET_MS`. Injectable so a test can drive
+	 * the expiry without waiting out the shipped budget. */
+	budgetMs?: number;
+}
+
+/**
+ * The most the quit may wait for the browser host's stop, and so for the
+ * session-cookie snapshot inside it.
+ *
+ * WHY A BUDGET, measured rather than assumed: the snapshot reads the cookie jar
+ * over CDP, so the stop's duration is the host's to inflate. Independent QA
+ * measured clean quits of 68-8776 ms on a loaded 14-core host against 47-70 ms
+ * on the control tree, and one further clean quit that had not exited after 30 s.
+ * A quit is user-visible, so the wait is capped; past the budget the app quits
+ * anyway and this run's snapshot is abandoned.
+ *
+ * WHAT MAKES THAT SAFE: the marker rule, unchanged. The marker is written when a
+ * run starts browsing and removed only after a complete snapshot, so a run whose
+ * snapshot was abandoned leaves it behind, and the next start discards what is on
+ * disk and says so. An incomplete snapshot is never trusted, and this path cannot
+ * fall back to plaintext — it falls back to losing this run's session cookies,
+ * which is the outcome the crash path already handles.
+ *
+ * WHY 1500 ms: the whole healthy stop measured 24 ms on a loaded host, 21 ms of
+ * it the snapshot, so this sits more than an order of magnitude above the cost it
+ * is bounding and only fires on a host that is genuinely hostile to the CDP read
+ * — where the alternative is the 8.8 s worst case QA measured. The abandoned
+ * stop is NOT cancelled: it keeps running while the app tears down, and if it
+ * completes before the process is gone the snapshot lands anyway (the write is
+ * atomic, so the file is either the new sealed one or the previous one).
+ */
+export const SESSION_COOKIE_QUIT_BUDGET_MS = 1_500;
+
+/**
+ * Await `work` for at most `budgetMs`, reporting the expiry with its consequence.
+ *
+ * A rejection stays the caller's to handle — a failed stop must keep bouncing
+ * through the caller's catch, not be swallowed here — while an expiry resolves,
+ * because there is nothing left to wait for. The rejection handler is attached
+ * even when the budget wins, so a failure arriving after the quit was released
+ * cannot become an unhandled rejection.
+ */
+async function boundedByQuitBudget(
+	work: Promise<void>,
+	budgetMs: number,
+	log: (message: string) => void,
+): Promise<void> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const expired = new Promise<"budget-spent">((resolve) => {
+		timer = setTimeout(() => resolve("budget-spent"), budgetMs);
+		// The quit is what this wait precedes, so the timer must never be the reason
+		// the process is still alive.
+		timer.unref?.();
+	});
+	const outcome = await Promise.race([
+		work.then(
+			() => "settled" as const,
+			(error: unknown) => error,
+		),
+		expired,
+	]);
+	if (timer) clearTimeout(timer);
+	if (outcome === "budget-spent") {
+		log(
+			`the browser host did not stop within ${budgetMs} ms, so this run's session-cookie snapshot was abandoned and its session cookies are not saved (the next start will discard what is on disk); quitting anyway`,
+		);
+		return;
+	}
+	if (outcome !== "settled") throw outcome;
 }
 
 /** Returns true when this call held the quit (the caller must then return without
@@ -53,7 +129,11 @@ export function createSessionCookieQuitHold(
 		// this would not cancel the quit it thinks it is holding.
 		event.preventDefault();
 		try {
-			await deps.stop();
+			await boundedByQuitBudget(
+				deps.stop(),
+				deps.budgetMs ?? SESSION_COOKIE_QUIT_BUDGET_MS,
+				deps.log,
+			);
 		} catch (error) {
 			deps.log(
 				`the browser host stop failed while the quit was held for the session-cookie snapshot (${String(error)}); quitting anyway`,
