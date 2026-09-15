@@ -1,6 +1,6 @@
 /**
- * The once-per-quit hold that lets the browser host's session-cookie snapshot
- * land before the app exits.
+ * The hold that lets the browser host's session-cookie snapshot land before the
+ * app exits.
  *
  * WHY IT IS A MODULE OF ITS OWN: the failure this guard exists for is in the
  * error path of an Electron event handler, and the only honest way to cover that
@@ -25,6 +25,20 @@
  * Because the hold had already been spent, the user's NEXT quit then bypassed it
  * and exited without the snapshot the hold exists to protect. The stop failing is
  * a reason to log and leave — never a reason to keep the app running.
+ *
+ * WHY THE HOLD'S STATE IS THE IN-FLIGHT WAIT rather than a spent boolean: the
+ * boolean could only say "a hold has happened", so it answered two calls that are
+ * not the same thing the same way — the re-entrant quit this hold issues once the
+ * stop has settled (which must not be held again, or the app would never exit)
+ * and a second quit from the user while the stop is still running (which must be
+ * held, or that snapshot dies with the process). Measured in the pinned runtime against the boolean's shape: a quit at 168 ms, a second `app.quit()` at
+ * 269 ms, and the process was gone at 269 ms with the stop and its snapshot still
+ * running — this run's session cookies lost, and the next start reporting a crash
+ * that never happened, which is the same misattribution an unavailable channel
+ * used to produce. Two things make it a defect rather than a trade-off: the
+ * second quit is the expected reflex exactly when the app looks stuck (QA
+ * measured stops of 68-8776 ms, the window the budget exists for), and nothing in
+ * the log distinguished "quit twice" from "crashed".
  */
 
 export interface QuitHoldDeps {
@@ -118,28 +132,56 @@ export type SessionCookieQuitHold = (event: {
 export function createSessionCookieQuitHold(
 	deps: QuitHoldDeps,
 ): SessionCookieQuitHold {
-	// One hold per quit: the re-quit this function triggers must not be held
-	// again, or the app would never exit.
-	let held = false;
+	// The bounded wait every holder shares, i.e. the stop this hold is waiting on.
+	// Held here rather than as a boolean because a boolean cannot tell the two
+	// calls apart that this guard has to answer differently (see the module header).
+	let wait: Promise<void> | null = null;
+	// Set while this hold's own `deps.quit()` is in flight, and left set until the
+	// stop it released against is no longer owed: that re-quit is the only call
+	// that may return false.
+	let released = false;
 	return async (event) => {
-		if (held || !deps.isPending()) return false;
-		held = true;
+		if (!deps.isPending()) {
+			// Nothing is owed, so there is nothing to hold for — and the stop the
+			// previous hold released against is over, so forget it: a later owed stop is
+			// a new snapshot and gets a full budget rather than inheriting a spent one.
+			wait = null;
+			released = false;
+			return false;
+		}
+		if (released) return false;
+		// The hold is the holder's only while it is the one that started the wait:
+		// every later quit re-holds against the stop already running (Electron's
+		// cancelled flag is per emission, so it still has to cancel its own), while
+		// the single quit that releases them all is issued once, by this caller.
+		const ownsWait = wait === null;
 		// Must be synchronous, before the first await: Electron reads the cancelled
 		// flag when the listener's synchronous part has run, so a hold that deferred
 		// this would not cancel the quit it thinks it is holding.
 		event.preventDefault();
 		try {
-			await boundedByQuitBudget(
-				deps.stop(),
-				deps.budgetMs ?? SESSION_COOKIE_QUIT_BUDGET_MS,
-				deps.log,
-			);
+			// `stopBrowserHost()` hands every caller the first caller's promise, so a
+			// second quit joins the stop already running instead of starting another —
+			// and, because every holder awaits this one bounded wait, cannot extend it.
+			let holding = wait;
+			if (ownsWait) {
+				holding = boundedByQuitBudget(
+					deps.stop(),
+					deps.budgetMs ?? SESSION_COOKIE_QUIT_BUDGET_MS,
+					deps.log,
+				);
+				wait = holding;
+			}
+			if (holding) await holding;
 		} catch (error) {
 			deps.log(
 				`the browser host stop failed while the quit was held for the session-cookie snapshot (${String(error)}); quitting anyway`,
 			);
 		} finally {
-			deps.quit();
+			if (ownsWait) {
+				released = true;
+				deps.quit();
+			}
 		}
 		return true;
 	};

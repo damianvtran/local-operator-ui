@@ -1190,7 +1190,7 @@ test("a rejected browser-host stop still quits, instead of cancelling the first 
 	assert.match(lines.join("\n"), /failed while the quit was held/);
 });
 
-test("the hold engages once per quit, and only while a host stop is owed", async () => {
+test("the re-quit this hold issues is not held again, and an idle quit is left alone", async () => {
 	const calls = [];
 	let second = null;
 	let pending = true;
@@ -1275,6 +1275,143 @@ test("a stop that never settles is released at the budget instead of holding the
 	// run's loss, and the marker rule is what makes that safe on the next start.
 	assert.match(lines.join("\n"), /did not stop within 120 ms/);
 	assert.match(lines.join("\n"), /discard what is on disk/);
+});
+
+test("a second quit during the stop is held until the snapshot lands, so the run is not reported as a crash", async () => {
+	const paths = dirFor("second-quit");
+	const { lines, log } = collector();
+	const vault = makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log);
+	await vault.restore();
+	assert.equal(
+		existsSync(paths.markerPath),
+		true,
+		"a run that restored is owed a marker until its snapshot lands",
+	);
+
+	// The app's own wiring: the stop inside the quit hold is what writes the
+	// snapshot, and a stop is owed for the whole of it.
+	let pending = true;
+	let stops = 0;
+	let atExit = null;
+	let requit = null;
+	const calls = [];
+	const holder = createSessionCookieQuitHold({
+		isPending: () => pending,
+		stop: async () => {
+			stops += 1;
+			// The window the user's second Cmd+Q lands in: independent QA measured
+			// real stops of 68-8776 ms on a loaded host, and one past 30 s.
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			await vault.snapshot();
+			pending = false;
+		},
+		quit: () => {
+			// Where the process would go away. What the snapshot left on disk is
+			// read HERE, because this is the only moment the claim is about.
+			atExit = {
+				marker: existsSync(paths.markerPath),
+				snapshot: existsSync(paths.snapshotPath),
+			};
+			// `app.quit()` re-emits `before-quit` inside the handler that held the
+			// first quit, which is the re-entrant call that must not be held.
+			requit = holder({ preventDefault: () => calls.push("re-preventDefault") });
+		},
+		log,
+		budgetMs: 2_000,
+	});
+
+	const first = holder({ preventDefault: () => calls.push("preventDefault") });
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	// The user presses Quit again, while the stop is still in flight.
+	const second = holder({ preventDefault: () => calls.push("re-preventDefault") });
+	const secondHeld = await second;
+
+	// The defect this pins, measured against the shipped module: with a spent flag
+	// this returned false, so `will-quit` passed its gate and the process was gone
+	// 50 ms in, with the stop and its snapshot still running.
+	assert.equal(
+		secondHeld,
+		true,
+		"the second quit is held, not allowed to exit with the snapshot still running",
+	);
+	assert.deepEqual(
+		calls,
+		["preventDefault", "re-preventDefault"],
+		"both user quits were cancelled",
+	);
+	assert.equal(
+		stops,
+		1,
+		"the second quit re-holds the stop already running rather than starting another",
+	);
+	assert.equal(await first, true);
+	assert.equal(
+		await requit,
+		false,
+		"the hold's own release still gets through, or the app never exits",
+	);
+	assert.equal(atExit.snapshot, true, "the snapshot is on disk before the quit is let go");
+	assert.equal(
+		atExit.marker,
+		false,
+		"the marker is gone, so the next start must not report a crash that never happened",
+	);
+
+	// The consequence, read the way the next launch reads it.
+	const next = makeVault(fakeJar([]), fakeCipher(), paths, log);
+	const report = await next.restore();
+	assert.equal(report.restored, 2, "the session cookies came back");
+	assert.doesNotMatch(
+		lines.join("\n"),
+		/did not shut down cleanly/,
+		"a clean quit reported as a crash is the misattribution this fixes",
+	);
+});
+
+test("a second quit is bounded by the first hold's deadline, not by one of its own", async () => {
+	const calls = [];
+	const budgetMs = 600;
+	const holder = createSessionCookieQuitHold({
+		isPending: () => true,
+		// Never settles: a stop waiting on a CDP read the host is not answering.
+		stop: () => new Promise(() => {}),
+		quit: () => calls.push("quit"),
+		log: (message) => calls.push(`log:${message}`),
+		budgetMs,
+	});
+
+	const started = Date.now();
+	const first = holder({ preventDefault: () => calls.push("preventDefault") });
+	await new Promise((resolve) => setTimeout(resolve, 400));
+	// The second quit lands well inside the budget, which is where a per-quit
+	// budget would show: it would hold this one for another 600 ms.
+	const second = holder({ preventDefault: () => calls.push("re-preventDefault") });
+	const secondHeld = await second;
+	const elapsed = Date.now() - started;
+
+	assert.equal(await first, true);
+	assert.equal(secondHeld, true);
+	assert.ok(
+		elapsed >= budgetMs,
+		`the budget is what released the second quit, not luck: ${elapsed} ms`,
+	);
+	assert.ok(
+		elapsed < budgetMs + 300,
+		`the second quit inherited the first hold's deadline instead of taking one of its own: ${elapsed} ms for a ${budgetMs} ms budget`,
+	);
+	// One deadline means one timer, one consequence and one release, however many
+	// quits joined the wait.
+	assert.equal(
+		calls.filter((call) => call === "quit").length,
+		1,
+		"the wait is released once, by the holder that started it",
+	);
+	assert.equal(
+		calls.filter((call) => call.startsWith("log:")).length,
+		1,
+		"the abandonment is stated once, not once per quit",
+	);
+	assert.match(calls.join("\n"), /did not stop within 600 ms/);
 });
 
 test("removeDurable treats an absent file as done and anything else as a failure", () => {
