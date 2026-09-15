@@ -20,14 +20,17 @@
  * both are recognised here rather than left to listener order:
  *
  *   - the canvas pane, which binds `⌘N` to "new file" while it is open. Its own
- *     rule is `canvas-shortcut-scope.ts`, shared with this file so the two
- *     cannot drift apart;
- *   - a modal surface — a dialog, an alert dialog, a menu, a listbox — whose
- *     own key handling belongs to it. Navigating the route out from under an
- *     open dialog is not something the user asked for, and every one of these
- *     takes focus on open, so the press's own target names it.
+ *     rule is `keyboard-scopes.ts`, shared with this file so the two cannot
+ *     drift apart;
+ *   - a modal surface — a dialog, an alert dialog, a menu, a listbox — whose own
+ *     key handling belongs to it. WHAT THAT CATCHES and what it deliberately
+ *     does not is stated on `pressLandsOnOverlay`, which is the same predicate
+ *     the canvas's Escape branch asks.
  */
-import { pressBelongsToCanvas } from "./components/canvas/canvas-shortcut-scope";
+import {
+	pressBelongsToCanvas,
+	pressLandsOnOverlay,
+} from "./keyboard-scopes";
 
 /**
  * The key the chord is built on.
@@ -38,18 +41,6 @@ import { pressBelongsToCanvas } from "./components/canvas/canvas-shortcut-scope"
  * this app ships for.
  */
 const NEW_CHAT_KEY = "n";
-
-/**
- * Surfaces that own a press before the page does.
- *
- * Roles rather than a class or a data attribute, because these are the
- * elements' own declarations and the canvas's Escape branch reads the same four.
- * Radix's `Dialog`, `AlertDialog`, `DropdownMenu` and `Select` all set one of
- * them, and all four move focus onto the surface when it opens, which is what
- * makes the press's target name it.
- */
-const PRESS_OWNER_SELECTOR =
-	'[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
 
 /**
  * The press this shortcut answers.
@@ -68,6 +59,7 @@ export type NewChatShortcutEvent = Pick<
 	| "altKey"
 	| "repeat"
 	| "defaultPrevented"
+	| "isComposing"
 	| "target"
 >;
 
@@ -89,11 +81,18 @@ export type NewChatShortcutEvent = Pick<
  *   - `shiftKey`/`altKey` — `⌘⇧N` and `⌥⌘N` are other apps' chords (a new
  *     window, a new folder) and are not claimed here; a chord this app does not
  *     implement stays available rather than firing the neighbouring one.
- *   - the canvas scope and the owner roles, above.
+ *   - `isComposing` — the press is part of an IME composition in the composer
+ *     (a Japanese, Chinese or Korean candidate window is up). The chord is
+ *     unambiguous there, but its EFFECT is not: staging a draft navigates and
+ *     unmounts the field the composition lives in, discarding the half-composed
+ *     text the user is in the middle of accepting. Every other handler in this
+ *     tree that answers a chord from a live text field makes the same bail.
+ *   - the canvas scope and the overlay roles, both from `keyboard-scopes.ts`.
  */
 export const shouldStartNewChat = (event: NewChatShortcutEvent): boolean => {
 	if (event.defaultPrevented) return false;
 	if (event.repeat) return false;
+	if (event.isComposing) return false;
 	if (event.shiftKey || event.altKey) return false;
 	if (event.key.toLowerCase() !== NEW_CHAT_KEY) return false;
 	/*
@@ -103,15 +102,8 @@ export const shouldStartNewChat = (event: NewChatShortcutEvent): boolean => {
 	 * `Ctrl+N` on macOS costs nothing — the platform has no meaning for it here.
 	 */
 	if (!(event.metaKey || event.ctrlKey)) return false;
-	const target = event.target;
-	if (pressBelongsToCanvas(target)) return false;
-	const element = target as { closest?: (selector: string) => unknown } | null;
-	if (
-		typeof element?.closest === "function" &&
-		element.closest(PRESS_OWNER_SELECTOR) !== null
-	)
-		return false;
-	return true;
+	if (pressBelongsToCanvas(event.target)) return false;
+	return !pressLandsOnOverlay(event.target);
 };
 
 /**

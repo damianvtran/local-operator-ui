@@ -14,12 +14,15 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FC, ReactNode } from "react";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
+import {
+	canvasShortcutAction,
+	pressLandsOnOverlay,
+} from "../../keyboard-scopes";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
-import { pressBelongsToCanvas } from "./canvas-shortcut-scope";
 import {
 	CANVAS_DOCUMENT_PANEL_ID,
 	CANVAS_SELECTED_TAB_ID,
@@ -299,28 +302,31 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if ((event.metaKey || event.ctrlKey) && event.key === "o") {
-				event.preventDefault();
-				handleOpenFile();
-			}
 			/*
+			 * The pane's two document chords, as one decision (`canvasShortcutAction`).
+			 *
 			 * `⌘N` is the ONE chord this pane shares with the app at large: the sidebar's
 			 * New chat row wears the same cap, and this binding is on the WINDOW, so
 			 * without a scope test one press from anywhere in the window would raise
-			 * this pane's create-file dialog AND stage a new chat behind it.
-			 * `pressBelongsToCanvas` is the same rule the app-level binding asks, and
-			 * the canvas's own tree carries the marker it reads
-			 * (`canvas-shortcut-scope.ts`), so the two halves cannot drift apart.
+			 * this pane's create-file dialog AND stage a new chat behind it. That test
+			 * lives in `keyboard-scopes.ts`, which the app-level binding asks too, so the
+			 * two halves cannot drift.
 			 *
-			 * The `⌘O` branch above keeps NO such test, and the asymmetry is deliberate:
+			 * `⌘O` takes NO such test (see the module), and the asymmetry is deliberate:
 			 * nothing else claims `⌘O`, so a scope test there would only take a working
 			 * shortcut away from a user whose focus happens to be in the sidebar.
+			 *
+			 * The rule is a function rather than three conditions here because neither
+			 * committed harness can open a canvas: a decision written inline in this
+			 * component has no test that can reach it, and the regression direction this
+			 * change creates — the pane's `⌘N` no longer scoping, or no longer firing —
+			 * would otherwise have no behavioural evidence at all.
 			 */
-			if (
-				(event.metaKey || event.ctrlKey) &&
-				event.key === "n" &&
-				pressBelongsToCanvas(event.target)
-			) {
+			const action = canvasShortcutAction(event);
+			if (action === "open-file") {
+				event.preventDefault();
+				handleOpenFile();
+			} else if (action === "new-file") {
 				event.preventDefault();
 				setCreateFileDialogOpen(true);
 			}
@@ -336,13 +342,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 * happening on one key.
 			 */
 			if (event.key === "Escape" && conversationId) {
-				const target = event.target as HTMLElement | null;
-				if (
-					target?.closest?.(
-						'[role="dialog"], [role="menu"], [role="listbox"], [role="alertdialog"]',
-					)
-				)
-					return;
+				/*
+				 * The same overlay test the app-level binding asks, from the same module: a
+				 * second hand-written copy of the four roles is a fifth one waiting to drift.
+				 */
+				if (pressLandsOnOverlay(event.target)) return;
 				const current = useCanvasStore.getState().conversations[conversationId];
 				if (
 					(current?.viewMode ?? "documents") === "documents" &&
