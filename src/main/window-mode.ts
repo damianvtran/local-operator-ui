@@ -11,7 +11,12 @@
  * it, `inactive` shows it without activating the app.
  *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
- * `--window-mode=<mode>` argument (the flag wins). `--window-size=WxH` or
+ * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
+ * must be the environment the process was LAUNCHED with, not `process.env`
+ * after `./backend/config` has folded in a `.env` from the working directory —
+ * a window mode decides whether the operator's focus is taken, so a file in the
+ * checkout must not be able to set one. `src/main/index.ts` passes the
+ * `launchEnv` snapshot for exactly that reason. `--window-size=WxH` or
  * `LOCAL_OPERATOR_UI_WINDOW_SIZE` sets the size, which is what makes a headless
  * capture the same shape as a shown window: at 1380x900 the content area is
  * 1380x872 either way, and `capturePage` returns the same 2760x1744 pixels at
