@@ -143,7 +143,22 @@ const api = {
 			ipcRenderer.invoke("check-for-updates", options),
 		checkForBackendUpdates: () =>
 			ipcRenderer.invoke("check-for-backend-updates"),
-		checkForAllUpdates: (options?: { manual?: boolean }) =>
+		/**
+		 * Check the app channel and the server channel, and resolve what the whole
+		 * check found out.
+		 *
+		 * The affirmation is read from the RESULT rather than from the updater's
+		 * `*-not-available` events, because a sentence about the user's whole
+		 * installation cannot be assembled from one channel's event: offering a
+		 * server update and affirming "you are up to date" in the same turn is the
+		 * defect this return value removes.
+		 *
+		 * `silent` suppresses this check's own per-channel `*-not-available`
+		 * events; it is the caller's own flag rather than something the main
+		 * process infers, so a caller that passes `manual` for the re-offer rule
+		 * says nothing about notifications by omission.
+		 */
+		checkForAllUpdates: (options?: { manual?: boolean; silent?: boolean }) =>
 			ipcRenderer.invoke("check-for-all-updates", options),
 		/** The last install that did not complete, for Settings -> App updates. */
 		getLastInstallAttempt: () => ipcRenderer.invoke("get-last-install-attempt"),

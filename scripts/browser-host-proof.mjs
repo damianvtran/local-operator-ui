@@ -27,6 +27,13 @@
  */
 
 import { spawn } from "node:child_process";
+// The REAL Electron binary, not `node_modules/.bin/electron`. That path is a
+// shell -> `node cli.js` -> Electron chain, so the pid a harness holds is the
+// SHIM's: signalling it stops the shim and leaves the app running while the
+// harness reports it stopped (QA round 1, Q1 — one leaked main in QA's run and
+// five in their own harness). Imported from `electron` in plain Node it resolves
+// to the binary itself, so the pid we hold is the app's.
+import electronPath from "electron";
 import { createServer } from "node:http";
 import { connect } from "node:net";
 import { networkInterfaces } from "node:os";
@@ -262,9 +269,18 @@ async function launchApp() {
 	// collision actually happened.
 	DEVTOOLS_PORT = await freeDevtoolsPort();
 	const child = spawn(
-		join(ROOT, "node_modules", ".bin", "electron"),
+		electronPath,
 		[".", `--user-data-dir=${USER_DATA}`, `--remote-debugging-port=${DEVTOOLS_PORT}`],
-		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
+		{
+			env,
+			cwd: ROOT,
+			stdio: ["ignore", "pipe", "pipe"],
+			// Own the whole tree. Electron spawns helpers (GPU, renderer, utility), so a
+			// signal to the direct child alone is not a stop — `detached` puts the app in
+			// its own process group and `stop` below signals that group, the same rule
+			// `scripts/npx-smoke-test.mjs` documents.
+			detached: true,
+		},
 	);
 	const logPath = join(SCRATCH, "app.log");
 	const stream = [];
@@ -277,10 +293,19 @@ async function launchApp() {
 		flush();
 	});
 	return { child, logPath, stream, flush, stop: () => new Promise((resolve) => {
+		/** Kill the process GROUP, not just the pid, and tolerate a group that has
+		 * already gone away. */
+		const killTree = (signal) => {
+			try {
+				process.kill(-child.pid, signal);
+			} catch {
+				try { child.kill(signal); } catch { /* already dead */ }
+			}
+		};
 		child.once("exit", resolve);
-		child.kill("SIGTERM");
+		killTree("SIGTERM");
 		setTimeout(() => {
-			try { child.kill("SIGKILL"); } catch { /* already gone */ }
+			killTree("SIGKILL");
 			resolve();
 		}, 5000);
 	}) };

@@ -642,6 +642,30 @@ export const STORIES = [
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
 
+	/*
+	 * Settings, Application updates and info, in the state the operator reported:
+	 * the app is current and the server trails, so one press of Check for updates
+	 * offers the server release. The story scripts the whole answer - both
+	 * channels' own events and the verdict the check returns - because the defect
+	 * is the panel and the snackbar disagreeing, and it is captured on two trees
+	 * (this one and a worktree at the pre-fix commit) so the pair shows the
+	 * contradiction rather than arguing it. Captured from a PRODUCTION Storybook
+	 * build, because the button does not check at all when import.meta.env.DEV is
+	 * true; see the story's own note.
+	 */
+	["settings-app-updates-section--server-update-offered", 900, 460],
+
+	/*
+	 * The other half of the same story: both channels proved current, so the
+	 * verdict carries the affirmation and no offer is raised. Captured here
+	 * because the sentence is new copy - the removed button stories drew their
+	 * own "latest version" alert from a channel event, which is a state the
+	 * shipped button can no longer produce, so the sweep had no frame of the
+	 * sentence the fix introduces. Not captured on a pre-fix tree: the
+	 * affirmation exists only on this one.
+	 */
+	["settings-app-updates-section--all-current", 900, 460],
+
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],
 	["canvas-workspace--markdown-format-menu", 1280, 900],
@@ -810,6 +834,95 @@ export const STORIES = [
 	   giving. The 330px frame shows numbers dropped and the 908px frame shows
 	   nothing squeezed, so this is the width where the question lives (D5). */
 	["chat-slash-completion--argument-phase-truncating-name", 768, 680],
+	/*
+	 * The five read-only diagnostic panels (`/analytics`, `/session`, `/info`,
+	 * `/context`, `/failovers`).
+	 *
+	 * One viewport family, because the panel shell is one geometry: `max-w-5xl`
+	 * (1024px) plus the scrim, so 1140 is the narrowest viewport in which the
+	 * dialog is its own shipped width rather than a responsive fallback. The
+	 * heights are sized PER STATE, and that is the same call `/usage`'s states
+	 * make: at a fixed 1100 tall, `empty`, `loading` and `gated` are mostly scrim
+	 * and cross `check-evidence`'s uniformity ceiling, which is that guard
+	 * working rather than a frame to argue with. `dense` is the one frame that
+	 * has to overhang: it exists to show the fold rule and the 20px fade over a
+	 * body that really does continue.
+	 *
+	 * `narrow` is 720 for the reason `/usage`'s is: the picker host is
+	 * portal-rendered and viewport-fixed, so the VIEWPORT is the only thing that
+	 * can produce the narrow layout. Every other entry is the dialog's own size.
+	 */
+	["panels-analytics--populated", 1140, 980],
+	["panels-analytics--refreshing", 1140, 980],
+	["panels-analytics--thirty-days", 1140, 1020],
+	["panels-analytics--this-session-only", 1140, 980],
+	["panels-analytics--unpriced", 1140, 980],
+	["panels-analytics--partial-cost", 1140, 980],
+	["panels-analytics--no-daily-rows", 1140, 980],
+	["panels-analytics--unnamed-sessions", 1140, 980],
+	["panels-analytics--empty", 1140, 460],
+	["panels-analytics--loading", 1140, 460],
+	["panels-analytics--unavailable", 1140, 400],
+	["panels-analytics--dense", 1140, 1100],
+	["panels-analytics--narrow", 720, 980],
+
+	["panels-session--populated", 1140, 1000],
+	["panels-session--tree-cost", 1140, 1000],
+	["panels-session--tree-cost-unmeasured", 1140, 1000],
+	["panels-session--no-tool-calls", 1140, 1000],
+	["panels-session--zero-samples", 1140, 1000],
+	["panels-session--unpriced", 1140, 1000],
+	["panels-session--empty", 1140, 520],
+	["panels-session--unavailable", 1140, 400],
+	["panels-session--loading", 1140, 460],
+	["panels-session--gated", 1140, 400],
+	["panels-session--dense", 1140, 1150],
+	["panels-session--narrow", 720, 1000],
+
+	/* The settings usage chart's frame over a fixture — the live settings
+	   surface needs a signed-in Radient tenant, so this is the honest half. */
+	["panels-settings--usage-chart-tokens", 1140, 560],
+	["panels-settings--usage-chart-credits", 1140, 560],
+	["panels-info--populated", 1140, 1040],
+	/* The live half null and nothing bound: the payload the desktop's own route
+	   always sends, with the three unknown spellings it must render. */
+	["panels-info--live-half-unmeasured", 1140, 1040],
+	["panels-info--behind", 1140, 1040],
+	["panels-info--never-checked", 1140, 1040],
+	["panels-info--build-skew", 1140, 1040],
+	["panels-info--roster-unread", 1140, 1040],
+	["panels-info--no-memory", 1140, 1040],
+	["panels-info--registry-unavailable", 1140, 1040],
+	["panels-info--nothing-read", 1140, 1040],
+	["panels-info--remote-host", 1140, 1040],
+	["panels-info--mcp-settling", 1140, 1040],
+	["panels-info--many-sessions", 1140, 1100],
+	["panels-info--dense", 1140, 1100],
+	["panels-info--unavailable", 1140, 760],
+	["panels-info--loading", 1140, 460],
+	["panels-info--gated", 1140, 400],
+	["panels-info--narrow", 720, 1040],
+
+	["panels-context--populated", 1140, 640],
+	["panels-context--no-numbers", 1140, 640],
+	["panels-context--frontend-unmeasured", 1140, 640],
+	["panels-context--estimated", 1140, 640],
+	["panels-context--dense", 1140, 700],
+	["panels-context--breakdown-unavailable", 1140, 520],
+	["panels-context--empty", 1140, 460],
+	["panels-context--loading", 1140, 400],
+	["panels-context--unavailable", 1140, 400],
+	["panels-context--narrow", 720, 640],
+
+	["panels-failovers--populated", 1140, 580],
+	["panels-failovers--failover-in-force", 1140, 580],
+	["panels-failovers--empty-chain", 1140, 620],
+	["panels-failovers--no-chains", 1140, 500],
+	["panels-failovers--empty", 1140, 500],
+	["panels-failovers--dense", 1140, 700],
+	["panels-failovers--loading", 1140, 400],
+	["panels-failovers--unavailable", 1140, 400],
+	["panels-failovers--narrow", 720, 580],
 ];
 
 /**

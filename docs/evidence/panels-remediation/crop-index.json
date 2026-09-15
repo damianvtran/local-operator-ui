@@ -1,0 +1,509 @@
+{
+  "captureWindowUtc": [
+    "2026-09-14T19:36:59.688417+00:00",
+    "2026-09-14T19:49:41.714191+00:00"
+  ],
+  "composition": "Content-region crop of the full-viewport browser capture (rows/columns with >1% non-ground pixels, plus 24px margin). No resampling, rescaling or recolouring. Each cropped frame re-checked with the gate's exported assertFramePaints.",
+  "frames": [
+    {
+      "frame": "panels-remediation/settings-before/localOperatorDark.webp",
+      "sourceViewportPngSha256": "34eb118693ce1dd246fdf14035cd3cd17589e97549d832482af59f29d13ab539",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-remediation__settings-before__localOperatorDark.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        575
+      ],
+      "frameDimensions": [
+        2830,
+        551
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/localOperatorDark.webp",
+      "sourceViewportPngSha256": "81a996245550cc380dd075ac474eaacfb9e2fb08c1944d7e67dd47c8728789d4",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__localOperatorDark.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/localOperatorLight.webp",
+      "sourceViewportPngSha256": "37228498c1a726465d38bf9f4972568b6e3bf38bcd547cada067c04d31f67bc7",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__localOperatorLight.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/dracula.webp",
+      "sourceViewportPngSha256": "fe2e2b4cf2195de83378fcde223d062c04e74ab3df6254176205f0a5b49f40c1",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__dracula.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/dune.webp",
+      "sourceViewportPngSha256": "7cbe180b2fd16fb6824d76c222af1bd3d706c5cc9c8d7d16d78c2510f434ff05",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__dune.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/sage.webp",
+      "sourceViewportPngSha256": "efc24a8f07bd782ea9badc849c54f01f9afb9139b5311d1aba13449a651f38b6",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__sage.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/monokai.webp",
+      "sourceViewportPngSha256": "5e11b842fb9f4b2eb99d1d5969c4d30561735f43468aee9b6f0dbdf4a2c9694e",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__monokai.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/tokyoNight.webp",
+      "sourceViewportPngSha256": "2d306ef7b1e0cf658e596a05857b48dd57ba6bca42720874f7f819a51d83a70e",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__tokyoNight.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/iceberg.webp",
+      "sourceViewportPngSha256": "5484f771848954dfa5508c6512e70e7594ebf3cc90233fd4c16ef0f401688ce8",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__iceberg.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/radient.webp",
+      "sourceViewportPngSha256": "39d588fadf5eb6cdbd3cbba7bc741113a6d54deaf1fe53d31ddc95a6efff7d88",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__radient.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/neon.webp",
+      "sourceViewportPngSha256": "7ef3348fa735aaf50c3048697b5968df5f45880f3aad0407c329544149cc2beb",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__neon.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/obsidian.webp",
+      "sourceViewportPngSha256": "4e12b5ec1e3b8ab713d594462748772868ef5e16d09b4fe1a837b1bee46a1016",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__obsidian.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-tokens/synth.webp",
+      "sourceViewportPngSha256": "cbe8fb2f8acc036e5a634549293c5351bd856c74893e3dec2505ef10646c6c01",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-tokens__synth.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/localOperatorDark.webp",
+      "sourceViewportPngSha256": "74c7c29772a4d168d70a91aec1b1402b4b6b878e695288b6678d3502f9af07be",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__localOperatorDark.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/localOperatorLight.webp",
+      "sourceViewportPngSha256": "8b059a47a1dfa7b8dfede6ac108df3ea99bb859ca577f0697f14d900bb957bf6",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__localOperatorLight.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/dracula.webp",
+      "sourceViewportPngSha256": "eef27c8aa5c9811c7adc19eae1089f451f4f937e6d83e00d1138ee37a965f25e",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__dracula.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/dune.webp",
+      "sourceViewportPngSha256": "0da34ef45fadd28c70c81170378f9529f82e0df8c6aeca3309eb1bac859da6a7",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__dune.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/sage.webp",
+      "sourceViewportPngSha256": "0cbe4bd5cade0379a62dc87621921ef2f86ba332b6131146837323559ec954b1",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__sage.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/monokai.webp",
+      "sourceViewportPngSha256": "7bd2c1a039aeacdc3c98cfebd5579f3a90b13efe7ec70d1d9a4ac07f5c51c523",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__monokai.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/tokyoNight.webp",
+      "sourceViewportPngSha256": "43a93825ad88722a3ce56acd6948950636402847d64fe0287dc1bed5b4ceeda1",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__tokyoNight.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/iceberg.webp",
+      "sourceViewportPngSha256": "aa80fd97145c07e8951aace1ceefbd86d4b19d836e27d0c773fc6646f216193a",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__iceberg.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/radient.webp",
+      "sourceViewportPngSha256": "a47449b4b00bc05848875a6c9302f10b37fcf03d6322a8a41b8e70011ba68ece",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__radient.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/neon.webp",
+      "sourceViewportPngSha256": "e0edb85349c3c4273a6cf4b1e86fd10a29b966057938360a09c7537ce6e3cf0a",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__neon.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/obsidian.webp",
+      "sourceViewportPngSha256": "5f0180a158295e9dac68107486dcd6b58f88b202041f14fe19657ec339c8c5ea",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__obsidian.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    },
+    {
+      "frame": "panels-settings/usage-chart-credits/synth.webp",
+      "sourceViewportPngSha256": "08ac0c1f3fe9cc3021e06c4068dbc7229217017aed32e4b3527572021b96835b",
+      "retainedOriginal": "docs/evidence/panels-remediation/originals/panels-settings__usage-chart-credits__synth.png",
+      "fullViewportDimensions": [
+        2880,
+        1634
+      ],
+      "contentCropBox": [
+        26,
+        24,
+        2856,
+        623
+      ],
+      "frameDimensions": [
+        2830,
+        599
+      ],
+      "pixelsResampled": false
+    }
+  ]
+}

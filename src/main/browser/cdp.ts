@@ -262,8 +262,8 @@ export class CdpPool {
 
 		if (!hasLogCapture(contents.id)) startLogCapture(contents.id);
 		try {
-			await this.sendTo(contents, "Runtime.enable", {});
-			await this.sendTo(contents, "Log.enable", {});
+			await this.sendTo(contents, "Runtime.enable", {}, CDP_DEADLINE_MS);
+			await this.sendTo(contents, "Log.enable", {}, CDP_DEADLINE_MS);
 			// MEASURED, and the reason this line is load-bearing rather than hygiene:
 			// on a view whose page has no focus — which every agent tab is, because the
 			// app never raises a window — `Input.insertText` delivers the text but NEVER
@@ -275,9 +275,14 @@ export class CdpPool {
 			// happened. Focus emulation makes the page believe it is focused, which is
 			// what an interactive browser does — the alternative (driving the value
 			// setter directly) stays as the fallback for fields that ignore insertText.
-			await this.sendTo(contents, "Emulation.setFocusEmulationEnabled", {
-				enabled: true,
-			});
+			await this.sendTo(
+				contents,
+				"Emulation.setFocusEmulationEnabled",
+				{
+					enabled: true,
+				},
+				CDP_DEADLINE_MS,
+			);
 		} catch (error) {
 			// A view that closed between attach and enable is not an attach failure
 			// worth keeping the attachment for.
@@ -313,6 +318,7 @@ export class CdpPool {
 		contents: CdpContents,
 		method: string,
 		params: Record<string, unknown> = {},
+		options: { deadlineMs?: number } = {},
 	): Promise<T> {
 		if (contents.isDestroyed()) {
 			this.forget(contents.id);
@@ -321,13 +327,19 @@ export class CdpPool {
 				"that browser tab is gone; dropped the handle. Use 'open' with a URL to get a new tab",
 			);
 		}
-		return this.sendTo<T>(contents, method, params);
+		return this.sendTo<T>(
+			contents,
+			method,
+			params,
+			options.deadlineMs ?? CDP_DEADLINE_MS,
+		);
 	}
 
 	private async sendTo<T>(
 		contents: CdpContents,
 		method: string,
 		params: Record<string, unknown>,
+		deadlineMs: number,
 	): Promise<T> {
 		const attachment = this.attachments.get(contents.id);
 		if (!attachment) {
@@ -346,7 +358,7 @@ export class CdpPool {
 		}
 		return deadline(
 			contents.debugger.sendCommand(method, params) as Promise<T>,
-			CDP_DEADLINE_MS,
+			deadlineMs,
 			method,
 		);
 	}

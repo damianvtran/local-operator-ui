@@ -144,6 +144,24 @@ export type PickerHostProps = {
 	busyLabel?: string;
 	/** Widen for data views (usage, analytics). */
 	wide?: boolean;
+	/**
+	 * The dialog's size class. `dialog` is today's geometry, byte for byte:
+	 * `max-w-xl` body, `max-h-[min(60vh,520px)]` scroll box.
+	 *
+	 * `panel` is the data-view geometry: `max-w-5xl` and a taller scroll box, so a
+	 * chart plus its table fit above the fold at 1024px and the panel is not a
+	 * peephole onto its own content. It supersedes `wide`; pass one or the other,
+	 * never both, and panels pass only this.
+	 */
+	shell?: "dialog" | "panel";
+	/**
+	 * The name of the panel's body region, announced when focus lands there.
+	 *
+	 * § 9's precedent is `/usage`'s "Provider usage region": the name says WHERE
+	 * the reader is, so a panel passes its own ("Session diagnostics region") and
+	 * a dialog that never sets it keeps the generic fallback.
+	 */
+	bodyLabel?: string;
 	/** Rendered above the list, below the search (a scope toggle, a filter). */
 	toolbar?: ReactNode;
 	/** Rendered instead of the list when set (data views). */
@@ -174,6 +192,24 @@ const TONE_CLASS: Record<PickerResult["tone"], string> = {
 	warning: "border-warning-border bg-warning-wash text-ink",
 	error: "border-danger-border bg-danger-wash text-ink",
 };
+
+/**
+ * What a panel's scroll region is called in the accessibility tree.
+ *
+ * Deliberately NOT the dialog's title: named for the screen it sits on, a
+ * screen reader announces "Analytics region" inside the "Analytics dialog" and
+ * the tab stop says nothing about where focus landed. Panels put all of their
+ * content in this one region, so the name describes the region rather than one
+ * of the things in it (`/usage` names its inner list "Report list" for the
+ * same reason).
+ *
+ * It is a PROP rather than this constant, because a constant is the generic name
+ * this comment argues against: five panels shared the string "Panel content", so
+ * a screen-reader user tabbing into a panel could not tell `/session` from
+ * `/analytics` (QA round 1, Q4). The constant stays as the fallback for a caller
+ * that has not said where it is.
+ */
+const PANEL_BODY_LABEL = "Panel content";
 
 type PickerRowProps = {
 	id: string;
@@ -486,6 +522,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 	busyText,
 	busyLabel = "Applying the change",
 	wide = false,
+	shell = "dialog",
+	bodyLabel,
 	toolbar,
 	body,
 	bodyScrolls = false,
@@ -518,6 +556,27 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const [bodyHasMoreBelow, setBodyHasMoreBelow] = useState(false);
 
 	/*
+	 * Whether the ring the global `:focus-visible` rule draws is suppressed right
+	 * now, because the focus it would decorate is the OPEN focus rather than the
+	 * user's.
+	 *
+	 * Chromium matches `:focus-visible` for a programmatically focused scroll
+	 * region, so `onOpenAutoFocus` below — which focuses the body so a keyboard
+	 * user can PageDown straight into the content — painted a 2px accent outline
+	 * around the whole body. The dialog's own `overflow-hidden` clips its left and
+	 * right segments, so what reached the screen was two full-bleed accent rules
+	 * across the panel, absent in every state whose body overflows and loudest in
+	 * the quietest ones; the design round read them, reasonably, as decoration
+	 * (D1). Deleting the outline instead would take the ring off the keyboard user
+	 * it exists for, so it is suppressed only until that user's own first event:
+	 * a Tab onto the region or a click into it clears the mark, and every later
+	 * focus gets the ring again. Suppression rides Tailwind's `outline-none` — the
+	 * token route the rule in `styles/index.css` documents — rather than adding a
+	 * second focus rule beside the one that already owns this decision.
+	 */
+	const [suppressOpenFocusRing, setSuppressOpenFocusRing] = useState(true);
+
+	/*
 	 * Measurement is attached by a REF CALLBACK rather than by an effect over a
 	 * ref object, and that is load-bearing here.
 	 *
@@ -536,6 +595,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * transition that creates the overflow.
 	 */
 	const cleanupBodyBox = useRef<(() => void) | null>(null);
+	const bodyRegionRef = useRef<HTMLDivElement | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `body` is deliberately a dependency though the callback never reads it. Changing the body replaces the observed child nodes, and a stable callback identity would leave React holding the original attachment with a `ResizeObserver` still watching detached nodes — so the growth that creates the overflow is never seen. The new identity IS the re-subscription.
 	const bodyBoxRef = useCallback(
 		(box: HTMLDivElement | null) => {
@@ -574,6 +634,25 @@ export const PickerHost: FC<PickerHostProps> = ({
 		// against the new content.
 		[body],
 	);
+
+	/*
+	 * The body box, kept reachable for the panel shell's initial focus.
+	 *
+	 * A second callback rather than a second ref on the element: React calls one
+	 * ref per node, and the measurement above MUST stay on the node itself. The
+	 * wrapper still re-subscribes whenever `bodyBoxRef` changes identity, which
+	 * is the property the comment above depends on.
+	 */
+	const attachBodyBox = useCallback(
+		(box: HTMLDivElement | null) => {
+			bodyRegionRef.current = box;
+			bodyBoxRef(box);
+		},
+		[bodyBoxRef],
+	);
+
+	/* The footer's Close button: the fallback focus target when no body is mounted. */
+	const closeButtonRef = useRef<HTMLButtonElement>(null);
 
 	const hasList = options !== undefined;
 	const filtered = useMemo(() => {
@@ -752,12 +831,25 @@ export const PickerHost: FC<PickerHostProps> = ({
 			<DialogContent
 				className={cn(
 					"gap-0 p-0",
-					wide ? "max-w-3xl" : "max-w-xl",
+					shell === "panel" ? "max-w-5xl" : wide ? "max-w-3xl" : "max-w-xl",
 					// The dialog is a frame: 14px radius, content clipped to it.
 					"overflow-hidden rounded-lg",
 				)}
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
+					/*
+					 * A panel has no list to focus, and the search input is not rendered at
+					 * all, so Radix's prevented default would leave focus on the trigger
+					 * behind the dialog. The body scroll region is the panel's own tab stop
+					 * (it is `tabIndex={0}` below), so focus lands where a keyboard user can
+					 * immediately PageDown through the content; with no body mounted, the
+					 * footer's Close button is the only control there is.
+					 */
+					if (shell === "panel") {
+						bodyRegionRef.current?.focus();
+						if (!bodyRegionRef.current) closeButtonRef.current?.focus();
+						return;
+					}
 					inputRef.current?.focus();
 				}}
 			>
@@ -923,10 +1015,40 @@ export const PickerHost: FC<PickerHostProps> = ({
 					 */
 					<div className={cn(bodyOverflows && "border-control border-b")}>
 						<div
-							ref={bodyBoxRef}
+							ref={attachBodyBox}
+							/* biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a panel's content sits below the fold and a keyboard user has to be able to reach it. */
+							role={shell === "panel" ? "region" : undefined}
+							aria-label={
+								shell === "panel" ? (bodyLabel ?? PANEL_BODY_LABEL) : undefined
+							}
+							tabIndex={shell === "panel" ? 0 : undefined}
+							/*
+							 * Detached rather than always-attached with an early return: these fire on
+							 * every keystroke and every pointer event inside a scrollable panel body,
+							 * and the mark only ever needs to fall once.
+							 */
+							onKeyDown={
+								shell === "panel" && suppressOpenFocusRing
+									? () => setSuppressOpenFocusRing(false)
+									: undefined
+							}
+							onPointerDown={
+								shell === "panel" && suppressOpenFocusRing
+									? () => setSuppressOpenFocusRing(false)
+									: undefined
+							}
 							className={cn(
-								"max-h-[min(60vh,520px)] overflow-y-auto px-5 pt-3",
-								bodyScrolls && "[scrollbar-gutter:stable]",
+								"overflow-y-auto px-5 pt-3",
+								shell === "panel"
+									? "max-h-[min(76vh,760px)] pb-4"
+									: "max-h-[min(60vh,520px)]",
+								shell === "panel" && suppressOpenFocusRing && "outline-none",
+								// Unconditional for a panel, for the reason the flag exists:
+								// reserving the scrollbar column only when the bar appears slides
+								// every right-aligned number sideways the moment content overflows,
+								// and a panel is the surface with columns of numbers.
+								(bodyScrolls || shell === "panel") &&
+									"[scrollbar-gutter:stable]",
 								// The last 20px of a CONTINUING list fade out, so a row cut
 								// through its glyphs reads as "there is more" rather than as a
 								// rendering defect. Clipping to a row boundary instead is not
@@ -1023,7 +1145,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 * for-one-action row D15 filed, where the hint beside it read "Esc
 						 * closes".
 						 */}
-						<Button variant="ghost" size="sm" type="button" onClick={onClose}>
+						<Button
+							ref={closeButtonRef}
+							variant="ghost"
+							size="sm"
+							type="button"
+							onClick={onClose}
+						>
 							{pickerPrimaryLabel({ busy, result })}
 						</Button>
 						{onSubmit && (
