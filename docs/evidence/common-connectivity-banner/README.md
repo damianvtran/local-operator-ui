@@ -42,7 +42,8 @@ content, and the longest banner (two sentences) is what made the difference.
 | `no-spawn` | the same sentence + "A local daemon may still be running, but could not be attached. Waiting without starting a duplicate." | warning |
 | `unclaimed` | the same sentence + "A daemon is running at http://127.0.0.1:1111, but it refused this app's credential for its desktop plane. The daemon is running." | warning |
 | `stopped` | "The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears." + "The daemon's process is gone." | danger |
-| `wedged` | "A Local Operator server is running but has stopped publishing its own heartbeat, so this app is not attaching to it and is not starting a second one." + main's pid sentence | danger |
+| `wedged` | "A Local Operator server is running on this machine and this app is not attached to it. Nothing was started over it." + main's pid sentence | danger |
+| `unattachable` | the same sentence + main's spawn-gate detail: the daemon's address, its pid and version, that no serve record this app can read describes it, that nothing was started over it, and which recovery is actually reachable | danger |
 | `no-bridge` | "Not connected to a Local Operator server." | danger |
 
 Three things the table is measuring, each of which was a finding in round 1:
@@ -67,13 +68,21 @@ Three things the table is measuring, each of which was a finding in round 1:
 
 The variant is part of the claim rather than decoration: a state the app is
 expected to recover from on its own (reconnecting, offline-internet) is `warning`,
-and one that needs the operator (stopped, wedged, no bridge to ask) is `danger`.
-That is what makes `identity-failed` and `stopped` visibly different pictures
-rather than the same red box with different words.
+and one that needs the operator (stopped, wedged, unattachable, no bridge to ask)
+is `danger`. That is what makes `identity-failed` and `stopped` visibly different
+pictures rather than the same red box with different words.
+
+`wedged` and `unattachable` share a title and differ in their detail, which is the
+readback the two producers need: the title states the connection fact, true of
+both, and the detail says which path reached it. The `wedged` title quoted here
+used to assert one path ("has stopped publishing its own heartbeat"), which is a
+false sentence for a daemon that is running and healthy and that this app merely
+holds no credential for - the same class of mistake as calling a serving daemon
+offline, one state over.
 
 ## The identities, measured
 
-Sixteen frames, two palettes, eight stories.
+Eighteen frames, two palettes, nine stories.
 
 - `attached` is byte-identical to `degraded`
   (`b03d4c15…` dark, `f705c0db…` light). **That identity is the claim**: a missed
@@ -84,9 +93,19 @@ Sixteen frames, two palettes, eight stories.
   `89c6af28…`, `unclaimed` `9638ffdb…` / `eafeb7c3…`, `stopped` `7479dbae…` /
   `19edc379…`, `wedged` `fb14248e…` / `b9b421b2…`, `no-bridge` `3ea04c1f…` /
   `b08e1435…`.
+- `unattachable` is the one story whose hashes this readback cannot state, and
+  the omission is the honest half of a pending re-capture: its copy was corrected
+  after these frames were taken (the sentence used to promise an attach "as soon
+  as the address is free or admits it", which no code path performs), so the two
+  frames committed here are photographs of the PREVIOUS sentence. They are
+  declared rather than dropped because they are still the only frames of that
+  state, and the command under *Re-taking the set* re-derives them from the
+  corrected story. Until it is run, nothing in this directory should be read as
+  evidence for the current `unattachable` detail line - only for the state, the
+  title and the variant.
 - The two-sentence states are visibly taller than the one-sentence ones, which is
   the second line being main's detail rather than a different sentence count.
-- Two consecutive runs of this surface at this head produce all 16 frames byte for
+- Two consecutive runs of this surface at this head produce all 18 frames byte for
   byte. The rig gained a pointer reset before every navigation while this set was
   being taken (a hover entry was leaving the pointer where it stopped, and a
   tooltip opened on a delay in a later frame); every hash above is from after it.
@@ -109,9 +128,11 @@ listening. Nothing is stubbed in the baseline frame: a Storybook origin cannot
 read `/health` on the daemon's origin (that is the defect stated as a mechanism),
 so main's banner reaches its offline branch on its own, and it says the same
 bytes whether the server is up or gone.
-- **after**: eight frames, six of which are different sentences, `attached` and
-`degraded` rendering no banner at all, and no server sentence containing the word
-"offline" anywhere.
+- **after**: nine frames, seven of which render a banner, `attached` and
+`degraded` rendering none at all, and no server sentence containing the word
+"offline" anywhere. `wedged` and `unattachable` are the pair that says what the
+title and the detail are each for: one title between them, because the
+connection fact is the same, and two details, because the paths are not.
 
 ## What these frames do not prove
 
