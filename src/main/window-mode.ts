@@ -10,6 +10,13 @@
  * runs happen without the grab: `headless` creates the window and never shows
  * it, `inactive` shows it without activating the app.
  *
+ * Naming no mode is not the same as naming `normal`. A launch carrying one of
+ * `AGENT_LAUNCH_FLAGS` — a scratch `--user-data-dir`, a
+ * `--remote-debugging-port` — has said that it is a run rather than a person
+ * using the app, so it resolves to `headless` and the startup line reports the
+ * assumption. A launch that says nothing at all is still the operator's own
+ * app, and still `normal`.
+ *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
  * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
  * must be the environment the process was LAUNCHED with, not `process.env`
@@ -42,6 +49,22 @@ export const WINDOW_MODE_FLAG = "--window-mode";
 export const WINDOW_SIZE_FLAG = "--window-size";
 
 /**
+ * The switches that mark a launch as agent-driven rather than the operator's,
+ * and so as one that must not take their focus.
+ *
+ * `--user-data-dir` is the strong one: the operator's own app runs on the
+ * default profile, while every rig, desktop test and evidence script names a
+ * scratch profile so it cannot touch theirs. `--remote-debugging-port` is the
+ * other half of the same fact — a run whose point is being driven over CDP is
+ * not a person using the app. Either one means the window does not need to be
+ * in front of anybody, which is what decides the default below.
+ */
+export const AGENT_LAUNCH_FLAGS = [
+	"--user-data-dir",
+	"--remote-debugging-port",
+] as const;
+
+/**
  * The layout is verified at these dimensions and not below: the app rail, the
  * per-route list pane and the canvas each have their own minimum, and past
  * 800x600 they start taking room from each other rather than from the window.
@@ -66,6 +89,17 @@ export const DEFAULT_WINDOW_HEIGHT = 900;
 export interface WindowLaunchPlan {
 	/** Resolved mode: the documented value, never the raw input. */
 	mode: WindowMode;
+	/**
+	 * Why the mode was ASSUMED rather than named, or null when the caller said
+	 * what it wanted and `problems` is the only thing worth reporting.
+	 *
+	 * Non-null exactly when the launch named no mode at all and one of
+	 * `AGENT_LAUNCH_FLAGS` was present, which is what makes `headless` the
+	 * default there. The reason travels with the plan so the startup line can
+	 * say the run was headless *because* of the scratch profile it named,
+	 * rather than leaving a reader to guess whether a mode was typed.
+	 */
+	assumed: string | null;
 	/** What `ready-to-show` does: raise and focus, raise without focusing, or nothing. */
 	show: WindowShow;
 	/** `BrowserWindow` `focusable`. False only in `headless`. */
@@ -181,6 +215,35 @@ export function resolveWindowLaunchPlan(
 	const modeFlag = readFlag(argv, WINDOW_MODE_FLAG);
 	const modeRaw = modeFlag.found ? modeFlag.value : env[WINDOW_MODE_ENV];
 	const parsedMode = parseWindowMode(modeRaw);
+	/*
+	 * Nobody named a mode and this is an agent-driven launch, so the mode is
+	 * `headless` rather than `normal`.
+	 *
+	 * Why the default flips here and nowhere else. `normal` stays the default
+	 * for a launch that says nothing at all, because that launch is the
+	 * operator's own app and hiding its window would be the worse failure. But
+	 * a launch that names a scratch profile or a devtools port has already
+	 * said, in the only vocabulary a launch has, that it is a run and not a
+	 * person — and AGENTS.md's rule that no agent run may take the operator's
+	 * focus is enforced only by every caller remembering it, which is a rule
+	 * that fails on the next rig somebody writes in a hurry. Measured on this
+	 * machine: an afternoon of parallel QA rigs left nine Electron windows in
+	 * the dock and took the operator's focus repeatedly, every one of them a
+	 * launch that had simply not named a mode.
+	 *
+	 * A named mode always wins, including a typo: `--window-mode` given with no
+	 * value, or an unparsable value, keeps the historical `normal` fallback and
+	 * its report, because a mistyped `normal` must not become a window somebody
+	 * cannot find — and a caller who reached for the flag is asking for that
+	 * error to be shown, not for a default. Only silence is read as "a rig".
+	 */
+	const agentFlag =
+		!modeFlag.found && modeRaw === undefined
+			? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
+			: undefined;
+	const assumed = agentFlag
+		? `${agentFlag} marks an agent-driven launch, and no window mode was named`
+		: null;
 	if (modeFlag.found && modeFlag.value === undefined) {
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
@@ -190,7 +253,7 @@ export function resolveWindowLaunchPlan(
 			`${modeFlag.found ? WINDOW_MODE_FLAG : WINDOW_MODE_ENV}="${modeRaw}" is not one of ${WINDOW_MODES.join("|")}; using normal`,
 		);
 	}
-	const mode = parsedMode ?? "normal";
+	const mode = parsedMode ?? (assumed ? "headless" : "normal");
 
 	const sizeFlag = readFlag(argv, WINDOW_SIZE_FLAG);
 	const sizeRaw = sizeFlag.found ? sizeFlag.value : env[WINDOW_SIZE_ENV];
@@ -226,6 +289,7 @@ export function resolveWindowLaunchPlan(
 
 	return {
 		mode,
+		assumed,
 		...WINDOW_BEHAVIOUR[mode],
 		width,
 		height,
@@ -251,5 +315,6 @@ export function describeWindowLaunch(plan: WindowLaunchPlan): string {
 			: plan.show === "inactive"
 				? "window shown without activating the app"
 				: "window shown and focused";
-	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}`;
+	const assumption = plan.assumed ? ` (assumed: ${plan.assumed})` : "";
+	return `window mode ${plan.mode}${assumption}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}`;
 }

@@ -202,6 +202,16 @@ and takes `--window-size=WxH` or `LOCAL_OPERATOR_UI_WINDOW_SIZE` for the size:
 | `inactive` | shown with `showInactive()`: visible, but the app is never activated and the window never takes focus | a run somebody wants to watch or click into, and anything focus-dependent |
 | `normal` | `show()` — raises and focuses the window | a human starting the app. Never an agent run |
 
+**Leaving the mode out of a rig-shaped launch is `headless`, not `normal`.** A
+launch that carries a scratch `--user-data-dir` or a `--remote-debugging-port`
+has already said it is a run rather than a person using the app, so the app
+resolves it to `headless` and the startup line says the mode was assumed and
+which switch said so. This is the belt to the rule's braces: the rule above is
+enforced by every caller remembering it, and the afternoon on this machine that
+left nine Electron windows in the dock — each of them stealing focus as it
+appeared — was nine callers that had not. A launch that names no mode *and*
+passes neither switch is still the operator's own app and still `normal`.
+
 ```bash
 # The built app, driven over CDP at an exact size, with no window at all.
 pnpm app:headless -- --remote-debugging-port=9451 --user-data-dir="$SCRATCH/profile" \
@@ -212,16 +222,21 @@ pnpm dev:headless
 
 # A harness that already spawns Electron itself: the switch rides the environment.
 LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=9451
+
+# Omit the mode and it is still headless: the scratch profile says what this is.
+npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
 ```
 
 `npx local-operator-ui` spawns Electron with this process's environment, so the
 same switch covers a check of the published launcher. Any mode but `normal`
 prints a `[window-mode] ...` line to the process's own output, so a run says out
 loud that it was headless instead of looking identical to one that popped a
-window. A mode or size the app could not honour is printed there too, not only
-to the backend log: a typo like `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls
-back to `normal`, which is the difference between a headless run and an
-interruption, and it must be visible to whoever launched it.
+window — including when the mode was assumed, which it names along with the
+switch that implied it. A mode or size the app could not honour is printed there
+too, not only to the backend log: a typo like
+`LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls back to `normal`, which is the
+difference between a headless run and an interruption, and it must be visible to
+whoever launched it.
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
