@@ -1677,6 +1677,13 @@ const SPAWN_SITES = [
 		1,
 		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. `ownedServeLaunch` has exactly one caller - `backend-service.ts`, which hands it the environment `backendSpawnEnv()` built, asserted by the row above - so this site never decides the environment it runs a probe under",
 	),
+	runsCommand(
+		"src/main/backend/discovery.ts",
+		"execFileSync",
+		1,
+		/"\/bin\/ps"/,
+		"reads one pid's PROCESS STATE (`ps -o state= -p <pid>`) to tell a zombie from a live daemon, which signal 0 cannot; `/bin/ps` is that tool and starts no interpreter",
+	),
 	// `index.ts` has no child-process site left: #180 removed every name and image
 	// sweep (`pkill`, `killall`, `taskkill /im`, `xargs -r kill`, a `ps | grep`
 	// pipeline) and replaced them with cleanup scoped to the child this app
