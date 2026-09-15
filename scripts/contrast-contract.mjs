@@ -877,15 +877,19 @@ const STRUCTURAL_CALL_SITES = [
 		/*
 		 * The settings rail's current row, which was the same defect on the same
 		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
-		 * marked its current section with `accent-wash` — ΔE00 1.06 in tokyoNight
-		 * (#272B3E on #25283A), a row with no ground at all, identifiable only by
+		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
+		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own
 		 * because it is one class for one role decision (round 1, design D2).
+		 * Every citation of this pair in this file and in the two panels' sources
+		 * uses that palette pair; the frames' own bytes render about one step off it
+		 * in both values, which `docs/evidence/chat-sidebar-selection/README.md`
+		 * states where it gives the frame readings.
 		 */
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
 		must: '"bg-sunken font-medium text-ink hover:bg-sunken"',
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.06 and the current destination had no mark at all; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer",
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer",
 	},
 ];
 

@@ -105,6 +105,20 @@ failure — it is exactly what the before tree's entity NAME BUTTON does at rest
 The full record per pass is written to `readings-<tree>-<theme>.json` by the rig
 (kept out of the repository as a run artefact; every number below is from it).
 
+**WHICH BYTES A NUMBER IS ABOUT, because two bases are in play and round 2 found
+them quoted as if they were one.** The tables below give what the PAGE computes,
+which is the palette's own pair (`getComputedStyle` reads `#262b3f` on `#24283b`
+in tokyoNight, the values `src/renderer/src/shared/themes/palettes/tokyo-night.ts`
+declares). A committed frame's own bytes render every channel about one step off
+both values — `before-settings-rail/tokyoNight.webp` carries that same pair as
+`srgb(39,43,62)` on `srgb(37,40,58)`, i.e. `#272b3e` on `#25283a`. The offset is
+the same in both colours, so the pair's separation agrees to 0.01 between the two
+bases (`1.062` measured on the frame's bytes, `1.054` on the palette) and no
+conclusion here turns on it: a reader sampling a frame by pixel will see the
+offset, and a reader comparing a frame against these tables is comparing it
+against the page. Every source comment and contract pin about this pair cites the
+palette pair for that reason.
+
 **THE DEFECT, ON SCREEN — tokyoNight.** The panel ground is `#24283b` in all four
 columns below:
 
