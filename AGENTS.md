@@ -308,7 +308,9 @@ threads a new present site through the window-creation path has to carry that pl
 with it, and `scripts/window-mode.test.mjs` fails on a present site that reaches
 for the process's own plan instead.
 
-A `headless` request that NAMES A CONVERSATION creates nothing and parks the
+A `headless` request that NAMES A CONVERSATION against an app that already HAS a
+window delivers the conversation to that window and raises nothing, which is the
+mode's promise; against an app with NO window it creates nothing and parks the
 conversation instead, and the operator's next window opens it. An invisible window
 is not a harmless one: macOS keeps the app alive with the renderer warm, so the
 Dock icon would activate an app showing nothing while a conversation sat in a
@@ -316,6 +318,19 @@ screen nobody could reach. Nothing appears and nothing is raised — and a park 
 NOT silent: the winner writes `trigger=second-instance mode=headless requested=never
 parked=<id> applied=parked` (the conversation that is waiting), so the log answers
 "what happened to what I asked for" for the requests that raise nothing.
+
+THE QUEUE IS BOUNDED, AND EVERY WAY AN ENTRY LEAVES IT IS A LINE. At most sixteen
+conversations wait in memory; a seventeenth drops the oldest, and the drop is
+written (`applied=evicted`) rather than being silent, because a bound nobody can see
+is the same class of silence the park line removed. A park that reaches a renderer
+says so (`applied=delivered`), which is what lets the log answer "did the
+conversation I parked ever arrive?" — the question a park without an ending left
+open. AN ENTRY LEAVES THE QUEUE WHEN ITS SEND HAPPENS, not when a window is created:
+a window closed before its renderer finished loading leaves the conversation queued
+(`applied=left+waiting`) for the next window rather than taking it away silently, and
+anything still waiting when the process quits is written as `trigger=app-quit ...
+applied=dropped+quit`. All of those names come from the app's own `[window-raise]`
+line, and `scripts/window-mode.test.mjs` holds the shapes.
 
 THE PARK IS A QUEUE, AND THE CREATOR OF A WINDOW ALWAYS WINS IT. Every parked
 request waits, and the next window drains them in ARRIVAL ORDER: the first becomes
@@ -331,8 +346,9 @@ conversation at all: a request that may come forward opens the app's own window 
 used to do nothing, so launching the app again looked like nothing happening),
 while `headless` still opens nothing. A DOCK CLICK PRESENTS THE WINDOW UNDER THE
 OPERATOR'S PLAN, not under the launch's: the window mode is a promise about the
-LAUNCH, and `app.on("activate")` is a person asking for the app they already have
-open — answering that with a window nobody can see would leave the parked
+LAUNCH, and `app.on("activate")` — which runs when the app has NO window, that being
+the only state it creates one in — is a person asking for the app they already have
+open. Answering that with a window nobody can see would leave the parked
 conversation in an invisible screen with the queue emptied into it.
 
 The losing launch says what it did, because nothing else can: it prints

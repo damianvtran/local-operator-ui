@@ -76,6 +76,10 @@ const {
 	raiseWindow,
 	readSecondLaunchRequest,
 	reportParked,
+	reportParkedDelivered,
+	reportParkedEvicted,
+	reportParkedLeftWaiting,
+	reportParksAtQuit,
 } = raise;
 
 const plan = (input) => resolveWindowLaunchPlan(input);
@@ -257,6 +261,35 @@ test("a parked request is reported, and the operator's own request can show", ()
 	assert.equal(canCreateWindowFor(OPERATOR_SHOW), true);
 });
 
+test("every way a parked conversation can end is a line", () => {
+	/*
+	 * U2 (UX round 3): a park was announced and its end was not, so the log could not
+	 * answer "did the conversation I parked ever arrive?". Each state is a line now,
+	 * in one shape — `applied=` is the token a reader greps for the state — and the
+	 * two limits of the queue are among them, so an evicted or quit-lost park is
+	 * visible rather than the same silence as a delivery (review round 3, NIT-3).
+	 */
+	const lines = [];
+	const context = {
+		trigger: "second-instance",
+		requester: { pid: 7, cwd: "/tmp/y" },
+		report: (line) => lines.push(line),
+	};
+	reportParkedDelivered("b1c2d3e4f5a6", context);
+	reportParkedEvicted("b1c2d3e4f5a6", context);
+	reportParkedLeftWaiting(["b1c2d3e4f5a6", "c2d3e4f5a6b1"], context);
+	reportParksAtQuit(["b1c2d3e4f5a6"], (line) => lines.push(line));
+	assert.deepEqual(lines, [
+		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6 pid=7 cwd=/tmp/y applied=delivered",
+		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6 pid=7 cwd=/tmp/y applied=evicted",
+		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6,c2d3e4f5a6b1 pid=7 cwd=/tmp/y applied=left+waiting",
+		"trigger=app-quit mode=headless requested=never parked=b1c2d3e4f5a6 applied=dropped+quit",
+	]);
+	// A reporter is optional on all of them, as on the park itself.
+	reportParkedDelivered("b1c2d3e4f5a6", { trigger: "second-instance" });
+	reportParkedLeftWaiting(["b1c2d3e4f5a6"], { trigger: "second-instance" });
+});
+
 test("a window created for a request is presented under THAT request's plan", () => {
 	/*
 	 * THE REVIEW-ROUND-1 MAJOR, pinned where it actually lives. The policy in
@@ -278,14 +311,17 @@ test("a window created for a request is presented under THAT request's plan", ()
 		.replace(/\s+/g, " ");
 
 	/*
-	 * No raise site may reach for the process's own launch plan. THE PROPERTY, NOT A
+	 * No present site may reach for the process's own launch plan. THE PROPERTY, NOT A
 	 * SPELLING (review round 2, NIT-1): the previous form matched
 	 * `presentWindow(...windowLaunch.show` literally, which a reach under another
 	 * name — `ownLaunchRequest().show`, a local alias — satisfies while
 	 * reintroducing round 1's MAJOR. So every call's ARGUMENTS are extracted and
-	 * checked for the launch plan by ANY name, and the allow-list of what a raise
-	 * may be given is stated positively. The live evidence in the PR thread is what
-	 * holds the behaviour; this holds the shape that produced it.
+	 * what a raise may be given is stated as an ALLOW-LIST, which is the shape that
+	 * catches a rename: an identifier-based `doesNotMatch` for the old names said
+	 * "by any name" while only ever checking those two spellings, and the
+	 * allow-list below it already subsumed it (review round 3, NIT-1). The live
+	 * evidence in the PR thread is what holds the behaviour; this holds the shape
+	 * that produced it.
 	 */
 	const callArgs = (name) => {
 		const found = [];
@@ -316,13 +352,10 @@ test("a window created for a request is presented under THAT request's plan", ()
 	 */
 	const presentSites = callArgs("presentWindow");
 	assert.ok(presentSites.length >= 2, `found ${presentSites.length} present sites`);
-	for (const args of presentSites) {
-		assert.doesNotMatch(
-			args,
-			/windowLaunch|ownLaunchRequest/,
-			`a present site reached for this process's own launch plan: ${args.slice(0, 90)}`,
-		);
-	}
+	// Each present site says one of two things and nothing else: the plan of the
+	// REQUEST that caused the window (an identifier of its own, whatever it is
+	// called), or a literal plan where the operator's own request set it. A reach
+	// for this process's launch plan is neither, whatever identifier it uses.
 	for (const args of presentSites.filter((a) => !a.includes("show:"))) {
 		assert.match(
 			args,
@@ -371,8 +404,9 @@ test("a window created for a request is presented under THAT request's plan", ()
 		"openSessionInWindow not found in src/main/index.ts",
 	);
 	assert.match(open, /if \(!canCreateWindowFor\(request\.show\)\) \{/);
-	assert.match(open, /parkedLaunches\.push\(\{ session: sessionId, request \}\)/);
-	assert.match(open, /reportParked\(sessionId, \{/);
+	// The park goes through `parkLaunch`, which is where the queue's bound lives and
+	// where the parked/evicted lines are written (review round 3, NIT-3).
+	assert.match(open, /parkLaunch\(sessionId, request\)/);
 	/*
 	 * AND THE QUEUE IS A QUEUE. The single slot this replaced (`queuedLaunch`)
 	 * overwrote silently, which is MAJOR-1 of round 2 — so the assertion is that the
@@ -380,8 +414,53 @@ test("a window created for a request is presented under THAT request's plan", ()
 	 * drain takes every entry rather than one.
 	 */
 	assert.doesNotMatch(flat, /queuedLaunch/);
-	assert.match(flat, /parkedLaunches\.splice\(0, parkedLaunches\.length\)/);
-	assert.match(flat, /for \(const queued of waiting\) \{/);
+	/*
+	 * AND AN ENTRY LEAVES THE QUEUE WHEN ITS SEND HAPPENS, NOT WHEN THE WINDOW IS
+	 * CREATED (review round 3, MINOR-1 / QA round 3, Q-1). The up-front splice this
+	 * asserts ABSENT emptied the queue into one `did-finish-load` callback, so a
+	 * window that died first took every claimed conversation with it: no line, no
+	 * re-park, nothing for the next window. The per-entry removal and the `closed`
+	 * report are what make that impossible now, and the live evidence for the race
+	 * itself is in the PR thread.
+	 */
+	assert.doesNotMatch(
+		flat,
+		/parkedLaunches\.splice\(0, parkedLaunches\.length\)/,
+		"the drain must not empty the queue before the deliveries happen",
+	);
+	assert.match(flat, /claimParkedFor\(\s*mainWindow,/);
+	assert.match(flat, /window\.once\( ?"closed", \(\) => \{/);
+	assert.match(flat, /for \(const queued of claimed\) \{/);
+	assert.match(flat, /parkedLaunches\.splice\( ?at, 1\)/);
+	assert.match(flat, /reportParkedDelivered\( ?queued\.session, ?\{/);
+	assert.match(
+		flat,
+		/reportParkedLeftWaiting\(\s*left\.map\(\(queued\) => queued\.session\),/,
+	);
+	/*
+	 * AND THE QUEUE IS BOUNDED, AND ITS BOUND IS AUDIBLE (review round 3, NIT-3).
+	 * An unbounded in-memory queue is a leak, and a park dropped silently is the same
+	 * class of silence the park line exists to remove; the quit path is where a
+	 * conversation that dies with the process is accounted for.
+	 */
+	assert.match(flat, /const PARKED_LAUNCH_LIMIT = \d+;/);
+	assert.match(flat, /if \(parkedLaunches\.length <= PARKED_LAUNCH_LIMIT\) return;/);
+	assert.match(flat, /reportParkedEvicted\(evicted\.session, \{/);
+	assert.match(
+		flat,
+		/reportParksAtQuit\(\s*parkedLaunches\.map\(\(parked\) => parked\.session\),\s*reportRaise,?\s*\)/,
+	);
+	/*
+	 * AND THE LOSING LAUNCH NAMES THE CONVERSATION IT HANDED OVER (UX round 3, U4):
+	 * the id is the only thing that ties its sentence to a conversation, and a
+	 * launch that named none says so rather than reading like an id the line forgot.
+	 */
+	assert.match(
+		flat,
+		/readSecondLaunchRequest\(\{ commandLine: process\.argv \}\)\.session/,
+	);
+	assert.match(flat, /the conversation it named \(\$\{session\}\) rides with it/);
+	assert.match(flat, /it named no conversation/);
 	/*
 	 * One present per window (both review streams measured two identical
 	 * `[window-raise]` lines for one window, the `ready-to-show` handler having
@@ -979,6 +1058,22 @@ test("the requester's identity is read for the log and cannot become a decision"
 	assert.deepEqual(
 		readWindowIntent(windowIntentPayload("headless", { cwd: "\n\n" })),
 		{ mode: "headless" },
+	);
+	/*
+	 * AND NOT ONLY THE ASCII CONTROLS (review round 3, NIT-2): the claim was "control
+	 * characters", the code flattened C0 and DEL, and C1 (where NEL `\u0085` — a line
+	 * break to a terminal that honours it — lives) plus the Unicode line and
+	 * paragraph separators passed through. Every class that can break a line is
+	 * flattened now, because a claim the code does not keep is worse than the gap it
+	 * describes.
+	 */
+	assert.deepEqual(
+		readWindowIntent(
+			windowIntentPayload("headless", {
+				cwd: "/tmp/c1\u0085nel\u2028sep\u2029par\u009fdone",
+			}),
+		),
+		{ mode: "headless", cwd: "/tmp/c1 nel sep par done" },
 	);
 	const long = "a".repeat(400);
 	const capped = readWindowIntent(windowIntentPayload("headless", { cwd: long }))?.cwd;

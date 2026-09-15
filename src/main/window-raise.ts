@@ -218,14 +218,85 @@ export const OPERATOR_SHOW: WindowShow = "focus";
  * review round 2, U5). `parked=<session>` is the conversation that is waiting.
  */
 export function reportParked(session: string, context: RaiseContext): void {
+	reportParkState([session], "parked", context);
+}
+
+/**
+ * The park lines other than the park itself, in one shape so a reader greps one
+ * token and finds every state a waiting conversation can be in.
+ *
+ * WHY EACH ONE EXISTS. A park is a promise to a losing launch that the conversation
+ * will be delivered once a window is open, and the log is the only place that
+ * promise can be checked, so every way it can end is a line: `delivered` (it
+ * arrived), `left+waiting` (the window that claimed it died first, and it is STILL
+ * queued rather than lost — review/QA round 3), `evicted` (the queue is bounded and
+ * this one was dropped to hold the bound), `dropped+app-quit` (it died with the
+ * process). Without the last two the queue's own limits would be invisible, which
+ * is the same silence the park line was added to remove (UX round 3, U2).
+ */
+function reportParkState(
+	sessions: readonly string[],
+	applied: string,
+	context: RaiseContext,
+): void {
 	context.report?.(
 		[
 			`trigger=${context.trigger}`,
 			`mode=${MODE_OF_SHOW.never}`,
 			"requested=never",
-			`parked=${session}`,
+			`parked=${sessions.join(",")}`,
 			...requesterFields(context),
-			"applied=parked",
+			`applied=${applied}`,
+		].join(" "),
+	);
+}
+
+/** A parked conversation actually reached a renderer: the loop closes (UX U2). */
+export function reportParkedDelivered(
+	session: string,
+	context: RaiseContext,
+): void {
+	reportParkState([session], "delivered", context);
+}
+
+/**
+ * A window that claimed parked conversations died before delivering them.
+ *
+ * This is a state, not a loss: the entries never left the queue, so the operator's
+ * next window opens them — the line says which ones are still waiting (review round
+ * 3, MINOR-1 / QA round 3, Q-1).
+ */
+export function reportParkedLeftWaiting(
+	sessions: readonly string[],
+	context: RaiseContext,
+): void {
+	reportParkState(sessions, "left+waiting", context);
+}
+
+/** The oldest waiting conversation was dropped to hold the queue's bound. */
+export function reportParkedEvicted(
+	session: string,
+	context: RaiseContext,
+): void {
+	reportParkState([session], "evicted", context);
+}
+
+/**
+ * Conversations still waiting when the process quit. No `RaiseContext` because
+ * nothing was requested here: this is the queue reporting its own end, which is
+ * otherwise a silence indistinguishable from a delivery.
+ */
+export function reportParksAtQuit(
+	sessions: readonly string[],
+	report: RaiseReport,
+): void {
+	report(
+		[
+			"trigger=app-quit",
+			`mode=${MODE_OF_SHOW.never}`,
+			"requested=never",
+			`parked=${sessions.join(",")}`,
+			"applied=dropped+quit",
 		].join(" "),
 	);
 }

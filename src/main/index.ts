@@ -87,6 +87,10 @@ import {
 	raiseWindow,
 	readSecondLaunchRequest,
 	reportParked,
+	reportParkedDelivered,
+	reportParkedEvicted,
+	reportParkedLeftWaiting,
+	reportParksAtQuit,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -691,15 +695,6 @@ const reportRaise: RaiseReport = (line) => {
 };
 
 /**
- * What the LOSING launch prints, and the whole of it (UX review U1).
- *
- * It created no window, so the `[window-mode]` line about a window would be a
- * line about something that does not exist. What a person or a rig can act on
- * instead is: this run did not start, its request went to the app holding the
- * profile, and what that app will do with it — this process's OWN resolved mode,
- * because that is the mode it just handed over.
- */
-/**
  * What the LOSING launch prints, and the whole of it (UX review U1, and U5/U7 in
  * round 2).
  *
@@ -714,13 +709,29 @@ const reportRaise: RaiseReport = (line) => {
  * request's conversation is delivered when a window is OPEN, not when the request
  * lands, which is what the mechanism can actually do (UX review round 2, U5).
  */
-function describeForwardedLaunch(profile: string): string {
+function describeForwardedLaunch(
+	profile: string,
+	session: string | null,
+): string {
+	/*
+	 * THE CONVERSATION IT HANDED OVER IS NAMED (UX review round 3, U4). The id is
+	 * the only thing that ties this sentence to a conversation, and without it a
+	 * person reading their terminal cannot tell which one the app is about to open
+	 * — or which one did not arrive. Named only when there is one: a launch that
+	 * named nothing says so rather than leaving the reader to guess (`named no
+	 * conversation`), because "no id" and "an id this line forgot" must not read
+	 * alike (UX round 3, U3).
+	 */
+	const handed =
+		session === null
+			? "it named no conversation"
+			: `the conversation it named (${session}) rides with it`;
 	const effect =
 		windowLaunch.show === "never"
-			? "it will deliver any conversation this launch names once a window is open, and it will not raise a window in the meantime"
+			? `${handed}: the app will open it once a window is open, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
 			: windowLaunch.show === "inactive"
-				? "it may order its window forward without activating the app"
-				: "it will raise its window";
+				? `${handed}; the app may order its window forward without activating it`
+				: `${handed}; the app will raise its window`;
 	return `[second-instance] this launch did not start a window of its own: the app already open is the instance answering (profile: ${profile}), and this launch's window mode (${windowLaunch.mode}) was handed to it — ${effect}. Quit that app to start a fresh instance. Exiting.`;
 }
 
@@ -900,6 +911,99 @@ function rendererArgumentFlags(
  * never blocks a window some request needs now.
  */
 const parkedLaunches: { session: string; request: RaiseRequest }[] = [];
+
+/**
+ * How many conversations may wait for a window at once.
+ *
+ * The queue is in-memory and unbounded otherwise, and an unbounded queue on a
+ * long-lived app is a leak the operator pays for in memory to hold requests that
+ * are, by now, stale (review round 3, NIT-3). The bound is generous against every
+ * real shape of the burst it protects against — a scratch profile's worth of
+ * agent launches arriving while the app has no window — and the OLDEST entry is
+ * the one dropped, because the newest request is the one a person is most likely
+ * still waiting on. Dropping is never silent: `reportParkedEvicted` names it, and
+ * the bound is stated in AGENTS.md and in the losing launch's own sentence.
+ */
+const PARKED_LAUNCH_LIMIT = 16;
+
+/**
+ * Park a conversation for the next window, holding the bound above.
+ *
+ * `request` is the raise plan of the launch that asked, so the eventual delivery
+ * raises as far as THAT launch allowed rather than as far as this process's plan
+ * does — the whole point of the queue.
+ */
+function parkLaunch(session: string, request: RaiseRequest): void {
+	parkedLaunches.push({ session, request });
+	reportParked(session, {
+		trigger: request.trigger,
+		requester: request.requester,
+		report: reportRaise,
+	});
+	if (parkedLaunches.length <= PARKED_LAUNCH_LIMIT) return;
+	const evicted = parkedLaunches.shift();
+	if (evicted) {
+		reportParkedEvicted(evicted.session, {
+			trigger: evicted.request.trigger,
+			requester: evicted.request.requester,
+			report: reportRaise,
+		});
+	}
+}
+
+/**
+ * Deliver the parked conversations to a window, ONE AT A TIME, taking each out of
+ * the queue only when its send has actually happened.
+ *
+ * WHY NOT A SPLICE UP FRONT (review round 3, MINOR-1 / QA round 3, Q-1). The
+ * previous form emptied the queue into a single `did-finish-load` callback, so a
+ * window that was closed — or whose renderer died — before that event took EVERY
+ * claimed conversation with it: no line, no re-park, nothing left to open, while
+ * each losing launch had been told the conversation is delivered once a window is
+ * open. The queue is the only place a conversation can wait for another window, so
+ * an entry leaves it when the send happens and not when the window is created. If
+ * the window dies first the entries are still in the queue and the log says so
+ * (`reportParkedLeftWaiting`), so the operator's next window opens them.
+ */
+function claimParkedFor(
+	window: BrowserWindow,
+	deliver: (session: string, request: RaiseRequest) => void,
+): number {
+	const claimed = parkedLaunches.slice(0, parkedLaunches.length);
+	if (claimed.length === 0) return 0;
+	window.webContents.once("did-finish-load", () => {
+		for (const queued of claimed) {
+			/*
+			 * Still ours to deliver? A window that died can have had its claim
+			 * superseded by another window that drained the same entry — delivering it
+			 * twice would open the conversation twice, and the `includes` check is what
+			 * makes "already delivered" and "still waiting" different states.
+			 */
+			const at = parkedLaunches.indexOf(queued);
+			if (at === -1) continue;
+			parkedLaunches.splice(at, 1);
+			reportParkedDelivered(queued.session, {
+				trigger: queued.request.trigger,
+				requester: queued.request.requester,
+				report: reportRaise,
+			});
+			deliver(queued.session, queued.request);
+		}
+	});
+	window.once("closed", () => {
+		const left = claimed.filter((queued) => parkedLaunches.includes(queued));
+		if (left.length === 0) return;
+		reportParkedLeftWaiting(
+			left.map((queued) => queued.session),
+			{
+				trigger: left[0].request.trigger,
+				requester: left[0].request.requester,
+				report: reportRaise,
+			},
+		);
+	});
+	return claimed.length;
+}
 
 /**
  * This app's viewer record and control endpoint, created inside `whenReady`.
@@ -1107,7 +1211,12 @@ if (!gotTheLock) {
 	 * that nothing will be raised on its behalf. Exit code 0 and a line that
 	 * disagrees with itself was the previous answer to three different outcomes.
 	 */
-	console.log(describeForwardedLaunch(app.getPath("userData")));
+	console.log(
+		describeForwardedLaunch(
+			app.getPath("userData"),
+			readSecondLaunchRequest({ commandLine: process.argv }).session,
+		),
+	);
 	app.quit();
 } else {
 	// This process owns the instance, so the line describes a window that will
@@ -1162,10 +1271,7 @@ if (!gotTheLock) {
 					// the queue holds EVERY parked request rather than the last one
 					// (review round 2, MAJOR-1).
 					queue: (session, request) => {
-						parkedLaunches.push({
-							session,
-							request: secondInstanceRequest(request),
-						});
+						parkLaunch(session, secondInstanceRequest(request));
 					},
 					report: reportRaise,
 				},
@@ -2025,14 +2131,12 @@ app
 			 * is lost" true for the second and later requests as well (review round 2,
 			 * MAJOR-1).
 			 */
-			const waiting = parkedLaunches.splice(0, parkedLaunches.length);
-			if (waiting.length > 0) {
-				mainWindow.webContents.once("did-finish-load", () => {
-					for (const queued of waiting) {
-						openSessionInWindow(queued.session, queued.request);
-					}
-				});
-			}
+			// The delivery is `openSessionInWindow`, which lives inside `whenReady`:
+			// handed in rather than reached for, so the claim's rules stay testable and
+			// the queue stays where the window lifecycle can see it.
+			claimParkedFor(mainWindow, (session, request) =>
+				openSessionInWindow(session, request),
+			);
 
 			// Add before-input-event listener for zoom control
 			if (mainWindow) {
@@ -2250,20 +2354,12 @@ app
 			// invisible is left holding a screen nobody can reach. See
 			// `canCreateWindowFor` for why that is the worse of the two failures.
 			if (!canCreateWindowFor(request.show)) {
-				if (sessionId !== null) {
-					parkedLaunches.push({ session: sessionId, request });
-					/*
-					 * SAID OUT LOUD, because it is the only account of a request that is
-					 * waiting: the winner creates no window and raises nothing, so without this
-					 * line "what happened to what I asked for" has no answer in the log even
-					 * though the losing launch was told it would be delivered (UX round 2, U5).
-					 */
-					reportParked(sessionId, {
-						trigger: request.trigger,
-						requester: request.requester,
-						report: reportRaise,
-					});
-				}
+				// SAID OUT LOUD, because it is the only account of a request that is
+				// waiting: the winner creates no window and raises nothing, so without this
+				// line "what happened to what I asked for" has no answer in the log even
+				// though the losing launch was told it would be delivered (UX round 2, U5).
+				// `parkLaunch` is what holds the queue's bound and reports an eviction.
+				if (sessionId !== null) parkLaunch(sessionId, request);
 				return;
 			}
 			// Otherwise the request goes to the CREATE branch too: a window this process
@@ -2407,6 +2503,19 @@ const QUIT_CLEANUP_FAILSAFE_MS =
 	QUIT_FAILSAFE_MARGIN_MS;
 let backendQuitPending = false;
 app.on("will-quit", (event) => {
+	/*
+	 * A WAITING CONVERSATION DIES WITH THE PROCESS, AND SAYS SO (review round 3,
+	 * NIT-3). The queue is in-memory, so a park still waiting here is gone for good
+	 * — and its losing launch was told it would be delivered once a window is open.
+	 * The line is the only place that promise can be seen to end, and it is what
+	 * makes a park that never arrived distinguishable from one the log lost.
+	 */
+	if (parkedLaunches.length > 0) {
+		reportParksAtQuit(
+			parkedLaunches.map((parked) => parked.session),
+			reportRaise,
+		);
+	}
 	/*
 	 * The viewer record and endpoint are this branch's, and they go BEFORE the
 	 * owned-cleanup guard: that guard returns early when there is nothing owned to
