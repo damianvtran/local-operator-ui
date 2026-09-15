@@ -144,30 +144,41 @@ const WINDOW_BEHAVIOUR: Record<WindowMode, WindowBehaviour> = {
 };
 
 /**
- * Read `--name=value` or `--name value` from an argument vector, the LAST
- * occurrence winning.
+ * Read `--name=value` or `--name value` from an argument vector, the last
+ * VALUED occurrence winning.
  *
  * Last-wins is the rule the rest of this app's flags state
  * (`shared/open-session.ts`), and here it is what makes an appended argument an
  * override: `pnpm app:headless` names `--window-mode=headless` on its own command
- * line, and `pnpm app:headless -- --window-mode=inactive` APPENDS to that line — a
+ * line, and `pnpm app:headless --window-mode=inactive` APPENDS to that line — a
  * launcher that appends rather than replaces must not be overruled by the default
  * it was appending to, which is a silent downgrade of an explicit request.
  *
- * A following `--flag` is a missing value, never the value itself.
+ * A VALUELESS OCCURRENCE NEVER CLEARS A VALUED ONE (review round 1). Under plain
+ * last-wins, `--window-mode=headless --window-mode` resolved to `normal` — the
+ * same silent downgrade, from an argument nobody writes on purpose and which
+ * could not be told apart from a typo. So an occurrence with no value (the flag
+ * at the end of argv, or followed by another flag) is IGNORED, `valueless`
+ * reports it so the caller can still say so out loud, and the value kept is the
+ * last one that actually had one.
  */
 function readFlag(
 	argv: readonly string[],
 	name: string,
-): { found: boolean; value: string | undefined } {
+): { found: boolean; value: string | undefined; valueless: boolean } {
 	let found = false;
+	let valueless = false;
 	let value: string | undefined;
 	for (let index = 0; index < argv.length; index += 1) {
 		const argument = argv[index];
 		if (argument === name) {
 			const next = argv[index + 1];
 			found = true;
-			value = next?.startsWith("--") ? undefined : next;
+			if (next === undefined || next.startsWith("--")) {
+				valueless = true;
+				continue;
+			}
+			value = next;
 			continue;
 		}
 		if (argument.startsWith(`${name}=`)) {
@@ -175,7 +186,7 @@ function readFlag(
 			value = argument.slice(name.length + 1);
 		}
 	}
-	return { found, value };
+	return { found, value, valueless };
 }
 
 /**
@@ -292,6 +303,17 @@ export function resolveWindowLaunchPlan(
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
 		);
+	} else if (modeFlag.valueless) {
+		/*
+		 * A malformed occurrence beside a usable one: report it and keep the value.
+		 * Plain last-wins would have let the empty occurrence CLEAR an explicit
+		 * `--window-mode=headless`, which is the same silent downgrade this reader
+		 * exists to prevent (review round 1), and nobody writes this argv on
+		 * purpose, so the line is how it is told apart from a typo.
+		 */
+		problems.push(
+			`${WINDOW_MODE_FLAG} was given with no value; keeping "${modeRaw}"`,
+		);
 	} else if (modeValue !== undefined && modeRaw === undefined) {
 		/*
 		 * Empty and blank name nothing, so the report says exactly that:
@@ -318,6 +340,10 @@ export function resolveWindowLaunchPlan(
 	const parsedSize = parseWindowSize(sizeRaw);
 	if (sizeFlag.found && sizeFlag.value === undefined) {
 		problems.push(`${WINDOW_SIZE_FLAG} needs a value: <width>x<height>`);
+	} else if (sizeFlag.valueless) {
+		problems.push(
+			`${WINDOW_SIZE_FLAG} was given with no value; keeping "${String(sizeRaw)}"`,
+		);
 	} else if (parsedSize === null && sizeRaw !== undefined) {
 		problems.push(
 			`${sizeFlag.found ? WINDOW_SIZE_FLAG : WINDOW_SIZE_ENV}="${sizeRaw}" is not <width>x<height>; using ${DEFAULT_WINDOW_WIDTH}x${DEFAULT_WINDOW_HEIGHT}`,
@@ -383,22 +409,66 @@ export const WINDOW_INTENT_KEY = "localOperatorWindowMode";
  * payload cannot smuggle in a show value this build does not model, and two
  * builds that disagree about what `inactive` means cannot disagree silently
  * about what it does.
+ *
+ * `pid` and `cwd` ride along for the LOG LINE only, and are never read for a
+ * decision: they are what the losing process says about itself, which is the
+ * difference between "a second launch did it" and "pid 9182 in
+ * /Users/someone/project did it" on a machine where several agents and scripts
+ * launch this app at once (UX review U2). A payload that carries them is still
+ * just data — an unrecognised mode in it is ignored, as ever.
  */
-export function windowIntentPayload(mode: WindowMode): Record<string, string> {
-	return { [WINDOW_INTENT_KEY]: mode };
+export function windowIntentPayload(
+	mode: WindowMode,
+	requester: { pid?: number; cwd?: string } = {},
+): Record<string, unknown> {
+	return {
+		[WINDOW_INTENT_KEY]: {
+			mode,
+			...(requester.pid === undefined ? {} : { pid: requester.pid }),
+			...(requester.cwd === undefined ? {} : { cwd: requester.cwd }),
+		},
+	};
+}
+
+/** The intent a payload carried, or null when it carried none this build reads. */
+export interface WindowIntent {
+	mode: WindowMode;
+	pid?: number;
+	cwd?: string;
 }
 
 /**
- * The mode a second launch carried, or null when it carried none this build
+ * The intent a second launch carried, or null when it carried none this build
  * understands. Null is the ordinary case rather than an error: an older release
  * on either side of the boundary attaches nothing, and a value that is not one
  * of `WINDOW_MODES` is treated as absent instead of being guessed at.
+ *
+ * TWO SHAPES ARE READ. A bare mode string is what the first cut of this channel
+ * sent; an object is what it sends now that the raise line names its requester.
+ * A build that predates the object form still gets its mode honoured rather than
+ * silently downgraded to the undeclared behaviour, which is the direction that
+ * costs the operator a window.
  */
-export function readWindowIntent(additionalData: unknown): WindowMode | null {
+export function readWindowIntent(additionalData: unknown): WindowIntent | null {
 	if (typeof additionalData !== "object" || additionalData === null)
 		return null;
 	const value = (additionalData as Record<string, unknown>)[WINDOW_INTENT_KEY];
-	return typeof value === "string" ? parseWindowMode(value) : null;
+	if (typeof value === "string") {
+		const mode = parseWindowMode(value);
+		return mode === null ? null : { mode };
+	}
+	if (typeof value !== "object" || value === null) return null;
+	const fields = value as Record<string, unknown>;
+	const mode =
+		typeof fields.mode === "string" ? parseWindowMode(fields.mode) : null;
+	if (mode === null) return null;
+	return {
+		mode,
+		...(typeof fields.pid === "number" ? { pid: fields.pid } : {}),
+		...(typeof fields.cwd === "string" && fields.cwd !== ""
+			? { cwd: fields.cwd }
+			: {}),
+	};
 }
 
 /**
@@ -441,7 +511,7 @@ export function resolveSecondLaunchShow(input: {
 	additionalData?: unknown;
 }): WindowShow {
 	const carried = readWindowIntent(input.additionalData);
-	if (carried !== null) return WINDOW_BEHAVIOUR[carried].show;
+	if (carried !== null) return WINDOW_BEHAVIOUR[carried.mode].show;
 	return resolveWindowLaunchPlan({ argv: input.argv ?? [] }).show;
 }
 

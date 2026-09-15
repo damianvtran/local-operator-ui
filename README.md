@@ -213,6 +213,30 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 - Ensure you're using a compatible version of Node.js
 - Try restarting the development server
 
+#### The window came to the front on its own, or a run never appeared
+
+Every time the app brings a window to the front it writes one line to its own
+backend log (`~/Library/Application Support/Local Operator/logs/backend-service.log`
+on macOS; the `LOCAL_OPERATOR_LOG_DIR` environment variable moves it):
+
+```
+[window-raise] trigger=second-instance mode=normal requested=focus pid=9182 cwd=/Users/you/project applied=restore+show+focus
+```
+
+`trigger` names what asked: `initial-present` (the app starting up),
+`second-instance` (a second launch sharing this profile), `banner-click`,
+`viewer-focus` or `viewer-resume`. `pid` and `cwd`, when they are there, name the
+process that asked — that is the one to stop if something keeps doing it. A run
+that raises nothing writes nothing, so an app that never came forward has no line
+at all. In the line above, `mode` is the window mode the raise ran under and
+`applied` is what it actually did.
+
+A second launch only brings the window as far as IT asked: a `headless` run never
+raises it (it can still load the conversation it names), an `inactive` one orders
+the window without activating the app and without pulling it back out of the
+Dock, and a launch that declares nothing — you double-clicking the app while it is
+already running — still comes to the front.
+
 ### Getting Help
 
 If you encounter issues not covered here, please:
