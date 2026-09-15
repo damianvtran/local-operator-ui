@@ -7,10 +7,18 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import type { SlashCommandInvocation } from "../components/slash-submit";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
-import { costTooltip, sessionCost } from "./session-cost";
+import {
+	type SessionCostInput,
+	costTooltip,
+	sessionCost,
+} from "./session-cost";
 import {
 	DURATION_EXPLANATION,
 	DURATION_LABEL_EXPLANATION,
@@ -141,6 +149,37 @@ export type SessionStatusStripProps = {
 	 * would be claims (R19).
 	 */
 	draft?: boolean;
+	/**
+	 * Where a draft's resolution IS, while it has no reading of its own.
+	 *
+	 * Two states the pane used to render as a third: `pending` while
+	 * `sessions.preview` is in flight and `failed` once it has errored, neither of
+	 * which is "the backend resolved a spec that names no model". Handed in by the
+	 * pane from its own query, so the strip never infers a resolution state from
+	 * an absent value — the same rule `draft` itself is told under (UX U3).
+	 *
+	 * `failed` carries the retry, because the query is `retry: false`: nothing else
+	 * on the pane will ever ask again, and a resolution that failed silently stayed
+	 * failed until the user left and re-entered the pane.
+	 */
+	draftResolution?: DraftResolution;
+	/**
+	 * Open the picker for a reading on a DRAFT pane, whose pick becomes the first
+	 * turn's model or effort instead of a session's.
+	 *
+	 * A separate prop from `onCommand`, and only two destinations ever arrive
+	 * here, because a draft is not a session with a dispatcher: `/model` and
+	 * `/effort` are owner commands that need a session to address, and the context
+	 * breakdown has no pre-session answer at all. Handing this callback to the
+	 * whole cluster would make the context reading offer a breakdown of a window
+	 * that has not been measured (R19/R21).
+	 *
+	 * Present only when the backend advertises the draft-selection capability AND
+	 * has its command surface on; absent, every reading keeps the inert form and
+	 * the fact-plus-reason copy it has today (R20). Never both this and a
+	 * `frontend` that came off the canonical stream: a draft pane has no session.
+	 */
+	onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
 	className?: string;
 };
 
@@ -193,6 +232,22 @@ export const READING_BUTTON = cn(
 
 /** The inert form, for a reading with nothing to open. */
 const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
+
+/**
+ * A snapshot that has measured nothing, for a pane that has no snapshot yet.
+ *
+ * `sessionCost` reads only these five fields, and this is what its own "nothing
+ * has been spent" answer is made of - the same one a resolved draft gets from
+ * the preview's zeros, so a pending or failed pane's spend segment is absent
+ * for the same reason rather than by a second rule.
+ */
+const NO_SPEND: SessionCostInput = {
+	cumulative_parent_cost: null,
+	child_costs: null,
+	subagent_cost: null,
+	subagent_cost_knowledge: null,
+	cost_knowledge: "unknown",
+};
 
 /** The duration reading ticks at 1Hz because it shows whole seconds. */
 const CLOCK_MS = 1000;
@@ -401,18 +456,43 @@ const COMMANDS_OFF =
  * its `aria-label` — chosen from what the reading can DO, never from its value.
  *
  * D3: the line was the constant "Click to choose a different model", so a chip
- * with nothing to click still advertised a control. There are two ways to have
- * nothing to click and they need different sentences: a draft, where the model
- * WILL be used and simply cannot be chosen yet, and a backend with commands
- * off. `dispatch` is the affordance — present only when the chip can open.
+ * with nothing to click still advertised a control. There are three ways to have
+ * nothing to click and they need different sentences: a draft on a backend that
+ * cannot select for it, where the model WILL be used and simply cannot be chosen
+ * yet; a draft whose chip CAN open, where the sentence is the control's plus the
+ * draft's scope; and a backend with commands off. `openable` is the affordance,
+ * never the value.
+ *
+ * UX U2 added the draft's own scope to the OPENABLE sentence rather than to the
+ * inert one: before it, the scope was stated in exactly one place - the dialog's
+ * subtitle - so a chip stopped saying what it would change the instant it could
+ * be clicked, and "did I just change a global default?" was answerable only by
+ * remembering a dialog. Design round 4 (D10) then corrected WHAT that clause
+ * says: the pick rides `sessions.create` and the backend pins the session to it,
+ * so the scope is the conversation this pane becomes, not one message of it -
+ * the copy may only assert a scope the system implements.
  */
-function modelReason(
-	draft: boolean,
-	dispatch?: (invocation: SlashCommandInvocation) => void,
-): string {
-	if (dispatch) return "Click to choose a different model";
+function modelReason(draft: boolean, openable: boolean): string {
+	if (openable)
+		return draft
+			? "Click to choose a different model. It applies to this conversation."
+			: "Click to choose a different model";
 	if (draft)
-		return "The first message will use it. Change it once the conversation starts.";
+		/*
+		 * The inert branch, corrected to the scope the system implements (review
+		 * round 5, D17).
+		 *
+		 * This is the one sentence on the chip that survived design round 4's D10
+		 * rewrite, and it was the residue of the frame D10 removed: with the
+		 * control unavailable, the reader is told the model is a fact about the
+		 * first message, while the SAME chip's openable sentence says the pick
+		 * rides `sessions.create` and the back end pins the conversation to it.
+		 * One chip stating two scopes depending on whether it can be clicked is
+		 * the inconsistency, not the wording. It is also true as written - the
+		 * first message does use the model - which is why only the subject of the
+		 * sentence moves.
+		 */
+		return "This conversation will use it. Change it once the conversation starts.";
 	return COMMANDS_OFF;
 }
 
@@ -426,18 +506,27 @@ function modelReason(
  * That test comes FIRST, before the draft's, because "Set once the conversation
  * starts" is itself a claim about a choice: on a spec with an empty (or
  * unreported) ladder the first turn will not be able to set one either, so the
- * sentence would be the D3 lie in a draft's clothes. Found by looking at the
- * draft frames: the no-ladder box was labelled "the effort reading is ABSENT"
- * and showed the reading with that sentence under it.
+ * sentence would be the D3 lie in a draft's clothes.
+ *
+ * Once the chip CAN open, the sentence is the control's ("Change it.") whatever
+ * the pane is — the control's nature is what the copy describes, and an openable
+ * chip on a draft changes exactly the same fact the session's does, one step
+ * earlier in the conversation. On a draft it carries the scope clause for the
+ * reason `modelReason` gives, and that reason is the CONVERSATION, not the first
+ * message: the pick rides `sessions.create` and the back end pins the session to
+ * it. This comment said "the FIRST MESSAGE only" one line above the sentence
+ * that says the opposite (review round 5, N1; the same stale claim design round
+ * 4 corrected in `modelReason`'s copy of it).
  */
 function effortReason(
 	draft: boolean,
 	adjustable: boolean,
-	dispatch?: (invocation: SlashCommandInvocation) => void,
+	openable: boolean,
 ): string | null {
 	if (!adjustable) return null;
+	if (openable)
+		return draft ? "Change it. It applies to this conversation." : "Change it.";
 	if (draft) return DRAFT_EFFORT_LINE;
-	if (dispatch) return "Change it.";
 	return COMMANDS_OFF;
 }
 
@@ -473,9 +562,18 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	effortEntities,
 	pendingModel = null,
 	draft = false,
+	onOpenDraftPicker,
+	draftResolution,
 	className,
 }) => {
-	if (!frontend) return null;
+	/*
+	 * A draft with no snapshot is a pane whose resolution has not answered yet,
+	 * which is a STATE rather than nothing to say (UX U3): it renders the pending
+	 * treatment, or the failure with its retry. Every other pane still renders
+	 * nothing without a snapshot, which is honest about a session that has not
+	 * reported.
+	 */
+	if (!frontend && !(draft && draftResolution)) return null;
 
 	/*
 	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
@@ -484,8 +582,16 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * refuses every picker destination without one — and a backend with the
 	 * command surface off supplies none at all. Both render as labels; the copy
 	 * says which of the two it is, because the remedies differ.
+	 *
+	 * A draft pane's opener is a DIFFERENT one, and deliberately not a dispatcher:
+	 * it addresses no session, it opens the same two pickers for a pane that has
+	 * none, and only the two readings with a pre-session answer get it. The
+	 * context breakdown is not one of them — nothing has been measured, so there
+	 * is nothing to break down (R19/R21) — which is why this is a destination-taking
+	 * callback rather than a dispatcher handed to the whole cluster.
 	 */
-	const dispatch = draft ? undefined : onCommand;
+	const sessionDispatch = draft ? undefined : onCommand;
+	const draftOpen = draft ? onOpenDraftPicker : undefined;
 
 	// The EFFECTIVE spec is what is answering; see `session-model.ts` for why
 	// this differs from the pickers, which read the selected one on purpose.
@@ -508,12 +614,19 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	const model = readings.identity;
 	const identity = modelIdentity(model);
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
+	/*
+	 * The four readings that come off the snapshot, asked for a pane that has no
+	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
+	 * preview's own zeros answer, and `contextReading` of absent tokens is its
+	 * `no-reading` status — so a pending or failed draft shows the empty context
+	 * ring it already showed once resolved, rather than a number nobody measured.
+	 */
 	const reading = contextReading({
-		context_tokens: frontend.context_tokens,
-		context_window: frontend.context_window,
-		context_is_estimate: frontend.context_is_estimate,
+		context_tokens: frontend?.context_tokens,
+		context_window: frontend?.context_window,
+		context_is_estimate: frontend?.context_is_estimate,
 	});
-	const cost = sessionCost(frontend, frontend.last_usage);
+	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage);
 	/*
 	 * Active time: banked seconds plus the open turn, or `null` for a session
 	 * that has done nothing. A draft needs no branch here — its
@@ -522,17 +635,61 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * rather than a `0s` that claims a turn completed in under a second (D21).
 	 */
 	const duration = durationReading(
-		frontend.active_duration_s,
-		frontend.activity_started_at,
+		frontend?.active_duration_s ?? 0,
+		frontend?.activity_started_at ?? null,
 	);
 	const activeSeconds = useActiveSeconds(
 		duration?.banked ?? 0,
 		duration?.startedAt ?? null,
 	);
+	/*
+	 * Which readings can open, and through which opener.
+	 *
+	 * Model: openable wherever this pane has an opener at all.
+	 *
+	 * Effort: openable only where a picker has rungs to show. A SESSION's picker
+	 * resolves a cold spec by asking the owner, so `adjustable` is enough there;
+	 * a DRAFT's is a pure read of the preview it was opened with, so a rung list
+	 * this wire does not carry cannot be offered — the dialog would come up
+	 * empty. `knownLadder` is exactly "this dump carried the rungs", which is the
+	 * one thing that makes the draft's offer honest (R5 of the wire contract).
+	 */
+	const openModel = sessionDispatch
+		? () => sessionDispatch({ name: "model", args: "" })
+		: draftOpen
+			? () => draftOpen("session.model")
+			: undefined;
+	const openEffort =
+		effort?.adjustable && sessionDispatch
+			? () => sessionDispatch({ name: "effort", args: "" })
+			: effort?.adjustable && effort.knownLadder && draftOpen
+				? () => draftOpen("session.effort")
+				: undefined;
 
+	/*
+	 * A pane that has resolved NO model, on a backend that can choose one for it.
+	 *
+	 * This is the state the feature exists for. Before it, this pane rendered
+	 * nothing at all (`return null` below): the user could not see a model because
+	 * there was none, and had no way to give the first message one — the operator's
+	 * own report, in its empty form. `identity` is null here for a pane whose
+	 * resolved spec names no model at all (`modelIdentity` answers null for it), so
+	 * the reading is the actionable register's version of "nothing resolved yet"
+	 * rather than a value with a reason.
+	 */
+	const chooseModel = !identity && Boolean(draftOpen) && !draftResolution;
 	// Nothing known at all: a session that has connected but reported no model,
-	// no reading and no spend. An empty row is better than a row of dashes.
-	if (!identity && !effort && reading.status === "no-reading" && !cost.text)
+	// no reading and no spend. An empty row is better than a row of dashes —
+	// unless this pane can be GIVEN the model it is missing, or is still asking
+	// for it, which is a state worth a reading of its own.
+	if (
+		!identity &&
+		!effort &&
+		reading.status === "no-reading" &&
+		!cost.text &&
+		!chooseModel &&
+		!draftResolution
+	)
 		return null;
 
 	return (
@@ -600,7 +757,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					label={
 						pending
 							? `Model: ${identity.selector}. Switching; waiting for the session to confirm it.`
-							: `Model: ${identity.selector}. ${modelReason(draft, dispatch)}`
+							: `Model: ${identity.selector}. ${modelReason(draft, Boolean(openModel))}`
 					}
 					tooltip={
 						<TooltipLines
@@ -610,13 +767,11 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 											identity.selector,
 											"Switching the model; waiting for the session to confirm it",
 										]
-									: [identity.selector, modelReason(draft, dispatch)]
+									: [identity.selector, modelReason(draft, Boolean(openModel))]
 							}
 						/>
 					}
-					onOpen={
-						dispatch ? () => dispatch({ name: "model", args: "" }) : undefined
-					}
+					onOpen={openModel}
 					// The one item with unbounded length, so it is the one that
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
@@ -653,21 +808,114 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				</Reading>
 			)}
 			{/*
-			 * R19: a draft shows the effort reading only where the spec carries a
-			 * ladder.
+			 * `chooseModel` is the RESOLVED-no-model state, and only that (UX U3).
 			 *
-			 * The preview resolves without the account-metadata step a cold open runs
+			 * It used to be `!identity && draftOpen`, which is true in three different
+			 * situations the render treated as one: the resolution is still in flight,
+			 * it failed, and the backend genuinely resolved a spec that names no model.
+			 * Only the third is a question for the user, and the first two are answered
+			 * below instead — a chip claiming "No model resolved yet" is a resolution
+			 * that has not happened, and the pane's own spinner is the app's idiom for
+			 * "not yet known".
+			 */}
+			{chooseModel && (
+				<Reading
+					label="Model: none resolved yet. Choose the model this conversation will run on."
+					tooltip={
+						<TooltipLines
+							lines={[
+								"No model resolved yet",
+								"Choose the model this conversation will run on",
+							]}
+						/>
+					}
+					onOpen={openModel}
+					className="shrink-0"
+				>
+					<span className="truncate">Choose a model</span>
+				</Reading>
+			)}
+			{/*
+			 * The resolution ITSELF, for the window in which it has no answer (UX U3).
+			 *
+			 * In flight, the reading is dim with the same spinner the session's
+			 * switching chip uses and cannot be opened: there is nothing to choose
+			 * against yet, and the pickers read the resolution to build their lists.
+			 * Failed, it becomes a control, because nothing else on the pane will ask
+			 * again — the query is `retry: false` — and a resolution that failed used to
+			 * leave the whole cluster absent with no way back. It sits where the model
+			 * reading sits, like the empty state above, so a receipt lands in place
+			 * rather than moving the cluster (R23).
+			 */}
+			{draftResolution && !identity && (
+				<Reading
+					label={
+						draftResolution.status === "failed"
+							? "Model: this conversation's model was not resolved. Retry."
+							: "Model: resolving the model this conversation will run on."
+					}
+					tooltip={
+						<TooltipLines
+							lines={
+								draftResolution.status === "failed"
+									? [
+											"This conversation's model was not resolved",
+											"No model is set for it yet",
+											"Retry",
+										]
+									: [
+											"Resolving",
+											"Working out which model this conversation will run on",
+										]
+							}
+						/>
+					}
+					onOpen={
+						draftResolution.status === "failed"
+							? draftResolution.retry
+							: undefined
+					}
+					className={cn(
+						"shrink-0",
+						draftResolution.status === "pending" && "text-ink-dim",
+					)}
+				>
+					<span className="truncate">
+						{draftResolution.status === "failed"
+							? "Retry"
+							: "Resolving the model"}
+					</span>
+					{draftResolution.status === "pending" && (
+						<Spinner
+							size="xs"
+							label="Resolving the model this conversation will run on"
+						/>
+					)}
+				</Reading>
+			)}
+			{/*
+			 * R19: a draft shows the effort reading only where the spec carries a
+			 * KNOWN level.
+			 *
+			 * The rule is on the SHAPE, not on what the preview happens to answer
+			 * today, and this comment used to state the opposite. It argued that the
+			 * preview resolves without the account-metadata step a cold open runs
 			 * (`desktop_sessions.py`, the `sessions.preview` route), so its spec
-			 * arrives with an EMPTY ladder; `effortState` then takes its
-			 * `metadataAbsent` branch and labels the chip `unknown` - a value-shaped
-			 * word that branch scopes to a session with a live owner, whose escape
-			 * hatch (`/effort <level>`) a session-less draft does not have. The first
-			 * turn then publishes the resolved ladder and the reading becomes `auto`,
-			 * moving the model chip and the ring beside it 21.6px as the turn starts
-			 * (UX round 1, U1). Absence is this strip's own honest rule for "no level
-			 * to show here", and it is why the check is on the DRAFT flag rather than
-			 * on the label: the same empty ladder on a live session is a fact about
-			 * the model and stays.
+			 * always arrives with an EMPTY ladder. That premise is retired: the
+			 * installed 0.54.48 preview answers WITH the ladder and the display name
+			 * (measured against the release itself, review round 5, N2), so a draft
+			 * that meets an unresolved spec is meeting a damaged or older answer
+			 * rather than the normal one - and the rule stays for that case, because
+			 * the consequence is unchanged: such a spec takes `effortState`'s
+			 * `metadataAbsent` branch and the chip labels it `unknown`, a value-shaped
+			 * word for a level nobody has. That branch is scoped to a session with a
+			 * live owner, whose escape hatch (`/effort <level>`) a session-less draft
+			 * does not have. The first turn then publishes the resolved ladder and the
+			 * reading becomes `auto`, moving the model chip and the ring beside it
+			 * 21.6px as the turn starts (UX round 1, U1). Absence is this strip's own
+			 * honest rule for "no level to show here", and it is why the check is on
+			 * the DRAFT flag rather than on the label: the same empty ladder on a live
+			 * session is a fact about the model and stays.
 			 *
 			 * `levelKnown`, not `adjustable` and not `knownLadder`. `adjustable` is
 			 * wrong because the `unknown` branch is deliberately adjustable (a live
@@ -683,7 +931,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={[
 						`Reasoning effort: ${effort.label}.`,
-						effortReason(draft, effort.adjustable, dispatch),
+						effortReason(draft, effort.adjustable, Boolean(openEffort)),
 					]
 						.filter(Boolean)
 						.join(" ")}
@@ -691,7 +939,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						<TooltipLines
 							lines={[
 								effort.label,
-								...(draft && effort.adjustable
+								...(draft && effort.adjustable && !openEffort
 									? [DRAFT_EFFORT_LINE]
 									: [effort.detail]),
 							]}
@@ -701,11 +949,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// Opening `/effort` there reaches a picker whose own empty text is
 					// "Effort is not adjustable on this model" -- true, but a worse way
 					// to learn it than never offering the control.
-					onOpen={
-						dispatch && effort.adjustable
-							? () => dispatch({ name: "effort", args: "" })
-							: undefined
-					}
+					onOpen={openEffort}
 				>
 					{/*
 					 * The level is a machine-reported value, not prose, so it is
@@ -719,10 +963,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					draft
 						? DRAFT_CONTEXT_LABEL
 						: reading.status === "no-reading"
-							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(dispatch))}`
+							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch))}`
 							: `Context: ${reading.spelling}${
 									reading.status === "estimate" ? ", estimated" : ""
-								}. ${contextBreakdownLine(reading.status, Boolean(dispatch))}`
+								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch))}`
 				}
 				tooltip={
 					<TooltipLines
@@ -742,13 +986,18 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 												? model.max_context_window
 												: null,
 										),
-										contextBreakdownLine(reading.status, Boolean(dispatch)),
+										contextBreakdownLine(
+											reading.status,
+											Boolean(sessionDispatch),
+										),
 									]
 						}
 					/>
 				}
 				onOpen={
-					dispatch ? () => dispatch({ name: "context", args: "" }) : undefined
+					sessionDispatch
+						? () => sessionDispatch({ name: "context", args: "" })
+						: undefined
 				}
 			>
 				<ContextWheel reading={reading} />

@@ -484,7 +484,31 @@ export const STORIES = [
 	   populated session can be compared at one width. The tooltip story needs
 	   room for the panel above the trigger. */
 	["chat-session-status-strip--draft", 1000, 400],
+	/*
+	 * The SAME draft on a backend that can select for it. Captured beside `--draft`
+	 * so the pair is a like-for-like: the affordance is the only difference, and the
+	 * strip measures 92px in both, at every width this set declares, with only the
+	 * chips' ink differing (review round 1, R5). The pane is 1000 wide so the wide
+	 * reading and the 220px floor both fit in one board, at the same viewport the
+	 * inert draft uses. The boards differ in number by design: each story carries its
+	 * own empty state.
+	 */
+	["chat-session-status-strip--draft-actionable", 1000, 400],
 	["chat-session-status-strip--draft-tooltip", 1000, 520],
+	/*
+	 * The same tooltip and the same chip one capability apart, plus the hover the
+	 * control's affordance actually rests on: `--draft-actionable-tooltip` is the
+	 * accessible name of the chip that DOES open, and
+	 * `--draft-actionable-hovered` is that chip under the pointer, which the
+	 * harness performs and asserts (design round 1, D1).
+	 */
+	["chat-session-status-strip--draft-actionable-tooltip", 1000, 520],
+	[
+		"chat-session-status-strip--draft-actionable-hovered",
+		1000,
+		400,
+		{ hover: 'button[aria-label^="Model:"]' },
+	],
 	["chat-session-status-strip--commands-off", 1000, 300],
 	/* The composer's status row: the goal and the plan, above the box.
 	 *
@@ -1339,7 +1363,7 @@ const main = async () => {
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
-	for (const [story, width, height, options] of stories) {
+	for (const [story, width, height, options = {}] of stories) {
 		for (const theme of themes) {
 			/*
 			 * `prefers-reduced-motion` is a VIEWPORT state rather than a story
