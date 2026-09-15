@@ -236,8 +236,10 @@ way a headless run can end goes through `armHeadlessExitDeadline`.
   session left ~30 of them in the operator's Dock, which is how the defect below
   was noticed. `inactive` keeps its tile and icon and is the path back for a run
   somebody wants to find and click into; `headless` is for runs nobody is
-  watching. (`LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE=1` extends a run's LIFE, not
-  its visibility — it does not bring the tile back.)
+  watching. (That path back is a MODE, so it also drops the lifetime behaviour:
+  only `headless` is launcher-bound, and an `inactive` run is ended by a person
+  or by its own window, not by the watch. `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE=1`
+  extends a run's LIFE and not its visibility — it does not bring the tile back.)
 - **It leaves when its launcher does.** The pid that launched the app (its
   `ppid` at startup) is polled every 2 s, and the app quits when that process is
   gone — after two consecutive misses, because a single one is a race. Being
@@ -275,7 +277,8 @@ What this does NOT cover, stated because it is easy to over-read:
   guessed at. Note what does and does not produce that: neither `detached: true`
   nor `setsid(2)` reparents a child — only the parent's exit does — so a
   `detached: true` spawn still has a real launcher pid and **is** watched. What
-  `ppid 1` at startup means is that the run was orphaned before it could look.
+  `ppid 1` at startup means is that the run was orphaned before it could look,
+  and such a run **must reap its own instances** — nothing here can end it.
   `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE=1` is the explicit way to say "this run
   means to outlive its launcher".
 - The escalation's emergency stop kills a **registered** owned backend child. A

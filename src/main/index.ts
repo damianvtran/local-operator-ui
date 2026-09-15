@@ -168,11 +168,20 @@ function armHeadlessExitDeadline(why: string): void {
  * `pnpm dev:headless`) while a post-mortem still gets the observation.
  */
 function endHeadlessRun(why: string, detail?: string): void {
-	logger.info(
-		`[window-mode] ${why}; quitting${detail ? ` (${detail})` : ""}`,
-		LogFileType.BACKEND,
-	);
+	logger.info(`[window-mode] ${why}; quitting`, LogFileType.BACKEND);
 	console.log(`[window-mode] ${why}; quitting`);
+	/*
+	 * The mechanism on its OWN line, and only in the log.
+	 *
+	 * Round 2 (D7): the logger mirrors to stdout, so folding the observation into
+	 * the same string put the parenthetical on the operator's terminal beside the
+	 * plain sentence — the split existed but did not reach the reader. Two lines,
+	 * one of them `console.log` only, is what actually keeps `pid 1` out of the
+	 * line a person reads while a post-mortem still gets the observation.
+	 */
+	if (detail) {
+		logger.info(`[window-mode] launcher probe: ${detail}`, LogFileType.BACKEND);
+	}
 	armHeadlessExitDeadline(why);
 	app.quit();
 }
@@ -1386,10 +1395,16 @@ app.on("window-all-closed", () => {
 	 * app in the Dock.
 	 */
 	if (windowLaunch.mode === "headless") {
+		/*
+		 * Prefixed like every other end path (round 2, D8): this line is how a rig
+		 * learns which path ended a run, and it was the one that did not carry the
+		 * prefix. Printed as well as logged, for the same reason the others are.
+		 */
 		logger.info(
-			"All windows closed in a headless run, quitting",
+			"[window-mode] all windows closed in a headless run; quitting",
 			LogFileType.BACKEND,
 		);
+		console.log("[window-mode] all windows closed in a headless run; quitting");
 		app.quit();
 		return;
 	}
