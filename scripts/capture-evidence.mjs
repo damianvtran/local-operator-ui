@@ -1062,6 +1062,26 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/* The transcript's ENDING when a finished conversation is read with the
+	   runtime's own stale `live_events` seed folded in — the operator's report:
+	   `wait`/`hub`/`task`/`bash` rows from the previous morning painted UNDER the
+	   final assistant message. Both orders are built by the SHIPPED reducer from
+	   the real journal of session `f91fbda61750`
+	   (`scripts/fixtures/stale-seed-order.json`): `Before` runs the pre-fix fold
+	   (`applyEvent` per seed event at the reader's arrival) and `After` runs
+	   `applyLiveSeed` with the snapshot's own `streaming: false`. They are one
+	   tree's frames rather than a base/head pair, because a pair from two trees
+	   cannot be re-captured once the base moves.
+
+	   `Arrival` is the unreduced seed and is 900 tall: the seed's 67 appended rows
+	   push the answer out of a shorter pane entirely, which IS the report. The
+	   `Seam` pair narrows the seed to the newest twelve unlabelled calls so the
+	   answer and what sits under it fit one frame — sized to those rows, since at
+	   900 the frame would be mostly ground. */
+	["chat-stale-seed-order--before-arrival", 1280, 900],
+	["chat-stale-seed-order--after-arrival", 1280, 900],
+	["chat-stale-seed-order--before-seam", 1280, 420],
+	["chat-stale-seed-order--after-seam", 1280, 420],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
