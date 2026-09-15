@@ -48,7 +48,18 @@ const SPAWN_NAMES = [
  * same line vanished from the scan. `docs/evidence/desktop-413/harness/
  * capture-413.mjs` holds `"http://localhost:5199"` today, and a rig that spawns
  * Chrome on the same line as a URL is exactly the shape that would have gone
- * unseen. Strings are copied through untouched; only real comments are blanked.
+ * unseen. Strings are copied through untouched; only comments are blanked.
+ *
+ * WHAT IT STILL DOES NOT SEE, stated because the previous sentence used to claim
+ * otherwise (round 2, R2-2): a REGEX LITERAL is not tracked, so a line like
+ * `const re = /[//]/g; spawn(CHROME, […])` reads as a comment starting inside
+ * that literal and the real site on that line is missed. Tracking regexes means
+ * deciding whether a `/` opens one or is division, and a wrong guess there hides
+ * arbitrary code between two divisions - a worse failure than this one - so the
+ * gap stays and is named here instead. Templates ARE tracked as strings, escapes
+ * included (round 2, R2-1: exempting them from the escape guard let one `\``
+ * desync the tracking), which means a call inside a `${…}` interpolation is not
+ * scanned; no rig here spawns that way.
  */
 function blankComments(source) {
 	let out = "";
@@ -58,8 +69,10 @@ function blankComments(source) {
 		const ch = source[i];
 		if (quote) {
 			out += ch;
-			if (ch === "\\" && quote !== "`") {
-				// Copy the escaped character too, so `\"` cannot close the string.
+			if (ch === "\\") {
+				// Copy the escaped character too, so `\"` cannot close a string -
+				// and, for a template, so an escaped backtick cannot end it
+				// (round 2, R2-1).
 				out += source[i + 1] ?? "";
 				i += 2;
 				continue;
