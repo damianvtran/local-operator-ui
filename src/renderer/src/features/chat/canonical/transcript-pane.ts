@@ -111,10 +111,22 @@ export type CanonicalTranscriptStatus =
 export function canonicalTranscriptSpeaks(view: {
 	status: CanonicalTranscriptStatus;
 	failure: SessionFailureNotice | null;
+	/*
+	 * The two states a notification click can paint, optional for the same reason
+	 * they are optional on `TranscriptPaneView`: a caller that knows neither is a
+	 * caller for which neither is true. They are named here rather than read off
+	 * the whole view because the band and the working-line rung both ask this
+	 * question with only what they hold, and widening the parameter to the full
+	 * pane view would make every asker hand over fields this predicate ignores.
+	 */
+	missing?: boolean;
+	stale?: boolean;
 }): boolean {
 	return (
 		view.status === "reconnecting" ||
-		(view.status === "unavailable" && Boolean(view.failure))
+		(view.status === "unavailable" && Boolean(view.failure)) ||
+		Boolean(view.missing) ||
+		Boolean(view.stale)
 	);
 }
 
@@ -140,6 +152,20 @@ export type TranscriptPaneView = {
 	 * pixel at t+13.8 s - the dead air the operator reported).
 	 */
 	admittedSend: boolean;
+	/*
+	 * The two states a notification click can paint with no authoritative answer
+	 * in hand. Both are statements the pane makes about ITSELF, which is why they
+	 * live in this view rather than as guards at the render site: the hold and
+	 * the collapse are the same question asked twice, and one of them reading a
+	 * proxy for it is how a row-less pane ended up collapsed with its own
+	 * sentence clipped.
+	 *
+	 * Optional, and deliberately: a caller that knows neither is a caller for
+	 * which neither is true, which is the behaviour every decision here had
+	 * before these states existed (a draft conversation, the legacy twin).
+	 */
+	missing?: boolean;
+	stale?: boolean;
 };
 
 /**

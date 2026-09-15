@@ -69,6 +69,7 @@ export type DesktopMcpOperation = {
 	action: "login" | "logout" | "reauth";
 	status: "running" | "complete" | "cancelled" | "failed";
 	created_at: number;
+	message?: string;
 	credential_removed: boolean;
 };
 export type DesktopMcpState = {
@@ -81,6 +82,27 @@ export type DesktopMcpState = {
 		transport_oauth_supported?: boolean | null;
 		/** MCP transport health does not establish downstream Workspace consent. */
 		downstream_authorization?: "unknown";
+		/**
+		 * The credential field NAMES a server's config declares — a stdio child's `env`
+		 * and an HTTP server's `headers` — and never a value.
+		 *
+		 * `public_server_config` (`mcp/desktop.py:92-116`) publishes the names of the
+		 * secrets a config references; the values live in the owner credential store.
+		 * They are declared here because the route sends them and the type omitted
+		 * them — the asymmetry this file's own header warns about — and they are
+		 * informational only: the run panel seeds its key-entry form from
+		 * `secret_refs[].bindings`, NOT from these, because a map key names the
+		 * destination a value is bound INTO (`Authorization`) while the resolver looks
+		 * the reference up by ID, so a form seeded from the map keys saved an
+		 * unresolved binding under a name the resolver never looked up (round 2, R2-2).
+		 */
+		environment_keys?: string[];
+		header_keys?: string[];
+		/** Actual encrypted-store IDs. Map keys above are informational only. */
+		secret_refs?: {
+			id: string;
+			bindings: { field: "env" | "headers"; key: string }[];
+		}[];
 		tool_count?: number;
 		setup?: { kind: "session_prompt"; text: string };
 	}[];

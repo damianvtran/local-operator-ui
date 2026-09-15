@@ -59,6 +59,13 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	/*
+	 * A session's code memory (the `sessions.variables.*` ops). A backend that
+	 * predates the surface simply does not advertise the key, so
+	 * `desktopFeatureEnabled` answers false and the panel offers "Update the
+	 * backend" rather than firing a call it knows will 404.
+	 */
+	| "session_variables"
 	// Content search over past conversations. Its own feature rather than part
 	// of `session_catalogue`: a client renders the catalogue perfectly well
 	// against a backend without the search route, so gating the list on the
@@ -87,6 +94,7 @@ export type DesktopFeature =
 	| "draft_selection"
 	| "lifecycle"
 	| "mcp"
+	| "mcp_auth"
 	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
@@ -106,7 +114,16 @@ export type DesktopFeature =
 	 * routes — a bumped shared key would gate the working panels behind an
 	 * update they do not need.
 	 */
-	| "diagnostics";
+	| "diagnostics"
+	/**
+	 * The machine-wide feed: `GET /v1/desktop/events` and `POST
+	 * /v1/desktop/presence`, with their frame and lease shapes. The consumer gate
+	 * is BOTH directions: when the backend does not advertise it the renderer
+	 * keeps the 5 s catalogue poll and the per-session notification path
+	 * verbatim, and when this app is old enough not to open the feed nothing on
+	 * the backend changes either. Neither skew can double-toast.
+	 */
+	| "desktop_feed";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

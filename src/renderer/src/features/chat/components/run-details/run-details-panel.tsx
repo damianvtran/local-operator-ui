@@ -25,10 +25,15 @@ import { hasRunDetails } from "./run-detail-model";
 import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
 import { useRunDetailsClock } from "./run-details-clock";
+import type { McpRemedyControls } from "./use-mcp-remedy";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
+	/** Whether the read carries an operation that is still running (`§ 7.2`). */
+	mcpGrantRunning: boolean;
+	/** The pane's MCP remedy controls: see `use-mcp-remedy.ts`. */
+	mcpRemedy: McpRemedyControls;
 	/** Whether a child's row can be opened (`§ 10.2`). */
 	childrenOpenable: boolean;
 	onOpenChild: (id: string) => void;
@@ -59,6 +64,8 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 export const RunDetailsPanel = ({
 	details,
 	mcpServers,
+	mcpGrantRunning,
+	mcpRemedy,
 	childrenOpenable,
 	onOpenChild,
 	rosterExpanded,
@@ -134,7 +141,16 @@ export const RunDetailsPanel = ({
 		});
 	}
 	if (mcpServers.length > 0) {
-		sections.push({ key: "mcp", body: <RunDetailMcp servers={mcpServers} /> });
+		sections.push({
+			key: "mcp",
+			body: (
+				<RunDetailMcp
+					servers={mcpServers}
+					grantRunning={mcpGrantRunning}
+					remedy={mcpRemedy}
+				/>
+			),
+		});
 	}
 
 	if (sections.length === 0) {

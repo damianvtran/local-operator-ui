@@ -1,4 +1,13 @@
-import type { ExecutionVariable } from "@shared/api/local-operator/types";
+import {
+	DesktopControlError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
+import type {
+	SessionVariable,
+	VariableType,
+	VariableWrite,
+} from "@shared/api/local-operator/session-variables-api";
+import { VARIABLE_TYPES } from "@shared/api/local-operator/session-variables-api";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -18,58 +27,98 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 
-const VARIABLE_TYPES: ExecutionVariable["type"][] = [
-	"string",
-	"int",
-	"float",
-	"bool",
-	"dict",
-	"list",
-];
-
+/**
+ * The dialog's props, typed by what the SESSION surface accepts.
+ *
+ * `VariableWrite` is the transport's own shape, and `VARIABLE_TYPES` is the
+ * transport's own table - both imported rather than restated, because the
+ * table this form used to hold named `string`, `boolean`, `object` and
+ * `array` while the write path could coerce none of the four: every value the
+ * select defaulted to was refused by the worker, and nothing said so until the
+ * user pressed Create.
+ */
 type VariableFormDialogProps = {
 	open: boolean;
 	onClose: () => void;
-	onSubmit: (data: ExecutionVariable) => Promise<void>;
-	initialData?: ExecutionVariable | null;
+	onSubmit: (data: VariableWrite) => Promise<void>;
+	initialData?: SessionVariable | null;
 };
 
 // Represents the form state.
-type FormDataType = Omit<ExecutionVariable, "value" | "type"> & {
+type FormDataType = {
+	key: string;
 	value: string; // Store value as string initially for text input
-	type: ExecutionVariable["type"];
+	type: VariableType;
 };
 
+const isVariableType = (type: string): type is VariableType =>
+	(VARIABLE_TYPES as readonly string[]).includes(type);
+
+/**
+ * Which control a refusal is asking the user to change.
+ *
+ * A refusal already says WHY it refused, in the backend's own words, and it
+ * reached the user as a floating toast - which names the reason but not the
+ * field it is about, so for `already_exists` the user had to work out which of
+ * three controls the sentence meant. The backend's `code` is the part that
+ * knows, so it is mapped here once. Every code not listed is about the write as
+ * a whole (no kernel, a busy cell, a cold session) or about a name the panel
+ * did not offer to write; those stay a form-level sentence rather than being
+ * blamed on a field that is not wrong.
+ */
+const REFUSAL_FIELD: Record<string, "key" | "value"> = {
+	already_exists: "key",
+	reserved_name: "key",
+	invalid_value: "value",
+	too_large: "value",
+};
+
+/**
+ * The refusal the dialog is currently showing, if any.
+ *
+ * `field` is for refusals this layer makes itself, which carry no backend
+ * `code`: the key rules are enforced here too (see `isWritableVariableKey`), and
+ * a refusal that arrives form-level when the Name control is the thing to fix is
+ * the same defect the backend's `code` mapping exists to prevent (review round 2,
+ * C-07).
+ */
+type Refusal = { code?: string; field?: "key" | "value"; message: string };
+
+const refusalOf = (error: unknown): Refusal => ({
+	code: error instanceof DesktopControlError ? error.code : undefined,
+	message: userFacingMessage(
+		error,
+		"The variable could not be saved. Try again.",
+	),
+});
+
 const getDefaultFormState = (
-	initialData?: ExecutionVariable | null,
+	initialData?: SessionVariable | null,
 ): FormDataType => {
 	if (initialData) {
-		let valueString: string;
-		if (initialData.type === "object" || initialData.type === "array") {
-			try {
-				valueString = JSON.stringify(initialData.value, null, 2);
-			} catch {
-				valueString = String(initialData.value); // Fallback
-			}
-		} else if (initialData.type === "boolean") {
-			valueString = String(initialData.value);
-		} else {
-			valueString = String(initialData.value);
-		}
+		const type = isVariableType(initialData.type) ? initialData.type : "str";
+		/*
+		 * A `list` or `dict` is read back as a Python repr (`{'late_days': 7}`),
+		 * which JSON cannot parse - and the write path parses exactly JSON. So
+		 * those two types start empty, with the field's own hint asking for the
+		 * structure, rather than pre-filled with text the form would then have to
+		 * refuse. The scalar types round-trip as the text they were read as.
+		 */
+		const structured = type === "list" || type === "dict";
 		return {
 			key: initialData.key,
-			type: initialData.type,
-			value: valueString,
+			type,
+			value: structured ? "" : String(initialData.value),
 		};
 	}
 	return {
 		key: "",
-		type: "string",
+		type: "str",
 		value: "",
 	};
 };
@@ -98,19 +147,39 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 		getDefaultFormState(initialData),
 	);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [refusal, setRefusal] = useState<Refusal | null>(null);
 
 	const isEditMode = !!initialData;
 
 	useEffect(() => {
 		if (open) {
 			setFormData(getDefaultFormState(initialData));
+			setRefusal(null);
 		}
 	}, [open, initialData]);
 
 	const handleSubmit = async () => {
+		setRefusal(null);
+		/*
+		 * The renderer's own key rule first, so it is the Name control that says
+		 * so. The contract refuses a name this layer would send (empty, over 128
+		 * characters, a control character, or only dots) before any request is
+		 * built, and that refusal arrives with no backend `code` - which used to
+		 * put "Invalid desktop operation." in the form's footer, away from the
+		 * field it is about. Same predicate the contract uses, so the two cannot
+		 * disagree about which names are sendable.
+		 */
+		if (!isWritableVariableKey(formData.key)) {
+			setRefusal({
+				field: "key",
+				message:
+					"This name cannot be sent. Use up to 128 characters, without control characters, and not only dots.",
+			});
+			return;
+		}
 		setIsSubmitting(true);
 		try {
-			const variableToSubmit: ExecutionVariable = {
+			const variableToSubmit: VariableWrite = {
 				key: formData.key,
 				type: formData.type,
 				value: formData.value,
@@ -119,18 +188,33 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 			await onSubmit(variableToSubmit);
 			onClose(); // Success toast is handled by the mutation hooks
 		} catch (error) {
+			/*
+			 * No toast here. The mutation hook owns the sentence, because the
+			 * refusal's reason (a reserved name, a value the type cannot coerce, a
+			 * kernel that is busy) is written by the backend that knows it - and a
+			 * second toast from this layer said the same thing twice, in weaker
+			 * words. The dialog stays open AND repeats that same sentence beside the
+			 * control it is about, which is where the fix is: a toast floats past,
+			 * the field it names is still on screen when the user looks back.
+			 */
 			console.error("Failed to submit variable:", error);
-			showErrorToast(
-				`Failed to save variable: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
+			setRefusal(refusalOf(error));
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	const dialogTitle = isEditMode
-		? "Edit execution variable"
-		: "Create execution variable";
+	const refusalField =
+		refusal?.field ?? (refusal?.code ? REFUSAL_FIELD[refusal.code] : undefined);
+
+	/*
+	 * One vocabulary for the whole surface: the panel says "Code memory" and lists
+	 * "variables", so the dialog says "New variable" / "Edit variable" and its
+	 * buttons say "Create" / "Save". The dialog previously titled itself "Create
+	 * execution variable" - the backend's term for the legacy agent-scoped
+	 * surface this PR deletes, and a word the tour never uses.
+	 */
+	const dialogTitle = isEditMode ? "Edit variable" : "New variable";
 
 	const dialogActions = (
 		<>
@@ -148,29 +232,25 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 					isSubmitting ? <Spinner /> : <Save size={18} aria-hidden="true" />
 				}
 			>
-				{isSubmitting
-					? "Saving..."
-					: isEditMode
-						? "Save changes"
-						: "Create variable"}
+				{isSubmitting ? "Saving…" : isEditMode ? "Save" : "Create"}
 			</PrimaryButton>
 		</>
 	);
 
 	const valueFieldLabel = useMemo(() => {
 		switch (formData.type) {
-			case "object":
+			case "dict":
 				return "Value (JSON object)";
-			case "array":
+			case "list":
 				return "Value (JSON array)";
-			case "boolean":
+			case "bool":
 				return "Value (true/false)";
 			default:
 				return "Value";
 		}
 	}, [formData.type]);
 
-	const isJsonValue = formData.type === "object" || formData.type === "array";
+	const isJsonValue = formData.type === "dict" || formData.type === "list";
 
 	return (
 		<BaseDialog
@@ -209,7 +289,29 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						required
 						disabled={isSubmitting || isEditMode} // Key is not editable
 						placeholder="e.g., my_variable_name"
+						aria-invalid={refusalField === "key"}
+						aria-describedby={
+							refusalField === "key" ? "variable-key-refusal" : undefined
+						}
+						className={cn(refusalField === "key" && "border-danger")}
 					/>
+					{refusalField === "key" && (
+						<p
+							id="variable-key-refusal"
+							role="alert"
+							/*
+							 * `ink`, not `danger`: this sentence sits on the dialog's `elevated`
+							 * ground, where the danger ink is under the text floor in three palettes
+							 * (monokai 3.76, dracula 3.81, neon 4.43 against 4.5). The error is
+							 * carried by the control's own border and `aria-invalid`, which the
+							 * field marker draws; the sentence only has to be readable (design
+							 * round 2, D3).
+							 */
+							className={cn("text-body-sm text-ink")}
+						>
+							{refusal?.message}
+						</p>
+					)}
 				</div>
 
 				<div className={cn("flex flex-col gap-1.5")}>
@@ -219,16 +321,26 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 					</Label>
 					<Select
 						value={formData.type}
-						onValueChange={(type) => setFormData((prev) => ({ ...prev, type }))}
+						onValueChange={(type) => {
+							// Radix hands back a plain string; every item comes from
+							// `VARIABLE_TYPES`, so a value outside it can only be a mistake in
+							// this file - and the selection is typed by the contract's table.
+							if (!isVariableType(type)) return;
+							setFormData((prev) => ({ ...prev, type }));
+						}}
 						disabled={isSubmitting}
 					>
 						<SelectTrigger id="variable-type-select">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
+							{/* The backend's own names, un-prettified: `str`, not
+							    "String". The list column beside this form prints the
+							    same names back, so the vocabulary a user picks here is
+							    the vocabulary they then read there. */}
 							{VARIABLE_TYPES.map((type) => (
 								<SelectItem key={type} value={type}>
-									{type.charAt(0).toUpperCase() + type.slice(1)}
+									{type}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -249,13 +361,24 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						required
 						disabled={isSubmitting}
 						rows={isJsonValue ? 5 : 2}
-						aria-describedby={isJsonValue ? "variable-value-hint" : undefined}
+						aria-describedby={
+							// An id LIST, not a class name: `cn()` collapses falsy entries
+							// to an empty string, which is an attribute that says nothing.
+							[
+								isJsonValue && "variable-value-hint",
+								refusalField === "value" && "variable-value-refusal",
+							]
+								.filter(Boolean)
+								.join(" ") || undefined
+						}
+						aria-invalid={refusalField === "value"}
+						className={cn(refusalField === "value" && "border-danger")}
 						placeholder={
-							formData.type === "object"
+							formData.type === "dict"
 								? `{ "example_key": "example_value" }`
-								: formData.type === "array"
+								: formData.type === "list"
 									? `[ "item1", "item2" ]`
-									: formData.type === "boolean"
+									: formData.type === "bool"
 										? "true or false"
 										: "Enter variable value"
 						}
@@ -268,7 +391,23 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 							Enter a valid JSON structure.
 						</p>
 					)}
+					{refusalField === "value" && (
+						<p
+							id="variable-value-refusal"
+							role="alert"
+							// `ink` for the same reason as the key marker above.
+							className={cn("text-body-sm text-ink")}
+						>
+							{refusal?.message}
+						</p>
+					)}
 				</div>
+				{refusal && !refusalField && (
+					// Same ground, same reason as the field sentences above.
+					<p role="alert" className={cn("text-body-sm text-ink")}>
+						{refusal.message}
+					</p>
+				)}
 			</div>
 		</BaseDialog>
 	);
