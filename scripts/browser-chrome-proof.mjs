@@ -39,6 +39,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import {
 	existsSync,
 	mkdirSync,
@@ -54,6 +55,15 @@ import { join } from "node:path";
 import sharp from "sharp";
 
 const ROOT = process.cwd();
+/**
+ * The Electron executable itself, from the package that owns it.
+ *
+ * `require("electron")` in a Node process resolves to the path of the binary the
+ * package installed - the package's own documented API - so this harness spawns
+ * the app rather than the `node_modules/.bin/electron` shim. See `launchApp` for
+ * why that distinction is load-bearing rather than cosmetic.
+ */
+const ELECTRON_BIN = createRequire(import.meta.url)("electron");
 const KEEP = process.argv.includes("--keep");
 const SCRATCH = join(tmpdir(), `lo-browser-chrome-proof-${process.pid}`);
 const HOME_DIR = join(SCRATCH, "home");
@@ -198,8 +208,21 @@ async function launchApp() {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
 	DEVTOOLS_PORT = await freeDevtoolsPort();
+	/*
+	 * THE APP ITSELF IS SPAWNED, NOT `node_modules/.bin/electron`.
+	 *
+	 * THAT SHIM IS A NODE SCRIPT, and `child.kill()` signals the SHIM: the app it
+	 * spawned is orphaned, keeps its debug port, and keeps holding the app's
+	 * SINGLE-INSTANCE LOCK - which is global rather than per `--user-data-dir`, so
+	 * the next launch in the run dies with "Another instance is already running"
+	 * and the harness reports a failure that is its own teardown (QA round 2; the
+	 * same defect in #190's dev harness). `require("electron")` is the package's own
+	 * documented answer: it returns the executable path, on every platform, so
+	 * SIGTERM reaches the process whose quit path this run is testing. The same pid
+	 * is what `reap` below kills, by exact pid and never by pattern.
+	 */
 	const child = spawn(
-		join(ROOT, "node_modules", ".bin", "electron"),
+		ELECTRON_BIN,
 		[
 			".",
 			`--user-data-dir=${USER_DATA}`,

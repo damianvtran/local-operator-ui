@@ -333,6 +333,40 @@ export function readSession(
 }
 
 /**
+ * Whether a QUIT-TIME capture may replace the record already on disk.
+ *
+ * WHY A QUIT NEEDS ITS OWN RULE (QA round 2, Q3, and review round 2's B2). The
+ * quit-time capture is taken while the process is coming down, and a capture taken
+ * then can be SHORT for a reason that has nothing to do with the user: the views a
+ * capture reads can already be destroyed (SIGTERM, an update restart, a renderer
+ * crash), and a capture that saw none of them must not be mistaken for "the user
+ * closed every tab". Measured, not reasoned: a SIGTERM quit left
+ * `{"version":1,"tabs":[]}` in 8 of 8 runs while a window close kept the tabs.
+ *
+ * The rule is deliberately ONE-SIDED, because the two ways it can be wrong are not
+ * symmetrical. Refusing a short capture can keep a tab the user had just closed
+ * (rare - closing a tab fires its own capture, and only a quit inside that write's
+ * 500 ms debounce can leave the older record on disk). Accepting one loses the
+ * entire session. The rare stale tab is the cheaper mistake, and the log line says
+ * which happened so support does not have to guess.
+ */
+export function stopSnapshotDecision(
+	rows: number,
+	durableRows: number,
+): { write: boolean; reason: string } {
+	if (rows < durableRows) {
+		return {
+			write: false,
+			reason: `the quit-time capture holds ${rows} tab(s) and the record on disk holds ${durableRows}, so the record is kept`,
+		};
+	}
+	return {
+		write: true,
+		reason: `the quit-time capture holds ${rows} tab(s) and the record on disk holds ${durableRows}`,
+	};
+}
+
+/**
  * Snapshot the live tabs.
  *
  * A tab whose webContents is already destroyed is SKIPPED rather than
@@ -363,8 +397,13 @@ export function captureTabs(
 	const captured: PersistedTab[] = [];
 	for (const record of records) {
 		const contents = record.view.webContents;
-		if (contents.isDestroyed()) continue;
-		const history = contents.navigationHistory;
+		// A destroyed view is treated like one that has not committed yet rather than
+		// skipped outright: it has no history to read, and a teardown is one of the
+		// ways a view goes away without the user closing its tab (see the fallback
+		// note above).
+		const history = contents.isDestroyed()
+			? undefined
+			: contents.navigationHistory;
 		// No history API means nothing to snapshot yet: a fake view in a test has
 		// none, and a real view that has not committed has an empty stack.
 		const entries =

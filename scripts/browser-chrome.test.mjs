@@ -165,6 +165,7 @@ const {
 	SESSION_DIR_MODE,
 	captureTabs,
 	readSession,
+	stopSnapshotDecision,
 	ApprovalStore,
 	TabRegistry,
 	browserViewSuppressed,
@@ -514,6 +515,63 @@ test("the moment a restored tab has history of its own, the live stack replaces 
 		captured[0].activeIndex,
 		1,
 		"and the entry the user is on is the live one",
+	);
+});
+
+test("a quit-time capture shorter than the record on disk is refused, not written (QA round 2, Q3)", () => {
+	/*
+	 * The stop path's own rule, and the reason it is one-sided: a capture taken while
+	 * the process comes down can be short because the views were already gone, which
+	 * is not the user closing every tab. Measured on the running app: a SIGTERM quit
+	 * emptied the file in 8 of 8 runs while a window close kept it.
+	 */
+	assert.equal(
+		stopSnapshotDecision(0, 3).write,
+		false,
+		"a capture that saw none of three recorded tabs is not the user closing them",
+	);
+	assert.equal(stopSnapshotDecision(2, 3).write, false, "nor is a partial one");
+	assert.equal(
+		stopSnapshotDecision(3, 3).write,
+		true,
+		"an unchanged record is written, so the flush has something to do",
+	);
+	assert.equal(
+		stopSnapshotDecision(1, 0).write,
+		true,
+		"and a record with fewer tabs than the capture is always replaced",
+	);
+	assert.equal(
+		stopSnapshotDecision(0, 0).write,
+		true,
+		"closing every tab and quitting writes the empty record rather than refusing it",
+	);
+});
+
+test("a destroyed view is captured from its recorded row rather than dropped", () => {
+	// The teardown case: a view can be destroyed before the stop path reads it, and a
+	// tab the user still has must not vanish from the record because its view went
+	// first.
+	const { registry, views } = makeRegistry([]);
+	const kept = registry.create({
+		owner: "user",
+		restored: true,
+		restoreRow: {
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://kept.example/page" }],
+			activeIndex: 0,
+		},
+	});
+	const plain = registry.create({ owner: "user" });
+	views.get(plain.tabId).webContents.destroyed = true;
+	views.get(kept.tabId).webContents.destroyed = true;
+
+	const captured = captureTabs(registry.list(), kept.tabId);
+	assert.deepEqual(
+		captured.map((tab) => tab.entries[0].url),
+		["https://kept.example/page"],
+		"the restored row survives its view, and a tab with no row is still not invented",
 	);
 });
 

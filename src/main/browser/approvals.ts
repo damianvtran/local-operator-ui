@@ -764,7 +764,17 @@ export class ApprovalStore {
 	 * in the copy rather than left to look like a bug.
 	 */
 	revokeAll(): number {
-		const removed = this.store.records.length + this.sessionRecords.length;
+		/*
+		 * The unspent once grants count here for the same reason a per-origin revoke
+		 * counts them: they are live authority with NO durable row behind them, so
+		 * counting only records reported "0 approvals revoked" for a decision that
+		 * had in fact left the agent able to drive a site — and the Sites sheet renders
+		 * this number (review round 2, minor 4; QA round 2, Q1).
+		 */
+		const removed =
+			this.store.records.length +
+			this.sessionRecords.length +
+			Object.keys(this.onceGrants).length;
 		this.store.origins = {};
 		this.store.siteGrants = { version: 1, grants: {} };
 		this.store.records = [];
