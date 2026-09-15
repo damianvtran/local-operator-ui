@@ -99,12 +99,37 @@ const App: FC = () => {
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
+	//
+	// `setActiveSession` and nothing else: deliberately NO validating
+	// `sessions.get` round trip here. `openSession` does that for a sidebar row,
+	// where ~1.5 s against a click the user already committed to is the right
+	// trade; on the notification path it is latency in front of the only thing
+	// the user asked for, and the panel's own paint cache plus the stream's
+	// snapshot answer the same questions. A conversation that turns out not to
+	// exist lands on the transcript's named state instead (M6).
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
 	useEffect(() => {
 		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
 			(sessionId) => {
+				/*
+				 * The START of the latency trace the design asks to report rather than
+				 * to describe: the sibling mark is at the first painted transcript row
+				 * (`canonical-transcript.tsx`), and the measure between them is the
+				 * click-to-visible number. Marked HERE rather than in the transcript
+				 * because this is the process's first knowledge of the click, which is
+				 * the only honest beginning: everything after it is ours to lose.
+				 *
+				 * Only a click that NAMES a conversation starts a trace: a burst
+				 * digest's click opens the catalogue (R1-2), which has no
+				 * conversation row to paint, and a mark for it would sit there until
+				 * some later open measured a row against it.
+				 */
+				if (sessionId !== null) performance.mark("lop:open:requested");
+				// `null` is the catalogue: the store models "no active session" as
+				// exactly this, so a digest click lands where all the burst's
+				// conversations are listed rather than on one arbitrary member.
 				setActiveSession(sessionId);
 				navigate("/chat");
 			},

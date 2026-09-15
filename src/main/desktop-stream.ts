@@ -39,6 +39,19 @@ function transportFailureDetail(error: unknown): string {
 	return DESKTOP_STREAM_DETAIL.connectionFailed;
 }
 
+/**
+ * How long a socket that has sent NOTHING is still trusted.
+ *
+ * DERIVED, not chosen. The backend's stream emits a `heartbeat` record every
+ * 15 s — that is its own `asyncio.wait_for(sub.queue.get(), timeout=15)` in
+ * `desktop_sessions.py` — so three missed beats mean no record of any kind has
+ * arrived for 45 s, the same bound the watch lease and the viewer records use.
+ */
+const SILENCE_TIMEOUT_MS = 45_000;
+
+/** Watchdog cadence: fine enough to bound detection, coarse enough to be free. */
+const WATCHDOG_TICK_MS = 1_000;
+
 /** Relay frame cap, matching the backend's per-frame bound. */
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
@@ -50,7 +63,22 @@ export type RelaySubscribeArgs = {
 
 export type RelayEvent =
 	| { streamId: string; kind: "data"; data: string }
-	| { streamId: string; kind: "error"; detail: string }
+	| {
+			streamId: string;
+			kind: "error";
+			detail: string;
+			/**
+			 * The HTTP status that refused this stream, when one did.
+			 *
+			 * A 404 is the one refusal that is about the SESSION rather than about
+			 * the transport, and the notification-click path reaches exactly that
+			 * case without validating the id first — it deliberately spends no
+			 * `sessions.get` on the latency path. Without the code the renderer can
+			 * only render transport vocabulary for a conversation that is simply
+			 * gone (M6).
+			 */
+			status?: number;
+	  }
 	| { streamId: string; kind: "end" };
 
 export type DesktopStreamHandle = {
@@ -66,6 +94,15 @@ export class DesktopStreamRelay {
 	constructor(
 		private readonly backendUrl: string,
 		private readonly token: string | null,
+		/**
+		 * Watchdog timings, overridable so the 45 s silence bound is reachable in
+		 * a test. Production passes nothing: a bound only a test can reach is a
+		 * bound nobody runs, and the default is the measured one.
+		 */
+		private readonly timings: {
+			silenceTimeoutMs?: number;
+			watchdogTickMs?: number;
+		} = {},
 	) {}
 
 	observe(observer: ((sessionId: string, data: string) => void) | null): void {
@@ -164,6 +201,10 @@ export class DesktopStreamRelay {
 					streamId,
 					kind: "error",
 					detail: DESKTOP_STREAM_DETAIL.refused(response.status),
+					// Carried so the renderer can tell "this conversation is gone"
+					// from "this transport is down". Both are refusals; only one of
+					// them is about the session, and the two need different words.
+					status: response.status,
 				});
 				return;
 			}
@@ -171,39 +212,75 @@ export class DesktopStreamRelay {
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = "";
-			for (;;) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				buffer += decoder.decode(value, { stream: true });
-				// SSE records terminate on a blank line. Everything before it is
-				// flushed record-by-record; a partial record stays in the buffer.
+			let lastActivity = Date.now();
+			/*
+			 * The silence watchdog, which is the difference between "quiet" and
+			 * "dead". A half-open socket after a sleep/wake reports no error, no end
+			 * and no data: `reader.read()` simply never resolves, and the renderer
+			 * would sit on "live" with nothing arriving — no banner, no unseen mark,
+			 * no reconnect — which is the silent failure this app is worst at.
+			 *
+			 * It cancels the READ rather than only aborting the fetch: aborting does
+			 * tear down a body on the platforms this app ships, but `cancel()` is the
+			 * reader's own guarantee — the pending `read()` resolves `done`, this loop
+			 * ends, and the caller's existing error path reconnects with its receipt.
+			 */
+			const silenceTimeoutMs =
+				this.timings.silenceTimeoutMs ?? SILENCE_TIMEOUT_MS;
+			const watchdog = setInterval(() => {
+				if (Date.now() - lastActivity < silenceTimeoutMs) return;
+				clearInterval(watchdog);
+				emit({
+					streamId,
+					kind: "error",
+					detail: DESKTOP_STREAM_DETAIL.ended,
+				});
+				void reader.cancel().catch(() => undefined);
+			}, this.timings.watchdogTickMs ?? WATCHDOG_TICK_MS);
+			// An unref'd timer cannot be the reason the app stays alive on quit.
+			watchdog.unref?.();
+			try {
 				for (;;) {
-					const boundary = buffer.indexOf("\n\n");
-					if (boundary < 0) {
-						if (buffer.length > MAX_FRAME_BYTES) {
-							emit({
-								streamId,
-								kind: "error",
-								detail: DESKTOP_STREAM_DETAIL.frameBudget,
-							});
-							reader.cancel().catch(() => undefined);
-							return;
+					const { done, value } = await reader.read();
+					if (done) break;
+					// ANY byte resets the watchdog, not just a heartbeat: a busy stream
+					// is alive by definition, and the backend's 15 s heartbeat exists for
+					// the quiet case rather than as a cadence to be checked for its own
+					// sake.
+					lastActivity = Date.now();
+					buffer += decoder.decode(value, { stream: true });
+					// SSE records terminate on a blank line. Everything before it is
+					// flushed record-by-record; a partial record stays in the buffer.
+					for (;;) {
+						const boundary = buffer.indexOf("\n\n");
+						if (boundary < 0) {
+							if (buffer.length > MAX_FRAME_BYTES) {
+								emit({
+									streamId,
+									kind: "error",
+									detail: DESKTOP_STREAM_DETAIL.frameBudget,
+								});
+								reader.cancel().catch(() => undefined);
+								return;
+							}
+							break;
 						}
-						break;
-					}
-					const record = buffer.slice(0, boundary);
-					buffer = buffer.slice(boundary + 2);
-					for (const line of record.split("\n")) {
-						if (line.startsWith("data:")) {
-							const data = line.slice(5).replace(/^ /, "");
-							this.observer?.(sessionId, data);
-							emit({ streamId, kind: "data", data });
+						const record = buffer.slice(0, boundary);
+						buffer = buffer.slice(boundary + 2);
+						for (const line of record.split("\n")) {
+							if (line.startsWith("data:")) {
+								const data = line.slice(5).replace(/^ /, "");
+								this.observer?.(sessionId, data);
+								emit({ streamId, kind: "data", data });
+							}
+							// Comments (heartbeats) and id:/event:/retry: lines are
+							// transport metadata; the backend's heartbeat records arrive as
+							// data frames and pass through like any other.
 						}
-						// Comments (heartbeats) and id:/event:/retry: lines are
-						// transport metadata; the backend's heartbeat records arrive as
-						// data frames and pass through like any other.
 					}
 				}
+			} finally {
+				clearInterval(watchdog);
 			}
 			emit({ streamId, kind: "end" });
 		} catch (error) {

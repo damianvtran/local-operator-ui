@@ -52,6 +52,7 @@ import {
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -243,6 +244,26 @@ type ChatContentProps = {
 	 */
 	mcpServers?: readonly McpServerRow[];
 	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * Threaded from the page (`use-mcp-servers.ts`) so the section can disable every
+	 * other row's control while the backend's one grant runs. It comes off the
+	 * document's `operations` rather than off the folded rows on purpose: a row
+	 * exists only where the read carries a server, so an operation for a server that
+	 * was removed or renamed still holds the lock while no row would show it (code
+	 * review round 1, finding 5).
+	 */
+	mcpGrantRunning?: boolean;
+	/**
+	 * The panel's MCP remedy controls (`use-mcp-remedy.ts`).
+	 *
+	 * Read by the page, like the server list itself, and threaded down rather than
+	 * taken inside the section: the controls address the ACTIVE session and write
+	 * into the one query the trigger and the panel both read, so the page is the
+	 * level that owns both facts.
+	 */
+	mcpRemedy: McpRemedyControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -291,6 +312,12 @@ const canonicalSpeaking = (
 			canonicalTranscriptSpeaks({
 				status: canonical.view.status,
 				failure: canonical.view.failure,
+				// The two states a click can paint, which are the band's business for
+				// the same reason they are the pane's: a cached or vanished conversation
+				// must not have the greeting offered over it. The rest of the pane's view
+				// is not this predicate's question, so it is not handed over.
+				stale: canonical.view.stale,
+				missing: canonical.view.missing,
 			}),
 	);
 
@@ -343,6 +370,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		canonical,
 		runDetails,
 		mcpServers = [],
+		mcpGrantRunning = false,
+		mcpRemedy,
 		childrenOpenable = false,
 		pulses,
 	}) => {
@@ -657,6 +686,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											// card holds itself disabled after an answer instead of
 											// coming back live against a gate the owner already took.
 											answer={canonical.answer ?? null}
+											// The two states a notification click paints before the
+											// owner answers: the rows may be this window's memory of
+											// the conversation rather than the owner's, or the
+											// conversation may not be on this machine at all.
+											stale={canonical.view.stale}
+											missing={canonical.view.missing}
 										/>
 									) : (
 										<MessagesView
@@ -801,6 +836,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											)
 										: undefined
 								}
+								// A conversation the backend says is gone is a KNOWN
+								// answer, so the composer refuses input rather than
+								// accepting a message that can only 404. The pane above
+								// carries the sentence and the way out (M6); this only
+								// refuses the keystroke.
+								unavailable={Boolean(canonical?.view.missing)}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
@@ -917,6 +958,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<RunPanel
 								details={runDetails}
 								mcpServers={mcpServers}
+								mcpGrantRunning={mcpGrantRunning}
+								mcpRemedy={mcpRemedy}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}

@@ -26,7 +26,12 @@ import os from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
-import type { DesktopResponse } from "../../shared/desktop-contract";
+import type {
+	DesktopFeedState,
+	DesktopResponse,
+} from "../../shared/desktop-contract";
+import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
+import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
 	requestDesktopMedia,
@@ -171,6 +176,38 @@ export class BackendServiceManager {
 		null;
 
 	/**
+	 * The machine-wide desktop feed relay, rebuilt when the backend URL rotates
+	 * for the same reason the stream relay is: a subscription must never pin a
+	 * stale origin. Held HERE rather than in `index.ts` because the desktop
+	 * bearer lives in this class and is never exposed — the feed needs it to
+	 * carry an SSE connection and to beat the presence lease.
+	 */
+	private feedRelay: DesktopFeedRelay | null = null;
+	private feedRelayUrl = "";
+	/** Both survive relay recreation, so a URL rotation cannot silently detach
+	 * the banner path or leave the sidebar reading a stale connection state. */
+	private feedFrameObserver: ((frame: DesktopFeedFrame) => void) | null = null;
+	private feedStateObserver: ((state: DesktopFeedState) => void) | null = null;
+	/**
+	 * The window/focus/displayed-session answers the presence claim carries.
+	 *
+	 * Set by main once a window can exist — before that a windowless app is the
+	 * honest answer, which is also the reference's own default for a client that
+	 * has not said anything yet.
+	 */
+	private presenceContext:
+		| (() => {
+				sessionId: string;
+				window: {
+					exists: boolean;
+					focused: boolean;
+					visible: boolean;
+					minimized: boolean;
+				};
+		  })
+		| null = null;
+
+	/**
 	 * Called every time the backend becomes reachable and authenticated.
 	 *
 	 * The desktop token is minted inside `start()`, so anything that must query
@@ -242,6 +279,77 @@ export class BackendServiceManager {
 	): void {
 		this.streamObserver = observer;
 		this.streamRelay?.observe(observer);
+	}
+
+	/**
+	 * The machine-wide feed, rebuilt when the backend URL rotates.
+	 *
+	 * Lazily constructed for the same reason `getStreamRelay` is: the desktop
+	 * token is minted inside `start()`, so a relay built at `app.whenReady()`
+	 * would capture `null` and never authenticate. Callers reach for it from the
+	 * backend-ready hook, which is the first moment the token exists.
+	 */
+	getDesktopFeedRelay(): DesktopFeedRelay {
+		if (!this.feedRelay || this.feedRelayUrl !== this.backendUrl) {
+			this.feedRelay?.stop();
+			this.feedRelay = new DesktopFeedRelay(
+				this.backendUrl,
+				this.desktopToken,
+				{
+					request: (input) => this.requestDesktop(input),
+					// The presence beat is a contract op, so it travels the same
+					// authenticated transport as every other control and the token
+					// never leaves this class.
+					beatPresence: (presence) =>
+						this.requestDesktop({
+							op: "sessions.presence",
+							...presence,
+						}),
+					// What this app can say about its own window. Supplied by main
+					// (it owns the window and the notifier's displayed session) and
+					// read at each beat rather than captured, so a window that opens
+					// or closes mid-lease is reported without a new relay.
+					presenceContext: () => this.presenceContext?.() ?? null,
+				},
+			);
+			this.feedRelay.observe(this.feedFrameObserver);
+			this.feedRelay.watchState(this.feedStateObserver);
+			this.feedRelayUrl = this.backendUrl;
+		}
+		return this.feedRelay;
+	}
+
+	/**
+	 * Supply the presence claim's window state.
+	 *
+	 * Separate from `observeDesktopFeed` because it is a different question
+	 * asked of a different owner: the observers are consumers of frames, and
+	 * this is main's answer about itself. Applied to a relay that already
+	 * exists, so the ordering between "start the feed" and "make a window" does
+	 * not decide whether the claim is complete.
+	 */
+	providePresenceContext(
+		context: () => {
+			sessionId: string;
+			window: {
+				exists: boolean;
+				focused: boolean;
+				visible: boolean;
+				minimized: boolean;
+			};
+		},
+	): void {
+		this.presenceContext = context;
+	}
+
+	observeDesktopFeed(
+		frameObserver: ((frame: DesktopFeedFrame) => void) | null,
+		stateObserver: ((state: DesktopFeedState) => void) | null,
+	): void {
+		this.feedFrameObserver = frameObserver;
+		this.feedStateObserver = stateObserver;
+		this.feedRelay?.observe(frameObserver);
+		this.feedRelay?.watchState(stateObserver);
 	}
 
 	requestDesktop(input: unknown): Promise<DesktopResponse> {
