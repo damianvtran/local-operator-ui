@@ -450,12 +450,16 @@ What this does NOT cover, stated because it is easy to over-read:
 - A launcher that kills *nothing* still leaks: the watch fires when the launcher
   is **gone**, so a driver that stops the wrapper and stays alive itself holds
   its app until the driver exits.
-- `stopApp()` in `scripts/renderer-driver.mjs` signals the launcher rather than
-  the app, so the app is never signalled; that file's own fix — spawn the app
-  binary, kill the app pid, TERM then KILL, reap on the runner's exit — is in
-  flight on PR #190, whose review round names the same defect from its side.
-  Either way a harness must stop by **pid**: a `pkill` by pattern takes the
-  operator's own running app with it.
+- `stopApp()` in `scripts/renderer-driver.mjs` used to signal the launcher rather
+  than the app, so the app was never signalled; that half has since landed
+  (#190, `e83ab9b1f`, an ancestor of this head): the driver spawns the app
+  binary itself, signals the app's own main process by exact pid — `SIGTERM`,
+  then `SIGKILL` on that same pid — and reaps what it started when the run ends,
+  however it ends. So the two halves now close the same defect from opposite
+  ends: **the watch** ends a run whose launcher is gone, and **the driver** ends
+  the app it started, by pid, before the script exits. A harness of your own is
+  still yours to stop by **pid**: a `pkill` by pattern takes the operator's own
+  running app with it.
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
