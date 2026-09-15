@@ -87,8 +87,18 @@ test("main does NOT bind Cmd/Ctrl+K, which the renderer owns", () => {
 test("something in the renderer subscribes to the channel main sends on", () => {
 	assert.match(
 		HOOK,
-		/window\.electron\.ipcRenderer\.on\(\s*"toggle-command-palette"/,
-		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on",
+		/window\.electron\.ipcRenderer\.on\(\s*"toggle-command-palette"\s*,\s*toggleCommandPalette\s*,?\s*\)/,
+		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on AND the store's toggle as the handler",
+	);
+	/*
+	 * The callback matters, not just the channel: `.on("toggle-command-palette",
+	 * () => {})` satisfies a channel-only match with the chord dead, which is the
+	 * same defect wearing a subscription's clothes (round 3's review).
+	 */
+	assert.doesNotMatch(
+		HOOK,
+		/toggle-command-palette"\s*,\s*\(\s*\)\s*=>/,
+		"an empty handler answers the chord with nothing",
 	);
 	/*
 	 * Not `window.api`: that bridge's `validChannels` whitelist does not include
