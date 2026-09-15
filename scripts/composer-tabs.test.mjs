@@ -629,7 +629,20 @@ test("the pane consumes the request: leave a reader, scroll the plan in, retire 
 		source,
 		/if \(openChildId\) \{\s*onReaderChildChange\(null\);\s*return;\s*\}/,
 	);
-	assert.match(source, /target\.scrollIntoView\(\{ block: "start" \}\)/);
+	/*
+	 * And it scrolls the pane's OWN region, never the page: `scrollIntoView`'s
+	 * default walks every scrolling box up to the viewport, `overflow: hidden`
+		* boxes included, which slid the chat column, the transcript and the composer
+		* sideways under the sidebar at any window where the pane does not fit beside
+	 * the column (108px at 1024x673, 221px at 800x600 — measured, and the frames
+	 * are in `docs/evidence/run-panel-reveal/`). `scrollRegionToTop` is the one
+	 * spelling of the rule, and the negative assertion below is what stops the
+	 * walk being reintroduced by a well-meaning edit.
+	 */
+	assert.match(source, /scrollRegionToTop\(region, target\)/);
+	assert.match(source, /const region = bodyRef\.current;/);
+	assert.match(source, /ref=\{bodyRef\}/);
+	assert.doesNotMatch(source, /scrollIntoView/);
 	assert.match(source, /clearReveal\(revealRequest\.nonce\)/);
 	assert.match(
 		source,
