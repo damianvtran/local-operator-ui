@@ -21,8 +21,8 @@ import { spawnSync } from "node:child_process";
  */
 import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { BYTECODE_TREE_NAMES, seedResourceDir } from "./bundled-python-layout.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { finalContainerChecks, finalMetadataChecks, privatePythonSeedCheck } from "./python-artifact-layout.mjs";
 
 const CODESIGN = "/usr/bin/codesign";
@@ -544,10 +544,11 @@ export function verifyArtifacts({
 	return { ok, results };
 }
 
-const isMain =
-	process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
-
-if (isMain) {
+// Through `scripts/entry-point.mjs`, not a lexical comparison of
+// `process.argv[1]`: reached through a symlinked path this file used to load, run
+// nothing and exit 0, and `publish.yml`'s artifact gate reads that status as a
+// pass — a failing gate becoming a passing one.
+if (isEntryPoint(import.meta.url)) {
 	const args = parseArgs(process.argv.slice(2));
 	const { ok } = verifyArtifacts(args);
 	process.exit(ok ? 0 : 1);

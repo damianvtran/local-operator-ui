@@ -33,9 +33,9 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { notarize } from "@electron/notarize";
 import { loadBuildEnv } from "./build-env.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 
 /** Disk images in a build's artifact list. */
 export function dmgArtifacts(artifactPaths = []) {
@@ -261,10 +261,12 @@ export async function notarizeArtifacts({
 	return { notarized };
 }
 
-const isMain =
-	process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
-
-if (isMain) {
+// Through `scripts/entry-point.mjs`, not a lexical comparison of
+// `process.argv[1]`: `pnpm notarize-dmg` is an exit-status-only consumer in both
+// `publish.yml` and `signed-update-candidate.yml`, and a symlinked spelling made
+// this file load, print nothing and exit 0 — an un-notarized release passing the
+// step whose whole product is the staple.
+if (isEntryPoint(import.meta.url)) {
 	const args = parseArgs(process.argv.slice(2));
 	notarizeArtifacts({ dist: args.dist }).catch((error) => {
 		console.error("Disk image notarization failed:", error);
