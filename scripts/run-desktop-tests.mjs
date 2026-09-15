@@ -37,6 +37,7 @@ import {
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 /**
  * Node's test runner exports this into every test-file process. An inherited
@@ -118,8 +119,21 @@ if (explicitFlag === undefined) {
 }
 nodeArgs.push(...args);
 
-const childEnv = Object.fromEntries(
-	Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+/*
+ * The suite's children get the notification kill switch set, alongside the one
+ * key filtered out above, and for the same reason this runner exists at all:
+ * a caller must not have to remember either of them. These test files boot the
+ * real app, the app spawns a real backend, and that backend's parked-gate
+ * announcement reaches macOS through `osascript`, whose banner lands in the
+ * operator's Notification Center attributed to Script Editor. That is not a
+ * sandbox and a suite must not be able to write there; see
+ * `notifications-off.mjs` for the whole path and for the two deliberate
+ * exceptions.
+ */
+const childEnv = withNotificationsOff(
+	Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+	),
 );
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",
