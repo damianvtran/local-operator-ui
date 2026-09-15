@@ -179,6 +179,23 @@ export const SUBAGENT_ROW_CAP = 6;
 export const TODO_ITEM_CAP = 10;
 
 /**
+ * Wake rows the Wakes section shows before its overflow marker.
+ *
+ * The number is the ROSTER's budget (`SUBAGENT_ROW_CAP`) rather than the TUI
+ * band's three (`wake_panel.MAX_WAKE_ROWS`), and the difference is the medium:
+ * the band is a handful of rows in a dock that shares one column with the plan
+ * and the roster and has to keep a transcript floor, while this section is one
+ * list inside a pane that scrolls. Six is what the pane already spends on the
+ * one other list a session can fill on its own.
+ *
+ * The wire cannot exceed `MAX_WAKE_SCHEDULES = 16`
+ * (`local_operator/harness/wake.py:47`), so the cap binds — a full scheduler is
+ * sixteen rows, and without a cap the Wakes section would push the plan and the
+ * roster off the pane for the sake of a readout nobody is acting on.
+ */
+export const WAKE_ROW_CAP = 6;
+
+/**
  * The seam between two facts on one line. The same ` · ` the TUI's row and the
  * app's own stats runs use (`STATS_SEAM`), so a numbers run punctuates the way
  * every other run of numbers in the app does.
@@ -333,6 +350,57 @@ export type SubagentRow = {
 	stateWord: string;
 };
 
+/**
+ * One ARMED wake schedule, as the pane and the composer's chip read it.
+ *
+ * One row per SCHEDULE rather than per occurrence, which is the TUI band's own
+ * rule (`wake_panel.WakePanel`): a wake that fires every hour for a week is one
+ * schedule carrying one next-due instant, not seven rows.
+ *
+ * The row keeps BOTH the wire's figures (`nextDueAt`, `everyMs`, `remaining`)
+ * and the labels derived from them (`dueLabel`, `cadence`), which is
+ * `SubagentRow`'s own shape and for its reason: the figures are facts about the
+ * schedule that a re-measure or a test can read, and the labels are what a row
+ * draws — so a test can assert `epoch-ms -> label` without re-deriving the
+ * whole row, and the surface does no formatting of its own.
+ *
+ * `nextDueAt` is epoch MILLISECONDS. Every other clock this model reads
+ * (`start_time`, `settled_at`) is epoch SECONDS and is divided by 1000 on the
+ * way in (`readClock`); a wake's due instant is not, and the unit is stated on
+ * both this field and `formatWakeDue` because getting it wrong is a factor of
+ * 1000 with nothing on screen to say so — the label would simply be a 1970 date.
+ *
+ * `dueLabel` is "" rather than a placeholder when the row carries no usable
+ * instant, and `cadence` is "once" for a row with no `every_ms`.
+ */
+export type WakeRow = {
+	id: string;
+	/**
+	 * The schedule's own prompt: what a delivery would carry.
+	 *
+	 * Kept VERBATIM rather than flattened, matching `TodoItemView.reason` — the
+	 * pane's rule for a variable-length authored string is CSS clamping with the
+	 * whole text in a `title` and an `sr-only` twin, and a flattening here would
+	 * destroy the author's own line breaks in the one home that keeps them.
+	 * Empty is a real wire state (a schedule created with no prompt), not an
+	 * error: the row then draws no message line.
+	 */
+	message: string;
+	/** The next fire instant, epoch MILLISECONDS, or `null` when unreadable. */
+	nextDueAt: number | null;
+	/** The local-time label for `nextDueAt`, or `""` when there is none. */
+	dueLabel: string;
+	/** The recurrence interval in milliseconds, or `null` for a single shot. */
+	everyMs: number | null;
+	/** Deliveries left, or `null` when the recurrence is not limit-bounded. */
+	remaining: number | null;
+	/**
+	 * The cadence as a reader reads it: `once`, `every 1h30m`, or
+	 * `every 1h30m · 3 left` for a limit-bounded recurrence.
+	 */
+	cadence: string;
+};
+
 /** One to-do item, pass-through from the wire plus the state's own word. */
 export type TodoItemView = {
 	text: string;
@@ -401,6 +469,17 @@ export type RunDetails = {
 	 */
 	lineage: SubagentRow[];
 	todos: TodoPhaseView[];
+	/**
+	 * The session's ARMED wake schedules, soonest fire first.
+	 *
+	 * The list itself is the gate for both surfaces that read it — the composer's
+	 * wake chip and this pane's Wakes section — so "there is at least one" is
+	 * spelled `wakes.length` and not a second count field. That is deliberately
+	 * unlike `openChildren`/`openJobs` beside it: those are FILTERED counts over
+	 * lists that also hold settled rows, while every row here is armed by
+	 * definition, so a parallel number could only ever disagree with the list.
+	 */
+	wakes: WakeRow[];
 	/** Children that have not settled: running or queued (`§3.3`). */
 	openChildren: number;
 	/**
@@ -788,6 +867,15 @@ export type RunDetailsInput = {
 	jobs: Array<Record<string, unknown>>;
 	todos: Array<Record<string, unknown>>;
 	/**
+	 * The session's armed wake schedules, off the canonical frontend.
+	 *
+	 * Optional so the two dozen fixture builders and the model's own tests that
+	 * predate wakes do not have to thread an empty list; absent and empty are the
+	 * same state here, which is the state a session with no wakes is in and the
+	 * state absence is rendered as.
+	 */
+	wakes?: Array<Record<string, unknown>>;
+	/**
 	 * Epoch milliseconds to measure a RUNNING child against.
 	 *
 	 * Only a running child depends on it: a settled one is measured against its
@@ -997,6 +1085,301 @@ const toWireList = (value: unknown): Array<Record<string, unknown>> =>
  * deliberately unused here — the roster is flat, as the TUI's is, and the
  * popover shows the SESSION's plan rather than each child's.
  */
+/**
+ * The month abbreviations `formatWakeDue` prints.
+ *
+ * A static table rather than `Intl`, and the port's own reason (see
+ * `formatWakeDue`): the label's shape is fixed by the TUI's `%b`, and a locale
+ * formatter is free to spell the same month another way in another language,
+ * which is precisely the drift this function exists to not have.
+ */
+const WAKE_MONTHS = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec",
+];
+
+/**
+ * The duration units `formatWakeDuration` decomposes over, largest first.
+ *
+ * Milliseconds, and the ORDER is the algorithm: the walk takes the largest unit
+ * the value reaches, so a week reads as `1w` rather than `7d`.
+ */
+const WAKE_DURATION_UNITS: ReadonlyArray<readonly [string, number]> = [
+	["w", 604_800_000],
+	["d", 86_400_000],
+	["h", 3_600_000],
+	["m", 60_000],
+	["s", 1_000],
+];
+
+/**
+ * A wake interval as the TUI spells it (`1h`, `45s`, `1h30m`, `1w`) — a port of
+ * `local_operator/harness/wake.py::format_duration`.
+ *
+ * A PORT rather than the app's own `formatDuration`
+ * (`features/chat/session-status/session-duration.ts`), and the choice is the
+ * point of that file's own docblock: two spellings of one number is how a
+ * desktop app and a terminal come to disagree about the same session's same
+ * fact. That helper is a port of `tool_card.py`, it takes SECONDS, it stops at
+ * days — a weekly wake would read `7d` where the TUI's band beside the same
+ * schedule reads `1w` — and its `100d+` cap is a width device belonging to a
+ * six-cell reading in a status strip. The duration a wake's cadence needs is the
+ * one `wake.py` defines, so that is the one ported.
+ *
+ * The two rules the Python carries and this keeps:
+ *
+ * - **Exact single unit first, but only at the largest unit the value reaches.**
+ *   `8h30m` is also exactly `510m`, and rendering it that way round-trips
+ *   through the parser while reading nothing like what was asked for.
+ * - **Two terms at most, and the second must be a natural count of its unit**,
+ *   so `30m` rather than `1h90m`. For `s` — which has no smaller wake unit —
+ *   that means under a minute, because `1h61s` reads as a carry error.
+ *
+ * The `ms` fallback is unreachable for a wake (every `every_ms` is at least
+ * `MIN_WAKE_INTERVAL_MS`, one minute) and is kept because a fallback that renders
+ * SOMETHING beats one that throws on a value the wire should not have sent.
+ */
+export const formatWakeDuration = (ms: number): string => {
+	for (let index = 0; index < WAKE_DURATION_UNITS.length; index++) {
+		const [unit, step] = WAKE_DURATION_UNITS[index];
+		if (ms < step) continue;
+		if (ms % step === 0) return `${ms / step}${unit}`;
+		const head = Math.floor(ms / step);
+		const remainder = ms % step;
+		for (const [smaller, subStep] of WAKE_DURATION_UNITS.slice(index + 1)) {
+			if (remainder % subStep !== 0) continue;
+			const quotient = remainder / subStep;
+			const cap = smaller === "s" ? 60_000 / subStep : step / subStep;
+			if (quotient < cap) return `${head}${unit}${quotient}${smaller}`;
+		}
+		break;
+	}
+	return `${ms}ms`;
+};
+
+/**
+ * The zone a due label shows, as a name where the platform has one.
+ *
+ * The TUI keeps the zone VISIBLE even on today's instants so UTC is never
+ * implied (`format_wake_time`), and `tzname()` is what it prints. A zone name is
+ * what makes that readable; the numeric offset is the same fallback the TUI
+ * keeps for a zone that has no name.
+ */
+const wakeZone = (due: Date): string => {
+	const named = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+		.formatToParts(due)
+		.find((part) => part.type === "timeZoneName")?.value;
+	if (named) return named;
+	const offset = -due.getTimezoneOffset();
+	const sign = offset < 0 ? "-" : "+";
+	const abs = Math.abs(offset);
+	return `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}${String(
+		abs % 60,
+	).padStart(2, "0")}`;
+};
+
+/**
+ * A wake's next fire, in the OS local zone where it will actually fire — a port
+ * of `local_operator/wakes/display.py::format_wake_time`.
+ *
+ * The app's other local-time helper (`features/schedules/…/schedule-list-item`)
+ * does NOT fit and is not reused, deliberately: it formats through
+ * `toLocaleTimeString(navigator.language, …)`, which spells the same instant
+ * differently per machine, and it prints NO ZONE — so a reader in a UTC locale
+ * gets a bare `9:30` that implies UTC when the wake fires at 09:30 local. This
+ * label exists to answer "when does this actually fire", so it takes the TUI's
+ * four rules verbatim:
+ *
+ * - the local clock, converted from the instant rather than from today's offset,
+ *   so the label is right across a DST transition;
+ * - a date when the due instant is not on today's local date, and a year when it
+ *   is not this year;
+ * - an explicit `AM`/`PM`, never the locale's `%p` (which can be empty);
+ * - the zone, always, named where the platform gives a name.
+ *
+ * `24h` is the TUI's `display.time_format` setting and this app has no such
+ * setting, so the TUI's own default — 12-hour — is what ships. Stated because a
+ * reader who has set the terminal to 24-hour will see the two spellings differ:
+ * that is a missing preference in this app, not a disagreement about the instant.
+ *
+ * `nowMs` is passed rather than read from the clock for the model's own rule:
+ * the derivation is a function of the wire FRAME, so a story that pins `nowMs`
+ * (`FIXTURE_NOW_MS`) gets a reproducible label and its frames can be compared.
+ * The cost, stated rather than hidden: a session left open across local midnight
+ * keeps yesterday's date rule until the next frame arrives — there is no timer
+ * here, and `run-details-clock.ts` measures elapsed time, not the date.
+ */
+export const formatWakeDue = (epochMs: number, nowMs: number): string => {
+	const due = new Date(epochMs);
+	const now = new Date(nowMs);
+	const hour = due.getHours();
+	const clock = `${hour % 12 === 0 ? 12 : hour % 12}:${String(
+		due.getMinutes(),
+	).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
+	const sameDay =
+		due.getFullYear() === now.getFullYear() &&
+		due.getMonth() === now.getMonth() &&
+		due.getDate() === now.getDate();
+	const sameYear = due.getFullYear() === now.getFullYear();
+	const date = sameDay
+		? ""
+		: `${WAKE_MONTHS[due.getMonth()]} ${String(due.getDate()).padStart(
+				2,
+				"0",
+			)} ${sameYear ? "" : `${due.getFullYear()} `}`;
+	return `${date}${clock} ${wakeZone(due)}`;
+};
+
+/**
+ * A schedule's recurrence as a reader reads it: `once`, `every 1h30m`, or the
+ * bounded form `every 1h30m · 3 left`.
+ *
+ * `once` for a row with no `every_ms` is the TUI band's own word for the same
+ * case (`wake_panel`), so the two surfaces agree about a single-shot schedule.
+ *
+ * The bounded clause is appended only to a RECURRING schedule: `--limit` rides a
+ * `--every` on the wire's create path, so a single shot's `remaining` restates
+ * what `once` has already said, and `once · 1 left` is a row saying one thing
+ * twice. It is ignored rather than asserted away, because the two fields are
+ * independent on the wire and a rarer shape must not blank the label.
+ *
+ * The count is spelled `3 left` and not the receipt row's `(1, every 6h)`: that
+ * envelope is MODEL-FACING markup (`receipt-row-model.ts`'s `wakeReceiptHeadline`
+ * strips it off the delivery row for exactly that reason), so it is not a shape
+ * a user-facing label should copy.
+ */
+export const formatWakeCadence = (
+	everyMs: number | null,
+	remaining: number | null,
+): string => {
+	if (everyMs === null) return "once";
+	const cadence = `every ${formatWakeDuration(everyMs)}`;
+	if (remaining === null) return cadence;
+	return `${cadence} · ${remaining} left`;
+};
+
+/**
+ * The count clause: `1 wake armed` / `2 wakes armed`.
+ *
+ * ONE spelling, used by the composer's chip and by the Wakes section's trailing
+ * tally. `docs/composer-activity-chips.md` § 2 states the rule this follows —
+ * "the count is the model's clause and nothing here tallies" — and the failure
+ * it prevents is `1 wake armeds` reaching a user on whichever of the two
+ * surfaces was written second.
+ *
+ * `armed` is the operator's own word for this state ("how many wakes are
+ * armed"), and it is the right one here because the chip sits on a composer
+ * where the neighbouring counts (`3 to-dos open`, `2 subagents running`) all
+ * state a condition. The TUI band's tally says `N scheduled` of the same list,
+ * which is that surface's word for its own heading (`wakes/display`'s panel);
+ * this is one vocabulary, not two, because both describe an ARMED schedule and
+ * neither describes a delivery — `formatWakeCadence` carries the note on why the
+ * wake-delivery row's envelope vocabulary is not the one either surface uses.
+ */
+export const wakeClause = (count: number): string =>
+	count === 1 ? "1 wake armed" : `${count} wakes armed`;
+
+/**
+ * One wire schedule as a row, or `null` when the record carries nothing a user
+ * could recognise.
+ *
+ * The survival rule is deliberately generous and its boundary is written down,
+ * because the two ways to get it wrong are both silent: dropping a malformed row
+ * hides a wake that WILL fire, and keeping an empty one draws a row with no
+ * content under a heading that claims a schedule.
+ *
+ * - A row with NEITHER a message NOR a readable due instant is dropped. There is
+ *   nothing to recognise it by: it has no prompt to read and no time to fire at,
+ *   so it could only render as a blank line the section counts.
+ * - Everything else is kept, including a row with a prompt and no instant (the
+ *   `dueLabel` is `""` and the row leads with its cadence) and a row with an
+ *   instant and no prompt (the empty-prompt state the receipt row model records
+ *   as reachable: "a wake with no prompt has no body to disclose").
+ * - A missing `id` falls back to the row's POSITION in the wire list, which is
+ *   also the row's React key — the section is a keyed list and two rows sharing a
+ *   key is how one row's content renders in another's place. The fallback is
+ *   positional rather than invented because the position is the only thing about
+ *   such a row that is genuinely known.
+ * - An unrecognised `status`, an extra field or a `remaining` of `0` is NOT a
+ *   reason to drop anything: the wire's `WakeState` is `extra="allow"` and these
+ *   fields are the backend's, so a stricter reader here would blank a real
+ *   schedule the moment the runtime adds a field.
+ */
+const deriveWake = (
+	record: Record<string, unknown>,
+	index: number,
+	nowMs: number,
+): WakeRow | null => {
+	const nextDueAt = wireNumber(record.next_due_at);
+	const message = wireText(record.message);
+	if (message === "" && nextDueAt === null) return null;
+	const everyMs = wireNumber(record.every_ms);
+	return {
+		id: wireText(record.id) || `wake-${index}`,
+		message,
+		nextDueAt,
+		dueLabel: nextDueAt === null ? "" : formatWakeDue(nextDueAt, nowMs),
+		everyMs,
+		remaining: wireNumber(record.remaining),
+		cadence: formatWakeCadence(everyMs, wireNumber(record.remaining)),
+	};
+};
+
+/**
+ * The session's armed wakes, soonest fire first.
+ *
+ * Ordering is by the DUE INSTANT and not by the wire, because the one question
+ * this list answers is "what fires next": `frontend.wakes` is published in the
+ * backend's own schedule order (`w1`..`w16`), which is creation order, and a
+ * reader scanning for the next interruption would have to compare every label
+ * themselves.
+ *
+ * A row with no readable instant sorts LAST rather than first. `Array.sort` is
+ * stable, so those rows keep the wire's order among themselves, and the
+ * alternative — treating an unknown instant as epoch 0 — would put a row the
+ * renderer could not date at the top of a soonest-first list.
+ */
+export const deriveWakes = (
+	wakes: Array<Record<string, unknown>>,
+	nowMs: number,
+): WakeRow[] =>
+	wakes
+		.map((record, index) => deriveWake(record, index, nowMs))
+		.filter((row): row is WakeRow => row !== null)
+		.sort(
+			(a, b) =>
+				(a.nextDueAt ?? Number.POSITIVE_INFINITY) -
+				(b.nextDueAt ?? Number.POSITIVE_INFINITY),
+		);
+
+/**
+ * The rows the Wakes section shows, and how many it hid.
+ *
+ * The slice is the model's, matching `visibleSubagents`/`visibleTodoPhases`: the
+ * section renders `rows` and its overflow marker counts `hidden`, so the number
+ * in the marker and the rows above it cannot come from two different slices.
+ * There is no priority carve-out here — unlike the roster, no row of this list
+ * is asking for anything (`hasRunDetails`' question), so the honest slice is the
+ * first `cap` in fire order.
+ */
+export const visibleWakes = (
+	rows: readonly WakeRow[],
+	cap: number = WAKE_ROW_CAP,
+): { rows: WakeRow[]; hidden: number } => {
+	if (rows.length <= cap) return { rows: [...rows], hidden: 0 };
+	return { rows: rows.slice(0, cap), hidden: rows.length - cap };
+};
+
 export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobs = toWireList(input?.jobs);
 	const rawTodos = Array.isArray(input?.todos) ? input.todos : [];
@@ -1116,6 +1499,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 		lineage,
 		jobs: jobRows,
 		todos,
+		wakes: deriveWakes(toWireList(input?.wakes), nowMs),
 		openChildren: roster.filter(isOpenRow).length,
 		openJobs: jobRows.filter(isOpenRow).length,
 		failedChildIds: roster
