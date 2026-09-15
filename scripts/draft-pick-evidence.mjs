@@ -35,6 +35,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://127.0.0.1:5204";
@@ -57,19 +58,19 @@ mkdirSync(dataDir, { recursive: true });
 
 const chrome = spawn(
 	CHROME,
-	[
+	withMockKeychain([
 		/* `detached` puts the browser in its own process group, so the sweep below
 		   can kill the whole tree rather than the parent and its orphans. */
 
-	"--headless=new",
-	"--no-sandbox",
-	"--disable-gpu",
-	"--hide-scrollbars",
-	"--window-size=1440,1000",
-	`--user-data-dir=${dataDir}`,
+		"--headless=new",
+		"--no-sandbox",
+		"--disable-gpu",
+		"--hide-scrollbars",
+		"--window-size=1440,1000",
+		`--user-data-dir=${dataDir}`,
 		"--remote-debugging-port=0",
 		"about:blank",
-	],
+	]),
 	{ detached: true },
 );
 
