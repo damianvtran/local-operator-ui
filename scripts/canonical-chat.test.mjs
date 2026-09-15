@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -28,7 +29,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -95,6 +96,18 @@ const {
 	desktopRequestSchema,
 	DesktopControlError,
 	UNCONFIRMED_SEND_CODE,
+	LEADING_SLASH_CODE,
+	LEADING_SLASH_MESSAGE,
+	SESSION_UNVALIDATED_CODE,
+	UNREADABLE_ATTACHMENT_CODE,
+	refusedBeforeAdmissionAttachments,
+	refusedBeforeAdmissionText,
+	restoreSubmittedAttachments,
+	restoreSubmittedText,
+	adoptRefusedPayload,
+	refusedSplitNotice,
+	useConversationInputStore,
+	withholdsRetryHint,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -940,6 +953,893 @@ test("typed repair failures retain the canonical draft and error category", asyn
 	assert.equal(store.getState().drafts[key].sessionId, "222222222222");
 });
 
+/*
+ * The backend's own policy (`desktop_sessions.py:170`) refuses any message whose
+ * text lstrip-starts with "/", and it answers with a 422 whose `detail` is the
+ * transport's SHARED sentence. The composer rendered that sentence and then
+ * "Send it again." — an instruction that can never succeed, because the same
+ * bytes meet the same rule forever (UX round 2, U13). The refusal carries no
+ * code of its own on the wire, so the store classifies it from the payload it
+ * sent, which is the one thing that identifies it.
+ */
+test("a leading-slash refusal is classified, and says what the user can do", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const text = "/usage\nhello from line two";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text }, "222222222222"),
+		(error) => {
+			// The composer prioritizes its catch over the persisted draft. The
+			// classified copy must cross that boundary, not only reach the store.
+			assert.ok(error instanceof DesktopControlError);
+			assert.equal(error.status, 422);
+			assert.equal(error.code, LEADING_SLASH_CODE);
+			assert.equal(error.message, LEADING_SLASH_MESSAGE);
+			assert.equal(error.cause.message, "The request has invalid fields.");
+			return true;
+		},
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
+	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	// A validation refusal is decided before anything is admitted, so the draft
+	// is not held and the text is back in the composer — where the fix the
+	// sentence names can actually be carried out.
+	assert.equal(draft.admissionAttempted, false);
+	assert.equal(draft.submittedText, text);
+	// The composer's generic retry hint is withheld for exactly the refusals a
+	// resend cannot answer, and kept for every other one. `UNCONFIRMED_SEND_CODE`
+	// is the contrast that matters here: its remedy is Restore, not a resend, but
+	// it is not this rule's business either.
+	assert.equal(withholdsRetryHint(draft.errorCode), true);
+	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), true);
+	/*
+	 * Round 4's D13: the unreadable-attachment refusal is the third one a resend
+	 * cannot answer. Its chip is still attached and still unreadable, so the next
+	 * send meets the same rule and is refused for the same reason - the designer
+	 * clicked Send again at three widths and the whole round put exactly one
+	 * request on the wire. Its own sentence carries the remedy (attach it again,
+	 * or remove it), which is what makes withholding the generic hint correct
+	 * rather than merely quiet. It is a CODE rather than a fact about the copy so
+	 * the alert cannot be told to say "send it again" by an unrelated refusal's
+	 * code left in `draft.errorCode`, which is how the hint was measured both
+	 * present and absent on the same sentence (chat-page reads
+	 * `sendErrorCode ?? draft.errorCode`).
+	 */
+	assert.equal(withholdsRetryHint(UNREADABLE_ATTACHMENT_CODE), true);
+	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), false);
+	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
+	assert.equal(withholdsRetryHint(undefined), false);
+});
+
+/*
+ * U14 / Q7: the SAME refusal on the arm a "New chat" uses, where the session is
+ * created INSIDE the send.
+ *
+ * This is not the case above with a different id. `admitChatDraft` creates the
+ * session itself, patches the row with the id it got one request before
+ * admission, and the page keys the panel on `panelIdentityFor(draftKey, id)` -
+ * whose precedence is `id ?? draftKey` - so the identity the panel renders under
+ * flips from the draft key to the new session id MID-SEND. The composer that sent
+ * the draft is unmounted by that flip and takes its own refusal restore with it;
+ * the composer that replaces it is seeded from per-conversation text state that
+ * has never held this text.
+ *
+ * Live, that left the box EMPTY behind "Discard unsent message", with the copy
+ * still instructing the user to move text that was on no surface at all: not the
+ * box, not after a reload of the created session, and not in a New chat either
+ * (UX round 3 U14, QA round 3 Q7).
+ *
+ * So the assertion is not "the draft is retained" - it was, and that is exactly
+ * what made the loss look cosmetic. It is that the store hands the composer the
+ * text AGAIN, through the one derivation the page reads, and that the composer's
+ * own box rule then puts it back.
+ */
+test("a leading-slash refusal on the created-session arm still hands the text back", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	// A staged draft with NO session and no target: the "New chat" arm, the one
+	// that has to create its session in the same call that sends the text.
+	const key = store.getState().stageDraft();
+	const text = "/usage\ncreated-session arm line two";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text }),
+		(error) => {
+			assert.ok(error instanceof DesktopControlError);
+			assert.equal(error.code, LEADING_SLASH_CODE);
+			assert.equal(error.message, LEADING_SLASH_MESSAGE);
+			return true;
+		},
+	);
+	const state = store.getState();
+	const draft = state.drafts[key];
+	// The session was created inside the send, and the request that carried the
+	// text is the one that was refused.
+	assert.deepEqual(
+		[...new Set(calls.map((request) => request.op))],
+		["sessions.create", "sessions.message"],
+	);
+	// Retention, unchanged from the other arm. On its own this is what the
+	// pre-fix tree asserted, and it stayed green while the text was unreachable.
+	assert.equal(draft.sessionId, "222222222222");
+	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
+	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.admissionAttempted, false);
+	assert.equal(draft.submittedText, text);
+	// The flip itself, and why the composer's own restore cannot be the only
+	// answer: the panel is now keyed on the id this very send minted ...
+	assert.equal(
+		panelIdentityFor(state.activeDraftKey, draft.sessionId),
+		"222222222222",
+	);
+	// ... while the composer still reads the row the refusal was written to, which
+	// is the copy that outlives the composer that sent it.
+	assert.equal(draftIdentityFor(state.activeDraftKey, draft.sessionId), key);
+	// The restore source, and the box rule applied to it, so "reachable" is
+	// asserted rather than assumed: the user's two lines go back into an empty
+	// composer, which is what `restoreSubmittedText` does with an empty box.
+	assert.equal(refusedBeforeAdmissionText(draft), text);
+	assert.equal(restoreSubmittedText("", refusedBeforeAdmissionText(draft)), text);
+});
+
+/*
+ * The two arms, side by side, on the one thing the user experiences: what the
+ * composer is given to put back. The named-session arm never re-keys, so its
+ * local restore has always worked; the created-session arm has to be handed the
+ * same text by the store. One rule, one field, both arms.
+ */
+test("a refusal hands the composer the same text on both arms", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "333333333333",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	// The arm that names its session: `send:<id>` exists before the send and the
+	// panel never moves, so nothing here depends on the fix.
+	const namedKey = draftIdentityFor(null, "444444444444");
+	await assert.rejects(
+		admitChatDraft(
+			namedKey,
+			{ ...input, text: "/usage\nnamed-session arm line two" },
+			"444444444444",
+		),
+		/./,
+	);
+	const named = store.getState().drafts[namedKey];
+	// The arm that creates one mid-send.
+	const createdKey = store.getState().stageDraft();
+	await assert.rejects(
+		admitChatDraft(createdKey, {
+			...input,
+			text: "/usage\ncreated arm line two",
+		}),
+		/./,
+	);
+	const created = store.getState().drafts[createdKey];
+	assert.equal(refusedBeforeAdmissionText(named), "/usage\nnamed-session arm line two");
+	assert.equal(refusedBeforeAdmissionText(created), "/usage\ncreated arm line two");
+	// Same refusal shape on both: the arms differ in identity, not in what the
+	// user is owed.
+	for (const draft of [named, created])
+		assert.equal(draft.admissionAttempted, false);
+});
+
+/*
+ * R17: a refusal owes the composer its FILES as well as its words.
+ *
+ * The cases above pin the text half of the retained payload. The attachments
+ * live in the same row but a DIFFERENT store: the composer reads its chips from
+ * `inputByConversation[conversationId]`, they were staged under the identity the
+ * flip replaced, and so on this arm the chip row is empty and the row is the only
+ * survivor. With no route back, pressing Send on the restored text went out with
+ * the wording and WITHOUT the file, silently - and the resend retired the row
+ * that recorded what was owed, so nothing on screen or in the store disagreed
+ * with the user's belief that they had sent their file. Silent and partial is the
+ * worst shape a failure can take, which is why this one is fixed here rather than
+ * recorded as pre-existing (the retention/restore path is this branch's).
+ *
+ * Asserted at the seam that ships, not at the store alone: the store's own answer
+ * (`refusedBeforeAdmissionAttachments`), the shipped box rule applied to the
+ * identity the send MINTED, and then the list the very next Send would carry -
+ * which is the chip row, and is what "sends exactly what it shows" means.
+ */
+test("a restored draft still carries an attachment, not just the text", async () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "555555555555",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft();
+	const text = "/usage\ncreated-session arm line two";
+	const attachments = ["/tmp/notes.txt", "/tmp/screenshot.png"];
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments }),
+		/./,
+	);
+	const draft = store.getState().drafts[key];
+	// The store kept the file list, as it kept the text - the same row, the same
+	// pre-request write, and a refusal that admitted nothing.
+	assert.deepEqual(draft.submittedAttachments, attachments);
+	assert.deepEqual(refusedBeforeAdmissionAttachments(draft), attachments);
+
+	// The composer that mounts after the flip reads its chips under the id this
+	// send minted, and has never seen these files: empty chip row, no way to learn.
+	const postFlipIdentity = panelIdentityFor(
+		store.getState().activeDraftKey,
+		draft.sessionId,
+	);
+	assert.equal(postFlipIdentity, "555555555555");
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[postFlipIdentity],
+		undefined,
+	);
+
+	// The shipped rule is what puts them back, through the composer's own
+	// empty-slot rule (the box it mounts with is empty, and so is its chip row).
+	const restored = restoreSubmittedAttachments(
+		[],
+		refusedBeforeAdmissionAttachments(draft),
+	);
+	assert.deepEqual(restored, attachments);
+	for (const path of restored)
+		useConversationInputStore
+			.getState()
+			.addAttachment(postFlipIdentity, { id: `id-${path}`, path });
+
+	// THE REGRESSION: the payload the NEXT Send carries. Before the fix this read
+	// `[]` - the message went out with the wording and without the file - and this
+	// is the assertion that failed on the pre-fix tree.
+	assert.deepEqual(
+		useConversationInputStore
+			.getState()
+			.inputByConversation[postFlipIdentity].attachments.map((a) => a.path),
+		attachments,
+	);
+
+	// And the rule is the same one the text uses: a composer that already holds
+	// the user's own file keeps it and adopts nothing, because overwriting chips
+	// the user just picked is loss - the state the named arm is in by construction.
+	assert.deepEqual(
+		restoreSubmittedAttachments(
+			[{ id: "mine", path: "/tmp/mine.txt" }],
+			refusedBeforeAdmissionAttachments(draft),
+		),
+		[],
+	);
+});
+
+/*
+ * MINOR-2 of code review round 8: the composer adopts the PAIR through one
+ * decision.
+ *
+ * `owesRefusedPayload` made the store's answer one thing for both halves, but the
+ * composer still read them through two rules and gated the chip write on the TEXT
+ * rule's outcome. On the arm where the two rules disagree - the box holds text
+ * the user typed during the flight while the chip row is empty - that dropped the
+ * refusal's file with nothing said; and because the coupling was the text rule's
+ * OUTCOME rather than the rule, a later edit to `restoreSubmittedText`'s
+ * empty-slot clause would have changed which refusals restore files with no test
+ * noticing. Both are the same defect class the whole review series is about: two
+ * things that must agree, allowed to drift in silence.
+ *
+ * The payload is the REAL one - the store is driven to a refused send and
+ * `refusedBeforeAdmissionText`/`Attachments` supply both halves from the one row
+ * - and it is then put through the shipped composer-side decision in every state
+ * a composer can be in. The property is asserted over a matrix rather than as
+ * four hand-written arms: whenever exactly one owed half was adopted, `withheld`
+ * names the half that was NOT, so the composer always has a sentence to render
+ * and a restored draft can never show one half of the payload without the other
+ * in silence.
+ */
+test("the pair is adopted through one decision, and a split is never silent", async () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "666666666666",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft();
+	const text = "/usage\npair arm line two";
+	const attachments = ["/tmp/notes.txt", "/tmp/screenshot.png"];
+	await assert.rejects(admitChatDraft(key, { ...input, text, attachments }), /./);
+	const draft = store.getState().drafts[key];
+	const refusal = {
+		text: refusedBeforeAdmissionText(draft),
+		attachments: refusedBeforeAdmissionAttachments(draft),
+	};
+	// Both halves come from the same row the store wrote, so the decision below is
+	// driven with the payload a refusal really owes and not a fixture that could
+	// disagree with it.
+	assert.equal(refusal.text, text);
+	assert.deepEqual(refusal.attachments, attachments);
+
+	// The created-session arm: both slots are empty, so the pair lands whole and
+	// there is nothing to say.
+	const whole = adoptRefusedPayload("", [], refusal);
+	assert.equal(whole.text, text);
+	assert.deepEqual(whole.paths, attachments);
+	assert.deepEqual(whole.missingFiles, []);
+	assert.equal(whole.withheld, null);
+	assert.equal(
+		refusedSplitNotice(whole.withheld, refusal.attachments, whole.missingFiles),
+		null,
+	);
+
+	// THE ARM THIS FINDING IS ABOUT: the box holds text the user typed while the
+	// send was in flight. It keeps the box - and the caret - while the files come
+	// back anyway, because the chip row's rule is the text rule's, not the text
+	// rule's OUTCOME. That split is what must be said out loud.
+	const boxHeld = adoptRefusedPayload("a line I typed", [], refusal);
+	assert.equal(boxHeld.text, "a line I typed");
+	assert.deepEqual(boxHeld.paths, attachments);
+	assert.deepEqual(boxHeld.missingFiles, []);
+	assert.equal(boxHeld.withheld, "text");
+	const restoredNotice = refusedSplitNotice(
+		boxHeld.withheld,
+		refusal.attachments,
+		boxHeld.missingFiles,
+	);
+	assert.match(restoredNotice, /notes\.txt, screenshot\.png/);
+	assert.match(restoredNotice, /text was left out/);
+
+	// The other split: the text comes back into an empty box while the chip row
+	// holds files the user picked themselves. Those keep the row, and the files the
+	// refusal owed are NAMED as not attached again rather than dropped in silence.
+	const chipsHeld = adoptRefusedPayload(
+		"",
+		[{ id: "mine", path: "/tmp/mine.txt" }],
+		refusal,
+	);
+	assert.equal(chipsHeld.text, text);
+	assert.deepEqual(chipsHeld.paths, []);
+	assert.deepEqual(chipsHeld.missingFiles, attachments);
+	assert.equal(chipsHeld.withheld, "files");
+	const withheldNotice = refusedSplitNotice(
+		chipsHeld.withheld,
+		refusal.attachments,
+		chipsHeld.missingFiles,
+	);
+	assert.match(withheldNotice, /notes\.txt, screenshot\.png/);
+	// D14: the row's shape is not a thing the app teaches. "No free slot" was the
+	// region's only machine noun, and the helper's other arm names the ordinary
+	// reason in ordinary words.
+	assert.match(withheldNotice, /already holds files you picked/);
+	assert.doesNotMatch(withheldNotice, /slot/);
+
+	/*
+	 * THE ARM QA round 4's Q8 and UX round 5's U17 are about, and the one the three
+	 * arms above cannot see: the chip row holds the VERY FILE the refused send
+	 * carried. On a named session the composer is never remounted and its chips are
+	 * never cleared, so nothing was taken out of the row and there is nothing to put
+	 * back - the restored draft is the whole payload, the next send carries it
+	 * (`images: 1` on the wire), and a sentence claiming a file was withheld would
+	 * be false about a file the user can see one line below it. The rule is "is the
+	 * owed file in the draft", not "did this call write it".
+	 */
+	const heldInRow = adoptRefusedPayload(
+		"",
+		[{ id: "held", path: "/tmp/notes.txt" }],
+		{ text: refusal.text, attachments: ["/tmp/notes.txt"] },
+	);
+	assert.equal(heldInRow.text, text);
+	assert.deepEqual(heldInRow.paths, []);
+	assert.deepEqual(heldInRow.missingFiles, []);
+	assert.equal(heldInRow.withheld, null);
+	assert.equal(
+		refusedSplitNotice(heldInRow.withheld, ["/tmp/notes.txt"], heldInRow.missingFiles),
+		null,
+	);
+
+	// The row holds ONE of the two owed files: the other was genuinely left out, so
+	// the sentence names the one that is missing rather than both - naming a file
+	// that is on screen is the same lie in a smaller font.
+	const halfInRow = adoptRefusedPayload(
+		"",
+		[{ id: "held", path: "/tmp/notes.txt" }],
+		refusal,
+	);
+	assert.equal(halfInRow.withheld, "files");
+	assert.deepEqual(halfInRow.missingFiles, ["/tmp/screenshot.png"]);
+	const halfNotice = refusedSplitNotice(
+		halfInRow.withheld,
+		refusal.attachments,
+		halfInRow.missingFiles,
+	);
+	assert.match(halfNotice, /screenshot\.png/);
+	assert.doesNotMatch(halfNotice, /notes\.txt/);
+
+	// Both slots occupied - the named-session arm's state, where the local restore
+	// already put the payload back and both halves are held by content the user put
+	// there themselves. Nothing was adopted, so nothing is owed a sentence: one
+	// here would nag on every refusal of a draft the user has already rebuilt.
+	const rebuilt = adoptRefusedPayload(
+		"a line I typed",
+		[{ id: "mine", path: "/tmp/mine.txt" }],
+		refusal,
+	);
+	assert.equal(rebuilt.text, "a line I typed");
+	assert.deepEqual(rebuilt.paths, []);
+	assert.equal(rebuilt.withheld, null);
+	assert.equal(
+		refusedSplitNotice(rebuilt.withheld, refusal.attachments, rebuilt.missingFiles),
+		null,
+	);
+
+	// A composer with NO chip row (one keyed to a draft that never minted a
+	// session): the text comes back, the files cannot, and that is a split like any
+	// other - the decision reports it rather than the composer claiming a write it
+	// had no row for.
+	const noRow = adoptRefusedPayload("", null, refusal);
+	assert.equal(noRow.text, text);
+	assert.deepEqual(noRow.paths, []);
+	assert.deepEqual(noRow.missingFiles, attachments);
+	assert.equal(noRow.withheld, "files");
+
+	// An attachment-only refusal owes no text, so its files are not "a half held
+	// beside another that was never owed". It also pins the shape the old code got
+	// wrong for a second reason: an EMPTY refused text left the box unchanged, so an
+	// early return on "the box did not change" dropped these files with nothing
+	// said.
+	const filesOnly = adoptRefusedPayload("", [], { text: "", attachments });
+	assert.deepEqual(filesOnly.paths, attachments);
+	assert.deepEqual(filesOnly.missingFiles, []);
+	assert.equal(filesOnly.withheld, null);
+
+	/*
+	 * THE PROPERTY, over the arms above and the states between them: a `withheld`
+	 * answer means exactly one owed half is not in the draft the user is looking at,
+	 * and a sentence exists wherever that happened. `withheld === null` therefore
+	 * means every owed half is in the draft, or none was owed - never a silent half.
+	 *
+	 * "IN THE DRAFT", not "adopted by this call": the files half is present when
+	 * every owed path is in the chip row afterwards, whether this adoption wrote it
+	 * or the row already held it (the named-session arm, Q8/U17). The matrix carries
+	 * a row that holds the owed files for exactly that reason - without it the
+	 * property is only checked against rows that are none of the refused payload.
+	 */
+	const boxes = ["", "a line I typed"];
+	const rows = [
+		null,
+		[],
+		[{ id: "mine", path: "/tmp/mine.txt" }],
+		[{ id: "held", path: "/tmp/notes.txt" }],
+		[
+			{ id: "held1", path: "/tmp/notes.txt" },
+			{ id: "held2", path: "/tmp/screenshot.png" },
+		],
+	];
+	const payloads = [
+		refusal,
+		{ text: refusal.text, attachments: [] },
+		{ text: "", attachments },
+	];
+	let checked = 0;
+	for (const box of boxes)
+		for (const row of rows)
+			for (const payload of payloads) {
+				const result = adoptRefusedPayload(box, row, payload);
+				const textAdopted = payload.text !== "" && result.text !== box;
+				const filesPresent =
+					payload.attachments.length > 0 &&
+					payload.attachments.every(
+						(path) =>
+							result.paths.includes(path) ||
+							(row ?? []).some((chip) => chip.path === path),
+					);
+				const bothOwed = payload.text !== "" && payload.attachments.length > 0;
+				const split = bothOwed && textAdopted !== filesPresent;
+				const where = `box=${JSON.stringify(box)} row=${JSON.stringify(row)} payload=${JSON.stringify(payload)}`;
+				assert.equal(
+					result.withheld,
+					split ? (textAdopted ? "files" : "text") : null,
+					`a split reached the composer unnamed: ${where}`,
+				);
+				assert.equal(
+					refusedSplitNotice(
+						result.withheld,
+						payload.attachments,
+						result.missingFiles,
+					) !== null,
+					split,
+					`the sentence does not match the split: ${where}`,
+				);
+				// The sentence may only name files the draft is NOT carrying, or the
+				// user is sent looking for a chip that is already in front of them.
+				const named = refusedSplitNotice(
+					result.withheld,
+					payload.attachments,
+					result.missingFiles,
+				);
+				if (named)
+					for (const path of payload.attachments) {
+						const name = path.split("/").pop();
+						const carried =
+							result.paths.includes(path) ||
+							(row ?? []).some((chip) => chip.path === path);
+						// The files arm names what the draft is NOT carrying; the text arm
+						// names the files that came back. Either way a name the user cannot
+						// match to a chip is the defect, in one direction or the other.
+						assert.equal(
+							named.includes(name),
+							result.withheld === "files" ? !carried : carried,
+							`the sentence ${named.includes(name) ? "names" : "omits"} ${name} in the wrong direction: ${where}`,
+						);
+					}
+				checked += 1;
+			}
+	assert.equal(checked, boxes.length * rows.length * payloads.length);
+
+	// The decision delegates to the two shipped rules instead of re-implementing
+	// them: a second copy of "only into an empty slot" is how this family of
+	// defects starts. Comments are stripped, so a sentence describing the rule
+	// cannot stand in for calling it.
+	const hookSource = readFileSync(
+		"src/renderer/src/shared/hooks/use-message-input.ts",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const decision = hookSource.slice(
+		hookSource.indexOf("export const adoptRefusedPayload"),
+		hookSource.indexOf("export const refusedSplitNotice"),
+	);
+	assert.ok(
+		/restoreSubmittedText\(box, owedText\)/.test(decision),
+		"the pair decision no longer restores the text through the shipped box rule",
+	);
+	assert.ok(
+		/restoreSubmittedAttachments\(chips, refusal\.attachments\)/.test(decision),
+		"the pair decision no longer restores the attachments through the shipped chip rule",
+	);
+});
+
+/*
+ * R18: the composer's own adoption, exercised - the thing that actually restores
+ * the payload, which the cases above never touch.
+ *
+ * Both rules are asserted directly above, and both stay green if the effect that
+ * CONSUMES them is deleted or has its caret rule broken: the branch's central
+ * claim would then rest on the manual frames alone (round 7, R18). `MessageInput`
+ * cannot be rendered in isolation - a message list, a dispatcher and the
+ * canonical store - so the composer boundary is read off the shipped source, the
+ * instrument `composer-readings.test.mjs` argues for the same reason. Comments
+ * are stripped first, so a sentence explaining a rule cannot satisfy the test for
+ * having implemented it.
+ *
+ * Three claims, each of which has a failure behind it: the adoption is a LAYOUT
+ * effect (as a passive one the remounted box painted empty for a frame, R20); it
+ * consumes BOTH halves through the ONE pair decision and writes the chips to the
+ * composer's own identity; and it leaves the caret at the END of the restored
+ * text, which is what makes the next Send re-attempt the message instead of
+ * running the leading command (`slash-submit.ts` reads the token at the caret).
+ *
+ * The rules moved one layer down in round 8 (MINOR-2): the composer no longer
+ * calls `restoreSubmittedText`/`restoreSubmittedAttachments` itself, so the case
+ * above asserts the DECISION calls them and this one asserts the composer goes
+ * through the decision and renders its split answer. Reading the composer alone
+ * for the two rule names would now pass on a composer that had bypassed the
+ * pair decision entirely, which is exactly what the finding was about.
+ */
+test("the composer adopts a refused payload through the shipped rules, at the end of the text", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const start = rendered.indexOf("const consideredRefusedTextRef");
+	assert.ok(
+		start > 0,
+		"the composer no longer keeps a record of the refused payload it has answered for, so the text is never adopted on the remount and U14's fix is gone",
+	);
+	/*
+	 * The window is sized to the adoption as it ships: the pair decision, its
+	 * arguments, the chip write, the split sentence, the caret and the box write.
+	 * The assertions below are the ones that must not fall outside it.
+	 */
+	const adoption = rendered.slice(start, start + 1800);
+	assert.ok(
+		/useLayoutEffect\(\(\) => \{/.test(adoption),
+		"the refusal adoption is a passive effect again, so the remounted composer paints an empty box with the refusal's copy above it for one frame (R20)",
+	);
+	assert.ok(
+		/adoptRefusedPayload\(/.test(adoption),
+		"the adoption no longer goes through the single pair decision, so the two halves are read independently at the call site again and one can be dropped on the other's outcome (round 8, MINOR-2)",
+	);
+	assert.ok(
+		/addAttachment\(\s*conversationId,\s*\{\s*id: uuidv4\(\),\s*path,?\s*\}\s*\)/.test(
+			adoption,
+		),
+		"the restored chips are not written to the composer's own conversation, so the file list the next Send reads is still empty",
+	);
+	assert.ok(
+		/setRefusedNotice\(\s*refusedSplitNotice\(\s*adoption\.withheld,\s*refusedAttachments,\s*adoption\.missingFiles,?\s*\)/.test(
+			adoption,
+		),
+		"the adoption's split answer is computed and never rendered, so a draft carrying one half of the refused payload reads exactly like one carrying both (round 8, MINOR-2) - and its third argument is the FILES the draft is not carrying, which is what the sentence names (round 4, Q8/U17/D14)",
+	);
+	assert.ok(
+		/pendingCaret\.current = adoption\.text\.length/.test(adoption),
+		"the restored caret is no longer the END of the text, so a restored draft whose first line is a command RUNS it on the next Send instead of re-attempting the message",
+	);
+	assert.ok(
+		/setNewMessage\(adoption\.text\)/.test(adoption),
+		"the adopted text is computed and never written to the box",
+	);
+});
+
+/*
+ * D12: what SURVIVES the alert region's cap, which is the whole question at a
+ * narrow column.
+ *
+ * The region caps itself at `7.5rem` and scrolls internally, and that cap is
+ * load-bearing rather than stylistic: the footer reserves whatever the region
+ * renders, so an unbounded alert over a long retained draft pushed the composer
+ * and the send control off the bottom of the window (`chat-measure.ts`,
+ * `CAPPED_BLOCK`). Measured at the column the canvas pane leaves at a 1440px
+ * window: the region shows 120px of a 388px block, so the ORDER decides what
+ * the user can read without discovering a thin internal scrollbar.
+ *
+ * It was the muted context first - what the composer did with the refused draft
+ * - and the failure, with its remedy, second: the notice's seven wrapped lines
+ * filled the window on their own and the sentence saying which file failed and
+ * what to do about it began at offset 144, entirely below the fold (design
+ * round 4, D12). So the order is asserted here, because the pixels are the
+ * symptom and the DOM order is the cause: the failure and its own controls come
+ * first, and the muted line about the draft follows them.
+ *
+ * The cap is asserted in the same breath, because "make the failure visible"
+ * has an easy wrong answer - raising the cap, which moves the composer's top
+ * border and takes Send off screen. The region keeps `CAPPED_BLOCK`.
+ */
+test("the alert region renders the failure before the muted context it lands under", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const start = source.indexOf('role="alert"');
+	assert.ok(start > 0, "the alert region has no `role=\"alert\"` root");
+	// Bounded by the composer box, which is the region's next sibling, so the
+	// slice is this region and nothing else.
+	// `COMPOSER_BOX,` with the comma is code and only code: the region's own
+	// comment names `COMPOSER_BOX`'s padding, so matching the bare name would end
+	// the slice inside that sentence.
+	const regionRaw = source.slice(start, source.indexOf("COMPOSER_BOX,", start));
+	// Comment-stripped only for the marker order below, which reads the CODE. The
+	// bare-comment check after it deliberately reads the raw slice: stripping
+	// comments first would erase exactly the text node that check exists for.
+	const region = regionRaw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		region,
+		/CAPPED_BLOCK/,
+		"the region no longer caps itself, so a long alert over a retained draft pushes the composer and the send control off the bottom of a narrow window (D12's load-bearing half)",
+	);
+	/*
+	 * The marker order below is blind to one defect class, and this region has
+	 * already shipped it once: a block comment written as a bare JSX child is not
+	 * a comment, it is TEXT, and React renders it inside the alert. The reorder
+	 * this test pins was first written that way and the region carried 224px of
+	 * the comment describing the fix, which pushed the failure sentence back out of
+	 * the window it had just been moved into — with every assertion in this file
+	 * still green. It cannot be caught from the source with a line rule (`/*` at
+	 * the start of a line is a legitimate comment inside `cn(...)` and inside
+	 * every callback in this region, and there are six of those), so the instrument
+	 * is the rendered DOM: `scripts/composer-alert-geometry.mjs` fails on a
+	 * non-whitespace text node anywhere in this region, and the frames it writes
+	 * show it. Run it after any edit to this block.
+	 */
+	const order = [
+		["the failure sentence", "composerAlert.message"],
+		["the held-claim statement", "composerAlert.showHeld"],
+		["the remedy controls", "composerAlert.actions.length"],
+		["the split notice", "refusedNotice &&"],
+		["the held notice", "heldNotice &&"],
+	];
+	let previous = -1;
+	for (const [what, marker] of order) {
+		const at = region.indexOf(marker);
+		assert.ok(at >= 0, `${what} is no longer rendered in the region at all`);
+		assert.ok(
+			at > previous,
+			`${what} renders before what precedes it in the list, so at a narrow column the cap can show context and hide the failure the user has to act on (design round 4, D12)`,
+		);
+		previous = at;
+	}
+});
+
+/*
+ * U16: the refusal screen must not contradict itself about whether a session
+ * exists.
+ *
+ * A refused first message is created BEFORE it is refused (`sessions.create` 200,
+ * then the message 422), so on that screen the composer's own footer states that
+ * the working directory is fixed BECAUSE the session has started - one line
+ * below a header announcing that the session has not started. The head now
+ * describes the conversation that exists, by the identity this header already
+ * falls back to for a live chat. Asserted on the source because the rung IS the
+ * fix: the instruction must be reachable only while no session exists.
+ */
+test("the header stops announcing that the session has not started once one exists", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const rung = rendered.match(
+		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*: draft\?\.sessionId\s*\?\s*([\s\S]{0,160}?)\s*:\s*"The session starts when you send your first message\."/,
+	);
+	assert.ok(
+		rung,
+		"the header description no longer separates the session that exists from the one that does not, so the refusal screen announces that no session has started while its own footer says one has (U16)",
+	);
+	assert.match(
+		rung[1],
+		/canonical\.frontend\?\.cwd \|\| cwd/,
+		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
+	);
+});
+
+/*
+ * R13, the same boundary read in the OTHER direction, against the same shipped
+ * store and the real `desktopRequestSchema`.
+ *
+ * `admitChatDraft` creates a session inside the same try as message admission,
+ * so an error raised while CREATING was classified by the draft's text alone. A
+ * leading-slash draft therefore turned a bad-`cwd` 422 into
+ * `leading_slash_message`: copy instructing the user to move a command that had
+ * never been sent anywhere, over a request whose ops were `['sessions.create']`.
+ * That is the app confidently naming the wrong cause - the defect U13 exists to
+ * remove - so reaching the message request is the precondition of the
+ * classification, and the draft's shape is not it.
+ */
+test("a session-creation refusal keeps its own code and copy, even for a leading-slash draft", async () => {
+	reset();
+	// A coded 422 is realistic on this path: `desktopResult` reads `detail.code`
+	// off the backend's envelope, so a specific refusal the transport already
+	// classified must not be overwritten by this general one either.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return Promise.reject(
+				new DesktopControlError(
+					422,
+					"The working directory does not exist.",
+					undefined,
+					"invalid_cwd",
+				),
+			);
+		return {
+			session_id: "222222222222",
+			binding: { agent: "reviewer", team: null },
+		};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const text = "/usage\ncreate-stage refusal is not the slash policy";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, cwd: "/definitely/not/here" }),
+		(error) => {
+			// The caller's catch is the surface the composer renders from, so the
+			// preserved classification has to cross that boundary too.
+			assert.ok(error instanceof DesktopControlError);
+			assert.equal(error.status, 422);
+			assert.equal(error.code, "invalid_cwd");
+			assert.equal(error.message, "The working directory does not exist.");
+			return true;
+		},
+	);
+	// Nothing dispatched a message, so no request could have carried the text to
+	// the leading-slash policy in the first place.
+	assert.deepEqual(
+		[...new Set(calls.map((request) => request.op))],
+		["sessions.create"],
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(draft.errorCode, "invalid_cwd");
+	assert.equal(draft.error, "The working directory does not exist.");
+	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
+	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	// The generic retry hint is KEPT: a create refusal is not one of the two a
+	// resend cannot answer, and withholding it would be the same
+	// mis-attribution in the opposite direction.
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
+	// U13's retention behaviour is unchanged and stands for its own reason - a
+	// pre-admission refusal leaves the text where the fix can be made.
+	assert.equal(draft.admissionAttempted, false);
+	assert.equal(draft.submittedText, text);
+});
+
+test("a create payload the shipped schema rejects is not relabelled as a slash refusal", async () => {
+	reset();
+	// The reviewer's exact reproduction, and the shape nearest the live one:
+	// `cwd: ""` is refused by the REAL `desktopRequestSchema`, so the transport
+	// answers 422 with its plain-string detail and NO code - which is precisely
+	// the shape the un-gated classifier could not tell from the slash policy.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") {
+			assert.equal(desktopRequestSchema.safeParse(request).success, false);
+			return Promise.reject(
+				new DesktopControlError(422, "Invalid desktop operation."),
+			);
+		}
+		return {
+			session_id: "222222222222",
+			binding: { agent: "reviewer", team: null },
+		};
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const text = "/usage\ninvalid cwd under a leading-slash draft";
+	const wire = admitChatDraft(key, { ...input, text, cwd: "" });
+	await assert.rejects(wire);
+	const draft = store.getState().drafts[key];
+	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
+	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.error, "Invalid desktop operation.");
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
+	assert.equal(draft.submittedText, text);
+});
+
+test("the same 422 without a leading slash keeps the transport's own sentence", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "a message with no command in it" }),
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(draft.errorCode, undefined);
+	assert.equal(draft.error, "The request has invalid fields.");
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
+});
+
 test("latest candidate open wins and a failed open retains outgoing session", async () => {
 	reset();
 	const resolutions = new Map();
@@ -1563,9 +2463,15 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// The premise: the popup positions itself outside its parent's content
 	// box. If this ever stops being true the rest of this test is measuring
 	// nothing, so it is asserted rather than assumed.
+	//
+	// Anchored on the popup's own leading tokens — `@container/slash` then
+	// `absolute bottom-full`, inside ONE quoted class list — because a bare
+	// `/absolute bottom-full[^"]*"/` can be satisfied by those two tokens
+	// anywhere in any quoted string in the file, which is the check weakened
+	// rather than moved (round 1 R5).
 	assert.ok(
-		/"absolute bottom-full[^"]*"/.test(slash),
-		"the slash popup no longer renders `absolute bottom-full`, so this test's premise about escaping the parent box is stale",
+		/@container\/slash absolute bottom-full[^"]*"/.test(slash),
+		"the slash popup no longer renders `@container/slash absolute bottom-full`, so this test's premise about escaping the parent box is stale",
 	);
 
 	const scan = scanJsxTree(composer);
@@ -2125,5 +3031,123 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		panelIdentityFor(null, undefined),
 		undefined,
 		"no session and no draft is no panel",
+	);
+});
+
+test("the submit path cannot re-decide what a draft is", async () => {
+	/*
+	 * The shape guard for the inline-command contract: the ordering half from
+	 * round 1, the SEAM half from round 2.
+	 *
+	 * WHAT IT DEFENDS, PART 1 (ordering). Before this change the composer
+	 * recognised a command only when the WHOLE draft was one, so a command typed
+	 * into a sentence reached the model as prose — a silent no-op the user could
+	 * not see. The fix is that `message-input.tsx` asks `planSlashSubmission`
+	 * first and only then decides whether to submit. That is easy to lose in a
+	 * refactor that touches only the submit path: deleting the plan call leaves
+	 * every unit test green, because the planner itself is still correct and
+	 * merely unused.
+	 *
+	 * WHAT IT DEFENDS, PART 2 (one decision, not one order). Part 1 was green
+	 * while the defect was still live in the app. `chat-page.tsx`'s canonical
+	 * `send()` called `dispatch(content)` on the RAW text, and the dispatcher
+	 * asked `SLASH_SUBMISSION` whether that whole string was a command — a
+	 * SECOND decision, one layer below the planner, whose `[\s\S]*` argument
+	 * group read the newline in `/usage\nhello` as the command/argument
+	 * separator. The planner answered `send` for that draft, the dispatcher
+	 * overruled it, the composer was emptied on `consumed` and nothing reached
+	 * the model (QA round 2, Q4 — round 1's Q1, one layer down). An ordering
+	 * guard cannot catch that: the second guard was never out of order, it was a
+	 * second answer. So what is pinned here is structural — the dispatcher is
+	 * handed an already-parsed command, and nothing on the submit path re-reads
+	 * draft text to ask whether it is one. Reinstate the old line and this test
+	 * goes red (it was run that way).
+	 *
+	 * Asserted on the SOURCE rather than by rendering, for the reason the clipping
+	 * guard above is: what is being defended is which call sites exist and what
+	 * they are handed, and a render test would need a real backend to observe the
+	 * difference between "spliced" and "sent to the model".
+	 */
+	const { readFile } = await import("node:fs/promises");
+	/*
+	 * Comments are stripped before every assertion below, because each of them is
+	 * about CODE: the defect these guards describe is *named* in the docstrings
+	 * that record it, and a guard that fired on its own history would be a guard
+	 * nobody could keep.
+	 */
+	const code = (source) =>
+		source
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/^[ \t]*\/\/.*$/gm, "");
+	const composer = code(
+		await readFile(
+			"src/renderer/src/features/chat/components/message-input.tsx",
+			"utf8",
+		),
+	);
+	// The planner is consulted with the CARET, not just the value: the whole
+	// point is the token at the caret (`slashTokenSpan`), so a call that dropped
+	// the caret would re-anchor completion to the buffer start.
+	assert.ok(
+		/planSlashSubmission\(\{[\s\S]{0,240}?caret:/.test(composer),
+		"the composer no longer passes the caret into `planSlashSubmission`, so inline detection has lost the position it is defined against",
+	);
+	const plannedAt = composer.indexOf("planSlashSubmission({");
+	const submitAt = composer.indexOf("submitMessage();");
+	assert.ok(
+		plannedAt !== -1 && submitAt !== -1 && plannedAt < submitAt,
+		"`planSlashSubmission` is gone from message-input.tsx or now runs after `submitMessage()`; a command typed into a sentence would reach the model as prose again",
+	);
+	// And the two entry points a user actually submits with both consult it: the
+	// Enter key and the form's submit (the Send button).
+	const plans = composer.match(/planFor\(newMessage, caret\)/g) ?? [];
+	assert.ok(
+		plans.length >= 2,
+		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
+	);
+
+	/*
+	 * The seam itself.
+	 *
+	 * (a) Every non-`send` verdict belongs to the composer. Excluding `whole`
+	 * here is what routed a whole-draft command back through the message path,
+	 * where the second decision waited for it.
+	 */
+	assert.ok(
+		!composer.includes('kind !== "send" && plan.kind !== "whole"'),
+		"the composer exempts `whole` from the plan again, so a whole-draft command is being routed back through the message path — the path that used to re-decide it",
+	);
+	// (b) The dispatcher takes the planner's answer (a name and its args) and has
+	// no text-shape guard left to disagree with the planner.
+	const dispatcher = code(
+		await readFile(
+			"src/renderer/src/features/chat/components/slash-dispatch.ts",
+			"utf8",
+		),
+	);
+	assert.ok(
+		!/SLASH_SUBMISSION/.test(dispatcher),
+		"a whole-draft text-shape guard is back in slash-dispatch.ts; it can disagree with the composer's planner, which is QA round 2's Q4",
+	);
+	assert.match(
+		dispatcher,
+		/async \(\s*invocation: SlashCommandInvocation,?\s*\): Promise<SlashDispatchOutcome>/,
+		"the dispatcher no longer takes a `SlashCommandInvocation`; handing it text lets a second whole-draft decision exist again",
+	);
+	// (c) The canonical send path never asks whether the text is a command: it is
+	// the model path, and the composer has already dealt with every command.
+	const page = code(
+		await readFile(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+			"utf8",
+		),
+	);
+	assert.ok(
+		!/dispatch\((?:content|text|draft|payload|message)\b/.test(page),
+		"the canonical send path dispatches the draft text again (`dispatch(content)`); the dispatcher would then decide instead of the planner",
+	);
+	assert.ok(
+		!/SLASH_SUBMISSION/.test(page),
+		"chat-page.tsx has a whole-draft text-shape guard again; that is the second decision QA round 2's Q4 came from",
 	);
 });
