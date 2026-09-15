@@ -1,16 +1,16 @@
 {
   "head": "c3a6c2c4a857139ba7d81b85048c5d520d7aded5",
-  "headNote": "REBASE + QA-REMEDIATION NOTE: stamps name this lineage's own trees. `head` is this PR's QA-remediation head (`c3a6c2c4a`, the docs commit that commits the four frames declared below); the controlled runtime bundled its UpdateService from the code commit beneath it (`33eb65100`) and the story build came from the same tree, and neither docs-only commit moves `src` or `scripts`, so `srcTree`/`scriptsTree` are those trees and the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts` still holds. main's 28 sets, its own stamps for its own pass, and its reachable-citation repairs are all preserved; where the two sides disagreed the merge took main's numbers and re-derived this branch's delta from the merged disk rather than from any earlier total. Recovery integration: normal merge of origin/main 8d019993eb8b54913d89fa5288aafbaf88f293d3 (#175) into c1ae238376eb64e046187998d4e9bc3dd3db35bf (#158). Only this manifest conflicted; capture-evidence.mjs auto-merged its additive STORIES entries. The top-level srcTree/scriptsTree stamps describe the integrated source, not a new capture. No image was captured or modified by the integration, and capturedAt/head/partialCapture retain upstream historical capture provenance rather than inventing a new run. The full prior trace capture record remains at c1ae238376eb64e046187998d4e9bc3dd3db35bf:docs/evidence/manifest.json (twenty frames reported at merge 9ca9fd021, with its existing limitations); its supplementary trace-legibility-baseline declaration is preserved here alongside every upstream declaration. Upstream partialCapture remains unchanged, including its own range and previousRefresh; it does not claim a newly executed trace pass. The countsMean fields are re-derived from the merged tree. Browser-tool recovery on c1ae23837 is recorded in PR #158 comment 5669894601, not relabeled as visual validation of this newer integrated source. The shared disclosure upstream changes require a separate bounded convergence check; no feature behavior is authored in this resolution. package.json keeps upstream version 0.22.3.",
-  "srcTree": "382c4cb3b11c91bbd160ccfadbfb4711ca73e93c",
-  "scriptsTree": "440a3eb403bf5e71073b02eb59228df2bf7ba373",
+  "headNote": "MERGE NOTE, RE-DERIVED (no re-capture): normal merge of origin/main 15fed54ac (#178, the 0.22.4 release bump, over #155) into this PR's QA-remediation head f5e0ec21b. Only this manifest conflicted; `capture-evidence.mjs` auto-merged its additive `STORIES` entries and `package.json` auto-merged main's 0.22.4 with this PR's `test:desktop` addition. `srcTree`/`scriptsTree` name the MERGED trees, which is what `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts`; the top-level stamps therefore describe the integrated source, and `capturedAt`/`partialCapture` retain upstream historical capture provenance rather than inventing a run. No image was captured, modified or re-stamped by this merge, and the merge is not relabelled as visual validation of anything. Both sides' declarations are preserved whole: main's 30 sets - its two cold-send sets included - plus this PR's two affirmation sets, 32 in all, and main's own `upstreamComposerCapture` block, which keeps main's capture head `0f19ae5e2` as `sourceHead` and its 1192/175 upstream totals. `head` stays this lineage's spelling (`c3a6c2c4a`, the docs commit that commits the four superseded frames declared below); main's pass head remains cited as `upstreamComposerCapture.sourceHead` and `partialCapture.refreshedAtHead` (`0f19ae5e2`), so neither citation is lost. The counts are re-derived from the MERGED disk rather than carried over: 1576 committed WebP files = 1212 swept + 364 in the 32 declared sets. PRIOR-LINEAGE NOTE, kept verbatim: REBASE + QA-REMEDIATION NOTE: stamps name this lineage's own trees. `head` is this PR's QA-remediation head (`c3a6c2c4a`, the docs commit that commits the four frames declared below); the controlled runtime bundled its UpdateService from the code commit beneath it (`33eb65100`) and the story build came from the same tree, and neither docs-only commit moves `src` or `scripts`, so `srcTree`/`scriptsTree` are those trees and the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts` still holds. main's 28 sets, its own stamps for its own pass, and its reachable-citation repairs are all preserved; where the two sides disagreed the merge took main's numbers and re-derived this branch's delta from the merged disk rather than from any earlier total. Recovery integration: normal merge of origin/main 8d019993eb8b54913d89fa5288aafbaf88f293d3 (#175) into c1ae238376eb64e046187998d4e9bc3dd3db35bf (#158). Only this manifest conflicted; capture-evidence.mjs auto-merged its additive STORIES entries. The top-level srcTree/scriptsTree stamps describe the integrated source, not a new capture. No image was captured or modified by the integration, and capturedAt/head/partialCapture retain upstream historical capture provenance rather than inventing a new run. The full prior trace capture record remains at c1ae238376eb64e046187998d4e9bc3dd3db35bf:docs/evidence/manifest.json (twenty frames reported at merge 9ca9fd021, with its existing limitations); its supplementary trace-legibility-baseline declaration is preserved here alongside every upstream declaration. Upstream partialCapture remains unchanged, including its own range and previousRefresh; it does not claim a newly executed trace pass. The countsMean fields are re-derived from the merged tree. Browser-tool recovery on c1ae23837 is recorded in PR #158 comment 5669894601, not relabeled as visual validation of this newer integrated source. The shared disclosure upstream changes require a separate bounded convergence check; no feature behavior is authored in this resolution. package.json keeps upstream version 0.22.3.",
+  "srcTree": "b33ab39337f7fe945b773fda44bf70ce5f2ba103",
+  "scriptsTree": "a44a33a418602491e8f2e9a7479b86679f89f779",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
-  "frames": 1196,
-  "surfaces": 177,
+  "frames": 1212,
+  "surfaces": 185,
   "themes": 12,
   "countsMean": {
-    "frames": "Tree accounting at this head: 1547 committed WebP files minus 351 in 30 declared supplementary sets = 1196 sweep frames. This count describes the merged disk, not a new capture run, and it preserves main's own accounting in substance (1537 minus 345 in 28 sets = 1192): this branch's rebase adds the two-frame `update-check-affirmation-before` set and the four-frame `update-check-affirmation-superseded` set, six declared frames, while its four Settings frames (`server-update-offered` and `all-current` in two palettes) stay in the sweep - which is the +4 this PR contributes to it. `package.json` carries no version bump of its own - its `version` is main's `0.22.3` - and it is not byte-identical to main: this PR is the whole delta, adding `scripts/update-affirmation.test.mjs` to the `test:desktop` list.",
-    "surfaces": "The capture-evidence.mjs STORIES literal at this head has 177 entries by the gate method: main's 175 (the previously reviewed 171 plus four upstream composer-status-row entries) plus this PR's `settings-app-updates-section--server-update-offered` and `settings-app-updates-section--all-current`. Both sides are preserved.",
+    "frames": "Tree accounting at this merged head: 1576 committed WebP files minus 364 in 32 declared supplementary sets = 1212 sweep frames. This count describes the merged disk, not a new capture run, and it preserves both sides' own accounting in substance (main: 1566 - 358 in 30 sets = 1208; this branch before the merge: 1547 - 351 in 30 sets = 1196). The merge adds main's 13 declared frames (`chat-cold-send-browser` 11 and `chat-tool-rows/cold-send-live-pane` 2) and this branch's 6 declared frames (the two-frame `update-check-affirmation-before` set and the four-frame `update-check-affirmation-superseded` set), while this branch's four Settings frames (`server-update-offered` and `all-current` in two palettes) stay inside the sweep - which is the +4 this PR contributes to it. `package.json` carries no version bump of its own: its `version` is main's `0.22.4`, and it is not byte-identical to main - this PR is the whole delta, adding `scripts/update-affirmation.test.mjs` to the `test:desktop` list.",
+    "surfaces": "The merged `capture-evidence.mjs` STORIES literal has 185 entries by the gate method: main's 183 plus this PR's `settings-app-updates-section--server-update-offered` and `settings-app-updates-section--all-current`. Both sides are preserved; the cold-send and affirmation supplementary sets are not swept stories.",
     "themes": "The capturer retains 12 THEMES entries; no palette or theme is added by this integration."
   },
   "partialCapture": {
@@ -398,6 +398,22 @@
       "capturedAt": "2026-09-14T04:35:00.000Z"
     },
     {
+      "path": "chat-cold-send-browser",
+      "frames": 11,
+      "surfaces": 9,
+      "themes": 1,
+      "source": "Real browser-tool screenshots, lossless WebP conversions; actual React renderer and isolated HTTP/SSE backend",
+      "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep."
+    },
+    {
+      "path": "chat-tool-rows/cold-send-live-pane",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures",
+      "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."
+    },
+    {
       "path": "update-check-affirmation-before",
       "frames": 2,
       "surfaces": 1,
@@ -417,5 +433,12 @@
       "capturedAt": "2026-09-14T17:54:00.000Z",
       "capturedAtHead": "c3a6c2c4a857139ba7d81b85048c5d520d7aded5"
     }
-  ]
+  ],
+  "upstreamComposerCapture": {
+    "sourceManifest": "a8f6bc4b9:docs/evidence/manifest.json",
+    "sourceHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
+    "upstreamFrames": 1192,
+    "upstreamSurfaces": 175,
+    "note": "Upstream manifest fields are preserved from a8f6bc4b9; only the two cold-send supplementary sets and the re-derived counts below were changed by this merge. This branch does not re-stamp upstream capture history."
+  }
 }
