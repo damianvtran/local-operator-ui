@@ -86,9 +86,9 @@ ground where it does not.
   release gates, i.e. the code that decides whether other things are verified —
   which is how a formatter error rode into a merged pull request green. This gate
   runs the same `biome check` over the `scripts/` files a change touches, compared
-  against a base ref (`origin/main` locally, the pull request's base in CI), so a
-  violation cannot ride in with the diff that introduces it. The rest of that
-  tree's pre-existing backlog is burnt down as files are touched; widening
+  against a base ref (`origin/main` locally, the merge commit's first parent in
+  CI), so a violation cannot ride in with the diff that introduces it. The rest of
+  that tree's pre-existing backlog is burnt down as files are touched; widening
   `pnpm lint` to name `scripts/` outright is the follow-up once it is gone. See
   `scripts/check-scripts-lint.mjs`.
 - Typecheck: `pnpm check-types`
