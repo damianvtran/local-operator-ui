@@ -232,8 +232,6 @@ const MOVE_COST_SENTENCE =
  */
 
 /**
-
-/**
  * The chip's outer slot.
  *
  * Deliberately NOT a query container itself. The chip is a ~53px shrink-wrap
@@ -1060,7 +1058,15 @@ export const DirectoryIndicator = forwardRef<
 									// § 6 puts state changes in colour rather than opacity.
 									isInvalid && "text-danger hover:text-danger",
 								)}
-								aria-label={`Working directory: ${shown}`}
+								/*
+								 * The accessible name carries the SAME phrase the label slot paints
+								 * (agent review round 3, R3-1). While a move is in flight the slot reads
+								 * "Moving session:", so a name fixed at "Working directory:" would leave
+								 * the visible text outside the name - WCAG 2.5.3, label in name - exactly
+								 * when the control is most likely to be re-read. The phrase is taken from
+								 * the same condition that paints the slot, not from a second spelling.
+								 */
+								aria-label={`${pending ? "Moving session" : "Working directory"}: ${shown}`}
 								aria-invalid={isInvalid || undefined}
 							>
 								{/*

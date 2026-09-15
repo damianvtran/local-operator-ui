@@ -800,8 +800,11 @@ export const STORIES = [
 	 *
 	 * The replacement frames ARE captured, and they are deliberately NOT here:
 	 * `docs/evidence/chat-cwd-move-live/` is a declared supplementary set of
-	 * thirteen browser-tool frames (localOperatorLight and localOperatorDark) with
-	 * its own README, `source` and `why`. The method is the operator's own rule -
+	 * fifteen browser-tool frames in eleven states across three themes
+	 * (`localOperatorLight`, `localOperatorDark` and `dracula`) with its own
+	 * README, `source` and `why` — the counts here name the set's own entry in
+	 * `docs/evidence/manifest.json`, which is where they are derived from and the
+	 * only place a reader should take them from (agent review round 3, R3-2). The method is the operator's own rule -
 	 * page interaction and screenshots go through the Local Operator browser tool,
 	 * never a scripted or downloaded engine - so the capture can neither be
 	 * produced nor reproduced by this file, and adding the stories back to STORIES

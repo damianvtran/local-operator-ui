@@ -588,15 +588,24 @@ export function useSessionMove(input: {
 			const requestId = uuidv4();
 			const committed = pendingAfterCommit(sessionId, requestId, path);
 			/*
-			 * The ref is assigned INSIDE the updater that sets the state.
+			 * The ref is written TWICE, and both writes are load-bearing.
 			 *
-			 * The effect below mirrors every other writer (the receipt, the stream, the
-			 * deadline); this one is a synchronous read-again-at-once path, and an
-			 * ordering argument that rests on "passive effects flush before the next
-			 * task" is the kind of claim that survives review and then fails on a host
-			 * with a different scheduler. Assigning here makes the ref and the state
-			 * impossible to diverge at commit time (agent review round 2, N-1).
+			 * The synchronous write is what the latch's docblock above promises: a second
+			 * caller in the same task sees the first one's request without waiting for
+			 * React, which is the whole reason this read is a ref rather than the
+			 * render's value. Leaving only the updater's write made that promise depend on
+			 * React eagerly evaluating an updater whose queue is empty - an engine
+			 * optimisation, not a property of `moveTo` (agent review round 3, R3-4).
+			 *
+			 * The updater's write keeps the ref and the state impossible to diverge when
+			 * React re-runs an updater against newer state, so the ref is never left
+			 * holding a value the state did not take (agent review round 2, N-1).
 			 */
+			pendingRef.current = updatePendingMoves(
+				pendingRef.current,
+				sessionId,
+				() => committed,
+			);
 			setMoves((current) => {
 				const next = updatePendingMoves(current, sessionId, () => committed);
 				pendingRef.current = next;

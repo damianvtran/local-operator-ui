@@ -1,7 +1,11 @@
 # The `/move` chip: real-browser frames
 
-Thirteen frames of the composer's working-directory chip, captured with the Local
-Operator **`browser` tool** and looked at one by one before being committed here.
+Fifteen frames in eleven states across three themes, of the composer's
+working-directory chip, captured with the Local **`browser` tool** and looked at
+one by one before being committed here. The set's own entry in
+`docs/evidence/manifest.json` carries the same arithmetic (`frames: 15`,
+`surfaces: 11`, `themes: 3`), which is the source a reader should trust over any
+sentence here (agent review round 3, R3-2).
 
 ## Why this set exists, and why it is separate
 

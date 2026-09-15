@@ -43,6 +43,7 @@ const bundle = await build({
 		contents: `
 			export {
 				MOVE_UNAVAILABLE_REASON,
+				MOVE_NOT_READY_REASON,
 				MOVE_SETTLE_TIMEOUT_MS,
 				moveReceiptLine,
 				pendingAfterCommit,
@@ -121,6 +122,7 @@ const bundlePath = new URL("./_move-session.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	MOVE_UNAVAILABLE_REASON,
+	MOVE_NOT_READY_REASON,
 	MOVE_SETTLE_TIMEOUT_MS,
 	moveReceiptLine,
 	pendingAfterCommit,
@@ -425,6 +427,92 @@ test("no request is issued at all without the session_move capability", () => {
 	assert.match(
 		MOVE_UNAVAILABLE_REASON,
 		/^This backend cannot move a live session\./,
+	);
+});
+
+test("both `/move` forms ask the pane's readiness, not the capability alone (agent review R-3, R3-3)", () => {
+	/*
+	 * Round 2's R-3 was that the typed `/move <path>` form consulted the capability
+	 * alone, so in the admission window - the pane's `draftKey` still set while its
+	 * `sessionId` is already populated - the chip beside it was read-only and
+	 * explained why, while the typed form posted a move for the same session. The fix
+	 * is one predicate (`moveReady`, read once as `paneReady`) asked by both forms.
+	 *
+	 * This is a SOURCE pin, and it is worth saying what that does and does not buy:
+	 * the dispatcher is a React hook, and this file bundles `move-session.ts` alone, so
+	 * what is pinned is the WIRING - that each form asks the predicate and answers with
+	 * the readiness sentence rather than the capability's. The behaviour it protects is
+	 * covered from the other side by the bundle tests above (`runMoveSessionFromDispatch`)
+	 * and by the chip's own readiness pins. Without this, deleting the `if (!paneReady)`
+	 * branch would leave every gate green while restoring the round-2 defect verbatim.
+	 */
+	assert.match(
+		dispatchSource,
+		/const paneReady = moveReady \?\? true;/,
+		"the pane's readiness is read once, with one default",
+	);
+	assert.equal(
+		(dispatchSource.match(/if \(!paneReady\) \{/g) ?? []).length,
+		2,
+		"the bare form and the argument form must both consult it",
+	);
+	assert.equal(
+		(dispatchSource.match(/note\(MOVE_NOT_READY_REASON, true\);/g) ?? [])
+			.length,
+		2,
+		"and both must answer with the readiness sentence",
+	);
+	/*
+	 * The identity guard sits ABOVE the readiness gate in both forms, which is what
+	 * makes the readiness sentence TRUE wherever it can be reached: on a pane with no
+	 * session at all the user is told to start a conversation, not that a session is
+	 * still starting. The window is generous on purpose - it spans the sentence the
+	 * guard posts - and the count is what carries the claim.
+	 */
+	assert.equal(
+		(dispatchSource.match(
+			/if \(!sessionId\) \{[\s\S]{0,600}?if \(!paneReady\) \{/g,
+		) ?? []).length,
+		2,
+		"identity is answered before readiness, in both forms",
+	);
+	assert.notEqual(
+		MOVE_NOT_READY_REASON,
+		MOVE_UNAVAILABLE_REASON,
+		"a session that is still starting is not a backend that cannot move one",
+	);
+	assert.match(MOVE_NOT_READY_REASON, /still starting/);
+});
+
+test("the chip re-measures its overflow when the PATH changes (agent review R-1, R3-N2)", () => {
+	/*
+	 * The measured-overflow tooltip's effect depends on `shown` as well as on its
+	 * `ResizeObserver`, and nothing in CI could see that: the story that asserts it
+	 * (`cwd-move.stories.tsx`'s `GrownPath`) asserts in `play`, `play` only runs where
+	 * a story is rendered in a browser, and that story set is deliberately outside the
+	 * sweep - so a revert to the empty dependency list, which is exactly what made a
+	 * mounted short path keep offering the generic hint after the path grew, would have
+	 * passed every gate. This pins the effect's own dependency list beside the wiring
+	 * it belongs to.
+	 */
+	const chipSource = read(
+		"src/renderer/src/features/chat/components/directory-indicator.tsx",
+	);
+	const observerAt = chipSource.indexOf("new ResizeObserver(measure)");
+	assert.ok(observerAt > 0, "the measuring effect must be found to be pinned");
+	const effect = chipSource.slice(
+		chipSource.lastIndexOf("useEffect(", observerAt),
+		chipSource.indexOf("]);", observerAt) + 3,
+	);
+	assert.match(
+		effect,
+		/\}, \[shown\]\);/,
+		"the path is a dependency: the observer alone cannot see a new VALUE",
+	);
+	assert.doesNotMatch(
+		effect,
+		/\}, \[\]\);/,
+		"the empty list is the regression this pin exists for",
 	);
 });
 
