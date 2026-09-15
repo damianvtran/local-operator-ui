@@ -218,6 +218,14 @@ export function canCreateWindowFor(show: WindowShow): boolean {
  * their work, where their next keystroke still would not reach it. An undeclared
  * or `normal` request is the one that means "bring this to me", and it keeps
  * restoring.
+ *
+ * AND `showInactive()` IS NOT A WAY AROUND THAT. Removing the explicit
+ * `restore()` was not enough on its own: macOS deminiaturises a window as part of
+ * ordering it, so a `showInactive()` on a Dock-ed window brought it back anyway —
+ * measured, that window's state went `minimized: true` -> `false` with
+ * `applied=showInactive` and no `restore` in the line. An `inactive` request
+ * therefore leaves a minimised window exactly where it is and only orders one
+ * that is already on screen.
  */
 export function raiseWindow(
 	window: RaisableWindow,
@@ -226,14 +234,15 @@ export function raiseWindow(
 ): void {
 	if (show === "never") return;
 	const applied: string[] = [];
-	if (show === "focus" && window.isMinimized()) {
-		window.restore();
-		applied.push("restore");
-	}
 	if (show === "inactive") {
+		if (window.isMinimized()) return;
 		window.showInactive();
 		applied.push("showInactive");
 	} else {
+		if (window.isMinimized()) {
+			window.restore();
+			applied.push("restore");
+		}
 		window.show();
 		window.focus();
 		applied.push("show", "focus");
