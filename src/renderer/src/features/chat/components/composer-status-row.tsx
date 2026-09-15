@@ -11,6 +11,25 @@
  * Out here the box's own measured geometry does not move at all — the box only
  * shifts up by this row's height, which is the property the frames assert.
  *
+ * The two ACTIVITY chips join them, and they are the same species as the plan
+ * chip rather than a third thing:
+ *
+ * - the SUBAGENTS chip counts the roster — the children this session has
+ *   delegated to and not yet finished with — and the JOBS chip counts the tool
+ *   rows (`bash`) the roster deliberately leaves out. Both are buttons on the
+ *   plan chip's own control box, both REVEAL their section of the pane, and both
+ *   are gated on there being something to count (`docs/composer-activity-chips.md`,
+ *   which is the design record and where the rejected alternatives live).
+ * - they lead with a STATE MARK instead of the `Info` glyph, and that is the row's
+ *   one piece of motion: `SubagentStateIcon` spins a running row and nothing else,
+ *   so a chip moves exactly while the work it names is moving. `Info` stays the
+ *   plan chip's mark so one glyph in this row still means one thing.
+ * - the count gate is the POINT rather than an optimisation: unlike the plan's
+ *   `0 to-dos open`, these two answers are not about persisted state —
+ *   `frontend.jobs` is swept minutes after a row settles, so a lingering
+ *   `0 subagents running` would describe rows that are about to vanish, and it
+ *   would put a chip above every composer on every session that never delegated.
+ *
  * Two controls, one species, and neither is a tab:
  *
  * - the GOAL is the app's one disclosure idiom (`@shared/components/ui/disclosure`),
@@ -36,9 +55,10 @@
  * Both are gated on a VALUE, never on a session: a session with no goal, a fresh
  * draft, and a legacy non-canonical chat all take the same branch and render
  * NOTHING — not an empty 24px box above every composer in the app. And nothing
- * here counts anything: the plan's number is `RunDetails.openTodos`, off the one
- * derivation `chat-page.tsx` already makes for the pane and the header trigger,
- * spelled by the model's own `todoClause`.
+ * here counts anything: the plan's number is `RunDetails.openTodos`, and the two
+ * activity numbers are `openChildren`/`openJobs`, all off the one derivation
+ * `chat-page.tsx` already makes for the pane and the header trigger, spelled by
+ * the model's own clauses.
  */
 
 import { Tooltip } from "@shared/components/ui";
@@ -46,11 +66,20 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Info } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import { READING_BUTTON as CHIP_CONTROL } from "../session-status/session-status-strip";
-import { LABEL_SEAM, type RunDetails, todoClause } from "./run-details";
+import {
+	type ActivityTally,
+	LABEL_SEAM,
+	type RunDetails,
+	activityTally,
+	childClause,
+	jobClause,
+	todoClause,
+} from "./run-details";
+import { SubagentStateIcon } from "./run-details/run-detail-row-parts";
 
 /**
  * The goal's visible label: the picker's own field label
@@ -67,6 +96,17 @@ const GOAL_NAME = "the session goal";
 const PLAN_ACTION = "Open the plan in run details";
 
 /**
+ * The subagents chip's action, and the jobs chip's.
+ *
+ * The plural is the SECTION's own heading in the pane (`Subagents`, `Jobs`), so
+ * the chip names the destination in the same word the destination is labelled
+ * with — `Open the plan in run details`' rule, one section over. `Open` rather
+ * than `Show` for the same reason as the plan chip's.
+ */
+const SUBAGENT_ACTION = "Open the subagents in run details";
+const JOB_ACTION = "Open the jobs in run details";
+
+/**
  * The row's first-chip rule, owned by the ROW.
  *
  * Whichever chip renders first cancels its own 6px padding, so the thing that
@@ -80,6 +120,14 @@ const PLAN_ACTION = "Open the plan in run details";
  * hover ground paints the box edge (design review round 1, D5). The rule is the
  * row's because the row is what has a first slot; a chip cannot know whether it
  * is first.
+ *
+ * The rule is now ORDINAL rather than a single boolean, and it had to become so:
+ * with four possible chips there are four states of "which one is first", every
+ * chip's gate is independent of every other's, and a rule written as "the goal is
+ * showing or not" would put two chips' ink in the same 6px column the moment a
+ * session with no goal had both an activity chip and a plan (`composer-activity-chips.md`
+ * § 3). The row asks each chip whether IT is the first rendered one; a chip does
+ * not ask about the others.
  */
 const FIRST_CHIP = "-ml-1.5";
 
@@ -129,17 +177,27 @@ export const goalDisclosureLabel = (goal: string, expanded: boolean): string =>
  * The count is `todoClause`'s spelling, from the same function the header
  * trigger's tooltip uses, so the two surfaces a user reads in one glance cannot
  * state the number two ways.
- *
- * It takes the COUNTS rather than the numeral for the reason that function's own
- * docblock records: the settled copy is not a function of the open count alone,
- * and a chip reading `All to-dos resolved` while its accessible name announced
- * `0 to-dos open` is exactly the drift this pattern exists to make
- * unrepresentable — the label cannot be built from a number this component was
- * never told whether anything was dropped beside.
  */
 export const planChipLabel = (
 	details: Pick<RunDetails, "openTodos" | "droppedTodos">,
 ): string => `${PLAN_ACTION}${LABEL_SEAM}${todoClause(details)}`;
+
+/**
+ * The two activity chips' tooltip and accessible name, one derived string each
+ * for the reason `planChipLabel` gives: the spoken name and the tooltip cannot
+ * drift when they are one function's output.
+ *
+ * The count and the state come from the model's own clause — `childClause` and
+ * `jobClause` over the same `ActivityTally` the chip's mark is drawn from, and
+ * the same two functions the header trigger's tooltip prints — so the trigger
+ * above this row and the chips in it cannot state one number two ways, and
+ * neither can state a state the glyph denies (design round 1, D1).
+ */
+export const subagentChipLabel = (tally: ActivityTally): string =>
+	`${SUBAGENT_ACTION}${LABEL_SEAM}${childClause(tally)}`;
+
+export const jobChipLabel = (tally: ActivityTally): string =>
+	`${JOB_ACTION}${LABEL_SEAM}${jobClause(tally)}`;
 
 export type ComposerStatusRowProps = {
 	/**
@@ -163,12 +221,25 @@ export type ComposerStatusRowProps = {
 	runDetails: RunDetails | null | undefined;
 	/** The composer's small-view step; see `MessageInputProps`. */
 	isSmallView?: boolean;
+	/**
+	 * Puts focus back in the composer when a control of this row unmounts under it.
+	 *
+	 * A PROPERTY of the parent rather than a query from here, because the composer's
+	 * textarea is the parent's own ref (`message-input.tsx`) and reaching for it by
+	 * selector from a row that is itself rendered by that component would be a
+	 * second way to name one element. Optional so a story that renders the row on
+	 * its own is not forced to invent a focus target.
+	 *
+	 * See the effect that calls it for why this row needs it at all.
+	 */
+	onFocusComposer?: () => void;
 };
 
 export const ComposerStatusRow = ({
 	frontend,
 	runDetails,
 	isSmallView = false,
+	onFocusComposer,
 }: ComposerStatusRowProps) => {
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
@@ -193,21 +264,18 @@ export const ComposerStatusRow = ({
 	const goal = frontend?.goal?.trim() ?? "";
 	const showGoal = goal.length > 0;
 	/*
-	 * A FINISHED plan still shows, in the model's settled spelling
-	 * (`All to-dos resolved`, or `All to-dos closed` where anything was dropped):
-	 * the row's height must not change when the last item closes, and a plan that
-	 * ended is a fact worth keeping on screen. See `todoClause` for why the two
-	 * settled states are two words rather than one.
+	 * A FINISHED plan still shows: `0 to-dos open` is the honest reading of a
+	 * complete plan, and it keeps the row's height from changing when the last
+	 * item closes.
 	 *
 	 * The gate is the ITEM count and not the phase count, and the difference is a
 	 * real state rather than a hypothetical. `RunDetails.todos` is the PHASE list,
 	 * and the model decodes a phase record with no items to a phase with no items —
 	 * so `todos.length > 0` calls a plan that arrived as one empty named phase a
-	 * plan, and the chip would state a FINISHED plan over a plan that has no items at
-	 * all (`All to-dos resolved`, `todoClause`'s settled clause, since this follow-up;
-	 * `0 to-dos open` when this gate was first argued, which read as a finished plan
-	 * too). `totalTodos` is the item count over the whole wire list: it is zero only
-	 * when there is genuinely nothing to be in the middle of.
+	 * plan, and the chip would print `0 to-dos open` for a session that has no
+	 * to-dos at all, which reads as a finished plan. `totalTodos` is the item count
+	 * over the whole wire list: it is zero only when there is genuinely nothing to
+	 * be in the middle of.
 	 */
 	const showPlan = Boolean(runDetails && runDetails.totalTodos > 0);
 
@@ -237,17 +305,83 @@ export const ComposerStatusRow = ({
 		if (!showGoal) setGoalOpen(false);
 	}, [showGoal]);
 
-	if (!showGoal && !showPlan) return null;
+	/*
+	 * The two activity readings, as ONE value each: how many rows are open and the
+	 * state the chip's mark shows, derived together in the model
+	 * (`activityTally`). The gate, the glyph and the sentence are all off this one
+	 * object, so "the chip renders", "the number is positive" and "the word in the
+	 * sentence is the state of the mark" cannot come apart — the defect design
+	 * round 1 (D1) and UX's U4 both found, from the pixels and from the copy.
+	 */
+	const children = runDetails ? activityTally(runDetails.subagents) : null;
+	const jobs = runDetails ? activityTally(runDetails.jobs) : null;
+	const chipCount =
+		(showGoal ? 1 : 0) +
+		(showPlan ? 1 : 0) +
+		(children ? 1 : 0) +
+		(jobs ? 1 : 0);
+
+	/*
+	 * The last activity row settling unmounts its chip, and if that chip held focus
+	 * the browser drops focus to `<body>` rather than restoring it anywhere (UX
+	 * round 1, U1 — observed live: `active=BUTTON/jobs` then `active=BODY/None`).
+	 * The user tabbed to a control, the work finished, and the next `Tab` starts
+	 * from the top of the document instead of from the composer they were writing
+	 * in.
+	 *
+	 * The trigger above this row already carries this idiom for its own close (the
+	 * button the press landed on unmounts with the pane), and this is the same
+	 * hazard with the same remedy: a CONDITIONAL refocus, never an unconditional
+	 * one. The condition is read from the previous commit — `rowHeldFocus` is
+	 * whether the row held focus when the DOM last settled — because by the time
+	 * this effect runs the browser has already moved focus to `<body>` and the
+	 * evidence that a chip had it is gone. Without that half, every settle in a
+	 * session where the user was typing in the transcript would yank focus into the
+	 * composer.
+	 */
+	const rowRef = useRef<HTMLDivElement | null>(null);
+	const previousChipCount = useRef(chipCount);
+	const rowHeldFocus = useRef(false);
+	useEffect(() => {
+		const shrank = chipCount < previousChipCount.current;
+		previousChipCount.current = chipCount;
+		const active = document.activeElement;
+		const holdsFocus =
+			active instanceof HTMLElement &&
+			rowRef.current?.contains(active) === true;
+		if (shrank && rowHeldFocus.current && !holdsFocus) onFocusComposer?.();
+		rowHeldFocus.current = holdsFocus;
+	});
+
+	if (!showGoal && !showPlan && !children && !jobs) return null;
 
 	const goalLabel = goalDisclosureLabel(goal, goalOpen);
 	const planLabel = runDetails ? planChipLabel(runDetails) : "";
+	const subagentLabel = children ? subagentChipLabel(children) : "";
+	const jobLabel = jobs ? jobChipLabel(jobs) : "";
+	/*
+	 * Whichever chip renders first cancels its own padding, and the count chips are
+	 * ONE GROUP now (see the group's own note below): the group is the row's first
+	 * item exactly when there is no goal, and inside it the leading chip is the
+	 * plan's when a plan renders and the subagents' otherwise.
+	 */
+	const groupIsFirst = !showGoal;
+	const subagentsFirst = !showGoal && !showPlan;
+	/*
+	 * ...and the jobs chip is first only when NEITHER of the two ahead of it
+	 * rendered, which is a different question from "the subagents chip is not the
+	 * first": with no goal and no plan, a session holding only tool jobs puts the
+	 * jobs chip on the row's content edge and its siblings nowhere.
+	 */
+	const jobsFirst = subagentsFirst && !children;
 
 	return (
 		<div
+			ref={rowRef}
 			data-composer-status-row=""
 			className={cn(
 				CHAT_MEASURE,
-				"flex items-start gap-x-2 gap-y-0.5",
+				"flex flex-wrap items-start gap-x-2 gap-y-0.5",
 				/*
 				 * The horizontal inset and the container-keyed track are the alert's
 				 * own, for the alert's reason: two lines that sit above the same box
@@ -256,7 +390,25 @@ export const ComposerStatusRow = ({
 				 * step, because the form itself is a bare `w-full` and owns no gap.
 				 */
 				isSmallView ? "px-2 pb-1" : "px-4 pb-2",
-				"@max-[240px]/chatcol:flex-col",
+				/*
+				 * WRAP, which the row did not need while it held two chips and does now
+				 * that it can hold four.
+				 *
+				 * `docs/composer-status-tabs.md` § 5.4 budgets ~168px of a 204px content
+				 * box for ONE count chip, so three or four of them cannot share a line at
+				 * any column the app renders (900, the 240px switch, the 172px floor) —
+				 * and the chips are `shrink-0` on the record's own rule that a bounded
+				 * count is never cut mid-figure. Without this the row simply painted past
+				 * the column; the frames pin `overflowX === 0` at every captured width,
+				 * and this rule is what makes that a property rather than a hope.
+				 *
+				 * The overflow moves to the GOAL, which is the flexible item and can
+				 * shrink to its own label (`min-w-0`), and any chip that no longer fits
+				 * takes the next line. Same yield order the row already records — an
+				 * unbounded value yields, a bounded count never does — with one more line
+				 * to yield into.
+				 */
+				"@max-[240px]/chatcol:flex-col @max-[240px]/chatcol:flex-nowrap",
 			)}
 		>
 			{/*
@@ -267,7 +419,20 @@ export const ComposerStatusRow = ({
 			 */}
 			{showGoal && (
 				<Disclosure
-					className={cn("min-w-0 flex-1", COLUMN_GOAL)}
+					/*
+					 * A FLOOR on the goal's item, which used to be `min-w-0`, and it is
+					 * design review round 1's D2 measured rather than preferred: with the
+					 * counts as one group below the goal, flex resolves line breaking on
+					 * each item's hypothetical size, so this floor is what makes the row
+					 * wrap the WHOLE count group under the goal instead of letting the two
+					 * share a squeezed line. At the 240px band the goal then reads
+					 * `Goal: Reconcile t…` on its own line where the torn arrangement cut it
+					 * to `Goal: Rec…` and pushed the plan chip to the opposite margin — the
+					 * wider column was the worse arrangement. 140px is the width at which
+					 * the chip still says something: chevron, `Goal:` and this floor's
+					 * padding measure ~75px of fixed ink, leaving ~65px of snippet.
+					 */
+					className={cn("min-w-[140px] flex-1", COLUMN_GOAL)}
 					/*
 					 * The row box is the chip, in the readings' own 24px height, radius and
 					 * padding.
@@ -377,63 +542,165 @@ export const ComposerStatusRow = ({
 				</Disclosure>
 			)}
 
-			{showPlan && runDetails && (
-				<Tooltip content={planLabel} side="top">
+			{/*
+			 * THE COUNT CHIPS ARE ONE GROUP, and that is design review round 1's D2.
+			 *
+			 * With the three chips as siblings of the goal, the row's wrap regime tore
+			 * them apart: on the line the goal shared with one chip, the goal's `flex-1`
+			 * box stretched to the whole line and pushed that chip to the RIGHT edge,
+			 * while its two siblings started a left-aligned column underneath — a
+			 * 35px gap that is a stretched box and not the row's 8px `gap-x-2`, and the
+			 * 172px floor read BETTER than the 240px band it sits above.
+			 *
+			 * Grouping them makes the counts one item: the row wraps the goals' line and
+			 * the counts' line, and inside the group the chips wrap left-aligned among
+			 * themselves. `min-w-0` (and deliberately NOT `shrink-0`) is what lets the
+			 * group shrink to a narrow column and wrap internally instead of overflowing
+			 * it — and the group's flex-basis being its content is what makes the ROW
+			 * wrap it below the goal when the column cannot hold both.
+			 */}
+			{(showPlan || children || jobs) && (
+				<div
+					className={cn(
+						"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5",
+					)}
+				>
+					{showPlan && runDetails && (
+						<Tooltip content={planLabel} side="top">
+							{/*
+							 * A real button, in the readings' own control box, and NOT a toggle: see
+							 * this file's header. `shrink-0` comes from that box and is not incidental
+							 * — a count cut mid-figure is a broken claim, so what yields when the row
+							 * is tight is the goal's snippet and then its label, both of which have a
+							 * second home. The count has none.
+							 */}
+							<button
+								type="button"
+								data-status-plan=""
+								aria-label={planLabel}
+								onClick={() => revealPlan("todos")}
+								className={cn(
+									CHIP_CONTROL,
+									groupIsFirst ? FIRST_CHIP : undefined,
+								)}
+							>
+								{/*
+								 * The run pane's own mark, shared with the header trigger so ONE glyph
+								 * means "this opens the run pane" on both surfaces.
+								 *
+								 * Why a mark at all: without one the count was plain muted text in the
+								 * same ink as the goal's snippet, with the pointer cursor and the tooltip
+								 * as its whole affordance — neither of which exists in a still, and
+								 * neither of which a reader consults before pressing. At the floor it was
+								 * worse than neutral: the stacked row put `3 to-dos open` on the line under
+								 * a truncated goal sentence, in the goal's ink, where it read as the
+								 * sentence's wrapped remainder rather than as a second control, and
+								 * `0 to-dos open` read as a completion statement (design review round 1,
+								 * D1). The mark LEADS the count so the stacked line opens with a glyph
+								 * rather than with a digit.
+								 *
+								 * `size-3.5` is the disclosure chevron's own size, so the two chips in this
+								 * row carry same-size marks and stay one species.
+								 *
+								 * The alternatives, and why each was rejected:
+								 *
+								 * - the goal chip's CHEVRON, the designer's first option: it is the app's
+								 *   mark for "expands in place", and these two chips sit on one line. Two
+								 *   chevrons would say both controls do the same thing, which is the
+								 *   opposite of the distinction D1 asks for — this one navigates to a
+								 *   region rather than revealing its own.
+								 * - `PanelRight` / `PanelRightClose`: the pane's own chrome control, and
+								 *   `docs/composer-status-tabs.md` § 6.1 already refuses an open/close pair
+								 *   that differs by one small arrow with both on screen at once.
+								 * - `ArrowUpRight` / `ExternalLink`: they mean leaving this surface, and
+								 *   the pane is a sibling region of the same window.
+								 * - `ListChecks`: the ledger's glyph for the todo TOOL
+								 *   (`trace/tool-glyphs.ts`) — the same collision § 6.1 refuses.
+								 * - no mark (the incumbent): the state D1 is about.
+								 *
+								 * The accessible name already states the action in words, so the mark is
+								 * `aria-hidden` — a decorative repetition, not a second label.
+								 */}
+								<Info aria-hidden={true} className={cn("size-3.5 shrink-0")} />
+								{todoClause(runDetails)}
+							</button>
+						</Tooltip>
+					)}
+
 					{/*
-					 * A real button, in the readings' own control box, and NOT a toggle: see
-					 * this file's header. `shrink-0` comes from that box and is not incidental
-					 * — a count cut mid-figure is a broken claim, so what yields when the row
-					 * is tight is the goal's snippet and then its label, both of which have a
-					 * second home. The count has none.
+					 * The two ACTIVITY chips, in the operator's order: subagents, then jobs.
+					 *
+					 * They are the plan chip's own control (`CHIP_CONTROL`, imported rather than
+					 * restated), they REVEAL their section of the pane exactly as it does, and
+					 * they carry no `aria-pressed` and no pressed ground for its reason: a chip
+					 * that closed the pane when pressed while looking for the work would be one
+					 * control with two meanings. Two species of chip now share this row and the
+					 * grammar is one glyph one meaning: `Info` means "this opens the run pane"
+					 * and only the plan chip wears it, because the activity chips wear a STATE
+					 * MARK instead (below).
+					 *
+					 * The counts are the model's, spelled by its own clauses, and nothing here
+					 * tallies anything.
 					 */}
-					<button
-						type="button"
-						data-status-plan=""
-						aria-label={planLabel}
-						onClick={() => revealPlan("todos")}
-						className={cn(CHIP_CONTROL, showGoal ? undefined : FIRST_CHIP)}
-					>
-						{/*
-						 * The run pane's own mark, shared with the header trigger so ONE glyph
-						 * means "this opens the run pane" on both surfaces.
-						 *
-						 * Why a mark at all: without one the count was plain muted text in the
-						 * same ink as the goal's snippet, with the pointer cursor and the tooltip
-						 * as its whole affordance — neither of which exists in a still, and
-						 * neither of which a reader consults before pressing. At the floor it was
-						 * worse than neutral: the stacked row put `3 to-dos open` on the line under
-						 * a truncated goal sentence, in the goal's ink, where it read as the
-						 * sentence's wrapped remainder rather than as a second control, and
-						 * `0 to-dos open` read as a completion statement (design review round 1,
-						 * D1). The mark LEADS the count so the stacked line opens with a glyph
-						 * rather than with a digit.
-						 *
-						 * `size-3.5` is the disclosure chevron's own size, so the two chips in this
-						 * row carry same-size marks and stay one species.
-						 *
-						 * The alternatives, and why each was rejected:
-						 *
-						 * - the goal chip's CHEVRON, the designer's first option: it is the app's
-						 *   mark for "expands in place", and these two chips sit on one line. Two
-						 *   chevrons would say both controls do the same thing, which is the
-						 *   opposite of the distinction D1 asks for — this one navigates to a
-						 *   region rather than revealing its own.
-						 * - `PanelRight` / `PanelRightClose`: the pane's own chrome control, and
-						 *   `docs/composer-status-tabs.md` § 6.1 already refuses an open/close pair
-						 *   that differs by one small arrow with both on screen at once.
-						 * - `ArrowUpRight` / `ExternalLink`: they mean leaving this surface, and
-						 *   the pane is a sibling region of the same window.
-						 * - `ListChecks`: the ledger's glyph for the todo TOOL
-						 *   (`trace/tool-glyphs.ts`) — the same collision § 6.1 refuses.
-						 * - no mark (the incumbent): the state D1 is about.
-						 *
-						 * The accessible name already states the action in words, so the mark is
-						 * `aria-hidden` — a decorative repetition, not a second label.
-						 */}
-						<Info aria-hidden={true} className={cn("size-3.5 shrink-0")} />
-						{todoClause(runDetails)}
-					</button>
-				</Tooltip>
+					{children && (
+						<Tooltip content={subagentLabel} side="top">
+							<button
+								type="button"
+								data-status-subagents=""
+								aria-label={subagentLabel}
+								onClick={() => revealPlan("subagents")}
+								className={cn(
+									CHIP_CONTROL,
+									subagentsFirst ? FIRST_CHIP : undefined,
+								)}
+							>
+								{/*
+								 * The mark leads, and it is the roster's own `SubagentStateIcon` rather
+								 * than a second glyph for the same nine states: that component already
+								 * carries the whole contract — `motion-safe:animate-spin` for `running`
+								 * and nothing else, `text-ink-muted` and never the accent ("the accent
+								 * green is a scarce budget and a child at work has not done anything
+								 * yet"), and shape as the contract with motion as the bonus, so it
+								 * survives reduced motion and looks right to a reader who cannot
+								 * separate two inks.
+								 *
+								 * That spin IS this row's animation-while-active, and it is not an entry
+								 * animation: it is the same live state the pane's roster draws, one
+								 * surface over. Nothing new is authored for it — no keyframe, no token,
+								 * no `animate-pulse-visible` (that role is the skeleton's and its own
+								 * docblock says so). The mark is `aria-hidden` inside the component, so
+								 * the state reaches a screen reader through the clause's `running`.
+								 */}
+								<SubagentStateIcon status={children.mark} />
+								{childClause(children)}
+							</button>
+						</Tooltip>
+					)}
+
+					{jobs && (
+						<Tooltip content={jobLabel} side="top">
+							<button
+								type="button"
+								data-status-jobs=""
+								aria-label={jobLabel}
+								onClick={() => revealPlan("jobs")}
+								className={cn(CHIP_CONTROL, jobsFirst ? FIRST_CHIP : undefined)}
+							>
+								{/*
+								 * The same mark over a different list, and the same reason: a tool job
+								 * is the one other thing in this session that can be at work while the
+								 * user reads, and a `bash` row is not a subagent — the roster excludes it
+								 * deliberately (`run-detail-model.ts`'s partition), so these two chips
+								 * exist as two because the two lists do. A single combined "activity"
+								 * chip is refused: it would be a button inside a button, and it would
+								 * open a section that cannot show its own rows.
+								 */}
+								<SubagentStateIcon status={jobs.mark} />
+								{jobClause(jobs)}
+							</button>
+						</Tooltip>
+					)}
+				</div>
 			)}
 		</div>
 	);
