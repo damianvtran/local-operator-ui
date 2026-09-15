@@ -1623,6 +1623,34 @@ const main = async () => {
 				},
 			));
 
+			/*
+			 * PARK THE POINTER, then load the story.
+			 *
+			 * A `{ hover }` entry leaves the pointer where it stopped, and the pointer
+			 * outlives the document: the next story loads with the pointer already
+			 * inside whatever sits at those coordinates, so a TOOLTIP can open on a
+			 * frame that never asked for one - and, worse, only sometimes, because the
+			 * tooltip opens on a delay. Measured rather than theorised: the row's
+			 * `degraded-daemon` frame came back with two different hashes on two runs of
+			 * the same tree, and the `value-hover` entry the settings surface ends on
+			 * was the only difference between them.
+			 *
+			 * The bottom-right corner of the requested viewport is empty in every
+			 * story this file captures, and moving there before the navigation is what
+			 * makes a frame a function of its own story rather than of the previous
+			 * one.
+			 */
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: width - 2,
+				y: height - 2,
+				button: "none",
+				buttons: 0,
+				clickCount: 0,
+				modifiers: 0,
+				pointerType: "mouse",
+			});
+
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
 			});
