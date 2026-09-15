@@ -22,13 +22,16 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
  * `group-hover`, and no story can hover: `userEvent.hover` dispatches synthetic
  * pointer events, which do not set CSS `:hover`. So the frames these stories
  * produce show the toolkit HIDDEN at its resting `opacity-0` - which is the
- * correct resting state and the half a design review can judge - and the
- * revealed state is the one the live run photographs. Stated here rather than
- * left to be inferred from an empty corner of a frame.
+ * correct resting state and the half a design review can judge. The revealed
+ * state is a LIVE-RUN frame and nothing here is one: the design and UX rounds of
+ * this change photograph it from the running app and attach it to the pull
+ * request, which is where a reader should look for it rather than at an empty
+ * corner of a still.
  *
  * The keyboard reveal (`group-focus-within`) is the other half of that and is
- * equally unreachable from a still: what a frame CAN show is the resting strip
- * in the tab order, and what it cannot is the ring appearing on it.
+ * equally unreachable from these stills: what a frame here CAN show is the
+ * resting strip in the tab order, and what it cannot is the ring appearing on
+ * it.
  */
 
 const conversationId = "story";
@@ -66,22 +69,35 @@ const NONEMPTY: Message[] = [
 ];
 
 /**
+ * A multi-paragraph answer, as a turn body actually is.
+ *
+ * The SHAPE is the point of this fixture. `quoteText` deliberately does not
+ * truncate, so a quoted turn is routinely several paragraphs, and the scan that
+ * takes the markup back out has to cross a newline to find the block. A
+ * single-line fixture exercises the one shape that worked while the scan was
+ * broken, which is why the frames built on one could not fail on the defect.
+ */
+const ANSWER = [
+	"Because that row's `tenant_id` was null, and the new column is `not null`.",
+	"",
+	"The other four hundred rows were fine.",
+].join("\n");
+
+/**
  * A conversation that already contains a quoted turn and an answer to it.
  *
  * The user row's `text` is the payload `buildSendPayload` assembles at the send
  * boundary - `<reply-to>` markup and the words, one string - because that is
- * what the transcript is handed and what the row has to render as a quote.
+ * what the transcript is handed and what the row has to render as a quote. The
+ * quote it carries is `ANSWER`, so the frame is built from the multi-line case
+ * rather than from the one-line case that used to stand in for it.
  */
 const CONVERSATION: TranscriptRecord[] = [
-	record(
-		"u1",
-		"user",
-		`${reply("The migration failed on the second row.")}\nWhy did it fail there?`,
-	),
+	record("u1", "user", `${reply(ANSWER)}\nWhy did it fail there?`),
 	record(
 		"a1",
 		"assistant",
-		"Because that row's `tenant_id` was null, and the new column is `not null`. The other four hundred rows were fine.",
+		`${ANSWER}\n\nSo the answer is the same for the rest of them.`,
 	),
 ];
 
@@ -123,9 +139,9 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
 					awaitingHydration={false}
 					/*
 					 * The same identity the composer below reads its replies by. The two
-					 * are one value in the app (`chat-content.tsx` passes `agentId` to
-					 * both), and a story that gave them different ones would photograph a
-					 * Quote press that goes nowhere.
+					 * are one value in the app (`chat-content.tsx` hands both of them its
+					 * local `conversationId` const), and a story that gave them different
+					 * ones would photograph a Quote press that goes nowhere.
 					 */
 					conversationId={conversationId}
 					onReconnect={() => {}}
@@ -175,9 +191,14 @@ type Story = StoryObj;
 /**
  * A turn that was SENT as a reply, rendered from its own payload.
  *
- * This is the frame the raw-markup defect fails: `<reply-to>…</reply-to>` is
- * transport, and before the canonical row split it out, this turn painted the
- * tags as literal text above the question at reading weight.
+ * This is the frame the raw-markup defect fails, and the fixture is built to
+ * earn that: the quoted turn below is multi-paragraph, so the scan has to cross
+ * a newline to find the block. While the scan was not dotall, `parseReplies`
+ * matched nothing here and this row painted `<reply-to>...</reply-to>` as
+ * literal text at reading weight - the single-line quote this story used to
+ * carry could not fail that way, which is exactly why it did not catch it.
+ * After the fix the tags are transport again: the block above the question is
+ * the same recessed `ReplyPreview` the composer stages.
  */
 export const SentTurnQuote: Story = {
 	render: () => <Frame records={CONVERSATION} />,

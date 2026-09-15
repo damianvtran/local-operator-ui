@@ -33,9 +33,9 @@ type QuoteToolkitProps = {
 	 * The conversation the staged quote is filed under.
 	 *
 	 * This MUST be the same identity the composer reads its replies by, or the
-	 * quote is staged into a key nobody paints - which is why it is threaded
-	 * from `chat-content.tsx` as the composer's own `agentId` expression rather
-	 * than derived here.
+	 * quote is staged into a key nobody paints - which is why it is threaded from
+	 * `chat-content.tsx` as that component's own local `conversationId` const, the
+	 * same value it hands `MessageInput`, rather than derived here.
 	 */
 	conversationId: string;
 	/** The turn's own text, already stripped of `<reply-to>` markup. */

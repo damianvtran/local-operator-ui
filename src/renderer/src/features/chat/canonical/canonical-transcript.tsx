@@ -321,6 +321,10 @@ const UserRow = memo(function UserRow({
 	 * text through `MarkdownRenderer`. Memoized because `parseReplies` mints a
 	 * fresh uuid per reply, so an unmemoized call would hand `ReplyPreview` a new
 	 * key on every render of every row.
+	 *
+	 * `parseReplies` reads that prefix across newlines, which is what makes this
+	 * hold for the multi-paragraph turn that is the common case rather than for
+	 * one-line ones only.
 	 */
 	const { replies, remainingContent } = useMemo(
 		() => parseReplies(record.text),
@@ -369,7 +373,7 @@ const UserRow = memo(function UserRow({
 						)}
 					</div>
 				</div>
-				{conversationId && isQuotable(record) && (
+				{conversationId && isQuotable(record, remainingContent) && (
 					<QuoteToolkit
 						conversationId={conversationId}
 						bodyText={remainingContent}
@@ -400,6 +404,11 @@ const AssistantRow = memo(function AssistantRow({
 	 * it onto whatever the turn carries (the `ask` gate's answer is one such
 	 * send), so a model that echoed a quoted prompt would otherwise paint raw
 	 * tags at agent-output weight, which § 7 is the most explicit about.
+	 *
+	 * `parseReplies` reads that markup as a leading run only, which is what makes
+	 * this safe for the other half of the same case: an answer that merely
+	 * DISCUSSES the wire format - this codebase's own sessions do - keeps its
+	 * words instead of having them moved into a "Replying to" block.
 	 */
 	const { replies, remainingContent } = useMemo(
 		() => parseReplies(record.text),
@@ -442,7 +451,7 @@ const AssistantRow = memo(function AssistantRow({
 						Stopped before finishing
 					</p>
 				)}
-				{conversationId && isQuotable(record) && (
+				{conversationId && isQuotable(record, remainingContent) && (
 					<QuoteToolkit
 						conversationId={conversationId}
 						bodyText={remainingContent}

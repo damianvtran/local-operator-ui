@@ -40,11 +40,22 @@ export const QUOTE_TOOLKIT_ATTR = "data-lo-quote-toolkit";
  * later reader reach `record.text` on a tool row having read a rule that only
  * claimed to exclude it.
  */
-export function isQuotable(record: TranscriptRecord): boolean {
+export function isQuotable(
+	record: TranscriptRecord,
+	bodyText: string,
+): boolean {
 	if (record.kind !== "user" && record.kind !== "assistant") return false;
-	// A record whose text is whitespace paints an empty row under the same rule
-	// `paintsSomething` applies, so the toolkit must not hang off it.
-	if (record.text.trim().length === 0) return false;
+	/*
+	 * `bodyText` is the text the toolkit would actually stage - the row's own
+	 * text with any reply markup taken out - and this rule reads THAT rather than
+	 * `record.text`. A turn whose whole text is `<reply-to>x</reply-to>` has a
+	 * non-empty raw text and an EMPTY body, so gating on the raw text mounted a
+	 * control whose press was a silent no-op: `quoteText` answers `null` for an
+	 * empty body, and `handleQuote` returns before staging anything (round 1,
+	 * finding 5). The rule is "this row has words to offer", so it has to read
+	 * the words that would be offered.
+	 */
+	if (bodyText.trim().length === 0) return false;
 	if (record.kind !== "assistant") return true;
 	/*
 	 * A streaming assistant record is a prefix that the next token falsifies.
@@ -62,16 +73,26 @@ export function isQuotable(record: TranscriptRecord): boolean {
 	return !record.streaming;
 }
 
+/** The toolkit ancestor of a selection endpoint, if it has one. */
+const toolkitAncestor = (node: Node): Element | null => {
+	const host =
+		node.nodeType === Node.ELEMENT_NODE
+			? (node as Element)
+			: node.parentElement;
+	return host?.closest(`[${QUOTE_TOOLKIT_ATTR}]`) ?? null;
+};
+
 /**
  * The reader's selection, when one lies inside `element` and is theirs.
  *
  * Returns `null` for a collapsed caret, for a selection that starts in one turn
  * and ends in another (a drag across rows is not a quote of either), and for one
- * that resolved to the toolkit itself.
+ * with an end inside the toolkit.
  *
- * Both ends are tested rather than just the anchor: an anchor inside this turn
- * whose focus is in the next one would otherwise be quoted as this turn's words,
- * and the reader would watch a partial drag become a quote of the wrong half.
+ * BOTH ends are tested, for the containment rule and for the toolkit rule: an
+ * anchor inside this turn whose focus is in the next one would otherwise be
+ * quoted as this turn's words, and the reader would watch a partial drag become
+ * a quote of the wrong half.
  *
  * `document`/`window` are read lazily rather than at module load so this file
  * stays importable by a node test, which is where its rules are asserted.
@@ -89,12 +110,23 @@ export function selectionTextIn(element: HTMLElement | null): string | null {
 	) {
 		return null;
 	}
-	const node = range.commonAncestorContainer;
-	const host =
-		node.nodeType === Node.ELEMENT_NODE
-			? (node as Element)
-			: node.parentElement;
-	if (host?.closest(`[${QUOTE_TOOLKIT_ATTR}]`)) return null;
+	/*
+	 * Both endpoints, not `range.commonAncestorContainer` (round 1, finding 3).
+	 * A drag that starts in the prose and ends on the strip has the TURN as its
+	 * common ancestor, so testing the ancestor tested the one node that is
+	 * guaranteed not to be inside the toolkit - and the strip's visible text
+	 * joined the quote, which is the case the `QUOTE_TOOLKIT_ATTR` doc comment
+	 * above gives as the reason that attribute exists. Harmless while the strip
+	 * renders a lone `<Quote/>` glyph and no text node, and reachable the moment
+	 * it carries a label or a timestamp, which is what the copy of this strip in
+	 * `message-controls.tsx` already does.
+	 */
+	if (
+		toolkitAncestor(range.startContainer) ||
+		toolkitAncestor(range.endContainer)
+	) {
+		return null;
+	}
 	const text = selection.toString().trim();
 	return text.length > 0 ? text : null;
 }
