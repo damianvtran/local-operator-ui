@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -153,8 +152,57 @@ const ROW = ROW_SOURCE.slice(
 	ROW_SOURCE.indexOf("{messages.length === 0 && !isHydrating && !isSmallView"),
 );
 
-/** The size a control carries, in CSS pixels, for the rung under test. */
-const controlSize = (isSmallView) => (isSmallView ? 28 : 32);
+/*
+ * THE ROW'S OWN NUMBERS, read from the two files that carry them rather than
+ * restated here. A geometry pin built from its own constants cannot fail on a
+ * regression - the previous shape of this test asserted a box laid out from the
+ * very values it was checking - so every quantity below comes out of the shipped
+ * source:
+ *
+ *   - the gap between the row's controls, from the row's own `gap-*` class;
+ *   - the dictation control's size, from its `size={isSmallView ? ... : ...}`
+ *     expression resolved through the Button variant map it names;
+ *   - the reservation's size, from the classes that block carries, resolved
+ *     through the same map plus Tailwind's 4px spacing step.
+ */
+const ROW_GAP_PX = (() => {
+	const cluster = ROW_SOURCE.slice(
+		ROW_SOURCE.indexOf('className="ml-auto flex items-center'),
+	);
+	const [, gap] = /gap-(\d+)/.exec(cluster);
+	return Number(gap) * 4;
+})();
+
+/** The Button variant map, so a control's `size` variant resolves to its class. */
+const BUTTON_SIZES = (() => {
+	const source = readFileSync(
+		"src/renderer/src/shared/components/ui/button.tsx",
+		"utf8",
+	);
+	const sizes = {};
+	for (const [, variant, token] of source.matchAll(
+		/^\s*"?([a-z-]+)"?:\s*"size-(\d+)/gm,
+	))
+		sizes[variant] = `size-${token}`;
+	return sizes;
+})();
+
+/** Tailwind's spacing step: `size-N` is N * 0.25rem, and this file's rungs are 1x. */
+const px = (token) => {
+	const match = /^size-(\d+)$/.exec(token);
+	assert.ok(match, `not a size class: ${token}`);
+	return Number(match[1]) * 4;
+};
+
+/** The class a `isSmallView ? a : b` control resolves to at one rung. */
+const resolveRung = (expression, isSmallView) => {
+	const [, small, large] = /isSmallView \? "([\w-]+)" : "([\w-]+)"/.exec(
+		expression,
+	);
+	return (
+		BUTTON_SIZES[isSmallView ? small : large] ?? (isSmallView ? small : large)
+	);
+};
 
 test("the Stop control's box is reserved, so the dictation control cannot take its centre", () => {
 	// The row's own order, by where each control's marker appears in it.
@@ -174,38 +222,59 @@ test("the Stop control's box is reserved, so the dictation control cannot take i
 		mic < reserved && reserved < stop && stop < send,
 		`the row is not [dictation][reserved box][Stop][Send] (mic ${mic}, reserved ${reserved}, Stop ${stop}, Send ${send})`,
 	);
-	/*
-	 * The reservation has to wear the CONTROL's size, not a fixed one: at the
-	 * small rung the whole cluster is `icon-sm` (28px), so a 32px placeholder
-	 * would move the dictation control rather than hold its place. Both blocks
-	 * carry the same expression, and this asserts that rather than assuming it.
-	 */
-	const sizeExpression = 'isSmallView ? "size-7" : "size-8"';
-	const reservedBlock = ROW.slice(reserved - 400, reserved + 200);
-	assert.ok(
-		reservedBlock.includes(sizeExpression),
-		"the reserved box does not carry the control's own size expression",
-	);
+	const reservedBlock = ROW.slice(reserved - 500, reserved + 200);
 	assert.match(reservedBlock, /aria-hidden="true"/);
 	assert.match(reservedBlock, /pointer-events-none/);
 	assert.doesNotMatch(reservedBlock, /<button|tabIndex|onClick/);
+	// The reservation only exists where the control could: gated on the capability
+	// the caller folds `active` with.
+	assert.match(reservedBlock, /canonicalStopAvailable &&/);
 
 	/*
-	 * THE HAZARD, in the manager's own words: the dictation control's hit box must
-	 * not cover the position the Stop occupied. Laid out with the row's own 4px
-	 * gap, at both rungs.
+	 * The dictation control's own size expression, immediately before the row's
+	 * reservation - the two have to resolve to the SAME box at every rung, or the
+	 * reservation moves the control instead of holding its place.
 	 */
-	for (const isSmallView of [false, true]) {
-		const size = controlSize(isSmallView);
-		const gap = 4;
-		const rung = isSmallView ? "small" : "default";
-		// [dictation][reserved][Send], from the row's left edge.
-		const dictation = { x: 0, width: size };
-		const slot = { x: size + gap, width: size };
+	const micBlock = ROW.slice(mic - 400, mic + 400);
+	const micExpression = /size=\{(isSmallView \? "[\w-]+" : "[\w-]+")\}/.exec(
+		micBlock,
+	)?.[1];
+	assert.ok(
+		micExpression,
+		"the dictation control carries no rung-dependent size",
+	);
+	const reservedExpression = /isSmallView \? "(size-\d+)" : "(size-\d+)"/.exec(
+		reservedBlock,
+	)?.[0];
+	assert.ok(
+		reservedExpression,
+		"the reservation carries no rung-dependent size",
+	);
+
+	for (const [rung, isSmallView] of [
+		["default", false],
+		["small", true],
+	]) {
+		const dictationToken = resolveRung(micExpression, isSmallView);
+		const slotToken = resolveRung(reservedExpression, isSmallView);
+		assert.equal(
+			slotToken,
+			dictationToken,
+			`${rung}: the reservation is ${slotToken} but the control it stands in for is ${dictationToken}`,
+		);
+		const width = px(slotToken);
+		// [dictation][reserved][Send], from the row's own left edge and the row's
+		// own gap.
+		const dictation = { x: 0, width: px(dictationToken) };
+		const slot = { x: dictation.width + ROW_GAP_PX, width };
 		const stopCentre = slot.x + slot.width / 2;
 		assert.ok(
 			dictation.x + dictation.width <= slot.x,
 			`${rung}: the dictation control reaches into the Stop's box; its centre ${stopCentre} would be pressable in the state a reflex press arrives in`,
+		);
+		assert.ok(
+			stopCentre > dictation.x + dictation.width,
+			`${rung}: the Stop's centre ${stopCentre} falls inside the dictation control's box`,
 		);
 	}
 });
