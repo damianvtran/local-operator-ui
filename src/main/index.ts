@@ -17,6 +17,11 @@ import {
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
+	BACKEND_RECONNECT_CHANNEL,
+	BACKEND_STATUS_CHANNEL,
+	BACKEND_STATUS_EVENT,
+} from "../shared/backend-status";
+import {
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
@@ -1402,90 +1407,163 @@ app
 			};
 		});
 
+		/*
+		 * The server-status signal, answered by MAIN.
+		 *
+		 * The renderer used to decide "is the server online" by fetching `/health`
+		 * itself, from the packaged app's `file://` document. That makes a CORS
+		 * decision - and, on a claimed daemon, the origin allowlist - into a liveness
+		 * signal, so a change in the backend's origin handling reports a healthy
+		 * server as down. That is the reported failure. Main sends no Origin and
+		 * holds the bearer, so it is the only process that can answer honestly, and
+		 * the only one that knows whether the daemon it attached to is still the
+		 * daemon it attached to.
+		 *
+		 * A pull (`backend-status`) plus a push (`backend-status-changed`): the pull
+		 * so a window that opens later is not left waiting for the next transition,
+		 * the push so a state change reaches the renderer within one probe interval.
+		 */
+		ipcMain.handle(BACKEND_STATUS_CHANNEL, () =>
+			backendService.getStatusSnapshot(),
+		);
+		/*
+		 * The banner's Retry, as a verb rather than a re-read.
+		 *
+		 * Re-reading the snapshot cannot cause a reconnection - main's own recovery
+		 * timer is the only thing that could - so a renderer that only pulled the
+		 * snapshot rendered a Retry that did nothing in the one state that offers
+		 * one. This asks main to try now and answers with what it observed.
+		 */
+		ipcMain.handle(BACKEND_RECONNECT_CHANNEL, () =>
+			backendService.reconnectNow(),
+		);
+		backendService.onStatusChange((snapshot) => {
+			if (mainWindow && !mainWindow.isDestroyed()) {
+				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
+			}
+		});
+
 		// Check if backend manager is disabled via environment variable
 		const isBackendManagerDisabled =
 			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
 
-		if (!isBackendManagerDisabled) {
-			// Check if an external backend is already running
-			const hasExternalBackend = await backendService.checkExistingBackend();
+		/*
+		 * Discovery runs UNCONDITIONALLY, including when the manager is disabled.
+		 * The flag means "do not spawn or kill a daemon", never "assume one
+		 * exists": running it only in the enabled branch is why an app configured
+		 * with the flag could not see the operator's own TUI-started daemon - it
+		 * never looked, so it never found it, and every conversation opened empty
+		 * (design §3.7).
+		 */
+		const hasExternalBackend = await backendService.checkExistingBackend();
 
-			if (!hasExternalBackend) {
-				// Check if local-operator command exists globally
-				const hasGlobalCommand =
-					await backendService.checkLocalOperatorExists();
+		/*
+		 * Only an app permitted to manage a daemon may install or start one. A
+		 * disabled manager keeps looking (its probe loop re-discovers on every
+		 * tick) and reports what it finds, which is what lets a daemon started
+		 * after the app gets picked up without a restart.
+		 */
+		if (hasExternalBackend && isBackendManagerDisabled) {
+			// A daemon was found with the manager disabled: nothing to install and
+			// nothing to spawn, which is the whole of that flag's meaning.
+			logger.info(
+				"Discovered a daemon; the backend manager is configured not to spawn or kill one.",
+				LogFileType.BACKEND,
+			);
+		} else if (!hasExternalBackend && isBackendManagerDisabled) {
+			// Nothing was found and this app may not start a daemon. `start()` is
+			// still the right call: with the flag set it spawns nothing - it
+			// publishes the state and ARMS THE PROBE LOOP, so a daemon the operator
+			// starts a minute from now is attached without restarting the app. Its
+			// `false` is the honest answer here and must not quit the app.
+			//
+			// `reuseDiscovery` because the pass above ran in this same startup tick:
+			// the verdict it recorded (nothing found, and whether a live record
+			// forbids spawning) is what this call decides on, so a second sweep of
+			// the record directory could only repeat it.
+			await backendService.start({ reuseDiscovery: true });
+		}
 
-				// If local-operator doesn't exist globally and our backend is not installed
-				if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
-					// Install backend
-					const installSuccess = await backendInstaller.install();
-					// If installation was cancelled or failed, quit the app
-					if (!installSuccess) {
-						logger.error(
-							"Backend installation cancelled or failed, quitting app",
-							LogFileType.INSTALLER,
-						);
-						app.quit();
-						return; // Exit early to prevent window creation
-					}
+		if (!hasExternalBackend && !isBackendManagerDisabled) {
+			// Check if local-operator command exists globally
+			const hasGlobalCommand = await backendService.checkLocalOperatorExists();
 
-					// After successful installation, attempt to start the backend with retries
-					logger.info(
-						"Attempting to start backend service after installation",
+			// If local-operator doesn't exist globally and our backend is not installed
+			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
+				// Install backend
+				const installSuccess = await backendInstaller.install();
+				// If installation was cancelled or failed, quit the app
+				if (!installSuccess) {
+					logger.error(
+						"Backend installation cancelled or failed, quitting app",
 						LogFileType.INSTALLER,
 					);
-					let startAttempts = 0;
-					const maxStartAttempts = 3;
-					let backendStarted = false;
+					app.quit();
+					return; // Exit early to prevent window creation
+				}
 
-					while (startAttempts < maxStartAttempts && !backendStarted) {
-						try {
-							backendStarted = await backendService.start();
-							if (!backendStarted) {
-								logger.error(
-									`Backend start attempt ${startAttempts + 1} failed`,
-									LogFileType.INSTALLER,
-								);
-								// Wait before retrying
-								await new Promise((resolve) => setTimeout(resolve, 2000));
-							}
-						} catch (error) {
+				// After successful installation, attempt to start the backend with retries
+				logger.info(
+					"Attempting to start backend service after installation",
+					LogFileType.INSTALLER,
+				);
+				let startAttempts = 0;
+				const maxStartAttempts = 3;
+				let backendStarted = false;
+
+				while (startAttempts < maxStartAttempts && !backendStarted) {
+					try {
+						backendStarted = await backendService.start();
+						if (!backendStarted) {
 							logger.error(
-								`Error starting backend (attempt ${startAttempts + 1}):`,
+								`Backend start attempt ${startAttempts + 1} failed`,
 								LogFileType.INSTALLER,
-								error,
 							);
+							// Wait before retrying
+							await new Promise((resolve) => setTimeout(resolve, 2000));
 						}
-						startAttempts++;
+					} catch (error) {
+						logger.error(
+							`Error starting backend (attempt ${startAttempts + 1}):`,
+							LogFileType.INSTALLER,
+							error,
+						);
 					}
+					startAttempts++;
+				}
 
-					if (!backendStarted) {
-						logger.error(
-							"Failed to start backend after installation, quitting app",
-							LogFileType.INSTALLER,
-						);
-						reportBackendFailure(
-							"Failed to start the Local Operator backend service after installation. Please restart the application.",
-							LogFileType.INSTALLER,
-						);
-						app.quit();
-						return;
-					}
-				} else {
-					// Start our backend service (for existing installations)
-					const backendStarted = await backendService.start();
-					if (!backendStarted) {
-						logger.error(
-							"Failed to start backend with existing installation, quitting app",
-							LogFileType.BACKEND,
-						);
-						reportBackendFailure(
-							"Failed to start the Local Operator backend service. Please restart the application.",
-							LogFileType.BACKEND,
-						);
-						app.quit();
-						return;
-					}
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend after installation, quitting app",
+						LogFileType.INSTALLER,
+					);
+					reportBackendFailure(
+						"Failed to start the Local Operator backend service after installation. Please restart the application.",
+						LogFileType.INSTALLER,
+					);
+					app.quit();
+					return;
+				}
+			} else {
+				// Start our backend service (for existing installations).
+				// `reuseDiscovery` for the reason the disabled-manager branch states,
+				// and pointedly NOT on the post-install retries above: an install can
+				// take minutes, and a daemon that appeared while it ran has to be found
+				// rather than spawned over.
+				const backendStarted = await backendService.start({
+					reuseDiscovery: true,
+				});
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend with existing installation, quitting app",
+						LogFileType.BACKEND,
+					);
+					reportBackendFailure(
+						"Failed to start the Local Operator backend service. Please restart the application.",
+						LogFileType.BACKEND,
+					);
+					app.quit();
+					return;
 				}
 			}
 		}

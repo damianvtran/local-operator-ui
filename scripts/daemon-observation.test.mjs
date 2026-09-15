@@ -1,0 +1,454 @@
+/**
+ * An app that ADOPTS a daemon at startup must keep watching it.
+ *
+ * WHY this file exists beside the two daemon suites that were already green.
+ * `daemon-health-state.test.mjs` drives the state machine's own rules and
+ * `daemon-discovery.test.mjs` drives discovery's; neither owns the ARRANGEMENT
+ * between them - who arms the probe loop, and what a recovery probe's verdict
+ * does to the machine - and that arrangement was wrong in two directions at
+ * once (QA round 3 Q-1/Q-2, review round 3 R3-1):
+ *
+ *   - the loop was armed only from `startOwned()`, while `src/main/index.ts`
+ *     calls `checkExistingBackend()` at startup and calls `start()` only when
+ *     discovery found NOTHING - so an app that adopted the operator's daemon
+ *     never probed at all. Measured: a daemon killed after startup left the app
+ *     reporting `attached`, naming the dead pid, for 150 s with zero push
+ *     events; nothing re-discovered a daemon started later without an app
+ *     restart, and the connectivity banner (whose only entry is an unreachable
+ *     state) could not appear, so the Retry that would have recovered it was
+ *     unreachable.
+ *   - `recoverFromDetachment()` folded its probe into the state machine only on
+ *     the `identified` branch, so the one recovery verb the renderer owns -
+ *     `reconnectNow()`, the banner's Retry - returned the stale `attached` it
+ *     was asked to refresh, while an action against the same daemon answered
+ *     503.
+ *
+ * The subject is the REAL `BackendServiceManager` against real loopback HTTP and
+ * real record files, in a config root of its own per case. Two substitutions,
+ * each of which keeps this machine safe rather than making the test easier:
+ *
+ *   - `./config` is replaced, because the real module parses the repository's
+ *     `.env` and would point the manager at the operator's own backend;
+ *   - `./logger` is replaced, because the real one appends to the operator's
+ *     application-support log.
+ *
+ * The probe loop is RECORDED rather than scheduled (`withRecordedProbeLoop`):
+ * the manager arms it with the global `setInterval`, so the recorded callback is
+ * exactly the function a real 10 s tick runs, and calling it here is the tick
+ * the app would have run - ten seconds early and deterministically. Nothing is
+ * ever scheduled, which is also what keeps a case that fails mid-way from
+ * leaving a live timer behind to hold the runner open. The real-timer
+ * measurement of the same path (kill the daemon, wait out the interval, watch
+ * the push) lives in `scripts/daemon-discovery-evidence.mjs`, which drives it
+ * against a real `lop serve` daemon.
+ */
+
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { after, test } from "node:test";
+import { build } from "esbuild";
+
+/*
+ * A pairing token in the operator's environment would let the adoption path
+ * reach a daemon no record describes. Every case here goes through the record's
+ * own claim key, so the ambient pairing credentials go first.
+ */
+delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+delete process.env.LOCAL_OPERATOR_DESKTOP_ORIGINS;
+
+const CLAIM_KEY = "c".repeat(64);
+const HOME = mkdtempSync(join(tmpdir(), "daemon-observation-"));
+/** Every manager this file builds, so teardown can dispose of one whose test
+ * failed before its own stop. */
+const managers = new Set();
+
+const bundle = await build({
+	stdin: {
+		contents:
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { PROBE_INTERVAL_MS, DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	plugins: [
+		{
+			name: "main-process-fixtures",
+			setup(builder) {
+				builder.onResolve({ filter: /^electron$/ }, () => ({
+					path: "electron",
+					namespace: "fixture",
+				}));
+				// Resolved by IMPORTER as well as specifier: `./config` and
+				// `./logger` exist in other directories, and substituting the wrong
+				// one would leave the real logger writing to the operator's log.
+				for (const [filter, name] of [
+					[/^\.\/logger$/, "logger-fixture"],
+					[/^\.\/config$/, "config-fixture"],
+				]) {
+					builder.onResolve({ filter }, (args) =>
+						args.importer.endsWith("main/backend/backend-service.ts")
+							? { path: name, namespace: "fixture" }
+							: undefined,
+					);
+				}
+				builder.onLoad(
+					{
+						filter: /^(electron|logger-fixture|config-fixture)$/,
+						namespace: "fixture",
+					},
+					(args) => {
+						const sources = {
+							electron: `
+								export const app = {
+									getPath: (name) => name === "home" ? ${JSON.stringify(HOME)} : ${JSON.stringify(join(HOME, "userData"))},
+									whenReady: async () => {},
+									on: () => {},
+									quit: () => {},
+								};
+								export const dialog = { showErrorBox: () => {}, showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
+								export default { app, dialog };
+							`,
+							"logger-fixture": `
+								export const LogFileType = { INSTALLER: "installer", BACKEND: "backend", UPDATE_SERVICE: "update", OAUTH: "oauth" };
+								const emit = () => () => {};
+								export const logger = { info: emit(), warn: emit(), error: emit(), debug: emit(), verbose: emit() };
+							`,
+							/*
+							 * The URL is a GETTER: every case points a fresh manager at the
+							 * daemon it started, and `backendUrl` is derived from this value
+							 * in the constructor. A frozen property would silently reuse
+							 * the previous case's daemon.
+							 */
+							"config-fixture": `
+								export const backendConfig = {
+									get VITE_LOCAL_OPERATOR_API_URL() { return globalThis.__testConfiguredUrl; },
+									VITE_DISABLE_BACKEND_MANAGER: "false",
+								};
+							`,
+						};
+						return { contents: sources[args.path], loader: "js" };
+					},
+				);
+			},
+		},
+	],
+});
+
+const { BackendServiceManager, PROBE_INTERVAL_MS, DEGRADED_AFTER_FAILURES } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
+
+after(async () => {
+	/*
+	 * A TERMINAL stop (not `stop(true)`, the restart), and then once more after a
+	 * settle.
+	 *
+	 * A restart deliberately keeps observing, so a tick whose recovery was still
+	 * in flight can arm the loop again after the stop - correct in the app, where
+	 * the manager is going to keep running, and fatal to a test process, whose
+	 * only other handle is the runner. `stop(false)` sets the shutting-down flag
+	 * that a later `discoverAndAttach()` bails on, which is what closes that
+	 * window; the settle and the second stop are the net under a test that failed
+	 * before reaching its own stop at all.
+	 */
+	for (const manager of managers) await manager.stop(false).catch(() => {});
+	await new Promise((resolve) => setTimeout(resolve, 2_500));
+	for (const manager of managers) await manager.stop(false).catch(() => {});
+	rmSync(HOME, { recursive: true, force: true });
+});
+
+/** Wait for `check`, or fail with what was seen rather than hang the run. */
+async function waitFor(check, describe) {
+	const deadline = Date.now() + 5000;
+	for (;;) {
+		const value = check();
+		if (value) return value;
+		if (Date.now() > deadline)
+			throw new Error(`timed out waiting for ${describe}`);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+}
+
+/**
+ * One case's world: its own config root (so no other case's record is a
+ * candidate), a real loopback daemon answering like one, and the live process
+ * its record names - so `pidLiveness` has a real process to lose.
+ */
+async function daemonScene({ instanceId, version = "0.55.2" }) {
+	const root = mkdtempSync(join(tmpdir(), `daemon-observation-${instanceId}-`));
+	const runDir = join(root, "run", "serve");
+	mkdirSync(runDir, { recursive: true });
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = root;
+
+	const child = spawn(
+		process.execPath,
+		["-e", "setInterval(() => {}, 1000);"],
+		{
+			stdio: "ignore",
+		},
+	);
+	const seen = [];
+	const server = createServer((req, res) => {
+		const path = (req.url ?? "").split("?")[0];
+		seen.push({ path, method: req.method });
+		const json = (status, body) => {
+			res.writeHead(status, { "Content-Type": "application/json" });
+			res.end(JSON.stringify(body));
+		};
+		if (path === "/health") {
+			json(200, {
+				status: 200,
+				message: "ok",
+				result: {
+					version,
+					instance_id: instanceId,
+					pid: child.pid,
+					prefix: "/tmp/observation-prefix",
+					install_kind: "uv-tool",
+				},
+			});
+			return;
+		}
+		if (path === "/v1/capabilities") {
+			json(200, { status: 200, result: { desktop_available: true } });
+			return;
+		}
+		if (path === "/v1/desktop/claim") {
+			json(200, { status: 200 });
+			return;
+		}
+		if (path === "/v1/desktop/sessions") {
+			const presented = (req.headers.authorization ?? "").replace(
+				"Bearer ",
+				"",
+			);
+			// The bearer is the record's own claim key: a 200 here is what makes
+			// this daemon adoptable at all (an unauthenticated 200 is not).
+			if (presented !== CLAIM_KEY) {
+				json(401, { detail: "Unauthorized" });
+				return;
+			}
+			json(200, { result: { sessions: [], truncated: false, limit: 1 } });
+			return;
+		}
+		if (path.endsWith("/events")) {
+			res.writeHead(200, { "Content-Type": "text/event-stream" });
+			res.end();
+			return;
+		}
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end("{}");
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const port = server.address().port;
+
+	const now = Date.now() / 1000;
+	writeFileSync(
+		join(runDir, `${child.pid}.json`),
+		JSON.stringify({
+			pid: child.pid,
+			host: "127.0.0.1",
+			port,
+			instance_id: instanceId,
+			version,
+			source_ref: "",
+			prefix: "/tmp/observation-prefix",
+			install_kind: "uv-tool",
+			desktop: false,
+			claim_key: CLAIM_KEY,
+			started_at: now - 10,
+			heartbeat_at: now - 1,
+		}),
+		{ mode: 0o600 },
+	);
+
+	const stopChild = async () => {
+		if (child.exitCode !== null || child.signalCode !== null) return;
+		const exited = new Promise((resolve) => child.on("exit", resolve));
+		child.kill("SIGKILL");
+		await exited;
+	};
+	const closeServer = async () => {
+		if (!server.listening) return;
+		server.closeAllConnections?.();
+		await new Promise((resolve) => server.close(resolve));
+	};
+
+	return {
+		root,
+		port,
+		address: `http://127.0.0.1:${port}`,
+		pid: child.pid,
+		seen,
+		/**
+		 * The daemon dies the way it died in the report: its process is gone and
+		 * nothing answers on its port any more. Both halves matter - the pid is
+		 * the evidence the state machine acts on, and the closed port is what any
+		 * later probe (and the pre-record fallback) must fail against.
+		 */
+		async die() {
+			await closeServer();
+			await stopChild();
+		},
+		async dispose() {
+			await closeServer();
+			await stopChild();
+			rmSync(root, { recursive: true, force: true });
+		},
+	};
+}
+
+/**
+ * Drive `body` with the loop's timer RECORDED instead of scheduled.
+ *
+ * `startHealthCheck()` arms the loop with the global `setInterval`, so the
+ * recorded callback is the function a real tick runs.
+ */
+async function withRecordedProbeLoop(body) {
+	const realSetInterval = globalThis.setInterval;
+	const realClearInterval = globalThis.clearInterval;
+	const intervals = [];
+	globalThis.setInterval = (fn, ms) => {
+		const token = { recorded: true };
+		intervals.push({ fn, ms, token });
+		return token;
+	};
+	globalThis.clearInterval = () => {};
+	try {
+		return { intervals, value: await body() };
+	} finally {
+		globalThis.setInterval = realSetInterval;
+		globalThis.clearInterval = realClearInterval;
+	}
+}
+
+/** Adopt the running daemon exactly as `src/main/index.ts` does at startup. */
+async function adoptAtStartup(scene) {
+	globalThis.__testConfiguredUrl = scene.address;
+	const { intervals, value } = await withRecordedProbeLoop(async () => {
+		const manager = new BackendServiceManager();
+		managers.add(manager);
+		const adopted = await manager.checkExistingBackend();
+		return { manager, adopted };
+	});
+	return { ...value, intervals };
+}
+
+test("an adopted daemon arms the probe loop (Q-1)", async () => {
+	const scene = await daemonScene({ instanceId: "instance-adopted-loop" });
+	try {
+		const { manager, adopted, intervals } = await adoptAtStartup(scene);
+		assert.equal(adopted, true, "the running daemon must be adopted");
+		assert.equal(manager.getStatusSnapshot().state, "attached");
+		assert.equal(
+			intervals.length,
+			1,
+			"the startup adoption path must arm the loop exactly once: `index.ts` calls `checkExistingBackend()` and never `start()` when a daemon was found, so an unarmed loop left the app on `attached` for a daemon that had been dead for minutes",
+		);
+		assert.equal(
+			intervals[0].ms,
+			PROBE_INTERVAL_MS,
+			"and at the probe cadence the owned path uses",
+		);
+		await manager.stop(false);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("a daemon killed after startup is noticed by the tick adoption armed (Q-1)", async () => {
+	const scene = await daemonScene({ instanceId: "instance-killed-after" });
+	try {
+		const { manager, intervals } = await adoptAtStartup(scene);
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+
+		await scene.die();
+		assert.equal(
+			pushes.length,
+			0,
+			"nothing has ticked yet: the snapshot is still what adoption published",
+		);
+
+		// The armed loop's own callback - the same function a real 10 s tick runs,
+		// not a probe this test makes by hand. It is fire-and-forget by design,
+		// so the correction is awaited rather than read off the callback.
+		intervals[0].fn();
+		const snapshot = await waitFor(
+			() =>
+				manager.getStatusSnapshot().state === "attached"
+					? null
+					: manager.getStatusSnapshot(),
+			"the armed tick to record the daemon's death",
+		);
+
+		assert.equal(
+			snapshot.state,
+			"detached",
+			"the dead daemon must not stay `attached`",
+		);
+		assert.doesNotMatch(
+			snapshot.detail,
+			/Connected to the daemon/,
+			"and the row must stop describing a dead process as the daemon it is connected to",
+		);
+		assert.equal(snapshot.failures, DEGRADED_AFTER_FAILURES);
+		assert.match(snapshot.detail, /process is gone/);
+		assert.ok(
+			pushes.some((pushed) => pushed.state === "detached"),
+			"the renderer has to be PUSHED the correction: a state that only moves in main is still a stale row",
+		);
+		assert.equal(
+			manager.getOwnedPid(),
+			null,
+			"a daemon this app did not start is never replaced by one it starts",
+		);
+		await manager.stop(false);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("the banner's Retry corrects a stale attachment instead of returning it (Q-2)", async () => {
+	const scene = await daemonScene({ instanceId: "instance-stale-retry" });
+	try {
+		const { manager } = await adoptAtStartup(scene);
+		assert.equal(manager.getStatusSnapshot().state, "attached");
+		await scene.die();
+
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+		// Exactly what `src/main/index.ts`'s BACKEND_RECONNECT_CHANNEL runs for the
+		// banner's Retry, with no tick in between - the state QA drove a real
+		// renderer action against, where the verb answered `attached` while
+		// `sessions.list` answered 503.
+		const snapshot = await manager.reconnectNow();
+
+		assert.notEqual(
+			snapshot.state,
+			"attached",
+			"a Retry that answers `attached` for a daemon whose process is gone is the row claiming online while every action fails",
+		);
+		assert.equal(snapshot.state, "detached");
+		assert.match(snapshot.detail, /process is gone/);
+		assert.equal(
+			snapshot.failures,
+			DEGRADED_AFTER_FAILURES,
+			"the probe's verdict is recorded with the weight the tick gives it, not as a single degraded sample",
+		);
+		assert.ok(
+			pushes.some((pushed) => pushed.state === "detached"),
+			"and the corrected state is pushed, so a renderer that called the verb renders what main observed",
+		);
+		await manager.stop(false);
+	} finally {
+		await scene.dispose();
+	}
+});
