@@ -163,6 +163,17 @@ test(
 			"evidence-run-guard.py",
 			"color.mjs",
 			"palette-source.mjs",
+			/*
+			 * `check-evidence.mjs` imports this one for the story `dir` table it holds,
+			 * so the fixture's script set has to mirror that edge the way it already
+			 * mirrors the two module-level imports. The copy is deliberate over a stub:
+			 * the CLI under test is the real one, and it has to resolve its own
+			 * dependency for real or this test would be testing a fixture's shape.
+			 * `capture-evidence.mjs` is safe to copy here - it reads nothing at import
+			 * time and its own `check-evidence.mjs` import resolves to the relocated copy
+			 * beside it.
+			 */
+			"capture-evidence.mjs",
 		]) {
 			copyFileSync(join(dirname(guard), name), join(scripts, name));
 		}

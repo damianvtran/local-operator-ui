@@ -64,7 +64,25 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 			title={row.status?.label ?? "Recent"}
 		>
 			<Icon className={cn("size-4", ink)} aria-hidden="true" />
-			<span className="sr-only">{row.status?.label ?? "Recent"}</span>
+			<span className="sr-only">
+				{row.status?.label ?? "Recent"}
+				{/*
+				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
+				 * reader nothing — the arrival is visible only to someone looking at
+				 * the glyph — and the name carries it in the one case the ink moves
+				 * to a state of its own (review round 3, R3-3).
+				 *
+				 * Gated on `unseenCompletion`, not on `row.attention?.unseen`, and
+				 * the gating is the contract rather than a preference: this module's
+				 * own test asserts that an ACKNOWLEDGED row renders IDENTICALLY to an
+				 * unacknowledged one (`assert.equal(after, before)`) for every code
+				 * but `complete`, so an unconditional suffix changes what an
+				 * acknowledged danger or warning row says. Measured: the
+				 * unconditional form fails 11 of those 12 cases, this one passes all
+				 * twelve.
+				 */}
+				{unseenCompletion ? ", unread" : ""}
+			</span>
 		</span>
 	);
 }
