@@ -1833,3 +1833,78 @@ test("sessions.presence claims the kinds and the window the delivery lease reads
 		"no malformed presence beat reached the network",
 	);
 });
+
+test("sessions.move reaches the working-directory route with the path, on the control budget", async () => {
+	// The op that moves a live session. Two things it must not do: take the
+	// MESSAGE budget (a 4 KB path is not prose, and the message tier is the wider
+	// one an untrusted renderer gets), and carry anything beyond the two fields
+	// the route's own model declares.
+	const sessionId = "123456abcdef";
+	assert.equal(
+		desktopRequestByteBudget("sessions.move"),
+		desktopRequestByteBudget("capabilities"),
+		"the move op takes the control budget, so it must not be a MESSAGE_OPS member",
+	);
+	const count = seen.length;
+	const requestId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+	const response = await requestDesktop(
+		{ op: "sessions.move", sessionId, requestId, cwd: "/Users/me/moved" },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(seen.length, count + 1, "exactly one request reached HTTP");
+	const last = seen.at(-1);
+	assert.equal(
+		last.path,
+		`/v1/desktop/sessions/${sessionId}/working-directory`,
+	);
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	// The path goes over AS TYPED. Resolving `~` and a relative path is the
+	// backend's job, because the base for a relative path is the SESSION's
+	// directory - a rule the renderer cannot apply without owning the session.
+	assert.deepEqual(JSON.parse(last.body), {
+		request_id: requestId,
+		cwd: "/Users/me/moved",
+	});
+
+	// The declared ceiling is payable rather than aspirational: a path at the
+	// schema's own 4096-character bound reaches the network instead of being
+	// refused by the renderer's pre-flight for a body the schema promised.
+	const longest = "a".repeat(4096);
+	const atBound = await requestDesktop(
+		{ op: "sessions.move", sessionId, requestId, cwd: longest },
+		url,
+		token,
+	);
+	assert.equal(
+		atBound.status,
+		200,
+		"a path at the schema's bound must fit the control budget",
+	);
+	assert.equal(JSON.parse(seen.at(-1).body).cwd, longest);
+
+	// The closed vocabulary still refuses a move that cannot mean anything.
+	for (const bad of [
+		{ op: "sessions.move", sessionId, requestId },
+		{ op: "sessions.move", sessionId, requestId, cwd: "" },
+		{ op: "sessions.move", sessionId, requestId, cwd: "x".repeat(4097) },
+		{ op: "sessions.move", sessionId, cwd: "/tmp/x" },
+		{
+			op: "sessions.move",
+			sessionId,
+			requestId,
+			cwd: "/tmp/x",
+			text: "smuggled",
+		},
+	]) {
+		const refused = await requestDesktop(bad, url, token);
+		assert.equal(
+			refused.status,
+			422,
+			`${JSON.stringify(bad)} must not reach HTTP`,
+		);
+	}
+	assert.equal(seen.length, count + 2, "no malformed move reached the network");
+});

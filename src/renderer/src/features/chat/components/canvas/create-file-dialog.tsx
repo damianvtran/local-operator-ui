@@ -233,9 +233,22 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 							<Folder size={16} aria-hidden="true" />
 							Location
 						</p>
+						{/*
+						 * Read-only, and for THIS dialog's own reason rather than a claim about
+						 * the backend: the file is about to be created in the session's working
+						 * directory, and this dialog has no way to move that directory - the
+						 * composer's chip does, and it is one keystroke away.
+						 *
+						 * It used to say "Working directory is set when the session starts and
+						 * cannot be changed afterwards", which a backend advertising
+						 * `session_move` makes FALSE - and it was the last place in the renderer
+						 * still saying it, so a user could read it here and watch the same
+						 * session's chip move the directory a moment later (design review D1,
+						 * agent review M2).
+						 */}
 						<DirectoryIndicator
 							currentWorkingDirectory={currentWorkingDirectory}
-							readOnlyReason="Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
+							readOnlyReason="Change the working directory from the composer to create the file elsewhere."
 						/>
 						<p className={cn("mt-2 text-ink-muted text-meta")}>
 							The file will be created in this working directory.
