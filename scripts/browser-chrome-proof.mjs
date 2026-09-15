@@ -2204,38 +2204,54 @@ async function main() {
 				`the strip to settle after close ${closes}`,
 			);
 		}
-		const noTabCopy = JSON.parse(await pageAreaCopy());
+		/*
+		 * The DOM is waited on as well as the host's state, and that is not
+		 * belt-and-braces: `chromeState()` reads main over IPC, so it is true the
+			* moment main has forgotten the tab, while the page area is React state
+			* that arrives one `browser-state-changed` delivery later. Read once, the
+			* check can catch the previous frame's copy - which is exactly how the
+			* first built-app run of this step failed: 0 tabs by IPC, and the page area
+		 * still painting the no-tab-selected sentence.
+		 */
+			const noTabSeen = await waitFor(async () => {
+			const current = await chromeState();
+				if (current.activeTabId !== null || current.tabs.length !== 1) return null;
+				const copy = JSON.parse(await pageAreaCopy());
+				return copy.text.includes(
+				"No tab is selected. Pick a tab above, or open a new one.",
+					)
+				? { current, copy }
+				: null;
+			}, "the no-tab-selected state, state and page copy together");
 		const noTabFrame = await captureRenderer("17-surface-no-tab-selected");
 		await compose(
-			"17-surface-no-tab-selected",
+				"17-surface-no-tab-selected",
 			noTabFrame,
 			null,
 			await contentRect(),
-		);
+			);
 		check(
 			"with no tab selected the page area names the state and offers the action under the same `New tab` label the strip's own control carries (D17, D19)",
 			closes > 0 &&
-				noTabState.activeTabId === null &&
-				noTabState.tabs.length === 1 &&
-				noTabState.tabs.every((tab) => tab.owner === "agent") &&
-				noTabCopy.text.includes(
-					"No tab is selected. Pick a tab above, or open a new one.",
-				) &&
-				noTabCopy.buttons.join("|") === "New tab",
-			`${closes} close(s): activeTabId ${noTabState.activeTabId}, ${noTabState.tabs.length} tab(s) left (${noTabState.tabs.map((tab) => tab.owner).join(", ")}); page area "${noTabCopy.text}"; buttons ${JSON.stringify(noTabCopy.buttons)}`,
+				noTabSeen.current.tabs.every((tab) => tab.owner === "agent") &&
+				noTabSeen.copy.buttons.join("|") === "New tab",
+			`${closes} close(s): activeTabId ${noTabSeen.current.activeTabId}, ${noTabSeen.current.tabs.length} tab(s) left (${noTabSeen.current.tabs.map((tab) => tab.owner).join(", ")}); page area "${noTabSeen.copy.text}"; buttons ${JSON.stringify(noTabSeen.copy.buttons)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "17-surface-no-tab-selected.png")}`);
 
-		// The last tab, closed: the other empty state, and the one D19's label work is
-		// about - the same action under the same name in both branches.
-		const lastClose = await realClick(
+			// The last tab, closed: the other empty state, and the one D19's label work is
+			// about - the same action under the same name in both branches.
+			const lastClose = await realClick(
 			'[data-tour-tag="browser-tab-close"]',
 		);
-		const noTabsState = await waitFor(async () => {
+			const noTabsSeen = await waitFor(async () => {
 			const current = await chromeState();
-			return current.tabs.length === 0 ? current : null;
-		}, "the last tab in the strip to close");
-		const noTabsCopy = JSON.parse(await pageAreaCopy());
+				if (current.tabs.length !== 0) return null;
+				const copy = JSON.parse(await pageAreaCopy());
+				return copy.text.includes("No tabs are open.")
+				? { current, copy }
+				: null;
+		}, "the no-tabs state, state and page copy together");
 		const noTabsFrame = await captureRenderer("18-surface-no-tabs-open");
 		await compose(
 			"18-surface-no-tabs-open",
@@ -2246,10 +2262,9 @@ async function main() {
 		check(
 			"with no tabs open the page area names that state too, under the SAME label",
 			lastClose === "clicked" &&
-				noTabsState.activeTabId === null &&
-				noTabsCopy.text.includes("No tabs are open.") &&
-				noTabsCopy.buttons.join("|") === "New tab",
-			`${noTabsState.tabs.length} tab(s) left; page area "${noTabsCopy.text}"; buttons ${JSON.stringify(noTabsCopy.buttons)}`,
+				noTabsSeen.current.activeTabId === null &&
+				noTabsSeen.copy.buttons.join("|") === "New tab",
+			`${noTabsSeen.current.tabs.length} tab(s) left; page area "${noTabsSeen.copy.text}"; buttons ${JSON.stringify(noTabsSeen.copy.buttons)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "18-surface-no-tabs-open.png")}`);
 	} finally {
