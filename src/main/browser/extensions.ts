@@ -60,7 +60,7 @@ const NO_MANIFEST =
 const UNREADABLE_MANIFEST =
 	"The extension manifest could not be read. Check that the file is readable.";
 const COMPATIBILITY_WARNING =
-	"Chrome extension support is partial. A successful load does not prove every feature works. Native messaging, browser-store services and desktop companion integrations are unavailable. File access is not granted.";
+	"Chrome extension support is partial. A successful load does not prove every feature works. Chromium refuses native messaging, so a password manager or other extension that talks to a desktop companion app cannot work. Browser-store services are unavailable. File access is not granted.";
 
 function strings(value: unknown): string[] {
 	return Array.isArray(value)

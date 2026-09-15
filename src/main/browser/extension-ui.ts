@@ -37,11 +37,27 @@ export function createBrowserExtensionManager(options: {
 				type: "warning",
 				title: "Trust this unpacked extension?",
 				message: `Enable ${extension.name} ${extension.version}?`,
+				/*
+				 * ONE BLOCK PER KIND OF CONTENT (design round 1, D2). The alert's `detail`
+				 * renders as secondary text, so the boundary between "what it asks for"
+				 * and "what will not work here" was carried by a blank line alone — and
+				 * that boundary is what the decision turns on. The two lists lead with a
+				 * label; the path already had one, and the trust paragraph stays unlabelled
+				 * because it is the consequence statement rather than a list.
+				 *
+				 * The labels are NOT a claim about macOS rendering: this string is only
+				 * ever seen in a native `dialog.showMessageBox`, which no headless run can
+				 * photograph (the harness stubs it), so what is pinned here is the string
+				 * and not the paint. `scripts/browser-extensions-proof.mjs` records it, and
+				 * asserts the access lines are still in it.
+				 */
 				detail: [
 					`Trusted source directory: ${extension.path}`,
 					"Only enable code you trust. Extensions can read or change matching pages in the shared browser profile, including signed-in pages, independently of agent site approvals. Changes to files in this directory are trusted; keep it in a stable location you control.",
-					`Manifest access requests:\n${extension.permissions.join("\n") || "None declared."}`,
-					...extension.warnings,
+					`Access requested:\n${extension.permissions.join("\n") || "None declared."}`,
+					...(extension.warnings.length > 0
+						? [`Compatibility:\n${extension.warnings.join("\n")}`]
+						: []),
 				].join("\n\n"),
 				buttons: ["Cancel", "Trust and enable"],
 				defaultId: 0,

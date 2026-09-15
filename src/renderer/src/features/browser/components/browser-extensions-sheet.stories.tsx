@@ -34,7 +34,7 @@ import type {
 import { BrowserExtensionsSheet } from "./browser-extensions-sheet";
 
 const COMPATIBILITY_WARNING =
-	"Chrome extension support is partial. A successful load does not prove every feature works. Native messaging, browser-store services and desktop companion integrations are unavailable. File access is not granted.";
+	"Chrome extension support is partial. A successful load does not prove every feature works. Chromium refuses native messaging, so a password manager or other extension that talks to a desktop companion app cannot work. Browser-store services are unavailable. File access is not granted.";
 const NO_POPUP_WARNING =
 	"This extension has no default popup. Action-click dispatch and browser toolbar integration are not available.";
 const POPUP_WARNING =
@@ -213,5 +213,78 @@ export const RegistryUnreadable: Story = {
 					"The extension registry is unreadable or invalid. No extensions were loaded. Restore the registry before making changes.",
 			}}
 		/>
+	),
+};
+
+/**
+ * The one destructive confirmation in this surface, reached the way a user
+ * reaches it: by clicking `Remove` (design round 1, D1).
+ *
+ * WHY A CLICK RATHER THAN A PROP: `removeKey` is the component's own state, and
+ * the alternative — a `defaultRemoveKey` prop — would be a second way to open a
+ * panel that exists so a frame can be taken. The click is the real path, and it
+ * is also the only way to photograph the sentence a user needs at the moment
+ * they are deciding (`Source files and stored extension data will stay on
+ * disk.`) rather than inferring it from source.
+ *
+ * The query is on `document` for the same reason `ExpandedDisclosures` above
+ * does it: `SheetContent` renders through a Radix portal at the end of
+ * `document.body`. The button is matched by its exact label, so the portal's
+ * own `Remove registration` is not a second click.
+ */
+function ClickRemove({ children }: { children: ReactNode }) {
+	useEffect(() => {
+		const click = () => {
+			for (const button of document.querySelectorAll("button"))
+				if (button.textContent?.trim() === "Remove") button.click();
+		};
+		click();
+		const timer = setTimeout(click, 50);
+		return () => clearTimeout(timer);
+	}, []);
+	return <>{children}</>;
+}
+
+export const RemoveConfirm: Story = {
+	decorators: [
+		(Story) => (
+			<ClickRemove>
+				<Story />
+			</ClickRemove>
+		),
+	],
+	render: () => (
+		<Framed
+			state={{
+				rows: [row({})],
+				error: null,
+			}}
+		/>
+	),
+};
+
+/**
+ * The in-flight state: every control disabled, one line of text, and no way to
+ * tell from the frame whether the wait is the directory chooser or the trust
+ * dialog — which is the point, because the sentence is written for whichever
+ * dialog the user is looking at (design round 1, D1).
+ *
+ * WHY ITS OWN STUB RATHER THAN THE SHARED ONE: `stub` resolves immediately, so
+ * `busy` is true for one microtask and no frame can ever contain it. A transport
+ * whose calls never settle is what makes the state reachable; nothing here
+ * asserts that a real call can hang, only that this is what the component paints
+ * while one has not answered.
+ */
+const neverSettles: BrowserExtensionsApi = {
+	list: () => new Promise<BrowserExtensionsState>(() => {}),
+	install: () => new Promise<BrowserExtensionsState>(() => {}),
+	setEnabled: () => new Promise<BrowserExtensionsState>(() => {}),
+	remove: () => new Promise<BrowserExtensionsState>(() => {}),
+	openPopup: () => new Promise<void>(() => {}),
+};
+
+export const Busy: Story = {
+	render: () => (
+		<BrowserExtensionsSheet open onOpenChange={() => {}} api={neverSettles} />
 	),
 };

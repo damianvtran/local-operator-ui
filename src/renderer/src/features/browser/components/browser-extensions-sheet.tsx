@@ -64,10 +64,22 @@ export function BrowserExtensionsSheet({
 						share this app’s browser profile across conversations and restarts.
 					</SheetDescription>
 				</SheetHeader>
-				<p className="mt-4 text-body-sm text-ink-muted">
+				<p className="mt-4 text-body-sm text-ink">
 					Extensions can access signed-in pages independently of agent site
-					approvals. Review the manifest permissions before enabling. Chrome Web
-					Store downloads and desktop companion connections are not supported.
+					approvals.
+				</p>
+				{/* The limitation is named as the CLASS of extension a user would recognise
+				    (design round 1, D4) rather than as "companion connections": the reader
+				    whose goal is "my password manager works here" is the one who needs
+				    this sentence, and the reason is the verified one — native messaging
+				    is refused by Chromium, which is what leaves a 1Password-class
+				    extension unable to work (docs/browser-extensions.md, "The
+				    1Password-class limitation, plainly"). */}
+				<p className="mt-1 text-body-sm text-ink-muted">
+					Review the manifest permissions before enabling. Chrome Web Store
+					downloads are not supported, and neither is a password manager or
+					other extension that talks to a desktop companion app: Chromium
+					refuses native messaging.
 				</p>
 				<div className="mt-4 flex gap-2">
 					<Button
@@ -101,7 +113,11 @@ export function BrowserExtensionsSheet({
 				{(error || state?.error) && (
 					<p
 						role="alert"
-						className="mt-4 rounded-sm bg-danger-wash p-3 text-body-sm text-ink"
+						// `border-control` rather than no edge at all (design round 1, D3):
+						// `danger-wash` on this sheet's `elevated` ground is 1.04-1.34:1 — a hue
+						// difference rather than a boundary — so the panel's edge is the control
+						// role the contract floors at 3:1 on every ground.
+						className="mt-4 rounded-sm border border-control bg-danger-wash p-3 text-body-sm text-ink"
 					>
 						{error || state?.error}
 					</p>
@@ -134,23 +150,18 @@ export function BrowserExtensionsSheet({
 								{row.error
 									? "Load error"
 									: row.loaded
-										? "Enabled · loaded"
+										? "Enabled, loaded"
 										: row.enabled
-											? "Enabled · not loaded"
+											? "Enabled, not loaded"
 											: "Disabled"}
 							</p>
 							<p className="mt-2 break-all font-mono text-mono-sm text-ink-muted">
 								{row.path}
 							</p>
-							{row.id && (
-								<p className="mt-1 break-all font-mono text-mono-sm text-ink-dim">
-									ID: {row.id}
-								</p>
-							)}
 							{row.error && (
 								<p
 									role="alert"
-									className="mt-2 rounded-sm bg-danger-wash p-2 text-body-sm text-ink"
+									className="mt-2 rounded-sm border border-control bg-danger-wash p-2 text-body-sm text-ink"
 								>
 									{row.error}
 								</p>
@@ -159,6 +170,15 @@ export function BrowserExtensionsSheet({
 								<summary className="cursor-pointer text-ink">
 									Permissions and compatibility
 								</summary>
+								{/* The id lives in here rather than on its own line of the row (design
+								    round 1, N2): it is a fact a user consults, never one they decide
+								    on, and as a row line it cost every row a line of height above the
+								    disclosure it belongs with. */}
+								{row.id && (
+									<p className="mt-2 break-all font-mono text-mono-sm text-ink-dim">
+										ID: {row.id}
+									</p>
+								)}
 								<ul className="mt-2 list-disc space-y-2 pl-4">
 									{row.permissions.length ? (
 										row.permissions.map((permission) => (
@@ -197,8 +217,13 @@ export function BrowserExtensionsSheet({
 										Open popup
 									</Button>
 								)}
+								{/* The destructive variant rather than `ghost` (design round 1, N1): as a
+								    ghost control between two bordered ones, `Remove` read as body text,
+								    its only distinguishing feature being the edge it did not have.
+								    `danger` is the palette's own destructive triple, floored as text
+								    by this same contract. */}
 								<Button
-									variant="ghost"
+									variant="danger"
 									size="sm"
 									disabled={busy || !!state.error}
 									onClick={() => setRemoveKey(row.key)}
@@ -206,15 +231,22 @@ export function BrowserExtensionsSheet({
 									Remove
 								</Button>
 							</div>
+							{/* The confirmation panel carries `border-control` for the reason the alert
+							    above does (design round 1, D3): `surface` on `elevated` is 1.05-1.25:1,
+							    so without an edge its boundary is a lightness step rather than a
+							    control boundary. */}
 							{removeKey === row.key && (
-								<div className="mt-3 rounded-sm bg-surface p-3">
+								<div className="mt-3 rounded-sm border border-control bg-surface p-3">
 									<p className="text-body-sm text-ink">
 										Remove this registration? It will stop loading on launch.
 										Source files and stored extension data will stay on disk.
 									</p>
 									<div className="mt-2 flex gap-2">
+										{/* `danger`, not `outline` (design round 1, N1): the confirmation of
+										    a destructive action was drawn exactly as the reversible `Disable`
+										    button is. */}
 										<Button
-											variant="outline"
+											variant="danger"
 											size="sm"
 											disabled={busy}
 											onClick={() =>

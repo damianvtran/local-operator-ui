@@ -343,6 +343,46 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The unpacked-extension sheet's error alert (design round 1, D3).
+		 *
+		 * A fill with its own ink, drawn on the sheet's `elevated` ground - and until
+		 * this row, nothing kept it visible: `dangerWash` on `elevated` measures
+		 * 1.04-1.34:1 across the twelve palettes, 0 of 12 clearing 3:1, so the only
+		 * thing carrying its edge was hue. The `danger callout` row above does not
+		 * cover it: that one asserts a `dangerBorder` edge on `canvas`/`surface`, and
+		 * this panel drops that border and sits on a ground the row never names.
+		 * `borderControl` is the role the contract floors at 3:1 on every ground, so
+		 * the component draws it and this row asserts it. The ink assertion this row
+		 * adds is the one the reviewer asked for in that shape: `ink` on
+		 * `dangerWash` measures 8.62-16.29:1 and passes - the point is that it stops
+		 * being free.
+		 */
+		name: "browser extension error alert",
+		on: ["elevated"],
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The same sheet's remove-confirmation panel (design round 1, D3), the one
+		 * filled surface the reviewer had never seen rendered.
+		 *
+		 * `surface` on `elevated` measures 1.05-1.25:1, 0 of 12 clearing 3:1, and it
+		 * carried no border: its boundary was a lightness step rather than a control
+		 * boundary. It is drawn, and asserted here, with `borderControl` - the same
+		 * answer this file already records for the browser active tab, whose ground
+		 * step is 1.11:1 in the dark palettes and whose row exists so that
+		 * `border-control` is what clears the 3:1 non-text floor.
+		 */
+		name: "browser extension remove confirmation",
+		on: ["elevated"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The user's message bubble in the transcript.
 		 *
 		 * `on` names `canvas` because that is the ground the bubble is drawn on
@@ -793,6 +833,36 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
 		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
+	},
+	{
+		/*
+		 * The extension sheet's two filled panels (design round 1, D3).
+		 *
+		 * The CONTROLS entries added for them prove the ROLE pairing — `ink` on the
+		 * wash, `borderControl` against `elevated` — and are blind to the class, which
+		 * is the half that was actually missing: both panels shipped with no border at
+		 * all, so their perceived edge was carried by a hue step of 1.04-1.34:1 that no
+		 * palette assertion can vouch for. Three pins rather than two because each is
+		 * a separate call site — the sheet-level alert, the same alert reused inside a
+		 * row at a smaller pad, and the remove panel — and a substring pin cannot count
+		 * occurrences, so one pin could not answer for the other two.
+		 */
+		what: "extensions sheet error alert edge",
+		file: "src/renderer/src/features/browser/components/browser-extensions-sheet.tsx",
+		must: "mt-4 rounded-sm border border-control bg-danger-wash p-3",
+		why: "`danger-wash` on the sheet's `elevated` ground is 1.04-1.34:1 across all twelve palettes, so this panel's edge is the whole of its boundary; dropping `border-control` keeps every palette row green and returns it to a hue step nobody floors",
+	},
+	{
+		what: "extensions row error panel edge",
+		file: "src/renderer/src/features/browser/components/browser-extensions-sheet.tsx",
+		must: "mt-2 rounded-sm border border-control bg-danger-wash p-2",
+		why: "the same role as the sheet-level alert, on the same ground, drawn at the row's own pad; pinned separately because one substring pin cannot answer for two call sites",
+	},
+	{
+		what: "extensions remove confirmation edge",
+		file: "src/renderer/src/features/browser/components/browser-extensions-sheet.tsx",
+		must: "mt-3 rounded-sm border border-control bg-surface p-3",
+		why: "`surface` on `elevated` is 1.05-1.25:1, so without this edge the one destructive confirmation in the surface is bounded by a lightness step rather than by a control boundary",
 	},
 ];
 
