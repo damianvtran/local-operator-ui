@@ -282,7 +282,7 @@ const APP_LAUNCH_SCRIPTS = [
 	{
 		name: "start",
 		guarded: false,
-		why: "a person's own app at their own screen", 
+		why: "a person's own app at their own screen",
 	},
 	{
 		name: "dev",
