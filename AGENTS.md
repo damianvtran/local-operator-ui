@@ -285,14 +285,19 @@ npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
 
 `npx local-operator-ui` spawns Electron with this process's environment, so the
 same switch covers a check of the published launcher — **from the release that
-carries the shape rule**. An older install has no window mode in it at all: the
-one on this machine was 0.17.2, which pops a window however you pipe it, so an
-agent checking a launcher names `LOCAL_OPERATOR_UI_WINDOW_MODE=headless` until it
-is upgraded. From that release the launcher is also an unpackaged launch, so a
-*piped* one (`local-operator-ui | tee run.log`, a launcher script, a CI job) is
-assumed `headless` by the shape rule above — a non-terminal launcher that really
-wants a window names `--window-mode=normal`, which wins over every assumption
-here. Any mode but `normal`
+carries the shape rule**. Two version floors matter, and they are not the same
+one. Window mode itself (the `--window-mode` flag and the environment variable)
+landed in 0.19.2; the shape rule lands in the release carrying this change. An
+install older than 0.19.2 — the one on this machine was 0.17.2 — contains no
+window mode at all and **cannot be silenced**: it pops a window however it is
+piped, and the environment variable is inert, so naming it there proves nothing
+and reads as a broken rule rather than a stale install. Check the launcher from
+a checkout's own build, or upgrade, and only then name the mode. From 0.19.2 the
+variable works; from the release carrying the shape rule the launcher is also an
+unpackaged launch, so a *piped* one (`local-operator-ui | tee run.log`, a
+launcher script, a CI job) is assumed `headless` by the shape rule above — a
+non-terminal launcher that really wants a window names `--window-mode=normal`,
+which wins over every assumption here. Any mode but `normal`
 prints a `[window-mode] ...` line to the process's own output, so a run says out
 loud that it was headless instead of looking identical to one that popped a
 window — including when the mode was assumed, which it names along with the

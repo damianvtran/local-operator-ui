@@ -16,9 +16,10 @@
  * first is a switch only a rig passes: one of `AGENT_LAUNCH_FLAGS` — a scratch
  * `--user-data-dir`, a `--remote-debugging-port`. The second is shape: a launch
  * that is not a packaged app and has no terminal on either stream, which is
- * what a tool-spawned run looks like. A launch that names no mode, passes
- * neither switch, and is either packaged or still attached to a terminal is the
- * operator's own app, and stays `normal`.
+ * what a tool-spawned run looks like — and which is read on macOS and Linux
+ * only, since `isTTY` is not the same fact on Windows (see `driven` below). A
+ * launch that names no mode, passes neither switch, and is either packaged or
+ * still attached to a terminal is the operator's own app, and stays `normal`.
  *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
  * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
@@ -102,11 +103,11 @@ export interface WindowLaunchPlan {
 	 *
 	 * Non-null exactly when the launch named no mode at all and either one of
 	 * `AGENT_LAUNCH_FLAGS` was present or the launch had the driven shape (not
-	 * packaged, no terminal on either stream) — the two signals that make
-	 * `headless` the default there. The reason travels with the plan so the
-	 * startup line can say the run was headless *because* of the scratch profile
-	 * it named or the shape it had, rather than leaving a reader to guess whether
-	 * a mode was typed.
+	 * packaged, no terminal on either stream, and a platform where that signal is
+	 * read) — the two signals that make `headless` the default there. The reason
+	 * travels with the plan so the startup line can say the run was headless
+	 * *because* of the scratch profile it named or the shape it had, rather than
+	 * leaving a reader to guess whether a mode was typed.
 	 */
 	assumed: string | null;
 	/** What `ready-to-show` does: raise and focus, raise without focusing, or nothing. */
@@ -235,8 +236,13 @@ export function resolveWindowLaunchPlan(
 		 * measured there; rigs on Windows name the mode, as they had to before.
 		 * Enabling it is one measured Windows boot away, which is why the branch is
 		 * written as a platform check rather than left unstated.
+		 *
+		 * Typed as `NodeJS.Platform` rather than `string` on purpose: this clause is
+		 * the one place a wrong value would ENABLE the shape rule on the platform it
+		 * was deliberately scoped off, so a `"windows"` typo has to be a type error
+		 * rather than a silent no-op.
 		 */
-		platform?: string;
+		platform?: NodeJS.Platform;
 		/** `process.stdin.isTTY`. See `isDrivenLaunch`. */
 		stdinIsTTY?: boolean | undefined;
 		/** `process.stdout.isTTY`. See `isDrivenLaunch`. */
@@ -321,8 +327,9 @@ export function resolveWindowLaunchPlan(
 	 * redirects only the log keeps stdin on it. A person who detaches BOTH
 	 * (`pnpm dev < /dev/null > /tmp/dev.log 2>&1 &`) is hidden by this rule, which
 	 * is a deliberate, asserted trade: that shape is indistinguishable from the
-	 * tool spawns this exists to stop, it is announced on the launch's own
-	 * stdout line, and one flag restores the window.
+	 * tool spawns this exists to stop, it is announced on the launch's own stdout
+	 * line — which for this shape is the very log it was piped into — and one
+	 * flag restores the window.
 	 * Pairing that with `packaged === false` keeps the shipped app out of it
 	 * entirely — the `.app` a person double-clicks is packaged and can never be
 	 * assumed headless by this rule, whatever its streams look like — and a

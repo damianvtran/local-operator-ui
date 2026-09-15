@@ -94,6 +94,23 @@ const { DEV_DRIVER_ENV, DEV_DRIVER_OUT_ENV, resolveDevDriverArming } = devDriver
 
 const plan = (input) => resolveWindowLaunchPlan(input);
 
+/*
+ * The launch shape a tool-spawned run has, pinned to the platform this rule was
+ * MEASURED on rather than left to the ambient `process.platform`.
+ *
+ * Without this, every shape case below would assert `headless` on macOS and
+ * Linux CI and silently assert nothing on a Windows host, where the same input
+ * resolves `normal` by design — so the file would pass on a platform whose
+ * behaviour it does not describe. Passing the platform makes each case a
+ * statement about the rule rather than about the machine running it.
+ */
+const DRIVEN = {
+	packaged: false,
+	stdinIsTTY: undefined,
+	stdoutIsTTY: undefined,
+	platform: "darwin",
+};
+
 test("no input is the shipped behaviour: a focused 1380x900 window", () => {
 	// The default must stay exactly what the released app does today, because
 	// this switch exists to change agent-driven runs and nothing else.
@@ -313,11 +330,7 @@ test("a launch with no terminal on either stream is a driven run, and resolves h
 	// A tool spawns it with pipes, so neither stream is a terminal, and a
 	// checkout is not a packaged app — together those two facts say this is a
 	// run rather than the operator using the app.
-	const resolved = plan({
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
-	});
+	const resolved = plan(DRIVEN);
 	assert.equal(resolved.mode, "headless");
 	assert.equal(resolved.show, "never");
 	assert.equal(resolved.focusable, false);
@@ -336,7 +349,7 @@ test("a terminal on either stream is a person, and keeps the focused window", ()
 		{ stdinIsTTY: true, stdoutIsTTY: undefined },
 		{ stdinIsTTY: undefined, stdoutIsTTY: true },
 	]) {
-		const resolved = plan({ packaged: false, ...streams });
+		const resolved = plan({ ...DRIVEN, ...streams });
 		assert.equal(resolved.mode, "normal", JSON.stringify(streams));
 		assert.equal(resolved.assumed, null, JSON.stringify(streams));
 	}
@@ -359,7 +372,7 @@ test("a caller that cannot say whether it is packaged stays on the historical no
 	// `packaged` is optional, and only an explicit `false` takes part: a caller
 	// that says nothing must keep the behaviour it had before this rule existed.
 	assert.equal(
-		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined }).mode,
+		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined, platform: "darwin" }).mode,
 		"normal",
 	);
 });
@@ -368,12 +381,7 @@ test("a named mode still wins on a launch with no terminal", () => {
 	// The escape hatch, on the new path: a person who launches the checkout from
 	// a non-terminal launcher keeps `normal` by naming it.
 	for (const mode of ["normal", "inactive", "headless"]) {
-		const resolved = plan({
-			argv: [`--window-mode=${mode}`],
-			packaged: false,
-			stdinIsTTY: undefined,
-			stdoutIsTTY: undefined,
-		});
+		const resolved = plan({ ...DRIVEN, argv: [`--window-mode=${mode}`] });
 		assert.equal(resolved.mode, mode);
 		assert.equal(resolved.assumed, null, `${mode} from the flag is not assumed`);
 	}
@@ -382,12 +390,7 @@ test("a named mode still wins on a launch with no terminal", () => {
 test("an agent switch is the stronger reason and is what the line names", () => {
 	// Both signals can be true at once, and the line has to name the specific
 	// one: "a rig passed --user-data-dir" is what a reader can act on.
-	const both = plan({
-		argv: ["--user-data-dir=/tmp/rig"],
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
-	});
+	const both = plan({ ...DRIVEN, argv: ["--user-data-dir=/tmp/rig"] });
 	assert.equal(both.mode, "headless");
 	assert.match(both.assumed ?? "", /user-data-dir/);
 	assert.doesNotMatch(both.assumed ?? "", /no terminal/);
@@ -397,22 +400,12 @@ test("a mistyped or empty mode beside a terminal-less launch still reports rathe
 	// Reaching for the mode is asking to be told. A typo keeps the report and
 	// the `normal` fallback; an empty value names nothing and takes the new
 	// assumption exactly as it takes the switch-based one.
-	const typo = plan({
-		env: { [WINDOW_MODE_ENV]: "headles" },
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
-	});
+	const typo = plan({ ...DRIVEN, env: { [WINDOW_MODE_ENV]: "headles" } });
 	assert.equal(typo.mode, "normal");
 	assert.equal(typo.assumed, null);
 	assert.match(typo.problems[0], /headles/);
 
-	const blank = plan({
-		env: { [WINDOW_MODE_ENV]: "" },
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
-	});
+	const blank = plan({ ...DRIVEN, env: { [WINDOW_MODE_ENV]: "" } });
 	assert.equal(blank.mode, "headless");
 	assert.match(blank.assumed ?? "", /no terminal/);
 	assert.doesNotMatch(blank.problems[0], /using normal/);
@@ -424,11 +417,7 @@ test("a person who detaches BOTH streams is hidden, deliberately and asserted", 
 	// the tool spawns the rule exists to stop. It is announced on the launch's own
 	// stdout line and one flag restores the window, which is why the rule is
 	// preferred over the focus grab it prevents — but a person CAN meet it.
-	const detached = plan({
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
-	});
+	const detached = plan(DRIVEN);
 	assert.equal(detached.mode, "headless");
 	assert.match(detached.assumed ?? "", /no terminal/);
 });
@@ -451,10 +440,8 @@ test("Windows keeps the historical normal: the shape signal was not measured the
 	}
 	// The switch-based assumption is platform-independent and still fires there.
 	const withSwitch = plan({
+		...DRIVEN,
 		argv: ["--user-data-dir=/tmp/rig"],
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
 		platform: "win32",
 	});
 	assert.equal(withSwitch.mode, "headless");
@@ -466,11 +453,7 @@ test("the dev driver arms on the plan a driven launch resolves", () => {
 	// than in two halves: before it, a flagless rig that set the opt-in met the
 	// refusal at the arming decision because its mode was `normal`. Now the same
 	// launch resolves `headless`, and `headless` is what arms.
-	const driven = plan({
-		packaged: false,
-		stdinIsTTY: undefined,
-		stdoutIsTTY: undefined,
-	});
+	const driven = plan(DRIVEN);
 	assert.equal(driven.mode, "headless");
 	const arming = resolveDevDriverArming({
 		env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames" },
