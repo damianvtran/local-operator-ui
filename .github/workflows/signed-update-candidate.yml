@@ -3,6 +3,11 @@ name: Signed update candidate (nonpublishing)
 # Registration on the default branch needs its own reviewed change before the
 # first dispatch. This workflow never calls publish.yml or creates a release.
 #
+# Dispatch it from `main` (`--ref main`), never from the branch that carries the
+# candidate: the candidate is named by `expected_source_sha`, every job here is
+# guarded on the dispatch ref, and `ref-guard` fails the run loudly on any other
+# ref so that a wrong-ref attempt cannot report a green run in which nothing ran.
+#
 # Use of the Developer ID key is authorized by the `signed-update-candidate`
 # environment on the `build` job, not by the ref guard: read that job's comment
 # before dispatching, and confirm the environment carries its required reviewer.
@@ -10,11 +15,11 @@ on:
   workflow_dispatch:
     inputs:
       expected_source_sha:
-        description: 'Explicitly reviewed candidate full commit SHA; manager approval required before dispatch'
+        description: 'Explicitly reviewed candidate full commit SHA; dispatch from main, not the candidate branch; manager approval required before dispatch'
         required: true
         type: string
       incumbent_tag:
-        description: 'Exact existing signed release to upgrade from; must ship an architecture-matched -<arch>.zip (v0.22.2 does)'
+        description: 'Exact existing signed release to upgrade from; must ship an architecture-matched -<arch>.zip (v0.22.2 does); dispatch from main'
         required: true
         default: 'v0.22.2'
         type: string
@@ -26,12 +31,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ref-guard:
+    # Runs on every dispatch, from every ref, and fails rather than skipping. The
+    # jobs below are all guarded on `github.ref`, so without this a dispatch from
+    # any other ref would skip the entire workflow: no step would run, nothing
+    # would fail, and the run would report green - the worst outcome for a first
+    # attempt at the thing this workflow exists for, because it reads as success.
+    # `workflow_dispatch` resolves the workflow definition from the ref it was
+    # dispatched against, and that ref has to be `main`: this file defines the
+    # half that handles the signing key, and it is the default branch's copy that
+    # does so. The candidate commit itself never comes from the dispatch ref - it
+    # is `expected_source_sha` - which is why the ref is the one thing a dispatcher
+    # has to get right and the one thing worth refusing loudly.
+    runs-on: ubuntu-latest
+    # Generous against the ~10 s a string comparison takes. It exists so a wedged
+    # step cannot hold a runner for the 360-minute default.
+    timeout-minutes: 5
+    steps:
+      - name: Refuse a dispatch from a ref other than main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != 'refs/heads/main' ]; then
+            echo "::error title=Dispatch ref refused::$REF is not refs/heads/main. Re-dispatch with --ref main; the candidate commit is named by expected_source_sha, not by the dispatch ref."
+            exit 1
+          fi
+          echo "Dispatch ref accepted: $REF"
+
   provenance:
     # Runs before the environment gate, and without it. `github.ref` below is the
     # ref the dispatch came *from*, not the commit it names, so the person asked
     # to authorize the signing key needs the resolved commit in front of them:
     # this job holds no secret, imports no keychain and targets no environment,
     # and exists to put that commit on the run page before the approval prompt.
+    needs: ref-guard
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Generous against the ~20 s a checkout and a `git show` take. It exists so a
@@ -133,10 +166,21 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: '10.29.2'
+      # No `cache: pnpm` here, unlike publish.yml, and `exact-update` below does
+      # the same. This job builds a tree named by `expected_source_sha` - code that
+      # has not necessarily been reviewed, running with the signing key reachable
+      # in its environment - and `workflow_dispatch` writes caches into the
+      # dispatch ref's scope, which is `main`'s. The entry is an exact-key restore
+      # on the candidate's own `pnpm-lock.yaml`, so it is only ever read by a run
+      # whose lockfile hashes the same (the merge case, not an arbitrary overwrite
+      # of a warm entry), and no secret goes into a cache path. It is still store
+      # content that candidate code chose, sitting in the default branch's trusted
+      # scope and counting against the repository's cache quota, and this job is
+      # dispatch-only with a 75-minute bound: a cold install is the cheaper side of
+      # that trade, and it keeps the pnpm setup identical to `exact-update`'s.
       - uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
-          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Prepare job-local signing keychain
         env:
