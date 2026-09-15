@@ -175,6 +175,15 @@ test(
 			 */
 			"capture-evidence.mjs",
 			/*
+			 * The rig keychain helper, which `capture-evidence.mjs` imports at module
+			 * level now that the rigs' Chrome is kept out of the operator's keychain - the
+			 * same edge as `check-evidence.mjs` above, and the same failure without it:
+			 * the relocated CLI cannot import at all, loudly, before it reads anything.
+			 * This fixture is how that was caught, on CI, for the first version of this
+			 * list.
+			 */
+			"chrome-keychain.mjs",
+			/*
 			 * Both CLIs now resolve their own entry point through this module
 			 * (`scripts/entry-point.mjs`), which is the same edge as any other: without it
 			 * in the relocated set the copy fails to IMPORT - loudly, and before it reads
