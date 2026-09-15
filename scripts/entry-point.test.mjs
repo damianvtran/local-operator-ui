@@ -42,6 +42,7 @@ import {
 	mkdtempSync,
 	realpathSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -299,7 +300,7 @@ test("every release script runs when it is reached through a symlinked path", ()
 		// The property the whole file rests on, asserted rather than assumed: the
 		// spelling the process is handed is NOT the physical path. A real directory
 		// here would make every case below exercise nothing while still passing.
-		execFileSync("ln", ["-s", SCRIPTS, link]);
+		symlinkSync(SCRIPTS, link);
 		assert.notEqual(
 			realpathSync(link),
 			link,

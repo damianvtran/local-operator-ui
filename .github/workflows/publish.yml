@@ -52,7 +52,15 @@ jobs:
           # Recovery payloads predate these helpers. Use the workflow's reviewed
           # commit for tooling, never the old app tag or a moving branch name.
           ref: ${{ github.workflow_sha }}
-          sparse-checkout: scripts/validate-release.mjs
+          # Every checkout in this file that lists one of these scripts lists
+          # `scripts/entry-point.mjs` beside it, because each script resolves its own
+          # entry point through that module now. A handwritten list that omits a
+          # transitive import fails the job at runtime, after the release is already
+          # published, which is why `test-publish-workflow.mjs` derives the closure
+          # from the scripts and asserts every list carries it.
+          sparse-checkout: |
+            scripts/entry-point.mjs
+            scripts/validate-release.mjs
           sparse-checkout-cone-mode: false
 
       - name: Validate release target
@@ -108,6 +116,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: workflow
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/release-state.mjs
             scripts/upload-release.mjs
             scripts/validate-release.mjs
@@ -533,6 +542,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: workflow
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/validate-release.mjs
             scripts/upload-release.mjs
           sparse-checkout-cone-mode: false
@@ -617,6 +627,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: workflow
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/release-state.mjs
             scripts/upload-release.mjs
             scripts/validate-release.mjs
