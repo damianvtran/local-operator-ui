@@ -188,18 +188,37 @@ export type EffortTarget = {
 	level: string | null;
 };
 
-export type EffortCarry = {
-	/**
-	 * False when the new model's levels could not be READ. The caller must then
-	 * refuse the pick rather than record a rung-less selection while a level the
-	 * user chose disappears without a word (review round 4, F1).
-	 */
-	checked: boolean;
-	/** The rung to record, in the ladder's own spelling, or `null`. */
-	rung: string | null;
-	/** What the confirmation says, given the selector that was resolved. */
-	confirmation: (selector: string) => string;
-};
+export type EffortCarry =
+	| {
+			/** The ladder was read and the decision stands. */
+			checked: true;
+			/** The rung to record, in the ladder's own spelling, or `null`. */
+			rung: string | null;
+			/** What the confirmation says, given the selector that was resolved. */
+			confirmation: (selector: string) => string;
+	  }
+	| {
+			/**
+			 * The new model's levels could not be READ. The caller must then refuse
+			 * the pick rather than record a rung-less selection while a level the
+			 * user chose disappears without a word (review round 4, F1).
+			 */
+			checked: false;
+			rung: null;
+			/**
+			 * What the refusal says, in full: what happened, what it means, what to
+			 * do (branding § 8), and it is written HERE so it cannot drift from the
+			 * decision it describes.
+			 *
+			 * It used to be a confirmation carrying the resolved selector - a
+			 * sentence claiming "this conversation will run X" on a path where the
+			 * pick is refused and nothing runs on X, which is why nothing could ever
+			 * print it (review round 5, D19). A refusal is not a confirmation, and
+			 * the real resolution is not known until after the check passes, so the
+			 * honest sentence here names no model at all.
+			 */
+			refusal: string;
+	  };
 
 export function effortCarry(
 	carried: string,
@@ -216,8 +235,14 @@ export function effortCarry(
 		return {
 			checked: false,
 			rung: null,
-			confirmation: (selector) =>
-				`This conversation will run ${selector}. The effort level was not carried, because that model's levels could not be read.`,
+			/*
+			 * The act is cheap and available - the list is still on screen and the
+			 * failure is a resolution that did not answer - so the sentence names
+			 * it. It also stops repeating "changed", which the previous wording
+			 * did twice in one breath (review round 5, D19).
+			 */
+			refusal:
+				"Nothing was changed, because that model's effort levels could not be read. Try again.",
 		};
 	const offered = target.ladder.find(
 		(rung) => rung.trim().toLowerCase() === wanted.toLowerCase(),
@@ -234,7 +259,7 @@ export function effortCarry(
 		rung: null,
 		confirmation: (selector) =>
 			target.level
-				? `This conversation will run ${selector}. Its effort falls to ${target.level}, because ${wanted} is not one of that model's levels.`
+				? `This conversation will run ${selector}. Its effort is now ${target.level}, because ${wanted} is not one of that model's levels.`
 				: `This conversation will run ${selector}. No effort level is set on it, because ${wanted} is not one of that model's levels.`,
 	};
 }

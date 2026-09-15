@@ -234,6 +234,40 @@ export function effortLadder(
 	);
 }
 
+/**
+ * The level a spec REPORTS it will run with no rung chosen, or `null` when it
+ * reports none.
+ *
+ * Deliberately NOT `effortState`'s `label`, for the reason `effortLadder` gives
+ * for not being `effortState` either: that function answers "what does the chip
+ * read", where a synthesised category word IS the honest answer - `auto` for a
+ * model with a ladder and no level in force, `reasoning` for a reasoning model
+ * that exposes no rungs, `unknown` for a snapshot carrying no metadata at all.
+ * A sentence that NAMES a level a conversation will run at cannot use any of
+ * them: they are states of a reading, not levels, and one in a level slot is
+ * the category noun the strip's own copy already refuses (`effortState`'s
+ * `auto` branch records that history). Only the two fields that carry a level
+ * are read here, so a spec that reports neither gets `null` - which the caller
+ * answers with "No effort level is set on it" rather than a word nobody chose
+ * (review round 4 F4's residual slot, filed again in round 5).
+ *
+ * Lowercased and trimmed, matching `effortState`: this is prose about a level,
+ * not a value the wire will be asked about, so it needs no ladder spelling.
+ */
+export function effortLevel(
+	model: CanonicalModel | null | undefined,
+): string | null {
+	if (!model) return null;
+	for (const field of [
+		model.reasoning_effort,
+		model.reasoning_default_effort,
+	]) {
+		if (typeof field === "string" && field.trim())
+			return field.trim().toLowerCase();
+	}
+	return null;
+}
+
 export type EffortState = {
 	/** The word the chip prints. */
 	label: string;

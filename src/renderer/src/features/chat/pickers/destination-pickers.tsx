@@ -61,7 +61,7 @@ import {
 import {
 	bandReadings,
 	effortLadder,
-	effortState,
+	effortLevel,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
@@ -328,8 +328,6 @@ function useDraftPick(
 				 *     is `checked: false` and the pick is refused out loud.
 				 */
 				carry?: string;
-				/** What a refused carry-check says, before the transport's own words. */
-				carryUnchecked?: string;
 			},
 		) => {
 			if (!draft) return;
@@ -357,13 +355,33 @@ function useDraftPick(
 					const offered = bandReadings(probe.snapshot, null).effort;
 					const decision = effortCarry(reading.carry, {
 						ladder: effortLadder(offered),
-						ladderKnown: Array.isArray(offered?.reasoning_efforts),
-						level: effortState(offered)?.label ?? null,
+						/*
+						 * Both halves of "the ladder was READ".
+						 *
+						 * `Array.isArray` separates an absent key from an empty ladder; it
+						 * cannot separate "nobody has read this ladder" from "this model
+						 * has no rungs". The cold snapshot is exactly the shape that slips
+						 * through it - every metadata field present-and-empty, which is what
+						 * `specUnresolved` exists for - and there the decision used to be
+						 * `checked: true` and the sentence below asserted that the level the
+						 * user chose "is not one of that model's levels" about a ladder
+						 * nobody had read, in the chip's `unknown` category word (review
+						 * round 4, F4, reproduced at the component boundary in round 5).
+						 */
+						ladderKnown:
+							Array.isArray(offered?.reasoning_efforts) &&
+							!specUnresolved(offered),
+						/*
+						 * The level the CLEARING sentence may name, which is narrower than
+						 * the chip's label: `auto`, `reasoning` and `unknown` are states of a
+						 * reading, not levels, and one of them in a level slot is the
+						 * category noun this strip's copy already refuses elsewhere (F4's
+						 * residual slot, review round 5).
+						 */
+						level: effortLevel(offered),
 					});
 					if (!decision.checked) {
-						refuse(
-							`${reading.carryUnchecked ?? reading.refused} The effort levels could not be checked, so nothing was changed.`,
-						);
+						refuse(decision.refusal);
 						return;
 					}
 					carry = decision;
@@ -400,6 +418,28 @@ function useDraftPick(
 		[draft, queryClient, refuse],
 	);
 	return { pick, busy, result, selection, target, refuse };
+}
+
+/**
+ * The effort rung a draft's model pick must not discard - the level the
+ * DIALOG's own selection holds, or `""` when it holds none.
+ *
+ * Its own function rather than an expression at the call site because the
+ * question and its answer have to be the same fact, and the defect this exists
+ * for is precisely a call site reading a different one: `draft.target` is the
+ * snapshot the dialog opened on, `useDraftPick.selection` is the live receipt.
+ * Read from the snapshot, a second model pick in the SAME open dialog asked to
+ * carry a rung the first pick had already dropped and reinstated it silently
+ * (review round 5, M1). Kept beside the hook so the two read the same value,
+ * and pure so the carry question is executable in a test rather than asserted
+ * as source text.
+ */
+function carriedRung(
+	selection: DesktopModelSelection | null | undefined,
+): string {
+	return typeof selection?.reasoning_effort === "string"
+		? selection.reasoning_effort
+		: "";
 }
 
 export const ModelPicker: FC<PickerContext> = ({
@@ -595,17 +635,26 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * states is the question - the level the pane's own pick holds - and what
 				 * a check that cannot be made says.
 				 */
-				const carried =
-					typeof draft.target.model?.reasoning_effort === "string"
-						? draft.target.model.reasoning_effort
-						: "";
+				/*
+				 * The question is the level THIS DIALOG's selection holds, not the one
+				 * the pane opened on (review round 5, M1).
+				 *
+				 * `draft.target` is the snapshot the dialog mounted with and does not
+				 * move when the pane does - the hook says so itself, and remembers every
+				 * pick precisely because of it. Read from the snapshot, a second pick in
+				 * the SAME open dialog asked to carry a rung the first pick had already
+				 * dropped - the ladder does not offer it, so the pane holds none - and
+				 * the back end resolved the second model at a level the pane was no
+				 * longer showing. `draftPick.selection` is the live receipt
+				 * (`picked ?? draft.target.model`), advanced by every pick.
+				 */
+				const carried = carriedRung(draftPick.selection);
 				await draftPick.pick(
 					{ provider, model_id: modelId, reasoning_effort: null },
 					{
 						describe: (resolved) =>
 							`This conversation will run ${selectorOfResolution(resolved, option.label)}.`,
 						carry: carried,
-						carryUnchecked: "The model was not changed.",
 						refused: "The model was not changed.",
 					},
 				);
@@ -708,6 +757,12 @@ export const ModelPicker: FC<PickerContext> = ({
 			rowAuth,
 			draft,
 			draftPick.pick,
+			/*
+			 * The carry QUESTION is read from the live selection (review round 5, M1),
+			 * so the memo has to see it move - the whole defect was a question answered
+			 * from a value that does not.
+			 */
+			draftPick.selection,
 		],
 	);
 
@@ -781,7 +836,18 @@ export const ModelPicker: FC<PickerContext> = ({
 				draft
 					? shownSelector
 						? `This conversation starts on ${shownSelector} and keeps running on it. Choosing another changes that; your default is unchanged.`
-						: "Choose the model this conversation starts on and keeps running on. It is not your default, which is unchanged."
+						: /*
+							 * No claim about what the model in force is NOT (design D18).
+							 *
+							 * "It is not your default" was false in the state this sentence
+							 * renders - nothing is picked, so the model that will run IS the
+							 * machine's default - and false again for any pick equal to it,
+							 * which is the likeliest pick in a list whose first row is the
+							 * default. The reassurance the clause exists for is the half that
+							 * is true in every state, and it is the half the resolved branch
+							 * above already writes.
+							 */
+							"Choose the model this conversation starts on and keeps running on. Your default is unchanged."
 					: shownSelector
 						? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
 						: "Choose the model for this session."
@@ -963,7 +1029,14 @@ export const EffortPicker: FC<PickerContext> = ({
 							// cannot resolve the spec, so the only route out is the one
 							// act that does.
 							draft
-							? `${label} has not reported its effort levels yet. They appear after the first turn.`
+							? /*
+								 * The route out, named (design D24). A draft has no `/effort`
+								 * command to run - it has no owner - but the model chip is one
+								 * click away and picking a model whose own resolution reports
+								 * a ladder is what makes levels offerable here, so the sentence
+								 * names the act instead of leaving the reader waiting.
+								 */
+								`${label} has not reported its effort levels yet. They appear after the first turn, or pick a model that reports them.`
 							: `${label} has not reported its effort levels yet. They appear after the next turn, or run /effort <level> to set one now.`
 						: draft
 							? `${label} has no adjustable effort. Pick another model.`
@@ -1005,6 +1078,16 @@ export const EffortPicker: FC<PickerContext> = ({
 			}}
 			busy={draft ? draftPick.busy : command.busy}
 			result={draft ? draftPick.result : command.result}
+			/*
+			 * The wait names its work (design D23). A draft's effort pick resolves
+			 * through `sessions.preview` before it records anything, exactly as the
+			 * model dialog beside it does, and it fell back to the host's generic
+			 * "Applying the change…" - which says that something is happening
+			 * without saying what, for a wait the sibling adapter already names.
+			 * A session's effort pick is a command and keeps the default.
+			 */
+			busyText={draft ? "Resolving the effort…" : undefined}
+			busyLabel={draft ? "Resolving the effort" : undefined}
 		/>
 	);
 };
