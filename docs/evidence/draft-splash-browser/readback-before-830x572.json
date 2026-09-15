@@ -1,24 +1,111 @@
 {
- "frame": {
-  "css": {
-   "x": 0,
-   "y": 0,
-   "width": 830,
-   "height": 572
+  "frame": {
+    "css": {
+      "x": 0,
+      "y": 0,
+      "width": 830,
+      "height": 572
+    },
+    "dpr": 2,
+    "device": {
+      "x": 0,
+      "y": 0,
+      "width": 1660,
+      "height": 1144
+    },
+    "scrollX": 0,
+    "scrollY": 0
   },
-  "dpr": 2,
-  "device": {
-   "x": 0,
-   "y": 0,
-   "width": 1660,
-   "height": 1144
+  "at": 73723,
+  "viewport": "830x572",
+  "active": "TEXTAREA",
+  "stack": null,
+  "chips": [],
+  "observed": {
+    "columnPx": 550,
+    "greeting": 0,
+    "smallView": true,
+    "chipsLaidOut": 0,
+    "chipsPainted": 0,
+    "chipsInert": 0,
+    "rowsLaidOut": 0,
+    "rowsPainted": 0
   },
-  "scrollX": 0,
-  "scrollY": 0
- },
- "viewport": "830x572",
- "active": "TEXTAREA",
- "stack": null,
- "chips": [],
- "pageProbe": "{\n \"href\": \"http://localhost:15225/draft-splash-evidence.html\",\n \"viewport\": \"830x572\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:b6931bbf-131e-41b1-b842-c4a67a19e367\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"mock ~\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 168,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 404,\n \"w\": 550,\n \"h\": 168\n },\n \"greeting\": null,\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 412,\n \"w\": 502,\n \"h\": 144\n }\n },\n \"stack\": null,\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 1,\n \"outsideBand\": 1,\n \"shimmerBars\": 3,\n \"captionVisible\": true\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 78,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 87,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+  "expected": {
+    "columnPx": 550,
+    "smallView": false,
+    "greeting": 1,
+    "chipsPainted": "the sampled chips, whole rows only",
+    "rule": "chat-content.tsx:343 sets isSmallView from a container measurement of the chat column (contentRect.width < 550); message-input.tsx:1109-1110 paints the empty-chat prompt only on !isSmallView. A column narrower than 550 is the intended small view: one compact composer, no greeting, no suggestion stack."
+  },
+  "holds": {
+    "settled": true,
+    "smallView": false,
+    "greeting": false,
+    "noLoadingClaim": false,
+    "all": false
+  },
+  "settlement": {
+    "now": 15067,
+    "reads": 11,
+    "layoutChanges": 1,
+    "lastChangeAt": 8362,
+    "stableForMs": 6705,
+    "settleWindowMs": 3000,
+    "settled": true,
+    "noLoadingClaimInAnyState": false,
+    "states": [
+      {
+        "at": 1631,
+        "lastSeenAt": 2960,
+        "reads": 3,
+        "columnWidth": null,
+        "bandY": null,
+        "bandHeight": null,
+        "composerY": null,
+        "composerHeight": null,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        }
+      },
+      {
+        "at": 8362,
+        "lastSeenAt": 15067,
+        "reads": 8,
+        "columnWidth": 550,
+        "bandY": 404,
+        "bandHeight": 168,
+        "composerY": 412,
+        "composerHeight": 144,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": {
+          "placeholders": 1,
+          "outsideBand": 1,
+          "shimmerBars": 3,
+          "captionVisible": true
+        }
+      }
+    ],
+    "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
+  },
+  "pageProbe": null,
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string; this reader's output budget cut it on four of the eight reads, and it is not transcribed on the other four so that the eight files describe the same thing. Every field the table, the settlement record and the D2 check use is a top-level field of this file (`frame`, `observed`, `expected`, `holds`, `settlement.states`, `chips`); the inner page's own probe text, which duplicates them, is the only loss."
 }

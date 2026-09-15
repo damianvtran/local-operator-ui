@@ -1,92 +1,179 @@
 {
- "frame": {
- "css": {
- "x": 0,
- "y": 0,
- "width": 1380,
- "height": 872
- },
- "dpr": 2,
- "device": {
- "x": 0,
- "y": 0,
- "width": 2760,
- "height": 1744
- },
- "scrollX": 0,
- "scrollY": 0
- },
- "viewport": "1380x872",
- "active": "TEXTAREA",
- "stack": {
- "height": 142,
- "scrollHeight": 142,
- "clientHeight": 142
- },
- "chips": [
- {
- "label": "Create a presentation outline on climate change",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 506,
- "bottom": 535.5
- },
- {
- "label": "Download some recent papers on fusion energy",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 506,
- "bottom": 535.5
- },
- {
- "label": "Do a technical analysis on NVDA over the last year",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 543.5,
- "bottom": 573
- },
- {
- "label": "Fetch the MNIST dataset and train a good classifier",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 543.5,
- "bottom": 573
- },
- {
- "label": "What are the trending stocks on WallStreetBets?",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 581,
- "bottom": 610.5
- },
- {
- "label": "Make me a research report on the latest trends in AI",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 581,
- "bottom": 610.5
- },
- {
- "label": "Look up trending stocks and put together an investment report",
- "disabled": false,
- "ariaHidden": null,
- "visibility": "visible",
- "focused": false,
- "top": 618.5,
- "bottom": 648
- }
- ],
- "pageProbe": "{\n \"href\": \"http://localhost:15224/draft-splash-evidence.html\",\n \"viewport\": \"1380x872\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:ebe269b4-8555-4d00-9bfd-fb0ce90a7bdc\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"What can I help you with today? mock Working directory: ~ Create a presentation outline on climate change Download some recent papers on fusion energy Do a technical analysis on NVDA over the last year Fetch the MNIST dataset and train a good classifier What are the trending stocks on WallStreetBets? Make me a research report on the latest trends in AI Look up trending stocks and put together an investment report\",\n \"greeting\": 1,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 768,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 104,\n \"w\": 1100,\n \"h\": 768\n },\n \"greeting\": {\n \"x\": 688.7,\n \"y\": 320,\n \"w\": 282.6,\n \"h\": 26\n },\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 370,\n \"w\": 1052,\n \"h\": 278\n }\n },\n \"stack\": {\n \"top\": 506,\n \"bottom\": 648,\n \"height\": 142,\n \"clientHeight\": 142,\n \"scrollHeight\": 142,\n \"scrollable\": false,\n \"topEdgeInside\": true,\n \"rows\": [\n {\n \"top\": 506,\n \"bottom\": 535.5,\n \"chips\": 2\n },\n {\n \"top\": 543.5,\n \"bottom\": 573,\n \"chips\": 2\n },\n {\n \"top\": 581,\n \"bottom\": 610.5,\n \"chips\": 2\n },\n {\n \"top\": 618.5,\n \"bottom\": 648,\n \"chips\": 1\n }\n ],\n \"rowCount\": 4,\n \"visibleRows\": 4,\n \"lastVisibleRowBottom\": 648,\n \"lastVisibleRowInside\": true,\n \"boundaryInGap\": true,\n \"contentHeight\": 142,\n \"room\": 366\n },\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 0,\n \"outsideBand\": 0,\n \"shimmerBars\": 0,\n \"captionVisible\": false\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"awaitingHydration\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 430,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 499,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+  "frame": {
+    "css": {
+      "x": 0,
+      "y": 0,
+      "width": 1380,
+      "height": 872
+    },
+    "dpr": 2,
+    "device": {
+      "x": 0,
+      "y": 0,
+      "width": 2760,
+      "height": 1744
+    },
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  "at": 103635,
+  "viewport": "1380x872",
+  "active": "TEXTAREA",
+  "stack": {
+    "height": 142,
+    "scrollHeight": 142,
+    "clientHeight": 142
+  },
+  "chips": [
+    {
+      "label": "Go to my documents folder",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 506,
+      "bottom": 535.5
+    },
+    {
+      "label": "Search for quantum computing papers and download interesting ones to read later",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 506,
+      "bottom": 535.5
+    },
+    {
+      "label": "What are the trending stocks on WallStreetBets?",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 543.5,
+      "bottom": 573
+    },
+    {
+      "label": "Put together a competitive analysis report on the agentic AI space",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 543.5,
+      "bottom": 573
+    },
+    {
+      "label": "Create a presentation outline on climate change",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "Fetch the MNIST dataset and train a good classifier",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 618.5,
+      "bottom": 648
+    }
+  ],
+  "observed": {
+    "columnPx": 1100,
+    "greeting": 1,
+    "smallView": false,
+    "chipsLaidOut": 7,
+    "chipsPainted": 7,
+    "chipsInert": 0,
+    "rowsLaidOut": 4,
+    "rowsPainted": 4
+  },
+  "expected": {
+    "columnPx": 1100,
+    "smallView": false,
+    "greeting": 1,
+    "chipsPainted": "the sampled chips, whole rows only",
+    "rule": "chat-content.tsx:343 sets isSmallView from a container measurement of the chat column (contentRect.width < 550); message-input.tsx:1109-1110 paints the empty-chat prompt only on !isSmallView. A column narrower than 550 is the intended small view: one compact composer, no greeting, no suggestion stack."
+  },
+  "holds": {
+    "settled": true,
+    "smallView": true,
+    "greeting": true,
+    "noLoadingClaim": true,
+    "all": true
+  },
+  "settlement": {
+    "now": 80297,
+    "reads": 30,
+    "layoutChanges": 1,
+    "lastChangeAt": 55776,
+    "stableForMs": 24521,
+    "settleWindowMs": 3000,
+    "settled": true,
+    "noLoadingClaimInAnyState": true,
+    "states": [
+      {
+        "at": 3516,
+        "lastSeenAt": 53855,
+        "reads": 4,
+        "columnWidth": null,
+        "bandY": null,
+        "bandHeight": null,
+        "composerY": null,
+        "composerHeight": null,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        }
+      },
+      {
+        "at": 55776,
+        "lastSeenAt": 80297,
+        "reads": 26,
+        "columnWidth": 1100,
+        "bandY": 104,
+        "bandHeight": 768,
+        "composerY": 370,
+        "composerHeight": 278,
+        "stackTop": 506,
+        "stackHeight": 142,
+        "greeting": 1,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": 4,
+        "rowsInside": 4,
+        "boundaryInGap": true,
+        "claims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        }
+      }
+    ],
+    "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
+  },
+  "pageProbe": null,
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string; this reader's output budget cut it on four of the eight reads, and it is not transcribed on the other four so that the eight files describe the same thing. Every field the table, the settlement record and the D2 check use is a top-level field of this file (`frame`, `observed`, `expected`, `holds`, `settlement.states`, `chips`); the inner page's own probe text, which duplicates them, is the only loss."
 }
