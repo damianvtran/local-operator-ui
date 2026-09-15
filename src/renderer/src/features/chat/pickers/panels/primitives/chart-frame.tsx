@@ -9,6 +9,7 @@ import {
 import {
 	Area,
 	Bar,
+	BarChart,
 	CartesianGrid,
 	Line,
 	ResponsiveContainer,
@@ -39,8 +40,11 @@ import { formatDayBucket, formatTokens } from "../formatters";
  * (the hue is the contract's, not the call site's); draw with an empty data
  * array (the caller substitutes `PanelEmpty` — a `domain` of `[0, 0]` makes
  * recharts paint a flat mark at the top of an empty box, which reads as data);
- * or change a mark's fill on hover (the tooltip cursor is the hover affordance,
- * and there is no `chart-bar-hover` role in the contract).
+ * or leave the pointer with nothing to read. That last rule changed shape here:
+ * a bar chart used to get recharts' own cursor — a full-height `Rectangle` over
+ * the category band — and the highlight now lands on the BAR under the pointer
+ * instead, because the band is not the thing the user is asking about (see
+ * `withActiveBar` and the `Tooltip`'s own `cursor={false}` below).
  */
 
 export type ChartFrameProps = {
@@ -94,6 +98,23 @@ const FRAME_CLASS = [
 	"[&_.recharts-cartesian-grid_line]:stroke-hairline",
 	"[&_.recharts-cartesian-axis-tick-value]:fill-ink-dim [&_.recharts-cartesian-axis-tick-value]:text-meta",
 	"[&_.recharts-bar-rectangle]:fill-accent",
+	/*
+	 * The ACTIVE bar's fill, and it has to be a rule HERE rather than a prop on
+	 * the `<Bar>` for the reason this whole array exists: a presentation attribute
+	 * cannot take a `var()`, and a CSS rule BEATS a presentation attribute — so a
+	 * hover colour passed as `activeBar={{ fill: ... }}` would be silently
+	 * overridden by the plain-rectangle rule above it. `fill` is an inherited SVG
+	 * property, so colouring the wrapper recharts puts around the active rectangle
+	 * (`util/ActiveShapeUtils.js` renders `<Layer className="recharts-active-bar">`
+	 * around the `<path>`) reaches the path itself.
+	 *
+	 * ORDER IS LOAD-BEARING: both selectors are one class inside the same
+	 * descendant variant, so they carry identical specificity and the later rule
+	 * wins. `accent-hover` is the contract's own "colour a thing takes under the
+	 * pointer" role (branding § 6) — a lightness step, with no lift, scale or
+	 * translate, which is the only hover vocabulary this app has.
+	 */
+	"[&_.recharts-active-bar]:fill-accent-hover",
 	"[&_.recharts-line-curve]:stroke-accent",
 	"[&_.recharts-active-dot_circle]:fill-accent",
 	"[&_.recharts-tooltip-cursor]:stroke-hairline",
@@ -167,6 +188,51 @@ export const withoutMotion = (nodes: ReactNode): ReactNode =>
 			: cloneElement(element, { children });
 	});
 
+/**
+ * The hover affordance on a bar: `<Bar activeBar>`.
+ *
+ * recharts reaches a mark's active state only when the mark declares an active
+ * SHAPE — `generateCategoricalChart.js:1391` computes `hasActive = ... &&
+ * (activeDot || activeBar || activeShape)` before it passes the tooltip's
+ * `activeIndex` down, and `activeBar` defaults to `false`
+ * (`cartesian/Bar.js:89`). Without it every rectangle is the same rectangle and
+ * the frame's only hover affordance would be the cursor band this change removes.
+ *
+ * Set by the FRAME rather than by each call site for the reason the frame exists:
+ * it owns the chart idiom, both charts in the app render through it, and a call
+ * site that had to remember a prop would be a second hover rule — the settings
+ * chart, which uses a `<LineChart>`, would keep the old one.
+ *
+ * Written on the MARK because that is where recharts reads it, so this clones the
+ * same way `withoutMotion` does and walks for the same reason (a chart may nest
+ * its marks); the two are siblings, one prop each, rather than one helper with a
+ * flag.
+ */
+export const withActiveBar = (nodes: ReactNode): ReactNode =>
+	Children.map(nodes, (node) => {
+		if (!isValidElement(node)) return node;
+		const element = node as ReactElement<{
+			children?: ReactNode;
+			activeBar?: boolean;
+		}>;
+		const isBar = element.type === Bar;
+		/*
+		 * A leaf keeps its own props exactly, like its sibling: cloning one with
+		 * `children: undefined` would ADD a key it never had, and this frame also
+		 * injects axes whose props recharts spreads onto SVG nodes.
+		 */
+		if (
+			element.props.children === undefined ||
+			element.props.children === null
+		) {
+			return isBar ? cloneElement(element, { activeBar: true }) : element;
+		}
+		const children = withActiveBar(element.props.children);
+		return isBar
+			? cloneElement(element, { activeBar: true, children })
+			: cloneElement(element, { children });
+	});
+
 const ChartTooltip = ({
 	active,
 	label,
@@ -227,6 +293,27 @@ export const ChartFrame = ({
 	 * rendering `undefined` into `ResponsiveContainer` is a type error rather
 	 * than a design decision.
 	 */
+	/*
+	 * A BAR chart's cursor is switched OFF; a line chart's is left alone.
+	 *
+	 * recharts' cursor for a `BarChart` is a `Rectangle` covering the whole
+	 * category band (`component/Cursor.js` → `util/cursor/getCursorRectangle.js`),
+	 * so the highlight the pointer produces is the band rather than the bar the
+	 * question is about — and it is drawn OVER the marks, which is why the bar
+	 * under the pointer could not be seen at all. The bar's affordance is the
+	 * active rectangle instead (`withActiveBar` above).
+	 *
+	 * A LINE chart keeps its cursor, and not by omission: there the cursor IS the
+	 * affordance — a vertical guide at the hovered bucket, styled
+	 * `[&_.recharts-tooltip-cursor]:stroke-hairline` — and there is no mark for a
+	 * highlight to land on. Switching it off for both would trade one chart's
+	 * defect for the other's.
+	 *
+	 * Guarded by `isValidElement`, because this slot is documented to tolerate a
+	 * non-element child (it renders as an empty fragment below) and reading `.type`
+	 * off a `null` child would throw before that rule could apply.
+	 */
+	const isBarChart = isValidElement(children) && children.type === BarChart;
 	const chart: ReactElement = isValidElement(children) ? (
 		(cloneElement(
 			children as ReactElement<{
@@ -254,13 +341,29 @@ export const ChartFrame = ({
 					width={yAxisWidth}
 					tickFormatter={yTickFormatter}
 				/>,
+				/*
+				 * The caller's marks, with the frame's two mark-level rules applied: the
+				 * mount animation off (`withoutMotion`) and the bar's hover handle on
+				 * (`withActiveBar`).
+				 *
+				 * Both passes answer with a LIST — the same `Children.map` shape — so this
+				 * flattens them into ONE, because the marks have to be the chart's own
+				 * children: recharts finds its graphical items by walking them, and a
+				 * nested array still renders but stops being findable.
+				 */
 				...Children.toArray(
 					withoutMotion(
 						(children as ReactElement<{ children?: ReactNode }>).props.children,
 					),
-				),
+				).flatMap((mark) => Children.toArray(withActiveBar(mark))),
 				<Tooltip
 					key="tooltip"
+					/*
+					 * `cursor={false}` disables recharts' own cursor where the frame
+					 * replaced it (see `isBarChart` above); `undefined` keeps the default
+					 * for the line chart, which has no active mark to highlight.
+					 */
+					cursor={isBarChart ? false : undefined}
 					content={<ChartTooltip format={yTickFormatter} unit={unit} />}
 				/>,
 			],
