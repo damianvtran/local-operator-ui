@@ -67,6 +67,7 @@ export const AGENT_LAUNCH_FLAGS = [
 	"--user-data-dir",
 	"--remote-debugging-port",
 ] as const;
+
 /**
  * The layout is verified at these dimensions and not below: the app rail, the
  * per-route list pane and the canvas each have their own minimum, and past
@@ -277,12 +278,17 @@ export function resolveWindowLaunchPlan(
 		);
 	} else if (modeValue !== undefined && modeRaw === undefined) {
 		/*
-		 * Empty and blank name nothing, so the report says exactly that and stops:
-		 * the assumption below still decides the mode on this path, and a message
-		 * ending "using normal" would be a lie for a rig-shaped launch.
+		 * Empty and blank name nothing, so the report says exactly that:
+		 * `LOCAL_OPERATOR_UI_WINDOW_MODE=""` is a caller mistake worth a line.
+		 *
+		 * The outcome is stated only when the assumption did NOT take over. On the
+		 * rig-shaped path a message ending "using normal" would be a lie, since
+		 * that launch resolves `headless`; on the plain path there is no assumption
+		 * to explain the silence, so the caller is told the outcome they were told
+		 * before this change and the line stays useful rather than merely true.
 		 */
 		problems.push(
-			`${modeFlag.found ? WINDOW_MODE_FLAG : WINDOW_MODE_ENV} names no mode (empty value)`,
+			`${modeFlag.found ? WINDOW_MODE_FLAG : WINDOW_MODE_ENV} names no mode (empty value)${assumed ? "" : "; using normal"}`,
 		);
 	} else if (parsedMode === null && modeRaw !== undefined) {
 		problems.push(
