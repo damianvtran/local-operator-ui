@@ -21,8 +21,14 @@
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { createServer } from "node:http";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -201,6 +207,45 @@ async function deadPid() {
 	return pid;
 }
 
+/**
+ * A pid that is a ZOMBIE: exited, and not reaped by its parent.
+ *
+ * Python is the instrument because the state only exists while a parent
+ * declines to reap, and Node's event loop reaps every child it spawns. Returns
+ * null where no interpreter is available, so the case is skipped rather than
+ * silently passing.
+ */
+async function zombiePid() {
+	const child = spawn(
+		"python3",
+		[
+			"-c",
+			'import os, time\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nprint(pid, flush=True)\ntime.sleep(120)\n',
+		],
+		{ stdio: ["ignore", "pipe", "ignore"] },
+	);
+	const pid = await new Promise((resolve) => {
+		const timer = setTimeout(() => resolve(null), 10_000);
+		child.on("error", () => {
+			clearTimeout(timer);
+			resolve(null);
+		});
+		child.stdout.setEncoding("utf8");
+		child.stdout.on("data", (chunk) => {
+			const match = chunk.match(/\d+/);
+			if (match) {
+				clearTimeout(timer);
+				resolve(Number(match[0]));
+			}
+		});
+	});
+	if (pid === null) {
+		child.kill("SIGKILL");
+		return null;
+	}
+	return { pid, child };
+}
+
 const env = () => ({ LOCAL_OPERATOR_CONFIG_DIR: configRootPath });
 
 const silence = () => {};
@@ -312,6 +357,57 @@ test("a record whose pid is gone is rejected as stale and offered for reaping", 
 	);
 	assert.deepEqual(reapStaleRecords(result.reapable), [file]);
 	assert.ok(!readServeRecords(runDir).files.some((f) => f.file === file));
+	/*
+	 * And it was MOVED, not deleted. The backend's own reaper keeps a
+	 * proven-dead record in `<run dir>/reaped/<pid>.json` so the attention
+	 * classifier can still answer "why did this run die"; an unlink here turned a
+	 * diagnosable death into the no-evidence case that mechanism exists to
+	 * prevent.
+	 */
+	const sidecar = join(runDir, "reaped", `${pid}.json`);
+	assert.ok(existsSync(sidecar), "the dead record is kept as evidence");
+	assert.equal(
+		JSON.parse(readFileSync(sidecar, "utf8")).instance_id,
+		"instance-dead",
+		"the evidence is the record itself, unchanged",
+	);
+});
+
+test("a ZOMBIE pid is dead, so its record neither wedges the app nor blocks spawning", async (t) => {
+	const zombie = await zombiePid();
+	if (!zombie) {
+		t.skip("python3 is not available to hold an unreaped pid");
+		return;
+	}
+	t.after(() => zombie.child.kill("SIGKILL"));
+	/*
+	 * Signal 0 succeeds against an exited-but-unreaped process, which is how a
+	 * corpse kept its record classified `wedged` - and a wedged record forbids
+	 * spawning. The app could then neither attach to the daemon nor start its own,
+	 * for as long as the zombie's parent declined to reap it.
+	 */
+	assert.equal(pidLiveness(zombie.pid), "alive");
+	assert.equal(discovery.isZombie(zombie.pid), true);
+	assert.equal(pidLiveness(zombie.pid, { checkZombie: true }), "dead");
+	const file = writeRecord({
+		pid: zombie.pid,
+		port: 65532,
+		instanceId: "instance-zombie",
+		heartbeatAt: Date.now() / 1000 - (HEARTBEAT_TIMEOUT_MS + 5_000) / 1000,
+	});
+	const result = await discoverDaemons({ env: env(), log: silence });
+	assert.equal(
+		result.rejected.find((r) => r.subject === file)?.reason,
+		"pid-dead",
+		"a zombie is dead, not wedged",
+	);
+	assert.equal(
+		result.blocksSpawn,
+		false,
+		"a corpse must not keep the app from starting its own daemon",
+	);
+	assert.deepEqual(reapStaleRecords(result.reapable), [file]);
+	rmSync(file, { force: true });
 });
 
 test("a WEDGED record (live pid, stopped heartbeat) is reported, not attached to, not reaped", async () => {
@@ -326,6 +422,14 @@ test("a WEDGED record (live pid, stopped heartbeat) is reported, not attached to
 	assert.equal(rejection.reason, "wedged");
 	assert.equal(result.picked, null);
 	assert.deepEqual(result.reapable, [], "a live process keeps its record");
+	/*
+	 * Reported as its own fact, not merely as "blocked": a surface told only
+	 * `blocksSpawn` rendered a daemon that is RUNNING as an outage, which is the
+	 * remaining way this app told a user their server was offline while a process
+	 * was still there.
+	 */
+	assert.deepEqual(result.wedged, [{ file, pid: process.pid }]);
+	assert.equal(result.blocksSpawn, true);
 	rmSync(file, { force: true });
 });
 

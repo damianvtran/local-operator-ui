@@ -25,7 +25,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/backend/daemon-status"; export { isServerReachable } from "./src/shared/backend-status";',
+			'export * from "./src/main/backend/daemon-status"; export { isServerReachable, serverBannerCopy } from "./src/shared/backend-status";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -40,6 +40,7 @@ const {
 	REATTACH_BACKOFF_MS,
 	REATTACH_BACKOFF_CEILING_MS,
 	isServerReachable,
+	serverBannerCopy,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -174,18 +175,99 @@ test("an announced build change leaves the connection attached and untouched", (
 	assert.equal(machine.observe({ kind: "identified" }), "attached");
 });
 
-test("a stale heartbeat with a live daemon is degraded, not detached", () => {
-	const machine = attached();
+test("a stale heartbeat with a live daemon is reported as WEDGED, not as detached", () => {
+	/*
+	 * The machine with NO attachment - which is the only state discovery's wedged
+	 * records can be observed from: they are records it refused to attach to.
+	 */
+	const machine = new DaemonStateMachine();
 	assert.equal(
-		machine.observe({ kind: "heartbeat-stale", detail: "heartbeat 60s old" }),
-		"degraded",
+		machine.observe({
+			kind: "heartbeat-stale",
+			detail: "a Local Operator daemon is running (pid 4242), but it stopped publishing its heartbeat",
+		}),
+		"wedged",
 	);
 	assert.equal(
 		machine.snapshot().failures,
 		0,
 		"a stuck daemon is not a failing probe",
 	);
-	assert.equal(isServerReachable(machine.getState()), true);
+	/*
+	 * Not usable (there is no attachment to query through) and not offline (there
+	 * is a process). A surface that renders those two alike is the reported "it
+	 * says my server is down when it is running" again, one rung down.
+	 */
+	assert.equal(isServerReachable(machine.getState()), false);
+	assert.equal(machine.snapshot().reconnecting, false);
+	assert.match(
+		serverBannerCopy(machine.snapshot()).title,
+		/stopped publishing its own heartbeat/,
+	);
+});
+
+test("a quiet record never demotes a connection this app is using", () => {
+	const machine = attached();
+	machine.observe({
+		kind: "heartbeat-stale",
+		detail: "some other record went quiet",
+	});
+	assert.equal(
+		machine.getState(),
+		"attached",
+		"the record that went quiet is not the daemon we are talking to",
+	);
+});
+
+test("a detached connection is 'reconnecting' until the escalation window passes", () => {
+	let now = 1_000_000;
+	const machine = new DaemonStateMachine(() => now);
+	machine.attach(identity, { owned: false });
+	machine.observe({ kind: "no-candidate", detail: "gone" });
+	assert.equal(machine.snapshot().reconnecting, true);
+	/*
+	 * The two sentences a lost daemon gets, and why the snapshot has to carry the
+	 * difference: a still cannot show a timer, so a renderer given only `detached`
+	 * said "the server is offline" at t=0 - while a daemon that is still running is
+	 * expected back and main keeps re-discovering for it.
+	 */
+	assert.match(
+		serverBannerCopy(machine.snapshot()).title,
+		/If one is still running, the app reconnects to it on its own/,
+	);
+	now += DETACHED_AFTER_MS;
+	assert.equal(machine.snapshot().reconnecting, false);
+	assert.match(
+		serverBannerCopy(machine.snapshot()).title,
+		/The Local Operator server stopped/,
+	);
+});
+
+test("only the unattached states get banner copy: a missed probe is not an outage", () => {
+	assert.equal(
+		serverBannerCopy({ state: "attached", reconnecting: false, detail: "x" }),
+		null,
+	);
+	assert.equal(
+		serverBannerCopy({ state: "degraded", reconnecting: false, detail: "x" }),
+		null,
+	);
+	assert.equal(
+		serverBannerCopy({ state: "replaced", reconnecting: false, detail: "x" }),
+		null,
+	);
+	assert.equal(
+		serverBannerCopy({ state: "connecting", reconnecting: false, detail: "x" }),
+		null,
+	);
+	/*
+	 * A host with no desktop bridge gets the weaker answer and no snapshot at
+	 * all: "not connected" is the whole of what it can honestly say.
+	 */
+	assert.equal(
+		serverBannerCopy(null)?.title,
+		"Not connected to a Local Operator server.",
+	);
 });
 
 test("re-discovery finding nothing detaches, and the backoff doubles to a ceiling", () => {

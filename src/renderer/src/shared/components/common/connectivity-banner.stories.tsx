@@ -1,0 +1,294 @@
+/**
+ * The connectivity banner, in every state the daemon connection can leave it in.
+ *
+ * WHY this file exists. This banner is the app-wide surface that used to render
+ * "The server is offline" - the sentence the operator's report is about - and
+ * until now it had no frame anywhere in the tree: the sweep photographed
+ * Settings' version row, and the neighbouring rigs only asserted the banner's
+ * ABSENCE. So the one surface whose trigger condition this work rewrote could
+ * not be looked at, and a reviewer could not tell whether "offline" still
+ * described a daemon that was up.
+ *
+ * The states are not reachable on demand in the live app (they need a real
+ * daemon to exit, three probes to fail against a live one, or a manager
+ * configured not to spawn), so the story stubs `window.api.backend` with the
+ * snapshot MAIN publishes for each - the real component, rendering the real
+ * copy from `shared/backend-status.ts`, over a realistic page ground.
+ *
+ * `attached` is a frame OF the banner's absence, which is the claim: a missing
+ * probe is not an outage, so the state that is still connected must show
+ * nothing at all.
+ */
+
+import type { Meta, StoryObj } from "@storybook/react";
+import { expect, waitFor } from "@storybook/test";
+import { useLayoutEffect } from "react";
+import type { DaemonStatusSnapshot } from "../../../../../shared/backend-status";
+import { ConnectivityBanner } from "./connectivity-banner";
+
+const snapshot = (
+	overrides: Partial<DaemonStatusSnapshot>,
+): DaemonStatusSnapshot => ({
+	state: "attached",
+	reconnecting: false,
+	owned: false,
+	url: "http://127.0.0.1:7341",
+	instanceId: "i".repeat(43),
+	pid: 4242,
+	version: "0.54.47",
+	prefix: "/Users/you/.local/share/uv/tools/local-operator",
+	installKind: "uv-tool",
+	desktopAvailable: true,
+	failures: 0,
+	capabilityStatus: null,
+	detail:
+		"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
+	updatedAt: Date.now(),
+	...overrides,
+});
+
+/**
+ * The page ground the fixed banner covers, so the frame is the surface a user
+ * actually sees rather than a bare rectangle on the story ground.
+ */
+const PageGround = () => (
+	<div className="flex h-full flex-col gap-3 p-6 pt-24">
+		<h1 className="font-medium text-body text-ink">Conversations</h1>
+		<p className="max-w-xl text-body-sm text-ink-muted">
+			Nothing is in flight. The banner above the page is the whole of what this
+			surface has to say about the server.
+		</p>
+	</div>
+);
+
+/**
+ * Stub MAIN's side of the bridge for one story.
+ *
+ * Installed during render rather than in an effect, because the banner's first
+ * query is issued on mount (the row stories learned the same lesson).
+ */
+const Bridge = ({
+	status,
+	children,
+}: {
+	status: DaemonStatusSnapshot | null;
+	children: React.ReactNode;
+}) => {
+	const api = window.api as unknown as { backend?: unknown };
+	api.backend =
+		status === null
+			? undefined
+			: {
+					getStatus: async () => status,
+					// Retry asks main to try; a still cannot show the attempt, and a stub
+					// that changed the snapshot would photograph the stub.
+					reconnect: async () => status,
+					onStatusChange: () => () => {},
+				};
+	useLayoutEffect(() => {
+		return () => {
+			(window.api as unknown as { backend?: unknown }).backend = undefined;
+		};
+	}, []);
+	return <>{children}</>;
+};
+
+const withBridge =
+	(status: DaemonStatusSnapshot | null) => (Story: React.FC) => (
+		<Bridge status={status}>
+			<div className="min-h-screen bg-canvas text-ink">
+				<Story />
+				<PageGround />
+			</div>
+		</Bridge>
+	);
+
+/** Waits for the banner's rendered sentence, so the frame cannot be a race. */
+const waitForCopy = (text: string | RegExp) => async () => {
+	await waitFor(() => {
+		const body = document.body.textContent ?? "";
+		expect(
+			typeof text === "string" ? body.includes(text) : text.test(body),
+		).toBe(true);
+	});
+};
+
+const meta: Meta<typeof ConnectivityBanner> = {
+	component: ConnectivityBanner,
+	title: "Common/Connectivity banner",
+	parameters: { layout: "fullscreen" },
+	// The banner's own 3 s refetch loop is disabled: the stub answers the same
+	// snapshot forever, so polling adds nothing but a race with the frame.
+	args: { autoCheck: false },
+};
+
+export default meta;
+type Story = StoryObj<typeof ConnectivityBanner>;
+
+/** No desktop bridge at all: the weaker answer a browser host gets. */
+export const NoBridge: Story = {
+	decorators: [withBridge(null)],
+	play: waitForCopy("Not connected to a Local Operator server."),
+};
+
+/** Attached: no banner. The empty frame IS the claim. */
+export const Attached: Story = {
+	decorators: [withBridge(snapshot({}))],
+	play: async () => {
+		await waitFor(() => {
+			expect(document.body.textContent).not.toContain(
+				"Not connected to a Local Operator server",
+			);
+			expect(document.body.textContent).not.toContain(
+				"The Local Operator server stopped",
+			);
+		});
+	},
+};
+
+/** Degraded: one or two missed probes on a connection that is still there. */
+export const Degraded: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "degraded",
+				failures: 2,
+				detail: "No answer from /health (probe 2 of 3).",
+			}),
+		),
+	],
+	play: async () => {
+		await waitFor(() => {
+			expect(document.body.textContent).not.toContain(
+				"Not connected to a Local Operator server",
+			);
+		});
+	},
+};
+
+/**
+ * Three identity-failing probes while a process is still listening: this app
+ * lost its attachment, and something else answers at the address.
+ */
+export const IdentityFailed: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "detached",
+				reconnecting: true,
+				url: null,
+				instanceId: null,
+				pid: null,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 3,
+				detail:
+					"Another process is answering at http://127.0.0.1:1111 (answered with a different instance id)",
+			}),
+		),
+	],
+	play: waitForCopy("Not connected to a Local Operator server."),
+};
+
+/**
+ * Discovery found a daemon and could not attach to it, with the manager
+ * configured not to spawn one - the path whose own sentence is "A local daemon
+ * may still be running, but could not be attached".
+ */
+export const NoSpawn: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "detached",
+				reconnecting: true,
+				url: null,
+				instanceId: null,
+				pid: null,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 3,
+				detail:
+					"A local daemon may still be running, but could not be attached. Waiting without starting a duplicate.",
+			}),
+		),
+	],
+	play: waitForCopy("could not be attached"),
+};
+
+/**
+ * A daemon that refused this app's credential for its desktop plane: recorded
+ * BESIDE the state (401/403), never as a liveness answer.
+ */
+export const Unclaimed: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "detached",
+				reconnecting: true,
+				url: null,
+				instanceId: null,
+				pid: null,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 0,
+				capabilityStatus: 403,
+				detail:
+					"A daemon is running at http://127.0.0.1:1111, but it refused this app's credential for its desktop plane. The daemon is running.",
+			}),
+		),
+	],
+	play: waitForCopy("refused this app's credential"),
+};
+
+/** Past the 90 s reconnection window: the honest escalation. */
+export const Stopped: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "detached",
+				reconnecting: false,
+				url: null,
+				instanceId: null,
+				pid: null,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 3,
+				detail: "The daemon's process is gone.",
+			}),
+		),
+	],
+	play: waitForCopy("The Local Operator server stopped."),
+};
+
+/**
+ * A daemon whose process is alive and whose heartbeat stopped: it is running,
+ * this app did not attach to it, and neither of those facts is "offline".
+ */
+export const Wedged: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "wedged",
+				url: null,
+				instanceId: null,
+				pid: 4242,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 0,
+				detail:
+					"A Local Operator daemon is running (pid 4242), but it stopped publishing its heartbeat, so this app did not attach to it. Waiting without starting a second one.",
+			}),
+		),
+	],
+	play: waitForCopy("stopped publishing its own heartbeat"),
+};

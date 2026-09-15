@@ -11,12 +11,27 @@ import { apiConfig, setDiscoveredBackendUrl } from "@shared/config";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { isServerReachable } from "../../../../shared/backend-status";
+import type { DaemonStatusSnapshot } from "../../../../shared/backend-status";
 import { useConfig } from "./use-config";
 
 /**
  * Query key for server health check
  */
 export const serverHealthQueryKey = ["server-health"];
+
+/**
+ * What the renderer knows about the server: the boolean every consumer gates on,
+ * plus the snapshot it was derived from.
+ *
+ * The snapshot is carried rather than reduced to the boolean because the copy is
+ * state-specific: `detached`, `wedged` and "reconnecting" need three different
+ * sentences, and a surface given only `false` renders all three as "the server is
+ * offline" - the sentence this change exists to remove.
+ */
+export type ServerHealthSignal = {
+	online: boolean;
+	snapshot: DaemonStatusSnapshot | null;
+};
 
 /**
  * Query key for internet connectivity check
@@ -64,20 +79,20 @@ export const useServerHealth = (refetchInterval = 5000) => {
 
 	return useQuery({
 		queryKey: serverHealthQueryKey,
-		queryFn: async () => {
+		queryFn: async (): Promise<ServerHealthSignal> => {
 			const bridge = window.api?.backend;
 			if (bridge) {
 				const snapshot = await bridge.getStatus();
 				setDiscoveredBackendUrl(snapshot.url);
 				// `degraded` is still a connection: one or two missed probes on a
-				// daemon that is there. Only `detached` is offline.
-				return isServerReachable(snapshot.state);
+				// daemon that is there. Only `detached` and `wedged` are not.
+				return { online: isServerReachable(snapshot.state), snapshot };
 			}
 			try {
 				await HealthApi.healthCheck(apiConfig.baseUrl);
-				return true; // Server is online
+				return { online: true, snapshot: null }; // Server is online
 			} catch (_error) {
-				return false; // Server is offline
+				return { online: false, snapshot: null }; // Server is offline
 			}
 		},
 		// Refetch at specified interval
@@ -154,10 +169,15 @@ export const useInternetConnectivity = (refetchInterval = 5000) => {
 export const useConnectivityStatus = (serverRefetchInterval = 5000) => {
 	// Get server health status
 	const {
-		data: isServerOnline = true, // Default to true to avoid false positives on initial load
+		data: serverHealth,
 		isLoading: isServerStatusLoading,
 		refetch: refetchServerStatus,
 	} = useServerHealth(serverRefetchInterval);
+	// Default to true to avoid false positives on initial load.
+	const isServerOnline = serverHealth?.online ?? true;
+	// Null on a host with no desktop bridge, and while the first answer is in
+	// flight: the banner then falls back to the sentence for "no bridge to ask".
+	const serverSnapshot = serverHealth?.snapshot ?? null;
 
 	// Get config to check hosting provider
 	const { data: config, isLoading: isConfigLoading } = useConfig();
@@ -215,6 +235,7 @@ export const useConnectivityStatus = (serverRefetchInterval = 5000) => {
 
 	return {
 		isServerOnline,
+		serverSnapshot,
 		isOnline,
 		hostingProvider,
 		shouldCheckInternet,

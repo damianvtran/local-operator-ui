@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
 import { useEffect, useState } from "react";
+import { serverBannerCopy } from "../../../../../shared/backend-status";
 
 /**
  * Props for the ConnectivityBanner component
@@ -22,6 +23,7 @@ export const ConnectivityBanner = ({
 		shouldCheckInternet,
 		hasConnectivityIssue,
 		connectivityIssue,
+		serverSnapshot,
 		refetchServerStatus,
 		refetchInternetStatus,
 	} = useConnectivityStatus();
@@ -96,11 +98,26 @@ export const ConnectivityBanner = ({
 
 	// Handle retry button click
 	const handleRetry = () => {
-		// Refetch both server and internet status
-		refetchServerStatus();
-		if (shouldCheckInternet) {
-			refetchInternetStatus();
-		}
+		/*
+		 * Retry has to ASK MAIN TO TRY, not re-read main's answer.
+		 *
+		 * The snapshot is a report about what main already did, and re-discovery is
+		 * main's own timer, so once the liveness signal moved to main a renderer
+		 * that only re-read the snapshot rendered a control that could not cause
+		 * anything - inert in the one state that offers it. Without a bridge
+		 * (Storybook, a plain browser dev server) there is nothing to ask, and the
+		 * refetch below is the whole of what a retry can do there.
+		 */
+		void (async () => {
+			try {
+				await window.api?.backend?.reconnect?.();
+			} finally {
+				refetchServerStatus();
+				if (shouldCheckInternet) {
+					refetchInternetStatus();
+				}
+			}
+		})();
 	};
 
 	// Handle dismiss button click (only for internet connectivity issues)
@@ -115,6 +132,19 @@ export const ConnectivityBanner = ({
 	}
 
 	const isInternetIssue = connectivityIssue === "internet_offline";
+	/*
+	 * The server-side sentences come from the shared contract, not from this
+	 * component: `detached`, `wedged` and the three paths into them each need a
+	 * different sentence, and the one this banner used to render - "The server is
+	 * offline" - asserted a transport fact for a connection state that three of
+	 * those paths reach while a daemon is still running.
+	 *
+	 * A server issue the app is expected to recover from on its own is a WARNING
+	 * rather than an alarm: "not connected, reconnecting" is not the same claim as
+	 * "the server stopped", and the variant is the banner's own way of saying so.
+	 */
+	const serverIssue = isInternetIssue ? null : serverBannerCopy(serverSnapshot);
+	const isTransientServerIssue = serverSnapshot?.reconnecting === true;
 
 	return (
 		/*
@@ -124,20 +154,37 @@ export const ConnectivityBanner = ({
 		 */
 		<div className="fixed inset-x-0 top-0 z-2200 w-full">
 			<Alert
-				variant={isInternetIssue ? "warning" : "danger"}
+				variant={
+					isInternetIssue
+						? "warning"
+						: isTransientServerIssue
+							? "warning"
+							: "danger"
+				}
 				// The banner appears in response to connectivity dropping while the
 				// user is working, so it interrupts rather than waits to be found.
 				role="alert"
 				className="items-center rounded-none border-x-0 border-t-0"
 			>
 				<div className="flex w-full items-center justify-between gap-4">
-					<AlertDescription>
-						{connectivityIssue === "server_offline"
-							? "The server is offline. The interface will not function properly until the server is back online."
-							: isInternetIssue
+					<div className="flex min-w-0 flex-col gap-1">
+						<AlertDescription>
+							{isInternetIssue
 								? `You are offline. Your configured hosting provider (${hostingProvider}) requires an internet connection.`
-								: "A connectivity issue has been detected."}
-					</AlertDescription>
+								: (serverIssue?.title ??
+									"A connectivity issue has been detected.")}
+						</AlertDescription>
+						{/*
+						 * Main's own sentence about what it observed, as a second line. The
+						 * title says which KIND of state this is; this says which path into it
+						 * was taken (a credential refused, a probe answered by another
+						 * process, a spawn this app is not allowed to make), which is what
+						 * makes the banner diagnosable rather than merely honest.
+						 */}
+						{!isInternetIssue && serverIssue?.detail ? (
+							<AlertDescription>{serverIssue.detail}</AlertDescription>
+						) : null}
+					</div>
 
 					<div className="flex shrink-0 items-center gap-2">
 						<Button variant="ghost" size="sm" onClick={handleRetry}>

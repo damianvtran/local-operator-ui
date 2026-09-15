@@ -58,9 +58,13 @@ declare global {
 			 * Not a health probe made by the renderer: main sends no Origin and holds
 			 * the bearer, so this answer cannot be turned into "server down" by a CORS
 			 * or allowlist decision (see `shared/backend-status.ts`).
+			 *
+			 * `reconnect` asks main to re-discover NOW (the connectivity banner's
+			 * Retry) and answers with the snapshot it ended on.
 			 */
 			backend: {
 				getStatus: () => Promise<DaemonStatusSnapshot>;
+				reconnect: () => Promise<DaemonStatusSnapshot>;
 				onStatusChange: (
 					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;

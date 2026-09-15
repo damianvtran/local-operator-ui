@@ -1089,6 +1089,40 @@ export const STORIES = [
 	["settings-app-updates-and-info--attached-to-discovered-daemon", 980, 320],
 	["settings-app-updates-and-info--degraded-daemon", 980, 320],
 	["settings-app-updates-and-info--detached-daemon", 980, 320],
+	/* `replaced`, a live daemon whose record carries no version, and the daemon
+	   this app started itself: three states in the shipped union that the first
+	   round named as unphotographed, plus the suffix-and-muted-ink reading of
+	   `degraded` in the same crop so the two are comparable side by side. */
+	["settings-app-updates-and-info--replaced-daemon", 980, 320],
+	["settings-app-updates-and-info--attached-without-version", 980, 320],
+	["settings-app-updates-and-info--owned-daemon", 980, 320],
+	["settings-app-updates-and-info--wedged-daemon", 980, 320],
+	/* The value's tooltip, which is where the daemon's own sentence lives. Its own
+	   id because `:hover` cannot be a story state: the rig moves a real pointer at
+	   `[data-backend-version]` for this frame (see the entry's options below). */
+	["settings-app-updates-and-info--value-hover", 980, 320, { hover: "[data-backend-version]" }],
+
+	/* The same section at a narrow width: the value now carries `version ·
+	   address`, `InfoGrid` is `repeat(auto-fit, minmax(160px, 1fr))`, and a narrow
+	   window is the only thing that proves the grid reflows rather than clipping,
+	   and shows which of the row's strings wraps first. */
+	["settings-app-updates-and-info-narrow--attached", 620, 360],
+	["settings-app-updates-and-info-narrow--no-version", 620, 360],
+	["settings-app-updates-and-info-narrow--degraded", 620, 360],
+
+	/* The connectivity banner, the app-wide surface whose trigger condition this
+	   work rewrote and which had NO frame anywhere in the tree: the neighbouring
+	   rigs only asserted its absence. Each entry is one state main can publish -
+	   and two of them (attached, degraded) are frames OF its absence, which is
+	   the claim: a missed probe is not an outage. */
+	["common-connectivity-banner--no-bridge", 1024, 300],
+	["common-connectivity-banner--attached", 1024, 300],
+	["common-connectivity-banner--degraded", 1024, 300],
+	["common-connectivity-banner--identity-failed", 1024, 300],
+	["common-connectivity-banner--no-spawn", 1024, 300],
+	["common-connectivity-banner--unclaimed", 1024, 300],
+	["common-connectivity-banner--stopped", 1024, 300],
+	["common-connectivity-banner--wedged", 1024, 300],
 ];
 
 /**

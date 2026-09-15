@@ -15,6 +15,9 @@
  *   `detached` - one 2 s timeout is not evidence that a server is gone;
  * - a daemon whose pid is gone is `detached` immediately, because that IS
  *   evidence;
+ * - a daemon whose pid is ALIVE but whose published heartbeat stopped is
+ *   `wedged`: discovery refuses to attach to it and refuses to spawn over it,
+ *   and neither of those facts is "your server is offline";
  * - a capability refusal is recorded BESIDE the state and never moves it;
  * - an announced build change is recorded in the detail and moves nothing: the
  *   daemon keeps serving, and detaching over it would kill live work;
@@ -23,6 +26,15 @@
  *   one;
  * - an EXTERNAL daemon is never restarted or replaced at all - if it is gone,
  *   the app says so and offers to start one.
+ *
+ * Every observation and transition here has a producer in `backend-service.ts`
+ * (the watchdog, the discovery branches, the claim handshake) - `heartbeat-stale`
+ * from discovery's `wedged` records and `markReplaced` from the ephemeral-port
+ * replacement, which are the two the first round found unproduced.
+ * `mayManageDaemon()` is the one predicate with no caller yet: it answers "may
+ * this app stop the daemon it is talking to", which is `owned`, and it is kept
+ * as the read-side of that invariant rather than inlined wherever a caller
+ * would otherwise test the flag directly.
  *
  * The owner axis (`owned` = the child this app spawned, `external` =
  * discovered) is orthogonal to the state and is carried as a flag, because
@@ -155,7 +167,19 @@ export class DaemonStateMachine {
 				this.detail = observation.detail;
 				break;
 			case "heartbeat-stale":
-				this.state = this.state === "detached" ? "detached" : "degraded";
+				/*
+				 * A daemon whose process is alive and whose heartbeat stopped. It is
+				 * reachable from discovery's `wedged` records only, which is why it is
+				 * the state that names the fact rather than the failure:
+				 * the daemon EXISTS, so "offline" would be a lie about the transport.
+				 *
+				 * It never overwrites a live attachment: a quiet record is some other
+				 * record, and demoting a connection this app is using because somebody
+				 * else's heartbeat lapsed would be the same over-reaction one rung up.
+				 */
+				if (this.state !== "attached" && this.state !== "replaced") {
+					this.state = "wedged";
+				}
 				this.detail = observation.detail;
 				break;
 			case "failed":
@@ -206,6 +230,19 @@ export class DaemonStateMachine {
 		return this.owned;
 	}
 
+	/**
+	 * True while a `detached` connection is inside the reconnection window.
+	 *
+	 * The inverse of {@link isReportablyGone} for the states that are detached,
+	 * published so a surface can word the same state two ways: "reconnecting"
+	 * while a daemon that is still running is expected back, and "stopped" once
+	 * that expectation has expired. A still cannot show a timer, so the snapshot
+	 * has to carry which half of the window it is in.
+	 */
+	isReconnecting(): boolean {
+		return this.state === "detached" && !this.isReportablyGone();
+	}
+
 	/** The instance id we attached to, which every later probe must match. */
 	expectedInstanceId(): string | null {
 		return this.identity?.instanceId ?? null;
@@ -222,6 +259,7 @@ export class DaemonStateMachine {
 	snapshot(): DaemonStatusSnapshot {
 		return {
 			state: this.state,
+			reconnecting: this.isReconnecting(),
 			owned: this.owned,
 			url: this.identity?.url ?? null,
 			instanceId: this.identity?.instanceId ?? null,
