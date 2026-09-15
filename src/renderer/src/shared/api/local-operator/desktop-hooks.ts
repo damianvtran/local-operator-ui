@@ -86,7 +86,15 @@ export type DesktopFeature =
 	 * reader that fails silently when a row is clicked.
 	 */
 	| "subagent_transcript"
-	| "radient";
+	| "radient"
+	/*
+	 * The two diagnostics reads (`info.get`, `sessions.report`). A SEPARATE key
+	 * rather than a bump of `catalogues`, because `/analytics` and
+	 * `/failovers` must keep working against a backend that lacks the two new
+	 * routes — a bumped shared key would gate the working panels behind an
+	 * update they do not need.
+	 */
+	| "diagnostics";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

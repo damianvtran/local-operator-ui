@@ -1,0 +1,967 @@
+{
+  "captureBaseHead": "ef4f76905c202c2f10e3e8d43bbe6c093016434e",
+  "dirtyWorkingTree": true,
+  "sourceMilestone": "642e6934d9e7c566ddaf3dd220381c557f2bb2f4",
+  "frames": [
+    {
+      "path": "panels-settings/usage-chart-tokens/localOperatorDark.webp",
+      "sourcePngSha256": "d202294fc8514939edb23e494647b81756b37a7c7f91f236a7d067dc3b5d3883",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "9724ddf1e01f828b041e042e8e95e36e8ff597b42f0154390eb22081025bd638"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/localOperatorDark.webp",
+      "sourcePngSha256": "4837972a0f7aa72f05a4ba9830856ac6c2d65fb8e54b773f9b171a4be8b070c5",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "b030e19753dfc003c25d5e643e007e21947ab0fed53309fd2d9983a4b2a8f174"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/localOperatorLight.webp",
+      "sourcePngSha256": "0ebe0363aa25a26d9f9b000d6836e892adac59428430541aad03db8489de73ce",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "f5ade97c186707794c81dde059f73e676f3a3f2f7d35e3abbe9b06dd1124d710"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/localOperatorLight.webp",
+      "sourcePngSha256": "7f85ea74db2916fb823b8ae621cacbc787fe482a8b16a9a4fd2c1e84b3f59829",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "bfa94a29c08e534f18941a1b00e83ac8e2a0b9f1ed6e02293f4fc3fc31aff989"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/dracula.webp",
+      "sourcePngSha256": "4f0f373952d899e0685c84f0047aa4a5365a9658f750aed49883129d05fc7ef2",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:dracula",
+      "webpSha256": "712354f751d0b7a1cbb82604bc69659c3b13809f93fdfd08eb64584ab498e016"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/dracula.webp",
+      "sourcePngSha256": "150ca555628a646cb562a62cbc7fea223a01e6bf14b1465352ed391f784f51c2",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:dracula",
+      "webpSha256": "c4b2e33ef3d0456e13217aec3434293d36a68c581a732d20f5bd67af56e73b82"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/dune.webp",
+      "sourcePngSha256": "9953b6a02d3947a42e32fadd0165f5c514043c45efbca308851eeddba7d42747",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:dune",
+      "webpSha256": "53a587f7f88d0703bc290ab3ad836b2adedfd606e2abdee7f4ab5272c6525d31"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/dune.webp",
+      "sourcePngSha256": "f29c910b918a331bef800afa4680611faeac464f0bfb29d6b3d78fea5f3c7a79",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:dune",
+      "webpSha256": "9116fb051793ce0b35c5851f29c11692ccc9156fa8e0d778ed351a36304b419b"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/sage.webp",
+      "sourcePngSha256": "8a7a1c870c2ba7f30433ee8ac69d95ef5f1bb87f71f72c2c41fd9308e8564b0c",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:sage",
+      "webpSha256": "e8f3906bef8f3065518bd5f2a3a0f78875c60191d9cc7c6102680ba7191f7c88"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/sage.webp",
+      "sourcePngSha256": "9dafd1de387be2a57dd70cb55bbf5c1c2868ba15815ca00cde405290bdc8a614",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:sage",
+      "webpSha256": "f630b8d27388bf73bad6f60218e4157c08c6fd3ff7225987ade71659cfee70dd"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/monokai.webp",
+      "sourcePngSha256": "094a211fa40f1f1eb79d633c8d1183ad862ca6886a4aa9924515bea695653433",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:monokai",
+      "webpSha256": "a7a3c1947c43059291b435f155c19905320bca961e2eaaf72161f1121255417a"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/monokai.webp",
+      "sourcePngSha256": "acef3fbb71e7c507505c1aa78f6436782fbccd00d241afec09e849dac0d011d3",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:monokai",
+      "webpSha256": "890ccc39550c0bb193b506982a065e6c8a5347be4b5e25ea74212a58cb030540"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/tokyoNight.webp",
+      "sourcePngSha256": "aaf4c35827d9b0328a4221b2cf89e8323dd4f52619e209d32e5e8be274a22754",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "99a543846c28fa1dd516292eec97dad6189f09eb79f91d118124151e71f7b0d0"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/tokyoNight.webp",
+      "sourcePngSha256": "c56124490765f2327c94499ff6dce73019c87d31be9b1f9d798e05c2a5bb2bd5",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "fbe6613da6c71c94c732f1c015644676653cdd35829c22272c26568023483fd2"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/iceberg.webp",
+      "sourcePngSha256": "074c6f3bf1efda27b3e18b652f2aeafd105f04a728dfef9e66574a5772ab7a98",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:iceberg",
+      "webpSha256": "00748106ec285d3aeef930b3e8b8bb4a23841f759d7266b20c39c93a875af6b7"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/iceberg.webp",
+      "sourcePngSha256": "223ad7e476ef4a6d773c06c8bd8b4653744718889813895195f6b098bfb15c46",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:iceberg",
+      "webpSha256": "cb15ee736c64a8306617fc9f5d588a5500a6abbf3c45349a0f3f8d558112a673"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/radient.webp",
+      "sourcePngSha256": "2517168734068ac5a647cf7d82b4020176e546473b1789d09e2cf17036d69d85",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:radient",
+      "webpSha256": "0736927101330c96b4dd55c8a9fb5dddc66a6f92d459e8ea1e2c0650ae7e6256"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/radient.webp",
+      "sourcePngSha256": "d6408fcc17f3a469360bc101920c22945637ca82e3d2b5b191bb3f49a9004803",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:radient",
+      "webpSha256": "136037a0da39fb3896fd65fcfcf9b9590386d9658704ff12f8cab07385a1eec4"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/neon.webp",
+      "sourcePngSha256": "f7a4185c554890a522e40262a61afa7c912cf0f7ff0001f550dd6f7af4ef80d7",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:neon",
+      "webpSha256": "4ab0f8c707b60f31c8f060853b6417f409399f8ba391db64982f48f691e0395d"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/neon.webp",
+      "sourcePngSha256": "392864bcf96ec64b81e11678b65eec94c2f1b73406b370c0ac5ab6f50c04204d",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:neon",
+      "webpSha256": "0ea45c2a85eb9a206492487edc02fe00a4a4d0ed9f4a0f20b7cd51d1eeaad05e"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/obsidian.webp",
+      "sourcePngSha256": "933dde5b4f4563e808e9f9b737e81f761b28b59f38637bf9e40f6c25e09f4e55",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:obsidian",
+      "webpSha256": "d72060838ec97139950fd11a059487519e1bfa6dc394908aaaa5c1261c9a0c8b"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/obsidian.webp",
+      "sourcePngSha256": "871189d36a1be08a530b2064ec5faf18f91f36b6d15b914b75c3aab4d4e37e08",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:obsidian",
+      "webpSha256": "44eeb01c123eb7956a4f4128687220897836fdb4cb481763640712f098dc7368"
+    },
+    {
+      "path": "panels-settings/usage-chart-tokens/synth.webp",
+      "sourcePngSha256": "4fb87c4ee8b1384fd0b16ca4ddfa93bb62b2fb8d9438eb93984f1adec92cd629",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-tokens&viewMode=story&args=theme:synth",
+      "webpSha256": "841325ebeebc24dd5089764927849d51d04b41d21e9c7752361bc252f0d81991"
+    },
+    {
+      "path": "panels-settings/usage-chart-credits/synth.webp",
+      "sourcePngSha256": "b30cc9ffcd3488bdbdabba7b68e5ddb56eca121883b6d9e175574140a6e42d79",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-settings--usage-chart-credits&viewMode=story&args=theme:synth",
+      "webpSha256": "1a876c80b68b91909175c662c5fc3b4e46683ef3a3bd0861a9ef0a225eadaf4e"
+    },
+    {
+      "path": "panels-info/dense/localOperatorDark.webp",
+      "sourcePngSha256": "9e60bf73800928b30b27a9c1a33cef5728e5b32c200f32ae23dad43993ab3fde",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "9983c1aa21797c8751589e507d4bcffeb9e716a251c45fa491fba66b8a5e3625"
+    },
+    {
+      "path": "panels-failovers/populated/localOperatorDark.webp",
+      "sourcePngSha256": "3e31357a76354b00fc9d0d253b498197aa8c6d1e5ba8711f99ee234abbc0246c",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "974144f3cc44f0ae45b4318216b2b805a5ed3043402f6386accddf81829c5d8a"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/localOperatorDark.webp",
+      "sourcePngSha256": "80c8e175208a4e425d41097d69b508cbc80a8114e4b2e153c5fa80a014138ea7",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "f60ef4ddb280539e9d12d51a13a0e00fea5cd84dda1ad159dadf3273e9cf000c"
+    },
+    {
+      "path": "panels-failovers/empty-chain/localOperatorDark.webp",
+      "sourcePngSha256": "19e8e6783592f40d23a68b522eb981b934b492b3916d6c4da9ff57b9b0d1be9c",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "939054e9e7b2b0db72f37ff8d11a33f9a9b84e4680807e252675d28175add661"
+    },
+    {
+      "path": "panels-failovers/no-chains/localOperatorDark.webp",
+      "sourcePngSha256": "0d71ca0f271c1c3078e753506fd9fce4678f17c25701b2905e329402fc4c3ca6",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "eedb8607b0cee586528f93d5a5b98b8792c731f3d6ffae63a0aa86f1031d1c31"
+    },
+    {
+      "path": "panels-failovers/dense/localOperatorDark.webp",
+      "sourcePngSha256": "545bb9fdf14b5a6fe712f428cf265277d711fefc0559519268c71f2a41dff1fc",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:localOperatorDark",
+      "webpSha256": "61cb5d24f5af5dd18968fb823fe10fb397b1d3059a8ef30274e7c8bc58305220"
+    },
+    {
+      "path": "panels-info/dense/localOperatorLight.webp",
+      "sourcePngSha256": "9403d72a71ed9544a755d9cd64f46f751576baf7dba2ec2caf28d142adacfabb",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "3a35227d351bc92596c7483f2cb3e5a0732650649b16740a1aea49f19f4682a2"
+    },
+    {
+      "path": "panels-failovers/populated/localOperatorLight.webp",
+      "sourcePngSha256": "f995930022326ec41560faad0ee18a2d441316de51d554e0ca6752aeecb33f4e",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "aad7c93ad53e9cea618336175d5080fc63cb0027db0cb8319f4811f662cea70e"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/localOperatorLight.webp",
+      "sourcePngSha256": "8e36ab174e028f91768ac62285ccea8edf1ec227cc869ab3b0503b822e60445b",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "5dc3588a1b8a3cfca37acbbd1c085d618db58761689d99db8eec403193e41085"
+    },
+    {
+      "path": "panels-failovers/empty-chain/localOperatorLight.webp",
+      "sourcePngSha256": "31d882be972226ac45e8950a8392f33e87b1f566da586851263a92b2395ef429",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "de4ef9f25aa6a63beebc232f95b4430ba95f53f578ffb8c72b5ebf8289ed4f94"
+    },
+    {
+      "path": "panels-failovers/no-chains/localOperatorLight.webp",
+      "sourcePngSha256": "4c78c26c908ee9ce100070a3b54a939c7f52d0e981e7de41ba2d7a697ebbf536",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "9ecd8a0cfe347087adbaf80a5787e4d6d5bb25ecf3db9a26922900b6124befe8"
+    },
+    {
+      "path": "panels-failovers/dense/localOperatorLight.webp",
+      "sourcePngSha256": "76bbe765692cb880090c024203431d33fac23f28bdac096bf0cce8b316477411",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:localOperatorLight",
+      "webpSha256": "bacf8db1e249374329209d5b5e116d9087d50bdbcbbb35e4e0412f9971ef63c7"
+    },
+    {
+      "path": "panels-info/dense/dracula.webp",
+      "sourcePngSha256": "690c4e82dac9c283d91e8c4ec0b1c1637fc5694a251c8754fe5e575dd5a2b81b",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:dracula",
+      "webpSha256": "c427f50a153be1cc06be644c3da33625b7286ac1b9dddc53b03ce53c17522cf6"
+    },
+    {
+      "path": "panels-failovers/populated/dracula.webp",
+      "sourcePngSha256": "b6863dc37d0152f9487715ffb07df33d93166400f389315ba7de1dd00a7e1f8d",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:dracula",
+      "webpSha256": "2e475ed0560c9438551f02522c810c8b51a818cde09b6e1659046c6ce58a5b00"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/dracula.webp",
+      "sourcePngSha256": "132bc3ff353fb1e7442317a5f89d29db0f6c74bb848f9b4286ca5764ddaa6dd4",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:dracula",
+      "webpSha256": "acbd11050ddf11395deb941434e3cae6831ff8f8b4dc21921bdbf42a2f9e3a4e"
+    },
+    {
+      "path": "panels-failovers/empty-chain/dracula.webp",
+      "sourcePngSha256": "855a3e5d9f8d923f852f9fe91cd318f6fa4c49ac173eaf0d30dd87c7800391e0",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:dracula",
+      "webpSha256": "d958adcb569c69f5db69d15c0acd3c60c94f4996b585b01ec5d28c632e02d021"
+    },
+    {
+      "path": "panels-failovers/no-chains/dracula.webp",
+      "sourcePngSha256": "de7b7b760e2ba99e954fdccc5bed9fb0dd55ab5682ec873c6d7a73af47f52cad",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:dracula",
+      "webpSha256": "8de6b63e17d9296b26318fbf356c6111ddefb60db54dddb30df098785315952c"
+    },
+    {
+      "path": "panels-failovers/dense/dracula.webp",
+      "sourcePngSha256": "6054991ab56c9b13c8e360f3ece5f5b3f1c10e3cc8df137c02d23f0e304efa3b",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:dracula",
+      "webpSha256": "325240d562e2dc7ea7fc89c54a6f9eb7d61ba3f9bd318bff7c9d307106c21260"
+    },
+    {
+      "path": "panels-info/dense/dune.webp",
+      "sourcePngSha256": "0beb7e74363e5a82645c42927ff082e410e8eae3f00b2db2fd5d6b394f5cebf5",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:dune",
+      "webpSha256": "1873baeb9bc81faa183220a89e7296325868af75bfb2c1afaac7b040e523e02e"
+    },
+    {
+      "path": "panels-failovers/populated/dune.webp",
+      "sourcePngSha256": "1e51008aecef75ab9df2ef6cd488ddfeb2da98b98f7a69d35a49d19f3441852b",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:dune",
+      "webpSha256": "f431eba7e55bbd619c5cad0d9bdc834de36f0585db1b2cf1384628434c942b06"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/dune.webp",
+      "sourcePngSha256": "07d710e4dd4a2632b1c1ea647e857a8c6351f2965ddb20f7e7a2fada7bb3288b",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:dune",
+      "webpSha256": "645ee83fab1cdec88df5123a2006adcdd8d6282d7230aa687cc096f995fdd0f4"
+    },
+    {
+      "path": "panels-failovers/empty-chain/dune.webp",
+      "sourcePngSha256": "0003d64b487fb2b86c38e046ea6455768245dc7e6af2eb3681b7845d0b67e476",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:dune",
+      "webpSha256": "399c5f6316e9b3d31ab1ee31918c2b1c05504f0b07737fa97fc9f66299e9b2af"
+    },
+    {
+      "path": "panels-failovers/no-chains/dune.webp",
+      "sourcePngSha256": "5baa5035527d25e68d93b7d44217e4f64324456a67df0dc6a8e393cb9b7e879f",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:dune",
+      "webpSha256": "d621630a42088eaa0d7c47a90d085cc99f115083a9ff39a64744c88173313571"
+    },
+    {
+      "path": "panels-failovers/dense/dune.webp",
+      "sourcePngSha256": "f51b33c8018156c9aada6f2cc9f088e107a1198e5da40c6bae938cd72dfea2c9",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:dune",
+      "webpSha256": "d1bc43ceda0943243ce6afcc71d10527393c488f3775d6159686acccc15ecc31"
+    },
+    {
+      "path": "panels-info/dense/sage.webp",
+      "sourcePngSha256": "25419fb9b1b902853aff4ff1b21ddb8ee8fb62a1897e1a9531dd8e523586c55f",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:sage",
+      "webpSha256": "f2b1b9aed1365ee1e7d887babc3768627725889c47f63e903a0f6623958fe844"
+    },
+    {
+      "path": "panels-failovers/populated/sage.webp",
+      "sourcePngSha256": "9d6b104126de90d36549a762b0505c15bf6f6a00131461ef2f53e0c302522295",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:sage",
+      "webpSha256": "51a406c13afa259290ba6e710bffd4fc43c77e60326c448d6c0ea582c6d62502"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/sage.webp",
+      "sourcePngSha256": "a9f2a2211570edda3c857048856bd0b2d1b2d0967fde04a5b18e71783846b0af",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:sage",
+      "webpSha256": "ce2bd89bba50ed1e174d8eb9986dcd438460e6edec94d4c6edb826844b1fb73d"
+    },
+    {
+      "path": "panels-failovers/empty-chain/sage.webp",
+      "sourcePngSha256": "7c40d2e0a1b99e9a4c8396b3418975eabe9911b5c8debaba4333b8a71ab1dc0d",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:sage",
+      "webpSha256": "2fbfbcbb47e0be7e0719d1fd00a7e4eca88274d54b5f38674daa0b6a4709bdfb"
+    },
+    {
+      "path": "panels-failovers/no-chains/sage.webp",
+      "sourcePngSha256": "cc0ff45ac5b0e51dd88f2cf2adbc337d02969bc6c97af7748189684ae602a121",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:sage",
+      "webpSha256": "0ceadcd4836353f6c8c7470bae510877b65593a29a40d0df4b6e55e74d32c67f"
+    },
+    {
+      "path": "panels-failovers/dense/sage.webp",
+      "sourcePngSha256": "0fc1ecd19d0e1d95882a5f590f28cbac5c0fb24ebc4051c10c12d2471fc6c691",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:sage",
+      "webpSha256": "e181914a868116a0ddb460fa482c77bd39e33f98660068524abc1a23c4ed566a"
+    },
+    {
+      "path": "panels-info/dense/monokai.webp",
+      "sourcePngSha256": "8ebad67040e4483d074059343979d2eedd95fd9c1eb524c2867701f2710bd47e",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:monokai",
+      "webpSha256": "8411a58b2724220be7eef0eff6f0e3b7f4790df3b954b95265fa07d62717e9b1"
+    },
+    {
+      "path": "panels-failovers/populated/monokai.webp",
+      "sourcePngSha256": "0cda69805eda32366db549d4e1ba7bfd56a98ae8a55142aea354bb5e385dc9a6",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:monokai",
+      "webpSha256": "62eea3894981752d66f8b638618468e960465908b4642734dbd9be673b18e3f8"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/monokai.webp",
+      "sourcePngSha256": "bac41b431a0e3cd1b402aa4e4b0f617e9f3c0cfd47f04b225e6d3a9a4d782f8a",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:monokai",
+      "webpSha256": "cd56cb78f41c82738a9c446cc73925100d5da11c95afe67c6d92e649a3aa5922"
+    },
+    {
+      "path": "panels-failovers/empty-chain/monokai.webp",
+      "sourcePngSha256": "6cd60c9cdbd3f3e8fb82c3b50bee88e4e301e12c33f119a1a1f2e1d04e46c918",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:monokai",
+      "webpSha256": "f4e97fdbda2a408f391fe56dbcd611d25a5f5fbcdfeec6ead15086dcabfba083"
+    },
+    {
+      "path": "panels-failovers/no-chains/monokai.webp",
+      "sourcePngSha256": "3fa326fe5b79b863d295b8ec82c65ccdcb78aaf9c3dabe9cb8e744de7a87d989",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:monokai",
+      "webpSha256": "bf807f7831776e7395603d4bb69f7454b6737da2eabb9fe2c76cb43bb4a6ecbc"
+    },
+    {
+      "path": "panels-failovers/dense/monokai.webp",
+      "sourcePngSha256": "dff97d76444b1bf196f6b90b82f357966613dda564717283dd9fb4119218d9d1",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:monokai",
+      "webpSha256": "3c232903074ea00bf34f884de1e989ed12653a007a8c92d24c1af863c4d48a7a"
+    },
+    {
+      "path": "panels-info/dense/tokyoNight.webp",
+      "sourcePngSha256": "0447b76f7d9d2e3d060dc4b17c89936c5a1330e502eb6f5f7666846ce4bedf69",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "9543a8c87e5c05b2b313e88b7add0878f6a2290bb9e82c7b2e33456e9847bae5"
+    },
+    {
+      "path": "panels-failovers/populated/tokyoNight.webp",
+      "sourcePngSha256": "5e5a7d84701cae1618d2bc9dafd300243e161c4695c86137545bf1b961016698",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "f0e0bdf4544919b7798acc2b4badf953ec4af09b0a9e070ae360b3f3eac6f57b"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/tokyoNight.webp",
+      "sourcePngSha256": "d691774302e36300586143cd0a4c2fb02109151f99f3449aafad95aa5560ca0e",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "520181f149fd7d966d7fc85698f4d95526bb68508965db288f17ca7a229f2259"
+    },
+    {
+      "path": "panels-failovers/empty-chain/tokyoNight.webp",
+      "sourcePngSha256": "e210dfbcc593ce7d09cb3d729fd328ec482f9a4e4fefcc63c23a39c85e66a919",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "43ec47e6a10716fbf2b83cb8c55b2766dd3d53cca1876aed23931a6f3cf93ce1"
+    },
+    {
+      "path": "panels-failovers/no-chains/tokyoNight.webp",
+      "sourcePngSha256": "7d7c8ccb5e1592ce56c61c5979ca1259efdc85cc18adce671e62a1b3b022ad8c",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "d6af9b5480a9ab227ba7102e661bfb460a267ae0f17b0b4e8e662a88f7411b49"
+    },
+    {
+      "path": "panels-failovers/dense/tokyoNight.webp",
+      "sourcePngSha256": "711bc3ed7eeacfd3273430bebb611ce9a5a3bfce1f0a8a00c317b4345a8f71a8",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:tokyoNight",
+      "webpSha256": "47eeb51e3130de355e442d6221a99ddd1026438e13cc28fd1eb54da224fe80d4"
+    },
+    {
+      "path": "panels-info/dense/iceberg.webp",
+      "sourcePngSha256": "d19cb70210b1b0291811562547ff8def5f97a0b76e4729096185ef940121e412",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:iceberg",
+      "webpSha256": "87afe37db03c169439b90e540909732990e128ad7839f405b5af3ee27a983afc"
+    },
+    {
+      "path": "panels-failovers/populated/iceberg.webp",
+      "sourcePngSha256": "6a28e6a8229322c00a0495de2cc71368cb8afb8a6ef3bda38ee1861eb65105c2",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:iceberg",
+      "webpSha256": "1b12bdbd7a6cc08641509ff1c75e2384c81ec03080f7056b464a52497ff7a858"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/iceberg.webp",
+      "sourcePngSha256": "a07d9475f7b1c904d91b901a50696caef8e3713af0c3b6e3830acac720d0ce94",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:iceberg",
+      "webpSha256": "75ee59ad1d28c7f0601854ac2da6b25f82c4c7fca0703a676ffd93ff8e5b18f1"
+    },
+    {
+      "path": "panels-failovers/empty-chain/iceberg.webp",
+      "sourcePngSha256": "b42e89886af0c28ebd97ddd3bce278fbf71686b20290efcf6c33ae1e47c4b27a",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:iceberg",
+      "webpSha256": "9e333419f8880a1c2d021352393fc885d60cb845fdbe251a627efbbdc07a8165"
+    },
+    {
+      "path": "panels-failovers/no-chains/iceberg.webp",
+      "sourcePngSha256": "82607aa7769ce8e10095a026c56128c4cb01911f58771f7c782d5e539e50acd3",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:iceberg",
+      "webpSha256": "64b4f265b2c3c16d47ec3ed2d33a1c4ceea5da51e05a5f3ce9307c813654b3ec"
+    },
+    {
+      "path": "panels-failovers/dense/iceberg.webp",
+      "sourcePngSha256": "85703c5f18bb11424744b531be26a702f2e4c6daf0a725105d1df827f01efb44",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:iceberg",
+      "webpSha256": "9d0f60b342c9ac68a7016d810e8b9bf49b76c3681ba3d16a25ca2f1e06a79549"
+    },
+    {
+      "path": "panels-info/dense/radient.webp",
+      "sourcePngSha256": "712b7d4e9a63ca28acc6fd011bd54ebd5361afa14d54150c94541e97c2f63c87",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:radient",
+      "webpSha256": "64170caca5958392fb6499f33854de36ccd3152b8b963fa6084ded9d5b83da42"
+    },
+    {
+      "path": "panels-failovers/populated/radient.webp",
+      "sourcePngSha256": "285d10767e11f2cc398256ddb46ed9b751aa662d3371f091f51dfdca5984181c",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:radient",
+      "webpSha256": "aa713df9f5d1ecf7f9c7f7f64f87d4776618992338b143a0054e04fd3fbf5828"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/radient.webp",
+      "sourcePngSha256": "f220cbaedb98f7966bd71f8ca54f6ab290fe4c30a2928cec15d05a7b83e08a23",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:radient",
+      "webpSha256": "d9e3673b0de20497b166717f594f7d5aac1f56e1534e789ce003c07b4a59d9b0"
+    },
+    {
+      "path": "panels-failovers/empty-chain/radient.webp",
+      "sourcePngSha256": "75f12ae6a5435c5bb287bb8536c831ff4a77b5375e5ab60d4e39224f67e1a6dd",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:radient",
+      "webpSha256": "cb7a0807660a8e07f6e9299d12840d6e390924408d5d1369515bc6ccb825b5ac"
+    },
+    {
+      "path": "panels-failovers/no-chains/radient.webp",
+      "sourcePngSha256": "e7471bd38e2d4975f1d0c75a02d5684702e735566057b2821835e0c0b700c2e9",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:radient",
+      "webpSha256": "8df8ddffd8ea59c5ecbc310337af51bfdd4d51d733c996d7b4213d7c4e1043dd"
+    },
+    {
+      "path": "panels-failovers/dense/radient.webp",
+      "sourcePngSha256": "f2c2f2247246026d02b1d9d18f560079e474ea918d37b7716b6574ced0e77729",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:radient",
+      "webpSha256": "e023cef8ac4584b9363fc9d9495da217ec36d525aebeb30e9632e8ff33326ed8"
+    },
+    {
+      "path": "panels-info/dense/neon.webp",
+      "sourcePngSha256": "31e5935dedf3295f615d26cfa1c63c2cabc519a23f5cdf7a235fa9f3bada66e3",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:neon",
+      "webpSha256": "c91405ad176447614e05d9ae3af16579558d9cd35d9fbca6660a03e942ae006a"
+    },
+    {
+      "path": "panels-failovers/populated/neon.webp",
+      "sourcePngSha256": "8deb795275f14f49e1951ab18b839f1b232ad3e65afddf041b248acda7086129",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:neon",
+      "webpSha256": "d15a09bc16986ed4e5518d9927d081bb93911e67f4617b203c22ca902c4a3230"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/neon.webp",
+      "sourcePngSha256": "7b38785ae60f2eae997c13c9c9fbbc514bb43822bf3b908a1f99dad21535ab83",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:neon",
+      "webpSha256": "de01dc30ef8608811c9e66122f2ffd9c29c52e32f49e826b8c285d12a1735813"
+    },
+    {
+      "path": "panels-failovers/empty-chain/neon.webp",
+      "sourcePngSha256": "c5eed3a1948a5c284b43727b38400e68361e84cae31517773562aa995fcc06a1",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:neon",
+      "webpSha256": "2576a65ca997b7c220826300533f80d2fab1a5bd5e865a8767aff2715568536f"
+    },
+    {
+      "path": "panels-failovers/no-chains/neon.webp",
+      "sourcePngSha256": "4d36a6ac93c6aa9c2210b88c8aa9b205f9d22e33c37d408d091b67bb41bdd8d0",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:neon",
+      "webpSha256": "1a10a0de4aa8ec91bb3c0ff060b895d0f7a16d30db79ce9e99936857de89d70f"
+    },
+    {
+      "path": "panels-failovers/dense/neon.webp",
+      "sourcePngSha256": "8467d8d7ec5cfca0377a10f5c8003a7f9327e7b7e76b942f1ae54b1bad1043de",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:neon",
+      "webpSha256": "ff7b340bff07bde25c9825cab812f56d5e68cff7ee494283104f03f41cba3d73"
+    },
+    {
+      "path": "panels-info/dense/obsidian.webp",
+      "sourcePngSha256": "a6fdf3e27a53cd475564f8ad9d5b994f192d7655875fd68529fb10c4308037dd",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:obsidian",
+      "webpSha256": "cd2042257a24c03ffb5ef8bc46633f04e15cbe4c68a31b4c9c9c8c55470d1fab"
+    },
+    {
+      "path": "panels-failovers/populated/obsidian.webp",
+      "sourcePngSha256": "c0b0ca23cb786e0860d31c90c66728bfa22e0831ffb4cdd5400c9593f54c1686",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:obsidian",
+      "webpSha256": "1b903c6ad8353c5d74e7b2987ab3a90418aa2bd22707af64a36ddec3487d2e7e"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/obsidian.webp",
+      "sourcePngSha256": "a57d6e524b27618f7d42a64a001209d61339fff36eb3006f51bf4b6c669b7e45",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:obsidian",
+      "webpSha256": "9dff9cd4cb77c717b0e2c3590a8640322f1e5fcb2aa8e10bd9dde75a44fa88cd"
+    },
+    {
+      "path": "panels-failovers/empty-chain/obsidian.webp",
+      "sourcePngSha256": "55c2ff91a3667faaf0d3b58c104bc94624bb87dbbd6991e18f1f2977f0791bb3",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:obsidian",
+      "webpSha256": "19ff40fff9de12affb2983c5ed54ca5f83b457465d292d0c4e74b77b0d2288b9"
+    },
+    {
+      "path": "panels-failovers/no-chains/obsidian.webp",
+      "sourcePngSha256": "ba0b4bf266d292780597a594ccdc3ca4d17600cdcb957f1ba932d2e2df19cc38",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:obsidian",
+      "webpSha256": "e09c2322e6d328e498c9fb943afe0d70def35ba7c23fadc3acfe2486c7c60c66"
+    },
+    {
+      "path": "panels-failovers/dense/obsidian.webp",
+      "sourcePngSha256": "8ebd7ee441f0ee1291c6e568c676db0cd71044f95c3a2e29ae590a33d4707b09",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:obsidian",
+      "webpSha256": "2da08d789efd4ae118b4065599c649e79fca4a2376d309ad6edc310c777f7076"
+    },
+    {
+      "path": "panels-info/dense/synth.webp",
+      "sourcePngSha256": "4ecb4b8243107a0ab7fd4f9da4e9d64357050638335990e39e3f00481b5ed5f2",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-info--dense&viewMode=story&args=theme:synth",
+      "webpSha256": "487fc53079fc3e5b319e055d9c0a34dcd5dff7e458270194bc8e14e6b0e51741"
+    },
+    {
+      "path": "panels-failovers/populated/synth.webp",
+      "sourcePngSha256": "d26d0a4b747997959bb1cf78c6acc88d771babec8b46f735523cb934e9840431",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--populated&viewMode=story&args=theme:synth",
+      "webpSha256": "91757ab2614e5356757b11c9c18b690edf02901b03981e406f344b053328d4c2"
+    },
+    {
+      "path": "panels-failovers/failover-in-force/synth.webp",
+      "sourcePngSha256": "ca7d043f7421143478956d6ad39f4d08d4b260aff15e1be653a6061fba0abba1",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--failover-in-force&viewMode=story&args=theme:synth",
+      "webpSha256": "eea669b092622774a35f943747ce32b1965b96c8c1469be4efd2280ab5d7c664"
+    },
+    {
+      "path": "panels-failovers/empty-chain/synth.webp",
+      "sourcePngSha256": "18580c8b4b211e3e9aea33311a9c7deaf87fc7b2f2a7359dd32d1d437c955fdf",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--empty-chain&viewMode=story&args=theme:synth",
+      "webpSha256": "35ca3c4e65e104a7a25e8420e9788d41af3e6ffe237a7beaf166ea24bd4c3fc6"
+    },
+    {
+      "path": "panels-failovers/no-chains/synth.webp",
+      "sourcePngSha256": "e6ee6b6646173592e2a9f15681db040b96bad664036169fd4497afe689150e05",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--no-chains&viewMode=story&args=theme:synth",
+      "webpSha256": "940dc07b5b23f1d2a70739ee96c706a27baf65b98d61b2d908b9966ae3b3c3fa"
+    },
+    {
+      "path": "panels-failovers/dense/synth.webp",
+      "sourcePngSha256": "5378cbe64d039a5b27559eb887739d641f1f9144335a1666b60b65624b049c08",
+      "dimensions": [
+        2880,
+        1634
+      ],
+      "url": "http://localhost:6051/iframe.html?id=panels-failovers--dense&viewMode=story&args=theme:synth",
+      "webpSha256": "807750e3421f466ca5fac75222ec24868bf5a104c99a51aae34f297f0e05d782"
+    }
+  ]
+}

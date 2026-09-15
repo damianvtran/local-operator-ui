@@ -27,6 +27,12 @@ import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
+	type UpdateChannelStatus,
+	type UpdateCheckVerdict,
+	isReadableVersion,
+	updateCheckVerdict,
+} from "./update-check-verdict";
+import {
 	type InstallBlock,
 	type InstallFailurePayload,
 	type InstallIdentity,
@@ -248,6 +254,21 @@ export type BackendUpdateInfo = {
 	 * whether "nothing newer" is sent at all (review U12, round 3).
 	 */
 	manual?: boolean;
+};
+
+/**
+ * What the server channel found out, beside the offer it may carry.
+ *
+ * The two travel together because they answer different questions: `status` is
+ * what this check knows about the channel and is what the whole check's verdict
+ * is built from, while `info` is the offer the by-hand panel renders. The IPC
+ * handler for `check-for-backend-updates` unwraps the offer, because that
+ * channel's existing return shape is a panel's input and nothing consumes a
+ * status from it.
+ */
+type BackendCheckReport = {
+	status: UpdateChannelStatus;
+	info: BackendUpdateInfo | null;
 };
 
 /**
@@ -1442,111 +1463,6 @@ export class UpdateService {
 	}
 
 	/**
-	 * Register the backend service for proper shutdown when app quits
-	 * This ensures that restarted backend services are properly shut down
-	 */
-	private registerBackendShutdown(): void {
-		if (!this.backendService || this.backendService.isUsingExternalBackend()) {
-			return;
-		}
-
-		// We'll use a more direct approach to ensure the backend is shut down
-		// Register a handler for the 'before-quit' event which is supported in Electron's type definitions
-		const shutdownHandler = async () => {
-			logger.info(
-				"Shutting down backend service before app quit...",
-				LogFileType.UPDATE_SERVICE,
-			);
-			try {
-				// Use false for isRestart to indicate this is a final shutdown, not a restart
-				await this.backendService?.stop(false);
-				logger.info(
-					"Backend service successfully shut down before app quit",
-					LogFileType.UPDATE_SERVICE,
-				);
-			} catch (error) {
-				logger.error(
-					"Error shutting down backend service before app quit:",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-
-				// If normal shutdown fails, try a more aggressive approach
-				try {
-					logger.info(
-						"Attempting forced shutdown of backend service...",
-						LogFileType.UPDATE_SERVICE,
-					);
-					await this.forceTerminateBackendProcess();
-					logger.info(
-						"Forced shutdown of backend service completed",
-						LogFileType.UPDATE_SERVICE,
-					);
-				} catch (forceError) {
-					logger.error(
-						"Error during forced shutdown of backend service:",
-						LogFileType.UPDATE_SERVICE,
-						forceError,
-					);
-				}
-			}
-		};
-
-		// Remove any existing handlers to avoid duplicates
-		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
-		(app as any).removeAllListeners("before-quit");
-
-		// Register the handler for app quit
-		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
-		(app as any).once("before-quit", shutdownHandler);
-
-		// Also register a handler for the will-quit event as a backup
-		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
-		(app as any).once("will-quit", shutdownHandler);
-
-		logger.info(
-			"Registered backend service for proper shutdown on app quit",
-			LogFileType.UPDATE_SERVICE,
-		);
-	}
-
-	/**
-	 * Force terminate the backend process using platform-specific commands
-	 * This is a last resort method when normal termination fails
-	 */
-	private async forceTerminateBackendProcess(): Promise<void> {
-		if (!this.backendService) {
-			return;
-		}
-
-		const execAsync = promisify(exec);
-
-		try {
-			if (process.platform === "win32") {
-				// On Windows, use taskkill to forcefully terminate processes with "local-operator serve" in the command line
-				await execAsync('taskkill /f /im "local-operator serve" /t');
-				await execAsync(
-					"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
-				);
-			} else {
-				// On Unix systems (macOS/Linux), use pkill to forcefully terminate processes with "local-operator serve" in the command line
-				await execAsync('pkill -f "local-operator serve"');
-				// Give processes a moment to terminate gracefully before force killing
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-				// Force kill any remaining processes
-				await execAsync('pkill -9 -f "local-operator serve"');
-			}
-		} catch (error) {
-			// Ignore errors, as the process might not exist
-			logger.warn(
-				"Error during force termination (this may be normal if process was already terminated):",
-				LogFileType.UPDATE_SERVICE,
-				error,
-			);
-		}
-	}
-
-	/**
 	 * Set up event handlers for the autoUpdater
 	 */
 	private setupUpdateEvents(): void {
@@ -1742,7 +1658,10 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			try {
-				return await this.checkForBackendUpdates();
+				// The channel's status is the verdict's business; this handler's
+				// contract is the panel's input, so only the offer crosses it.
+				const { info } = await this.checkForBackendUpdates();
+				return info;
 			} catch (error) {
 				logger.error(
 					"Error checking for backend updates:",
@@ -1756,42 +1675,54 @@ export class UpdateService {
 		// Check for all updates (UI and backend)
 		ipcMain.handle(
 			"check-for-all-updates",
-			async (_event, options?: { manual?: boolean }) => {
+			async (_event, options?: { manual?: boolean; silent?: boolean }) => {
 				logger.info(
 					"Checking for all updates (UI and backend)...",
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.onCheckRequested(options);
+				/*
+				 * `silent` is its OWN flag, not the absence of `manual`.
+				 *
+				 * The two answer different questions. `manual` is the renderer's - it
+				 * lets a by-hand check re-offer a release whose artifact failed
+				 * verification, and it travels on to the server offer - while `silent`
+				 * decides whether this check emits the per-channel `*-not-available`
+				 * events, which `update-notification.tsx` clears stale state on and
+				 * which gate the npx registry read.
+				 *
+				 * `!options?.manual` made the suppression rule a side effect of a flag
+				 * that exists for a different reason, so a caller that set `manual` for
+				 * the re-offer rule while saying nothing about notifications would
+				 * acquire it invisibly. Reading it explicitly also keeps this handler's
+				 * own history: it used to drop `options` entirely and run every check
+				 * non-silent, so a caller that sends no `silent` still gets the events.
+				 */
+				const silent = options?.silent === true;
 				try {
-					return await this.checkForAllUpdates();
+					return await this.checkForAllUpdates(silent);
 				} catch (error) {
 					logger.error(
 						"Error checking for all updates:",
 						LogFileType.UPDATE_SERVICE,
 						error,
 					);
-
-					// Apply the same error filtering logic here
-					const shouldFilter = this.shouldFilterUpdateError(error as Error);
-
-					if (shouldFilter) {
-						logger.info(
-							"Error filtering result in check-for-all-updates: Reporting as no updates available",
-							LogFileType.UPDATE_SERVICE,
-						);
-						// Return a "no update available" result instead of throwing the error
-						return {
-							updateInfo: {
-								version: app.getVersion(),
-							},
-							versionInfo: {
-								version: app.getVersion(),
-							},
-							cancellationToken: null,
-						};
-					}
-
-					throw error;
+					/*
+					 * ALWAYS a verdict, including here, so the renderer's read of what
+					 * this check earned is total. The branch is total and the rejection
+					 * that used to sit on it is gone: neither channel's check rethrows
+					 * its own failure - each reports it through its own
+					 * `update-error`/`backend-update-error` event and resolves an
+					 * `unavailable` status - so the old filter-then-throw was dead in
+					 * practice, and removing it loses no report. Throwing would only
+					 * have moved the answer to "what did this check find out?" out of
+					 * the verdict and into an exception; a rejected invoke is still
+					 * reported by the button's own catch.
+					 */
+					return updateCheckVerdict({
+						app: "unavailable",
+						server: "unavailable",
+					});
 				}
 			},
 		);
@@ -1899,6 +1830,17 @@ export class UpdateService {
 			let block: InstallBlock | null = null;
 			try {
 				block = await this.runInstallPreflight(this.lastUpdateInfo);
+				// Native updaters do not await Electron's async quit listeners.
+				// Cleanup must precede even the watchdog/marker handoff effects.
+				if (!block) await this.backendService?.stop(false);
+			} catch (error) {
+				this.updateStage = "idle";
+				logger.error(
+					"Update handoff refused: owned backend cleanup failed",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+				return false;
 			} finally {
 				this.installPreflightInFlight = false;
 			}
@@ -1980,8 +1922,13 @@ export class UpdateService {
 	/**
 	 * Check for updates
 	 * @param silent - Whether to show a notification if no update is available
+	 * @returns What THIS channel found out, which is half of a whole check's
+	 *   answer and never an answer of its own: "nothing newer here" says nothing
+	 *   about the other channel, and a channel that could not reach an answer
+	 *   says it with `unavailable` rather than by omission. `checkForAllUpdates`
+	 *   is what turns the pair into the one sentence a user reads.
 	 */
-	public async checkForUpdates(silent = false): Promise<void> {
+	public async checkForUpdates(silent = false): Promise<UpdateChannelStatus> {
 		logger.info(
 			`Checking for updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
@@ -2007,7 +1954,10 @@ export class UpdateService {
 						"Application is running in development mode. Updates are disabled.",
 					);
 				}
-				return;
+				// Development mode does not find out nothing: it does not find out
+				// anything, which is the difference that keeps an affirmation off
+				// a check that never ran.
+				return "unavailable";
 			}
 
 			// Handle npx installation case
@@ -2017,10 +1967,35 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
+				let status: UpdateChannelStatus = "unavailable";
+
 				if (!silent) {
 					// Check npm registry for the latest version
 					const currentVersion = app.getVersion();
 					const latestVersion = await this.getLatestNpmVersion();
+
+					/*
+					 * Both readings, before either is compared (QA round 1, Q2).
+					 *
+					 * `isNewerVersion` coerces non-numeric parts to `NaN` and every
+					 * comparison against `NaN` is false, so a malformed pair reads as
+					 * "nothing newer" and would earn the whole check's affirmation. An
+					 * unreadable registry answer or an unreadable running version is
+					 * "we could not find out", which is `unavailable` - the same answer
+					 * an empty registry read already gets. This is also the answer for
+					 * an offer: a version that cannot be read is not one to tell the
+					 * user to move to.
+					 */
+					if (
+						!isReadableVersion(currentVersion) ||
+						!isReadableVersion(latestVersion)
+					) {
+						logger.warn(
+							`Unreadable version reading for the npx install (running: ${currentVersion}, latest: ${latestVersion}); reporting the channel as unavailable rather than comparing them.`,
+							LogFileType.UPDATE_SERVICE,
+						);
+						return "unavailable";
+					}
 
 					if (
 						latestVersion &&
@@ -2043,6 +2018,7 @@ export class UpdateService {
 								updateCommand: "npx local-operator-ui@latest",
 							});
 						}
+						status = "available";
 					} else {
 						logger.info(
 							`No newer version available. Current: ${currentVersion}, Latest: ${latestVersion || "unknown"}`,
@@ -2059,9 +2035,15 @@ export class UpdateService {
 								version: currentVersion,
 							});
 						}
+						// The event stays where it is - the renderer clears a stale
+						// offer on it - but only a registry that ANSWERED has said
+						// there is nothing newer: a read that came back empty is the
+						// absence of a reading, and calling it "current" would let a
+						// failed fetch earn the whole check's affirmation.
+						status = latestVersion ? "current" : "unavailable";
 					}
 				}
-				return;
+				return status;
 			}
 
 			// Regular update flow for packaged app
@@ -2069,9 +2051,14 @@ export class UpdateService {
 			autoUpdater.autoDownload = false;
 
 			// Configure the autoUpdater to handle silent mode
-			const originalNotAvailableHandler = autoUpdater.listeners(
+			/*
+			 * Every listener, not the first one: `removeAllListeners` takes off all
+			 * of them, so restoring `listeners(...)[0]` alone would drop any second
+			 * subscriber for the rest of the session.
+			 */
+			const originalNotAvailableHandlers = autoUpdater.listeners(
 				"update-not-available",
-			)[0];
+			);
 
 			if (silent) {
 				// Temporarily remove the update-not-available handler to prevent notifications
@@ -2086,17 +2073,76 @@ export class UpdateService {
 				});
 			}
 
-			// Check for updates
-			await autoUpdater.checkForUpdates();
-
-			// Restore original handler if we're in silent mode and modified it
-			if (silent && originalNotAvailableHandler) {
-				autoUpdater.removeAllListeners("update-not-available");
-				autoUpdater.on(
-					"update-not-available",
-					originalNotAvailableHandler as (info: unknown) => void,
-				);
+			// Check for updates.
+			//
+			// The channel's status comes from what the CHECK resolved to, never from
+			// which events it happened to emit: electron-updater resolves a
+			// `UpdateCheckResult` in both cases (`isUpdateAvailable` false after it
+			// emits `update-not-available`), and this service's own filtered-error
+			// path emits that same `update-not-available` for a check that found out
+			// nothing at all - so the event cannot tell "nothing newer" from "no
+			// answer", which is exactly how the renderer came to show "You are up to
+			// date" beside a server offer. A `null` result is the updater declining
+			// to run at all (`isUpdaterActive()` false), which is a refusal to find
+			// out rather than an answer.
+			/*
+			 * The swap is undone in a `finally`, and UNCONDITIONALLY while `silent`.
+			 *
+			 * `checkForUpdates()` rejects on a failed feed fetch, and a restore
+			 * placed after the `await` never ran on that path: the service's own
+			 * `update-not-available` forwarder (`setupUpdateEvents`) stayed removed
+			 * for the rest of the session, with the silent no-op listener left
+			 * behind to swallow the next genuine not-available event. Restoring
+			 * outside the `if (original...)` guard is the same hazard from the other
+			 * side: when there was nothing to put back, the temporary listener was
+			 * still the one that had to come off.
+			 */
+			let result: Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>;
+			try {
+				result = await autoUpdater.checkForUpdates();
+			} finally {
+				if (silent) {
+					autoUpdater.removeAllListeners("update-not-available");
+					for (const handler of originalNotAvailableHandlers) {
+						autoUpdater.on(
+							"update-not-available",
+							handler as (info: UpdateInfo) => void,
+						);
+					}
+				}
 			}
+
+			if (!result) return "unavailable";
+			/*
+			 * What the packaged app channel is allowed to conclude, from the readings
+			 * the updater resolved rather than from the flag alone (QA round 1, Q2).
+			 *
+			 * `isUpdateAvailable` is a comparison's RESULT: when either side of that
+			 * comparison was not a version, the flag is false for a reason that has
+			 * nothing to do with being current, and "false" then earns the
+			 * installation-wide affirmation. Both sides are therefore checked here:
+			 * the running version, and the version the feed reported. electron-updater
+			 * populates `versionInfo` on BOTH of its outcomes
+			 * (`AppUpdater.doCheckForUpdates`: the not-available and available returns
+			 * both carry `versionInfo: updateInfo`), so a missing one is an absent
+			 * reading - not a legitimate "no update" - and is refused for the same
+			 * reason. A malformed reading on an otherwise-available check yields no
+			 * offer either: the version could not be read, so there is nothing to name
+			 * and nothing to affirm.
+			 */
+			const runningVersion = app.getVersion();
+			const publishedVersion = result.versionInfo?.version;
+			if (
+				!isReadableVersion(runningVersion) ||
+				!isReadableVersion(publishedVersion)
+			) {
+				logger.warn(
+					`Unreadable version reading from the update feed (running: ${runningVersion}, published: ${publishedVersion}); reporting the channel as unavailable rather than trusting isUpdateAvailable=${result.isUpdateAvailable}.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return "unavailable";
+			}
+			return result.isUpdateAvailable ? "available" : "current";
 		} catch (error) {
 			logger.error(
 				"Error checking for updates:",
@@ -2115,6 +2161,12 @@ export class UpdateService {
 					(error as Error).message,
 				);
 			}
+			// An error is not an answer: a known-spurious no-availability error is
+			// filtered here (the autoUpdater's own listener turns it into an
+			// `update-not-available` event), and an unfiltered one is reported to the
+			// user through `update-error` above. Either way this check did not find
+			// out what the running version is, so it may not affirm anything.
+			return "unavailable";
 		}
 	}
 
@@ -2492,9 +2544,18 @@ export class UpdateService {
 		return identity;
 	}
 
+	/**
+	 * Check the installed server against the published release.
+	 *
+	 * @returns this channel's status and the offer it may carry. The renderer
+	 *   events below are unchanged and still the thing a panel clears itself on;
+	 *   the status is what keeps an "up to date" sentence off a check that
+	 *   proved nothing, which is why "could not determine the version" returns
+	 *   `unavailable` rather than the `current` it used to read as.
+	 */
 	public async checkForBackendUpdates(
 		silent = false,
-	): Promise<BackendUpdateInfo | null> {
+	): Promise<BackendCheckReport> {
 		logger.info(
 			`Checking for backend updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
@@ -2520,7 +2581,7 @@ export class UpdateService {
 						"Backend updates are disabled in development mode.",
 					);
 				}
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			// Check if we have a backend service and get its startup mode
@@ -2534,7 +2595,7 @@ export class UpdateService {
 					"No python server is available, nothing to check or update",
 					LogFileType.UPDATE_SERVICE,
 				);
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			const installedVersion = await this.getInstalledBackendVersion();
@@ -2555,7 +2616,7 @@ export class UpdateService {
 						"Unable to determine backend version.",
 					);
 				}
-				return null;
+				return { status: "unavailable", info: null };
 			}
 
 			// "Unknown" is not a version older than the latest one - it is the
@@ -2572,7 +2633,46 @@ export class UpdateService {
 						"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
 					);
 				}
-				return null;
+				return { status: "unavailable", info: null };
+			}
+
+			/*
+			 * A reading that ARRIVED but cannot be parsed is the same absence as one that
+			 * never arrived (QA round 1, Q2): `999.invalid` installed against `0.54.43`
+			 * published compared as not-newer - every `NaN` comparison in
+			 * `isNewerVersion` is false - and the channel reported `current`, which
+			 * affirmed that the whole installation was up to date from a health payload
+			 * nobody could read.
+			 *
+			 * This gate sits AFTER the two branches above, not before them. Both of those
+			 * describe an absent reading in its own words - no value at all, and the
+			 * `"Unknown"` sentinel that an older server's health payload produces (see
+			 * `getInstalledBackendVersion`) - and `isReadableVersion("Unknown")` is
+			 * false, so a gate placed above them would answer for exactly the cases they
+			 * exist to name and leave both unreachable while claiming they kept their own
+			 * message (review round 3, R8). What is left for this gate is the ordinary
+			 * case's leftovers: a value that arrived and cannot be parsed.
+			 */
+			const unreadable = [
+				["installed", installedVersion as string | null],
+				["published", latestVersion as string | null],
+			].filter(([, value]) => !isReadableVersion(value));
+			if (unreadable.length > 0) {
+				logger.error(
+					`Unable to read the ${unreadable
+						.map(([which]) => which)
+						.join(
+							" and ",
+						)} server version (installed: ${installedVersion}, published: ${latestVersion}); no status is reported rather than comparing an unreadable reading.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				if (!silent) {
+					this.sendToRenderer(
+						"backend-update-error",
+						"Unable to determine backend version.",
+					);
+				}
+				return { status: "unavailable", info: null };
 			}
 
 			const shouldUpdate = this.isNewerVersion(latestVersion, installedVersion);
@@ -2615,7 +2715,7 @@ export class UpdateService {
 				);
 				this.sendToRenderer("backend-update-available", updateInfo);
 
-				return updateInfo;
+				return { status: "available", info: updateInfo };
 			}
 
 			logger.info(
@@ -2635,7 +2735,7 @@ export class UpdateService {
 				});
 			}
 
-			return null;
+			return { status: "current", info: null };
 		} catch (error) {
 			logger.error(
 				"Error checking for backend updates:",
@@ -2656,7 +2756,10 @@ export class UpdateService {
 				);
 			}
 
-			return null;
+			// A failed check is not "the server is current": the panel's copy and
+			// the pip fallback used to be offered either way, and the affirmation
+			// used to be earned either way.
+			return { status: "unavailable", info: null };
 		}
 	}
 
@@ -2952,25 +3055,6 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			// Ensure the backend is fully stopped before attempting to restart
-			// Wait a bit to ensure any cleanup processes have completed
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-
-			// Verify the backend is actually stopped
-			const isHealthy = await this.checkBackendHealth();
-			if (isHealthy) {
-				logger.warn(
-					"Backend service is still running after stop command, attempting force termination",
-					LogFileType.UPDATE_SERVICE,
-				);
-
-				// Try force termination
-				await this.forceTerminateBackendProcess();
-
-				// Wait again to ensure termination
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-			}
-
 			// Use the dedicated restart method which properly handles the restart process
 			const restartSuccess = await this.backendService.restart();
 
@@ -3014,9 +3098,6 @@ export class UpdateService {
 						return false;
 					}
 				}
-
-				// Register the backend service for proper shutdown when app quits
-				this.registerBackendShutdown();
 			} else {
 				logger.error(
 					"Failed to restart backend service after update",
@@ -3117,11 +3198,25 @@ export class UpdateService {
 
 	/**
 	 * Check for all updates (UI and backend)
+	 *
 	 * @param silent - Whether to suppress notifications on no updates
+	 * @returns what the WHOLE check found out, with the one sentence it earns.
+	 *   This is what the renderer's "check for updates" affirmation is read
+	 *   from: a sentence about the user's installation cannot be assembled from
+	 *   one channel's event, which is how the app came to offer a server update
+	 *   and affirm it was up to date in the same turn. No new event channel
+	 *   carries it - each channel's own events are unchanged, and the verdict
+	 *   crosses the IPC boundary as this call's return value.
 	 */
-	public async checkForAllUpdates(silent = false): Promise<void> {
-		await this.checkForUpdates(silent);
-		await this.checkForBackendUpdates(silent);
+	public async checkForAllUpdates(silent = false): Promise<UpdateCheckVerdict> {
+		// Sequential rather than concurrent: each channel reports through its own
+		// renderer events and completes on its own schedule, and the verdict is
+		// the only thing here that reads both - so running them together would
+		// change nothing a user sees while making the pair's failures harder to
+		// attribute.
+		const app = await this.checkForUpdates(silent);
+		const server = await this.checkForBackendUpdates(silent);
+		return updateCheckVerdict({ app, server: server.status });
 	}
 
 	/**
