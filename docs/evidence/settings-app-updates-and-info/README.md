@@ -1,4 +1,4 @@
-# The settings server-version row, in the five states discovery can leave it in
+# The settings server-version row, in every state discovery can leave it in
 
 The reported defect was the row this set photographs. Settings' "Server version"
 printed `Unavailable` (or named a *different* install than the one serving) while
@@ -18,18 +18,19 @@ server).
 ## What produced these frames
 
 **Storybook on the branch's own tree, driven by `scripts/capture-evidence.mjs`.**
-The five states cannot be asked for on demand in the live app: `detached` needs a
-real daemon to exit, `degraded` needs two probes to fail on a live one, and
-`connecting` exists only between mount and the first probe. A fixture is therefore
-the only instrument that reaches all five in one sitting, and
-`app-updates-section.stories.tsx` exists to be that fixture — it stubs
+The states cannot be asked for on demand in the live app: `detached` needs a real
+daemon to exit, `degraded` needs two probes to fail on a live one, `wedged` needs
+a daemon whose heartbeat stopped while its process lives, and `connecting` exists
+only between mount and the first probe. A fixture is therefore the only
+instrument that reaches all of them in one sitting, and
+`app-updates-and-info.stories.tsx` exists to be that fixture — it stubs
 `window.api.backend` with a snapshot and restores it on unmount, and the stories
 are in the sweep's `STORIES` list so the surface is reviewed by every future pass
 rather than only by this one.
 
 ```
-node node_modules/storybook/bin/index.cjs dev -p 6031 --ci --quiet
-node scripts/capture-evidence.mjs http://localhost:6031 \
+node node_modules/storybook/bin/index.cjs dev -p <port> --ci --quiet
+node scripts/capture-evidence.mjs http://localhost:<port> \
   --only=settings-app-updates-and-info \
   --themes=localOperatorDark,localOperatorLight --allow-backend
 ```
@@ -37,48 +38,91 @@ node scripts/capture-evidence.mjs http://localhost:6031 \
 `--allow-backend` is stated rather than implied: the operator's machine has
 daemons running, nothing in this run talks to one (every story replaces the
 bridge), and `capture-evidence.mjs` otherwise refuses to run at all while an
-origin answers. Two consecutive runs of that command produced frames that are
-**byte-identical** — the md5s quoted below are from the second run and match the
-first, ten for ten, which is what makes a re-take comparable rather than merely
-similar.
+origin answers.
+
+`--only=settings-app-updates-and-info` matches this surface AND
+`settings-app-updates-and-info-narrow`, so the wide and narrow frames in one run
+came from the same command.
 
 Sized to the section rather than to a window: 980x320, in which the content
-occupies `948x184+8+8` (`magick -trim`). At the app's shipped 1380x800 the section
+occupies `948x192+8+8` (`magick <frame> -trim -format '%wx%h%O' info:`; 184
+before this round, 192 now that the row's value carries the daemon's address and
+`degraded` carries its state word on a third line). At the app's shipped 1380x800 the section
 would sit on ~95% empty ground — inside `check-evidence`'s 98.5% uniformity
 ceiling, but in the band its two nearest legitimate frames occupy, and a frame
-that is mostly page says nothing about the row it exists for.
+that is mostly page says nothing about the row it exists for. The narrow surface
+next door is 620x360 and is the frame that proves the grid reflows.
 
 ## The readback
 
 | state | `Server version` prints | source of the string |
 | --- | --- | --- |
-| `attached-to-discovered-daemon` | `0.54.47` | main's snapshot, `state: attached` |
-| `degraded-daemon` | `0.54.47` | main's snapshot, `state: degraded`, 2 failed probes |
-| `detached-daemon` | `Unavailable` | main's snapshot, `state: detached` |
+| `attached-to-discovered-daemon` | `0.54.47 · 127.0.0.1:7341` | main's snapshot, `state: attached` |
+| `owned-daemon` | `0.54.47 · 127.0.0.1:7341` | the daemon THIS APP started — the state the first review round's MAJOR finding was about |
+| `replaced-daemon` | `0.54.47 · 127.0.0.1:55001` | a successor this app started for a daemon it owned |
+| `degraded-daemon` | `0.54.47 · 127.0.0.1:7341` + `Not answering` | main's snapshot, `state: degraded`, 2 failed probes |
+| `attached-without-version` | `Version unknown` | a live connection whose daemon publishes no version |
+| `wedged-daemon` | `Not attached` | a daemon that is running and that this app did not attach to |
+| `detached-daemon` | `Not connected` | main's snapshot, `state: detached` |
 | `before-first-probe` | `Loading...` | main's snapshot, `state: connecting` |
 | `no-bridge` | `Unavailable` | the fallback probe's catch branch — no `window.api.backend` at all |
 
-Only THREE distinct pictures exist among the ten frames, and the two identities
-are the claims rather than a defect:
+Two of these strings are new in this round and one of them is now *only* the
+fallback's: `detached` said `Unavailable` before, which is the same word a host
+with no bridge to ask prints — one string, two facts (lost server / this host
+cannot ask anyone). `Unavailable` is now reserved for the second, and
+`Unknown (update required)` is gone entirely: a serve record may simply omit
+`version`, so that string asserted a remedy nothing had established, and
+recommending an update is the update control's job rather than this row's.
 
-- `degraded-daemon` is byte-identical to `attached-to-discovered-daemon`: the pair
-  shares `7738c3e245421a87341a222741f99afe` dark and
-  `d3d018930e85894785fb6a68fe13cea4` light. That identity IS "a degraded daemon does not blank the row": two missed
-  probes move the connection's state, not the number, and the row is deliberately
-  not given a degraded marker of its own (`isServerReachable` keeps every query
-  enabled for `degraded`).
-- `detached-daemon` is byte-identical to `no-bridge`
-  (`8eb57fa5f757820a89d3b819176b3d0c` dark / `a3c8dfd5b44901ff383222f0d74c0529`
-  light). Both reach `Unavailable`, from two different paths — a `detached`
-  snapshot, and the fallback probe failing. The pre-change app could not tell
-  those two apart either, which is the reported confusion stated as a picture.
-- `before-first-probe` has its own bytes in both palettes
-  (`676afff19376e7c723fc22153ba3c0ef` dark, `e8cf63c4426331ca6a10ee6c21cfb6f3`
-  light).
+## What the frames show, measured
+
+Ten stories, two palettes. Five of the ten are new in this round (the four states
+above plus the hover), and the value of every row changed, so the whole set was
+re-taken rather than patched.
+
+- `degraded-daemon` is no longer byte-identical to `attached-to-discovered-daemon`
+  (`c30ba64a…` vs `b02ac7e0…` dark, `ade8b74a…` vs `2f4c3eca…` light). Round 1's
+  D4 finding: two of three probes had failed and no surface said so. The state is
+  now visible twice — the value steps to `text-ink-muted` and a third line reads
+  `Not answering`.
+- `owned-daemon` IS byte-identical to `attached-to-discovered-daemon`
+  (`b02ac7e0…` dark, `2f4c3eca…` light), and that identity is the claim rather
+  than a defect: the row prints a version and an address where the round-1 MAJOR
+  finding had it printing `Unknown (update required)` for a backend the app had
+  started seconds ago. `owned` is not a thing this row renders — it is a thing
+  main now reports, and `scripts/daemon-discovery-evidence.mjs` is where a real
+  spawn is shown reaching it.
+- `detached-daemon` is no longer byte-identical to `no-bridge`
+  (`f2bb1006…` vs `8eb57fa5…` dark). It prints `Not connected`; `no-bridge` still
+  prints `Unavailable`, and those bytes are unchanged (`8eb57fa5…` / `a3c8dfd5…`)
+  from every earlier pass — which is also why the baseline set's identity claim
+  below had to be corrected rather than carried.
+- `before-first-probe` keeps its own bytes in both palettes
+  (`676afff1…` dark, `e8cf63c4…` light).
+- `value-hover` is the same frame as `attached-to-discovered-daemon` with the
+  pointer on the value (`de57134a…` dark, `b1caacc5…` light): it shows the
+  tooltip that carries main's own sentence — `Connected to the daemon on
+  http://127.0.0.1:7341 (pid 4242, v0.54.47).` That is D1's attribution half, and
+  it needs the rig's `hoverSettleMs`: a tooltip opens on the shared
+  `TooltipProvider`'s 400 ms delay, so a frame taken on the next paint would have
+  been the unopened state under a name that claims the tooltip.
 
 The other values in the frame — `1.0.0` for the application version, `darwin
 (x64)`, Node and Electron — come from the Storybook preview's own `systemInfo`
 stub and are not evidence about anything this change touches.
+
+**Reproducible, and it took a fix to be.** Two consecutive runs at this head
+produce all 26 frames byte for byte (the md5s above are from the last one). That
+was NOT true of the first capture: `degraded-daemon` came back with two different
+hashes on two runs of the same tree. The cause was the rig, not the row — a
+`{ hover }` entry moves the real pointer for its own frame and nothing moved it
+back, so the next story loaded with the pointer already inside the row's value,
+where a tooltip opens after 400 ms. `capture-evidence.mjs` now parks the pointer
+at the bottom-right of the requested viewport before every navigation (commit
+`f44da7f73`), and this paragraph is the measurement of that fix. It is also why
+`value-hover` can be taken at all: the same pointer, aimed deliberately, is what
+opens the tooltip that frame exists for.
 
 ## The pair, and what it measures
 
@@ -97,12 +141,17 @@ stating exactly:
   light. Before this change the row printed the same bytes for a serving daemon,
   a degraded one, a detached one, a not-yet-probed one, and a host with no bridge
   at all.
-- **Those bytes are this set's `detached` and `no-bridge` frames**, unchanged.
-  Which is the defect in one line: the row's number could not distinguish a live
-  server from no server, because it came from a probe the renderer made itself and
-  never from the daemon main was attached to.
-- After the change the same five states produce `0.54.47` on the two live ones,
-  `Unavailable` on `detached`/`no-bridge`, and `Loading...` before the first probe.
+- **Those bytes are this set's `no-bridge` frames** and nothing else
+  (`8eb57fa5…` / `a3c8dfd5…`, unchanged since the first pass). The baseline is a
+  capture of a tree where the fallback probe was the only probe, so its
+  `Unavailable` is the fallback's own answer — which is why that string is still
+  reachable here and why `detached`, which used to share it byte for byte, does
+  not any more.
+- Before this change the row could not distinguish a live server from no server,
+  because the number it printed came from a probe the renderer made itself and
+  never from the daemon main was attached to. After it, the same five states
+  produce the strings in the readback table above, and `degraded` no longer looks
+  like `attached`.
 
 ## What these frames do not prove
 
@@ -110,7 +159,8 @@ stating exactly:
   frames cannot show that main's discovery found the right daemon; they show what
   the row prints for each snapshot main can produce. The runtime half is
   `scripts/daemon-discovery-evidence.mjs`, which drives the shipped modules
-  against real `lop serve` daemons and prints what it found.
+  against real `lop serve` daemons — including the fixed-port spawn this round
+  fixed — and prints what it found.
 - **Not the exact reported failure.** The interesting case is a *healthy* daemon
   refusing a browser-origin request, and no frame here photographs that: nothing
   was listening on the fallback's configured origin (port 1111) when this set was
@@ -123,12 +173,15 @@ stating exactly:
   a window stays open; the story deliberately pushes nothing
   (`onStatusChange: () => () => {}`) so the frame is a function of the snapshot
   rather than of when it was taken.
+- **Not the Retry.** The banner's Retry now asks main to re-discover over IPC
+  (`backend.reconnect()`), and a settings still has no control of its own. The
+  verb's own evidence is that it exists and returns a snapshot; the click is not
+  photographed in this set.
 
 ## Re-taking the set
 
 The command above is the whole procedure; the frames land in this directory, and
-the manifest is updated by the capturer's narrowed-run path (`frames` and
-`surfaces` grow by ten and five, `partialCapture` records the run). Delete this
+the manifest is updated by the capturer's narrowed-run path. Delete this
 directory before re-running if the capture is meant to be counted as a new
 surface: a frame that already exists is not an addition, and the manifest's
 arithmetic distinguishes the two by exactly that.
