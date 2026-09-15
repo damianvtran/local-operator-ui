@@ -351,7 +351,7 @@ export const Unattachable: Story = {
 				desktopAvailable: false,
 				failures: 0,
 				detail:
-					"A Local Operator daemon is running at http://127.0.0.1:1111 (pid 42411, v0.55.6) and no serve record this app can read describes that address, so this app holds no credential for it. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and will attach to or start a daemon as soon as the address is free or admits it.",
+					"A Local Operator daemon is running at http://127.0.0.1:1111 (pid 42411, v0.55.6) and no serve record this app can read describes that address, so this app holds no credential for it. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and starts a daemon there as soon as the address is free; attaching to the daemon already there needs a serve record describing it, which only that daemon can publish.",
 			}),
 		),
 	],
