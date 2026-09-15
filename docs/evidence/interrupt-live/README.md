@@ -47,11 +47,44 @@ switches are exported to the app and to the backend behind it. Every inherited
 | `after-stop.png` | After the control was pressed at its painted pixels: the transcript carries "Interrupted", the composer is back to "Ask me for help", and the control is GONE. The backend reports `streaming: false` with `last_turn_outcome: aborted` while `[bash:45]` had ~44 s left to run. |
 | `after-escape.png` | The same, driven by Escape: the aborted `bash sleep 45` row shows the tool was killed 0.3 s in rather than completing, and the turn ends with the session still alive. |
 | `idle-escape.png` | Escape with nothing running: the composer keeps its draft and no notice is rendered. A stopped turn with no children and no background jobs says nothing at all, which is the notification bridge's own rule about a completed `interrupted`. |
+| `pane-escape.png` | The run-details pane claiming a press that did not come from it: opened from its own trigger, focus in the composer, one Escape - the pane is gone and the turn is STILL streaming (`pane.escape`: `{openBefore: true, openAfter: false, streamingAfter: true}`). QA round 1's Q2 measured the opposite on the previous head, where one press interrupted the turn and left the pane open. |
 
 `interrupt-proof.json` is the same run's record: the capability map the app
 negotiated (including `session_interrupt: 1`), the backend's streaming state
 before and after each press, the aim point and the hit-test result for the click,
-and the draft before and after the idle press.
+the composer cluster's own boxes in both states, the second press at the point the
+first one landed, and the draft before and after the idle press.
+
+### The reserved slot, measured
+
+UX round 1's U1 and QA's Q1 both found that the dictation control slid into the
+Stop's box, so a reflex second press at the same coordinates started a
+microphone recording. The fix reserves the box, and the rig measures it rather
+than describing it (`slot.*` steps, default rung, CSS pixels):
+
+```
+slot.clusterIdle    mic x=1235 w=32 centre=1251 | reserved-slot x=1271 w=32 centre=1287 | Send x=1307
+turn1.pressed       rect {w:32,h:32,left:1271,top:803}  (the Stop occupies 1271..1303)
+slot.repress        owner "div|not-reserved"  after {recording:false, mic:true}
+```
+
+The reserved box is at the control's own coordinates to the pixel, the dictation
+control does not move between the two states, and pressing the point the first
+press landed in afterwards starts nothing. The same claim is asserted without a
+browser in `scripts/interrupt-control.test.mjs` at BOTH rungs (the small view
+reserves a 28px box, matching the `icon-sm` control it stands in for).
+
+## Reproducibility, stated precisely
+
+A re-shoot of this rig's frames is byte-identical except that the FIRST frame of a
+pass has differed once by up to 2/255 on the placeholder's glyphs (reviewer round
+1, NIT 3 measured 246 pixels with a maximum channel delta of 2 in a 16x24 box, on
+`chat-message-input/idle/localOperatorDark.webp`, whose Light sibling came back
+byte-identical from the same run). It is not a layout or colour change - the same
+pass's other frames, including two that render the identical placeholder string,
+reproduced exactly - and the cause is unresolved rather than explained away, so
+the claim this file makes is "no layout or colour change between passes", not
+"byte-identical".
 
 ## What these frames do NOT show
 

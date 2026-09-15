@@ -109,26 +109,60 @@ export function interruptNotice(
 	const children = receipt.children_running ?? 0;
 	const jobs = receipt.background_jobs ?? 0;
 	if (children === 0 && jobs === 0) return null;
-	// "background job" is the runtime's own term for a detached `bash` command in
-	// the text it prints when one finishes (`background job '<name>' failed:`),
-	// so the notice names the same thing the transcript does.
-	const childClause =
-		children === 1
-			? "1 subagent is still running"
-			: `${children} subagents are still running`;
-	const jobClause =
-		jobs === 1
-			? "1 background job is still running"
-			: `${jobs} background jobs are still running`;
 	/*
-	 * The levers are named per fact rather than as one generic suggestion. The
-	 * run panel READS - it ends nothing - and `/stop` is the only thing that ends
-	 * a background job, because an interrupt never touches one. A single "press
-	 * Stop again" would be false for both halves.
+	 * Two nouns, one phrase each, so the two counts can share a subject without
+	 * saying "still running" twice. Design round 1's D3 measured the old shape at
+	 * five rendered lines in an 820px window, one of them the duplicate: the two
+	 * counts are now one clause ("2 subagents and 1 background job are still
+	 * running") whenever both are present, which is one line fewer at the narrow
+	 * rung for the same facts.
+	 *
+	 * "background job" is the runtime's own term for a detached `bash` command in
+	 * the text it prints when one finishes (`background job '<name>' failed:`), so
+	 * the notice names the same thing the transcript does.
+	 */
+	const subagents = children === 1 ? "1 subagent" : `${children} subagents`;
+	const backgroundJobs =
+		jobs === 1 ? "1 background job" : `${jobs} background jobs`;
+	/*
+	 * The levers are named per fact rather than as one generic suggestion, and the
+	 * reading surface is named the way the app names it: "Run details" is the
+	 * pane's own title, its `aria-label` and its trigger ("Open run details"), and
+	 * design round 1's D2 measured that "run panel" exists in code comments only.
+	 * A reader who takes the sentence literally has to be able to find the thing it
+	 * names.
+	 *
+	 * The pane READS - it ends nothing - and `/stop` is the only lever that ends a
+	 * background job, because an interrupt never touches one. A single "press Stop
+	 * again" would be false for both halves.
 	 */
 	if (children > 0 && jobs > 0)
-		return `Stopped this turn. ${childClause}, and ${jobClause} - open the run panel to watch the subagents, and use /stop to end the session and its jobs.`;
+		return `Stopped this turn. ${subagents} and ${backgroundJobs} are still running - open Run details to watch them, and use /stop to end the session and its jobs.`;
 	if (children > 0)
-		return `Stopped this turn. ${childClause} - open the run panel to watch ${children === 1 ? "it" : "them"}, or use /stop to end the session.`;
-	return `Stopped this turn. ${jobClause} - it outlived the turn by design, so /stop is what ends it with the session.`;
+		return `Stopped this turn. ${subagents} ${children === 1 ? "is" : "are"} still running - open Run details to watch ${children === 1 ? "it" : "them"}, or use /stop to end the session.`;
+	return `Stopped this turn. ${backgroundJobs} ${jobs === 1 ? "is" : "are"} still running - ${jobs === 1 ? "it outlived the turn by design" : "they outlived the turn by design"}, so /stop is what ends ${jobs === 1 ? "it" : "them"} with the session.`;
+}
+
+/**
+ * What a backend that cannot interrupt owes the user WHILE one of its turns runs.
+ *
+ * This is UX round 1's U4: with `session_interrupt` absent the control is not
+ * rendered (correct - it would be a button whose every press is refused) and
+ * Escape is a no-op, so the composer said nothing at all while the user's work
+ * ran. Hiding a control that cannot work is right; leaving the user in the
+ * original bug's silence is not, and the remaining lever (`/stop`, which ends
+ * the SESSION) is discoverable only through the slash menu.
+ *
+ * One line in the same muted band `interruptNotice` uses, for one situation: a
+ * turn is streaming and this build cannot stop it turn-wise. It says "predates
+ * the control" rather than "unsupported" because that is the actual cause - a
+ * version skew, not a configuration error the user could fix here - and it names
+ * the honest lever instead of implying a second press will help.
+ */
+export function interruptUnavailableNotice(
+	busy: boolean,
+	enabled: boolean,
+): string | null {
+	if (!busy || enabled) return null;
+	return "This backend predates the stop control, so this turn cannot be stopped from here - /stop ends the session and everything in it.";
 }

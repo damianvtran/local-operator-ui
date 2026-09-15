@@ -738,6 +738,16 @@ export const STORIES = [
 	["chat-message-input--stop-control-while-streaming", 1024, 300],
 	["chat-message-input--stop-control-without-capability", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
+	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
+	   notice branches (design round 1's N2), and the version-skew line. The
+	   reservation has no ink of its own by design, so its frames are read against
+	   `stop-control-while-streaming` (the same cluster, occupied) and
+	   `stop-control-without-capability` (a backend that reserves nothing). */
+	["chat-message-input--stop-slot-reserved", 1024, 300],
+	["chat-message-input--stop-slot-reserved-small-view", 1024, 300],
+	["chat-message-input--interrupt-left-children-only", 1024, 300],
+	["chat-message-input--interrupt-left-jobs-only", 1024, 300],
+	["chat-message-input--interrupt-unavailable-old-backend", 1024, 300],
 	/* The COMMON case, which had no standing frame until design review round 1
 	   (D4) asked for one: an answer mixing prose with a fenced code block, a
 	   table and a list. The alignment frames above are plain paragraphs, and

@@ -1,6 +1,6 @@
 {
   "backend": "http://127.0.0.1:1131",
-  "out": "/tmp/interrupt-live-proof",
+  "out": "/tmp/interrupt-live-proof-r3",
   "steps": [
     {
       "step": "bridge",
@@ -67,6 +67,64 @@
       "present": false
     },
     {
+      "step": "slot.clusterIdle",
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ]
+    },
+    {
+      "step": "slot.repress",
+      "point": {
+        "x": 1287,
+        "y": 819
+      },
+      "owner": "div|not-reserved",
+      "after": {
+        "recording": false,
+        "mic": true
+      }
+    },
+    {
+      "step": "slot.clusterAfterRepress",
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ]
+    },
+    {
       "step": "turn2.admit",
       "status": 200,
       "detail": "prompt admitted"
@@ -115,6 +173,41 @@
       }
     },
     {
+      "step": "pane.opened",
+      "opened": true
+    },
+    {
+      "step": "pane.turn",
+      "status": 200,
+      "detail": "prompt admitted"
+    },
+    {
+      "step": "pane.streaming",
+      "streaming": true,
+      "outcome": "aborted"
+    },
+    {
+      "step": "pane.escape",
+      "openBefore": true,
+      "openAfter": false,
+      "streamingAfter": true
+    },
+    {
+      "step": "pane.cleanup",
+      "status": 200,
+      "body": {
+        "status": 200,
+        "message": "Desktop session result.",
+        "result": {
+          "status": "interrupted",
+          "receipt": "stopping this turn",
+          "children_running": 0,
+          "background_jobs": 0,
+          "replayed": false
+        }
+      }
+    },
+    {
       "step": "idle.streaming",
       "streaming": false,
       "outcome": "aborted"
@@ -131,6 +224,6 @@
       "noticeElements": 0
     }
   ],
-  "session": "26e2efbfd44b",
+  "session": "abd1a1b7afa8",
   "viewport": "{\"w\":1380,\"h\":868,\"dpr\":2}"
 }

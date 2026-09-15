@@ -19,12 +19,21 @@
  *    yielding to ANY dismissable layer, and `canvas/index.tsx`).
  * 3. The run panel and its child reader (`run-panel.tsx` § 3.5). It binds on the
  *    DOCUMENT and calls `stopPropagation`, and this listener is bound on
- *    `window` precisely so that claim works: `stopPropagation` on a document
- *    listener does not stop other listeners on the DOCUMENT (only
- *    `stopImmediatePropagation` does), and the pane's effect registers before
- *    this one because it is a DESCENDANT - React flushes child effects before
- *    parent ones on mount. Bound on `document`, the pane and this hook would
- *    both act on one press.
+ *    `window` precisely so that claim works: `document` precedes `window` in the
+ *    event's own propagation PATH, so a claim made on the document stops the
+ *    event before it reaches the window, while `stopPropagation` there does not
+ *    stop other listeners ON THE DOCUMENT (only `stopImmediatePropagation`
+ *    does). Registration order is irrelevant between two different nodes -
+ *    measured for reviewer round 1's NIT 1, a document-level `stopPropagation`
+ *    prevents this listener whichever of the two registered first - so the path
+ *    order is the whole protection, and this binding must not be "simplified" to
+ *    `document`: there the pane and this hook would both act on one press.
+ *
+ *    The pane claims a press from ANYWHERE while it is open (QA round 1's Q2):
+ *    before that, a press with focus in the composer interrupted the turn and
+ *    left the pane open, which contradicts this ladder. A press a layer INSIDE
+ *    the pane has already claimed still defers, because the pane's own guard
+ *    reads `defaultPrevented` too.
  * 4. VOICE RECORDING CANCEL. Esc during a recording cancels the recording and
  *    never the turn. This is the one that bites, and it is why the decision below
  *    is taken in a MICROTASK rather than at listener time - see the note there.

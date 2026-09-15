@@ -277,6 +277,16 @@ type MessageInputProps = {
 	 */
 	canonicalStop?: { active: boolean; onStop: () => void };
 	/**
+	 * Whether this session's backend negotiates `session_interrupt` at all.
+	 *
+	 * The control's SLOT exists whenever this is true, even while no turn runs:
+	 * the reservation below is what keeps the dictation control out of the
+	 * position a reflex second press lands on (UX round 1's U1, QA's Q1). It is
+	 * the same capability `canonicalStop.active` is folded with at the call site,
+	 * so the reservation cannot outlive the control it reserves for.
+	 */
+	canonicalStopAvailable?: boolean;
+	/**
 	 * What the last interrupt left running, or null for the common case.
 	 *
 	 * Deliberately NOT the `sendError` alert, which is the failure register: this
@@ -598,6 +608,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			hasNewActivity = false,
 			scrollToBottom = () => {},
 			canonicalStop,
+			canonicalStopAvailable = false,
 			interruptNotice,
 			sendError,
 			initialSuggestions,
@@ -2058,9 +2069,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 *
 				 * Null in the common case by construction - see `interruptNotice` - so
 				 * a stopped turn with nothing under it leaves the band's height alone.
-				 * `CHAT_MEASURE` and the alert's own padding steps keep its first
-				 * character on the box's content edge at every width, which is the
-				 * property the alert's comment argues for these two lines sharing.
+				 * The padding steps are the alert's own, and they put this line one
+				 * padding step (16px at the default rung, 8 at the small one) inside
+				 * the box's OUTER edge - the same track the send-error alert resolves,
+				 * and NOT the textarea's text edge, which is that plus the textarea's
+				 * own step. Design round 1's D1 measured both (16/25 dev px at 1x,
+				 * +17/+25.5 CSS live): the two lines stacked here therefore do not share
+				 * a column with the placeholder beneath them, which is pre-existing and
+				 * which moving would move the alert too.
 				 */}
 				{interruptNotice && (
 					/*
@@ -2503,6 +2519,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										</Tooltip>
 									</>
 								)}
+								{/*
+								 * THE SLOT IS RESERVED, not merely vacated.
+								 *
+								 * Without this, pressing Stop slides the dictation control 36px
+								 * right - 32px of control plus the row's 4px gap - into the exact
+								 * centre of the box the press just landed in, so a reflex second
+								 * press starts a MICROPHONE RECORDING. Measured independently by
+								 * UX round 1 (U1) and QA (Q1): the element at the Stop's own
+								 * centre is `button[aria-label="Start recording"]` once the turn
+								 * settles, and pressing there reports `recording_started: true`.
+								 * A 120ms double press still hits Stop twice, which is what made
+								 * it a trap rather than something a user notices.
+								 *
+								 * So an invisible, non-interactive box holds the position for as
+								 * long as the backend negotiates `session_interrupt`, and the mic
+								 * never occupies the Stop's centre. `aria-hidden`, no focus and no
+								 * pointer events: this is geometry, not a control - nothing may be
+								 * reachable, announced or pressed there. The cost, stated rather
+								 * than hidden: the idle composer carries a one-control gap between
+								 * the dictation control and Send.
+								 *
+								 * Gated on the same legacy condition the mic is (`isLoading &&
+								 * currentJobId`), because that path hides the mic and renders its
+								 * own `Stop agent` in this cluster; reserving a slot nothing will
+								 * fill would move a control for no reason.
+								 */}
+								{canonicalStopAvailable &&
+									!canonicalStop?.active &&
+									!(isLoading && currentJobId) && (
+										<span
+											aria-hidden="true"
+											data-interrupt-slot=""
+											className={cn(
+												"pointer-events-none",
+												isSmallView ? "size-7" : "size-8",
+											)}
+										/>
+									)}
 								{canonicalStop?.active && (
 									<Tooltip content="Stop this session's current work">
 										<span>

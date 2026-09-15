@@ -61,7 +61,7 @@
  * `after-escape.png`, `idle-escape.png`.
  */
 
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -197,6 +197,13 @@ const app = spawn(
 		`--remote-debugging-port=${port}`,
 		`--user-data-dir=${USER_DATA}`,
 		`--window-size=${WIDTH}x${HEIGHT}`,
+		/*
+		 * Named explicitly rather than only through the env var, the way every
+		 * agent-driven launch in this repo names its mode: a rig that relies on the
+		 * default is one argv edit away from taking the operator's focus, and the
+		 * repo's `window-mode.test.mjs` asserts this switch rather than the variable.
+		 */
+		"--window-mode=headless",
 	],
 	{
 		env: {
@@ -289,13 +296,25 @@ const finish = async (cdp) => {
 		join(OUT, "interrupt-proof.json"),
 		`${JSON.stringify(report, null, 2)}\n`,
 	);
-	// The whole process GROUP, not just the child: Electron's helpers (GPU,
-	// renderer, utility) are separate processes, so signalling only the direct
-	// child leaves orphans holding the profile.
+	/*
+	 * The whole process GROUP, not just the child: Electron's helpers (GPU,
+	 * renderer, utility) are separate processes, so signalling only the direct
+	 * child leaves orphans holding the profile - and a rig that leaks one app per
+	 * step leaves a host that is already busy with a pile of them. The group kill
+	 * is the first half; the second is the `pkill` below, which catches a child
+	 * that reparented out of the group (the shape a killed `npx` shim leaves).
+	 */
 	try {
 		process.kill(-app.pid, "SIGKILL");
 	} catch {
 		app.kill("SIGKILL");
+	}
+	try {
+		execFileSync("pkill", ["-f", `user-data-dir=${USER_DATA}`], {
+			stdio: "ignore",
+		});
+	} catch {
+		// No match is the good case, and pkill says so with a non-zero status.
 	}
 };
 
@@ -546,6 +565,77 @@ const pressEscape = async () => {
 		});
 };
 
+/**
+ * The point the press just landed in, pressed AGAIN once the turn has settled.
+ *
+ * This is the round's MAJOR, measured rather than described. QA and UX both found
+ * it independently: the dictation control slides into the Stop's box, so a reflex
+ * second press at the same coordinates starts a MICROPHONE RECORDING
+ * (`recording_started: true` in QA's record) instead of doing nothing. The fix
+ * reserves the slot, and this asserts the reservation in the real app: what owns
+ * the point, and whether pressing it starts anything.
+ */
+const probeSlot = async (point) => {
+	const owner = await cdp.evaluate(`(() => {
+		const el = document.elementFromPoint(${point.x}, ${point.y});
+		if (!el) return "none";
+		const button = el.closest("button");
+		return (button?.getAttribute("aria-label") ?? el.tagName.toLowerCase()) + "|" + (el.hasAttribute("data-interrupt-slot") ? "reserved" : "not-reserved");
+	})()`);
+	for (const type of ["mousePressed", "mouseReleased"])
+		await cdp.send("Input.dispatchMouseEvent", {
+			type,
+			x: point.x,
+			y: point.y,
+			button: "left",
+			clickCount: 1,
+		});
+	await sleep(700);
+	const after = await cdp.evaluate(`JSON.stringify({
+		recording: !!document.querySelector('[aria-label="Cancel recording"], [aria-label="Confirm recording"]'),
+		mic: !!document.querySelector('[aria-label="Start recording"]'),
+	})`);
+	return { point, owner, after: JSON.parse(after) };
+};
+
+/** The composer's right-hand cluster, as boxes, so a frame and a record agree. */
+const clusterBoxes = async () =>
+	JSON.parse(
+		await cdp.evaluate(`JSON.stringify(
+			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+				.map((el) => {
+					const r = el.getBoundingClientRect();
+					return {
+						label: el.getAttribute("aria-label") ?? "reserved-slot",
+						x: Math.round(r.left),
+						w: Math.round(r.width),
+						centre: Math.round(r.left + r.width / 2),
+					};
+				})
+				.sort((a, b) => a.x - b.x),
+		)`),
+	);
+
+/** Open the run details pane from its own trigger, as a user does. */
+const openRunPane = async () => {
+	const box = await cdp.evaluate(`(() => {
+		const el = document.querySelector("[data-run-panel-trigger]");
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+	})()`);
+	if (!box) return false;
+	for (const type of ["mousePressed", "mouseReleased"])
+		await cdp.send("Input.dispatchMouseEvent", {
+			type,
+			x: box.x,
+			y: box.y,
+			button: "left",
+			clickCount: 1,
+		});
+	return true;
+};
+
 const waitForStreaming = async (sessionId, wanted, budgetMs = 20_000) => {
 	const until = Date.now() + budgetMs;
 	while (Date.now() < until) {
@@ -586,6 +676,14 @@ try {
 	record("turn1.controlAfter", { present: await controlPresent() });
 	await cdp.shot("after-stop.png");
 
+	/*
+	 * THE HAZARD, at the point the press landed in: the cluster's own boxes, then
+	 * a second press at the Stop's centre once nothing is running.
+	 */
+	record("slot.clusterIdle", { boxes: await clusterBoxes() });
+	record("slot.repress", await probeSlot({ x: box.x, y: box.y }));
+	record("slot.clusterAfterRepress", { boxes: await clusterBoxes() });
+
 	/* ------------------------------------------------------- 2. Escape */
 	record("turn2.admit", await startTurn(sessionId));
 	record("turn2.streaming", await waitForStreaming(sessionId, true));
@@ -605,7 +703,41 @@ try {
 	);
 	record("session.cleanup", { status: stop.status, body: stop.body });
 
-	/* --------------------------- 4. nothing running: Escape does nothing */
+	/* ------------- 4. the run pane claims the press while a turn is running */
+	record("pane.opened", { opened: await openRunPane() });
+	await sleep(600);
+	record("pane.turn", await startTurn(sessionId));
+	record("pane.streaming", await waitForStreaming(sessionId, true));
+	const paneBefore = await cdp.evaluate(
+		`!!document.querySelector('[aria-label="Run details"]')`,
+	);
+	// Focus the composer, which is where a press that the pane must still answer
+	// comes from (QA round 1's Q2: this is the case that used to interrupt).
+	await cdp.evaluate(
+		`document.querySelector('textarea[aria-label="Message"]')?.focus(); true`,
+	);
+	await pressEscape();
+	const paneAfter = await cdp.evaluate(
+		`!!document.querySelector('[aria-label="Run details"]')`,
+	);
+	record("pane.escape", {
+		openBefore: paneBefore,
+		openAfter: paneAfter,
+		// The turn must still be running: the pane's claim is HIGHER than the
+		// interrupt's, so a press it answers must not also stop the turn.
+		streamingAfter: await sessionState(sessionId).then(
+			(state) => state?.streaming ?? null,
+		),
+	});
+	await cdp.shot("pane-escape.png");
+	record(
+		"pane.cleanup",
+		await api("POST", `/v1/desktop/sessions/${sessionId}/interrupt`, {
+			request_id: uuid(),
+		}),
+	);
+
+	/* --------------------------- 5. nothing running: Escape does nothing */
 	record("idle.streaming", await waitForStreaming(sessionId, false));
 	record("idle.control", { present: await controlPresent() });
 	const typed = "a draft the interrupt must not clear";

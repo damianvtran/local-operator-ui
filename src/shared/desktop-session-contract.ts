@@ -787,7 +787,10 @@ export type DesktopMoveReceipt = {
  *   published roster AFTER the interrupt, so the client words its own notice
  *   from NUMBERS rather than by parsing `receipt`, which is prose the runtime
  *   owns and may rephrase. `children_running` counts subagents and team members
- *   the abort actually settled; `background_jobs` counts the session's detached
+ *   the abort did NOT settle - the roster's remainder, read after the interrupt,
+ *   which is what `_running_work_counts` filters for and what makes a non-zero
+ *   count the thing worth telling the user about; `background_jobs` counts the
+ *   session's detached
  *   `bash` jobs, which an interrupt deliberately does NOT touch (they are not
  *   this turn's work) and which therefore need the user to be told.
  * - `receipt` is the runtime's own sentence, carried verbatim and available for
