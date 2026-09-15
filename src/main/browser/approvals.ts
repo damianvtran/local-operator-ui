@@ -178,6 +178,19 @@ export class ApprovalStore {
 	/** Consumed once grants authorize one committed document, not every future
 	 * document on that origin. Revocation invalidates in-flight admissions too. */
 	private revision = 0;
+	/**
+	 * Per-origin revocation epochs, bumped by `revokeOrigin` and by nothing else.
+	 *
+	 * The global `revision` cannot do this job: bumping it for one site's revoke
+	 * would refuse every OTHER approved origin, which `documentAllowed`'s own
+	 * comment rules out (review round 1). But a per-origin revoke still has to
+	 * invalidate an admission that was already granted when it landed — the agent
+	 * pressed a nav against a `once` grant, the user revoked while it was in
+	 * flight, and the closure `admit` handed back kept saying yes because the
+	 * revision it compares had not moved (review round 2, R1's third limb). So the
+	 * epoch moves per origin and `admit`'s closure compares the origin's.
+	 */
+	private originEpochs = new Map<string, number>();
 	private documents = new Map<
 		string,
 		{ origin: string; requester: string; epoch: number; revision: number }
@@ -291,12 +304,14 @@ export class ApprovalStore {
 	): { viaOnceGrant: boolean; approved: (candidate: URL) => boolean } {
 		const { viaOnceGrant } = this.ensureTopLevelAccess(url, requester);
 		const revision = this.revision;
+		const epoch = this.originEpochs.get(url.origin) ?? 0;
 		return {
 			viaOnceGrant,
 			approved: (candidate) =>
 				this.originAllowed(candidate) ||
 				(viaOnceGrant &&
 					revision === this.revision &&
+					(this.originEpochs.get(url.origin) ?? 0) === epoch &&
 					candidate.origin === url.origin),
 		};
 	}
@@ -660,8 +675,9 @@ export class ApprovalStore {
 	}
 
 	/**
-	 * Revoke one origin's approvals: the exact-origin verdict, a session grant, and
-	 * any BROAD grant that covers it.
+	 * Revoke one origin's approvals: the exact-origin verdict, a session grant, any
+	 * BROAD grant that covers it, an unspent `once` grant, and the document receipts
+	 * issued on it.
 	 *
 	 * A broad grant is revoked too, and that is the honest reading of a per-origin
 	 * revoke: the user pointed at a site and said "not this one". Leaving a domain
@@ -671,8 +687,22 @@ export class ApprovalStore {
 	 * Deliberately does NOT touch cookies (design 9.4): revoking approvals does not
 	 * log the user out, and clearing cookies does not restore the deny state.
 	 *
-	 * Returns how many records were dropped, so the caller can say what happened
-	 * rather than reporting a click.
+	 * WHY THIS IS NOT `revokeAll` FOR ONE ORIGIN, and why the two paths cannot share
+	 * an implementation: the bulk path can bump the global `revision` and floor every
+	 * capability in the store, because it is revoking everything. A per-origin
+	 * revoke that did the same would refuse receipts and in-flight admissions for
+	 * origins the user never touched (review round 1's objection to that route), so
+	 * it moves ONE origin's epoch instead — and everything that authorises that
+	 * origin dies with it: the durable verdict, the session grant, the provenance
+	 * rows, the covering broad grant, the unspent `once` grant, the document
+	 * receipts already issued for it, and any admission closure still in flight.
+	 *
+	 * Returns how many grants were dropped, so the caller can say what happened
+	 * rather than reporting a click. An unspent `once` grant counts: it is live
+	 * authority for this origin (review round 2, minor) and a revoke that left it
+	 * behind reported "0 approvals revoked" to the user. A document receipt does
+	 * NOT count separately: it is a capability derived from a grant that is already
+	 * counted, and counting both would double-count one decision.
 	 */
 	revokeOrigin(rawOrigin: string): number {
 		let removed = 0;
@@ -682,6 +712,14 @@ export class ApprovalStore {
 		} catch {
 			// Already an origin, or something a caller assembled: match it verbatim.
 		}
+		if (this.onceGrants[origin] !== undefined) {
+			delete this.onceGrants[origin];
+			removed += 1;
+		}
+		for (const [token, receipt] of this.documents) {
+			if (receipt.origin === origin) this.documents.delete(token);
+		}
+		this.originEpochs.set(origin, (this.originEpochs.get(origin) ?? 0) + 1);
 		if (this.store.origins[origin] !== undefined) {
 			delete this.store.origins[origin];
 			removed += 1;

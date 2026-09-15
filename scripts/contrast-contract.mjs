@@ -294,6 +294,25 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The same chip in its failed state: a tab whose main-frame load was refused
+		 * (design round 1, D1). The failure PANEL belongs to whichever tab the user is
+		 * looking at, so this chip is the only thing that carries the state on a
+		 * background tab — which makes it a component with its own fill and edge, and
+		 * by this file's own first rule that means a row here. The edge is
+		 * `borderControl` for the reason the waiting chip above records, and the row
+		 * was added this round because a green `check-themes` said nothing about a chip
+		 * nobody had listed (review round 2, D12). The designer measured it clearing
+		 * from the generated CSS (ink on `dangerWash` 8.62:1, edge 3.02:1 at worst
+		 * across the twelve themes); this row is what keeps that true.
+		 */
+		name: "browser failed marker chip",
+		on: ["surface", "elevated"],
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The consent band: the surface the per-origin approval prompt renders on, in
 		 * the browser's chrome band. A control band rather than a callout, so its
 		 * boundary is `border-control` (design 11.2) and its ground is `surface` — see

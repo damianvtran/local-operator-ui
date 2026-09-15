@@ -37,6 +37,10 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/browser/registry";',
+			// `session-store` is here for the capture rule alone: what a change capture
+			// contains is a property of `captureTabs`, and a restore's own capture is what
+			// round 2's B2 was about.
+			'export * from "./src/main/browser/session-store";',
 			'export * from "./src/main/browser/state-file";',
 			'export * from "./src/main/browser/rpc";',
 			'export * from "./src/main/browser/protocol";',
@@ -66,6 +70,7 @@ const mod = await import(
 const {
 	TabRegistry,
 	MAX_AGENT_TABS,
+	captureTabs,
 	surfaceToken,
 	parseSurface,
 	redactToken,
@@ -2789,6 +2794,71 @@ test("an empty restore still comes back as the blank tab it always did", async (
 	assert.equal(state.tabs.length, 1, "a first run opens one blank tab");
 	assert.equal(registry.count(), 1);
 	await host.whenRestored();
+});
+
+/*
+ * Round 2's B2, at the layer it was found: the capture the RESTORE itself fires.
+ *
+ * `restoreTabs` allocates every view and settles the active tab synchronously,
+ * then calls `onChanged` — before a single `history.restore()` has run, because
+ * the pages load under the host's own background budget. The view a capture reads
+ * has no history yet, so before this round that first capture was empty by
+ * construction: `sessionStore.record([])`, and 500 ms later a `session.json`
+ * holding no tabs — over the very file the restore was reading. A window close or
+ * a kill inside that window persisted the truncation for good.
+ *
+ * The fake view here has NO `getAllEntries`/`getActiveIndex` at all, which is the
+ * strictest form of "no history yet": the tab still has to be captured, from the
+ * row it was restored from.
+ */
+test("the change capture a restore fires already carries every tab, before a page commits (review round 2, B2)", () => {
+	const snapshots = [];
+	const views = new Map();
+	let nextWebContentsId = 900;
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(nextWebContentsId++);
+			views.set(tabId, view);
+			return view;
+		},
+		() => {},
+		() =>
+			snapshots.push(
+				captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
+			),
+	);
+	const { host } = makeHost({ registry });
+	const recorded = [
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://example.com/a" }],
+			activeIndex: 0,
+		},
+		{
+			owner: "agent",
+			active: false,
+			entries: [{ url: "https://example.com/b" }],
+			activeIndex: 0,
+		},
+	];
+
+	host.restoreTabs(recorded);
+
+	assert.ok(
+		snapshots.length > 0,
+		"a restore changes the strip, so it fires the capture",
+	);
+	assert.deepEqual(
+		snapshots.at(-1).map((tab) => tab.entries[0].url),
+		["https://example.com/a", "https://example.com/b"],
+		"the capture the restore fires holds every tab, so the write it schedules cannot truncate the file",
+	);
+	assert.equal(
+		snapshots.at(-1)[1].owner,
+		"user",
+		"and a restored tab comes back the user's whatever the file said, so the row is state and not authority",
+	);
 });
 
 // ---- a refused load is published, per tab (design round 1, D1) --------------

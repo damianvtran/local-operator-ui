@@ -495,6 +495,25 @@ export class BrowserHost implements BrowserActionContext {
 		return this.loadFailures.get(activeTabId) ?? null;
 	}
 
+	/**
+	 * A tab title the chrome should show, or "" when the document has none.
+	 *
+	 * Chromium answers `about:blank` as the TITLE of a document that did not name
+	 * itself — a new tab, and a restored tab whose page has not committed yet — and
+	 * that is a URL the user never visited rather than a page name. The URL bar
+	 * already refuses to render it (`displayUrl` in the chrome maps it to an empty
+	 * field, for the same reason). Every other window onto a tab's name reads THIS
+	 * projection — the strip's label, its `Tab actions for …` and `Close …` labels,
+	 * the hand-over dialog's summary and the paused note — so the rule belongs here,
+	 * once, rather than five times in the renderer: an untitled tab arrives empty
+	 * and each surface falls back to its own words (the strip's "New tab").
+	 * (Review round 2, U3: the strip used to read `about:blank` in five places while
+	 * the bar showed nothing.)
+	 */
+	titleForChrome(title: string): string {
+		return title === "about:blank" ? "" : title;
+	}
+
 	chromeState(): Record<string, unknown> {
 		// `active` is dropped when its webContents is already dead: `snapshot()`
 		// guards each read the same way, and a read that landed between destruction
@@ -511,7 +530,7 @@ export class BrowserHost implements BrowserActionContext {
 		return {
 			tabs: this.registry.snapshot().map((entry) => ({
 				tabId: entry.tabId,
-				title: entry.title || "New tab",
+				title: this.titleForChrome(entry.title) || "New tab",
 				url: entry.url,
 				owner: entry.owner,
 				active: entry.active,
@@ -524,7 +543,9 @@ export class BrowserHost implements BrowserActionContext {
 			})),
 			activeTabId: activeRecord?.tabId ?? null,
 			url: active ? active.view.webContents.getURL() : "",
-			title: active ? active.view.webContents.getTitle() : "",
+			title: active
+				? this.titleForChrome(active.view.webContents.getTitle())
+				: "",
 			loading: active ? active.view.webContents.isLoading() : false,
 			canGoBack: navigation ? navigation.canGoBack() : false,
 			canGoForward: navigation ? navigation.canGoForward() : false,
@@ -653,9 +674,16 @@ export class BrowserHost implements BrowserActionContext {
 		}
 		// Phase 1: allocate. `restored: true` is what makes the owner `user` and the
 		// nonce null, in the registry, for every restored tab regardless of what the
-		// file said.
+		// file said. The recorded row travels WITH the record (`restoreRow`) because
+		// the change capture below runs before any page has committed: without it that
+		// capture is empty by construction and overwrites the very file this restore
+		// is reading (review round 2, B2 — see `captureTabs`).
 		const created = tabs.map((recorded) => ({
-			tabId: this.registry.create({ owner: "user", restored: true }).tabId,
+			tabId: this.registry.create({
+				owner: "user",
+				restored: true,
+				restoreRow: recorded,
+			}).tabId,
 			recorded,
 		}));
 		const wanted =

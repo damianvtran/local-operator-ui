@@ -422,8 +422,9 @@ async function evaluate(expression) {
 	return result.result?.value;
 }
 
-/** The app's chrome, as one frame. */
-async function captureRenderer(name) {
+/** The app's own renderer frame, as PNG bytes. Writes only the bytes; the
+ * composite owns the frame's name. See `captureRenderer`. */
+async function grabRenderer(name) {
 	const shot = await send("Page.captureScreenshot", { format: "png" });
 	// The CHROME layer keeps a `-chrome` suffix and the composite owns `<name>.png`:
 	// sharp refuses to read and write one path, and it did so intermittently (it
@@ -432,6 +433,74 @@ async function captureRenderer(name) {
 	const path = join(OUT_DIR, `${name}-chrome.png`);
 	writeFileSync(path, Buffer.from(shot.data, "base64"));
 	return path;
+}
+
+/**
+ * Suppress the app's connectivity banner and report whether the tab strip is
+ * actually exposed at its own centre.
+ *
+ * WHY THIS RUNS BEFORE EVERY CAPTURE, and why it is not the round-2 form. Round 2
+ * hid the banner once, by setting an inline `display: none` on the element — and
+ * the banner is React-rendered on a three-second connectivity poll, so React
+ * re-rendered the style away and the banner covered the tab strip in ALL 43
+ * frames: the strip, its agent marker, the active/inactive step and the new
+ * `Failed` chip were never photographed while captions claimed them (review round
+ * 2, D5). A `<style>` element injected into the document head is not React's to
+ * remove, and the rule keys on an attribute THIS harness sets, so it cannot hide
+ * an unrelated `div.fixed` by accident.
+ *
+ * The probe is the honest half: `elementFromPoint` at the strip's own centre must
+ * resolve to the strip or a descendant of it. If a future app change puts
+ * something else over the strip, the frame that follows is taken anyway and the
+ * transcript says what is on top of it, rather than a caption claiming a strip
+ * nobody can see.
+ */
+async function exposeStrip() {
+	return await evaluate(`(() => {
+		const isBanner = (el) => /The server is offline|You are offline|A connectivity issue has been detected/i.test(el.innerText || '');
+		const banner = [...document.querySelectorAll('div.fixed')].find(isBanner) ?? null;
+		if (!document.getElementById('harness-hide-connectivity-banner')) {
+			const style = document.createElement('style');
+			style.id = 'harness-hide-connectivity-banner';
+			style.textContent = '[data-harness-hidden-banner]{display:none !important}';
+			document.head.appendChild(style);
+		}
+		for (const el of document.querySelectorAll('[data-harness-hidden-banner]')) el.removeAttribute('data-harness-hidden-banner');
+		if (banner) banner.setAttribute('data-harness-hidden-banner', '');
+		const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+		if (!strip) return { banner: banner ? (banner.innerText || '').split('\\n')[0].slice(0, 60) : null, strip: null, topmost: null, hit: null };
+		const r = strip.getBoundingClientRect();
+		const x = Math.round(r.left + r.width / 2);
+		const y = Math.round(r.top + r.height / 2);
+		const hit = document.elementFromPoint(x, y);
+		return {
+			banner: banner ? (banner.innerText || '').split('\\n')[0].slice(0, 60) : null,
+			strip: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) },
+			probe: { x, y },
+			topmost: hit ? (strip === hit || strip.contains(hit)) : false,
+			hit: hit ? String(hit.getAttribute('data-tour-tag') || (hit.className || '').split(' ').slice(0, 4).join(' ')).slice(0, 80) : null,
+		};
+	})()`);
+}
+
+let lastStripReading = null;
+
+/** The app's chrome, as one frame. */
+async function captureRenderer(name) {
+	const reading = await exposeStrip();
+	const summary = JSON.stringify(reading);
+	if (summary !== lastStripReading) {
+		lastStripReading = summary;
+		record(`strip exposure before ${name}`, JSON.stringify(reading, null, 2));
+	}
+	return await grabRenderer(name);
+}
+
+/** The app's own reason for not painting the native view, or "" when it is. */
+async function suppressedByReason() {
+	return await evaluate(
+		`(() => { const el = document.querySelector('[data-tour-tag="browser-content"]'); return el ? el.dataset.suppressedBy || '' : ''; })()`,
+	);
 }
 
 /** The driven page, as the HOST captures it: the same call the agent's own
@@ -470,10 +539,26 @@ async function capturePage(state, token, name) {
  * view the renderer cannot see, and the chrome is DOM the page's own capture
  * cannot see. The offset is the geometry the layout contract is about, which is
  * why it is printed alongside the frame.
+ *
+ * THE SUPPRESSION GUARD, and why it lives at THIS choke point rather than at each
+ * call site (review round 2, D4): when an overlay or the failure panel is up, the
+ * app hides the native view and says so in `data-suppressed-by` on the content
+ * rectangle. Compositing the page layer anyway paints a layer the user cannot
+ * see, and it painted one OVER the panel in the only frame of a failed load on an
+ * approved agent origin — 200,400 pure-white pixels inside the content rect where
+ * the chrome layer of the same capture has 0. Asking the app here means no frame
+ * can be composed from a layer the app is not painting, whatever a caller passes.
  */
 async function compose(name, chromePath, pagePath, rect) {
 	const path = join(OUT_DIR, `${name}.png`);
-	if (!pagePath) {
+	const suppressedBy = pagePath ? await suppressedByReason() : "";
+	if (pagePath && suppressedBy) {
+		record(
+			`page layer withheld for ${name}`,
+			`the app suppresses the native view, so there is no page layer to composite: data-suppressed-by="${suppressedBy}"`,
+		);
+	}
+	if (!pagePath || suppressedBy) {
 		// No page to composite: an overlay is up (or there is no tab), so the
 		// renderer frame is the whole picture. That IS the policy, visible.
 		if (chromePath !== path) writeFileSync(path, readFileSync(chromePath));
@@ -531,6 +616,19 @@ const activateAgentTab = () =>
 		const agent = tabs.find((el) => el.innerText.includes('Agent'));
 		if (!agent) return 'missing';
 		agent.click();
+		return 'clicked';
+	})()`);
+
+/** Click the strip's user tab. The strip's own frames need the user's tab active,
+ * because the ACTIVE tab is the one the page layer covers: with a user tab up,
+ * the strip (over which no view paints) is unobstructed and its markers are the
+ * subject of the frame. */
+const activateUserTab = () =>
+	evaluate(`(() => {
+		const tabs = [...document.querySelectorAll('[role="tab"]')];
+		const user = tabs.find((el) => !el.innerText.includes('Agent'));
+		if (!user) return 'missing';
+		user.click();
 		return 'clicked';
 	})()`);
 
@@ -851,7 +949,8 @@ async function main() {
 		 * prettier than the app is not evidence.
 		 */
 		const banner = await evaluate(`(() => {
-			const el = document.querySelector('div.fixed.inset-x-0.top-0');
+			const isBanner = (el) => /The server is offline|You are offline|A connectivity issue has been detected/i.test(el.innerText || '');
+			const el = [...document.querySelectorAll('div.fixed')].find(isBanner) ?? null;
 			const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
 			if (!el) return { present: false };
 			const b = el.getBoundingClientRect();
@@ -874,11 +973,24 @@ async function main() {
 			banner.tabStrip !== null && banner.tabStrip.height > 30,
 			`banner ${JSON.stringify(banner.banner)} (${banner.text}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
 		);
-		if (banner.present) {
-			await evaluate(
-				"(() => { const el = document.querySelector('div.fixed.inset-x-0.top-0'); if (el) el.style.display = 'none'; })()",
-			);
-		}
+		/*
+		 * The suppression is re-asserted before EVERY frame by `captureRenderer`, so
+		 * this call is the first one - the statement in the transcript, with the
+		 * measurement that says the flip worked. Round 2 hid the banner once and the
+		 * frames still did not contain the strip (D5); the check below is the property
+		 * that was missing, asked of the DOM rather than of a class name.
+		 */
+		const exposure = await exposeStrip();
+		lastStripReading = JSON.stringify(exposure);
+		record(
+			"strip exposure after the banner is suppressed",
+			JSON.stringify(exposure, null, 2),
+		);
+		check(
+			"with the banner suppressed the tab strip is the topmost element at its own centre, so a frame can contain it",
+			exposure.strip !== null && exposure.topmost === true,
+			`strip ${JSON.stringify(exposure.strip)}, elementFromPoint(${exposure.probe?.x}, ${exposure.probe?.y}) -> ${exposure.hit}`,
+		);
 
 		/*
 		 * THE TOAST TRADE, measured rather than asserted.
@@ -1272,6 +1384,19 @@ async function main() {
 			await capturePage(state, null, "recovered-page"),
 			rect,
 		);
+		/*
+		 * WHAT THIS FRAME DOES AND DOES NOT SHOW (review round 2, D6). Its page layer
+		 * is the active tab's, and the active tab is the USER's: a user tab holds no
+		 * handle (design 7.3), so the host refuses that capture and the content region
+		 * is empty — the caption used to say "the page is back" over a frame that does
+		 * not contain the page. The recovery itself is asserted above, in the DOM and
+		 * in the projection, and photographed with its page on the agent tab
+		 * (`15b-surface-recovered-agent-tab`), which does hold a handle.
+		 */
+		record(
+			"the page layer of 04c",
+			"withheld, deliberately and by design: the active tab is the user's, a user tab holds no capability handle, and the host will not screenshot a tab it has no handle for. This frame is the chrome after the recovery; the RECOVERED PAGE is the agent-tab frame `15b`, and the recovery's own assertion is the DOM/projection check above.",
+		);
 		say(`frame: ${join(OUT_DIR, "04c-surface-recovered.png")}`);
 
 		// ---- 6. the consent bar: pending -------------------------------------
@@ -1642,6 +1767,88 @@ async function main() {
 		);
 		say(`frame: ${join(OUT_DIR, "15-surface-error-agent-tab.png")}`);
 
+		/*
+		 * ---- 8b. the strip's own pixels, and the recovery half on a tab that CAN
+		 * be photographed -----------------------------------------------------
+		 *
+		 * D5 asked for frames that CONTAIN the tab strip. The strip is where the agent
+		 * marker, the active/inactive step, the `Waiting`/`Failed` chips and the
+		 * `Restored` badge live, and every round-2 frame had the app's connectivity
+		 * banner over it. The banner is now suppressed durably and the strip's own
+		 * exposure asserted before every capture (`exposeStrip`), so this frame IS the
+		 * strip: a user tab active beside the agent tab that just failed — the only
+		 * place the `Failed` chip appears without the panel (design round 1, D1's
+		 * second affordance, unphotographed until now).
+		 */
+		const userActivated = await activateUserTab();
+		const stripFrame = await captureRenderer(
+			"16-surface-strip-failed-agent-tab",
+		);
+		const stripState = await chromeState();
+		await compose(
+			"16-surface-strip-failed-agent-tab",
+			stripFrame,
+			null,
+			agentRect,
+		);
+		check(
+			"the strip frame carries both owners, the failed agent tab marked, with the user's own tab active",
+			userActivated === "clicked" &&
+				Array.isArray(stripState.tabs) &&
+				stripState.tabs.length >= 2 &&
+				stripState.tabs.some(
+					(tab) => tab.owner === "agent" && tab.failed === true,
+				) &&
+				stripState.tabs.some(
+					(tab) => tab.owner === "user" && tab.active === true,
+				),
+			`strip ${JSON.stringify(stripState.tabs?.map((tab) => ({ id: tab.tabId, owner: tab.owner, active: tab.active, failed: tab.failed, restored: tab.restored, title: tab.title })))}`,
+		);
+		record(
+			"what this frame's content region is (and is not)",
+			"the subject is the STRIP: it is above the content rect, where no native view paints. The region below it is not composited, because the active tab is the user's and a user tab holds no handle by design (design 7.3) - `04c` and the recovered agent frame `15b` are where the page layer itself is photographed.",
+		);
+		say(`frame: ${join(OUT_DIR, "16-surface-strip-failed-agent-tab.png")}`);
+
+		/*
+		 * The recovery half of D1 on the tab that can show it. `04c` recovers the USER
+		 * tab, whose page holds no handle and therefore cannot be captured by any
+		 * means (design 7.3) — that frame discloses the limitation rather than hiding
+		 * it. Here the same recovery runs on the AGENT tab, through the handle the
+		 * host issued it, so the recovered page is IN the frame.
+		 */
+		await activateAgentTab();
+		await rpc(state, "goto", { tab: agentToken, url: `${origin()}/second` });
+		const recoveredAgentState = await waitFor(
+			async () => {
+				const current = await chromeState();
+				return current.loading === false ? current : null;
+			},
+			"the recovered agent load to settle",
+			25_000,
+		);
+		const recoveredAgentFrame = await captureRenderer(
+			"15b-surface-recovered-agent-tab",
+		);
+		const recoveredAgentPage = await capturePage(
+			state,
+			agentToken,
+			"agent-recovered",
+		);
+		await compose(
+			"15b-surface-recovered-agent-tab",
+			recoveredAgentFrame,
+			recoveredAgentPage,
+			agentRect,
+		);
+		check(
+			"the agent tab's recovery is photographed WITH its page: the load succeeds, the panel is gone and the page layer is in the frame",
+			existsSync(recoveredAgentPage ?? "") &&
+				recoveredAgentState.navFailure === null,
+			`page layer: ${recoveredAgentPage}; navFailure ${JSON.stringify(recoveredAgentState.navFailure ?? null)}`,
+		);
+		say(`frame: ${join(OUT_DIR, "15b-surface-recovered-agent-tab.png")}`);
+
 		// ---- 9. the denied case, and the revocation surface -------------------
 		const secondOriginRequest = await rpc(state, "request_access", {
 			url: "http://127.0.0.1:1/denied",
@@ -1835,15 +2042,20 @@ async function main() {
 		// captured through its NEW handle, which is the recovery the design specifies.
 		// The shell's banner is back after the relaunch (a fresh process re-runs its own
 		// connectivity check), and it covers the strip exactly as it did at first paint —
-		// measured and hidden again, for the same reason and with the same caveat.
-		const bannerAfterRestart = await evaluate(`(() => {
-			const el = document.querySelector('div.fixed.inset-x-0.top-0');
-			if (!el) return { present: false };
-			const b = el.getBoundingClientRect();
-			if (el) el.style.display = 'none';
-			return { present: true, height: Math.round(b.height), text: (el.innerText || '').split('\\n')[0].slice(0, 50) };
-		})()`);
-		record("the banner after the restart", JSON.stringify(bannerAfterRestart));
+		// re-suppressed here by the same durable rule `captureRenderer` applies before
+		// every frame, and re-measured rather than assumed.
+		const exposureAfterRestart = await exposeStrip();
+		lastStripReading = JSON.stringify(exposureAfterRestart);
+		record(
+			"strip exposure after the restart",
+			JSON.stringify(exposureAfterRestart, null, 2),
+		);
+		check(
+			"the strip is exposed in the frames taken after the restart too, so the restored tabs and their `Restored` marker are photographed",
+			exposureAfterRestart.strip !== null &&
+				exposureAfterRestart.topmost === true,
+			`strip ${JSON.stringify(exposureAfterRestart.strip)}, topmost ${exposureAfterRestart.topmost} (${exposureAfterRestart.hit})`,
+		);
 		// Chrome only, deliberately: the ACTIVE tab after the restart is a RESTORED user
 		// tab, and a user tab's page is not capturable (it holds no handle), so
 		// compositing the agent tab's page here would photograph a tab the user is not

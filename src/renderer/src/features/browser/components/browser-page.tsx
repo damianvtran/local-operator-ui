@@ -362,6 +362,25 @@ export const BrowserPage: FC = () => {
 						</Button>
 					</div>
 				)}
+				{state && tabs.length > 0 && !activeTab && (
+					// A tab can be closed while another is left (the agent's, typically) and the
+					// registry then has no active tab at all: without this the page area is
+					// blank with nothing saying why, and the only way out — pressing a tab in
+					// the strip — is something nothing suggests (review round 2, U4).
+					<div className="flex h-full flex-col items-center justify-center gap-3">
+						<Globe aria-hidden className="size-6 text-ink-dim" />
+						<p className="text-body text-ink-muted">
+							No tab is selected. Pick a tab above, or open a new one.
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => void chrome.newTab()}
+						>
+							New tab
+						</Button>
+					</div>
+				)}
 				{suppressed && overlaySuppressing && state && tabs.length > 0 && (
 					<output
 						className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center"

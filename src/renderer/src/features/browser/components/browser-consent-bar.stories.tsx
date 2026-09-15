@@ -103,6 +103,28 @@ export const UnnamedRequesterNoDomain: Story = {
 };
 
 /**
+ * The other half of the requester vocabulary, and the branch no frame carried
+ * (review round 2, D10): a request whose requester is NOT a session identity —
+ * an MCP client, or a session this build cannot name — reads "An agent" rather
+ * than inventing an id for the user to read. The broad option is present, for
+ * the same reason the other specimens carry it: the five choices have to line up
+ * row against row across the frames.
+ */
+export const AnAgent: Story = {
+	args: {
+		pending: { ...PENDING, requesterSessionId: null },
+		waitingBehind: 0,
+		busy: false,
+		onDecide: () => {},
+	},
+	render: (args) => (
+		<div className="bg-canvas p-6">
+			<BrowserConsentBar {...args} />
+		</div>
+	),
+};
+
+/**
  * A decision in flight: every choice is disabled, which is the state a second
  * click must not be able to race.
  */
