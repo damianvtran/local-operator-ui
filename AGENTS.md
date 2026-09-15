@@ -423,6 +423,20 @@ shown, page throttling off, no Dock tile` (the tile clause is macOS-only, and a
 Linux or Windows rig sees the same line without it), then `headless run launched
 by pid N; it quits when that process goes` (or the reason it is *not*
 launcher-bound).
+
+A launch that was **assumed** to be a run appends the reason it decided that, and
+the aside trails the sentence so the prefix above is the same on both spellings:
+
+```
+window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile (mode assumed: --user-data-dir marks an agent-driven launch, and no window mode was named)
+```
+
+Both spellings are quoted because a rig anchored on the whole named sentence
+never matches an assumed run, which is the common case for a harness. (The aside
+trails rather than sitting after the mode because of what an infix cost: 86
+characters between `headless` and its colon, which moved the colon to offset 120
+and made a wrapped row begin with `: 1380x900, …` — design round 4, D18.)
+
 `normal` prints neither, so a harness waiting for a policy line on a `normal`
 boot waits forever. The mode line deliberately says nothing about the launcher:
 it is printed before that policy is resolved and would be wrong in exactly the
@@ -431,7 +445,11 @@ two cases where a run does not leave by itself.
 Same defect, both halves of it: a harness that signalled the launcher — the
 `node` process the pnpm `electron` shim `exec`s — rather than the app left the
 app running with no driver, one instance per boot. Measured here: 13 boots in a
-QA round left 13 survivors, all `ppid 1`, and a matrix left ~30.
+QA round left 13 survivors, all `ppid 1`, and a matrix left ~30. Both halves are
+closed as this repository now stands: **the watch** ends a run whose launcher is
+gone, and **the driver** (`#190`, `e83ab9b1f`) spawns the app binary itself,
+signals the app's own main process by exact pid — `SIGTERM`, then `SIGKILL` on
+that same pid — and reaps what it started, however the run ends.
 
 What this does NOT cover, stated because it is easy to over-read:
 
@@ -450,16 +468,10 @@ What this does NOT cover, stated because it is easy to over-read:
 - A launcher that kills *nothing* still leaks: the watch fires when the launcher
   is **gone**, so a driver that stops the wrapper and stays alive itself holds
   its app until the driver exits.
-- `stopApp()` in `scripts/renderer-driver.mjs` used to signal the launcher rather
-  than the app, so the app was never signalled; that half has since landed
-  (#190, `e83ab9b1f`, an ancestor of this head): the driver spawns the app
-  binary itself, signals the app's own main process by exact pid — `SIGTERM`,
-  then `SIGKILL` on that same pid — and reaps what it started when the run ends,
-  however it ends. So the two halves now close the same defect from opposite
-  ends: **the watch** ends a run whose launcher is gone, and **the driver** ends
-  the app it started, by pid, before the script exits. A harness of your own is
-  still yours to stop by **pid**: a `pkill` by pattern takes the operator's own
-  running app with it.
+- A harness of your own is still yours to stop by **pid**: a `pkill` by pattern
+  takes the operator's own running app with it. (`stopApp()` in
+  `scripts/renderer-driver.mjs` used to signal the launcher rather than the app;
+  that half has since landed — see the paragraph above.)
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
