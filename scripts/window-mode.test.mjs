@@ -280,6 +280,118 @@ test("silence with no agent switch is still the operator's focused window", () =
 	assert.equal(plan({ argv: [".", "--window-size=1024x673"] }).mode, "normal");
 });
 
+test("a launch with no terminal on either stream is a driven run, and resolves headless", () => {
+	// The shape the agent switches could not see, and the one that was STILL
+	// taking the operator's focus after the switch-based assumption shipped: a
+	// tool booting the app straight out of a checkout with no switch at all.
+	// A tool spawns it with pipes, so neither stream is a terminal, and a
+	// checkout is not a packaged app — together those two facts say this is a
+	// run rather than the operator using the app.
+	const resolved = plan({
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(resolved.mode, "headless");
+	assert.equal(resolved.show, "never");
+	assert.equal(resolved.focusable, false);
+	assert.equal(resolved.backgroundThrottling, false);
+	assert.deepEqual(resolved.problems, []);
+	assert.match(resolved.assumed ?? "", /no terminal/);
+});
+
+test("a terminal on either stream is a person, and keeps the focused window", () => {
+	// A person runs `pnpm dev` in a terminal, and a person who redirects the log
+	// (`local-operator-ui > app.log &`) still has stdin ON the terminal — the
+	// pair is what makes this safe to pair with `packaged: false`, so each half
+	// is asserted on its own.
+	for (const streams of [
+		{ stdinIsTTY: true, stdoutIsTTY: true },
+		{ stdinIsTTY: true, stdoutIsTTY: undefined },
+		{ stdinIsTTY: undefined, stdoutIsTTY: true },
+	]) {
+		const resolved = plan({ packaged: false, ...streams });
+		assert.equal(resolved.mode, "normal", JSON.stringify(streams));
+		assert.equal(resolved.assumed, null, JSON.stringify(streams));
+	}
+});
+
+test("the packaged app is never assumed headless, however it was started", () => {
+	// A double-clicked `.app` has no terminal either, so `packaged` is the whole
+	// reason a person's own app cannot be hidden by the rule above. This is the
+	// assertion that keeps the shipped release rendering a window.
+	const resolved = plan({
+		packaged: true,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(resolved.mode, "normal");
+	assert.equal(resolved.assumed, null);
+});
+
+test("a caller that cannot say whether it is packaged stays on the historical normal", () => {
+	// `packaged` is optional, and only an explicit `false` takes part: a caller
+	// that says nothing must keep the behaviour it had before this rule existed.
+	assert.equal(
+		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined }).mode,
+		"normal",
+	);
+});
+
+test("a named mode still wins on a launch with no terminal", () => {
+	// The escape hatch, on the new path: a person who launches the checkout from
+	// a non-terminal launcher keeps `normal` by naming it.
+	for (const mode of ["normal", "inactive", "headless"]) {
+		const resolved = plan({
+			argv: [`--window-mode=${mode}`],
+			packaged: false,
+			stdinIsTTY: undefined,
+			stdoutIsTTY: undefined,
+		});
+		assert.equal(resolved.mode, mode);
+		assert.equal(resolved.assumed, null, `${mode} from the flag is not assumed`);
+	}
+});
+
+test("an agent switch is the stronger reason and is what the line names", () => {
+	// Both signals can be true at once, and the line has to name the specific
+	// one: "a rig passed --user-data-dir" is what a reader can act on.
+	const both = plan({
+		argv: ["--user-data-dir=/tmp/rig"],
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(both.mode, "headless");
+	assert.match(both.assumed ?? "", /user-data-dir/);
+	assert.doesNotMatch(both.assumed ?? "", /no terminal/);
+});
+
+test("a mistyped or empty mode beside a terminal-less launch still reports rather than assumes", () => {
+	// Reaching for the mode is asking to be told. A typo keeps the report and
+	// the `normal` fallback; an empty value names nothing and takes the new
+	// assumption exactly as it takes the switch-based one.
+	const typo = plan({
+		env: { [WINDOW_MODE_ENV]: "headles" },
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(typo.mode, "normal");
+	assert.equal(typo.assumed, null);
+	assert.match(typo.problems[0], /headles/);
+
+	const blank = plan({
+		env: { [WINDOW_MODE_ENV]: "" },
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(blank.mode, "headless");
+	assert.match(blank.assumed ?? "", /no terminal/);
+	assert.doesNotMatch(blank.problems[0], /using normal/);
+});
+
 test("the startup line says the mode was assumed, and why", () => {
 	// This line is what a rig greps and what a person reads after a window did
 	// not appear. "headless" with no reason would be indistinguishable from a
