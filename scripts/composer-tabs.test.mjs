@@ -298,8 +298,17 @@ test("the row's copy states the action that a press performs", () => {
 	);
 	// The action leads and the count follows, joined by the model's LABEL_SEAM.
 	assert.equal(
-		planChipLabel(4),
+		planChipLabel({ openTodos: 4, droppedTodos: 0 }),
 		"Open the plan in run details — 4 to-dos open",
+	);
+	// The settled states are the same words the chip body prints (see below).
+	assert.equal(
+		planChipLabel({ openTodos: 0, droppedTodos: 0 }),
+		"Open the plan in run details — All to-dos resolved",
+	);
+	assert.equal(
+		planChipLabel({ openTodos: 0, droppedTodos: 2 }),
+		"Open the plan in run details — All to-dos closed",
 	);
 });
 
@@ -327,23 +336,53 @@ test("the plan chip states the model's own clause, off the model's own counts", 
 
 test("a finished plan still renders, and says so", () => {
 	/*
-	 * `0 to-dos open` rather than the chip vanishing: the row's height must not
-	 * change when the last item closes, and a plan that completed is a fact worth
-	 * keeping on screen.
+	 * A settled plan keeps a clause rather than the chip vanishing: the row's
+	 * height must not change when the last item closes, and a plan that ended is a
+	 * fact worth keeping on screen. Two done, one dropped is the case that decides
+	 * WHICH clause — nothing is open, so the count form cannot state it, and one
+	 * item was abandoned, so `All to-dos resolved` would be a false claim about
+	 * work that did not succeed.
 	 */
 	const details = detailsFor(["done", "done", "dropped"]);
 	assert.equal(details.openTodos, 0);
+	assert.ok(details.droppedTodos > 0);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.match(markup, /All to-dos closed/);
+	assert.doesNotMatch(
+		markup,
+		/All to-dos resolved/,
+		"a dropped item is not work that was resolved",
+	);
 	assert.match(
-		renderRow({ frontend: frontend(""), runDetails: details }),
-		/0 to-dos open/,
+		markup,
+		/aria-label="Open the plan in run details — All to-dos closed"/,
+		"the name states the same settled words as the chip body",
 	);
 });
 
+test("a plan with every item done is the one that reads as resolved", () => {
+	const details = detailsFor(["done", "done", "done"]);
+	assert.equal(details.openTodos, 0);
+	assert.equal(details.droppedTodos, 0);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.match(markup, /All to-dos resolved/);
+	assert.match(
+		markup,
+		/aria-label="Open the plan in run details — All to-dos resolved"/,
+	);
+	/*
+	 * The settled case stops spelling a count at all: a chip that said
+	 * `All to-dos resolved` beside a numeral would be two statements of one fact.
+	 */
+	assert.doesNotMatch(markup, /\d+ to-dos? open/);
+});
+
 test("the clause is the model's one spelling, for one, none and many", () => {
-	assert.equal(todoClause(0), "0 to-dos open");
-	assert.equal(todoClause(1), "1 to-do open");
-	assert.equal(todoClause(2), "2 to-dos open");
-	assert.equal(todoClause(14), "14 to-dos open");
+	assert.equal(todoClause({ openTodos: 0, droppedTodos: 0 }), "All to-dos resolved");
+	assert.equal(todoClause({ openTodos: 0, droppedTodos: 2 }), "All to-dos closed");
+	assert.equal(todoClause({ openTodos: 1, droppedTodos: 0 }), "1 to-do open");
+	assert.equal(todoClause({ openTodos: 2, droppedTodos: 0 }), "2 to-dos open");
+	assert.equal(todoClause({ openTodos: 14, droppedTodos: 3 }), "14 to-dos open");
 	/*
 	 * And the chip prints THAT function's output rather than a pluralisation of
 	 * its own — the single-item case is the one a second copy gets wrong.
