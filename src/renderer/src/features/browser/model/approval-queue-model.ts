@@ -381,14 +381,18 @@ export function useApprovalQueue(
 	 * only while something is live, and the tick that empties the list is the one
 	 * that resolves the last entry.
 	 */
-	const liveIds = liveRequests(requests, now)
-		.map((request) => request.entryId)
-		.join("|");
+	/*
+	 * `now` and `requests` ARE THE WHOLE INPUT, and the live set is derived from them:
+	 * a tick that expires an entry moves `now`, a departure moves `requests`, so an
+	 * explicit key on the derived ids would be a dependency the rule correctly reads as
+	 * unnecessary. Kept as a comment rather than a `void` because that is what the rule
+	 * was asking.
+	 */
 	useEffect(() => {
 		setResolved((current) =>
 			reconcileResolved(requests, requests, current, answered.current, now),
 		);
-	}, [liveIds, now, requests]);
+	}, [now, requests]);
 
 	// Leaving the surface drops the memory by construction: it is a reading of the
 	// live list, not a history (spec 3.4), so there is nothing to clean up on
