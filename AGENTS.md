@@ -309,33 +309,55 @@ with it, and `scripts/window-mode.test.mjs` fails on a present site that reaches
 for the process's own plan instead.
 
 A `headless` request that NAMES A CONVERSATION creates nothing and parks the
-conversation instead, and the operator's next window — their own launch, a Dock
-click, a banner click — opens it. An invisible window is not a harmless one: macOS
-keeps the app alive with the renderer warm, `app.on("activate")` only creates a
-window when there are NONE, so the Dock icon would activate an app showing nothing
-while a conversation sat in a screen nobody could reach. Nothing appears, nothing
-is raised, and the conversation is not lost — the parked one rides into the next
-window as its initial session, so it is painted in that window's first frame
-rather than swapped in after it is up. For the same reason an app with NO window
-now answers a second launch that names no conversation at all: a request that may
-come forward opens the app's own window (it used to do nothing, so launching the
-app again looked like nothing happening), while `headless` still opens nothing.
+conversation instead, and the operator's next window opens it. An invisible window
+is not a harmless one: macOS keeps the app alive with the renderer warm, so the
+Dock icon would activate an app showing nothing while a conversation sat in a
+screen nobody could reach. Nothing appears and nothing is raised — and a park is
+NOT silent: the winner writes `trigger=second-instance mode=headless requested=never
+parked=<id> applied=parked` (the conversation that is waiting), so the log answers
+"what happened to what I asked for" for the requests that raise nothing.
+
+THE PARK IS A QUEUE, AND THE CREATOR OF A WINDOW ALWAYS WINS IT. Every parked
+request waits, and the next window drains them in ARRIVAL ORDER: the first becomes
+that window's initial session (its first frame, not a swap) when the window's own
+request named no conversation, and the rest are delivered to it once its renderer
+can hear them. A window opened for something else — a catalogue click, a viewer
+`resume_session`, a banner click, a person's launch that named a conversation —
+opens what ITS request asked for, and the parked conversations follow it, so the
+last one is what the operator lands on and none is dropped.
+
+For the same reason an app with NO window answers a second launch that names no
+conversation at all: a request that may come forward opens the app's own window (it
+used to do nothing, so launching the app again looked like nothing happening),
+while `headless` still opens nothing. A DOCK CLICK PRESENTS THE WINDOW UNDER THE
+OPERATOR'S PLAN, not under the launch's: the window mode is a promise about the
+LAUNCH, and `app.on("activate")` is a person asking for the app they already have
+open — answering that with a window nobody can see would leave the parked
+conversation in an invisible screen with the queue emptied into it.
 
 The losing launch says what it did, because nothing else can: it prints
-`[second-instance] no window was created by this launch: another instance already
-holds the profile at <path>, and this launch's window mode (<mode>) was handed to
-it — <what the running app will do>. Exiting.` It does NOT print the
-`[window-mode]` line, which describes the window this process never creates.
+`[second-instance] this launch did not start a window of its own: the app already
+open is the instance answering (profile: <path>), and this launch's window mode
+(<mode>) was handed to it — <what the running app will do>. Quit that app to start
+a fresh instance. Exiting.` The profile path is the proof a rig needs and the app-is-
+already-open fact is what a person can act on; the effect names what the mode can
+actually do (a `headless` request's conversation is delivered once a window is open,
+not when the request lands). It does NOT print the `[window-mode]` line, which
+describes the window this process never creates.
 
 An `inactive` request orders a window that is already on screen and never
 un-minimises one, BY ORDERING OR BY RESTORING: `restore()` is a focus-class act, and
 macOS deminiaturises a window as part of ordering it, so `showInactive()` alone
 brought a Dock-ed window back (measured). A minimised window is therefore left
-exactly where it is. Undeclared and `normal` requests keep restoring, because those
-are the ones that mean "bring this to me".
+exactly where it is — and the decline is REPORTED (`applied=skipped+minimised`),
+because a request that was declined must not look like one that never arrived.
+Undeclared and `normal` requests keep restoring, because those are the ones that
+mean "bring this to me".
 
 Every raise writes one line to the backend log, naming the site, the mode and
-what it did:
+what it did — ONE line per present: the window's `ready-to-show` handler is
+one-shot, because it can fire twice for one window (a reload) and two identical
+lines for one window is a log a person cannot read.
 
 ```
 [window-raise] trigger=second-instance mode=normal requested=focus pid=9182 \

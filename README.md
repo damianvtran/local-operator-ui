@@ -228,8 +228,11 @@ on macOS; the `LOCAL_OPERATOR_LOG_DIR` environment variable moves it):
 `viewer-focus` or `viewer-resume`. `pid` and `cwd`, when they are there, name the
 process that asked — that is the one to stop if something keeps doing it. A run
 that raises nothing writes nothing, so an app that never came forward has no line
-at all. In the line above, `mode` is the window mode the raise ran under and
-`applied` is what it actually did.
+at all — although a conversation that is WAITING for a window does: a `headless`
+launch against an app with no window open writes `applied=parked`, `parked=<id>`
+rather than a raise, and that conversation opens the next window you give the app.
+In the line above, `mode` is the window mode the raise ran under and `applied` is
+what it actually did.
 
 A second launch only brings the window as far as IT asked: a `headless` run never
 raises it (it can still load the conversation it names), an `inactive` one orders

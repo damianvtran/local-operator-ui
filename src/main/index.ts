@@ -76,6 +76,7 @@ import {
 	windowIntentPayload,
 } from "./window-mode";
 import {
+	OPERATOR_SHOW,
 	type RaiseReport,
 	type RaiseRequester,
 	type RaiseTrigger,
@@ -85,6 +86,7 @@ import {
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
+	reportParked,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -433,7 +435,19 @@ function createWindow(
 		write.call(logger, `[renderer] ${message}`, LogFileType.BACKEND);
 	});
 
+	/*
+	 * ONE PRESENT PER WINDOW, WHATEVER THE EVENT DOES. `ready-to-show` can fire more
+	 * than once for the same window (a reload fires it again), and both review
+	 * streams measured the cost: two identical `[window-raise]` lines and two
+	 * `[window-mode] state:` lines ~80 ms apart for one window, while "one line per
+	 * raise" is this feature's own promise. The first fire is when the window is
+	 * ready; a later one is a page that reloaded on a window already on screen, and
+	 * presenting it again would not be a raise.
+	 */
+	let presentHandled = false;
 	mainWindow.on("ready-to-show", () => {
+		if (presentHandled) return;
+		presentHandled = true;
 		/*
 		 * `normal` raises and focuses the window: the ordinary launch, which is a
 		 * person starting the app. `inactive` orders the window without
@@ -685,14 +699,29 @@ const reportRaise: RaiseReport = (line) => {
  * profile, and what that app will do with it — this process's OWN resolved mode,
  * because that is the mode it just handed over.
  */
+/**
+ * What the LOSING launch prints, and the whole of it (UX review U1, and U5/U7 in
+ * round 2).
+ *
+ * It created no window, so a `[window-mode]` line about a window would be a line
+ * about something that does not exist. What a person or a rig can act on instead
+ * is four facts: this run did not start, the app ALREADY OPEN is the instance
+ * answering (with the profile path as the proof a rig needs), what that instance
+ * will do with the request, and how to get a fresh instance of your own.
+ *
+ * The effect sentence is this process's OWN resolved mode, because that is the mode
+ * it just handed over — and it stops short of promising anything now: a `headless`
+ * request's conversation is delivered when a window is OPEN, not when the request
+ * lands, which is what the mechanism can actually do (UX review round 2, U5).
+ */
 function describeForwardedLaunch(profile: string): string {
 	const effect =
 		windowLaunch.show === "never"
-			? "it will deliver any conversation this launch names and raise no window"
+			? "it will deliver any conversation this launch names once a window is open, and it will not raise a window in the meantime"
 			: windowLaunch.show === "inactive"
 				? "it may order its window forward without activating the app"
 				: "it will raise its window";
-	return `[second-instance] no window was created by this launch: another instance already holds the profile at ${profile}, and this launch's window mode (${windowLaunch.mode}) was handed to it — ${effect}. Exiting.`;
+	return `[second-instance] this launch did not start a window of its own: the app already open is the instance answering (profile: ${profile}), and this launch's window mode (${windowLaunch.mode}) was handed to it — ${effect}. Quit that app to start a fresh instance. Exiting.`;
 }
 
 /**
@@ -851,7 +880,26 @@ function rendererArgumentFlags(
  * request in this state would otherwise create and present a window (review round
  * 1, MAJOR).
  */
-let queuedLaunch: { session: string; request: RaiseRequest } | null = null;
+/**
+ * Requests PARKED because this app has no window and may not make one it can show.
+ *
+ * A QUEUE, not a slot (review round 2, MAJOR-1). With one slot, two `headless`
+ * requests naming different conversations at a windowless app collapsed to the
+ * last, and the first was in no log, no window and no later delivery — while its
+ * losing launch had been told, in its own output, that the conversation would be
+ * delivered. Every parked request waits now, and the next window drains them in
+ * ARRIVAL ORDER: the first becomes that window's initial session (its first frame,
+ * not a swap) and the rest are delivered to it once its renderer can hear them.
+ *
+ * WHO WINS WHEN A PARKED CONVERSATION MEETS A WINDOW OPENED FOR SOMETHING ELSE.
+ * The request that CREATED the window, always: a catalogue click, a viewer
+ * `resume_session`, a banner click or a person's launch that names a conversation
+ * decides what that window opens, and every parked conversation is delivered to it
+ * afterwards in arrival order. So the last parked conversation is what the operator
+ * lands on, none is dropped, and parking never overrides the creator's intent and
+ * never blocks a window some request needs now.
+ */
+const parkedLaunches: { session: string; request: RaiseRequest }[] = [];
 
 /**
  * This app's viewer record and control endpoint, created inside `whenReady`.
@@ -1110,12 +1158,14 @@ if (!gotTheLock) {
 					// Parked, not dropped: a second instance can arrive while the first is
 					// still starting, and a discarded id is a click that silently did
 					// nothing — the defect this path exists to remove. The request is parked
-					// WITH it, so the flush cannot re-derive it from argv that is gone.
+					// WITH it, so the flush cannot re-derive it from argv that is gone, and
+					// the queue holds EVERY parked request rather than the last one
+					// (review round 2, MAJOR-1).
 					queue: (session, request) => {
-						queuedLaunch = {
+						parkedLaunches.push({
 							session,
 							request: secondInstanceRequest(request),
-						};
+						});
 					},
 					report: reportRaise,
 				},
@@ -1953,8 +2003,9 @@ app
 			 * its own; the parked one is delivered below instead of being dropped.
 			 */
 			const parked =
-				initialSession === null && !openCatalogue ? queuedLaunch : null;
-			if (parked) queuedLaunch = null;
+				initialSession === null && !openCatalogue
+					? parkedLaunches.shift()
+					: undefined;
 			mainWindow = createWindow(
 				parked?.session ?? initialSession,
 				openCatalogue,
@@ -1965,17 +2016,21 @@ app
 			const windowId = mainWindow.webContents.id;
 
 			/*
-			 * Anything STILL parked belongs to a creator that named a conversation of its
-			 * own, so it cannot be this window's initial session. It is delivered when the
-			 * window can hear it: a `webContents.send` before the renderer has loaded is a
-			 * message with no listener, and dropping it is the silent no-op this whole
-			 * path exists to remove.
+			 * EVERY remaining parked conversation goes to this window, in arrival order.
+			 * They cannot be its initial session — the creator named that (or the one
+			 * above already took it) — so they are delivered once the window can hear
+			 * them: a `webContents.send` before the renderer has loaded is a message with
+			 * no listener, and dropping one is the silent no-op this path exists to
+			 * remove. Draining the QUEUE here rather than one slot is what makes "nothing
+			 * is lost" true for the second and later requests as well (review round 2,
+			 * MAJOR-1).
 			 */
-			const waiting = queuedLaunch;
-			if (waiting) {
-				queuedLaunch = null;
+			const waiting = parkedLaunches.splice(0, parkedLaunches.length);
+			if (waiting.length > 0) {
 				mainWindow.webContents.once("did-finish-load", () => {
-					openSessionInWindow(waiting.session, waiting.request);
+					for (const queued of waiting) {
+						openSessionInWindow(queued.session, queued.request);
+					}
 				});
 			}
 
@@ -2195,7 +2250,20 @@ app
 			// invisible is left holding a screen nobody can reach. See
 			// `canCreateWindowFor` for why that is the worse of the two failures.
 			if (!canCreateWindowFor(request.show)) {
-				if (sessionId !== null) queuedLaunch = { session: sessionId, request };
+				if (sessionId !== null) {
+					parkedLaunches.push({ session: sessionId, request });
+					/*
+					 * SAID OUT LOUD, because it is the only account of a request that is
+					 * waiting: the winner creates no window and raises nothing, so without this
+					 * line "what happened to what I asked for" has no answer in the log even
+					 * though the losing launch was told it would be delivered (UX round 2, U5).
+					 */
+					reportParked(sessionId, {
+						trigger: request.trigger,
+						requester: request.requester,
+						report: reportRaise,
+					});
+				}
 				return;
 			}
 			// Otherwise the request goes to the CREATE branch too: a window this process
@@ -2239,8 +2307,18 @@ app
 			// host comes with the window (see `setupMainWindowWithUpdateService`),
 			// so there is nothing to attach here — and attaching it a second time
 			// would be the duplicate registration R2-2 ruled out.
+			//
+			// IT PRESENTS UNDER THE OPERATOR'S PLAN, NOT THIS PROCESS'S LAUNCH PLAN
+			// (UX review round 2, U6). A Dock click is a person asking for the app, and
+			// a `headless`-plan process answering it with `presentWindow(..., "never")`
+			// would leave a real, invisible window holding whatever was parked — the
+			// queue emptied into a screen nobody can reach. The mode governs the launch;
+			// this is the other direction, and `OPERATOR_SHOW` is the plan that says so.
 			if (BrowserWindow.getAllWindows().length === 0) {
-				setupMainWindowWithUpdateService();
+				setupMainWindowWithUpdateService(null, false, {
+					show: OPERATOR_SHOW,
+					trigger: "initial-present",
+				});
 			}
 		});
 	})
