@@ -80,6 +80,20 @@ window.electron = {
 
 const STORY_CONVERSATION = "composer-band-story";
 
+/**
+ * A conversation id per story, and it is load-bearing rather than tidy.
+ *
+ * The draft store is PERSISTED (zustand `persist`, key `conversation-input-store`),
+ * and every story in one capture run shares the run's Chrome profile - so a
+ * story that seeds a draft under the same id as its neighbours hands that draft
+ * to every story captured after it. Measured, on this surface's first capture:
+ * the `reduced-motion` frame came back with the `draft-held` story's sentence in
+ * the box and its send button lit, i.e. a picture of a different state wearing
+ * this one's name. Distinct ids make the store's per-conversation map the
+ * isolation, rather than an ordering assumption about the STORIES list.
+ */
+const conversationFor = (story: string) => `${STORY_CONVERSATION}-${story}`;
+
 /** An empty transcript: the band claims the column and the prompt renders. */
 const EMPTY: Message[] = [];
 
@@ -107,17 +121,17 @@ const LONGEST_FOUR = [...DEFAULT_MESSAGE_SUGGESTIONS]
  * rehydration can be merged away by it, and the effect runs after.
  */
 const WithDraft = ({
+	conversation,
 	text,
 	children,
 }: {
+	conversation: string;
 	text: string;
 	children: ReactNode;
 }) => {
 	useEffect(() => {
-		useConversationInputStore
-			.getState()
-			.setCurrentInput(STORY_CONVERSATION, text);
-	}, [text]);
+		useConversationInputStore.getState().setCurrentInput(conversation, text);
+	}, [conversation, text]);
 	return <>{children}</>;
 };
 
@@ -126,9 +140,14 @@ const WithDraft = ({
  *
  * `h-screen` and `flex-col` so the band's own `grow` resolves the way it does
  * in the app, where the band claims the height of the chat column rather than
- * its content. The label occupies the slot the app's header would, which is
- * what keeps the band's top edge off y=0 and stops the frame reading as a
- * full-window screenshot it is not.
+ * its content. `w-full` on the inner column is load-bearing rather than
+ * tidiness: the outer frame centres with `justify-center`, and a flex item with
+ * an auto width in a centring row shrinks to its CONTENT - which made the whole
+ * band as wide as this label the first time these stories were captured, and
+ * would have photographed a 466px column while claiming the app's 1380. The
+ * label occupies the slot the app's header would, which is what keeps the
+ * band's top edge off y=0 and stops the frame reading as a full-window
+ * screenshot it is not.
  */
 const Column = ({
 	label,
@@ -141,7 +160,7 @@ const Column = ({
 }) => (
 	<div className="flex h-screen w-screen justify-center bg-canvas">
 		<div
-			className="flex h-full flex-col"
+			className="flex h-full w-full flex-col"
 			style={width ? { width } : undefined}
 			data-story-column={width ?? "viewport"}
 		>
@@ -162,30 +181,39 @@ export default meta;
 type Story = StoryObj;
 
 type BandProps = {
+	/** Which state this frame is, used to key the conversation id. */
+	story: string;
 	isSmallView?: boolean;
 	pool?: readonly string[];
 	draft?: string;
 };
 
-const composerBand = ({ isSmallView, pool, draft }: BandProps) => {
+const composerBand = ({ story, isSmallView, pool, draft }: BandProps) => {
+	const conversation = conversationFor(story);
 	const input = (
 		<MessageInput
 			isLoading={false}
 			messages={EMPTY}
-			conversationId={STORY_CONVERSATION}
+			conversationId={conversation}
 			initialSuggestions={pool ?? DEFAULT_MESSAGE_SUGGESTIONS}
 			isSmallView={isSmallView ?? false}
 			onSendMessage={async () => true}
 		/>
 	);
-	return draft ? <WithDraft text={draft}>{input}</WithDraft> : input;
+	return draft ? (
+		<WithDraft conversation={conversation} text={draft}>
+			{input}
+		</WithDraft>
+	) : (
+		input
+	);
 };
 
 /** The pinned opening sample of four and the tip row, at the app's default width. */
 export const EmptyChat: Story = {
 	render: () => (
 		<Column label="empty chat / opening sample: the pool's first four + the tip row">
-			{composerBand({})}
+			{composerBand({ story: "empty-chat" })}
 		</Column>
 	),
 };
@@ -197,7 +225,7 @@ export const ColumnFloor: Story = {
 			label="column floor (550px): the band's height cap is measured here"
 			width={550}
 		>
-			{composerBand({})}
+			{composerBand({ story: "column-floor" })}
 		</Column>
 	),
 };
@@ -209,7 +237,7 @@ export const SmallView: Story = {
 			label="small view (below the column floor): the prompt is absent, tip row included"
 			width={520}
 		>
-			{composerBand({ isSmallView: true })}
+			{composerBand({ story: "small-view", isSmallView: true })}
 		</Column>
 	),
 };
@@ -221,7 +249,7 @@ export const LongLabels: Story = {
 			label="the pool's longest four labels at a 620px column: the worst wrap a sample can draw"
 			width={620}
 		>
-			{composerBand({ pool: LONGEST_FOUR })}
+			{composerBand({ story: "long-labels", pool: LONGEST_FOUR })}
 		</Column>
 	),
 };
@@ -230,7 +258,10 @@ export const LongLabels: Story = {
 export const DraftHeld: Story = {
 	render: () => (
 		<Column label="a draft is held: the tip's clock is suspended, the row stays">
-			{composerBand({ draft: "Check the failing test in the parser and" })}
+			{composerBand({
+				story: "draft-held",
+				draft: "Check the failing test in the parser and",
+			})}
 		</Column>
 	),
 };
@@ -245,7 +276,7 @@ export const DraftHeld: Story = {
 export const ReducedMotion: Story = {
 	render: () => (
 		<Column label="reduced motion: one entry is held instead of rotating">
-			{composerBand({})}
+			{composerBand({ story: "reduced-motion" })}
 		</Column>
 	),
 };
