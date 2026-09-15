@@ -1,0 +1,311 @@
+# The #170 sync, the ten CI failures it unblocked, and the Linux arm
+
+Branch `fix/managed-python-runtime`, PR #183. Head before this round 483a21da8, after it
+`e39379042`; `origin/main` moved twice while the round was queued - `c9a9c6196` ->
+`8e2f67b1c` (#170) -> `758aa206f` (the v0.22.6 bump). Merged, not rebased, following this
+repo's own convention. Every block below is a command and its own output.
+
+## Why the head had to move
+
+GitHub reported the PR CONFLICTING at `0e2a4b42b`, and a conflicted PR gets no
+`pull_request` workflow runs - so the Linux CI this round is about could not be read at
+all until the head moved.
+
+```
+$ gh pr view 183 --json headRefOid,mergeable
+{"headRefOid":"0e2a4b42b8d33199b5fe0b33ba23567feff59a1c","mergeable":"CONFLICTING"}
+
+$ git merge-tree --write-tree --name-only HEAD origin/main
+CONFLICT (content): Merge conflict in docs/evidence/manifest.json
+CONFLICT (content): Merge conflict in package.json
+```
+
+## The ten CI failures, and the two reasons they passed here
+
+```
+$ gh run view --job 104216652953 --log | grep -E "^not ok|# (tests|pass|fail|skipped)"
+# tests 1080
+# pass 1055
+# fail 10
+# skipped 15
+```
+
+Nine were macOS tooling on `ubuntu-latest` (`spawnSync /usr/bin/lipo ENOENT`). The tenth
+was worse than the failure it produced:
+
+```
+# scripts/python-bytecode-cache.test.mjs, the pre-split report test, before this round
+home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin
+assert.match(lines[0], /built on the interpreter inside \/Applications\/Local Operator\.app/);
+```
+
+That path is the OPERATOR'S LIVE APP. The test passed on the machine it was written on and
+failed on every runner, because it asserted a property of that machine rather than of the
+repository. It now builds its own bundle inside the test's `mkdtemp` and asserts against
+that, so the same assertion is true anywhere:
+
+```
+# after: the fixture is the test's own, and the assertion names it
+const bundle = join(home, "Fixture.app");
+assert.match(lines[0], /built on the interpreter inside .*Fixture\.app/);
+assert.ok(lines[0].includes(bundle));
+```
+
+## The nine macOS-only tests, and why skipping them is not a pass
+
+They drive a path that is macOS-only BY CONSTRUCTION, not incidentally:
+`prepareManagedPython` writes `platform: "darwin"`, takes its lock through
+`/usr/bin/shlock`, and `verifyMachO` refuses a seed with no Mach-O in it while running
+`codesign`/`otool` over every one it finds - so its seed fixture has to be a real thinned,
+ad-hoc-signed binary (lipo + codesign). `finalContainerChecks` needs `ditto`, `hdiutil` and
+`lipo`. Each of the nine now calls `skipUnlessDarwin`, which is the first statement of the
+test, before any fixture work, and the skip NAMES the missing tool.
+
+```
+$ # CI, Desktop Tests on ubuntu-latest, the skips this branch owns
+$ grep -oE "# SKIP [^\"]*" log | sort | uniq -c
+     10 # SKIP macOS only: preparing an environment takes the shlock lock and verifies every Mach-O in the seed with codesign and otool, so the fixture seed is a real thinned, ad-hoc-signed binary (lipo, codesign)
+      4 # SKIP macOS only: the container gate builds archives with ditto, mounts images with hdiutil and reads an app's architecture with lipo
+      2 # SKIP macOS only: the image is built and mounted with hdiutil, which this platform does not have
+      2 # SKIP macOS only: the archive is built with ditto, which this platform does not have
+```
+
+The log carries the TAP report twice, so each count is 2x the number of tests:
+5 + 2 + 1 + 1 = the nine guards. The other 15 skips are the repository's own pre-existing
+conventions (`macOS only`, `no local-operator on this machine's PATH`, `a shallow clone has
+no ancestor of HEAD to check`), which is why CI reports 24.
+
+Making the guard complete rather than blanket took two moves, so that coverage on Linux was
+not simply lost:
+
+- `artifactArch`'s three filename cases moved into their own test that runs on every
+  platform, leaving the container test only the half that needs `lipo`.
+- The contract review R8 is about - a published selection answers ready/missing/unprepared
+  instead of THROWING - is now also asserted on a hand-built selection
+  (`runtimes/<id>-<uuid>`, `environments/<id>-<uuid>`, the record and the pointer), which
+  needs no toolchain, so the verdict stays covered where the provisioning tests skip.
+
+## The Linux arm on the merged head
+
+```
+$ gh run view --job 104220893117 --log | grep -E "^# (tests|pass|fail|skipped)"
+# tests 1107
+# pass 1083
+# fail 0
+# skipped 24
+
+$ gh pr checks 183
+Lint                             pass   24s
+Runtime Dependencies             pass   10s
+Type Checking                    pass   25s
+Desktop Tests                    pass   3m45s
+Security Audit                   pass   24s
+Version Bump Guard               pass   10s
+NPX Sanity Check (ubuntu-latest) pass
+NPX Sanity Check (macos-latest)  pass
+```
+
+The two tests added this round RAN there rather than skipping, which is what makes the
+verdict coverage on Linux more than a claim:
+
+```
+ok 419 - an artifact's filename is the only statement of its architecture
+ok 424 - a published selection answers ready, missing or unprepared, and never throws
+```
+
+## The sync changed nothing of this branch
+
+```
+$ git range-diff c9a9c6196..0e2a4b42b 8e2f67b1c..e39379042
+ 1:  fe4e1fde0 =  1:  fe4e1fde0 fix(update): stop every python we start, and the venv we manage, writing into a bundle
+ ...
+33:  0e2a4b42b = 33:  0e2a4b42b test(update): stop asserting the machine, and skip the macOS toolchain out loud
+ -:  --------- > 34:  e39379042 docs(evidence): re-stamp the merged trees after the #170 sync
+
+rows: 33 | identical (=): 33 | changed (!): 0 | dropped (<): 0 | new (>): 1
+```
+
+```
+$ # added/removed LINE SETS, per file, from the common base c9a9c6196
+src/scripts files in the old delta: 26 | in the new delta: 37
+files with byte-identical added/removed line sets: 25
+files whose line sets differ: 12 - every one of them a file #170 also touched:
+    scripts/attention-fixture/index.html, scripts/attention-fixture/main.tsx,
+    scripts/attention-fixture/vite.config.ts, scripts/capture-evidence.mjs,
+    scripts/chat-session-status.test.mjs, scripts/completion-view-ack.test.mjs,
+    src/renderer/src/features/chat/components/chat-session-status.stories.tsx,
+    src/renderer/src/features/chat/components/chat-session-status.tsx,
+    src/renderer/src/features/chat/components/chat-sidebar.tsx,
+    src/renderer/src/features/chat/components/scroll-to-bottom-button.tsx,
+    src/renderer/src/shared/hooks/use-completion-view.ts,
+    src/shared/desktop-session-contract.ts
+files whose line sets differ that #170 did NOT touch: none
+```
+
+The merge reported conflicts in exactly two files - `package.json` and
+`docs/evidence/manifest.json` - so the twelve above auto-merged, which is the semantic
+check the team's rules ask for on files upstream also touched.
+
+## The two conflict resolutions
+
+`package.json`: main's `test:desktop` list plus this branch's
+`scripts/managed-python.test.mjs` - 55 entries, no duplicates, nothing from either side
+dropped - main's version (0.22.5 at the merge, 0.22.6 after the release commit landed), and
+this branch's `build.afterPack` = `scripts/after-pack.mjs` with the per-platform
+seed-namespace `extraResources` blocks in place of main's top-level `python`/`python_aarch64`
+ones, which would ship the legacy names beside the seed that `afterPack` refuses.
+
+```
+$ node -e "...leaf audit of the merged scripts against both sides..."
+main leaves missing from the merge:
+    build.extraResources[0].from = resources/python
+    build.extraResources[0].to = python
+    build.extraResources[0].filter[0] = **/*
+    build.extraResources[1].from = resources/python_aarch64
+    build.extraResources[1].to = python_aarch64
+    build.extraResources[1].filter[0] = **/*
+main leaves the merge overrode:
+    scripts.test:desktop    (main's 51 entries + this branch's one)
+    build.afterPack         main: scripts/prune-python-resource.mjs
+                            merged: scripts/after-pack.mjs
+leaves from neither side: []
+```
+
+```
+$ # does this branch carry a version change of its own?
+$ git diff c9a9c6196 e39379042 -- package.json | grep -c '^[+-]\s*"version"'
+0
+$ node -p "require('./package.json').version"
+0.22.5
+```
+
+`docs/evidence/manifest.json`: BOTH sides had moved this time, so neither dominated.
+`partialCapture.refreshedFromHead` is the same commit on both sides (`9c82dce4`), which
+makes the two records two views of ONE pass: the lists are unioned (62 stories, 8 added
+surfaces), `refreshedFrames` is this branch's pass total plus main's story it does not
+cover (336 + 12 = 348), and `addedFrames` is the union measured on the merged disk
+(44 + 2 = 34 + 12 = 46). The stamp block takes main's side and is re-derived on the merged
+disk by the commit that follows the merge:
+
+```
+$ node -e "..."   # re-derivation, by the gate's own method
+head 4f31db5d1 src f80d581f9 scripts f35e1ddb2
+frames 1228 surfaces 188 themes 12
+
+$ node --test scripts/evidence-manifest.test.mjs
+i tests 15
+i pass 15
+i fail 0
+```
+
+## Gates on the merged head, on this machine
+
+```
+$ pnpm lint; pnpm check-types; pnpm check-themes
+LINT_EXIT=0
+TYPES_EXIT=0
+THEMES_EXIT=0
+themes.generated.css is up to date (12 themes).
+Contrast contract holds: 2303 assertions across 12 themes, 0 pinned exception(s).
+
+$ pnpm test:desktop
+i tests 1107
+i pass 1106
+i fail 1
+i skipped 0
+DESKTOP_EXIT=1
+```
+
+The one failure is the submit-latency flake, re-confirmed at the CURRENT base rather than
+asserted: the same file, at `origin/main` `758aa206f`, exported with `git archive` into a
+clean tree (no worktree registration in the shared `.git`), fails identically.
+
+```
+$ cd /tmp/lo170-base && node scripts/run-desktop-tests.mjs scripts/submit-latency.test.mjs
+x M1/M2/M3: the warm removes the engage from the send, and the control proves it (9679ms)
+i tests 4 | pass 3 | fail 1
+  'warm' !== 'warming'
+
+$ uptime
+21:52  up 1 day,  8:47, 2 users, load averages: 34.62 44.30 69.36
+```
+
+## The container checks, the negative direction, and the build in `dist`
+
+The four container tests R3 is about - including the negative direction (an archive carrying
+a legacy interpreter alias, and one carrying a seed for the wrong architecture, must both be
+refused) - run on this head and pass here:
+
+```
+$ node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+ok a container's filename architecture is cross-checked against the app inside it
+ok the container gate refuses a legacy interpreter alias and a seed for the wrong architecture
+ok the container gate names an archive with no application rather than passing
+ok the disk image path is exercised by mounting the real image, not by assertion
+i tests 20 | pass 20 | fail 0
+```
+
+The release gate over the artifacts in `dist` finds the seeded rows it exists for clean and
+the signing rows BLOCKED, which is the documented class on a machine with no Developer ID:
+
+```
+$ node scripts/verify-macos-artifacts.mjs --dist dist
+   6 PASS app-one-bundled-python:      the bundled python interpreter tree this architecture needs
+   6 PASS app-private-python-seed:     complete private Python seed with no legacy aliases
+   6 PASS app-no-bundled-bytecode:     no .pyc/.pyo in the bundled python trees
+   1 PASS final-artifact-metadata:     release metadata describes exact delivered bytes
+   6 FAIL app-codesign  / 6 FAIL app-spctl  / 6 FAIL app-stapler
+   2 FAIL dmg-spctl     / 2 FAIL dmg-stapler
+22 of 41 artifact checks failed. The release must not be published until every check above passes.
+GATE_EXIT=1
+```
+
+NOT REBUILT this round, and the reason is the host rather than the change:
+
+```
+$ df -h /System/Volumes/Data
+Filesystem      Size   Used  Avail Capacity  Mounted on
+/dev/disk3s5    460Gi  425Gi  1.7Gi  100%     /System/Volumes/Data
+```
+
+The volume is at 100% with ~1.7 GiB free, and the largest consumers are other sessions'
+trees under `/private/tmp` (`qa174` 5.6G, `qa-155` 3.1G, `qa164r2` 1.6G, ...), which are not
+mine to reclaim. A `pnpm build` + `electron-builder --mac` pass writes ~1.3 GiB, against a
+live evidence sweep that is writing frames as this was recorded; the sync's own changes are
+renderer/session-status source and the manifest, none of which is the subject of the
+artifact-layout checks above. The `dist` in place is the 0.22.5 build from 21:13. Reported
+rather than forced.
+
+## The evidence gate's lease, investigated read-only
+
+```
+$ node scripts/check-evidence.mjs
+Evidence check DEFERRED: another sweep (or its image child) holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+CHECK_EXIT=75
+
+$ /usr/sbin/lsof /tmp/local-operator-ui-check-evidence.lock
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF      NODE NAME
+node    31465 damian    3u   REG   1,13       28 1109768473 /private/tmp/local-operator-ui-check-evidence.lock
+magick  49744 damian    3u   REG   1,13       28 1109768473 /private/tmp/local-operator-ui-check-evidence.lock
+
+$ ps -o pid,ppid,lstart,etime,command -p 31465
+31465 31453 Mon 14 Sep 21:28:21 2026  05:20 /opt/homebrew/Cellar/node/26.5.0/bin/node --input-type=module --eval const { main } = await import("file:///Users/damian/local-operator-ui-worktrees/cwd-move/scripts/check...
+
+$ for i in 1 2 3; do ps -o time= -p 31465; lsof ... | awk "/magick/"; sleep 20; done
+sample 1  holder-cputime=0:01.07  magick=50916,
+sample 2  holder-cputime=0:01.13  magick=52266,
+sample 3  holder-cputime=0:01.20  magick=53601,
+```
+
+LIVE, not stale, and not this session's: the holder is another worktree's
+(`worktrees/cwd-move`, branch `feat/cwd-move`) `check-evidence` worker, its CPU time
+advances, and its `magick` child is replaced about once per 20 s as frames are checked.
+`AGENTS.md` documents exactly this: one sweep per machine, exit 75 while the lease is busy,
+retry after the owner finishes, never delete the lock file. Left untouched.
+
+## Hygiene
+
+Nothing live was touched: no `/Applications` install, no app-support state, no launchd job,
+no session, and no other session's lock or artifact. No `pkill` and no `ps | grep` sweep was
+run; the only process inspection was the read-only `ps`/`lsof` above, by pid. Nothing was
+merged, no version was bumped, and no issue was created.
