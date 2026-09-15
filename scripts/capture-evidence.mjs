@@ -241,6 +241,10 @@ export const STORIES = [
 	["browser-url-bar--no-badge", 1280, 120],
 	["browser-url-bar--one-waiting", 1280, 120],
 	["browser-url-bar--three-waiting", 1280, 120],
+	// Two digits: the state that makes the badge's geometry load-bearing, because a
+	// 24px pill at the control's inner corner is where "inside the surface" stopped
+	// being free (design round 2, D3 asked for this specimen by name).
+	["browser-url-bar--two-digits", 1280, 120],
 	/* The strip's grammar and its chips. Tight to the strip plus a slice of ground
 	   under it: the active tab's notch is the 1px of `canvas` that makes the tab
 	   continuous with the page, and a frame that stopped at the strip's rule could
