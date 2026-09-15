@@ -243,6 +243,25 @@ type ChatContentProps = {
 		startingAfterId?: string | null;
 		onStop: () => void;
 		/**
+		 * Whether this backend can interrupt a turn (`session_interrupt`), as
+		 * opposed to ending the session.
+		 *
+		 * Here rather than read from the capabilities hook again: the page that owns
+		 * `onStop` owns the gate, and this pane's only job is to decide whether the
+		 * control exists at all. FALSE means no Stop control and no Escape
+		 * accelerator - never a fallback to the session-stop route, which kills the
+		 * session the button does not promise to kill.
+		 */
+		stopAvailable: boolean;
+		/**
+		 * What the last interrupt left running, or null.
+		 *
+		 * Passed through untouched: the sentence is authored where the request and
+		 * its receipt are (`chat-page.tsx` via `interrupt-turn.ts`), and re-deriving
+		 * it here would be a second copy of the same wording.
+		 */
+		stopNotice: string | null;
+		/**
 		 * Answer the pending `ask` gate with an option's label.
 		 *
 		 * Travels beside `onStop` because it is the same kind of thing: a session
@@ -892,10 +911,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
-									canonical
+									canonical?.stopAvailable
 										? { active: canonical.busy, onStop: canonical.onStop }
 										: undefined
 								}
+								/*
+								 * The capability itself, not just its busy half: the composer
+								 * reserves the control's SLOT whenever the backend negotiates
+								 * it, so the dictation control cannot slide into the centre a
+								 * reflex second press lands on (UX round 1's U1 / QA's Q1).
+								 * Without the capability the slot is not reserved either - a
+								 * gap that nothing will ever fill is not a reservation.
+								 */
+								canonicalStopAvailable={canonical?.stopAvailable ?? false}
+								interruptNotice={canonical?.stopNotice ?? null}
 								isFarFromBottom={isFarFromBottom}
 								hasNewActivity={hasNewActivity}
 								scrollToBottom={scrollToBottom}

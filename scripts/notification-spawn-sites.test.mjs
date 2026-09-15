@@ -55,7 +55,10 @@ function blankComments(source) {
 		if (ch === "/" && source[i + 1] === "*") {
 			out += "  ";
 			i += 2;
-			while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) {
+			while (
+				i < source.length &&
+				!(source[i] === "*" && source[i + 1] === "/")
+			) {
 				out += source[i] === "\n" ? "\n" : " ";
 				i += 1;
 			}
@@ -234,6 +237,14 @@ const APP_SPAWN_SITES = [
 		"boots the app headless to measure the environment it hands the backend it spawns, so the app and that backend both banner here if the switch is missing",
 		/withNotificationsOff\(env\);/,
 	),
+	guarded(
+		"scripts/interrupt-esc-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"drives the composer's interrupt end to end in the real app, against a real backend turn - a stopped turn is exactly the state a notification is posted from, so a missing switch here banners the operator about a stop they just made themselves",
+		/const spawnEnv = withNotificationsOff\(\{/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",
@@ -371,8 +382,9 @@ test("every Electron spawn site in scripts/ and bin/ is named, and the guarded o
 		`the scan found ${electron.length} Electron spawn sites; the repo has at least the five app-proof rigs and the published launcher`,
 	);
 	assert.ok(
-		[...APP_SPAWN_SITES, ...UNSCANNABLE_SPAWN_PATHS].filter((row) => row.guarded)
-			.length >= 6,
+		[...APP_SPAWN_SITES, ...UNSCANNABLE_SPAWN_PATHS].filter(
+			(row) => row.guarded,
+		).length >= 6,
 		"the guarded rows are the point of this file: the five app-proof rigs plus the suite's own runner",
 	);
 });
@@ -396,7 +408,10 @@ test("the agent-driven npm launches ask for silence and the interactive ones do 
 	const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 	for (const row of APP_LAUNCH_SCRIPTS) {
 		const body = pkg.scripts[row.name];
-		assert.ok(body, `package.json has no ${row.name} script; this pin reads it`);
+		assert.ok(
+			body,
+			`package.json has no ${row.name} script; this pin reads it`,
+		);
 		if (row.guarded) {
 			assert.match(
 				body,
