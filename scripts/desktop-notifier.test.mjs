@@ -1310,12 +1310,12 @@ test("a clicked banner raises the window only as far as the plan allows", async 
 		[
 			"focus",
 			["send:desktop-open-conversation", "show", "focus"],
-			["trigger=banner-click requested=focus applied=show+focus"],
+			["trigger=banner-click mode=normal requested=focus applied=show+focus"],
 		],
 		[
 			"inactive",
 			["send:desktop-open-conversation", "showInactive"],
-			["trigger=banner-click requested=inactive applied=showInactive"],
+			["trigger=banner-click mode=inactive requested=inactive applied=showInactive"],
 		],
 	];
 	for (const [mode, expected, expectedRaises] of cases) {

@@ -34,7 +34,7 @@
 
 import { readOpenSessionArgv } from "../shared/open-session";
 import type { WindowShow } from "./window-mode";
-import { resolveSecondLaunchShow } from "./window-mode";
+import { readWindowIntent, resolveSecondLaunchShow } from "./window-mode";
 
 /** The slice of `BrowserWindow` that raising a window touches. */
 export interface RaisableWindow {
@@ -49,41 +49,91 @@ export interface RaisableWindow {
  * Why a window is coming forward. One name per call site, so the log line that
  * answers "who took my focus" cannot be reduced to "something did".
  *
- * `open-conversation` names what the raise DOES rather than who asked for it,
- * because that site is shared: a banner click's recreate path, the viewer's
- * `resume_session` and a second launch that named a conversation all deliver to
- * the renderer first and then come forward through the same function.
+ * THE NAMES ARE THE REQUEST, NOT THE MECHANISM. Three of these used to report a
+ * single `open-conversation`, which made the second launch that names a
+ * conversation, a clicked banner's recreate path and the viewer's
+ * `resume_session` indistinguishable in the log — the one line whose whole job is
+ * to tell those apart (review round 1, and UX U2). A site that delivers a
+ * conversation before raising now names the requester that asked for it, and
+ * `viewer-resume` and `viewer-focus` are separate verbs of one control endpoint
+ * because they are separate requests: one opens a conversation, the other only
+ * raises the window.
  */
 export type RaiseTrigger =
 	| "initial-present"
 	| "second-instance"
 	| "banner-click"
 	| "viewer-focus"
-	| "open-conversation";
+	| "viewer-resume";
+
+/**
+ * Who asked for the window, when the caller can say.
+ *
+ * Both fields are DECLARED by the requester across the single-instance boundary
+ * (see `window-mode.ts`'s payload), so they are diagnostic only: nothing is ever
+ * decided from them. They exist because "a second launch did it" is as far as a
+ * reader gets on a machine where several agents and scripts launch this app at
+ * once, and the thing they can act on — which process to stop — is the pid.
+ */
+export interface RaiseRequester {
+	pid?: number;
+	cwd?: string;
+}
 
 /** Where a raise's one line goes. Omitted means silent, never "unordered". */
 export type RaiseReport = (line: string) => void;
 
 export interface RaiseContext {
 	trigger: RaiseTrigger;
+	/** Absent for a request this process made to itself. */
+	requester?: RaiseRequester;
 	report?: RaiseReport;
 }
 
 /**
- * The line one raise reports: what asked for the window, how far the launch plan
- * allowed it to come, and the calls that actually happened.
+ * The mode a raise happened under, from the show plan it was allowed.
+ *
+ * The mapping is one-to-one (`WINDOW_BEHAVIOUR` in `window-mode.ts`), so the
+ * line can name the MODE a reader greps for without a second parameter threaded
+ * to every call site — and `focus` alone is not a mode, which is why the line
+ * used to be ungreppable for the ordinary launch (review round 1).
+ */
+const MODE_OF_SHOW: Record<WindowShow, string> = {
+	focus: "normal",
+	inactive: "inactive",
+	never: "headless",
+};
+
+/**
+ * The line one raise reports: what asked for the window, the mode it ran under,
+ * how far the launch plan allowed it to come, and the calls that actually
+ * happened.
  *
  * `applied` is read off the calls rather than derived from `requested`, so the
  * line is evidence about this process's window rather than a restatement of the
  * decision: a line that says `applied=show+focus` is one the operator can match
- * against the focus they just lost.
+ * against the focus they just lost. `pid`/`cwd` are printed only when the
+ * requester declared them, so a line without them means "this process asked".
  */
 function raiseLine(
-	trigger: RaiseTrigger,
+	context: RaiseContext,
 	requested: WindowShow,
 	applied: readonly string[],
 ): string {
-	return `trigger=${trigger} requested=${requested} applied=${applied.join("+")}`;
+	const who = context.requester;
+	const by = [
+		who?.pid === undefined ? null : `pid=${who.pid}`,
+		who?.cwd === undefined ? null : `cwd=${who.cwd}`,
+	]
+		.filter((field) => field !== null)
+		.join(" ");
+	return [
+		`trigger=${context.trigger}`,
+		`mode=${MODE_OF_SHOW[requested]}`,
+		`requested=${requested}`,
+		...(by === "" ? [] : [by]),
+		`applied=${applied.join("+")}`,
+	].join(" ");
 }
 
 /**
@@ -94,6 +144,11 @@ function raiseLine(
  * window on every platform. It deliberately does NOT add an explicit `focus()`:
  * that is not what shipped, and the point of `normal` is that nothing about a
  * person's launch changed.
+ *
+ * The `restore()` below is the same call `raiseWindow` makes, kept here so the
+ * two paths read alike: a window being presented for the FIRST time cannot be
+ * minimised, so it never fires on this path, and the rule that a request must
+ * not un-minimise a window the operator put away lives in `raiseWindow`.
  */
 export function presentWindow(
 	window: RaisableWindow,
@@ -113,7 +168,28 @@ export function presentWindow(
 		window.show();
 		applied.push("show");
 	}
-	context.report?.(raiseLine(context.trigger, show, applied));
+	context.report?.(raiseLine(context, show, applied));
+}
+
+/**
+ * Whether a request that arrived at an app with NO window may create one.
+ *
+ * `never` IS THE ONE SHOW PLAN THAT MAY NOT, and not because of the focus grab —
+ * a window that is never presented takes nothing from the operator. It is because
+ * the window would be INVISIBLE AND REAL: macOS keeps the app alive with the
+ * renderer warm, so the operator is left with an app whose Dock icon activates
+ * nothing (the `activate` handler only creates a window when there are NONE) and
+ * a conversation they cannot reach. That is a worse state than the focus theft
+ * this path exists to remove.
+ *
+ * So a `never` request parks its conversation instead of building that window,
+ * and the operator's next window — their own launch, a Dock click, a banner click
+ * — opens it (`index.ts` owns the queue; the policy is here so it can be unit
+ * tested, and so no future show plan can be invented without answering this
+ * question). Nothing appears, nothing is raised, and nothing is lost.
+ */
+export function canCreateWindowFor(show: WindowShow): boolean {
+	return show !== "never";
 }
 
 /**
@@ -134,6 +210,14 @@ export function presentWindow(
  * right screen while staying off screen, which is what the mode promises. If
  * this path could raise a headless window, a notification click during a QA run
  * would be the one thing that interrupts the operator.
+ *
+ * ONLY A FOCUS-CLASS REQUEST RESTORES A MINIMISED WINDOW (UX review U3).
+ * `restore()` takes a window back out of the Dock, which is not what "visible,
+ * never activated" asks for: a run that deliberately does not want to be in
+ * front has no business putting a window the operator pushed aside back over
+ * their work, where their next keystroke still would not reach it. An undeclared
+ * or `normal` request is the one that means "bring this to me", and it keeps
+ * restoring.
  */
 export function raiseWindow(
 	window: RaisableWindow,
@@ -142,7 +226,7 @@ export function raiseWindow(
 ): void {
 	if (show === "never") return;
 	const applied: string[] = [];
-	if (window.isMinimized()) {
+	if (show === "focus" && window.isMinimized()) {
 		window.restore();
 		applied.push("restore");
 	}
@@ -154,7 +238,7 @@ export function raiseWindow(
 		window.focus();
 		applied.push("show", "focus");
 	}
-	context.report?.(raiseLine(context.trigger, show, applied));
+	context.report?.(raiseLine(context, show, applied));
 }
 
 /**
@@ -165,25 +249,42 @@ export function raiseWindow(
  * The CONVERSATION is read from the command line alone, and always: an id is
  * something the request names, never the process's own plan, so there is nothing
  * for a payload to add to it.
+ *
+ * The REQUESTER's identity is not read for a decision either. It is what the
+ * other process said about itself, printed so a reader with several agents on one
+ * machine can tell which one asked (UX review U2).
  */
 export interface SecondLaunchRequest {
 	/** The conversation the launch named, or null when it named none. */
 	session: string | null;
 	/** How far the window may come forward, as the REQUESTING launch resolved it. */
 	show: WindowShow;
+	/**
+	 * Who asked, for the log line only. `null` when the requester declared
+	 * nothing this build can read; `cwd` falls back to the working directory
+	 * Electron reports for the second instance, which is always there.
+	 */
+	requester: RaiseRequester | null;
 }
 
 export function readSecondLaunchRequest(input: {
 	commandLine?: readonly string[];
 	additionalData?: unknown;
+	workingDirectory?: string;
 }): SecondLaunchRequest {
 	const commandLine = input.commandLine ?? [];
+	const intent = readWindowIntent(input.additionalData);
+	const requester: RaiseRequester = {};
+	if (intent?.pid !== undefined) requester.pid = intent.pid;
+	const cwd = intent?.cwd ?? input.workingDirectory;
+	if (cwd !== undefined && cwd !== "") requester.cwd = cwd;
 	return {
 		session: readOpenSessionArgv(commandLine),
 		show: resolveSecondLaunchShow({
 			argv: commandLine,
 			additionalData: input.additionalData,
 		}),
+		requester: Object.keys(requester).length === 0 ? null : requester,
 	};
 }
 
@@ -201,12 +302,32 @@ export interface SecondLaunchTarget {
 	/**
 	 * Deliver a named conversation to this process's renderer, creating a window
 	 * when there is none. Null while this process is still starting.
+	 *
+	 * It receives the whole REQUEST rather than just the show plan, because the
+	 * window it may have to create has to be created under the requester's plan
+	 * too. A `headless` request against a process with no window is still a window
+	 * that must never be shown (review round 1, MAJOR), and the requester's
+	 * identity belongs on the line whichever branch ran (UX review U2).
 	 */
 	openConversation:
-		| ((sessionId: string | null, show: WindowShow) => void)
+		| ((sessionId: string, request: SecondLaunchRequest) => void)
 		| null;
-	/** Park a conversation that arrived before there was anywhere to deliver it. */
-	queue: (sessionId: string, show: WindowShow) => void;
+	/**
+	 * Park a conversation that arrived before there was anywhere to deliver it.
+	 */
+	queue: (sessionId: string, request: SecondLaunchRequest) => void;
+	/**
+	 * Open this app's OWN window — the default view — when a request arrives at an
+	 * app that has none and there is nothing to deliver to it.
+	 *
+	 * Why this exists: a windowless winner used to ignore this request entirely
+	 * (`if (!target.window) return`), so the operator launching the app again while
+	 * it ran saw NOTHING appear — and, with a conversation parked for the next
+	 * window, nothing ever opened it. It is also the path the parked conversation
+	 * rides in on: the window this creates is created under the request's plan and
+	 * consumes whatever is parked as its initial session.
+	 */
+	openWindow?: ((request: SecondLaunchRequest) => void) | null;
 	report?: RaiseReport;
 }
 
@@ -218,6 +339,12 @@ export interface SecondLaunchTarget {
  * that follows it is the only part the mode governs — which is why a `headless`
  * request still moves the window's CONTENT to the right conversation while
  * leaving the window itself where it was.
+ *
+ * The `openConversation` target may itself PARK the conversation rather than
+ * deliver it: when this app has no window open and the request must not be shown,
+ * building one would leave an invisible window holding a screen nobody can reach,
+ * so the conversation waits for the operator's next window instead
+ * (`canCreateWindowFor`, and the queue in `index.ts`).
  */
 export function applySecondLaunch(
 	request: SecondLaunchRequest,
@@ -225,15 +352,24 @@ export function applySecondLaunch(
 ): void {
 	if (request.session !== null) {
 		if (target.openConversation) {
-			target.openConversation(request.session, request.show);
+			target.openConversation(request.session, request);
 		} else {
-			target.queue(request.session, request.show);
+			target.queue(request.session, request);
 		}
 		return;
 	}
-	if (!target.window) return;
+	if (!target.window) {
+		/*
+		 * Nothing to raise and nothing to deliver — but the request may still be one
+		 * that asks for the app: a person launching it again, or a run that declares
+		 * `inactive`. `headless` is not, which is the whole of that mode's promise.
+		 */
+		if (canCreateWindowFor(request.show)) target.openWindow?.(request);
+		return;
+	}
 	raiseWindow(target.window, request.show, {
 		trigger: "second-instance",
+		requester: request.requester ?? undefined,
 		report: target.report,
 	});
 }

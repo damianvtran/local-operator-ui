@@ -68,8 +68,13 @@ const raise = await import(
 		).outputFiles[0].text,
 	).toString("base64")}`
 );
-const { applySecondLaunch, presentWindow, raiseWindow, readSecondLaunchRequest } =
-	raise;
+const {
+	applySecondLaunch,
+	canCreateWindowFor,
+	presentWindow,
+	raiseWindow,
+	readSecondLaunchRequest,
+} = raise;
 
 const plan = (input) => resolveWindowLaunchPlan(input);
 
@@ -151,6 +156,140 @@ test("an appended flag overrides the value the command line already carried", ()
 			.width,
 		1024,
 	);
+});
+
+test("a valueless flag never clears a value that was given", () => {
+	/*
+	 * `--window-mode=headless --window-mode` under plain last-wins resolved to
+	 * `normal` — a window where the caller asked for none, which is the same silent
+	 * downgrade the last-wins rule exists to prevent (review round 1). The
+	 * valueless occurrence is IGNORED and still reported, so it cannot be mistaken
+	 * for silence or for a deliberate choice.
+	 *
+	 * AN EMPTY VALUE IS NOT A VALUELESS OCCURRENCE, and that distinction is
+	 * deliberate: `--window-mode=` is a caller saying "tell me what I did wrong" and
+	 * keeps the documented `normal` fallback with its own report, while a flag with
+	 * nothing after it is not a value at all.
+	 */
+	const trailing = plan({ argv: ["--window-mode=headless", "--window-mode"] });
+	assert.equal(trailing.mode, "headless");
+	assert.equal(trailing.problems.length, 1);
+	assert.match(trailing.problems[0], /no value/);
+	assert.match(trailing.problems[0], /headless/);
+
+	// A valueless flag on its own still needs a value: nothing was named, so the
+	// outcome is `normal` and the caller is told, exactly as before.
+	const alone = plan({ argv: ["--window-mode"] });
+	assert.equal(alone.mode, "normal");
+	assert.equal(alone.problems.length, 1);
+	assert.match(alone.problems[0], /needs a value/);
+
+	// A following flag is not the value either, and the value before it survives.
+	const beforeFlag = plan({
+		argv: ["--window-mode=headless", "--window-mode", "--window-size=1024x768"],
+	});
+	assert.equal(beforeFlag.mode, "headless");
+	assert.equal(beforeFlag.width, 1024);
+
+	// The size flag shares the reader, so it follows the same rule.
+	const size = plan({ argv: ["--window-size=1024x768", "--window-size"] });
+	assert.equal(size.width, 1024);
+	assert.equal(size.problems.length, 1);
+	assert.match(size.problems[0], /no value/);
+});
+
+test("a request that must not be shown may not CREATE a window, so its conversation waits", () => {
+	/*
+	 * The convergence-round decision on review round 1's MAJOR. Threading the
+	 * requester's `never` through the create path stops the raise but leaves a
+	 * window that is INVISIBLE AND REAL: macOS keeps the app alive with the renderer
+	 * warm, `app.on("activate")` only creates a window when there are none, so the
+	 * operator's Dock icon then activates an app that shows nothing while a
+	 * conversation sits in a screen they cannot reach.
+	 *
+	 * So the plan is the thing that decides, before any window exists, and the
+	 * decision is a truth table rather than a call-site judgement.
+	 */
+	assert.deepEqual(
+		["focus", "inactive", "never"].map((show) => [
+			show,
+			canCreateWindowFor(show),
+		]),
+		[
+			["focus", true],
+			["inactive", true],
+			["never", false],
+		],
+	);
+});
+
+test("a window created for a request is presented under THAT request's plan", () => {
+	/*
+	 * THE REVIEW-ROUND-1 MAJOR, pinned where it actually lives. The policy in
+	 * `window-raise.ts` cannot pin this on its own: the bug was that `index.ts`'s
+	 * CREATE branch — the one taken when the app holds the lock with no window open
+	 * (`mainWindow = null` on `closed`, macOS keeps the process alive) — presented
+	 * the window it made with THIS process's plan, so a `headless` request that
+	 * named a conversation created a window and SHOWED it.
+	 *
+	 * The real-app measurement for the same case is in the PR thread; this guards
+	 * the wiring so a future edit cannot quietly reintroduce it, in the shape the
+	 * "only window-raise.ts may raise" test already uses. The source is flattened
+	 * first (comments stripped, whitespace collapsed) so the assertions describe
+	 * the call graph rather than the formatting.
+	 */
+	const flat = readFileSync(join("src/main", "index.ts"), "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, " ")
+		.replace(/\/\/[^\n]*/g, " ")
+		.replace(/\s+/g, " ");
+
+	// No present site may reach for the process's own plan any more. This is the
+	// assertion that fails on the pre-remediation head.
+	assert.doesNotMatch(flat, /presentWindow\([^)]*windowLaunch\.show/);
+	assert.match(flat, /presentWindow\( ?mainWindow, request\.show,/);
+	assert.match(flat, /presentWindow\( ?window, held\.request\.show,/);
+
+	// And the request travels all the way from the second-instance branch to those
+	// two sites: into the create call, into `createWindow`, and into the hold.
+	assert.match(
+		flat,
+		/setupMainWindowWithUpdateService\( ?sessionId, sessionId === null, request,? ?\)/,
+	);
+	assert.match(
+		flat,
+		/mainWindow = createWindow\( ?parked\?\.session \?\? initialSession, openCatalogue, request,? ?\)/,
+	);
+	assert.match(
+		flat,
+		/holdPresentUntilConversation\( ?mainWindow, initialSession, request,? ?\)/,
+	);
+	assert.match(flat, /request: RaiseRequest = ownLaunchRequest\(\)/);
+
+	/*
+	 * AND THE CREATE CALL IS UNREACHABLE FOR A REQUEST THAT MUST NOT BE SHOWN. The
+	 * park branch has to come first inside `openSessionInWindow`, and the parked
+	 * conversation has to be consumed by the window that comes next — otherwise the
+	 * fix is a hidden window, or a conversation that was never delivered at all.
+	 */
+	const open = flat.slice(
+		flat.indexOf("function openSessionInWindow("),
+		flat.indexOf("openConversationInWindow = openSessionInWindow"),
+	);
+	assert.ok(
+		open.length > 0,
+		"openSessionInWindow not found in src/main/index.ts",
+	);
+	assert.match(open, /if \(!canCreateWindowFor\(request\.show\)\) \{/);
+	assert.match(open, /queuedLaunch = \{ session: sessionId, request \}/);
+	assert.ok(
+		open.indexOf("canCreateWindowFor(request.show)") <
+			open.indexOf(
+				"setupMainWindowWithUpdateService(sessionId, sessionId === null, request)",
+			),
+		"the park branch must be tested before the window is created",
+	);
+	assert.match(flat, /parked\?\.session \?\? initialSession/);
+	assert.match(flat, /once\("did-finish-load"/);
 });
 
 test("an unrecognised mode falls back to normal and is reported", () => {
@@ -411,17 +550,23 @@ test("the raise policy is the only thing that decides how a window comes forward
 		["never", []],
 	]);
 
-	// A minimized window is restored before it is ordered — but not in
-	// `headless`, where there is nothing to bring forward.
+	/*
+	 * A minimised window is restored only for a FOCUS-class request (UX review
+	 * U3): `restore()` takes a window back out of the Dock, and an `inactive`
+	 * request is precisely the one that must not do that — it may order a window
+	 * that is already on screen, and nothing more.
+	 */
+	const restored = [];
 	for (const show of ["focus", "inactive", "never"]) {
 		const window = fakeWindow({ minimized: true });
 		raiseWindow(window, show, { trigger: "second-instance" });
-		assert.equal(
-			window.calls.includes("restore"),
-			show !== "never",
-			`restore-before-raise in ${show}`,
-		);
+		restored.push([show, window.calls.includes("restore")]);
 	}
+	assert.deepEqual(restored, [
+		["focus", true],
+		["inactive", false],
+		["never", false],
+	]);
 });
 
 /**
@@ -433,7 +578,7 @@ const RAISE_TRIGGERS = [
 	"second-instance",
 	"banner-click",
 	"viewer-focus",
-	"open-conversation",
+	"viewer-resume",
 ];
 
 /** A window that records what a raise did to it. */
@@ -455,12 +600,18 @@ const fakeWindow = ({ minimized = false } = {}) => {
  */
 const LAUNCHED_SESSION = "a1b2c3d4e5f6";
 
-test("a raise names its trigger and what it did, and a mode that raises nothing says nothing", () => {
-	// Why this is asserted rather than left to the comments: `window-raise.ts`
-	// logged nothing at all before this change, which is exactly why the
-	// operator's report ("the app steals my focus whenever a chat completes")
-	// could not be answered on the machine where it happened. Four call sites
-	// raise a window from four different causes, and the line has to say which.
+test("a raise names its trigger, the mode, the requester and what it did", () => {
+	/*
+	 * Why this is asserted rather than left to the comments: `window-raise.ts`
+	 * logged nothing at all before this change, which is exactly why the
+	 * operator's report ("the app steals my focus whenever a chat completes")
+	 * could not be answered on the machine where it happened. Every call site
+	 * raises a window from a different cause, and the line has to say which.
+	 *
+	 * The MODE token is asserted separately from `requested` (review round 1): the
+	 * line used to print only the show token, so `requested=normal` — the value a
+	 * reader greps for to find the ordinary launch — did not exist anywhere.
+	 */
 	const lines = [];
 	for (const trigger of RAISE_TRIGGERS) {
 		raiseWindow(fakeWindow(), "focus", {
@@ -471,7 +622,8 @@ test("a raise names its trigger and what it did, and a mode that raises nothing 
 	assert.deepEqual(
 		lines,
 		RAISE_TRIGGERS.map(
-			(trigger) => `trigger=${trigger} requested=focus applied=show+focus`,
+			(trigger) =>
+				`trigger=${trigger} mode=normal requested=focus applied=show+focus`,
 		),
 	);
 
@@ -483,7 +635,7 @@ test("a raise names its trigger and what it did, and a mode that raises nothing 
 		report: (line) => inactive.push(line),
 	});
 	assert.deepEqual(inactive, [
-		"trigger=second-instance requested=inactive applied=showInactive",
+		"trigger=second-instance mode=inactive requested=inactive applied=showInactive",
 	]);
 
 	const minimized = [];
@@ -492,7 +644,7 @@ test("a raise names its trigger and what it did, and a mode that raises nothing 
 		report: (line) => minimized.push(line),
 	});
 	assert.deepEqual(minimized, [
-		"trigger=banner-click requested=focus applied=restore+show+focus",
+		"trigger=banner-click mode=normal requested=focus applied=restore+show+focus",
 	]);
 
 	const presented = [];
@@ -501,7 +653,33 @@ test("a raise names its trigger and what it did, and a mode that raises nothing 
 		report: (line) => presented.push(line),
 	});
 	assert.deepEqual(presented, [
-		"trigger=initial-present requested=inactive applied=showInactive",
+		"trigger=initial-present mode=inactive requested=inactive applied=showInactive",
+	]);
+
+	// WHO ASKED, when the requester could say (UX review U2): a pid and a cwd make
+	// the line actionable on a machine where several agents launch this app, and a
+	// line without them means this process asked itself.
+	const byRequester = [];
+	raiseWindow(fakeWindow(), "focus", {
+		trigger: "second-instance",
+		requester: { pid: 9182, cwd: "/Users/someone/project" },
+		report: (line) => byRequester.push(line),
+	});
+	assert.deepEqual(byRequester, [
+		"trigger=second-instance mode=normal requested=focus pid=9182 cwd=/Users/someone/project applied=show+focus",
+	]);
+
+	// A requester that declared only half of it prints only that half: an empty
+	// `cwd=` would read as a declaration of the empty string rather than as the
+	// absence it is.
+	const pidOnly = [];
+	raiseWindow(fakeWindow(), "focus", {
+		trigger: "second-instance",
+		requester: { pid: 1 },
+		report: (line) => pidOnly.push(line),
+	});
+	assert.deepEqual(pidOnly, [
+		"trigger=second-instance mode=normal requested=focus pid=1 applied=show+focus",
 	]);
 
 	// SILENT WHEN NOTHING IS RAISED. A headless run's whole value is that it
@@ -531,9 +709,28 @@ test("a second launch's intent travels on the request that lost the lock, and th
 	 * operator's app to the agent's, on every sample.
 	 */
 	assert.deepEqual(windowIntentPayload("headless"), {
-		[WINDOW_INTENT_KEY]: "headless",
+		[WINDOW_INTENT_KEY]: { mode: "headless" },
 	});
-	assert.equal(readWindowIntent(windowIntentPayload("headless")), "headless");
+	// The requester's identity rides along for the log line only (UX review U2),
+	// and half of it is printed only when it was given.
+	assert.deepEqual(windowIntentPayload("headless", { pid: 7 }), {
+		[WINDOW_INTENT_KEY]: { mode: "headless", pid: 7 },
+	});
+	assert.deepEqual(windowIntentPayload("inactive", { cwd: "/tmp/x" }), {
+		[WINDOW_INTENT_KEY]: { mode: "inactive", cwd: "/tmp/x" },
+	});
+	assert.deepEqual(
+		readWindowIntent(windowIntentPayload("headless", { pid: 7, cwd: "/tmp/x" })),
+		{ mode: "headless", pid: 7, cwd: "/tmp/x" },
+	);
+	/*
+	 * A BARE MODE STRING IS STILL READ. That is what the first cut of this
+	 * channel sent; a build that predates the object form must keep its mode
+	 * honoured rather than be silently downgraded to `focus`.
+	 */
+	assert.deepEqual(readWindowIntent({ [WINDOW_INTENT_KEY]: "inactive" }), {
+		mode: "inactive",
+	});
 	assert.equal(
 		resolveSecondLaunchShow({
 			argv: ["electron", "."],
@@ -580,6 +777,9 @@ test("a second launch's intent travels on the request that lost the lock, and th
 		{ [WINDOW_INTENT_KEY]: "hedless" },
 		{ [WINDOW_INTENT_KEY]: 7 },
 		{ [WINDOW_INTENT_KEY]: "" },
+		{ [WINDOW_INTENT_KEY]: { mode: "hedless" } },
+		{ [WINDOW_INTENT_KEY]: { mode: 7 } },
+		{ [WINDOW_INTENT_KEY]: {} },
 	]) {
 		assert.equal(readWindowIntent(unrecognised), null, String(unrecognised));
 		assert.equal(
@@ -591,6 +791,44 @@ test("a second launch's intent travels on the request that lost the lock, and th
 			String(unrecognised),
 		);
 	}
+});
+
+test("the requester's identity is read for the log and cannot become a decision", () => {
+	// `readSecondLaunchRequest` is where the two payload halves meet the argv: the
+	// conversation is argv-only, the mode is payload-then-argv, and the pid/cwd fall
+	// back to what Electron reports about the second instance (which always has the
+	// working directory, and never has the pid).
+	const request = readSecondLaunchRequest({
+		commandLine: ["electron", ".", "--open-session=" + LAUNCHED_SESSION],
+		additionalData: windowIntentPayload("headless", {
+			pid: 4242,
+			cwd: "/tmp/elsewhere",
+		}),
+		workingDirectory: "/tmp/from-electron",
+	});
+	assert.deepEqual(request, {
+		session: LAUNCHED_SESSION,
+		show: "never",
+		requester: { pid: 4242, cwd: "/tmp/elsewhere" },
+	});
+
+	// An older launch attaches nothing: the working directory Electron reports is
+	// still worth printing, and no pid is invented for it.
+	assert.deepEqual(
+		readSecondLaunchRequest({
+			commandLine: ["electron", "."],
+			workingDirectory: "/tmp/from-electron",
+		}),
+		{ session: null, show: "focus", requester: { cwd: "/tmp/from-electron" } },
+	);
+
+	// Nothing to say at all: null rather than an empty object, so the line prints
+	// no `pid=`/`cwd=` fields instead of empty ones.
+	assert.deepEqual(readSecondLaunchRequest({ commandLine: ["electron", "."] }), {
+		session: null,
+		show: "focus",
+		requester: null,
+	});
 });
 
 test("a second launch raises the window only as far as it asked", () => {
@@ -648,17 +886,26 @@ test("a headless-declared second launch still names the conversation", () => {
 		commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
 		additionalData: windowIntentPayload("headless"),
 	});
-	assert.deepEqual(request, { session: LAUNCHED_SESSION, show: "never" });
+	assert.deepEqual(request, {
+		session: LAUNCHED_SESSION,
+		show: "never",
+		requester: null,
+	});
 
 	const window = fakeWindow();
 	const applied = [];
 	applySecondLaunch(request, {
 		window,
 		// `index.ts` owns delivery, so this mirrors what its window path does:
-		// send the conversation, then come forward only as far as `show` allows.
-		openConversation: (sessionId, show) => {
-			applied.push([sessionId, show]);
-			raiseWindow(window, show, { trigger: "open-conversation" });
+		// send the conversation, then come forward only as far as the request
+		// allows. WHAT THIS DOES NOT PIN: that `index.ts` really does it in that
+		// order — see the seam note in the PR thread.
+		openConversation: (sessionId, delivered) => {
+			applied.push([sessionId, delivered.show]);
+			raiseWindow(window, delivered.show, {
+				trigger: "second-instance",
+				requester: delivered.requester ?? undefined,
+			});
 		},
 		queue: () => {
 			throw new Error("a deliverable conversation must not be queued");
@@ -680,8 +927,8 @@ test("a headless-declared second launch still names the conversation", () => {
 		}),
 		{
 			window: focused,
-			openConversation: (sessionId, show) => {
-				raiseWindow(focused, show, { trigger: "open-conversation" });
+			openConversation: (sessionId, delivered) => {
+				raiseWindow(focused, delivered.show, { trigger: "second-instance" });
 			},
 			queue: () => {},
 		},
@@ -704,7 +951,11 @@ test("a second launch with no conversation raises by its own mode, and a parked 
 			}),
 			{ window, openConversation: () => {}, queue: () => {} },
 		);
-		assert.deepEqual(window.calls, expected, `intent ${JSON.stringify(additionalData)}`);
+		assert.deepEqual(
+			window.calls,
+			expected,
+			`intent ${JSON.stringify(additionalData)}`,
+		);
 	}
 
 	// A launch that arrives before there is a window to send to is PARKED with its
@@ -715,21 +966,63 @@ test("a second launch with no conversation raises by its own mode, and a parked 
 	applySecondLaunch(
 		readSecondLaunchRequest({
 			commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
-			additionalData: windowIntentPayload("headless"),
+			additionalData: windowIntentPayload("headless", { pid: 31 }),
 		}),
 		{
 			window: null,
 			openConversation: null,
-			queue: (sessionId, show) => parked.push([sessionId, show]),
+			queue: (sessionId, queued) =>
+				parked.push([sessionId, queued.show, queued.requester]),
 		},
 	);
-	assert.deepEqual(parked, [[LAUNCHED_SESSION, "never"]]);
+	assert.deepEqual(parked, [[LAUNCHED_SESSION, "never", { pid: 31 }]]);
 
-	// With no window and no conversation there is nothing to do at all — and
-	// specifically no error, which is what a second launch during startup is.
+	/*
+	 * NO WINDOW, NO CONVERSATION: the request opens the app's own window.
+	 *
+	 * It used to do nothing at all, which is why a windowless app ignored the
+	 * operator launching it again (nothing appeared) and why a conversation parked
+	 * by a `headless` request had no launch to open it. `headless` still opens
+	 * nothing: that is the whole of the mode's promise, and the parked conversation
+	 * waits for the window that comes next.
+	 */
+	for (const [additionalData, expected] of [
+		[undefined, ["focus"]],
+		[windowIntentPayload("inactive"), ["inactive"]],
+		[windowIntentPayload("headless"), []],
+	]) {
+		const opened = [];
+		applySecondLaunch(
+			readSecondLaunchRequest({
+				commandLine: ["electron", "."],
+				additionalData,
+			}),
+			{
+				window: null,
+				openConversation: null,
+				queue: () => {},
+				openWindow: (request) => opened.push(request.show),
+			},
+		);
+		assert.deepEqual(
+			opened,
+			expected,
+			`a windowless app with ${JSON.stringify(additionalData)}`,
+		);
+	}
+
+	// With a window there is nothing to open: the raise is the whole answer, and a
+	// target that never opens a window must not be required to provide one.
 	applySecondLaunch(
 		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
-		{ window: null, openConversation: null, queue: () => {} },
+		{
+			window: fakeWindow(),
+			openConversation: null,
+			queue: () => {},
+			openWindow: () => {
+				throw new Error("a request with a window must not open another");
+			},
+		},
 	);
 });
 
