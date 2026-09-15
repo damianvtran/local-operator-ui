@@ -213,7 +213,7 @@ test("withActiveBar marks bars, reaches nested ones, and leaves the rest alone",
 	assert.equal(inner.props.activeBar, true, "a nested bar kept its old shape");
 });
 
-test("the hover colour is a role rule, ordered after the plain rectangle", () => {
+test("the hover colour is a role rule on the active wrapper", () => {
 	/*
 	 * Source text, not behaviour, for the reason the motion test pins its own
 	 * line the same way: the defect is a plausible-looking ENCODING that renders
@@ -222,26 +222,31 @@ test("the hover colour is a role rule, ordered after the plain rectangle", () =>
 	 * `activeBar={{ fill: ... }}` is silently overridden by the plain-rectangle
 	 * rule, and no rendered frame can tell the difference from the role.
 	 *
-	 * The ORDER is load-bearing for the same reason the encoding is: both
-	 * selectors are one class inside the same descendant variant, so they carry
-	 * identical specificity and the later rule wins.
+	 * WHAT DECIDES THE WIN is the NESTING rather than the source order (review
+	 * round 1, F2): recharts renders the active shape inside a
+	 * `<g class="recharts-active-bar">` that is a DESCENDANT of the
+	 * `<g class="recharts-bar-rectangle">` wrapper, and `fill` is inherited, so the
+	 * path takes the active wrapper's value from its nearest ancestor. This test
+	 * therefore asserts that both rules EXIST and that the active one names a role —
+	 * not their order, which a reorder of `FRAME_CLASS` can change with no
+	 * behavioural effect.
 	 */
 	const plain = frameSource.indexOf(
 		'"[&_.recharts-bar-rectangle]:fill-accent"',
 	);
 	const active = frameSource.indexOf(
-		'"[&_.recharts-active-bar]:fill-accent-hover"',
+		'"[&_.recharts-active-bar]:fill-chart-bar-hover"',
 	);
 	assert.ok(plain > 0, "the plain bar rule is gone");
 	assert.ok(
-		active > plain,
-		"the active-bar rule must come AFTER the plain-rectangle rule: equal specificity, so the later one wins and the hover colour is otherwise dropped",
+		active > 0,
+		"the active-bar rule is gone: without it every rectangle is the same rectangle and the frame's only hover affordance would be the cursor band this change removes",
 	);
-	// The role, not a hex and not a palette lookup: `accent-hover` is the
-	// contract's own "colour a thing takes under the pointer".
+	// The role, not a hex and not a palette lookup: `chart-bar-hover` is the
+	// contract's own "the mark under the pointer".
 	assert.doesNotMatch(
 		frameSource.slice(active, active + 80),
 		/#[0-9a-fA-F]{3,8}/,
-		"the hover fill is a literal colour rather than the accent-hover role",
+		"the hover fill is a literal colour rather than the chart-bar-hover role",
 	);
 });
