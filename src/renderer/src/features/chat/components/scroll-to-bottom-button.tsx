@@ -88,6 +88,13 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 					 * effect immediately, so the fade would be replaced by a pop. The pointer
 					 * switch is the half that matters: seconds after the state changes, the
 					 * fading control is not something the user is aiming at.
+					 *
+					 * The same hidden control is also what made the completion receipt
+					 * fragile before it was fixed in the probe: `elementFromPoint` at the
+					 * last row's bottom edge answered "Scroll to bottom", so an unread
+					 * completion refused to clear for as long as the conversation stayed
+					 * open. Both halves are needed -- the overlay was a bug and the
+					 * single-sample probe was fragile about it.
 					 */
 					visible ? "pointer-events-auto" : "pointer-events-none",
 				)}

@@ -467,6 +467,14 @@ export const STORIES = [
 	["chat-session-status-strip--context-tooltip", 860, 400],
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
+	/*
+	 * The sidebar's session-status mark, in the one place it can be photographed:
+	 * the sidebar itself has no story (see the note below), so the read/unread
+	 * specimen matrix is the surface that carries this mark's pixels. Added by
+	 * the receipt round, whose whole visible delta is one glyph's resting state
+	 * -- without a frame here, that change had no evidence anywhere.
+	 */
+	["chat-session-status--neighbours", 860, 600],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
