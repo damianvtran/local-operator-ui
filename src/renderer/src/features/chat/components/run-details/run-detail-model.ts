@@ -2477,24 +2477,60 @@ const childClause = (count: number): string =>
 	`${plural(count, "subagent")} running`;
 
 /**
- * The plan's count, in the app's one spelling of it: `1 to-do open`,
- * `4 to-dos open`, `0 to-dos open`.
+ * The two counts that decide the plan's clause: how much is still open, and how
+ * much was abandoned rather than finished.
+ *
+ * Both are read off one `RunDetails`, and the pair is the parameter's whole
+ * point: a settled plan's clause depends on how it settled, so there is no
+ * shape of this call that can claim the plan finished cleanly without being
+ * handed the dropped count that would contradict it.
+ */
+type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
+
+/**
+ * The plan's clause, in the app's one spelling of it: `1 to-do open`,
+ * `4 to-dos open`, `All to-dos resolved`, `All to-dos closed`.
  *
  * EXPORTED, and deliberately not re-derived anywhere (round 1's U1-7/Q7 is the
  * precedent this follows): the composer's plan chip states the very fact the
  * trigger's tooltip states, and those two surfaces are read together in one
  * glance — the chip above the box and the button's tooltip two rows below it.
  * A second pluralisation, or a second tally, is how `1 to-dos open` reaches a
- * user on one of them and nothing but review would catch it. Callers pass
- * `RunDetails["openTodos"]` — pending plus blocked, over the WHOLE wire list —
- * so the count has exactly one derivation and this function only spells it.
+ * user on one of them and nothing but review would catch it. Callers pass a
+ * `RunDetails` — `openTodos` is pending plus blocked over the WHOLE wire list,
+ * `droppedTodos` its abandoned items — so the count has exactly one derivation
+ * and this function only spells it.
  *
- * A settled plan prints `0 to-dos open` rather than nothing: see
+ * A SETTLED plan stops spelling a count (operator follow-up, in their words:
+ * "instead of saying 0 to-dos open, show better copy like All to-dos
+ * resolved"). `0 to-dos open` states the remainder and leaves the reader to do
+ * the subtraction that turns it into a fact about the plan, and on the plan
+ * chip it read as the absence of a plan rather than the end of one. What a
+ * settled plan may SAY depends on HOW it settled, which is why this reads the
+ * counts instead of a numeral and why it has two settled spellings rather than
+ * one:
+ *
+ * - nothing open and nothing dropped — every item finished, so `All to-dos
+ *   resolved` is a claim a reader can check against the pane.
+ * - nothing open with items dropped — `All to-dos closed`, the word the pane's
+ *   own tally already uses for done plus dropped (`todoTally`, and the TUI's
+ *   `RESOLVED_STATUSES` behind it). "Resolved" here would be an adjective doing
+ *   a verb's job: it would report a plan that abandoned part of itself as one
+ *   that got everything done, which is the reading `todoTally`'s own docblock
+ *   refuses when it keeps `dropped` beside the fraction.
+ *
+ * A settled plan prints a clause rather than nothing: see
  * `docs/composer-status-tabs.md` § 5.1 for why the composer's chip must not
  * vanish when the last item closes.
  */
-export const todoClause = (count: number): string =>
-	count === 1 ? "1 to-do open" : `${count} to-dos open`;
+export const todoClause = (counts: TodoClauseCounts): string => {
+	if (counts.openTodos > 0) {
+		return counts.openTodos === 1
+			? "1 to-do open"
+			: `${counts.openTodos} to-dos open`;
+	}
+	return counts.droppedTodos > 0 ? "All to-dos closed" : "All to-dos resolved";
+};
 
 const failureClause = (count: number): string =>
 	`${plural(count, "subagent")} failed`;
@@ -2571,7 +2607,16 @@ export function runDetailTriggerLabel(
 		attention.push(mcpClause(options.mcpProblems ?? 0));
 	}
 	if (details.openChildren > 0) counts.push(childClause(details.openChildren));
-	if (details.openTodos > 0) counts.push(todoClause(details.openTodos));
+	/*
+	 * Guarded on `openTodos`, so the trigger's name is UNCHANGED by the settled
+	 * spellings above: the trigger answers "is anything asking for something right
+	 * now?" (`hasRunDetails`' own rule, a few hundred lines up), and a settled
+	 * plan is not asking for anything — its outcome is the composer chip's to
+	 * state. Passing the whole `details` is what keeps the two surfaces one
+	 * spelling if that ever changes; keeping the guard is the choice to leave
+	 * this path exactly as it was.
+	 */
+	if (details.openTodos > 0) counts.push(todoClause(details));
 	const clauses = [...attention, ...counts];
 	if (clauses.length === 0) return prefix;
 

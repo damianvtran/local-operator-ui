@@ -1464,6 +1464,22 @@ test("the tooltip carries counts, pluralised honestly, and names the ACTION", ()
 		runDetailTriggerLabel(derive([], []), NOTHING_SEEN, { open: true }),
 		"Close run details",
 	);
+	/*
+	 * A SETTLED plan adds nothing to the trigger, and it stays that way now that
+	 * the settled case has its own copy. The trigger answers "is anything asking
+	 * for something right now?" (`hasRunDetails`), and a plan that ended is not;
+	 * the composer chip states the outcome, the trigger states what is
+	 * outstanding. Both settled spellings are pinned so a future reader sees the
+	 * decision rather than having to infer it from a guard.
+	 */
+	assert.equal(
+		runDetailTriggerLabel(derive([], plan(["done", "done"]))),
+		"Open run details",
+	);
+	assert.equal(
+		runDetailTriggerLabel(derive([], plan(["done", "dropped"]))),
+		"Open run details",
+	);
 });
 
 test("the tooltip sheds whole clauses, never half of one, and keeps what the dot means", () => {
