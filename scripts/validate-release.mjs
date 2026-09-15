@@ -11,7 +11,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 // Published prereleases use the same pipeline as stable releases.
 const TAG_RE =
@@ -162,10 +162,7 @@ function emitOutputs(result) {
 }
 
 // Main execution (skip when imported for testing)
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	const tag = process.env.RELEASE_TAG;
 	const expectedSha = process.env.EXPECTED_SOURCE_SHA || "";
 	const isManual = process.env.IS_MANUAL_DISPATCH === "true";

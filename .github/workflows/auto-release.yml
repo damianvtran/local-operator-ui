@@ -125,6 +125,20 @@ jobs:
           # A derivation error exits non-zero and fails this step: "could not work
           # out the version" must never be reported as "nothing to release".
           node scripts/derive-release.mjs --json "${forced[@]+"${forced[@]}"}" > derivation.json
+          # The same refusal the guard's verdict gets above, one command later and
+          # for the same reason. `jq -r` on an EMPTY file prints nothing and exits
+          # 0, so a derivation that produced no document at all reads as
+          # `release != true` and this step reports `### No release` with an empty
+          # reason, exits 0, and a push carrying content is skipped behind a green
+          # run - indistinguishable from a push with nothing to release. The script
+          # now resolves its own path physically (`scripts/entry-point.mjs`), so the
+          # symlinked no-op that used to produce exactly this is fixed at the
+          # source; an empty or truncated document is still possible, and it is a
+          # run that never answered the question, not an answer of "nothing".
+          if ! jq -e '(.release | type) == "boolean" and (.reason | type) == "string"' derivation.json > /dev/null 2>&1; then
+            echo "::error title=Derivation produced no answer::derivation.json is empty or malformed, so this push was never measured for whether it carries a release. Refusing to report 'no release' for a derivation that did not run."
+            exit 1
+          fi
           release="$(jq -r .release derivation.json)"
           if [ "$release" != true ]; then
             echo "release=false" >> "$GITHUB_OUTPUT"
@@ -204,6 +218,16 @@ jobs:
           # are pinned to the ones the dry run printed so a repository that moved
           # in between cannot silently change the version.
           node scripts/derive-release.mjs --json --base "$BASE" > derivation.json
+          # The same check the derive job makes, before anything is read out of the
+          # file. Without it an empty document reports itself as `Derived v here,
+          # vX.Y.Z when the run started` - a message about the repository moving,
+          # which is a different fact from "this step could read no derivation", and
+          # it sends whoever reads it after the wrong cause. Either way the step
+          # refuses; this makes the refusal name what actually happened.
+          if ! jq -e '(.release | type) == "boolean" and (.reason | type) == "string"' derivation.json > /dev/null 2>&1; then
+            echo "::error title=Derivation produced no answer::derivation.json is empty or malformed, so the window could not be re-read. Refusing to tag a commit derived from nothing."
+            exit 1
+          fi
           version="$(jq -r .version derivation.json)"
           if [ "$(jq -r .release derivation.json)" != true ]; then
             echo "::error title=Derivation changed::The window no longer asks for a release; re-run the workflow."
