@@ -2,6 +2,7 @@ import { BrowserHostError } from "../errors";
 import { drainLogs } from "../log-capture";
 import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
 import type { LogEntry, ScrollResult } from "../protocol";
+import type { TabRecord } from "../registry";
 import { type AXNode, compactAX } from "../vendor/driver/ax-compact";
 import {
 	CDP_DEADLINE_MS,
@@ -281,14 +282,15 @@ export async function logs(
 /** `screenshot`: a PNG, as base64. The Python side keeps path resolution, the
  * PNG-magic check and the write approval — this host never writes a file.
  *
- * WHY the zero-area guard, with the measurement behind it: `Page.captureScreenshot`
- * on a view that has never been given bounds NEVER REPLIES — Chromium has nothing
- * to composite. Measured on Electron 44 against a real page: with a reported
- * content rect the command answers in ~160 ms; with the view left at its default
- * 0x0 it timed out at 15 s, twice, while `read`, `snapshot` and `scroll` on the same
- * page answered in tens of milliseconds. A 15 s stall with no explanation is the
- * worst version of that, so it is refused up front and the refusal names the cause:
- * the chrome that owns layout has not reported the page area yet. */
+ * WHY the zero-area guard, with the measurement behind it: with the view left at
+ * its default 0x0 there is nothing to capture on any path, and
+ * `Page.captureScreenshot` then NEVER REPLIES (measured: 15 s, twice, while `read`,
+ * `snapshot` and `scroll` on the same page answered in tens of milliseconds). A
+ * 15 s stall with no explanation is the worst version of that, so it is refused up
+ * front and the refusal names the cause.
+ *
+ * The capture itself branches on `presented` — see the flag's own note at the call
+ * site for the measurement that makes a background tab need it. */
 export async function screenshot(
 	ctx: BrowserActionContext,
 	params: Record<string, unknown>,
@@ -304,11 +306,100 @@ export async function screenshot(
 		);
 	}
 	await ctx.cdp.attach(contents);
-	const shot = await ctx.cdp.send<{ data?: string }>(
-		contents,
-		"Page.captureScreenshot",
-		{ format: "png", captureBeyondViewport: false },
+	// TWO FLAGS, ONE COMMAND, and the flag is what makes a background capture
+	// possible at all. `captureBeyondViewport: false` — the historical value — asks
+	// Chromium to copy the COMPOSITED surface, which a hidden view does not have, so
+	// on a background tab the command never replied (measured: 6 s, 8 s and 15 s
+	// ceilings all expired, while `read`, `snapshot` and `type` on the same tab
+	// answered in tens of milliseconds). `true` asks for the capture to be produced
+	// from the view's own rendering and answers on a hidden view with a real
+	// viewport-sized PNG (measured: 18,672 bytes, 2560x1440 — the view's 1280x720 at
+	// 2x, NOT the taller document).
+	//
+	// The presented case keeps `false` deliberately: it is the narrower operation,
+	// it is what the foreground path has always used, and changing a path that works
+	// is not part of this fix.
+	//
+	// WHY A RETRY, and why only here: a HIDDEN view produces a frame lazily, so
+	// consecutive background captures alternate between answering and never
+	// answering — measured on one hidden view, six calls in a row: OK, stall, OK,
+	// stall, OK, stall. The stall is not slowness, it is "this call had no frame to
+	// produce", and the very next call has one, so a second attempt is a
+	// deterministic recovery rather than a hopeful wait. The attempts are bounded so
+	// the whole action still fits the 20 s screenshot budget with room for the
+	// handler to answer: 3 x 5 s = 15 s, which is exactly the innermost ceiling the
+	// deadline table allows (`CDP_DEADLINE_MS`). A presented view needs none of this
+	// — it has a composited surface — so it keeps a single attempt at the full
+	// ceiling and its behaviour is unchanged.
+	const beyondViewport = !record.presented;
+	// The clip is what makes a background capture the tab's VIEWPORT rather than the
+	// whole document: without it, the same call returned 2560x3778 for a 1280x720
+	// view (measured), while with a clip to the view's own bounds it returned
+	// 2560x1440 — the dimension the PRESENTED path returns, so one tool still
+	// produces one shape. `scale: 1` is deliberate: scale 2 doubled it to 5120x2880.
+	const viewportBounds = record.view.getBounds?.();
+	const clip =
+		beyondViewport && viewportBounds
+			? { ...viewportBounds, scale: 1 }
+			: undefined;
+	const attempts = beyondViewport ? 3 : 1;
+	let lastError: unknown;
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
+		try {
+			const attemptShot = await ctx.cdp.send<{ data?: string }>(
+				contents,
+				"Page.captureScreenshot",
+				{
+					format: "png",
+					captureBeyondViewport: beyondViewport,
+					...(clip ? { clip } : {}),
+				},
+				{
+					deadlineMs: beyondViewport
+						? BACKGROUND_CAPTURE_ATTEMPT_MS
+						: undefined,
+				},
+			);
+			return finishCapture(ctx, record, attemptShot);
+		} catch (error) {
+			// Only a STALL is retryable: it is the typed "no reply" arm the deadline
+			// helper produces. A teardown, a debugger conflict or a protocol error is
+			// the real answer and retrying would only delay it.
+			if (!isStall(error) || attempt === attempts - 1) throw error;
+			lastError = error;
+		}
+	}
+	throw lastError;
+}
+
+/** One attempt's ceiling for a BACKGROUND capture, and it is a retry trigger
+ * rather than a work limit: the stall it bounds is the typed "this call had no
+ * frame to produce" answer, which the next attempt resolves. Three of these fit
+ * inside the 20 s screenshot budget while still leaving the handler its 5 s to
+ * build an answer — the nesting rule the deadline table documents. */
+const BACKGROUND_CAPTURE_ATTEMPT_MS = 5_000;
+
+/** Whether an error is the deadline helper's typed "no reply" arm.
+ *
+ * Kept as a test of the SHAPE rather than of a message: `deadline()` rejects with
+ * `data.stalled` and the wire keeps the code `internal` deliberately (an unknown
+ * code is dropped by an older peer's validation, which turns a typed refusal into
+ * a blind timeout). */
+function isStall(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		typeof (error as { data?: { stalled?: unknown } }).data?.stalled ===
+			"string"
 	);
+}
+
+/** Validate and shape one successful capture for the caller. */
+function finishCapture(
+	ctx: BrowserActionContext,
+	record: TabRecord,
+	shot: { data?: string } | undefined,
+): Record<string, unknown> {
 	const data = shot?.data;
 	if (!data) {
 		throw new BrowserHostError(
