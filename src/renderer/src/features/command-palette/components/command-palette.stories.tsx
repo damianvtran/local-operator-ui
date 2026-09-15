@@ -5,7 +5,6 @@ import { useEffect } from "react";
    about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
 import { CommandPalette } from "./command-palette";
-
 /**
  * The command palette, open.
  *
@@ -24,12 +23,18 @@ import { CommandPalette } from "./command-palette";
  * unstyled. The preview frame in `.storybook/preview.tsx` puts it on the root
  * for every story.
  *
- * ## What the agent rows do here
+ * ## What these stories cannot show
  *
- * There is no backend in Storybook, so `useAgents` returns nothing and the
- * Agents section is absent. Actions, Navigation and Settings are static and
- * render in full, which is enough to judge row rhythm, the section headings,
- * the active row and the key legend.
+ * There is no backend here, so the two sources that need one are absent: the
+ * agent roster and the conversation search. What remains is the whole of the
+ * local half — destinations, actions, the settings rail and its sections — which
+ * is what the browse state is made of, and enough to judge the row rhythm, the
+ * section headings, the active row, the key legend and the scope prefixes.
+ *
+ * The conversation and registry stories therefore live in the app's own
+ * evidence rather than here: `docs/evidence/command-palette-commandpalette/` is
+ * the Storybook set, and the frames taken from the running app are what show a
+ * chat matched by its body.
  */
 type StoryArgs = {
 	/** Seeded into the store before the palette opens. */
@@ -41,11 +46,11 @@ const PaletteFrame = ({ query }: StoryArgs) => {
 	 * Deliberately a passive effect, not a layout effect.
 	 *
 	 * `CommandPalette` two-way binds the query: it seeds local state from the
-	 * store and writes the debounced local value back. That write-back is a
-	 * passive effect, and passive effects run child-first — so a layout effect
-	 * here set the query and the palette immediately wrote its own empty
-	 * initial value over it, and the query stories rendered the unfiltered
-	 * list. Seeding from a passive effect in the parent lands last.
+	 * store and writes the settled local value back. That write-back is a passive
+	 * effect, and passive effects run child-first — so a layout effect here set
+	 * the query and the palette immediately wrote its own empty initial value
+	 * over it, and the query stories rendered the unfiltered list. Seeding from a
+	 * passive effect in the parent lands last.
 	 */
 	useEffect(() => {
 		const store = useUiPreferencesStore.getState();
@@ -72,11 +77,34 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-/** Opened with no query: every section, in the order they are offered. */
+/**
+ * Opened with no query: the browse layout, and the state that teaches the
+ * prefixes.
+ */
 export const Default: Story = {};
 
-/** A query that narrows to one section. */
+/** A query that spans more than one source, showing how the groups order. */
 export const Filtered: Story = { args: { query: "agent" } };
 
-/** The no-results state, which has to say what to try next. */
+/**
+ * A settings query, which is where the alias table earns its place: "theme" is
+ * not a word in the settings rail, and the row it finds is called Appearance.
+ */
+export const SettingsScope: Story = { args: { query: ",theme" } };
+
+/**
+ * The command scope on its own: `>` is "show me what the app can do", which is
+ * the browse layout narrowed to destinations, actions and panels.
+ *
+ * The Panels group is absent here, and that absence is the gate working rather
+ * than missing evidence: every panel is presented by the chat pane, a story has
+ * no pane, and the palette does not offer a row it could not deliver. The rows
+ * themselves are covered by the ranking tests and the live-app QA pass.
+ */
+export const CommandsScope: Story = { args: { query: ">" } };
+
+/**
+ * The no-results state, which has to say what to try next — and, in the app,
+ * must not claim it while the conversation search is still out.
+ */
 export const NoResults: Story = { args: { query: "zzzz" } };

@@ -37,6 +37,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const APP = process.argv[2] ?? "http://localhost:5199";
 const SESSION = process.argv[3];
@@ -67,17 +68,20 @@ if (!SESSION) {
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const dataDir = join(tmpdir(), `lo-paging-cdp-${process.pid}`);
 mkdirSync(dataDir, { recursive: true });
-const chrome = spawn(CHROME, [
-	"--headless=new",
-	"--no-sandbox",
-	"--disable-gpu",
-	// Scrollbars are left ON: a scrollbar drag is one of the four input kinds
-	// the behaviour under test must honour, and hiding them would remove it.
-	`--window-size=1380,872`,
-	`--user-data-dir=${dataDir}`,
-	"--remote-debugging-port=0",
-	"about:blank",
-]);
+const chrome = spawn(
+	CHROME,
+	withMockKeychain([
+		"--headless=new",
+		"--no-sandbox",
+		"--disable-gpu",
+		// Scrollbars are left ON: a scrollbar drag is one of the four input kinds
+		// the behaviour under test must honour, and hiding them would remove it.
+		`--window-size=1380,872`,
+		`--user-data-dir=${dataDir}`,
+		"--remote-debugging-port=0",
+		"about:blank",
+	]),
+);
 const browserWs = await new Promise((resolve, reject) => {
 	let buf = "";
 	const timer = setTimeout(
