@@ -88,9 +88,13 @@ export type DesktopMcpState = {
 		 *
 		 * `public_server_config` (`mcp/desktop.py:92-116`) publishes the names of the
 		 * secrets a config references; the values live in the owner credential store.
-		 * They are declared here because the run panel seeds a key-entry form from
-		 * them, and because the type omitted them while the route sent them — the
-		 * asymmetry this file's own header warns about.
+		 * They are declared here because the route sends them and the type omitted
+		 * them — the asymmetry this file's own header warns about — and they are
+		 * informational only: the run panel seeds its key-entry form from
+		 * `secret_refs[].bindings`, NOT from these, because a map key names the
+		 * destination a value is bound INTO (`Authorization`) while the resolver looks
+		 * the reference up by ID, so a form seeded from the map keys saved an
+		 * unresolved binding under a name the resolver never looked up (round 2, R2-2).
 		 */
 		environment_keys?: string[];
 		header_keys?: string[];
