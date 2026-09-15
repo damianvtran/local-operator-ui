@@ -1,71 +1,202 @@
 name: Signed update candidate (nonpublishing)
 
-# Registration on the default branch needs its own reviewed change before the
-# first dispatch. This workflow never calls publish.yml or creates a release.
+# WHAT THIS IS FOR. Every release should be exercised the way a user's machine
+# exercises it: an unmodified incumbent install driving its own updater onto the
+# candidate the release shipped. This workflow never calls publish.yml, never
+# creates a release and never publishes an artifact.
 #
-# Dispatch it from `main` (`--ref main`), never from the branch that carries the
-# candidate: the candidate is named by `expected_source_sha`, every job here is
-# guarded on the dispatch ref, and `ref-guard` fails the run loudly on any other
-# ref so that a wrong-ref attempt cannot report a green run in which nothing ran.
+# TWO ENTRY POINTS, and both derive the run's own inputs in `derive` below:
 #
-# Use of the Developer ID key is authorized by the `signed-update-candidate`
-# environment on the `build` job, not by the ref guard: read that job's comment
-# before dispatching, and confirm the environment carries its required reviewer.
+#  - **automatically**, by `publish.yml` dispatching `repository_dispatch`
+#    (`verify-signed-update`) once a release's assets are attached. The payload
+#    names the Release; the candidate is the commit that Release's tag points at
+#    and the incumbent is the newest release below it that a user could have been
+#    running. `repository_dispatch` is one of the two documented exceptions to the
+#    rule that `GITHUB_TOKEN`-created events start no run, which is why this chain
+#    works at all, and it is the reason this workflow is dispatched rather than
+#    triggered by `workflow_run` on the publish run.
+#  - **by hand**, with `workflow_dispatch`, for a candidate that is not a release
+#    yet — typically unmerged work, which is what the first candidate ever was.
+#    A manual dispatch must still come from `main` (`--ref main`): the workflow
+#    definition is resolved from the dispatch ref, and this file is the half that
+#    handles the Developer ID key, so a dispatch from a feature branch would run
+#    that branch's copy of it. `ref-guard` fails such a run loudly rather than
+#    skipping it, because a run where nothing happened reports green.
+#
+# NOBODY APPROVES THIS RUN, AND THE ENVIRONMENT IS NOT WHAT BOUNDS IT. The
+# `signed-update-candidate` environment is still attached to `build`; its approval
+# gate was removed on 2026-09-15 so that a release needs nobody in the loop, and
+# what is left of the environment is its branch policy (`main`). The earlier prose
+# here credited that policy with keeping the key-bearing job on the default branch,
+# which is more than the mechanism does, so the boundary is stated exactly:
+#
+#  - a branch policy is evaluated against the DISPATCH REF. On the automated path
+#    (`repository_dispatch`) that ref IS the default branch by construction, so the
+#    policy constrains nothing there; on the manual path `ref-guard` fails a
+#    non-`main` dispatch and `build` requires `github.ref == 'refs/heads/main'`
+#    anyway, which makes it a redundant third lock rather than a control.
+#  - what bounds this job on the automated path is the pin below: the tree that
+#    receives the key must be the commit `derive` resolved from the published
+#    Release's tag. It proves WHICH tree is signed; it never proves anyone vetted
+#    that tree, and it is not meant to.
+#  - the manual path's candidate is a free-form SHA (`expected_source_sha`), which
+#    is shape-checked here and proved equal to `HEAD` below and constrained nowhere
+#    else — deliberately, because "a candidate that is not a release yet" is what
+#    that path exists for. Anyone who can dispatch from `main` (that is, anyone with
+#    write access to this repository) can therefore name an unmerged commit and have
+#    it built in the job that holds the Developer ID keychain. Narrowing that would
+#    be a real design change — a reviewer-gated environment for the hand-named path,
+#    or moving the Apple secrets into an environment required wherever they are
+#    referenced, rather than an environment on one job — and it is deferred rather
+#    than half-done; AGENTS.md records it as the boundary of the automated-change
+#    claim. The environment was never the door to the secrets in any case: they are
+#    repository-level, and `publish.yml` signs with the same ones and declares no
+#    environment at all.
 on:
   workflow_dispatch:
     inputs:
       expected_source_sha:
-        description: 'Explicitly reviewed candidate full commit SHA; dispatch from main, not the candidate branch; manager approval required before dispatch'
+        description: 'Explicitly reviewed candidate full commit SHA; dispatch from main, not the candidate branch'
         required: true
         type: string
       incumbent_tag:
-        description: 'Exact existing signed release to upgrade from; must ship an architecture-matched -<arch>.zip (v0.22.2 does); dispatch from main'
+        description: 'Exact existing signed release to upgrade from; must ship an architecture-matched -<arch>.zip. The automated path derives this instead.'
         required: true
         default: 'v0.22.2'
         type: string
+  # The automated publication: `publish.yml` sends this once a release's assets
+  # are attached, naming the Release. See the header comment.
+  repository_dispatch:
+    types: [verify-signed-update]
 
 permissions:
   contents: read
 concurrency:
-  group: signed-update-candidate-${{ inputs.expected_source_sha }}
+  # One run per candidate. The automated path names a release; a manual dispatch
+  # names a commit.
+  group: signed-update-candidate-${{ github.event.client_payload.release_tag || inputs.expected_source_sha }}
   cancel-in-progress: false
 
 jobs:
   ref-guard:
-    # Runs on every dispatch, from every ref, and fails rather than skipping. The
-    # jobs below are all guarded on `github.ref`, so without this a dispatch from
-    # any other ref would skip the entire workflow: no step would run, nothing
-    # would fail, and the run would report green - the worst outcome for a first
-    # attempt at the thing this workflow exists for, because it reads as success.
-    # `workflow_dispatch` resolves the workflow definition from the ref it was
-    # dispatched against, and that ref has to be `main`: this file defines the
-    # half that handles the signing key, and it is the default branch's copy that
-    # does so. The candidate commit itself never comes from the dispatch ref - it
-    # is `expected_source_sha` - which is why the ref is the one thing a dispatcher
-    # has to get right and the one thing worth refusing loudly.
+    # Runs on every trigger, and fails rather than skipping. `workflow_dispatch`
+    # resolves the workflow definition from the ref it was dispatched against, so a
+    # manual dispatch from a feature branch would run that branch's copy of this
+    # file - the half that handles the signing key - and that ref has to be `main`.
+    # The candidate commit never comes from the dispatch ref (it is
+    # `expected_source_sha`), which is why the ref is the one thing a dispatcher has
+    # to get right and the one thing worth refusing loudly: the jobs below are
+    # guarded per trigger, and a run where nothing happened would otherwise report
+    # green, which reads as success.
+    #
+    # The automated path has no ref to refuse and does not pretend to check one:
+    # a `repository_dispatch` always runs the default branch's copy of this file,
+    # and what bounds it instead is the Release it names, which `derive` resolves
+    # and pins. Asserting `github.ref` there would be asserting a property of an
+    # event that does not define it.
     runs-on: ubuntu-latest
     # Generous against the ~10 s a string comparison takes. It exists so a wedged
     # step cannot hold a runner for the 360-minute default.
     timeout-minutes: 5
     steps:
-      - name: Refuse a dispatch from a ref other than main
+      - name: Refuse a manual dispatch from a ref other than main
         env:
           REF: ${{ github.ref }}
+          EVENT: ${{ github.event_name }}
         run: |
-          if [ "$REF" != 'refs/heads/main' ]; then
+          if [ "$EVENT" = 'workflow_dispatch' ] && [ "$REF" != 'refs/heads/main' ]; then
             echo "::error title=Dispatch ref refused::$REF is not refs/heads/main. Re-dispatch with --ref main; the candidate commit is named by expected_source_sha, not by the dispatch ref."
             exit 1
           fi
-          echo "Dispatch ref accepted: $REF"
+          echo "Trigger $EVENT accepted from $REF"
+
+  derive:
+    # What this run is about, resolved once from whichever trigger started it, so
+    # that no job below has to know which one it is running under. Both values are
+    # derived rather than trusted where they can be: the automated path names a
+    # Release, and the candidate is the commit that Release's tag points at (read
+    # through the same `resolveTagSha` the publish workflow trusts) and the
+    # incumbent is the newest release below it that a user could have been running.
+    # A manual dispatch names both, and they are only shape-checked here - `build`
+    # proves the candidate equals its own checked-out HEAD before the keychain is
+    # touched.
+    #
+    # Reading the candidate *from the release* rather than from the payload is the
+    # point: a payload cannot name a commit other than the one the release shipped,
+    # so there is no second place for the pin to be wrong.
+    needs: ref-guard
+    runs-on: ubuntu-latest
+    # Generous against a checkout of two scripts and a page of releases. It exists
+    # so a wedged step cannot hold a runner for the 360-minute default.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.derive.outputs.source_sha }}
+      incumbent_tag: ${{ steps.derive.outputs.incumbent_tag }}
+      origin: ${{ steps.derive.outputs.origin }}
+    steps:
+      - name: Checkout the derivation scripts
+        uses: actions/checkout@v4
+        with:
+          # The workflow's own reviewed commit, as everywhere else that checks out
+          # tooling rather than a payload.
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: |
+            scripts/validate-release.mjs
+            scripts/release-candidate.mjs
+            scripts/release-baseline.mjs
+          sparse-checkout-cone-mode: false
+      - name: Resolve the candidate and the incumbent
+        id: derive
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          INPUT_SHA: ${{ inputs.expected_source_sha }}
+          INPUT_TAG: ${{ inputs.incumbent_tag }}
+          RELEASE_TAG: ${{ github.event.client_payload.release_tag }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = 'workflow_dispatch' ]; then
+            [[ "$INPUT_SHA" =~ ^[0-9a-f]{40}$ ]]
+            [[ "$INPUT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            {
+              echo "source_sha=$INPUT_SHA"
+              echo "incumbent_tag=$INPUT_TAG"
+              echo "origin=manual dispatch"
+            } >> "$GITHUB_OUTPUT"
+          else
+            # Refused here rather than resolved to something empty: a malformed
+            # tag would otherwise select whichever release the API happened to
+            # return first.
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            node scripts/release-candidate.mjs --release-tag "$RELEASE_TAG" > candidate.json
+            {
+              jq -r '"source_sha=\(.source_sha)", "incumbent_tag=\(.incumbent_tag)"' candidate.json
+              echo "origin=release $RELEASE_TAG"
+            } >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo '### Candidate'
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Trigger | \`$EVENT\` |"
+            echo "| Candidate commit | \`$(grep '^source_sha=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)\` |"
+            echo "| Incumbent release | \`$(grep '^incumbent_tag=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)\` |"
+            echo
+            echo 'The candidate is the commit this run will build and sign; the incumbent'
+            echo 'is the published release its updater will upgrade from.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   provenance:
-    # Runs before the environment gate, and without it. `github.ref` below is the
-    # ref the dispatch came *from*, not the commit it names, so the person asked
-    # to authorize the signing key needs the resolved commit in front of them:
-    # this job holds no secret, imports no keychain and targets no environment,
-    # and exists to put that commit on the run page before the approval prompt.
-    needs: ref-guard
-    if: github.ref == 'refs/heads/main'
+    # Runs without the environment and before `build`. It exists to put the commit
+    # being signed on the run page as a record, not to gate anything: `derive` has
+    # already resolved it, and nothing here holds a secret, imports a keychain or
+    # targets an environment. It runs before the 75-minute job so the answer to
+    # "what is this signing" is on the page from the first minute.
+    needs: derive
+    if: github.event_name == 'repository_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Generous against the ~20 s a checkout and a `git show` take. It exists so a
     # wedged step cannot hold a runner for the 360-minute default.
@@ -73,13 +204,13 @@ jobs:
     steps:
       # Before the checkout rather than after it: `actions/checkout` falls back to
       # the event ref when its `ref` input is empty or whitespace (both are
-      # trimmed), so an unset input would check out `main` and this job would then
+      # trimmed), so an unset value would check out `main` and this job would then
       # record main's head under a heading that says it is the pinned candidate.
-      # Refusing the input first means the summary can only ever name a commit the
-      # dispatch actually named.
+      # Refusing first means the summary can only ever name a commit this run
+      # actually resolved.
       - name: Refuse a missing or unpinned candidate SHA
         env:
-          EXPECTED: ${{ inputs.expected_source_sha }}
+          EXPECTED: ${{ needs.derive.outputs.source_sha }}
         run: |
           # The same shape rule as the guard before the keychain. `build` goes on
           # to prove this equals the checked-out HEAD; here it is enough that the
@@ -87,31 +218,37 @@ jobs:
           [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.expected_source_sha }}
+          ref: ${{ needs.derive.outputs.source_sha }}
           persist-credentials: false
-      - name: Record the commit the dispatch pinned
+      - name: Record the commit this run pinned
+        env:
+          ORIGIN: ${{ needs.derive.outputs.origin }}
+          INCUMBENT: ${{ needs.derive.outputs.incumbent_tag }}
         run: |
           {
-            echo '### Pinned candidate awaiting sign-off'
+            echo '### Pinned candidate'
+            echo
+            echo "Origin: $ORIGIN"
             echo
             echo '```'
             git show -s --format="commit    %H%nauthor    %an <%ae>%ncommitter %cn <%ce>%ndate      %aI%nsubject   %s" HEAD
             echo '```'
             echo
-            echo 'Approve the signed-update-candidate environment only if this'
-            echo 'commit is the head of the reviewed PR named when it was dispatched.'
+            echo "Signed against incumbent \`$INCUMBENT\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
   build:
-    # `github.ref` is the ref the dispatch came FROM and is not the control that
-    # protects the signing key: the tree that receives it is
-    # `inputs.expected_source_sha`, and the first step below proves only that the
-    # input is 40 lowercase hex characters equal to the checked-out HEAD - never
-    # that anyone reviewed that commit. An ancestor-of-`main` check would be the
-    # wrong control for the same reason in reverse: the intended first candidate
-    # is unmerged work on another branch.
-    if: github.ref == 'refs/heads/main' && needs.provenance.result == 'success'
-    needs: provenance
+    # The control that protects the signing key is the pin, not the ref: the tree
+    # that receives the key is the commit `derive` resolved, and the first step
+    # below proves it is 40 lowercase hex characters equal to the checked-out HEAD
+    # - never that anyone reviewed that commit. An ancestor-of-`main` check would
+    # be the wrong control for the same reason in reverse: the intended first
+    # candidate for a manual dispatch is unmerged work on another branch.
+    if: (github.event_name == 'repository_dispatch' || github.ref == 'refs/heads/main') && needs.provenance.result == 'success'
+    # `derive` is a direct dependency as well as a transitive one: a `needs`
+    # expression can only read the jobs a job declares, and this one reads the
+    # pinned commit and the incumbent from it.
+    needs: [derive, provenance]
     runs-on: macos-latest
     # 75 min against publish.yml's documented 60 for the same signing and
     # notarizing workload: this job adds `setup-python`, the package-closure
@@ -119,47 +256,40 @@ jobs:
     # 30-50 min, and the bound exists because a codesign hang once sat for ~5h50m
     # (run 33948569170) instead of failing. A wedged step must fail bounded.
     timeout-minutes: 75
-    # The environment is the control. A job targeting an environment with a
-    # required reviewer does not start any step - so the keychain import below
-    # cannot run, and CSC_KEY_PASSWORD / APPLE_ID / APPLE_ID_PASSWORD /
-    # APPLE_TEAM_ID are never placed in a live environment - until that reviewer
-    # approves the deployment. That makes the approval, rather than the right to
-    # dispatch, the thing that releases the key. The `provenance` job above is
-    # what the approver reads to decide.
+    # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
+    # operator asked for releases that need no human input, and a required reviewer
+    # is exactly that input. What remains is the environment's **branch policy**
+    # (a custom policy of `main`), which fails closed - a deployment whose ref is
+    # outside it is refused rather than run unprotected. As configured the
+    # environment sits on `main`, `can_admins_bypass: true`, and carries no
+    # required reviewers; adding one back would silently re-introduce a wait that
+    # nothing in this repository documents as intended.
     #
-    # This is a standing precondition, not a one-time setup: it holds only while
-    # `signed-update-candidate` carries its required reviewer, so confirm that is
-    # still the case before dispatching. As configured, that environment has one
-    # required reviewer (`damianvtran`), a custom branch policy of `main`, and
-    # `can_admins_bypass: true`. The branch policy is a second control and it
-    # fails closed - a deployment ref outside it is refused rather than run
-    # unprotected - and a dispatch from `main` is the case this workflow exists
-    # for. `can_admins_bypass: true` means an admin can force the deployment
-    # without approving it, which no workflow file can turn off.
+    # What bounds the key instead is inside this file, and it is worth being exact
+    # about because the old control is gone: `build` runs only after `derive`
+    # resolved a candidate, and the step before the keychain refuses any tree whose
+    # HEAD is not the commit that was pinned. The release case resolves that commit
+    # from the published tag itself, so it cannot be a commit other than the one the
+    # release shipped.
     #
     # The failure mode to keep in mind is the quiet one: referencing an
     # environment that does not exist creates it *unprotected* and the job simply
-    # runs, so a misspelled environment name is a way past the gate rather than a
-    # red job.
+    # runs, so a misspelled environment name is a way past the branch policy rather
+    # than a red job.
     #
-    # Not covered: the environment does not read the tree, so an approver can
-    # still approve unreviewed code by mistake; the approval is same-identity -
-    # one required reviewer with self-review permitted (`prevent_self_review` is
-    # off), on a repository where every agent dispatches as that one account - so
-    # it is a deliberate second action by one principal rather than review by a
-    # second person, and it can be taken through the pending-deployments API; it
-    # does not stop another workflow in this repository from reaching these
-    # repository-level secrets; and it does not apply to `exact-update`, which is
-    # built to hold no secret at all.
+    # Not covered: the environment does not read the tree, and it never did - the
+    # pin above is what does; it does not stop another workflow in this repository
+    # from reaching these repository-level secrets; and it does not apply to
+    # `exact-update`, which is built to hold no secret at all.
     environment: signed-update-candidate
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.expected_source_sha }}
+          ref: ${{ needs.derive.outputs.source_sha }}
           persist-credentials: false
       - name: Refuse unpinned or different source before accessing signing secrets
         env:
-          EXPECTED: ${{ inputs.expected_source_sha }}
+          EXPECTED: ${{ needs.derive.outputs.source_sha }}
         run: |
           [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
           test "$(git rev-parse HEAD)" = "$EXPECTED"
@@ -243,7 +373,7 @@ jobs:
       # only when no blockmap is available.
       - uses: actions/upload-artifact@v4
         with:
-          name: signed-update-candidate-${{ inputs.expected_source_sha }}
+          name: signed-update-candidate-${{ needs.derive.outputs.source_sha }}
           path: |
             dist/*.zip
             dist/*.dmg
@@ -253,7 +383,7 @@ jobs:
           retention-days: 7
 
   exact-update:
-    needs: build
+    needs: [derive, build]
     # The guard is repeated here rather than left to `needs:` alone: `always()` -
     # the obvious thing to reach for when the proof artifact should upload after a
     # failed build - is a status-check function, and including one of those in an
@@ -263,7 +393,7 @@ jobs:
     # guard meaning what it reads as even then. A fresh hosted VM: no signing
     # keychain, Apple/API secrets, live installation or user sessions. The harness
     # refuses self-hosted and local execution.
-    if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
+    if: (github.event_name == 'repository_dispatch' || github.ref == 'refs/heads/main') && needs.build.result == 'success'
     runs-on: macos-latest
     # 35 min: downloads a ~350 MB incumbent, installs it into VM-local state with
     # a synthetic legacy venv, drives the unmodified incumbent's electron-updater
@@ -274,7 +404,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.expected_source_sha }}
+          ref: ${{ needs.derive.outputs.source_sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -285,11 +415,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
-          name: signed-update-candidate-${{ inputs.expected_source_sha }}
+          name: signed-update-candidate-${{ needs.derive.outputs.source_sha }}
           path: candidate
       - name: Refuse a malformed incumbent tag
         env:
-          INCUMBENT_TAG: ${{ inputs.incumbent_tag }}
+          INCUMBENT_TAG: ${{ needs.derive.outputs.incumbent_tag }}
         run: |
           # The tag selects which published release is downloaded and which
           # incumbent app is installed, so a typo or a branch name has to be a
@@ -300,18 +430,28 @@ jobs:
           [[ "$INCUMBENT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
       - name: Exercise unmodified incumbent updater against exact candidate bytes
         env:
-          INCUMBENT_TAG: ${{ inputs.incumbent_tag }}
+          INCUMBENT_TAG: ${{ needs.derive.outputs.incumbent_tag }}
         run: |
           # Exit 2 is BLOCKED - a capability this VM lacks, the verdict the
           # harness prefers over a surrogate result. Exit 1 is the harness's own
-          # FAIL, a candidate failing a check about what was assembled, but it is
+          # FAIL, a candidate failing a check about what was assembled, and it is
           # also what node exits with when the harness is not there at all, which
-          # is exactly what a dispatch against a SHA predating it hits; the two
-          # are not distinguishable from the exit code. Both fail the job, so the
-          # label below names the outcome without asserting a cause it cannot
-          # know, and the step log is what separates them. `--evidence` is passed
-          # explicitly so the uploaded path does not depend on the harness's own
-          # default.
+          # is what a candidate predating it hits. The absent-harness case is named
+          # separately below rather than left to read as a candidate failure: the
+          # harness is a file at the candidate's own commit, so "the exercise could
+          # not run" and "the candidate failed" must not be the same verdict. Both
+          # fail the job - a verification that reports success without running is
+          # the one outcome worth failing for.
+          if [ ! -f scripts/verify-signed-update.mjs ]; then
+            {
+              echo '### Signed update exercise: BLOCKED - the harness is absent from this commit'
+              echo
+              echo "\`scripts/verify-signed-update.mjs\` does not exist at \`$(git rev-parse HEAD)\`,"
+              echo 'so no exercise was performed. This is a missing capability in the candidate, not a'
+              echo 'candidate failure, and never a pass.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 2
+          fi
           status=0
           node scripts/verify-signed-update.mjs \
             --candidate-dir candidate \
@@ -335,7 +475,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: signed-update-proof-${{ inputs.expected_source_sha }}
+          name: signed-update-proof-${{ needs.derive.outputs.source_sha }}
           path: signed-update-evidence
           if-no-files-found: warn
           retention-days: 14
