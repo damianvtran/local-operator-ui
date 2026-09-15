@@ -114,6 +114,21 @@ type LoadingClaims = {
 	captionVisible: boolean;
 };
 
+/** A measured box, rounded to a tenth of a pixel; `null` when nothing is there. */
+type Box = { x: number; y: number; w: number; h: number };
+
+const rect = (element: Element | null): Box | null => {
+	if (!element) return null;
+	const box = element.getBoundingClientRect();
+	const round = (value: number) => Math.round(value * 10) / 10;
+	return {
+		x: round(box.x),
+		y: round(box.y),
+		w: round(box.width),
+		h: round(box.height),
+	};
+};
+
 /** One reading of the band, taken in one animation frame. */
 type BandFrame = {
 	at: number;
@@ -123,7 +138,19 @@ type BandFrame = {
 	chips: number;
 	chipLabels: string[];
 	bandHeight: number;
-	boxes: Record<string, string>;
+	/**
+	 * The boxes behind the pixels: the band, its greeting `h2`, the skeleton it
+	 * replaces, the chip row and the composer form. `null` where the element is
+	 * not in the document, which is itself a reading - a small-view band has no
+	 * greeting box at all.
+	 */
+	boxes: {
+		band: Box | null;
+		greeting: Box | null;
+		skeleton: Box | null;
+		chipRow: Box | null;
+		composer: Box | null;
+	};
 	/**
 	 * The chip stack's own geometry, which is what D1 is a claim about: how many
 	 * rows the sample wrapped to, how tall each is, and whether the last one is
@@ -161,6 +188,202 @@ type BandFrame = {
 };
 
 /**
+ * The harness's own clock, and the one stamp every published reading carries.
+ *
+ * WHY A READING NEEDS ONE AT ALL. This screen is not one layout, it is a
+ * sequence of them: the pane paints the splash before the chat column's
+ * `ResizeObserver` has measured it (`chat-content.tsx` starts `isSmallView` at
+ * `false` and sets it from a container measurement, so at the minimum window the
+ * splash paints first and the small view takes over), and the composer relayouts
+ * again when the session's readings row resolves its content. A reading taken
+ * before either settles is an honest reading of a state that is NOT the one the
+ * shutter photographs - and with no stamp on it, nothing in the published file
+ * distinguishes it from a settled one. That is exactly what design round 5 read
+ * out of the previous set's 800x572 and 830x572 rows: numbers contradicting the
+ * pixels committed beside them, with no way to tell from the file which state
+ * they described.
+ *
+ * So every read is stamped with when it was taken, and `settlement` below
+ * publishes every DISTINCT layout this page has shown together with the span it
+ * was observed over. "This number is of the settled state" becomes checkable
+ * rather than assumed.
+ */
+const HARNESS_STARTED_AT = performance.now();
+
+/** Milliseconds since the harness page mounted. */
+const at = () => Math.round(performance.now() - HARNESS_STARTED_AT);
+
+/**
+ * How long a layout must be unchanged before this harness calls it settled.
+ *
+ * Six times the probe's own re-read interval, so a state that is still moving -
+ * or that a late-arriving field is about to move - cannot be published as the
+ * settled one. It is a LOWER bound on the true stability rather than a
+ * measurement of it: a change is detected by the first read that observes it, so
+ * `stableForMs` can only understate how long the layout has held.
+ */
+const SETTLE_WINDOW_MS = 3000;
+
+/** A layout this page has shown, and the span of reads that observed it. */
+type LayoutState = {
+	/** The stamp of the reading that FIRST saw this layout. */
+	at: number;
+	/** The stamp of the last reading that still saw it. */
+	lastSeenAt: number;
+	reads: number;
+	/** The chat column's own width - the measurement `isSmallView` is taken from. */
+	columnWidth: number | null;
+	bandY: number | null;
+	bandHeight: number | null;
+	composerY: number | null;
+	composerHeight: number | null;
+	stackTop: number | null;
+	stackHeight: number | null;
+	greeting: number;
+	skeleton: number;
+	chipLabels: string[];
+	rowsLaidOut: number | null;
+	rowsInside: number | null;
+	boundaryInGap: boolean | null;
+	claims: LoadingClaims;
+};
+
+/**
+ * What the probe publishes about WHEN each number was true.
+ *
+ * `states` is the whole point: a reader comparing a published row against a
+ * committed frame can see that the reading describes the first state this page
+ * held (a splash at a 520px column, say) or the settled one, and `settled` says
+ * whether the LAST state had stopped moving before the reading that published
+ * it. `noLoadingClaimInAnyState` is the strongest form of this set's one claim
+ * that a single end-of-run read could not make: no layout this page ever showed
+ * claimed to be loading, not merely the last one.
+ */
+type Settlement = {
+	now: number;
+	reads: number;
+	layoutChanges: number;
+	lastChangeAt: number | null;
+	stableForMs: number;
+	settleWindowMs: number;
+	settled: boolean;
+	noLoadingClaimInAnyState: boolean;
+	states: LayoutState[];
+	note: string;
+};
+
+/**
+ * The fields that make a reading's LAYOUT, as opposed to its text or its store.
+ *
+ * Only what a reader of a frame could see: the box the band occupies, the
+ * composer's own box, the stack's, and the three counts that decide whether the
+ * splash is painted at all. A signature that moves is a layout change; the
+ * `text` of a chip or the identity of a draft is not, and counting those would
+ * report a settled screen as still settling.
+ */
+const layoutSignature = (frame: BandFrame): string =>
+	[
+		frame.boxes.band?.y ?? null,
+		frame.boxes.band?.h ?? null,
+		frame.boxes.composer?.y ?? null,
+		frame.boxes.composer?.h ?? null,
+		frame.stack?.top ?? null,
+		frame.stack?.height ?? null,
+		frame.greeting,
+		frame.skeleton,
+		frame.chips,
+		frame.stack?.rowCount ?? null,
+		frame.stack?.visibleRows ?? null,
+		frame.stack?.boundaryInGap ?? null,
+		frame.transcriptPainted,
+	].join("|");
+
+const stateOf = (frame: BandFrame, claims: LoadingClaims): LayoutState => ({
+	at: frame.at,
+	lastSeenAt: frame.at,
+	reads: 1,
+	columnWidth: frame.boxes.band?.w ?? null,
+	bandY: frame.boxes.band?.y ?? null,
+	bandHeight: frame.boxes.band?.h ?? null,
+	composerY: frame.boxes.composer?.y ?? null,
+	composerHeight: frame.boxes.composer?.h ?? null,
+	stackTop: frame.stack?.top ?? null,
+	stackHeight: frame.stack?.height ?? null,
+	greeting: frame.greeting,
+	skeleton: frame.skeleton,
+	chipLabels: frame.chipLabels,
+	rowsLaidOut: frame.stack?.rowCount ?? null,
+	rowsInside: frame.stack?.visibleRows ?? null,
+	boundaryInGap: frame.stack?.boundaryInGap ?? null,
+	claims,
+});
+
+/** Nothing in this document claims to be loading. */
+const claimsNothing = (claims: LoadingClaims) =>
+	claims.placeholders === 0 &&
+	claims.outsideBand === 0 &&
+	claims.shimmerBars === 0 &&
+	!claims.captionVisible;
+
+/** The tracker itself: module state, read and written by the probe's own effect. */
+const tracker = {
+	reads: 0,
+	layoutChanges: 0,
+	lastChangeAt: null as number | null,
+	lastSignature: null as string | null,
+	states: [] as LayoutState[],
+	/** Every layout seen so far, so `noLoadingClaimInAnyState` survives a late state. */
+	claimSeen: false,
+};
+
+/**
+ * Record ONE reading and answer what the page's settlement is, as of it.
+ *
+ * Called from the probe's own publish effect rather than from `readBand` itself,
+ * because `readBand` runs during render in places and a tracker mutated during
+ * render would count StrictMode's double render as two readings of one state.
+ */
+function observe(frame: BandFrame, claims: LoadingClaims): Settlement {
+	const signature = layoutSignature(frame);
+	tracker.reads += 1;
+	if (signature === tracker.lastSignature) {
+		const previous = tracker.states.at(-1);
+		if (previous) {
+			previous.reads += 1;
+			previous.lastSeenAt = frame.at;
+		}
+	} else {
+		if (tracker.lastSignature !== null) {
+			tracker.layoutChanges += 1;
+			tracker.lastChangeAt = frame.at;
+		}
+		tracker.lastSignature = signature;
+		tracker.states.push(stateOf(frame, claims));
+	}
+	if (!claimsNothing(claims)) tracker.claimSeen = true;
+	/*
+	 * `lastChangeAt` is the stamp of the FIRST read that saw the current layout, so
+	 * the span below is a lower bound: the layout may have been in place since
+	 * just after the previous read. After the first read there is nothing to
+	 * compare against, so stability is counted from the first read instead.
+	 */
+	const stableSince = tracker.lastChangeAt ?? tracker.states[0]?.at ?? frame.at;
+	const stableForMs = Math.max(0, frame.at - stableSince);
+	return {
+		now: frame.at,
+		reads: tracker.reads,
+		layoutChanges: tracker.layoutChanges,
+		lastChangeAt: tracker.lastChangeAt,
+		stableForMs,
+		settleWindowMs: SETTLE_WINDOW_MS,
+		settled: stableForMs >= SETTLE_WINDOW_MS,
+		noLoadingClaimInAnyState: !tracker.claimSeen,
+		states: tracker.states.map((state) => ({ ...state })),
+		note: "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span.",
+	};
+}
+
+/**
  * Read the band the way a reader of the frame reads it.
  *
  * The three counts are what the whole change turns on and none of them is
@@ -177,30 +400,24 @@ type BandFrame = {
  * the band's own height is what says which happened. Rounded to a tenth of a
  * pixel — a sub-pixel difference between two runs of one state is not a claim.
  */
-const rect = (element: Element | null) => {
-	if (!element) return null;
-	const box = element.getBoundingClientRect();
-	const round = (value: number) => Math.round(value * 10) / 10;
-	return {
-		x: round(box.x),
-		y: round(box.y),
-		w: round(box.width),
-		h: round(box.height),
-	};
-};
-
 function readBand(): BandFrame {
 	const band = document.querySelector<HTMLElement>("[data-lo-composer-band]");
 	if (!band)
 		return {
-			at: 0,
+			at: at(),
 			text: "<no band in the document>",
 			greeting: 0,
 			skeleton: 0,
 			chips: 0,
 			chipLabels: [],
 			bandHeight: 0,
-			boxes: {},
+			boxes: {
+				band: null,
+				greeting: null,
+				skeleton: null,
+				chipRow: null,
+				composer: null,
+			},
 			stack: null,
 			transcriptPainted: false,
 		};
@@ -279,14 +496,16 @@ function readBand(): BandFrame {
 			lastVisibleRowBottom: Math.round(lastVisibleBottom * 10) / 10,
 			lastVisibleRowInside: lastVisibleBottom <= window.innerHeight,
 			/** Nothing is cut: the first row below the box starts at or below it. */
-			boundaryInGap: firstClipped ? firstClipped.top >= wrapBox.bottom - 1 : true,
+			boundaryInGap: firstClipped
+				? firstClipped.top >= wrapBox.bottom - 1
+				: true,
 			contentHeight: Math.round((contentBottom - wrapBox.top) * 10) / 10,
 			/** How much of the window is left below the stack's top edge. */
 			room: Math.round((window.innerHeight - wrapBox.top) * 10) / 10,
 		};
 	})();
 	return {
-		at: 0,
+		at: at(),
 		text: (band.innerText ?? "").replace(/\s+/g, " ").trim(),
 		greeting: band.querySelectorAll("h2").length,
 		skeleton: band.querySelectorAll('output[aria-label="Loading conversation"]')
@@ -334,7 +553,6 @@ function readBand(): BandFrame {
 function useBandTrace(limit = 200) {
 	const frames = useRef<BandFrame[]>([]);
 	const total = useRef(0);
-	const started = useRef(performance.now());
 	const [, bump] = useState(0);
 
 	useEffect(() => {
@@ -342,7 +560,10 @@ function useBandTrace(limit = 200) {
 		const read = () => {
 			scheduled = false;
 			const frame = readBand();
-			frame.at = Math.round(performance.now() - started.current);
+			/* `readBand` stamps `at` off the harness clock, the one clock every
+			 * published reading shares, so a trace frame and `bandNow` are directly
+			 * comparable - which is what lets a reader place a state in the same
+			 * timeline `settlement.states` publishes. */
 			frames.current = [...frames.current, frame].slice(-limit);
 			total.current += 1;
 			bump((n) => n + 1);
@@ -389,7 +610,6 @@ function useBandTrace(limit = 200) {
 	return {
 		frames: frames.current,
 		total: total.current,
-		started: started.current,
 	};
 }
 
@@ -495,31 +715,52 @@ function Probe() {
 		(state) => state.pendingSessionId,
 	);
 	const store = { activeDraftKey, activeSessionId, pendingSessionId };
-	const now = readBand();
-	const payload = {
-		href: window.location.href,
-		viewport: `${window.innerWidth}x${window.innerHeight}`,
-		theme: document.documentElement.dataset.theme,
-		harnessError:
-			(window as unknown as { __HARNESS_ERROR__?: string }).__HARNESS_ERROR__ ??
-			null,
-		store,
-		bandNow: now,
-		loadingClaims: readLoadingClaims(),
-		draftStreamView: draftView,
-		framesRead: total,
-		frames: frames.map(({ at, ...rest }) => ({ at, ...rest })),
-	};
 	/*
-	 * Written into the document's own `<pre id="probe">`, NOT rendered here.
+	 * The probe's own reading and publish, in ONE effect that runs after every
+	 * render.
 	 *
-	 * That element sits outside `#root` on purpose, so the readback cannot take
-	 * part in the chat surface's layout - which is one of the things these frames
-	 * are read for - and it is a plain text target a driver reads with one CDP
-	 * `Runtime.evaluate`. An effect rather than a render-time write because React
-	 * owns the tree it renders and must not be mutated from it.
+	 * The read and the write are together because the settlement verdict has to be
+	 * OF the reading that is published, not of a different one taken a half-second
+	 * earlier: `observe` is handed the very frame and claim count the payload
+	 * carries, so `settlement.states.at(-1)` and `bandNow` cannot describe
+	 * different moments. That is the defect this pass exists to remove - design
+	 * round 5 read the previous set's 830x572 and 800x572 rows as readings of a
+	 * state the frames beside them did not show - and a probe that published a
+	 * stamp from one read beside geometry from another would reintroduce it in a
+	 * new spelling.
+	 *
+	 * Reading during render was also the older shape's own hazard: `readBand` and
+	 * `readLoadingClaims` measure layout, and a measurement taken in render is not
+	 * guaranteed to be of the frame React is about to commit. An effect runs after
+	 * the commit, which is the moment these boxes are a reading of what is painted.
 	 */
 	useEffect(() => {
+		const bandNow = readBand();
+		const loadingClaims = readLoadingClaims();
+		const payload = {
+			href: window.location.href,
+			viewport: `${window.innerWidth}x${window.innerHeight}`,
+			theme: document.documentElement.dataset.theme,
+			harnessError:
+				(window as unknown as { __HARNESS_ERROR__?: string })
+					.__HARNESS_ERROR__ ?? null,
+			store,
+			bandNow,
+			loadingClaims,
+			draftStreamView: draftView,
+			framesRead: total,
+			frames: frames.map(({ at, ...rest }) => ({ at, ...rest })),
+			settlement: observe(bandNow, loadingClaims),
+		};
+		/*
+		 * Written into the document's own `<pre id="probe">`, NOT rendered here.
+		 *
+		 * That element sits outside `#root` on purpose, so the readback cannot take
+		 * part in the chat surface's layout - which is one of the things these frames
+		 * are read for - and it is a plain text target a driver reads with one CDP
+		 * `Runtime.evaluate`. An effect rather than a render-time write because React
+		 * owns the tree it renders and must not be mutated from it.
+		 */
 		const element = document.getElementById("probe");
 		if (element) element.textContent = `${JSON.stringify(payload, null, 2)}\n`;
 	});

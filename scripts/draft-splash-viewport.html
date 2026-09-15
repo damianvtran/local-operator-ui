@@ -55,6 +55,18 @@
      * the published numbers drifting with the settled frame instead of
      * freezing the load-time reading, which is what a still taken later would
      * otherwise be paired with.
+     *
+     * AND THE READ SAYS WHEN IT WAS TAKEN AND WHICH STATE IT IS OF (`at`,
+     * `observed`, `expected`, `holds`, `settlement`). A periodic re-read makes
+     * the PUBLISHED numbers current, but only a stamp makes them auditable:
+     * design round 5 read two rows of the previous set's table as readings of a
+     * state the frames beside them did not paint (a splash at the minimum
+     * window, and a composer 16px above the settled one), and nothing in those
+     * files could have said so. Now the readback carries the layout the frame's
+     * own probe has seen stop moving, the column width the size's expectation is
+     * derived from, and a verdict on each - so a contradiction between the
+     * numbers and the pixels is a failing field in the committed file rather
+     * than a discovery a reviewer has to make by measuring PNGs.
      */
     const CAPTURE = new URLSearchParams(location.search).get('capture') === '1';
     if (CAPTURE) {
@@ -64,6 +76,39 @@
       setInterval(read, 500);
     }
     let selected = new URLSearchParams(location.search).get('size') || '830x572';
+    /*
+     * The viewport harness's own clock. The readback is a reading of a moment,
+     * and the moment is what a later reader needs: this page re-reads on a timer
+     * in capture mode, so the number a reader finds in the file is the number as
+     * of `at` - and whether that moment was AFTER the frame settled is answered
+     * by the frame's own probe (see `settlement` below), not assumed.
+     */
+    const HARNESS_STARTED_AT = performance.now();
+    const at = () => Math.round(performance.now() - HARNESS_STARTED_AT);
+    /*
+     * The chat column's small-view threshold, quoted from the product rather than
+     * invented here: `chat-content.tsx` sets `isSmallView` from a CONTAINER
+     * measurement (`entry.contentRect.width < 550`) and `message-input.tsx`
+     * paints the empty-chat prompt - the greeting and the suggestion stack - only
+     * on `!isSmallView`. Publishing that as this size's EXPECTATION is what makes
+     * a readback contradicting the frame beside it detectable instead of silent:
+     * the file carries the claim, the measurement and the verdict on the same
+     * page.
+     *
+     * The expectation is for the SETTLED state on purpose. The column is measured
+     * at the moment of the read, so an intermediate layout - the splash painted
+     * before the observer has measured the column, or a composer whose readings
+     * row has not resolved - is published as a TRANSIENT in `settlement.states`
+     * rather than being compared against the settled expectation.
+     */
+    const SMALL_VIEW_COLUMN_PX = 550;
+    const expectationFor = (columnPx) => ({
+      columnPx,
+      smallView: columnPx < SMALL_VIEW_COLUMN_PX,
+      greeting: columnPx < SMALL_VIEW_COLUMN_PX ? 0 : 1,
+      chipsPainted: columnPx < SMALL_VIEW_COLUMN_PX ? 0 : 'the sampled chips, whole rows only',
+      rule: 'chat-content.tsx:343 sets isSmallView from a container measurement of the chat column (contentRect.width < 550); message-input.tsx:1109-1110 paints the empty-chat prompt only on !isSmallView. A column narrower than 550 is the intended small view: one compact composer, no greeting, no suggestion stack.',
+    });
     function resize(size) {
       const match = /^(1380x872|900x572|830x572|800x572)$/.exec(size);
       if (!match) throw new Error('Unsupported viewport');
@@ -99,13 +144,76 @@
     function read() {
       const doc = app.contentDocument;
       const stack = doc.querySelector('[data-lo-suggestion-stack]');
+      const band = doc.querySelector('[data-lo-composer-band]');
+      const stackBox = stack?.getBoundingClientRect() ?? null;
+      /*
+       * What the frame PAINTS, derived from the same DOM the frame is a picture
+       * of: the greeting is the band's own `h2`, and a chip is painted when it is
+       * neither `disabled` nor `aria-hidden` nor `visibility: hidden` AND its row
+       * ends inside the capped stack box. Both facts are what design round 5 had
+       * to measure off the PNGs by hand, because the published readback carried
+       * only the stack's box and the chips' raw rects - which is why a row of
+       * numbers could describe a state the frame did not show.
+       */
+      const chips = buttons().map(button => ({
+        label: button.textContent,
+        disabled: button.disabled,
+        ariaHidden: button.getAttribute('aria-hidden'),
+        visibility: app.contentWindow.getComputedStyle(button).visibility,
+        focused: button === doc.activeElement,
+        top: button.getBoundingClientRect().top,
+        bottom: button.getBoundingClientRect().bottom,
+      }));
+      const painted = chips.filter(chip => !chip.disabled && chip.ariaHidden !== 'true' && chip.visibility !== 'hidden');
+      const inert = chips.length - painted.length;
+      const rowsLaidOut = new Set(chips.map(chip => chip.top)).size;
+      const paintedRowBottoms = stackBox && painted.length
+        ? [...new Set(painted.map(chip => chip.top))]
+            .map(top => Math.max(...painted.filter(chip => chip.top === top).map(chip => chip.bottom)))
+        : [];
+      const rowsPainted = paintedRowBottoms.filter(bottom => !stackBox || bottom <= stackBox.bottom + 0.5).length;
+      const columnPx = band ? Math.round(band.getBoundingClientRect().width) : 0;
+      let inner = null;
+      const pageProbe = doc.querySelector('#probe')?.textContent;
+      try {
+        inner = pageProbe ? JSON.parse(pageProbe) : null;
+      } catch {
+        inner = null;
+      }
+      const settlement = inner?.settlement ?? null;
+      const claims = inner?.loadingClaims ?? null;
+      const expected = expectationFor(columnPx);
+      const observed = {
+        columnPx,
+        greeting: band ? band.querySelectorAll('h2').length : null,
+        smallView: Boolean(band) && band.querySelectorAll('h2').length === 0 && painted.length === 0,
+        chipsLaidOut: chips.length,
+        chipsPainted: painted.length,
+        chipsInert: inert,
+        rowsLaidOut,
+        rowsPainted,
+      };
+      const noLoadingClaim = Boolean(claims) && claims.placeholders === 0 &&
+        claims.outsideBand === 0 && claims.shimmerBars === 0 && !claims.captionVisible;
+      const holds = {
+        settled: Boolean(settlement?.settled),
+        smallView: observed.smallView === expected.smallView,
+        greeting: observed.greeting === expected.greeting,
+        noLoadingClaim,
+      };
+      holds.all = Object.values(holds).every(Boolean);
       output.textContent = JSON.stringify({
         frame: frameBox(),
+        at: at(),
         viewport: selected,
         active: doc.activeElement?.textContent || doc.activeElement?.tagName,
         stack: stack && { height: stack.getBoundingClientRect().height, scrollHeight: stack.scrollHeight, clientHeight: stack.clientHeight },
-        chips: buttons().map(button => ({ label: button.textContent, disabled: button.disabled, ariaHidden: button.getAttribute('aria-hidden'), visibility: app.contentWindow.getComputedStyle(button).visibility, focused: button === doc.activeElement, top: button.getBoundingClientRect().top, bottom: button.getBoundingClientRect().bottom })),
-        pageProbe: doc.querySelector('#probe')?.textContent,
+        chips,
+        observed,
+        expected,
+        holds,
+        settlement,
+        pageProbe,
       }, null, 2);
     }
     document.querySelectorAll('[data-size]').forEach(button => {
