@@ -92,6 +92,25 @@ const bundle = await build({
 		{
 			name: "main-process-fixtures",
 			setup(builder) {
+				// Launch identity has real-child coverage in owned-serve-lifecycle;
+				// this fixture measures the spawn environment, not installation.
+				builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
+					path: "launch",
+					namespace: "owned-launch-fixture",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "owned-launch-fixture" },
+					() => ({
+						loader: "js",
+						contents: `
+					export const consoleInterpreter = () => "/fixture/python";
+					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
+					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
+					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
+				`,
+					}),
+				);
+
 				/** Every substitution names its original, so a reader can see
 				 * exactly what is not shipping code in this run. */
 				const aliases = new Map([
@@ -141,12 +160,13 @@ const bundle = await build({
 									 * persistent \`on("exit")\` handler - firing the wrong one would
 									 * leave stop() waiting for its full 10s timeout.
 									 */
-									const persistent = new Map();
-									const onceOnly = new Map();
 									function makeChild(env) {
-										const listeners = new Map([["persistent", persistent], ["once", onceOnly]]);
+ const persistent = new Map();
+ const onceOnly = new Map();
+ const listeners = new Map([["persistent", persistent], ["once", onceOnly]]);
 										return {
 											pid: 4242,
+ exitCode: null, signalCode: null,
 											stdout: null,
 											stderr: null,
 											killed: [],
@@ -182,8 +202,10 @@ const bundle = await build({
 											 * reports and the one code that shows no error dialog.
 											 */
 											exitNow(code = null) {
-												const cbs = persistent.get("exit") ?? [];
-												for (const cb of cbs) cb(code, null);
+												const cbs = [...(persistent.get("exit") ?? []), ...(onceOnly.get("exit") ?? [])];
+ onceOnly.set("exit", []);
+ this.exitCode = code;
+ for (const cb of cbs) cb(code, null);
 											},
 										};
 									}
@@ -339,10 +361,14 @@ globalThis.__backendTestUrl = url;
  * The `backendUrl` assertion in the first test exists so that failure can only
  * ever be loud.
  */
-const { BackendServiceManager, DesktopStreamRelay, DESKTOP_STREAM_DETAIL, streamFailureNotice } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	BackendServiceManager,
+	DesktopStreamRelay,
+	DESKTOP_STREAM_DETAIL,
+	streamFailureNotice,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 after(async () => {
 	await new Promise((resolve, reject) =>

@@ -110,6 +110,30 @@ const profileName = z
 const target = z
 	.object({ kind: z.enum(["agent", "team"]), name: profileName })
 	.strict();
+/**
+ * The model a NEW conversation will be born on, picked on the draft pane.
+ *
+ * Deliberately the same three fields, in the same spelling, that the canonical
+ * frontend state publishes for a session's model (`CanonicalModel` in
+ * `desktop-session-contract.ts`): the draft's chips and the session's chips are
+ * two readings of one fact, and a second spelling here would be the place the
+ * two came to disagree. `reasoning_effort` is `null` for "no rung chosen",
+ * which the backend resolves to the model's own default exactly as `/effort
+ * auto` does — never `"auto"`, which is a word the picker uses for a state
+ * rather than a level the model could be set to.
+ *
+ * Bounds mirror the rest of this contract's id-shaped fields: they exist to
+ * keep a malformed request off the wire, not to encode a catalogue.
+ */
+const modelSelection = z
+	.object({
+		provider: z.string().min(1).max(128),
+		model_id: z.string().min(1).max(512),
+		reasoning_effort: z.string().min(1).max(64).nullable(),
+	})
+	.strict();
+/** What a draft pane's chips record, and what the wire carries. */
+export type DesktopModelSelection = z.infer<typeof modelSelection>;
 const profileFields = z
 	.object({
 		kind: z.enum(["role", "specialist"]).optional(),
@@ -254,6 +278,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			requestId,
 			cwd: z.string().min(1).max(4096),
 			target: target.optional(),
+			/*
+			 * OMITTED when the user never picked anything, so the body is the one
+			 * this op sent before the draft's chips could open: making them
+			 * actionable is strictly additive, and a `null` here would be a
+			 * different request for every caller that never asked.
+			 */
+			model: modelSelection.optional(),
 		})
 		.strict(),
 	/*
@@ -271,7 +302,9 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	 * disagree with the session the first send creates.
 	 *
 	 * Body and response mirror `sessions.create` deliberately: same `cwd`, same
-	 * optional `target`, same 422 for an unresolvable profile. The response is a
+	 * optional `target`, same `model` and same 422 for an unresolvable profile —
+	 * the pane is asking the question it will ask for real on the first send, so
+	 * the two bodies are derived from one selection. The response is a
 	 * `CanonicalFrontendSync` — the wire shape `sessions.watch` streams — whose
 	 * `snapshot.session_id` is EMPTY, because there is no session. The renderer
 	 * passes it to the strip and never into the canonical sessions store.
@@ -282,6 +315,10 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			requestId,
 			cwd: z.string().min(1).max(4096),
 			target: target.optional(),
+			/* Present only when the pane's chips were used: the preview then answers
+			   the reading the CHOSEN model gives, which is the ladder and window the
+			   first turn will actually get. */
+			model: modelSelection.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("sessions.get"), sessionId }).strict(),
@@ -1276,6 +1313,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
+					...(request.model ? { model: request.model } : {}),
 				},
 			};
 		case "sessions.preview":
@@ -1286,6 +1324,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
+					...(request.model ? { model: request.model } : {}),
 				},
 			};
 		case "sessions.get":
