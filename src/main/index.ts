@@ -191,7 +191,7 @@ let launcherWatch: LauncherWatch | null = null;
 
 // Set application name
 app.setName("Local Operator");
-const image = nativeImage.createFromPath(icon); /*
+/*
  * The Dock tile on macOS, which a headless run must not have.
  *
  * A `headless` run is an app nobody is using: the window is never shown, so the
@@ -204,6 +204,7 @@ const image = nativeImage.createFromPath(icon); /*
  * The icon is only set where a tile exists to carry it: on a hidden dock the
  * call would say nothing, and the reason it is here at all is the shipped app.
  */
+const image = nativeImage.createFromPath(icon);
 if (process.platform === "darwin" && app.dock) {
 	if (windowLaunch.hideDock) {
 		app.dock.hide();
