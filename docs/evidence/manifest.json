@@ -1,17 +1,17 @@
 {
-  "head": "18f359ffaf5aa4b98f7d400cdc69d21122a10449",
-  "headNote": "Sync merge of `origin/main` `56800cb1e` (#179, three commits on from the head the round-8 review pinned) and the re-stamp that follows it, WITHOUT RECAPTURE - which is main's pass, and this branch then re-captured the one surface it owns at its rebased head. `head` names the commit this stamp was re-derived at, and `srcTree`/`scriptsTree` are that commit's trees, since the gate accepts nothing else in those fields: `0b3351a4b`, the merge commit whose re-derivation set the counts below, and `18f359ffa`, this branch's rebased head and the parent of this stamp commit, at which the narrowed re-capture recorded under `partialCapture` ran. `capturedAt` is main's pass and is left as main's. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is this stamping pass's, and the tree was clean and committed: only this branch's own surface was re-taken (`--only=chat-session-status--neighbours`, twelve frames over the twelve themes, byte-identical to the frames the branch already committed), every other frame and citation is still main's, and the capture the older frames came from is recorded in `captureOrigin`, beside main's own record of its pass in `upstreamComposerCapture`. The sets this branch owns are declared as supplementary; the uncovered part of the delta is named in `captureOrigin.note` rather than implied.",
-  "srcTree": "7f8881723668cb87ea7571f8e502281d8f532cef",
-  "scriptsTree": "3ce1fe258599892939c5912adfe04c9af24e28e0",
+  "head": "4f31db5d14cda954aede49725a8797b18be84017",
+  "headNote": "Sync merge of `origin/main` `8e2f67b1c` (#170, nine commits on from the v0.22.5 release this branch already carried) and the re-stamp that follows it, WITHOUT RECAPTURE: main's pass wrote these frames, and this branch's own narrowed passes are recorded under `partialCapture`. `head` names the commit this stamp was re-derived at, and `srcTree`/`scriptsTree` are that commit's trees, since the gate accepts nothing else in those fields. `capturedAt` is main's full-sweep instant and is left as main's, because no sweep ran here. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is the full sweep's - main's pass was clean - while this branch's narrowed passes ran on a dirty tree and say so under `partialCapture`. Both sides of the merge are preserved: the two conflicts took main's side for this block and, for `partialCapture`, the union of two records of ONE pass rather than either one (see its note).",
+  "srcTree": "f80d581f97ddbe0932fd73a84ff710a78e2093d4",
+  "scriptsTree": "f35e1ddb2775dc542a47824370dd020054db2aab",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T00:21:21.000000Z",
-  "frames": 1226,
-  "surfaces": 187,
+  "frames": 1228,
+  "surfaces": 188,
   "themes": 12,
   "countsMean": {
-    "frames": "1591 committed WebP files minus 365 in 32 declared supplementary sets = 1226 sweep frames. File counts on the merged disk, not a newly completed full sweep: main's 1214 plus this branch's twelve chat-session-status frames.",
-    "surfaces": "187 entries in the merged capture-evidence.mjs STORIES literal by the gate method: main's 183, three chat-canonical-notices stories, and this branch's chat-session-status matrix. Both sides are preserved.",
-    "themes": "The capturer retains 12 THEMES entries; no palette or theme is added by this merge."
+    "frames": "1593 committed WebP files minus 365 in 32 declared supplementary sets = 1228 sweep frames. File counts on the merged disk, not a newly completed full sweep: this branch's 1581 plus main's twelve chat-session-status frames. Re-derived at the merge commit rather than carried from either side, because each side's count described a tree the other did not have.",
+    "surfaces": "188 entries in the merged capture-evidence.mjs STORIES literal by the gate method: this branch's 187 plus main's `chat-session-status--neighbours`, which this side's list did not carry. Both sides are preserved.",
+    "themes": "The merged capturer retains 12 THEMES entries; no palette or theme is added by this merge."
   },
   "partialCapture": {
     "refreshedAt": "2026-09-15T01:18:21.921Z",
