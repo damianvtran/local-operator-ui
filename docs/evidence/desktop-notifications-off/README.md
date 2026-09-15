@@ -140,8 +140,13 @@ the backend gets is decided. "The serve launch" is the `bash -c 'exec "$@"' …
 serve --port N` row of the transcript, i.e. the backend itself; the `python3 -c`
 row beside it is the identity probe, handed the same object. In both runs the
 child is a real backend (its own log shows `GET /health 200`), spawned with a
-scratch HOME, config dir, log dir and `--user-data-dir` on a scratch port, and
-killed by exact pid afterwards.
+scratch HOME, config dir, log dir and `--user-data-dir` on a scratch port. **That
+capture's stop was by exact pid on the `node_modules/.bin/electron` SHIM, and it
+leaked** — two headless trees of eight processes each, roots at `ppid 1`; the
+transcript's closing section records it. `scripts/notification-hop-proof.mjs` is
+the same measurement with the teardown fixed (the runtime binary, `detached`, a
+GROUP signal and a profile-match reap by exact pid), and it is what a re-run
+should use.
 
 Two other measurements of the same path are recorded here because they came from
 the two independent rounds on this PR and neither is reproducible from this
