@@ -24,6 +24,49 @@ export const desktopKeys = {
 };
 
 /**
+ * How long this app waits before asking again what the backend can do, while the
+ * answer does not open the desktop plane at all.
+ *
+ * WHY a query that is otherwise fetched once has a poll at all. The operator's
+ * report is "all the active chats and teams disappear and it needs a refresh ...
+ * after sitting a while they come back on their own". One of the two ways that
+ * happens is a capabilities answer that SUCCEEDS while withdrawing the plane - a
+ * daemon this app holds no token for answers `desktop_available: false`, which is
+ * the state the operator's own log shows beside 26 refused desktop reads. The
+ * gate is shut, `error` is null, and nothing re-asked: `staleTime` only decides
+ * when a fetch may be reused, `retry: false` covers the failing arm only, and
+ * with no interval the gate stayed shut until a window focus or an unrelated
+ * invalidation happened to refetch it. That is why the recovery read as "it needs
+ * a refresh, and later it comes back by itself".
+ *
+ * WHY a fixed cadence rather than a doubling backoff. What this waits for is
+ * MAIN's re-negotiation - its probe loop, re-discovery, and the adoption of a
+ * daemon it can open - and that is already backed off with its own ceiling
+ * (`DaemonStateMachine.nextBackoff`). A second backoff stacked in front of it
+ * would only add latency to the moment the gate re-opens, which is the thing the
+ * operator is waiting for. What is bounded is the RATE: one local IPC call per
+ * interval while the plane is shut, and none at all once it opens - the same
+ * shape `use-mcp-servers.ts` uses for a read whose failures are a state to show
+ * rather than a transient to hammer.
+ */
+export const CAPABILITY_RENEGOTIATE_MS = 15_000;
+
+/**
+ * Whether this answer opens the desktop control plane at all.
+ *
+ * Deliberately the weakest question in the vocabulary, because it is the one the
+ * re-negotiation above can act on: a plane that is unavailable is a state main
+ * can still leave (it acquires a token, attaches, or a daemon publishes a record
+ * it can read), whereas a plane that is open and merely missing ONE feature is a
+ * fact about that backend's version which no amount of re-asking changes.
+ */
+export function desktopPlaneOpen(
+	capabilities: DesktopCapabilities | null | undefined,
+): boolean {
+	return capabilities?.desktop_available === true;
+}
+
+/**
  * Feature negotiation. `desktop_available` is false when this app did not
  * start the backend and therefore cannot supply the bearer — protected
  * controls stay hidden/disabled rather than falling back to an open route.
@@ -48,6 +91,26 @@ export function useDesktopCapabilities() {
 		},
 		staleTime: 60_000,
 		retry: false,
+		/*
+		 * The re-negotiation, and the point at which it stops: the moment an answer
+		 * opens the plane there is nothing left to re-ask for, and a `true` here is
+		 * what ends it. `refetchInterval` fires whether or not the last answer was an
+		 * error, which is deliberate - the failing arm is the other half of the same
+		 * freeze, and `retry: false` above says only that React Query will not back
+		 * off on its own.
+		 */
+		refetchInterval: (query) =>
+			desktopPlaneOpen(query.state.data) ? false : CAPABILITY_RENEGOTIATE_MS,
+		/*
+		 * The one poll in this app that runs while the window is in the background,
+		 * and the exception is the whole requirement. "After sitting a while they
+		 * come back on their own" is a recovery that needs the operator to come back
+		 * and wave the mouse at the window; a gate that heals on attention is the bug
+		 * rather than the cure, so this cadence deliberately does NOT pause when
+		 * nothing is focused. One local IPC call per interval, and it ends with the
+		 * gate.
+		 */
+		refetchIntervalInBackground: true,
 	});
 }
 

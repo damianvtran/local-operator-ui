@@ -44,6 +44,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
+import { catalogueGate } from "../sidebar-catalogue-gate";
 
 type Props = {
 	selectedConversation?: string;
@@ -83,27 +84,47 @@ export function ChatSidebar({
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
+	/*
+	 * The catalogue rows are subscribed BEFORE the gate that reads their count,
+	 * which is the only reason this subscription sits above the hooks it is
+	 * unrelated to: `lastKnownRows` is a statement about what is on screen, so the
+	 * gate cannot decide it without the store. Nothing here is conditional, so the
+	 * order is a readability choice rather than a hooks rule.
+	 */
+	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const ready = desktopFeatureEnabled(
 		capabilities.data,
 		"session_catalogue",
 		2,
 	);
-	// Losing the backend mid-session must not look like an empty catalogue. Once
-	// the sidebar has been ready we keep its structure and last-known rows
-	// mounted through a capability error, marked stale, instead of replacing the
-	// whole list with a bare error paragraph the user cannot act on.
+	/*
+	 * Losing the backend mid-session must not look like an empty catalogue, and
+	 * neither must losing the GATE. Once the sidebar has been ready we keep its
+	 * structure and last-known rows mounted through a capability error or a
+	 * capability answer that withdraws the catalogue, marked stale, instead of
+	 * replacing the whole list with a bare paragraph the user cannot act on. The
+	 * decision itself lives in `sidebar-catalogue-gate.ts` so that it is driven by
+	 * tests rather than by this file's source text; that module's docstring carries
+	 * the report it answers and why the withdrawn case is not the error case.
+	 */
 	const searchRef = useRef<HTMLInputElement>(null);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
-	const stale = Boolean(capabilities.error) && wasReady.current;
-	const showList = ready || stale;
+	const { stale, showList, lastKnownRows } = catalogueGate({
+		ready,
+		failed: Boolean(capabilities.error),
+		answered: Boolean(capabilities.data),
+		wasReady: wasReady.current,
+		// Read here rather than inside the module: the gate is a decision, and the
+		// store is a subscription.
+		rows: sessions.length,
+	});
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
-	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const error = useCanonicalSessionsStore((s) => s.error);
@@ -841,11 +862,43 @@ export function ChatSidebar({
 						</button>
 					</div>
 				)}
+				{/*
+				    The gate closed with no error to report, and WHICH half closed decides
+				    the sentence (review-round shape: the copy may not promise a remedy the
+				    fact does not support). `desktop_available` true with a short catalogue
+				    version is a backend that predates the route, and updating it is the
+				    remedy that exists. Anything else is this app not being able to use the
+				    backend's desktop controls at all - a daemon it holds no token for, or a
+				    backend old enough to publish no `desktop_available` - where "update the
+				    backend" named a remedy for a condition nobody had established.
+
+				    `lastKnownRows` gates the second half: over a store that is genuinely
+				    empty this says nothing extra and the list below still reads "No chats
+				    yet", which is the answer the store actually gives.
+
+				    Retry is re-negotiation, not recovery: the poll in
+				    `useDesktopCapabilities` already re-asks on its own cadence, and this
+				    button is for the operator who would rather not wait. It is the same
+				    control the error branch above offers, for the same reason.
+				 */}
 				{capabilities.data && !ready && !capabilities.error && (
-					<p role="alert" className="text-body-sm text-warning">
-						Update the backend to use canonical chats. Existing histories are
-						unchanged.
-					</p>
+					<div role="alert" className="space-y-1 text-body-sm text-warning">
+						<p>
+							{capabilities.data.desktop_available
+								? "Update the backend to use canonical chats. Existing histories are unchanged."
+								: "Chats and teams are not updating: this app cannot use the backend's desktop controls."}
+							{lastKnownRows
+								? " Showing the last chats and teams that loaded."
+								: ""}
+						</p>
+						<button
+							type="button"
+							className="underline"
+							onClick={() => void capabilities.refetch()}
+						>
+							Retry
+						</button>
+					</div>
 				)}
 				{showList && (
 					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
@@ -876,6 +929,11 @@ export function ChatSidebar({
 							{heading("teams", "Teams", true)}
 							{(query || isOpen("teams", true)) && (
 								<>
+									{teams.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-muted">
+											Loading teams…
+										</p>
+									)}
 									{teams.data?.map((team) => entity("team", team.name))}
 									<button
 										type="button"
@@ -955,24 +1013,23 @@ export function ChatSidebar({
 						    not a free tidy-up for a later reader. */}
 						<button
 							type="button"
-							// DEFENSIVE, not currently reachable — and the earlier comment
-							// here named the stale state as the case that makes it live,
-							// which measurement disproved. `stale` requires
-							// `capabilities.error`, and react-query retains the last good
-							// `data` across a failed refetch (`retry: false`, no reset), so
-							// `ready` is still true there and this row renders enabled.
-							// With `showList = ready || stale` there is no state that
-							// renders the row while `ready` is false.
+							// REACHABLE now, and this is the state that makes it live: a gate that
+							// withdraws without an error leaves `showList` true (the last-known
+							// rows stay mounted) while `ready` is false, so this row renders
+							// disabled and refuses to stage a draft against an absent catalogue.
+							// Before the withdrawn case was handled, the only way here was a
+							// capability error, and react-query keeps the last good `data`
+							// across a failed refetch (`retry: false`, no reset) - so `ready`
+							// stayed true there and this was defensive rather than reachable.
 							//
-							// Kept because the pairing is what makes decoupling them safe:
-							// staging a draft needs the session catalogue, so if `showList`
-							// ever admits a not-ready state the row must disable rather
-							// than stage against an absent catalogue. Only a focusable row
-							// is a stop in the arrow ring — `keyDown` moves by calling
-							// `.focus()` on the next `[data-chat-row]` and a disabled
-							// button silently refuses it — so the attribute has to drop out
-							// in exactly the states the button is disabled, or a keyboard
-							// user strands here.
+							// Kept and now load-bearing, because the pairing is what makes
+							// decoupling `showList` from `ready` safe: staging a draft needs the
+							// session catalogue, so a not-ready render must disable rather than
+							// stage against nothing. Only a focusable row is a stop in the arrow
+							// ring - `keyDown` moves by calling `.focus()` on the next
+							// `[data-chat-row]` and a disabled button silently refuses it - so the
+							// attribute has to drop out in exactly the states the button is
+							// disabled, or a keyboard user strands here.
 							data-chat-row={ready || undefined}
 							className={cn(
 								rowStyle,
