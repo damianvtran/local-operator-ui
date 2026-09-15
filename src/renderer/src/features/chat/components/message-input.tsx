@@ -7,8 +7,8 @@ import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
 	SEND_HELD,
 	type SendOutcome,
-	restoreSubmittedAttachments,
-	restoreSubmittedText,
+	adoptRefusedPayload,
+	refusedSplitNotice,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import {
@@ -588,6 +588,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const [abandonNotice, setAbandonNotice] = useState<string | null>(null);
 		/*
+		 * What the refusal's own adoption could not hand back.
+		 *
+		 * Set by the adoption effect below and only when the halves of the refused
+		 * payload part - one owed half back, the other held out by content the user
+		 * put in that slot themselves. A draft showing one half of the payload its
+		 * alert is still describing reads exactly like a draft showing all of it, and
+		 * that is the class of defect this branch exists to remove (round 8,
+		 * MINOR-2). Muted ink like `heldNotice`: nothing failed here, the composer is
+		 * stating what it did and did not restore.
+		 */
+		const [refusedNotice, setRefusedNotice] = useState<string | null>(null);
+		/*
 		 * A second Enter refused while the first send is still unacknowledged.
 		 *
 		 * The refusal itself is deliberate and the typed text is kept - the store
@@ -776,10 +788,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * 7, R17). Adopting the paths is what makes the restored draft send exactly
 		 * what it shows: the chip row and the payload the next Send carries are the
 		 * same list, and images are re-encoded from those paths by the send itself.
-		 * The chip write rides the SAME branch as the text write - the pair is adopted
-		 * only where the refused payload becomes the box's own content, so a user who
-		 * typed something of their own during the flight is not handed back files they
-		 * did not ask for either.
+		 *
+		 * BOTH HALVES GO THROUGH ONE DECISION (`adoptRefusedPayload`), not through the
+		 * pair's two rules read independently: the chip write used to sit below the
+		 * TEXT rule's early return, so on the arm where the two rules disagree - the
+		 * box holds text the user typed, the chip row is empty - the refusal's file
+		 * was dropped with nothing said, and a later edit to the text rule would have
+		 * changed which refusals restore files without anything failing (round 8,
+		 * MINOR-2). The decision adopts each half into its own empty slot - what a
+		 * slot that already holds the user's own content keeps, the user keeps - and
+		 * answers `withheld` when it had to hold one half back while taking the other.
+		 * That answer is SAID on screen below, because a draft carrying one half of a
+		 * refused payload looks exactly like a draft carrying all of it.
 		 *
 		 * The caret goes to the END of the restored text, which is where the user's
 		 * was when they pressed Send - and it is not cosmetic here. The planner reads
@@ -816,22 +836,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			)
 				return;
 			consideredRefusedTextRef.current = refusedText;
-			const restored = restoreSubmittedText(newMessage, refusedText);
-			// The user's own text is what the box holds, so it keeps the caret too.
-			if (restored === newMessage) return;
-			// A composer with no conversation has no chip row to write to (that path
-			// reads no attachments at all), so the files can only come back under the
-			// identity they belong to.
-			if (conversationId) {
-				for (const path of restoreSubmittedAttachments(
-					attachments,
-					refusedAttachments,
-				))
+			/*
+			 * One call decides both halves of the payload, so neither can be restored
+			 * on the other's outcome. `chips: null` when this composer has no
+			 * conversation: then there is no row to write, and the decision must not
+			 * report the files as adopted - the sentence below would be false.
+			 */
+			const adoption = adoptRefusedPayload(
+				newMessage,
+				conversationId ? attachments : null,
+				{ text: refusedText, attachments: refusedAttachments },
+			);
+			if (conversationId)
+				for (const path of adoption.paths)
 					addAttachment(conversationId, { id: uuidv4(), path });
-			}
-			pendingCaret.current = restored.length;
-			setCaret(restored.length);
-			setNewMessage(restored);
+			/*
+			 * A split is said out loud, once per payload, on the same commit as the
+			 * adoption: the user is looking at a draft that carries ONE half of a
+			 * message they sent, and nothing else on screen distinguishes that from
+			 * a draft that carries both.
+			 */
+			setRefusedNotice(
+				refusedSplitNotice(adoption.withheld, refusedAttachments),
+			);
+			// The user's own text is what the box holds, so it keeps the caret too.
+			if (adoption.text === newMessage) return;
+			pendingCaret.current = adoption.text.length;
+			setCaret(adoption.text.length);
+			setNewMessage(adoption.text);
 		}, [
 			refusedText,
 			refusedAttachments,
@@ -841,6 +873,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			addAttachment,
 			setNewMessage,
 		]);
+		/*
+		 * The sentence describes the draft this composer is showing, so it retires
+		 * with the record it came from: a refusal the user has discarded or sent
+		 * past owes this box nothing, and a split adoption for a payload that is no
+		 * longer held is a sentence about a state that ended. The pair travels as one
+		 * field-wise payload, so either half going is the record ending.
+		 */
+		useEffect(() => {
+			if (refusedText === undefined && refusedAttachments === undefined)
+				setRefusedNotice(null);
+		}, [refusedText, refusedAttachments]);
 
 		/*
 		 * What Enter should do with this draft, decided by the pure planner — the ONLY
@@ -1528,6 +1571,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					/>
 				</ErrorBoundary>
 				{(abandonNotice ||
+					refusedNotice ||
 					(!sendError && heldNotice) ||
 					(sendError && (composerAlert.message || composerAlert.showHeld))) && (
 					/*
@@ -1579,6 +1623,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							// escape is CONFIRMED where the problem was reported. Muted ink
 							// and no icon: this is the resolved state, not a failure.
 							<p className="text-ink-muted">{abandonNotice}</p>
+						)}
+						{!abandonNotice && refusedNotice && (
+							// Also muted, and for the same reason: the refusal's own alert
+							// across the two branches below is the failure, and this line says
+							// what the composer did with the payload that failure left behind -
+							// including, when the halves part, which half is not in the draft.
+							<p className="text-ink-muted">{refusedNotice}</p>
 						)}
 						{!abandonNotice && !sendError && heldNotice && (
 							// Muted ink on purpose: the region as a whole is the danger
