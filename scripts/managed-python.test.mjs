@@ -491,6 +491,67 @@ test("a selected environment that was removed is rebuilt, and the runtime is reu
 	assert.notEqual(rebuilt.venv, first.venv);
 });
 
+/*
+ * The same repair in the one configuration the test above cannot see: TWO
+ * generations, whose SELECTED one is the OLDER by mtime.
+ *
+ * Why that is not exotic, and why this test exists: `reapSupersededGenerations`'
+ * retention rule is "the selected generation plus the most recently modified
+ * other", and its first call site - the one that runs before the copy - passed no
+ * `keep` at all, so its only survivor was the NEWEST generation in the root,
+ * which is not necessarily the selected one. Any downgrade leaves exactly this
+ * state, and so does any pair of generations copied from two different seeds. The
+ * repair then deleted the runtime it was about to reuse, re-`ditto`ed the seed and
+ * re-ran `verifyMachO` over every Mach-O in it - turning a state that needed no
+ * copy into one that needs a 47 MB copy, on the disk-full path this change writes
+ * user copy for, and losing the generation the round-1 remediation promises is
+ * preserved (review round 2, N4). The fixture above passes either way because a
+ * single generation is always the newest, which is how this survived the round
+ * that introduced it.
+ */
+test("a selected runtime older than an unselected generation survives the repair, and is reused", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, install, state, first } = await provisioned(t);
+	const other = join(
+		managedPythonRoot(opts),
+		"runtimes",
+		`${"b".repeat(64)}-33333333-3333-4333-8333-333333333333`,
+	);
+	mkdirSync(other, { recursive: true });
+	writeFileSync(join(other, "python3"), "a different seed's runtime\n");
+	// Ordered explicitly rather than by how fast the fixture ran.
+	const now = Date.now();
+	utimesSync(first.runtime, new Date(now - 600_000), new Date(now - 600_000));
+	utimesSync(other, new Date(now - 60_000), new Date(now - 60_000));
+	assert.ok(
+		statSync(first.runtime).mtimeMs < statSync(other).mtimeMs,
+		"the selected generation must be the older one, or this test asserts nothing",
+	);
+
+	// Only the environment is gone: the runtime is intact, and is the tree to reuse.
+	rmSync(first.venv, { recursive: true, force: true });
+	const verdict = inspectManagedSelection(opts);
+	assert.equal(verdict.kind, "missing");
+	assert.equal(
+		verdict.published?.runtime,
+		first.runtime,
+		"the verdict names what was published, which is what the reaper is told to keep",
+	);
+
+	const rebuilt = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2);
+	assert.ok(
+		existsSync(first.runtime),
+		"the selected generation survives whatever its mtime says next to an unselected one",
+	);
+	assert.equal(
+		rebuilt.runtime,
+		first.runtime,
+		"and it is REUSED rather than re-copied from the seed",
+	);
+	assert.notEqual(rebuilt.venv, first.venv);
+});
+
 test("a selected runtime that was removed is reprinted from the seed", async (t) => {
 	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);

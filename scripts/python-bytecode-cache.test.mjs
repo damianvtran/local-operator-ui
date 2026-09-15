@@ -1976,6 +1976,38 @@ test("the setup failure dialog says what happened before what was recorded", asy
 	);
 	assert.match(concurrent, /^What happened: Another copy of Local Operator is setting up/);
 
+	// Review N6: the two halves of the same bucket, so the correction is targeted
+	// rather than a phrase dropped from a pattern. A backend that really did install
+	// and then fail to start still reads that way - and `Backend preparation did not
+	// complete.` does not, because `prepareManagedPython` throws it when the install
+	// callback returned false, which is the install FAILING (a pip or network error)
+	// rather than a completed install that will not come up. It fell through to the
+	// generic cause, whose sentence is true of it.
+	const smoke = backendSetupFailureDetail(
+		new Error(
+			"The prepared backend did not become healthy; the previous selection was preserved",
+		),
+		support,
+	);
+	assert.match(smoke, /^What happened: The backend was installed but did not start correctly/);
+
+	const preparation = backendSetupFailureDetail(
+		new Error(
+			"Backend preparation did not complete. Your previous environment and data were preserved.",
+		),
+		support,
+	);
+	assert.doesNotMatch(
+		preparation,
+		/^What happened: The backend was installed/,
+		"nothing was installed, so the copy must not say it was",
+	);
+	assert.match(preparation, /^What happened: The backend could not be set up on this Mac/);
+	assert.match(
+		preparation,
+		/The app recorded: Backend preparation did not complete/,
+	);
+
 	// An internal-sounding error is not shown as the user's situation, and the raw
 	// string it came from is still there for the support thread.
 	const internal = backendSetupFailureDetail(
