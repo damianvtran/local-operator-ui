@@ -242,12 +242,18 @@ type UiPreferencesState = {
 /**
  * The sections of the run pane that a control outside it can point at.
  *
- * A union with one member rather than a bare string: there is exactly one such
- * control today (the composer's plan chip), and a second one has to be added
- * HERE rather than spelled at its call site, where whoever consumes the request
- * would never see it.
+ * A union rather than a bare string, and it is the place a second control's
+ * destination has to be added: the composer's status row names one of these in a
+ * `revealRunPanelSection` call, and whoever consumes the request reads the same
+ * union, so a section spelled at a call site and nowhere here would be a request
+ * nothing could resolve.
+ *
+ * The three are the pane's three LIVE lists — the plan, the roster and the tool
+ * jobs — and they are named for their sections rather than for their controls:
+ * `jobs` is the section that draws `bash` rows, which the roster deliberately
+ * does not hold (`run-detail-model.ts`'s partition).
  */
-export type RunPanelSection = "todos";
+export type RunPanelSection = "todos" | "subagents" | "jobs";
 
 /**
  * Claiming the right slot for one of the two panes that can live in it.
