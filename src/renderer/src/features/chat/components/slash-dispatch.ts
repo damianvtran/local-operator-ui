@@ -7,6 +7,20 @@
  * the interception point — it returns true when it consumed the text, and the
  * caller's model path never runs.
  *
+ * WHAT IT IS HANDED, AND WHY IT IS NOT TEXT. `dispatch` takes a
+ * `SlashCommandInvocation` — a name and its args, already split by
+ * `planSlashSubmission` — and never a draft. It used to take the raw string and
+ * ask `SLASH_SUBMISSION` whether the whole thing was a command, and that second
+ * judgement is how a two-line draft whose caret was on line 2 got dispatched as
+ * `/usage` with line 2 as its argument, the composer emptied, and nothing sent
+ * to the model: the planner had correctly answered "prose", and this guard
+ * overruled it (`[\s\S]*` reads a newline as the command/argument separator).
+ * There is now no question left here that could disagree with the planner —
+ * args cannot span lines because they were cut from the command's own line — so
+ * a second whole-draft guard cannot be reintroduced without changing this
+ * signature. See `slash-submit.ts` for the rule and where the split lives, and
+ * `message-input.tsx`'s `applyPlan` for the composer side of the seam.
+ *
  * Every command is posted to the session command endpoint first: an owner
  * command returns the owner's real SlashResult (painted as a system line), an
  * interactive or native command returns a `native_action` presentation
@@ -40,6 +54,7 @@ import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
 import type { SlashCommandMeta } from "./slash-commands";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 type SlashDispatchOptions = {
 	/** Canonical session the commands address. */
@@ -117,8 +132,6 @@ function draftPickerSpec(
 		execution: "native",
 	};
 }
-
-const SLASH_SUBMISSION = /^\/([A-Za-z]+)(?:\s([\s\S]*))?$/;
 
 function systemMessage(text: string, status?: Message["status"]): Message {
 	return {
@@ -239,12 +252,11 @@ export function useSlashDispatch({
 	);
 
 	const dispatch = useCallback(
-		async (text: string): Promise<SlashDispatchOutcome> => {
-			const match = SLASH_SUBMISSION.exec(text.trim());
-			if (!match) return "not-a-command";
+		async (
+			invocation: SlashCommandInvocation,
+		): Promise<SlashDispatchOutcome> => {
+			const { name: word, args } = invocation;
 			if (!commandsEnabled) return "not-a-command";
-			const [, word, rawArgs] = match;
-			const args = rawArgs?.trim() ?? "";
 			const commands = commandsQuery.data ?? [];
 			const spec =
 				commands.find((command) => command.name === word) ??
@@ -317,7 +329,7 @@ export function useSlashDispatch({
 					commands,
 					onClose: closePicker,
 					note,
-					dispatch: (line) => void dispatch(line),
+					dispatch: (invocation) => void dispatch(invocation),
 					rebind,
 				});
 				return "consumed";
@@ -380,7 +392,7 @@ export function useSlashDispatch({
 						commands,
 						onClose: closePicker,
 						note,
-						dispatch: (line) => void dispatch(line),
+						dispatch: (invocation) => void dispatch(invocation),
 						rebind,
 					});
 					return "consumed";
@@ -436,27 +448,35 @@ export function useSlashDispatch({
 	/**
 	 * Run a command the user did not type, and never fail silently.
 	 *
-	 * `dispatch` is written for the COMPOSER, where "not-a-command" means "this
-	 * is ordinary prose, send it as a message" and the message path reports
-	 * whatever goes wrong next. A chip has no such next step: it is only ever a
-	 * command, so the same return value means the command did not run and
-	 * nothing anywhere will say so. That is exactly what happened with the
-	 * backend down - `commandsEnabled` is false while capabilities are
+	 * `dispatch` is written for the COMPOSER, where "not-a-command" means "the
+	 * command surface is off, so this is ordinary text". A chip has no such next
+	 * step: it is only ever a command, so the same return value means the command
+	 * did not run and nothing anywhere will say so. That is exactly what happened
+	 * with the backend down - `commandsEnabled` is false while capabilities are
 	 * unreachable, so clicking a chip returned "not-a-command" into a `void`
 	 * and the user watched a dead control for 16 seconds while typing `/model`
 	 * in the same state explained the failure and offered a retry (round 1, U2).
 	 *
 	 * The note is the composer's own error idiom, not a second one, so the chip
 	 * and the typed command report through the same surface.
+	 *
+	 * It RETURNS the outcome as well as reporting it. A caller that spliced a
+	 * command token out of a draft needs to know whether it ran before deciding
+	 * what the composer should hold afterwards — and that decision must not come
+	 * with a second copy of this sentence (see `message-input.tsx`).
 	 */
 	const dispatchFromControl = useCallback(
-		async (line: string) => {
-			const outcome = await dispatch(line);
-			if (outcome !== "not-a-command") return;
-			note(
-				"The backend could not complete this request. Check its connection and try again.",
-				true,
-			);
+		async (
+			invocation: SlashCommandInvocation,
+		): Promise<SlashDispatchOutcome> => {
+			const outcome = await dispatch(invocation);
+			if (outcome === "not-a-command") {
+				note(
+					"The backend could not complete this request. Check its connection and try again.",
+					true,
+				);
+			}
+			return outcome;
 		},
 		[dispatch, note],
 	);
@@ -499,7 +519,7 @@ export function useSlashDispatch({
 				commands: commandsQuery.data ?? [],
 				onClose: closePicker,
 				note,
-				dispatch: (line) => void dispatch(line),
+				dispatch: (invocation) => void dispatch(invocation),
 				rebind,
 				draft: draftPicker,
 			});
@@ -521,5 +541,6 @@ export function useSlashDispatch({
 		picker,
 		closePicker,
 		openDraftPicker,
+		note,
 	};
 }

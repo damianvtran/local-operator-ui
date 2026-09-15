@@ -48,7 +48,9 @@ import type {
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
+import { formatPricePair } from "../components/slash-argument-rows";
 import type { SlashCommandMeta } from "../components/slash-commands";
+import type { SlashCommandInvocation } from "../components/slash-submit";
 import {
 	type DraftSelectionTarget,
 	type EffortCarry,
@@ -93,8 +95,14 @@ export type PickerContext = {
 	onClose: () => void;
 	/** Post a system line into the transcript area (view-only). */
 	note: (text: string, error?: boolean) => void;
-	/** Re-dispatch a slash line (help -> pick a command). */
-	dispatch: (text: string) => void;
+	/**
+	 * Re-dispatch a slash command the user picked (help -> pick a command).
+	 *
+	 * An `SlashCommandInvocation`, not a line: the dispatcher does not parse
+	 * text at all — see `slash-dispatch.ts` for why a second parser used to
+	 * overrule the composer's planner on a multi-line draft.
+	 */
+	dispatch: (invocation: SlashCommandInvocation) => void;
 	/** Switch the agent's bound canonical session (resume/fork/new). */
 	rebind: (sessionId: string) => void;
 	/**
@@ -133,7 +141,16 @@ type Entities<T = Record<string, unknown>> = {
 	current: unknown;
 };
 
-function useEntities<T = Record<string, unknown>>(
+/**
+ * The entity list for a command, shared by the picker dialogs and the
+ * composer's inline argument list.
+ *
+ * Exported because the composer must read the SAME query the dialog reads —
+ * same key, same path mapper — or the two surfaces could offer different rungs
+ * for one command (the rule the session-status strip's effort chip already
+ * follows for `/effort`). A second copy of this query is how they would drift.
+ */
+export function useEntities<T = Record<string, unknown>>(
 	sessionId: string,
 	command: string,
 	name?: string,
@@ -163,6 +180,15 @@ type CatalogueRow = DesktopModelCatalogue["models"][number] & {
 /** The row's own selector, in the one spelling the wire and the rows share. */
 function selectorOf(row: CatalogueRow): string {
 	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
+}
+
+/** The row's price pair in the one spelling both surfaces print. */
+function pricePair(row: CatalogueRow): string {
+	return formatPricePair(
+		row.input_price,
+		row.output_price,
+		row.routed === true,
+	);
 }
 
 /**
@@ -594,9 +620,16 @@ export const ModelPicker: FC<PickerContext> = ({
 		return rows.map((row) => ({
 			value: selectorOf(row),
 			label: row.label || row.model_id,
+			/*
+			 * The price pair travels with the provider line so the dialog and the
+			 * composer's inline list describe one model the same way: a user who
+			 * reaches for the thorough surface must not have to re-derive what the
+			 * fast one already told them. Same formatter, so `free` and
+			 * `usage-based` are words in both and an absent price is blank in both.
+			 */
 			description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
 				known && !row.connected ? ", no credential" : ""
-			}`,
+			}${pricePair(row) ? ` · ${pricePair(row)}` : ""}`,
 			meta: row.context_window
 				? `${Math.round(row.context_window / 1000)}k`
 				: undefined,
@@ -2611,7 +2644,7 @@ export const HelpPalette: FC<PickerContext> = ({
 			searchPlaceholder="Search commands"
 			onPick={(value) => {
 				onClose();
-				dispatch(`/${value}`);
+				dispatch({ name: value, args: "" });
 			}}
 		/>
 	);
