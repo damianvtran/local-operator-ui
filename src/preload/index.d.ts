@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	DesktopAPI,
 	ProbedFile,
@@ -95,7 +96,16 @@ declare global {
 					canManageUpdate?: boolean;
 					remedy?: string;
 				} | null>;
-				checkForAllUpdates: (options?: { manual?: boolean }) => Promise<void>;
+				// The aggregate check's own answer, and the ONLY source of the "up to
+				// date" affirmation: a value that says the whole check proved both
+				// channels current, never merely that one of them had nothing to
+				// offer. See `src/main/update-check-verdict.ts`. `silent` is the
+				// caller's own flag for suppressing this check's per-channel
+				// `*-not-available` events.
+				checkForAllUpdates: (options?: {
+					manual?: boolean;
+					silent?: boolean;
+				}) => Promise<UpdateCheckVerdict>;
 				/** The last install that did not complete, if the app recorded one. */
 				getLastInstallAttempt: () => Promise<{
 					targetVersion: string;
