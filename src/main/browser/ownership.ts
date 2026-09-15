@@ -68,6 +68,8 @@ export interface OwnershipHooks {
 	closeTab: (token: string) => Promise<boolean>;
 	/** Whether a surface token still names a live tab. */
 	isLive: (token: string) => boolean;
+	/** Only native human handover may grant a previously unallocated capability. */
+	mayAdopt?: (token: string, requester: string) => boolean;
 }
 
 export class OwnershipLedger {
@@ -251,12 +253,20 @@ export class OwnershipLedger {
 					true,
 				);
 				if (params.tab) {
-					if (existing?.tab !== params.tab) {
+					if (
+						existing?.tab !== params.tab &&
+						(existing ||
+							this.scopeOwning(String(params.tab)) ||
+							!this.hooks.mayAdopt?.(String(params.tab), session))
+					) {
 						throw new BrowserHostError(
 							"owner_refused",
 							"tab does not belong to allocation",
 						);
 					}
+					// Adoption is journaled before awaiting page work: failed navigation
+					// must not orphan the human-granted tab or allow another proof to claim it.
+					this.recordAllocation(params, String(params.tab), "allocated");
 					return handler();
 				}
 				if (existing?.tab && this.hooks.isLive(existing.tab)) {
@@ -278,7 +288,33 @@ export class OwnershipLedger {
 					});
 				}
 				this.recordAllocation(params, "", "allocating");
-				return handler();
+				try {
+					const result = await handler();
+					if (
+						typeof result.tab !== "string" ||
+						!this.hooks.isLive(result.tab)
+					) {
+						throw new BrowserHostError(
+							"owner_refused",
+							"allocation did not return a live browser capability",
+						);
+					}
+					this.recordAllocation(params, result.tab, "allocated");
+					return result;
+				} catch (error) {
+					this.mutate(params, (scope) => {
+						const allocation = scope.allocations[String(params.allocation_id)];
+						// The local allocator publishes synchronously before any await.
+						// A returned rejection without a live published view is therefore
+						// settled, unlike a lost transport response (whose handler keeps running).
+						if (
+							allocation &&
+							(!allocation.tab || !this.hooks.isLive(allocation.tab))
+						)
+							allocation.state = "closed";
+					});
+					throw error;
+				}
 			}
 
 			// The generic scope lookup comes AFTER the `open` branch, and the order is
@@ -328,6 +364,7 @@ export class OwnershipLedger {
 				let pending = false;
 				for (const allocation of Object.values(scope.allocations)) {
 					if (!allocation.tab || !this.hooks.isLive(allocation.tab)) {
+						if (allocation.tab) allocation.state = "closed";
 						if (
 							["allocating", "allocated", "cleanup_pending"].includes(
 								allocation.state,
@@ -338,6 +375,7 @@ export class OwnershipLedger {
 						continue;
 					}
 					const closed = await this.hooks.closeTab(allocation.tab);
+					allocation.state = closed ? "closed" : "cleanup_pending";
 					if (!closed) pending = true;
 				}
 				return { state: pending ? "pending" : "closed" };
@@ -357,7 +395,17 @@ export class OwnershipLedger {
 					"tab does not belong to this browser owner",
 				);
 			}
-			return handler();
+			const result = await handler();
+			if (method === "close" && params.tab) {
+				for (const allocation of Object.values(scope.allocations)) {
+					if (
+						allocation.tab === params.tab &&
+						!this.hooks.isLive(allocation.tab)
+					)
+						allocation.state = "closed";
+				}
+			}
+			return result;
 		};
 
 		const run = previous.catch(() => {}).then(operate);
